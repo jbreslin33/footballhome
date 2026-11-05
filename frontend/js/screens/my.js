@@ -560,6 +560,8 @@ class MyScreen extends Screen {
       // 🚗 Carpool staff behalf-of dropdown.
       const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
       if (cpBehalf && this.carpoolPanel) { this.carpoolPanel.behalf(cpBehalf.value); return; }
+      const cpDep = e.target.closest('[data-gc-cp-dep-add]');
+      if (cpDep && this.carpoolPanel) { this.carpoolPanel.departureAdd(cpDep.dataset.gcCpDepAdd, cpDep.value); return; }
       const date = e.target.closest('#events-range-date');
       if (!date) return;
       this._onRangeChange(date.value ? `from:${date.value}` : 'current');

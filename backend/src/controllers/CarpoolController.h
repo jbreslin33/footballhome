@@ -37,4 +37,10 @@ private:
     // server for anyone but the requester, accepted driver, and staff).
     Response handleOptions(const Request& request);
     Response handleAction(const Request& request, const std::string& action);
+    // 🚐 Departures (mig 1101): a group leaves a place at a time; players
+    // tap to ride or drive.  POST /:fhEventId/departures (staff),
+    // POST /departures/:id/join {person_id, role, seats?},
+    // POST /departures/:id/leave {person_id}, POST /departures/:id/remove (staff).
+    Response handleDepartureAdd(const Request& request);
+    Response handleDepartureAction(const Request& request, const std::string& action);
 };

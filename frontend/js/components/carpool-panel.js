@@ -28,6 +28,7 @@ class CarpoolPanel {
     this.optionsFor = null;  // request id whose plan picker is open
     this.options = null;     // {options: [...], missing} for optionsFor
     this.busy = false;
+    this.depAddOpen = false;  // staff ＋ Departure form
   }
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('carpool', tier, tokens) : ''; }
@@ -103,6 +104,103 @@ class CarpoolPanel {
         </button>`;
     }).join('');
     return head + rows;
+  }
+
+  // 🚐 Departures (mig 1101; owner 2026-11-05: "7pm departure at 804 East
+  // Girard Avenue … 7:15pm departure from Lighthouse Sports Complex … easy
+  // to use functions for players to click to sign up … for each site").
+  // A group leaves a place at a time; you (or your kid) tap 🙋 ride or
+  // 🚗 drive.  One spot per person per event — tapping another departure
+  // moves you.  Staff sign anyone on the game up, and add / remove
+  // departures.
+  _departuresHtml() {
+    const cp = this.data;
+    const esc = (t) => this._esc(t);
+    const deps = cp.departures || [];
+    const staff = !!cp.staff;
+    if (!deps.length && !staff) return '';
+    const me = Number(cp.viewerPersonId);
+    const mineRiders = (cp.riders || []).filter(k => k.mine !== false);
+    const btn = (attrs, label, cls = 'btn-secondary') =>
+      `<button class="btn ${cls}" ${attrs} ${this.busy ? 'disabled' : ''} style="padding:3px 9px; font-size:0.7rem; font-weight:700;">${label}</button>`;
+    const rows = deps.map(d => {
+      const riders = d.people.filter(p => p.role === 'rider'), drivers = d.people.filter(p => p.role === 'driver');
+      const seats = drivers.reduce((n, p) => n + (Number(p.seats) || 0), 0);
+      const names = (list, withSeats) => list.map(p => `${p.name}${withSeats && p.seats ? ` (${this._copy('dep_seats', { n: p.seats }) || `${p.seats} seats`})` : ''}`).join(', ');
+      const line = this._copy('dep_line', { time: d.departLabel, place: d.place }) || `${d.departLabel} from ${d.place}`;
+      // Buttons for me and my kids: ride / drive (me only) / leave.
+      const mineBtns = mineRiders.map(k => {
+        const self = Number(k.personId) === me;
+        const here = d.people.find(p => Number(p.personId) === Number(k.personId));
+        if (here) return btn(`data-gc-cp="dep-leave" data-dep="${d.id}" data-cp-person="${k.personId}"`,
+          esc(`${this._copy('dep_leave') || 'Leave'}${self ? '' : ` · ${k.name}`}`));
+        const ride = btn(`data-gc-cp="dep-join" data-role="rider" data-dep="${d.id}" data-cp-person="${k.personId}"`,
+          esc(self ? (this._copy('dep_ride') || "🙋 I'll ride") : (this._copy('dep_ride_for', { name: k.name }) || `🙋 ${k.name} rides`)), 'btn-primary');
+        const drive = self ? btn(`data-gc-cp="dep-drive" data-dep="${d.id}" data-cp-person="${k.personId}"`,
+          esc(this._copy('dep_drive') || "🚗 I'm driving")) : '';
+        return ride + ' ' + drive;
+      }).join(' ');
+      // Staff: sign anyone on the game up as a rider.
+      const others = staff ? (cp.riders || []).filter(k => k.mine === false && !d.people.some(p => Number(p.personId) === Number(k.personId))) : [];
+      const staffPick = others.length ? `<select data-gc-cp-dep-add="${d.id}" style="font-size:0.68rem; padding:3px 5px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); max-width:100%;">
+          <option value="">${esc(this._copy('dep_staff_pick') || 'Sign someone up to ride…')}</option>
+          ${others.map(k => `<option value="${k.personId}">${esc(k.name)}</option>`).join('')}</select>` : '';
+      const staffLeave = staff ? d.people.filter(p => !p.mine).map(p =>
+        `<button data-gc-cp="dep-leave" data-dep="${d.id}" data-cp-person="${p.personId}" title="Take ${esc(p.name)} off" style="border:none; background:none; color:inherit; opacity:0.6; cursor:pointer; font-size:0.66rem; padding:0 2px;">✕ ${esc(p.name)}</button>`).join('') : '';
+      return `
+        <div style="padding:7px 0; border-top:1px solid var(--border-color); font-size:0.76rem;">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <b style="color:#93c5fd;">${esc(line)}</b>
+            ${staff ? btn(`data-gc-cp="dep-remove" data-dep="${d.id}"`, esc(this._copy('dep_remove') || 'Remove')) : ''}
+          </div>
+          ${d.address ? `<div style="font-size:0.68rem; opacity:0.8;">📍 <a href="${esc(EventLabels.mapsUrl(d.address))}" target="_blank" rel="noopener" style="color:inherit;">${esc(d.address)}</a></div>` : ''}
+          <div style="font-size:0.7rem; margin-top:2px;">
+            ${riders.length ? `<div>${esc(this._copy('dep_riders', { names: names(riders) }) || `Riding: ${names(riders)}`)}</div>` : ''}
+            ${drivers.length ? `<div style="color:#22c55e;">${esc(this._copy('dep_drivers', { names: names(drivers, true) }) || `Driving: ${names(drivers, true)}`)}${seats ? ` · ${riders.length}/${seats}` : ''}</div>` : ''}
+            ${!d.people.length ? `<div style="opacity:0.65;">${esc(this._copy('dep_nobody') || 'Nobody signed up yet.')}</div>` : ''}
+          </div>
+          <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-top:4px;">${mineBtns} ${staffPick}</div>
+          ${staffLeave ? `<div style="margin-top:2px;">${staffLeave}</div>` : ''}
+        </div>`;
+    }).join('');
+    const addForm = staff ? (this.depAddOpen ? `
+      <div data-gc-cp-dep-form style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:4px; margin-top:6px;">
+        <input data-f="place" placeholder="${esc(this._copy('dep_place_ph') || 'Where')}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">
+        <input data-f="address" placeholder="${esc(this._copy('dep_address_ph') || 'Address (optional)')}" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">
+        <input data-f="time" type="time" style="font-size:0.72rem; padding:5px 6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;">
+        <button class="btn btn-primary" data-gc-cp="dep-save" ${this.busy ? 'disabled' : ''} style="padding:4px 8px; font-size:0.7rem;">${esc(this._copy('dep_save') || 'Create pickup site')}</button>
+      </div>` : '') : '';
+    return `
+      <div style="margin-bottom:8px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div style="font-size:0.74rem; font-weight:800;">${esc(this._copy('dep_title') || '🚐 Pickup sites — tap to ride or drive')}</div>
+          ${staff ? btn('data-gc-cp="dep-add"', esc(`${this.depAddOpen ? '✕ ' : ''}${this._copy('dep_add') || '＋ Create pickup site'}`)) : ''}
+        </div>
+        ${rows}${addForm}
+      </div>`;
+  }
+
+  // Staff picked someone in a departure's "Sign someone up" dropdown.
+  async departureAdd(depId, personId) {
+    if (!depId || !personId) return;
+    await this._post(`/api/carpool/departures/${depId}/join`, { person_id: Number(personId), role: 'rider' });
+  }
+
+  async _post(url, body) {
+    if (this.busy) return;
+    this.busy = true; this.host.rerender();
+    try {
+      const res = await this.auth.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      await this.load();
+      return true;
+    } catch (err) {
+      this.host.toast(`⚠ ${err.message}`);
+      return false;
+    } finally {
+      this.busy = false; this.host.rerender();
+    }
   }
 
   html() {
@@ -218,6 +316,7 @@ class CarpoolPanel {
     return `
       <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
         <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(this._copy('title') || '🚗 Carpool')}</div>
+        ${this._departuresHtml()}
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin-bottom:4px;">${esc(this._copy('hint') || '')}</div>
         ${rows || `<div style="font-size:0.72rem; opacity:0.75;">${esc(this._copy('empty') || 'No ride requests for this game yet.')}</div>`}
         ${askBtns}
@@ -233,6 +332,41 @@ class CarpoolPanel {
 
   async click(btn, rootEl) {
     const action = btn.dataset.gcCp;
+    if (action === 'dep-add') { this.depAddOpen = !this.depAddOpen; this.host.rerender(); return; }
+    if (action === 'dep-join') {
+      return this._post(`/api/carpool/departures/${btn.dataset.dep}/join`, { person_id: Number(btn.dataset.cpPerson), role: btn.dataset.role || 'rider' });
+    }
+    if (action === 'dep-drive') {
+      // Seats asked inline (no browser dialogs inside the app shell): the
+      // button flips to a small number picker.
+      const box = btn.parentElement;
+      if (!box.querySelector('[data-dep-seats]')) {
+        const wrap = document.createElement('span');
+        wrap.style.cssText = 'display:inline-flex; gap:4px; align-items:center; font-size:0.68rem;';
+        wrap.innerHTML = `${this._esc(this._copy('dep_seats_ask') || 'Seats for players')}
+          <select data-dep-seats style="font-size:0.7rem; padding:2px 4px;">${[1,2,3,4,5,6,7].map(n => `<option value="${n}" ${n === 3 ? 'selected' : ''}>${n}</option>`).join('')}</select>
+          <button class="btn btn-primary" data-gc-cp="dep-drive-go" data-dep="${btn.dataset.dep}" data-cp-person="${btn.dataset.cpPerson}" style="padding:3px 9px; font-size:0.7rem;">OK</button>`;
+        btn.after(wrap);
+      }
+      return;
+    }
+    if (action === 'dep-drive-go') {
+      const sel = btn.parentElement.querySelector('[data-dep-seats]');
+      return this._post(`/api/carpool/departures/${btn.dataset.dep}/join`, { person_id: Number(btn.dataset.cpPerson), role: 'driver', seats: Number(sel ? sel.value : 3) });
+    }
+    if (action === 'dep-leave') {
+      return this._post(`/api/carpool/departures/${btn.dataset.dep}/leave`, { person_id: Number(btn.dataset.cpPerson) });
+    }
+    if (action === 'dep-remove') {
+      return this._post(`/api/carpool/departures/${btn.dataset.dep}/remove`, {});
+    }
+    if (action === 'dep-save') {
+      const form = rootEl.querySelector('[data-gc-cp-dep-form]');
+      const val = (f) => { const el = form && form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
+      const ok = await this._post(`/api/carpool/${this.host.fhEventId()}/departures`, { place: val('place'), address: val('address'), time: val('time') });
+      if (ok) { this.depAddOpen = false; this.host.rerender(); }
+      return;
+    }
     if (action === 'form') {
       const pid = Number(btn.dataset.cpPerson);
       this.formFor = this.formFor === pid ? null : pid;

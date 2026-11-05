@@ -1067,6 +1067,8 @@ class EventScreen extends Screen {
     this.element.addEventListener('change', (e) => {
       const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
       if (cpBehalf) this.carpoolPanel.behalf(cpBehalf.value);
+      const cpDep = e.target.closest('[data-gc-cp-dep-add]');
+      if (cpDep) this.carpoolPanel.departureAdd(cpDep.dataset.gcCpDepAdd, cpDep.value);
     });
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }

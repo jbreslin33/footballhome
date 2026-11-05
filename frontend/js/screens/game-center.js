@@ -1179,6 +1179,8 @@ class GameCenterScreen extends EventScreen {
       }
       const cpBehalf = e.target.closest('[data-gc-cp-behalf]');
       if (cpBehalf) { this.carpoolPanel.behalf(cpBehalf.value); return; }
+      const cpDep = e.target.closest('[data-gc-cp-dep-add]');
+      if (cpDep) { this.carpoolPanel.departureAdd(cpDep.dataset.gcCpDepAdd, cpDep.value); return; }
       const benchSelect = e.target.closest('[data-lineup-bench-order-select]');
       if (benchSelect && this.isCoach) {
         const playerId = Number(benchSelect.getAttribute('data-player-id'));

@@ -303,6 +303,10 @@ void CarpoolController::registerRoutes(Router& router, const std::string& prefix
     router.post(prefix + "/requests/:id/accept",  [this](const Request& r) { return handleAction(r, "accept"); });
     router.post(prefix + "/requests/:id/unaccept",[this](const Request& r) { return handleAction(r, "unaccept"); });
     router.post(prefix + "/requests/:id/cancel",  [this](const Request& r) { return handleAction(r, "cancel"); });
+    router.post(prefix + "/:fhEventId/departures", [this](const Request& r) { return handleDepartureAdd(r); });
+    router.post(prefix + "/departures/:id/join",   [this](const Request& r) { return handleDepartureAction(r, "join"); });
+    router.post(prefix + "/departures/:id/leave",  [this](const Request& r) { return handleDepartureAction(r, "leave"); });
+    router.post(prefix + "/departures/:id/remove", [this](const Request& r) { return handleDepartureAction(r, "remove"); });
 }
 
 Response CarpoolController::handleList(const Request& request) {
@@ -440,8 +444,35 @@ Response CarpoolController::handleList(const Request& request) {
                               {"address1", str(r, "address1")}, {"address2", str(r, "address2")},
                               {"city", str(r, "city")}, {"state", str(r, "state")}, {"zip", str(r, "zip")}});
         }
+        // 🚐 Departures (mig 1101) with who rides / drives from each.
+        json departures = json::array();
+        for (const auto& d : db->query(R"SQL(
+            SELECT d.id, d.place, COALESCE(d.address, '') AS address, COALESCE(d.note, '') AS note,
+                   to_char(d.depart_at AT TIME ZONE 'America/New_York', 'FMHH12:MI AM') AS depart_label,
+                   to_char(d.depart_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS depart_at
+              FROM fh_event_departures d
+             WHERE d.fh_event_id = $1::bigint AND d.cancelled_at IS NULL
+             ORDER BY d.depart_at, d.id)SQL", {eid})) {
+            json people = json::array();
+            for (const auto& s : db->query(R"SQL(
+                SELECT s.person_id, s.role, s.seats,
+                       NULLIF(trim(COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'')), '') AS name,
+                       (s.person_id = $2::int OR fh_is_guardian($2::int, s.person_id)) AS mine
+                  FROM fh_event_departure_signups s JOIN persons p ON p.id = s.person_id
+                 WHERE s.departure_id = $1::bigint AND s.left_at IS NULL
+                 ORDER BY s.role DESC, s.created_at)SQL", {std::string(d["id"].c_str()), pid}))
+                people.push_back({{"personId", s["person_id"].as<long long>()}, {"name", str(s, "name")},
+                                  {"role", str(s, "role")},
+                                  {"seats", s["seats"].is_null() ? json(nullptr) : json(s["seats"].as<int>())},
+                                  {"mine", !s["mine"].is_null() && s["mine"].as<bool>()}});
+            departures.push_back({{"id", d["id"].as<long long>()}, {"place", str(d, "place")},
+                                  {"address", str(d, "address")}, {"note", str(d, "note")},
+                                  {"departLabel", str(d, "depart_label")}, {"departAt", str(d, "depart_at")},
+                                  {"people", people}});
+        }
         return jsonOut(HttpStatus::OK, {{"success", true}, {"viewerPersonId", me.personId},
-                                        {"requests", requests}, {"riders", riders}});
+                                        {"requests", requests}, {"riders", riders},
+                                        {"departures", departures}, {"staff", staff}});
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/carpool] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
@@ -645,5 +676,100 @@ Response CarpoolController::handleAction(const Request& request, const std::stri
     } catch (const std::exception& e) {
         std::cerr << "[POST /api/carpool/" << action << "] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+// ─── 🚐 Departures (mig 1101) ─────────────────────────────────────────────
+
+// POST /:fhEventId/departures {place, address?, time "HH:MM" (event's day, NY) | depart_at ISO, note?} — staff.
+Response CarpoolController::handleDepartureAdd(const Request& request) {
+    const long long fhEventId = idAfter(request.getPath(), "/carpool/");
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "event id");
+    const long long userId = bearerUserId(request);
+    if (userId <= 0) return jsonError(HttpStatus::UNAUTHORIZED, "sign in");
+    json b;
+    try { b = json::parse(request.getBody().empty() ? "{}" : request.getBody()); } catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "bad JSON"); }
+    const std::string place = b.value("place", ""), address = b.value("address", ""), note = b.value("note", "");
+    const std::string hhmm = b.value("time", ""), iso = b.value("depart_at", "");
+    if (place.find_first_not_of(" \t") == std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "Say where it leaves from.");
+    if (hhmm.empty() && iso.empty()) return jsonError(HttpStatus::BAD_REQUEST, "Pick a time.");
+    try {
+        auto* db = Database::getInstance();
+        Viewer me;
+        if (!loadViewer(db, userId, &me)) return jsonError(HttpStatus::FORBIDDEN, "No person on this account.");
+        if (!staffOnEvent(db, fhEventId, me)) return jsonError(HttpStatus::FORBIDDEN, "Coaches and staff add departures.");
+        auto r = db->query(R"SQL(
+            INSERT INTO fh_event_departures (fh_event_id, place, address, depart_at, note, created_by_person_id)
+            SELECT $1::bigint, btrim($2), NULLIF(btrim($3), ''),
+                   CASE WHEN $5 <> '' THEN $5::timestamptz
+                        ELSE (((SELECT g.starts_at FROM fh_events f JOIN gcal_events g ON g.id = f.gcal_event_id WHERE f.id = $1::bigint)
+                                 AT TIME ZONE 'America/New_York')::date + $4::time) AT TIME ZONE 'America/New_York' END,
+                   NULLIF(btrim($6), ''), $7::int
+            RETURNING id)SQL", {std::to_string(fhEventId), place, address, hhmm.empty() ? "00:00" : hhmm, iso, note, std::to_string(me.personId)});
+        return jsonOut(HttpStatus::CREATED, {{"success", true}, {"id", r[0]["id"].as<long long>()}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/carpool/departures] " << e.what() << std::endl;
+        return jsonError(HttpStatus::BAD_REQUEST, "Could not add that departure — check the time.");
+    }
+}
+
+// POST /departures/:id/join|leave {person_id, role?, seats?}; /remove (staff).
+Response CarpoolController::handleDepartureAction(const Request& request, const std::string& action) {
+    const long long depId = idAfter(request.getPath(), "/departures/");
+    if (depId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "departure id");
+    const long long userId = bearerUserId(request);
+    if (userId <= 0) return jsonError(HttpStatus::UNAUTHORIZED, "sign in");
+    json b;
+    try { b = json::parse(request.getBody().empty() ? "{}" : request.getBody()); } catch (...) { b = json::object(); }
+    try {
+        auto* db = Database::getInstance();
+        Viewer me;
+        if (!loadViewer(db, userId, &me)) return jsonError(HttpStatus::FORBIDDEN, "No person on this account.");
+        auto dep = db->query("SELECT fh_event_id FROM fh_event_departures WHERE id = $1::bigint AND cancelled_at IS NULL",
+                             {std::to_string(depId)});
+        if (dep.empty()) return jsonError(HttpStatus::NOT_FOUND, "That departure is gone.");
+        const long long fhEventId = dep[0]["fh_event_id"].as<long long>();
+        const std::string eid = std::to_string(fhEventId), did = std::to_string(depId);
+        const bool staff = staffOnEvent(db, fhEventId, me);
+        if (action == "remove") {
+            if (!staff) return jsonError(HttpStatus::FORBIDDEN, "Coaches and staff remove departures.");
+            db->query("UPDATE fh_event_departures SET cancelled_at = now() WHERE id = $1::bigint", {did});
+            db->query("UPDATE fh_event_departure_signups SET left_at = now() WHERE departure_id = $1::bigint AND left_at IS NULL", {did});
+            return jsonOut(HttpStatus::OK, {{"success", true}});
+        }
+        long long personId = 0;
+        if (b.contains("person_id") && b["person_id"].is_number_integer()) personId = b["person_id"].get<long long>();
+        if (personId <= 0) personId = me.personId;
+        const std::string pid = std::to_string(personId);
+        // Yourself or your own kid — staff for anyone on the game.
+        auto mine = db->query("SELECT ($1::int = $2::int OR fh_is_guardian($2::int, $1::int)) AS ok", {pid, std::to_string(me.personId)});
+        if (!staff && (mine.empty() || !mine[0]["ok"].as<bool>()))
+            return jsonError(HttpStatus::FORBIDDEN, "You can sign up yourself or your own kids.");
+        if (action == "leave") {
+            db->query("UPDATE fh_event_departure_signups SET left_at = now() "
+                      " WHERE departure_id = $1::bigint AND person_id = $2::int AND left_at IS NULL", {did, pid});
+            return jsonOut(HttpStatus::OK, {{"success", true}});
+        }
+        // join: must be on the game (or its staff, or a parent of someone on it).
+        Viewer who; who.personId = personId; who.isAdmin = false;
+        if (!allowedOnEvent(db, fhEventId, who) && !staffOnEvent(db, fhEventId, who))
+            return jsonError(HttpStatus::FORBIDDEN, "Only people on this game can sign up.");
+        const std::string role = b.value("role", "rider") == "driver" ? "driver" : "rider";
+        std::string seats = "";
+        if (role == "driver" && b.contains("seats") && b["seats"].is_number_integer()) {
+            const int n = b["seats"].get<int>();
+            if (n >= 1 && n <= 12) seats = std::to_string(n);
+        }
+        auto tx = db->beginTransaction();
+        tx->exec_params("UPDATE fh_event_departure_signups SET left_at = now() "
+                        " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND left_at IS NULL", eid, pid);
+        tx->exec_params("INSERT INTO fh_event_departure_signups (departure_id, fh_event_id, person_id, role, seats, signed_by_person_id) "
+                        "VALUES ($1::bigint, $2::bigint, $3::int, $4, NULLIF($5, '')::int, $6::int)",
+                        did, eid, pid, role, seats, std::to_string(me.personId));
+        tx->commit();
+        return jsonOut(HttpStatus::OK, {{"success", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/carpool/departures/" << action << "] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save — try again.");
     }
 }
