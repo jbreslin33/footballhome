@@ -218,6 +218,8 @@ class CarpoolPanel {
     const rows = (cp.requests || []).map(r => {
       const addr = this._fmtAddress(r);
       const mineReq = Number(r.requestedBy.personId) === me;
+      // The rider (or a parent) can cancel too, whoever posted it (11/5).
+      const canCancel = mineReq || Number(r.personId) === me || (cp.riders || []).some(k => k.mine && Number(k.personId) === Number(r.personId));
       const driver = r.acceptedBy;
       const iDrive = driver && Number(driver.personId) === me;
       const status = driver
@@ -226,7 +228,7 @@ class CarpoolPanel {
       const btns = [
         !driver && !mineReq ? act('options', r.id, 'btn-primary', esc(this._copy('accept') || 'I can drive')) : '',
         iDrive ? act('unaccept', r.id, 'btn-secondary', esc(this._copy('unaccept') || "Can't drive anymore")) : '',
-        mineReq ? act('cancel', r.id, 'btn-secondary', esc(this._copy('cancel') || 'Cancel request')) : '',
+        canCancel ? act('cancel', r.id, 'btn-secondary', esc(this._copy('cancel') || 'Cancel request')) : '',
       ].filter(Boolean).join(' ');
       // The personalized detour nudge — minutes, never the address.
       const nudge = !driver && !mineReq && r.extraMinutes != null

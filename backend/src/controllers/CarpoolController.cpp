@@ -665,8 +665,14 @@ Response CarpoolController::handleAction(const Request& request, const std::stri
                       "       meet_extra_minutes = NULL, meet_lat = NULL, meet_lon = NULL, meet_address = NULL "
                       "WHERE id = $1::int AND cancelled_at IS NULL", {id});
         } else if (action == "cancel") {
-            if (requesterId != me.personId && !me.isAdmin)
-                return jsonError(HttpStatus::FORBIDDEN, "Only whoever asked can cancel it.");
+            // Whoever asked, the rider themselves or their parent (owner
+            // 11/5: "gian should be able to delete his request").
+            auto rider = db->query("SELECT r.person_id, fh_is_guardian($2::int, r.person_id) AS parent "
+                                   "  FROM fh_carpool_requests r WHERE r.id = $1::int", {id, pid});
+            const bool riderOrParent = !rider.empty() && (rider[0]["person_id"].as<long long>() == me.personId
+                                       || (!rider[0]["parent"].is_null() && rider[0]["parent"].as<bool>()));
+            if (requesterId != me.personId && !riderOrParent && !me.isAdmin)
+                return jsonError(HttpStatus::FORBIDDEN, "Only the rider, their parent or whoever asked can cancel it.");
             db->query("UPDATE fh_carpool_requests SET cancelled_at = now(), cancelled_by_person_id = $2::int "
                       "WHERE id = $1::int AND cancelled_at IS NULL", {id, pid});
         } else {
@@ -766,6 +772,12 @@ Response CarpoolController::handleDepartureAction(const Request& request, const 
         tx->exec_params("INSERT INTO fh_event_departure_signups (departure_id, fh_event_id, person_id, role, seats, signed_by_person_id) "
                         "VALUES ($1::bigint, $2::bigint, $3::int, $4, NULLIF($5, '')::int, $6::int)",
                         did, eid, pid, role, seats, std::to_string(me.personId));
+        // A rider who takes a pickup site no longer needs his own ride
+        // request (owner 11/5: "it should auto delete if he takes mine").
+        if (role == "rider")
+            tx->exec_params("UPDATE fh_carpool_requests SET cancelled_at = now(), cancelled_by_person_id = $3::int "
+                            " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND cancelled_at IS NULL",
+                            eid, pid, std::to_string(me.personId));
         tx->commit();
         return jsonOut(HttpStatus::OK, {{"success", true}});
     } catch (const std::exception& e) {
