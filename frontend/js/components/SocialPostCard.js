@@ -1909,12 +1909,14 @@ class SocialPostCard {
     // center. An empty row (SPACER_ROW upstream) renders as open space.
     // token.narrow (FIELD_SIZES narrowIds, 4-2-3-1 narrow): a tighter
     // chip cap so the 7 and 11 tuck in beside the 10 (owner 2026-11-05).
+    // token.lift (FIELD_SIZES chipLifts): that one chip drawn N px higher
+    // (negative = lower); row.lift does the same for a whole row.
     const pitchRow = (row) => {
       const items = row.map((t, i) => token(t, row.length,
-        (t.narrow ? 'max-width:78px;' : '') +
+        (t.narrow ? 'max-width:78px;' : '') + (t.lift ? `transform:translateY(${-t.lift}px);` : '') +
         (!t.wide ? '' : i === 0 ? 'margin-right:auto;' : i === row.length - 1 ? 'margin-left:auto;' : '')));
       if (row.halfway && row.length % 2 === 0) items.splice(row.length / 2, 0, crestCircle(chip / 2 - 20));
-      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;${row.lift ? `transform:translateY(-${row.lift}px);` : ''}">${items.join('')}</div>`;
+      const flexRow = `<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:6px;${row.lift ? `transform:translateY(${-row.lift}px);` : ''}">${items.join('')}</div>`;
       if (!row.halfway) return flexRow;
       return `
         <div style="position:relative;">
