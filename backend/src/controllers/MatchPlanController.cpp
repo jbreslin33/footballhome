@@ -194,7 +194,7 @@ json setPiecesOf(long long eventId) {
     std::map<int, std::pair<size_t, size_t>> rAt;
     for (const auto& r : db->query(R"SQL(
         SELECT g.id AS group_id, g.slug AS group_slug, g.title AS group_title,
-               r.id, r.title, r.description, r.needed_count
+               r.id, r.title, r.description, r.needed_count, COALESCE(r.ball_side, '') AS ball_side
           FROM set_piece_roles r JOIN set_piece_groups g ON g.id = r.group_id
          WHERE r.is_active
          ORDER BY g.sort_order, g.id, r.sort_order, r.id)SQL")) {
@@ -206,20 +206,34 @@ json setPiecesOf(long long eventId) {
         json& roles = groups[gAt[gid]]["roles"];
         rAt[r["id"].as<int>()] = {gAt[gid], roles.size()};
         roles.push_back({{"id", r["id"].as<int>()}, {"title", str(r, "title")}, {"description", str(r, "description")},
-                         {"needed", r["needed_count"].as<int>()}, {"picks", json::array()}});
+                         {"needed", r["needed_count"].as<int>()}, {"ballSide", str(r, "ball_side")}, {"picks", json::array()}});
     }
     for (const auto& p : db->query(R"SQL(
-        SELECT k.set_piece_role_id, k.slot, k.person_id,
+        SELECT k.set_piece_role_id, k.slot, k.person_id, k.position_ref_id,
                BTRIM(COALESCE(pe.first_name,'') || ' ' || COALESCE(pe.last_name,'')) AS name
-          FROM event_set_piece_picks k JOIN persons pe ON pe.id = k.person_id
+          FROM event_set_piece_picks k LEFT JOIN persons pe ON pe.id = k.person_id
          WHERE k.fh_event_id = $1::bigint
          ORDER BY k.set_piece_role_id, k.slot)SQL", {std::to_string(sourceId)})) {
         auto it = rAt.find(p["set_piece_role_id"].as<int>());
         if (it == rAt.end()) continue;
+        // A pick is a person or a position ref (mig 1107), never both.
         groups[it->second.first]["roles"][it->second.second]["picks"].push_back(
-            {{"slot", p["slot"].as<int>()}, {"personId", p["person_id"].as<long long>()}, {"name", str(p, "name")}});
+            {{"slot", p["slot"].as<int>()},
+             {"personId", p["person_id"].is_null() ? json(nullptr) : json(p["person_id"].as<long long>())},
+             {"positionRefId", p["position_ref_id"].is_null() ? json(nullptr) : json(p["position_ref_id"].as<int>())},
+             {"name", str(p, "name")}});
     }
-    return {{"groups", groups}, {"inheritedFrom", inheritedFrom}};
+    // The position choices: a shirt number, or a side-relative ref with
+    // the number it means when the ball is on the right / the left.
+    json refs = json::array();
+    for (const auto& r : db->query(R"SQL(
+        SELECT id, slug, title, position_id, right_position_id, left_position_id
+          FROM set_piece_position_refs ORDER BY sort_order, id)SQL")) {
+        auto num = [&](const char* c) { return r[c].is_null() ? json(nullptr) : json(r[c].as<int>()); };
+        refs.push_back({{"id", r["id"].as<int>()}, {"slug", str(r, "slug")}, {"title", str(r, "title")},
+                        {"number", num("position_id")}, {"right", num("right_position_id")}, {"left", num("left_position_id")}});
+    }
+    return {{"groups", groups}, {"positionRefs", refs}, {"inheritedFrom", inheritedFrom}};
 }
 
 }  // namespace
@@ -270,9 +284,15 @@ Response MatchPlanController::handleSave(const Request& request) {
         json picks = json::array();
         if (body.contains("picks") && body["picks"].is_array())
             for (const auto& p : body["picks"]) {
-                if (!p.is_object() || !p.contains("roleId") || !p.contains("slot") || !p.contains("personId")) continue;
-                if (!p["roleId"].is_number_integer() || !p["slot"].is_number_integer() || !p["personId"].is_number_integer()) continue;
-                picks.push_back({{"role_id", p["roleId"]}, {"slot", p["slot"]}, {"person_id", p["personId"]}});
+                if (!p.is_object() || !p.contains("roleId") || !p.contains("slot")) continue;
+                if (!p["roleId"].is_number_integer() || !p["slot"].is_number_integer()) continue;
+                // Exactly one of personId / positionRefId (mig 1107).
+                const bool person = p.contains("personId") && p["personId"].is_number_integer();
+                const bool ref = p.contains("positionRefId") && p["positionRefId"].is_number_integer();
+                if (person == ref) continue;
+                picks.push_back({{"role_id", p["roleId"]}, {"slot", p["slot"]},
+                                 {"person_id", person ? p["personId"] : json(nullptr)},
+                                 {"position_ref_id", ref ? p["positionRefId"] : json(nullptr)}});
             }
         const std::string tactics = body.contains("tactics") && body["tactics"].is_string() ? body["tactics"].get<std::string>() : "";
 
@@ -282,20 +302,24 @@ Response MatchPlanController::handleSave(const Request& request) {
         // (role, slot) keys, so the game never sits half-saved.
         db->query(R"SQL(
             WITH incoming AS (
-                SELECT DISTINCT ON (x.role_id, x.person_id) x.role_id, x.slot, x.person_id
-                  FROM json_to_recordset($2::json) AS x(role_id int, slot int, person_id int)
+                SELECT DISTINCT ON (x.role_id, x.person_id, x.position_ref_id) x.role_id, x.slot, x.person_id, x.position_ref_id
+                  FROM json_to_recordset($2::json) AS x(role_id int, slot int, person_id int, position_ref_id int)
                   JOIN set_piece_roles r ON r.id = x.role_id AND r.is_active AND x.slot BETWEEN 1 AND r.needed_count
-                  JOIN persons pe ON pe.id = x.person_id
-                 ORDER BY x.role_id, x.person_id, x.slot),
+                 WHERE (x.person_id IS NOT NULL) <> (x.position_ref_id IS NOT NULL)
+                   AND (x.person_id IS NULL OR EXISTS (SELECT 1 FROM persons pe WHERE pe.id = x.person_id))
+                   AND (x.position_ref_id IS NULL OR EXISTS (SELECT 1 FROM set_piece_position_refs f WHERE f.id = x.position_ref_id))
+                 ORDER BY x.role_id, x.person_id, x.position_ref_id, x.slot),
             gone AS (
                 DELETE FROM event_set_piece_picks k
                  WHERE k.fh_event_id = $1::bigint
                    AND NOT EXISTS (SELECT 1 FROM incoming i WHERE i.role_id = k.set_piece_role_id AND i.slot = k.slot))
-            INSERT INTO event_set_piece_picks (fh_event_id, set_piece_role_id, slot, person_id, picked_by)
-            SELECT $1::bigint, i.role_id, i.slot, i.person_id, $3::int FROM incoming i
+            INSERT INTO event_set_piece_picks (fh_event_id, set_piece_role_id, slot, person_id, position_ref_id, picked_by)
+            SELECT $1::bigint, i.role_id, i.slot, i.person_id, i.position_ref_id, $3::int FROM incoming i
             ON CONFLICT (fh_event_id, set_piece_role_id, slot)
-            DO UPDATE SET person_id = EXCLUDED.person_id, picked_by = EXCLUDED.picked_by, picked_at = now()
-             WHERE event_set_piece_picks.person_id IS DISTINCT FROM EXCLUDED.person_id)SQL",
+            DO UPDATE SET person_id = EXCLUDED.person_id, position_ref_id = EXCLUDED.position_ref_id,
+                          picked_by = EXCLUDED.picked_by, picked_at = now()
+             WHERE (event_set_piece_picks.person_id, event_set_piece_picks.position_ref_id)
+                   IS DISTINCT FROM (EXCLUDED.person_id, EXCLUDED.position_ref_id))SQL",
             {eid, picks.dump(), pid});
         db->query(R"SQL(
             INSERT INTO event_match_plans (fh_event_id, tactics, updated_by, updated_at)

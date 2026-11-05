@@ -18,9 +18,14 @@
 //                  = the starting position's number — plus the first
 //                  bench players for bench_extras (the coach's bench order
 //                  = the next best not starting), each side with its bibs.
-//   🚩 Set pieces  set_piece_roles per group; coaches pick from the squad,
-//                  everyone else reads, a player sees their own line on
-//                  top.  No picks yet → the team's last game's, flagged.
+//   🚩 Set pieces  set_piece_roles per group; coaches pick a POSITION (a
+//                  shirt number 1–11, or ball-side / weak-side winger or
+//                  fullback — mig 1107) or a person from the squad.  A
+//                  position resolves to whoever starts there in this
+//                  lineup; a side-relative one uses the role's ball_side
+//                  (corner takers) or shows both sides.  Everyone else
+//                  reads, a player sees their own line on top.  No picks
+//                  yet → the team's last game's, flagged.
 //   ♟️ Tactics     the formation and opponent match-up from the lineup,
 //                  then the coach's notes.
 //
@@ -39,7 +44,7 @@ class MatchPlanPanel {
     this.auth = auth;
     this.host = host;
     this.data = null;          // GET /api/match-plan/:id
-    this.picks = new Map();    // "roleId:slot" -> personId (the coach's working copy)
+    this.picks = new Map();    // "roleId:slot" -> "p:<personId>" | "r:<positionRefId>" (the coach's working copy)
     this.tactics = '';
     this.dirty = false;
     this.busy = false;
@@ -66,7 +71,8 @@ class MatchPlanPanel {
     this.data = body;
     this.picks = new Map();
     for (const g of body.setPieces?.groups || [])
-      for (const r of g.roles) for (const p of r.picks) this.picks.set(`${r.id}:${p.slot}`, p.personId);
+      for (const r of g.roles) for (const p of r.picks)
+        this.picks.set(`${r.id}:${p.slot}`, p.positionRefId ? `r:${p.positionRefId}` : `p:${p.personId}`);
     this.tactics = body.tactics || '';
     this.dirty = false;
   }
@@ -191,29 +197,50 @@ class MatchPlanPanel {
     const editing = this._editing();
     const nameOf = new Map();
     for (const p of [...sq.byNumber.values(), ...sq.bench, ...sq.others]) nameOf.set(Number(p.id), p.name);
-    for (const g of sp.groups) for (const r of g.roles) for (const p of r.picks) if (!nameOf.has(p.personId)) nameOf.set(p.personId, p.name);
+    for (const g of sp.groups) for (const r of g.roles) for (const p of r.picks) if (p.personId && !nameOf.has(p.personId)) nameOf.set(p.personId, p.name);
+    const refs = new Map((sp.positionRefs || []).map(f => [f.id, f]));
+
+    // A pick → its words and the people it means right now.  A shirt
+    // number is whoever starts there; a side-relative ref takes the
+    // role's ball side, or reads both sides when the role has none.
+    const atNo = (n) => { const p = sq.byNumber.get(n); return p ? `${n} ${p.name}` : this._copy('pos_open', { pos: n }); };
+    const resolve = (val, role) => {
+      if (!val) return { label: this._copy('none_picked'), ids: [], empty: true };
+      const [kind, raw] = val.split(':');
+      if (kind === 'p') return { label: nameOf.get(Number(raw)) || '', ids: [Number(raw)] };
+      const f = refs.get(Number(raw));
+      if (!f) return { label: '', ids: [] };
+      const idAt = (n) => { const p = sq.byNumber.get(n); return p ? [Number(p.id)] : []; };
+      if (f.number) return { label: atNo(f.number), ids: idAt(f.number) };
+      if (role.ballSide) { const n = f[role.ballSide]; return { label: `${f.title} · ${atNo(n)}`, ids: idAt(n) }; }
+      return { label: `${f.title} (${this._copy('pos_sides', { right: atNo(f.right), left: atNo(f.left) })})`, ids: [...idAt(f.right), ...idAt(f.left)] };
+    };
 
     // A player's own line first.
     let mine = '';
     if (!editing && sq.viewerPersonId) {
       const roles = [];
       for (const g of sp.groups) for (const r of g.roles)
-        if (r.picks.some(p => p.personId === sq.viewerPersonId)) roles.push(`${g.title}: ${r.title}`);
+        for (let s = 1; s <= r.needed; s++)
+          if (resolve(this.picks.get(`${r.id}:${s}`), r).ids.includes(Number(sq.viewerPersonId))) { roles.push(`${g.title}: ${r.title}`); break; }
       if (roles.length) mine = `<div style="font-size:0.72rem; font-weight:700; margin:4px 0; padding:5px 8px; border-radius:8px; background:rgba(34,197,94,0.12);">${this._esc(this._copy('mine', { roles: roles.join(' · ') }))}</div>`;
     }
 
     const squadIds = new Set([...sq.byNumber.values(), ...sq.bench].map(p => Number(p.id)));
-    const option = (p, cur) => `<option value="${p.id}" ${Number(p.id) === cur ? 'selected' : ''}>${this._esc(p.name)}</option>`;
-    const select = (roleId, slot) => {
-      const cur = this.picks.get(`${roleId}:${slot}`) || null;
+    const option = (val, label, cur) => `<option value="${this._esc(val)}" ${val === cur ? 'selected' : ''}>${this._esc(label)}</option>`;
+    const select = (role, slot) => {
+      const cur = this.picks.get(`${role.id}:${slot}`) || '';
       const squad = [...sq.byNumber.values(), ...sq.bench];
       const others = sq.others.filter(p => !squadIds.has(Number(p.id)));
-      const stray = cur && !squadIds.has(cur) && !others.some(p => Number(p.id) === cur)
-        ? `<option value="${cur}" selected>${this._esc(nameOf.get(cur) || '#' + cur)}</option>` : '';
-      return `<select data-mp-pick="${roleId}:${slot}" style="font-size:0.7rem; padding:2px 4px; max-width:150px;">
+      const curPid = cur.startsWith('p:') ? Number(cur.slice(2)) : null;
+      const stray = curPid && !squadIds.has(curPid) && !others.some(p => Number(p.id) === curPid)
+        ? `<option value="${this._esc(cur)}" selected>${this._esc(nameOf.get(curPid) || '#' + curPid)}</option>` : '';
+      const positions = [...refs.values()].map(f => option(`r:${f.id}`, resolve(`r:${f.id}`, role).label, cur)).join('');
+      return `<select data-mp-pick="${role.id}:${slot}" style="font-size:0.7rem; padding:2px 4px; max-width:190px;">
         <option value="">${this._esc(this._copy('pick'))}</option>${stray}
-        ${squad.length ? `<optgroup label="${this._esc(this._copy('squad_group'))}">${squad.map(p => option(p, cur)).join('')}</optgroup>` : ''}
-        ${others.length ? `<optgroup label="${this._esc(this._copy('others_group'))}">${others.map(p => option(p, cur)).join('')}</optgroup>` : ''}
+        ${refs.size ? `<optgroup label="${this._esc(this._copy('positions_group'))}">${positions}</optgroup>` : ''}
+        ${squad.length ? `<optgroup label="${this._esc(this._copy('squad_group'))}">${squad.map(p => option(`p:${p.id}`, p.name, cur)).join('')}</optgroup>` : ''}
+        ${others.length ? `<optgroup label="${this._esc(this._copy('others_group'))}">${others.map(p => option(`p:${p.id}`, p.name, cur)).join('')}</optgroup>` : ''}
       </select>`;
     };
 
@@ -221,10 +248,10 @@ class MatchPlanPanel {
       const rows = g.roles.map(r => {
         const slots = [];
         for (let s = 1; s <= r.needed; s++) {
-          if (editing) slots.push(select(r.id, s));
+          if (editing) slots.push(select(r, s));
           else {
-            const pid = this.picks.get(`${r.id}:${s}`);
-            slots.push(`<span style="${pid ? '' : 'opacity:0.5;'}">${this._esc(pid ? (nameOf.get(pid) || '') : this._copy('none_picked'))}</span>`);
+            const res = resolve(this.picks.get(`${r.id}:${s}`), r);
+            slots.push(`<span style="${res.empty ? 'opacity:0.5;' : ''}">${this._esc(res.label)}</span>`);
           }
         }
         return `<div style="display:flex; justify-content:space-between; gap:8px; align-items:center; padding:3px 0; flex-wrap:wrap;">
@@ -267,8 +294,8 @@ class MatchPlanPanel {
   // 'change' / 'input' — kept on the panel so a re-render never drops them.
   input(el) {
     if (el.matches('[data-mp-pick]')) {
-      const v = Number(el.value) || null;
-      if (v) this.picks.set(el.dataset.mpPick, v); else this.picks.delete(el.dataset.mpPick);
+      const v = el.value || '';
+      if (/^[pr]:\d+$/.test(v)) this.picks.set(el.dataset.mpPick, v); else this.picks.delete(el.dataset.mpPick);
       this.dirty = true;
       return false;
     }
@@ -302,9 +329,10 @@ class MatchPlanPanel {
   async _save() {
     const id = this.host.fhEventId();
     if (!id || this.busy) return;
-    const picks = [...this.picks.entries()].map(([k, personId]) => {
+    const picks = [...this.picks.entries()].map(([k, v]) => {
       const [roleId, slot] = k.split(':').map(Number);
-      return { roleId, slot, personId };
+      const id = Number(v.slice(2));
+      return v.startsWith('r:') ? { roleId, slot, positionRefId: id } : { roleId, slot, personId: id };
     });
     this.busy = true;
     this.host.rerender();
