@@ -5205,3 +5205,74 @@ share of entries, time/metres/speed, goal-side at its start / left behind / at t
 defender, frames with a defender within 2 m, first man within 2 m (role, goal-side or not) and his
 job; at its start by role (goal-side share, metres goal-side), the same by possession age; CB jobs
 at its start.
+
+### 8.119 G5.21 — state machines, and out of possession rebuilt clean (no migration; code defaults = real data)
+
+§8.118's decision, phase 1 of 3. James 11/5: "delete old code so it don't corrupt" and "it all needs
+to be using state machines, oop … c++".
+
+**State machines** ([Buckland] ch. 2 and Simple Soccer): `ai/StateMachine.hpp` — State (id, name,
+enter / execute / exit; stateless singletons) and StateMachine (current, previous, global, the tick
+it entered). `Brain::think(world)` steps every machine once a tick, lazily on the first
+`ordersFor()` of the tick (every driver gets it; probes later in the tick — dead-ball set-up, the
+harness — only read; a tick that goes backwards restarts them).
+
+**Team layer** (`ai/TeamPhase`): the phases of play — in possession, attacking transition,
+defending block, defensive transition, our / their set piece. Possession = the man on the ball's
+side, a loose ball the last toucher's (as DFL flags it), a dead ball its taker's; a change of side
+counts after `physics.phase.min_dwell_s` (0.3); a transition lasts `physics.phase.transition_s`
+(6 — the "six-second rule" of Guardiola's Barcelona counter-press [Perarnau, Pep Confidential
+2014], a coaching convention, not a fit). PHASES harness line: in possession 25.7%, transitions
+14.9% each, set pieces 9.5% each (a team).
+
+**Player layer** (`ai/DefendingBlock`): a machine per man; his team's phase and the team's
+assignments pick his state each tick.
+
+| state | what | params (defaults) |
+|---|---|---|
+| attacking | his team has it: the possession code (phase 2 rebuilds it) | — |
+| hold the block spot | his role's real spot for this ball (below); across: defendingY | physics.block.<role>_<band> |
+| press the ball | the ONE man who steps to their carrier — the nearest outfielder, held until another is switch_m nearer; stand_off goal-side of him on his line to our goal; in reach and goal-side he dives at tackle_per_s | physics.press.stand_off_m 3, switch_m 2, tackle_per_s 0.5 |
+| chase the ball | his team's first man to a loose ball (the race read); on our own dead ball the taker (held restarts: restartTaker; kick-off / free kick: the nearest man) | — |
+
+The block spot is data, not a rule: by role (CB 4/5, FB 2/3, 6/8, 10, 7/11, 9) and ball band
+(0-10 … 90-100 m off our line, interpolated between band centres), the mean metres off his own line
+a pro defender stands — DFL DEFENDING SHAPE (benchmarks_tracking_possession.py), in code as the
+default, a DB row overrides. DFL is Bundesliga; no public PL 2015/16 tracking exists.
+
+**Deleted** (~1,400 lines of Brain.cpp, 4,769 → 3,356): the defending chain in `decide` (compactness
+cap, pre-offside depth cover, cover man, swarm, their-restart man-marking, hurry/pounce, pack and
+trap, delay / organize / step, dive eagerness, counter-press, traffic tackles, recover, the
+mark-assignment and mark-position / near-tight / one-spot / play-off marking), the post-pass
+`trackRunner`, `hurryOrPounce`, `packAndTrap`, `oneSpot`, `holdsLine`, `interceptPoint`, and the
+G5.15 fitted block (F1: `defendingX`, `defendBallX`, physics.shape.theirs_*, back_line_by_number) —
+two block models is the corruption this removes. Concept classes and rows stay (the vocabulary); none
+is wired to defending until a measured gap asks. `seek` moved to `ai/Steering.hpp`.
+Kept: `defendTheCross` (G5.9, fitted), the keeper, restarts (`takeRestart`, `keepLawDistance`), the
+body speed rules (shape_tau / shape_max / danger, G5.5 / G5.10).
+
+Bug found on the way: `World::awardKickoff` leaves `restartSpot` stale, so `restartTaker` measured a
+kick-off from the last goal kick — the taker ran at the ball, away from that spot, and "nearest"
+flipped every tick (kick-off stalled for the rest of the match). The chaser now uses the ball.
+
+**Result** (K1 + E4 + H1C, 4 fixtures × 8; C2 = the old chain):
+
+| | C2 | G5.21 | real (DFL) |
+|---|---|---|---|
+| goal-side at the carry's start / at the entry | 2.43 / 1.11 | 3.10 / 2.38 | 5.44 / 4.68 |
+| CB goal-side at the carry's start | 52% | 78% | 94% |
+| defending shape, CB with the ball 40-50 / 50-60 / 70-80 out (v real) | +7.6 / +5.7 / +5.2 | +4.1 / +1.9 / 0.0 | 0 |
+| nearest defender at the carry's start / a defender within 2 m | 4.7 m / 26% | 3.9 m / 35% | 7.1 m / 10% |
+| first man within 2 m a CB / nobody | 35% / 30% | 40% / 20% | 4% / 69% |
+| goal-side 3 s before an entry | 4.82 | 5.25 | 6.69 |
+| goals / shots a match | 7.6 / 46.5 | 6.6 / 41.1 | — |
+
+Tests: test_phases, test_defending_block (the spot is the table, mirrored; one sticky presser);
+goldens re-locked.
+
+**Next moles.** (1) The holders stand 4 m above their spots with the ball 40-50 out though the
+spot IS real: the G5.5 / G5.10 body caps (shape_tau 4 s, shape_max 4.5 m/s outside shape_danger 40
+m) trail an advancing ball — measure holders' lag v DFL defenders' speed toward their line by band.
+(2) The presser stands too tight and is a CB 40% of the time (real: nobody within 2 m in 69% of
+carries): fit who steps and from how far on DFL (nearest defender to the carrier by band and role).
+(3) Phase 2: in possession, same treatment.

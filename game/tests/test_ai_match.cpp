@@ -51,9 +51,11 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // G4.87 + G4.88 together:
 // G4.90: the assistant shadows the line, aiming level (no slack beyond).
 // G5.2: the ball out is the officials' call; restarts held until played.
-constexpr std::uint64_t kGolden3v3   = 0x018e9ffb245160c4ULL;
 // G4.89: Law 11 on every pass (no ball to a man read offside).
-constexpr std::uint64_t kGolden11v11 = 0x2d37d913fa6dc9d6ULL;
+// Re-locked G5.21 (2026-11-05): the G4 defending chain deleted; out of
+// possession = the phase + player state machines, the block at real spots.
+constexpr std::uint64_t kGolden3v3   = 0xae9327c7c87cb0ecULL;
+constexpr std::uint64_t kGolden11v11 = 0x045cf8e8735b9eadULL;
 
 struct Rig {
     World world;
