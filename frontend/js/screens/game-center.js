@@ -167,9 +167,11 @@ const FIELD_SIZES = {
       // owner: "move the fullbacks up a little and the 6,8 a little
       // higher and the 11,10,7 a little lower" — `chipLifts` (position
       // id → px up) nudges single chips; a negative `lifts` drops a row.
+      // Then "2 and 3 up a little more and in": `chipInsets` (id → px)
+      // holds a wide chip that far off its touchline.
       '4-2-3-1 wide':   { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]], wideIds: [11, 7] },
       '4-2-3-1 narrow': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]], wideIds: [3, 2], narrowIds: [11, 7],
-                          chipLifts: { 3: 16, 2: 16 }, lifts: { 2: 12, 3: -12 } },
+                          chipLifts: { 3: 30, 2: 30 }, chipInsets: { 3: 36, 2: 36 }, lifts: { 2: 12, 3: -12 } },
       // Owner 2026-10-19: both back-three shapes drop the 6 INTO the
       // back line (back three 5-6-4). Flat 3-4-3: "balanced 8 and 10
       // in middle" of the four (10 left, same rule as 4-3-3), 3 and 2
@@ -5528,6 +5530,7 @@ class GameCenterScreen extends EventScreen {
       const wideIds = new Set(tpl.wideIds || []);
       const narrowIds = new Set(tpl.narrowIds || []);
       const chipLifts = tpl.chipLifts || {};
+      const chipInsets = tpl.chipInsets || {};
       pitch = this._pitchRows().map(row => {
         if (row === HALFWAY_ROW) return null;
         const tokens = row.map(pos => {
@@ -5539,6 +5542,7 @@ class GameCenterScreen extends EventScreen {
           if (wideIds.has(pos.id)) token.wide = true;
           if (narrowIds.has(pos.id)) token.narrow = true;
           if (chipLifts[pos.id]) token.lift = chipLifts[pos.id];
+          if (chipInsets[pos.id]) token.inset = chipInsets[pos.id];
           if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
           if (editing && occupant) {
             token.removeId = occupant.id;
