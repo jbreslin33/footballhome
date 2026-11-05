@@ -41,11 +41,13 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y, Format
     for (std::size_t i = 0; i < n; ++i) index_in_team_[i] = count[setup_.team_of_slot[i]]++;
     spec_[0] = home.valid(count[0]) ? std::move(home) : builtinFormation(count[0]);
     spec_[1] = away.valid(count[1]) ? std::move(away) : builtinFormation(count[1]);
+    role_of_slot_.resize(n);
+    for (std::size_t i = 0; i < n; ++i) role_of_slot_[i] = roleOfNumber(spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]].number);
 }
 
 Brain::Brain(const Brain& o)
     : setup_(o.setup_), half_x_(o.half_x_), half_y_(o.half_y_), index_in_team_(o.index_in_team_),
-      match_seed_(o.match_seed_), reads_(o.reads_), block_(o.block_), poss_(o.poss_), phase_params_(o.phase_params_),
+      match_seed_(o.match_seed_), reads_(o.reads_), block_(o.block_), poss_(o.poss_), role_of_slot_(o.role_of_slot_), phase_params_(o.phase_params_),
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
@@ -105,7 +107,8 @@ void Brain::think(const World& world) const {
             teams_[t].team = t;
             teams_[t].machine.init(teamStartState(), teamGlobalState(), now);
         }
-        const_cast<DefendingBlock&>(block_).reset();
+        block_.reset();
+        poss_.reset();
         for (std::uint8_t s = 0; s < 32; ++s) {
             players_[s] = PlayerAgent{};
             players_[s].slot = s;
@@ -119,7 +122,10 @@ void Brain::think(const World& world) const {
     }
     const FlightRead& fr = reads_.flightRead(world);
     for (std::uint8_t t = 0; t < 2; ++t)
-        const_cast<DefendingBlock&>(block_).assign(t, world, setup_.team_of_slot, fr, restartTaker(world, t));
+    {
+        block_.assign(t, world, setup_.team_of_slot, fr, restartTaker(world, t));
+        poss_.assignRunners(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
+    }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[s] & 1], now};
         players_[s].machine.update(players_[s], c);

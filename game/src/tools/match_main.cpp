@@ -61,7 +61,8 @@ struct Stats {
     long rel_n[5] = {}, rel_shot[5] = {};
     long goal_by[ai::kWhyCount + 1] = {}, goal_own = 0;
     std::vector<double> near_band[5];
-    long pz_n[10] = {}, pz_to[10][10] = {};   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
+    long pz_n[10] = {}, pz_to[10][10] = {};
+    long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
@@ -75,6 +76,7 @@ struct Stats {
            cy_rd[ai::kRoleCount] = {};
     // Shapes by ball band (DFL): defending, metres off its own line; in possession, off THEIR line.
     long ds_f[10] = {}, ds_n[10][ai::kRoleCount] = {}; double ds_mid[10] = {}, ds_s[10][ai::kRoleCount] = {};
+    long dt_n[10][ai::kRoleCount] = {}; double dt_s[10][ai::kRoleCount] = {}, dt_v[10][ai::kRoleCount] = {};   // holders' targets and speed toward their own line
     long ps_f[10] = {}, ps_n[10][ai::kRoleCount] = {};
     double ps_back[10] = {}, ps_mid[10] = {}, ps_front[10] = {}, ps_s[10][ai::kRoleCount] = {};
     double fit_n = 0, fit_b = 0, fit_m = 0, fit_bb = 0, fit_bm = 0, gap_s[ai::kRoleCount] = {}; long gap_n[ai::kRoleCount] = {};
@@ -265,7 +267,7 @@ int main(int argc, char** argv) {
             const int ri = static_cast<int>((k / 6) % 16), rj = static_cast<int>(((k / 6) + 1) % 16);   // rj = 15 frames back
             const bool then_ok = rk[rj] == k - 90;
             {   // shapes
-                const int bd = std::min(9, std::max(0, static_cast<int>((2 * hx - tl) / 10)));   // ball off the defenders' line
+                const int bd = std::min(9, std::max(0, static_cast<int>(tl / 10)));   // ball metres off the defenders' own line
                 const int bp = std::min(9, std::max(0, static_cast<int>(tl / 10)));
                 double dm = 0, pm = 0, back = -1e9, front = 1e9; int dn = 0, pn = 0;
                 for (std::uint8_t j = 0; j < N; ++j) {
@@ -275,6 +277,10 @@ int main(int argc, char** argv) {
                     if (q.team == dteam) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
+                        if (s.lastOrders()[j].why == ai::Why::Hold) {
+                            ++S.dt_n[bd][r]; S.dt_s[bd][r] += hx + s.lastOrders()[j].target.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
+                            S.dt_v[bd][r] += -q.vel.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
+                        }
                     } else {
                         const double v = hx - q.pos.x.toDouble() * sg;   // off THEIR line
                         S.ps_s[bp][r] += v; ++S.ps_n[bp][r]; pm += v; ++pn;
@@ -291,6 +297,16 @@ int main(int argc, char** argv) {
                             if (W.isKeeper(j) || W.player(j).team != a) continue;
                             S.gap_s[role(j)] += (pm / pn) - (hx - W.player(j).pos.x.toDouble() * sg); ++S.gap_n[role(j)];
                         }
+                }
+            }
+            if (tl < 52) {   // in the box, by the ball's zone (benchmarks_tracking_box.py)
+                const int bz = (tl < 18 ? 0 : tl < 35 ? 1 : 2) * 2 + (std::fabs(by) < 20.16 ? 0 : 1);
+                ++S.bx_f[bz];
+                for (std::uint8_t j = 0; j < N; ++j) {
+                    if (W.isKeeper(j) || W.player(j).team != a) continue;
+                    const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
+                    if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) ++S.bx_in[bz];
+                    if (s.lastOrders()[j].why == ai::Why::AttackBox) { ++S.bx_run[bz]; S.bx_run_tl[bz] += hx - s.lastOrders()[j].target.x.toDouble() * sg; }
                 }
             }
             {   // ENTRIES inside 30 m (re-armed past 40)
@@ -439,6 +455,14 @@ int main(int argc, char** argv) {
         }
         std::printf("\n");
     }
+    {
+        static const char* bzn[6] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide"};
+        static const double real_in[6] = {3.45, 2.29, 1.04, 0.79, 0.13, 0.09};
+        std::printf("   IN THE BOX (ours, 0-18 m |y| < 20.16) by the ball's zone (real DFL):");
+        for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.2f (%.2f) [runners %.2f, target %.1f m];", bzn[z], static_cast<double>(S.bx_in[z]) / S.bx_f[z], real_in[z],
+                                                             static_cast<double>(S.bx_run[z]) / S.bx_f[z], S.bx_run_tl[z] / std::max(1L, S.bx_run[z]));
+        std::printf("\n");
+    }
     std::printf("   PHASES (share of time, both teams):");
     for (int q = 0; q < ai::kPhaseCount; ++q) std::printf(" %s %.1f%%;", ai::kPhaseNames[q], 50.0 * S.ph[q] / std::max(1L, S.ph_n));
     std::printf("\n");
@@ -464,6 +488,10 @@ int main(int argc, char** argv) {
         if (!S.ds_f[k]) continue;
         std::printf("   %2d-%-3d %7ld  %5.1f   ", 10 * k, 10 * k + 10, S.ds_f[k], S.ds_mid[k] / S.ds_f[k]);
         for (int r = 0; r < ai::kRoleCount; ++r) std::printf("  %6.1f", S.ds_n[k][r] ? S.ds_s[k][r] / S.ds_n[k][r] : 0.0);
+        std::printf("   holders' target");
+        for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %5.1f", S.dt_n[k][r] ? S.dt_s[k][r] / S.dt_n[k][r] : 0.0);
+        std::printf(" | back m/s");
+        for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %4.1f", S.dt_n[k][r] ? S.dt_v[k][r] / S.dt_n[k][r] : 0.0);
         std::printf("\n");
     }
     std::printf("POSSESSION SHAPE (last touch, in play; metres from THEIR line by the ball's band):\n   band    frames  back/middle/front  ");

@@ -60,7 +60,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.25 (2026-11-05): the pass policy and the press stand-off from
 // real data; a keeper takes the ball played back to him.
 constexpr std::uint64_t kGolden3v3   = 0x6758751c19863317ULL;
-constexpr std::uint64_t kGolden11v11 = 0x8342ee1086fb1c49ULL;
+// Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
+constexpr std::uint64_t kGolden11v11 = 0x7a6de84a69c0f6d8ULL;
 
 struct Rig {
     World world;

@@ -5450,3 +5450,33 @@ real MEAN positions (a 9 averages ~22 m out with the ball 25 m out), and a mean 
 **Next mole.** Runs into the box: how many attackers are in the box (and the box channels) by where
 the ball is, from DFL, and who makes the run — a Run state that takes the man there.
 Tests 22/22 (the 3-minute flow check widened to the last 3 s); goldens re-locked.
+
+### 8.124 G5.26 — runs into the box (DFL box occupancy); the attack still can't get there
+
+**Real** (benchmarks_tracking_box.py, DFL: the side in possession's outfielders in the box zone, 0-18
+m off their line with |y| < 20.16, by the ball's zone): ball 0-18 central 3.45 (3+ in 69% of frames),
+0-18 wide 2.29, 18-35 central 1.04 (none 60%), 18-35 wide 0.79, 35-52 0.13 / 0.09; mostly the 9
+(0.40 with the ball 18-35) and the wide men (0.23); standing 11-15 m off the line, |y| 6-8 m.
+
+**Change.** A team assignment (Possession::assignRunners, in Brain::think): with our ball inside 52
+m of their line, how many go into the box is drawn from the real 0 / 1 / 2 / 3+ shares for the ball's
+zone, re-drawn when it changes zone or every 3 s; who goes by the real mean count for his role ÷ the
+men of that role in the team (nearer the box first among equals). A new player state AttackBox (why
+"attack the box") takes him to the real depth and width for that zone, ball side first, then the
+far side, then the middle — no further on than their second-last man (Law 11). Not capped as a
+shape move. Params physics.box.k_<z>_<n>, role_<z>_<role>, depth_<z>, abs_y_<z>.
+
+**Harness fix:** DEFENDING SHAPE banded the ball off the wrong goal line since the lean rewrite
+(§8.121) — those tables were flipped; now right, with the holders' targets and their speed back.
+New lines: IN THE BOX by the ball's zone (with the runners and their targets).
+
+**Result** (1-3 matches): runners are assigned at about the real rate (0.6 with the ball 18-35 m out)
+but stopped at their offside line — our defending line with the ball 20-30 m out stands 22.2 m
+(target 20.5, real CB 19.6): legitimate. The ball itself hardly gets there: frames with it inside 20
+m of the defenders' line 121 v 2,551 at 30-40 m (DFL 10,418 v 10,255).
+
+**Next mole.** Getting in behind: every pass goes to where a mate stands, and nobody runs as it is
+played. Real attacks get into the box with passes into space ahead of a runner timed against the
+line (through balls, runs in behind, crosses to arriving runners): measure on DFL the runners'
+speed and line-gap at the moment of a forward pass, and on StatsBomb the through balls; then a run
+state that times the line and a led pass.

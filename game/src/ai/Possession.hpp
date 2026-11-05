@@ -51,6 +51,11 @@ struct PossessionParams {
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
     math::Fixed64 keeper_depth_m{}, keeper_depth_k{}, keeper_depth_max_m{}, keeper_long_m{};
+    // Runs into the box (G5.26), by the ball's zone (their line 0-18 / 18-35 /
+    // 35-52 × centre or wide): the share of time with 0 / 1 / 2 / 3+ of ours in
+    // the box zone (0-18 m, |y| < 20.16), the mean count by role, where they stand
+    // (metres off the line, |y|) — DFL tracking (benchmarks_tracking_box.py).
+    math::Fixed64 box_k[6][4]{}, box_role[6][kRoleCount]{}, box_depth[6]{}, box_ay[6]{};
     void configure(const core::ModelParams& p);
 };
 
@@ -65,9 +70,23 @@ public:
     static const ActingState* support();
     static const ActingState* receive();
     static const ActingState* keeper();
+    static const ActingState* attackBox();
+
+    // Once a tick per team (Brain::think): who runs into the box — how many from
+    // the real shares for the ball's zone, who by the real role counts (nearest
+    // first among equals); re-drawn when the ball changes zone or every 3 s.
+    void assignRunners(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                       const std::vector<Role>& role_of_slot, std::uint64_t match_seed);
+    bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
+    int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
+    int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
+    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; }
 
 private:
     PossessionParams params_{};
+    std::uint32_t runners_ = 0;
+    int zone_[2] = {-1, -1};
+    std::uint64_t drawn_[2] = {0, 0};
 };
 
 }  // namespace fh::game::ai

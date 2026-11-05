@@ -49,7 +49,7 @@ public:
         else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
         else if (defendingPhase(c.team.phase()))
             next = c.block.presser(team) == a.slot ? DefendingBlock::pressBall() : DefendingBlock::holdBlockSpot();
-        else next = Possession::support();
+        else next = c.poss.runner(a.slot) ? Possession::attackBox() : Possession::support();
         a.machine.change(a, c, next, c.tick);
     }
 };

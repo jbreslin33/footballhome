@@ -99,8 +99,9 @@ private:
 
     // The machines and what they read.
     Reads reads_;
-    DefendingBlock block_{};
-    Possession poss_{};
+    mutable DefendingBlock block_{};
+    mutable Possession poss_{};
+    std::vector<Role> role_of_slot_;
     PhaseParams phase_params_{};
     mutable TeamAgent teams_[2];
     mutable PlayerAgent players_[32];

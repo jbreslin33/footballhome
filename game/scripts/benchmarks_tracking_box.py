@@ -1,56 +1,88 @@
 #!/usr/bin/env python3
-"""benchmarks_tracking_box.py — who is in the box when the ball is wide near goal
-(game/DESIGN.md §8.107).
-
-    python3 -I game/scripts/benchmarks_tracking_box.py <dfl dir>
-
-Source: Bassek, Rein, Weber & Memmert (2025), doi 10.6084/m9.figshare.28196177,
-CC BY, data owner DFL (7 matches, TRACAB; loader from benchmarks_tracking.py).
-5 Hz frames, ball in play, the ball 0-18 or 18-30 m off the attacked goal line
-and 14 m+ off the middle: attackers in the box, in the 3-13 m central target
-zone (|y| < 10), defenders in the box, and the two deepest defenders' distance
-off their line. fh-game-match prints the same as BOX PRESENCE. FH original.
-"""
-import collections, glob, os, sys, multiprocessing
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# game/scripts/benchmarks_tracking_box.py (G5.26, DESIGN §8.124) — usage: <DFL dir>
+# Real: who is in the box. The side in possession (BallPossession, in play, 5 Hz), by the ball's
+# zone (the pass policy's grid: their line 0-18 / 18-35 / 35-52 m × centre |y| < 20.16 or wide):
+# its outfielders in the zone 0-18 m centre (the box's width) — mean count, the share of frames
+# with 0 / 1 / 2 / 3+, the mean count by role, and where they stand (mean metres off the line,
+# mean |y|, mean y toward the ball's side); the same for the 0-18 wide channels.
+# DFL tracking (Bassek et al. 2025, CC BY); loader as benchmarks_tracking_channel.
+import collections, glob, os, re, sys, multiprocessing
+sys.path.insert(0, "/srv/footballhome/game/scripts")
 import benchmarks_tracking as bt
-
-class T(bt.ShapeTally):
-    def __init__(self, length):
-        super().__init__(length); self.c = collections.Counter()
-    def period(self, frames):
-        side = {}
-        for t in (0, 1):
-            ks = [p[0] for f in frames for p in f[4][t]] or [p[0] for f in frames for p in f[3][t]]
-            side[t] = -1 if sum(ks) > 0 else 1
-        for f in frames:
-            a = f[2]; s = side[a]
-            tl = self.half - s * f[0]; ay = abs(f[1])
-            if ay < 14 or tl >= 30: continue
-            k = "0-18" if tl < 18 else "18-30"
-            box = tgt = dbox = 0
-            for p in f[3][a]:
-                ptl = self.half - s * p[0]
-                if ptl < 16.5 and abs(p[1]) < 20.16: box += 1
-                if 3 <= ptl <= 13 and abs(p[1]) < 10: tgt += 1
-            for p in f[3][1 - a]:
-                ptl = self.half - s * p[0]
-                if ptl < 16.5 and abs(p[1]) < 20.16: dbox += 1
-            ds = sorted(self.half - s * p[0] for p in f[3][1 - a])
-            if len(ds) >= 2: self.c[k + "line1"] += ds[0]; self.c[k + "line2"] += ds[1]; self.c[k + "ln"] += 1
-            c = self.c; c[k + "n"] += 1; c[k + "box"] += box; c[k + "tgt"] += tgt; c[k + "dbox"] += dbox; c[k + "tgt0"] += tgt == 0
-    def result(self): return self.c
-
+EDGES = (18, 35, 52, 70)
+ROLE = {"IVL": "CB", "IVR": "CB", "IVZ": "CB", "LV": "FB", "RV": "FB", "DML": "DM/CM", "DMR": "DM/CM", "DMZ": "DM/CM",
+        "DLM": "DM/CM", "DRM": "DM/CM", "ZO": "AM", "OLM": "WIDE", "ORM": "WIDE", "LM": "WIDE", "RM": "WIDE", "HL": "WIDE",
+        "HR": "WIDE", "LA": "WIDE", "RA": "WIDE", "STL": "ST", "STR": "ST", "STZ": "ST"}
 def one(pos_path):
     d = os.path.dirname(pos_path); mid = pos_path.rsplit("_", 1)[1]
-    info = glob.glob(os.path.join(d, f"DFL_02_01_matchinformation_*_{mid}"))[0]
-    bt.ShapeTally = T
-    return bt.dfl_match(pos_path, info)[2]
+    info_p = glob.glob(os.path.join(d, f"DFL_02_01_matchinformation_*_{mid}"))[0]
+    comp, season, home, guest, length, keepers = bt.dfl_info(info_p)
+    pos_of = dict(re.findall(r'<Player PersonId="([^"]+)"[^>]*PlayingPosition="([^"]+)"', open(info_p, encoding="utf8").read()))
+    half = length / 2; team_of = {home: 0, guest: 1}
+    ball = {}; pl = collections.defaultdict(dict); who = {}
+    set_re = re.compile(r'GameSection="([^"]+)".*TeamId="([^"]+)".*PersonId="([^"]+)"')
+    sec = None; isb = False; skip = True; cur = None
+    for line in open(pos_path, encoding="utf8", buffering=1 << 22):
+        s = line.lstrip()
+        if s.startswith("<Frame "):
+            if skip: continue
+            a = s.split('"'); n = int(a[1])
+            if n % 5: continue
+            if isb:
+                st = re.search(r'BallStatus="(\d)"', s); po = re.search(r'BallPossession="(\d)"', s)
+                if st and st.group(1) == "1" and po and po.group(1) in "12": ball[(sec, n)] = (float(a[5]), float(a[7]), int(po.group(1)) - 1)
+            else: pl[(sec, n)][cur] = (float(a[5]), float(a[7]))
+        elif s.startswith("<FrameSet "):
+            sec, tid, pid = set_re.search(s).groups()
+            isb = tid.upper() == "BALL"; skip = not isb and tid not in team_of
+            if not skip and not isb: cur = pid; who[pid] = team_of[tid]
+    c = collections.Counter()
+    own = {}
+    for sc in {k[0] for k in ball}:
+        xs = {0: [], 1: []}
+        for (s2, n), ps in pl.items():
+            if s2 != sc or n % 250: continue
+            for pid, p in ps.items():
+                if pid in keepers: xs[who[pid]].append(p[0])
+        for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
+    for (sc, n), (bx, by, att) in ball.items():
+        g = -own[(sc, att)]
+        btl = half - bx * g
+        if btl >= 52:
+            continue
+        bz = (0 if btl < 18 else 1 if btl < 35 else 2) * 2 + (0 if abs(by) < 20.16 else 1)
+        fr = pl.get((sc, n), {})
+        c[("f", bz)] += 1
+        inbox = 0
+        for pid, (x, y) in fr.items():
+            if who.get(pid) != att or pid in keepers:
+                continue
+            tl = half - x * g
+            if tl >= 18:
+                continue
+            if abs(y) < 20.16:
+                inbox += 1
+                c[("role", bz, ROLE.get(pos_of.get(pid, ""), "?"))] += 1
+                c[("d", bz)] += tl; c[("ay", bz)] += abs(y); c[("ys", bz)] += y * (1 if by >= 0 else -1); c[("np", bz)] += 1
+            else:
+                c[("wide", bz)] += 1
+        c[("k", bz, min(inbox, 3))] += 1
+    return c
+
 
 files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_04_03_positions_raw_observed_*.xml")))
 c = collections.Counter()
-with multiprocessing.Pool(2) as pool:
-    for r in pool.imap_unordered(one, files): c.update(r)
-for k in ("0-18", "18-30"):
-    n = c[k + "n"]
-    print(f"ball {k} m off their line, |y| 14+ ({n} frames): attackers in the box {c[k+'box']/n:.2f}, in 3-13 m x |y|<10 {c[k+'tgt']/n:.2f} (none {100*c[k+'tgt0']/n:.0f}%), defenders in the box {c[k+'dbox']/n:.2f}; deepest defender {c[k+'line1']/max(1,c[k+'ln']):.1f} m, next {c[k+'line2']/max(1,c[k+'ln']):.1f} m off the line")
+with multiprocessing.Pool(3) as pool:
+    for r in pool.imap_unordered(one, files):
+        c.update(r)
+names = ("0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide")
+print(f"{len(files)} DFL matches: the side in possession's outfielders in the box zone (0-18 m, |y| < 20.16), by the ball's zone")
+for bz, nm in enumerate(names):
+    f = c[("f", bz)]
+    if not f:
+        continue
+    np_ = c[("np", bz)]
+    roles = sorted({k[2] for k in c if isinstance(k, tuple) and k[0] == "role" and k[1] == bz})
+    print(f"   ball {nm:12s} frames {f:6d}: in the box {np_ / f:.2f} (0 {100*c[('k',bz,0)]/f:.0f}% 1 {100*c[('k',bz,1)]/f:.0f}% 2 {100*c[('k',bz,2)]/f:.0f}% 3+ {100*c[('k',bz,3)]/f:.0f}%), in the wide channels {c[('wide',bz)]/f:.2f}; "
+          f"stand {c[('d',bz)]/max(1,np_):.1f} m off the line, |y| {c[('ay',bz)]/max(1,np_):.1f}, ball side {c[('ys',bz)]/max(1,np_):+.1f}; by role: "
+          + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))

@@ -283,7 +283,49 @@ public:
     }
 };
 
+// ── into the box ───────────────────────────────────────────────────────
+// His team picked him to be in the box for this ball: a spot at the real
+// depth (metres off their line) and width (|y|) for the ball's zone, the k-th
+// runner on the next spot across (ball side first), kept onside.
+class AttackBox final : public ActingState {
+public:
+    std::uint8_t id() const override { return 8; }
+    const char* name() const override { return "attack the box"; }
+    bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
+        const auto& P = c.poss.params();
+        const int z = c.poss.ballZone(v.team);
+        if (z < 0) return false;
+        const Fixed64 hx = c.world.pitchHalfX();
+        const Fixed64 by = c.world.ball().pos.y;
+        const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        const int k = c.poss.runnerIndex(v.slot);
+        // Spots: ball side at |y|, then far side, then the middle, then again deeper.
+        static const int kSide[4] = {1, -1, 0, 1};
+        const Fixed64 y = side * P.box_ay[z] * Fixed64::fromInt(kSide[k & 3]);
+        const Fixed64 depth = P.box_depth[z] - Fixed64::fromInt(3) * Fixed64::fromInt(k / 4);
+        Vec2 t{(hx - depth) * v.sg, y};
+        // Law 11: no further on than their second-last man (or the ball), less a margin.
+        Fixed64 a{}, b{}; bool ha = false, hb = false;
+        for (std::uint8_t j = 0; j < c.world.playerCount(); ++j) {
+            if (c.team_of_slot[j] == v.team) continue;
+            const Fixed64 x = c.world.player(j).pos.x * v.sg;
+            if (!ha || x > a) { b = a; hb = ha; a = x; ha = true; }
+            else if (!hb || x > b) { b = x; hb = true; }
+        }
+        Fixed64 line = hb ? b : hx;
+        const Fixed64 bx = c.world.ball().pos.x * v.sg;
+        if (bx > line) line = bx;
+        const Fixed64 lim = line - P.onside_margin_m;
+        if (t.x * v.sg > lim) t.x = lim * v.sg;
+        o.target = t;
+        o.move.move = seek(c.world.player(v.slot).pos, t, Fixed64::fromFraction(1, 2));
+        o.why = Why::AttackBox;
+        return true;
+    }
+};
+
 const OnBall kOnBall;
+const AttackBox kAttackBox;
 const Support kSupport;
 const Receive kReceive;
 const Keeper kKeeper;
@@ -294,6 +336,56 @@ const ActingState* Possession::onBall() { return &kOnBall; }
 const ActingState* Possession::support() { return &kSupport; }
 const ActingState* Possession::receive() { return &kReceive; }
 const ActingState* Possession::keeper() { return &kKeeper; }
+const ActingState* Possession::attackBox() { return &kAttackBox; }
+
+int Possession::runnerIndex(std::uint8_t slot) const {
+    int k = 0;
+    for (std::uint8_t j = 0; j < slot && j < 32; ++j) if ((runners_ >> j) & 1u) ++k;
+    return k;
+}
+
+void Possession::assignRunners(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                               const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
+    const auto& b = world.ball();
+    const std::uint32_t mine_mask = [&] { std::uint32_t m = 0; for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) if (team_of_slot[j] == team) m |= 1u << j; return m; }();
+    auto clear = [&] { runners_ &= ~mine_mask; zone_[team & 1] = -1; };
+    const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
+    if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { clear(); return; }
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 tl = world.pitchHalfX() - b.pos.x * sg;   // ball metres off their line
+    if (tl >= Fixed64::fromInt(52)) { clear(); return; }
+    const int z = (tl < Fixed64::fromInt(18) ? 0 : tl < Fixed64::fromInt(35) ? 1 : 2) * 2 +
+                  (math::fx_abs(b.pos.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1);
+    const std::uint64_t now = world.tickCount();
+    if (z == zone_[team & 1] && now - drawn_[team & 1] < 90) return;
+    zone_[team & 1] = z; drawn_[team & 1] = now;
+    runners_ &= ~mine_mask;
+    // How many: the real 0 / 1 / 2 / 3+ shares (3+ = 3, 4 at the mean's excess).
+    const Fixed64 u = (core::detNoise(match_seed, now, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    int n = 0; Fixed64 acc = params_.box_k[z][0];
+    while (n < 3 && u >= acc) { ++n; acc += params_.box_k[z][n]; }
+    if (n == 0) return;
+    // Who: weight = his role's real mean count ÷ the men of that role in this team; nearest first among equals.
+    int per_role[kRoleCount] = {};
+    for (std::uint8_t j = 0; j < world.playerCount(); ++j)
+        if (team_of_slot[j] == team && !world.isKeeper(j)) ++per_role[static_cast<int>(role_of_slot[j])];
+    const Vec2 box{sg * (world.pitchHalfX() - Fixed64::fromInt(12)), Fixed64::zero()};
+    for (int pick = 0; pick < n; ++pick) {
+        int best = -1; Fixed64 bw{};
+        for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+            if (team_of_slot[j] != team || world.isKeeper(j) || ((runners_ >> j) & 1u)) continue;
+            if (b.owner && *b.owner == j) continue;
+            const int r = static_cast<int>(role_of_slot[j]);
+            if (params_.box_role[z][r].raw <= 0) continue;
+            const Fixed64 d = math::length(Vec2{world.player(j).pos.x - box.x, world.player(j).pos.y - box.y});
+            // role weight, a little less per 10 m from the box (nearest first among equals)
+            const Fixed64 wgt = params_.box_role[z][r] / Fixed64::fromInt(per_role[r]) / (Fixed64::one() + d / Fixed64::fromInt(40));
+            if (best < 0 || wgt > bw) { best = j; bw = wgt; }
+        }
+        if (best < 0) break;
+        runners_ |= 1u << best;
+    }
+}
 
 void PossessionParams::configure(const core::ModelParams& p) {
     for (int r = 0; r < kRoleCount; ++r)
@@ -331,6 +423,20 @@ void PossessionParams::configure(const core::ModelParams& p) {
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);
     keeper_depth_max_m = p.fixed("physics.keeper.depth_max_m", 12000);
     keeper_long_m = p.fixed("physics.restart.keeper_long_m", 55000);
+    // Runs into the box: DFL (benchmarks_tracking_box.py), the ball's zone 0-18 / 18-35 / 35-52 × centre / wide.
+    static const int kK[6][4] = {{60, 110, 140, 690}, {180, 160, 240, 420}, {600, 120, 100, 180},
+                                 {620, 160, 100, 110}, {930, 30, 20, 20}, {950, 30, 10, 10}};   // per mille
+    static const int kRole[6][kRoleCount] = {   // CB, FB, DM/CM, AM, WIDE, ST — mean count, ×1000
+        {500, 210, 430, 340, 900, 1080}, {220, 80, 280, 210, 540, 950}, {160, 60, 110, 80, 230, 400},
+        {90, 20, 60, 60, 170, 400}, {20, 0, 10, 10, 30, 60}, {10, 0, 0, 10, 20, 50}};
+    static const int kDepth[6] = {11300, 12300, 14300, 14500, 15600, 15000};
+    static const int kAy[6] = {7200, 6300, 7000, 6600, 6700, 7700};
+    for (int z = 0; z < 6; ++z) {
+        for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
+        for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);
+        box_depth[z] = p.fixed(("physics.box.depth_" + std::to_string(z)).c_str(), kDepth[z]);
+        box_ay[z] = p.fixed(("physics.box.abs_y_" + std::to_string(z)).c_str(), kAy[z]);
+    }
 }
 
 Vec2 Possession::spot(const PlayerView& v, const core::World& world) const {
