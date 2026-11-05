@@ -5720,7 +5720,8 @@ class GameCenterScreen extends EventScreen {
     // off it.  Yellow / red names still warn.
     if (tone === 'green') {
       const w = '#f5d442';
-      return `color:#4169e1;text-shadow:-1px -1px 0 ${w},1px -1px 0 ${w},-1px 1px 0 ${w},1px 1px 0 ${w},0 -1px 0 ${w},0 1px 0 ${w},-1px 0 0 ${w},1px 0 0 ${w};`;
+      // Half-pixel offsets: a hairline edge (owner: "make outline thinner").
+      return `color:#4169e1;text-shadow:-0.5px -0.5px 0 ${w},0.5px -0.5px 0 ${w},-0.5px 0.5px 0 ${w},0.5px 0.5px 0 ${w},0 -0.5px 0 ${w},0 0.5px 0 ${w},-0.5px 0 0 ${w},0.5px 0 0 ${w};`;
     }
     if (onPitch) {
       // text-shadow all round rather than -webkit-text-stroke, which eats
