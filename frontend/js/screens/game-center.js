@@ -2559,6 +2559,19 @@ class GameCenterScreen extends EventScreen {
     // them) into their own closed fold.  A yes brings him back (trigger),
     // so a Going card never reads inactive.
     const isInactive = (p) => !p.callUp && p.squadStatus === 'inactive';
+    // Practice Squad (mig 1031) does not see this team's games — not in No
+    // Response, never in Remind all (owner 2026-11-05, U8 vs West Philly:
+    // "why is the no response section have players for game that should not
+    // be there").  They sit in their own closed fold with 🎟 CALL IN; once
+    // invited they join the lists with the call-up chip (_foldInCallups).
+    const isPracticeSquad = (p) => !p.callUp && p.squadStatus === 'practice_squad';
+    const unassignedPracticeSquad = [...unassignedNoResponse, ...unassignedNotGoing, ...unassignedGoing, ...unassignedIneligible]
+      .filter(isPracticeSquad).sort(this._byLastName);
+    if (unassignedPracticeSquad.length) {
+      for (const list of [unassignedNoResponse, unassignedNotGoing, unassignedGoing, unassignedIneligible])
+        list.splice(0, list.length, ...list.filter(p => !isPracticeSquad(p)));
+    }
+    const practiceSquadLabel = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_practice_squad_h')) || 'PRACTICE SQUAD';
     // ⛔ Suspended (mig 1077): out of every answer group into its own fold.
     const unassignedSuspended = [...unassignedGoing, ...unassignedIneligible, ...unassignedNoResponse, ...unassignedNotGoing]
       .filter(p => this._isSuspended(p.id)).sort(this._byLastName);
@@ -3031,6 +3044,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
+        collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }),
         collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
         collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
         this._renderCallupSection(),
@@ -3050,6 +3064,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
+      this.isCoach ? collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
