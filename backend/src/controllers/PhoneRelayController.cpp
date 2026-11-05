@@ -385,11 +385,11 @@ Response PhoneRelayController::handleTextStatus(const Request& request) {
 // FH Texter row (queued → sent → delivered / failed), the club text's Twilio
 // status (queued → sent → delivered / undelivered / failed + error code),
 // and whether the sign-in link in it was opened (magic_link_tokens.consumed_at).
-// Any part not asked for comes back null.  Club admins (requireSender).
+// Any part not asked for comes back null.  Admins and coaches (requireStaff).
 Response PhoneRelayController::handleSendStatus(const Request& request) {
     long long personId = 0;
     Response err(HttpStatus::OK, "");
-    if (!requireSender(request, &personId, &err)) return err;
+    if (!requireStaff(request, &personId, &err)) return err;   // coaches too (their popup sends)
     const auto num = [&](const char* k) -> std::string {
         const std::string v = request.getQueryParam(k);
         return (!v.empty() && v.find_first_not_of("0123456789") == std::string::npos) ? v : std::string{};
