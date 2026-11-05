@@ -5716,10 +5716,10 @@ class GameCenterScreen extends EventScreen {
     // Eligible = Lighthouse colours (owner 11/5: "make the colors of names
     // lighthouse colors white and blue" → "flip it to blue writing with
     // white border"): crest-blue letters outlined in white, on the pitch
-    // and off it.  Yellow / red still warn.
+    // and off it (royal blue, owner 11/5).  Yellow / red still warn.
     if (tone === 'green') {
       const w = '#ffffff';
-      return `color:#0033a0;text-shadow:-1px -1px 0 ${w},1px -1px 0 ${w},-1px 1px 0 ${w},1px 1px 0 ${w},0 -1px 0 ${w},0 1px 0 ${w},-1px 0 0 ${w},1px 0 0 ${w};`;
+      return `color:#4169e1;text-shadow:-1px -1px 0 ${w},1px -1px 0 ${w},-1px 1px 0 ${w},1px 1px 0 ${w},0 -1px 0 ${w},0 1px 0 ${w},-1px 0 0 ${w},1px 0 0 ${w};`;
     }
     if (onPitch) {
       // text-shadow all round rather than -webkit-text-stroke, which eats
