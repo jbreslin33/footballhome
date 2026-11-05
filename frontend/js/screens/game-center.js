@@ -3402,6 +3402,25 @@ class GameCenterScreen extends EventScreen {
     const esc = (t) => this.escapeHtml(t);
     const copy = (tier, tokens) => window.MessageCopy ? MessageCopy.block('opponent', tier, tokens) : '';
     const club = o.club;
+    // ⛔ Cancel this game (owner 11/5): forfeit / weather / field — ONE
+    // email to the other club's contacts, the league directors and the
+    // league's officers (ref assignor included), wording ready (kind
+    // opponent tiers cancel_*, mig 1094).  Opponent contacts first, so the
+    // email's {club} is the other club.
+    const cancelRow = () => {
+      const seen = new Set();
+      const ids = [...((club && club.contacts) || []), ...((o.league && o.league.contacts) || [])]
+        .filter(k => k.email && !seen.has(k.id) && seen.add(k.id)).map(k => k.id);
+      const cancels = (o.tiers || []).filter(t => String(t.tier).startsWith('cancel_'));
+      if (!cancels.length) return '';
+      const head = copy('cancel_title', { n: ids.length }) || `⛔ Cancel this game — one email to the other club, the league and the ref assignor (${ids.length})`;
+      return `<div style="margin:6px 0 8px; padding:6px 8px; border:1px solid #7f1d1d; border-radius:8px; background:rgba(127,29,29,0.15);">
+        <div style="font-size:0.7rem; font-weight:700; margin-bottom:4px;">${esc(head)}</div>
+        ${ids.length ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${cancels.map(t => `<button class="btn btn-secondary" data-gc-opp-send-all="email" data-tier="${esc(t.tier)}" data-ids="${ids.join(',')}"
+              style="padding:3px 8px; font-size:0.7rem; border-color:#b91c1c;">✉️ ${esc(t.label)}</button>`).join('')}</div>`
+          : `<div style="font-size:0.68rem; opacity:0.75;">${esc(copy('cancel_none') || 'No email on file for the other club or the league yet — add one below.')}</div>`}
+      </div>`;
+    };
     const wrap = (title, inner) => `
       <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
@@ -3409,6 +3428,7 @@ class GameCenterScreen extends EventScreen {
           ${club ? `<button class="btn btn-secondary" data-gc-opp-page="${club.id}" style="padding:2px 8px; font-size:0.66rem;">Opponents page ↗</button>` : ''}
         </div>
         ${this._panelDraftButtons('data-gc-draft-open')}
+        ${cancelRow()}
         ${inner}
       </div>`;
     if (!club) {
@@ -4543,10 +4563,12 @@ class GameCenterScreen extends EventScreen {
     const channel = btn.dataset.gcOppSendAll;
     const ids = String(btn.dataset.ids || '').split(',').map(Number).filter(Boolean);
     const sel = this.element && this.element.querySelector('[data-gc-opp-tier]');
-    this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
+    if (!btn.dataset.tier) this._oppTier = sel ? sel.value : (this._oppTier || 'confirm');
+    // A ⛔ cancel button carries its own message (mig 1094).
+    const tier = btn.dataset.tier || this._oppTier;
     const original = btn.textContent; btn.disabled = true; btn.textContent = '⏳';
     try {
-      const data = await this._postReminder('/api/opponents/message', { contact_ids: ids, channel, tier: this._oppTier, match_id: this.matchId, message: this._oppMsg || '' });
+      const data = await this._postReminder('/api/opponents/message', { contact_ids: ids, channel, tier, match_id: this.matchId, message: this._oppMsg || '' });
       const all = [...(((this.oppContacts || {}).club || {}).contacts || []), ...(((this.oppContacts || {}).league || {}).contacts || [])];
       for (const k of all) if (ids.includes(k.id)) { k.last_sent_at = 'just now'; k.last_channel = channel; }
       if (channel === 'email') this.openGmailCompose(data.gmail_href);
