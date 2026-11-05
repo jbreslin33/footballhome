@@ -56,17 +56,29 @@ public:
         const Fixed64 own_end = hx + sp.x * v.sg;          // metres off our line
 
         if (!v.keeper) {
-            // 1. A shot: in range with the goal open enough [FH; xG's angle + bodies].
-            const Fixed64 q = chanceQuality(w, c.team_of_slot, v.slot, goal);
-            if ((dgoal < P.shot_max_m && q >= P.shot_q_min) || (dgoal < P.shot_close_m && q.raw > 0)) {
-                const int k = theirKeeper(c, v.team);
-                const Fixed64 ky = k >= 0 ? w.player(static_cast<std::uint8_t>(k)).pos.y : Fixed64::zero();
-                const Fixed64 side = ky > sp.y ? -Fixed64::one() : Fixed64::one();   // the post away from him
-                o.target = Vec2{goal.x, side * (kGoalHalfW - Fixed64::fromFraction(1, 2))};
-                o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
-                o.action = Action::Shot;
-                o.why = Why::Shoot;
-                return true;
+            // 1. A shot — the real policy (StatsBomb PL 2015/16): the share of
+            // releases at his spot that are shots, by distance × the goal mouth's
+            // angle; one roll for the spell, so the World's release (his real
+            // time on the ball) lets go the shot or the pass it was going to be.
+            const int db = dgoal < Fixed64::fromInt(12) ? 0 : dgoal < Fixed64::fromInt(18) ? 1
+                         : dgoal < Fixed64::fromInt(25) ? 2 : dgoal < Fixed64::fromInt(35) ? 3 : -1;
+            if (db >= 0) {
+                const Fixed64 a1 = math::fx_atan2(-kGoalHalfW - sp.y, goal.x - sp.x);
+                const Fixed64 a2 = math::fx_atan2(kGoalHalfW - sp.y, goal.x - sp.x);
+                const Fixed64 ang = math::fx_abs(a2 - a1);
+                const int ab = ang < Fixed64::fromFraction(1, 4) ? 0 : ang < Fixed64::fromFraction(1, 2) ? 1 : 2;
+                const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 40) + Fixed64::one()) *
+                                  Fixed64::fromFraction(1, 2);
+                if (u < P.shot_p[db][ab]) {
+                    const int k = theirKeeper(c, v.team);
+                    const Fixed64 ky = k >= 0 ? w.player(static_cast<std::uint8_t>(k)).pos.y : Fixed64::zero();
+                    const Fixed64 side = ky > sp.y ? -Fixed64::one() : Fixed64::one();   // the post away from him
+                    o.target = Vec2{goal.x, side * (kGoalHalfW - Fixed64::fromFraction(1, 2))};
+                    o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
+                    o.action = Action::Shot;
+                    o.why = Why::Shoot;
+                    return true;
+                }
             }
             // 2. A cross: wide, near their line — the freest man attacking the
             // box, else the penalty spot.
@@ -273,11 +285,13 @@ void PossessionParams::configure(const core::ModelParams& p) {
             const std::string key = std::string("physics.support.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
             spot[r][b] = p.fixed(key, std::int64_t{kRealSpotDm[r][b]} * 100);
         }
+    // The shot policy, StatsBomb PL 2015/16 open play (permille).
+    static const int kShotP[4][3] = {{293, 778, 922}, {82, 610, 675}, {66, 358, 0}, {18, 183, 0}};
+    for (int d = 0; d < 4; ++d)
+        for (int a = 0; a < 3; ++a)
+            shot_p[d][a] = p.fixed(("physics.shot.p_" + std::to_string(d) + "_" + std::to_string(a)).c_str(), kShotP[d][a]);
     // On-ball starting numbers [FH] — to be fitted to StatsBomb PL 2015/16
-    // (shots, crosses, pass length and direction a team-match).
-    shot_max_m = p.fixed("physics.onball.shot_max_m", 25000);
-    shot_q_min = p.fixed("physics.onball.shot_q_min_rad", 200);
-    shot_close_m = p.fixed("physics.onball.shot_close_m", 9000);
+    // (crosses, pass length and direction a team-match).
     cross_depth_m = p.fixed("physics.onball.cross_depth_m", 20000);
     cross_wide_m = p.fixed("physics.onball.cross_wide_m", 18000);
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);

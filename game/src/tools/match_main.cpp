@@ -58,6 +58,7 @@ struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
+    long rel_n[5] = {}, rel_shot[5] = {};   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
@@ -191,6 +192,11 @@ int main(int argc, char** argv) {
                     if (facing[owner] > 0) { ++S.takeon; facing[owner] = 0; }
                     if (own < 0) {
                         const auto why = s.lastOrders()[owner].why;
+                        if (!own_set && why != ai::Why::KeeperPunt) {
+                            const double d = std::hypot((owner_team == 0 ? hx : -hx) - own_px, own_py);
+                            const int rb = d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : d < 35 ? 3 : 4;
+                            ++S.rel_n[rb]; if (why == ai::Why::Shoot) ++S.rel_shot[rb];
+                        }
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         if (!own_set && !rel.shot && from[owner] >= 0 && owner_got - from_t[owner] <= 1 && k - owner_got <= 150) {
                             ++S.ret_base;
@@ -376,6 +382,9 @@ int main(int argc, char** argv) {
         for (int i = 0; i < 4; ++i) std::printf(" %s %.0f%% (scored %.1f%%);", kDistName[i], 100.0 * S.shot_band[i] / sh, 100.0 * S.band_goal[i] / std::max(1L, S.shot_band[i]));
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
+        static const char* rbn[5] = {"<12 m", "12-18", "18-25", "25-35", "35+"};
+        std::printf("\n   of the balls let go in open play, the share that were shots:");
+        for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%% (of %.1f a team-match);", rbn[i], 100.0 * S.rel_shot[i] / std::max(1L, S.rel_n[i]), S.rel_n[i] / tm);
         std::printf("\n");
     }
     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",

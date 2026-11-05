@@ -5384,3 +5384,34 @@ marks), game_direct_opponents, the sheet tables (game_sheet_tables, _position_pr
 rolls / history / techniques), and 82 skill.* / sheet.* / technique.* params.
 
 Tests 22/22; goldens re-locked (the hash mixes every player's skill).
+
+### 8.122 G5.24 — shots: the real shot policy (mig 1093 = the fitted numbers as rows, scratch)
+
+**Real** (benchmarks_statsbomb_shots.py, StatsBomb PL 2015/16, penalties out): 12.9 shots a
+team-match, 1.20 goals, 9.3% scored; by distance <12 / 12-18 / 18-25 / 25+ m 31 / 26 / 30 / 13%,
+scored 18.0 / 9.3 / 3.6 / 2.0%; ended goal 9.3%, keeper 23.1%, blocked 29.3%, off target 38.3%.
+The decision: of the balls let go in open play at a spot, the share that are shots —
+
+| distance \ goal angle | < 0.25 rad | 0.25-0.5 | 0.5+ |
+|---|---|---|---|
+| < 12 m | 29.3% | 77.8% | 92.2% |
+| 12-18 | 8.2% | 61.0% | 67.5% |
+| 18-25 | 6.6% | 35.8% | — |
+| 25-35 | 1.8% | 18.3% | — |
+
+**Change.** OnBall's guessed rule (inside 25 m with chance quality ≥ 0.2 rad) is replaced by that
+table (physics.shot.p_<band>_<angle>): one roll per spell (on the tick he got it) against the share
+for the spot he lets it go from — the World's release timing decides when. Harness: the SHOTS line
+(by distance, how each ended) and the share of balls let go that were shots, by distance.
+Mig 1093: the 17 fitted numbers the clean game reads (StatsBomb hold curves, carry share, cut-outs;
+DFL shape pace and slide) were harness config only — now game_model_params rows.
+
+**Result** (4 fixtures × 8): the shot share by distance is now real-shaped (85 / 74 / 38 / 5% v 87 /
+44 / 23 / 3%); shots 24.1 → 19.0 a team-match (12.9). Scored 3.9% (9.3), keeper 57% (23), blocked 7%
+(29). (Fixtures with the same formations now play identically: every player has the same skill
+until the skills step.)
+
+**Next moles.** (1) Where the ball goes: releases inside 12 m 1.0 a team-match (real 4.6), 12-18
+2.2 (7.7), but 25-35 m 146 (44) — the attack circulates outside the box, crosses 0.6 (11.5).
+(2) Shots don't score: the keeper keeps 57% (23%) and almost nothing is blocked (7% v 29%) —
+shot and keeper skill, the bodies between. (3) Pressures 4×, passes 1.5×.
