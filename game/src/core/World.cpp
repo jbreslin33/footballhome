@@ -27,6 +27,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       carry_m_(player_count, 0),
       aim_(player_count),
       has_aim_(player_count, 0),
+      aim_z_(player_count),
       first_time_(player_count, 0),
       pass_to_(player_count, 0xFF),
       bodies_(player_count),
@@ -50,7 +51,7 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
 }
 
 void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
-                      std::uint8_t pass_to, bool first_time, const Vec2* aim) {
+                      std::uint8_t pass_to, bool first_time, const Vec2* aim, Fixed64 aim_z) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
@@ -59,6 +60,7 @@ void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
     pass_to_[slot] = pass_to;
     has_aim_[slot] = aim ? 1 : 0;
     if (aim) aim_[slot] = *aim;
+    aim_z_[slot] = aim_z;
 }
 
 void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
@@ -387,7 +389,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 // (18 m/s strikes at 1-degree error converted like
                 // penalties — nobody finishes like that from 20 m.)
                 const bool shot = act == Action::Shot;
-                const std::int32_t deg =
+                // G5.37 (§8.135): the brain's shot goes where the real ones went —
+                // its aim IS the drawn crossing point, misses included — so no
+                // angle error on top. A human's shot keeps it.
+                const std::int32_t deg = shot && has_aim_[kicker] ? 0 :
                     (shot && lv.shot_angle_err_deg >= 0 ? lv.shot_angle_err_deg
                                                         : lv.kick_angle_err_deg) +
                     (shot ? 5 : 0);
@@ -443,6 +448,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 }
                 const Fixed64 v = top * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
+                // G5.37: an aimed height — the lift that crosses the aim point at
+                // aim_z, solved on the free ball's own law (drag + gravity).
+                if (has_aim_[kicker] && aim_z_[kicker].raw > 0)
+                    ball_.vel.z = shotLift(v, math::length(Vec2{aim_[kicker].x - o.pos.x, aim_[kicker].y - o.pos.y}), aim_z_[kicker]);
             } else if (act == Action::ShortPass) {
                 const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
                                                         : kShortPassSpeed) * power_scale;
@@ -668,7 +677,12 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                              players_[ball_.last_kicker].team != players_[i].team &&
                              (players_[i].team == 0 ? ball_.pos.x <= -half_x_ + kPenaltyDepth : ball_.pos.x >= half_x_ - kPenaltyDepth) &&
                              math::fx_abs(ball_.pos.y) <= kPenaltyHalfWidth;
-        const Fixed64 reach = gk ? kKeeperReach
+        // G5.37: against their ball at shot speed a keeper takes it only this
+        // close (his body behind it) — the fit to the real save share; any
+        // other ball (a back pass, a loose one, a cross) at his full reach.
+        const bool their_shot = gk && planar_speed_sq > Fixed64::fromInt(144) && ball_.last_kicker < players_.size() &&
+                                players_[ball_.last_kicker].team != players_[i].team;
+        const Fixed64 reach = gk ? (their_shot && keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_)
                               : box_def ? box_reach_m_
                               : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : kBallControlRadius);
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
@@ -983,6 +997,10 @@ void World::configureAerial(const ModelParams& p) {
 }
 
 void World::configureTempo(const ModelParams& p) {
+    // G5.37 (§8.135): how far from his body a keeper takes the ball (m), fitted
+    // to the real save curve (StatsBomb PL 2015/16 freeze frames); 1.2 = the old constant.
+    keeper_reach_ = p.fixed("physics.keeper.reach_m", 1200);
+    keeper_shot_reach_ = p.fixed("physics.keeper.shot_reach_m", 0);   // 0 = his full reach
     hold_under1_ = p.fixed("physics.tempo.hold_under1", 0);
     hold_under2_ = p.fixed("physics.tempo.hold_under2", 0);
     hold_under4_ = p.fixed("physics.tempo.hold_under4", 0);
@@ -1246,6 +1264,29 @@ std::vector<MatchEvent> World::tick() {
     for (auto& p : pass_to_) p = 0xFF;
     clock_.advance();
     return events;
+}
+
+// G5.37 (§8.135): the vertical launch speed for a strike of horizontal speed v
+// to pass height h at d metres along the ground, on the airborne law
+// (BallFlight::step + gravity), by bisection — the lowest lift that gets there.
+Fixed64 World::shotLift(Fixed64 v, Fixed64 d, Fixed64 h) const {
+    auto heightAt = [&](Fixed64 vz) {
+        Vec3 vel{v, Fixed64::zero(), vz};
+        Vec3 pos{Fixed64::zero(), Fixed64::zero(), kBallRadius};
+        for (int t = 0; t < 300 && pos.x < d; ++t) {
+            ball_flight_.step(vel);
+            vel.z -= kGravity * kTickDt;
+            pos += vel * kTickDt;
+            if (pos.z.raw < 0) return pos.z;
+        }
+        return pos.z;
+    };
+    Fixed64 lo = Fixed64::zero(), hi = Fixed64::fromInt(16);
+    for (int i = 0; i < 18; ++i) {
+        const Fixed64 mid = (lo + hi) * Fixed64::fromFraction(1, 2);
+        if (heightAt(mid) < h) lo = mid; else hi = mid;
+    }
+    return hi;
 }
 
 }  // namespace fh::game::core

@@ -29,6 +29,21 @@ constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
 };
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 const Fixed64 kGoalHalfW = Fixed64::fromFraction(366, 100);   // Law 1: 7.32 m
+
+// G5.37 (§8.135): where real unblocked shots crossed the goal line, by distance
+// band (0-12 / 12-18 / 18-25 / 25+ m): permille per cell, lateral metres from the
+// goal's centre {0-1, 1-2, 2-3, 3-3.66, 3.66-5, 5-7, 7-10, 10+} x height {0-0.5,
+// 0.5-1.5, 1.5-2.44, 2.44-4, 4+} — StatsBomb PL 2015/16 open play
+// (benchmarks_statsbomb_placement.py: the on-target share from the outcomes x
+// the spread of goals and saves, the rest the spread of misses at the line).
+constexpr int kShotXing[4][8][5] = {
+  {{ 39,  46,  28,  26,  21}, { 38,  60,  35,  20,  23}, { 51,  63,  37,  30,  30}, { 30,  38,  18,  10,  10}, { 26,  38,  18,  18,  15}, { 13,  46,  16,  14,  19}, { 21,  28,   5,   9,  13}, { 18,  19,   2,   4,   4}},
+  {{ 43,  37,   9,  12,  17}, { 61,  31,  14,  18,  22}, {101,  50,  30,  18,  20}, { 90,  46,  20,   5,  10}, { 46,  20,  15,  18,  26}, { 42,  24,  12,  12,  23}, { 29,  16,   4,   3,  13}, { 24,   7,   5,   1,   5}},
+  {{ 53,  38,  22,   8,  17}, { 56,  39,  21,  11,  24}, { 63,  39,  28,  15,  28}, { 35,  25,  13,  14,  18}, { 37,  20,   9,  23,  30}, { 48,  26,  10,  17,  49}, { 40,  18,   8,   8,  34}, { 18,  10,   1,   9,  17}},
+  {{ 36,  40,  21,  22,  27}, { 24,  27,  25,   3,  30}, { 32,  32,  17,  16,  42}, { 28,  15,   8,  11,  20}, { 31,  22,   7,  13,  31}, { 42,  31,  15,  23,  51}, { 44,  16,  11,  16,  47}, { 38,  24,   7,   9,  47}},
+};
+constexpr int kXingLatCm[9] = {0, 100, 200, 300, 366, 500, 700, 1000, 1400};
+constexpr int kXingHtCm[6] = {0, 50, 150, 244, 400, 600};
 const Fixed64 kSoftPass = Fixed64::fromInt(14);                // ShortPass inside it
 
 Vec2 v2(const Vec3& p) { return Vec2{p.x, p.y}; }
@@ -97,10 +112,28 @@ public:
                 const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 40) + Fixed64::one()) *
                                   Fixed64::fromFraction(1, 2);
                 if (u < P.shot_p[db][ab]) {
-                    const int k = theirKeeper(c, v.team);
-                    const Fixed64 ky = k >= 0 ? w.player(static_cast<std::uint8_t>(k)).pos.y : Fixed64::zero();
-                    const Fixed64 side = ky > sp.y ? -Fixed64::one() : Fixed64::one();   // the post away from him
-                    o.target = Vec2{goal.x, side * (kGoalHalfW - Fixed64::fromFraction(1, 2))};
+                    // G5.37 (§8.135): where it goes is drawn from where real shots
+                    // from this distance went (on target, wide, over), one draw for
+                    // the spell — the kick then has to get there past the keeper
+                    // and the bodies. Side of the goal 50/50 [FH: no side data].
+                    const int band = db < 3 ? db : 3;
+                    auto roll = [&](int ch) {
+                        return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                    };
+                    const int pick = static_cast<int>((roll(41) * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS);
+                    int li = 7, hi = 4, acc = 0;
+                    for (int a = 0, done = 0; a < 8 && !done; ++a)
+                        for (int b = 0; b < 5; ++b) {
+                            acc += kShotXing[band][a][b];
+                            if (pick < acc) { li = a; hi = b; done = 1; break; }
+                        }
+                    const Fixed64 lat = Fixed64::fromFraction(kXingLatCm[li], 100) +
+                                        Fixed64::fromFraction(kXingLatCm[li + 1] - kXingLatCm[li], 100) * roll(42);
+                    const Fixed64 ht = Fixed64::fromFraction(kXingHtCm[hi], 100) +
+                                       Fixed64::fromFraction(kXingHtCm[hi + 1] - kXingHtCm[hi], 100) * roll(43);
+                    const Fixed64 side = roll(44) < Fixed64::fromFraction(1, 2) ? -Fixed64::one() : Fixed64::one();
+                    o.target = Vec2{goal.x, side * lat};
+                    o.aim_z = ht < Fixed64::fromFraction(15, 100) ? Fixed64::zero() : ht;   // under 15 cm: along the ground
                     o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
                     o.action = Action::Shot;
                     o.why = Why::Shoot;
@@ -357,6 +390,20 @@ public:
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
         o.why = Why::KeeperPosition;
+        // G5.37 (§8.135): their strike — for his own reaction time (Body::reaction,
+        // the read every other man already pays) he carries on as he was: no
+        // new line, no dive. Reacting on the strike's own tick he ran to where
+        // every shot was going and saved 100% of them 3 m+ from him (real 5-30%,
+        // StatsBomb PL 2015/16 freeze frames, benchmarks_statsbomb_placement.py).
+        if (!ball.owner && w.restartTeam() == 0xFF && ball.vel.x * v.sg < Fixed64::fromInt(-8) &&
+            ball.last_kicker < c.team_of_slot.size() && c.team_of_slot[ball.last_kicker] != v.team) {
+            const Fixed64 since = Fixed64::fromInt(static_cast<std::int32_t>(w.tickCount() - w.flightTick())) * core::kTickDt;
+            if (since < w.body(v.slot).reaction()) {
+                o.target = Vec2{};
+                o.move.move = me.max_speed.raw > 0 ? Vec2{me.vel.x / me.max_speed, me.vel.y / me.max_speed} : Vec2{};
+                return true;
+            }
+        }
         // A shot on goal he can't run to: dive at where it crosses his line.
         if (!ball.owner && w.restartTeam() == 0xFF && ball.vel.x * v.sg < Fixed64::fromInt(-8)) {
             const Fixed64 t = (me.pos.x - ball.pos.x) / ball.vel.x;
@@ -364,7 +411,7 @@ public:
                 const Vec2 p{me.pos.x, ball.pos.y + ball.vel.y * t};
                 if (math::fx_abs(p.y) < kGoalHalfW + Fixed64::fromInt(1)) {
                     const Fixed64 gap = math::length(Vec2{p.x - me.pos.x, p.y - me.pos.y});
-                    if (gap > runToward(w, v.slot, p, t) + core::kKeeperReach) {
+                    if (gap > runToward(w, v.slot, p, t) + w.keeperShotReach()) {
                         o.move.move = math::normalized(Vec2{p.x - me.pos.x, p.y - me.pos.y});
                         o.action = Action::Dive;
                         o.target = p;

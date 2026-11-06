@@ -73,7 +73,8 @@ constexpr std::uint64_t kGolden3v3   = 0xe9b406b60fb8057cULL;
 // Re-locked G5.29 (2026-11-05): as the 3v3.
 // Re-locked G5.30 (2026-11-06): as the 3v3.
 // Re-locked G5.33 (2026-11-06): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x9d96e0c9eb1ffe79ULL;
+// Re-locked G5.37 (2026-11-06): shots go where real ones went; the keeper reacts to the strike.
+constexpr std::uint64_t kGolden11v11 = 0xbc28bc36c67ef33dULL;
 
 struct Rig {
     World world;

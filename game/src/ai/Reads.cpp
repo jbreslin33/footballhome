@@ -215,7 +215,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
             const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
-                                (gk ? core::kKeeperReach : header ? aerial_radius_ : core::kBallControlRadius) +
+                                (gk ? world.keeperReach() : header ? aerial_radius_ : core::kBallControlRadius) +
                                 (p.team != rb.ours ? rb.opp_margin : Fixed64::zero());
             const Fixed64 gap_sq = header ? math::lengthSquared(Vec2{p.pos.x - pos.x, p.pos.y - pos.y}) : distSq(p.pos, pos);
             if (gap_sq <= run * run) {

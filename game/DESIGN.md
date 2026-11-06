@@ -5952,3 +5952,55 @@ team-match (the scoring mole) this is noise, not a verdict on the shape.
 tree from their keeper by passes, one job per our position — cover_shadow / mark / hold_between
 with dist_m / press_m) — app and engine to share one geometry, documented here; the brain overlay
 labelling each man's job.
+
+### 8.135 G5.37 — shots go where real ones went; the keeper reacts to the strike (migs 1126, 1127)
+
+§8.133's next: scoring — 0.12 goals a team-match, 1.4% of shots scored (real 9.3).
+
+**Real** (new `scripts/benchmarks_statsbomb_placement.py`, StatsBomb PL 2015/16 open play):
+shots end goal 9.4 / saved 22.5 / blocked 29.2 / off target 38.9%; keepers save 70.4% of those
+on target. On target they spread across the mouth (0-1 m from the centre 24%, 1-2 26%, 2-3 32%,
+3-3.66 19%; 43% under 0.5 m high, 20% over 1.5 m); 2 m+ from the centre scores ~45%, the middle
+~20%. Misses: a median 2.4 m wide, 1.8 m over. A saved shot's end_location is where the keeper
+stopped it, so the crossing table mixes P(on target) from the outcomes with the on-target spread
+(goals and saves) and the off-target spread (misses at the line). The save curve (freeze frames:
+the keeper's gap along the line to where it crossed): from 12-18 m half are saved at 2-2.5 m, 5%
+at 3 m+; from 18-25 m half at ~3 m. Shot speed (new `scripts/benchmarks_tracking_shotspeed.py`,
+DFL, the ball's peak in its first 0.6 s, anchored on the ball nearest the shot's spot — the event
+clock is not the tracking clock): median 15.8 / 23.0 / 24.3 / 28.6 m/s by <12 / 12-18 / 18-25 /
+25+ m; the game strikes at up to 24, so speed was not the problem.
+
+**Found.** Every shot rolled along the ground to 0.5 m inside the far post with a few degrees of
+error: on target 70% (real 32%), and the keeper — reacting on the strike's own tick and tracking
+the ball-goal line in flight — reached 98% of those, 100% even 3 m+ from him.
+
+**Built.**
+- The shot's crossing point is drawn (one draw a spell) from where real shots from that distance
+  went, `kShotXing` (lateral bin × height bin, on and off target); side of the goal 50/50 [FH].
+  Orders carry `aim_z`; `World::shotLift` solves the lift that crosses there on the free-ball law
+  (drag + gravity, bisection). A brain-aimed shot gets no extra angle error (the draw is its miss);
+  a human's keeps it.
+- The keeper pays his reaction time on their strike (Body::reaction, as every read does): he
+  carries on as he was, no new line, no dive.
+- `physics.keeper.reach_m` (1.2, the old constant) and `shot_reach_m` (0.7, mig 1126): against
+  their ball at shot speed (12 m/s+) he takes it only within 0.7 m of his body. Fitted to the
+  real 70.4% on-target save share: 1.2 → 87%, 1.0 → 83, 0.8 → 77, 0.7 → 71, 0.5 → 48%. One 0.5 m
+  reach for every ball let back passes roll in (5.75 goals a team-match).
+- Harness: shots BY AIMED CELL (real goal % alongside) and the SAVE CURVE (keeper's gap).
+- Mig 1127: formation_slot_roles numbers on James's sides (5 left centre-back, 4 right, 11 left
+  wing, 7 right) in 4-3-3, 4-2-3-1, 4-4-2 — found by the club-app session; roles and play unchanged.
+
+**Result** (32 rotating fixtures, fh_game_scratch; G5.36 → G5.37):
+
+| | before | after | real |
+|---|---|---|---|
+| shots end goal / keeper / blocked / off target | 1.4 / 68.6 / 11.4 / 18.6% | 10.0 / 24.4 / 8.9 / 56.8% | 9.4 / 22.5 / 29.2 / 38.9% |
+| on target saved | ~98% | 71% | 70.4% |
+| goals a team-match | 0.12 | 1.01 | 1.20 |
+| shots a team-match | 8.8 | 7.4 | 12.9 |
+
+Tests 22/22; the 11v11 golden re-locked (the 3v3 rig never shoots). Daemon redeployed.
+
+**Next moles.** (1) Blocks 9% (29%): no bodies in the lane — off target reads 57% because shots
+real defenders would block go through to miss. (2) Shots 7.4 a team-match (12.9). (3) Own goals
+0-4 per 8 matches (real ~1 in 10 team-matches) — trace them. (4) The club's tactic plans (mig 1121).

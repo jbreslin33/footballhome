@@ -31,6 +31,7 @@ struct Orders {
     core::Action action = core::Action::None;
     Why why = Why::Hold;          // the overlay's read (never fed back into the sim)
     math::Vec2 target{};          // where he's going / aiming
+    math::Fixed64 aim_z{};        // G5.37: a shot's height where it crosses their line (0 = along the ground)
     std::int16_t other = -1;      // the pass receiver, pressed carrier
     // A loft's first-bounce distance; a ground pass's weight (metres to its target).
     std::uint8_t carry_m = 0;

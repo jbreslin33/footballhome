@@ -94,6 +94,8 @@ struct Stats {
     long rc_fast[ai::kWhyCount][3] = {}, rc_fast_role[ai::kRoleCount] = {}, rc_hold_near[3] = {};   // + holders with the ball inside 40 m of their goal
     long rc_zn[2] = {}, rc_z[2][3] = {}, rc_zk[2][5] = {}, rc_zkb[2][5] = {};   // + by s since lost: steps, 5+ back
     long rc_gap[4] = {}, rc_gapb[4] = {};
+    long pc_n[13] = {}, pc_g[13] = {}, pc_k[13] = {}, pc_p[13] = {};
+    long sc_n[4][7] = {}, sc_s[4][7] = {};   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
@@ -177,7 +179,7 @@ int main(int argc, char** argv) {
         auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -212,7 +214,11 @@ int main(int argc, char** argv) {
                     ++S.goals[e.team];
                     if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
                     ++S.goal_by[last_kick_why];
-                    if (shot.on && shot.team == e.team) { ++S.shot_out[0]; ++S.band_goal[shot.band]; shot.on = false; }
+                    if (shot.on && shot.team == e.team) {
+                        ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1];
+                        if (shot.gap >= 0) ++S.sc_n[shot.band][shot.gap];
+                        shot.on = false;
+                    }
                 }
             if (std::getenv("GAME_PLAY_TRACE") && k % 300 == 0)
                 std::fprintf(stderr, "play m%d %lds ball %.1f,%.1f,%.1f v %.1f,%.1f owner %d last %d restart %d out %d lastTouch %d pass_to %d\n", m, k / 30, b.pos.x.toDouble(), b.pos.y.toDouble(), b.pos.z.toDouble(),
@@ -316,15 +322,35 @@ int main(int argc, char** argv) {
                 const auto& p = W.player(*before);
                 const double gx = (p.team == 0 ? hx : -hx) - p.pos.x.toDouble(), gy = p.pos.y.toDouble();
                 shot = Shot{true, p.team, distBand(std::hypot(gx, gy)), k};
+                {   // §8.135: the cell it was aimed at — on target 4 across x 3 up, else -1
+                    const auto& lo = s.lastOrders()[*before];
+                    const double lat = std::fabs(lo.target.y.toDouble()), z = lo.aim_z.toDouble();
+                    if (lat < 3.66 && z < 2.44) shot.cell = (lat < 1 ? 0 : lat < 2 ? 1 : lat < 3 ? 2 : 3) + 4 * (z < 0.5 ? 0 : z < 1.5 ? 1 : 2);
+                    ++S.pc_n[shot.cell + 1];
+                    // the save curve: his keeper's gap along the line to the aim
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        if (W.isKeeper(j) && W.player(j).team != p.team && shot.cell >= 0) {
+                            const double g = std::fabs(lo.target.y.toDouble() - W.player(j).pos.y.toDouble());
+                            shot.gap = g < 0.5 ? 0 : g < 1 ? 1 : g < 1.5 ? 2 : g < 2 ? 3 : g < 2.5 ? 4 : g < 3 ? 5 : 6;
+                        }
+                }
                 ++S.shots[p.team]; ++S.shot_band[shot.band];
             } else if (shot.on && k > shot.tick) {
                 const int def = shot.team ^ 1;
                 if (b.owner) {
                     const auto o = *b.owner;
                     ++S.shot_out[W.isKeeper(o) && W.player(o).team == def ? 1 : W.player(o).team == def ? 2 : 4];
+                    if (W.isKeeper(o) && W.player(o).team == def) {
+                        ++S.pc_k[shot.cell + 1];
+                        if (shot.gap >= 0) { ++S.sc_n[shot.band][shot.gap]; ++S.sc_s[shot.band][shot.gap]; }
+                    }
                     shot.on = false;
                 } else if (W.lastTouchTeam() == def) {
                     ++S.shot_out[2]; shot.on = false;   // a defender's touch (a keeper's parry counts here too)
+                    if (b.last_kicker < N && W.isKeeper(b.last_kicker)) {
+                        ++S.pc_p[shot.cell + 1];
+                        if (shot.gap >= 0) { ++S.sc_n[shot.band][shot.gap]; ++S.sc_s[shot.band][shot.gap]; }
+                    }
                 } else if (W.outStage() != 0 || W.restartTeam() != 0xFF) {
                     ++S.shot_out[3]; shot.on = false;
                 } else if (k - shot.tick > 150) {
@@ -636,6 +662,28 @@ int main(int argc, char** argv) {
         std::printf("SHOTS a team-match %.1f, goals %.2f, %.1f%% scored; by distance:", (S.shots[0] + S.shots[1]) / tm, (S.goals[0] + S.goals[1]) / tm,
                     100.0 * (S.goals[0] + S.goals[1]) / sh);
         for (int i = 0; i < 4; ++i) std::printf(" %s %.0f%% (scored %.1f%%);", kDistName[i], 100.0 * S.shot_band[i] / sh, 100.0 * S.band_goal[i] / std::max(1L, S.shot_band[i]));
+        {   // §8.135: by where it was aimed (StatsBomb PL 15/16 goal % of on-target shots in brackets)
+            static const double kReal[12] = {23.6, 22.5, 46.8, 44.4, 15.5, 22.8, 41.2, 41.7, 16.7, 28.2, 47.0, 51.8};
+            std::printf("\n   BY AIMED CELL (from centre 0-1/1-2/2-3/3-3.66 m x height 0-0.5/0.5-1.5/1.5-2.44): n, goal %% (real of on target) / held %% / parried %%; aimed off target %ld\n", S.pc_n[0]);
+            for (int h = 0; h < 3; ++h) {
+                std::printf("     ");
+                for (int l = 0; l < 4; ++l) {
+                    const int c = 1 + l + 4 * h; const long n = S.pc_n[c];
+                    std::printf(" %4ld %4.1f (%4.1f) /%4.1f /%4.1f |", n, n ? 100.0 * S.pc_g[c] / n : 0.0, kReal[c - 1], n ? 100.0 * S.pc_k[c] / n : 0.0, n ? 100.0 * S.pc_p[c] / n : 0.0);
+                }
+                std::printf("\n");
+            }
+        }
+        {
+            static const int kRealSave[4][7] = {{88, 73, 50, 41, 24, 19, 7}, {97, 94, 88, 66, 48, 30, 5}, {100, 95, 97, 90, 78, 71, 23}, {100, 100, 100, 93, 78, 100, 30}};
+            std::printf("   SAVE CURVE (aimed on target, saved or scored): save %% by the keeper's gap along the line 0-0.5 … 3+ m, n; real StatsBomb in brackets\n");
+            for (int bnd = 0; bnd < 4; ++bnd) {
+                std::printf("     %s", kDistName[bnd]);
+                for (int g = 0; g < 7; ++g)
+                    std::printf("  %3.0f(%3d) n%-3ld", S.sc_n[bnd][g] ? 100.0 * S.sc_s[bnd][g] / S.sc_n[bnd][g] : -1.0, kRealSave[bnd][g], S.sc_n[bnd][g]);
+                std::printf("\n");
+            }
+        }
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
         std::printf("\n   goals by the last kick before them:");

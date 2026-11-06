@@ -108,7 +108,7 @@ public:
     // pass another; unset (a human's press), the kick goes where he pushes.
     void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0,
                    std::uint8_t pass_to = 0xFF, bool first_time = false,
-                   const math::Vec2* aim = nullptr);
+                   const math::Vec2* aim = nullptr, math::Fixed64 aim_z = math::Fixed64::zero());
 
     // Spawn/reset placement (scenario setup, not gameplay). `face` is the
     // initial kick/carry direction (toward the opponent goal).
@@ -128,6 +128,9 @@ public:
     const Locomotion& locomotion() const noexcept { return loco_; }
     // G4.87: how the ball flies (air drag) — the one law World and Brain share.
     void setBallFlight(const BallFlight& f) { ball_flight_ = f; }
+    math::Fixed64 keeperReach() const noexcept { return keeper_reach_; }
+    math::Fixed64 keeperShotReach() const noexcept { return keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_; }
+    math::Fixed64 shotLift(math::Fixed64 v, math::Fixed64 d, math::Fixed64 h) const;
     const BallFlight& ballFlight() const noexcept { return ball_flight_; }
     void setBody(SlotIndex slot, const Body& b) {
         if (slot < bodies_.size()) bodies_[slot] = b;
@@ -274,11 +277,14 @@ private:
     std::vector<std::uint8_t> carry_m_;   // latched with the action (G4.48)
     std::vector<math::Vec2> aim_;          // latched with the action (G5.29)
     std::vector<std::uint8_t> has_aim_;
+    std::vector<math::Fixed64> aim_z_;   // G5.37: an aimed shot's height at its aim point
     std::vector<std::uint8_t> first_time_; // latched with the action (G4.95)
     std::vector<std::uint8_t> pass_to_;   // latched with the action (G4.81)
     std::vector<bool>        keeper_;
     Locomotion loco_;
     BallFlight ball_flight_;
+    math::Fixed64 keeper_reach_ = kKeeperReach;
+    math::Fixed64 keeper_shot_reach_{};
     std::vector<Body> bodies_;
     // G5.3: who heads it, or -1. Fills `duel` when both teams went up for it.
     int aerialWinner(bool& duel) const;
