@@ -154,9 +154,6 @@ const FIELD_SIZES = {
       // attacking mids (10 left), 6 def mid, 3 LB, 5 LCB, 4 RCB, 2 RB".
       // Drawn as a triangle so the 6 sits behind the 8 and 10.
       '4-3-3':   { rows: [[1], [3, 5, 4, 2], [6], [10, 8], [11, 9, 7]] },
-      // Numbered for Match opponent (mig 912): the back three is 5-6-4 so
-      // the 6 can be the libero.
-      '3-5-2':   { rows: [[1], [5, 6, 4], [3, 11, 8, 7, 2], [10, 9]] },
       // Owner: "for the 4231 the 8 and 6 are the cdms left to right and
       // the rest are same as 433" — 10 is the central attacking mid.
       '4-2-3-1': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]] },
@@ -184,7 +181,17 @@ const FIELD_SIZES = {
       // never leaves mid-pitch, 10 and 8 straddling the crest (owner:
       // "then you can straddle the apsl logo with the 10 and 8") — see
       // _pitchRows.
-      '3-4-3':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2 },
+      //
+      // Owner 2026-11-06 (mig 1109): every back-three shape shares one
+      // "bowl" — 3, 5, 6, 4, 2 left to right (back line 5-6-4, wing backs
+      // 3 and 2) — and the bracket is the inside five (10 8 11 7 9) read
+      // from the bottom of the bowl up. 11 and 7 are the front two in
+      // every 3-5-2; the 9 is the piece that drops.
+      '3-4-3 (2-3)':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2 },
+      '3-4-3 (2-2-1)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 7], [9]], wideIds: [3, 2] },
+      '3-5-2 (2-1-2)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [9], [11, 7]], wideIds: [3, 2] },
+      '3-5-2 (1-2-2)': { rows: [[1], [5, 6, 4], [8], [3, 10, 9, 2], [11, 7]], wideIds: [3, 2] },
+      '3-5-2 (3-2)':   { rows: [[1], [5, 6, 4], [3, 10, 9, 8, 2], [11, 7]], wideIds: [3, 2] },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
       // spine stacks like an American-football I formation. The 2 and
