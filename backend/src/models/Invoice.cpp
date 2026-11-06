@@ -70,16 +70,21 @@ Invoice::Invoice() : db_(Database::getInstance()) {}
 
 // ── read ───────────────────────────────────────────────────────────────────
 
-json Invoice::openPlans(long long issuerId) {
+json Invoice::openPlans(long long issuerId, int year, int number) {
+    // A plan can be told to start on a later sheet (mig 1136, owner
+    // 2026-11-06: smoothing invoices under $2,000): until the sheet being
+    // created reaches starts_invoice_year/number it is skipped.
     auto rows = db_->query(R"SQL(
         SELECT p.id, p.category, p.description, p.total_amount, p.installment_count, p.show_total, p.budget_line_id,
                COALESCE(MAX(l.installment_no), 0) AS used
           FROM invoice_installment_plans p
           LEFT JOIN invoice_lines l ON l.plan_id = p.id
          WHERE p.issuer_id = $1::int
+           AND ($2::int = 0 OR p.starts_invoice_number IS NULL
+                OR (p.starts_invoice_year, p.starts_invoice_number) <= ($2::int, $3::int))
          GROUP BY p.id
         HAVING COALESCE(MAX(l.installment_no), 0) < p.installment_count
-         ORDER BY p.created_at, p.id)SQL", {std::to_string(issuerId)});
+         ORDER BY p.created_at, p.id)SQL", {std::to_string(issuerId), std::to_string(year), std::to_string(number)});
     json out = json::array();
     for (const auto& r : rows) {
         const int count = r["installment_count"].as<int>();
@@ -774,7 +779,7 @@ long long Invoice::createNumbered(long long issuerId, int year, int number, cons
 
     // The next "k of N" of every plan still running.
     int sort = 2;
-    for (const auto& p : openPlans(issuerId)) {
+    for (const auto& p : openPlans(issuerId, year, number)) {
         const int k = p["next_no"].get<int>(), count = p["installment_count"].get<int>();
         const double total = p["total_amount"].get<double>(), per = round2(total / count);
         const double amt = (k == count) ? round2(total - per * (count - 1)) : per;   // last one absorbs rounding

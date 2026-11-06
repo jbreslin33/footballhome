@@ -110,7 +110,9 @@ private:
     void applyLeadIns(long long invoiceId);
     void restoreAutoAdjusted(long long invoiceId);
     void settleOverlaps(long long invoiceId);
-    nlohmann::json openPlans(long long issuerId);
+    // year/number = the sheet being created: plans that start on a later
+    // sheet (starts_invoice_*, mig 1136) wait.  0 = list every open plan.
+    nlohmann::json openPlans(long long issuerId, int year = 0, int number = 0);
 
     Database* db_;
 };

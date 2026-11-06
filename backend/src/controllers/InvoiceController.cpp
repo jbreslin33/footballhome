@@ -469,6 +469,17 @@ long long InvoiceController::addRefFeesTo(long long invoiceId, const json& picks
         lineId = model_->upsertLine(invoiceId, 0, {{"category", "referees"}, {"description", "Referees — " + line["description"].get<std::string>()},
                                                    {"quantity", line["quantity"]}, {"amount", line["amount"]}}, error);
         if (lineId <= 0) return 0;
+        // Split refs (mig 1136): an issuer with ref_split_payments > 1 bills a
+        // period's refs as payment 1 of N here, the rest on the next sheets
+        // (openPlans).  syncRefLine below keeps every payment on the games total.
+        Database::getInstance()->query(R"SQL(
+            WITH iss AS (SELECT i.issuer_id, s.ref_split_payments AS n FROM invoices i JOIN invoice_issuers s ON s.id = i.issuer_id
+                          WHERE i.id = $1::int AND s.ref_split_payments > 1),
+            pl AS (INSERT INTO invoice_installment_plans (issuer_id, category, description, total_amount, installment_count, show_total)
+                   SELECT iss.issuer_id, 'referees', l.description, l.amount, iss.n, true
+                     FROM iss, invoice_lines l WHERE l.id = $2::int AND l.plan_id IS NULL RETURNING id)
+            UPDATE invoice_lines SET plan_id = pl.id, installment_no = 1 FROM pl WHERE invoice_lines.id = $2::int)SQL",
+            {std::to_string(invoiceId), std::to_string(lineId)});
     }
     Expenses::recordRefPayments(lineId, line["items"]);
     Expenses::syncRefLine(lineId);
@@ -537,7 +548,17 @@ Response InvoiceController::handleRefFeeMark(const Request& request) {
                 db->query("DELETE FROM ref_fee_payments" + where,
                           {std::to_string(lineId), std::to_string(refId), gameOn, opponent});
                 auto left = db->query("SELECT 1 FROM ref_fee_payments WHERE invoice_line_id = $1::int LIMIT 1", {std::to_string(lineId)});
-                if (left.empty()) db->query("DELETE FROM invoice_lines WHERE id = $1::int", {std::to_string(lineId)});
+                if (left.empty()) {
+                    // A split line's plan goes with it — its later payments too —
+                    // so the next sheet never bills games that are off (mig 1136).
+                    db->query(R"SQL(
+                        WITH pl AS (SELECT p.id FROM invoice_installment_plans p JOIN invoice_lines l ON l.plan_id = p.id
+                                     WHERE l.id = $1::int AND p.category = 'referees'),
+                             gone AS (DELETE FROM invoice_lines l USING pl, invoices v
+                                       WHERE l.plan_id = pl.id AND v.id = l.invoice_id AND NOT v.is_final AND l.id <> $1::int)
+                        DELETE FROM invoice_installment_plans p USING pl WHERE p.id = pl.id)SQL", {std::to_string(lineId)});
+                    db->query("DELETE FROM invoice_lines WHERE id = $1::int", {std::to_string(lineId)});
+                }
                 else Expenses::syncRefLine(lineId);
             }
             db->query("INSERT INTO invoice_ref_declines (invoice_id, source, ref_id, game_on, opponent) "

@@ -428,7 +428,27 @@ void Expenses::syncRefLine(long long lineId) {
                          WHERE rp.invoice_line_id = $1::int
                          GROUP BY 1) g) p
          WHERE l.id = $1::int AND p.n > 0)SQL", {std::to_string(lineId)});
-    db->query("UPDATE invoices SET updated_at = now() WHERE id = (SELECT invoice_id FROM invoice_lines WHERE id = $1::int)",
+    // Split refs (mig 1136, owner 2026-11-06: "its ok to spread out refs as
+    // long as we track it"): when the line is payment k of a plan, the games
+    // total is the PLAN's total — every payment of it, on this sheet and the
+    // next, re-sums from the games (the last one takes the odd cent) and
+    // carries the same shorthand.  The games stay on this line only.
+    db->query(R"SQL(
+        WITH me AS (SELECT plan_id, amount AS total, description FROM invoice_lines WHERE id = $1::int AND plan_id IS NOT NULL),
+        pl AS (UPDATE invoice_installment_plans p SET total_amount = me.total, description = me.description
+                 FROM me WHERE p.id = me.plan_id RETURNING p.id, p.total_amount, p.installment_count)
+        UPDATE invoice_lines l
+           SET description = me.description,
+               rate   = CASE WHEN l.installment_no >= pl.installment_count
+                             THEN ROUND(pl.total_amount - ROUND(pl.total_amount / pl.installment_count, 2) * (pl.installment_count - 1), 2)
+                             ELSE ROUND(pl.total_amount / pl.installment_count, 2) END,
+               amount = CASE WHEN l.installment_no >= pl.installment_count
+                             THEN ROUND(pl.total_amount - ROUND(pl.total_amount / pl.installment_count, 2) * (pl.installment_count - 1), 2)
+                             ELSE ROUND(pl.total_amount / pl.installment_count, 2) END
+          FROM pl, me
+         WHERE l.plan_id = pl.id)SQL", {std::to_string(lineId)});
+    db->query("UPDATE invoices SET updated_at = now() WHERE id IN (SELECT invoice_id FROM invoice_lines WHERE id = $1::int "
+              " UNION SELECT l2.invoice_id FROM invoice_lines l1 JOIN invoice_lines l2 ON l2.plan_id = l1.plan_id WHERE l1.id = $1::int)",
               {std::to_string(lineId)});
 }
 
