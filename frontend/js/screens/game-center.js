@@ -192,6 +192,14 @@ const FIELD_SIZES = {
       '3-5-2 (2-1-2)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [9], [11, 7]], wideIds: [3, 2] },
       '3-5-2 (1-2-2)': { rows: [[1], [5, 6, 4], [8], [3, 10, 9, 2], [11, 7]], wideIds: [3, 2] },
       '3-5-2 (3-2)':   { rows: [[1], [5, 6, 4], [3, 10, 9, 8, 2], [11, 7]], wideIds: [3, 2] },
+      // Asymmetric (owner 2026-11-06, mig 1112): "him as right sided
+      // '10'/inside winger. and tolu at 9 and then the others behind
+      // them" — the 9 dead center, the 7 in the right half-space, the 11
+      // drops into the midfield three (11 10 8 left to right). The 0 is
+      // an empty left column (GAP_POS) that keeps the 9 central.
+      // Code (mig 1113): an R before a row in the bracket = that row sits
+      // right of center (L = left); never mirrored for free.
+      '3-5-2 (3-R2)': { rows: [[1], [5, 6, 4], [3, 11, 10, 8, 2], [0, 9, 7]], wideIds: [3, 2] },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
       // spine stacks like an American-football I formation. The 2 and
@@ -247,6 +255,12 @@ const HALFWAY_ROW = Object.freeze([]);
 // midlineRow band vacated when it dropped onto the line's center slot
 // (_pitchRows) — it renders as open space, the opposing half.
 const SPACER_ROW = Object.freeze([]);
+
+// Third sentinel, for one column rather than a row: a 0 in a FIELD_SIZES
+// row is an empty column the width of a chip, so an asymmetric shape can
+// hold a chip off-center (owner 2026-11-06: "can we put asymmetrical
+// formations in?").  The card draws it as invisible space (token.gap).
+const GAP_POS = Object.freeze({ gap: true });
 
 
 // The four moments of a game, in the order they happen — the pill strip
@@ -5542,6 +5556,7 @@ class GameCenterScreen extends EventScreen {
       pitch = this._pitchRows().map(row => {
         if (row === HALFWAY_ROW) return null;
         const tokens = row.map(pos => {
+          if (pos === GAP_POS) return { gap: true };
           const occupant = rosterById.get(slotToPlayerId.get(pos.id));
           const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
           // The bench players sharing this spot, 2nd first (mig 763).
@@ -6069,7 +6084,9 @@ class GameCenterScreen extends EventScreen {
     let rows;
     if (template.rows) {
       // Explicit left-to-right id order per row (see FIELD_SIZES doc).
-      rows = template.rows.map(idRow => idRow.map(id => positionById.get(id)).filter(Boolean));
+      // 0 in a row is an empty column (GAP_POS) — it holds width so an
+      // asymmetric shape can sit a chip off-center (mig 1112).
+      rows = template.rows.map(idRow => idRow.map(id => id === 0 ? GAP_POS : positionById.get(id)).filter(Boolean));
     } else {
       rows = [];
       let idx = 0;

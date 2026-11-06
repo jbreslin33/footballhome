@@ -1877,7 +1877,11 @@ class SocialPostCard {
     // full backs on the touchline; owner 2026-09-29: "show a narrower
     // formation for the full backs" — rows of four (and five) get a
     // tighter cap so the line pulls in from the edges.
-    const token = (t, n = 0, extra = '') => `
+    // token.gap (FIELD_SIZES 0 / GAP_POS): an empty column, same flex
+    // width as a chip, so an asymmetric row holds a chip off-center.
+    const token = (t, n = 0, extra = '') => t.gap
+      ? `<div aria-hidden="true" style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;"></div>`
+      : `
       <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
