@@ -452,6 +452,33 @@ std::optional<BrainWatchFrame> decodeBrainWatch(const Bytes& payload) {
     return f;
 }
 
+Bytes encodeTeamList(const TeamListFrame& f) {
+    Writer w;
+    const std::size_t n = f.names.size() > 255 ? 255 : f.names.size();
+    w.u8(static_cast<std::uint8_t>(n));
+    for (std::size_t k = 0; k < n; ++k) {
+        const std::string& s = f.names[k];
+        const std::size_t len = s.size() > 60 ? 60 : s.size();
+        w.u8(static_cast<std::uint8_t>(len));
+        for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>(s[i]));
+    }
+    return std::move(w.out);
+}
+
+std::optional<TeamListFrame> decodeTeamList(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    TeamListFrame f;
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t k = 0; k < n && r.ok; ++k) {
+        std::string s;
+        const std::uint8_t len = r.u8();
+        for (std::uint8_t i = 0; i < len && r.ok; ++i) s.push_back(static_cast<char>(r.u8()));
+        f.names.push_back(std::move(s));
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 Bytes encodeSpeed(const SpeedFrame& f) {
     Writer w;
     w.u16(f.pct);

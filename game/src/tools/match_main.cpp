@@ -9,7 +9,8 @@
 //   fh-game-match [matches=30] [minutes=90]
 //
 // Env: POSTGRES_HOST / _DB / _USER / _PASSWORD, GAME_TEAM_HOME / _AWAY,
-// GAME_MATCH_SEED (base; match m plays seed base+m — a fixed sample),
+// GAME_MATCH_SEED (base; match m plays seed base+m — a fixed sample); fixtures rotate
+// over every team (round-robin, §8.133) unless GAME_TEAM_HOME / GAME_TEAM_AWAY pin one,
 // GAME_PARAMS="key=value,..." (game_model_params numbers for the run; the DB
 // is never written), GAME_DEAD_TRACE=1 (a stalled dead ball, every 10 s),
 // GAME_HOLD_TRACE=1 (full-backs and wide men holding shape at 5 Hz: spot, velocity, intent; §8.128;
@@ -135,10 +136,39 @@ int main(int argc, char** argv) {
     const std::uint64_t seed0 = std::strtoull(envOr("GAME_MATCH_SEED", "1000"), nullptr, 10);
     const bool dead_trace = std::getenv("GAME_DEAD_TRACE") != nullptr;
     Stats S;
+    // G5.35: rotating fixtures — James: "so you test with various matchups". Unless
+    // GAME_TEAM_HOME / GAME_TEAM_AWAY pin one pairing, match m plays game m of a
+    // round-robin over every team (circle method: round m/10, game m%10; home and
+    // away swap by round), so 8 matches are 8 fixtures, 16 different sides.
+    struct Side { persistence::DemoTeam team; ai::FormationSpec spec; };
+    std::vector<Side> sides;
+    const bool rotate = !std::getenv("GAME_TEAM_HOME") && !std::getenv("GAME_TEAM_AWAY") && base.team_names.size() >= 2;
+    if (rotate) {
+        for (const auto& n : base.team_names) {
+            auto t = persistence::loadDemoTeam(db, n);
+            if (!t) continue;
+            Side sd{std::move(*t), base.formation_home};
+            if (!sd.team.formation_code.empty())
+                if (auto f = persistence::loadFormation(db, sd.team.formation_code)) sd.spec = std::move(*f);
+            sides.push_back(std::move(sd));
+        }
+        if (sides.size() % 2) sides.pop_back();   // the circle wants an even count
+    }
+    std::vector<std::string> fixtures;
 
     for (int m = 0; m < matches; ++m) {
         server::GameServer::Config cfg = base;
         cfg.match_seed = seed0 + static_cast<std::uint64_t>(m);
+        if (sides.size() >= 2) {
+            const int n = static_cast<int>(sides.size()), rounds = n - 1, per = n / 2;
+            const int r = (m / per) % rounds, g = m % per;
+            auto at = [&](int k) { return k == 0 ? 0 : 1 + (k - 1 + r) % (n - 1); };   // 0 fixed, the rest turn
+            int a = at(g), b = at(n - 1 - g);
+            if (r % 2) std::swap(a, b);
+            cfg.roster_home = sides[a].team; cfg.formation_home = sides[a].spec;
+            cfg.roster_away = sides[b].team; cfg.formation_away = sides[b].spec;
+            fixtures.push_back(sides[a].team.name + " v " + sides[b].team.name);
+        }
         NullTransport t;
         server::GameServer s{cfg, t};
         const auto& W = s.world();
@@ -591,9 +621,16 @@ int main(int argc, char** argv) {
 
     // ── the report ──────────────────────────────────────────────────────
     const double nm = matches, tm = 2.0 * matches;
-    std::printf("%s vs %s over %d matches: W%ld D%ld L%ld | goals %.2f - %.2f\n", names.team_home.c_str(), names.team_away.c_str(),
-                matches, S.w, S.d, S.l, S.goals[0] / nm, S.goals[1] / nm);
-    std::printf("%s shots %.1f/match\n%s shots %.1f/match\n", names.team_home.c_str(), S.shots[0] / nm, names.team_away.c_str(), S.shots[1] / nm);
+    if (!fixtures.empty()) {
+        std::printf("FIXTURES (rotating, %d): ", matches);
+        for (std::size_t i = 0; i < fixtures.size(); ++i) std::printf("%s%s", i ? "; " : "", fixtures[i].c_str());
+        std::printf("\nhome sides over %d matches: W%ld D%ld L%ld | goals %.2f - %.2f\n", matches, S.w, S.d, S.l, S.goals[0] / nm, S.goals[1] / nm);
+        std::printf("home shots %.1f/match\naway shots %.1f/match\n", S.shots[0] / nm, S.shots[1] / nm);
+    } else {
+        std::printf("%s vs %s over %d matches: W%ld D%ld L%ld | goals %.2f - %.2f\n", names.team_home.c_str(), names.team_away.c_str(),
+                    matches, S.w, S.d, S.l, S.goals[0] / nm, S.goals[1] / nm);
+        std::printf("%s shots %.1f/match\n%s shots %.1f/match\n", names.team_home.c_str(), S.shots[0] / nm, names.team_away.c_str(), S.shots[1] / nm);
+    }
     {
         const double sh = std::max(1L, S.shots[0] + S.shots[1]);
         std::printf("SHOTS a team-match %.1f, goals %.2f, %.1f%% scored; by distance:", (S.shots[0] + S.shots[1]) / tm, (S.goals[0] + S.goals[1]) / tm,

@@ -70,6 +70,8 @@ struct DemoTeam {
     std::vector<DemoPlayer> players;  // lineup order (1-11 the formation slots), then the bench
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name);
+// G5.35: every game_demo_teams name, A-Z — the page's matchup dropdowns.
+std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg);
 
 // The match officials (G4.88, mig 822): the crew of `level` (the home
 // team's band; falls back to semipro), each man's role and own ratings

@@ -66,6 +66,8 @@ public:
         core::ModelParams model_params;
         // G4.88 (mig 822): the match officials — empty = a 50-rated crew.
         std::vector<persistence::CrewMember> crew;
+        // G5.35 (2.1): every team a match can be made of (TEAM_LIST).
+        std::vector<std::string> team_names;
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -92,6 +94,8 @@ public:
     bool slotClaimedBy(std::uint8_t slot, ClientId client) const;
 
 private:
+    // G5.35: build the match from cfg_ (formations, rosters) at kick-off.
+    void startMatch();
     void onConnect(ClientId id, const auth::JwtClaims& claims);
     void onDisconnect(ClientId id);
     void onMessage(ClientId id, std::span<const std::uint8_t> bytes);

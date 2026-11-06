@@ -26,6 +26,8 @@
     BRAIN: 0x3B,          // each player's decision, ~5 Hz to watchers
     BRAIN_WATCH: 0x3C,
     BRAIN_LEGEND: 0x3D,
+    TEAM_LIST: 0x45,      // 2.1 s→c: every team a match can be made of (a names list)
+    NEW_MATCH: 0x46,      // 2.1 c→s admin: a TEAMS payload, names only — kick off that match
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
 
@@ -171,6 +173,16 @@
     return envelope(FrameType.RELOAD_ROSTERS, new ArrayBuffer(0));
   }
 
+  // 2.1 (G5.35) admin: kick off a new match between any two teams.
+  function encodeNewMatch(home, away) {
+    const enc = new TextEncoder();
+    const h = enc.encode(home).slice(0, 60), a = enc.encode(away).slice(0, 60);
+    const p = new Uint8Array(2 + h.length + a.length);
+    p[0] = h.length; p.set(h, 1);
+    p[1 + h.length] = a.length; p.set(a, 2 + h.length);
+    return envelope(FrameType.NEW_MATCH, p.buffer);
+  }
+
   function decodeNames(view, at) {
     // A list of names (BRAIN_LEGEND: the decision names, index = why code).
     const n = view.getUint8(at);
@@ -257,6 +269,7 @@
   window.GameWire = {
     FrameType,
     encodeReloadRosters,
+    encodeNewMatch,
     decodeTeams,
     encodeSpeed,
     decodeSpeed,

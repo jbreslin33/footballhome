@@ -110,6 +110,20 @@ std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {
     }
 }
 
+std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg) {
+    std::vector<std::string> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        for (const auto& r : tx.exec("SELECT name FROM game_demo_teams ORDER BY name"))
+            out.push_back(r[0].as<std::string>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_demo_teams names load failed: %s\n", e.what());
+    }
+    return out;
+}
+
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name) {
     try {
         pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +

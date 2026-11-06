@@ -11,7 +11,7 @@
 
   class GameNet {
     // handlers: { onHello, onSnapshot, onRoster, onEvent, onClose, onBrain?,
-    //             onSpeed?, onBrainLegend?, onTeams? }
+    //             onSpeed?, onBrainLegend?, onTeams?, onTeamList? }
     constructor(handlers) {
       this.handlers = handlers;
       this.ws = null;
@@ -46,6 +46,8 @@
             if (this.handlers.onSpeed) this.handlers.onSpeed(GameWire.decodeSpeed(view, f.payloadAt));
           } else if (f.type === T.BRAIN_LEGEND) {
             if (this.handlers.onBrainLegend) this.handlers.onBrainLegend(GameWire.decodeNames(view, f.payloadAt));
+          } else if (f.type === T.TEAM_LIST) {
+            if (this.handlers.onTeamList) this.handlers.onTeamList(GameWire.decodeNames(view, f.payloadAt));
           } else if (f.type === T.TEAMS) {
             if (this.handlers.onTeams) this.handlers.onTeams(GameWire.decodeTeams(view, f.payloadAt, f.payloadLen));
           } else if (f.type === T.EVENT) {
@@ -68,6 +70,7 @@
     reloadRosters() { this.send(GameWire.encodeReloadRosters()); }
     brainWatch(on) { this.send(GameWire.encodeBrainWatch(on)); }
     setSpeed(pct) { this.send(GameWire.encodeSpeed(pct)); }
+    newMatch(home, away) { this.send(GameWire.encodeNewMatch(home, away)); }
   }
 
   window.GameNet = GameNet;

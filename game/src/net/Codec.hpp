@@ -187,6 +187,15 @@ struct TeamsFrame {
 Bytes encodeTeams(const TeamsFrame& f);
 std::optional<TeamsFrame> decodeTeams(const Bytes& payload);
 
+// 2.1 (G5.35) TEAM_LIST: every team a match can be made of, on connect —
+// the page's matchup dropdowns. NEW_MATCH (c→s admin) is a TEAMS payload,
+// names only.
+struct TeamListFrame {
+    std::vector<std::string> names;
+};
+Bytes encodeTeamList(const TeamListFrame& f);
+std::optional<TeamListFrame> decodeTeamList(const Bytes& payload);
+
 // G4.41 (1.7): the brain overlay [Buckland's Simple Soccer debug view].
 struct BrainEntry {
     std::uint8_t why = 0;        // index into the BRAIN_LEGEND names

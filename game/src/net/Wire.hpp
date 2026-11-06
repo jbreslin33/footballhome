@@ -17,7 +17,7 @@ namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
 inline constexpr std::uint8_t kProtoMajor = 2;
-inline constexpr std::uint8_t kProtoMinor = 0;  // 2.0 (G5.23): the old brain's frames and fields gone
+inline constexpr std::uint8_t kProtoMinor = 1;  // 2.0 (G5.23): the old brain's frames and fields gone; 2.1 (G5.35) TEAM_LIST + NEW_MATCH
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.
@@ -39,6 +39,8 @@ enum class FrameType : std::uint8_t {
     Brain          = 0x3B, // s→c: each player's decision (why / target / other), ~5 Hz to watchers
     BrainWatch     = 0x3C, // c→s: switch the brain overlay feed on / off
     BrainLegend    = 0x3D, // s→c: the decision names, on connect
+    TeamList       = 0x45, // s→c (2.1): every team a match can be made of, on connect
+    NewMatch       = 0x46, // c→s admin (2.1): a TEAMS payload, names only — kick off that match
     // Retired in 2.0 (G5.23) with the old brain — never reuse: 0x32 MATCH_SETTINGS,
     // 0x33 PLAYER_SETTINGS, 0x35 PRESETS, 0x36 APPLY_PRESET, 0x37 PLAYER_ATTRIBUTES,
     // 0x3A CONCEPTS, 0x3E PHASES, 0x3F RUN_PHASE, 0x40 MODEL_DEMANDS, 0x41 SET_DEMAND,

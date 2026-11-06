@@ -33,6 +33,7 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     cfg.admin_user_ids = persistence::loadAdminUserIds(db);
     cfg.db = db;   // G4.32: admin RELOAD_ROSTERS re-reads the teams
     cfg.model_params = persistence::loadModelParams(db);
+    cfg.team_names = persistence::loadDemoTeamNames(db);   // G5.35: the matchup dropdowns
     say("fh-game: %zu physics param(s) loaded\n", cfg.model_params.size());
     if (auto t = persistence::loadDemoTeam(db, th)) {
         cfg.roster_home = std::move(*t);

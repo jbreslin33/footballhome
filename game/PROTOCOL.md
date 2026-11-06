@@ -64,6 +64,8 @@ Frame types (u8):
 | 0x3B | BRAIN | s→c | the brain overlay (G4.41), ~5 Hz, only to clients that sent BRAIN_WATCH on: `u8 count`, then per slot `u8 why (BRAIN_LEGEND index) \| i16 target x dm \| i16 target y dm \| u8 other slot (255 none)` |
 | 0x3C | BRAIN_WATCH | c→s | anyone (1.7): `u8 on` — start / stop the BRAIN feed for this client |
 | 0x3D | BRAIN_LEGEND | s→c | on connect: the decision names, `u8 count`, then per name `u8 len \| bytes`; a BRAIN entry's `why` indexes it |
+| 0x45 | TEAM_LIST | s→c | (2.1, G5.35) on connect: every team a match can be made of (game_demo_teams, A-Z) — `u8 count`, then per team `u8 len \| name (UTF-8)`; the page's matchup dropdowns |
+| 0x46 | NEW_MATCH | c→s | (2.1, G5.35) admin: a TEAMS payload, names only (`u8 len \| home \| u8 len \| away`) — kick off that match fresh, each side in its own formation; claims dropped; answers every client with TEAMS + ROSTER + a SNAPSHOT. Unknown, empty or equal names change nothing |
 | — | retired in 2.0 | | 0x32, 0x33, 0x35, 0x36, 0x37, 0x3A, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44 — never reused |
 | TBD | … | | reserved; new types are additive within a major version |
 

@@ -77,6 +77,7 @@
   // where), saved to the club DB; the match re-reads the teams. G5.23: the
   // PLAYER (made-up attributes) and KNOWLEDGE (concept ratings) tabs are gone.
   let teams = null;            // { home, away } from the TEAMS frame
+  let isAdmin = false;         // HELLO capability bit 3
   let idTeams = null;          // [home, away] roster payloads: slot numbers
   // Each on-pitch figure: its formation slot's shirt number + last name.
   function applyIdentities() {
@@ -361,6 +362,57 @@
   }
   paintBrainBar();
 
+  // ── Matchup (G5.35, admin) — James: "i should be able to select any
+  // matchup from a drop down". Any two of the teams (the 2015/16 Premier
+  // League sides), kicked off fresh; everyone watching sees the new match. ──
+  let teamList = [];
+  const matchBar = document.createElement('div');
+  matchBar.className = 'game-only';
+  matchBar.hidden = true;
+  matchBar.setAttribute('role', 'group');
+  matchBar.setAttribute('aria-label', 'Matchup');
+  matchBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
+    'top:calc(env(safe-area-inset-top, 0px) + 124px);display:flex;flex-wrap:wrap;justify-content:center;gap:6px;' +
+    'align-items:center;z-index:20;max-width:calc(100vw - 32px);background:rgba(10,14,20,.55);' +
+    'padding:3px 6px;border-radius:14px;font:700 11px system-ui,sans-serif;color:#fff;';
+  const mbSel = 'border:0;border-radius:10px;padding:3px 6px;font:700 11px system-ui,sans-serif;' +
+    'background:rgba(255,255,255,.15);color:#fff;max-width:42vw;';
+  matchBar.innerHTML =
+    `<select data-mb="home" aria-label="Home team" style="${mbSel}"></select>` +
+    `<span>v</span>` +
+    `<select data-mb="away" aria-label="Away team" style="${mbSel}"></select>` +
+    `<button type="button" data-mb="go" title="Kick off this match" ` +
+    `style="border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;` +
+    `background:#ffcc00;color:#0b1c3d;">⚽ Kick off</button>`;
+  document.body.appendChild(matchBar);
+  const mbHome = matchBar.querySelector('[data-mb="home"]');
+  const mbAway = matchBar.querySelector('[data-mb="away"]');
+  const mbGo = matchBar.querySelector('[data-mb="go"]');
+  function paintMatchBar() {
+    matchBar.hidden = !isAdmin || teamList.length < 2;
+    for (const [sel, cur] of [[mbHome, teams && teams.home], [mbAway, teams && teams.away]]) {
+      if (sel.options.length !== teamList.length) {
+        sel.innerHTML = '';
+        for (const n of teamList) {
+          const o = document.createElement('option');
+          o.value = n; o.textContent = n;
+          sel.appendChild(o);
+        }
+      }
+      if (cur && teamList.includes(cur)) sel.value = cur;
+    }
+    const same = mbHome.value === mbAway.value;
+    mbGo.disabled = same;
+    mbGo.style.opacity = same ? '.5' : '1';
+  }
+  mbHome.addEventListener('change', () => { mbGo.disabled = mbHome.value === mbAway.value; mbGo.style.opacity = mbGo.disabled ? '.5' : '1'; });
+  mbAway.addEventListener('change', () => { mbGo.disabled = mbHome.value === mbAway.value; mbGo.style.opacity = mbGo.disabled ? '.5' : '1'; });
+  mbGo.addEventListener('click', () => {
+    if (mbHome.value === mbAway.value) return;
+    net.newMatch(mbHome.value, mbAway.value);
+    toast(`⚽ ${mbHome.value} v ${mbAway.value} — kick-off`, 2500);
+  });
+
   // ── Sim speed (G4.61, admin) — James: "slow mo … or speed up but with
   // same physics … slow mo would allow me to really see the tactics and
   // movements and help coach it". The server ticks slower or faster; each
@@ -436,7 +488,7 @@
     `background:${bg || 'rgba(255,255,255,.15)'};color:${bg ? '#0b1c3d' : '#fff'};">${label}</button>`;
   document.body.appendChild(replayBar);
   function paintReplayBar() {
-    replayBar.style.top = `calc(env(safe-area-inset-top, 0px) + ${isAdmin ? 124 : 60}px)`;
+    replayBar.style.top = `calc(env(safe-area-inset-top, 0px) + ${isAdmin ? 156 : 60}px)`;
     const rp = renderer.replay;
     if (!rp) {
       replayBar.innerHTML = rpBtn('start', '⏪ Replay', 'Rewind 10 seconds', '#ffcc00');
@@ -528,6 +580,7 @@
       // Admin capability (bit 3) shows the level pickers.
       isAdmin = !!(h.capabilities & 8);
       paintSpeedBar();
+      paintMatchBar();
       paintReplayBar();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
@@ -609,8 +662,13 @@
     onBrainLegend(names) {
       brainLegend = names;
     },
+    onTeamList(names) {
+      teamList = names;
+      paintMatchBar();
+    },
     onTeams(t) {
       teams = t;
+      paintMatchBar();
       paintWatchList();
       if (brainOn) paintBrainSides();
       // Names + position numbers over the players (mig 643): both teams'

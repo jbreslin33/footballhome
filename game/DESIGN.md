@@ -5888,3 +5888,32 @@ rebuilt (22/22 inside), daemon up healthy on 90 physics params. `frontend/game.h
 daemon picks its teams from env at boot today. (2) The harness on rotating fixtures, not
 Leicester v Arsenal only. (3) The backend cleanup in game/ship/README.md. Lighthouse and the
 Ukies return later as PL abilities scaled down, never as hand-made sheets.
+
+### 8.133 G5.35 — any matchup from a dropdown; the harness plays rotating fixtures (protocol 2.1)
+
+James: "i should be able to select any matchup from a drop down"; "so you test with various
+matchups". The daemon took its two teams from env at boot; every harness result since G5.24
+was Leicester City v Arsenal.
+
+**Built.**
+- Protocol 2.1 (additive): TEAM_LIST 0x45 s→c on connect (every game_demo_teams name, A-Z —
+  the 20 PL 2015/16 sides); NEW_MATCH 0x46 c→s admin (a TEAMS payload, names only). The server
+  loads both teams and their own formations, drops claims, kicks off fresh on the next seed
+  (`GameServer::startMatch`, now also the constructor's body), and answers every client with
+  TEAMS + ROSTER + a SNAPSHOT. Unknown, empty or equal names change nothing.
+- The page (admins): a matchup bar under the speed bar — home ▾ v away ▾, ⚽ Kick off.
+  Everyone watching sees the new match: one match, one clock.
+- Harness: fixtures rotate over every team unless GAME_TEAM_HOME / GAME_TEAM_AWAY pin one —
+  match m is game m of a round-robin (circle method), so 8 matches = 8 fixtures, 16 sides;
+  FIXTURES line. Codec test for TEAM_LIST; NEW_MATCH checked on a private daemon (local port,
+  throwaway secret): HELLO admin → TEAM_LIST 20 → NEW_MATCH Chelsea v Tottenham Hotspur → TEAMS.
+- Deploy note: `podman-compose up -d` left the old container running on the old image (the
+  known recreate quirk); `--force-recreate` and check the container's image id.
+
+**Rotating baseline** (8 fixtures, fh_game_scratch): settled block v real settled 2.03 m /
+−0.09 signed (Leicester v Arsenal 1.81 / −0.12); off the ball 40.5 / 51.7 / 7.8% (41.9 / 50.3 /
+7.9); shots 8.8 a team-match (12.9); **goals 0.12 a team-match, 1.4% of shots scored** (real PL
+2015/16 ~10%) — the biggest problem in the game now.
+
+**Next moles.** (1) Scoring: keepers save 65%+, 1.4% scored. (2) Crosses 0.0 (11.5). (3) Our
+transition +2.8 m above real; possessions twice too long.

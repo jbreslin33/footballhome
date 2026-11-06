@@ -255,6 +255,19 @@ FH_TEST(teams_kits_round_trip) {
 // 1.17: ROSTER carries each slot's position number; a 1.16 frame (no
 // trailer) still decodes, with none.
 // 2.0: a brain entry is why / target / other.
+// G5.35 (2.1): the matchup dropdowns' team list.
+FH_TEST(team_list_round_trip) {
+    TeamListFrame f;
+    f.names = {"AFC Bournemouth", "Arsenal", "West Ham United"};
+    auto d = decodeTeamList(encodeTeamList(f));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT(d->names.size() == 3);
+    FH_EXPECT(d->names[0] == "AFC Bournemouth" && d->names[2] == "West Ham United");
+    FH_EXPECT(!decodeTeamList(Bytes{2, 3, 'A'}).has_value());   // truncated
+    auto e = decodeTeamList(encodeTeamList(TeamListFrame{}));
+    FH_EXPECT(e.has_value() && e->names.empty());
+}
+
 FH_TEST(brain_frame_round_trips) {
     BrainFrame f;
     BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7;

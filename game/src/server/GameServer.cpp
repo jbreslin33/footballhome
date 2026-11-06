@@ -27,24 +27,44 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
       brain_{ai::TeamSetup::splitHalves(cfg.slot_count),
              Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg.pitch_half_y),
              cfg.formation_home, cfg.formation_away} {
-    world_.setLocomotion(core::Locomotion(cfg.model_params));   // G4.51
-    world_.setBallFlight(core::BallFlight(cfg.model_params));   // G4.87
-    brain_.setModelParams(cfg.model_params);
-    world_.setMatchSeed(cfg.match_seed);
-    brain_.setMatchSeed(cfg.match_seed);
+    transport_.setOnConnect(
+        [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
+    transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
+    transport_.setOnMessage(
+        [this](ClientId id, std::span<const std::uint8_t> b) {
+            onMessage(id, b);
+        });
+
+    startMatch();
+}
+
+// G5.35: the match from cfg_ — a fresh World and Brain on its formations
+// and rosters, everyone on the spawn lines. The constructor and NEW_MATCH.
+void GameServer::startMatch() {
+    world_ = core::World{cfg_.slot_count, Fixed64::fromInt(cfg_.max_speed_mps),
+                         Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg_.pitch_half_y),
+                         cfg_.half_length_ticks};
+    brain_ = ai::Brain{ai::TeamSetup::splitHalves(cfg_.slot_count),
+                       Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg_.pitch_half_y),
+                       cfg_.formation_home, cfg_.formation_away};
+    world_.setLocomotion(core::Locomotion(cfg_.model_params));   // G4.51
+    world_.setBallFlight(core::BallFlight(cfg_.model_params));   // G4.87
+    brain_.setModelParams(cfg_.model_params);
+    world_.setMatchSeed(cfg_.match_seed);
+    brain_.setMatchSeed(cfg_.match_seed);
     {   // G5.23: every player's skill, league-wide (physics.skill.*)
         core::PlayerSkill k;
-        k.configure(cfg.model_params);
+        k.configure(cfg_.model_params);
         world_.setSkillAll(k);
     }
     applyRosters();
     // The officials (G4.88): their own judgement numbers; body and speed the
     // default (6.4 m/s, the old 50-rated official's).
-    world_.officials().configure(cfg.model_params);
-    world_.configureAerial(cfg.model_params);   // G5.3
-    world_.configureTempo(cfg.model_params);    // G5.4
-    world_.configureFouls(cfg.model_params);    // G5.28
-    for (const auto& m : cfg.crew) {
+    world_.officials().configure(cfg_.model_params);
+    world_.configureAerial(cfg_.model_params);   // G5.3
+    world_.configureTempo(cfg_.model_params);    // G5.4
+    world_.configureFouls(cfg_.model_params);    // G5.28
+    for (const auto& m : cfg_.crew) {
         auto rating = [&](const char* code) -> std::int16_t {
             const auto it = m.ratings.find(code);
             return it == m.ratings.end() ? std::int16_t{-1} : static_cast<std::int16_t>(it->second);
@@ -57,14 +77,6 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
         world_.officials().setOfficial(static_cast<core::OfficialRole>(m.role), r, core::Body{},
                                        Fixed64::fromFraction(640, 100));
     }
-    transport_.setOnConnect(
-        [this](ClientId id, const auth::JwtClaims& c) { onConnect(id, c); });
-    transport_.setOnDisconnect([this](ClientId id) { onDisconnect(id); });
-    transport_.setOnMessage(
-        [this](ClientId id, std::span<const std::uint8_t> b) {
-            onMessage(id, b);
-        });
-
     // G0 spawn: two facing 11-column lines, home (first half of slots) in
     // the west half, away mirrored east — enough to see and pick every
     // player. Real formation anchoring replaces this in G2 [HELIOS].
@@ -160,6 +172,11 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         transport_.send(id, encodeFrame(FrameType::BrainLegend, encodeNames(lf)));
     }
     sendTeams(id);      // G4.30: which teams are playing
+    {   // G5.35 (2.1): every team a match can be made of
+        TeamListFrame tl;
+        tl.names = cfg_.team_names;
+        transport_.send(id, encodeFrame(FrameType::TeamList, encodeTeamList(tl)));
+    }
     broadcastRoster();  // names + numbers for every client
 }
 
@@ -275,6 +292,35 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             broadcastTeams();
             broadcastRoster();
             std::printf("fh-game: rosters reloaded from the club DB\n");
+            return;
+        }
+        case FrameType::NewMatch: {
+            // Admin-only (G5.35, 2.1): any two teams, kicked off fresh — each
+            // plays its own formation (the PL sides their usual shape). Loaded
+            // between ticks; an unknown or repeated name changes nothing.
+            if (!admins_.count(id) || !cfg_.db) return;
+            const auto nm = decodeTeams(frame.payload);
+            if (!nm || nm->home.empty() || nm->away.empty() || nm->home == nm->away) return;
+            auto home = persistence::loadDemoTeam(*cfg_.db, nm->home);
+            auto away = persistence::loadDemoTeam(*cfg_.db, nm->away);
+            if (!home || !away) return;
+            for (auto [team, spec] : {std::pair{&*home, &cfg_.formation_home}, std::pair{&*away, &cfg_.formation_away}})
+                if (!team->formation_code.empty())
+                    if (auto f = persistence::loadFormation(*cfg_.db, team->formation_code)) *spec = std::move(*f);
+            cfg_.roster_home = std::move(*home);
+            cfg_.roster_away = std::move(*away);
+            ++cfg_.match_seed;   // a new match, its own noise
+            slot_owner_.clear();
+            last_orders_.clear();
+            last_events_.clear();
+            startMatch();
+            broadcastTeams();
+            broadcastRoster();
+            const Bytes snap = buildSnapshotFrame();
+            for (const auto& [cid, _] : clients_) transport_.send(cid, snap);
+            std::printf("fh-game: new match %s v %s (seed %llu)\n", cfg_.roster_home.name.c_str(),
+                        cfg_.roster_away.name.c_str(), static_cast<unsigned long long>(cfg_.match_seed));
+            std::fflush(stdout);
             return;
         }
         case FrameType::Speed: {
