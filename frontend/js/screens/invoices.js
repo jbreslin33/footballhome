@@ -728,11 +728,14 @@ class InvoicesScreen extends Screen {
         try { localStorage.setItem('invoices.calKinds', JSON.stringify(this.calKinds)); } catch (err) { /* private window */ }
         this._renderBody(); return;
       }
-      // 📅 chip main zone: one tap cycles ✓ worked → ✗ not there → clear.
+      // 📅 chip main zone: one tap flips ✓ worked ⇄ ✗ not there (owner
+      // 2026-11-06: "leave them there in red so i can flip the ones i went
+      // to to green" — a red youth event goes straight to green; clearing it
+      // would only bring the sheet's own red back).
       const calCycle = e.target.closest('[data-cal-cycle]');
       if (calCycle) {
         const st = calCycle.dataset.state;
-        const mark = (st === '' || st === 'rsvpno') ? 'worked' : (st === 'yes' || st === 'part') ? 'no' : 'clear';
+        const mark = (st === 'yes' || st === 'part') ? 'no' : 'worked';
         await this._postMark(calCycle.dataset.ev, calCycle.dataset.gev, mark);
         return;
       }

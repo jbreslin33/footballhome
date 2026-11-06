@@ -950,6 +950,10 @@ const char* kPeriodGamesSql = R"SQL(
            EXISTS (SELECT 1 FROM invoice_event_declines d
                     WHERE d.invoice_id = $1::int
                       AND (d.fh_event_id = m.fh_event_id OR d.gcal_event_id = m.gcal_event_id)) AS declined,
+           -- A red the sheet set by itself (mig 1141), not a ✗ the issuer tapped.
+           EXISTS (SELECT 1 FROM invoice_event_declines d
+                    WHERE d.invoice_id = $1::int AND d.is_auto
+                      AND (d.fh_event_id = m.fh_event_id OR d.gcal_event_id = m.gcal_event_id)) AS declined_auto,
            -- A day row typed by hand (or the usual week) that already covers
            -- this time: adding the game too would bill the hours twice.
            EXISTS (SELECT 1 FROM invoice_work_shifts s
@@ -977,7 +981,8 @@ json Invoice::periodGames(long long invoiceId) {
                        {"team_label", str(r, "team_label")}, {"policy_label", str(r, "policy_label")},
                        {"policy_pays", !r["policy_pays"].is_null() && r["policy_pays"].as<bool>()},
                        {"played", r["played"].as<bool>()}, {"note", str(r, "note")}, {"added", r["added"].as<bool>()},
-                       {"declined", r["declined"].as<bool>()}, {"location", str(r, "location")},
+                       {"declined", r["declined"].as<bool>()}, {"declined_auto", r["declined_auto"].as<bool>()},
+                       {"location", str(r, "location")},
                        {"overlaps", r["overlaps"].as<bool>()}, {"by_default", r["by_default"].as<bool>()}});
     }
     return out;
@@ -1002,10 +1007,27 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
         const long long fhEventId = g["fh_event_id"].is_number() ? g["fh_event_id"].get<long long>() : 0;
         const long long gcalEventId = g["gcal_event_id"].is_number() ? g["gcal_event_id"].get<long long>() : 0;
         if (g["added"].get<bool>()) continue;
-        const bool autoPick = !g["declined"].get<bool>() && g["rsvp"] != "no" && g["by_default"].get<bool>();
+        // Owner 2026-11-06: "don't auto select youth … unless i set going …
+        // but leave them there in red so i can flip the ones i went to to
+        // green".  Green by itself: an event the pay rules cover, or one the
+        // issuer RSVP'd Going to.  Any other event of theirs shows red — a
+        // decline the sheet sets itself (is_auto, mig 1141); a later Going
+        // turns it green, a ✗ the issuer tapped never changes.
+        const bool going = g["rsvp"] == "yes";
+        const bool autoRed = g["declined"].get<bool>() && g["declined_auto"].get<bool>();
+        const bool autoPick = (!g["declined"].get<bool>() || autoRed) && g["rsvp"] != "no"
+                              && (g["by_default"].get<bool>() || going);
         const bool picked = fhEventIds.empty() ? (policyOnly ? autoPick : true)
                                                : (fhEventId > 0 && std::find(fhEventIds.begin(), fhEventIds.end(), fhEventId) != fhEventIds.end());
-        if (!picked) continue;
+        if (!picked) {
+            if (fhEventIds.empty() && policyOnly && fhEventId > 0 && !g["declined"].get<bool>() && g["rsvp"] != "no")
+                db_->query("INSERT INTO invoice_event_declines (invoice_id, fh_event_id, is_auto) VALUES ($1::int, $2::bigint, true) "
+                           "ON CONFLICT DO NOTHING", {std::to_string(invoiceId), std::to_string(fhEventId)});
+            continue;
+        }
+        if (autoRed)
+            db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND fh_event_id = $2::bigint AND is_auto",
+                       {std::to_string(invoiceId), std::to_string(fhEventId)});
         const bool timed = g["end"].is_string() && !g["end"].get<std::string>().empty();
         auto r = db_->query(
             "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id, gcal_event_id, cal_end_at) "
@@ -1101,7 +1123,9 @@ bool Invoice::markEvent(long long invoiceId, long long fhEventId, const std::str
     auto gone = db_->query("DELETE FROM invoice_work_shifts WHERE invoice_id = $1::int AND fh_event_id = $2::bigint RETURNING id", {inv_, ev});
     if (!gone.empty()) syncLabor(invoiceId);
     if (mark == "no") {
-        db_->query("INSERT INTO invoice_event_declines (invoice_id, fh_event_id) VALUES ($1::int, $2::bigint) ON CONFLICT DO NOTHING", {inv_, ev});
+        // A tapped ✗ is the issuer's: it replaces a red the sheet set itself.
+        db_->query("INSERT INTO invoice_event_declines (invoice_id, fh_event_id, is_auto) VALUES ($1::int, $2::bigint, false) "
+                   "ON CONFLICT (invoice_id, fh_event_id) WHERE fh_event_id IS NOT NULL DO UPDATE SET is_auto = false", {inv_, ev});
     } else {   // clear
         db_->query("DELETE FROM invoice_event_declines WHERE invoice_id = $1::int AND fh_event_id = $2::bigint", {inv_, ev});
     }
