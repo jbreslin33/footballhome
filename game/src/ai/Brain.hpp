@@ -92,6 +92,7 @@ private:
     void capAcross(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool inDanger(core::SlotIndex slot, const core::World& world) const;
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o, math::Vec2 lead = {}) const;
+    void wingBack(const FormationSpec::Pos& mine, PlayerView& v) const;
     math::Fixed64 slideY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 shift, math::Fixed64 cap) const;
 
     TeamSetup setup_;
@@ -125,7 +126,7 @@ private:
     // The body (G4.80 brake to arrive; G5.5 / G5.10 / G5.14 shape caps, DFL-fitted).
     math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);
     math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
-    math::Fixed64 shape_tau_{}, shape_tau_ours_{}, shape_max_{}, defend_max_{}, shape_danger_{}, tau_back_{};
+    math::Fixed64 shape_tau_{}, shape_tau_ours_{}, shape_max_{}, defend_max_{}, shape_danger_{}, tau_back_{}, wb_tuck_y_{};
     std::int64_t shape_danger_sprint_ = 0;
     // Across (G5.7): his base's y plus the ball's y × shift, capped.
     math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};

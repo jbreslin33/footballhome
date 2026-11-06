@@ -5917,3 +5917,38 @@ was Leicester City v Arsenal.
 
 **Next moles.** (1) Scoring: keepers save 65%+, 1.4% scored. (2) Crosses 0.0 (11.5). (3) Our
 transition +2.8 m above real; possessions twice too long.
+
+### 8.134 G5.36 — Westtown FC and Lighthouse as pro sides; roles from the slot; the wing-back (mig 1122)
+
+James (via the club-app session): "make west town and lh same as pro team ability wise for now …
+westtown runs standard pro tactics. lh runs this game model". Both are copies of ONE 2015/16 PL
+side, **West Ham United** (4-3-3), so a difference is tactics, not talent: Westtown FC plays West
+Ham's 4-3-3 on the standard behaviour; Lighthouse plays the 3-5-2 (3-R2) (royal blue, mig 851).
+Lighthouse's own game model (the club's tactic plans, mig 1121) is not read by the engine yet.
+
+**Roles from the slot.** A man's Role came from his shirt number alone (`roleOfNumber`), so a
+3-5-2's 6 (the middle centre-back) played a holding midfielder and its 9 (midfield) a striker.
+`roleOfSlot` reads formation_slot_roles.role first (centre-back, full-back, wing-back, single- /
+double-pivot, eight, ten, wide-forward, nine), the number only where no role row exists. Side
+effect: a 4-3-3's left "eight" numbered 10 now plays the DM/CM table, not the AM one.
+
+**The wing-back** (`Brain::wingBack`) — James: "the ball-side wing-back goes, the far-side one
+tucks in to make a back four". Without the ball the wing-back on the ball's side (where it is
+going) takes a wide man's depth; the far one a full-back's, tucked to a back four's full-back
+width (`physics.shape.wb_tuck_y` 0.7 of the half-width, the club 4-4-2's 15/85 — [FH], no real
+back-three data in DFL's role split yet). With the ball both are the wide men. Mig 1122 gives the
+3-R2 its slot roles by James's numbering (3 · 5 6 4 · 2, 10 9 8, 7 in the hole, 11) and adds the
+`wing-back` role.
+
+**Scratch DB.** Its `formations` was cloned before the club's formation migrations 1107-1120:
+the 3-R2 didn't exist and Lighthouse silently played the env's 4-4-2. Formations and slot numbers
+copied from live (new rows only).
+
+**First look** (8 + 8, fh_game_scratch): Lighthouse 3-R2 v Westtown 4-3-3, same players, W0 D11
+L5 for Lighthouse over both venues, shots 9.2 / 6.9 v 7.1 / 5.6. With goals at 0.1-0.5 a
+team-match (the scoring mole) this is noise, not a verdict on the shape.
+
+**Owed.** The engine reading the club's tactic plans (mig 1121: per matchup and moment, a state
+tree from their keeper by passes, one job per our position — cover_shadow / mark / hold_between
+with dist_m / press_m) — app and engine to share one geometry, documented here; the brain overlay
+labelling each man's job.

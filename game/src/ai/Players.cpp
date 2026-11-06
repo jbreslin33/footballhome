@@ -17,6 +17,16 @@ Role roleOfNumber(int n) {
     return Role::DM;
 }
 
+Role roleOfSlot(const std::string& role, int number) {
+    if (role == "centre-back") return Role::CB;
+    if (role == "full-back" || role == "wing-back") return Role::FB;
+    if (role == "single-pivot" || role == "double-pivot" || role == "eight") return Role::DM;
+    if (role == "ten") return Role::AM;
+    if (role == "wide-forward") return Role::Wide;
+    if (role == "nine") return Role::ST;
+    return roleOfNumber(number);
+}
+
 Fixed64 bandLookup(const Fixed64 (&row)[kBandCount], Fixed64 off) {
     const Fixed64 u = (off - Fixed64::fromInt(5)) / Fixed64::fromInt(10);
     if (u <= Fixed64::zero()) return row[0];

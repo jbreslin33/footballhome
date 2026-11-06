@@ -42,7 +42,10 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y, Format
     spec_[0] = home.valid(count[0]) ? std::move(home) : builtinFormation(count[0]);
     spec_[1] = away.valid(count[1]) ? std::move(away) : builtinFormation(count[1]);
     role_of_slot_.resize(n);
-    for (std::size_t i = 0; i < n; ++i) role_of_slot_[i] = roleOfNumber(spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]].number);
+    for (std::size_t i = 0; i < n; ++i) {
+        const auto& pos = spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]];
+        role_of_slot_[i] = roleOfSlot(pos.role, pos.number);
+    }
 }
 
 Brain::Brain(const Brain& o)
@@ -51,7 +54,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), tau_back_(o.tau_back_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -91,6 +94,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
     defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
     shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
+    wb_tuck_y_ = p.fixed("physics.shape.wb_tuck_y", 700);
     tau_back_ = p.fixed("physics.body.shape_tau_back_s", 0);
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
@@ -146,6 +150,21 @@ Fixed64 Brain::slideY(const Vec2& base, Fixed64 ball_y, Fixed64 shift, Fixed64 c
     return v;
 }
 
+// G5.36 (§8.134): a wing-back — James: "the ball-side wing-back goes, the
+// far-side one tucks in to make a back four". Without the ball the one on the
+// ball's side (where it is going) stands at a wide man's depth; the other at a
+// full-back's, tucked to a back four's full-back width (physics.shape.wb_tuck_y,
+// the club 4-4-2's 15/85 = 0.7 of the half-width), sliding as the block does.
+// With the ball both are the wide men.
+void Brain::wingBack(const FormationSpec::Pos& mine, PlayerView& v) const {
+    if (mine.role != "wing-back") return;
+    v.role_ours = Role::Wide;
+    if (v.ball_to.y * mine.base.y > Fixed64::zero()) { v.role = Role::Wide; return; }
+    v.role = Role::FB;
+    const Fixed64 side = mine.base.y.raw < 0 ? -Fixed64::one() : Fixed64::one();
+    v.across_def = slideY(Vec2{mine.base.x, side * wb_tuck_y_}, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+}
+
 PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     const std::uint8_t team = setup_.team_of_slot[slot];
     const FormationSpec::Pos& mine = spec_[team].positions[index_in_team_[slot]];
@@ -153,7 +172,8 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     v.slot = slot;
     v.team = team;
     v.sg = team == 0 ? Fixed64::one() : -Fixed64::one();
-    v.role = roleOfNumber(mine.number);
+    v.role = roleOfSlot(mine.role, mine.number);
+    v.role_ours = v.role;
     v.keeper = world.isKeeper(slot);
     const FlightRead& fr = reads_.flightRead(world);
     // G5.30 (§8.128): where the ball is going — a free ball in play, the point
@@ -169,6 +189,7 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
         if (f >= 0) v.ball_to = fr.at[f];
     }
     v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    wingBack(mine, v);
     v.across_ours = slideY(mine.base, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
                                                                          : Vec2{world.ball().pos.x, world.ball().pos.y};
@@ -508,6 +529,7 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
     v.ball_to = Vec2{v.ball_to.x + cv.x * h, v.ball_to.y + cv.y * h};
     const FormationSpec::Pos& mine = spec_[v.team].positions[index_in_team_[slot]];
     v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    wingBack(mine, v);
     const Vec2 then = block_.spot(v, world);
     return Vec2{(then.x - now.x) / h, (then.y - now.y) / h};
 }

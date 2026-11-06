@@ -27,6 +27,7 @@
 #include "math/Vec3.hpp"
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace fh::game::ai {
@@ -36,6 +37,11 @@ inline constexpr int kRoleCount = 6;
 inline constexpr int kBandCount = 10;   // ball 0-10 … 90-100 m off a goal line
 // By shirt number: 4/5 CB, 2/3 FB, 6/8 DM/CM, 10 AM, 7/11 wide, 9 ST; else a 6/8.
 Role roleOfNumber(int number);
+// G5.36: his slot's role (formation_slot_roles.role) where it is known — the
+// 6 in a back three is a centre-back, the 9 in a 3-5-2's midfield three a
+// midfielder; else by his number. A wing-back is a full-back here (his
+// spots by the ball's side: Brain::viewOf).
+Role roleOfSlot(const std::string& role, int number);
 // A 10-band real table (metres off a line, by role and the ball's metres off
 // it), interpolated between band centres 5, 15, … 95; flat beyond the ends.
 math::Fixed64 bandLookup(const math::Fixed64 (&row)[kBandCount], math::Fixed64 ball_off_line);
@@ -45,7 +51,8 @@ struct PlayerView {
     std::uint8_t slot = 0;
     std::uint8_t team = 0;
     math::Fixed64 sg{};          // +1 attacks +x, -1 attacks -x
-    Role role = Role::DM;
+    Role role = Role::DM;        // without the ball (a wing-back: by the ball's side)
+    Role role_ours = Role::DM;   // with it (a wing-back: wide)
     bool keeper = false;
     math::Fixed64 across_def{};  // his lateral spot without the ball (slideY)
     math::Fixed64 across_ours{}; // ...with it

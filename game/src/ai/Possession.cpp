@@ -543,7 +543,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
 Vec2 Possession::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
     const Fixed64 off_their = hx - world.ball().pos.x * v.sg;   // ball metres off their line
-    const Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role)], off_their);
+    const Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role_ours)], off_their);
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }
 
