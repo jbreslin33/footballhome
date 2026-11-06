@@ -64,6 +64,9 @@ class RecoverTally(bt.ShapeTally):
                 c[f"{k}back"] += back
                 c[f"{k}v"] += v
                 c[z + "n"] += 1
+                c[f"{z}{k}n"] += 1
+                if v >= 5 and back >= 0.7 * v:
+                    c[f"{z}{k}fb"] += 1
                 if v >= 5:
                     c[z + ("b" if back >= 0.7 * v else "u" if back <= -0.7 * v else "a")] += 1
             self.c["turn"] += 1 if since == 0 else 0
@@ -105,3 +108,7 @@ if __name__ == "__main__":
         n = c[z + "n"]
         if n:
             print(f"    {lab}: {100 * n / tot:.1f}% of steps; {100 * c[z + 'b'] / n:.2f} / {100 * c[z + 'u'] / n:.2f} / {100 * c[z + 'a'] / n:.2f}")
+    print("  5+ m/s back by seconds since it lost it, % of the zone's steps then (share of the zone's steps):")
+    for z, lab in (("N", "inside 40 m"), ("F", "further out")):
+        print(f"    {lab}: " + "; ".join(f"{LABELS[k]} {100 * c[f'{z}{k}fb'] / c[f'{z}{k}n']:.1f} ({100 * c[f'{z}{k}n'] / c[z + 'n']:.0f}%)"
+                                         for k in range(len(LABELS)) if c[f"{z}{k}n"]))

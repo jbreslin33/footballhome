@@ -5774,3 +5774,51 @@ the shape, so the block is getting there late for another reason (it starts back
 after losing it ours +0.38 m/s back, real −0.12 — real men counter-press first, then drop).
 (2) Further out back 1.09% (2.81) and 6-10 s 0.84 m/s (1.18): the τ ease (gap/4 s) still holds a
 man 15 m off to 3.75 m/s. (3) Crosses 0.06 (11.5), corners 0.1 (3.2).
+
+### 8.130 G5.32 — get goal-side first: a spot behind him he closes in 2.5 s (mig 1116; scratch DB only)
+
+§8.129's next: the danger back-sprint (back 5+ m/s 17.5% of steps with their ball inside 40 m of
+our goal, real 9.2) and too little running back further out (1.09%, real 2.81).
+
+**Measured.** RECOVERY adds 5+ back by seconds since lost, per zone, and the holders inside 40 m
+by metres off their spot; `benchmarks_tracking_recover.py` the real by-time cut:
+
+| 5+ m/s back, inside 40 m, s since lost | 0-2 | 2-4 | 4-6 | 6-10 | 10+ |
+|---|---|---|---|---|---|
+| real | 3.6% | 8.4 | 12.3 | 12.9 | 10.0 |
+| game | 17.0 | 35.5 | 27.5 | 20.8 | 15.3 |
+
+Inside 40 m 64% of holder steps were 3-15 m off the spot, a fifth of those at 5+ m/s back; a
+trace of the centre-backs with the ball 0-20 m out found them sprinting 5-8 m/s from 7-12 m above
+their spot. Not idle — **late**: further out the shape's ease (gap / `shape_tau_s` 4) let a man 8 m
+off his spot ask 2 m/s, so the block reached the danger line behind its spots and sprinted from
+there.
+
+**Tried and dropped.** An ease inside the danger zone (`shape_danger_tau_s` 1 / 0.7, the sprint
+eased instead of only the stopping limit): the 3-8 m bin's sprints 20.6 → 15.7%, nothing else
+moved (shape 2.49 / 2.47 m). Removed.
+
+**Built.** Without the ball, a spot goal-side of him (a metre+) he closes in `shape_tau_back_s`
+(2.5 s, mig 1116, [FH] fit to the DFL cuts above and the real spot table); across and up he keeps
+`shape_tau_s` 4. Coaching: "get goal-side first, then into your shape" [FH]. No row = off.
+
+| `shape_tau_back_s` | off (G5.31) | 3 | **2.5** | 2 | 1 | real |
+|---|---|---|---|---|---|---|
+| block v real table, mean \|error\| m | 2.41 | 2.23 | **2.06** | 2.06 | 1.89 | 0 |
+| off the ball under 2 / 2-5 / 5+ m/s | 41.9/50.7/7.4 | 39.7/52.6/7.7 | **38.7/53.2/8.1** | 37.0/54.2/8.7 | 35.8/54.3/9.9 | 41.9/50.3/7.9 |
+| mean m/s | 2.53 | 2.61 | **2.66** | 2.72 | 2.79 | 2.61 |
+| 5+ back, further out | 1.09 | 1.72 | **2.14** | 2.95 | 4.52 | 2.81 |
+| 5+ back, inside 40 m | 17.5 | 17.0 | **16.4** | 15.6 | 13.7 | 9.2 |
+
+2.5 keeps 2's shape for less running; 1 is too much running (5+ 9.9%, men never still).
+
+**Result** (8 matches, fh_game_scratch; G5.31 → G5.32): block v real 2.41 → 2.06 m (ball 40-70 m
+out now within ±1.5 at every role but FB/WIDE); back further out 1.09 → 2.14% (2.81); shots 9.3 →
+7.9 a team-match (12.9: noise at 8 matches either way, watch it). Back m/s by s since lost:
+0-2 +0.38 → +0.55 (−0.12), 2-4 +1.43 → +1.75 (+0.79), 6-10 +0.84 → +0.62 (+1.18). Tests 22/22,
+goldens unchanged (the test rig has no shape rows).
+
+**Next moles.** (1) The turnover timing, now plain: ours run back hardest at 0-4 s, real men at
+4-10 s (they counter-press, then drop) — the first seconds after losing it want the nearest men on
+the ball, not a retreat. (2) Inside 40 m the block is still +4-6 m high with the ball 0-10 m out
+and sprints back 16.4% (9.2). (3) FB/WIDE +1.3-2.5 m upfield in midfield. (4) Crosses 0.12 (11.5).

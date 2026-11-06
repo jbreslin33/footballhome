@@ -12,7 +12,8 @@
 // GAME_MATCH_SEED (base; match m plays seed base+m — a fixed sample),
 // GAME_PARAMS="key=value,..." (game_model_params numbers for the run; the DB
 // is never written), GAME_DEAD_TRACE=1 (a stalled dead ball, every 10 s),
-// GAME_HOLD_TRACE=1 (full-backs and wide men holding shape at 5 Hz: spot, velocity, intent; §8.128).
+// GAME_HOLD_TRACE=1 (full-backs and wide men holding shape at 5 Hz: spot, velocity, intent; §8.128;
+// =all: every role).
 
 #include "ai/Brain.hpp"
 #include "ai/Players.hpp"
@@ -90,7 +91,8 @@ struct Stats {
     // RECOVERY (§8.128, benchmarks_tracking_recover.py): the side without it, by s since it lost it.
     long rc_n[5] = {}, rc_s[5][3] = {}, rc_fb[5] = {}; double rc_v[5] = {}, rc_back[5] = {};
     long rc_fast[ai::kWhyCount][3] = {}, rc_fast_role[ai::kRoleCount] = {}, rc_hold_near[3] = {};   // + holders with the ball inside 40 m of their goal
-    long rc_zn[2] = {}, rc_z[2][3] = {};   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
+    long rc_zn[2] = {}, rc_z[2][3] = {}, rc_zk[2][5] = {}, rc_zkb[2][5] = {};   // + by s since lost: steps, 5+ back
+    long rc_gap[4] = {}, rc_gapb[4] = {};   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
 int distBand(double d) { return d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : 3; }
@@ -395,7 +397,14 @@ int main(int argc, char** argv) {
                     }
                     S.rc_v[kb] += v; S.rc_back[kb] += back;
                     const int z = hx + b.pos.x.toDouble() * ds < 40 ? 0 : 1;
-                    ++S.rc_zn[z];
+                    ++S.rc_zn[z]; ++S.rc_zk[z][kb];
+                    if (v >= 5 && back >= 0.7 * v) ++S.rc_zkb[z][kb];
+                    if (z == 0 && s.lastOrders()[j].why == ai::Why::Hold) {
+                        const auto& t = s.lastOrders()[j].target;
+                        const double g = std::hypot(t.x.toDouble() - q.pos.x.toDouble(), t.y.toDouble() - q.pos.y.toDouble());
+                        const int gb = g < 3 ? 0 : g < 8 ? 1 : g < 15 ? 2 : 3;
+                        ++S.rc_gap[gb]; if (v >= 5 && back >= 0.7 * v) ++S.rc_gapb[gb];
+                    }
                     if (v >= 5) ++S.rc_z[z][back >= 0.7 * v ? 0 : back <= -0.7 * v ? 1 : 2];
                 }
             }
@@ -414,7 +423,8 @@ int main(int argc, char** argv) {
                     if (q.team == dteam) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
-                        if (std::getenv("GAME_HOLD_TRACE") && s.lastOrders()[j].why == ai::Why::Hold && (r == 1 || r == 4)) {
+                        if (std::getenv("GAME_HOLD_TRACE") && s.lastOrders()[j].why == ai::Why::Hold &&
+                            (std::getenv("GAME_HOLD_TRACE")[0] == 'a' || r == 1 || r == 4)) {
                             const auto* st = s.brain().stateOf(j);
                             const double ds = dteam == 0 ? 1.0 : -1.0;
                             const auto& lo = s.lastOrders()[j];
@@ -728,6 +738,17 @@ int main(int argc, char** argv) {
                 if (S.rc_zn[z])
                     std::printf("\n   5+ m/s %s: %.1f%% of steps; back / up / across %.2f / %.2f / %.2f%% of them", z ? "further out" : "ball inside 40 m of their goal",
                                 100.0 * S.rc_zn[z] / tot, 100.0 * S.rc_z[z][0] / S.rc_zn[z], 100.0 * S.rc_z[z][1] / S.rc_zn[z], 100.0 * S.rc_z[z][2] / S.rc_zn[z]);
+            static const char* kl[5] = {"0-2", "2-4", "4-6", "6-10", "10+"};
+            for (int z = 0; z < 2; ++z) {
+                std::printf("\n   5+ m/s back %s by s since lost (share of the zone's steps):", z ? "further out" : "inside 40 m");
+                for (int i = 0; i < 5; ++i)
+                    if (S.rc_zk[z][i]) std::printf(" %s %.1f (%.0f%%);", kl[i], 100.0 * S.rc_zkb[z][i] / S.rc_zk[z][i], 100.0 * S.rc_zk[z][i] / S.rc_zn[z]);
+            }
+            std::printf("\n   holders inside 40 m by metres off their spot <3 / 3-8 / 8-15 / 15+: share of holder steps, 5+ back:");
+            {
+                long gt = 0; for (long g : S.rc_gap) gt += g;
+                for (int i = 0; i < 4; ++i) if (gt && S.rc_gap[i]) std::printf(" %.0f%% %.1f;", 100.0 * S.rc_gap[i] / gt, 100.0 * S.rc_gapb[i] / S.rc_gap[i]);
+            }
             std::printf("\n   5+ m/s by role, %% of the side's 5+ steps:");
             for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.1f%%;", rn[r], 100.0 * S.rc_fast_role[r] / fast);
             std::printf("\n");
