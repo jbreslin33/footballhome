@@ -6031,3 +6031,52 @@ in it), the pivot does not drop to the D on average (35 m out; a back three's mi
 does — 25 m), full-backs stand ~25 m wide and 23-26 m up, and the wingers are inside the
 touchlines (~18 m off centre) on the halfway line. The engine's own goal kick (the keeper takes
 it, the rest on their possession spots for a ball at their goal) is not yet this table.
+
+### 8.137 The tactic plans — the shared spec (club app + engine; engine reader not built yet)
+
+James: "one source of truth and then the game and the tactics on event center draw from it."
+The club's tactic plans (club DB, migs 1121 / 1129 / 1132 / 1133) are edited in Game Center; the
+engine will play them for the side whose plan matches (Lighthouse first). This section is the
+contract both sides implement; a change to either side changes this section.
+
+**Tables.** `tactic_plans` (our formation_id, opponent_formation_id, moment → game_moments,
+block_height → tactic_block_heights with gk_y; one per matchup); `tactic_states` (plan_id,
+parent_state_id NULL = the root "ball with their GK", ball_with = their number 1-11; a child =
+"the ball was passed to their #N"); `tactic_state_opponents` (state, number, x, y); `tactic_jobs`
+(state, our position_id 2-11, kind → tactic_job_kinds, target_a, target_b, partner_position_id);
+`tactic_job_kinds` (code, concept_id → game_concepts, dist_m, press_m, partner_label);
+`tactic_buildout_shapes` (formation, number, x, y — their goal-kick shape; 4-3-3 = the DFL cut,
+§8.136). Numbers on both sides are James's scheme (formation_slot_roles.number, mig 1127).
+
+**Coordinates.** 0-100 from OUR view as we attack: x left → right, y 0 = our goal line, their goal
+at y 100; their right side is on our left. Measure in metres on a 68 × 105 pitch (x · 0.68,
+y · 1.05) before any distance or direction.
+
+**Spots, per job** (A, B = their men by number; dist_m, press_m from the job kind):
+- *mark A* (concept 18 man-mark): dist_m goal-side of A, toward the centre of our goal (50, 0).
+- *cover_shadow A, B* (concept 27): if their B has the ball, press_m from the ball on the ball → A
+  line; otherwise dist_m off A, toward the ball.
+- *hold_between A, B* (concept 186): the midpoint of A and B, dist_m toward our goal.
+- *straddle A* with a partner (concept 187, paired: both partners carry it on the same A, each
+  naming the other): u = unit vector from A toward the ball — or toward the centre of their goal
+  (50, 100) when the ball is within 0.5 m of A; perp = u rotated 90°, pointed toward smaller x;
+  the partner whose formation spot has the smaller x stands at A + u · press_m + perp · dist_m,
+  the other at A + u · press_m − perp · dist_m. A straddled man counts once in coverage.
+- *no job*: the engine's block spot — the real SETTLED table (DFL, by role and the ball's band,
+  §8.131), to be exposed as rows the app reads, so both draw the same spot.
+- *our keeper*: (50, the block height's gk_y).
+
+**Which state.** Out of possession only (moment out_of_possession = the engine's settled
+DefendingBlock; to_defend, the transition after we lose it, gets its own plans later). The root
+when their keeper has it. The ball passed to their #N: the current state's child with
+ball_with = N; else any state in the plan with ball_with = N (nearest the current one in the
+tree); else the current state's jobs re-solved with the ball at #N. Default behaviour only when the
+moment changes (we win it, a set piece).
+
+**When the engine reads them.** At kickoff (daemon start, every NEW_MATCH) and on an admin
+RELOAD_ROSTERS — between ticks, never inside the sim loop (determinism, replays). A Game Center
+save reaches a running match on reload (Game Center may send it after saving).
+
+**Owed (engine).** The reader; the settled block-spot rows for the app; the engine's own goal-kick
+shape from tactic_buildout_shapes; the brain overlay labelling each man's job ("cover-shadow #6 →
+press #4").
