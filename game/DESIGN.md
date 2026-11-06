@@ -6093,10 +6093,11 @@ save reaches a running match on reload (Game Center may send it after saving).
   168 defend-your-man) — a mark stands dist_m BALL-side of his man instead of goal-side.
 - *Restarts* (mig 1142, `tactic_restarts`; `tactic_states.restart`): every out_of_possession root
   (their keeper placing the ball) is restart = goal_kick (Law 16), and our spots are capped at
-  y ≤ 84.29 across the whole width until the ball is played (a child state lifts it). The Law
-  itself keeps opponents out of the penalty AREA only (|x − 50| within its 40.32 m width); the
-  whole-width cap is James's statement of it, stricter than the Law outside the area's sides. The
-  engine's goal kick enforces the Law's area (Brain::outOfTheirBox).
+  y ≤ 84.29 until the ball is played (a child state lifts it). Since mig 1145 the cap follows the
+  Law exactly: TacticGeometry.solve reads the row's zone_min_x / zone_max_x / zone_min_y and holds
+  a spot at zone_min_y only inside x 20.35-79.65 (the penalty area's width); outside it no cap; a
+  row without a zone falls back to our_max_y. The engine's goal kick enforces the same area
+  (Brain::outOfTheirBox).
 
 **Owed (engine).** The reader; the settled block-spot rows for the app; the engine's own goal-kick
 shape from tactic_buildout_shapes; the brain overlay labelling each man's job ("cover-shadow #6 →
