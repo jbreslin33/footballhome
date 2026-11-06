@@ -2089,7 +2089,7 @@ class GameCenterScreen extends EventScreen {
 
   _planJobText(job) {
     const k = job && this._planKinds()[job.kind];
-    if (!k) return '';
+    if (!k || job.target_a == null) return '';
     return `${k.target_a_label} ${job.target_a}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '');
   }
 
@@ -2164,8 +2164,9 @@ class GameCenterScreen extends EventScreen {
     const kind = job ? kinds.find(k => k.code === job.kind) : null;
     const their = (n) => this._copyTactics('their', { n }) || `their ${n}`;
     const css = `font-size:${size}; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;`;
-    const numSel = (field, value) => `<select data-gc-tp-job="${pid}" data-gc-tp-field="${field}" style="${css}">
+    const numSel = (field, value) => `<select data-gc-tp-job="${pid}" data-gc-tp-field="${field}" style="${css}${field === 'target_a' && value == null ? ' border-color:#f59e0b; box-shadow:0 0 0 2px rgba(245,158,11,0.45);' : ''}">
         ${field === 'target_b' ? '<option value="">—</option>' : ''}
+        ${field === 'target_a' && value == null ? `<option value="" selected>${esc(this._copyTactics('who') || '— who? —')}</option>` : ''}
         ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => `<option value="${n}" ${Number(value) === n ? 'selected' : ''}>${esc(their(n))}</option>`).join('')}</select>`;
     if (this._tacticsCanEdit() && !this._plan.playing) {
       return `<select data-gc-tp-job="${pid}" data-gc-tp-field="kind" style="${css}">
@@ -2316,20 +2317,23 @@ class GameCenterScreen extends EventScreen {
     if (!d) return;
     if (live && (!d.opponents || !d.opponents.length)) d.opponents = this._planSituation(cur).opponents.map(o => ({ number: o.number, x: o.x, y: o.y }));
     this._applyPlanJob(d, pid, field, value);
+    const mine = (d.jobs || []).find(j => Number(j.position_id) === pid);
+    if (mine && mine.target_a == null) p.popupPid = pid;   // prompt: who?
     if (!live) { this._render(); return; }
     const list = this._planStates();
     const i = list.findIndex(st => st.id === d.id);
     if (i >= 0) list[i] = d;
     p.msg = '';
     this._render();
-    this._putPlanState(d).then(() => { p.msg = this._copyTactics('saved') || 'Saved ✓'; this._render(); })
+    this._putPlanState(d).then(() => { p.msg = mine && mine.target_a == null ? '' : (this._copyTactics('saved') || 'Saved ✓'); this._render(); })
       .catch(err => { p.msg = `⚠ ${err.message}`; this._reloadPlanTo(d.id); });
   }
 
+  // Jobs still waiting for their man stay on screen but aren't sent.
   _putPlanState(d) {
     return this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
       opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
-      jobs: (d.jobs || []).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
+      jobs: (d.jobs || []).filter(j => j.target_a != null).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
     }) });
   }
 
@@ -2339,7 +2343,12 @@ class GameCenterScreen extends EventScreen {
     if (field === 'kind') {
       if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); return; }
       const kind = this._planKinds()[value];
-      if (!job) { job = { position_id: pid, kind: value, target_a: Number(d.ball_with) === 1 ? 9 : Number(d.ball_with), target_b: null }; d.jobs.push(job); }
+      // A new or changed job asks for its man first (owner 11/6: "if i pick
+      // cover shadow it should then prompt for who to cover shadow AND it's
+      // assumed that is from the current ball carrier") — the shadow line
+      // always runs from whoever has the ball, so only the man is asked.
+      if (!job) { job = { position_id: pid, kind: value, target_a: null, target_b: null }; d.jobs.push(job); }
+      else if (job.kind !== value) { job.target_a = null; job.target_b = null; }
       job.kind = value;
       if (!kind || !kind.target_b_label) job.target_b = null;
     } else if (job) {

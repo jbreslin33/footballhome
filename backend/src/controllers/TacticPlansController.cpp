@@ -23,6 +23,15 @@ long long idOf(const std::string& s) {
     try { return std::stoll(s); } catch (...) { return 0; }
 }
 
+// The id is the last path segment (/states/<id>).  Controller::getPathParam
+// is an unimplemented stub that always returns "" — never use it.
+long long lastId(const std::string& path) {
+    const auto q = path.find('?');
+    const std::string p = path.substr(0, q);
+    const auto slash = p.rfind('/');
+    return slash == std::string::npos ? 0 : idOf(p.substr(slash + 1));
+}
+
 bool num1to11(const json& j, const char* k) {
     return j.contains(k) && j[k].is_number_integer() && j[k].get<int>() >= 1 && j[k].get<int>() <= 11;
 }
@@ -145,7 +154,7 @@ Response TacticPlansController::handlePutState(const Request& request) {
     long long userId = 0;
     Response error(HttpStatus::OK, "");
     if (!requireStaff(request, &userId, &error)) return error;
-    const long long id = idOf(getPathParam(request, "stateId"));
+    const long long id = lastId(request.getPath());
     if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "stateId must be a number");
     json b;
     try { b = json::parse(request.getBody()); }
@@ -165,7 +174,7 @@ Response TacticPlansController::handleDeleteState(const Request& request) {
     long long userId = 0;
     Response error(HttpStatus::OK, "");
     if (!requireStaff(request, &userId, &error)) return error;
-    const long long id = idOf(getPathParam(request, "stateId"));
+    const long long id = lastId(request.getPath());
     try {
         if (!model_->deleteState(id)) return jsonError(HttpStatus::NOT_FOUND, "No such pass (the first state can't be removed).");
         return jsonOut(HttpStatus::OK, {{"ok", true}});

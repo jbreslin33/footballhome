@@ -23,6 +23,15 @@ long long idOf(const std::string& s) {
     try { return std::stoll(s); } catch (...) { return 0; }
 }
 
+// The id is the last path segment.  Controller::getPathParam is an
+// unimplemented stub that always returns "" — never use it.
+long long lastId(const std::string& path) {
+    const auto q = path.find('?');
+    const std::string p = path.substr(0, q);
+    const auto slash = p.rfind('/');
+    return slash == std::string::npos ? 0 : idOf(p.substr(slash + 1));
+}
+
 // A point on the 0–100 pitch.
 bool point(const json& j) {
     if (!j.is_object() || !j.contains("x") || !j.contains("y") || !j["x"].is_number() || !j["y"].is_number())
@@ -79,7 +88,7 @@ bool FormationTacticsController::requireStaff(const Request& request, long long*
 // GET /:formationId — the formation's situations (empty list when none).
 Response FormationTacticsController::handleGet(const Request& request) {
     if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in first.");
-    const long long formationId = idOf(getPathParam(request, "formationId"));
+    const long long formationId = lastId(request.getPath());
     if (formationId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "formationId must be a number");
     try {
         return jsonOut(HttpStatus::OK, model_->get(formationId));
@@ -95,7 +104,7 @@ Response FormationTacticsController::handlePutSituation(const Request& request) 
     long long userId = 0;
     Response error(HttpStatus::OK, "");
     if (!requireStaff(request, &userId, &error)) return error;
-    const long long frameId = idOf(getPathParam(request, "frameId"));
+    const long long frameId = lastId(request.getPath());
     if (frameId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "frameId must be a number");
     json body;
     try {
