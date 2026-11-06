@@ -449,7 +449,17 @@ json Invoice::realityCheck(long long invoiceId) {
         UPDATE invoice_work_shifts s
            SET work_date = (g.starts_at AT TIME ZONE 'America/New_York')::date,
                start_at  = CASE WHEN s.start_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time END,
-               end_at    = CASE WHEN s.end_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END
+               end_at    = CASE WHEN s.end_at IS NULL THEN NULL
+                                -- untouched practice/claim end (mig 1129): the calendar's end
+                                WHEN s.cal_end_at IS NOT NULL AND s.end_at = s.cal_end_at
+                                 AND (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date
+                                 AND g.ends_at > g.starts_at
+                                THEN (g.ends_at AT TIME ZONE 'America/New_York')::time
+                                ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END,
+               cal_end_at = CASE WHEN s.cal_end_at IS NOT NULL AND s.end_at = s.cal_end_at
+                                 AND (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date
+                                 AND g.ends_at > g.starts_at
+                                THEN (g.ends_at AT TIME ZONE 'America/New_York')::time END
           FROM fh_events e JOIN gcal_events g ON g.id = e.gcal_event_id
          WHERE s.invoice_id = $1::int AND e.id = s.fh_event_id
            AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
@@ -472,7 +482,17 @@ json Invoice::realityCheck(long long invoiceId) {
         UPDATE invoice_work_shifts s
            SET work_date = (g.starts_at AT TIME ZONE 'America/New_York')::date,
                start_at  = CASE WHEN s.start_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time END,
-               end_at    = CASE WHEN s.end_at IS NULL THEN NULL ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END
+               end_at    = CASE WHEN s.end_at IS NULL THEN NULL
+                                -- untouched practice/claim end (mig 1129): the calendar's end
+                                WHEN s.cal_end_at IS NOT NULL AND s.end_at = s.cal_end_at
+                                 AND (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date
+                                 AND g.ends_at > g.starts_at
+                                THEN (g.ends_at AT TIME ZONE 'America/New_York')::time
+                                ELSE (g.starts_at AT TIME ZONE 'America/New_York')::time + (s.end_at - s.start_at) END,
+               cal_end_at = CASE WHEN s.cal_end_at IS NOT NULL AND s.end_at = s.cal_end_at
+                                 AND (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date
+                                 AND g.ends_at > g.starts_at
+                                THEN (g.ends_at AT TIME ZONE 'America/New_York')::time END
           FROM gcal_events g
          WHERE s.invoice_id = $1::int AND g.id = s.gcal_event_id
            AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
@@ -483,6 +503,29 @@ json Invoice::realityCheck(long long invoiceId) {
          RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
     for (const auto& r : movedCal) out["moved_notes"].push_back(str(r, "note"));
     out["moved"] = static_cast<int>(moved.size() + movedCal.size());
+    // Resized (owner 2026-11-06: "gcal informs fh and in turn fh informs the
+    // hours on invoice"): a practice or claimed row remembers the calendar
+    // end it was built with (cal_end_at, mig 1129).  While its end still
+    // equals that, nobody edited it, so it follows the calendar's new end;
+    // a ✏️/🟡 edit (stayed late) no longer matches and is left alone.  Games
+    // bill policy hours from the start, not the calendar end — never here.
+    // Runs after the move above, so a moved row is judged on its new start.
+    auto resized = db_->query(R"SQL(
+        UPDATE invoice_work_shifts s
+           SET end_at = c.cal_end, cal_end_at = c.cal_end
+          FROM (SELECT s2.id, (g.ends_at AT TIME ZONE 'America/New_York')::time AS cal_end,
+                       (g.ends_at AT TIME ZONE 'America/New_York')::date = (g.starts_at AT TIME ZONE 'America/New_York')::date AS same_day
+                  FROM invoice_work_shifts s2
+                  LEFT JOIN fh_events e ON e.id = s2.fh_event_id
+                  JOIN gcal_events g ON g.id = COALESCE(e.gcal_event_id, s2.gcal_event_id)
+                 WHERE s2.invoice_id = $1::int AND COALESCE(e.kind, 'work') <> 'match'
+                   AND g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled') c
+         WHERE s.id = c.id AND c.same_day
+           AND s.cal_end_at IS NOT NULL AND s.end_at = s.cal_end_at
+           AND c.cal_end <> s.cal_end_at AND c.cal_end > s.start_at
+         RETURNING COALESCE(s.note, to_char(s.work_date, 'FMMM/FMDD')) AS note)SQL", {std::to_string(invoiceId)});
+    for (const auto& r : resized) out["moved_notes"].push_back(str(r, "note"));
+    out["moved"] = out["moved"].get<int>() + static_cast<int>(resized.size());
     // Prefill on every open (owner 2026-10-12: "check all events and i
     // would uncheck. simple."): any period event still unanswered — no day
     // row, no ✗, no RSVP no — ✓s itself, so a draft is always the full
@@ -907,12 +950,15 @@ int Invoice::addGames(long long invoiceId, const std::vector<long long>& fhEvent
         if (!picked) continue;
         const bool timed = g["end"].is_string() && !g["end"].get<std::string>().empty();
         auto r = db_->query(
-            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id, gcal_event_id) "
-            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), NULLIF($7,'0')::bigint, NULLIF($8,'0')::bigint) "
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, fh_event_id, gcal_event_id, cal_end_at) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), NULLIF($7,'0')::bigint, NULLIF($8,'0')::bigint, "
+            "        CASE WHEN $9::boolean THEN NULLIF($4,'')::time END) "
             "ON CONFLICT DO NOTHING RETURNING id",
             {std::to_string(invoiceId), g["date"].get<std::string>(), timed ? g["start"].get<std::string>() : std::string{},
              timed ? g["end"].get<std::string>() : std::string{}, timed ? std::string{} : money2(g["hours"].get<double>()),
-             g["note"].get<std::string>(), std::to_string(fhEventId), std::to_string(gcalEventId)});
+             g["note"].get<std::string>(), std::to_string(fhEventId), std::to_string(gcalEventId),
+             // practices + claimed rows end on the calendar's end (mig 1129); games end on policy hours
+             g["kind"] != "match" ? "true" : "false"});
         if (!r.empty()) added++;
     }
     if (added > 0) syncLabor(invoiceId);
@@ -943,8 +989,8 @@ bool Invoice::markCalendarEvent(long long invoiceId, long long gcalEventId, cons
         if (g.empty()) { *error = "that calendar event is gone"; return false; }
         const bool timed = !g[0]["end_at"].is_null();
         auto r = db_->query(
-            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, gcal_event_id) "
-            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), $7::bigint) "
+            "INSERT INTO invoice_work_shifts (invoice_id, work_date, start_at, end_at, hours, note, gcal_event_id, cal_end_at) "
+            "VALUES ($1::int, $2::date, NULLIF($3,'')::time, NULLIF($4,'')::time, NULLIF($5,'')::numeric, NULLIF($6,''), $7::bigint, NULLIF($4,'')::time) "
             "ON CONFLICT DO NOTHING RETURNING id",
             {inv_, str(g[0], "work_date"), timed ? str(g[0], "start_at") : std::string{},
              timed ? str(g[0], "end_at") : std::string{}, timed ? std::string{} : money2(num(g[0], "hours")),
