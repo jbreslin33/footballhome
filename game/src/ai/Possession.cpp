@@ -47,6 +47,25 @@ int theirKeeper(const PlayerCtx& c, std::uint8_t team) {
     return -1;
 }
 
+// The carry (G5.29): at goal, off the nearest of theirs within 4 m — what he
+// does with the ball at his feet until the World lets his release go.
+Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec2& goal) {
+    const auto& w = c.world;
+    Vec2 dir = math::normalized(Vec2{goal.x - sp.x, goal.y - sp.y});
+    int near = -1; Fixed64 nd = Fixed64::fromInt(16);
+    for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+        if (c.team_of_slot[j] == v.team) continue;
+        const Fixed64 d2 = distSq(w.player(j).pos, w.player(v.slot).pos);
+        if (d2 < nd) { nd = d2; near = j; }
+    }
+    if (near >= 0) {
+        const auto& d = w.player(static_cast<std::uint8_t>(near));
+        const Vec2 away = math::normalized(Vec2{sp.x - d.pos.x, sp.y - d.pos.y});
+        dir = math::normalized(Vec2{dir.x + away.x * Fixed64::fromFraction(7, 10), dir.y + away.y * Fixed64::fromFraction(7, 10)});
+    }
+    return dir;
+}
+
 // ── the carrier ────────────────────────────────────────────────────────
 class OnBall final : public ActingState {
 public:
@@ -201,7 +220,7 @@ public:
                 if (ch.loft) { o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j); }
                 else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; }
                 o.why = Why::InBehind;
-                o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
+                o.move.move = carryDir(v, c, sp, goal);   // he carries it until the release
                 return true;
             }
             const int ez = zoneOf(hx, v2(m.pos), v.sg);
@@ -233,7 +252,7 @@ public:
                 o.action = d < kSoftPass ? Action::ShortPass : Action::GroundKick;
                 o.why = Why::Pass;
             }
-            o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
+            o.move.move = carryDir(v, c, sp, goal);   // he carries it until the release
             return true;
         }
         // 4. Nothing safe: a keeper kicks it long; in our end, clear it.
@@ -246,19 +265,8 @@ public:
             o.why = v.keeper ? Why::KeeperPunt : Why::Clear;
             return true;
         }
-        // 5. Carry: at goal, off the nearest man within 4 m.
-        Vec2 dir = math::normalized(Vec2{goal.x - sp.x, goal.y - sp.y});
-        int near = -1; Fixed64 nd = Fixed64::fromInt(16);
-        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
-            if (c.team_of_slot[j] == v.team) continue;
-            const Fixed64 d2 = distSq(w.player(j).pos, me.pos);
-            if (d2 < nd) { nd = d2; near = j; }
-        }
-        if (near >= 0) {
-            const auto& d = w.player(static_cast<std::uint8_t>(near));
-            const Vec2 away = math::normalized(Vec2{sp.x - d.pos.x, sp.y - d.pos.y});
-            dir = math::normalized(Vec2{dir.x + away.x * Fixed64::fromFraction(7, 10), dir.y + away.y * Fixed64::fromFraction(7, 10)});
-        }
+        // 5. Nothing on: carry.
+        const Vec2 dir = carryDir(v, c, sp, goal);
         o.target = Vec2{sp.x + dir.x * Fixed64::fromInt(5), sp.y + dir.y * Fixed64::fromInt(5)};
         o.move.move = dir;
         o.why = Why::Dribble;

@@ -5595,3 +5595,59 @@ client; PROTOCOL §7 event types 8-12 listed).
 the ball is: pressures with the carrier 35-52 m out 198 a team-match (89), inside 18 m 3 (41) —
 the attack lives in midfield. (3) Take-ons by the real cut 121 (44): a defender goal-side within 1.5
 m twice as often a spell as real.
+
+### 8.127 G5.29 — he carries it until he lets it go, and the kick goes where he aimed (no migration)
+
+§8.126's next: the byline (goal kicks 1.1 a team-match v 7.1, corners 0.1 v 3.2), the attack in
+midfield.
+
+**Real.** Where the ball is (DFL, benchmarks_tracking_possession.py, the side in possession, frames
+by the ball's 10 m band off their line, 0-10 … 90-100): 3.6 / 5.8 / 7.6 / 9.3 / 11.3 / 13.0 / 14.4 /
+12.7 / 10.1 / 12.1%. The game: 0.1 / 0.8 / 4.3 / 10.7 / 21.7 / 19.8 / 17.4 / 11.4 / 8.2 / 5.3% — two
+thirds of it in the middle 30 m. Carries 10 m+ 7.8 a team-match (StatsBomb 34.6). What put the ball
+over the byline (benchmarks_statsbomb_out.py, PL 15/16): goal kicks 8.3 a team — a shot 4.28, a pass
+2.65 (2.18 in the air), a miscontrol 0.64, a block 0.39; corners 5.4 — a clearance 1.38, a block
+1.34, a shot 0.92, a keeper's save 0.60.
+
+**Found.** Since G5.22 OnBall chose its pass on receipt and then *walked at the man* it was for (seek
+at 0.1) until the World's hold let it go; the carry at goal (step 5) ran only when no pass was on —
+almost never. He stood on it. Moving his run to the carry (at goal, off the nearest man within 4 m)
+showed why the walk was there: the World kicks along the move intent (a human's push-and-press), so
+the carry became the pass's direction — passes left at the byline, 13.2 goal kicks a team-match
+from them (2.65 real). That first run looked like territory fixed; it was misdirected balls.
+
+**Built.**
+- OnBall: whatever he has chosen (pass, ball in behind), until the release he carries — `carryDir`,
+  the step-5 carry as a helper.
+- World::setAction takes an aim (the point he kicks at, latched with the action); the kick leaves at
+  it from where he stands at the release. GameServer passes the order's target for the brain's
+  kicks (ground, short, lofted, shot); a human's press has no aim and still kicks where he pushes.
+
+**Harness:** goal kicks and corners by what put the ball out (the last kick's why, or carried out),
+StatsBomb alongside; GAME_OUT_TRACE prints each such kick (why, action, from, target, receiver,
+velocity); DEFENDING SHAPE adds "holders at" — where the men holding the block spot stand v their
+target.
+
+**Result** (8 matches, fh_game_scratch; before → after):
+
+| | before | after | real |
+|---|---|---|---|
+| carries 10 m+ a team-match | 7.8 | 21.9 | 34.6 |
+| passes a team-match | 619 | 580 | 434 |
+| spells on the ball (the DFL cut) | 888 | 850 | 640 |
+| shots a team-match | 5.4 | 8.1 | 12.9 |
+| goal kicks / corners | 1.1 / 0.1 | 2.3 / 0.0 | 7.1 / 3.2 |
+| ball in play | 76.9% | 72.4% | 55.2% |
+| free kicks | 10.5 | 13.9 | 10.5 |
+| ball 0-30 m off their line | 5.2% | 8.6% | 17.0% |
+
+Scored 3.9% of shots (9.3%) on 0.31 goals a team-match — 8 matches, noise, but keepers save 65%.
+Tests 22/22; goldens re-locked.
+
+**Next moles.** (1) The block doesn't reach its own spot: the men holding it stand 2-3 m off their
+target at every band (ball 40-50 m out: FB 37.3 v 34.4, ST 58.0 v 55.9), and with the ball deep in
+the other half the CBs stay at 49.5 m v 60.7 — the line is compressed, too high near its goal (CB
++3.7 m at band 20-30) so our runners are held onside outside the box (in it 0.03 v 1.04 with the
+ball 18-35 out), too low far from it. At their goal kicks they do reach it — the lag is in play.
+(2) Crosses 0.1 a team-match (11.5): passes from 0-18 wide 0.6 (18.6). (3) Corners 0 (3.2): no
+clearances or blocks out in their box. (4) Take-ons by the real cut 114 (44).

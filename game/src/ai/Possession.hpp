@@ -20,7 +20,9 @@
 //            BEHIND by the real share for his gap (DFL, G5.27): the ball into
 //            the space a real roll past the line, on the ground weighted to
 //            arrive as his run does, else in the air; a clearance (our end,
-//            nothing safe); else keep carrying.
+//            nothing safe); else keep carrying. Whatever he has chosen, until
+//            the World lets it go he carries the ball — at goal, off the nearest
+//            man (G5.29) — and the kick goes at its aim, not the way he runs.
 //   Receive  ... a ball in behind for him: he runs on to its spot while it is
 //            behind him and will get there, and keeps his run while it is loose.
 //   Support  his role's real spot for this ball (below), kept onside.

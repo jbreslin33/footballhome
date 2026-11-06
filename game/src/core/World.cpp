@@ -25,6 +25,8 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       intents_(player_count),
       actions_(player_count, Action::None),
       carry_m_(player_count, 0),
+      aim_(player_count),
+      has_aim_(player_count, 0),
       first_time_(player_count, 0),
       pass_to_(player_count, 0xFF),
       bodies_(player_count),
@@ -48,13 +50,15 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
 }
 
 void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
-                      std::uint8_t pass_to, bool first_time) {
+                      std::uint8_t pass_to, bool first_time, const Vec2* aim) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
     carry_m_[slot] = carry_m;
     first_time_[slot] = first_time ? 1 : 0;
     pass_to_[slot] = pass_to;
+    has_aim_[slot] = aim ? 1 : 0;
+    if (aim) aim_[slot] = *aim;
 }
 
 void World::placePlayer(SlotIndex slot, const Vec3& pos, const Vec2& face) {
@@ -351,6 +355,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             Vec2 dir = (desire.x.raw != 0 || desire.y.raw != 0)
                            ? math::normalized(desire)
                            : o.face;
+            if (has_aim_[kicker]) {   // G5.29: at the point he aimed, from where he is now
+                const Vec2 to{aim_[kicker].x - o.pos.x, aim_[kicker].y - o.pos.y};
+                if (to.x.raw != 0 || to.y.raw != 0) dir = math::normalized(to);
+            }
 
             // Execution noise (G4.3): rotate the kick by a level-scaled
             // deterministic error and scale its power. A pro's error is a
@@ -1234,6 +1242,7 @@ std::vector<MatchEvent> World::tick() {
     // for everyone else, so a stale tap can't fire ticks later.
     for (auto& a : actions_) a = Action::None;
     for (auto& c : carry_m_) c = 0;
+    for (auto& a : has_aim_) a = 0;
     for (auto& p : pass_to_) p = 0xFF;
     clock_.advance();
     return events;

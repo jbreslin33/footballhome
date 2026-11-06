@@ -360,7 +360,10 @@ void GameServer::tickOnce() {
         const ai::Orders o = brain_.ordersFor(slot, world_);
         last_orders_[slot] = o;
         world_.setIntent(slot, o.move);
-        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time);
+        // The brain aims every kick at its order's target (G5.29); a tackle or a dive has none.
+        const bool kick = o.action == core::Action::GroundKick || o.action == core::Action::ShortPass ||
+                          o.action == core::Action::LoftedKick || o.action == core::Action::Shot;
+        if (o.action != core::Action::None) world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time, kick ? &o.target : nullptr);
     }
 
     last_events_ = world_.tick();

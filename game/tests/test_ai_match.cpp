@@ -63,11 +63,13 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // nobody can reach in the race horizon is our nearest man's.
 // Re-locked G5.28 (2026-11-05): detNoise finalized (splitmix64 — channels were correlated);
 // fouls and free kicks (Law 12); the kick-off after a goal waits a real roll.
-constexpr std::uint64_t kGolden3v3   = 0x2d4c1e5a49e66ebeULL;
+// Re-locked G5.29 (2026-11-05): he carries the ball through the hold; the brain's kick goes at its aim.
+constexpr std::uint64_t kGolden3v3   = 0x39f8165b4ada650aULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x3cc3cad8cbd7c267ULL;
+// Re-locked G5.29 (2026-11-05): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0xce0e4fd221422af4ULL;
 
 struct Rig {
     World world;

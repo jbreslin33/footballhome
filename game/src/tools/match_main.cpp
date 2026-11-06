@@ -67,7 +67,7 @@ struct Stats {
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
     long tkl[2][3] = {};
-    long tick_n = 0, tick_live = 0, dead_n[13] = {}; std::vector<double> dead_s[13]; long fouls = 0;
+    long tick_n = 0, tick_live = 0, dead_n[13] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[13]; long fouls = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
@@ -82,7 +82,7 @@ struct Stats {
            cy_rd[ai::kRoleCount] = {};
     // Shapes by ball band (DFL): defending, metres off its own line; in possession, off THEIR line.
     long ds_f[10] = {}, ds_n[10][ai::kRoleCount] = {}; double ds_mid[10] = {}, ds_s[10][ai::kRoleCount] = {};
-    long dt_n[10][ai::kRoleCount] = {}; double dt_s[10][ai::kRoleCount] = {}, dt_v[10][ai::kRoleCount] = {};   // holders' targets and speed toward their own line
+    long dt_n[10][ai::kRoleCount] = {}; double dt_s[10][ai::kRoleCount] = {}, dt_v[10][ai::kRoleCount] = {}, dt_a[10][ai::kRoleCount] = {};   // holders' targets and speed toward their own line
     long ps_f[10] = {}, ps_n[10][ai::kRoleCount] = {};
     double ps_back[10] = {}, ps_mid[10] = {}, ps_front[10] = {}, ps_s[10][ai::kRoleCount] = {};
     double fit_n = 0, fit_b = 0, fit_m = 0, fit_bb = 0, fit_bm = 0, gap_s[ai::kRoleCount] = {}; long gap_n[ai::kRoleCount] = {};
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
         // 5 Hz ring for "3 s before" (ball x, every man's x).
         long rk[16]; double rbx[16], rpx[16][32]; for (long& v : rk) v = -1;
         bool en_arm[2] = {false, false}; double en_prev[2] = {0, 0}; long en_pk[2] = {-100, -100};
-        long dead_k0 = -1; int dead_kind = 0;
+        long dead_k0 = -1; int dead_kind = 0, dead_why = 0; char out_note[256] = "";
         struct Tk { int car = -1; long last = -100000; bool faced = false; std::uint32_t pressed = 0; double prev[32]; bool has[32]; } tk{};
         struct Carry { bool on = false, done = false; int pid = -1, att = -1, miss = 0, fr = 0, eng = 0, first = -1; long k0 = 0, last = 0;
                        double btl0 = 0, near0 = 0, close = 0, w5 = 0; bool gs[32] = {}; int r[32] = {}; double rd[32] = {}; } cy;
@@ -181,10 +181,10 @@ int main(int argc, char** argv) {
             {   // in play, and each dead spell by the restart that ends it (benchmarks_tracking_dead.py)
                 const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0;
                 ++S.tick_n; if (!dead) ++S.tick_live;
-                if (dead) { if (dead_k0 < 0) dead_k0 = k; if (W.restartTeam() != 0xFF) dead_kind = static_cast<int>(W.restartKind()); }
+                if (dead) { if (dead_k0 < 0) { dead_k0 = k; dead_why = before ? ai::kWhyCount : last_kick_why; } if (W.restartTeam() != 0xFF) dead_kind = static_cast<int>(W.restartKind()); }
                 else if (dead_k0 >= 0) {
                     const int kd = std::min(12, std::max(0, dead_kind));
-                    ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); dead_k0 = -1; dead_kind = 0;
+                    ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); if (kd == 3 || kd == 4) { ++S.out_by[kd - 3][dead_why]; if (std::getenv("GAME_OUT_TRACE") && dead_why != ai::kWhyCount) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); } dead_k0 = -1; dead_kind = 0;
                 }
             }
             if (dead_trace && k % 300 == 0 && W.restartTeam() != 0xFF)
@@ -194,6 +194,16 @@ int main(int argc, char** argv) {
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
                 last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
                 last_kick_team = W.player(*before).team;
+                if (std::getenv("GAME_OUT_TRACE")) {
+                    const auto& lo2 = s.lastOrders()[*before];
+                    const auto& kp = W.player(*before);
+                    const double sg2 = kp.team == 0 ? 1.0 : -1.0;
+                    double rx = 0, ry = 0; if (lo2.other >= 0) { rx = W.player(lo2.other).pos.x.toDouble() * sg2; ry = W.player(lo2.other).pos.y.toDouble(); }
+                    std::snprintf(out_note, sizeof out_note, "why %d act %d from %.1f,%.1f tgt %.1f,%.1f carry %d to %d at %.1f,%.1f v %.1f,%.1f,%.1f",
+                                  static_cast<int>(lo2.why), static_cast<int>(lo2.action), kp.pos.x.toDouble() * sg2, kp.pos.y.toDouble(),
+                                  lo2.target.x.toDouble() * sg2, lo2.target.y.toDouble(), static_cast<int>(lo2.carry_m), lo2.other, rx, ry,
+                                  b.vel.x.toDouble() * sg2, b.vel.y.toDouble(), b.vel.z.toDouble());
+                }
                 // IN BEHIND: an open-play pass to a named man — where he stands against their line at the kick
                 const auto& lo = s.lastOrders()[*before];
                 if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::Cross || lo.why == ai::Why::InBehind) && lo.other >= 0 && lo.other < N) {
@@ -378,6 +388,7 @@ int main(int argc, char** argv) {
                         if (s.lastOrders()[j].why == ai::Why::Hold) {
                             ++S.dt_n[bd][r]; S.dt_s[bd][r] += hx + s.lastOrders()[j].target.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
                             S.dt_v[bd][r] += -q.vel.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
+                            S.dt_a[bd][r] += v;
                         }
                     } else {
                         const double v = hx - q.pos.x.toDouble() * sg;   // off THEIR line
@@ -562,6 +573,14 @@ int main(int argc, char** argv) {
             std::printf(" %s %.1f / %.1f (%s);", kn[i], S.dead_n[i] / tm, v[v.size() / 2], rl[i]);
         }
         std::printf("\n");
+        for (int g = 0; g < 2; ++g) {   // what put it over the byline: the last kick's why, or carried out
+            std::printf("   %s by what put it out (a team-match; StatsBomb PL 15/16 %s):", g ? "corners" : "goal kicks",
+                        g ? "5.4: clearance 1.38, block 1.34, shot 0.92, keeper save 0.60, dispossessed 0.43, dribble 0.23"
+                          : "8.3: shot 4.28, pass 2.65 (air 2.18), miscontrol 0.64, block 0.39, dribble 0.11");
+            for (int y = 0; y <= ai::kWhyCount; ++y)
+                if (S.out_by[g][y]) std::printf(" %s %.2f;", y == ai::kWhyCount ? "carried out" : ai::kWhyNames[y], S.out_by[g][y] / tm);
+            std::printf("\n");
+        }
     }
     std::printf("   TACKLES a team-match won / lost, by the tackler's own third / middle / their third (StatsBomb tackle duels 10.30 7.82 2.20, fouls 2.78 6.71 3.02):");
     for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
@@ -651,6 +670,8 @@ int main(int argc, char** argv) {
         for (int r = 0; r < ai::kRoleCount; ++r) std::printf("  %6.1f", S.ds_n[k][r] ? S.ds_s[k][r] / S.ds_n[k][r] : 0.0);
         std::printf("   holders' target");
         for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %5.1f", S.dt_n[k][r] ? S.dt_s[k][r] / S.dt_n[k][r] : 0.0);
+        std::printf(" | holders at");
+        for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %5.1f", S.dt_n[k][r] ? S.dt_a[k][r] / S.dt_n[k][r] : 0.0);
         std::printf(" | back m/s");
         for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %4.1f", S.dt_n[k][r] ? S.dt_v[k][r] / S.dt_n[k][r] : 0.0);
         std::printf("\n");
