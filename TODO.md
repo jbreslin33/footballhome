@@ -80,6 +80,8 @@ Running list of fixes and feature ideas. Add items anywhere; move them to **Done
 
 - [x] 2026-10-31 LeagueApps event registrants stored (mig 918): la_events + la_event_registrants, loaded by scripts/la-event-registrants.py, DB only. Storage only, nothing reads them; kept out of leads, persons and memberships. Not messaging anyone for now. Before anyone ever does: decide who may be messaged (Postmark + the 10DLC consent rule), and whether a Lighthouse-wide event's parents count as opted in.
 
+- [ ] Fines practice round (owner 11/6, NOT NOW): fines stay off LA bills for now. October was a "practice" round. Show each Men's player what they WOULD have owed for October (dates, events, amounts), and tell them November is for real: November fines go on the December bill (first Friday, Dec 4). Copy in DB. Billing context: LA admin invoices page answered Access Denied for the jbreslin33 login (11/6); paid → next due = next first Friday, failed → leave it.
+
 - [ ] Game v2 — 3D 11v11, manager mode, drills-as-configs: **all design and progress in `game/DESIGN.md`** (protocol in `game/PROTOCOL.md`); never tracked here. v1 archived at `archive/sim-2d-v1/`.
 
 - [x] 2026-11-03 Tie invoice lines to budget lines (mig 965): league fee rate card (league_fees, every fee with its source URL + quote) and team_season_entries over seasons; budget lines rebuilt from it (PPR Fall/Indoor, ICSL Spring, cups, Grassroots Cup) and linked via budget_line_fees; APSL plan, Liga 1 11/6 payment, PPR plan + assignor, field paint tied. Liga 1 + PPR refs every game (home or away), PPR Indoor + ICSL ref policies added.
