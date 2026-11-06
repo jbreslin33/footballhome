@@ -118,6 +118,8 @@ def one(pos_path):
             tl = half - x * g; dtl.append(tl)
             r = ROLE.get(pos_of.get(pid, ""), "?")
             c[("dn", k, r)] += 1; c[("ds", k, r)] += tl
+            ph = "S" if a >= 6 else "T"   # G5.33 (§8.131): settled (6 s+ since it lost it) v the transition
+            c[("dn" + ph, k, r)] += 1; c[("ds" + ph, k, r)] += tl
             if tl < btl: c[("dgr", k, r)] += 1   # G5.19: goal-side, by role
         if len(dtl) >= 9: c[("df", k)] += 1; c[("dmid", k)] += sum(dtl) / len(dtl)
         if len(dtl) >= 9:   # G5.19 (§8.116): outfield men goal-side of the ball (nearer their own line than it)
@@ -175,6 +177,11 @@ if __name__ == "__main__":
         f = c[("df", k)]
         if not f: continue
         print(f"  {10*k:3d}-{10*k+10:<3d} {f:7d}  {c[('dmid',k)]/f:5.1f}    " + "  ".join(f"{c[('ds',k,r)]/max(1,c[('dn',k,r)]):6.1f}" for r in roles) + f"   goal-side of the ball {c[('dgs',k)]/f:.2f} (4+ {100*c[('dgs4',k)]/f:.0f}%)")
+    for ph, lab in (("S", "SETTLED (6 s+ since it lost it)"), ("T", "TRANSITION (0-6 s since it lost it)")):
+        print(f"  DEFENDING SHAPE, {lab}: band, share of the band's frames, then by role")
+        for k in range(10):
+            nn = sum(c[("dn" + ph, k, r)] for r in roles); na = sum(c[("dn", k, r)] for r in roles)
+            if nn: print(f"  {10*k:3d}-{10*k+10:<3d} {100*nn/max(1,na):5.1f}%   " + "  ".join(f"{c[('ds'+ph,k,r)]/max(1,c[('dn'+ph,k,r)]):6.1f}" for r in roles))
     print("  each role ahead of the middle (toward the ball's end), ball 25-75 m off the line: " + "; ".join(f"{r} {c[('dg',r)]/max(1,c[('dgn',r)]):+.1f}" for r in roles))
     print("  middle (attack-direction x, of the side WITHOUT it) on an EMA of the ball over T s: T: slope, offset, R2")
     for T in (0, 1, 2, 3, 4, 6, 8):

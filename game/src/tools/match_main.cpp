@@ -92,7 +92,8 @@ struct Stats {
     long rc_n[5] = {}, rc_s[5][3] = {}, rc_fb[5] = {}; double rc_v[5] = {}, rc_back[5] = {};
     long rc_fast[ai::kWhyCount][3] = {}, rc_fast_role[ai::kRoleCount] = {}, rc_hold_near[3] = {};   // + holders with the ball inside 40 m of their goal
     long rc_zn[2] = {}, rc_z[2][3] = {}, rc_zk[2][5] = {}, rc_zkb[2][5] = {};   // + by s since lost: steps, 5+ back
-    long rc_gap[4] = {}, rc_gapb[4] = {};   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
+    long rc_gap[4] = {}, rc_gapb[4] = {};
+    long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
 int distBand(double d) { return d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : 3; }
@@ -423,6 +424,7 @@ int main(int argc, char** argv) {
                     if (q.team == dteam) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
+                        { const int ph = (static_cast<long>(k) - rc_k) >= 180 ? 0 : 1; S.dp_s[ph][bd][r] += v; ++S.dp_n[ph][bd][r]; }
                         if (std::getenv("GAME_HOLD_TRACE") && s.lastOrders()[j].why == ai::Why::Hold &&
                             (std::getenv("GAME_HOLD_TRACE")[0] == 'a' || r == 1 || r == 4)) {
                             const auto* st = s.brain().stateOf(j);
@@ -755,6 +757,17 @@ int main(int argc, char** argv) {
         }
         if (tot) std::printf("     all        | %5.1f %5.1f %5.1f | %5.1f | %.2f, %+.2f\n", 100.0 * s0 / tot, 100.0 * s1 / tot, 100.0 * s2 / tot,
                              100.0 * fb / tot, sv / tot, sb / tot);
+    }
+    for (int ph = 0; ph < 2; ++ph) {
+        long tot = 0, tt = 0;
+        for (int bd = 0; bd < 10; ++bd) for (int r = 0; r < ai::kRoleCount; ++r) { tot += S.dp_n[ph][bd][r]; tt += S.dp_n[0][bd][r] + S.dp_n[1][bd][r]; }
+        std::printf("DEFENDING SHAPE, %s (benchmarks_tracking_possession.py the same; %.1f%% of frames): band, by role\n",
+                    ph ? "TRANSITION (0-6 s since it lost it)" : "SETTLED (6 s+ since it lost it)", tt ? 100.0 * tot / tt : 0.0);
+        for (int bd = 0; bd < 10; ++bd) {
+            std::printf("  %3d-%-3d", bd * 10, bd * 10 + 10);
+            for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %6.1f", S.dp_n[ph][bd][r] ? S.dp_s[ph][bd][r] / S.dp_n[ph][bd][r] : 0.0);
+            std::printf("\n");
+        }
     }
     std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");
     for (int k = 0; k < 10; ++k) {

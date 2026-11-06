@@ -5822,3 +5822,49 @@ goldens unchanged (the test rig has no shape rows).
 4-10 s (they counter-press, then drop) — the first seconds after losing it want the nearest men on
 the ball, not a retreat. (2) Inside 40 m the block is still +4-6 m high with the ball 0-10 m out
 and sprints back 16.4% (9.2). (3) FB/WIDE +1.3-2.5 m upfield in midfield. (4) Crosses 0.12 (11.5).
+
+### 8.131 G5.33 — the block spot is the real SETTLED block, not the all-frames blend (no migration)
+
+§8.130's next: the turnover timing — ours run back hardest 0-4 s after losing it, real men 4-10 s.
+
+**Tried first: delay the drop** (`physics.phase.read_s`, three ways, none kept):
+| on losing it, for the first N s a holder… | 0-2 s under 2 / 2-5 / 5+ m/s | after | block v real |
+|---|---|---|---|
+| (G5.32) goes to his block spot | 40.0 / 53.6 / 6.4 | | 2.06 m |
+| stops where he is (1 / 2 s) | 71.8 / 25.8 / 2.5 | 5+ back at 4-6 s 13.4 / 17.4% (7.4) | 2.29 / 2.48 |
+| keeps his attacking spot (1 / 2 s) | 52.8 / 44.0 / 3.3 (real 48.0 / 46.4 / 5.6) | 14.2 / 20.1% | 2.25 / 2.57 |
+| eases from his attacking spot onto the block's (4 / 6 s) | 51.2 / 45.0 / 3.8 | 15.1 / 11.8% | 2.45 / 2.73 |
+Every realistic first second postponed the sprint, and the shape got worse each time. That pointed
+at the target, not the timing.
+
+**Found: the real table is two blocks.** `benchmarks_tracking_possession.py` now splits the real
+defending shape by seconds since the side lost it. Half of all real defending frames are the first
+6 s after a turnover, and with the ball far from their goal those men still stand 3-9 m higher
+than the settled block (ball 60-70 m out: CB 43.8 v 38.6, FB 49.0 v 41.3, WIDE 62.3 v 53.5). The
+block spot (§8.111/§8.118) was the mean of both, so a settled block standing on it was too high,
+and a realistic transition on top would be higher still.
+
+**Built.** `kRealSpotDm` is the real SETTLED table (6 s+ since it lost it, DFL). Harness: DEFENDING
+SHAPE, SETTLED and TRANSITION (by seconds since the last touch changed side), for like-for-like
+comparison with the real split; the all-frames table is no fair measure while our possessions
+run long (22.6% of our defending frames are transition, real ~50%).
+
+**Result** (8 matches, fh_game_scratch; old all-frames table → settled):
+
+| | before | after | real |
+|---|---|---|---|
+| settled block v real settled: mean \|error\| / signed | 1.90 / +0.98 m | 1.81 / −0.12 m | 0 |
+| transition v real transition | 4.06 / +3.51 m | 4.04 / +2.90 m | 0 |
+| off the ball under 2 / 2-5 / 5+ m/s | 38.7 / 53.2 / 8.1% | 41.0 / 51.7 / 7.3% | 41.9 / 50.3 / 7.9% |
+| 5+ back, ball inside 40 m / further out | 16.4 / 2.14% | 12.0 / 2.38% | 9.2 / 2.81% |
+| balls met in behind a team-match | 17.2 | 13.8 | 37.7 |
+| shots a team-match | 7.9 | 7.5 | 12.9 |
+
+The deeper settled line leaves less room behind it (in behind 17.2 → 13.8): honest, the line is
+where real lines stand now. Tests 22/22 (block test on the settled table); goldens re-locked.
+
+**Next moles.** (1) In transition our men stand +2.9 m higher than real men do: the attacking shape
+they lose it from, or how the game counts a turnover (its last-touch flips on loose balls; DFL's
+possession flag doesn't) — measure the possession shape the same way first. (2) Possessions too
+long: 22.6% of defending frames are transition (real ~50%) — real sides lose it twice as often.
+(3) In behind 13.8 (37.7), crosses 0.1 (11.5).

@@ -16,16 +16,19 @@ using math::Vec3;
 
 namespace {
 
-// Real (DFL, 7 matches, the side without the ball, in play, 5 Hz): mean metres
-// off its own line by role, ball in bands 0-10 … 90-100 m off that line —
-// benchmarks_tracking_possession.py DEFENDING SHAPE (§8.111/§8.118).
+// Real (DFL, 7 matches, the side without the ball, in play, 5 Hz, SETTLED: 6 s+
+// since it lost it): mean metres off its own line by role, ball in bands 0-10 …
+// 90-100 m off that line — benchmarks_tracking_possession.py DEFENDING SHAPE,
+// SETTLED (G5.33, §8.131). Half of all real defending frames are the 6 s after
+// a turnover, when men far from their goal still stand 3-9 m higher; the
+// all-frames table (§8.111/§8.118) put the settled block on that blend.
 constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
-    { 93, 137, 196, 254, 309, 363, 410, 455, 498, 552},   // CB
-    {120, 171, 229, 290, 341, 403, 450, 501, 544, 613},   // FB
-    {154, 206, 274, 344, 402, 465, 518, 574, 624, 679},   // DM/CM
-    {259, 311, 366, 428, 491, 554, 606, 666, 733, 810},   // AM
-    {208, 263, 327, 397, 456, 520, 575, 636, 691, 770},   // WIDE
-    {329, 381, 448, 504, 558, 616, 666, 724, 787, 865},   // ST
+    {100, 145, 201, 260, 305, 351, 386, 426, 454, 494},   // CB
+    {131, 179, 227, 287, 327, 378, 413, 455, 480, 528},   // FB
+    {176, 219, 277, 350, 393, 447, 487, 539, 575, 620},   // DM/CM
+    {309, 335, 376, 437, 485, 542, 588, 645, 707, 777},   // AM
+    {235, 279, 325, 397, 438, 492, 535, 591, 636, 710},   // WIDE
+    {413, 427, 467, 522, 554, 602, 640, 696, 753, 832},   // ST
 };
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 
@@ -37,8 +40,9 @@ public:
     std::uint8_t id() const override { return 1; }
     const char* name() const override { return "hold the block spot"; }
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
+        const auto& me = c.world.player(v.slot);
         o.target = c.block.spot(v, c.world);
-        o.move.move = seek(c.world.player(v.slot).pos, o.target, Fixed64::fromFraction(1, 2));
+        o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.why = Why::Hold;
         return true;
     }
