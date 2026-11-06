@@ -188,7 +188,8 @@ u8 event_type | u8 team | u64 tick
   2 throw-in, 3 goal kick, 4 corner, 5 kickoff, 6 half time, 7 full time,
   8 / 9 tackle won / lost (team = the tackler's), 10 offside (awarded team),
   11 foul (team = the fouler's; sent with advantage too), 12 free kick
-  (awarded = the fouled team) — 11 / 12 since G5.28, additive.
+  (awarded = the fouled team) — 11 / 12 since G5.28, additive; 13 penalty
+  (awarded = the fouled team; Law 14, G5.40), additive.
   `team` = scorer (goal) or awarded team (restarts); unused for 6/7.
 - New event types append their own payload fields after `tick`; decoders
   ignore fields they don't know (§9).

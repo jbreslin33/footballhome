@@ -31,7 +31,7 @@
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
   const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
-                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul' };   // 11 = the foul itself (advantage too): no toast
+                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul', 13: 'Foul in the box' };   // 11 = the foul itself (advantage too): no toast
 
   // The referee's whistle (G5.2), synthesised: a pip for a restart, a longer
   // blast for a goal or the end of a half. Browsers only open audio after a
@@ -687,13 +687,14 @@
       // Tackles (8/9) fire dozens of times a match — not toast-worthy.
       if (!EVENT_NAMES[ev.eventType]) return;
       const name = EVENT_NAMES[ev.eventType];
-      whistle(ev.eventType === 1 || ev.eventType === 6 || ev.eventType === 7 ? 0.5 : 0.14);   // G5.2
+      whistle(ev.eventType === 1 || ev.eventType === 6 || ev.eventType === 7 || ev.eventType === 13 ? 0.5 : 0.14);   // G5.2
       if (ev.eventType === 1) {
         renderer.goalFlash();
         renderer.celebrate(ev.team);
         toast(`⚽ ${name}`, 3000);
       } else {
-        const side = ev.eventType === 10 || ev.eventType === 12
+        const side = ev.eventType === 13 ? (ev.team === 0 ? ' — penalty home' : ' — penalty away')
+          : ev.eventType === 10 || ev.eventType === 12
           ? (ev.team === 0 ? ' — free kick home' : ' — free kick away')
           : ev.eventType <= 5 ? (ev.team === 0 ? ' — home' : ' — away') : '';
         toast(`${name}${side}`, 2000);

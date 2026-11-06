@@ -87,6 +87,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     restart_play_.keeper_long_m = p.fixed("physics.restart.keeper_long_m", 55000);
     restart_play_.throw_law_m = p.fixed("physics.restart.throw_law_m", 2000);
     restart_play_.kick_law_m = p.fixed("physics.restart.kick_law_m", 9150);
+    restart_play_.penalty_arc_m = p.fixed("physics.restart.penalty_arc_m", 9150);
     arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
     arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
     shape_tau_ = p.fixed("physics.body.shape_tau_s", 0);
@@ -237,6 +238,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     }
     keepLawDistance(slot, world, o);
     outOfTheirBox(slot, world, o);
+    penaltyPlaces(slot, world, o);
     if (o.why == Why::InBehind && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
     namePass(slot, world, o);
     brakeToArrive(slot, world, o, blockLead(slot, world, o));
@@ -283,6 +285,7 @@ bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
         switch (world.restartKind()) {
             case core::MatchEventType::ThrowIn: return playThrow(slot, world, out);
             case core::MatchEventType::Corner:  return playCorner(slot, world, out);
+            case core::MatchEventType::Penalty: return playPenalty(slot, world, out);
             default: break;
         }
         // Goal kick: the keeper's own ball — his on-ball state chooses it;
@@ -364,6 +367,75 @@ bool Brain::playThrow(SlotIndex slot, const World& world, Orders& out) const {
     out.other = static_cast<std::int16_t>(best);
     out.target = bat;
     return true;
+}
+
+// G5.40 (Law 14): the penalty. Where it goes is drawn from where real ones went
+// (StatsBomb PL 2015/16, benchmarks_statsbomb_penalties.py): on target 93.4% (81.3%
+// scored, 12.1% saved), off 6.6%; on target a median 2.38 m from the goal's centre
+// (p25 1.83, p75 2.93), 0.64 m up (p25 0.18, p75 1.28) — the quartiles joined by
+// straight lines, the ends to the post / the bar. The keeper still has to save it.
+bool Brain::playPenalty(SlotIndex slot, const World& world, Orders& out) const {
+    const auto& me = world.player(slot);
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    out.move.face = Vec2{sg, Fixed64::zero()};
+    out.why = Why::Shoot;
+    if (world.tickCount() - world.ownedAtTick() < static_cast<std::uint64_t>(restart_play_.corner_look_ticks))
+        return true;
+    auto roll = [&](int ch) {
+        return (core::detNoise(match_seed_, world.ownedAtTick(), slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    };
+    // A piecewise-linear draw through 0 / p25 / median / p75 / top (cm).
+    auto quart = [](Fixed64 u, const int (&q)[5]) {
+        const Fixed64 k = u * Fixed64::fromInt(4);
+        const int i = static_cast<int>(k.raw >> Fixed64::FRAC_BITS) > 3 ? 3 : static_cast<int>(k.raw >> Fixed64::FRAC_BITS);
+        const Fixed64 f = k - Fixed64::fromInt(i);
+        return Fixed64::fromFraction(q[i], 100) + Fixed64::fromFraction(q[i + 1] - q[i], 100) * f;
+    };
+    static const int kLat[5] = {0, 183, 238, 293, 350}, kHt[5] = {0, 18, 64, 128, 230};
+    Fixed64 lat = quart(roll(51), kLat), ht = quart(roll(52), kHt);
+    if (roll(53) < Fixed64::fromFraction(66, 1000)) {   // the miss: wide of the post or over
+        if (roll(54) < Fixed64::fromFraction(1, 2)) lat = Fixed64::fromFraction(390, 100) + roll(55) * Fixed64::fromInt(2);
+        else ht = Fixed64::fromFraction(260, 100) + roll(55);
+    }
+    const Fixed64 side = roll(56) < Fixed64::fromFraction(1, 2) ? -Fixed64::one() : Fixed64::one();
+    out.target = Vec2{sg * half_x_, side * lat};
+    out.aim_z = ht < Fixed64::fromFraction(15, 100) ? Fixed64::zero() : ht;
+    out.move.move = math::normalized(Vec2{out.target.x - me.pos.x, out.target.y - me.pos.y});
+    out.action = Action::Shot;
+    return true;
+}
+
+// Law 14 (G5.40): until the penalty is kicked everyone but the taker and the
+// defending keeper stands outside the penalty area and the arc (9.15 m from the
+// mark), behind the ball — on a line 21 m out, across the area's width. The
+// defending keeper stands on his line between the posts.
+void Brain::penaltyPlaces(SlotIndex slot, const World& world, Orders& o) const {
+    if (!world.penaltySetup()) return;
+    const Vec3& sp = world.restartSpot();
+    const Fixed64 end = sp.x.raw > 0 ? Fixed64::one() : -Fixed64::one();   // the goal it is taken at
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (world.isKeeper(slot)) {
+        if (team == world.restartTeam()) return;   // the taker's keeper: his own game
+        const Vec2 t{end * half_x_ - end * Fixed64::fromFraction(1, 5), Fixed64::zero()};
+        o.target = t;
+        o.move.move = seek(world.player(slot).pos, t, Fixed64::fromFraction(1, 2));
+        o.move.face = Vec2{-end, Fixed64::zero()};
+        o.action = Action::None;
+        o.why = Why::KeeperPosition;
+        return;
+    }
+    if (team == world.restartTeam() && restartTaker(world, team) == slot) return;
+    const auto& me = world.player(slot);
+    // Outside the area and the arc: the mark (11 m) + the arc's radius + a stride.
+    const Fixed64 line = half_x_ - (Fixed64::fromInt(11) + restart_play_.penalty_arc_m + Fixed64::fromFraction(17, 20));
+    const bool aimed = o.target.x.raw != 0 || o.target.y.raw != 0;
+    Vec2 t = aimed ? o.target : Vec2{me.pos.x, me.pos.y};
+    if (t.x * end > line) t.x = line * end;
+    o.target = t;
+    o.move.move = seek(me.pos, t, Fixed64::fromFraction(1, 2));
+    o.action = Action::None;
+    o.why = Why::LawDistance;
 }
 
 bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {

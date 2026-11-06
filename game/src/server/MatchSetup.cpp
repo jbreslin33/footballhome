@@ -34,6 +34,13 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     cfg.db = db;   // G4.32: admin RELOAD_ROSTERS re-reads the teams
     cfg.model_params = persistence::loadModelParams(db);
     cfg.team_names = persistence::loadDemoTeamNames(db);   // G5.35: the matchup dropdowns
+    // G5.40 (§8.140): the Laws' distances from the club's tactic_restarts (one statement).
+    const auto laws = persistence::loadRestartLawsMilli(db);
+    for (const auto& [code, key] : {std::pair{"throw_in", "physics.restart.throw_law_m"},
+                                    std::pair{"free_kick", "physics.restart.kick_law_m"},
+                                    std::pair{"penalty", "physics.restart.penalty_arc_m"}})
+        if (auto it = laws.find(code); it != laws.end()) cfg.model_params.setMilli(key, it->second);
+    say("fh-game: %zu restart law(s) from tactic_restarts\n", laws.size());
     say("fh-game: %zu physics param(s) loaded\n", cfg.model_params.size());
     if (auto t = persistence::loadDemoTeam(db, th)) {
         cfg.roster_home = std::move(*t);

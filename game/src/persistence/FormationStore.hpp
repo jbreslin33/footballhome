@@ -70,6 +70,10 @@ struct DemoTeam {
     std::vector<DemoPlayer> players;  // lineup order (1-11 the formation slots), then the bench
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name);
+// G5.40 (§8.140): the Laws at restarts, the club's tactic_restarts (mig 1145) —
+// code → law_m (metres opponents keep from the ball), the one statement the club app
+// and the game share. Empty when the table is absent (the scratch DB): defaults stand.
+std::map<std::string, std::int64_t> loadRestartLawsMilli(const DbConfig& cfg);
 // G5.35: every game_demo_teams name, A-Z — the page's matchup dropdowns.
 std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg);
 

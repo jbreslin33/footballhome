@@ -71,7 +71,7 @@ struct Stats {
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
     long tkl[2][3] = {};
-    long tick_n = 0, tick_live = 0, dead_n[13] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[13]; long fouls = 0;
+    long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
@@ -183,6 +183,7 @@ int main(int argc, char** argv) {
         const std::uint8_t N = W.playerCount();
         auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
+        bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1;
@@ -209,13 +210,27 @@ int main(int argc, char** argv) {
             const auto& b = W.ball();
             for (const auto& e : s.lastEvents()) {
                 if (e.type == core::MatchEventType::Foul) ++S.fouls;
+                if (e.type == core::MatchEventType::Penalty) { ++S.pens; pen_k = -1; pen_on = true; }   // §8.140
                 if (e.type == core::MatchEventType::TackleWon || e.type == core::MatchEventType::TackleLost) {
                     const double tx = b.pos.x.toDouble() * (e.team == 0 ? 1.0 : -1.0) + hx;   // metres from the tackler's own goal
                     ++S.tkl[e.type == core::MatchEventType::TackleWon ? 0 : 1][tx < 35 ? 0 : tx < 70 ? 1 : 2];
+                    if (tx < 16.5 && std::fabs(b.pos.y.toDouble()) < 20.16) ++S.tkl_area;   // §8.140: in his own penalty area
                 }
             }
+            if (pen_on && pen_k < 0 && W.restartTeam() == 0xFF) {   // the penalty is kicked
+                pen_k = static_cast<long>(k);
+                if (std::getenv("GAME_PEN_TRACE")) {
+                    const double gx = b.pos.x.toDouble() > 0 ? hx : -hx;
+                    std::fprintf(stderr, "pen kicked: ball %.1f,%.1f;", b.pos.x.toDouble(), b.pos.y.toDouble());
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        std::fprintf(stderr, " %s%d:%.1f,%.1f", W.isKeeper(j) ? "GK" : "", j, std::fabs(gx - W.player(j).pos.x.toDouble()), W.player(j).pos.y.toDouble());
+                    std::fprintf(stderr, "\n");
+                }
+            }
+            if (pen_on && pen_k >= 0 && static_cast<long>(k) - pen_k > 150) pen_on = false;
             for (const auto& e : s.lastEvents())
                 if (e.type == core::MatchEventType::Goal) {
+                    if (pen_on && pen_k >= 0) { ++S.pen_goals; pen_on = false; }
                     ++S.goals[e.team];
                     if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
                     ++S.goal_by[last_kick_why];
@@ -233,7 +248,7 @@ int main(int argc, char** argv) {
                 ++S.tick_n; if (!dead) ++S.tick_live;
                 if (dead) { if (dead_k0 < 0) { dead_k0 = k; dead_why = before ? ai::kWhyCount : last_kick_why; } if (W.restartTeam() != 0xFF) dead_kind = static_cast<int>(W.restartKind()); }
                 else if (dead_k0 >= 0) {
-                    const int kd = std::min(12, std::max(0, dead_kind));
+                    const int kd = std::min(13, std::max(0, dead_kind));
                     ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); if (kd == 3 || kd == 4) { ++S.out_by[kd - 3][dead_why]; if (std::getenv("GAME_OUT_TRACE") && dead_why != ai::kWhyCount) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); } dead_k0 = -1; dead_kind = 0;
                 }
             }
@@ -788,9 +803,9 @@ int main(int argc, char** argv) {
     std::printf("   passes completed %.1f%% (79.1%%)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
     {
         std::printf("BALL IN PLAY %.1f%% of the match (real DFL 55.2%%); dead before each restart, a team-match / median s (real):", 100.0 * S.tick_live / std::max(1L, S.tick_n));
-        static const char* kn[13] = {"?", "goal", "throw-in", "goal kick", "corner", "kick-off", "", "", "", "", "offside FK", "", "free kick"};
-        static const char* rl[13] = {"", "", "19.9 / 13.8", "7.1 / 23.2", "3.2 / 32.8", "1.0 / 64.2", "", "", "", "", "offsides ~1.1", "", "10.5 / 32.5"};
-        for (int i = 0; i < 13; ++i) {
+        static const char* kn[14] = {"?", "goal", "throw-in", "goal kick", "corner", "kick-off", "", "", "", "", "offside FK", "", "free kick", "penalty"};
+        static const char* rl[14] = {"", "", "19.9 / 13.8", "7.1 / 23.2", "3.2 / 32.8", "1.0 / 64.2", "", "", "", "", "offsides ~1.1", "", "10.5 / 32.5", "0.12 / -"};
+        for (int i = 0; i < 14; ++i) {
             if (!S.dead_n[i]) continue;
             auto v = S.dead_s[i]; std::sort(v.begin(), v.end());
             std::printf(" %s %.1f / %.1f (%s);", kn[i], S.dead_n[i] / tm, v[v.size() / 2], rl[i]);
@@ -808,6 +823,7 @@ int main(int argc, char** argv) {
     std::printf("   TACKLES a team-match won / lost, by the tackler's own third / middle / their third (StatsBomb tackle duels 10.30 7.82 2.20, fouls 2.78 6.71 3.02):");
     for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
     std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
+    std::printf("   PENALTIES (Law 14) %.3f a team-match (StatsBomb PL 15/16 0.120), scored %ld of %ld (81.3%%); tackles in his own area %.2f a team-match (tackle duels there 1.61)\n", S.pens / tm, S.pen_goals, S.pens, S.tkl_area / tm);
     std::printf("   THE DFL CUT (5 Hz, man on the ball = nearest within 2 m; real DFL benchmarks_tracking_pressure.py): spells %.1f (640.4), %.2f s each (1.21); pressures %.1f (375.2) = %.2f a spell (0.59), by the carrier's metres off their line",
                 S.tk_spells / tm, 0.2 * S.tk_frames / std::max(1L, S.tk_spells), S.tk_press / tm, static_cast<double>(S.tk_press) / std::max(1L, S.tk_spells));
     { static const double rz[5] = {40.8, 80.1, 89.0, 91.1, 74.2}; for (int i = 0; i < 5; ++i) std::printf(" %.1f (%.1f)", S.tk_press_z[i] / tm, rz[i]); }

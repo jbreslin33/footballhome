@@ -242,15 +242,17 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
         }
 
         // Law 12 (G5.28): the challenge is a foul at the real share for its third
-        // (from the tackler's own goal). Inside his own penalty area it would be a
-        // penalty, not modelled yet — no foul there. Advantage: play on (the
-        // carrier keeps it); else a free kick where it happened, dead a real roll.
+        // (from the tackler's own goal). G5.40 (Law 14): inside his own penalty
+        // area at the area's own real share, and the restart is a penalty from the
+        // mark. Advantage: play on (the carrier keeps it); else the restart, dead a
+        // real roll.
         {
             const Fixed64 own = (ball_.pos.x * (tackler.team == 0 ? Fixed64::one() : -Fixed64::one())) + half_x_;
             const int third = own < Fixed64::fromInt(35) ? 0 : own < Fixed64::fromInt(70) ? 1 : 2;
             const bool own_box = own < Fixed64::fromFraction(165, 10) && math::fx_abs(ball_.pos.y) < Fixed64::fromFraction(2016, 100);
             const Fixed64 f = (detNoise(match_seed_, clock_.tick(), i, 15) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-            if (!own_box && foul_p_[third].raw > 0 && f < foul_p_[third]) {
+            const Fixed64 fp = own_box ? foul_p_area_ : foul_p_[third];
+            if (fp.raw > 0 && f < fp) {
                 ++fouls_[tackler.team & 1];
                 events.push_back({MatchEventType::Foul, tackler.team});
                 tackler.recovery_ticks = kTackleMissRecovery;
@@ -258,7 +260,13 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 const Fixed64 a = (detNoise(match_seed_, clock_.tick(), i, 16) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
                 if (a >= foul_adv_) {
                     const std::uint8_t fouled = players_[*ball_.owner].team;
-                    awardRestart(MatchEventType::FreeKick, fouled, Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()}, events);
+                    if (own_box) {   // the mark: 11 m out from the fouler's goal line
+                        const Fixed64 gx = tackler.team == 0 ? -half_x_ : half_x_;
+                        const Fixed64 mark = tackler.team == 0 ? gx + Fixed64::fromInt(11) : gx - Fixed64::fromInt(11);
+                        awardRestart(MatchEventType::Penalty, fouled, Vec3{mark, Fixed64::zero(), Fixed64::zero()}, events);
+                    } else {
+                        awardRestart(MatchEventType::FreeKick, fouled, Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()}, events);
+                    }
                     restart_ready_tick_ = clock_.tick() + deadRoll(fk_dead_lo_, fk_dead_hi_, i);
                     return;
                 }
@@ -1027,6 +1035,9 @@ void World::configureFouls(const ModelParams& p) {
     foul_p_[1] = p.fixed("physics.foul.p_middle_third", 462);
     foul_p_[2] = p.fixed("physics.foul.p_their_third", 579);
     foul_adv_ = p.fixed("physics.foul.advantage", 138);    // 1.73 of 12.52 fouls played on
+    // G5.40 (Law 14): in his own penalty area 7.6% of his challenges are fouls —
+    // 0.13 a team-match of 1.61 tackle duels + fouls (benchmarks_statsbomb_penalties.py).
+    foul_p_area_ = p.fixed("physics.foul.p_own_area", 76);
     // DFL (benchmarks_tracking_dead.py): seconds dead, p25 - p75.
     fk_dead_lo_ = p.fixed("physics.restart.free_kick_dead_p25_s", 20500);
     fk_dead_hi_ = p.fixed("physics.restart.free_kick_dead_p75_s", 43000);

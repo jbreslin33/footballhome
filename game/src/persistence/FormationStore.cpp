@@ -110,6 +110,21 @@ std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg) {
     }
 }
 
+std::map<std::string, std::int64_t> loadRestartLawsMilli(const DbConfig& cfg) {
+    std::map<std::string, std::int64_t> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        if (tx.exec("SELECT to_regclass('tactic_restarts') IS NOT NULL")[0][0].as<bool>())
+            for (const auto& r : tx.exec("SELECT code, round(law_m * 1000)::bigint FROM tactic_restarts WHERE law_m IS NOT NULL"))
+                out[r[0].as<std::string>()] = r[1].as<std::int64_t>();
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: tactic_restarts load failed (defaults): %s\n", e.what());
+    }
+    return out;
+}
+
 std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg) {
     std::vector<std::string> out;
     try {

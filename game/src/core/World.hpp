@@ -76,6 +76,7 @@ enum class MatchEventType : std::uint8_t {
     Offside    = 10, // team = the AWARDED (defending) team
     Foul       = 11, // team = the fouler's (G5.28, Law 12), advantage or not
     FreeKick   = 12, // team = awarded (the fouled side)
+    Penalty    = 13, // team = awarded (G5.40, Law 14: a foul in the fouler's own penalty area)
 };
 
 struct MatchEvent {
@@ -190,8 +191,12 @@ public:
     bool heldRestart() const noexcept {
         return restart_team_ != 0xFF && (restart_kind_ == MatchEventType::ThrowIn ||
                                          restart_kind_ == MatchEventType::GoalKick ||
-                                         restart_kind_ == MatchEventType::Corner);
+                                         restart_kind_ == MatchEventType::Corner ||
+                                         restart_kind_ == MatchEventType::Penalty);
     }
+    // Law 14 (G5.40): a penalty awarded and not yet kicked — everyone but the
+    // taker and the defending keeper outside the area and the arc, behind the ball.
+    bool penaltySetup() const noexcept { return restart_team_ != 0xFF && restart_kind_ == MatchEventType::Penalty; }
     bool takingThrow(SlotIndex slot) const noexcept {
         return heldRestart() && restart_kind_ == MatchEventType::ThrowIn && ball_.owner && *ball_.owner == slot;
     }
@@ -283,6 +288,7 @@ private:
     std::vector<bool>        keeper_;
     Locomotion loco_;
     BallFlight ball_flight_;
+    math::Fixed64 foul_p_area_{};   // G5.40: the share of challenges in his own area that are fouls (Law 14)
     math::Fixed64 keeper_reach_ = kKeeperReach;
     math::Fixed64 keeper_shot_reach_{};
     std::vector<Body> bodies_;

@@ -85,6 +85,8 @@ private:
     bool takeRestart(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playThrow(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playCorner(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    bool playPenalty(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    void penaltyPlaces(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void keepLawDistance(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void outOfTheirBox(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void namePass(core::SlotIndex slot, const core::World& world, Orders& o) const;
@@ -119,7 +121,8 @@ private:
         math::Fixed64 throw_min_m = math::Fixed64::fromInt(4), throw_room_m = math::Fixed64::fromInt(10),
                       throw_free_m = math::Fixed64::fromInt(3), throw_gain = math::Fixed64::fromFraction(3, 10),
                       keeper_long_m = math::Fixed64::fromInt(55), throw_law_m = math::Fixed64::fromInt(2),
-                      kick_law_m = math::Fixed64::fromFraction(915, 100);
+                      kick_law_m = math::Fixed64::fromFraction(915, 100),
+                      penalty_arc_m = math::Fixed64::fromFraction(915, 100);
     } restart_play_;
     std::uint8_t hold_team_ = 0xFF;
     std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;

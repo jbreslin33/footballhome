@@ -6174,3 +6174,45 @@ the jockey and the tackle — not the presser's choice or path.
 
 **Next moles.** (1) The 1v1: take-ons 2.5×. (2) Law 14 — a foul in our area gives a free kick on
 the spot, not a penalty. (3) The tactic plans' reader.
+
+### 8.140 G5.40 — Law 14: penalties; the restarts' Laws as one shared statement (mig 1145)
+
+James (via the club-app session): "tell 'game' about laws of the game to improve refs and
+behaviour of players … ok just turn it over to game". The audit: Law 15 throw-in 2 m, Laws 13 / 17
+9.15 m, Law 16 the area cleared, Law 11 offside (the assistant's call, G4.88), Law 12 fouls and
+advantage (G5.28), Law 5/6 positioning — all in. Missing: **Law 14** (a foul in the fouler's own
+area was never called at all), Law 8 (kick-off halves), Law 13 walls, cards.
+
+**Real** (new `scripts/benchmarks_statsbomb_penalties.py`, StatsBomb PL 2015/16): in his own area
+a side makes 1.61 tackle duels and 0.13 fouls a team-match — 7.6% of its challenges there are
+fouls (the §8.126 cut); penalties 0.120 a team-match, scored 81.3%, saved 12.1%, missed 6.6%; on
+target a median 2.38 m from the goal's centre (p25 1.83, p75 2.93), 0.64 m up (0.18, 1.28).
+
+**Built.**
+- World: a challenge in the tackler's own area is a foul at 7.6% (`physics.foul.p_own_area`);
+  without advantage it is MatchEventType::Penalty (13) to the fouled side at the mark (11 m), a
+  held restart (the taker on the spot, as a corner), dead the free kick's real roll; `penaltySetup()`
+  until it is kicked.
+- Brain: `playPenalty` — after the corner's look, a Shot at a point drawn from the real penalty
+  (on target 93.4%: quartile-joined lateral and height; off 6.6%: wide or over). `penaltyPlaces`:
+  everyone but the taker and the defending keeper outside the area and the arc, behind the ball (a
+  line at 11 + 9.15 + 0.85 m); the keeper on his line between the posts. After the kick, play on.
+- Client: event 13 "Foul in the box — penalty home / away", the long whistle. PROTOCOL §7: 13.
+- Mig 1145 (club DB): `tactic_restarts` states every restart's Law — law_m, zone (penalty_area /
+  area_and_arc / own_half / none) with zone_min_x / zone_max_x / zone_min_y in plan coordinates,
+  who, until_event, the Law 13 wall (9.15 m, attackers 1 m from a wall of 3+) — rows goal_kick,
+  free_kick, corner, throw_in, kick_off, penalty. The goal kick follows the Law exactly (the area,
+  x 20.35-79.65, y ≥ 84.29), not a whole-width cap. The game reads law_m (throw-in, free kick /
+  corner, the penalty arc) at load (`persistence::loadRestartLawsMilli`); absent table (scratch) →
+  the same defaults.
+- Harness: PENALTIES (a team-match, scored), tackles in his own area, penalty dead time.
+
+**Result.** Forced (every area challenge a foul, 4 × 8 matches): 14 penalties, 13 scored (real
+81.3%; 14 is too few to tell), Law 14 positions held at the kick (traced: only the taker and the
+keeper inside). At the real 7.6%: 0 in 32 matches — our side challenges 0.44 times a team-match in
+its own area (real 1.61 tackle duels), so ~0.03 penalties a team-match (0.12). The box defending
+is the next mole, not the Law. Tests 22/22, goldens unchanged (no area foul in the rig).
+
+**Next moles.** (1) Challenges in our own area 0.44 (1.61) — box defenders reach for balls, they
+don't tackle carriers. (2) Law 8: kick-off halves. (3) Law 13 walls. (4) Cards. (5) The 1v1:
+take-ons 2.5× (§8.139).
