@@ -166,7 +166,7 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
 
 Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
-    const Fixed64 off_line = hx + world.ball().pos.x * v.sg;   // ball metres off our own line
+    const Fixed64 off_line = hx + v.ball_to.x * v.sg;   // the ball's metres off our own line, where it's going
     const Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role)], off_line);
     return Vec2{(x - hx) * v.sg, v.across_def};
 }

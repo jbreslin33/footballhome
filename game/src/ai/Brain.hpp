@@ -88,7 +88,8 @@ private:
     void keepLawDistance(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void outOfTheirBox(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void namePass(core::SlotIndex slot, const core::World& world, Orders& o) const;
-    void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    math::Vec2 blockLead(core::SlotIndex slot, const core::World& world, const Orders& o) const;
+    void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o, math::Vec2 lead = {}) const;
     math::Fixed64 slideY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 shift, math::Fixed64 cap) const;
 
     TeamSetup setup_;

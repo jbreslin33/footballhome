@@ -154,10 +154,21 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     v.sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     v.role = roleOfNumber(mine.number);
     v.keeper = world.isKeeper(slot);
-    const Fixed64 by = world.ball().pos.y;
-    v.across_def = slideY(mine.base, by, theirs_shift_y_, theirs_cap_y_);
-    v.across_ours = slideY(mine.base, by, ours_shift_y_, ours_cap_y_);
     const FlightRead& fr = reads_.flightRead(world);
+    // G5.30 (§8.128): where the ball is going — a free ball in play, the point
+    // the race read's first man (either side) takes it; else where it is. The
+    // block shifts while the ball travels, not after it lands.
+    v.ball_to = Vec2{world.ball().pos.x, world.ball().pos.y};
+    if (fr.live) {
+        int f = -1;
+        for (int t = 0; t < 2; ++t) {
+            const int j = fr.first[t];
+            if (j >= 0 && j < static_cast<int>(fr.tick.size()) && fr.tick[j] >= 0 && (f < 0 || fr.tick[j] < fr.tick[f])) f = j;
+        }
+        if (f >= 0) v.ball_to = fr.at[f];
+    }
+    v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    v.across_ours = slideY(mine.base, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
                                                                          : Vec2{world.ball().pos.x, world.ball().pos.y};
     v.match_seed = match_seed_;
@@ -197,7 +208,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     outOfTheirBox(slot, world, o);
     if (o.why == Why::InBehind && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
     namePass(slot, world, o);
-    brakeToArrive(slot, world, o);
+    brakeToArrive(slot, world, o, blockLead(slot, world, o));
     // Settled at his spot he faces the ball.
     if (o.move.face.x.raw == 0 && o.move.face.y.raw == 0 && (o.why == Why::Hold || o.why == Why::KeeperPosition)) {
         const auto& me = world.player(slot);
@@ -478,7 +489,28 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 // Brake to arrive (G4.80) [Reynolds 1999 "arrive"; Harper, Carling & Kiely
 // 2019 on decelerations]: he runs no faster than he can still stop from,
 // v ≤ √(v_end² + 2·b·d); the shape caps (G5.5 / G5.10 / G5.14, DFL-fitted).
-void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
+// G5.30 (§8.128): how fast his block spot itself moves (m/s) — the spot for the
+// ball a fifth of a second on along the carrier's run, less the spot now. Only
+// holding the block with their man carrying it in play; a free ball's spot is
+// where it will be taken, which stands still while it travels.
+Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const {
+    if (o.why != Why::Hold || players_[slot & 31].machine.current() != DefendingBlock::holdBlockSpot()) return Vec2{};
+    const auto& b = world.ball();
+    if (!b.owner || world.restartTeam() != 0xFF || world.outStage() != 0) return Vec2{};
+    if (setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot]) return Vec2{};
+    const auto& cv = world.player(*b.owner).vel;
+    if (cv.x.raw == 0 && cv.y.raw == 0) return Vec2{};
+    const Fixed64 h = Fixed64::fromFraction(1, 5);
+    PlayerView v = viewOf(slot, world);
+    const Vec2 now = block_.spot(v, world);
+    v.ball_to = Vec2{v.ball_to.x + cv.x * h, v.ball_to.y + cv.y * h};
+    const FormationSpec::Pos& mine = spec_[v.team].positions[index_in_team_[slot]];
+    v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    const Vec2 then = block_.spot(v, world);
+    return Vec2{(then.x - now.x) / h, (then.y - now.y) / h};
+}
+
+void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 lead) const {
     switch (o.why) {
         case Why::Human: case Why::KeeperDive:
             return;
@@ -487,15 +519,18 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     const auto& me = world.player(slot);
     if (world.ball().owner && *world.ball().owner == slot) return;
     if (o.target.x.raw == 0 && o.target.y.raw == 0) return;
+    const bool leading = lead.x.raw != 0 || lead.y.raw != 0;
+    // Settled on a moving spot he still moves with it.
+    if (leading && math::lengthSquared(o.move.move).raw == 0) o.move.move = math::normalized(lead);
     const Fixed64 m2 = math::lengthSquared(o.move.move);
     if (m2.raw == 0 || me.max_speed.raw <= 0) return;
     const Vec2 d{o.target.x - me.pos.x, o.target.y - me.pos.y};
     const Fixed64 dist = math::length(d);
-    if (dist.raw == 0) return;
+    if (dist.raw == 0 && !leading) return;
     const Fixed64 mlen = math::fx_sqrt(m2);
     // Only when he's actually running AT the target (a pass's target is the
     // receiver; a jockey's is the man).
-    if (math::dot(o.move.move, d) < mlen * dist * Fixed64::fromFraction(9, 10)) return;
+    if (!leading && math::dot(o.move.move, d) < mlen * dist * Fixed64::fromFraction(9, 10)) return;
     Fixed64 v_end = Fixed64::zero();
     switch (o.why) {
         case Why::Chase: case Why::MeetPass: case Why::Press:
@@ -543,6 +578,24 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o) const {
     }
     // A team shifts as a block at a jog and accepts the lag: most of what was
     // left over 5 m/s was a man 15 m+ off his target (§8.103).
+    // G5.30 (§8.128): tracking, not pursuit — he runs with his spot's own
+    // velocity and closes the gap on top of it. On gap/tau alone a man
+    // trailed a moving spot by its speed × tau (/ the backpedal share facing
+    // the ball): the block stood 1.5-3 m off its spots at every band, upfield
+    // of them where the ball comes at us. Real team centroids move in phase
+    // with the ball [Frencken, Lemmink, Delleman & Visscher 2011].
+    if (leading && o.why == Why::Hold) {
+        const Vec2 want = dist.raw > 0 ? Vec2{lead.x + d.x * v_ok / dist, lead.y + d.y * v_ok / dist} : lead;
+        Fixed64 cap = Fixed64::zero();
+        if (!danger) cap = shape_max_;
+        else if (shape_danger_sprint_ == 0) cap = defend_max_;
+        Fixed64 sp = math::length(want);
+        Vec2 w = want;
+        if (cap.raw > 0 && sp > cap) { w = Vec2{want.x * cap / sp, want.y * cap / sp}; sp = cap; }
+        if (sp > me.max_speed) w = Vec2{w.x * me.max_speed / sp, w.y * me.max_speed / sp};
+        o.move.move = Vec2{w.x / me.max_speed, w.y / me.max_speed};
+        return;
+    }
     if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && shape_max_ < v_ok) v_ok = shape_max_;
     if (danger && shape_danger_sprint_ == 0 && defend_max_.raw > 0 && defend_max_ < v_ok) v_ok = defend_max_;
     // A race to a MOVING ball (G4.84): arrive ON TIME, not just under

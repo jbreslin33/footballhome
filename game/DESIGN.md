@@ -5651,3 +5651,74 @@ the other half the CBs stay at 49.5 m v 60.7 — the line is compressed, too hig
 ball 18-35 out), too low far from it. At their goal kicks they do reach it — the lag is in play.
 (2) Crosses 0.1 a team-match (11.5): passes from 0-18 wide 0.6 (18.6). (3) Corners 0 (3.2): no
 clearances or blocks out in their box. (4) Take-ons by the real cut 114 (44).
+
+### 8.128 G5.30 — the block shifts on where the ball is going and runs with its spot (no migration)
+
+§8.127's next: the block doesn't reach its own spot in play (2-3 m off at every band).
+
+**Measured first.** Against the real table (DFL, `kRealSpotDm`, all the side's outfielders by
+role and the ball's 10 m band) the block was not trailing evenly: it stood **2-3 m upfield** of
+real at bands 20-80 and 5-8 m upfield at 0-10, and 5-8 m too deep only with the ball at their goal
+(mean |error| 3.12 m over 60 cells). A GAME_HOLD_TRACE of the holders found three causes:
+1. **The spot followed the ball where it was.** 57% of holder frames have the ball loose (a pass
+   in flight); each pass moved every spot after the ball, not when it was kicked.
+2. **Pursuit, not tracking.** A holder closes his gap at gap/τ (`shape_tau_s` 4) and never takes on
+   his spot's own velocity, so he trails a moving spot by its speed × τ. In a possession the ball
+   mostly comes toward the defending goal, so the trailing man is upfield of his spot.
+3. **The recovery after a turnover is at the jog cap** (4.5 m/s, §8.103/§8.104): the men 4-28 m off
+   their spot were running back at it.
+
+**Real recovery** (new `scripts/benchmarks_tracking_recover.py`, DFL 7 matches, the side without the
+ball, outfielders, 0.2 s steps, by seconds since it lost it). Columns: share of steps at 5+ m/s
+running back (the back component 0.7+ of his speed), and mean back m/s:
+
+| s since lost | real 5+ back | real back m/s | game before | game after |
+|---|---|---|---|---|
+| 0-2 | 1.9% | −0.12 | 4.8% / +0.45 | 3.6% / +0.29 |
+| 2-4 | 5.2% | +0.79 | 5.2% / +1.18 | 5.4% / +1.34 |
+| 4-6 | 7.4% | +1.16 | 4.6% / +0.93 | 5.6% / +1.16 |
+| 6-10 | 7.2% | +1.18 | 4.3% / +0.75 | 4.3% / +0.73 |
+| 10+ | 3.7% | +0.71 | 4.2% / +0.30 | 4.0% / +0.35 |
+| all: under 2 / 2-5 / 5+ m/s, mean | 41.9 / 50.3 / 7.9%, 2.61 | | 46.6 / 43.0 / 10.4%, 2.51 | 42.3 / 47.6 / 10.1%, 2.59 |
+
+Real sides don't drop in the first 2 s (the counter-press) and keep retreating hard from 4 to 10 s.
+
+**Built.**
+- `PlayerView::ball_to` (Brain::viewOf): a free ball in play, the point where the race read's first
+  man (either side) takes it; else the ball. The block spot's depth and its slide (`slideY`) read
+  it, so the block shifts while the ball travels. Coaching: "move while the ball is moving" [FH];
+  real centroids move in phase with the ball [Frencken, Lemmink, Delleman & Visscher 2011].
+- `Brain::blockLead`: the block spot's own velocity, (the spot for the ball 0.2 s on along their
+  carrier's run − the spot now) / 0.2 s; only holding the block with their man carrying it in play
+  (a free ball's spot is its meeting point, which stands still). `brakeToArrive` composes it:
+  he runs at the lead + the gap closed over τ, capped at the shape's pace (the defending pace in
+  danger) — tracking, not pursuit. Settled on a moving spot he still moves with it.
+- Harness: RECOVERY (the table above, the script's cut); GAME_HOLD_TRACE.
+
+**Tried and dropped.** (a) `shape_tau_s` 4 → 1: no better with the rest in (2.52 v 2.50 m),
+kept at 4. (b) A recovery run — a holder 6 / 10 m+ off his spot at the defending pace (6 m/s), not
+the jog cap: shape error 2.24 / 2.41 m, but off-ball 5+ m/s 18.4 / 14.2% (real 7.9) and its peak at
+2-4 s, not 4-10; most of the extra speed wasn't even running back. Removed, no switch left behind.
+
+**Result** (8 matches, fh_game_scratch, Leicester v Arsenal; HEAD → G5.30, the same harness):
+
+| | before | after | real |
+|---|---|---|---|
+| block v real table, mean \|error\| | 3.12 m | 2.50 m | 0 |
+| ball 0-10 m out, CB / FB / WIDE off real | +5.5 / +6.1 / +8.0 | +4.0 / +4.5 / +5.5 | 0 |
+| ball 90-100 out, CB / AM off real | −5.8 / −7.7 | −4.3 / −6.4 | 0 |
+| off the ball 5+ m/s (side without it) | 10.4% | 10.1% | 7.9% |
+| back m/s 4-6 s after losing it | +0.93 | +1.16 | +1.16 |
+| nearest defender 52-70 / 70+ m out | 4.0 / 5.9 | 4.0 / 5.7 | 5.5 / 8.0 |
+| shots a team-match | 8.1 | 8.1 | 12.9 |
+
+Goals 0.31 → 0.62 a team-match on 8 matches: noise. Tests 22/22 (block test: the spot for a ball
+in flight is its meeting point's); goldens re-locked.
+
+**Next moles.** (1) The 6-10 s retreat: real men still run back 1.18 m/s there, ours 0.73 — the
+block spot itself (a 10 m band table on the ball) may move less than a real block that is still
+getting goal-side; the cause is open, not a pace cap. (2) Full-backs and wide men stay +2-3 m
+upfield at every band (holders +2.0-2.7 m off their own spot, ball 40-60 out) where the others
+are within 1-1.5: their slide runs them across while the 4.5 m/s cap is shared with the depth.
+(3) Off the ball 5+ m/s 10.1% (7.9), 10.8% in a settled block (6.7): running not back, so across or
+up. (4) Crosses 0.06 (11.5), corners 0.1 (3.2) from §8.127.

@@ -50,6 +50,7 @@ struct PlayerView {
     math::Fixed64 across_def{};  // his lateral spot without the ball (slideY)
     math::Fixed64 across_ours{}; // ...with it
     math::Vec2 chase_to{};       // where he takes the loose ball (the race read)
+    math::Vec2 ball_to{};        // where the ball is going: a free ball's first taker's point, else the ball
     std::uint64_t match_seed = 0;
 };
 

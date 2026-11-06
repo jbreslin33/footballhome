@@ -36,6 +36,7 @@ FH_TEST(block_spot_is_the_real_table) {
     b.configure(core::ModelParams{});
     ai::PlayerView v;
     v.slot = 3; v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB; v.across_def = Fixed64::fromInt(6);
+    v.ball_to = Vec2{w.ball().pos.x, w.ball().pos.y};      // carried: where it is (Brain::viewOf)
     const Fixed64 off = kHX + w.ball().pos.x;               // ball metres off our line (≈45)
     const Vec2 s = b.spot(v, w);
     // CB real: 25.4 m at band 35, 30.9 at band 45 (DFL) — interpolated.
@@ -48,6 +49,13 @@ FH_TEST(block_spot_is_the_real_table) {
     v.team = 1; v.sg = -Fixed64::one(); v.role = ai::Role::ST;
     const Vec2 s2 = b.spot(v, w);
     FH_EXPECT(near(s2.x, Fixed64::fromFraction(-116, 10), 3));
+    // G5.30 (§8.128): a ball in flight — the spot is for where it will be
+    // taken, not where it is: met 25 m off the home line, the home CB stands
+    // at the table's 25 m (19.6 m at band 25) = x -32.9.
+    v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB;
+    v.ball_to = Vec2{Fixed64::fromFraction(-55, 2), Fixed64::zero()};
+    const Vec2 s3 = b.spot(v, w);
+    FH_EXPECT(near(s3.x, Fixed64::fromFraction(-329, 10), 1));
 }
 
 FH_TEST(one_presser_nearest_and_sticky) {

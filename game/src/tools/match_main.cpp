@@ -11,7 +11,8 @@
 // Env: POSTGRES_HOST / _DB / _USER / _PASSWORD, GAME_TEAM_HOME / _AWAY,
 // GAME_MATCH_SEED (base; match m plays seed base+m — a fixed sample),
 // GAME_PARAMS="key=value,..." (game_model_params numbers for the run; the DB
-// is never written), GAME_DEAD_TRACE=1 (a stalled dead ball, every 10 s).
+// is never written), GAME_DEAD_TRACE=1 (a stalled dead ball, every 10 s),
+// GAME_HOLD_TRACE=1 (full-backs and wide men holding shape at 5 Hz: spot, velocity, intent; §8.128).
 
 #include "ai/Brain.hpp"
 #include "ai/Players.hpp"
@@ -86,6 +87,8 @@ struct Stats {
     long ps_f[10] = {}, ps_n[10][ai::kRoleCount] = {};
     double ps_back[10] = {}, ps_mid[10] = {}, ps_front[10] = {}, ps_s[10][ai::kRoleCount] = {};
     double fit_n = 0, fit_b = 0, fit_m = 0, fit_bb = 0, fit_bm = 0, gap_s[ai::kRoleCount] = {}; long gap_n[ai::kRoleCount] = {};
+    // RECOVERY (§8.128, benchmarks_tracking_recover.py): the side without it, by s since it lost it.
+    long rc_n[5] = {}, rc_s[5][3] = {}, rc_fb[5] = {}; double rc_v[5] = {}, rc_back[5] = {};
 };
 
 int distBand(double d) { return d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : 3; }
@@ -137,6 +140,7 @@ int main(int argc, char** argv) {
         const double hx = W.pitchHalfX().toDouble();
         const std::uint8_t N = W.playerCount();
         auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
+        int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1;
@@ -367,9 +371,23 @@ int main(int argc, char** argv) {
                 for (std::uint8_t tm = 0; tm < 2; ++tm) ++S.ph[static_cast<int>(s.brain().phaseOf(tm))];
                 ++S.ph_n;
             }
+            if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team) { rc_team = W.lastTouchTeam(); rc_k = static_cast<long>(k); }
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
+            {   // RECOVERY: the side without it, each outfielder, by seconds since it lost it
+                const double since = (static_cast<long>(k) - rc_k) / 30.0;
+                const int kb = since < 2 ? 0 : since < 4 ? 1 : since < 6 ? 2 : since < 10 ? 3 : 4;
+                const double ds = dteam == 0 ? 1.0 : -1.0;
+                for (std::uint8_t j = 0; j < N; ++j) {
+                    if (W.isKeeper(j) || W.player(j).team != dteam) continue;
+                    const auto& q = W.player(j);
+                    const double v = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble()), back = -q.vel.x.toDouble() * ds;
+                    ++S.rc_n[kb]; ++S.rc_s[kb][v < 2 ? 0 : v < 5 ? 1 : 2];
+                    if (v >= 5 && back >= 0.7 * v) ++S.rc_fb[kb];
+                    S.rc_v[kb] += v; S.rc_back[kb] += back;
+                }
+            }
             const double sg = a == 0 ? 1.0 : -1.0, bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
             const double tl = hx - bx * sg;   // ball metres off THEIR line
             const int ri = static_cast<int>((k / 6) % 16), rj = static_cast<int>(((k / 6) + 1) % 16);   // rj = 15 frames back
@@ -385,6 +403,15 @@ int main(int argc, char** argv) {
                     if (q.team == dteam) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
+                        if (std::getenv("GAME_HOLD_TRACE") && s.lastOrders()[j].why == ai::Why::Hold && (r == 1 || r == 4)) {
+                            const auto* st = s.brain().stateOf(j);
+                            const double ds = dteam == 0 ? 1.0 : -1.0;
+                            const auto& lo = s.lastOrders()[j];
+                            std::fprintf(stderr, "hold k %ld slot %d r %d band %d %s own %s | at %.1f tgt %.1f dy %.1f | vx %.2f vy %.2f | mv %.2f,%.2f face %.2f,%.2f\n", k, j, r, bd,
+                                         st ? st->name() : "?", b.owner ? "carried" : "free", hx + q.pos.x.toDouble() * ds, hx + lo.target.x.toDouble() * ds,
+                                         lo.target.y.toDouble() - q.pos.y.toDouble(), -q.vel.x.toDouble() * ds, q.vel.y.toDouble(),
+                                         -lo.move.move.x.toDouble() * ds, lo.move.move.y.toDouble(), q.face.x.toDouble() * ds, q.face.y.toDouble());
+                        }
                         if (s.lastOrders()[j].why == ai::Why::Hold) {
                             ++S.dt_n[bd][r]; S.dt_s[bd][r] += hx + s.lastOrders()[j].target.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
                             S.dt_v[bd][r] += -q.vel.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);
@@ -662,6 +689,21 @@ int main(int argc, char** argv) {
         std::printf("\n     at its start by role, goal-side share / metres goal-side of the ball:");
         for (int r = 0; r < ai::kRoleCount; ++r) if (S.cy_rn[r]) std::printf(" %s %.0f%% %+.1f;", kRoleName[r], 100.0 * S.cy_rgs[r] / S.cy_rn[r], S.cy_rd[r] / S.cy_rn[r]);
         std::printf("\n");
+    }
+    {
+        long tot = 0; for (int i = 0; i < 5; ++i) tot += S.rc_n[i];
+        static const char* lab[5] = {"0-2", "2-4", "4-6", "6-10", "10+"};
+        std::printf("RECOVERY (the side without it, outfielders, 5 Hz, by s since it lost it; real DFL benchmarks_tracking_recover.py):\n"
+                    "   since  share | under 2 / 2-5 / 5+ m/s | 5+ back | mean m/s, back m/s\n");
+        long s0 = 0, s1 = 0, s2 = 0, fb = 0; double sv = 0, sb = 0;
+        for (int i = 0; i < 5; ++i) {
+            const long n = S.rc_n[i]; if (!n) continue;
+            std::printf("   %5s %5.1f%% | %5.1f %5.1f %5.1f | %5.1f | %.2f, %+.2f\n", lab[i], 100.0 * n / tot, 100.0 * S.rc_s[i][0] / n,
+                        100.0 * S.rc_s[i][1] / n, 100.0 * S.rc_s[i][2] / n, 100.0 * S.rc_fb[i] / n, S.rc_v[i] / n, S.rc_back[i] / n);
+            s0 += S.rc_s[i][0]; s1 += S.rc_s[i][1]; s2 += S.rc_s[i][2]; fb += S.rc_fb[i]; sv += S.rc_v[i]; sb += S.rc_back[i];
+        }
+        if (tot) std::printf("     all        | %5.1f %5.1f %5.1f | %5.1f | %.2f, %+.2f\n", 100.0 * s0 / tot, 100.0 * s1 / tot, 100.0 * s2 / tot,
+                             100.0 * fb / tot, sv / tot, sb / tot);
     }
     std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");
     for (int k = 0; k < 10; ++k) {
