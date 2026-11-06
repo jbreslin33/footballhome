@@ -402,6 +402,13 @@ class GameCenterScreen extends EventScreen {
     // GET /api/formation-tactics/:id answer; draft = a coach's unsaved
     // copy of the situation being dragged.
     this._tactics = { formationId: 0, data: null, loading: false, error: null, idx: 0, editing: false, draft: null, msg: '' };
+    // 🧠 Game model (mig 1121): jobs per ball position.  key = the four
+    // query values the data answers; stateId = the state on screen;
+    // draft = a coach's unsaved copy of it; playing = the animation runs.
+    this._tacticsMode = 'plan';
+    this._plan = { key: '', data: null, loading: false, error: null, oppFormationId: 0, moment: 'out_of_possession', block: 'high',
+                   stateId: 0, editing: false, draft: null, msg: '', playing: false, speed: 1 };
+    this._tacticsPitchObj = null;
     // Availability/RSVP pills in the Current Lineup card are opt-in
     // (2026-08-22, owner directive: "toggle off 'stats' like
     // availability and attendance... at top for current lineup and
@@ -836,6 +843,8 @@ class GameCenterScreen extends EventScreen {
     this.socialCard = null;
     this._socialMountedFor = null;
     if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
+    if (this._planRaf) { cancelAnimationFrame(this._planRaf); this._planRaf = null; }
+    this._plan.playing = false;
     this.overlayOpen = false;
     this._closeSwapSheet();
   }
@@ -871,7 +880,7 @@ class GameCenterScreen extends EventScreen {
     if (document.hidden || !this.matchId || !this.loaded || this.error || this._pollBusy) return;
     if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
     // Never refresh into an edit — catch up on a later tick instead.
-    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit || this._tactics.editing) return;
+    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit || this._tactics.editing || this._plan.editing || this._plan.playing) return;
     if (document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-gc-opp-msg]')) return;
     if (this._isDraftView()) return;
     if (document.getElementById('gc-swap-sheet')) return;
@@ -1191,6 +1200,16 @@ class GameCenterScreen extends EventScreen {
       if (e.target.closest('[data-gc-tactics-edit]') && this._tacticsCanEdit()) { this._startTacticsEdit(); return; }
       if (e.target.closest('[data-gc-tactics-cancel]')) { this._tactics.editing = false; this._tactics.draft = null; this._render(); return; }
       if (e.target.closest('[data-gc-tactics-save]') && this._tacticsCanEdit()) { this._saveTactics(); return; }
+      const tMode = e.target.closest('[data-gc-tactics-mode]');
+      if (tMode) { this._stopPlanPlay(); this._tacticsMode = tMode.dataset.gcTacticsMode; this._render(); return; }
+      const tpState = e.target.closest('[data-gc-tp-state]');
+      if (tpState && !this._plan.editing) { this._stopPlanPlay(); this._plan.stateId = Number(tpState.dataset.gcTpState); this._plan.msg = ''; this._render(); return; }
+      if (e.target.closest('[data-gc-tp-create]') && this._tacticsCanEdit()) { this._createPlan(); return; }
+      if (e.target.closest('[data-gc-tp-edit]') && this._tacticsCanEdit()) { this._startPlanEdit(); return; }
+      if (e.target.closest('[data-gc-tp-cancel]')) { this._plan.editing = false; this._plan.draft = null; this._render(); return; }
+      if (e.target.closest('[data-gc-tp-save]') && this._tacticsCanEdit()) { this._savePlanState(); return; }
+      if (e.target.closest('[data-gc-tp-delete]') && this._tacticsCanEdit()) { this._deletePlanState(); return; }
+      if (e.target.closest('[data-gc-tp-play]')) { if (this._plan.playing) this._stopPlanPlay(); else this._playPlan(); return; }
       const fillBtn = e.target.closest('[data-gc-split-fill]');
       if (fillBtn && this.isCoach) { this._fillSecondSpots(); this._render(); this._scheduleSave(); return; }
       const statsToggle = e.target.closest('#gl-stats-toggle');
@@ -1268,6 +1287,19 @@ class GameCenterScreen extends EventScreen {
         return;
       }
       if (e.target.id === 'gl-compare-diff') { this.compareOnlyDiff = !!e.target.checked; this._render(); return; }
+      const tpSel = e.target.closest('[data-gc-tp-select]');
+      if (tpSel) {
+        const which = tpSel.dataset.gcTpSelect;
+        if (which === 'speed') { this._plan.speed = Number(tpSel.value) || 1; return; }
+        this._stopPlanPlay();
+        if (which === 'opp') this._plan.oppFormationId = Number(tpSel.value) || 0;
+        if (which === 'moment') this._plan.moment = tpSel.value;
+        if (which === 'block') this._plan.block = tpSel.value;
+        this._loadPlan();
+        return;
+      }
+      const tpJob = e.target.closest('[data-gc-tp-job]');
+      if (tpJob && this._plan.editing) { this._editPlanJob(Number(tpJob.dataset.gcTpJob), tpJob.dataset.gcTpField, tpJob.value); return; }
       const formationSelect = e.target.closest('[data-lineup-formation-select]');
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
@@ -1927,7 +1959,7 @@ class GameCenterScreen extends EventScreen {
     };
   }
 
-  _tacticsSectionHtml() {
+  _tacticsDrawnHtml() {
     const t = this._tactics;
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     if (!this._tacticsAvailable()) return `<div style="font-size:0.75rem; opacity:0.75;">${esc(this._copyTactics('none', { formation: this.formation || '' }))}</div>`;
@@ -1963,7 +1995,349 @@ class GameCenterScreen extends EventScreen {
       </div></div>`;
   }
 
+  // The Tactics pill: 🧠 Game model (jobs plan, mig 1121) or ✏️ Drawn
+  // (hand-placed situations, mig 1120).
+  _tacticsSectionHtml() {
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const mode = this._tacticsMode === 'drawn' ? 'drawn' : 'plan';
+    const modes = [['plan', this._copyTactics('mode_plan') || '🧠 Game model'], ['drawn', this._copyTactics('mode_drawn') || '✏️ Drawn']]
+      .map(([k, label]) => `<button type="button" data-gc-tactics-mode="${k}" class="btn btn-sm ${k === mode ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.74rem; padding:3px 10px;">${esc(label)}</button>`).join('');
+    return `<div style="display:flex; gap:6px; margin-bottom:8px;">${modes}</div>`
+      + (mode === 'drawn' ? this._tacticsDrawnHtml() : this._planHtml());
+  }
+
   _mountTactics() {
+    if (this._tacticsMode === 'drawn') this._mountTacticsDrawn();
+    else this._mountPlan();
+  }
+
+  // ── 🧠 Game model: jobs per ball position (mig 1121) ─────────────────
+  // Owner 11/6: "we pick formation we play vs ... start with ball with
+  // keeper and that triggers the drop down for each player ... what number
+  // to cover shadow and what number to press from that cover shadow or to
+  // hold between them ... smooth animation ... at a speed the user picks."
+  // Our spots come from TacticGeometry (lib/tactic-geometry.js), the rule
+  // set the game engine plays from the same rows.
+  _planKey() {
+    return [this._formationId(), this._plan.oppFormationId, this._plan.moment, this._plan.block].join('|');
+  }
+
+  _planDefaultOpp() {
+    const f = (this.formations || []).find(x => x.code === '4-3-3');
+    return f ? Number(f.id) : 0;
+  }
+
+  async _loadPlan() {
+    const p = this._plan;
+    if (!p.oppFormationId) p.oppFormationId = this._planDefaultOpp();
+    const key = this._planKey();
+    if (!this._formationId() || !p.oppFormationId) return;
+    Object.assign(p, { key, loading: true, error: null, editing: false, draft: null, msg: '' });
+    this._render();
+    try {
+      const q = new URLSearchParams({ formation_id: this._formationId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block });
+      const res = await this.auth.fetch(`/api/tactic-plans?${q}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      if (p.key !== key) return;
+      p.data = body;
+      const states = body.states || [];
+      if (!states.some(st => st.id === p.stateId)) p.stateId = states.length ? states[0].id : 0;
+    } catch (err) {
+      if (p.key === key) p.error = err.message;
+    }
+    if (p.key === key) { p.loading = false; this._render(); }
+  }
+
+  _planStates() { return (this._plan.data && this._plan.data.states) || []; }
+  _planState(id) { return this._planStates().find(st => st.id === id) || null; }
+  _planKinds() {
+    const out = {};
+    for (const k of (this._plan.data && this._plan.data.kinds) || []) out[k.code] = k;
+    return out;
+  }
+  _planGkY() {
+    const b = ((this._plan.data && this._plan.data.blocks) || []).find(x => x.code === this._plan.block);
+    return b ? b.gk_y : null;
+  }
+
+  // Root → state, following parents.
+  _planPath(id) {
+    const path = [];
+    let st = this._planState(id);
+    while (st) { path.unshift(st); st = st.parent_state_id != null ? this._planState(st.parent_state_id) : null; }
+    return path;
+  }
+
+  _planStateLabel(st) {
+    return Number(st.ball_with) === 1
+      ? (this._copyTactics('ball_gk') || 'their GK')
+      : (this._copyTactics('ball_with', { n: st.ball_with }) || `their ${st.ball_with}`);
+  }
+
+  // The state as drawn: TacticGeometry's spots for ours, theirs as stored
+  // (or their formation mirrored), the ball at the man who has it.
+  _planSituation(st) {
+    const base = (this._plan.data && this._plan.data.opponent_base) || [];
+    const opps = (st.opponents && st.opponents.length ? st.opponents : base)
+      .map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) }))
+      .sort((a, b) => a.number - b.number);
+    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY());
+    return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players, opponents: opps.map(o => ({ ...o, label: o.number })) };
+  }
+
+  _planJobText(job) {
+    const k = job && this._planKinds()[job.kind];
+    if (!k) return '';
+    return `${k.target_a_label} ${job.target_a}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '');
+  }
+
+  _planHtml() {
+    const p = this._plan;
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    if (!p.oppFormationId) p.oppFormationId = this._planDefaultOpp();
+    if (this._formationId() && p.oppFormationId && p.key !== this._planKey() && !p.loading) setTimeout(() => this._loadPlan(), 0);
+    const data = p.data;
+    const sel = (which, options, value) => `<select data-gc-tp-select="${which}" ${p.editing ? 'disabled' : ''}
+        style="font-size:0.72rem; font-weight:700; padding:3px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
+        ${options.map(([v, label]) => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
+    const controls = `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+        <span style="font-size:0.74rem; font-weight:800;">${esc(this.formation)}</span>
+        <span style="font-size:0.72rem; opacity:0.75;">${esc(this._copyTactics('vs') || 'vs')}</span>
+        ${sel('opp', (this.formations || []).map(f => [f.id, f.code]), p.oppFormationId)}
+        ${data ? sel('moment', (data.moments || []).map(m => [m.code, m.title]), p.moment) : ''}
+        ${data ? sel('block', (data.blocks || []).map(b => [b.code, b.label]), p.block) : ''}
+      </div>`;
+    if (p.error) return controls + `<div style="font-size:0.75rem; color:#f87171;">⚠ ${esc(p.error)}</div>`;
+    if (!data || p.loading) return controls + '<div style="font-size:0.75rem; opacity:0.7;">Loading…</div>';
+    if (!data.plan) {
+      const m = (data.moments || []).find(x => x.code === p.moment), b = (data.blocks || []).find(x => x.code === p.block);
+      const them = (this.formations || []).find(f => Number(f.id) === Number(p.oppFormationId));
+      return controls + `<div style="font-size:0.78rem; opacity:0.8; margin-bottom:8px;">${esc(this._copyTactics('no_plan', { us: this.formation, them: them ? them.code : '', moment: m ? m.title : p.moment, block: b ? b.label : p.block }))}</div>`
+        + (this._tacticsCanEdit() ? `<button type="button" data-gc-tp-create class="btn btn-primary" style="font-size:0.74rem; padding:4px 12px;">${esc(this._copyTactics('create') || '➕ Start this plan')}</button>` : '');
+    }
+    const cur = this._planState(p.stateId) || this._planStates()[0];
+    if (!cur) return controls;
+    const shown = p.editing && p.draft ? p.draft : cur;
+    const path = this._planPath(cur.id);
+    const kids = this._planStates().filter(st => st.parent_state_id === cur.id);
+    const pill = (st, active) => `<button type="button" data-gc-tp-state="${st.id}" class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}" ${p.editing ? 'disabled' : ''}
+        style="font-size:0.72rem; padding:3px 9px; white-space:nowrap;">⚽ ${esc(this._planStateLabel(st))}</button>`;
+    const pathHtml = path.map(st => pill(st, st.id === cur.id)).join('<span style="opacity:0.6;">→</span>');
+    const nextHtml = kids.length ? `<span style="font-size:0.7rem; opacity:0.75; margin-left:6px;">${esc(this._copyTactics('next') || 'Next:')}</span>${kids.map(st => pill(st, false)).join('')}` : '';
+    const cov = TacticGeometry.coverage({ ...shown, opponents: this._planSituation(shown).opponents });
+    const covHtml = [cov.free.length ? esc(this._copyTactics('free', { list: cov.free.join(', ') })) : '',
+                     cov.doubled.length ? esc(this._copyTactics('double', { list: cov.doubled.join(', ') })) : '']
+      .filter(Boolean).join(' · ') || esc(this._copyTactics('all_on'));
+    const canEdit = this._tacticsCanEdit();
+    const speeds = [0.25, 0.5, 1, 1.5, 2].map(v => [v, `${v}×`]);
+    const tools = `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+        <button type="button" data-gc-tp-play class="btn ${p.playing ? 'btn-primary' : 'btn-secondary'}" ${p.editing ? 'disabled' : ''} style="font-size:0.72rem; padding:3px 10px;">${esc(p.playing ? (this._copyTactics('stop') || '■ Stop') : (this._copyTactics('play') || '▶ Play'))}</button>
+        <span style="font-size:0.7rem; opacity:0.75;">${esc(this._copyTactics('speed') || 'Speed')}</span> ${sel('speed', speeds, p.speed)}
+        ${!canEdit ? '' : p.editing
+          ? `<button type="button" data-gc-tp-save class="btn btn-primary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('save') || '💾 Save')}</button>
+             <button type="button" data-gc-tp-cancel class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('cancel') || 'Cancel')}</button>`
+          : `<button type="button" data-gc-tp-edit class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('edit') || '✏️ Move pieces')}</button>
+             ${cur.parent_state_id != null ? `<button type="button" data-gc-tp-delete class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('delete') || '🗑 Remove this pass')}</button>` : ''}`}
+        ${p.msg ? `<span style="font-size:0.72rem; font-weight:700;">${esc(p.msg)}</span>` : ''}
+      </div>`;
+    return controls
+      + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>`
+      + (canEdit && !p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics('pass_hint'))}</div>` : '')
+      + `<div style="font-size:0.72rem; font-weight:700; margin-bottom:6px; color:${cov.free.length || cov.doubled.length ? '#fbbf24' : '#4ade80'};">${covHtml}</div>`
+      + `<div data-gc-tactics-pitch></div>` + tools + this._planJobsHtml(shown);
+  }
+
+  // One row per our outfield slot, in formation order: who, and his job —
+  // dropdowns while a coach edits, words otherwise.
+  _planJobsHtml(st) {
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    const kinds = (this._plan.data && this._plan.data.kinds) || [];
+    const jobs = new Map((st.jobs || []).map(j => [Number(j.position_id), j]));
+    const their = (n) => this._copyTactics('their', { n }) || `their ${n}`;
+    const numSel = (pid, field, value) => `<select data-gc-tp-job="${pid}" data-gc-tp-field="${field}"
+        style="font-size:0.7rem; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
+        ${field === 'target_b' ? '<option value="">—</option>' : ''}
+        ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => `<option value="${n}" ${Number(value) === n ? 'selected' : ''}>${esc(their(n))}</option>`).join('')}</select>`;
+    const rows = startingPositions.filter(pos => pos.id !== 1).map(pos => {
+      const occ = rosterById.get(slotToPlayerId.get(pos.id));
+      const job = jobs.get(pos.id);
+      const kind = job ? kinds.find(k => k.code === job.kind) : null;
+      let what;
+      if (this._plan.editing) {
+        what = `<select data-gc-tp-job="${pos.id}" data-gc-tp-field="kind" style="font-size:0.7rem; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
+            <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
+            ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
+          ${job ? `<span style="font-size:0.68rem; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel(pos.id, 'target_a', job.target_a)}` : ''}
+          ${job && kind && kind.target_b_label ? `<span style="font-size:0.68rem; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel(pos.id, 'target_b', job.target_b)}` : ''}`;
+      } else {
+        what = job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
+          : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
+      }
+      return `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:4px 0; border-top:1px solid var(--border-color); font-size:0.74rem;">
+          <span style="display:inline-block; min-width:22px; text-align:center; font-weight:800; color:#facc15; background:#1d4ed8; border-radius:999px; padding:1px 4px;">${esc(pos.sortOrder)}</span>
+          <span style="min-width:90px; font-weight:700;">${esc(occ ? occ.name : '—')}</span>${what}</div>`;
+    }).join('');
+    return `<div style="margin-top:10px;">${rows}</div>`;
+  }
+
+  _mountPlan() {
+    const el = document.querySelector('[data-gc-tactics-pitch]');
+    const p = this._plan;
+    if (!el || !window.TacticsPitch || !window.TacticGeometry || !p.data || !p.data.plan) return;
+    const cur = this._planState(p.stateId) || this._planStates()[0];
+    if (!cur) return;
+    const shown = p.editing && p.draft ? p.draft : cur;
+    const sit = this._planSituation(shown);
+    const chip = this._tacticsChipFor();
+    const jobs = new Map((shown.jobs || []).map(j => [Number(j.position_id), j]));
+    const canEdit = this._tacticsCanEdit();
+    this._tacticsPitchObj = new TacticsPitch({
+      situation: sit,
+      chipFor: (pid) => ({ ...chip(pid), job: this._planJobText(jobs.get(pid)) }),
+      editable: p.editing,
+      dragKinds: ['opp'],
+      // Dragging theirs edits the draft (the pitch moved the copy in sit).
+      onChange: () => {
+        if (!p.draft) return;
+        p.draft.opponents = sit.opponents.map(o => ({ number: o.number, x: o.x, y: o.y }));
+        this._mountPlan();
+      },
+      // Tap one of theirs = the ball goes to him: open that pass (anyone, if
+      // drawn) or draw it (coaches).
+      onPieceClick: (kind, idx) => {
+        if (kind !== 'opp' || p.playing) return;
+        const n = sit.opponents[idx] && sit.opponents[idx].number;
+        if (!n || n === Number(cur.ball_with)) return;
+        const kid = this._planStates().find(st => st.parent_state_id === cur.id && Number(st.ball_with) === n);
+        if (kid) { p.stateId = kid.id; p.msg = ''; this._render(); return; }
+        if (canEdit) this._addPlanState(cur.id, n);
+      },
+    });
+    this._tacticsPitchObj.mount(el);
+  }
+
+  async _planFetch(url, opts) {
+    const res = await this.auth.fetch(url, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    return body;
+  }
+
+  async _reloadPlanTo(stateId) {
+    this._plan.key = '';
+    await this._loadPlan();
+    if (stateId) { this._plan.stateId = stateId; this._render(); }
+  }
+
+  async _createPlan() {
+    const p = this._plan;
+    try {
+      await this._planFetch('/api/tactic-plans', { method: 'POST', body: JSON.stringify({ formation_id: this._formationId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block }) });
+      await this._reloadPlanTo(0);
+    } catch (err) { p.msg = `⚠ ${err.message}`; this._render(); }
+  }
+
+  async _addPlanState(parentId, ballWith) {
+    try {
+      const body = await this._planFetch('/api/tactic-plans/states', { method: 'POST', body: JSON.stringify({ parent_state_id: parentId, ball_with: ballWith }) });
+      await this._reloadPlanTo(body.id);
+    } catch (err) { this._plan.msg = `⚠ ${err.message}`; this._render(); }
+  }
+
+  async _deletePlanState() {
+    const cur = this._planState(this._plan.stateId);
+    if (!cur || cur.parent_state_id == null) return;
+    try {
+      await this._planFetch(`/api/tactic-plans/states/${cur.id}`, { method: 'DELETE' });
+      await this._reloadPlanTo(cur.parent_state_id);
+    } catch (err) { this._plan.msg = `⚠ ${err.message}`; this._render(); }
+  }
+
+  _startPlanEdit() {
+    const cur = this._planState(this._plan.stateId);
+    if (!cur) return;
+    const draft = JSON.parse(JSON.stringify(cur));
+    if (!draft.opponents || !draft.opponents.length) draft.opponents = this._planSituation(cur).opponents.map(o => ({ number: o.number, x: o.x, y: o.y }));
+    Object.assign(this._plan, { draft, editing: true, msg: '' });
+    this._render();
+  }
+
+  _editPlanJob(pid, field, value) {
+    const d = this._plan.draft;
+    if (!d) return;
+    d.jobs = d.jobs || [];
+    let job = d.jobs.find(j => Number(j.position_id) === pid);
+    if (field === 'kind') {
+      if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); this._render(); return; }
+      const kind = this._planKinds()[value];
+      if (!job) { job = { position_id: pid, kind: value, target_a: Number(d.ball_with) === 1 ? 9 : Number(d.ball_with), target_b: null }; d.jobs.push(job); }
+      job.kind = value;
+      if (!kind || !kind.target_b_label) job.target_b = null;
+    } else if (job) {
+      job[field] = value === '' ? null : Number(value);
+    }
+    this._render();
+  }
+
+  async _savePlanState() {
+    const p = this._plan;
+    const d = p.draft;
+    if (!d) return;
+    try {
+      await this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
+        opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
+        jobs: (d.jobs || []).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
+      }) });
+      p.editing = false; p.draft = null;
+      await this._reloadPlanTo(d.id);
+      p.msg = this._copyTactics('saved') || 'Saved ✓';
+      this._render();
+    } catch (err) { p.msg = `⚠ ${err.message}`; this._render(); }
+  }
+
+  // ▶ Play: the passes from their GK to the state on screen (or, from the
+  // GK, down the first drawn line), each a smooth move of every piece.
+  _playPlan() {
+    const p = this._plan;
+    let path = this._planPath(p.stateId);
+    if (path.length === 1) {
+      let st = path[0];
+      for (;;) { const kid = this._planStates().find(x => x.parent_state_id === st.id); if (!kid) break; path.push(kid); st = kid; }
+    }
+    if (path.length < 2 || !this._tacticsPitchObj) return;
+    const frames = path.map(st => this._planSituation(st));
+    p.playing = true;
+    p.stateId = path[0].id;
+    this._render();
+    const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    let i = 0, t0 = null;
+    const stepMs = () => 1400 / (p.speed || 1), holdMs = () => 500 / (p.speed || 1);
+    const tick = (now) => {
+      if (!p.playing || !this._tacticsPitchObj) return;
+      if (t0 == null) t0 = now;
+      const el = now - t0;
+      const a = frames[i], b = frames[i + 1];
+      const t = ease(Math.min(1, el / stepMs()));
+      const mix = (xs, ys) => xs.map((x, k) => ({ ...x, ...TacticGeometry.lerp(x, ys[k] || x, t) }));
+      this._tacticsPitchObj.update({ ball: TacticGeometry.lerp(a.ball, b.ball, t), players: mix(a.players, b.players), opponents: mix(a.opponents, b.opponents) });
+      if (el >= stepMs() + holdMs()) {
+        i += 1; t0 = now;
+        if (i >= frames.length - 1) { p.playing = false; p.stateId = path[path.length - 1].id; this._render(); return; }
+      }
+      this._planRaf = requestAnimationFrame(tick);
+    };
+    this._planRaf = requestAnimationFrame(tick);
+  }
+
+  _stopPlanPlay() {
+    if (this._planRaf) cancelAnimationFrame(this._planRaf);
+    this._planRaf = null;
+    if (this._plan.playing) { this._plan.playing = false; this._render(); }
+  }
+
+  _mountTacticsDrawn() {
     const el = document.querySelector('[data-gc-tactics-pitch]');
     if (!el || !window.TacticsPitch) return;
     const t = this._tactics;

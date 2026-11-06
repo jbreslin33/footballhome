@@ -55,6 +55,7 @@ set(SOURCES
     src/models/KitBoard.cpp
     src/models/FieldPlan.cpp
     src/models/FormationTactics.cpp
+    src/models/TacticPlans.cpp
     src/models/GameRoster.cpp
     src/models/SmsOptInBoard.cpp
     src/models/Contacts.cpp
@@ -139,6 +140,7 @@ set(SOURCES
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
     src/controllers/FormationTacticsController.cpp
+    src/controllers/TacticPlansController.cpp
     src/controllers/PhoneRelayController.cpp
     src/controllers/GameRosterController.cpp
     src/controllers/LockupController.cpp

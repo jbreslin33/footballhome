@@ -48,6 +48,7 @@
 #include "controllers/KitBoardController.h"
 #include "controllers/FieldPlanController.h"
 #include "controllers/FormationTacticsController.h"
+#include "controllers/TacticPlansController.h"
 #include "controllers/PhoneRelayController.h"
 #include "controllers/GameRosterController.h"
 #include "controllers/LockupController.h"
@@ -147,6 +148,7 @@ private:
     std::shared_ptr<KitBoardController> kit_board_controller_;
     std::shared_ptr<FieldPlanController> field_plan_controller_;
     std::shared_ptr<FormationTacticsController> formation_tactics_controller_;
+    std::shared_ptr<TacticPlansController> tactic_plans_controller_;
     std::shared_ptr<PhoneRelayController> phone_relay_controller_;
     std::shared_ptr<GameRosterController> game_roster_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
@@ -255,6 +257,7 @@ public:
         kit_board_controller_ = std::make_shared<KitBoardController>();
         field_plan_controller_ = std::make_shared<FieldPlanController>();
         formation_tactics_controller_ = std::make_shared<FormationTacticsController>();
+        tactic_plans_controller_ = std::make_shared<TacticPlansController>();
         phone_relay_controller_ = std::make_shared<PhoneRelayController>();
         game_roster_controller_ = std::make_shared<GameRosterController>();
         lockup_controller_ = std::make_shared<LockupController>();
@@ -593,6 +596,7 @@ private:
         router_.useController("/api/kit-board", kit_board_controller_);
         router_.useController("/api/field-plan", field_plan_controller_);
         router_.useController("/api/formation-tactics", formation_tactics_controller_);
+        router_.useController("/api/tactic-plans", tactic_plans_controller_);
         // FH Texter (mig 667): a coach's own phone sends what they click Send on.
         router_.useController("/api/phone-relay", phone_relay_controller_);
         router_.useController("/api/game", game_roster_controller_);

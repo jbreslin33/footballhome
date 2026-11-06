@@ -13,13 +13,20 @@
 // is the caller's job.
 class TacticsPitch {
   // situation: { ball, players: [{position_id,x,y}], opponents: [{label,x,y}] }
-  // chipFor(positionId) → { number, name }  (name '' = slot empty)
-  constructor({ situation, chipFor, editable = false, onChange = null }) {
+  // chipFor(positionId) → { number, name, job? }  (name '' = slot empty;
+  //   job = a short line under the name, e.g. "shadow 6 · press 4")
+  // dragKinds: which pieces drag when editable ('us' | 'opp' | 'ball').
+  // onPieceClick(kind, idx): a tap (not a drag) on a piece — the plan view
+  //   uses it on theirs to play the ball to that man.
+  constructor({ situation, chipFor, editable = false, onChange = null, dragKinds = ['us', 'opp', 'ball'], onPieceClick = null }) {
     this.situation = situation;
     this.chipFor = chipFor;
     this.editable = editable;
     this.onChange = onChange;
+    this.dragKinds = new Set(dragKinds);
+    this.onPieceClick = onPieceClick;
     this._drag = null;
+    this._el = null;
   }
 
   static esc(s) {
@@ -42,7 +49,8 @@ class TacticsPitch {
 
   _pieceHtml(kind, idx, p) {
     const pos = `left:${p.x}%; top:${100 - p.y}%;`;
-    const grab = this.editable ? 'cursor:grab; touch-action:none;' : '';
+    const grab = this.editable && this.dragKinds.has(kind) ? 'cursor:grab; touch-action:none;'
+      : (this.onPieceClick && kind === 'opp' ? 'cursor:pointer;' : '');
     const base = `position:absolute; ${pos} transform:translate(-50%,-50%); ${grab} user-select:none; -webkit-user-select:none;`;
     if (kind === 'ball') {
       return `<div data-tp-kind="ball" data-tp-idx="0" style="${base} width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid #111; box-shadow:0 1px 3px rgba(0,0,0,0.6); z-index:3;"></div>`;
@@ -50,13 +58,14 @@ class TacticsPitch {
     if (kind === 'opp') {
       return `<div data-tp-kind="opp" data-tp-idx="${idx}" style="${base} z-index:1; display:flex; flex-direction:column; align-items:center;">
         <div style="width:22px; height:22px; border-radius:50%; background:#dc2626; border:2px solid #fff; box-sizing:border-box;"></div>
-        <div style="font-size:9px; font-weight:700; color:#fecaca; text-shadow:0 1px 2px #000; line-height:1.1; margin-top:1px;">${TacticsPitch.esc(p.label)}</div>
+        <div style="font-size:9px; font-weight:700; color:#fecaca; text-shadow:0 1px 2px #000; line-height:1.1; margin-top:1px;">${TacticsPitch.esc(p.label != null ? p.label : p.number)}</div>
       </div>`;
     }
     const chip = this.chipFor(p.position_id) || { number: p.position_id, name: '' };
     return `<div data-tp-kind="us" data-tp-idx="${idx}" style="${base} z-index:2; display:flex; flex-direction:column; align-items:center; width:72px;">
       <div style="width:28px; height:28px; border-radius:50%; background:#1d4ed8; border:2px solid #fff; box-sizing:border-box; color:#facc15; font-weight:800; font-size:13px; line-height:24px; text-align:center;">${TacticsPitch.esc(chip.number)}</div>
       <div style="font-size:10px; font-weight:700; color:#fff; text-shadow:0 1px 2px #000; line-height:1.1; margin-top:1px; text-align:center; overflow-wrap:anywhere;">${TacticsPitch.esc(chip.name)}</div>
+      ${chip.job ? `<div style="font-size:8.5px; font-weight:700; color:#fde68a; text-shadow:0 1px 2px #000; line-height:1.1; text-align:center;">${TacticsPitch.esc(chip.job)}</div>` : ''}
     </div>`;
   }
 
@@ -79,15 +88,35 @@ class TacticsPitch {
     return (s.players || [])[idx];
   }
 
-  // Renders into el and, when editable, wires pointer dragging.
+  // Moves the existing pieces to a new situation with the same pieces in
+  // the same order (no re-render) — the animation's frame step.
+  update(situation) {
+    this.situation = situation;
+    if (!this._el) return;
+    for (const node of this._el.querySelectorAll('[data-tp-kind]')) {
+      const p = this._target(node.dataset.tpKind, Number(node.dataset.tpIdx));
+      if (!p) continue;
+      node.style.left = `${p.x}%`;
+      node.style.top = `${100 - p.y}%`;
+    }
+  }
+
+  // Renders into el; wires taps and, when editable, pointer dragging.
   mount(el) {
     el.innerHTML = this.html();
-    if (!this.editable) return;
+    this._el = el;
     const pitch = el.querySelector('[data-tp-pitch]');
+    if (this.onPieceClick && !this.editable) {
+      pitch.addEventListener('click', (e) => {
+        const node = e.target.closest('[data-tp-kind]');
+        if (node) this.onPieceClick(node.dataset.tpKind, Number(node.dataset.tpIdx));
+      });
+    }
+    if (!this.editable) return;
     const clamp = v => Math.max(0, Math.min(100, Math.round(v * 2) / 2));
     pitch.addEventListener('pointerdown', (e) => {
       const node = e.target.closest('[data-tp-kind]');
-      if (!node) return;
+      if (!node || !this.dragKinds.has(node.dataset.tpKind)) return;
       const target = this._target(node.dataset.tpKind, Number(node.dataset.tpIdx));
       if (!target) return;
       e.preventDefault();
