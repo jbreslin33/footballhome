@@ -145,6 +145,14 @@ const DEFAULT_BENCH_CAP = 9;
 // wide players (2, 3, 7, 11). The format's starting slots are exactly
 // the ids in its default formation — that's what the position pills
 // offer and what the pitch draws.
+// Owner 2026-11-06: "always put striker a little higher up then
+// 'wingers' or inside wingers" — where a striker shares a row with the
+// wide men, his chip draws this many px higher (chipLifts).  A four-man
+// front (11 10 9 7) lifts both central strikers.
+const STRIKER_LIFT = 14;
+const STRIKER_UP = Object.freeze({ 9: STRIKER_LIFT });
+const STRIKERS_UP = Object.freeze({ 10: STRIKER_LIFT, 9: STRIKER_LIFT });
+
 const FIELD_SIZES = {
   11: {
     defaultFormation: '4-4-2',
@@ -153,7 +161,7 @@ const FIELD_SIZES = {
       // Owner 2026-09-29: "7 and 11 are wingers, 9 striker, 8 and 10
       // attacking mids (10 left), 6 def mid, 3 LB, 5 LCB, 4 RCB, 2 RB".
       // Drawn as a triangle so the 6 sits behind the 8 and 10.
-      '4-3-3':   { rows: [[1], [3, 5, 4, 2], [6], [10, 8], [11, 9, 7]] },
+      '4-3-3':   { rows: [[1], [3, 5, 4, 2], [6], [10, 8], [11, 9, 7]], chipLifts: STRIKER_UP },
       // Owner: "for the 4231 the 8 and 6 are the cdms left to right and
       // the rest are same as 433" — 10 is the central attacking mid.
       '4-2-3-1': { rows: [[1], [3, 5, 4, 2], [8, 6], [11, 10, 7], [9]] },
@@ -185,21 +193,38 @@ const FIELD_SIZES = {
       // Owner 2026-11-06 (mig 1109): every back-three shape shares one
       // "bowl" — 3, 5, 6, 4, 2 left to right (back line 5-6-4, wing backs
       // 3 and 2) — and the bracket is the inside five (10 8 11 7 9) read
-      // from the bottom of the bowl up. 11 and 7 are the front two in
-      // every 3-5-2; the 9 is the piece that drops.
-      '3-4-3 (2-3)':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2 },
+      // from the bottom of the bowl up. Owner rules (mig 1115): "always
+      // 11 and 7 if 2 man front ... then 9 goes into midfield", "9 is
+      // always middle of 10 and 8 but 9 would be the 1 in a 122", and
+      // "always put striker a little higher up then wingers or inside
+      // wingers" — `chipLifts` (id → px up) on the striker.
+      '3-4-3 (2-3)':   { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 9, 7]], wideIds: [3, 2], midlineRow: 2, chipLifts: STRIKER_UP },
       '3-4-3 (2-2-1)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [11, 7], [9]], wideIds: [3, 2] },
       '3-5-2 (2-1-2)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [9], [11, 7]], wideIds: [3, 2] },
-      '3-5-2 (1-2-2)': { rows: [[1], [5, 6, 4], [8], [3, 10, 9, 2], [11, 7]], wideIds: [3, 2] },
+      '3-5-2 (1-2-2)': { rows: [[1], [5, 6, 4], [9], [3, 10, 8, 2], [11, 7]], wideIds: [3, 2] },
       '3-5-2 (3-2)':   { rows: [[1], [5, 6, 4], [3, 10, 9, 8, 2], [11, 7]], wideIds: [3, 2] },
-      // Asymmetric (owner 2026-11-06, mig 1112): "him as right sided
-      // '10'/inside winger. and tolu at 9 and then the others behind
-      // them" — the 9 dead center, the 7 in the right half-space, the 11
-      // drops into the midfield three (11 10 8 left to right). The 0 is
-      // an empty left column (GAP_POS) that keeps the 9 central.
-      // Code (mig 1113): an R before a row in the bracket = that row sits
-      // right of center (L = left); never mirrored for free.
-      '3-5-2 (3-R2)': { rows: [[1], [5, 6, 4], [3, 11, 10, 8, 2], [0, 9, 7]], wideIds: [3, 2] },
+      // Asymmetric (migs 1112–1115): an R/L before a row in the bracket =
+      // that row sits right/left of center; never mirrored for free. Each
+      // is its symmetric shape with the 11-7 pair shifted: R2 = 11 the
+      // central striker, 7 inside right; L2 = 7 central, 11 inside left.
+      // The 0 is an empty column (GAP_POS) holding the pair off-center.
+      // First one, owner: "him [Amir] as right sided '10'/inside winger".
+      // 3-R2, owner: "move 7 down further ... put him where a 10 would be
+      // in a 433" (mig 1117) — the 7 has his own band right of center
+      // (the 4-3-3's 10/8 height), the 11 stands alone up top. Then "push
+      // the 3 in 32 higher ... the apsl logo is in way ... just put the
+      // midfield line in graphic for pitch lower": `halfwayBelow` (row
+      // index as written) draws the halfway line + crest just under that
+      // row, so the midfield three stand clear above it.
+      // "balance the 7 in between and ahead of the 9 and 8": his band is
+      // four columns (0 0 7 0) — the third column's center falls half a
+      // chip right of center, midway between the 9 (center) and the 8.
+      '3-5-2 (3-R2)':   { rows: [[1], [5, 6, 4], [3, 10, 9, 8, 2], [0, 0, 7, 0], [11]], wideIds: [3, 2], halfwayBelow: 2 },
+      '3-5-2 (3-L2)':   { rows: [[1], [5, 6, 4], [3, 10, 9, 8, 2], [11, 7, 0]], wideIds: [3, 2], chipLifts: { 7: STRIKER_LIFT } },
+      '3-5-2 (1-2-R2)': { rows: [[1], [5, 6, 4], [9], [3, 10, 8, 2], [0, 11, 7]], wideIds: [3, 2], chipLifts: { 11: STRIKER_LIFT } },
+      '3-5-2 (1-2-L2)': { rows: [[1], [5, 6, 4], [9], [3, 10, 8, 2], [11, 7, 0]], wideIds: [3, 2], chipLifts: { 7: STRIKER_LIFT } },
+      '3-5-2 (2-1-R2)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [9], [0, 11, 7]], wideIds: [3, 2], chipLifts: { 11: STRIKER_LIFT } },
+      '3-5-2 (2-1-L2)': { rows: [[1], [5, 6, 4], [3, 10, 8, 2], [9], [11, 7, 0]], wideIds: [3, 2], chipLifts: { 7: STRIKER_LIFT } },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
       // spine stacks like an American-football I formation. The 2 and
@@ -209,14 +234,14 @@ const FIELD_SIZES = {
       // _pitchRows) nudges the 8 up toward the logo (owner: "push 8 up
       // a little in the 3313"). Renamed 3-4-3 (1-1-3) in the bowl family
       // (mig 1110): inside five 8 / 10 / 11 9 7.
-      '3-4-3 (1-1-3)': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 } },
+      '3-4-3 (1-1-3)': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 }, chipLifts: STRIKER_UP },
       // Match opponent (mig 912, formation_matchups): their shape flipped,
       // a libero added behind and one off our front line. Owner: "if we
       // play vs 4231 that actually looks like a 2323".
-      '2-3-2-3': { rows: [[1], [5, 4], [3, 6, 2], [10, 8], [11, 9, 7]] },
-      '2-4-1-3': { rows: [[1], [5, 4], [3, 6, 8, 2], [10], [11, 9, 7]] },
-      '3-3-4':   { rows: [[1], [5, 6, 4], [3, 8, 2], [11, 10, 9, 7]] },
-      '2-4-4':   { rows: [[1], [5, 4], [3, 6, 8, 2], [11, 10, 9, 7]] },
+      '2-3-2-3': { rows: [[1], [5, 4], [3, 6, 2], [10, 8], [11, 9, 7]], chipLifts: STRIKER_UP },
+      '2-4-1-3': { rows: [[1], [5, 4], [3, 6, 8, 2], [10], [11, 9, 7]], chipLifts: STRIKER_UP },
+      '3-3-4':   { rows: [[1], [5, 6, 4], [3, 8, 2], [11, 10, 9, 7]], chipLifts: STRIKERS_UP },
+      '2-4-4':   { rows: [[1], [5, 4], [3, 6, 8, 2], [11, 10, 9, 7]], chipLifts: STRIKERS_UP },
     },
   },
   9: {
@@ -6133,6 +6158,10 @@ class GameCenterScreen extends EventScreen {
       const i = rows.length - 1 - template.midlineRow;
       rows[i].halfway = true;
       rows.splice(i, 0, SPACER_ROW);
+    } else if (template.rows && template.halfwayBelow != null) {
+      // Line + crest directly under the tagged row (rows are reversed
+      // here, attack first, so "under" = the index after it).
+      rows.splice(rows.length - template.halfwayBelow, 0, HALFWAY_ROW);
     } else {
       rows.splice(Math.floor(rows.length / 2), 0, HALFWAY_ROW);
     }
