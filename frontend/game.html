@@ -67,32 +67,11 @@
   <button id="btn-auto" class="kick-btn game-only" style="right: auto; left: 16px;
        bottom: calc(env(safe-area-inset-bottom, 12px) + 16px); width: 60px;
        height: 60px; font-size: 11px;">AUTO</button>
-  <!-- Admin-only (shown when HELLO grants the admin capability): tap to
-       cycle each team's skill band live. -->
-  <button id="btn-level-home" class="kick-btn game-only" style="display: none;
-       right: auto; left: 12px; top: 44px; bottom: auto; width: 92px;
-       height: 34px; border-radius: 17px; font-size: 11px;">H: —</button>
-  <button id="btn-level-away" class="kick-btn game-only" style="display: none;
-       right: auto; left: 112px; top: 44px; bottom: auto; width: 92px;
-       height: 34px; border-radius: 17px; font-size: 11px;">A: —</button>
+  <!-- Admin-only (HELLO grants the admin capability): EDIT = tap a player for his team's lineup. -->
   <button id="btn-edit" class="kick-btn game-only" style="display: none; right: auto;
-       left: 212px; top: 44px; bottom: auto; width: 64px; height: 34px;
+       left: 12px; top: 44px; bottom: auto; width: 64px; height: 34px;
        border-radius: 17px; font-size: 11px;">EDIT</button>
-  <!-- Admin edit mode: paint a team identity in one tap (mig 630 presets). -->
-  <div id="preset-bar" class="game-only" style="display: none; position: fixed; top: 86px;
-       left: 12px; align-items: center; gap: 6px; z-index: 10;">
-    <select id="preset-select" style="height: 30px; max-width: 150px;
-         background: rgba(11,28,61,.95); color: #f4f6fb; font-size: 12px;
-         border: 1px solid rgba(255,255,255,.25); border-radius: 15px;
-         padding: 0 8px;"></select>
-    <button id="preset-home" class="kick-btn" style="position: static;
-         min-width: 0; min-height: 0; width: 48px; height: 30px;
-         border-radius: 15px; font-size: 11px;">→ H</button>
-    <button id="preset-away" class="kick-btn" style="position: static;
-         min-width: 0; min-height: 0; width: 48px; height: 30px;
-         border-radius: 15px; font-size: 11px;">→ A</button>
-  </div>
-  <div id="edit-panel" class="game-only" style="display: none; position: fixed; top: 126px;
+  <div id="edit-panel" class="game-only" style="display: none; position: fixed; top: 86px;
        left: 12px; width: 280px; background: rgba(11,28,61,.95);
        border: 1px solid rgba(255,255,255,.25); border-radius: 10px;
        padding: 12px; color: #f4f6fb; font-size: 13px; z-index: 10;"></div>
@@ -122,8 +101,8 @@
   <button id="btn-tackle" class="kick-btn game-only" style="bottom: calc(env(safe-area-inset-bottom, 12px) + 192px);">TKL</button>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.149.0/three.min.js"></script>
-  <script src="js/game/wire.js?v=20261029numbers"></script>
-  <script src="js/game/net.js?v=20261029numbers"></script>
+  <script src="js/game/wire.js?v=20261106pl"></script>
+  <script src="js/game/net.js?v=20261106pl"></script>
   <script src="js/game/players.js?v=20261031restarts"></script>
   <script src="js/game/lighthouse-site.js?v=20261022s"></script>
   <script src="js/game/lighthouse-trees.js?v=20261022zi"></script>
@@ -132,10 +111,10 @@
   <script src="js/game/lighthouse-layout.js?v=20261025b"></script>
   <script src="js/game/field.js?v=20261025c"></script>
   <script src="js/game/camera.js?v=20261030watch"></script>
-  <script src="js/game/renderer.js?v=20261031restarts"></script>
+  <script src="js/game/renderer.js?v=20261106pl"></script>
   <script src="js/game/input.js?v=20261022e"></script>
   <script src="js/game/lighthouse-planner-data.js?v=20261022d"></script>
   <script src="js/game/pitch-planner.js?v=20261029a"></script>
-  <script src="js/game/client.js?v=20261031restarts"></script>
+  <script src="js/game/client.js?v=20261106pl"></script>
 </body>
 </html>

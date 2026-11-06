@@ -5868,3 +5868,23 @@ they lose it from, or how the game counts a turnover (its last-touch flips on lo
 possession flag doesn't) — measure the possession shape the same way first. (2) Possessions too
 long: 22.6% of defending frames are transition (real ~50%) — real sides lose it twice as often.
 (3) In behind 13.8 (37.7), crosses 0.1 (11.5).
+
+### 8.132 G5.34 — shipped: the live game is the Premier League game (2026-11-06)
+
+James: "why are the teams in game still ukies and lighthouse and not premier league teams …
+get rid of ukies and lh … when we add them later it will be from degrading the abilities from
+the standard of premier league". Since G5.23 every slice ran only in the harness on
+fh_game_scratch; the live daemon was the old engine (levels, 293 params, Lighthouse APSL v
+Ukrainian Nationals) and the v2 client sat in game/ship.
+
+**Done.** Backup `/srv/footballhome-backups/pre-game-ship-20261106-102203.sql`. Live DB: migs
+919-1116 (19 game migrations; 1042 / 1080 / 1092 purge the non-PL sides, models and made-up
+attributes). The 20 PL 2015/16 sides and 360 players copied from fh_game_scratch (the only
+game tables that differed). docker-compose: Leicester City v Arsenal, GAME_LEVEL_* gone. Image
+rebuilt (22/22 inside), daemon up healthy on 90 physics params. `frontend/game.html` and
+`js/game/{client,net,renderer,wire}.js` = the v2 client (`?v=20261106pl`).
+
+**Owed.** (1) A matchup picker on the game page: any two of the 20 sides from a dropdown — the
+daemon picks its teams from env at boot today. (2) The harness on rotating fixtures, not
+Leicester v Arsenal only. (3) The backend cleanup in game/ship/README.md. Lighthouse and the
+Ukies return later as PL abilities scaled down, never as hand-made sheets.

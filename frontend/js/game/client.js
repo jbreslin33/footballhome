@@ -10,12 +10,8 @@
   const statusEl = document.getElementById('status');
   const boardEl = document.getElementById('scoreboard');
   const autoBtn = document.getElementById('btn-auto');
-  const lvlHomeBtn = document.getElementById('btn-level-home');
-  const lvlAwayBtn = document.getElementById('btn-level-away');
   const editBtn = document.getElementById('btn-edit');
   const editPanel = document.getElementById('edit-panel');
-  const presetBar = document.getElementById('preset-bar');
-  const presetSelect = document.getElementById('preset-select');
   const canvas = document.getElementById('game-canvas');
   const renderer = new GameRenderer(canvas);
   const input = new GameInput(
@@ -35,7 +31,7 @@
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
   const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
-                        7: 'FULL TIME', 10: 'Offside' };
+                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul' };   // 11 = the foul itself (advantage too): no toast
 
   // The referee's whistle (G5.2), synthesised: a pip for a restart, a longer
   // blast for a goal or the end of a half. Browsers only open audio after a
@@ -74,34 +70,12 @@
     toastTimer = setTimeout(updateStatus, ms || 2500);
   }
 
-  // Live levels (from the snapshot 1.3 tail) + admin picker state.
-  const levels = { home: 0, away: 0 };
-  let roster = [];        // [{ratings, name}] per slot, server-authoritative
-  let presets = [];       // style-preset names (mig 630); id = index
-  let editMode = false;   // admin: tap a player to open his knowledge
+  let roster = [];        // [{name, number}] per slot, server-authoritative
+  let editMode = false;   // admin: tap a player to open the lineup
 
-  // Paint a team identity in one tap (CONCEPTS.md schools; wire 1.4).
-  function paintPresetBar() {
-    if (!presetBar) return;
-    presetBar.style.display =
-      editMode && presets.length ? 'flex' : 'none';
-  }
-  for (const [btnId, team, label] of [['preset-home', 0, 'HOME'],
-                                      ['preset-away', 1, 'AWAY']]) {
-    const btn = document.getElementById(btnId);
-    if (!btn) continue;
-    btn.addEventListener('click', () => {
-      const id = presetSelect.selectedIndex;
-      if (id < 0) return;
-      net.applyPreset(team, id);
-      toast(presets[id] + ' → ' + label);
-    });
-  }
-
-  // ── EDIT panel (admin): tap a player → PLAYER (attributes + what type of
-  // player he is, saved to the club DB and sent live to the match, G4.30)
-  // or KNOWLEDGE (concept ratings, live). James: "give our guys random
-  // attributes and i can fix them and describe the type of player".
+  // ── EDIT panel (admin): tap a player → his team's LINEUP (who starts
+  // where), saved to the club DB; the match re-reads the teams. G5.23: the
+  // PLAYER (made-up attributes) and KNOWLEDGE (concept ratings) tabs are gone.
   let teams = null;            // { home, away } from the TEAMS frame
   let idTeams = null;          // [home, away] roster payloads: slot numbers
   // Each on-pitch figure: its formation slot's shirt number + last name.
@@ -139,80 +113,18 @@
     for (const ev of ['keydown', 'keyup', 'keypress']) el.addEventListener(ev, (e) => e.stopPropagation());
   });
 
-  function openEditPanel(slot, tab) {
-    const e = roster[slot] || { ratings: [], name: '#' + (slot + 1) };
-    tab = tab || 'player';
-    const tabBtn = (id, label) => `<button data-tab="${id}" style="padding:3px 10px;border-radius:12px;border:1px solid #889;
-      background:${tab === id ? '#ffcc00' : 'transparent'};color:${tab === id ? '#0b1c3d' : '#f4f6fb'};font-weight:700;">${label}</button>`;
+  function openEditPanel(slot) {
+    const e = roster[slot] || { name: '#' + (slot + 1) };
     editPanel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-        <b>${esc(e.name)}</b><button id="ep-close">✕</button></div>
-      <div style="display:flex;gap:6px;margin:6px 0;">${tabBtn('player', 'PLAYER')}${tabBtn('lineup', 'LINEUP')}${tabBtn('knowledge', 'KNOWLEDGE')}</div>
+        <b>${esc(e.name)} — LINEUP</b><button id="ep-close">✕</button></div>
       <div id="ep-body">loading…</div>`;
     editPanel.style.display = 'block';
     editPanel.style.width = 'min(340px, calc(100vw - 24px))';
     editPanel.querySelector('#ep-close').onclick = () => (editPanel.style.display = 'none');
-    editPanel.querySelectorAll('button[data-tab]').forEach((b) => (b.onclick = () => openEditPanel(slot, b.dataset.tab)));
     const body = editPanel.querySelector('#ep-body');
-    if (tab === 'knowledge') return renderKnowledge(body, slot, e);
-    (tab === 'lineup' ? renderLineup(body, slot) : renderPlayer(body, slot)).catch((err) => {
+    renderLineup(body, slot).catch((err) => {
       body.innerHTML = '<span style="color:#ff8a94">Couldn\'t load the roster: ' + esc(err.message) + '</span>';
     });
-  }
-
-  async function renderPlayer(body, slot) {
-    const perTeam = ((hello && hello.slotCount) || 22) / 2;
-    const away = slot >= perTeam;
-    const teamName = teams && (away ? teams.away : teams.home);
-    if (!teamName) { body.textContent = 'This match has no rostered teams.'; return; }
-    const t = await loadTeam(teamName);
-    let idx = away ? slot - perTeam : slot;       // roster order = slot order
-    const draw = () => {
-      const p = t.players[idx];
-      if (!p) { body.textContent = 'No rostered player in this slot.'; return; }
-      const onPitch = idx < perTeam;
-      let html = `<select id="ep-who" style="width:100%;margin-bottom:6px;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:3px;">` +
-        t.players.map((q, i) => `<option value="${i}"${i === idx ? ' selected' : ''}>#${q.shirt} ${esc(q.name)} · ${esc(q.position || '')}${i >= perTeam ? ' (bench)' : ''}</option>`).join('') +
-        `</select><div style="font-size:11px;opacity:.7;margin-bottom:4px;">${esc(t.team)} · ${esc(t.formation)} · ${esc(t.level_band)} — 50 = average for this level</div>`;
-      for (const a of t.attributes) {
-        const v = p.attrs[a.code];
-        html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;" title="${esc(a.description)}">
-          <span style="width:92px;font-size:11px;">${esc(a.name)}</span>
-          <input type="range" min="0" max="100" value="${v == null ? 50 : v}" data-attr="${a.code}" style="flex:1;"
-                 oninput="this.nextElementSibling.textContent=this.value">
-          <span style="width:26px;text-align:right;font-size:11px;">${v == null ? '—' : v}</span></div>`;
-      }
-      html += `<textarea id="ep-desc" rows="3" placeholder="What type of player is he? (e.g. ball-playing centre back, wins everything in the air, slow on the turn)"
-          style="width:100%;box-sizing:border-box;margin-top:6px;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:4px;font:12px system-ui,sans-serif;">${esc(p.description || '')}</textarea>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-          <span id="ep-msg" style="font-size:11px;opacity:.8;">${onPitch ? 'Saves to the club and applies to the match now' : 'On the bench — saves to the club'}</span>
-          <button id="ep-save" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 14px;border-radius:6px;font-weight:700;">SAVE</button></div>`;
-      body.innerHTML = html;
-      shieldKeys(body);
-      body.querySelector('#ep-who').onchange = (ev) => { idx = +ev.target.value; draw(); };
-      body.querySelector('#ep-save').onclick = async () => {
-        const msg = body.querySelector('#ep-msg');
-        const attrs = {};
-        body.querySelectorAll('input[data-attr]').forEach((sl) => { attrs[sl.dataset.attr] = +sl.value; });
-        const description = body.querySelector('#ep-desc').value.trim();
-        msg.textContent = 'saving…';
-        try {
-          const r = await fetch('/api/game/player', { method: 'PUT', headers: authHeaders(),
-            body: JSON.stringify({ team: t.team, shirt: p.shirt, attrs, description }) });
-          const j = await r.json().catch(() => ({}));
-          if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-          p.attrs = attrs;
-          p.description = description;
-          // Live: the running match uses the new numbers now (wire 0x37).
-          if (onPitch) net.setAttributes((away ? perTeam : 0) + idx, GameWire.ATTRIBUTES.map((c) => attrs[c]));
-          msg.textContent = onPitch ? '✓ saved — playing with it now' : '✓ saved';
-          msg.style.color = '#7dff9a';
-        } catch (err) {
-          msg.textContent = '⚠ not saved: ' + err.message;
-          msg.style.color = '#ff8a94';
-        }
-      };
-    };
-    draw();
   }
 
   // LINEUP (mig 641; James: "allow for lineup change and for set lineup
@@ -301,41 +213,6 @@
     };
   }
 
-  function renderKnowledge(body, slot, e) {
-    let html = `<div style="max-height:52vh;overflow-y:auto;">`;
-    GameWire.CONCEPTS.forEach((c, i) => {
-      if (!c) return;   // an id hole in the curriculum
-      const v = e.ratings[i] || 0;
-      html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
-        <span style="width:92px;font-size:11px;">${c}</span>
-        <input type="range" min="0" max="100" value="${v}" data-idx="${i}"
-               style="flex:1;" oninput="this.nextElementSibling.textContent=this.value">
-        <span style="width:26px;text-align:right;font-size:11px;">${v}</span></div>`;
-    });
-    html += `</div><div style="margin-top:8px;text-align:right;">
-      <button id="ep-apply" style="background:#ffcc00;color:#0b1c3d;
-        border:none;padding:4px 14px;border-radius:6px;font-weight:700;">APPLY</button></div>`;
-    body.innerHTML = html;
-    body.querySelector('#ep-apply').onclick = () => {
-      const ratings = new Array(GameWire.CONCEPTS.length).fill(0);
-      body.querySelectorAll('input[data-idx]').forEach((sl) => {
-        ratings[+sl.dataset.idx] = +sl.value;
-      });
-      net.setConcepts(slot, ratings);
-      editPanel.style.display = 'none';
-    };
-  }
-
-  function sendLevels() {
-    net.setLevels(levels.home, levels.away);
-  }
-  function paintLevelButtons() {
-    if (lvlHomeBtn)
-      lvlHomeBtn.textContent = 'H: ' + GameWire.LEVELS[levels.home];
-    if (lvlAwayBtn)
-      lvlAwayBtn.textContent = 'A: ' + GameWire.LEVELS[levels.away];
-  }
-
   let reconnectTimer = null;
   function scheduleReconnect() {
     if (reconnectTimer) return;
@@ -352,26 +229,11 @@
   // a hud … buckland does basically this in his book". Pills: off / one
   // player / home / away / both. Each shown player: what he decided, a line
   // to where he's going, a dashed line to the man he's acting on. ──
-  const WHY_CONCEPT = {
-    'pass ladder': 'pass-ladder', 'over the top': 'over-top', 'recycle': 'safe-pass',
-    'keeper sweep': 'sweep', 'cover shadow': 'cover-shadow', 'counter-press': 'counter-press',
-    'tackle': 'tackle-timing', 'recover goal-side': 'recover', 'chase ball': 'intercept',
-    'delay': 'delay', 'libero': 'libero', 'mark': 'marking', 'give and go': 'give-and-go',
-    'blind-side run': 'blind-side-run', 'run in behind': 'runs', 'outlet': 'outlet',
-    'support': 'support', 'shoot': 'shot-selection',
-  };
-  Object.assign(WHY_CONCEPT, {
-    'jockey side-on': 'side-on-jockey', 'turn and run with him': 'drop-step',
-    'meet the pass': 'meet-the-pass', 'hold shape': 'line-hold',
-    'play it back': 'keep-it-under-pressure', 'shield and turn': 'keep-it-under-pressure',
-    'jump the pass': 'jump-the-pass', 'shadow and help': 'shadow-second-man',
-    'mark tight (near the ball)': 'near-tight-far-zone', 'protect the middle (far from the ball)': 'near-tight-far-zone',
-  });
   // G4.57 HUD — James: "needs to be see through and off to side. maybe ukies
   // on one side and lh on other. we should be able to toggle players on and
   // off." One see-through panel per team (home left, away right): a row per
-  // player — tick to draw his lines on the pitch, tap his name for the
-  // concept and rating behind the decision. Ticks are remembered on this
+  // player — tick to draw his lines on the pitch, tap his name for his
+  // decision. Ticks are remembered on this
   // device.
   let brainOn = false, brainLegend = [], brainEntries = null, brainOpen = null;
   let watchPicking = false;
@@ -444,11 +306,6 @@
     return 'border:0;border-radius:8px;padding:1px 7px;font:700 10px system-ui,sans-serif;cursor:pointer;' +
       'background:rgba(255,255,255,.18);color:#fff;min-width:0;min-height:0;';
   }
-  // G4.66 what he can see: how old his picture of the men behind him is.
-  function lookText(e) {
-    if (!e || e.look === undefined || e.look === 255) return '';
-    return e.unseen ? ` · 👀 ${(e.look / 10).toFixed(1)}s, ${e.unseen} behind` : ' · 👀 sees all';
-  }
   function updateBrainRows() {   // text only, every BRAIN frame (~5 Hz)
     if (!brainOn) return;
     for (const side of brainSides) {
@@ -457,21 +314,14 @@
         const e = brainEntries && brainEntries[i];
         const why = e ? brainLegend[e.why] || '?' : '…';
         const other = e && e.other !== 255 ? ' → ' + slotName(e.other) : '';
-        // G4.70: a call he's making, and to whom.
-        const call = e && e.callTo !== undefined && e.callTo !== 255
-          ? ` · 📣 ${brainLegend[e.call] || 'call'} → ${e.callTo === 254 ? 'back line' : slotName(e.callTo)}` : '';
-        el.textContent = why + other + call + lookText(e);
+        el.textContent = why + other;
       }
       for (const el of side.el.querySelectorAll('[data-det]')) {
         if (el.hidden) continue;
         const i = Number(el.dataset.det);
         const e = brainEntries && brainEntries[i];
         const why = e ? brainLegend[e.why] || '' : '';
-        const concept = WHY_CONCEPT[why];
-        const ci = concept ? GameWire.CONCEPTS.indexOf(concept) : -1;
-        const rating = ci >= 0 && roster[i] ? roster[i].ratings[ci] : null;
-        el.textContent = (concept ? `${concept}: ${rating === null ? '—' : rating}` : 'no concept behind this one') +
-          (e && e.rung ? ` · rung ${e.rung}` : '');
+        el.textContent = why;
       }
     }
     renderer.setBrain({ entries: brainEntries, legend: brainLegend, show: brainPick });
@@ -510,214 +360,6 @@
     if (!on) renderer.setBrain(null);
   }
   paintBrainBar();
-
-  // ── Phases of play (G4.58, admin) — James: "lets have a restart from
-  // keeper option. for either team … the MOST organized a team will ever
-  // be" / "then mid block … final third … tap off and corners". Pick a
-  // phase, run it for a team: everyone sets up in shape, play goes on. ──
-  let phaseNames = [], isAdmin = false;
-  const phaseBar = document.createElement('div');
-  phaseBar.className = 'game-only';
-  phaseBar.hidden = true;
-  phaseBar.setAttribute('role', 'group');
-  phaseBar.setAttribute('aria-label', 'Phase of play');
-  phaseBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
-    'top:calc(env(safe-area-inset-top, 0px) + 60px);display:flex;gap:4px;align-items:center;z-index:20;' +
-    'background:rgba(10,14,20,.55);padding:3px 4px;border-radius:14px;font:700 11px system-ui,sans-serif;color:#fff;';
-  document.body.appendChild(phaseBar);
-  function paintPhaseBar() {
-    phaseBar.hidden = !isAdmin || phaseNames.length === 0;
-    if (phaseBar.hidden) return;
-    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
-    const short = (t) => (t.length > 14 ? t.split(' ')[0] : t);
-    const sel = phaseBar.querySelector('select');
-    const keep = sel ? sel.value : '0';
-    phaseBar.innerHTML =
-      `<select id="phase-pick" aria-label="Phase" style="font:700 11px system-ui,sans-serif;border-radius:10px;border:0;padding:3px 6px;min-height:0;">` +
-      phaseNames.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join('') + `</select>` +
-      names.map((n, t) => `<button type="button" data-team="${t}" title="Run this phase with ${esc(n)} on the ball" ` +
-        `style="border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;` +
-        `background:#ffcc00;color:#0b1c3d;">▶ ${esc(short(n))}</button>`).join('');
-    phaseBar.querySelector('select').value = keep;
-  }
-  phaseBar.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-team]');
-    if (!b) return;
-    net.runPhase(Number(b.dataset.team), Number(phaseBar.querySelector('select').value));
-  });
-
-  // ── Game model (G4.74, admin) — James: "all concepts [are] valid and
-  // its a matter of focus in the game model … if not set by us it should go
-  // to a default" / "hud would be good to change mid game to see diff
-  // behavour". Each team's demand per concept and where it comes from: the
-  // model's own row, inherited from a parent model, or a live change made
-  // here. G4.76 (mig 762): "editable in hud" — 💾 saves a live change into
-  // the team's model in the DB; ↺ on a saved row of a child model deletes
-  // it, so the parent's value comes back. A top-level model states every
-  // concept, so it has nothing to fall back to. Collapsed by default. ──
-  const demands = [null, null];   // per team: { model, demand[], source[], parent, origin[] }
-  // G4.76: and its numbers — each concept's distances / times and the 3
-  // rules by third, saved into the model the same way.
-  const params = [null, null];    // per team: { entries: [{ key, milli, source, origin, unit }] }
-  let modelTeam = 0, modelOpen = false, modelFilter = 'all', modelSearch = '', modelView = 'demand';
-  const modelBtn = document.createElement('button');
-  modelBtn.type = 'button';
-  modelBtn.className = 'game-only';
-  modelBtn.hidden = true;
-  modelBtn.textContent = '🎛 MODEL';
-  modelBtn.title = 'Game model: what each team asks of every concept — change it live';
-  // Beside EDIT in the admin row (left 212 + 64 + gap).
-  modelBtn.style.cssText = 'position:fixed;left:284px;top:44px;height:34px;z-index:20;border:0;border-radius:17px;' +
-    'padding:0 12px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
-    'background:rgba(10,14,20,.55);color:#fff;';
-  document.body.appendChild(modelBtn);
-  const modelPanel = document.createElement('div');
-  modelPanel.className = 'game-only';
-  modelPanel.hidden = true;
-  modelPanel.style.cssText = 'position:fixed;left:12px;top:126px;' +
-    'width:min(380px, calc(100vw - 24px));max-height:55vh;display:flex;flex-direction:column;z-index:21;' +
-    'background:rgba(11,28,61,.95);border:1px solid rgba(255,255,255,.25);border-radius:10px;padding:8px;color:#f4f6fb;font:12px system-ui,sans-serif;';
-  document.body.appendChild(modelPanel);
-  const chip = (on) => 'border:0;border-radius:10px;padding:2px 8px;font:700 11px system-ui,sans-serif;cursor:pointer;min-height:0;min-width:0;' +
-    (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:rgba(255,255,255,.15);color:#fff;');
-  const signed = (v) => (v > 0 ? '+' + v : v < 0 ? '−' + Math.abs(v) : '=');   // vs the parent
-  const modelName = (id) => id === 255 || id === undefined ? '' : (presets[id] || 'model #' + id);
-  function paintModelPanel() {
-    modelBtn.hidden = !isAdmin;
-    modelBtn.style.background = modelOpen ? '#ffcc00' : 'rgba(10,14,20,.55)';
-    modelBtn.style.color = modelOpen ? '#0b1c3d' : '#fff';
-    modelPanel.hidden = !isAdmin || !modelOpen;
-    if (modelPanel.hidden) return;
-    const names = [(teams && teams.home) || 'Home', (teams && teams.away) || 'Away'];
-    const d = demands[modelTeam];
-    const model = d && d.model !== 255 ? modelName(d.model) : 'no model';
-    const parent = d ? modelName(d.parent) : '';
-    let rows = '';
-    const pm = params[modelTeam];
-    if (modelView === 'numbers' && pm) {
-      const ZONE = { own: 'our third', middle: 'middle third', their: 'their third' };
-      pm.entries.forEach((e) => {
-        const src = e.source;
-        if (modelFilter === 'own' && src !== 1 && src !== 2) return;
-        if (modelFilter === 'live' && src !== 2) return;
-        if (modelSearch && !e.key.includes(modelSearch)) return;
-        const part = e.key.split('.');
-        const label = part[0] === 'ladder' ? `3 rules · ${ZONE[part[1]] || part[1]} · ${part[2].replace('_', ' ')}` :
-          `${part[1]} · ${part.slice(2).join('.')}`;
-        const from = modelName(e.origin);
-        // G4.77: an own / live value against what the parent plays.
-        const pv = e.parentMilli == null ? null : e.parentMilli / 1000;
-        const diff = pv === null || (src !== 1 && src !== 2) ? '' : signed(+(e.milli / 1000 - pv).toFixed(2));
-        const tag = (src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'global') + (diff ? ' ' + diff : '');
-        const tip = (src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
-          src === 3 ? `Inherited from ${from}` : 'The global number (game_model_params) — no model sets it') +
-          (pv !== null && (src === 1 || src === 2) ? ` · ${parent} plays ${pv}` : '');
-        const v = e.milli / 1000;
-        let act = '';
-        if (src === 2) {
-          act = `<button type="button" data-psave="${esc(e.key)}" title="Save into ${esc(model)}" style="${chip(false)}">💾</button>` +
-                `<button type="button" data-preset="${esc(e.key)}" title="Undo the live change" style="${chip(false)}">↺</button>`;
-        } else if (src === 1 && (d ? d.parent !== 255 : false)) {
-          act = `<button type="button" data-pinherit="${esc(e.key)}" title="Delete ${esc(model)}'s own value: back to ${esc(parent)}" style="${chip(false)}">↺</button>`;
-        }
-        rows += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">` +
-          `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.key)}">${esc(label)}</span>` +
-          `<input type="number" step="${e.unit === '%' ? 1 : 0.1}" value="${v}" data-pkey="${esc(e.key)}" aria-label="${esc(label)}" ` +
-          `style="flex:0 0 58px;min-height:0;border-radius:6px;border:0;padding:1px 4px;font:12px system-ui,sans-serif;">` +
-          `<span style="flex:0 0 22px;font-size:10px;opacity:.8;">${esc(e.unit)}</span>` +
-          `<span title="${esc(tip)}" style="flex:0 0 64px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${src === 3 || src === 0 ? .6 : 1};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${esc(tag)}</span>` +
-          `<span style="flex:0 0 52px;display:flex;gap:2px;justify-content:flex-end;">${act}</span>` +
-          `</div>`;
-      });
-    } else if (d && modelView === 'demand') {
-      GameWire.CONCEPTS.forEach((c, i) => {
-        if (!c || i >= d.demand.length) return;
-        const src = d.source[i];
-        // 'own' = what makes this model itself: its own rows + live changes.
-        if (modelFilter === 'own' && src !== 1 && src !== 2) return;
-        if (modelFilter === 'live' && src !== 2) return;
-        if (modelSearch && !c.includes(modelSearch)) return;
-        const from = modelName(d.origin[i]);
-        const pd = d.parentDemand && d.parentDemand[i] !== undefined && d.parentDemand[i] !== 255 ? d.parentDemand[i] : null;
-        const diff = pd === null || (src !== 1 && src !== 2) ? '' : signed(d.demand[i] - pd);
-        const label = (src === 2 ? 'LIVE' : src === 1 ? 'own' : src === 3 ? from : 'default') + (diff ? ' ' + diff : '');
-        const tip = (src === 2 ? 'Changed here, not saved' : src === 1 ? `Saved in ${model}` :
-          src === 3 ? `Inherited from ${from}` : 'No model row (code default)') +
-          (pd !== null && (src === 1 || src === 2) ? ` · ${parent} plays ${pd}` : '');
-        let act = '';
-        if (src === 2) {
-          act = `<button type="button" data-save="${i}" title="Save into ${esc(model)}" style="${chip(false)}">💾</button>` +
-                `<button type="button" data-reset="${i}" title="Undo the live change" style="${chip(false)}">↺</button>`;
-        } else if (src === 1 && d.parent !== 255) {
-          act = `<button type="button" data-inherit="${i}" title="Delete ${esc(model)}'s own value: back to ${esc(parent)}" style="${chip(false)}">↺</button>`;
-        }
-        rows += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">` +
-          `<span style="flex:0 0 124px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(c)} (#${i})">${esc(c)}</span>` +
-          `<input type="range" min="0" max="100" value="${d.demand[i]}" data-cid="${i}" aria-label="${esc(c)} demand" style="flex:1;min-width:0;min-height:0;accent-color:#ffcc00;">` +
-          `<span data-val style="flex:0 0 24px;text-align:right;">${d.demand[i]}</span>` +
-          `<span title="${esc(tip)}" style="flex:0 0 64px;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:${src === 3 ? .6 : 1};color:${src === 2 ? '#ffcc00' : '#f4f6fb'};">${esc(label)}</span>` +
-          `<span style="flex:0 0 52px;display:flex;gap:2px;justify-content:flex-end;">${act}</span>` +
-          `</div>`;
-      });
-    }
-    const line = !d ? '' : parent ? `inherits from <b>${esc(parent)}</b>` : 'top-level: states every concept';
-    modelPanel.innerHTML =
-      `<div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">` +
-      names.map((n, t) => `<button type="button" data-mteam="${t}" style="${chip(t === modelTeam)}">${esc(n)}</button>`).join('') +
-      `<span style="flex:1;"></span><button type="button" data-mclose title="Collapse" style="${chip(false)}">✕</button></div>` +
-      `<div style="margin:4px 0;opacity:.85;">Plays <b>${esc(model)}</b>${line ? ' · ' + line : ''} · 💾 saves a live change</div>` +
-      `<div style="display:flex;gap:4px;margin-bottom:4px;">` +
-      [['demand', 'Demands'], ['numbers', 'Numbers']].map(([k, l]) =>
-        `<button type="button" data-mview="${k}" style="${chip(modelView === k)}">${l}</button>`).join('') + `</div>` +
-      `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px;">` +
-      [['all', 'All'], ['own', 'Own + live'], ['live', 'Live']].map(([k, l]) =>
-        `<button type="button" data-mfilter="${k}" style="${chip(modelFilter === k)}">${l}</button>`).join('') +
-      `<input type="search" data-msearch placeholder="find a concept" value="${esc(modelSearch)}" ` +
-      `style="flex:1;min-width:0;min-height:0;border-radius:10px;border:0;padding:3px 8px;font:12px system-ui,sans-serif;"></div>` +
-      `<div style="overflow-y:auto;flex:1;">${rows || '<div style="opacity:.7;">Nothing here — try All.</div>'}</div>`;
-    shieldKeys(modelPanel);
-  }
-  modelBtn.addEventListener('click', () => {
-    modelOpen = !modelOpen;
-    if (modelOpen && editPanel) editPanel.style.display = 'none';   // same spot
-    paintModelPanel();
-  });
-  modelPanel.addEventListener('click', (ev) => {
-    const t = ev.target;
-    if (t.dataset.mteam !== undefined) { modelTeam = Number(t.dataset.mteam); paintModelPanel(); }
-    else if (t.dataset.mclose !== undefined) { modelOpen = false; paintModelPanel(); }
-    else if (t.dataset.mfilter) { modelFilter = t.dataset.mfilter; paintModelPanel(); }
-    else if (t.dataset.reset !== undefined) net.setDemand(modelTeam, Number(t.dataset.reset), 255);
-    else if (t.dataset.save !== undefined) {
-      const i = Number(t.dataset.save), d = demands[modelTeam];
-      if (d) net.saveDemand(modelTeam, i, d.demand[i]);
-    } else if (t.dataset.inherit !== undefined) net.saveDemand(modelTeam, Number(t.dataset.inherit), 255);
-    else if (t.dataset.mview) { modelView = t.dataset.mview; paintModelPanel(); }
-    else if (t.dataset.psave !== undefined) {
-      const pm = params[modelTeam], e = pm && pm.entries.find((x) => x.key === t.dataset.psave);
-      if (e) net.setParam(modelTeam, 2, e.milli, e.key);
-    } else if (t.dataset.preset !== undefined) net.setParam(modelTeam, 1, 0, t.dataset.preset);
-    else if (t.dataset.pinherit !== undefined) net.setParam(modelTeam, 3, 0, t.dataset.pinherit);
-  });
-  modelPanel.addEventListener('input', (ev) => {
-    const t = ev.target;
-    if (t.dataset.msearch !== undefined) {
-      modelSearch = t.value.trim().toLowerCase();
-      paintModelPanel();
-      const s = modelPanel.querySelector('[data-msearch]');
-      s.focus();
-      s.setSelectionRange(s.value.length, s.value.length);
-    } else if (t.dataset.cid !== undefined) {
-      t.nextElementSibling.textContent = t.value;   // the number follows the drag
-    }
-  });
-  // Sent on release, not every pixel of the drag.
-  modelPanel.addEventListener('change', (ev) => {
-    const t = ev.target;
-    if (t.dataset.cid !== undefined) net.setDemand(modelTeam, Number(t.dataset.cid), Number(t.value));
-    else if (t.dataset.pkey !== undefined && t.value !== '' && Number.isFinite(Number(t.value)))
-      net.setParam(modelTeam, 0, Math.round(Number(t.value) * 1000), t.dataset.pkey);
-  });
 
   // ── Sim speed (G4.61, admin) — James: "slow mo … or speed up but with
   // same physics … slow mo would allow me to really see the tactics and
@@ -885,10 +527,8 @@
       }
       // Admin capability (bit 3) shows the level pickers.
       isAdmin = !!(h.capabilities & 8);
-      paintPhaseBar();
       paintSpeedBar();
       paintReplayBar();
-      paintModelPanel();
       if ((h.capabilities & 8) && editBtn) {
         editBtn.style.display = 'block';
         const flipEdit = () => {
@@ -896,27 +536,11 @@
           editBtn.style.background =
             editMode ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
           if (!editMode) editPanel.style.display = 'none';
-          paintPresetBar();
         };
         editBtn.addEventListener('click', flipEdit);
         editBtn.addEventListener('touchstart', (e) => {
           e.preventDefault(); e.stopPropagation(); flipEdit();
         });
-      }
-      if ((h.capabilities & 8) && lvlHomeBtn && lvlAwayBtn) {
-        lvlHomeBtn.style.display = 'block';
-        lvlAwayBtn.style.display = 'block';
-        const cycle = (side) => {
-          levels[side] = (levels[side] + 1) % GameWire.LEVELS.length;
-          paintLevelButtons();
-          sendLevels();
-        };
-        for (const [btn, side] of [[lvlHomeBtn, 'home'], [lvlAwayBtn, 'away']]) {
-          btn.addEventListener('click', () => cycle(side));
-          btn.addEventListener('touchstart', (e) => {
-            e.preventDefault(); e.stopPropagation(); cycle(side);
-          });
-        }
       }
       statusEl.textContent =
         `match ${h.matchId} — tap a player to take control · drag to rotate`;
@@ -943,12 +567,6 @@
       renderer.pushSnapshot(s);
       if (s.match && boardEl) {
         const m = s.match;
-        if (m.levelHome !== undefined &&
-            (m.levelHome !== levels.home || m.levelAway !== levels.away)) {
-          levels.home = m.levelHome;
-          levels.away = m.levelAway;
-          paintLevelButtons();
-        }
         const mm = String(Math.floor(m.clockSec / 60)).padStart(2, '0');
         const ss = String(m.clockSec % 60).padStart(2, '0');
         // Team names from the TEAMS frame (game_demo_teams) — James: "should
@@ -988,10 +606,6 @@
       brainEntries = entries;
       updateBrainRows();
     },
-    onPhases(names) {
-      phaseNames = names;
-      paintPhaseBar();
-    },
     onBrainLegend(names) {
       brainLegend = names;
     },
@@ -999,7 +613,6 @@
       teams = t;
       paintWatchList();
       if (brainOn) paintBrainSides();
-      paintPhaseBar();
       // Names + position numbers over the players (mig 643): both teams'
       // slot numbers from the club API, names from ROSTER.
       for (const k of Object.keys(teamCache)) delete teamCache[k];
@@ -1012,31 +625,6 @@
         for (const f of (renderer.figures || [])) f.build(f.home, f.keeper);
       }
     },
-    onDemands(d) {   // G4.74
-      demands[d.team] = d;
-      // Don't repaint under a finger mid-drag; the next frame catches up.
-      const a = document.activeElement;
-      if (a && a.dataset && a.dataset.cid !== undefined && modelPanel.contains(a)) return;
-      paintModelPanel();
-    },
-    onParams(p) {   // G4.76
-      params[p.team] = p;
-      const a = document.activeElement;
-      if (a && a.dataset && a.dataset.pkey !== undefined && modelPanel.contains(a)) return;
-      paintModelPanel();
-    },
-    onPresets(names) {
-      presets = names;
-      if (presetSelect) {
-        presetSelect.innerHTML = '';
-        names.forEach((n) => {
-          const o = document.createElement('option');
-          o.textContent = n;
-          presetSelect.appendChild(o);
-        });
-      }
-      paintPresetBar();
-    },
     onEvent(ev) {
       // Tackles (8/9) fire dozens of times a match — not toast-worthy.
       if (!EVENT_NAMES[ev.eventType]) return;
@@ -1047,7 +635,7 @@
         renderer.celebrate(ev.team);
         toast(`⚽ ${name}`, 3000);
       } else {
-        const side = ev.eventType === 10
+        const side = ev.eventType === 10 || ev.eventType === 12
           ? (ev.team === 0 ? ' — free kick home' : ' — free kick away')
           : ev.eventType <= 5 ? (ev.team === 0 ? ' — home' : ' — away') : '';
         toast(`${name}${side}`, 2000);
