@@ -319,6 +319,12 @@ const POST_PILLS = [
   { key: 'post_game',      icon: '🏆', title: 'Match Result',      accent: '#22c55e', social: 'open'   },
 ];
 
+// 🎯 Tactics (mig 1120) rides the same strip but is no post (owner 11/6:
+// "needs be where the pills for game announce 20 man starters bench"):
+// it swaps the graphic for the coach-drawn situations pitch.  11v11 with a
+// formation only (pills()).
+const TACTICS_PILL = { key: 'tactics', icon: '🎯', title: 'Tactics', accent: '#ef4444', social: 'closed' };
+
 // Starters & Bench is the landing pill: it's the one a coach actually
 // works in, and it's the team sheet a player opens the page to read.
 const DEFAULT_PILL = 'starters_bench';
@@ -391,6 +397,11 @@ class GameCenterScreen extends EventScreen {
     // every 2nd as Squad B.
     this.shares        = new Map();
     this.splitSquad    = false;
+    // 🎯 Tactics (mig 1120): coach-drawn situations for the formation on
+    // screen, the day's lineup laid on them by position.  data = the
+    // GET /api/formation-tactics/:id answer; draft = a coach's unsaved
+    // copy of the situation being dragged.
+    this._tactics = { formationId: 0, data: null, loading: false, error: null, idx: 0, editing: false, draft: null, msg: '' };
     // Availability/RSVP pills in the Current Lineup card are opt-in
     // (2026-08-22, owner directive: "toggle off 'stats' like
     // availability and attendance... at top for current lineup and
@@ -794,7 +805,7 @@ class GameCenterScreen extends EventScreen {
   // than rendering a blank body.
   _resolvePill(params) {
     // #event/<id>/<pill> (EventKindSwitch) names it pill; older doors postType.
-    if (params.pill && POST_PILLS.some(p => p.key === params.pill)) return params.pill;
+    if (params.pill && (POST_PILLS.some(p => p.key === params.pill) || params.pill === TACTICS_PILL.key)) return params.pill;
     if (params.postType && POST_PILLS.some(p => p.key === params.postType)) return params.postType;
     if (params.mode === 'gameday') return 'lineup';
     return DEFAULT_PILL;
@@ -860,7 +871,7 @@ class GameCenterScreen extends EventScreen {
     if (document.hidden || !this.matchId || !this.loaded || this.error || this._pollBusy) return;
     if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
     // Never refresh into an edit — catch up on a later tick instead.
-    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit) return;
+    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit || this._tactics.editing) return;
     if (document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-gc-opp-msg]')) return;
     if (this._isDraftView()) return;
     if (document.getElementById('gc-swap-sheet')) return;
@@ -1110,7 +1121,7 @@ class GameCenterScreen extends EventScreen {
       const socialPillBtn = e.target.closest('[data-gc-social-pill]');
       if (socialPillBtn) {
         const key = socialPillBtn.getAttribute('data-gc-social-pill');
-        if (POST_PILLS.some(p => p.key === key)) {
+        if (POST_PILLS.some(p => p.key === key) || key === TACTICS_PILL.key) {
           if (key !== this.pill) {
             this.pill = key;
             this._syncHash();
@@ -1175,6 +1186,11 @@ class GameCenterScreen extends EventScreen {
         return;
       }
       if (e.target.closest('[data-gc-split]') && this.isCoach) { this._toggleSplitSquad(); return; }
+      const sitPill = e.target.closest('[data-gc-tactics-sit]');
+      if (sitPill && !this._tactics.editing) { this._tactics.idx = Number(sitPill.dataset.gcTacticsSit) || 0; this._tactics.msg = ''; this._render(); return; }
+      if (e.target.closest('[data-gc-tactics-edit]') && this._tacticsCanEdit()) { this._startTacticsEdit(); return; }
+      if (e.target.closest('[data-gc-tactics-cancel]')) { this._tactics.editing = false; this._tactics.draft = null; this._render(); return; }
+      if (e.target.closest('[data-gc-tactics-save]') && this._tacticsCanEdit()) { this._saveTactics(); return; }
       const fillBtn = e.target.closest('[data-gc-split-fill]');
       if (fillBtn && this.isCoach) { this._fillSecondSpots(); this._render(); this._scheduleSave(); return; }
       const statsToggle = e.target.closest('#gl-stats-toggle');
@@ -1310,6 +1326,7 @@ class GameCenterScreen extends EventScreen {
   // Pill wording: social_post_types.display_name when loaded, else the
   // JS fallback title, else the raw key.
   _pillTitle(key) {
+    if (key === TACTICS_PILL.key) return this._copyTactics('pill') || TACTICS_PILL.title;
     const meta = POST_PILLS.find(p => p.key === key);
     // Everyone plays (mig 515/516): no starters or bench to name.
     if (key === 'starters_bench' && this.everyonePlays && this._copyLe('title')) return this._copyLe('title');
@@ -1838,6 +1855,123 @@ class GameCenterScreen extends EventScreen {
   }
 
   _copySplit(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('lineup_split', tier, tokens) : ''; }
+
+  // ── 🎯 Tactics (mig 1120) ─────────────────────────────────────────────
+  // Owner 2026-11-06: "show the tactics depending on where opponents and
+  // ball are" → coach-drawn situations per formation (A), 3-5-2 (3-R2)
+  // first.  The pitch is TacticsPitch (components/tactics-pitch.js); the
+  // situations are positions only, so today's lineup fills them by slot.
+  _copyTactics(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('tactics', tier, tokens) : ''; }
+
+  _tacticsCanEdit() { return this.isCoach && this.viewMode !== 'player'; }
+
+  _tacticsAvailable() { return !this.everyonePlays && this.fieldSize === 11; }
+
+  async _loadTactics() {
+    const t = this._tactics;
+    const fid = this._formationId();
+    if (!fid || (t.formationId === fid && (t.data || t.loading))) return;
+    Object.assign(t, { formationId: fid, data: null, loading: true, error: null, idx: 0, editing: false, draft: null, msg: '' });
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/formation-tactics/${fid}`);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      if (t.formationId === fid) t.data = body;
+    } catch (err) {
+      if (t.formationId === fid) t.error = err.message;
+    }
+    if (t.formationId === fid) { t.loading = false; this._render(); }
+  }
+
+  _tacticsSituations() { return (this._tactics.data && this._tactics.data.situations) || []; }
+
+  _startTacticsEdit() {
+    const sit = this._tacticsSituations()[this._tactics.idx];
+    if (!sit) return;
+    this._tactics.draft = JSON.parse(JSON.stringify(sit));
+    this._tactics.editing = true;
+    this._tactics.msg = '';
+    this._render();
+  }
+
+  async _saveTactics() {
+    const t = this._tactics;
+    const d = t.draft;
+    if (!d) return;
+    try {
+      const res = await this.auth.fetch(`/api/formation-tactics/situations/${d.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ball: d.ball, players: d.players, opponents: d.opponents }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      const list = this._tacticsSituations();
+      const i = list.findIndex(s => s.id === d.id);
+      if (i >= 0) list[i] = d;
+      Object.assign(t, { editing: false, draft: null, msg: this._copyTactics('saved') || 'Saved ✓' });
+    } catch (err) {
+      t.msg = `⚠ ${err.message}`;
+    }
+    this._render();
+  }
+
+  // Shirt number + the day's name in that slot (blank when nobody is).
+  _tacticsChipFor() {
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    return (positionId) => {
+      const pos = startingPositions.find(p => p.id === positionId);
+      const occupant = rosterById.get(slotToPlayerId.get(positionId));
+      return { number: pos ? pos.sortOrder : positionId, name: occupant ? occupant.name : '' };
+    };
+  }
+
+  _tacticsSectionHtml() {
+    const t = this._tactics;
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    if (!this._tacticsAvailable()) return `<div style="font-size:0.75rem; opacity:0.75;">${esc(this._copyTactics('none', { formation: this.formation || '' }))}</div>`;
+    // Formation changed while open: fetch after this render, not inside it.
+    if (t.formationId !== this._formationId()) setTimeout(() => this._loadTactics(), 0);
+    let inner;
+    const list = this._tacticsSituations();
+    if (!this._formationId()) inner = `<div style="font-size:0.75rem; opacity:0.75;">${esc(this._copyTactics('none', { formation: this.formation }) || `No situations drawn for ${this.formation} yet.`)}</div>`;
+    else if (t.loading || (!t.data && !t.error)) inner = '<div style="font-size:0.75rem; opacity:0.7;">Loading…</div>';
+    else if (t.error) inner = `<div style="font-size:0.75rem; color:#f87171;">⚠ ${esc(t.error)}</div>`;
+    else if (!list.length) inner = `<div style="font-size:0.75rem; opacity:0.75;">${esc(this._copyTactics('none', { formation: this.formation }) || `No situations drawn for ${this.formation} yet.`)}</div>`;
+    else {
+      const idx = Math.min(t.idx, list.length - 1);
+      const sit = t.editing && t.draft ? t.draft : list[idx];
+      const pills = list.map((s, i) => `<button type="button" data-gc-tactics-sit="${i}" class="btn btn-sm ${i === idx ? 'btn-primary' : 'btn-secondary'}"
+          ${t.editing && i !== idx ? 'disabled' : ''} style="font-size:0.72rem; padding:3px 9px; white-space:nowrap;">${esc(s.label)}</button>`).join('');
+      const tools = !this._tacticsCanEdit() ? '' : t.editing
+        ? `<button type="button" data-gc-tactics-save class="btn btn-primary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('save') || '💾 Save')}</button>
+           <button type="button" data-gc-tactics-cancel class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('cancel') || 'Cancel')}</button>
+           <span style="font-size:0.7rem; opacity:0.8;">${esc(this._copyTactics('editing'))}</span>`
+        : `<button type="button" data-gc-tactics-edit class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('edit') || '✏️ Move pieces')}</button>`;
+      inner = `
+        <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px;">${pills}</div>
+        ${sit.notes ? `<div style="font-size:0.78rem; line-height:1.35; margin-bottom:8px;">${esc(sit.notes)}</div>` : ''}
+        <div data-gc-tactics-pitch></div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">${tools}
+          ${t.msg ? `<span style="font-size:0.72rem; font-weight:700;">${esc(t.msg)}</span>` : ''}</div>`;
+    }
+    return `<div style="margin:0 0 12px;">
+      <div style="padding:10px; border:1px solid var(--border-color); border-radius:8px;">
+        <div style="font-size:0.72rem; opacity:0.75; margin-bottom:6px;">${esc(this._copyTactics('hint'))}</div>
+        ${inner}
+      </div></div>`;
+  }
+
+  _mountTactics() {
+    const el = document.querySelector('[data-gc-tactics-pitch]');
+    if (!el || !window.TacticsPitch) return;
+    const t = this._tactics;
+    const list = this._tacticsSituations();
+    const sit = t.editing && t.draft ? t.draft : list[Math.min(t.idx, list.length - 1)];
+    if (!sit) return;
+    new TacticsPitch({ situation: sit, chipFor: this._tacticsChipFor(), editable: t.editing }).mount(el);
+  }
 
   // Split squad on: every position still without a 2nd takes the next
   // unpaired bench player (bench order, outfield first, keeper last).
@@ -2699,6 +2833,15 @@ class GameCenterScreen extends EventScreen {
     // flip the one card, that post's tools and Post button sit right
     // under it, and the lineup editor follows.
     const paint = (bodyHtml) => {
+      if (this.pill === TACTICS_PILL.key) {
+        // The tactics pitch in place of the graphic; nothing under it.
+        this._stopCards();
+        head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+          + this._tacticsSectionHtml();
+        box.innerHTML = '';
+        this._mountTactics();
+        return;
+      }
       head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
         + this._duesAlternateStripHtml()
@@ -5459,7 +5602,11 @@ class GameCenterScreen extends EventScreen {
   // mark: opening a pill creates one, so it would say nothing.
   // EventScreen's pill hook: a game's four moments (POST_PILLS), titles
   // from the DB copy.
-  pills(_ev) { return POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) })); }
+  pills(_ev) {
+    const list = POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) }));
+    if (this._tacticsAvailable()) list.push({ ...TACTICS_PILL, title: this._pillTitle(TACTICS_PILL.key) });
+    return list;
+  }
 
   _socialPillsHtml() {
     // The shared big row (lib/event-pills.js) — a practice draws the same one.
