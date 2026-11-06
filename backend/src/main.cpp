@@ -542,7 +542,7 @@ private:
         // BEFORE the legacy EventController so /api/events/:chatEventId
         // resolves here (chat_events table) instead of the older
         // /api/events/:eventId handler (deprecated internal `events`
-        // table).  Also owns /api/rsvp.  Phase 5.
+        // table).  Phase 5.  (Its POST /api/rsvp was removed 2026-11-06.)
         router_.useController("/api", event_rsvp_controller_);
         router_.useController("/api/events", event_controller_);
         router_.useController("/api", division_controller_);

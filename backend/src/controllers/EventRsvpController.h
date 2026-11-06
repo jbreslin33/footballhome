@@ -8,7 +8,8 @@
 // internal `events` table) and operates on the signed-in person's id.
 //
 //   GET  /api/events/:chatEventId  — event detail + caller's RSVP
-//   POST /api/rsvp                 — UPSERT event_rsvps + log append
+//   (POST /api/rsvp removed 2026-11-06: unused, no roster check —
+//    answers go through POST /api/calendar/rsvp.)
 //
 // Mounted BEFORE the legacy EventController in main.cpp so that the
 // :chatEventId path wins over the older /:eventId handler that hits
@@ -22,5 +23,4 @@ public:
 
 private:
     Response handleGetEvent(const Request& request);
-    Response handlePostRsvp(const Request& request);
 };

@@ -504,6 +504,9 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         "          JOIN coaches co ON co.id = tc.coach_id "
         "          WHERE tc.team_id = fet.team_id AND tc.ended_at IS NULL "
         "            AND co.person_id = $3::int"
+        // Coach schedule (mig 955): a coach answers only the practices
+        // on their days — the same rule that hides the rest from #my.
+        "            AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, $1::bigint)"
         "        )"
         "      )"
         "  ) "

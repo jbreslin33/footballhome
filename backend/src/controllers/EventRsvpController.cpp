@@ -15,34 +15,6 @@ using nlohmann::json;
 
 namespace {
 
-// JSON helpers — `j.value()` throws on type mismatch, so we wrap the
-// common int/string extractions with explicit handling that mirrors
-// Node's loose `parseInt` / `String(...)` coercions used in the
-// original meta-leads-webhook/index.js endpoints.
-std::optional<long long> jsonInt(const json& j, const char* key) {
-    if (!j.contains(key) || j[key].is_null()) return std::nullopt;
-    if (j[key].is_number_integer())  return j[key].get<long long>();
-    if (j[key].is_number_unsigned()) return static_cast<long long>(j[key].get<unsigned long long>());
-    if (j[key].is_number_float())    return static_cast<long long>(j[key].get<double>());
-    if (j[key].is_string()) {
-        try { return std::stoll(j[key].get<std::string>()); }
-        catch (...) { return std::nullopt; }
-    }
-    return std::nullopt;
-}
-
-std::string jsonStr(const json& j, const char* key) {
-    if (!j.contains(key) || j[key].is_null()) return {};
-    if (j[key].is_string()) return j[key].get<std::string>();
-    return j[key].dump();
-}
-
-std::string toLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return s;
-}
-
 Response jsonError(HttpStatus s, const std::string& message) {
     json body = {{"error", message}};
     Response r(s, body.dump());
@@ -89,18 +61,6 @@ std::string trailingSegment(const std::string& path, const std::string& prefix) 
     return seg;
 }
 
-// Resolve users.id for a person — used as the audit FK on the
-// event_rsvp_log INSERT.  Matches Node behaviour: NULL when the
-// person has no users row.  Caller stringifies for the param vector.
-std::string resolveChangedByUserId(long long personId) {
-    auto* db = Database::getInstance();
-    auto row = db->query(
-        "SELECT id FROM users WHERE person_id = $1::int LIMIT 1",
-        {std::to_string(personId)});
-    if (row.empty() || row[0]["id"].is_null()) return {};
-    return std::to_string(row[0]["id"].as<long long>());
-}
-
 }  // namespace
 
 EventRsvpController::EventRsvpController() = default;
@@ -111,8 +71,6 @@ void EventRsvpController::registerRoutes(Router& router, const std::string& pref
     // even though they don't share a deeper path root.
     router.get (prefix + "/events/:chatEventId",
                 [this](const Request& r) { return handleGetEvent(r); });
-    router.post(prefix + "/rsvp",
-                [this](const Request& r) { return handlePostRsvp(r); });
 }
 
 Response EventRsvpController::handleGetEvent(const Request& request) {
@@ -198,103 +156,6 @@ Response EventRsvpController::handleGetEvent(const Request& request) {
         return jsonOk({{"event", event}, {"my_rsvp", myRsvp}});
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/events/:chatEventId] " << e.what() << std::endl;
-        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
-    }
-}
-
-Response EventRsvpController::handlePostRsvp(const Request& request) {
-    auto gate = requireSession(request);
-    if (gate.error) return *gate.error;
-    const long long personId = gate.session->personId;
-
-    json body;
-    try {
-        body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
-    } catch (const std::exception& e) {
-        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
-    }
-
-    auto chatEventIdOpt = jsonInt(body, "chat_event_id");
-    if (!chatEventIdOpt) return jsonError(HttpStatus::BAD_REQUEST, "chat_event_id required");
-
-    const std::string statusName = toLower(jsonStr(body, "status"));
-    int statusId = 0;
-    if      (statusName == "yes")   statusId = 1;
-    else if (statusName == "no")    statusId = 2;
-    else return jsonError(HttpStatus::BAD_REQUEST, "status must be 'yes' or 'no' (maybe deprecated 2026-07-10)");
-
-    // Node truncates to 1000 chars and treats empty as null.  We send
-    // empty string to PG and let NULLIF in the SQL coerce it to NULL
-    // so the on-wire types stay strings (libpqxx parameter list is
-    // string-only).
-    std::string note = jsonStr(body, "note");
-    if (note.size() > 1000) note.resize(1000);
-
-    const std::string changedByUserId = resolveChangedByUserId(personId);
-
-    auto* db = Database::getInstance();
-    try {
-        // Single round-trip: CTE wraps the UPSERT and log INSERT so
-        // either both write or neither does (matches the Node
-        // BEGIN/COMMIT pair).  We RETURN the upserted row in the
-        // exact column set the Node handler echoes back.
-        auto row = db->query(
-            "WITH ups AS ( "
-            "  INSERT INTO event_rsvps "
-            "      (chat_event_id, person_id, rsvp_status_id, response_note, source_id) "
-            "  VALUES ($1::int, $2::int, $3::int, NULLIF($4, ''), 1) "
-            "  ON CONFLICT (chat_event_id, person_id) DO UPDATE "
-            "      SET rsvp_status_id = EXCLUDED.rsvp_status_id, "
-            "          response_note  = EXCLUDED.response_note, "
-            "          source_id      = EXCLUDED.source_id "
-            "  RETURNING id, chat_event_id, person_id, rsvp_status_id, "
-            "           response_note, source_id, recorded_at, updated_at "
-            "), "
-            "log_ins AS ( "
-            "  INSERT INTO event_rsvp_log "
-            "      (chat_event_id, person_id, rsvp_status_id, response_note, "
-            "       source_id, changed_by_user_id) "
-            "  SELECT chat_event_id, person_id, rsvp_status_id, response_note, "
-            "         source_id, NULLIF($5, '')::int "
-            "    FROM ups "
-            ") "
-            "SELECT id, chat_event_id, person_id, rsvp_status_id, "
-            "       response_note, source_id, "
-            "       to_char(recorded_at AT TIME ZONE 'UTC', "
-            "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS recorded_at, "
-            "       to_char(updated_at  AT TIME ZONE 'UTC', "
-            "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS updated_at "
-            "  FROM ups",
-            {std::to_string(*chatEventIdOpt),
-             std::to_string(personId),
-             std::to_string(statusId),
-             note,
-             changedByUserId});
-
-        if (row.empty()) {
-            // Shouldn't happen — INSERT...RETURNING always returns a
-            // row.  Defensive 500 to avoid silently emitting {rsvp:null}.
-            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "RSVP write returned no row");
-        }
-
-        const auto& r = row[0];
-        json rsvp = {
-            {"id",             r["id"].as<long long>()},
-            {"chat_event_id",  r["chat_event_id"].as<long long>()},
-            {"person_id",      r["person_id"].as<long long>()},
-            {"rsvp_status_id", r["rsvp_status_id"].as<long long>()},
-            {"response_note",  r["response_note"].is_null()
-                                  ? json(nullptr)
-                                  : json(r["response_note"].as<std::string>())},
-            {"source_id",      r["source_id"].is_null()
-                                  ? json(nullptr)
-                                  : json(r["source_id"].as<long long>())},
-            {"recorded_at",    r["recorded_at"].as<std::string>()},
-            {"updated_at",     r["updated_at"].as<std::string>()},
-        };
-        return jsonOk({{"rsvp", rsvp}, {"status", statusName}});
-    } catch (const std::exception& e) {
-        std::cerr << "[POST /api/rsvp] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
