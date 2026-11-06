@@ -37,7 +37,7 @@ bool num1to11(const json& j, const char* k) {
 }
 
 // { opponents: [{number 1–11 once, x, y 0–100}] (≤ 11),
-//   jobs: [{position_id 2–11 once, kind, target_a 1–11, target_b? 1–11,
+//   jobs: [{position_id 2–11 once, kind, targets [1–4 of their numbers], target_b? 1–11, stance?,
 //           partner_position_id? 2–11 — mirrored by the partner}] (≤ 10) }
 // Job kinds are checked against the table by the insert's foreign key.
 std::string invalid(const json& b) {
@@ -61,7 +61,15 @@ std::string invalid(const json& b) {
         if (p < 2 || p > 11 || pos[p]) return "job position_id 2–11, once each";
         pos[p] = true;
         if (!j.contains("kind") || !j["kind"].is_string() || j["kind"].get<std::string>().size() > 40) return "job kind";
-        if (!num1to11(j, "target_a")) return "job target_a 1–11";
+        if (!j.contains("targets") || !j["targets"].is_array() || j["targets"].empty() || j["targets"].size() > 4)
+            return "job targets: 1–4 of their numbers";
+        bool tseen[12] = {};
+        for (const auto& t : j["targets"]) {
+            if (!t.is_number_integer() || t.get<int>() < 1 || t.get<int>() > 11) return "job targets 1–11";
+            if (tseen[t.get<int>()]) return "job targets once each";
+            tseen[t.get<int>()] = true;
+        }
+        if (j.contains("stance") && !(j["stance"].is_string() && j["stance"].get<std::string>().size() <= 20)) return "job stance";
         if (j.contains("target_b") && !j["target_b"].is_null() && !num1to11(j, "target_b")) return "job target_b 1–11";
         if (j.contains("partner_position_id") && !j["partner_position_id"].is_null()) {
             if (!j["partner_position_id"].is_number_integer()) return "job partner_position_id 2–11";
@@ -78,7 +86,7 @@ std::string invalid(const json& b) {
         for (const auto& k : b["jobs"])
             if (k["position_id"].get<int>() == q && k.value("kind", std::string()) == j.value("kind", std::string()) &&
                 k.contains("partner_position_id") && k["partner_position_id"].is_number_integer() &&
-                k["partner_position_id"].get<int>() == p && k["target_a"] == j["target_a"])
+                k["partner_position_id"].get<int>() == p && k["targets"] == j["targets"])
                 mirrored = true;
         if (!mirrored) return "partnered job must be mirrored by its partner";
     }

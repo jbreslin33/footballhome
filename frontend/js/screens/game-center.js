@@ -1206,6 +1206,8 @@ class GameCenterScreen extends EventScreen {
       const tpState = e.target.closest('[data-gc-tp-state]');
       if (tpState && !this._plan.editing) { this._stopPlanPlay(); this._plan.stateId = Number(tpState.dataset.gcTpState); this._plan.msg = ''; this._render(); return; }
       if (e.target.closest('[data-gc-tp-create]') && this._tacticsCanEdit()) { this._createPlan(); return; }
+      const tgt = e.target.closest('[data-gc-tp-tgt]');
+      if (tgt && this._tacticsCanEdit()) { this._editPlanJob(Number(tgt.dataset.gcTpTgt), 'toggle', tgt.dataset.n); return; }
       if (e.target.closest('[data-gc-tp-edit]') && this._tacticsCanEdit()) { this._startPlanEdit(); return; }
       if (e.target.closest('[data-gc-tp-cancel]')) { this._plan.editing = false; this._plan.draft = null; this._render(); return; }
       if (e.target.closest('[data-gc-tp-save]') && this._tacticsCanEdit()) { this._savePlanState(); return; }
@@ -2083,15 +2085,25 @@ class GameCenterScreen extends EventScreen {
     const opps = (st.opponents && st.opponents.length ? st.opponents : base)
       .map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) }))
       .sort((a, b) => a.number - b.number);
-    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY());
+    const law = this._planRestart(st);
+    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY(), law ? law.our_max_y : null);
     return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players, opponents: opps.map(o => ({ ...o, label: o.number })) };
+  }
+
+  // The restart law a state is played under (Law 16 goal kick), or null.
+  _planRestart(st) {
+    if (!st || !st.restart) return null;
+    return ((this._plan.data && this._plan.data.restarts) || []).find(r => r.code === st.restart) || null;
   }
 
   _planJobText(job) {
     const k = job && this._planKinds()[job.kind];
-    if (!k || job.target_a == null) return '';
-    return `${k.target_a_label} ${job.target_a}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '')
-      + (k.partner_label && job.partner_position_id != null ? ` · ${k.partner_label} ${this._planOurNumber(job.partner_position_id)}` : '');
+    if (!k || !(job.targets || []).length) return '';
+    const stance = job.stance && job.stance !== 'goal_side'
+      ? (((this._plan.data && this._plan.data.stances) || []).find(x => x.code === job.stance) || {}).label : '';
+    return `${k.target_a_label} ${job.targets.join(', ')}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '')
+      + (k.partner_label && job.partner_position_id != null ? ` · ${k.partner_label} ${this._planOurNumber(job.partner_position_id)}` : '')
+      + (stance ? ` · ${String(stance).toLowerCase()}` : '');
   }
 
   // Our slot's number as drawn (position id → formation sort order).
@@ -2102,7 +2114,7 @@ class GameCenterScreen extends EventScreen {
 
   _planJobComplete(j) {
     const k = this._planKinds()[j.kind];
-    return j.target_a != null && (!k || !k.partner_label || j.partner_position_id != null);
+    return (j.targets || []).length > 0 && (!k || !k.partner_label || j.partner_position_id != null);
   }
 
   _planHtml() {
@@ -2160,6 +2172,7 @@ class GameCenterScreen extends EventScreen {
       + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>`
       + (!p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics(canEdit ? 'pass_hint' : 'player_hint'))}</div>` : '')
       + `<div style="font-size:0.72rem; font-weight:700; margin-bottom:6px; color:${cov.free.length || cov.doubled.length ? '#fbbf24' : '#4ade80'};">${covHtml}</div>`
+      + (this._planRestart(shown) ? `<div style="font-size:0.7rem; opacity:0.85; margin-bottom:6px;" title="${esc(this._planRestart(shown).law)}">${esc(this._copyTactics('restart', { label: this._planRestart(shown).label }))}</div>` : '')
       + `<div data-gc-tactics-pitch></div>` + tools + this._planJobsHtml(shown) + this._planPopupHtml(shown);
   }
 
@@ -2180,13 +2193,29 @@ class GameCenterScreen extends EventScreen {
         ${field === 'target_b' ? '<option value="">—</option>' : ''}
         ${field === 'target_a' && value == null ? `<option value="" selected>${esc(this._copyTactics('who') || '— who? —')}</option>` : ''}
         ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => `<option value="${n}" ${Number(value) === n ? 'selected' : ''}>${esc(their(n))}</option>`).join('')}</select>`;
+    const targets = job ? (job.targets || []) : [];
+    // Their men: tap-to-toggle chips for a job on several (deter 5 and 3),
+    // one dropdown otherwise.
+    const whoHtml = !job ? '' : kind && kind.multi_a
+      ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_a_label)}</span>
+         <span style="display:inline-flex; gap:3px; flex-wrap:wrap;${targets.length ? '' : ' outline:2px solid rgba(245,158,11,0.6); border-radius:6px; padding:2px;'}">
+           ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => { const on = targets.includes(n);
+             return `<button type="button" data-gc-tp-tgt="${pid}" data-n="${n}" style="font-size:${size}; min-width:24px; padding:1px 5px; border-radius:999px; cursor:pointer;
+               border:1px solid ${on ? '#dc2626' : '#475569'}; background:${on ? '#dc2626' : 'transparent'}; color:#fff; font-weight:${on ? 800 : 500};">${n}</button>`; }).join('')}
+         </span>${targets.length ? '' : `<span style="font-size:${size}; opacity:0.75;">${esc(this._copyTactics('multi_hint'))}</span>`}`
+      : `<span style="font-size:${size}; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel('target_a', targets.length ? targets[0] : null)}`;
+    const stances = (this._plan.data && this._plan.data.stances) || [];
+    const stanceHtml = job && job.kind === 'mark' && stances.length
+      ? `<span style="font-size:${size}; opacity:0.75;">${esc(this._copyTactics('stance') || 'stance')}</span>
+         <select data-gc-tp-job="${pid}" data-gc-tp-field="stance" style="${css}">${stances.map(x => `<option value="${esc(x.code)}" ${(job.stance || 'goal_side') === x.code ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>` : '';
     if (this._tacticsCanEdit() && !this._plan.playing) {
       return `<select data-gc-tp-job="${pid}" data-gc-tp-field="kind" style="${css}">
           <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
           ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
-        ${job ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel('target_a', job.target_a)}` : ''}
+        ${whoHtml}
         ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}
-        ${job && kind && kind.partner_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.partner_label)}</span> ${this._planPartnerSel(pid, job.partner_position_id, css)}` : ''}`;
+        ${job && kind && kind.partner_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.partner_label)}</span> ${this._planPartnerSel(pid, job.partner_position_id, css)}` : ''}
+        ${stanceHtml}`;
     }
     return job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
       : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
@@ -2378,8 +2407,9 @@ class GameCenterScreen extends EventScreen {
   _putPlanState(d) {
     return this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
       opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
-      jobs: (d.jobs || []).filter(j => this._planJobComplete(j)).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a),
-        target_b: j.target_b == null ? null : Number(j.target_b), partner_position_id: j.partner_position_id == null ? null : Number(j.partner_position_id) })),
+      jobs: (d.jobs || []).filter(j => this._planJobComplete(j)).map(j => ({ position_id: Number(j.position_id), kind: j.kind, targets: (j.targets || []).map(Number),
+        target_b: j.target_b == null ? null : Number(j.target_b), partner_position_id: j.partner_position_id == null ? null : Number(j.partner_position_id),
+        stance: j.stance || 'goal_side' })),
     }) });
   }
 
@@ -2403,14 +2433,24 @@ class GameCenterScreen extends EventScreen {
         // pair he was in.
         const old = d.jobs.find(x => Number(x.position_id) === q);
         if (old) { dropMate(old); d.jobs = d.jobs.filter(x => Number(x.position_id) !== q); }
-        d.jobs.push({ position_id: q, kind: job.kind, target_a: job.target_a, target_b: null, partner_position_id: pid });
+        d.jobs.push({ position_id: q, kind: job.kind, targets: [...(job.targets || [])], target_b: null, partner_position_id: pid, stance: 'goal_side' });
       }
       return;
     }
-    if (field === 'target_a' && job && job.partner_position_id != null) {
-      const mate = d.jobs.find(x => Number(x.position_id) === Number(job.partner_position_id));
-      if (mate) mate.target_a = value === '' ? null : Number(value);
+    if ((field === 'target_a' || field === 'toggle') && job) {
+      // One man (dropdown) or toggle one in/out of the set (chips).
+      if (field === 'target_a') job.targets = value === '' ? [] : [Number(value)];
+      else {
+        const n = Number(value);
+        job.targets = (job.targets || []).includes(n) ? job.targets.filter(x => x !== n) : [...(job.targets || []), n];
+      }
+      if (job.partner_position_id != null) {
+        const mate = d.jobs.find(x => Number(x.position_id) === Number(job.partner_position_id));
+        if (mate) mate.targets = [...job.targets];
+      }
+      return;
     }
+    if (field === 'stance' && job) { job.stance = value || 'goal_side'; return; }
     if (field === 'kind') {
       if (job && job.kind !== value) { dropMate(job); job.partner_position_id = null; }
       if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); return; }
@@ -2419,8 +2459,8 @@ class GameCenterScreen extends EventScreen {
       // cover shadow it should then prompt for who to cover shadow AND it's
       // assumed that is from the current ball carrier") — the shadow line
       // always runs from whoever has the ball, so only the man is asked.
-      if (!job) { job = { position_id: pid, kind: value, target_a: null, target_b: null, partner_position_id: null }; d.jobs.push(job); }
-      else if (job.kind !== value) { job.target_a = null; job.target_b = null; }
+      if (!job) { job = { position_id: pid, kind: value, targets: [], target_b: null, partner_position_id: null, stance: 'goal_side' }; d.jobs.push(job); }
+      else if (job.kind !== value) { job.targets = []; job.target_b = null; job.stance = 'goal_side'; }
       job.kind = value;
       if (!kind || !kind.target_b_label) job.target_b = null;
     } else if (job) {

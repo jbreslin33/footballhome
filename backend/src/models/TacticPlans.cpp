@@ -2,6 +2,8 @@
 
 #include "../database/Database.h"
 
+#include <stdexcept>
+
 using nlohmann::json;
 
 namespace {
@@ -39,7 +41,13 @@ json mirrored(const json& spots) {
 
 json TacticPlans::lookups() {
     auto* db = Database::getInstance();
-    json out = {{"moments", json::array()}, {"blocks", json::array()}, {"kinds", json::array()}};
+    json out = {{"moments", json::array()}, {"blocks", json::array()}, {"kinds", json::array()}, {"stances", json::array()}};
+    out["restarts"] = json::array();
+    for (const auto& r : db->query("SELECT code, label, law, our_max_y::float8 AS our_max_y FROM tactic_restarts ORDER BY code"))
+        out["restarts"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()},
+                                   {"law", r["law"].as<std::string>()}, {"our_max_y", r["our_max_y"].as<double>()}});
+    for (const auto& r : db->query("SELECT code, label FROM tactic_job_stances ORDER BY sort_order"))
+        out["stances"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()}});
     for (const auto& r : db->query("SELECT code, title FROM game_moments ORDER BY sort_order"))
         out["moments"].push_back({{"code", r["code"].as<std::string>()}, {"title", r["title"].as<std::string>()}});
     for (const auto& r : db->query("SELECT code, label, gk_y::float8 AS gk_y FROM tactic_block_heights ORDER BY sort_order"))
@@ -47,7 +55,7 @@ json TacticPlans::lookups() {
                                  {"gk_y", r["gk_y"].as<double>()}});
     for (const auto& r : db->query(
              "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, k.label, k.target_a_label, k.target_b_label, k.partner_label, "
-             "       k.dist_m::float8 AS dist_m, k.press_m::float8 AS press_m "
+             "       k.dist_m::float8 AS dist_m, k.press_m::float8 AS press_m, k.multi_a, k.lane_t::float8 AS lane_t "
              "  FROM tactic_job_kinds k JOIN game_concepts c ON c.id = k.concept_id ORDER BY k.sort_order")) {
         out["kinds"].push_back({{"code", r["code"].as<std::string>()},
                                 {"concept_id", r["concept_id"].as<int>()},
@@ -59,7 +67,9 @@ json TacticPlans::lookups() {
                                 {"target_b_label", r["target_b_label"].is_null() ? json(nullptr) : json(r["target_b_label"].as<std::string>())},
                                 {"partner_label", r["partner_label"].is_null() ? json(nullptr) : json(r["partner_label"].as<std::string>())},
                                 {"dist_m", r["dist_m"].as<double>()},
-                                {"press_m", r["press_m"].is_null() ? json(nullptr) : json(r["press_m"].as<double>())}});
+                                {"press_m", r["press_m"].is_null() ? json(nullptr) : json(r["press_m"].as<double>())},
+                                {"multi_a", r["multi_a"].as<bool>()},
+                                {"lane_t", r["lane_t"].is_null() ? json(nullptr) : json(r["lane_t"].as<double>())}});
     }
     return out;
 }
@@ -79,20 +89,25 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
     out["plan"] = {{"id", plan[0]["id"].as<long long>()}};
 
     for (const auto& s : db->query(
-             "SELECT id, parent_state_id, ball_with FROM tactic_states WHERE plan_id = $1::int "
+             "SELECT id, parent_state_id, ball_with, restart FROM tactic_states WHERE plan_id = $1::int "
              " ORDER BY parent_state_id IS NOT NULL, id", {planId})) {
         const std::string sid = s["id"].as<std::string>();
         json st = {{"id", s["id"].as<long long>()},
                    {"parent_state_id", s["parent_state_id"].is_null() ? json(nullptr) : json(s["parent_state_id"].as<long long>())},
                    {"ball_with", s["ball_with"].as<int>()},
+                   {"restart", s["restart"].is_null() ? json(nullptr) : json(s["restart"].as<std::string>())},
                    {"opponents", json::array()}, {"jobs", json::array()}};
         for (const auto& o : db->query(
                  "SELECT number, x::float8 AS x, y::float8 AS y FROM tactic_state_opponents WHERE state_id = $1::int ORDER BY number", {sid}))
             st["opponents"].push_back({{"number", o["number"].as<int>()}, {"x", o["x"].as<double>()}, {"y", o["y"].as<double>()}});
         for (const auto& j : db->query(
-                 "SELECT position_id, kind, target_a, target_b, partner_position_id FROM tactic_jobs WHERE state_id = $1::int ORDER BY position_id", {sid}))
+                 "SELECT j.position_id, j.kind, j.target_b, j.partner_position_id, j.stance, "
+                 "       COALESCE((SELECT json_agg(t.number ORDER BY t.ord, t.number) FROM tactic_job_targets t "
+                 "                  WHERE t.state_id = j.state_id AND t.position_id = j.position_id)::text, '[]') AS targets "
+                 "  FROM tactic_jobs j WHERE j.state_id = $1::int ORDER BY j.position_id", {sid}))
             st["jobs"].push_back({{"position_id", j["position_id"].as<int>()}, {"kind", j["kind"].as<std::string>()},
-                                  {"target_a", j["target_a"].as<int>()},
+                                  {"targets", json::parse(j["targets"].as<std::string>())},
+                                  {"stance", j["stance"].as<std::string>()},
                                   {"target_b", j["target_b"].is_null() ? json(nullptr) : json(j["target_b"].as<int>())},
                                   {"partner_position_id", j["partner_position_id"].is_null() ? json(nullptr) : json(j["partner_position_id"].as<int>())}});
         out["states"].push_back(std::move(st));
@@ -124,7 +139,11 @@ long long TacticPlans::create(long long formationId, long long opponentFormation
             return ex[0]["id"].as<long long>();
         }
         const long long planId = ins[0]["id"].as<long long>();
-        auto st = tx->exec_params("INSERT INTO tactic_states (plan_id, ball_with) VALUES ($1, 1) RETURNING id", planId);
+        // Out of possession the root is their keeper placing the ball: a goal
+        // kick (Law 16, tactic_restarts — mig 1142).
+        auto st = tx->exec_params(
+            "INSERT INTO tactic_states (plan_id, ball_with, restart) "
+            "VALUES ($1, 1, CASE WHEN $2::text = 'out_of_possession' THEN 'goal_kick' END) RETURNING id", planId, moment);
         const long long rootId = st[0]["id"].as<long long>();
         // Out of possession, their GK on the ball = their build-out from a
         // goal kick (tactic_buildout_shapes, mig 1129: CBs split inside the
@@ -169,8 +188,10 @@ long long TacticPlans::addState(long long parentStateId, int ballWith) {
             id = ins[0]["id"].as<long long>();
             tx->exec_params("INSERT INTO tactic_state_opponents (state_id, number, x, y) "
                             "SELECT $1, number, x, y FROM tactic_state_opponents WHERE state_id = $2", id, parentStateId);
-            tx->exec_params("INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b, partner_position_id) "
-                            "SELECT $1, position_id, kind, target_a, target_b, partner_position_id FROM tactic_jobs WHERE state_id = $2", id, parentStateId);
+            tx->exec_params("INSERT INTO tactic_jobs (state_id, position_id, kind, target_b, partner_position_id, stance) "
+                            "SELECT $1, position_id, kind, target_b, partner_position_id, stance FROM tactic_jobs WHERE state_id = $2", id, parentStateId);
+            tx->exec_params("INSERT INTO tactic_job_targets (state_id, position_id, number, ord) "
+                            "SELECT $1, position_id, number, ord FROM tactic_job_targets WHERE state_id = $2", id, parentStateId);
             tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", planId);
         }
         db->commit(tx);
@@ -195,12 +216,22 @@ bool TacticPlans::putState(long long stateId, const json& body) {
         for (const auto& j : body.at("jobs")) {
             const bool hasB = j.contains("target_b") && j["target_b"].is_number_integer();
             const bool hasP = j.contains("partner_position_id") && j["partner_position_id"].is_number_integer();
+            const std::string kind = j.at("kind").get<std::string>();
+            const auto& targets = j.at("targets");
+            auto k = tx->exec_params("SELECT multi_a FROM tactic_job_kinds WHERE code = $1", kind);
+            if (k.empty()) throw std::runtime_error("unknown job kind: " + kind);
+            if (!k[0]["multi_a"].as<bool>() && targets.size() > 1)
+                throw std::runtime_error("job " + kind + " takes one man");
+            const int pid = j.at("position_id").get<int>();
             tx->exec_params(
-                "INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b, partner_position_id) "
-                "VALUES ($1, $2, $3, $4, CASE WHEN $5::boolean THEN $6::smallint END, CASE WHEN $7::boolean THEN $8::smallint END)",
-                stateId, j.at("position_id").get<int>(), j.at("kind").get<std::string>(),
-                j.at("target_a").get<int>(), hasB, hasB ? j["target_b"].get<int>() : 0,
-                hasP, hasP ? j["partner_position_id"].get<int>() : 0);
+                "INSERT INTO tactic_jobs (state_id, position_id, kind, target_b, partner_position_id, stance) "
+                "VALUES ($1, $2, $3, CASE WHEN $4::boolean THEN $5::smallint END, CASE WHEN $6::boolean THEN $7::smallint END, $8)",
+                stateId, pid, kind, hasB, hasB ? j["target_b"].get<int>() : 0,
+                hasP, hasP ? j["partner_position_id"].get<int>() : 0, j.value("stance", std::string("goal_side")));
+            int ord = 1;
+            for (const auto& t : targets)
+                tx->exec_params("INSERT INTO tactic_job_targets (state_id, position_id, number, ord) VALUES ($1, $2, $3, $4)",
+                                stateId, pid, t.get<int>(), ord++);
         }
         tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", st[0]["plan_id"].as<long long>());
         db->commit(tx);

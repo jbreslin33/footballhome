@@ -11,10 +11,16 @@
 // y 0 = our goal line).  Distances are metres on a 68 × 105 pitch, so
 // points convert to metres before any length is taken.
 //
-//   mark (A)              dist_m goal-side of A, toward the centre of our goal
-//   cover_shadow (A, B)   B has the ball → press_m from the ball on the
-//                         ball–A line (pressing, A in his shadow);
-//                         else dist_m off A toward the ball (in the lane)
+// A job's men are a SET (targets, mig 1139); A = the first.
+//   mark (A)              dist_m goal-side of A, toward the centre of our
+//                         goal — stance 'intercept': dist_m BALL-side of A
+//   cover_shadow (S, B)   B has the ball → press_m from the ball along the
+//                         mean direction ball→each man in S (pressing, all
+//                         of S in his shadow); else the mean of dist_m off
+//                         each man of S toward the ball (in the lanes)
+//   deter (S) / read (S)  the mean over S of lane_t of the way from the
+//                         ball to each man (kind.lane_t: deter nearer the
+//                         passer, read nearer the receivers)
 //   hold_between (A, B)   the midpoint of A and B, dist_m goal-side
 //   straddle (A, partner) two of ours bookend A: each dist_m to his side of
 //                         A across the ball→A line, press_m ball-side; the
@@ -22,6 +28,9 @@
 //                         the left side (mig 1133)
 //   no job                his formation spot
 //   keeper                (50, the block height's gk_y)
+//   restart law           a state tagged with a restart (tactic_restarts)
+//                         caps our y at its our_max_y — Law 16 goal kick:
+//                         84.29, their 18-yard line
 const TacticGeometry = {
   W: 68, L: 105,
   OUR_GOAL: { x: 50, y: 0 },
@@ -40,10 +49,12 @@ const TacticGeometry = {
     return this.toPct({ x: a.x + dx / len * metres, y: a.y + dy / len * metres });
   },
 
-  // state: { ball_with, opponents: [{number,x,y}], jobs: [{position_id,kind,target_a,target_b}] }
+  // state: { ball_with, opponents: [{number,x,y}], jobs: [{position_id,kind,targets,target_b,partner_position_id,stance}] }
   // kinds: { code → {dist_m, press_m} }; base: [{position_id,x,y}] our formation spots.
   // → { ball: {x,y}, players: [{position_id, x, y}] } for positions 1–11 in id order.
-  solve(state, kinds, base, gkY) {
+  // maxY (optional): a restart law's cap on our spots — e.g. Law 16, none
+  // of ours past their 18-yard line (84.29) until the goal kick is played.
+  solve(state, kinds, base, gkY, maxY) {
     const opp = new Map((state.opponents || []).map(o => [Number(o.number), o]));
     const ballMan = opp.get(Number(state.ball_with));
     const ball = ballMan ? { x: ballMan.x, y: ballMan.y } : { x: 50, y: 95 };
@@ -55,14 +66,24 @@ const TacticGeometry = {
       if (pid === 1) spot = { x: 50, y: gkY != null ? gkY : home.y };
       const job = jobs.get(pid);
       const kind = job && kinds[job.kind];
-      const a = job && opp.get(Number(job.target_a));
+      const set = job ? (job.targets || []).map(n => opp.get(Number(n))).filter(Boolean) : [];
+      const a = set[0];
+      const mean = (pts) => ({ x: pts.reduce((t, p) => t + p.x, 0) / pts.length, y: pts.reduce((t, p) => t + p.y, 0) / pts.length });
       const b = job && job.target_b != null ? opp.get(Number(job.target_b)) : null;
       if (kind && a) {
-        if (job.kind === 'mark') spot = this.step(a, this.OUR_GOAL, kind.dist_m);
+        if (job.kind === 'mark') spot = this.step(a, job.stance === 'intercept' ? ball : this.OUR_GOAL, kind.dist_m);
         else if (job.kind === 'cover_shadow') {
-          spot = Number(job.target_b) === Number(state.ball_with) && b
-            ? this.step(ball, a, kind.press_m != null ? kind.press_m : 1.5)
-            : this.step(a, ball, kind.dist_m);
+          if (Number(job.target_b) === Number(state.ball_with) && b) {
+            // Toward the mean direction of the shadowed men from the ball.
+            const bm = this.toM(ball);
+            const dirs = set.map(p => { const m = this.toM(p); const dx = m.x - bm.x, dy = m.y - bm.y, l = Math.hypot(dx, dy) || 1; return { x: dx / l, y: dy / l }; });
+            const d = mean(dirs), l = Math.hypot(d.x, d.y) || 1, pm = kind.press_m != null ? kind.press_m : 1.5;
+            spot = this.toPct({ x: bm.x + d.x / l * pm, y: bm.y + d.y / l * pm });
+          } else {
+            spot = mean(set.map(p => this.step(p, ball, kind.dist_m)));
+          }
+        } else if ((job.kind === 'deter' || job.kind === 'read') && kind.lane_t != null) {
+          spot = mean(set.map(p => this.lerp(ball, p, kind.lane_t)));
         } else if (job.kind === 'hold_between' && b) {
           spot = this.step({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, this.OUR_GOAL, kind.dist_m);
         } else if (job.kind === 'straddle' && job.partner_position_id != null) {
@@ -70,6 +91,7 @@ const TacticGeometry = {
           spot = this.straddleSpot(a, ball, kind, !mate || home.x <= mate.x);
         }
       }
+      if (maxY != null && pid !== 1 && spot.y > maxY) spot = { x: spot.x, y: maxY };
       players.push({ position_id: pid, x: spot.x, y: spot.y });
     }
     return { ball, players };
@@ -101,7 +123,7 @@ const TacticGeometry = {
     for (const j of state.jobs || []) {
       // A straddle pair covers its man once (counted on the lower number).
       if (j.kind === 'straddle' && j.partner_position_id != null && Number(j.partner_position_id) < Number(j.position_id)) continue;
-      const t = new Set([j.target_a]);
+      const t = new Set((j.targets || []).map(Number));
       if ((j.kind === 'hold_between' || j.kind === 'cover_shadow') && j.target_b != null) t.add(j.target_b);
       for (const n of t) count.set(Number(n), (count.get(Number(n)) || 0) + 1);
     }
