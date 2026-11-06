@@ -23,6 +23,9 @@ namespace fh::game::ai {
 
 struct BlockParams {
     math::Fixed64 spot[kRoleCount][kBandCount]{};   // metres off our own line
+    // G5.38 (§8.138): how much of his formation width he keeps, by role and the
+    // ball's band — the real settled pair's gap over the standard formation gap.
+    math::Fixed64 width[kRoleCount][kBandCount]{};
     // Presser's distance from their carrier (G5.25): by the ball's metres from
     // our line (0-18 / 18-35 / 35-52 / 52-70 / 70+), the real nearest defender's
     // p25 / median / p75 — DFL (benchmarks_tracking_press.py); one roll a spell.
@@ -45,6 +48,8 @@ public:
     void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = -1; }
 
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;
+    // His share of his formation width for this ball (ball metres off our line).
+    math::Fixed64 widthFactor(Role r, math::Fixed64 off_line) const { return bandLookup(params_.width[static_cast<int>(r)], off_line); }
 
     static const ActingState* holdBlockSpot();
     static const ActingState* pressBall();

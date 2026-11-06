@@ -122,6 +122,33 @@ def one(pos_path):
             c[("dn" + ph, k, r)] += 1; c[("ds" + ph, k, r)] += tl
             if tl < btl: c[("dgr", k, r)] += 1   # G5.19: goal-side, by role
         if len(dtl) >= 9: c[("df", k)] += 1; c[("dmid", k)] += sum(dtl) / len(dtl)
+        # G5.38 (§8.138): the lane in open play — the settled side without it (6 s+), ball 10-35 m off
+        # its line and |y| < 12: its outfield men within 1 m of the ball → goal-centre line (between),
+        # the nearest's distance, and its two centre-backs' gap and their middle off the ball's y.
+        if len(dtl) >= 9 and age[(sc, n)] >= 6:   # G5.38: settled, the CB pair's and the FB pair's gaps by band
+            ys = collections.defaultdict(list)
+            for pid, (x, y) in pl.get((sc, n), {}).items():
+                if pid in keepers or who[pid] == att: continue
+                ys[ROLE.get(pos_of.get(pid, ""), "?")].append(y)
+            for rr in ("CB", "FB", "WIDE", "DM/CM"):
+                if len(ys[rr]) == 2:
+                    c[("wg_n", rr, k)] += 1; c[("wg", rr, k)] += abs(ys[rr][0] - ys[rr][1])
+        if len(dtl) >= 9 and 10 <= btl < 35 and abs(by) < 12 and age[(sc, n)] >= 6:
+            gxw = g * half    # the defenders goal: btl is the ball m off the line at x = g * half
+            L = ((gxw - bx) ** 2 + by ** 2) ** 0.5
+            ux, uy = (gxw - bx) / L, -by / L
+            n1, dmn, cbs = 0, 99.0, []
+            for pid, (x, y) in pl.get((sc, n), {}).items():
+                if pid in keepers or who[pid] == att: continue
+                px, py = x - bx, y - by
+                al = px * ux + py * uy; pe = abs(-px * uy + py * ux)
+                if 0 < al < L:
+                    n1 += pe < 1; dmn = min(dmn, pe)
+                if ROLE.get(pos_of.get(pid, ""), "?") == "CB": cbs.append(y)
+            c["ln_f"] += 1; c["ln_1"] += n1 >= 1; c["ln_d"] += dmn
+            c[("ln_k", min(n1, 3))] += 1
+            if len(cbs) == 2:
+                c["cb_n"] += 1; c["cb_gap"] += abs(cbs[0] - cbs[1]); c["cb_mid"] += abs((cbs[0] + cbs[1]) / 2 - by)
         if len(dtl) >= 9:   # G5.19 (§8.116): outfield men goal-side of the ball (nearer their own line than it)
             c[("dgs", k)] += sum(1 for v in dtl if v < btl)
             c[("dgs4", k)] += sum(1 for v in dtl if v < btl) >= 4
@@ -194,3 +221,12 @@ if __name__ == "__main__":
     print("  GOAL-SIDE OF THE BALL by role (share of each role's frames), the side without it:")
     for k in (1, 2, 3):
         print(f"    ball {10*k}-{10*k+10}: " + "; ".join(f"{r} {100*c[('dgr',k,r)]/max(1,c[('dn',k,r)]):.0f}%" for r in roles))
+    if c["ln_f"]:
+        f = c["ln_f"]
+        print(f"  LANE in open play (settled 6 s+, ball 10-35 m out, |y| < 12; {f} frames): a man within 1 m {100 * c['ln_1'] / f:.1f}%; "
+              f"by count 0/1/2/3+ " + " / ".join(f"{100 * c[('ln_k', k)] / f:.1f}" for k in range(4)) + f"%; nearest mean {c['ln_d'] / f:.2f} m")
+    if c["cb_n"]:
+        print(f"  CENTRE-BACK PAIR there: gap {c['cb_gap'] / c['cb_n']:.1f} m, their middle {c['cb_mid'] / c['cb_n']:.1f} m off the ball's y ({c['cb_n']} frames)")
+    print("  SETTLED WIDTH by band (ball m off the defenders' line), the pair's gap in m (2 of the role on the pitch):")
+    for rr in ("CB", "FB", "WIDE", "DM/CM"):
+        print(f"    {rr:<6}" + " ".join(f"{c[('wg',rr,k)]/max(1,c[('wg_n',rr,k)]):5.1f}" for k in range(10)) + f"   (n {sum(c[('wg_n',rr,k)] for k in range(10))})")

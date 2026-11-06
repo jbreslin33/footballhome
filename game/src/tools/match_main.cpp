@@ -95,7 +95,11 @@ struct Stats {
     long rc_zn[2] = {}, rc_z[2][3] = {}, rc_zk[2][5] = {}, rc_zkb[2][5] = {};   // + by s since lost: steps, 5+ back
     long rc_gap[4] = {}, rc_gapb[4] = {};
     long pc_n[13] = {}, pc_g[13] = {}, pc_k[13] = {}, pc_p[13] = {};
-    long sc_n[4][7] = {}, sc_s[4][7] = {};   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
+    long sc_n[4][7] = {}, sc_s[4][7] = {};
+    long ln_n[4] = {}, ln_b[4] = {}; std::vector<double> ln_near;
+    long lo_f = 0, lo_1 = 0, lo_k[4] = {}, cb_n = 0; double cb_gap = 0, cb_mid = 0;
+    long wg_n[4][10] = {}; double wg[4][10] = {};   // settled CB / FB pair gaps by band   // §8.138: the lane in open play, the CB pair
+    std::vector<double> sh_near, sh_held; long sh_gs = 0;   // at the strike: nearest opponent to the shooter, s on the ball   // §8.138: bodies in the ±1 m lane at the strike; blocked by count   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
@@ -179,7 +183,7 @@ int main(int argc, char** argv) {
         auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -327,6 +331,29 @@ int main(int argc, char** argv) {
                     const double lat = std::fabs(lo.target.y.toDouble()), z = lo.aim_z.toDouble();
                     if (lat < 3.66 && z < 2.44) shot.cell = (lat < 1 ? 0 : lat < 2 ? 1 : lat < 3 ? 2 : 3) + 4 * (z < 0.5 ? 0 : z < 1.5 ? 1 : 2);
                     ++S.pc_n[shot.cell + 1];
+                    // §8.138: outfield opponents in the lane (±1 m of the ball → goal-centre line, between)
+                    {
+                        const double gx2 = p.team == 0 ? hx : -hx, bx0 = b.pos.x.toDouble(), by0 = b.pos.y.toDouble();
+                        const double L = std::hypot(gx2 - bx0, -by0), ux = (gx2 - bx0) / L, uy = -by0 / L;
+                        int n1 = 0; double dmin = 99;
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.isKeeper(j) || W.player(j).team == p.team) continue;
+                            const double px = W.player(j).pos.x.toDouble() - bx0, py = W.player(j).pos.y.toDouble() - by0;
+                            const double along = px * ux + py * uy, perp = std::fabs(-px * uy + py * ux);
+                            if (along > 0 && along < L) { if (perp < 1) ++n1; dmin = std::min(dmin, perp); }
+                        }
+                        shot.lane = std::min(n1, 3);
+                        ++S.ln_n[shot.lane]; S.ln_near.push_back(dmin);
+                        double bd = 99; bool gs = false;   // the nearest outfield opponent to the shooter
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.isKeeper(j) || W.player(j).team == p.team) continue;
+                            const double dd = std::hypot(W.player(j).pos.x.toDouble() - p.pos.x.toDouble(), W.player(j).pos.y.toDouble() - p.pos.y.toDouble());
+                            if (dd < bd) { bd = dd; gs = (W.player(j).pos.x.toDouble() - p.pos.x.toDouble()) * (p.team == 0 ? 1 : -1) > 0; }
+                        }
+                        S.sh_near.push_back(bd); S.sh_gs += gs;
+                        const long since = static_cast<long>(W.tickCount() - W.ownedAtTick());
+                        S.sh_held.push_back(since / 30.0);
+                    }
                     // the save curve: his keeper's gap along the line to the aim
                     for (std::uint8_t j = 0; j < N; ++j)
                         if (W.isKeeper(j) && W.player(j).team != p.team && shot.cell >= 0) {
@@ -347,6 +374,7 @@ int main(int argc, char** argv) {
                     shot.on = false;
                 } else if (W.lastTouchTeam() == def) {
                     ++S.shot_out[2]; shot.on = false;   // a defender's touch (a keeper's parry counts here too)
+                    if (!(b.last_kicker < N && W.isKeeper(b.last_kicker))) ++S.ln_b[shot.lane];
                     if (b.last_kicker < N && W.isKeeper(b.last_kicker)) {
                         ++S.pc_p[shot.cell + 1];
                         if (shot.gap >= 0) { ++S.sc_n[shot.band][shot.gap]; ++S.sc_s[shot.band][shot.gap]; }
@@ -473,6 +501,7 @@ int main(int argc, char** argv) {
                 const int bd = std::min(9, std::max(0, static_cast<int>(tl / 10)));   // ball metres off the defenders' own line
                 const int bp = std::min(9, std::max(0, static_cast<int>(tl / 10)));
                 double dm = 0, pm = 0, back = -1e9, front = 1e9; int dn = 0, pn = 0;
+                double cbs_y[4] = {}, fbs_y[4] = {}, wds_y[4] = {}, dms_y[4] = {}; int cbs_n = 0, fbs_n = 0, wds_n = 0, dms_n = 0;
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j)) continue;
                     const auto& q = W.player(j);
@@ -481,6 +510,10 @@ int main(int argc, char** argv) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
                         { const int ph = (static_cast<long>(k) - rc_k) >= 180 ? 0 : 1; S.dp_s[ph][bd][r] += v; ++S.dp_n[ph][bd][r]; }
+                        if (r == 0) { cbs_y[cbs_n < 4 ? cbs_n : 3] = q.pos.y.toDouble(); ++cbs_n; }
+                        if (r == 1) { fbs_y[fbs_n < 4 ? fbs_n : 3] = q.pos.y.toDouble(); ++fbs_n; }
+                        if (r == 4) { wds_y[wds_n < 4 ? wds_n : 3] = q.pos.y.toDouble(); ++wds_n; }
+                        if (r == 2) { dms_y[dms_n < 4 ? dms_n : 3] = q.pos.y.toDouble(); ++dms_n; }
                         if (std::getenv("GAME_HOLD_TRACE") && s.lastOrders()[j].why == ai::Why::Hold &&
                             (std::getenv("GAME_HOLD_TRACE")[0] == 'a' || r == 1 || r == 4)) {
                             const auto* st = s.brain().stateOf(j);
@@ -503,6 +536,26 @@ int main(int argc, char** argv) {
                     }
                 }
                 if (dn) { ++S.ds_f[bd]; S.ds_mid[bd] += dm / dn; }
+                if ((static_cast<long>(k) - rc_k) >= 180) {   // §8.138: settled widths by band
+                    if (cbs_n == 2) { ++S.wg_n[0][bd]; S.wg[0][bd] += std::fabs(cbs_y[0] - cbs_y[1]); }
+                    if (fbs_n == 2) { ++S.wg_n[1][bd]; S.wg[1][bd] += std::fabs(fbs_y[0] - fbs_y[1]); }
+                    if (wds_n == 2) { ++S.wg_n[2][bd]; S.wg[2][bd] += std::fabs(wds_y[0] - wds_y[1]); }
+                    if (dms_n == 2) { ++S.wg_n[3][bd]; S.wg[3][bd] += std::fabs(dms_y[0] - dms_y[1]); }
+                }
+                // §8.138: the lane in open play — settled (6 s+), ball 10-35 m off the defenders' line, |y| < 12
+                const double bdl = hx + bx * (dteam == 0 ? 1.0 : -1.0);
+                if ((static_cast<long>(k) - rc_k) >= 180 && bdl >= 10 && bdl < 35 && std::fabs(by) < 12) {
+                    const double gxw = dteam == 0 ? -hx : hx, L = std::hypot(gxw - bx, -by), ux = (gxw - bx) / L, uy = -by / L;
+                    int n1 = 0;
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        if (W.isKeeper(j) || W.player(j).team != dteam) continue;
+                        const double px = W.player(j).pos.x.toDouble() - bx, py = W.player(j).pos.y.toDouble() - by;
+                        const double al = px * ux + py * uy, pe = std::fabs(-px * uy + py * ux);
+                        if (al > 0 && al < L && pe < 1) ++n1;
+                    }
+                    ++S.lo_f; S.lo_1 += n1 >= 1; ++S.lo_k[std::min(n1, 3)];
+                    if (cbs_n == 2) { ++S.cb_n; S.cb_gap += std::fabs(cbs_y[0] - cbs_y[1]); S.cb_mid += std::fabs((cbs_y[0] + cbs_y[1]) / 2 - by); }
+                }
                 if (pn) {
                     ++S.ps_f[bp]; S.ps_mid[bp] += pm / pn; S.ps_back[bp] += back; S.ps_front[bp] += front;
                     const double xb = 2 * hx - tl, xm = 2 * hx - pm / pn;   // both from OUR goal
@@ -684,6 +737,21 @@ int main(int argc, char** argv) {
                 std::printf("\n");
             }
         }
+        {   // §8.138: bodies in the lane (StatsBomb PL 15/16 freeze frames in brackets)
+            static const double kShare[4] = {28.6, 50.7, 17.0, 3.8}, kBlk[4] = {7.6, 34.4, 44.9, 51.8};
+            long t = 0; for (long x : S.ln_n) t += x;
+            std::printf("\n   LANE ±1 m at the strike (outfield opponents between ball and goal centre): share / blocked by an outfielder —");
+            for (int i = 0; i < 4; ++i) std::printf(" %d%s %.1f%% (%.1f) / %.1f%% (%.1f);", i, i == 3 ? "+" : "", t ? 100.0 * S.ln_n[i] / t : 0.0, kShare[i],
+                                                    S.ln_n[i] ? 100.0 * S.ln_b[i] / S.ln_n[i] : 0.0, kBlk[i]);
+            if (!S.ln_near.empty()) {
+                std::vector<double> v = S.ln_near; std::sort(v.begin(), v.end());
+                std::printf("\n   nearest outfield opponent to the lane p25 / median / p75 %.2f / %.2f / %.2f m (real 0.23 / 0.56 / 1.12)", v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4]);
+                std::vector<double> w = S.sh_near; std::sort(w.begin(), w.end());
+                std::vector<double> h = S.sh_held; std::sort(h.begin(), h.end());
+                std::printf("\n   nearest outfield opponent to the SHOOTER p25 / median / p75 %.2f / %.2f / %.2f m, goal-side %.0f%%; on the ball before the shot median %.2f s (p75 %.2f)",
+                            w[w.size() / 4], w[w.size() / 2], w[w.size() * 3 / 4], 100.0 * S.sh_gs / w.size(), h[h.size() / 2], h[h.size() * 3 / 4]);
+            }
+        }
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
         std::printf("\n   goals by the last kick before them:");
@@ -852,6 +920,21 @@ int main(int argc, char** argv) {
             std::printf("  %3d-%-3d", bd * 10, bd * 10 + 10);
             for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %6.1f", S.dp_n[ph][bd][r] ? S.dp_s[ph][bd][r] / S.dp_n[ph][bd][r] : 0.0);
             std::printf("\n");
+        }
+    }
+    if (S.lo_f)
+        std::printf("LANE in open play (settled 6 s+, ball 10-35 m out, |y| < 12; real DFL in brackets): a man within 1 m %.1f%% (43.6); 0/1/2/3+ %.1f / %.1f / %.1f / %.1f%% (56.4 / 36.9 / 6.3 / 0.4)\n",
+                    100.0 * S.lo_1 / S.lo_f, 100.0 * S.lo_k[0] / S.lo_f, 100.0 * S.lo_k[1] / S.lo_f, 100.0 * S.lo_k[2] / S.lo_f, 100.0 * S.lo_k[3] / S.lo_f);
+    if (S.cb_n)
+        std::printf("   CENTRE-BACK PAIR there: gap %.1f m (7.1), their middle %.1f m off the ball's y (5.1)\n", S.cb_gap / S.cb_n, S.cb_mid / S.cb_n);
+    std::printf("SETTLED WIDTH by band (ball m off the defenders' line), the pair's gap in m:\n");
+    {
+        static const char* wr[4] = {"CB", "FB", "WIDE", "DM/CM"};
+        for (int r = 0; r < 4; ++r) {
+            std::printf("    %-6s", wr[r]);
+            long n = 0;
+            for (int bd = 0; bd < 10; ++bd) { std::printf(" %5.1f", S.wg[r][bd] / std::max(1L, S.wg_n[r][bd])); n += S.wg_n[r][bd]; }
+            std::printf("   (n %ld)\n", n);
         }
     }
     std::printf("DEFENDING SHAPE (the side without it; metres from its own line, ball band = ball m from that line):\n   band    frames  middle      CB      FB   DM/CM      AM    WIDE      ST\n");

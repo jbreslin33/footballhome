@@ -6077,6 +6077,71 @@ moment changes (we win it, a set piece).
 RELOAD_ROSTERS — between ticks, never inside the sim loop (determinism, replays). A Game Center
 save reaches a running match on reload (Game Center may send it after saving).
 
+**Amendments (2026-11-06, club migs 1135-1142).**
+- *The 4-3-3 build-out shape* is now James's placements [FH, owner] except the GK (50, 96), the 6
+  (50, 67) and the wide men's heights (DFL, §8.136): 4 at 28, 92 / 5 at 72, 92 (later moved to the
+  8-yard line, y 93, mig 1139), 2 at 3, 78 / 3 at 97, 75 (touchline), 8 at 32, 61 / 10 at 68, 61
+  (the half-spaces, [FH]), 7 at 3, 52 / 11 at 97, 50 (touchline), 9 at 50, 45.
+- *Multi-man jobs* (mig 1139): `tactic_jobs.target_a` is gone — a job's men are a set S in
+  `tactic_job_targets` (state, position, number, ord); `tactic_job_kinds.multi_a` marks the kinds
+  that take more than one (cover_shadow, deter, read).
+- *deter S* (concept 188, lane_t 0.45) and *read S* (concept 20 intercept, lane_t 0.65): the mean
+  over S of ball + (S_i − ball) · lane_t — deter nearer the passer, read nearer the receivers.
+- *cover_shadow S, B* with a set: B on the ball → ball + press_m along the mean of the unit vectors
+  ball → S_i; otherwise the mean of (S_i + dist_m toward the ball).
+- *Stance* (`tactic_job_stances`, `tactic_jobs.stance`): goal_side by default; intercept (concept
+  168 defend-your-man) — a mark stands dist_m BALL-side of his man instead of goal-side.
+- *Restarts* (mig 1142, `tactic_restarts`; `tactic_states.restart`): every out_of_possession root
+  (their keeper placing the ball) is restart = goal_kick (Law 16), and our spots are capped at
+  y ≤ 84.29 across the whole width until the ball is played (a child state lifts it). The Law
+  itself keeps opponents out of the penalty AREA only (|x − 50| within its 40.32 m width); the
+  whole-width cap is James's statement of it, stricter than the Law outside the area's sides. The
+  engine's goal kick enforces the Law's area (Brain::outOfTheirBox).
+
 **Owed (engine).** The reader; the settled block-spot rows for the app; the engine's own goal-kick
 shape from tactic_buildout_shapes; the brain overlay labelling each man's job ("cover-shadow #6 →
 press #4").
+
+### 8.138 G5.38 — the block narrows toward its goal: real settled widths by role and band (no migration)
+
+§8.135's next: blocks 9% of shots (29%).
+
+**Measured.** New `scripts/benchmarks_statsbomb_blocks.py` (StatsBomb PL 2015/16 freeze frames):
+within 1 m of the ball → goal-centre line, between them, 71% of real shots have an outfield
+opponent (0 / 1 / 2 / 3+ bodies: 28.6 / 50.7 / 17.0 / 3.8%, blocked 7.6 / 34.4 / 44.9 / 51.8%);
+the nearest is a median 0.56 m off that line; the nearest opponent to the shooter a median 1.95 m
+away, goal-side of him 70%. The game: ~10% of shots with a body in the lane, the nearest 7.8 m
+off it; the nearest man as close (1.8-1.9 m) but goal-side only 44%. In open play (DFL, settled
+6 s+, ball 10-35 m out and |y| < 12, `benchmarks_tracking_possession.py` LANE): a man within 1 m
+43.6% (game 21%); the centre-back pair 7.1 m apart (game 10.1).
+
+**Found: the block keeps its formation width.** Settled pair gaps by the ball's band off the
+defenders' line, near → far (DFL v game before):
+
+| pair | real | game before | game after |
+|---|---|---|---|
+| CB | 9.5 → 11.9 m | 11.0 → 14.4 | 9.6 → 11.8 |
+| FB | 23.7 → 35.2 | 42.6 → 46.2 | 24.4 → 35.0 |
+| WIDE | 24.5 → 29.9 | 37.2 → 34.9 | 27.1 → 33.0 |
+| DM/CM | 9.6 → 9.1 | 10.8 → 12.5 | 9.9 → 10.7 |
+
+The full-backs stood at their formation's 15/85 — 48 m apart — with the ball on our 18: real
+ones 24.
+
+**Built.** `BlockParams::width` (`physics.block.w_<role>_<band>`, defaults `kRealWidthPm`): his
+share of his formation width by role and band, the real settled gap over the game's own gap with
+no factor (its men stood ~20% inside formation width already: the slide and its caps); AM and ST
+kept whole (no pair in the data). `Brain::acrossDef` scales the lateral offset before the slide —
+the spot, its lead (G5.30) and the tucked wing-back alike. Each formation keeps its structure,
+narrowed by the real amount.
+
+**Result** (32 rotating fixtures, fh_game_scratch): widths as the table; settled depth and speeds
+unchanged (−0.6 m signed v real settled, as G5.37's; off the ball 41.1 / 51.3 / 7.7%). **The lane
+did not fill**: a man within 1 m in open play 21-24% (43.6), blocks 9.2% (29.2) — width was not
+the cause. The tell is the nearest man goal-side 37-43% of shots (70): the presser closes on the
+carrier from wherever he is, not goal-side first. Tests 22/22; goldens re-locked (the rig reads
+the width defaults).
+
+**Next moles.** (1) Goal-side first: the presser's approach (and the second man's cover) onto the
+ball-goal line. (2) Penalties: a foul in our box gives a free kick on the spot (Law 14: a penalty).
+(3) Shots 7-8 a team-match (12.9).

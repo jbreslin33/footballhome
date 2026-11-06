@@ -156,13 +156,22 @@ Fixed64 Brain::slideY(const Vec2& base, Fixed64 ball_y, Fixed64 shift, Fixed64 c
 // full-back's, tucked to a back four's full-back width (physics.shape.wb_tuck_y,
 // the club 4-4-2's 15/85 = 0.7 of the half-width), sliding as the block does.
 // With the ball both are the wide men.
+// G5.38 (§8.138): his lateral spot without the ball — his formation width scaled
+// to the real settled block's for his role and the ball's band (the block narrows
+// toward its goal), then the slide toward the ball.
+Fixed64 Brain::acrossDef(const Vec2& base, const PlayerView& v) const {
+    const Fixed64 off_line = half_x_ + v.ball_to.x * v.sg;
+    const Fixed64 f = block_.widthFactor(v.role, off_line);
+    return slideY(Vec2{base.x, base.y * f}, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+}
+
 void Brain::wingBack(const FormationSpec::Pos& mine, PlayerView& v) const {
     if (mine.role != "wing-back") return;
     v.role_ours = Role::Wide;
     if (v.ball_to.y * mine.base.y > Fixed64::zero()) { v.role = Role::Wide; return; }
     v.role = Role::FB;
     const Fixed64 side = mine.base.y.raw < 0 ? -Fixed64::one() : Fixed64::one();
-    v.across_def = slideY(Vec2{mine.base.x, side * wb_tuck_y_}, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    v.across_def = acrossDef(Vec2{mine.base.x, side * wb_tuck_y_}, v);
 }
 
 PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
@@ -188,7 +197,7 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
         }
         if (f >= 0) v.ball_to = fr.at[f];
     }
-    v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    v.across_def = acrossDef(mine.base, v);
     wingBack(mine, v);
     v.across_ours = slideY(mine.base, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
@@ -528,7 +537,7 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
     const Vec2 now = block_.spot(v, world);
     v.ball_to = Vec2{v.ball_to.x + cv.x * h, v.ball_to.y + cv.y * h};
     const FormationSpec::Pos& mine = spec_[v.team].positions[index_in_team_[slot]];
-    v.across_def = slideY(mine.base, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
+    v.across_def = acrossDef(mine.base, v);
     wingBack(mine, v);
     const Vec2 then = block_.spot(v, world);
     return Vec2{(then.x - now.x) / h, (then.y - now.y) / h};

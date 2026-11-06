@@ -93,6 +93,7 @@ private:
     bool inDanger(core::SlotIndex slot, const core::World& world) const;
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o, math::Vec2 lead = {}) const;
     void wingBack(const FormationSpec::Pos& mine, PlayerView& v) const;
+    math::Fixed64 acrossDef(const math::Vec2& base, const PlayerView& v) const;
     math::Fixed64 slideY(const math::Vec2& base, math::Fixed64 ball_y, math::Fixed64 shift, math::Fixed64 cap) const;
 
     TeamSetup setup_;

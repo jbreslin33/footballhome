@@ -32,6 +32,24 @@ constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
 };
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 
+// G5.38 (§8.138): the settled block's width (DFL, 6 s+ since it lost it, by the
+// ball's 10 m band off its line): the real gap between a role's pair — CB 9.5 →
+// 12 m, FB 23.7 → 36, WIDE 24.5 → 32.7, DM/CM 9.6 → 12 — over the standard
+// game's own settled gap with no factor (its men already stand ~20% inside their
+// formation width: the slide and its caps), permille — real / game-before, fitted
+// so the game's pairs measure the real gaps (benchmarks_tracking_possession.py and
+// fh-game-match SETTLED WIDTH). AM and ST: no pair
+// in the data, kept whole. A real block narrows toward its goal: its full-backs
+// stand half their formation width apart with the ball 0-20 m out.
+constexpr int kRealWidthPm[kRoleCount][kBandCount] = {
+    {860, 900, 940, 820, 800, 800, 800, 850, 840, 830},   // CB
+    {500, 510, 555, 600, 640, 700, 720, 745, 760, 740},   // FB
+    {890, 770, 860, 860, 920, 950, 970, 920, 870, 730},   // DM/CM
+    {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // AM
+    {660, 660, 750, 840, 910, 970, 970, 940, 940, 860},   // WIDE
+    {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // ST
+};
+
 bool inPlay(const core::World& w) { return w.restartTeam() == 0xFF && w.outStage() == 0; }
 
 // Where a pro defender of his role stands for this ball.
@@ -114,6 +132,7 @@ void BlockParams::configure(const core::ModelParams& p) {
         for (int b = 0; b < kBandCount; ++b) {
             const std::string key = std::string("physics.block.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
             spot[r][b] = p.fixed(key, std::int64_t{kRealSpotDm[r][b]} * 100);
+            width[r][b] = p.fixed(std::string("physics.block.w_") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5), kRealWidthPm[r][b]);
         }
     // Real (DFL, the nearest defender to the man on the ball): p25 / median / p75 m.
     static const int kOff[5][3] = {{1200, 2100, 3600}, {1700, 3000, 4800}, {2000, 3900, 6600},
