@@ -204,14 +204,17 @@ const FIELD_SIZES = {
       // below it.
       '3-4-3 (2-3)':   { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [11, 9, 7]], wideIds: [3, 2], halfwayOn: 2, chipLifts: STRIKER_UP },
       '3-4-3 (2-2-1)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [11, 7], [9]], wideIds: [3, 2], halfwayOn: 2 },
+      // Owner 11/6: "we need a 343(41)" (mig 1119) — the 2-2-1 with the 11
+      // and 7 dropped level with the 10 and 8, the 9 alone up top.
+      '3-4-3 (4-1)':   { rows: [[1], [5, 6, 4], [3, 2], [11, 10, 8, 7], [9]], wideIds: [3, 2], halfwayOn: 2 },
       '3-5-2 (2-1-2)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [9], [11, 7]], wideIds: [3, 2], halfwayOn: 2 },
       '3-5-2 (1-2-2)': { rows: [[1], [5, 6, 4], [9], [3, 2], [10, 8], [11, 7]], wideIds: [3, 2], halfwayOn: 3 },
       '3-5-2 (3-2)':   { rows: [[1], [5, 6, 4], [3, 2], [10, 9, 8], [11, 7]], wideIds: [3, 2], halfwayOn: 2 },
-      // Asymmetric (migs 1112–1115): an R/L before a row in the bracket =
-      // that row sits right/left of center; never mirrored for free. Each
-      // is its symmetric shape with the 11-7 pair shifted: R2 = 11 the
-      // central striker, 7 inside right; L2 = 7 central, 11 inside left.
-      // The 0 is an empty column (GAP_POS) holding the pair off-center.
+      // Asymmetric (migs 1112–1118): an R/L before a row in the bracket =
+      // that pair sits right/left of center; never mirrored for free.
+      // R2 = 11 the striker, 7 in the hole right of center; L2 = 7 the
+      // striker, 11 in the hole left of center. The 0 is an empty column
+      // (GAP_POS) holding a chip off-center.
       // First one, owner: "him [Amir] as right sided '10'/inside winger".
       // 3-R2, owner: "move 7 down further ... put him where a 10 would be
       // in a 433" (mig 1117) — the 7 has his own band right of center
@@ -220,11 +223,17 @@ const FIELD_SIZES = {
       // row of three, a two-column band (0 7) puts him exactly midway
       // between the 9 (center) and the 8.
       '3-5-2 (3-R2)':   { rows: [[1], [5, 6, 4], [3, 2], [10, 9, 8], [0, 7], [11]], wideIds: [3, 2], halfwayOn: 2 },
-      '3-5-2 (3-L2)':   { rows: [[1], [5, 6, 4], [3, 2], [10, 9, 8], [11, 7, 0]], wideIds: [3, 2], halfwayOn: 2, chipLifts: { 7: STRIKER_LIFT } },
-      '3-5-2 (1-2-R2)': { rows: [[1], [5, 6, 4], [9], [3, 2], [10, 8], [0, 11, 7]], wideIds: [3, 2], halfwayOn: 3, chipLifts: { 11: STRIKER_LIFT } },
-      '3-5-2 (1-2-L2)': { rows: [[1], [5, 6, 4], [9], [3, 2], [10, 8], [11, 7, 0]], wideIds: [3, 2], halfwayOn: 3, chipLifts: { 7: STRIKER_LIFT } },
-      '3-5-2 (2-1-R2)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [9], [0, 11, 7]], wideIds: [3, 2], halfwayOn: 2, chipLifts: { 11: STRIKER_LIFT } },
-      '3-5-2 (2-1-L2)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [9], [11, 7, 0]], wideIds: [3, 2], halfwayOn: 2, chipLifts: { 7: STRIKER_LIFT } },
+      // 3-L2 = the 3-R2 mirrored (owner 11/6: "the 11 just like on the R
+      // one should be in traditional 10 position above and between ... and
+      // others like it!"): every R/L shape drops its inside winger (7 for
+      // R, 11 for L) into the hole ahead of the midfield, off-center to his
+      // side, and the other stands alone up top as the striker. Four-
+      // column bands (0 0 7 0 / 0 11 0 0) put him half a chip off center.
+      '3-5-2 (3-L2)':   { rows: [[1], [5, 6, 4], [3, 2], [10, 9, 8], [11, 0], [7]], wideIds: [3, 2], halfwayOn: 2 },
+      '3-5-2 (1-2-R2)': { rows: [[1], [5, 6, 4], [9], [3, 2], [10, 8], [0, 0, 7, 0], [11]], wideIds: [3, 2], halfwayOn: 3 },
+      '3-5-2 (1-2-L2)': { rows: [[1], [5, 6, 4], [9], [3, 2], [10, 8], [0, 11, 0, 0], [7]], wideIds: [3, 2], halfwayOn: 3 },
+      '3-5-2 (2-1-R2)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [9], [0, 0, 7, 0], [11]], wideIds: [3, 2], halfwayOn: 2 },
+      '3-5-2 (2-1-L2)': { rows: [[1], [5, 6, 4], [3, 2], [10, 8], [9], [0, 11, 0, 0], [7]], wideIds: [3, 2], halfwayOn: 2 },
       // Owner: "8 where a 6 would normally be and the 10 behind the 9
       // and in front of the 8 ... its really a 3313" — the 8-10-9
       // spine stacks like an American-football I formation. The 2 and
