@@ -6004,3 +6004,30 @@ Tests 22/22; the 11v11 golden re-locked (the 3v3 rig never shoots). Daemon redep
 **Next moles.** (1) Blocks 9% (29%): no bodies in the lane — off target reads 57% because shots
 real defenders would block go through to miss. (2) Shots 7.4 a team-match (12.9). (3) Own goals
 0-4 per 8 matches (real ~1 in 10 team-matches) — trace them. (4) The club's tactic plans (mig 1121).
+
+### 8.136 The real goal-kick shape (DFL) for the club's tactic_buildout_shapes (no engine change)
+
+The club-app session seeded `tactic_buildout_shapes` (mig 1129, club DB) from published
+descriptions of the post-2019 Law 16 goal kick ([FH]). New `scripts/benchmarks_tracking_goalkick.py`
+cuts it from DFL (7 matches): each GoalKick anchored on the frame the ball comes back into play
+from inside the kicking side's goal area (event clock ≠ tracking clock), 65 of 85 found; the
+kicking side by PlayingPosition, metres off its own line / to its own left, and the plan's
+coordinates (0-100, our view, their goal y 100). For a 4-3-3 by James's numbers:
+
+| # | role (DFL) | n | off their line, m | to their left, m | plan x, y |
+|---|---|---|---|---|---|
+| 1 | TW | 65 | 4.4 | 0.0 | 50, 96 |
+| 4 | IVR | 65 | 13.7 | −12.1 | 32, 87 |
+| 5 | IVL | 65 | 14.3 | +10.8 | 66, 86 |
+| 2 | RV | 46 | 22.9 | −24.8 | 14, 78 |
+| 3 | LV | 44 | 25.8 | +24.4 | 86, 75 |
+| 6 | DMZ | 13 | 35.0 | +3.0 | 54, 67 |
+| 8 / 10 | DMR / DML | 53 / 50 | 33.7 / 30.8 | −4.8 / +4.2 | 43, 68 / 56, 71 |
+| 7 / 11 | ORM / OLM | 48 / 51 | 50.8 / 52.2 | −17.4 / +18.7 | 24, 52 / 78, 50 |
+| 9 | STZ | 43 | 57.7 | +2.0 | 53, 45 |
+
+Against the [FH] seed: the centre-backs split ~12 m off centre at the box's edge (not 17 m deep
+in it), the pivot does not drop to the D on average (35 m out; a back three's middle man, IVZ,
+does — 25 m), full-backs stand ~25 m wide and 23-26 m up, and the wingers are inside the
+touchlines (~18 m off centre) on the halfway line. The engine's own goal kick (the keeper takes
+it, the rest on their possession spots for a ball at their goal) is not yet this table.
