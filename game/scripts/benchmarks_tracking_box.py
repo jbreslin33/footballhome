@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # game/scripts/benchmarks_tracking_box.py (G5.26, DESIGN §8.124) — usage: <DFL dir>
 # Real: who is in the box. The side in possession (BallPossession, in play, 5 Hz), by the ball's
-# zone (the pass policy's grid: their line 0-18 / 18-35 / 35-52 m × centre |y| < 20.16 or wide):
+# zone (the pass policy's grid; §8.141 adds their offside line and our most advanced man: their line 0-18 / 18-35 / 35-52 m × centre |y| < 20.16 or wide):
 # its outfielders in the zone 0-18 m centre (the box's width) — mean count, the share of frames
 # with 0 / 1 / 2 / 3+, the mean count by role, and where they stand (mean metres off the line,
 # mean |y|, mean y toward the ball's side); the same for the 0-18 wide channels.
@@ -54,6 +54,16 @@ def one(pos_path):
         fr = pl.get((sc, n), {})
         c[("f", bz)] += 1
         inbox = 0
+        dtl = sorted(half - x * g for pid, (x, y) in fr.items() if who.get(pid) == 1 - att)   # the defenders off their own line (keeper in)
+        atl = [half - x * g for pid, (x, y) in fr.items() if who.get(pid) == att and pid not in keepers]
+        if len(dtl) >= 2 and atl:   # §8.141: their offside line and our most advanced man
+            c[("ln", bz)] += dtl[1]; c[("lead", bz)] += min(atl); c[("lnn", bz)] += 1
+            dout = sorted((half - x * g, pid) for pid, (x, y) in fr.items() if who.get(pid) == 1 - att and pid not in keepers)
+            cbs = [d for d, pid in dout if ROLE.get(pos_of.get(pid, "")) == "CB"]
+            if dout and cbs:   # cover: the deepest outfielder against his CBs' mean, and who he is
+                c[("deep", bz)] += dout[0][0]; c[("cbm", bz)] += sum(cbs) / len(cbs); c[("dn", bz)] += 1
+                c[("drole", bz, ROLE.get(pos_of.get(dout[0][1], ""), "?"))] += 1
+                c[("gap2", bz)] += dout[1][0] - dout[0][0]
         for pid, (x, y) in fr.items():
             if who.get(pid) != att or pid in keepers:
                 continue
@@ -86,3 +96,8 @@ for bz, nm in enumerate(names):
     print(f"   ball {nm:12s} frames {f:6d}: in the box {np_ / f:.2f} (0 {100*c[('k',bz,0)]/f:.0f}% 1 {100*c[('k',bz,1)]/f:.0f}% 2 {100*c[('k',bz,2)]/f:.0f}% 3+ {100*c[('k',bz,3)]/f:.0f}%), in the wide channels {c[('wide',bz)]/f:.2f}; "
           f"stand {c[('d',bz)]/max(1,np_):.1f} m off the line, |y| {c[('ay',bz)]/max(1,np_):.1f}, ball side {c[('ys',bz)]/max(1,np_):+.1f}; by role: "
           + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
+    ln = max(1, c[("lnn", bz)])
+    print(f"      their offside line (second-last, keeper in) {c[('ln',bz)]/ln:.1f} m off their line; our most advanced outfielder {c[('lead',bz)]/ln:.1f} m")
+    dn = max(1, c[("dn", bz)]); dr = sorted({k[2] for k in c if isinstance(k, tuple) and k[0] == "drole" and k[1] == bz})
+    print(f"      their deepest outfielder {c[('deep',bz)]/dn:.1f} m, their CBs' mean {c[('cbm',bz)]/dn:.1f} m, next man {c[('gap2',bz)]/dn:.1f} m higher; deepest by role: "
+          + " ".join(f"{r} {100*c[('drole',bz,r)]/dn:.0f}%" for r in dr))

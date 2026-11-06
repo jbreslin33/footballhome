@@ -129,7 +129,7 @@ void Brain::think(const World& world) const {
     const FlightRead& fr = reads_.flightRead(world);
     for (std::uint8_t t = 0; t < 2; ++t)
     {
-        block_.assign(t, world, setup_.team_of_slot, fr, restartTaker(world, t));
+        block_.assign(t, world, setup_.team_of_slot, role_of_slot_, fr, restartTaker(world, t));
         poss_.assignRunners(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
     }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {

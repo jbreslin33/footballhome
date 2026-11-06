@@ -32,6 +32,9 @@ struct BlockParams {
     math::Fixed64 stand_off[5][3]{};
     math::Fixed64 switch_m{};                       // a new presser / chaser must be this much nearer
     math::Fixed64 tackle_per_s{};                   // in reach and goal-side: chance a second he dives
+    // G5.41 (§8.141): the back pair is never flat — by the ball's band, the real
+    // depth gap between two CBs (DFL); the one marking their front man is deeper.
+    math::Fixed64 stagger[kBandCount]{};
     void configure(const core::ModelParams& p);
 };
 
@@ -42,10 +45,11 @@ public:
     const BlockParams& params() const { return params_; }
 
     void assign(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
-                const Reads::FlightRead& fr, int restart_taker);
+                const std::vector<Role>& role_of_slot, const Reads::FlightRead& fr, int restart_taker);
+    int deepCb(std::uint8_t team) const { return deep_cb_[team & 1]; }
     int chaser(std::uint8_t team) const { return chaser_[team & 1]; }
     int presser(std::uint8_t team) const { return presser_[team & 1]; }
-    void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = -1; }
+    void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; }
 
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;
     // His share of his formation width for this ball (ball metres off our line).
@@ -56,9 +60,13 @@ public:
     static const ActingState* chaseBall();
 
 private:
+    void assignCover(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                     const std::vector<Role>& role_of_slot);
     BlockParams params_{};
     int chaser_[2] = {-1, -1};
     int presser_[2] = {-1, -1};
+    int deep_cb_[2] = {-1, -1};    // G5.41: the pair's deeper man (held), and his partner
+    int other_cb_[2] = {-1, -1};
 };
 
 }  // namespace fh::game::ai

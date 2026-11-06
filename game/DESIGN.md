@@ -6217,3 +6217,48 @@ is the next mole, not the Law. Tests 22/22, goldens unchanged (no area foul in t
 **Next moles.** (1) Challenges in our own area 0.44 (1.61) — box defenders reach for balls, they
 don't tackle carriers. (2) Law 8: kick-off halves. (3) Law 13 walls. (4) Cards. (5) The 1v1:
 take-ons 2.5× (§8.139).
+
+### 8.141 G5.41 — the box is empty, not the tackle; the back pair staggers (no migration)
+
+§8.140's next: challenges in our own area 0.44 a team-match (real 1.61 tackle duels).
+
+**It is exposure, not the tackle.** New `scripts/benchmarks_statsbomb_area_duels.py` (StatsBomb PL
+15/16): a side's attackers in the opponents' area begin 12.83 receipts and 8.39 carries lasting
+10.7 s a team-match; the defenders make 1.61 tackle duels there = 0.151 a second of carry. The
+game (new harness line THEIR MAN ON THE BALL IN OUR AREA): 1.62 spells, 3.2 s, 0.138 tackles a
+second — the rate is real, their man is hardly ever on the ball in our box. Why: with the ball
+18-35 m out the attack has 0.07 men in the box (real 1.04, §8.124); every pass goes to a man, so
+from 18-35 m central 4.5% of passes go into the box (real 21.3%), and crosses are 0.06 a
+team-match (11.47).
+
+**And the box is empty because the line is high.** `benchmarks_tracking_box.py` now prints the
+defenders' offside line (second-last, keeper in) and the attack's most advanced outfielder by the
+ball's zone (DFL): line 8.7 / 9.0 / 18.8 / 18.5 / 28.2 / 27.8 m off its goal line (ball 0-18 central /
+wide, 18-35, 35-52), the front man 0.4-2.0 m short of it. The game: 15.4 / 13.2 / 23.0 / 22.8 /
+30.9 / 30.8, its front man 1-5 m short. Runners into the box (§8.124) stop at that line, legally.
+Why the line: the deepest outfielder against the CBs' mean, real 18.8 v 21.1 (ball 18-35 central),
+the game 23.0 v 24.2 — the pair's mean 3 m high, and a flat pair (1.2 m, real 2.3).
+
+**Real cover** (new `scripts/benchmarks_tracking_cover.py`, DFL, the defending pair when exactly
+two CBs are on): the two stand 2.8 m apart in depth at every ball band (3.2 at 0-10, 3.7 at 90+).
+The deeper is the far one from the ball only 37-54% of the time — no side rule — but he is the
+one nearer their most advanced outfielder 60-72% at every band: the CB goes down with the 9.
+
+**Built.** `DefendingBlock::assignCover`: with two CBs on, the one nearer their front man is the
+deeper (held until the other is switch_m nearer); the pair's mean stays the real CB spot, the
+deeper half the real gap below it, his partner half above (`physics.block.stagger_<band>`, mm).
+
+**Result** (2 × 8 matches, A/B on seed 2000 with the stagger zeroed): the deepest man now stands
+1.4 m under the pair's mean (1.2 off; real 2.3 — a FB or a third man is the deepest 15-35% of
+real frames); the offside line 0-0.4 m deeper (23.0 → 22.6-23.0 at 18-35 m). Correct shape, small
+effect: the line is the pair's MEAN. Shots, goals, tackles within the seed noise. Tests 22/22.
+
+**What it is.** Settled to settled (6 s+ since it lost the ball), the game's CBs stand 5.7 / 3.1 /
+2.4 / 1.6 m above the real spot with the ball 0-10 / 10-20 / 20-30 / 30-40 m out — their targets
+ARE the real spots (holders' target 11.0 / 15.4 / 20.9 / 26.5): they trail the ball as it comes
+toward goal. Real defenders drop first and get there before it.
+
+**Next moles.** (1) The back line trails the ball toward its goal: 2-6 m behind its own real spots
+inside 30 m (GAME_LINE_TRACE prints each frame's defenders, at / target). (2) Then runners into
+the box and passes into it (21% from 18-35 m central; crosses 0.06 v 11.47). (3) Law 8, Law 13
+walls, cards (§8.140). (4) The 1v1: take-ons 2.5× (§8.139).

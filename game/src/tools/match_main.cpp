@@ -66,12 +66,12 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
+    long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
     long tkl[2][3] = {};
-    long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0;
+    long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0, area_rec = 0, area_ticks = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
@@ -215,6 +215,14 @@ int main(int argc, char** argv) {
                     const double tx = b.pos.x.toDouble() * (e.team == 0 ? 1.0 : -1.0) + hx;   // metres from the tackler's own goal
                     ++S.tkl[e.type == core::MatchEventType::TackleWon ? 0 : 1][tx < 35 ? 0 : tx < 70 ? 1 : 2];
                     if (tx < 16.5 && std::fabs(b.pos.y.toDouble()) < 20.16) ++S.tkl_area;   // §8.140: in his own penalty area
+                }
+            }
+            if (b.owner && W.restartTeam() == 0xFF) {   // §8.141: their man on the ball in our area
+                const std::uint8_t at = W.player(*b.owner).team;
+                const double ax = b.pos.x.toDouble() * (at == 0 ? 1.0 : -1.0);
+                if (ax > hx - 16.5 && std::fabs(b.pos.y.toDouble()) < 20.16) {
+                    ++S.area_ticks;
+                    if (!before || W.player(*before).team != at) ++S.area_rec;
                 }
             }
             if (pen_on && pen_k < 0 && W.restartTeam() == 0xFF) {   // the penalty is kicked
@@ -592,6 +600,30 @@ int main(int argc, char** argv) {
                     if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) ++S.bx_in[bz];
                     if (s.lastOrders()[j].why == ai::Why::AttackBox) { ++S.bx_run[bz]; S.bx_run_tl[bz] += hx - s.lastOrders()[j].target.x.toDouble() * sg; }
                 }
+                {   // §8.141: their offside line (second-last, keeper in) and our most advanced outfielder, off their line
+                    double d1 = 1e9, d2 = 1e9, lead = 1e9;
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
+                        if (W.player(j).team != a) { if (ptl < d1) { d2 = d1; d1 = ptl; } else if (ptl < d2) d2 = ptl; }
+                        else if (!W.isKeeper(j) && ptl < lead) lead = ptl;
+                    }
+                    S.bx_ln[bz] += d2; S.bx_lead[bz] += lead;
+                    double o1 = 1e9, o2 = 1e9, cbs = 0; int o1j = -1, ncb = 0;   // cover: their deepest outfielder v their CBs' mean
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        if (W.player(j).team == a || W.isKeeper(j)) continue;
+                        const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
+                        if (ptl < o1) { o2 = o1; o1 = ptl; o1j = j; } else if (ptl < o2) o2 = ptl;
+                        if (role(j) == 0) { cbs += ptl; ++ncb; }
+                    }
+                    if (o1j >= 0 && ncb) { S.bx_deep[bz] += o1; S.bx_cbm[bz] += cbs / ncb; S.bx_gap2[bz] += o2 - o1; ++S.bx_drole[bz][role(static_cast<std::uint8_t>(o1j))]; }
+                    if (std::getenv("GAME_LINE_TRACE") && bz < 4 && k % 15 == 0) {   // the defending side, off its own line
+                        std::fprintf(stderr, "line bz %d ball %.1f %s:", bz, tl, b.owner ? "owned" : "loose");
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != a)
+                            std::fprintf(stderr, " %s%d %.1f/%.1f", W.isKeeper(j) ? "K" : ai::kWhyNames[static_cast<int>(s.lastOrders()[j].why)], role(j),
+                                         hx - W.player(j).pos.x.toDouble() * sg, hx - s.lastOrders()[j].target.x.toDouble() * sg);
+                        std::fprintf(stderr, "\n");
+                    }
+                }
             }
             {   // ENTRIES inside 30 m (re-armed past 40)
                 if (k < en_pk[0] - 6 || k < en_pk[1] - 6) { en_arm[0] = en_arm[1] = false; en_pk[0] = en_pk[1] = -100; }
@@ -824,6 +856,7 @@ int main(int argc, char** argv) {
     for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
     std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
     std::printf("   PENALTIES (Law 14) %.3f a team-match (StatsBomb PL 15/16 0.120), scored %ld of %ld (81.3%%); tackles in his own area %.2f a team-match (tackle duels there 1.61)\n", S.pens / tm, S.pen_goals, S.pens, S.tkl_area / tm);
+    std::printf("   THEIR MAN ON THE BALL IN OUR AREA a team-match (StatsBomb PL 15/16, benchmarks_statsbomb_area_duels.py): spells begun there %.2f (receipts 12.83), on the ball %.1f s (carries 10.7 s); tackles per second on it %.3f (0.151)\n", S.area_rec / tm, S.area_ticks / 30.0 / tm, S.tkl_area / std::max(1e-9, S.area_ticks / 30.0));
     std::printf("   THE DFL CUT (5 Hz, man on the ball = nearest within 2 m; real DFL benchmarks_tracking_pressure.py): spells %.1f (640.4), %.2f s each (1.21); pressures %.1f (375.2) = %.2f a spell (0.59), by the carrier's metres off their line",
                 S.tk_spells / tm, 0.2 * S.tk_frames / std::max(1L, S.tk_spells), S.tk_press / tm, static_cast<double>(S.tk_press) / std::max(1L, S.tk_spells));
     { static const double rz[5] = {40.8, 80.1, 89.0, 91.1, 74.2}; for (int i = 0; i < 5; ++i) std::printf(" %.1f (%.1f)", S.tk_press_z[i] / tm, rz[i]); }
@@ -871,6 +904,17 @@ int main(int argc, char** argv) {
         std::printf("   IN THE BOX (ours, 0-18 m |y| < 20.16) by the ball's zone (real DFL):");
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.2f (%.2f) [runners %.2f, target %.1f m];", bzn[z], static_cast<double>(S.bx_in[z]) / S.bx_f[z], real_in[z],
                                                              static_cast<double>(S.bx_run[z]) / S.bx_f[z], S.bx_run_tl[z] / std::max(1L, S.bx_run[z]));
+        std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
+        static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};
+        for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", bzn[z], S.bx_ln[z] / S.bx_f[z], real_ln[z], S.bx_lead[z] / S.bx_f[z], real_lead[z]);
+        std::printf("\n     their deepest outfielder / their CBs' mean / the next man higher, m (real DFL); deepest by role CB FB DM AM WIDE ST %%:");
+        static const double real_deep[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_cbm[6] = {11.2, 11.5, 21.1, 20.3, 30.4, 29.8}, real_gap2[6] = {1.6, 1.9, 1.4, 1.5, 1.6, 1.6};
+        for (int z = 0; z < 4; ++z) if (S.bx_f[z]) {
+            long dn = 0; for (int r = 0; r < ai::kRoleCount; ++r) dn += S.bx_drole[z][r];
+            std::printf(" %s %.1f (%.1f) / %.1f (%.1f) / %.1f (%.1f) [", bzn[z], S.bx_deep[z] / std::max(1L, dn), real_deep[z], S.bx_cbm[z] / std::max(1L, dn), real_cbm[z], S.bx_gap2[z] / std::max(1L, dn), real_gap2[z]);
+            for (int r = 0; r < ai::kRoleCount; ++r) std::printf("%s%.0f", r ? " " : "", 100.0 * S.bx_drole[z][r] / std::max(1L, dn));
+            std::printf("];");
+        }
         std::printf("\n");
     }
     {

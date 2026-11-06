@@ -141,12 +141,16 @@ void BlockParams::configure(const core::ModelParams& p) {
     for (int b = 0; b < 5; ++b)
         for (int k = 0; k < 3; ++k)
             stand_off[b][k] = p.fixed((std::string("physics.press.stand_off_") + std::to_string(b) + "_" + kQ[k]).c_str(), kOff[b][k]);
+    // Real (DFL, benchmarks_tracking_cover.py): the two CBs' depth gap by the ball's band, mm.
+    static const int kStagger[kBandCount] = {3200, 2800, 2800, 2800, 3000, 2800, 2800, 2900, 2800, 3700};
+    for (int b = 0; b < kBandCount; ++b)
+        stagger[b] = p.fixed(std::string("physics.block.stagger_") + std::to_string(b * 10 + 5), kStagger[b]);
     switch_m = p.fixed("physics.press.switch_m", 2000);
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
 }
 
 void DefendingBlock::assign(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
-                            const Reads::FlightRead& fr, int restart_taker) {
+                            const std::vector<Role>& role_of_slot, const Reads::FlightRead& fr, int restart_taker) {
     const auto& ball = world.ball();
     const bool live = inPlay(world);
     // The nearest outfielder to the ball, held until another is switch_m nearer.
@@ -183,14 +187,54 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         ch = world.heldRestart() ? restart_taker : nearest(ch);
     } else ch = -1;
     int& pr = presser_[team & 1];
-    if (!live || !ball.owner || team_of_slot[*ball.owner] == team) { pr = -1; return; }
-    pr = nearest(pr);
+    if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
+    else pr = nearest(pr);
+    assignCover(team, world, team_of_slot, role_of_slot);
+}
+
+// G5.41 (§8.141): with exactly two CBs on, the one nearer their most advanced
+// outfielder is the deeper of the pair (he goes with the man who threatens the
+// space behind; his partner stands higher), held until the other is switch_m
+// nearer. Real (DFL): the pair stands ~2.8 m apart in depth at every band; the
+// deeper man is the far one from the ball only half the time — not a side rule.
+void DefendingBlock::assignCover(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                                 const std::vector<Role>& role_of_slot) {
+    int& dc = deep_cb_[team & 1];
+    int& oc = other_cb_[team & 1];
+    int cb[2] = {-1, -1}, n = 0;
+    for (std::uint8_t j = 0; j < world.playerCount() && j < role_of_slot.size(); ++j)
+        if (team_of_slot[j] == team && !world.isKeeper(j) && role_of_slot[j] == Role::CB) { if (n < 2) cb[n] = j; ++n; }
+    if (n != 2) { dc = oc = -1; return; }
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();   // our attack direction
+    int front = -1; Fixed64 fx{};
+    for (std::uint8_t j = 0; j < world.playerCount(); ++j) {
+        if (team_of_slot[j] == team || world.isKeeper(j)) continue;
+        const Fixed64 x = world.player(j).pos.x * sg;   // smaller = nearer our goal
+        if (front < 0 || x < fx) { front = j; fx = x; }
+    }
+    if (front < 0) { dc = oc = -1; return; }
+    const Vec2 fp{world.player(static_cast<std::uint8_t>(front)).pos.x, world.player(static_cast<std::uint8_t>(front)).pos.y};
+    const Fixed64 d0 = math::fx_sqrt(distSq(world.player(static_cast<std::uint8_t>(cb[0])).pos, Vec3{fp.x, fp.y, Fixed64::zero()}));
+    const Fixed64 d1 = math::fx_sqrt(distSq(world.player(static_cast<std::uint8_t>(cb[1])).pos, Vec3{fp.x, fp.y, Fixed64::zero()}));
+    int pick = d0 <= d1 ? cb[0] : cb[1];
+    if (dc == cb[0] || dc == cb[1]) {   // held until the other is switch_m nearer
+        const Fixed64 dk = dc == cb[0] ? d0 : d1, dn = dc == cb[0] ? d1 : d0;
+        if (dn + params_.switch_m > dk) pick = dc;
+    }
+    dc = pick; oc = pick == cb[0] ? cb[1] : cb[0];
 }
 
 Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
     const Fixed64 off_line = hx + v.ball_to.x * v.sg;   // the ball's metres off our own line, where it's going
-    const Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role)], off_line);
+    Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role)], off_line);
+    // G5.41: the pair's mean is the real CB spot; the deeper man half the gap below it.
+    if (v.role == Role::CB) {
+        const int t = v.team & 1;
+        const Fixed64 half_gap = bandLookup(params_.stagger, off_line) * Fixed64::fromFraction(1, 2);
+        if (deep_cb_[t] == v.slot) x -= half_gap;
+        else if (other_cb_[t] == v.slot) x += half_gap;
+    }
     return Vec2{(x - hx) * v.sg, v.across_def};
 }
 
