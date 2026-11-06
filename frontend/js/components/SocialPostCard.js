@@ -1904,13 +1904,11 @@ class SocialPostCard {
     // sidelines (owner 2026-10-19: "move the 2 and 3 wider to
     // sideline").
     //
-    // A tokens.halfway row (FIELD_SIZES midlineRow) occupies the line
-    // row's own center slot (_pitchRows), so the line stays exactly
-    // mid-pitch: it paints behind the positioned chip row at chip
-    // height, and the crest keeps its center-circle spot as a flex item
-    // between the two middle chips — "straddle the apsl logo with the
-    // 10 and 8". Even-length rows only; an odd row has a chip dead
-    // center. An empty row (SPACER_ROW upstream) renders as open space.
+    // A tokens.halfway row (FIELD_SIZES halfwayOn) stands ON the line:
+    // the line paints behind the chip row at chip height, and the crest
+    // keeps its center-circle spot as a flex item between the two middle
+    // chips (the back-three wing backs, 3 and 2, since 11/6). Even-length
+    // rows only; an odd row has a chip dead center.
     // token.narrow (FIELD_SIZES narrowIds, 4-2-3-1 narrow): a tighter
     // chip cap so the 7 and 11 tuck in beside the 10 (owner 2026-11-05).
     // token.lift (FIELD_SIZES chipLifts): that one chip drawn N px higher
