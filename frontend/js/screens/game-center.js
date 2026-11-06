@@ -199,8 +199,9 @@ const FIELD_SIZES = {
       // can move 2 and 3 up the line mid line"), crest between them;
       // the 8 holds the base alone. `lifts` (row index → px, see
       // _pitchRows) nudges the 8 up toward the logo (owner: "push 8 up
-      // a little in the 3313").
-      '3-3-1-3': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 } },
+      // a little in the 3313"). Renamed 3-4-3 (1-1-3) in the bowl family
+      // (mig 1110): inside five 8 / 10 / 11 9 7.
+      '3-4-3 (1-1-3)': { rows: [[1], [5, 6, 4], [8], [3, 2], [10], [11, 9, 7]], wideIds: [3, 2], midlineRow: 3, lifts: { 2: 12 } },
       // Match opponent (mig 912, formation_matchups): their shape flipped,
       // a libero added behind and one off our front line. Owner: "if we
       // play vs 4231 that actually looks like a 2323".
