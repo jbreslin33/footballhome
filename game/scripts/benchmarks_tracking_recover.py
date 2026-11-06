@@ -49,6 +49,7 @@ class RecoverTally(bt.ShapeTally):
                 continue
             k = bt.bucket(since * bt.DT, EDGES)
             s = side[d]
+            z = "N" if s * a[0] + self.half < 40 else "F"   # the ball inside 40 m of their goal, or not
             for p, q in zip(oa, ob):
                 dx, dy = q[0] - p[0], q[1] - p[1]
                 v = math.hypot(dx, dy) / bt.DT
@@ -62,6 +63,9 @@ class RecoverTally(bt.ShapeTally):
                     c[f"{k}fb"] += 1
                 c[f"{k}back"] += back
                 c[f"{k}v"] += v
+                c[z + "n"] += 1
+                if v >= 5:
+                    c[z + ("b" if back >= 0.7 * v else "u" if back <= -0.7 * v else "a")] += 1
             self.c["turn"] += 1 if since == 0 else 0
 
     def result(self):
@@ -96,3 +100,8 @@ if __name__ == "__main__":
     print(f"  all     | {100 * sum(c[f'{k}s0'] for k in range(5)) / n:5.1f} {100 * sum(c[f'{k}s1'] for k in range(5)) / n:5.1f} "
           f"{100 * sum(c[f'{k}s2'] for k in range(5)) / n:5.1f} | {100 * sum(c[f'{k}fb'] for k in range(5)) / n:5.1f} | "
           f"{sum(c[f'{k}v'] for k in range(5)) / n:.2f}, {sum(c[f'{k}back'] for k in range(5)) / n:+.2f}")
+    print("  5+ m/s by direction, % of the side's steps in the zone (back / up / across):")
+    for z, lab in (("N", "ball inside 40 m of their goal"), ("F", "further out")):
+        n = c[z + "n"]
+        if n:
+            print(f"    {lab}: {100 * n / tot:.1f}% of steps; {100 * c[z + 'b'] / n:.2f} / {100 * c[z + 'u'] / n:.2f} / {100 * c[z + 'a'] / n:.2f}")

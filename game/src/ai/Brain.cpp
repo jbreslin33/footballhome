@@ -209,6 +209,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     if (o.why == Why::InBehind && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
     namePass(slot, world, o);
     brakeToArrive(slot, world, o, blockLead(slot, world, o));
+    capAcross(slot, world, o);
     // Settled at his spot he faces the ball.
     if (o.move.face.x.raw == 0 && o.move.face.y.raw == 0 && (o.why == Why::Hold || o.why == Why::KeeperPosition)) {
         const auto& me = world.player(slot);
@@ -510,6 +511,36 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
     return Vec2{(then.x - now.x) / h, (then.y - now.y) / h};
 }
 
+// G5.31 (§8.129): holding shape, his pace by direction, not one cap — across
+// and up the pitch at the shift's pace (shape_max), back toward our goal at
+// the defending pace (defend_max; in danger, as §8.108 has it). The real side
+// without the ball runs 5+ m/s across 2.0% of the time with their ball inside
+// 40 m of its goal, 2.3% further out; back 9.2 / 2.8% (DFL,
+// benchmarks_tracking_recover.py). One cap had ours across 17.1% in danger
+// (uncapped) and back 0.6% outside it (the jog).
+void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
+    if (o.why != Why::Hold || shape_max_.raw <= 0) return;
+    const Fixed64 top = world.player(slot).max_speed;
+    if (top.raw <= 0) return;
+    const Fixed64 lim = shape_max_ / top;
+    if (o.move.move.y > lim) o.move.move.y = lim;
+    else if (o.move.move.y < -lim) o.move.move.y = -lim;
+    const Fixed64 sg = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 fwd = o.move.move.x * sg;
+    if (fwd > lim) o.move.move.x = lim * sg;
+    if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
+}
+
+// Their ball inside shape_danger_m of our goal (G5.10, §8.108).
+bool Brain::inDanger(SlotIndex slot, const World& world) const {
+    if (shape_danger_.raw <= 0) return false;
+    const auto& b = world.ball();
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const bool theirs = b.owner ? setup_.team_of_slot[*b.owner] != team : world.lastTouchTeam() != team;
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    return theirs && b.pos.x * sg + half_x_ < shape_danger_;
+}
+
 void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 lead) const {
     switch (o.why) {
         case Why::Human: case Why::KeeperDive:
@@ -547,14 +578,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     // there a man getting back into his shape goes at the defending pace
     // (the block that walked back was 9 m behind its spots with the ball wide
     // 18-30 m out, the offside line 4-5 m too high, the box empty).
-    bool danger = false;
-    if (shape_danger_.raw > 0 && o.why == Why::Hold) {
-        const auto& b = world.ball();
-        const std::uint8_t team = setup_.team_of_slot[slot];
-        const bool theirs = b.owner ? setup_.team_of_slot[*b.owner] != team : world.lastTouchTeam() != team;
-        const Fixed64 sg = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
-        danger = theirs && b.pos.x * sg + half_x_ < shape_danger_;
-    }
+    const bool danger = o.why == Why::Hold && inDanger(slot, world);
     if (o.why == Why::Hold && shape_tau_.raw > 0 && !danger) {
         // G5.14 (§8.111): with our ball the shape moves with it — he closes
         // the gap in shape_tau_ours_s. Eased over shape_tau_s (fitted to the
@@ -587,7 +611,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     if (leading && o.why == Why::Hold) {
         const Vec2 want = dist.raw > 0 ? Vec2{lead.x + d.x * v_ok / dist, lead.y + d.y * v_ok / dist} : lead;
         Fixed64 cap = Fixed64::zero();
-        if (!danger) cap = shape_max_;
+        if (!danger) cap = defend_max_;   // and by direction: capAcross
         else if (shape_danger_sprint_ == 0) cap = defend_max_;
         Fixed64 sp = math::length(want);
         Vec2 w = want;
@@ -596,7 +620,8 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         o.move.move = Vec2{w.x / me.max_speed, w.y / me.max_speed};
         return;
     }
-    if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && shape_max_ < v_ok) v_ok = shape_max_;
+    // Holding shape outside danger his pace is by direction (capAcross, G5.31).
+    if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && defend_max_ < v_ok) v_ok = defend_max_;
     if (danger && shape_danger_sprint_ == 0 && defend_max_.raw > 0 && defend_max_ < v_ok) v_ok = defend_max_;
     // A race to a MOVING ball (G4.84): arrive ON TIME, not just under
     // control. His target is where the flight read says he and the ball

@@ -89,6 +89,8 @@ struct Stats {
     double fit_n = 0, fit_b = 0, fit_m = 0, fit_bb = 0, fit_bm = 0, gap_s[ai::kRoleCount] = {}; long gap_n[ai::kRoleCount] = {};
     // RECOVERY (§8.128, benchmarks_tracking_recover.py): the side without it, by s since it lost it.
     long rc_n[5] = {}, rc_s[5][3] = {}, rc_fb[5] = {}; double rc_v[5] = {}, rc_back[5] = {};
+    long rc_fast[ai::kWhyCount][3] = {}, rc_fast_role[ai::kRoleCount] = {}, rc_hold_near[3] = {};   // + holders with the ball inside 40 m of their goal
+    long rc_zn[2] = {}, rc_z[2][3] = {};   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
 int distBand(double d) { return d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : 3; }
@@ -385,7 +387,16 @@ int main(int argc, char** argv) {
                     const double v = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble()), back = -q.vel.x.toDouble() * ds;
                     ++S.rc_n[kb]; ++S.rc_s[kb][v < 2 ? 0 : v < 5 ? 1 : 2];
                     if (v >= 5 && back >= 0.7 * v) ++S.rc_fb[kb];
+                    if (v >= 5) {
+                        ++S.rc_fast[static_cast<int>(s.lastOrders()[j].why)][back >= 0.7 * v ? 0 : back <= -0.7 * v ? 1 : 2];
+                        ++S.rc_fast_role[role(j)];
+                        if (s.lastOrders()[j].why == ai::Why::Hold && hx + b.pos.x.toDouble() * ds < 40)
+                            ++S.rc_hold_near[back >= 0.7 * v ? 0 : back <= -0.7 * v ? 1 : 2];
+                    }
                     S.rc_v[kb] += v; S.rc_back[kb] += back;
+                    const int z = hx + b.pos.x.toDouble() * ds < 40 ? 0 : 1;
+                    ++S.rc_zn[z];
+                    if (v >= 5) ++S.rc_z[z][back >= 0.7 * v ? 0 : back <= -0.7 * v ? 1 : 2];
                 }
             }
             const double sg = a == 0 ? 1.0 : -1.0, bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
@@ -701,6 +712,25 @@ int main(int argc, char** argv) {
             std::printf("   %5s %5.1f%% | %5.1f %5.1f %5.1f | %5.1f | %.2f, %+.2f\n", lab[i], 100.0 * n / tot, 100.0 * S.rc_s[i][0] / n,
                         100.0 * S.rc_s[i][1] / n, 100.0 * S.rc_s[i][2] / n, 100.0 * S.rc_fb[i] / n, S.rc_v[i] / n, S.rc_back[i] / n);
             s0 += S.rc_s[i][0]; s1 += S.rc_s[i][1]; s2 += S.rc_s[i][2]; fb += S.rc_fb[i]; sv += S.rc_v[i]; sb += S.rc_back[i];
+        }
+        long fast = 0; for (int w = 0; w < ai::kWhyCount; ++w) fast += S.rc_fast[w][0] + S.rc_fast[w][1] + S.rc_fast[w][2];
+        if (fast) {
+            std::printf("   5+ m/s by why, %% of the side's 5+ steps (back / up / across):");
+            for (int w = 0; w < ai::kWhyCount; ++w) {
+                const long n = S.rc_fast[w][0] + S.rc_fast[w][1] + S.rc_fast[w][2];
+                if (n * 200 >= fast) std::printf(" %s %.1f (%.1f/%.1f/%.1f);", ai::kWhyNames[w], 100.0 * n / fast, 100.0 * S.rc_fast[w][0] / fast,
+                                                 100.0 * S.rc_fast[w][1] / fast, 100.0 * S.rc_fast[w][2] / fast);
+            }
+            static const char* rn[ai::kRoleCount] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+            std::printf("\n   of which hold shape with the ball inside 40 m of their goal %.1f (%.1f/%.1f/%.1f)", 100.0 * (S.rc_hold_near[0] + S.rc_hold_near[1] + S.rc_hold_near[2]) / fast,
+                        100.0 * S.rc_hold_near[0] / fast, 100.0 * S.rc_hold_near[1] / fast, 100.0 * S.rc_hold_near[2] / fast);
+            for (int z = 0; z < 2; ++z)
+                if (S.rc_zn[z])
+                    std::printf("\n   5+ m/s %s: %.1f%% of steps; back / up / across %.2f / %.2f / %.2f%% of them", z ? "further out" : "ball inside 40 m of their goal",
+                                100.0 * S.rc_zn[z] / tot, 100.0 * S.rc_z[z][0] / S.rc_zn[z], 100.0 * S.rc_z[z][1] / S.rc_zn[z], 100.0 * S.rc_z[z][2] / S.rc_zn[z]);
+            std::printf("\n   5+ m/s by role, %% of the side's 5+ steps:");
+            for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.1f%%;", rn[r], 100.0 * S.rc_fast_role[r] / fast);
+            std::printf("\n");
         }
         if (tot) std::printf("     all        | %5.1f %5.1f %5.1f | %5.1f | %.2f, %+.2f\n", 100.0 * s0 / tot, 100.0 * s1 / tot, 100.0 * s2 / tot,
                              100.0 * fb / tot, sv / tot, sb / tot);

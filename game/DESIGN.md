@@ -5722,3 +5722,55 @@ upfield at every band (holders +2.0-2.7 m off their own spot, ball 40-60 out) wh
 are within 1-1.5: their slide runs them across while the 4.5 m/s cap is shared with the depth.
 (3) Off the ball 5+ m/s 10.1% (7.9), 10.8% in a settled block (6.7): running not back, so across or
 up. (4) Crosses 0.06 (11.5), corners 0.1 (3.2) from §8.127.
+
+### 8.129 G5.31 — holding shape, pace by direction: across at the shift's, back at the defending pace (no migration)
+
+§8.128's next: off the ball 5+ m/s 10.1% (7.9), 10.8% in a settled block — running not back.
+
+**Measured.** RECOVERY now splits the 5+ m/s steps by why, role and direction (back / up / across:
+the back component 0.7+ of his speed, the up the same the other way, else across), and by where
+the ball is; `benchmarks_tracking_recover.py` prints the real cut. 72% of our fast steps were
+*hold shape*, 70% of all of them with their ball inside 40 m of our goal — the §8.108 danger zone,
+where a holder ran uncapped. Share of the side's steps at 5+ m/s:
+
+| | back | up | across |
+|---|---|---|---|
+| ball inside 40 m of its goal, real DFL (25.7% of steps) | 9.22% | 0.40% | 1.97% |
+| the game before | 17.37% | 1.14% | 17.13% |
+| further out, real (74.3%) | 2.81% | 1.45% | 2.32% |
+| the game before | 0.63% | 1.40% | 1.11% |
+
+One cap, switched at 40 m, was wrong both ways: inside it the block sprinted across the pitch 9×
+as often as real (every switch of wing was a dash); outside it the 4.5 m/s jog held back the
+real runs back goal-side (a fifth of real). The real gradient is by direction: getting back is
+urgent, shifting across is not.
+
+**Built.** `Brain::capAcross`, after the arrive brake, holding shape: across (|y|) and up the pitch
+at the shift's pace (`shape_max_mps` 4.5); back toward our goal at the defending pace
+(`defend_max_mps` 6; in danger as §8.108, uncapped), his total at most the defending pace outside
+danger. Existing rows, no new parameter. `Brain::inDanger` is the §8.108 test, shared.
+Coaching: "get goal-side first, then into your shape" [FH].
+
+**Tried and dropped.** The danger zone capped at the defending pace too (`shape_danger_sprint` 0):
+back 5+ inside 40 m 10.8% (9.2), but the block late near its goal, shape error 2.35 → 2.78 m.
+`shape_tau_s` 4 → 2 with it: shape 2.06 m but under 2 m/s 29.6% (41.9) — men never still.
+
+**Result** (8 matches, fh_game_scratch; G5.30 → G5.31):
+
+| | before | after | real |
+|---|---|---|---|
+| off the ball (side without it) under 2 / 2-5 / 5+ m/s | 42.3 / 47.6 / 10.1% | 41.9 / 50.7 / 7.4% | 41.9 / 50.3 / 7.9% |
+| mean m/s | 2.59 | 2.53 | 2.61 |
+| 5+ across, ball inside 40 m | 17.1% | 2.6% | 2.0% |
+| 5+ back, further out | 0.63% | 1.09% | 2.81% |
+| back m/s 6-10 s after losing it | 0.73 | 0.84 | 1.18 |
+| block v real table, mean \|error\| | 2.50 m | 2.41 m | 0 |
+| shots a team-match | 8.1 | 9.3 | 12.9 |
+
+Tests 22/22, goldens unchanged (the test rig has no shape_max row, so the caps are off there).
+
+**Next moles.** (1) Back 5+ inside 40 m 17.5% (9.2) — the uncapped danger sprint; capping it costs
+the shape, so the block is getting there late for another reason (it starts back late: 0-2 s
+after losing it ours +0.38 m/s back, real −0.12 — real men counter-press first, then drop).
+(2) Further out back 1.09% (2.81) and 6-10 s 0.84 m/s (1.18): the τ ease (gap/4 s) still holds a
+man 15 m off to 3.75 m/s. (3) Crosses 0.06 (11.5), corners 0.1 (3.2).
