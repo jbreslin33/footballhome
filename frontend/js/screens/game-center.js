@@ -407,7 +407,7 @@ class GameCenterScreen extends EventScreen {
     // draft = a coach's unsaved copy of it; playing = the animation runs.
     this._tacticsMode = 'plan';
     this._plan = { key: '', data: null, loading: false, error: null, oppFormationId: 0, moment: 'out_of_possession', block: 'high',
-                   stateId: 0, editing: false, draft: null, msg: '', playing: false, speed: 1 };
+                   stateId: 0, editing: false, draft: null, msg: '', playing: false, speed: 1, popupPid: 0 };
     this._tacticsPitchObj = null;
     // Availability/RSVP pills in the Current Lineup card are opt-in
     // (2026-08-22, owner directive: "toggle off 'stats' like
@@ -1202,6 +1202,7 @@ class GameCenterScreen extends EventScreen {
       if (e.target.closest('[data-gc-tactics-save]') && this._tacticsCanEdit()) { this._saveTactics(); return; }
       const tMode = e.target.closest('[data-gc-tactics-mode]');
       if (tMode) { this._stopPlanPlay(); this._tacticsMode = tMode.dataset.gcTacticsMode; this._render(); return; }
+      if (e.target.matches('[data-gc-tp-popup-bg]') || e.target.closest('[data-gc-tp-popup-x]')) { this._plan.popupPid = 0; this._render(); return; }
       const tpState = e.target.closest('[data-gc-tp-state]');
       if (tpState && !this._plan.editing) { this._stopPlanPlay(); this._plan.stateId = Number(tpState.dataset.gcTpState); this._plan.msg = ''; this._render(); return; }
       if (e.target.closest('[data-gc-tp-create]') && this._tacticsCanEdit()) { this._createPlan(); return; }
@@ -1299,7 +1300,7 @@ class GameCenterScreen extends EventScreen {
         return;
       }
       const tpJob = e.target.closest('[data-gc-tp-job]');
-      if (tpJob && this._plan.editing) { this._editPlanJob(Number(tpJob.dataset.gcTpJob), tpJob.dataset.gcTpField, tpJob.value); return; }
+      if (tpJob && this._tacticsCanEdit()) { this._editPlanJob(Number(tpJob.dataset.gcTpJob), tpJob.dataset.gcTpField, tpJob.value); return; }
       const formationSelect = e.target.closest('[data-lineup-formation-select]');
       if (formationSelect && this.isCoach) {
         this.formation = formationSelect.value;
@@ -1979,8 +1980,8 @@ class GameCenterScreen extends EventScreen {
       const tools = !this._tacticsCanEdit() ? '' : t.editing
         ? `<button type="button" data-gc-tactics-save class="btn btn-primary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('save') || '💾 Save')}</button>
            <button type="button" data-gc-tactics-cancel class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('cancel') || 'Cancel')}</button>
-           <span style="font-size:0.7rem; opacity:0.8;">${esc(this._copyTactics('editing'))}</span>`
-        : `<button type="button" data-gc-tactics-edit class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('edit') || '✏️ Move pieces')}</button>`;
+           <span style="font-size:0.7rem; opacity:0.8;">${esc(this._copyTactics('editing_drawn'))}</span>`
+        : `<button type="button" data-gc-tactics-edit class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('edit_drawn') || '✏️ Move pieces')}</button>`;
       inner = `
         <div style="display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:6px;">${pills}</div>
         ${sit.notes ? `<div style="font-size:0.78rem; line-height:1.35; margin-bottom:8px;">${esc(sit.notes)}</div>` : ''}
@@ -2114,7 +2115,8 @@ class GameCenterScreen extends EventScreen {
       const m = (data.moments || []).find(x => x.code === p.moment), b = (data.blocks || []).find(x => x.code === p.block);
       const them = (this.formations || []).find(f => Number(f.id) === Number(p.oppFormationId));
       return controls + `<div style="font-size:0.78rem; opacity:0.8; margin-bottom:8px;">${esc(this._copyTactics('no_plan', { us: this.formation, them: them ? them.code : '', moment: m ? m.title : p.moment, block: b ? b.label : p.block }))}</div>`
-        + (this._tacticsCanEdit() ? `<button type="button" data-gc-tp-create class="btn btn-primary" style="font-size:0.74rem; padding:4px 12px;">${esc(this._copyTactics('create') || '➕ Start this plan')}</button>` : '');
+        + (this._tacticsCanEdit() ? `<button type="button" data-gc-tp-create class="btn btn-primary" style="font-size:0.74rem; padding:4px 12px;">${esc(this._copyTactics('create') || '➕ Start this plan')}</button>` : '')
+        + (p.msg ? `<div style="font-size:0.74rem; font-weight:700; margin-top:6px; color:#f87171;">${esc(p.msg)}</div>` : '');
     }
     const cur = this._planState(p.stateId) || this._planStates()[0];
     if (!cur) return controls;
@@ -2136,45 +2138,79 @@ class GameCenterScreen extends EventScreen {
         <span style="font-size:0.7rem; opacity:0.75;">${esc(this._copyTactics('speed') || 'Speed')}</span> ${sel('speed', speeds, p.speed)}
         ${!canEdit ? '' : p.editing
           ? `<button type="button" data-gc-tp-save class="btn btn-primary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('save') || '💾 Save')}</button>
-             <button type="button" data-gc-tp-cancel class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('cancel') || 'Cancel')}</button>`
+             <button type="button" data-gc-tp-cancel class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('cancel') || 'Cancel')}</button>
+             <span style="font-size:0.7rem; opacity:0.8;">${esc(this._copyTactics('editing'))}</span>`
           : `<button type="button" data-gc-tp-edit class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('edit') || '✏️ Move pieces')}</button>
              ${cur.parent_state_id != null ? `<button type="button" data-gc-tp-delete class="btn btn-secondary" style="font-size:0.72rem; padding:3px 10px;">${esc(this._copyTactics('delete') || '🗑 Remove this pass')}</button>` : ''}`}
         ${p.msg ? `<span style="font-size:0.72rem; font-weight:700;">${esc(p.msg)}</span>` : ''}
       </div>`;
     return controls
       + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>`
-      + (canEdit && !p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics('pass_hint'))}</div>` : '')
+      + (!p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics(canEdit ? 'pass_hint' : 'player_hint'))}</div>` : '')
       + `<div style="font-size:0.72rem; font-weight:700; margin-bottom:6px; color:${cov.free.length || cov.doubled.length ? '#fbbf24' : '#4ade80'};">${covHtml}</div>`
-      + `<div data-gc-tactics-pitch></div>` + tools + this._planJobsHtml(shown);
+      + `<div data-gc-tactics-pitch></div>` + tools + this._planJobsHtml(shown) + this._planPopupHtml(shown);
   }
 
   // One row per our outfield slot, in formation order: who, and his job —
-  // dropdowns while a coach edits, words otherwise.
+  // dropdowns for coaches always (owner 11/6: "i need to be able to set
+  // tactics via drop down when keeper has it ... this is the initial
+  // instructions when keeper places ball down"; each change saves),
+  // words for players.
+  // His job: dropdowns (job, their numbers) for a coach, words otherwise.
+  // Shared by the list under the pitch and the tap-a-player sheet.
+  _planJobControls(pid, job, size = '0.7rem') {
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const kinds = (this._plan.data && this._plan.data.kinds) || [];
+    const kind = job ? kinds.find(k => k.code === job.kind) : null;
+    const their = (n) => this._copyTactics('their', { n }) || `their ${n}`;
+    const css = `font-size:${size}; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;`;
+    const numSel = (field, value) => `<select data-gc-tp-job="${pid}" data-gc-tp-field="${field}" style="${css}">
+        ${field === 'target_b' ? '<option value="">—</option>' : ''}
+        ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => `<option value="${n}" ${Number(value) === n ? 'selected' : ''}>${esc(their(n))}</option>`).join('')}</select>`;
+    if (this._tacticsCanEdit() && !this._plan.playing) {
+      return `<select data-gc-tp-job="${pid}" data-gc-tp-field="kind" style="${css}">
+          <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
+          ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
+        ${job ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel('target_a', job.target_a)}` : ''}
+        ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}`;
+    }
+    return job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
+      : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
+  }
+
+  // Tap a player on the pitch: his sheet — who, the situation, his job,
+  // and the concept's coaching cue (game_concepts.cue_answer) — the same
+  // words the game's AI plays from (owner 11/6: "players can read this and
+  // understand their roles right along with the ai").
+  _planPopupHtml(st) {
+    const p = this._plan;
+    const pid = p.popupPid;
+    if (!pid || pid === 1) return '';
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const chip = this._tacticsChipFor()(pid);
+    const job = (st.jobs || []).find(j => Number(j.position_id) === pid);
+    const kind = job ? ((p.data && p.data.kinds) || []).find(k => k.code === job.kind) : null;
+    return `<div data-gc-tp-popup-bg style="position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.55); display:flex; align-items:center; justify-content:center; padding:16px;">
+      <div style="width:100%; max-width:420px; background:var(--card-bg, #0f172a); color:inherit; border:1px solid var(--border-color); border-radius:12px; padding:14px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <span style="display:inline-block; min-width:28px; text-align:center; font-weight:800; color:#facc15; background:#1d4ed8; border-radius:999px; padding:2px 6px;">${esc(chip.number)}</span>
+          <span style="font-weight:800; font-size:1rem; flex:1;">${esc(chip.name || '—')}</span>
+          <button type="button" data-gc-tp-popup-x class="btn btn-secondary" style="font-size:0.8rem; padding:2px 10px;">✕</button>
+        </div>
+        <div style="font-size:0.74rem; opacity:0.75; margin-bottom:10px;">⚽ ${esc(this._planStateLabel(st))}</div>
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; font-size:0.85rem; margin-bottom:10px;">${this._planJobControls(pid, job, '0.85rem')}</div>
+        ${kind ? `<div style="font-size:0.78rem; font-weight:800; margin-bottom:2px;">${esc(kind.concept_title || '')}</div>
+                  <div style="font-size:0.78rem; line-height:1.4; opacity:0.9;">${esc(kind.cue || '')}</div>` : ''}
+      </div></div>`;
+  }
+
   _planJobsHtml(st) {
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
-    const kinds = (this._plan.data && this._plan.data.kinds) || [];
     const jobs = new Map((st.jobs || []).map(j => [Number(j.position_id), j]));
-    const their = (n) => this._copyTactics('their', { n }) || `their ${n}`;
-    const numSel = (pid, field, value) => `<select data-gc-tp-job="${pid}" data-gc-tp-field="${field}"
-        style="font-size:0.7rem; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
-        ${field === 'target_b' ? '<option value="">—</option>' : ''}
-        ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => `<option value="${n}" ${Number(value) === n ? 'selected' : ''}>${esc(their(n))}</option>`).join('')}</select>`;
     const rows = startingPositions.filter(pos => pos.id !== 1).map(pos => {
       const occ = rosterById.get(slotToPlayerId.get(pos.id));
-      const job = jobs.get(pos.id);
-      const kind = job ? kinds.find(k => k.code === job.kind) : null;
-      let what;
-      if (this._plan.editing) {
-        what = `<select data-gc-tp-job="${pos.id}" data-gc-tp-field="kind" style="font-size:0.7rem; padding:2px 4px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
-            <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
-            ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
-          ${job ? `<span style="font-size:0.68rem; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel(pos.id, 'target_a', job.target_a)}` : ''}
-          ${job && kind && kind.target_b_label ? `<span style="font-size:0.68rem; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel(pos.id, 'target_b', job.target_b)}` : ''}`;
-      } else {
-        what = job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
-          : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
-      }
+      const what = this._planJobControls(pos.id, jobs.get(pos.id));
       return `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding:4px 0; border-top:1px solid var(--border-color); font-size:0.74rem;">
           <span style="display:inline-block; min-width:22px; text-align:center; font-weight:800; color:#facc15; background:#1d4ed8; border-radius:999px; padding:1px 4px;">${esc(pos.sortOrder)}</span>
           <span style="min-width:90px; font-weight:700;">${esc(occ ? occ.name : '—')}</span>${what}</div>`;
@@ -2207,7 +2243,13 @@ class GameCenterScreen extends EventScreen {
       // Tap one of theirs = the ball goes to him: open that pass (anyone, if
       // drawn) or draw it (coaches).
       onPieceClick: (kind, idx) => {
-        if (kind !== 'opp' || p.playing) return;
+        if (p.playing) return;
+        if (kind === 'us') {
+          const pid = sit.players[idx] && sit.players[idx].position_id;
+          if (pid && pid !== 1) { p.popupPid = pid; this._render(); }
+          return;
+        }
+        if (kind !== 'opp') return;
         const n = sit.opponents[idx] && sit.opponents[idx].number;
         if (!n || n === Number(cur.ball_with)) return;
         const kid = this._planStates().find(st => st.parent_state_id === cur.id && Number(st.ball_with) === n);
@@ -2264,13 +2306,38 @@ class GameCenterScreen extends EventScreen {
     this._render();
   }
 
+  // A job dropdown changed.  While dragging theirs (✏️) it edits the
+  // draft; otherwise it saves that state straight away.
   _editPlanJob(pid, field, value) {
-    const d = this._plan.draft;
+    const p = this._plan;
+    const live = !p.editing;
+    const cur = this._planState(p.stateId);
+    const d = live ? (cur ? JSON.parse(JSON.stringify(cur)) : null) : p.draft;
     if (!d) return;
+    if (live && (!d.opponents || !d.opponents.length)) d.opponents = this._planSituation(cur).opponents.map(o => ({ number: o.number, x: o.x, y: o.y }));
+    this._applyPlanJob(d, pid, field, value);
+    if (!live) { this._render(); return; }
+    const list = this._planStates();
+    const i = list.findIndex(st => st.id === d.id);
+    if (i >= 0) list[i] = d;
+    p.msg = '';
+    this._render();
+    this._putPlanState(d).then(() => { p.msg = this._copyTactics('saved') || 'Saved ✓'; this._render(); })
+      .catch(err => { p.msg = `⚠ ${err.message}`; this._reloadPlanTo(d.id); });
+  }
+
+  _putPlanState(d) {
+    return this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
+      opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
+      jobs: (d.jobs || []).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
+    }) });
+  }
+
+  _applyPlanJob(d, pid, field, value) {
     d.jobs = d.jobs || [];
     let job = d.jobs.find(j => Number(j.position_id) === pid);
     if (field === 'kind') {
-      if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); this._render(); return; }
+      if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); return; }
       const kind = this._planKinds()[value];
       if (!job) { job = { position_id: pid, kind: value, target_a: Number(d.ball_with) === 1 ? 9 : Number(d.ball_with), target_b: null }; d.jobs.push(job); }
       job.kind = value;
@@ -2278,7 +2345,6 @@ class GameCenterScreen extends EventScreen {
     } else if (job) {
       job[field] = value === '' ? null : Number(value);
     }
-    this._render();
   }
 
   async _savePlanState() {
@@ -2286,10 +2352,7 @@ class GameCenterScreen extends EventScreen {
     const d = p.draft;
     if (!d) return;
     try {
-      await this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
-        opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
-        jobs: (d.jobs || []).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
-      }) });
+      await this._putPlanState(d);
       p.editing = false; p.draft = null;
       await this._reloadPlanTo(d.id);
       p.msg = this._copyTactics('saved') || 'Saved ✓';

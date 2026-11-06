@@ -50,7 +50,7 @@ class TacticsPitch {
   _pieceHtml(kind, idx, p) {
     const pos = `left:${p.x}%; top:${100 - p.y}%;`;
     const grab = this.editable && this.dragKinds.has(kind) ? 'cursor:grab; touch-action:none;'
-      : (this.onPieceClick && kind === 'opp' ? 'cursor:pointer;' : '');
+      : (this.onPieceClick && kind !== 'ball' ? 'cursor:pointer;' : '');
     const base = `position:absolute; ${pos} transform:translate(-50%,-50%); ${grab} user-select:none; -webkit-user-select:none;`;
     if (kind === 'ball') {
       return `<div data-tp-kind="ball" data-tp-idx="0" style="${base} width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid #111; box-shadow:0 1px 3px rgba(0,0,0,0.6); z-index:3;"></div>`;

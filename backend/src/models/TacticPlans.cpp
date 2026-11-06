@@ -6,14 +6,23 @@ using nlohmann::json;
 
 namespace {
 
+// A slot's number is formation_slot_roles.number — what the game engine
+// reads — else positions_json's position_id (the shirt number in every
+// formation since mig 611; the old seed rows carry role ids there, which
+// repeat).  One row per number.
+constexpr const char* kSlotsSql =
+    "SELECT DISTINCT ON (num) num AS pid, x, y FROM ("
+    "  SELECT COALESCE(r.number, (p->>'position_id')::int) AS num, (p->>'slot')::int AS slot, "
+    "         (p->>'x')::float8 AS x, (p->>'y')::float8 AS y "
+    "    FROM formations f CROSS JOIN LATERAL jsonb_array_elements(f.positions_json) p "
+    "    LEFT JOIN formation_slot_roles r ON r.formation_code = f.code AND r.slot = (p->>'slot')::int "
+    "   WHERE f.id = $1::int) s "
+    " WHERE num BETWEEN 1 AND 11 ORDER BY num, slot";
+
 // A formation's slots as {position_id, x, y} (club scheme, y up from our goal).
 json formationSpots(Database* db, long long formationId) {
     json out = json::array();
-    for (const auto& r : db->query(
-             "SELECT (p->>'position_id')::int AS pid, (p->>'x')::float8 AS x, (p->>'y')::float8 AS y "
-             "  FROM formations f CROSS JOIN LATERAL jsonb_array_elements(f.positions_json) p "
-             " WHERE f.id = $1::int ORDER BY (p->>'position_id')::int",
-             {std::to_string(formationId)}))
+    for (const auto& r : db->query(kSlotsSql, {std::to_string(formationId)}))
         out.push_back({{"position_id", r["pid"].as<int>()}, {"x", r["x"].as<double>()}, {"y", r["y"].as<double>()}});
     return out;
 }
@@ -37,12 +46,14 @@ json TacticPlans::lookups() {
         out["blocks"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()},
                                  {"gk_y", r["gk_y"].as<double>()}});
     for (const auto& r : db->query(
-             "SELECT k.code, k.concept_id, c.name AS concept, k.label, k.target_a_label, k.target_b_label, "
+             "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, k.label, k.target_a_label, k.target_b_label, "
              "       k.dist_m::float8 AS dist_m, k.press_m::float8 AS press_m "
              "  FROM tactic_job_kinds k JOIN game_concepts c ON c.id = k.concept_id ORDER BY k.sort_order")) {
         out["kinds"].push_back({{"code", r["code"].as<std::string>()},
                                 {"concept_id", r["concept_id"].as<int>()},
                                 {"concept", r["concept"].as<std::string>()},
+                                {"concept_title", r["concept_title"].as<std::string>()},
+                                {"cue", r["cue_answer"].as<std::string>()},
                                 {"label", r["label"].as<std::string>()},
                                 {"target_a_label", r["target_a_label"].as<std::string>()},
                                 {"target_b_label", r["target_b_label"].is_null() ? json(nullptr) : json(r["target_b_label"].as<std::string>())},
@@ -114,11 +125,10 @@ long long TacticPlans::create(long long formationId, long long opponentFormation
         auto st = tx->exec_params("INSERT INTO tactic_states (plan_id, ball_with) VALUES ($1, 1) RETURNING id", planId);
         // Their formation mirrored: their right on our left, attacking down.
         tx->exec_params(
-            "INSERT INTO tactic_state_opponents (state_id, number, x, y) "
-            "SELECT $1, (p->>'position_id')::int, 100 - (p->>'x')::numeric, 100 - (p->>'y')::numeric "
-            "  FROM formations f CROSS JOIN LATERAL jsonb_array_elements(f.positions_json) p "
-            " WHERE f.id = $2 AND (p->>'position_id')::int BETWEEN 1 AND 11",
-            st[0]["id"].as<long long>(), opponentFormationId);
+            std::string("INSERT INTO tactic_state_opponents (state_id, number, x, y) "
+                        "SELECT $2::int, pid, 100 - x, 100 - y FROM (") + kSlotsSql + ") q "
+            "ON CONFLICT DO NOTHING",
+            opponentFormationId, st[0]["id"].as<long long>());
         db->commit(tx);
         return planId;
     } catch (...) {
