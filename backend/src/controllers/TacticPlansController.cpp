@@ -37,7 +37,8 @@ bool num1to11(const json& j, const char* k) {
 }
 
 // { opponents: [{number 1–11 once, x, y 0–100}] (≤ 11),
-//   jobs: [{position_id 2–11 once, kind, target_a 1–11, target_b? 1–11}] (≤ 10) }
+//   jobs: [{position_id 2–11 once, kind, target_a 1–11, target_b? 1–11,
+//           partner_position_id? 2–11 — mirrored by the partner}] (≤ 10) }
 // Job kinds are checked against the table by the insert's foreign key.
 std::string invalid(const json& b) {
     if (!b.is_object()) return "body must be an object";
@@ -62,6 +63,24 @@ std::string invalid(const json& b) {
         if (!j.contains("kind") || !j["kind"].is_string() || j["kind"].get<std::string>().size() > 40) return "job kind";
         if (!num1to11(j, "target_a")) return "job target_a 1–11";
         if (j.contains("target_b") && !j["target_b"].is_null() && !num1to11(j, "target_b")) return "job target_b 1–11";
+        if (j.contains("partner_position_id") && !j["partner_position_id"].is_null()) {
+            if (!j["partner_position_id"].is_number_integer()) return "job partner_position_id 2–11";
+            const int q = j["partner_position_id"];
+            if (q < 2 || q > 11 || q == p) return "job partner_position_id 2–11, not himself";
+        }
+    }
+    // A partnered job (straddle, mig 1133) must be mirrored: the partner
+    // carries the same kind on the same man, naming him back.
+    for (const auto& j : b["jobs"]) {
+        if (!j.contains("partner_position_id") || j["partner_position_id"].is_null()) continue;
+        const int p = j["position_id"], q = j["partner_position_id"];
+        bool mirrored = false;
+        for (const auto& k : b["jobs"])
+            if (k["position_id"].get<int>() == q && k.value("kind", std::string()) == j.value("kind", std::string()) &&
+                k.contains("partner_position_id") && k["partner_position_id"].is_number_integer() &&
+                k["partner_position_id"].get<int>() == p && k["target_a"] == j["target_a"])
+                mirrored = true;
+        if (!mirrored) return "partnered job must be mirrored by its partner";
     }
     return "";
 }

@@ -14,12 +14,12 @@
 class TacticPlans {
 public:
     // { moments: [{code,title}], blocks: [{code,label,gk_y}],
-    //   kinds: [{code,concept_id,concept,concept_title,cue,label,target_a_label,target_b_label,dist_m,press_m}] }
+    //   kinds: [{code,concept_id,concept,concept_title,cue,label,target_a_label,target_b_label,partner_label,dist_m,press_m}] }
     nlohmann::json lookups();
 
     // The plan for a matchup, or null; with its states (root first, then by
     // id), each { id, parent_state_id, ball_with, opponents: [{number,x,y}],
-    // jobs: [{position_id,kind,target_a,target_b}] }.  Also our formation's
+    // jobs: [{position_id,kind,target_a,target_b,partner_position_id}] }.  Also our formation's
     // spots (our_positions) and theirs mirrored (opponent_base) for states
     // without stored opponents.
     nlohmann::json find(long long formationId, long long opponentFormationId,

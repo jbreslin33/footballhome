@@ -46,7 +46,7 @@ json TacticPlans::lookups() {
         out["blocks"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()},
                                  {"gk_y", r["gk_y"].as<double>()}});
     for (const auto& r : db->query(
-             "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, k.label, k.target_a_label, k.target_b_label, "
+             "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, k.label, k.target_a_label, k.target_b_label, k.partner_label, "
              "       k.dist_m::float8 AS dist_m, k.press_m::float8 AS press_m "
              "  FROM tactic_job_kinds k JOIN game_concepts c ON c.id = k.concept_id ORDER BY k.sort_order")) {
         out["kinds"].push_back({{"code", r["code"].as<std::string>()},
@@ -57,6 +57,7 @@ json TacticPlans::lookups() {
                                 {"label", r["label"].as<std::string>()},
                                 {"target_a_label", r["target_a_label"].as<std::string>()},
                                 {"target_b_label", r["target_b_label"].is_null() ? json(nullptr) : json(r["target_b_label"].as<std::string>())},
+                                {"partner_label", r["partner_label"].is_null() ? json(nullptr) : json(r["partner_label"].as<std::string>())},
                                 {"dist_m", r["dist_m"].as<double>()},
                                 {"press_m", r["press_m"].is_null() ? json(nullptr) : json(r["press_m"].as<double>())}});
     }
@@ -89,10 +90,11 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
                  "SELECT number, x::float8 AS x, y::float8 AS y FROM tactic_state_opponents WHERE state_id = $1::int ORDER BY number", {sid}))
             st["opponents"].push_back({{"number", o["number"].as<int>()}, {"x", o["x"].as<double>()}, {"y", o["y"].as<double>()}});
         for (const auto& j : db->query(
-                 "SELECT position_id, kind, target_a, target_b FROM tactic_jobs WHERE state_id = $1::int ORDER BY position_id", {sid}))
+                 "SELECT position_id, kind, target_a, target_b, partner_position_id FROM tactic_jobs WHERE state_id = $1::int ORDER BY position_id", {sid}))
             st["jobs"].push_back({{"position_id", j["position_id"].as<int>()}, {"kind", j["kind"].as<std::string>()},
                                   {"target_a", j["target_a"].as<int>()},
-                                  {"target_b", j["target_b"].is_null() ? json(nullptr) : json(j["target_b"].as<int>())}});
+                                  {"target_b", j["target_b"].is_null() ? json(nullptr) : json(j["target_b"].as<int>())},
+                                  {"partner_position_id", j["partner_position_id"].is_null() ? json(nullptr) : json(j["partner_position_id"].as<int>())}});
         out["states"].push_back(std::move(st));
     }
     return out;
@@ -123,12 +125,23 @@ long long TacticPlans::create(long long formationId, long long opponentFormation
         }
         const long long planId = ins[0]["id"].as<long long>();
         auto st = tx->exec_params("INSERT INTO tactic_states (plan_id, ball_with) VALUES ($1, 1) RETURNING id", planId);
-        // Their formation mirrored: their right on our left, attacking down.
-        tx->exec_params(
-            std::string("INSERT INTO tactic_state_opponents (state_id, number, x, y) "
-                        "SELECT $2::int, pid, 100 - x, 100 - y FROM (") + kSlotsSql + ") q "
-            "ON CONFLICT DO NOTHING",
-            opponentFormationId, st[0]["id"].as<long long>());
+        const long long rootId = st[0]["id"].as<long long>();
+        // Out of possession, their GK on the ball = their build-out from a
+        // goal kick (tactic_buildout_shapes, mig 1129: CBs split inside the
+        // box, full-backs high and wide).  Otherwise, or with no shape for
+        // that formation, their formation mirrored: their right on our left.
+        auto shaped = moment == "out_of_possession"
+            ? tx->exec_params(
+                  "INSERT INTO tactic_state_opponents (state_id, number, x, y) "
+                  "SELECT $1, number, x, y FROM tactic_buildout_shapes WHERE formation_id = $2 RETURNING number",
+                  rootId, opponentFormationId)
+            : pqxx::result{};
+        if (shaped.empty())
+            tx->exec_params(
+                std::string("INSERT INTO tactic_state_opponents (state_id, number, x, y) "
+                            "SELECT $2::int, pid, 100 - x, 100 - y FROM (") + kSlotsSql + ") q "
+                "ON CONFLICT DO NOTHING",
+                opponentFormationId, rootId);
         db->commit(tx);
         return planId;
     } catch (...) {
@@ -156,8 +169,8 @@ long long TacticPlans::addState(long long parentStateId, int ballWith) {
             id = ins[0]["id"].as<long long>();
             tx->exec_params("INSERT INTO tactic_state_opponents (state_id, number, x, y) "
                             "SELECT $1, number, x, y FROM tactic_state_opponents WHERE state_id = $2", id, parentStateId);
-            tx->exec_params("INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b) "
-                            "SELECT $1, position_id, kind, target_a, target_b FROM tactic_jobs WHERE state_id = $2", id, parentStateId);
+            tx->exec_params("INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b, partner_position_id) "
+                            "SELECT $1, position_id, kind, target_a, target_b, partner_position_id FROM tactic_jobs WHERE state_id = $2", id, parentStateId);
             tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", planId);
         }
         db->commit(tx);
@@ -181,11 +194,13 @@ bool TacticPlans::putState(long long stateId, const json& body) {
                             stateId, o.at("number").get<int>(), o.at("x").get<double>(), o.at("y").get<double>());
         for (const auto& j : body.at("jobs")) {
             const bool hasB = j.contains("target_b") && j["target_b"].is_number_integer();
+            const bool hasP = j.contains("partner_position_id") && j["partner_position_id"].is_number_integer();
             tx->exec_params(
-                "INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b) "
-                "VALUES ($1, $2, $3, $4, CASE WHEN $5::boolean THEN $6::smallint END)",
+                "INSERT INTO tactic_jobs (state_id, position_id, kind, target_a, target_b, partner_position_id) "
+                "VALUES ($1, $2, $3, $4, CASE WHEN $5::boolean THEN $6::smallint END, CASE WHEN $7::boolean THEN $8::smallint END)",
                 stateId, j.at("position_id").get<int>(), j.at("kind").get<std::string>(),
-                j.at("target_a").get<int>(), hasB, hasB ? j["target_b"].get<int>() : 0);
+                j.at("target_a").get<int>(), hasB, hasB ? j["target_b"].get<int>() : 0,
+                hasP, hasP ? j["partner_position_id"].get<int>() : 0);
         }
         tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", st[0]["plan_id"].as<long long>());
         db->commit(tx);

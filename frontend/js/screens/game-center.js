@@ -2090,7 +2090,19 @@ class GameCenterScreen extends EventScreen {
   _planJobText(job) {
     const k = job && this._planKinds()[job.kind];
     if (!k || job.target_a == null) return '';
-    return `${k.target_a_label} ${job.target_a}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '');
+    return `${k.target_a_label} ${job.target_a}` + (k.target_b_label && job.target_b != null ? ` · ${k.target_b_label} ${job.target_b}` : '')
+      + (k.partner_label && job.partner_position_id != null ? ` · ${k.partner_label} ${this._planOurNumber(job.partner_position_id)}` : '');
+  }
+
+  // Our slot's number as drawn (position id → formation sort order).
+  _planOurNumber(pid) {
+    const pos = this._slotMaps().startingPositions.find(p => p.id === Number(pid));
+    return pos ? pos.sortOrder : pid;
+  }
+
+  _planJobComplete(j) {
+    const k = this._planKinds()[j.kind];
+    return j.target_a != null && (!k || !k.partner_label || j.partner_position_id != null);
   }
 
   _planHtml() {
@@ -2173,10 +2185,25 @@ class GameCenterScreen extends EventScreen {
           <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
           ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
         ${job ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind ? kind.target_a_label : '')}</span> ${numSel('target_a', job.target_a)}` : ''}
-        ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}`;
+        ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}
+        ${job && kind && kind.partner_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.partner_label)}</span> ${this._planPartnerSel(pid, job.partner_position_id, css)}` : ''}`;
     }
     return job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
       : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
+  }
+
+  // "with?" — one of ours for a partnered job (straddle): every outfield
+  // slot but his own, by number and the day's name.
+  _planPartnerSel(pid, value, css) {
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const { rosterById, slotToPlayerId, startingPositions } = this._slotMaps();
+    const opts = startingPositions.filter(pos => pos.id !== 1 && pos.id !== pid).map(pos => {
+      const occ = rosterById.get(slotToPlayerId.get(pos.id));
+      return `<option value="${pos.id}" ${Number(value) === pos.id ? 'selected' : ''}>#${esc(pos.sortOrder)}${occ ? ' ' + esc(occ.name) : ''}</option>`;
+    }).join('');
+    const pending = value == null;
+    return `<select data-gc-tp-job="${pid}" data-gc-tp-field="partner_position_id" style="${css}${pending ? ' border-color:#f59e0b; box-shadow:0 0 0 2px rgba(245,158,11,0.45);' : ''}">
+        ${pending ? `<option value="" selected>${esc(this._copyTactics('with_who') || '— with? —')}</option>` : ''}${opts}</select>`;
   }
 
   // Tap a player on the pitch: his sheet — who, the situation, his job,
@@ -2259,6 +2286,20 @@ class GameCenterScreen extends EventScreen {
       },
     });
     this._tacticsPitchObj.mount(el);
+    const from = this._planGlideFrom;
+    this._planGlideFrom = null;
+    if (from && from.players.length === sit.players.length && !p.playing) {
+      const pitch = this._tacticsPitchObj, to = sit, t0 = performance.now(), ms = 450;
+      const frame = (now) => {
+        if (this._tacticsPitchObj !== pitch) return;
+        const t = Math.min(1, (now - t0) / ms), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const mix = (xs, ys) => ys.map((y, k) => ({ ...y, ...TacticGeometry.lerp(xs[k] || y, y, e) }));
+        pitch.update({ ball: TacticGeometry.lerp(from.ball, to.ball, e), players: mix(from.players, to.players), opponents: mix(from.opponents, to.opponents) });
+        if (t < 1) requestAnimationFrame(frame);
+      };
+      pitch.update(from);
+      requestAnimationFrame(frame);
+    }
   }
 
   async _planFetch(url, opts) {
@@ -2315,17 +2356,21 @@ class GameCenterScreen extends EventScreen {
     const cur = this._planState(p.stateId);
     const d = live ? (cur ? JSON.parse(JSON.stringify(cur)) : null) : p.draft;
     if (!d) return;
+    // Where everyone stood before this instruction — _mountPlan glides
+    // them from here to their new spots (owner 11/6: "after i tell a player
+    // what to do it should reflect right away").
+    this._planGlideFrom = this._planSituation(live ? cur : p.draft);
     if (live && (!d.opponents || !d.opponents.length)) d.opponents = this._planSituation(cur).opponents.map(o => ({ number: o.number, x: o.x, y: o.y }));
     this._applyPlanJob(d, pid, field, value);
     const mine = (d.jobs || []).find(j => Number(j.position_id) === pid);
-    if (mine && mine.target_a == null) p.popupPid = pid;   // prompt: who?
+    if (mine && !this._planJobComplete(mine)) p.popupPid = pid;   // prompt: who? / with?
     if (!live) { this._render(); return; }
     const list = this._planStates();
     const i = list.findIndex(st => st.id === d.id);
     if (i >= 0) list[i] = d;
     p.msg = '';
     this._render();
-    this._putPlanState(d).then(() => { p.msg = mine && mine.target_a == null ? '' : (this._copyTactics('saved') || 'Saved ✓'); this._render(); })
+    this._putPlanState(d).then(() => { p.msg = mine && !this._planJobComplete(mine) ? '' : (this._copyTactics('saved') || 'Saved ✓'); this._render(); })
       .catch(err => { p.msg = `⚠ ${err.message}`; this._reloadPlanTo(d.id); });
   }
 
@@ -2333,21 +2378,48 @@ class GameCenterScreen extends EventScreen {
   _putPlanState(d) {
     return this._planFetch(`/api/tactic-plans/states/${d.id}`, { method: 'PUT', body: JSON.stringify({
       opponents: (d.opponents || []).map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) })),
-      jobs: (d.jobs || []).filter(j => j.target_a != null).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a), target_b: j.target_b == null ? null : Number(j.target_b) })),
+      jobs: (d.jobs || []).filter(j => this._planJobComplete(j)).map(j => ({ position_id: Number(j.position_id), kind: j.kind, target_a: Number(j.target_a),
+        target_b: j.target_b == null ? null : Number(j.target_b), partner_position_id: j.partner_position_id == null ? null : Number(j.partner_position_id) })),
     }) });
   }
 
   _applyPlanJob(d, pid, field, value) {
     d.jobs = d.jobs || [];
     let job = d.jobs.find(j => Number(j.position_id) === pid);
+    // Partnered jobs (straddle) live in pairs: dropping one drops its mate.
+    const dropMate = (j) => {
+      if (!j || j.partner_position_id == null) return;
+      const mate = Number(j.partner_position_id);
+      d.jobs = d.jobs.filter(x => !(Number(x.position_id) === mate && Number(x.partner_position_id) === Number(j.position_id)));
+    };
+    if (field === 'partner_position_id') {
+      if (!job) return;
+      const q = value === '' ? null : Number(value);
+      dropMate(job);
+      job.partner_position_id = q;
+      if (q != null) {
+        // Owner 11/6: "it asks who the 7 will straddle with (11) and then it
+        // updates 11 too" — the partner takes the mirrored job, leaving any
+        // pair he was in.
+        const old = d.jobs.find(x => Number(x.position_id) === q);
+        if (old) { dropMate(old); d.jobs = d.jobs.filter(x => Number(x.position_id) !== q); }
+        d.jobs.push({ position_id: q, kind: job.kind, target_a: job.target_a, target_b: null, partner_position_id: pid });
+      }
+      return;
+    }
+    if (field === 'target_a' && job && job.partner_position_id != null) {
+      const mate = d.jobs.find(x => Number(x.position_id) === Number(job.partner_position_id));
+      if (mate) mate.target_a = value === '' ? null : Number(value);
+    }
     if (field === 'kind') {
+      if (job && job.kind !== value) { dropMate(job); job.partner_position_id = null; }
       if (!value) { d.jobs = d.jobs.filter(j => Number(j.position_id) !== pid); return; }
       const kind = this._planKinds()[value];
       // A new or changed job asks for its man first (owner 11/6: "if i pick
       // cover shadow it should then prompt for who to cover shadow AND it's
       // assumed that is from the current ball carrier") — the shadow line
       // always runs from whoever has the ball, so only the man is asked.
-      if (!job) { job = { position_id: pid, kind: value, target_a: null, target_b: null }; d.jobs.push(job); }
+      if (!job) { job = { position_id: pid, kind: value, target_a: null, target_b: null, partner_position_id: null }; d.jobs.push(job); }
       else if (job.kind !== value) { job.target_a = null; job.target_b = null; }
       job.kind = value;
       if (!kind || !kind.target_b_label) job.target_b = null;
