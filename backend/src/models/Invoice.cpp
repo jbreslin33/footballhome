@@ -1,5 +1,8 @@
 #include "Invoice.h"
 
+#include <map>
+#include <sstream>
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -284,6 +287,15 @@ json Invoice::get(long long invoiceId) {
                l.plan_id, l.installment_no, l.sort_order, COALESCE(l.budget_line_id, p.budget_line_id) AS budget_line_id,
                p.installment_count, p.total_amount AS plan_total, p.show_total,
                (SELECT COUNT(*) FROM ref_fee_payments rp WHERE rp.invoice_line_id = l.id) AS ref_games,
+               -- Which sections a referees line pays for (mig 1138): its games'
+               -- policies — on this line or any payment of the same plan — plus
+               -- a section set on the plan or the line (hand lines: women's fee).
+               (SELECT string_agg(cs.invoice_label, ', ' ORDER BY cs.sort_order) FROM club_sections cs
+                 WHERE l.category = 'referees' AND cs.id IN (
+                       SELECT pol.club_section_id FROM ref_fee_payments rp JOIN ref_fee_policies pol ON pol.id = rp.policy_id
+                        WHERE rp.invoice_line_id = l.id
+                           OR rp.invoice_line_id IN (SELECT x.id FROM invoice_lines x WHERE x.plan_id = l.plan_id)
+                       UNION SELECT p.club_section_id UNION SELECT l.club_section_id)) AS ref_sections,
                l.line_date::text AS line_date,
                (CASE WHEN l.line_date BETWEEN v.period_start AND v.period_end THEN l.line_date
                      ELSE COALESCE(v.period_start, v.invoice_date) END)::text AS day
@@ -316,6 +328,8 @@ json Invoice::get(long long invoiceId) {
             {"installment_count", l["installment_count"].is_null() ? json(nullptr) : json(l["installment_count"].as<int>())},
             {"budget_line_id", l["budget_line_id"].is_null() ? json(nullptr) : json(l["budget_line_id"].as<long long>())},
             {"ref_games", l["ref_games"].as<long long>()},
+            {"ref_sections", str(l, "ref_sections")},
+            {"plan_total", l["plan_total"].is_null() ? json(nullptr) : json(num(l, "plan_total"))},
             {"sort_order", l["sort_order"].as<int>()},
             // Every line has a day (mig 703; owner 2026-10-26: "everything
             // should have a date even if artificial"): its own line_date
@@ -332,19 +346,58 @@ json Invoice::get(long long invoiceId) {
     // amounts summed.  `lines` stays one entry per line for the calendar.
     out["sheet_lines"] = json::array();
     {
-        json refRow = nullptr;
+        // Short and one row per "k of N" (owner 2026-11-06: "text for ref desc
+        // is too small. can just say refs. (Men,Women,Boys,Girls)" … "xofx"):
+        // referees lines that are the same payment of their plans fold into
+        // one row — "Refs (Men, Women, Boys) 1 of 2 · $1,079.42 total" — the
+        // sections from the games; unsplit referees lines fold into a plain
+        // "Refs (…)" row.  Copy: invoices/refs_line + plan_line.
+        struct RefGroup { json row; std::vector<std::string> sections; double planTotal = 0; int k = 0, n = 0; };
+        std::vector<std::string> order;
+        std::map<std::string, RefGroup> groups;
         for (const auto& l : out["lines"]) {
             if (l["category"] != "referees") { out["sheet_lines"].push_back(l); continue; }
-            if (refRow.is_null()) { refRow = l; out["sheet_lines"].push_back(nullptr); continue; }
-            const bool picked = l["ref_games"].get<long long>() > 0 && refRow["ref_games"].get<long long>() == 0;
-            refRow["printed"] = picked ? l["printed"].get<std::string>() + " + " + refRow["printed"].get<std::string>()
-                                       : refRow["printed"].get<std::string>() + " + " + l["printed"].get<std::string>();
-            refRow["amount"] = round2(refRow["amount"].get<double>() + l["amount"].get<double>());
-            refRow["ref_games"] = refRow["ref_games"].get<long long>() + l["ref_games"].get<long long>();
+            const bool plan = l["installment_no"].is_number() && l["installment_count"].is_number();
+            const std::string key = plan ? std::to_string(l["installment_no"].get<int>()) + "/" + std::to_string(l["installment_count"].get<int>()) : "-";
+            auto it = groups.find(key);
+            if (it == groups.end()) {
+                RefGroup g; g.row = l; g.row["amount"] = 0.0; g.row["ref_games"] = 0LL;
+                if (plan) { g.k = l["installment_no"].get<int>(); g.n = l["installment_count"].get<int>(); }
+                it = groups.emplace(key, g).first;
+                order.push_back(key);
+                out["sheet_lines"].push_back(json{{"__ref", key}});
+            }
+            auto& g = it->second;
+            g.row["amount"] = round2(g.row["amount"].get<double>() + l["amount"].get<double>());
+            g.row["ref_games"] = g.row["ref_games"].get<long long>() + l["ref_games"].get<long long>();
+            if (l["plan_total"].is_number()) g.planTotal += l["plan_total"].get<double>();
+            std::stringstream ss(l.value("ref_sections", std::string()));
+            for (std::string part; std::getline(ss, part, ',');) {
+                while (!part.empty() && part.front() == ' ') part.erase(0, 1);
+                if (!part.empty() && std::find(g.sections.begin(), g.sections.end(), part) == g.sections.end()) g.sections.push_back(part);
+            }
         }
-        if (!refRow.is_null()) {
-            refRow["quantity"] = 1; refRow["rate"] = refRow["amount"];
-            for (auto& r : out["sheet_lines"]) if (r.is_null()) { r = refRow; break; }
+        // Section order follows club_sections (the SQL already ordered each line's list).
+        std::vector<std::string> sectionOrder;
+        for (const auto& r : db_->query("SELECT invoice_label FROM club_sections WHERE invoice_label IS NOT NULL ORDER BY sort_order"))
+            sectionOrder.push_back(r["invoice_label"].c_str());
+        MessageCopy refCopy;
+        for (auto& sl : out["sheet_lines"]) {
+            if (!sl.is_object() || !sl.contains("__ref")) continue;
+            auto& g = groups[sl["__ref"].get<std::string>()];
+            std::string secs;
+            for (const auto& name : sectionOrder)
+                if (std::find(g.sections.begin(), g.sections.end(), name) != g.sections.end()) secs += (secs.empty() ? "" : ", ") + name;
+            const auto head = refCopy.render("invoices", "refs_line", {{"sections", secs}});
+            std::string printed = head.ok() ? head.body : (secs.empty() ? std::string("Refs") : "Refs (" + secs + ")");
+            if (g.n > 0) {
+                const auto r = refCopy.render("invoices", "plan_line",
+                    {{"description", printed}, {"k", std::to_string(g.k)}, {"n", std::to_string(g.n)}, {"total", moneyShort(g.planTotal)}});
+                printed = r.ok() ? r.body : printed + " " + std::to_string(g.k) + " of " + std::to_string(g.n) + " · " + moneyShort(g.planTotal) + " total";
+            }
+            g.row["printed"] = printed;
+            g.row["quantity"] = 1; g.row["rate"] = g.row["amount"];
+            sl = g.row;
         }
     }
 
