@@ -63,7 +63,8 @@ struct Stats {
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
     long rel_n[5] = {}, rel_shot[5] = {};
     long goal_by[ai::kWhyCount + 1] = {}, goal_own = 0;
-    std::vector<double> near_band[5];
+    std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
+    long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
     long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
@@ -642,13 +643,32 @@ int main(int argc, char** argv) {
                     skip = true;
                 }
                 if (cr >= 0) {   // the nearest defender to the man on the ball (DFL: benchmarks_tracking_press.py)
-                    double nd2 = 1e9;
+                    double nd2 = 1e9; bool ngs = false; int nj = -1;
+                    const auto& cp = W.player(static_cast<std::uint8_t>(cr));
                     for (std::uint8_t j = 0; j < N; ++j)
-                        if (!W.isKeeper(j) && W.player(j).team != a)
-                            nd2 = std::min(nd2, std::hypot(W.player(j).pos.x.toDouble() - W.player(static_cast<std::uint8_t>(cr)).pos.x.toDouble(),
-                                                           W.player(j).pos.y.toDouble() - W.player(static_cast<std::uint8_t>(cr)).pos.y.toDouble()));
+                        if (!W.isKeeper(j) && W.player(j).team != a) {
+                            const double dd = std::hypot(W.player(j).pos.x.toDouble() - cp.pos.x.toDouble(), W.player(j).pos.y.toDouble() - cp.pos.y.toDouble());
+                            // goal-side: nearer the defenders' goal line than the carrier (§8.139)
+                            if (dd < nd2) { nd2 = dd; nj = j; ngs = (W.player(j).pos.x.toDouble() - cp.pos.x.toDouble()) * sg > 0; }
+                        }
                     const int nb = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
-                    if (nd2 < 1e8) S.near_band[nb].push_back(nd2);
+                    if (nd2 < 1e8) { S.near_band[nb].push_back(nd2); ++S.near_n[nb]; S.near_gs[nb] += ngs; }
+                    if (nj >= 0 && nb <= 1 && !ngs && std::getenv("GAME_PRESS_TRACE") && s.lastOrders()[nj].why == ai::Why::Press) {
+                        const auto& q = W.player(static_cast<std::uint8_t>(nj));
+                        const auto& lo = s.lastOrders()[nj];
+                        std::fprintf(stderr, "press k %ld tl %.1f | car %.1f,%.1f v %.1f,%.1f | def %.1f,%.1f v %.1f,%.1f tgt %.1f,%.1f mv %.2f,%.2f rec %d | d %.1f\n", k, tl,
+                                     cp.pos.x.toDouble() * sg, cp.pos.y.toDouble(), cp.vel.x.toDouble() * sg, cp.vel.y.toDouble(),
+                                     q.pos.x.toDouble() * sg, q.pos.y.toDouble(), q.vel.x.toDouble() * sg, q.vel.y.toDouble(),
+                                     lo.target.x.toDouble() * sg, lo.target.y.toDouble(), lo.move.move.x.toDouble() * sg, lo.move.move.y.toDouble(),
+                                     q.recovery_ticks, nd2);
+                    }
+                    if (nj >= 0 && nb <= 1) {   // §8.139: who the nearest is, ball within 35 m of their goal
+                        ++S.near_why[ngs ? 1 : 0][static_cast<int>(s.lastOrders()[nj].why)];
+                        const double cvx = cp.vel.x.toDouble() * sg;   // the carrier's speed toward their goal
+                        S.near_cv[ngs ? 1 : 0] += cvx; ++S.near_cvn[ngs ? 1 : 0];
+                        const double held = (static_cast<long>(k) - static_cast<long>(W.ownedAtTick())) / 30.0;
+                        S.near_held[ngs ? 1 : 0] += held;
+                    }
                 }
                 if (!skip && cr >= 0) {
                     double dist[32]; int nd = 0, w5 = 0, bj = -1; double best = 1e9;
@@ -817,7 +837,17 @@ int main(int argc, char** argv) {
             std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end());
             std::printf(" %s %.1f (%.1f);", nbn[i], v[v.size() / 2], real_med[i]);
         }
+        std::printf("\n   ...goal-side of him (nearer the defenders' goal line), by band:");
+        for (int i = 0; i < 5; ++i) if (S.near_n[i]) std::printf(" %s %.1f%%;", nbn[i], 100.0 * S.near_gs[i] / S.near_n[i]);
         std::printf("\n");
+        for (int g = 0; g < 2; ++g) {
+            long t = 0; for (int w = 0; w < ai::kWhyCount; ++w) t += S.near_why[g][w];
+            if (!t) continue;
+            std::printf("   ...ball 0-35 m out, nearest %s: carrier toward goal %.2f m/s, on it %.2f s; his order:", g ? "goal-side" : "NOT goal-side",
+                        S.near_cv[g] / S.near_cvn[g], S.near_held[g] / S.near_cvn[g]);
+            for (int w = 0; w < ai::kWhyCount; ++w) if (S.near_why[g][w] * 50 >= t) std::printf(" %s %.0f%%;", ai::kWhyNames[w], 100.0 * S.near_why[g][w] / t);
+            std::printf("\n");
+        }
     }
     {
         static const char* bzn[6] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide"};

@@ -54,12 +54,13 @@ def one(pos_path):
                 cd = (d, x, y)
         if cd is None:
             continue
-        near = min((((x - cd[1]) ** 2 + (y - cd[2]) ** 2) ** 0.5 for pid, (x, y) in fr.items()
-                    if who.get(pid) is not None and who[pid] != att and pid not in keepers), default=None)
-        if near is None:
+        nb = min(((((x - cd[1]) ** 2 + (y - cd[2]) ** 2) ** 0.5, x) for pid, (x, y) in fr.items()
+                  if who.get(pid) is not None and who[pid] != att and pid not in keepers), default=None)
+        if nb is None:
             continue
         b = sum(btl >= t for t in EDGES)
-        c[b].append(near)
+        # G5.39 (§8.139): is he goal-side — nearer the defenders' goal line (x = g * half) than the carrier?
+        c[b].append((nb[0], nb[1] * g > cd[1] * g))
     return dict(c)
 
 
@@ -71,8 +72,10 @@ with multiprocessing.Pool(3) as pool:
             allc[k].extend(v)
 print(f"{len(files)} DFL matches: the nearest defender to the man on the ball, by the ball's metres from their line")
 for b, name in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
-    v = sorted(allc.get(b, []))
-    if not v:
+    raw = allc.get(b, [])
+    if not raw:
         continue
+    gs = 100 * sum(1 for x in raw if x[1]) / len(raw)
+    v = sorted(x[0] for x in raw)
     q = lambda p: v[min(len(v) - 1, int(p * len(v)))]
-    print(f"   {name:6s} frames {len(v):6d}  p25 {q(.25):4.1f}  median {q(.5):4.1f}  p75 {q(.75):4.1f} m;  inside 2 m {100*sum(x < 2 for x in v)/len(v):4.1f}%  3 m {100*sum(x < 3 for x in v)/len(v):4.1f}%  5 m {100*sum(x < 5 for x in v)/len(v):4.1f}%")
+    print(f"   {name:6s} frames {len(v):6d}  p25 {q(.25):4.1f}  median {q(.5):4.1f}  p75 {q(.75):4.1f} m;  inside 2 m {100*sum(x < 2 for x in v)/len(v):4.1f}%  3 m {100*sum(x < 3 for x in v)/len(v):4.1f}%  5 m {100*sum(x < 5 for x in v)/len(v):4.1f}%;  goal-side {gs:4.1f}%")

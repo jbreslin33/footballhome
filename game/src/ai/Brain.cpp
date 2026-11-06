@@ -596,9 +596,24 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     if (!leading && math::dot(o.move.move, d) < mlen * dist * Fixed64::fromFraction(9, 10)) return;
     Fixed64 v_end = Fixed64::zero();
     switch (o.why) {
-        case Why::Chase: case Why::MeetPass: case Why::Press:
+        case Why::Chase: case Why::MeetPass:
             v_end = arrive_through_;
             break;
+        case Why::Press: {
+            // G5.39 (§8.139): his spot moves with their carrier — he arrives at
+            // it no slower than the carrier runs (tracking, not pursuit, as the
+            // block's G5.30). Braked to arrive at 3 m/s on a spot running at goal
+            // at 4-5, the presser trailed behind the carrier he was meant to be
+            // goal-side of (the nearest man goal-side 32% with the ball 0-18 m
+            // out; real 60%, DFL).
+            v_end = arrive_through_;
+            if (world.ball().owner) {
+                const auto& cv = world.player(*world.ball().owner).vel;
+                const Fixed64 cs = math::fx_sqrt(cv.x * cv.x + cv.y * cv.y);
+                if (cs > v_end) v_end = cs;
+            }
+            break;
+        }
         default: break;
     }
     Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);

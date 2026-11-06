@@ -6145,3 +6145,32 @@ the width defaults).
 **Next moles.** (1) Goal-side first: the presser's approach (and the second man's cover) onto the
 ball-goal line. (2) Penalties: a foul in our box gives a free kick on the spot (Law 14: a penalty).
 (3) Shots 7-8 a team-match (12.9).
+
+### 8.139 G5.39 — the presser tracks his moving spot; goal-side first is the 1v1 (no migration)
+
+§8.138's next: the nearest man to their carrier goal-side.
+
+**Real** (`benchmarks_tracking_press.py` now prints it; DFL, the nearest outfield defender to the
+man on the ball, goal-side = nearer the defenders' goal line): 60.2 / 71.4 / 73.1 / 80.0 / 85.4%
+with the ball 0-18 / 18-35 / 35-52 / 52-70 / 70+ m from their goal. The game: 31.8 / 54.2 / 66.9
+/ 71.6 / 80.0%. Inside 35 m the not-goal-side nearest man is the presser 49% of the time (hold
+shape 28, chasing 22), the carrier running at goal 2.8 m/s, on it 2.6 s. Traced: the presser
+behind, running at 50-90% of his top speed — braked to arrive at 3 m/s on a spot that moves with
+the carrier at 4-5.
+
+**Built.** Pressing, he arrives at his spot no slower than their carrier runs (`brakeToArrive`,
+Why::Press: v_end = max(arrive_through, carrier speed)) — tracking, not pursuit, as the block's
+G5.30. Goal-side nearest with the ball 0-18 m out 31.8 → ~39% (4 seeds: 33-44); the other bands
+unchanged; nothing else moved (shots, scoring, speeds, shape).
+
+**Tried and dropped** (no effect, removed): the presser chosen as the nearest who is goal-side
+(a man behind counts 3 / 6 m further: 0-18 m 28-40%); turning to run when retreating instead of
+backpedalling facing the carrier (0-18 m ~42%, the rest unchanged); a route round the carrier
+1.5 m to his side when behind him (unchanged).
+
+**What it is.** Take-ons 107 a team-match by the DFL cut (44.2) through all of it: their carrier
+beats our man 2.5× as often as real, and a beaten man is behind the ball. Goal-side is the 1v1 —
+the jockey and the tackle — not the presser's choice or path.
+
+**Next moles.** (1) The 1v1: take-ons 2.5×. (2) Law 14 — a foul in our area gives a free kick on
+the spot, not a penalty. (3) The tactic plans' reader.
