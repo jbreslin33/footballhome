@@ -3424,6 +3424,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 "                WHERE fet3.fh_event_id = i.fh_event_id) AS call_in, "
                 "       i.channel, i.contact, er.response, p.parent_person_id, "
                 "       fh_event_invite_badge(i.fh_event_id, i.person_id)::text AS badge, "   // mig 1069
+                "       fh_person_official_lists(i.person_id)::text AS official_lists, "   // mig 1174
                 // Every recipient separately (mig 682): the player, or each
                 // parent of a kid — the 📇 Contact popup's WHO list.
                 "       (SELECT jsonb_agg(jsonb_build_object( "
@@ -3470,6 +3471,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"phone",            textOrNull(row, "phone")},
                 {"email",            textOrNull(row, "email")},
                 {"recipients",       parseJsonArray(row, "recipients")},
+                {"official_lists",   parseJsonArray(row, "official_lists")},
                 {"badge",            row["badge"].is_null() ? json(nullptr) : json::parse(row["badge"].c_str(), nullptr, false)},
             });
         }
@@ -3499,6 +3501,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
                 "                (SELECT email FROM person_emails WHERE person_id = p.parent_person_id "
                 "                  ORDER BY is_primary DESC, id ASC LIMIT 1)) AS email "
+                "       , fh_person_official_lists(c.person_id)::text AS official_lists "   // mig 1174
                 "  FROM fh_event_invite_candidates($1::bigint) c "
                 "  JOIN persons p ON p.id = c.person_id "
                 " ORDER BY c.from_team_name, p.last_name, p.first_name, p.id",
@@ -3516,6 +3519,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 {"phone",            textOrNull(row, "phone")},
                 {"email",            textOrNull(row, "email")},
                 {"recipients",       parseJsonArray(row, "recipients")},
+                {"official_lists",   parseJsonArray(row, "official_lists")},
             });
         }
 

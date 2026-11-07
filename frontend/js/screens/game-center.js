@@ -1089,6 +1089,9 @@ class GameCenterScreen extends EventScreen {
       if (squadBtn && this.isCoach && !squadBtn.disabled) { this._sendSquadNotice(squadBtn); return; }
       const remindAll = e.target.closest('[data-gc-remind-all]');
       if (remindAll && this.isCoach && !remindAll.disabled) { this._remindNoResponse(remindAll); return; }
+      // 🎟 Everyone / <team> Official pill (mig 1174).
+      const invPill = e.target.closest('[data-gc-inv-pill]');
+      if (invPill && this.realIsCoach) { this._invPill = { ev: this._fhEventId(), key: invPill.dataset.gcInvPill }; this._invOpen = true; this._render(); return; }
       const invRevoke = e.target.closest('[data-gc-inv-revoke]');
       if (invRevoke && this.realIsCoach && !invRevoke.disabled) { this._revokeInvite(invRevoke); return; }
       const autoInv = e.target.closest('[data-gc-auto-inv]');
@@ -5037,10 +5040,13 @@ class GameCenterScreen extends EventScreen {
       const bits = [r.phone ? `📞 ${r.phone}` : '', r.email ? `✉ ${r.email}` : ''].filter(Boolean);
       return bits.length ? `<span style="font-size:0.66rem; opacity:0.65; overflow-wrap:anywhere;">${esc(bits.join(' · '))}</span>` : '';
     };
+    // ✓ <team> official on a name on a league/club official roster (mig 1174).
+    const officialChips = (r) => (r.official_lists || []).map(l =>
+      `<span style="font-size:0.66rem; font-weight:700; color:#86efac; margin-left:6px; white-space:nowrap;">${esc(copy('official_chip', { team: l.team }) || `✓ ${l.team} official`)}</span>`).join('');
     const standing = data.invites.filter(r => r.auto);
     const invited = data.invites.filter(r => !r.auto).map(r => row(`
         <span style="font-size:0.9em; display:flex; flex-direction:column; min-width:0;">
-          <span>${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}</span>
+          <span>${esc(nm(r))}${r.from_team ? `<span style="font-size:0.72rem; opacity:0.6;"> · ${esc(r.from_team)}</span>` : ''}${officialChips(r)}</span>
           ${contactBits(r)}
         </span>
         <span style="display:inline-flex; align-items:center; gap:8px;">
@@ -5051,8 +5057,31 @@ class GameCenterScreen extends EventScreen {
                   style="font-size:0.72rem; font-weight:700; color:#fca5a5; background:transparent;
                          border:1px solid rgba(248,113,113,0.5); padding:2px 8px; border-radius:999px; cursor:pointer;">✕</button>
         </span>`)).join('');
+    // Everyone / <team> Official pills (mig 1174; owner 11/7: "need to
+    // know which ones are on the u8 roster official so i know they are
+    // eligible … same with all teams that have call up functionality").
+    // One pill per official list that carries someone in this panel; a
+    // name on a list wears its chip in every view.
+    const lists = new Map();
+    for (const c of data.candidates) for (const l of (c.official_lists || [])) {
+      const k = String(l.team_id);
+      if (!lists.has(k)) lists.set(k, { team: l.team, n: 0 });
+      lists.get(k).n++;
+    }
+    let pill = (this._invPill && this._invPill.ev === this._fhEventId()) ? this._invPill.key : 'all';
+    if (pill !== 'all' && !lists.has(pill)) pill = 'all';
+    const shown = pill === 'all' ? data.candidates
+      : data.candidates.filter(c => (c.official_lists || []).some(l => String(l.team_id) === pill));
+    const pillBtn = (key, label, n) => `<button type="button" data-gc-inv-pill="${key}"
+        style="font-size:0.72rem; font-weight:700; padding:3px 10px; border-radius:999px; cursor:pointer;
+               border:1px solid ${pill === key ? '#22c55e' : 'var(--border-color)'};
+               background:${pill === key ? 'rgba(34,197,94,0.18)' : 'transparent'}; color:inherit;">${esc(label)} (${n})</button>`;
+    const pills = lists.size ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 6px;">
+        ${pillBtn('all', copy('pill_everyone') || 'Everyone', data.candidates.length)}
+        ${[...lists.entries()].map(([k, l]) => pillBtn(k, copy('pill_official', { team: l.team }) || `${l.team} Official`, l.n)).join('')}
+      </div>` : '';
     const byTeam = new Map();
-    for (const c of data.candidates) {
+    for (const c of shown) {
       const k = c.from_team || 'Other';
       if (!byTeam.has(k)) byTeam.set(k, []);
       byTeam.get(k).push(c);
@@ -5062,7 +5091,7 @@ class GameCenterScreen extends EventScreen {
       <div style="display:grid; gap:4px;">
         ${list.map(c => row(`
           <span style="font-size:0.9em; display:flex; flex-direction:column; min-width:0;">
-            <span>${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}</span>
+            <span>${esc(nm(c))}${c.single_age ? `<span style="font-size:0.72rem; opacity:0.6;"> · U${esc(String(c.single_age))}</span>` : ''}${officialChips(c)}</span>
             ${contactBits(c)}
           </span>
           <span style="display:inline-flex; align-items:center; gap:8px;">
@@ -5085,7 +5114,7 @@ class GameCenterScreen extends EventScreen {
           ${standing.map(r => `<span style="display:inline-flex; gap:4px; align-items:center;">${esc(nm(r))} ${autoBtn(r.person_id, r.from_team_id, true)}</span>`).join('')}
         </div>` : ''}
         ${invited ? `<div style="display:grid; gap:4px; margin-bottom:6px;">${invited}</div>` : ''}
-        ${data.candidates.length ? candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
+        ${data.candidates.length ? pills + candidates : `<div style="font-size:0.8rem; opacity:0.55;">Nobody eligible — everyone age-eligible in the program is rostered or already invited.</div>`}
       </details>`;
   }
 
