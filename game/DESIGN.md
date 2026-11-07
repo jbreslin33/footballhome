@@ -6348,3 +6348,35 @@ man is 1.2 m short of the line, 3.0 m beyond the ST mean; ours 3.9 short, 0.7 be
 stands at his role's mean spot, and the mean is not the man on the last defender. Real data first
 (who the front man is, how long he stays there), then the job. (2) Runners in the box 18-35 m
 (0.13 v 1.04) and crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.
+
+### 8.144 G5.44 — on the shoulder: measured, one try dropped (no behaviour change)
+
+§8.143's next: nobody plays on the shoulder.
+
+**Real** (new `scripts/benchmarks_tracking_shoulder.py`, DFL, the side in possession): its most
+advanced outfielder stands 1.6-2.2 m short of their offside line (second-last, keeper in, or the
+ball) at every band; within 2 m of it 35-54% of frames, 4+ m short 8-25%, past it 15-29%; the
+second man 2.7-4.5 m behind him; he is the ST 29-73% (rising with distance), a wide man 18-36%; a
+man stays the front man a median 2.2 s (p75 4.2). Every ST on: median 3.2-3.6 m short of the line,
+p10 ~0.5, p90 ~12 — a wide spread; the nearer of a two-ST side's pair a median 1.9.
+
+**The game** (new harness lines FRONT MAN v THEIR LINE and every ST's spread): front man 3.0-6.7 m
+short, within 2 m 3-29%, 4+ m short 28-84%, past it 0-9%, the second man 4-8 m behind, the ST
+64-99%. Every ST median 3.4-4.4 (real 3.2-3.6) but narrow: p10 1.2-2.4, p90 8.5-8.9 (0.5 / 12).
+
+**Tried and dropped.** The striker's spot as their line less a roll from the real every-ST spread
+(one roll a spell on the ball), with G5.30-style tracking of the line's velocity. His spread came
+right (p10 0.7-1.1, p90 10.7-13.1) and holders sat on their targets (0.3-0.7 m), but his median
+went 4.4 → 4.6-5.5 and the front man got no nearer (30-50 m: 4.2 / 4.5 → 4.9 / 5.2): the real spread
+is EVERY state a striker is in (receiving, running in, checking), and laid on his holding target
+alone it counts those again — §8.142's lesson on the ball. Shots 10.4 → 8.1, in behind 11.8 → 10.9.
+Reverted; the measurement stays.
+
+**What it says.** The real front man is near the line because several men are (second man 2.8 m
+behind, a wide man a quarter of the time), and 15-29% of the time he is past it — the line stepped
+up or he is running. Ours is one striker at a spot with nobody else near: the next try is the
+movement (runs onto and off the line, the wide man's run in behind — balls in behind 11.8 v 37.7),
+measured per state, not a spread on one target.
+
+**Next moles.** (1) The runs in behind and onto the line (above). (2) Runners in the box at
+18-35 m (0.13 v 1.04), crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.

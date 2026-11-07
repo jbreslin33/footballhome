@@ -102,6 +102,8 @@ struct Stats {
     long wg_n[4][10] = {}; double wg[4][10] = {};   // settled CB / FB pair gaps by band   // §8.138: the lane in open play, the CB pair
     std::vector<double> sh_near, sh_held; long sh_gs = 0;   // at the strike: nearest opponent to the shooter, s on the ball   // §8.138: bodies in the ±1 m lane at the strike; blocked by count   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
     long sh_n[5][ai::kRoleCount][3] = {}; double sh_at[5][ai::kRoleCount][3] = {}, sh_tg[5][ai::kRoleCount][3] = {};   // §8.143: possession side, ball still: holders / box runners / other, at v target
+    std::vector<double> st_short[10];   // §8.144: every ST's metres short of their line
+    long fm_n[10] = {}, fm_w1[10] = {}, fm_w2[10] = {}, fm_w4[10] = {}, fm_past[10] = {}, fm_r[10][ai::kRoleCount] = {}; double fm_gap[10] = {}, fm_gap2[10] = {}, fm_dy[10] = {};   // §8.144: the front man v their line
     long pl_n[5][4] = {}; long pl_k[5][4][ai::kRoleCount] = {}; double pl_s[5][4][ai::kRoleCount] = {}, pl_line[5][4] = {}, pl_front[5][4] = {};   // §8.143: the side in possession, the same split
     long dl_n[5][4] = {}; long dl_k[5][4][ai::kRoleCount] = {}; double dl_s[5][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
@@ -580,6 +582,26 @@ int main(int argc, char** argv) {
                     }
                 }
                 if (dn) { ++S.ds_f[bd]; S.ds_mid[bd] += dm / dn; }
+                {   // §8.144: our most advanced outfielder v their offside line (second-last, keeper in, or the ball)
+                    double l1 = 1e9, l2 = 1e9, f1 = 1e9, f2 = 1e9, fy = 0; int fj = -1;
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
+                        if (W.player(j).team == dteam) { if (ptl < l1) { l2 = l1; l1 = ptl; } else if (ptl < l2) l2 = ptl; }
+                        else if (!W.isKeeper(j)) { if (ptl < f1) { f2 = f1; f1 = ptl; fj = j; fy = W.player(j).pos.y.toDouble(); } else if (ptl < f2) f2 = ptl; }
+                    }
+                    if (fj >= 0 && f2 < 1e8 && l2 < 1e8) {
+                        const double line = std::min(l2, tl), sh = f1 - line;
+                        for (std::uint8_t j = 0; j < N; ++j)
+                            if (W.player(j).team != dteam && !W.isKeeper(j) && role(j) == 5)
+                                S.st_short[bd].push_back(hx - W.player(j).pos.x.toDouble() * sg - line);
+                        ++S.fm_n[bd]; S.fm_gap[bd] += sh; S.fm_gap2[bd] += f2 - f1; S.fm_dy[bd] += std::fabs(fy - by);
+                        if (sh >= 0 && sh < 1) ++S.fm_w1[bd];
+                        if (sh >= 0 && sh < 2) ++S.fm_w2[bd];
+                        if (sh >= 4) ++S.fm_w4[bd];
+                        if (sh < 0) ++S.fm_past[bd];
+                        ++S.fm_r[bd][role(static_cast<std::uint8_t>(fj))];
+                    }
+                }
                 if (plag_ok && pn) {   // §8.143: their offside line (second-last, keeper in) and our front man
                     double l1 = 1e9, l2 = 1e9;
                     for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == dteam) {
@@ -1066,6 +1088,35 @@ int main(int argc, char** argv) {
             {{45.1, 35.4, 33.6, 26.4, 25.8, 20.8, 17.1, 18.0}, {50.6, 40.0, 37.8, 30.9, 30.3, 25.6, 20.8, 22.2}, {55.5, 44.7, 42.6, 34.7, 33.9, 28.9, 23.8, 26.0}, {60.8, 50.5, 48.3, 39.2, 38.3, 33.1, 27.5, 29.7}},
             {{52.5, 41.9, 39.7, 31.5, 31.2, 27.1, 22.6, 23.7}, {56.5, 45.3, 43.9, 35.7, 35.3, 30.4, 26.0, 27.6}, {61.1, 50.4, 48.4, 40.3, 40.2, 34.5, 29.6, 31.7}, {66.5, 56.9, 54.4, 46.0, 44.3, 38.8, 33.4, 35.9}}};
         static const char* kVb[4] = {"back", "still", "forward 2-5", "forward 5+"};
+        {   // §8.144: real DFL, benchmarks_tracking_shoulder.py: short of line, 0-1 %, 0-2 %, 4+ %, past %, 2nd behind, ST %, WIDE %
+            static const double kR[10][8] = {{1.8, 30, 45, 16, 28.6, 4.1, 29, 36}, {1.6, 28, 54, 8, 16.3, 2.7, 46, 27}, {1.7, 22, 49, 10, 14.9, 2.8, 53, 25},
+                                             {1.9, 18, 40, 15, 15.6, 3.1, 58, 26}, {2.0, 18, 38, 18, 17.1, 3.2, 61, 25}, {2.1, 15, 35, 20, 18.6, 3.4, 66, 22},
+                                             {2.1, 16, 35, 21, 20.8, 3.7, 68, 21}, {2.1, 16, 34, 20, 23.5, 4.2, 71, 20}, {2.2, 17, 36, 18, 23.2, 4.5, 70, 20},
+                                             {3.1, 17, 36, 25, 19.1, 5.6, 73, 18}};
+            std::printf("FRONT MAN v THEIR LINE (our most advanced outfielder; benchmarks_tracking_shoulder.py, real DFL in brackets): band | m short | 0-1 m %% | 0-2 m %% | 4+ m %% | past %% | 2nd man behind m | ST %% | WIDE %%\n");
+            for (int bd = 0; bd < 10; ++bd) {
+                const double n = static_cast<double>(S.fm_n[bd]);
+                if (n < 20) continue;
+                std::printf("  %3d-%-3d | %4.1f (%3.1f) | %3.0f (%2.0f) | %3.0f (%2.0f) | %3.0f (%2.0f) | %4.1f (%4.1f) | %4.1f (%3.1f) | %3.0f (%2.0f) | %3.0f (%2.0f)\n", bd * 10, bd * 10 + 10,
+                            S.fm_gap[bd] / n, kR[bd][0], 100 * S.fm_w1[bd] / n, kR[bd][1], 100 * S.fm_w2[bd] / n, kR[bd][2], 100 * S.fm_w4[bd] / n, kR[bd][3],
+                            100 * S.fm_past[bd] / n, kR[bd][4], S.fm_gap2[bd] / n, kR[bd][5], 100 * S.fm_r[bd][5] / n, kR[bd][6], 100 * S.fm_r[bd][4] / n, kR[bd][7]);
+            }
+        }
+        {
+            static const double kQ[10][5] = {{0.8, 2.5, 5.5, 10.4, 16.7}, {0.6, 1.6, 3.3, 6.6, 12.3}, {0.5, 1.5, 3.2, 6.7, 11.6}, {0.5, 1.6, 3.5, 7.7, 12.5},
+                                             {0.3, 1.5, 3.6, 7.5, 12.6}, {0.1, 1.5, 3.5, 7.0, 12.4}, {-0.3, 1.2, 3.1, 6.7, 13.0}, {-0.6, 1.1, 3.0, 6.5, 13.5},
+                                             {-0.5, 1.0, 2.7, 6.3, 15.6}, {-0.2, 1.1, 3.1, 9.2, 21.1}};
+            std::printf("   every ST, m short of their line p10 / p25 / p50 / p75 / p90 (real DFL in brackets):\n");
+            for (int bd = 0; bd < 10; ++bd) {
+                auto& w = S.st_short[bd];
+                if (w.size() < 50) continue;
+                std::sort(w.begin(), w.end());
+                std::printf("  %3d-%-3d", bd * 10, bd * 10 + 10);
+                const double at[5] = {0.1, 0.25, 0.5, 0.75, 0.9};
+                for (int q = 0; q < 5; ++q) std::printf(" %5.1f (%5.1f)", w[static_cast<std::size_t>(at[q] * (w.size() - 1))], kQ[bd][q]);
+                std::printf("\n");
+            }
+        }
         std::printf("POSSESSION SIDE, BALL STILL: by role, share / at / target (m off their line) for hold shape | attack the box | anything else\n");
         for (int bd = 0; bd < 5; ++bd) {
             std::printf("  %3d-%-3d", bd * 10, bd * 10 + 10);
