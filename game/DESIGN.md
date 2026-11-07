@@ -6099,9 +6099,11 @@ save reaches a running match on reload (Game Center may send it after saving).
   (their keeper placing the ball) is restart = goal_kick (Law 16), and our spots are capped at
   y ≤ 84.29 until the ball is played (a child state lifts it). Since mig 1145 the cap follows the
   Law exactly: TacticGeometry.solve reads the row's zone_min_x / zone_max_x / zone_min_y and holds
-  a spot at zone_min_y only inside x 20.35-79.65 (the penalty area's width); outside it no cap; a
-  row without a zone falls back to our_max_y. The engine's goal kick enforces the same area
-  (Brain::outOfTheirBox).
+  a spot at zone_min_y inside x 20.35-79.65 (the penalty area's width). Since 11/7 (owner: "on goal
+  kicks no player on def can be past 18"), our_max_y also holds across the whole width, so both the
+  zone and our_max_y apply (RestartLaw::cap). The engine's goal kick enforces the Law's area only
+  (Brain::outOfTheirBox) and reads law_m, so the full-width line is the app's plan, not yet the
+  engine's.
 
 **Owed (engine).** The reader; the settled block-spot rows for the app; the engine's own goal-kick
 shape from tactic_buildout_shapes; the brain overlay labelling each man's job ("cover-shadow #6 →
