@@ -197,6 +197,13 @@ class PaymentsScreen extends Screen {
         this._copyToClipboard(msg, `Pause warning for ${first} copied — now click 🔗 Open in LA and paste into Remind.`);
         return;
       }
+      // Fines panel → copy the billing cycle's fines for the LA invoice
+      // description (mig 1157).
+      const copyFinesBtn = e.target.closest('[data-copy-fines]');
+      if (copyFinesBtn) {
+        this._copyToClipboard(copyFinesBtn.getAttribute('data-copy-fines'), copyFinesBtn.getAttribute('data-copy-fines-toast'));
+        return;
+      }
       const ranBtn = e.target.closest('[data-resolve-flag]');
       if (ranBtn) {
         const id     = ranBtn.getAttribute('data-resolve-flag');
@@ -1555,8 +1562,69 @@ class PaymentsScreen extends Screen {
           ${rows}
           ${mo.posting && ((Number(mo.total) || 0) > 0 || mo.posting.status === 'drift') ? `<div style="margin-top:4px; opacity:0.8;">${this.escape(this._postingTip(mo, mo.posting))}</div>` : ''}
           ${bill ? `<div style="margin-top:4px; font-weight:700;">${this.escape(bill)}</div>` : ''}
+          ${this._finesCopyButton(f, mo)}
         </div>`;
     }).join('');
+  }
+
+  // The billing cycle a month names runs first Friday → next month's first
+  // Friday (owner 2026-11-07: "october billing cycle so first friday of oct
+  // to first fri of nov").  The boxes group by calendar month, so the cycle
+  // gathers its items from every month shown.  Dates are club time.
+  _firstFriday(ym) {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1, 1);
+    d.setDate(1 + ((5 - d.getDay() + 7) % 7));
+    return d;
+  }
+
+  _finesCycle(f, mo) {
+    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const start = this._firstFriday(mo.month);
+    const [y, m] = mo.month.split('-').map(Number);
+    const end = this._firstFriday(`${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}`);
+    const last = new Date(end); last.setDate(last.getDate() - 1);
+    const from = ymd(start), until = ymd(end);
+    const etDay = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+    const items = [];
+    for (const each of f.months) {
+      for (const it of (Array.isArray(each.items) ? each.items : [])) {
+        const day = etDay(it.startAt);
+        if (day >= from && day < until) items.push({ ...it, day });
+      }
+    }
+    items.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
+    const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    return { items, from: md(start), to: md(last), total: items.reduce((s, it) => s + (Number(it.amount) || 0), 0) };
+  }
+
+  _finesCopyButton(f, mo) {
+    const cyc = this._finesCycle(f, mo);
+    if (!cyc.items.length) return '';
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    const tokens = { month: mo.label, from: cyc.from, to: cyc.to, total: fmtAmt(cyc.total) };
+    // One part per fine kind, in the order they first happened.
+    const byKind = new Map();
+    for (const it of cyc.items) {
+      if (!byKind.has(it.kind)) byKind.set(it.kind, { label: it.label, amount: 0, dates: [] });
+      const k = byKind.get(it.kind);
+      k.amount += Number(it.amount) || 0;
+      const [, mm, dd] = it.day.split('-').map(Number);
+      k.dates.push(`${mm}/${dd}`);
+    }
+    const parts = [...byKind.values()].map((k) => this._billCopy('fines_desc_kind',
+      { count: k.dates.length, label: k.label, amount: fmtAmt(k.amount), dates: k.dates.join(', ') },
+      `${k.dates.length}× ${k.label} ${fmtAmt(k.amount)} (${k.dates.join(', ')})`));
+    const text = `${this._billCopy('fines_desc_header', tokens, `${mo.label} fines ${cyc.from}–${cyc.to}: ${tokens.total}`)} — ${parts.join('; ')}`;
+    const label = this._billCopy('fines_desc_button', tokens, `📋 Copy ${mo.label} fines for LA (${cyc.from}–${cyc.to}) · ${tokens.total}`);
+    const toast = this._billCopy('fines_desc_copied', { month: mo.label }, `${mo.label} fines copied — paste into the LA invoice description.`);
+    return `
+          <button type="button" data-copy-fines="${this.escape(text)}" data-copy-fines-toast="${this.escape(toast)}"
+                  title="${this.escape(text)}"
+                  style="margin-top:6px; padding:4px 8px; border:1px solid #b91c1c; background:#3a1f1f; color:#fca5a5;
+                         border-radius:4px; font-size:0.75rem; font-weight:700; cursor:pointer; font-family:inherit;">
+            ${this.escape(label)}
+          </button>`;
   }
 
   // RSVP + attendance trail for one card (row.activity from
