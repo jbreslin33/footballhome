@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "../database/Database.h"
 #include "../models/PersonPayments.h"
 #include "../models/PayReminderLog.h"
 #include "../models/PersonActivity.h"
@@ -634,6 +635,36 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         }
     } catch (const std::exception& e) {
         std::cerr << "[PaymentsController] person fines roll-up failed: " << e.what() << std::endl;
+    }
+
+    // duesSelection: the alternate-on-balance rule covers this member
+    // (fh_dues_selection_policy, mig 1149 — Men today), so the dues
+    // notice speaks of selection for starters/bench, never a ban or
+    // practice (owner 2026-11-06: "its a soft cut").  Non-fatal: false.
+    try {
+        std::string ids;
+        for (const auto& row : members) {
+            if (row.contains("personId") && row["personId"].is_number_integer() && row["personId"].get<int>() > 0) {
+                if (!ids.empty()) ids += ",";
+                ids += std::to_string(row["personId"].get<int>());
+            }
+        }
+        std::unordered_map<int, bool> sel;
+        if (!ids.empty()) {
+            for (const auto& r : Database::getInstance()->query(
+                     "SELECT p AS person_id, fh_dues_selection_policy(p) AS sel FROM unnest(ARRAY[" + ids + "]::int[]) AS p"))
+                sel[r["person_id"].as<int>()] = r["sel"].as<bool>();
+        }
+        for (auto& row : members) {
+            bool v = false;
+            if (row.contains("personId") && row["personId"].is_number_integer()) {
+                auto it = sel.find(row["personId"].get<int>());
+                if (it != sel.end()) v = it->second;
+            }
+            row["duesSelection"] = v;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PaymentsController] dues selection policy failed: " << e.what() << std::endl;
     }
 
     json out = json::object();

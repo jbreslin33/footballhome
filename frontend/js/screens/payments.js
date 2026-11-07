@@ -1039,7 +1039,12 @@ class PaymentsScreen extends Screen {
       partial_amounts: MessageCopy.partialAmountsText, // dues_policies.partial_amounts_usd (mig 414)
       ...this._pauseLine(standing, pauseAt),            // {pause_amount} {keep_active_amount} {min_payment} (mig 415/416)
     };
-    const copy = MessageCopy.render(channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email', tier, tokens);
+    // Men today (mig 1149, duesSelection from the dues policy): the
+    // *_selection tier — bottom of the selection list for starters and
+    // bench, never a ban or practice ("its a soft cut").
+    const kind = channel === 'sms' ? 'payment_notice_sms' : 'payment_notice_email';
+    const copyTier = m.duesSelection && MessageCopy.has(kind, `${tier}_selection`) ? `${tier}_selection` : tier;
+    const copy = MessageCopy.render(kind, copyTier, tokens);
     if (!copy) return null;
     const label = MessageCopy.has('payment_notice_button', channel)
       ? MessageCopy.block('payment_notice_button', channel, tokens)
