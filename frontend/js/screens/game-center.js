@@ -1206,6 +1206,15 @@ class GameCenterScreen extends EventScreen {
       const tpState = e.target.closest('[data-gc-tp-state]');
       if (tpState && !this._plan.editing) { this._stopPlanPlay(); this._plan.stateId = Number(tpState.dataset.gcTpState); this._plan.msg = ''; this._render(); return; }
       if (e.target.closest('[data-gc-tp-create]') && this._tacticsCanEdit()) { this._createPlan(); return; }
+      const tpPass = e.target.closest('[data-gc-tp-pass]');
+      if (tpPass && !this._plan.editing && !this._plan.playing) {
+        const cur = this._planState(this._plan.stateId) || this._planStates()[0];
+        const n = Number(tpPass.dataset.gcTpPass);
+        const kid = cur && this._planStates().find(st => st.parent_state_id === cur.id && Number(st.ball_with) === n);
+        if (kid) { this._plan.stateId = kid.id; this._plan.msg = ''; this._render(); }
+        else if (cur && this._tacticsCanEdit()) this._addPlanState(cur.id, n);
+        return;
+      }
       const tgt = e.target.closest('[data-gc-tp-tgt]');
       if (tgt && this._tacticsCanEdit()) { this._editPlanJob(Number(tgt.dataset.gcTpTgt), 'toggle', tgt.dataset.n); return; }
       if (e.target.closest('[data-gc-tp-edit]') && this._tacticsCanEdit()) { this._startPlanEdit(); return; }
@@ -2151,6 +2160,17 @@ class GameCenterScreen extends EventScreen {
         style="font-size:0.72rem; padding:3px 9px; white-space:nowrap;">⚽ ${esc(this._planStateLabel(st))}</button>`;
     const pathHtml = path.map(st => pill(st, st.id === cur.id)).join('<span style="opacity:0.6;">→</span>');
     const nextHtml = kids.length ? `<span style="font-size:0.7rem; opacity:0.75; margin-left:6px;">${esc(this._copyTactics('next') || 'Next:')}</span>${kids.map(st => pill(st, false)).join('')}` : '';
+    // ⚽ Pass to: their 2–11 (not the man on the ball).  Green = already
+    // drawn (opens it); grey = a new pass for a coach (copies these jobs).
+    const passTo = Array.from({ length: 10 }, (_, i) => i + 2).filter(n => n !== Number(cur.ball_with)).map(n => {
+      const kid = kids.find(st => Number(st.ball_with) === n);
+      if (!kid && !this._tacticsCanEdit()) return '';
+      return `<button type="button" data-gc-tp-pass="${n}" ${p.editing || p.playing ? 'disabled' : ''} title="${esc(kid ? '' : this._copyTactics('pass_to_new'))}"
+        style="font-size:0.72rem; min-width:28px; padding:2px 6px; border-radius:999px; cursor:pointer; font-weight:800; color:#fff;
+        border:1px solid ${kid ? '#16a34a' : '#dc2626'}; background:${kid ? '#16a34a' : 'transparent'};">${n}</button>`;
+    }).join('');
+    const passHtml = passTo ? `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+        <span style="font-size:0.72rem; font-weight:800;">${esc(this._copyTactics('pass_to') || '⚽ Pass to:')}</span>${passTo}</div>` : '';
     const cov = TacticGeometry.coverage({ ...shown, opponents: this._planSituation(shown).opponents });
     const covHtml = [cov.free.length ? esc(this._copyTactics('free', { list: cov.free.join(', ') })) : '',
                      cov.doubled.length ? esc(this._copyTactics('double', { list: cov.doubled.join(', ') })) : '']
@@ -2169,7 +2189,7 @@ class GameCenterScreen extends EventScreen {
         ${p.msg ? `<span style="font-size:0.72rem; font-weight:700;">${esc(p.msg)}</span>` : ''}
       </div>`;
     return controls
-      + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>`
+      + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>` + passHtml
       + (!p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics(canEdit ? 'pass_hint' : 'player_hint'))}</div>` : '')
       + `<div style="font-size:0.72rem; font-weight:700; margin-bottom:6px; color:${cov.free.length || cov.doubled.length ? '#fbbf24' : '#4ade80'};">${covHtml}</div>`
       + (this._planRestart(shown) ? `<div style="font-size:0.7rem; opacity:0.85; margin-bottom:6px;" title="${esc(this._planRestart(shown).law)}">${esc(this._copyTactics('restart', { label: this._planRestart(shown).label }))}</div>` : '')
