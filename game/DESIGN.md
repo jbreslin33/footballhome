@@ -6431,3 +6431,56 @@ hold their ground and let the line come to them?), and the checking movement off
 **Next moles.** (1) The gap to their line when it moves (above) — balls in behind 11.5 v 37.7.
 (2) Runners in the box at 18-35 m, crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards.
 (4) Take-ons 83 v 18.
+
+### 8.146 G5.46 — each man's depth for the possession: the gap spreads as real (no migration)
+
+§8.145's next: the gap to their line when it moves.
+
+**Real, the line moving** (new `scripts/benchmarks_tracking_linegap.py`, DFL [Bassek et al. 2025],
+the side in possession, men 0-15 m short of their offside line 1 s ago, ball 18-52 m out). Their
+line steps up or drops; our men move with it at a slope dA/dL of 0.74-0.92 by role (1 = keeps his
+gap). They do NOT hold their ground and let the line come to them. With the ball not going forward
+the line is still (±0.5 m) a quarter of the time and the front man's gap is 2.4 / 1.7 / 1.2 / 0.5 /
+-0.1 m (line dropping 2+ … stepping up 2+).
+
+**Real, what spreads the gap** (new `scripts/benchmarks_tracking_gapspread.py`). The ball's band
+explains ~0% of a role's gap variance once the role is known. The ball's side v the man adds 0-3%,
+the man (his match mean) 6-19%. **The possession** explains 78-88%: over spells of 5 s+ a man's
+between-spell sd is CB 8.0, FB 8.6, DM 7.8, AM 5.9, WIDE 6.3, ST 4.2 m, against within-spell 2.8-4.5.
+A man takes his own depth for the spell, little shared with his mates (corr 0.25 with their mean
+offset in the same possession). Spell offset from his role's band median, p10 / p25 / p50 / p75 /
+p90: CB -10.4 / -3.5 / 0.2 / 3.0 / 5.7; FB -12.4 / -6.9 / -1.1 / 5.0 / 10.5; DM -11.2 / -5.6 / -0.3
+/ 4.6 / 9.2; AM -7.3 / -4.9 / 0.2 / 4.1 / 7.6; WIDE -5.8 / -3.7 / -0.3 / 4.1 / 9.4; ST -2.5 / -1.5 /
+0.2 / 3.1 / 6.6 (+ = further from their line).
+
+**The game, before** (new harness lines EACH MAN's SPELL, THEIR LINE MOVES). Slopes already right
+(0.55-0.93), so following the line is not the miss. But between-spell sd is 2.0-4.0 (real 4.2-8.6):
+every man stands on his role's one spot every possession, so each role's gap is narrow (AM p10 / p90
+6.7 / 12.9, real 2.1 / 19.8) and lumps 8-10 m short (1.00 a frame at 18-35, real 0.57).
+
+**The change** [FH, fitted to DFL]. `Possession` marks when a team's live spell on the ball starts
+(ball ours, no restart, in play: DFL's BallPossession, ball in play). `Possession::spellDepth` rolls each man
+one depth offset a spell (`detNoise` on the match seed, the spell's start tick and his slot),
+piecewise through his role's real p10 … p90 (`physics.support.depth_p10|p25|p50|p75|p90_<role>`,
+tails held at p10 / p90). `Possession::spot` adds it to the role's band spot, never past their goal
+line. A new possession is a new roll.
+
+**After** (8 × 90, scratch DB, rotating fixtures; before = the same build with the depth params at 0).
+Between-spell sd CB 2.0 → 4.8 (8.0), FB 4.0 → 6.9 (8.6), DM 2.3 → 5.7 (7.8), AM 2.4 → 4.5 (5.9), WIDE
+3.1 → 4.9 (6.3), ST 2.2 → 3.0 (4.2); within-spell now 2.8-4.3 (2.8-4.5). Each role's p10 / p90 at
+18-35: AM 2.8 / 17.5 (2.1 / 19.8), WIDE 3.1 / 18.6 (1.9 / 20.2), FB 7.5 / 30.4 (6.9 / 35.4). The
+8-10 m lump is gone (0.74 v 0.57). Runs: DM 2.6 → 24.6 (24.9), all 188 → 226 (209). Ball-still
+runs 44.9 → 67.7 (41.7): a man moving to a new spell's spot counts as a run. Balls in behind 15.8
+→ 17.2 (37.7). The strip by the line is barely fuller (0-2 m 0.22 → 0.26, real 0.73). Shots 10.6 /
+10.5, goals 1.50. Goldens re-locked.
+
+**What it says.** The gap's spread is now real, because the real spread is the possession, not the
+moment. The strip by the line is still empty, so a frame's front man stands 1.2-5.3 m short (real
+-0.1-2.4) and the ST median went 4.3 → 5.0 (3.2). A man rolled nearer than the line can't stand
+there (onside), so the near tail piles up just short of it and the median slides back. Real front men
+live within 2 m of the line. That is a target off the live line, not a depth off a spot.
+
+**Next moles.** (1) The front man on the line: whoever is nearest it stands 0-2 m short of the
+live line (DFL front man gap by line move, above) — balls in behind 17.2 v 37.7. (2) Ball-still
+runs 67.7 v 41.7 (spell re-rolls read as runs; ease the new spot in?). (3) Crosses 0.44 v 11.47.
+(4) Law 8, Law 13 walls, cards. (5) Take-ons.

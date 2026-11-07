@@ -71,7 +71,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.42 (2026-11-06): the block spot is where real men stand with the ball STILL (lag not baked in).
 // Re-locked G5.43 (2026-11-06): the support spot too (the side in possession, ball still).
 // Re-locked G5.45 (2026-11-07): runs onto their line at the real rate (the ball not going forward).
-constexpr std::uint64_t kGolden3v3   = 0xd8f4b02b932c97bcULL;
+// Re-locked G5.46 (2026-11-07): each man's depth for the possession (spell offset, DFL).
+constexpr std::uint64_t kGolden3v3   = 0x77c5311c65a92029ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -84,7 +85,8 @@ constexpr std::uint64_t kGolden3v3   = 0xd8f4b02b932c97bcULL;
 // Re-locked G5.42 (2026-11-06): as the 3v3.
 // Re-locked G5.43 (2026-11-06): as the 3v3.
 // Re-locked G5.45 (2026-11-07): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xc6e1e59a222d8675ULL;
+// Re-locked G5.46 (2026-11-07): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x354d58b19800ffe9ULL;
 
 struct Rig {
     World world;

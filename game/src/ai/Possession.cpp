@@ -519,6 +519,11 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const std::uint32_t mine_mask = [&] { std::uint32_t m = 0; for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) if (team_of_slot[j] == team) m |= 1u << j; return m; }();
     auto clear = [&] { runners_ &= ~mine_mask; zone_[team & 1] = -1; };
     const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
+    {   // G5.46: the live spell on the ball (as DFL's BallPossession with the ball in play)
+        const bool live = ours && world.restartTeam() == 0xFF && world.outStage() == 0;
+        if (live && !had_[team & 1]) won_[team & 1] = world.tickCount();
+        had_[team & 1] = live;
+    }
     if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { clear(); return; }
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 tl = world.pitchHalfX() - b.pos.x * sg;   // ball metres off their line
@@ -684,6 +689,13 @@ void PossessionParams::configure(const core::ModelParams& p) {
     run_min_m = p.fixed("physics.run.min_m", 3000);      // real forward p25 4.1 m; a shorter one is a step
     run_max_s = p.fixed("physics.run.max_s", 4000);      // real lasts p75 2.6 s at 4+ m/s, + the run-up and the brake
     run_ball_fwd = p.fixed("physics.run.ball_fwd", 2000);
+    // His depth for the possession: DFL (benchmarks_tracking_gapspread.py SPELL OFFSET, spells 5 s+), metres x1000.
+    static const int kSpell[kRoleCount][5] = {{-10400, -3500, 200, 3000, 5700}, {-12400, -6900, -1100, 5000, 10500}, {-11200, -5600, -300, 4600, 9200},
+                                              {-7300, -4900, 200, 4100, 7600}, {-5800, -3700, -300, 4100, 9400}, {-2500, -1500, 200, 3100, 6600}};
+    static const char* const kDq[5] = {"p10", "p25", "p50", "p75", "p90"};
+    for (int r = 0; r < kRoleCount; ++r)
+        for (int k = 0; k < 5; ++k)
+            depth_q[r][k] = p.fixed(("physics.support.depth_" + std::string(kDq[k]) + "_" + kRoleKey[r]).c_str(), kSpell[r][k]);
     for (int z = 0; z < 6; ++z) {
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);
@@ -692,10 +704,24 @@ void PossessionParams::configure(const core::ModelParams& p) {
     }
 }
 
+Fixed64 Possession::spellDepth(const PlayerView& v) const {
+    // One roll a man a spell, piecewise through the real p10 … p90 (held at the
+    // ends: the 10% tails each side stand at p10 / p90).
+    const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 65) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    const Fixed64* q = params_.depth_q[static_cast<int>(v.role_ours)];
+    static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
+                                   Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
+    if (u <= kAt[0]) return q[0];
+    for (int i = 0; i < 4; ++i)
+        if (u <= kAt[i + 1]) return q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]);
+    return q[4];
+}
+
 Vec2 Possession::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
     const Fixed64 off_their = hx - world.ball().pos.x * v.sg;   // ball metres off their line
-    const Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role_ours)], off_their);
+    Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role_ours)], off_their) + spellDepth(v);
+    if (x.raw < 0) x = Fixed64::zero();
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }
 

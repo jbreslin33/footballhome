@@ -74,6 +74,13 @@ struct PossessionParams {
     // gap short of the (live) line rolled from his role's real p25 / median / p75
     // of where such runs get to — DFL tracking (benchmarks_tracking_runs.py).
     math::Fixed64 run_rate[kRoleCount]{}, run_end[kRoleCount][3]{}, run_min_m{}, run_max_s{}, run_ball_fwd{};
+    // His depth for the possession (G5.46): a real man's gap to their line is ~80%
+    // a matter of which possession it is — he takes his own depth for the spell,
+    // sd 4-9 m by role, little shared with his mates (corr 0.25), little to do with
+    // the ball's side or the man. His spell offset from his role's spot, rolled once
+    // a possession through the real p10 / p25 / p50 / p75 / p90 (+ = further from
+    // their line) — DFL tracking (benchmarks_tracking_gapspread.py SPELL OFFSET).
+    math::Fixed64 depth_q[kRoleCount][5]{};
     void configure(const core::ModelParams& p);
 };
 
@@ -109,7 +116,11 @@ public:
     bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
+    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
+    // The tick this team's live spell on the ball began (a restart or a loss ends one).
+    std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
+    // His depth offset for this spell (G5.46), metres further from their line.
+    math::Fixed64 spellDepth(const PlayerView& v) const;
 
     // A ball in behind as the passer meant it (G5.27): for whom, the spot it is
     // played to, the tick he asked for it. The man it is for runs to the spot
@@ -125,6 +136,8 @@ private:
     std::uint32_t runners_ = 0;
     int zone_[2] = {-1, -1};
     std::uint64_t drawn_[2] = {0, 0};
+    std::uint64_t won_[2] = {0, 0};
+    bool had_[2] = {false, false};
     Led led_[32]{};
     struct Run { bool on = false; std::uint64_t until = 0; math::Fixed64 end_gap{}, y{}; };
     Run run_[32]{};
