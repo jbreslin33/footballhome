@@ -423,6 +423,78 @@ class EventScreen extends Screen {
     if (window.DesktopSms) DesktopSms.open(href); else window.location.href = href;
   }
 
+  // 📇 The other club's people through the one ContactPopup (owner
+  // 2026-11-07: "event center contact to work same as players. open the
+  // contact dialog with the standard messages").  MESSAGE = the opponent
+  // templates (message_templates kind opponent, the tiers for-match sends),
+  // filled with this game; the words stay editable.  A send still logs a
+  // club_contact_messages row (POST /api/opponents/message) so "Last text /
+  // email" keeps working.  Game Center's 📇 panel draws the same button.
+  _oppContactButton(k, opts = {}) {
+    if (!window.ContactPopup || !(k.phone || k.email)) return '';
+    const o = this.oppContacts || {};
+    const club = (o.club && o.club.name) || o.opponent_text || '';
+    const me = (this.auth && this.auth.getUser && this.auth.getUser()) || {};
+    const tokens = {
+      club, contact_first: String(k.name || '').split(/\s+/)[0] || 'there',
+      our_team: o.our_team || '', date: o.date || 'our next game', time: o.time || 'kick-off',
+      venue: o.venue || 'the field', home_away: o.is_home === false ? 'at' : 'vs',
+      sender: me.name || [me.first_name, me.last_name].filter(Boolean).join(' ') || '',
+      message: '',
+    };
+    const matchId = Number(o.match_id || (this.ev && this.ev.match_id) || this.matchId || 0);
+    const messages = (o.tiers || []).map(t => {
+      const r = window.MessageCopy && MessageCopy.render('opponent', t.tier, tokens);
+      if (!r) return null;
+      return {
+        key: t.tier, label: t.label, subject: r.subject || '', body: r.body || '', noClub: true,
+        onSent: (_res, via, words) => {
+          if (via === 'copy') return;
+          this.auth.fetch('/api/opponents/message', { method: 'POST', body: JSON.stringify({
+            contact_id: k.id, channel: via === 'email' ? 'email' : 'sms', tier: t.tier,
+            match_id: matchId || undefined, message: t.tier === 'custom' ? (words || ' ') : '' }) }).catch(() => {});
+          k.last_sent_at = 'just now'; k.last_channel = via === 'email' ? 'email' : 'sms';
+        },
+      };
+    }).filter(Boolean);
+    if (!messages.length) return '';
+    return ContactPopup.button({
+      key: `opp:${matchId}:${k.id}`, screen: this,
+      recipients: [{ personId: null, name: k.name || k.role || club, phone: k.phone || null, email: k.email || null }],
+      messages, defaultKey: messages.some(m => m.key === 'confirm') ? 'confirm' : messages[0].key,
+      title: `Contact ${k.name || club}`, big: !!opts.big,
+    });
+  }
+
+  // Event Center's 📇 block for a game: the other club's contacts, then the
+  // league directors for this age group — one popup button each.  Only the
+  // game's coaches get for-match (403 otherwise → nothing drawn).
+  _oppContactsHtml() {
+    const o = this.oppContacts;
+    if (!o || !window.ContactPopup) return '';
+    const esc = (t) => this.escapeHtml(t);
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('opponent', tier, tokens)) || '';
+    const row = (k) => `
+      <div style="display:flex; align-items:center; gap:8px; padding:5px 0; border-top:1px solid var(--border-color); font-size:0.8rem;">
+        <div style="flex:1; min-width:0;">
+          <b>${esc(k.name || k.role || '')}</b>${k.name && k.role ? ` <span style="opacity:0.65;">· ${esc(k.role)}</span>` : ''}
+          ${k.last_sent_at ? `<div style="font-size:0.66rem; opacity:0.6;">Last ${k.last_channel === 'sms' ? 'text' : 'email'} ${esc(k.last_sent_at)}</div>` : ''}
+        </div>
+        ${this._oppContactButton(k)}
+      </div>`;
+    const club = o.club, lg = o.league;
+    const clubRows = ((club && club.contacts) || []).filter(k => k.phone || k.email);
+    const lgRows = ((lg && lg.contacts) || []).filter(k => k.phone || k.email);
+    if (!club && !lgRows.length) return '';
+    const clubName = (club && club.name) || o.opponent_text || '';
+    return `
+      <div style="margin:0 0 var(--space-2); border:1px solid var(--border-color); border-radius:12px; padding:8px 12px;">
+        <div style="font-size:0.75rem; font-weight:700; opacity:0.85; margin-bottom:2px;">${esc(copy('game_center_title', { club: clubName }) || `📇 Contact ${clubName}`)}</div>
+        ${clubRows.map(row).join('') || `<div style="font-size:0.72rem; opacity:0.7;">${esc(club ? (copy('no_contacts') || 'No contact yet.') : (copy('game_center_none', { opponent: o.opponent_text || '?' }) || ''))}</div>`}
+        ${lgRows.length ? `<div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-top:8px;">${esc(copy('game_center_league', { league: lg.name || lg.label }) || `🏛 ${lg.name || lg.label}`)}</div>${lgRows.map(row).join('')}` : ''}
+      </div>`;
+  }
+
   // Who was already reminded this week, per channel (GET /api/rsvp-board/
   // reminders, admins only — anyone else just gets no sent notes).
   async _loadReminders() {
@@ -1201,6 +1273,7 @@ class EventScreen extends Screen {
     return `
       ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
       ${this._panelDraftButtons('data-ec-draft-open')}
+      ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
       ${ev.kind === 'match' && ev.match_id != null
         ? `<div style="text-align:right; margin-bottom:var(--space-2);"><button type="button" class="btn btn-secondary" data-ec-game-center style="padding:4px 12px; font-size:0.85rem;">🏟️ Game Center</button></div>` : ''}
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">

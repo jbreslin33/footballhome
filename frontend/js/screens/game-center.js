@@ -4258,7 +4258,7 @@ class GameCenterScreen extends EventScreen {
       </div>`;
     if (!club) {
       const lg0 = o.league;
-      const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">💬</button> <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:2px 6px; font-size:0.66rem;">✉️</button> ${this._draftBtn(k)}</div>${this._draftsArea(k, lg0)}`).join('')}</div>` : '';
+      const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> ${this._oppContactButton(k)} ${this._draftBtn(k)}</div>${this._draftsArea(k, lg0)}`).join('')}</div>` : '';
       return wrap('📇 Contact opponent', `<div style="font-size:0.72rem; opacity:0.75; line-height:1.4;">${esc(copy('game_center_none', { opponent: o.opponent_text || '?' }) || `No club matched to "${o.opponent_text || '?'}".`)}
         <button class="btn btn-secondary" data-gc-opp-page="0" style="padding:2px 8px; font-size:0.66rem; margin-left:6px;">Open Opponents</button></div>${lgBlock0}`);
     }
@@ -4284,8 +4284,7 @@ class GameCenterScreen extends EventScreen {
           <div style="font-size:0.68rem; opacity:0.7; overflow-wrap:anywhere;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</div>
           ${k.last_sent_at ? `<div style="font-size:0.64rem; opacity:0.6;">Last ${k.last_channel === 'sms' ? 'text' : 'email'} ${esc(k.last_sent_at)}</div>` : ''}
         </div>
-        <button class="btn btn-secondary" data-gc-opp-send="sms" data-contact="${k.id}" ${k.phone ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">💬 Text</button>
-        <button class="btn btn-primary" data-gc-opp-send="email" data-contact="${k.id}" ${k.email ? '' : 'disabled'} style="padding:3px 8px; font-size:0.7rem;">✉️ Email</button>
+        ${this._oppContactButton(k)}
         ${lgForDrafts ? this._draftBtn(k) : ''}
       </div>${lgForDrafts ? this._draftsArea(k, lgForDrafts) : ''}`).join('');
     const rows = contactRows(club.contacts || []);
