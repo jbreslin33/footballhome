@@ -109,6 +109,17 @@ if __name__ == "__main__":
     for b in range(11):
         k = sum(c[("kr", z, b, r)] for z in range(4) for r in range(6))
         print(f"     {-4+2*b:>3d}..{-2+2*b:<3d} " + " ".join(f"{100*sum(c[('kr',z,b,r)] for z in range(4))/max(1,k):4.0f}" for r in range(6)))
+    # G5.48 (§8.148): a MAN of each role — the share of his frames past (-2..0) / 0-2 / 2-4 m short (the
+    # strip's count is this times how many of the role a side has on; DFL sides start 1.36 STs, ours 1.0)
+    print("EACH MAN by role: share of his frames -2..0 / 0..2 / 2..4 m short of the line (%), by the ball's zone:")
+    for z in range(4):
+        row = []
+        for r in range(6):
+            v = GL.get((z, r), [])
+            if not v: row.append(f"{NAMES[r]} -"); continue
+            f = lambda lo, hi: 100 * sum(1 for x in v if lo <= x < hi) / len(v)
+            row.append(f"{NAMES[r]} {f(-2,0):4.1f}/{f(0,2):4.1f}/{f(2,4):4.1f}")
+        print(f"   {ZN[z]:6s} " + "  ".join(row))
     print("EACH ROLE's gap short of the line (- = past), p10 / p25 / median / p75 / p90, by the ball's zone:")
     for z in range(4):
         row = []

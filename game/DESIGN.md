@@ -6537,3 +6537,33 @@ the ball played to them?
 **Next moles.** (1) In behind 20.2 v 37.7: passes named to a man 0-2 m short (§8.145 had 0.8% of
 all, real 8.0%), re-read with the front man on the line. (2) Ball-still runs 67.9 v 41.7 (§8.146).
 (3) Crosses 0.69 v 11.47. (4) Law 8, Law 13 walls, cards. (5) Take-ons.
+
+### 8.148 G5.48 — the strip by their line, per man: measured (no behaviour change)
+
+§8.147's next: is the ball played to the man on the line? First, how many men should be there.
+
+**The role mix.** The 7 DFL matches' 14 sides start CB 2.21, FB 1.57, DM 2.07, AM 0.79, WIDE 2.00,
+**ST 1.36** (two-striker sides are common). Our 20 PL 15/16 sides, in their own formations, field
+CB 2.06, FB 2.00, DM 2.31, AM 0.75, WIDE 1.88, **ST 1.00** (8 × 90, new harness line ROLES ON).
+The real strip 0-2 m short of their line is 58% strikers (`benchmarks_tracking_runs.py`), so its
+count a frame (0.73 at 18-35) is partly a Bundesliga role mix. It is not a target for our sides as
+it stands. The like-for-like measure is **a man of each role**: the share of his frames past
+(-2..0) / 0-2 / 2-4 m short (new `benchmarks_tracking_runs.py` EACH MAN by role, new harness line).
+
+| ball 18-35 | ours | real |
+|---|---|---|
+| ST  | 6.1 / 19.6 / 22.8 | 4.4 / 26.3 / 25.7 |
+| WIDE | 2.2 / 6.6 / 9.3 | 1.6 / 8.6 / 13.1 |
+| AM  | 1.9 / 7.1 / 11.7 | 1.1 / 7.9 / 11.8 |
+| CB  | 0.0 / 0.0 / 0.0 | 0.6 / 2.6 / 2.1 |
+
+With the ball 52+ m out, the wide man is 0.9 / 3.8 / 3.6 (real 2.1 / 7.0 / 10.0). Real per-man
+rates on our role mix give ~0.62 men 0-2 m short a frame at 18-35. Ours is 0.42, so about a third
+of the gap to 0.73 is the mix and two-thirds is behaviour: strikers 0-2 m short three quarters as
+often as real, wide men two thirds, centre-backs never (real CBs up for a ball in play after a
+set piece). By the same sum, passes named to a man 0-2 m short should be ~5% of all on our mix.
+Ours are 3.2% (real 8.0% on theirs).
+
+**Next moles.** (1) The pass to the man on the line: 3.2% v ~5% expected, in behind 20.2 v 37.7
+(on their mix). (2) Wide men nearer the line, every band. (3) Ball-still runs 67.9 v 41.7.
+(4) Crosses. (5) Law 8, Law 13 walls, cards. (6) Take-ons.
