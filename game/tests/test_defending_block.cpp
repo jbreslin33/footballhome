@@ -39,45 +39,46 @@ FH_TEST(block_spot_is_the_real_table) {
     v.ball_to = Vec2{w.ball().pos.x, w.ball().pos.y};      // carried: where it is (Brain::viewOf)
     const Fixed64 off = kHX + w.ball().pos.x;               // ball metres off our line (≈45)
     const Vec2 s = b.spot(v, w);
-    // CB real (settled): 26.0 m at band 35, 30.5 at band 45 (DFL) — interpolated.
+    // CB real (settled, ball still — G5.42): 22.8 m at band 35, 27.5 at band 45 (DFL) — interpolated.
     const Fixed64 u = (off - Fixed64::fromInt(35)) / Fixed64::fromInt(10);
-    const Fixed64 want = Fixed64::fromFraction(260, 10) + (Fixed64::fromFraction(305, 10) - Fixed64::fromFraction(260, 10)) * u - kHX;
+    const Fixed64 want = Fixed64::fromFraction(228, 10) + (Fixed64::fromFraction(275, 10) - Fixed64::fromFraction(228, 10)) * u - kHX;
     FH_EXPECT(near(s.x, want, 1));
     FH_EXPECT_EQ(s.y.raw, Fixed64::fromInt(6).raw);
     // Away side defends the +x end: the ball is 60 m off its line, its 9
-    // stands 62.1 m off it (DFL settled ST 60.2 at band 55, 64.0 at 65) = x -9.6.
+    // stands 58.9 m off it (DFL settled, ball still: ST 56.6 at band 55, 61.1 at 65) = x -6.4.
     v.team = 1; v.sg = -Fixed64::one(); v.role = ai::Role::ST;
     const Vec2 s2 = b.spot(v, w);
-    FH_EXPECT(near(s2.x, Fixed64::fromFraction(-96, 10), 3));
+    FH_EXPECT(near(s2.x, Fixed64::fromFraction(-64, 10), 3));
     // G5.30 (§8.128): a ball in flight — the spot is for where it will be
     // taken, not where it is: met 25 m off the home line, the home CB stands
-    // at the table's 25 m (20.1 m at band 25) = x -32.4.
+    // at the table's 25 m (17.0 m at band 25) = x -35.5.
     v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB;
     v.ball_to = Vec2{Fixed64::fromFraction(-55, 2), Fixed64::zero()};
     const Vec2 s3 = b.spot(v, w);
-    FH_EXPECT(near(s3.x, Fixed64::fromFraction(-324, 10), 1));
+    FH_EXPECT(near(s3.x, Fixed64::fromFraction(-355, 10), 1));
 }
 
 FH_TEST(one_presser_nearest_and_sticky) {
     core::World w = world22();
     const auto team_of = ai::TeamSetup::splitHalves(22).team_of_slot;
+    const std::vector<ai::Role> roles(22, ai::Role::DM);   // G5.41's assign takes roles; no CB pair here
     w.placePlayer(16, Vec3{Fixed64::zero(), Fixed64::zero(), Fixed64::zero()}, Vec2{-Fixed64::one(), Fixed64::zero()});
     w.giveBall(16);
     w.placePlayer(5, Vec3{Fixed64::fromInt(-5), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
     w.placePlayer(6, Vec3{Fixed64::fromInt(-8), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
     ai::DefendingBlock b;
     b.configure(core::ModelParams{});
-    b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
+    b.assign(0, w, team_of, roles, ai::Reads::FlightRead{}, -1);
     FH_EXPECT_EQ(w.restartTeam(), 0xFF);   // giveBall puts the ball in play
     FH_EXPECT_EQ(b.presser(0), 5);
     {
         // 6 now 1 m nearer than 5: under switch_m (2 m), 5 keeps it.
         w.placePlayer(6, Vec3{Fixed64::fromInt(-4), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
-        b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
+        b.assign(0, w, team_of, roles, ai::Reads::FlightRead{}, -1);
         FH_EXPECT_EQ(b.presser(0), 5);
         // 6 now 3 m nearer: he takes it.
         w.placePlayer(6, Vec3{Fixed64::fromInt(-2), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
-        b.assign(0, w, team_of, ai::Reads::FlightRead{}, -1);
+        b.assign(0, w, team_of, roles, ai::Reads::FlightRead{}, -1);
         FH_EXPECT_EQ(b.presser(0), 6);
         FH_EXPECT_EQ(b.presser(1), -1);   // their own ball: they don't press it
     }

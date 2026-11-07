@@ -101,6 +101,7 @@ struct Stats {
     long lo_f = 0, lo_1 = 0, lo_k[4] = {}, cb_n = 0; double cb_gap = 0, cb_mid = 0;
     long wg_n[4][10] = {}; double wg[4][10] = {};   // settled CB / FB pair gaps by band   // §8.138: the lane in open play, the CB pair
     std::vector<double> sh_near, sh_held; long sh_gs = 0;   // at the strike: nearest opponent to the shooter, s on the ball   // §8.138: bodies in the ±1 m lane at the strike; blocked by count   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
+    long dl_n[5][4] = {}; long dl_k[5][4][ai::kRoleCount] = {}; double dl_s[5][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
@@ -525,6 +526,12 @@ int main(int argc, char** argv) {
                 const int bd = std::min(9, std::max(0, static_cast<int>(tl / 10)));   // ball metres off the defenders' own line
                 const int bp = std::min(9, std::max(0, static_cast<int>(tl / 10)));
                 double dm = 0, pm = 0, back = -1e9, front = 1e9; int dn = 0, pn = 0;
+                // §8.142: the ball's speed at the defenders' line over the last second (5 ring entries back)
+                const int r1 = static_cast<int>(((k / 6) + 11) % 16);
+                const bool lag_ok = bd < 5 && rk[r1] == static_cast<long>(k) - 30 && (static_cast<long>(k) - rc_k) >= 180;
+                const double vcome = lag_ok ? (hx - rbx[r1] * sg) - tl : 0.0;
+                const int lvb = vcome < -2 ? 0 : vcome < 2 ? 1 : vcome < 5 ? 2 : 3;
+                if (lag_ok) ++S.dl_n[bd][lvb];
                 double cbs_y[4] = {}, fbs_y[4] = {}, wds_y[4] = {}, dms_y[4] = {}; int cbs_n = 0, fbs_n = 0, wds_n = 0, dms_n = 0;
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j)) continue;
@@ -534,6 +541,7 @@ int main(int argc, char** argv) {
                         const double v = hx + q.pos.x.toDouble() * (dteam == 0 ? 1.0 : -1.0);   // off his own line
                         S.ds_s[bd][r] += v; ++S.ds_n[bd][r]; dm += v; ++dn;
                         { const int ph = (static_cast<long>(k) - rc_k) >= 180 ? 0 : 1; S.dp_s[ph][bd][r] += v; ++S.dp_n[ph][bd][r]; }
+                        if (lag_ok) { S.dl_s[bd][lvb][r] += v; ++S.dl_k[bd][lvb][r]; }
                         if (r == 0) { cbs_y[cbs_n < 4 ? cbs_n : 3] = q.pos.y.toDouble(); ++cbs_n; }
                         if (r == 1) { fbs_y[fbs_n < 4 ? fbs_n : 3] = q.pos.y.toDouble(); ++fbs_n; }
                         if (r == 4) { wds_y[wds_n < 4 ? wds_n : 3] = q.pos.y.toDouble(); ++wds_n; }
@@ -1011,6 +1019,24 @@ int main(int argc, char** argv) {
             for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %6.1f", S.dp_n[ph][bd][r] ? S.dp_s[ph][bd][r] / S.dp_n[ph][bd][r] : 0.0);
             std::printf("\n");
         }
+    }
+    {   // §8.142: real DFL, benchmarks_tracking_lag.py (CB FB DM/CM AM WIDE ST)
+        static const double kReal[5][4][6] = {
+            {{6.3, 8.7, 12.0, 26.2, 17.1, 38.0}, {7.7, 10.4, 13.8, 27.4, 19.3, 39.0}, {9.9, 13.7, 18.2, 32.5, 24.7, 40.6}, {11.8, 14.9, 20.4, 32.6, 26.1, 43.7}},
+            {{9.3, 12.1, 15.1, 23.9, 19.0, 35.5}, {11.6, 14.5, 17.6, 28.5, 23.8, 37.4}, {14.7, 18.5, 22.0, 35.8, 28.3, 43.1}, {17.2, 20.8, 25.8, 37.2, 31.9, 46.7}},
+            {{14.0, 16.1, 19.5, 26.1, 23.3, 37.3}, {17.0, 18.9, 23.0, 30.7, 26.6, 40.2}, {19.8, 22.3, 27.3, 37.7, 32.1, 47.4}, {23.5, 26.5, 33.0, 43.8, 38.3, 52.4}},
+            {{19.3, 21.5, 26.0, 33.6, 30.0, 41.3}, {22.8, 25.3, 30.8, 39.1, 35.2, 47.1}, {25.4, 28.6, 34.7, 42.9, 38.6, 51.5}, {29.8, 32.7, 40.0, 49.8, 45.2, 57.8}},
+            {{25.7, 26.9, 32.5, 41.1, 36.4, 47.8}, {27.5, 29.0, 35.8, 44.4, 39.2, 50.2}, {30.8, 32.8, 39.0, 48.2, 43.9, 55.1}, {35.1, 38.5, 45.7, 56.0, 51.0, 62.7}}};
+        static const char* kVb[4] = {"away", "still", "coming 2-5", "coming 5+"};
+        std::printf("SETTLED SHAPE BY THE BALL'S SPEED AT THEM over 1 s (benchmarks_tracking_lag.py; real DFL in brackets): band, ball, frames | CB FB DM/CM AM WIDE ST\n");
+        for (int bd = 0; bd < 5; ++bd)
+            for (int vb = 0; vb < 4; ++vb) {
+                if (S.dl_n[bd][vb] < 20) continue;
+                std::printf("  %3d-%-3d %-11s %6ld |", bd * 10, bd * 10 + 10, kVb[vb], S.dl_n[bd][vb]);
+                for (int r = 0; r < ai::kRoleCount; ++r)
+                    std::printf(" %5.1f (%4.1f)", S.dl_k[bd][vb][r] ? S.dl_s[bd][vb][r] / S.dl_k[bd][vb][r] : 0.0, kReal[bd][vb][r]);
+                std::printf("\n");
+            }
     }
     if (S.lo_f)
         std::printf("LANE in open play (settled 6 s+, ball 10-35 m out, |y| < 12; real DFL in brackets): a man within 1 m %.1f%% (43.6); 0/1/2/3+ %.1f / %.1f / %.1f / %.1f%% (56.4 / 36.9 / 6.3 / 0.4)\n",

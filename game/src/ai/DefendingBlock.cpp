@@ -17,18 +17,22 @@ using math::Vec3;
 namespace {
 
 // Real (DFL, 7 matches, the side without the ball, in play, 5 Hz, SETTLED: 6 s+
-// since it lost it): mean metres off its own line by role, ball in bands 0-10 …
-// 90-100 m off that line — benchmarks_tracking_possession.py DEFENDING SHAPE,
-// SETTLED (G5.33, §8.131). Half of all real defending frames are the 6 s after
-// a turnover, when men far from their goal still stand 3-9 m higher; the
-// all-frames table (§8.111/§8.118) put the settled block on that blend.
+// since it lost it, and the ball STILL: under 2 m/s toward or away from its line
+// over the last second): mean metres off its own line by role, ball in bands
+// 0-10 … 90-100 m off that line — benchmarks_tracking_lag.py (G5.42, §8.142).
+// The spot is where he stands once he has caught up with the ball. Real men
+// trail a moving ball as ours do (with it coming at them at 5+ m/s a real CB is
+// 4-6 m higher than with it still; going away, 1.5-3.5 m deeper); G5.33's spots
+// (§8.131) were the mean over every settled frame, that lag included, so ours
+// caught up to a spot already ~1 s behind and then trailed it as well: 3.5-5 m
+// high with the ball still at every band inside 50 m, the offside line 4 m high.
 constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
-    {100, 145, 201, 260, 305, 351, 386, 426, 454, 494},   // CB
-    {131, 179, 227, 287, 327, 378, 413, 455, 480, 528},   // FB
-    {176, 219, 277, 350, 393, 447, 487, 539, 575, 620},   // DM/CM
-    {309, 335, 376, 437, 485, 542, 588, 645, 707, 777},   // AM
-    {235, 279, 325, 397, 438, 492, 535, 591, 636, 710},   // WIDE
-    {413, 427, 467, 522, 554, 602, 640, 696, 753, 832},   // ST
+    { 77, 116, 170, 228, 275, 327, 368, 416, 449, 497},   // CB
+    {104, 145, 189, 253, 290, 349, 391, 446, 475, 532},   // FB
+    {138, 176, 230, 308, 358, 414, 461, 527, 565, 619},   // DM/CM
+    {274, 285, 307, 391, 444, 510, 562, 627, 703, 772},   // AM
+    {193, 238, 266, 352, 392, 456, 507, 574, 621, 713},   // WIDE
+    {390, 374, 402, 471, 502, 566, 611, 676, 737, 829},   // ST
 };
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 

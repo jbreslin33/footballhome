@@ -6262,3 +6262,44 @@ toward goal. Real defenders drop first and get there before it.
 inside 30 m (GAME_LINE_TRACE prints each frame's defenders, at / target). (2) Then runners into
 the box and passes into it (21% from 18-35 m central; crosses 0.06 v 11.47). (3) Law 8, Law 13
 walls, cards (§8.140). (4) The 1v1: take-ons 2.5× (§8.139).
+
+### 8.142 G5.42 — the block spot is where real men stand with the ball still; the lag is the body's (no migration)
+
+§8.141's next: the back line 2-6 m behind its own real spots inside 30 m, settled.
+
+**Real men trail too.** New `scripts/benchmarks_tracking_lag.py` (DFL, the side without the ball,
+settled 6 s+): each role's mean metres off its line by the ball's 10 m band AND the ball's speed at
+that line over the last second (away < −2 m/s, still ±2, coming 2-5, coming 5+). With the ball
+20-30 m out a real CB stands 14.0 / 17.0 / 19.8 / 23.5 m; at 0-10, 6.3 / 7.7 / 9.9 / 11.8. A real
+block stands where the ball was ~1 s ago, both ways. So G5.33's spot table (§8.131, the mean over
+every settled frame) already HAS the real lag in it — ours caught up with a spot that was itself
+behind the ball, then trailed it as well. The harness (new line SETTLED SHAPE BY THE BALL'S SPEED
+AT THEM) showed exactly that: with the ball coming at 5+ m/s our men stood where real ones do;
+with it still, CB/FB/DM/WIDE stood 3.5-5 m high at every band inside 50 m (CB 21.0 v 17.0 at 20-30).
+
+**Built.** `kRealSpotDm` = the real STILL rows (all ten bands, every role). The spot is where a man
+stands once he has caught up; trailing a moving ball is the body (Locomotion, the shape caps,
+G5.30's tracking), not the table. No new rule, no new param — the same physics.block.<role>_<band>
+keys, now meaning the still-ball spot.
+
+**Result** (8 matches, deterministic; before → after, real DFL):
+- ball still, CB: 0-10 12.0 → 8.4 (7.7); 10-20 16.1 → 13.6 (11.6); 20-30 21.0 → 18.4 (17.0);
+  30-40 26.7 → 23.4 (22.8); 40-50 30.9 → 27.7 (27.5). FB/DM/WIDE the same: within ~1.5 m.
+- coming 5+, CB: 20-30 25.7 → 23.5 (23.5); 30-40 31.3 → 28.2 (29.8) — ours now lag ~1-2.5 m less
+  than real at 30-50 m.
+- settled table (all frames), CB 0-10 / 10-20 / 20-30: 15.5 / 17.8 / 22.3 → 11.6 / 15.9 / 19.9
+  (10.0 / 14.5 / 20.1); further out now 1-3 m deep of the real blend (the mix of ball speeds
+  differs: ours has twice the real share of still frames at 20-30).
+- offside line, ball 18-35 central: 22.6 → 20.1 (18.8); 0-18 central 15.5 → 13.4 (8.7).
+- what follows from a deeper line: balls met in behind 10.0 → 6.4 a team-match (37.7); entries
+  inside 30 m 33.2 → 26.4; shots 7.8 → 6.6, goals 1.00 → 1.12 (one 8-match set).
+- tests 22/22; goldens re-locked. `test_defending_block` compiles again (G5.41 changed assign()).
+
+**Not done.** AM and ST: with the ball coming at 5+ m/s real ones stand 9-13 m higher than with
+it still (they are the men it was just played past); ours only 3-5 — our front men drop with the
+ball faster than real. Not the biggest problem.
+
+**Next moles.** (1) The attack doesn't play on the line: our most advanced man 25.9 m off their
+line with it at 20.1 (ball 18-35 central; real 20.2 v 18.8) — 5.8 m short (real 1.4). Balls in
+behind 6.4 v 37.7 and the box at 18-35 m 0.09 v 1.04 both start there. (2) Passes into the box and
+crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards (§8.140). (4) The 1v1: take-ons 77 v 18.
