@@ -6303,3 +6303,38 @@ ball faster than real. Not the biggest problem.
 line with it at 20.1 (ball 18-35 central; real 20.2 v 18.8) — 5.8 m short (real 1.4). Balls in
 behind 6.4 v 37.7 and the box at 18-35 m 0.09 v 1.04 both start there. (2) Passes into the box and
 crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards (§8.140). (4) The 1v1: take-ons 77 v 18.
+
+### 8.143 G5.43 — the support spot is where real men stand with the ball still, too (no migration)
+
+§8.142's next: our most advanced man 5.8 m short of their offside line (ball 18-35 central; real 1.4).
+
+**The same double lag, on the ball.** `benchmarks_tracking_lag.py` now prints the side IN possession
+(every in-play frame, as §8.111's POSSESSION SHAPE) by the ball's band off THEIR line and its speed
+forward over the last second, with their offside line and our front man; the harness the same
+(POSSESSION SHAPE BY THE BALL'S SPEED FORWARD). Real attackers trail the ball as real defenders do:
+ball 20-30 m out, a real ST 15.2 / 19.5 / 22.8 / 26.3 m off their line with it going back / still /
+forward 2-5 / forward 5+; the front man 1.2 m short of the line with it still, 1.9 going forward 5+.
+The game before: going forward 5+ our CB/FB/DM/WIDE stood where real ones do (within ~1-2 m); with
+it still or going back every role 5-8 m deep (ST 24.5 v 19.5, AM 31.2 v 23.6 at 20-30), the front
+man 22.4 v 16.5 — §8.111's table (all frames) held the real lag and ours trailed on top of it.
+
+**Built.** Possession's `kRealSpotDm` = the real still rows, all ten bands, every role (keys
+physics.support.<role>_<band> unchanged, now the still-ball spot).
+
+**Result** (8 matches, deterministic; §8.142 → now, real):
+- ball still 20-30 m out: ST 24.5 → 22.5 (19.5), AM 31.2 → 28.3 (23.6), CB 50.3 → 46.8 (44.8);
+  at 30-50 m within 1-4 m every role. Going forward 5+ ours now 1-3 m less far from goal than real
+  (CB/FB) — as the block, ours lag a little less than real once the target is right.
+- front man / their line, ball still 20-30: 22.4 / 17.2 → 21.1 / 17.2 (16.5 / 15.3); ball 18-35
+  central (all frames) 25.9 → 23.9 with the line at 20.0 (20.2 / 18.8): 3.9 m short (real 1.4).
+- possession shape, all frames, 20-30: ST 25.5 → 24.2 (22.1), CB 52.2 → 48.9 (48.8).
+- shots 6.6 → 10.4 a team-match; balls met in behind 6.4 → 11.8 (37.7), completed 45% (47.5);
+  entries inside 30 m 26.4 → 41.4; their man's spells begun in our area 1.38 → 3.62 (receipts
+  12.83), on the ball there 3.0 → 4.8 s (10.7); in the box with the ball 18-35 central 0.09 → 0.13
+  (1.04); goals 1.12 (one 8-match set). Tests 22/22; goldens re-locked.
+
+**Next moles.** (1) Our ST with the ball still still stands 3 m deeper than his own target (22.5 v
+19.5 at 20-30) and the AM 5 m — the side in possession has no G5.30 tracking of its moving spot
+(blockLead is the block's only) and closes on shape_tau_ours (1 s); see what holds him first
+(GAME_HOLD_TRACE a). (2) Runners in the box 18-35 m (0.13 v 1.04) and crosses (0.19 v 11.47).
+(3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.

@@ -16,16 +16,20 @@ using math::Vec3;
 
 namespace {
 
-// Real (DFL, 7 matches, the side IN possession, in play, 5 Hz): mean metres
-// off THEIR line by role, ball in bands 0-10 … 90-100 m off it —
-// benchmarks_tracking_possession.py POSSESSION SHAPE (§8.111).
+// Real (DFL, 7 matches, the side IN possession, in play, 5 Hz, the ball STILL:
+// under 2 m/s forward or back over the last second): mean metres off THEIR line
+// by role, ball in bands 0-10 … 90-100 m off it — benchmarks_tracking_lag.py
+// (G5.43, §8.143). As the block's (G5.42): real men trail a moving ball (with it
+// going forward at 5+ m/s a real ST is 5-7 m further from goal than with it
+// still), so §8.111's all-frames table held that lag and ours trailed on top of
+// it — 5-8 m deep with the ball still, the front man 6 m short of their line.
 constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
-    {377, 430, 488, 545, 602, 663, 721, 778, 832, 905},   // CB
-    {292, 331, 386, 444, 500, 560, 608, 667, 728, 823},   // FB
-    {255, 302, 359, 421, 477, 544, 601, 655, 708, 777},   // DM/CM
-    {163, 217, 275, 340, 396, 460, 504, 557, 595, 656},   // AM
-    {166, 209, 272, 334, 389, 449, 497, 546, 592, 667},   // WIDE
-    {121, 162, 221, 284, 335, 388, 433, 474, 517, 574},   // ST
+    {369, 397, 448, 506, 565, 631, 694, 758, 813, 897},   // CB
+    {257, 287, 336, 400, 453, 514, 558, 623, 686, 805},   // FB
+    {232, 267, 316, 378, 439, 513, 568, 623, 676, 757},   // DM/CM
+    {144, 184, 236, 309, 357, 425, 467, 524, 561, 630},   // AM
+    {144, 180, 238, 303, 353, 416, 457, 507, 550, 641},   // WIDE
+    { 96, 131, 195, 256, 304, 359, 400, 446, 488, 552},   // ST
 };
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 const Fixed64 kGoalHalfW = Fixed64::fromFraction(366, 100);   // Law 1: 7.32 m
