@@ -6609,3 +6609,37 @@ man, a runner), or he trails a line dropping 2+ m in a second (4.2 v 2.4, §8.14
 **Next moles.** (1) Ball-still runs 84.7 v 41.7: a man whose spot jumps (a new spell's depth, a new
 line job) should walk or jog into it, not sprint. Real runs are the few at 4+ m/s. (2) The front
 man's 4+ m tail. (3) Crosses 0.88 v 11.47. (4) Law 8, Law 13 walls, cards. (5) Take-ons.
+
+### 8.150 G5.50 — a line job walks into a jumped spot (no migration)
+
+§8.149's next: ball-still runs 84.7 v 41.7.
+
+**Measured** (new harness line BALL-STILL RUNS by his order at the start; `Brain::possession()` lets
+the harness see the line jobs). Of 84.7 ball-still runs a team-match, the front man made 19.2 and
+the second man 24.4: 43.6 from §8.147-8.149's line jobs alone. Then hold shape 19.9, attack the
+box 11.0, RunLine 5.6. A man taking a line job, or whose tenure roll jumps, closed on his new spot
+at the 4.5 m/s forward shape cap, and that reads as a run (4+ m/s at goal, 0.6 s+).
+
+**The change** [FH, fitted to DFL's ball-still runs]. In `Brain::brakeToArrive`, a line-job man's
+closing speed, on top of the line's own velocity, is capped at `physics.front.close_mps` (1.0),
+**only with the ball not going forward 2+ m/s**. Capped always (tried first), the ball-forward runs
+fell 167 → 112-145 (real 167.4) and the front man dropped back off the line. With the ball going
+forward the shape moves with it, and real men run then. The line-velocity part is never capped:
+he still keeps up with a moving line.
+
+**Fit** (8 × 90 each, GAME_PARAMS). close_mps 1.0 / 1.5 / 2.0 → ball-still runs 43.8 / 47.5 / 49.8
+(41.7). Ball-forward runs 167.9 / 159.4 / 164.9 (167.4). The front man's gap and shares are the
+same at all three within noise (2.1-3.3 m short at 10-50 m out, as §8.149). 1.0 is taken.
+
+**After** (close_mps 1.0 v §8.149).
+- Ball-still runs 84.7 → 43.8 (41.7): front man 19.2 → 2.9, second man 24.4 → 1.6. The rest is
+  hold shape 17.0, attack the box 11.4, RunLine 6.8.
+- Ball-forward runs 167.0 → 167.9 (167.4).
+- In behind 19.8 → 17.1 (37.7), within the 8-match spread of §8.147-8.149 (17-20).
+- Shots 9.9 → 9.1. Completion 81.4 → 83.5% (79.1).
+- Goldens re-locked.
+
+**Next moles.** (1) The front man's 4+ m tail (30-33% of frames at 20-50 m out, real 10-18): the
+frames where the most advanced man is the carrier, the pass's man or a runner. (2) In behind
+17 v 37.7 (on their role mix). (3) Crosses 0.7 v 11.47. (4) Completion 83.5 v 79.1. (5) Law 8,
+Law 13 walls, cards. (6) Take-ons.

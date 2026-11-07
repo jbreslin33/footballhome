@@ -109,7 +109,8 @@ struct Stats {
     long lg_n[2][5] = {}, lg_m[2][5][ai::kRoleCount + 1] = {}; double lg_dA[2][5][ai::kRoleCount + 1] = {}, lg_dg[2][5][ai::kRoleCount + 1] = {};   // §8.146: their line moves
     double lg_xy[2][ai::kRoleCount + 1] = {}, lg_xx[2][ai::kRoleCount + 1] = {}, lg_sx[2][ai::kRoleCount + 1] = {}, lg_sy[2][ai::kRoleCount + 1] = {}; long lg_s1[2][ai::kRoleCount + 1] = {};
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
-    long ro_n[ai::kRoleCount] = {}, ro_sides = 0;   // §8.148: outfield starters by role
+    long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
+    int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {};   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
@@ -610,6 +611,7 @@ int main(int argc, char** argv) {
                                     S.rn_g0.push_back(S.rn_s0[j]); S.rn_min.push_back(S.rn_sm[j]); S.rn_len.push_back(0.2 * S.rn_k[j]);
                                     if (S.rn_sm[j] < 0) ++S.rn_past;
                                     ++S.rn_nb[S.rn_b[j]]; S.rn_minb[S.rn_b[j]].push_back(S.rn_sm[j]);
+                                    if (S.rn_b[j] == 0) ++S.rn_whn[S.rn_wh[j]];
                                 }
                                 S.rn_k[j] = 0;
                             };
@@ -657,6 +659,10 @@ int main(int argc, char** argv) {
                                         S.rn_s0[j] = gp; S.rn_sm[j] = gp; S.rn_z[j] = zq;
                                         const int rb1 = static_cast<int>(((k / 6) + 11) % 16);   // the ball 1 s ago
                                         S.rn_b[j] = (rk[rb1] == static_cast<long>(k) - 30 && (hx - rbx[rb1] * sg) - tl >= 2) ? 1 : 0;
+                                        const auto& PO = s.brain().possession();
+                                        const std::uint8_t tm_ = W.player(j).team;
+                                        S.rn_wh[j] = PO.front(tm_, 0) == j ? ai::kWhyCount : PO.front(tm_, 1) == j ? ai::kWhyCount + 1
+                                                   : static_cast<int>(s.lastOrders()[j].why);
                                     }
                                     ++S.rn_k[j]; if (gp < S.rn_sm[j]) S.rn_sm[j] = gp; S.rn_last[j] = static_cast<long>(k);
                                 } else if (S.rn_k[j] > 0) closeRun(j);
@@ -1246,6 +1252,12 @@ int main(int argc, char** argv) {
             std::printf("   RunLine: eligible man-seconds (0-12 m short, ball under 2 m/s on) / starts a team-match:");
             for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.0f / %.1f;", kRn[r], S.run_el[r] / 5.0 / tm, S.run_st[r] / tm);
             std::printf(" (0-12 m man-s %.0f, carried %.0f, slow %.0f)\n", S.run_c[0] / 5.0 / tm, S.run_c[1] / 5.0 / tm, S.run_c[2] / 5.0 / tm);
+        }
+        {   // §8.150: ball-still runs by the runner's order at the run's start
+            std::printf("BALL-STILL RUNS by his order at the start (a team-match):");
+            for (int w = 0; w < ai::kWhyCount + 2; ++w)
+                if (S.rn_whn[w]) std::printf(" %s %.1f;", w < ai::kWhyCount ? ai::kWhyNames[w] : w == ai::kWhyCount ? "FRONT MAN" : "SECOND MAN", S.rn_whn[w] / tm);
+            std::printf("\n");
         }
         {   // §8.148: the sides' role mix (real: the 7 DFL matches' starters, 14 sides) — the strip by their line is 58% STs (DFL)
             static const double kRo[ai::kRoleCount] = {2.21, 1.57, 2.07, 0.79, 2.00, 1.36};

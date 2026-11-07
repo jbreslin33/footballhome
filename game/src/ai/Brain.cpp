@@ -743,6 +743,16 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     // the ball): the block stood 1.5-3 m off its spots at every band, upfield
     // of them where the ball comes at us. Real team centroids move in phase
     // with the ball [Frencken, Lemmink, Delleman & Visscher 2011].
+    // G5.50 (§8.150): a line job (front / second man) closes on his spot at most
+    // front.close_mps on top of the line's own velocity — he walks or jogs into
+    // a jumped spot; sprinting into it read as a run (ball-still runs 84.7 v 41.7).
+    // With the ball going forward 2+ m/s the shape moves with it, and real men run
+    // then (ours 167 v 167.4), so only with the ball not going forward.
+    if (leading && o.why == Why::Hold && poss_.onLine(setup_.team_of_slot[slot], slot) &&
+        poss_.params().front_close.raw > 0 && v_ok > poss_.params().front_close) {
+        const Fixed64 sgf = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
+        if (world.ball().vel.x * sgf < poss_.params().run_ball_fwd) v_ok = poss_.params().front_close;
+    }
     if (leading && o.why == Why::Hold) {
         const Vec2 want = dist.raw > 0 ? Vec2{lead.x + d.x * v_ok / dist, lead.y + d.y * v_ok / dist} : lead;
         Fixed64 cap = Fixed64::zero();

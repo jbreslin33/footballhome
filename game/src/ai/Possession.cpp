@@ -772,6 +772,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     static const int kFront[5] = {-700, 500, 1600, 3000, 4800};
     for (int k = 0; k < 5; ++k) front_q[k] = p.fixed(("physics.front.gap_" + std::string(kDq[k])).c_str(), kFront[k]);
     front_swap_m = p.fixed("physics.front.swap_m", 1000);
+    front_close = p.fixed("physics.front.close_mps", 1000);   // fitted: 1.0 / 1.5 / 2.0 → ball-still runs 43.8 / 47.5 / 49.8 (41.7)
     static const int kSecond[5] = {1200, 2500, 4200, 6700, 9900};   // G5.49, the same source
     for (int k = 0; k < 5; ++k) second_q[k] = p.fixed(("physics.front.second_" + std::string(kDq[k])).c_str(), kSecond[k]);
     for (int z = 0; z < 6; ++z) {

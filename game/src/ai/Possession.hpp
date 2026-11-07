@@ -91,6 +91,9 @@ struct PossessionParams {
     // The second man (G5.49): 1.2 / 2.5 / 4.2 / 6.7 / 9.9 m short (p10 … p90, ball
     // 10-60 m out, DFL), never nearer than the front man's gap.
     math::Fixed64 front_q[5]{}, front_swap_m{}, second_q[5]{};
+    // G5.50: how fast a line job closes on his spot on top of the line's velocity
+    // [FH, fitted to the real ball-still runs, 41.7 a team-match, DFL]; 0 = uncapped.
+    math::Fixed64 front_close{};
     void configure(const core::ModelParams& p);
 };
 
