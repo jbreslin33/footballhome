@@ -11,7 +11,8 @@
 // pills.  An old door that hands over one event ({ event }, saved history)
 // shows that event's week.
 //
-// ✓/✗ on a tile: POST|DELETE /api/calendar/rsvp as yourself (my_rsvp).
+// ✓/✗ on a tile: POST|DELETE /api/calendar/rsvp as yourself (my_rsvp) and,
+// with person_id, for each of your kids on it (guardian_targets).
 //
 // Feed: GET /api/calendar/upcoming?start=<Monday>&days=7 (admins get every
 // club event, coaches their teams').
@@ -166,7 +167,7 @@ class EventCenterScreen extends Screen {
       if ((el = t('[data-ec-my-rsvp]'))) {
         e.stopPropagation();
         const ev = (this.events || []).find(x => x.fh_event_id === Number(el.dataset.eventId));
-        if (ev) this._setMyRsvp(ev, el.dataset.ecMyRsvp);
+        if (ev) this._setMyRsvp(ev, el.dataset.ecMyRsvp, Number(el.dataset.personId) || 0);
         return;
       }
       if ((el = t('[data-ec-open]'))) {
@@ -179,30 +180,46 @@ class EventCenterScreen extends Screen {
 
   // Your own answer from a tile — the self write #my makes (POST/DELETE
   // /api/calendar/rsvp, no person_id unless viewing as someone), so the
-  // same eligibility rules apply.  Tapping the lit answer clears it.
-  async _setMyRsvp(ev, response) {
+  // same eligibility rules apply — or, with childId, a guardian's answer
+  // for one of their kids (person_id, as #my's guardian rows; mig 1148).
+  // Tapping the lit answer clears it.
+  _childResponse(ev, childId) {
+    const row = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(r => r && Number(r.person_id) === childId);
+    return (row && row.response) || null;
+  }
+
+  async _setMyRsvp(ev, response, childId = 0) {
     const id = ev.fh_event_id;
-    if (this.saving.has(id)) return;
-    this.saving.add(id);
-    delete this.rsvpNote[id];
+    const key = `${id}:${childId || 'me'}`;
+    if (this.saving.has(key)) return;
+    this.saving.add(key);
+    delete this.rsvpNote[key];
     this._render();
-    const clear = ev.my_rsvp === response;
+    const current = childId ? this._childResponse(ev, childId) : ev.my_rsvp;
+    const clear = current === response;
     const payload = { fh_event_id: id };
-    if (this.auth && this.auth.viewAsPersonId) payload.person_id = Number(this.auth.viewAsPersonId);
+    if (childId) payload.person_id = childId;
+    else if (this.auth && this.auth.viewAsPersonId) payload.person_id = Number(this.auth.viewAsPersonId);
     try {
+      let answer = null;
       if (clear) {
         await this._json('/api/calendar/rsvp', { method: 'DELETE', body: JSON.stringify(payload) });
-        ev.my_rsvp = null;
       } else {
         const body = await this._json('/api/calendar/rsvp', { method: 'POST', body: JSON.stringify({ ...payload, response }) });
-        ev.my_rsvp = (body && body.rsvp && body.rsvp.response) || response;
+        answer = (body && body.rsvp && body.rsvp.response) || response;
         if (body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
         if (body && body.reg_ask && window.RegAsk) RegAsk.show(body.reg_ask);                   // 📝 mig 725
       }
+      if (!childId) ev.my_rsvp = answer;
+      else {
+        const rows = Array.isArray(ev.rsvps) ? ev.rsvps : (ev.rsvps = []);
+        const row = rows.find(r => r && Number(r.person_id) === childId);
+        if (row) row.response = answer; else rows.push({ person_id: childId, response: answer });
+      }
     } catch (err) {
-      this.rsvpNote[id] = err.message;
+      this.rsvpNote[key] = err.message;
     } finally {
-      this.saving.delete(id);
+      this.saving.delete(key);
     }
     this._render();
     this._loadEvents();   // the tile's counts follow
@@ -300,26 +317,44 @@ class EventCenterScreen extends Screen {
       // YOUR answer + ✓/✗, right on the tile (owner 2026-11-06: "set
       // availability for me … from each card w/o opening card") — only on
       // events you may answer (my_rsvp_eligible) while they're open.
-      const mine = () => {
-        if (ev.my_rsvp_eligible !== true || this._isPast(ev)) return '';
-        const r = ev.my_rsvp;
-        const [tier, fb, color] = r === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
-          : r === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
-          : ['me_status_none', "You haven't answered yet", '#fbbf24'];
-        const busy = this.saving.has(ev.fh_event_id);
+      // …and one row per child of yours on the event (guardian_targets —
+      // every guardian of the child gets it; mig 1148: "same with grace").
+      const answerRow = (personId, r, [tier, fb, color], tokens) => {
+        const key = `${ev.fh_event_id}:${personId || 'me'}`;
+        const busy = this.saving.has(key);
         const b = (resp, label, c) => {
           const on = r === resp;
-          return `<button type="button" data-ec-my-rsvp="${resp}" data-event-id="${ev.fh_event_id}" ${busy ? 'disabled' : ''}
-                    title="${on ? 'Tap to clear your answer' : (resp === 'yes' ? 'Going' : 'Not going')}"
+          return `<button type="button" data-ec-my-rsvp="${resp}" data-event-id="${ev.fh_event_id}" data-person-id="${personId || 0}" ${busy ? 'disabled' : ''}
+                    title="${on ? 'Tap to clear the answer' : (resp === 'yes' ? 'Going' : 'Not going')}"
                     style="min-width:40px; padding:4px 10px; border-radius:8px; font-weight:800; cursor:pointer;
                            border:1px solid ${c}; background:${on ? c : 'transparent'}; color:${on ? '#fff' : c};">${label}</button>`;
         };
-        const err = this.rsvpNote[ev.fh_event_id];
+        const err = this.rsvpNote[key];
         return `<span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%; margin-top:2px; padding-top:6px; border-top:1px solid var(--border-color);">
-            <span style="font-size:0.78rem; font-weight:800; color:${color}; flex:1; min-width:0;">${this.escapeHtml(cp(tier, {}, fb))}</span>
+            <span style="font-size:0.78rem; font-weight:800; color:${color}; flex:1; min-width:0;">${this.escapeHtml(cp(tier, tokens, fb))}</span>
             ${b('yes', '✓', '#22c55e')}${b('no', '✗', '#ef4444')}
           </span>
           ${err ? `<span style="font-size:0.72rem; color:#f87171;">${this.escapeHtml(err)}</span>` : ''}`;
+      };
+      const mine = () => {
+        if (this._isPast(ev)) return '';
+        let out = '';
+        if (ev.my_rsvp_eligible === true) {
+          const r = ev.my_rsvp;
+          out += answerRow(0, r, r === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
+            : r === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
+            : ['me_status_none', "You haven't answered yet", '#fbbf24'], {});
+        }
+        for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) {
+          if (!c || !c.person_id || c.suspension) continue;   // ⛔ mig 1077: no answer to set
+          const id = Number(c.person_id);
+          const name = String(c.name || '').split(' ')[0] || 'Your player';
+          const r = this._childResponse(ev, id);
+          out += answerRow(id, r, r === 'yes' ? ['kid_status_yes', `✓ ${name} is going`, '#22c55e']
+            : r === 'no' ? ['kid_status_no', `✗ ${name} is not going`, '#ef4444']
+            : ['kid_status_none', `${name} hasn't answered yet`, '#fbbf24'], { name });
+        }
+        return out;
       };
       return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}">
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}

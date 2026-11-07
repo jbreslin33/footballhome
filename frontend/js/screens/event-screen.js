@@ -166,7 +166,7 @@ class EventScreen extends Screen {
     delete this.rsvpNote[personId];
     this._render();
     const id = this.ev.fh_event_id;
-    const self = !!(this.att && this.att.me && this.att.me === personId);
+    const self = !!(this.att && this.att.me && this.att.me === personId);   // a child goes with person_id (guardian write)
     const target = self ? {} : { person_id: personId };
     try {
       if (active) {
@@ -1286,20 +1286,29 @@ class EventScreen extends Screen {
     // chip and your answer in words.
     const me = (this.att && this.att.me) || 0;
     const isMe = (r) => !!me && Number(r.person_id) === me;
-    const cpy = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
-    const meChip = (r) => isMe(r)
-      ? `<span style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.6);
-               color:#7dd3fc; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(cpy('me_chip', 'YOU'))}</span>` : '';
+    // …and your kids' cards (guardian_targets, mig 1148: "same with grace").
+    const kidIds = new Set((Array.isArray(this.ev.guardian_targets) ? this.ev.guardian_targets : [])
+      .filter(c => c && c.person_id && !c.suspension).map(c => Number(c.person_id)));
+    const isKid = (r) => !isMe(r) && kidIds.has(Number(r.person_id));
+    const cpy = (tier, fb, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
+    const chipSpan = (text) => `<span style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.6);
+               color:#7dd3fc; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(text)}</span>`;
+    const meChip = (r) => isMe(r) ? chipSpan(cpy('me_chip', 'YOU')) : isKid(r) ? chipSpan(cpy('kid_chip', 'YOUR PLAYER')) : '';
     const meStatus = (r) => {
-      if (!isMe(r)) return '';
-      const [tier, fb, color] = r.response === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
-        : r.response === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
-        : ['me_status_none', "You haven't answered yet", '#fbbf24'];
-      return `<div style="font-size:0.78rem; font-weight:800; color:${color}; margin-top:6px;">${this.escapeHtml(cpy(tier, fb))}</div>`;
+      if (!isMe(r) && !isKid(r)) return '';
+      const name = String(nameOf(r)).split(' ')[0];
+      const [tier, fb, color] = isMe(r)
+        ? (r.response === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
+          : r.response === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
+          : ['me_status_none', "You haven't answered yet", '#fbbf24'])
+        : (r.response === 'yes' ? ['kid_status_yes', `✓ ${name} is going`, '#22c55e']
+          : r.response === 'no' ? ['kid_status_no', `✗ ${name} is not going`, '#ef4444']
+          : ['kid_status_none', `${name} hasn't answered yet`, '#fbbf24']);
+      return `<div style="font-size:0.78rem; font-weight:800; color:${color}; margin-top:6px;">${this.escapeHtml(cpy(tier, fb, { name }))}</div>`;
     };
     // ✓ / ✗ — tap the lit one to clear the answer (DELETE /rsvp).
     const rsvpBtns = (r) => {
-      if (!canSet && !(open && isMe(r))) return '';
+      if (!canSet && !(open && (isMe(r) || isKid(r)))) return '';
       const busy = this.saving.has(`rsvp:${r.person_id}`);
       const b = (resp, label, color) => {
         const on = r.response === resp;
