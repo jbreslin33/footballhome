@@ -132,6 +132,9 @@ const ActingState* DefendingBlock::pressBall() { return &kPress; }
 const ActingState* DefendingBlock::chaseBall() { return &kChase; }
 
 void BlockParams::configure(const core::ModelParams& p) {
+    static const int kLine[5] = {-5600, -3500, -800, 2400, 5400};   // G5.52, DFL spell offsets (m x1000)
+    static const char* const kLq[5] = {"p10", "p25", "p50", "p75", "p90"};
+    for (int k = 0; k < 5; ++k) line_q[k] = p.fixed(("physics.block.line_" + std::string(kLq[k])).c_str(), kLine[k]);
     for (int r = 0; r < kRoleCount; ++r)
         for (int b = 0; b < kBandCount; ++b) {
             const std::string key = std::string("physics.block.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
@@ -157,6 +160,12 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
                             const std::vector<Role>& role_of_slot, const Reads::FlightRead& fr, int restart_taker) {
     const auto& ball = world.ball();
     const bool live = inPlay(world);
+    {   // G5.52: their live spell on the ball (as Possession's, from the other side)
+        const bool theirs = (ball.owner ? team_of_slot[*ball.owner] != team : world.lastTouchTeam() != team) &&
+                            world.restartTeam() == 0xFF && world.outStage() == 0;
+        if (theirs && !their_had_[team & 1]) their_won_[team & 1] = world.tickCount();
+        their_had_[team & 1] = theirs;
+    }
     // The nearest outfielder to the ball, held until another is switch_m nearer.
     auto nearest = [&](int held) {
         int best = -1; Fixed64 bd{};
@@ -238,6 +247,21 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         const Fixed64 half_gap = bandLookup(params_.stagger, off_line) * Fixed64::fromFraction(1, 2);
         if (deep_cb_[t] == v.slot) x -= half_gap;
         else if (other_cb_[t] == v.slot) x += half_gap;
+    }
+    {   // G5.52: the block's depth for their possession, one roll for the team
+        const Fixed64 u = (core::detNoise(v.match_seed, their_won_[v.team & 1], v.team, 68) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Fixed64* q = params_.line_q;
+        static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
+                                       Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
+        Fixed64 off = q[4];
+        if (u <= kAt[0]) off = q[0];
+        else for (int i = 0; i < 4; ++i)
+            if (u <= kAt[i + 1]) { off = q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]); break; }
+        // Full from 18 m out, fading to nothing at 9 m [FH].
+        if (off_line < Fixed64::fromInt(18))
+            off = off_line <= Fixed64::fromInt(9) ? Fixed64::zero() : off * (off_line - Fixed64::fromInt(9)) / Fixed64::fromInt(9);
+        x += off;
+        if (x < Fixed64::one()) x = Fixed64::one();
     }
     return Vec2{(x - hx) * v.sg, v.across_def};
 }

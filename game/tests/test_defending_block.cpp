@@ -6,6 +6,8 @@
 #include "ai/Brain.hpp"
 #include "core/World.hpp"
 
+#include <string>
+
 using namespace fh::game;
 using math::Fixed64;
 using math::Vec2;
@@ -33,7 +35,10 @@ FH_TEST(block_spot_is_the_real_table) {
     w.placePlayer(16, Vec3{Fixed64::fromFraction(-15, 2), Fixed64::zero(), Fixed64::zero()}, Vec2{-Fixed64::one(), Fixed64::zero()});
     w.giveBall(16);
     ai::DefendingBlock b;
-    b.configure(core::ModelParams{});
+    // The table itself: G5.52's depth for their possession (a roll a spell) held at 0.
+    core::ModelParams mp;
+    for (const char* q : {"p10", "p25", "p50", "p75", "p90"}) mp.setMilli(std::string("physics.block.line_") + q, 0);
+    b.configure(mp);
     ai::PlayerView v;
     v.slot = 3; v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB; v.across_def = Fixed64::fromInt(6);
     v.ball_to = Vec2{w.ball().pos.x, w.ball().pos.y};      // carried: where it is (Brain::viewOf)

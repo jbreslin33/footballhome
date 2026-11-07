@@ -110,6 +110,7 @@ struct Stats {
     double lg_xy[2][ai::kRoleCount + 1] = {}, lg_xx[2][ai::kRoleCount + 1] = {}, lg_sx[2][ai::kRoleCount + 1] = {}, lg_sy[2][ai::kRoleCount + 1] = {}; long lg_s1[2][ai::kRoleCount + 1] = {};
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
+    long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
     int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {};   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
@@ -783,6 +784,7 @@ int main(int argc, char** argv) {
                         else if (!W.isKeeper(j) && ptl < lead) lead = ptl;
                     }
                     S.bx_ln[bz] += d2; S.bx_lead[bz] += lead;
+                    ++S.lq_h[bz][std::max(0, std::min(60, static_cast<int>(std::min(d2, tl))))];
                     double o1 = 1e9, o2 = 1e9, cbs = 0; int o1j = -1, ncb = 0;   // cover: their deepest outfielder v their CBs' mean
                     for (std::uint8_t j = 0; j < N; ++j) {
                         if (W.player(j).team == a || W.isKeeper(j)) continue;
@@ -1084,6 +1086,18 @@ int main(int argc, char** argv) {
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", bzn[z], S.bx_ln[z] / S.bx_f[z], real_ln[z], S.bx_lead[z] / S.bx_f[z], real_lead[z]);
+        {   // §8.152b: their line's spread, real DFL benchmarks_tracking_box.py
+            static const int kLq[6][5] = {{2, 4, 7, 10, 13}, {2, 5, 8, 11, 13}, {11, 14, 18, 22, 26}, {11, 14, 17, 22, 26}, {19, 22, 27, 33, 37}, {19, 23, 27, 32, 36}};
+            static const int kL16[6] = {97, 97, 35, 38, 3, 3};
+            std::printf("\n     their line (min with the ball) p10/p25/p50/p75/p90 m, inside 16 m %% (real DFL):");
+            for (int z = 0; z < 6; ++z) {
+                long t = 0; for (long v : S.lq_h[z]) t += v;
+                if (!t) continue;
+                auto q = [&](double f) { long acc = 0; for (int m = 0; m <= 60; ++m) { acc += S.lq_h[z][m]; if (acc >= f * t) return m; } return 60; };
+                long in16 = 0; for (int m = 0; m < 16; ++m) in16 += S.lq_h[z][m];
+                std::printf(" %s %d/%d/%d/%d/%d (%d/%d/%d/%d/%d) %.0f%% (%d);", bzn[z], q(.1), q(.25), q(.5), q(.75), q(.9), kLq[z][0], kLq[z][1], kLq[z][2], kLq[z][3], kLq[z][4], 100.0 * in16 / t, kL16[z]);
+            }
+        }
         std::printf("\n     their deepest outfielder / their CBs' mean / the next man higher, m (real DFL); deepest by role CB FB DM AM WIDE ST %%:");
         static const double real_deep[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_cbm[6] = {11.2, 11.5, 21.1, 20.3, 30.4, 29.8}, real_gap2[6] = {1.6, 1.9, 1.4, 1.5, 1.6, 1.6};
         for (int z = 0; z < 4; ++z) if (S.bx_f[z]) {

@@ -6719,3 +6719,48 @@ Real passers' in-behind choice is by the man's gap alone (§8.125's shares). 1.0
 11.47). (2) In behind from wide (a third of real) and in the air (35 v 58%). (3) Passes 548 v 434,
 the extra in our own half. (4) The front man reading the line (§8.151). (5) Law 8, Law 13 walls,
 cards. (6) Take-ons.
+
+### 8.153 G5.52 — the block's depth for their possession: their line drops as real ones do (no migration)
+
+§8.152's next: men in the box with the ball 18-35 m out (0.25 v 1.04).
+
+**Real** (`benchmarks_tracking_box.py`, now with who is past the line and the line's spread; DFL).
+With the ball 18-35 m out, only 8-15% of the side's men in the box are past their offside line.
+On the frames they are there, the line stands 12.3 m off its goal (the median frame 18.8). Men
+are in the box when the line has dropped into it. The line with the ball 18-35 m out is p10 / p25 /
+p50 / p75 / p90 11 / 14 / 18 / 22 / 26 m off its goal, inside 16 m 35-38% of frames.
+
+**Real, why it spreads** (new `scripts/benchmarks_tracking_linespell.py`). A defending line's
+height goes about half by the possession, as §8.146 found for the attackers' depth: between-spell sd
+4.2 m, within 3.6 (spells of 5 s+, ball 18-52 m out). The spell offset from the line's median at
+the ball's band is -5.6 / -3.5 / -0.8 / 2.4 / 5.4 m (p10 … p90, + = higher).
+
+**The game, before** (new harness line: their line's p10 … p90 and the share inside 16 m). With the
+ball 18-35 m out, 14 / 16 / 19 / 22 / 25 m, inside 16 m 17-23% (35-38). With it 0-18 m out, a
+median of 10-11 m (7-8): every block man stood on his band spot every possession, so the line
+seldom dropped. Box runners were drawn (0.66-0.69) and held onside at ~20 m, outside the box.
+
+**The change** [FH, fitted to DFL]. `DefendingBlock` marks when their live spell on the ball
+starts (as `Possession` does for ours). `DefendingBlock::spot` adds one offset for the whole block
+a spell: `detNoise` on the match seed, that tick and the team, piecewise through the real p10 …
+p90 (`physics.block.line_p10..p90`). The table's spot is unchanged. The offset is full from 18 m
+out and fades to nothing at 9 m [FH] (the fit is 18-52 only), and no man goes nearer than 1 m off
+his line. `test_defending_block` holds the offsets at 0 to check the table.
+
+**After** (8 × 90, the same fixtures and seeds).
+- Their line with the ball 18-35 m out: 12 / 14 / 18 / 22 / 26 (11 / 14 / 18 / 22 / 26), inside
+  16 m 32-33% (35-38). At 35-52 m out: 19 / 22 / 26 / 31 / 35 (19 / 22 / 27 / 33 / 37). At 0-18:
+  median 9 (7-8).
+- Ours in the box with the ball 18-35 m out: centre 0.26 → 0.37 (1.04), wide 0.29 → 0.39 (0.79).
+- Passes from their last 18 m: 8.5 → 8.8 a team-match (29.6). In behind 29.3 → 28.6. Crosses
+  0.75 → 0.44. Completion 82.3%. Shots 11.8.
+- Goldens re-locked.
+
+**What it says.** Their line now drops as real lines do, and more of ours stand in the box with it.
+The box is still a third full at 18-35 and the ball still doesn't reach the last 18 m. Real box
+presence at 18-35 m is lumpy: 60% of frames have none, 18% have 3+. Ours draw ~0.7 runners for
+the zone whatever the line does.
+
+**Next moles.** (1) How many go into the box when their line is deep. (2) The ball into the last
+18 m (8.8 v 29.6 passes) and crosses. (3) In behind from wide. (4) Passes 548 v 434. (5) The
+front man reading the line. (6) Law 8, Law 13 walls, cards. (7) Take-ons.

@@ -35,6 +35,12 @@ struct BlockParams {
     // G5.41 (§8.141): the back pair is never flat — by the ball's band, the real
     // depth gap between two CBs (DFL); the one marking their front man is deeper.
     math::Fixed64 stagger[kBandCount]{};
+    // G5.52 (§8.153): the block's depth for their possession — a real defending
+    // line's height goes ~half by the possession (between-spell sd 4.2 m, within
+    // 3.6, ball 18-52 m out); one roll a spell of theirs for the whole block,
+    // through the real spell offset p10 … p90 (+ = higher) — DFL
+    // (benchmarks_tracking_linespell.py); faded out inside 18 m (fitted 18-52 only).
+    math::Fixed64 line_q[5]{};
     void configure(const core::ModelParams& p);
 };
 
@@ -49,7 +55,7 @@ public:
     int deepCb(std::uint8_t team) const { return deep_cb_[team & 1]; }
     int chaser(std::uint8_t team) const { return chaser_[team & 1]; }
     int presser(std::uint8_t team) const { return presser_[team & 1]; }
-    void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; }
+    void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
 
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;
     // His share of his formation width for this ball (ball metres off our line).
@@ -67,6 +73,8 @@ private:
     int presser_[2] = {-1, -1};
     int deep_cb_[2] = {-1, -1};    // G5.41: the pair's deeper man (held), and his partner
     int other_cb_[2] = {-1, -1};
+    std::uint64_t their_won_[2] = {0, 0};   // G5.52: the tick their live spell began (by the defending team)
+    bool their_had_[2] = {false, false};
 };
 
 }  // namespace fh::game::ai

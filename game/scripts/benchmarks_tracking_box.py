@@ -57,7 +57,7 @@ def one(pos_path):
         dtl = sorted(half - x * g for pid, (x, y) in fr.items() if who.get(pid) == 1 - att)   # the defenders off their own line (keeper in)
         atl = [half - x * g for pid, (x, y) in fr.items() if who.get(pid) == att and pid not in keepers]
         if len(dtl) >= 2 and atl:   # §8.141: their offside line and our most advanced man
-            c[("ln", bz)] += dtl[1]; c[("lead", bz)] += min(atl); c[("lnn", bz)] += 1
+            c[("ln", bz)] += dtl[1]; c[("Lq", bz, min(60, int(min(dtl[1], btl))))] += 1   # G5.52: the line's spread c[("lead", bz)] += min(atl); c[("lnn", bz)] += 1
             dout = sorted((half - x * g, pid) for pid, (x, y) in fr.items() if who.get(pid) == 1 - att and pid not in keepers)
             cbs = [d for d, pid in dout if ROLE.get(pos_of.get(pid, "")) == "CB"]
             if dout and cbs:   # cover: the deepest outfielder against his CBs' mean, and who he is
@@ -72,6 +72,10 @@ def one(pos_path):
                 continue
             if abs(y) < 20.16:
                 inbox += 1
+                if len(dtl) >= 2:   # G5.52: in the box and past their offside line (an offside position) — and by how far
+                    L = min(dtl[1], btl)
+                    if tl < L: c[("past", bz)] += 1; c[("pastm", bz)] += L - tl
+                    c[("Lin", bz)] += L
                 c[("role", bz, ROLE.get(pos_of.get(pid, ""), "?"))] += 1
                 c[("d", bz)] += tl; c[("ay", bz)] += abs(y); c[("ys", bz)] += y * (1 if by >= 0 else -1); c[("np", bz)] += 1
             else:
@@ -97,6 +101,15 @@ for bz, nm in enumerate(names):
           f"stand {c[('d',bz)]/max(1,np_):.1f} m off the line, |y| {c[('ay',bz)]/max(1,np_):.1f}, ball side {c[('ys',bz)]/max(1,np_):+.1f}; by role: "
           + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
     ln = max(1, c[("lnn", bz)])
+    if np_: print(f"      in the box: past their offside line {100*c[('past',bz)]/np_:.0f}% of them (by {c[('pastm',bz)]/max(1,c[('past',bz)]):.1f} m); their line {c[('Lin',bz)]/np_:.1f} m off their goal on those frames (G5.52)")
+    lq = [(m, c[("Lq", bz, m)]) for m in range(61)]; tot = sum(k for _, k in lq)
+    def lqq(f):
+        acc = 0
+        for m, k in lq:
+            acc += k
+            if acc >= f * tot: return m
+        return 60
+    if tot: print(f"      their line (min with the ball) p10 / p25 / p50 / p75 / p90: {lqq(.1)} / {lqq(.25)} / {lqq(.5)} / {lqq(.75)} / {lqq(.9)} m; inside 16 m {100*sum(k for m, k in lq if m < 16)/tot:.0f}% (G5.52)")
     print(f"      their offside line (second-last, keeper in) {c[('ln',bz)]/ln:.1f} m off their line; our most advanced outfielder {c[('lead',bz)]/ln:.1f} m")
     dn = max(1, c[("dn", bz)]); dr = sorted({k[2] for k in c if isinstance(k, tuple) and k[0] == "drole" and k[1] == bz})
     print(f"      their deepest outfielder {c[('deep',bz)]/dn:.1f} m, their CBs' mean {c[('cbm',bz)]/dn:.1f} m, next man {c[('gap2',bz)]/dn:.1f} m higher; deepest by role: "
