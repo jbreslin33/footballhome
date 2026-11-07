@@ -81,6 +81,14 @@ struct PossessionParams {
     // a possession through the real p10 / p25 / p50 / p75 / p90 (+ = further from
     // their line) — DFL tracking (benchmarks_tracking_gapspread.py SPELL OFFSET).
     math::Fixed64 depth_q[kRoleCount][5]{};
+    // The front man on their line (G5.47): a real side's most advanced outfielder
+    // stands p10 / p25 / p50 / p75 / p90 -0.7 / 0.5 / 1.6 / 3.0 / 4.8 m short of
+    // their offside line with the ball 10-60 m out (flat by band; past it 15-29% of
+    // frames) and holds the job a median 2.2 s — DFL tracking
+    // (benchmarks_tracking_shoulder.py, front man's gap). Ours rolls his gap through
+    // it once a tenure, never nearer than onside_margin_m (no pass avoids a man
+    // past the line yet); a mate takes the job only front_swap_m further on.
+    math::Fixed64 front_q[5]{}, front_swap_m{};
     void configure(const core::ModelParams& p);
 };
 
@@ -107,16 +115,24 @@ public:
     // onto their line (G5.45), and whose run is over.
     void assignRuns(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                     const std::vector<Role>& role_of_slot, std::uint64_t match_seed);
+    // Once a tick per team (after assignRuns): who is the front man (G5.47).
+    void assignFront(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
+    std::uint8_t front(std::uint8_t team) const { return front_[team & 1]; }
+    // The front man's gap short of their line for this tenure (G5.47), metres.
+    math::Fixed64 frontGap(const PlayerView& v) const;
     bool running(std::uint8_t slot) const { return slot < 32 && run_[slot].on; }
     math::Fixed64 runEndGap(std::uint8_t slot) const { return slot < 32 ? run_[slot].end_gap : math::Fixed64{}; }
     math::Fixed64 runY(std::uint8_t slot) const { return slot < 32 ? run_[slot].y : math::Fixed64{}; }
     // Their offside line in `team`'s attack direction (Law 11): their second-last
     // man, else halfway; never behind the ball. Metres along +sg.
     static math::Fixed64 offsideLine(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
+    // How fast that line moves, world x m/s (G5.47): the velocity of whoever sets it
+    // (their second-last man, or the ball past him); 0 at halfway.
+    static math::Fixed64 offsideLineVelX(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
     bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
+    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; front_[0] = front_[1] = 0xFF; front_at_[0] = front_at_[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
     // His depth offset for this spell (G5.46), metres further from their line.
@@ -138,6 +154,8 @@ private:
     std::uint64_t drawn_[2] = {0, 0};
     std::uint64_t won_[2] = {0, 0};
     bool had_[2] = {false, false};
+    std::uint8_t front_[2] = {0xFF, 0xFF};
+    std::uint64_t front_at_[2] = {0, 0};
     Led led_[32]{};
     struct Run { bool on = false; std::uint64_t until = 0; math::Fixed64 end_gap{}, y{}; };
     Run run_[32]{};

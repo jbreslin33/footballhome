@@ -49,7 +49,7 @@ def one(pos_path):
             for pid, p in ps.items():
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
-    c = collections.Counter(); spells = []; sd = collections.defaultdict(list); sd2 = collections.defaultdict(list); sd2b = collections.defaultdict(list)
+    c = collections.Counter(); spells = []; sd = collections.defaultdict(list); sd2 = collections.defaultdict(list); sd2b = collections.defaultdict(list); fg = collections.defaultdict(list)
     cur = None   # (sec, team, pid, start frame, last frame)
     for (sc, n) in sorted(ball):
         bx, by, att = ball[(sc, n)]
@@ -63,6 +63,7 @@ def one(pos_path):
         line = min(dl[1], btl)
         (f1, p1, y1), (f2, p2, y2) = fa[0], fa[1]
         r = ROLE.get(pos_of.get(p1), -1)
+        fg[b].append(round(f1 - line, 1))   # G5.47: the front man's gap, every frame
         c[("n", b)] += 1; c[("gap", b)] += f1 - line; c[("gap2", b)] += f2 - f1
         c[("r", b, r)] += 1; c[("dy", b)] += abs(y1 - by)
         c[("off", b)] += f1 < line                    # past the line (offside position if the ball came)
@@ -79,15 +80,15 @@ def one(pos_path):
         else:
             if cur and btl < 52: spells.append((cur[4] - cur[3] + 5) / 25)
             cur = (sc, att, p1, n, n)
-    return c, spells, (sd, sd2, sd2b)
+    return c, spells, (sd, sd2, sd2b, fg)
 if __name__ == "__main__":
     files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_04_03_positions_raw_observed_*.xml")))
     c = collections.Counter(); sp = []
     with multiprocessing.Pool(3) as pool:
-        SD = [collections.defaultdict(list) for _ in range(3)]
+        SD = [collections.defaultdict(list) for _ in range(4)]
         for r, s2, d3 in pool.imap_unordered(one, files):
             c.update(r); sp += s2
-            for i in range(3):
+            for i in range(4):
                 for k, v in d3[i].items(): SD[i][k] += v
     sp.sort()
     print(f"{len(files)} DFL matches: the side IN possession's most advanced outfielder v their offside line (second-last, keeper in, or the ball)")
@@ -109,3 +110,9 @@ if __name__ == "__main__":
         if len(v) < 50: continue
         two = f"{qs(SD[1][b])} | {qs(SD[2][b])}" if len(SD[1][b]) >= 50 else "-"
         print(f"   {b*10:2d}-{b*10+10:<3d} | {len(v):6d} {sum(v)/len(v):5.1f}  {qs(v)} | {two}")
+    print("   the front man's gap (G5.47), m short (− = past it): band | p10 / p25 / p50 / p75 / p90")
+    for b in range(10):
+        v = SD[3][b]
+        if len(v) >= 50: print(f"   {b*10:2d}-{b*10+10:<3d} | {qs(v)}")
+    allv = [x for b in range(1, 6) for x in SD[3][b]]
+    if allv: print(f"   10-60 all | {qs(allv)}")

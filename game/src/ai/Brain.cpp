@@ -132,6 +132,7 @@ void Brain::think(const World& world) const {
         block_.assign(t, world, setup_.team_of_slot, role_of_slot_, fr, restartTaker(world, t));
         poss_.assignRunners(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
         poss_.assignRuns(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
+        poss_.assignFront(t, world, setup_.team_of_slot);
     }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[s] & 1], now};
@@ -599,6 +600,11 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 // holding the block with their man carrying it in play; a free ball's spot is
 // where it will be taken, which stands still while it travels.
 Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const {
+    // G5.47 (§8.147): the front man's spot is their line less his gap — it moves
+    // as the line does, so he runs with the line's own velocity (tracking).
+    if (o.why == Why::Hold && poss_.front(setup_.team_of_slot[slot]) == slot &&
+        players_[slot & 31].machine.current() == Possession::support())
+        return Vec2{Possession::offsideLineVelX(setup_.team_of_slot[slot], world, setup_.team_of_slot), Fixed64::zero()};
     if (o.why != Why::Hold || players_[slot & 31].machine.current() != DefendingBlock::holdBlockSpot()) return Vec2{};
     const auto& b = world.ball();
     if (!b.owner || world.restartTeam() != 0xFF || world.outStage() != 0) return Vec2{};

@@ -333,6 +333,8 @@ public:
         if (bx > line) line = bx;
         if (line < Fixed64::zero()) line = Fixed64::zero();
         const Fixed64 lim = line - c.poss.params().onside_margin_m;
+        // G5.47: the front man stands on their line, his tenure's gap short of it.
+        if (c.poss.front(v.team) == v.slot) t.x = (line - c.poss.frontGap(v)) * v.sg;
         if (t.x * v.sg > lim) t.x = lim * v.sg;
         o.target = t;
         o.move.move = seek(c.world.player(v.slot).pos, t, Fixed64::fromFraction(1, 2));
@@ -577,6 +579,22 @@ Fixed64 Possession::offsideLine(std::uint8_t team, const core::World& world, con
     return line;
 }
 
+Fixed64 Possession::offsideLineVelX(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    Fixed64 a{}, b{}; bool ha = false, hb = false; std::uint8_t ja = 0xFF, jb = 0xFF;
+    for (std::uint8_t j = 0; j < world.playerCount(); ++j) {
+        if (team_of_slot[j] == team) continue;
+        const Fixed64 x = world.player(j).pos.x * sg;
+        if (!ha || x > a) { b = a; hb = ha; jb = ja; a = x; ha = true; ja = j; }
+        else if (!hb || x > b) { b = x; hb = true; jb = j; }
+    }
+    if (!hb) return Fixed64::zero();
+    const auto& ball = world.ball();
+    if (ball.pos.x * sg > b) return ball.vel.x;
+    if (b < Fixed64::zero()) return Fixed64::zero();
+    return world.player(jb).vel.x;
+}
+
 void Possession::assignRuns(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                             const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
     const auto& b = world.ball();
@@ -624,6 +642,44 @@ void Possession::assignRuns(std::uint8_t team, const core::World& world, const s
         r.y = world.player(j).pos.y;
         r.until = now + static_cast<std::uint64_t>((P.run_max_s / core::kTickDt).raw >> Fixed64::FRAC_BITS);
     }
+}
+
+void Possession::assignFront(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
+    const auto& b = world.ball();
+    const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
+    std::uint8_t& f = front_[team & 1];
+    if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { f = 0xFF; return; }
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    // Our most advanced outfielder in Support: not on the ball, not the pass's
+    // man, not running into the box or onto the line.
+    auto ok = [&](std::uint8_t j) {
+        return team_of_slot[j] == team && !world.isKeeper(j) && !(b.owner && *b.owner == j) && b.pass_to != j && !runner(j) && !running(j);
+    };
+    std::uint8_t best = 0xFF; Fixed64 bx{};
+    for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+        if (!ok(j)) continue;
+        const Fixed64 x = world.player(j).pos.x * sg;
+        if (best == 0xFF || x > bx) { best = j; bx = x; }
+    }
+    if (best == 0xFF) { f = 0xFF; return; }
+    if (f != 0xFF && f < world.playerCount() && ok(f) && world.player(f).pos.x * sg + params_.front_swap_m >= bx) return;
+    f = best;
+    front_at_[team & 1] = world.tickCount();
+}
+
+Fixed64 Possession::frontGap(const PlayerView& v) const {
+    // One roll a tenure, piecewise through the real p10 … p90 (tails held), never
+    // nearer than onside_margin_m.
+    const Fixed64 u = (core::detNoise(v.match_seed, front_at_[v.team & 1], v.slot, 66) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    const Fixed64* q = params_.front_q;
+    static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
+                                   Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
+    Fixed64 g = q[4];
+    if (u <= kAt[0]) g = q[0];
+    else for (int i = 0; i < 4; ++i)
+        if (u <= kAt[i + 1]) { g = q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]); break; }
+    if (g < params_.onside_margin_m) g = params_.onside_margin_m;
+    return g;
 }
 
 void PossessionParams::configure(const core::ModelParams& p) {
@@ -696,6 +752,10 @@ void PossessionParams::configure(const core::ModelParams& p) {
     for (int r = 0; r < kRoleCount; ++r)
         for (int k = 0; k < 5; ++k)
             depth_q[r][k] = p.fixed(("physics.support.depth_" + std::string(kDq[k]) + "_" + kRoleKey[r]).c_str(), kSpell[r][k]);
+    // The front man's gap (G5.47): DFL (benchmarks_tracking_shoulder.py, ball 10-60 m out), metres x1000.
+    static const int kFront[5] = {-700, 500, 1600, 3000, 4800};
+    for (int k = 0; k < 5; ++k) front_q[k] = p.fixed(("physics.front.gap_" + std::string(kDq[k])).c_str(), kFront[k]);
+    front_swap_m = p.fixed("physics.front.swap_m", 1000);
     for (int z = 0; z < 6; ++z) {
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);

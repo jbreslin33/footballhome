@@ -6488,3 +6488,52 @@ live within 2 m of the line. That is a target off the live line, not a depth off
 live line (DFL front man gap by line move, above) — balls in behind 17.2 v 37.7. (2) Ball-still
 runs 67.7 v 41.7 (spell re-rolls read as runs; ease the new spot in?). (3) Crosses 0.44 v 11.47.
 (4) Law 8, Law 13 walls, cards. (5) Take-ons.
+
+### 8.147 G5.47 — the front man on their line, tracking it (no migration)
+
+§8.146's next: the front man on the line.
+
+**Real** (`scripts/benchmarks_tracking_shoulder.py`, now with the front man's gap quantiles; DFL
+[Bassek et al. 2025]). The side in possession's most advanced outfielder stands p10 / p25 / p50 /
+p75 / p90 -0.7 / 0.5 / 1.6 / 3.0 / 4.8 m short of their offside line with the ball 10-60 m out.
+That is nearly flat by band (median 1.2-1.8). He is past the line 15-29% of frames and holds the
+job a median 2.2 s. He moves with the line: his median gap is 2.4 / 1.7 / 1.2 / 0.5 / -0.1 m as
+it drops 2+ … steps up 2+ (`benchmarks_tracking_linegap.py`, §8.146).
+
+**The game, before** (G5.46). The right men were front men (ST / WIDE shares within a few points),
+but at 3.6-7.3 m short (mean), within 2 m 6-21% of frames (real 35-49), 4+ m short 43-69% (10-21).
+Every man stood off his role's spot, and the line only capped him.
+
+**The change** [FH, fitted to DFL]. `Possession::assignFront`, once a tick per team after
+assignRuns, names the front man while the ball is live and ours. He is our most advanced
+outfielder who is not on the ball, not the pass's man, not a box runner and not on a run; he keeps
+the job until a mate is `physics.front.swap_m` (1 m) further on. In Support his spot's depth is the
+live line less his gap (`Possession::frontGap`): one roll a tenure through the real p10 … p90
+(`physics.front.gap_p10|p25|p50|p75|p90`). The gap is never under `onside_margin_m`, because no
+pass avoids a man past the line yet, and one past it is flagged when the ball comes. He keeps his
+role's across.
+**Tracking** (as the block's G5.30): `Brain::blockLead` hands brakeToArrive the line's own velocity
+for him (`Possession::offsideLineVelX`: their second-last man's, or the ball's when it is past
+him). He runs with the line and closes the gap on top. Without it he trailed the line every time it
+moved: caught 2.1 m past it as it stepped up 2+ (real -0.1), 5.4 m short as it dropped 2+ (2.4).
+
+**After** (8 × 90, scratch DB, the same fixtures and seeds as §8.146's after).
+- Front man gap by the line's move (ball not going forward): -0.8 / 0.5 / 1.3 / 2.2 / 4.2 (real
+  -0.1 / 0.5 / 1.2 / 1.7 / 2.4).
+- Front man within 2 m of the line with the ball 40-70 m out: 36-39% (35-38). At 20-40 m out:
+  30-32% (40-49).
+- Past the line 7-13% (15-29). 4+ m short 25-33% (15-21).
+- The strip by the line at 18-35, 0-2 m: 0.26 → 0.42 a frame (0.73).
+- Balls in behind 17.2 → 20.2 (37.7). Offsides 0.3 → 0.5 a team-match (~1.1). Shots 10.5 → 10.4.
+- Goldens re-locked.
+
+**What it says.** The front man is now on the line as real ones are, in the median and as the line
+moves. The tail is still long: 4+ m short a third of the time. Part of that is frames where the
+most advanced man is a runner, the carrier or the pass's man, so he isn't the front man in Support.
+In behind is still half real. Real passers play 50% of balls to a man 0-2 m short in behind
+(§8.125), so the share of passes finding him is the measure to read next. Ours stand there now; is
+the ball played to them?
+
+**Next moles.** (1) In behind 20.2 v 37.7: passes named to a man 0-2 m short (§8.145 had 0.8% of
+all, real 8.0%), re-read with the front man on the line. (2) Ball-still runs 67.9 v 41.7 (§8.146).
+(3) Crosses 0.69 v 11.47. (4) Law 8, Law 13 walls, cards. (5) Take-ons.
