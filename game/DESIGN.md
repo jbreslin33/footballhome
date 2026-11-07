@@ -6333,8 +6333,18 @@ physics.support.<role>_<band> unchanged, now the still-ball spot).
   12.83), on the ball there 3.0 → 4.8 s (10.7); in the box with the ball 18-35 central 0.09 → 0.13
   (1.04); goals 1.12 (one 8-match set). Tests 22/22; goldens re-locked.
 
-**Next moles.** (1) Our ST with the ball still still stands 3 m deeper than his own target (22.5 v
-19.5 at 20-30) and the AM 5 m — the side in possession has no G5.30 tracking of its moving spot
-(blockLead is the block's only) and closes on shape_tau_ours (1 s); see what holds him first
-(GAME_HOLD_TRACE a). (2) Runners in the box 18-35 m (0.13 v 1.04) and crosses (0.19 v 11.47).
-(3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.
+**Amended — the harness's roles.** fh-game-match named every man's role by his shirt number
+(`roleOfNumber`); the brain plays the formation's role name first (`roleOfSlot`: a "ten" in an 8
+shirt is the AM, an "eight" in a 10 shirt a DM — mig 1127 numbered James's sides). Every by-role
+line in the harness now reads `Brain::roleOf`. Same matches, re-measured: the AM "5 m deep" was the
+mislabel — with the ball still 20-30 m out the side in possession now reads CB 46.7 (44.8), FB 35.5
+(33.6), DM 33.7 (31.6), AM 26.0 (23.6), WIDE 26.0 (23.8), ST 21.8 (19.5); the block 18.5 / 20.9 /
+24.5 / 31.6 / 27.7 / 41.1 (17.0 / 18.9 / 23.0 / 30.7 / 26.6 / 40.2) — every role within 1-2.5 m on
+both sides. New harness line POSSESSION SIDE, BALL STILL: by role, the share holding shape /
+attacking the box / else, each at v target — holders stand ~1 m behind their targets, not 3.
+
+**Next moles.** (1) Nobody plays on the shoulder: with the ball still 20-30 m out the real front
+man is 1.2 m short of the line, 3.0 m beyond the ST mean; ours 3.9 short, 0.7 beyond — every man
+stands at his role's mean spot, and the mean is not the man on the last defender. Real data first
+(who the front man is, how long he stays there), then the job. (2) Runners in the box 18-35 m
+(0.13 v 1.04) and crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.

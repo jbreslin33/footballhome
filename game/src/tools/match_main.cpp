@@ -101,6 +101,7 @@ struct Stats {
     long lo_f = 0, lo_1 = 0, lo_k[4] = {}, cb_n = 0; double cb_gap = 0, cb_mid = 0;
     long wg_n[4][10] = {}; double wg[4][10] = {};   // settled CB / FB pair gaps by band   // §8.138: the lane in open play, the CB pair
     std::vector<double> sh_near, sh_held; long sh_gs = 0;   // at the strike: nearest opponent to the shooter, s on the ball   // §8.138: bodies in the ±1 m lane at the strike; blocked by count   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
+    long sh_n[5][ai::kRoleCount][3] = {}; double sh_at[5][ai::kRoleCount][3] = {}, sh_tg[5][ai::kRoleCount][3] = {};   // §8.143: possession side, ball still: holders / box runners / other, at v target
     long pl_n[5][4] = {}; long pl_k[5][4][ai::kRoleCount] = {}; double pl_s[5][4][ai::kRoleCount] = {}, pl_line[5][4] = {}, pl_front[5][4] = {};   // §8.143: the side in possession, the same split
     long dl_n[5][4] = {}; long dl_k[5][4][ai::kRoleCount] = {}; double dl_s[5][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
@@ -183,7 +184,8 @@ int main(int argc, char** argv) {
         const auto& W = s.world();
         const double hx = W.pitchHalfX().toDouble();
         const std::uint8_t N = W.playerCount();
-        auto role = [&](std::uint8_t j) { return static_cast<int>(ai::roleOfNumber(s.brain().numberOf(j))); };
+        // §8.143: the brain's role (formation role name, then number) — by number a "ten" in an 8 shirt was a DM here
+        auto role = [&](std::uint8_t j) { return static_cast<int>(s.brain().roleOf(j)); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         // Per-match state.
@@ -569,6 +571,11 @@ int main(int argc, char** argv) {
                         const double v = hx - q.pos.x.toDouble() * sg;   // off THEIR line
                         S.ps_s[bp][r] += v; ++S.ps_n[bp][r]; pm += v; ++pn;
                         if (plag_ok) { S.pl_s[bd][pvb][r] += v; ++S.pl_k[bd][pvb][r]; }
+                        if (plag_ok && pvb == 1) {
+                            const auto& lo = s.lastOrders()[j];
+                            const int wk = lo.why == ai::Why::Hold ? 0 : lo.why == ai::Why::AttackBox ? 1 : 2;
+                            ++S.sh_n[bd][r][wk]; S.sh_at[bd][r][wk] += v; S.sh_tg[bd][r][wk] += hx - lo.target.x.toDouble() * sg;
+                        }
                         back = std::max(back, v); front = std::min(front, v);
                     }
                 }
@@ -1059,6 +1066,18 @@ int main(int argc, char** argv) {
             {{45.1, 35.4, 33.6, 26.4, 25.8, 20.8, 17.1, 18.0}, {50.6, 40.0, 37.8, 30.9, 30.3, 25.6, 20.8, 22.2}, {55.5, 44.7, 42.6, 34.7, 33.9, 28.9, 23.8, 26.0}, {60.8, 50.5, 48.3, 39.2, 38.3, 33.1, 27.5, 29.7}},
             {{52.5, 41.9, 39.7, 31.5, 31.2, 27.1, 22.6, 23.7}, {56.5, 45.3, 43.9, 35.7, 35.3, 30.4, 26.0, 27.6}, {61.1, 50.4, 48.4, 40.3, 40.2, 34.5, 29.6, 31.7}, {66.5, 56.9, 54.4, 46.0, 44.3, 38.8, 33.4, 35.9}}};
         static const char* kVb[4] = {"back", "still", "forward 2-5", "forward 5+"};
+        std::printf("POSSESSION SIDE, BALL STILL: by role, share / at / target (m off their line) for hold shape | attack the box | anything else\n");
+        for (int bd = 0; bd < 5; ++bd) {
+            std::printf("  %3d-%-3d", bd * 10, bd * 10 + 10);
+            for (int r = 0; r < ai::kRoleCount; ++r) {
+                const long t = S.sh_n[bd][r][0] + S.sh_n[bd][r][1] + S.sh_n[bd][r][2];
+                std::printf(" |");
+                for (int w = 0; w < 3; ++w)
+                    if (S.sh_n[bd][r][w]) std::printf(" %2.0f%% %4.1f/%4.1f", 100.0 * S.sh_n[bd][r][w] / t, S.sh_at[bd][r][w] / S.sh_n[bd][r][w], S.sh_tg[bd][r][w] / S.sh_n[bd][r][w]);
+                    else std::printf("  -");
+            }
+            std::printf("\n");
+        }
         std::printf("POSSESSION SHAPE BY THE BALL'S SPEED FORWARD over 1 s (m off THEIR line; benchmarks_tracking_lag.py, real DFL in brackets): band, ball, frames | CB FB DM/CM AM WIDE ST | their line / our front man\n");
         for (int bd = 0; bd < 5; ++bd)
             for (int vb = 0; vb < 4; ++vb) {
