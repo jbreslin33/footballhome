@@ -47,8 +47,46 @@ class TacticsPitch {
     </svg>`;
   }
 
+  // Where each piece DRAWS: its true spot, nudged apart from any piece it
+  // would cover (owner 11/6: "players should not cover over other player
+  // pills. you can't tell guy under").  Display only — the situation's
+  // numbers (what is saved and what the game plays) never change.  Works in
+  // a square-ish unit space (y stretched by 105/68) so a chip's footprint
+  // is round; the ball holds still, two people both give way.
+  _layout(situation) {
+    const s = situation || this.situation;
+    const SY = 105 / 68, D = 7.4, DB = 4.2;
+    const items = [
+      ...(s.opponents || []).map((p, i) => ({ key: `opp:${i}`, kind: 'opp', x: p.x, y: p.y * SY })),
+      ...(s.players || []).map((p, i) => ({ key: `us:${i}`, kind: 'us', x: p.x, y: p.y * SY })),
+      ...(s.ball ? [{ key: 'ball:0', kind: 'ball', x: s.ball.x, y: s.ball.y * SY }] : []),
+    ];
+    for (let pass = 0; pass < 12; pass++) {
+      let moved = false;
+      for (let i = 0; i < items.length; i++) {
+        for (let j = i + 1; j < items.length; j++) {
+          const a = items[i], b = items[j];
+          const min = a.kind === 'ball' || b.kind === 'ball' ? DB : D;
+          let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+          if (d >= min) continue;
+          if (d < 1e-6) { dx = (i % 2 ? 1 : -1); dy = 0.3; d = Math.hypot(dx, dy); }
+          const push = (min - d) / d;
+          const wa = a.kind === 'ball' ? 0 : (b.kind === 'ball' ? 1 : 0.5), wb = 1 - wa;
+          a.x -= dx * push * wa; a.y -= dy * push * wa;
+          b.x += dx * push * wb; b.y += dy * push * wb;
+          moved = true;
+        }
+      }
+      if (!moved) break;
+    }
+    const out = new Map();
+    for (const it of items) out.set(it.key, { x: Math.max(1.5, Math.min(98.5, it.x)), y: Math.max(1, Math.min(99, it.y / SY)) });
+    return out;
+  }
+
   _pieceHtml(kind, idx, p) {
-    const pos = `left:${p.x}%; top:${100 - p.y}%;`;
+    const at = (this._drawAt && this._drawAt.get(`${kind}:${idx}`)) || p;
+    const pos = `left:${at.x}%; top:${100 - at.y}%;`;
     const grab = this.editable && this.dragKinds.has(kind) ? 'cursor:grab; touch-action:none;'
       : (this.onPieceClick && kind !== 'ball' ? 'cursor:pointer;' : '');
     const base = `position:absolute; ${pos} transform:translate(-50%,-50%); ${grab} user-select:none; -webkit-user-select:none;`;
@@ -71,6 +109,7 @@ class TacticsPitch {
 
   html() {
     const s = this.situation;
+    this._drawAt = this._layout(s);
     const pieces = [
       ...(s.opponents || []).map((o, i) => this._pieceHtml('opp', i, o)),
       ...(s.players || []).map((p, i) => this._pieceHtml('us', i, p)),
@@ -93,8 +132,9 @@ class TacticsPitch {
   update(situation) {
     this.situation = situation;
     if (!this._el) return;
+    const at = this._layout(situation);
     for (const node of this._el.querySelectorAll('[data-tp-kind]')) {
-      const p = this._target(node.dataset.tpKind, Number(node.dataset.tpIdx));
+      const p = at.get(`${node.dataset.tpKind}:${node.dataset.tpIdx}`);
       if (!p) continue;
       node.style.left = `${p.x}%`;
       node.style.top = `${100 - p.y}%`;

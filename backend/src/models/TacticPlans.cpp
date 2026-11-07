@@ -43,9 +43,16 @@ json TacticPlans::lookups() {
     auto* db = Database::getInstance();
     json out = {{"moments", json::array()}, {"blocks", json::array()}, {"kinds", json::array()}, {"stances", json::array()}};
     out["restarts"] = json::array();
-    for (const auto& r : db->query("SELECT code, label, law, our_max_y::float8 AS our_max_y FROM tactic_restarts ORDER BY code"))
+    // Law zones (mig 1145, game session): the box opponents are kept out of.
+    const auto num = [](const pqxx::field& f) { return f.is_null() ? json(nullptr) : json(f.as<double>()); };
+    for (const auto& r : db->query(
+             "SELECT code, label, law, our_max_y::float8 AS our_max_y, zone, zone_min_x::float8 AS zone_min_x, "
+             "       zone_max_x::float8 AS zone_max_x, zone_min_y::float8 AS zone_min_y FROM tactic_restarts ORDER BY code"))
         out["restarts"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()},
-                                   {"law", r["law"].as<std::string>()}, {"our_max_y", r["our_max_y"].as<double>()}});
+                                   {"law", r["law"].as<std::string>()}, {"our_max_y", num(r["our_max_y"])},
+                                   {"zone", r["zone"].is_null() ? json(nullptr) : json(r["zone"].as<std::string>())},
+                                   {"zone_min_x", num(r["zone_min_x"])}, {"zone_max_x", num(r["zone_max_x"])},
+                                   {"zone_min_y", num(r["zone_min_y"])}});
     for (const auto& r : db->query("SELECT code, label FROM tactic_job_stances ORDER BY sort_order"))
         out["stances"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()}});
     for (const auto& r : db->query("SELECT code, title FROM game_moments ORDER BY sort_order"))

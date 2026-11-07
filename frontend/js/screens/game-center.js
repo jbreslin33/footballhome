@@ -2086,7 +2086,7 @@ class GameCenterScreen extends EventScreen {
       .map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) }))
       .sort((a, b) => a.number - b.number);
     const law = this._planRestart(st);
-    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY(), law ? law.our_max_y : null);
+    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY(), law);
     return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players, opponents: opps.map(o => ({ ...o, label: o.number })) };
   }
 

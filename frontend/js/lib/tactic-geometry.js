@@ -28,9 +28,10 @@
 //                         the left side (mig 1133)
 //   no job                his formation spot
 //   keeper                (50, the block height's gk_y)
-//   restart law           a state tagged with a restart (tactic_restarts)
-//                         caps our y at its our_max_y — Law 16 goal kick:
-//                         84.29, their 18-yard line
+//   restart law           a state tagged with a restart (tactic_restarts):
+//                         stay out of its zone box — Law 16 goal kick = their
+//                         penalty area (x 20.35–79.65, y ≥ 84.29); outside
+//                         the area's width no cap (mig 1145)
 const TacticGeometry = {
   W: 68, L: 105,
   OUR_GOAL: { x: 50, y: 0 },
@@ -52,9 +53,13 @@ const TacticGeometry = {
   // state: { ball_with, opponents: [{number,x,y}], jobs: [{position_id,kind,targets,target_b,partner_position_id,stance}] }
   // kinds: { code → {dist_m, press_m} }; base: [{position_id,x,y}] our formation spots.
   // → { ball: {x,y}, players: [{position_id, x, y}] } for positions 1–11 in id order.
-  // maxY (optional): a restart law's cap on our spots — e.g. Law 16, none
-  // of ours past their 18-yard line (84.29) until the goal kick is played.
-  solve(state, kinds, base, gkY, maxY) {
+  // law (optional): the restart law the state is played under — a
+  // tactic_restarts row.  Its zone (zone_min_x..zone_max_x, y ≥
+  // zone_min_y) is a box we must stay out of: Law 16 goal kick = their
+  // penalty area, so a spot inside the area's width is held at its line and
+  // one outside it is free (the Law exactly, mig 1145).  A row with no zone
+  // falls back to our_max_y across the whole width.
+  solve(state, kinds, base, gkY, law) {
     const opp = new Map((state.opponents || []).map(o => [Number(o.number), o]));
     const ballMan = opp.get(Number(state.ball_with));
     const ball = ballMan ? { x: ballMan.x, y: ballMan.y } : { x: 50, y: 95 };
@@ -91,7 +96,11 @@ const TacticGeometry = {
           spot = this.straddleSpot(a, ball, kind, !mate || home.x <= mate.x);
         }
       }
-      if (maxY != null && pid !== 1 && spot.y > maxY) spot = { x: spot.x, y: maxY };
+      if (law && pid !== 1) {
+        if (law.zone_min_y != null && law.zone_min_x != null && law.zone_max_x != null) {
+          if (spot.x >= law.zone_min_x && spot.x <= law.zone_max_x && spot.y > law.zone_min_y) spot = { x: spot.x, y: law.zone_min_y };
+        } else if (law.our_max_y != null && spot.y > law.our_max_y) spot = { x: spot.x, y: law.our_max_y };
+      }
       players.push({ position_id: pid, x: spot.x, y: spot.y });
     }
     return { ball, players };
