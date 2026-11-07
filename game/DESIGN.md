@@ -6089,6 +6089,10 @@ save reaches a running match on reload (Game Center may send it after saving).
   over S of ball + (S_i − ball) · lane_t — deter nearer the passer, read nearer the receivers.
 - *cover_shadow S, B* with a set: B on the ball → ball + press_m along the mean of the unit vectors
   ball → S_i; otherwise the mean of (S_i + dist_m toward the ball).
+- *The man on the ball is no lane* (11/7): lane and cover_shadow (the lanes branch) skip any
+  target within 0.5 m of the ball (`JobRule::offBall`). If every target has the ball, the man
+  stands press_m (else 1.5 m) goal-side of it (`JobRule::onTheBall`). Club app, 11/7: 3-R2, ball
+  to their 5, 7 on deter 5 + 3 was drawn on top of 5.
 - *Stance* (`tactic_job_stances`, `tactic_jobs.stance`): goal_side by default; intercept (concept
   168 defend-your-man) — a mark stands dist_m BALL-side of his man instead of goal-side.
 - *Restarts* (mig 1142, `tactic_restarts`; `tactic_states.restart`): every out_of_possession root
