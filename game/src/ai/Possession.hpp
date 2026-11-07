@@ -54,7 +54,8 @@ struct PossessionParams {
     // passes ending in each zone, and the share lofted / crossed — StatsBomb PL
     // 2015/16 open play (benchmarks_statsbomb_passes.py PASS POLICY).
     math::Fixed64 pass_to[10][10]{}, pass_loft[10]{}, pass_cross[10]{};
-    math::Fixed64 risk_weight{};   // an unsafe pass's weight, × its zone share
+    math::Fixed64 risk_weight{};
+    math::Fixed64 behind_risk{};   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share
     math::Fixed64 clear_from_m{};                   // our end: within this of our line
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};

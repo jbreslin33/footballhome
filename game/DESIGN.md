@@ -6675,3 +6675,45 @@ That is anticipation, a bigger step, and in behind did not answer the front man'
 **Next moles.** (1) **Crosses 0.7 v 11.47 a team-match**, the largest single miss left. (2) In
 behind 17 v 37.7. (3) Completion 83.5 v 79.1 and passes 538 v 434 (61% to men 18+ m short v 53).
 (4) The front man reading the line (above). (5) Law 8, Law 13 walls, cards. (6) Take-ons.
+
+### 8.152 G5.51 — a ball in behind is played as real ones are, 50/50s and all (no migration)
+
+§8.151's next: crosses 0.7 v 11.47 a team-match.
+
+**Crosses are a symptom** (`benchmarks_statsbomb_passes.py`, StatsBomb PL 15/16, v the harness
+PASS POLICY). Real sides play 18.6 open-play passes a team-match from 0-18 m out wide (29.6% of
+them crosses) and 11.0 from 0-18 centre; ours 3.2 and 4.2. At the real cross shares, ours could make
+~1 cross, so the miss is the ball reaching their last 18 m: 7.4 passes from there v 29.6. Ours play
+far more in our own half (70+ m out centre 124 v 57). From 18-35 m out real sides play 20.3 a
+team-match into the last 18 m, ours 9.3. A zone with no mate in it has no weight, and with the ball
+18-35 m out our box holds 0.25-0.27 men (1.04 / 0.79 real). Box runners are drawn (0.71) but held
+onside at ~20 m: their line stands just outside the box then.
+
+**In behind, by where it is played from** (harness, DFL in brackets). The central 18-52 m balls
+are real (18-35c 4.62 (4.79), 35-52c 4.94 (6.14)). The miss is deep, 52+ m out: 3.7 v 14.9, the
+long ball over the top. Then wide 18-52: 3.4 v 8.4. Then inside 18: 0.4 v 3.4. A temporary trace
+(4 × 90, not kept): of in-behind options from 70+ m out, 0.9% are lofted and safe by the race read
+and 38% out of reach. From 52-70, 3.9% lofted and safe. So 68-77% were judged risky and weighted at
+`risk_weight` 0.25. A real ball over the top is a 50/50; the race read says they win it, and it is
+played anyway.
+
+**The change** [FH, fitted to DFL]. A ball in behind the race read says they win is still a
+candidate at `physics.behind.risk_weight` (its own, no longer the short pass's 0.25).
+
+**Fit** (8 × 90 each). 0.5 / 0.75 / 1.0 → in behind 21.0 / 26.3 / 29.3 (37.7), completed 46 / 52
+/ 50% (47.5). Completion is real at every value, so the read does not pick out the balls that fail.
+Real passers' in-behind choice is by the man's gap alone (§8.125's shares). 1.0 is taken.
+
+**After** (1.0 v §8.151).
+- In behind 17.1 → 29.3 a team-match (37.7), completed 50% (47.5).
+- From 70+ centre 1.12 → 3.25 (4.57). From 52-70 centre 1.94 → 4.19 (4.79).
+- Wide origins still short: 18-35w 2.81 (4.43), 52-70w 1.25 (3.36), 70+w 0.31 (2.21).
+- In the air 35% (58).
+- Completion 83.5 → 80.7% (79.1). Shots 9.1 → 12.0. Offsides 0.7 → 1.1 (~1.1). Crosses 0.75.
+- Goldens re-locked.
+
+**Next moles.** (1) The ball into their last 18 m: men in the box with the ball 18-35 m out
+(0.25 v 1.04, held onside outside the box), and wide men beyond their line. Crosses follow (0.75 v
+11.47). (2) In behind from wide (a third of real) and in the air (35 v 58%). (3) Passes 548 v 434,
+the extra in our own half. (4) The front man reading the line (§8.151). (5) Law 8, Law 13 walls,
+cards. (6) Take-ons.

@@ -243,7 +243,11 @@ public:
             const bool lsafe = bd <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
             if (air_first ? lsafe : gsafe) add(Cand{j, bw, air_first, lf, true, at, carry});
             else if (air_first ? gsafe : lsafe) add(Cand{j, bw, !air_first, lf, true, at, carry});
-            else add(Cand{j, bw * P.risk_weight, air_first, lf, true, at, carry});
+            // G5.51 (§8.152): a ball in behind the race read says they win is still
+            // played, at behind_risk of its share. Real balls over the top are 50/50s
+            // (in behind completes 47.5%, DFL); judged on risk_weight they were cut from
+            // deep: 52+ m out ours 3.7 a team-match v 14.9 real.
+            else add(Cand{j, bw * P.behind_risk, air_first, lf, true, at, carry});
         }
         if (nc > 0) {
             const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 41) + Fixed64::one()) *
@@ -729,7 +733,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
-    risk_weight = p.fixed("physics.pass.risk_weight", 250);   // [FH] start; fit to completion 79.1%
+    risk_weight = p.fixed("physics.pass.risk_weight", 250);
+    behind_risk = p.fixed("physics.behind.risk_weight", 1000);   // G5.51 fit: 0.5 / 0.75 / 1.0 → in behind 21.0 / 26.3 / 29.3 (37.7), completed 46 / 52 / 50% (47.5) — the read does not pick the ones that fail   // [FH] start; fit to completion 79.1%
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);
     keeper_depth_max_m = p.fixed("physics.keeper.depth_max_m", 12000);
