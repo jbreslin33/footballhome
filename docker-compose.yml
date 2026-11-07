@@ -43,6 +43,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # shared/ (TacticGeometry.hpp, also built by the game engine) — the
+      # Dockerfile's COPY --from=shared.  podman-compose 1.0.6 ignores this
+      # key, so the Makefile builds the backend with --build-context.
+      additional_contexts:
+        shared: ./shared
     container_name: footballhome_backend
     restart: always
     env_file: ./env

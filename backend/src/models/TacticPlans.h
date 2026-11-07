@@ -26,6 +26,12 @@ public:
     nlohmann::json find(long long formationId, long long opponentFormationId,
                         const std::string& moment, const std::string& block);
 
+    // Our spots for one state, solved by the shared geometry
+    // (shared/tactics/TacticGeometry.hpp — the rules the game engine plays):
+    // { ball, players: [{position_id,x,y}], free, doubled }.  find() carries
+    // the same as each state's "solved"; this answers a state being edited.
+    nlohmann::json solve(long long formationId, const std::string& block, const nlohmann::json& state);
+
     // Creates the plan with its root state (their GK on the ball, their
     // formation mirrored as the opponents, no jobs).  Returns the plan id;
     // an existing plan's id when it is already there.  0 = bad inputs.

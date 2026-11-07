@@ -102,6 +102,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.get (prefix + "",                  [this](const Request& r) { return handleGet(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
+    router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
     router.put (prefix + "/states/:stateId",  [this](const Request& r) { return handlePutState(r); });
     router.del (prefix + "/states/:stateId",  [this](const Request& r) { return handleDeleteState(r); });
 }
@@ -151,6 +152,25 @@ Response TacticPlansController::handleCreate(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleCreate: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /solve { formation_id, block, state: {ball_with, restart, opponents, jobs} }
+// → our spots by the shared geometry, for a state being edited (nothing saved).
+Response TacticPlansController::handleSolve(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in first.");
+    try {
+        const json b = json::parse(request.getBody());
+        const long long us = b.value("formation_id", 0LL);
+        const std::string block = b.value("block", std::string());
+        if (us <= 0 || block.empty() || !b.contains("state") || !b["state"].is_object())
+            return jsonError(HttpStatus::BAD_REQUEST, "formation_id, block and state");
+        return jsonOut(HttpStatus::OK, model_->solve(us, block, b["state"]));
+    } catch (const json::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleSolve: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

@@ -2028,8 +2028,10 @@ class GameCenterScreen extends EventScreen {
   // keeper and that triggers the drop down for each player ... what number
   // to cover shadow and what number to press from that cover shadow or to
   // hold between them ... smooth animation ... at a speed the user picks."
-  // Our spots come from TacticGeometry (lib/tactic-geometry.js), the rule
-  // set the game engine plays from the same rows.
+  // Our spots come from the backend: shared/tactics/TacticGeometry.hpp, the
+  // ONE rule set the game engine builds too (owner 11/7: "always share where
+  // we can").  Each state arrives solved; an edited one is solved by POST
+  // /api/tactic-plans/solve.  No placement rule lives in this file.
   _planKey() {
     return [this._formationId(), this._plan.oppFormationId, this._plan.moment, this._plan.block].join('|');
   }
@@ -2053,6 +2055,8 @@ class GameCenterScreen extends EventScreen {
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       if (p.key !== key) return;
       p.data = body;
+      p.solved = new Map();
+      for (const st of body.states || []) if (st.solved) p.solved.set(this._planSolveKey(st, this._planOpps(st)), st.solved);
       const states = body.states || [];
       if (!states.some(st => st.id === p.stateId)) p.stateId = states.length ? states[0].id : 0;
     } catch (err) {
@@ -2087,17 +2091,63 @@ class GameCenterScreen extends EventScreen {
       : (this._copyTactics('ball_with', { n: st.ball_with }) || `their ${st.ball_with}`);
   }
 
-  // The state as drawn: TacticGeometry's spots for ours, theirs as stored
-  // (or their formation mirrored), the ball at the man who has it.
-  _planSituation(st) {
+  // Theirs as stored, or their formation mirrored.
+  _planOpps(st) {
     const base = (this._plan.data && this._plan.data.opponent_base) || [];
-    const opps = (st.opponents && st.opponents.length ? st.opponents : base)
+    return (st.opponents && st.opponents.length ? st.opponents : base)
       .map(o => ({ number: Number(o.number), x: Number(o.x), y: Number(o.y) }))
       .sort((a, b) => a.number - b.number);
-    const law = this._planRestart(st);
-    const solved = TacticGeometry.solve({ ...st, opponents: opps }, this._planKinds(), (this._plan.data && this._plan.data.our_positions) || [], this._planGkY(), law);
-    return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players, opponents: opps.map(o => ({ ...o, label: o.number })) };
   }
+
+  // What a solution depends on — the cache key for the backend's answer.
+  _planSolveKey(st, opps) {
+    return JSON.stringify([Number(st.ball_with), st.restart || null, opps.map(o => [o.number, o.x, o.y]),
+      (st.jobs || []).map(j => [Number(j.position_id), j.kind, (j.targets || []).map(Number), j.target_b == null ? null : Number(j.target_b),
+                                j.partner_position_id == null ? null : Number(j.partner_position_id), j.stance || 'goal_side'])]);
+  }
+
+  // The backend's solution for this state; while an edited one is being
+  // solved, the last one shown for it (then the answer glides in).
+  _planSolution(st, opps) {
+    const p = this._plan;
+    if (!p.solved) p.solved = new Map();
+    if (!p.lastSolved) p.lastSolved = new Map();
+    const key = this._planSolveKey(st, opps);
+    const hit = p.solved.get(key);
+    if (hit) { p.lastSolved.set(st.id, hit); return hit; }
+    if (!p.solving) p.solving = new Set();
+    if (!p.solving.has(key)) {
+      p.solving.add(key);
+      const planKey = p.key;
+      this._planFetch('/api/tactic-plans/solve', { method: 'POST', body: JSON.stringify({
+        formation_id: this._formationId(), block: p.block,
+        state: { ball_with: Number(st.ball_with), restart: st.restart || null, opponents: opps, jobs: st.jobs || [] } }) })
+        .then(sol => {
+          if (p.key !== planKey) return;
+          p.solved.set(key, sol);
+          this._planGlideFrom = p.lastSit || null;
+          this._render();
+        })
+        .catch(err => { if (p.key === planKey) { p.msg = err.message; this._render(); } })
+        .finally(() => p.solving.delete(key));
+    }
+    const ours = (this._plan.data && this._plan.data.our_positions) || [];
+    return p.lastSolved.get(st.id) || st.solved || {
+      ball: { x: 50, y: 95 }, free: [], doubled: [],
+      players: Array.from({ length: 11 }, (_, i) => ours.find(o => Number(o.position_id) === i + 1) || { position_id: i + 1, x: 50, y: 30 }),
+    };
+  }
+
+  // The state as drawn: the backend's spots for ours, theirs as stored
+  // (or their formation mirrored), the ball at the man who has it.
+  _planSituation(st) {
+    const opps = this._planOpps(st);
+    const solved = this._planSolution(st, opps);
+    return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players.map(q => ({ ...q })),
+             opponents: opps.map(o => ({ ...o, label: o.number })), free: solved.free || [], doubled: solved.doubled || [] };
+  }
+
+  _lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
 
   // The restart law a state is played under (Law 16 goal kick), or null.
   _planRestart(st) {
@@ -2172,7 +2222,7 @@ class GameCenterScreen extends EventScreen {
     }).join('');
     const passHtml = passTo ? `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
         <span style="font-size:0.72rem; font-weight:800;">${esc(this._copyTactics('pass_to') || '⚽ Pass to:')}</span>${passTo}</div>` : '';
-    const cov = TacticGeometry.coverage({ ...shown, opponents: this._planSituation(shown).opponents }, this._planKinds());
+    const cov = this._planSituation(shown);
     const covHtml = [cov.free.length ? esc(this._copyTactics('free', { list: cov.free.join(', ') })) : '',
                      cov.doubled.length ? esc(this._copyTactics('double', { list: cov.doubled.join(', ') })) : '']
       .filter(Boolean).join(' · ') || esc(this._copyTactics('all_on'));
@@ -2315,11 +2365,12 @@ class GameCenterScreen extends EventScreen {
   _mountPlan() {
     const el = document.querySelector('[data-gc-tactics-pitch]');
     const p = this._plan;
-    if (!el || !window.TacticsPitch || !window.TacticGeometry || !p.data || !p.data.plan) return;
+    if (!el || !window.TacticsPitch || !p.data || !p.data.plan) return;
     const cur = this._planState(p.stateId) || this._planStates()[0];
     if (!cur) return;
     const shown = p.editing && p.draft ? p.draft : cur;
     const sit = this._planSituation(shown);
+    p.lastSit = { ball: { ...sit.ball }, players: sit.players.map(q => ({ ...q })), opponents: sit.opponents.map(q => ({ ...q })) };
     const chip = this._tacticsChipFor();
     const jobs = new Map((shown.jobs || []).map(j => [Number(j.position_id), j]));
     const canEdit = this._tacticsCanEdit();
@@ -2359,8 +2410,8 @@ class GameCenterScreen extends EventScreen {
       const frame = (now) => {
         if (this._tacticsPitchObj !== pitch) return;
         const t = Math.min(1, (now - t0) / ms), e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        const mix = (xs, ys) => ys.map((y, k) => ({ ...y, ...TacticGeometry.lerp(xs[k] || y, y, e) }));
-        pitch.update({ ball: TacticGeometry.lerp(from.ball, to.ball, e), players: mix(from.players, to.players), opponents: mix(from.opponents, to.opponents) });
+        const mix = (xs, ys) => ys.map((y, k) => ({ ...y, ...this._lerp(xs[k] || y, y, e) }));
+        pitch.update({ ball: this._lerp(from.ball, to.ball, e), players: mix(from.players, to.players), opponents: mix(from.opponents, to.opponents) });
         if (t < 1) requestAnimationFrame(frame);
       };
       pitch.update(from);
@@ -2541,8 +2592,8 @@ class GameCenterScreen extends EventScreen {
       const el = now - t0;
       const a = frames[i], b = frames[i + 1];
       const t = ease(Math.min(1, el / stepMs()));
-      const mix = (xs, ys) => xs.map((x, k) => ({ ...x, ...TacticGeometry.lerp(x, ys[k] || x, t) }));
-      this._tacticsPitchObj.update({ ball: TacticGeometry.lerp(a.ball, b.ball, t), players: mix(a.players, b.players), opponents: mix(a.opponents, b.opponents) });
+      const mix = (xs, ys) => xs.map((x, k) => ({ ...x, ...this._lerp(x, ys[k] || x, t) }));
+      this._tacticsPitchObj.update({ ball: this._lerp(a.ball, b.ball, t), players: mix(a.players, b.players), opponents: mix(a.opponents, b.opponents) });
       if (el >= stepMs() + holdMs()) {
         i += 1; t0 = now;
         if (i >= frames.length - 1) { p.playing = false; p.stateId = path[path.length - 1].id; this._render(); return; }

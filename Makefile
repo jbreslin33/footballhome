@@ -133,7 +133,7 @@ clean:
 build:
 	@echo "🔨 Building images and starting containers..."
 	@$(COMPOSE) --env-file env build --no-cache frontend
-	@$(COMPOSE) --env-file env build backend
+	@$(ENGINE) build --build-context shared=$(CURDIR)/shared -t footballhome_backend ./backend
 	@$(ENGINE) rm -f footballhome_frontend footballhome_backend footballhome_db 2>/dev/null || true
 	@$(COMPOSE) --env-file env up -d
 	@echo "✓ Build complete and containers started"
@@ -159,7 +159,7 @@ builder-up:
 	@flock $(BUILD_LOCK) $(ENGINE) build --target deps -t footballhome_build_env ./backend
 	@$(ENGINE) rm -f footballhome_builder 2>/dev/null || true
 	@$(ENGINE) run -d --name footballhome_builder --restart=always \
-		-v $(CURDIR)/backend:/src:ro footballhome_build_env sleep infinity
+		-v $(CURDIR)/backend:/src:ro -v $(CURDIR)/shared:/shared:ro footballhome_build_env sleep infinity
 	@echo "✓ Builder up — make deploy is now incremental"
 
 deploy:
@@ -181,7 +181,7 @@ deploy:
 deploy-clean:
 	@echo "🚀 Full (clean) build and deploy..."
 	@$(MAKE) --no-print-directory check-la-sync
-	@flock $(BUILD_LOCK) $(COMPOSE) --env-file env build backend
+	@flock $(BUILD_LOCK) $(ENGINE) build --build-context shared=$(CURDIR)/shared -t footballhome_backend ./backend
 	@$(MAKE) --no-print-directory restart-backend
 
 restart-backend:

@@ -2,6 +2,8 @@
 
 #include "../database/Database.h"
 
+#include <tactics/TacticGeometry.hpp>   // shared/ — the same rules the game engine plays
+
 #include <stdexcept>
 
 using nlohmann::json;
@@ -34,6 +36,72 @@ json mirrored(const json& spots) {
     json out = json::array();
     for (const auto& s : spots)
         out.push_back({{"number", s["position_id"]}, {"x", 100.0 - s["x"].get<double>()}, {"y", 100.0 - s["y"].get<double>()}});
+    return out;
+}
+
+// ── Shared geometry (shared/tactics/TacticGeometry.hpp) ────────────────
+// The backend's only job here is filling the library's plain structs from
+// the plan's rows; the rules themselves are the library's.
+namespace tg = fh::tactics;
+
+std::optional<double> optNum(const pqxx::field& f) {
+    if (f.is_null()) return std::nullopt;
+    return f.as<double>();
+}
+
+// Kinds, our formation spots and the block's keeper depth.
+tg::PlanFrame planFrame(Database* db, long long formationId, const std::string& block) {
+    tg::PlanFrame f;
+    for (const auto& r : db->query(
+             "SELECT code, rule, dist_m::float8 AS dist_m, press_m::float8 AS press_m, lane_t::float8 AS lane_t FROM tactic_job_kinds"))
+        f.kinds[r["code"].as<std::string>()] = {r["code"].as<std::string>(), r["rule"].as<std::string>(),
+                                                r["dist_m"].as<double>(), optNum(r["press_m"]), optNum(r["lane_t"])};
+    for (const auto& r : db->query(kSlotsSql, {std::to_string(formationId)}))
+        f.home[r["pid"].as<int>()] = {r["x"].as<double>(), r["y"].as<double>()};
+    auto gk = db->query("SELECT gk_y::float8 AS gk_y FROM tactic_block_heights WHERE code = $1", {block});
+    if (!gk.empty()) f.gkY = gk[0]["gk_y"].as<double>();
+    return f;
+}
+
+std::map<std::string, tg::RestartLaw> restartLaws(Database* db) {
+    std::map<std::string, tg::RestartLaw> out;
+    for (const auto& r : db->query(
+             "SELECT code, our_max_y::float8 AS our_max_y, zone_min_x::float8 AS zone_min_x, "
+             "       zone_max_x::float8 AS zone_max_x, zone_min_y::float8 AS zone_min_y FROM tactic_restarts"))
+        out[r["code"].as<std::string>()] = {optNum(r["our_max_y"]), optNum(r["zone_min_x"]), optNum(r["zone_max_x"]), optNum(r["zone_min_y"])};
+    return out;
+}
+
+// A state as the API carries it: { ball_with, restart, opponents: [{number,x,y}],
+// jobs: [{position_id,kind,targets,target_b,partner_position_id,stance}] }.
+tg::State stateFromJson(const json& st, const std::map<std::string, tg::RestartLaw>& laws) {
+    tg::State s;
+    s.ballWith = st.value("ball_with", 1);
+    if (st.contains("restart") && st["restart"].is_string()) {
+        const auto it = laws.find(st["restart"].get<std::string>());
+        if (it != laws.end()) s.law = it->second;
+    }
+    for (const auto& o : st.value("opponents", json::array()))
+        s.opponents.push_back({o.at("number").get<int>(), {o.at("x").get<double>(), o.at("y").get<double>()}});
+    for (const auto& j : st.value("jobs", json::array())) {
+        tg::Job job;
+        job.position = j.at("position_id").get<int>();
+        job.kind = j.at("kind").get<std::string>();
+        for (const auto& t : j.value("targets", json::array())) job.targets.push_back(t.get<int>());
+        if (j.contains("target_b") && j["target_b"].is_number_integer()) job.targetB = j["target_b"].get<int>();
+        if (j.contains("partner_position_id") && j["partner_position_id"].is_number_integer()) job.partner = j["partner_position_id"].get<int>();
+        if (j.contains("stance") && j["stance"].is_string()) job.stance = j["stance"].get<std::string>();
+        s.jobs.push_back(std::move(job));
+    }
+    return s;
+}
+
+// { ball: {x,y}, players: [{position_id,x,y}], free: [n], doubled: [n] }
+json solutionJson(const tg::Solution& sol) {
+    json out = {{"ball", {{"x", sol.ball.x}, {"y", sol.ball.y}}}, {"players", json::array()},
+                {"free", sol.freeMen}, {"doubled", sol.doubledMen}};
+    for (const auto& p : sol.players)
+        out["players"].push_back({{"position_id", p.position}, {"x", p.at.x}, {"y", p.at.y}});
     return out;
 }
 
@@ -99,6 +167,9 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
     const std::string planId = plan[0]["id"].as<std::string>();
     out["plan"] = {{"id", plan[0]["id"].as<long long>()}};
 
+    const tg::PlanFrame frame = planFrame(db, formationId, block);
+    const auto laws = restartLaws(db);
+    const json opponentBase = out["opponent_base"];
     for (const auto& s : db->query(
              "SELECT id, parent_state_id, ball_with, restart FROM tactic_states WHERE plan_id = $1::int "
              " ORDER BY parent_state_id IS NOT NULL, id", {planId})) {
@@ -121,9 +192,18 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
                                   {"stance", j["stance"].as<std::string>()},
                                   {"target_b", j["target_b"].is_null() ? json(nullptr) : json(j["target_b"].as<int>())},
                                   {"partner_position_id", j["partner_position_id"].is_null() ? json(nullptr) : json(j["partner_position_id"].as<int>())}});
+        // A state with no stored men plays against their formation mirrored.
+        json asSolved = st;
+        if (asSolved["opponents"].empty()) asSolved["opponents"] = opponentBase;
+        st["solved"] = solutionJson(tg::Solver().solve(stateFromJson(asSolved, laws), frame));
         out["states"].push_back(std::move(st));
     }
     return out;
+}
+
+json TacticPlans::solve(long long formationId, const std::string& block, const json& state) {
+    auto* db = Database::getInstance();
+    return solutionJson(tg::Solver().solve(stateFromJson(state, restartLaws(db)), planFrame(db, formationId, block)));
 }
 
 long long TacticPlans::create(long long formationId, long long opponentFormationId,

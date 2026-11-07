@@ -29,6 +29,10 @@ FROM deps AS build
 
 # Copy backend source code and build files (context is already backend/)
 COPY . .
+# shared/ at the repo root (TacticGeometry.hpp, shared with the game
+# engine) — a named build context: `--build-context shared=./shared`
+# (Makefile) / compose additional_contexts.  /app/../shared = /shared.
+COPY --from=shared . /shared
 
 # Build with CMake.
 # NOTE: capped at -j2 (not $(nproc)) because gcc-12 with libpqxx / json.hpp

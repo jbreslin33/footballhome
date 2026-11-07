@@ -22,6 +22,7 @@ private:
     Response handleGet(const Request& request);          // ?formation_id&opponent_formation_id&moment&block
     Response handleCreate(const Request& request);       // POST
     Response handleAddState(const Request& request);     // POST /states
+    Response handleSolve(const Request& request);        // POST /solve (shared geometry, nothing saved)
     Response handlePutState(const Request& request);     // PUT /states/:stateId
     Response handleDeleteState(const Request& request);  // DELETE /states/:stateId
 };

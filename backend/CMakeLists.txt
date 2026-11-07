@@ -11,6 +11,11 @@ pkg_check_modules(PQXX REQUIRED libpqxx)
 
 # Include directories
 include_directories(src)
+# shared/ (repo root): code the backend and the game engine both build —
+# shared/tactics/TacticGeometry.hpp.  The builder mounts it at /shared
+# (/src/../shared) and the full build copies it there (Dockerfile
+# COPY --from=shared), so ../shared resolves in both.
+include_directories(${CMAKE_SOURCE_DIR}/../shared)
 include_directories(${PQXX_INCLUDE_DIRS})
 
 # Source files
