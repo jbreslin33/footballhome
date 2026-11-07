@@ -61,7 +61,8 @@ json TacticPlans::lookups() {
         out["blocks"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()},
                                  {"gk_y", r["gk_y"].as<double>()}});
     for (const auto& r : db->query(
-             "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, k.label, k.target_a_label, k.target_b_label, k.partner_label, "
+             "SELECT k.code, k.concept_id, c.name AS concept, c.title AS concept_title, c.cue_answer, c.family, c.moment, k.rule, "
+             "       k.label, k.target_a_label, k.target_b_label, k.partner_label, "
              "       k.dist_m::float8 AS dist_m, k.press_m::float8 AS press_m, k.multi_a, k.lane_t::float8 AS lane_t "
              "  FROM tactic_job_kinds k JOIN game_concepts c ON c.id = k.concept_id ORDER BY k.sort_order")) {
         out["kinds"].push_back({{"code", r["code"].as<std::string>()},
@@ -70,7 +71,10 @@ json TacticPlans::lookups() {
                                 {"concept_title", r["concept_title"].as<std::string>()},
                                 {"cue", r["cue_answer"].as<std::string>()},
                                 {"label", r["label"].as<std::string>()},
-                                {"target_a_label", r["target_a_label"].as<std::string>()},
+                                {"target_a_label", r["target_a_label"].is_null() ? json(nullptr) : json(r["target_a_label"].as<std::string>())},
+                                {"rule", r["rule"].as<std::string>()},
+                                {"family", r["family"].as<std::string>()},
+                                {"moment", r["moment"].as<std::string>()},
                                 {"target_b_label", r["target_b_label"].is_null() ? json(nullptr) : json(r["target_b_label"].as<std::string>())},
                                 {"partner_label", r["partner_label"].is_null() ? json(nullptr) : json(r["partner_label"].as<std::string>())},
                                 {"dist_m", r["dist_m"].as<double>()},

@@ -75,9 +75,13 @@ const TacticGeometry = {
       const a = set[0];
       const mean = (pts) => ({ x: pts.reduce((t, p) => t + p.x, 0) / pts.length, y: pts.reduce((t, p) => t + p.y, 0) / pts.length });
       const b = job && job.target_b != null ? opp.get(Number(job.target_b)) : null;
+      // Placement by the kind's RULE (tactic_job_rules, mig 1153) — every
+      // game concept is a job; many share a rule.  'home' = formation spot.
+      const rule = kind ? (kind.rule || job.kind) : null;
       if (kind && a) {
-        if (job.kind === 'mark') spot = this.step(a, job.stance === 'intercept' ? ball : this.OUR_GOAL, kind.dist_m);
-        else if (job.kind === 'cover_shadow') {
+        if (rule === 'press') spot = this.step(a, this.OUR_GOAL, kind.dist_m != null ? kind.dist_m : 1);
+        else if (rule === 'mark') spot = this.step(a, job.stance === 'intercept' ? ball : this.OUR_GOAL, kind.dist_m);
+        else if (rule === 'cover_shadow') {
           if (Number(job.target_b) === Number(state.ball_with) && b) {
             // Toward the mean direction of the shadowed men from the ball.
             const bm = this.toM(ball);
@@ -87,11 +91,11 @@ const TacticGeometry = {
           } else {
             spot = mean(set.map(p => this.step(p, ball, kind.dist_m)));
           }
-        } else if ((job.kind === 'deter' || job.kind === 'read') && kind.lane_t != null) {
+        } else if (rule === 'lane' && kind.lane_t != null) {
           spot = mean(set.map(p => this.lerp(ball, p, kind.lane_t)));
-        } else if (job.kind === 'hold_between' && b) {
+        } else if (rule === 'hold_between' && b) {
           spot = this.step({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, this.OUR_GOAL, kind.dist_m);
-        } else if (job.kind === 'straddle' && job.partner_position_id != null) {
+        } else if (rule === 'straddle' && job.partner_position_id != null) {
           const mate = (base || []).find(x => Number(x.position_id) === Number(job.partner_position_id));
           spot = this.straddleSpot(a, ball, kind, !mate || home.x <= mate.x);
         }
@@ -127,13 +131,14 @@ const TacticGeometry = {
   // Their numbers no job of ours points at, and those two or more jobs
   // target.  A cover-shadow covers both men: the one in his shadow and the
   // one he presses when the ball gets there.
-  coverage(state) {
+  coverage(state, kinds) {
     const count = new Map();
+    const ruleOf = (j) => (kinds && kinds[j.kind] && kinds[j.kind].rule) || j.kind;
     for (const j of state.jobs || []) {
       // A straddle pair covers its man once (counted on the lower number).
-      if (j.kind === 'straddle' && j.partner_position_id != null && Number(j.partner_position_id) < Number(j.position_id)) continue;
+      if (ruleOf(j) === 'straddle' && j.partner_position_id != null && Number(j.partner_position_id) < Number(j.position_id)) continue;
       const t = new Set((j.targets || []).map(Number));
-      if ((j.kind === 'hold_between' || j.kind === 'cover_shadow') && j.target_b != null) t.add(j.target_b);
+      if ((ruleOf(j) === 'hold_between' || ruleOf(j) === 'cover_shadow') && j.target_b != null) t.add(j.target_b);
       for (const n of t) count.set(Number(n), (count.get(Number(n)) || 0) + 1);
     }
     const nums = (state.opponents || []).map(o => Number(o.number)).sort((x, y) => x - y);

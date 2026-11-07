@@ -2107,6 +2107,7 @@ class GameCenterScreen extends EventScreen {
 
   _planJobText(job) {
     const k = job && this._planKinds()[job.kind];
+    if (k && !k.target_a_label) return k.label;   // a 'home' job names nobody
     if (!k || !(job.targets || []).length) return '';
     const stance = job.stance && job.stance !== 'goal_side'
       ? (((this._plan.data && this._plan.data.stances) || []).find(x => x.code === job.stance) || {}).label : '';
@@ -2123,7 +2124,7 @@ class GameCenterScreen extends EventScreen {
 
   _planJobComplete(j) {
     const k = this._planKinds()[j.kind];
-    return (j.targets || []).length > 0 && (!k || !k.partner_label || j.partner_position_id != null);
+    return (!k || !k.target_a_label || (j.targets || []).length > 0) && (!k || !k.partner_label || j.partner_position_id != null);
   }
 
   _planHtml() {
@@ -2171,7 +2172,7 @@ class GameCenterScreen extends EventScreen {
     }).join('');
     const passHtml = passTo ? `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
         <span style="font-size:0.72rem; font-weight:800;">${esc(this._copyTactics('pass_to') || '⚽ Pass to:')}</span>${passTo}</div>` : '';
-    const cov = TacticGeometry.coverage({ ...shown, opponents: this._planSituation(shown).opponents });
+    const cov = TacticGeometry.coverage({ ...shown, opponents: this._planSituation(shown).opponents }, this._planKinds());
     const covHtml = [cov.free.length ? esc(this._copyTactics('free', { list: cov.free.join(', ') })) : '',
                      cov.doubled.length ? esc(this._copyTactics('double', { list: cov.doubled.join(', ') })) : '']
       .filter(Boolean).join(' · ') || esc(this._copyTactics('all_on'));
@@ -2216,7 +2217,7 @@ class GameCenterScreen extends EventScreen {
     const targets = job ? (job.targets || []) : [];
     // Their men: tap-to-toggle chips for a job on several (deter 5 and 3),
     // one dropdown otherwise.
-    const whoHtml = !job ? '' : kind && kind.multi_a
+    const whoHtml = !job || (kind && !kind.target_a_label) ? '' : kind && kind.multi_a
       ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_a_label)}</span>
          <span style="display:inline-flex; gap:3px; flex-wrap:wrap;${targets.length ? '' : ' outline:2px solid rgba(245,158,11,0.6); border-radius:6px; padding:2px;'}">
            ${Array.from({ length: 11 }, (_, i) => i + 1).map(n => { const on = targets.includes(n);
@@ -2231,7 +2232,7 @@ class GameCenterScreen extends EventScreen {
     if (this._tacticsCanEdit() && !this._plan.playing) {
       return `<select data-gc-tp-job="${pid}" data-gc-tp-field="kind" style="${css}">
           <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
-          ${kinds.map(k => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</select>
+          ${this._planKindOptions(job)}</select>
         ${whoHtml}
         ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}
         ${job && kind && kind.partner_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.partner_label)}</span> ${this._planPartnerSel(pid, job.partner_position_id, css)}` : ''}
@@ -2239,6 +2240,22 @@ class GameCenterScreen extends EventScreen {
     }
     return job && kind ? `<span style="font-weight:700;">${esc(kind.label)}</span> <span style="opacity:0.85;">${esc(this._planJobText(job))}</span>`
       : `<span style="opacity:0.6;">${esc(this._copyTactics('no_job') || '— no job —')}</span>`;
+  }
+
+  // Every game concept of the plan's moment (mig 1153), grouped Individual
+  // / Group / Team (owner 11/6: "all 'game' tactics in the 'tactic' drop
+  // down for that phase").  A job from another moment stays listed so it
+  // still shows.
+  _planKindOptions(job) {
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    const kinds = (this._plan.data && this._plan.data.kinds) || [];
+    const shown = kinds.filter(k => !k.moment || k.moment === this._plan.moment || (job && job.kind === k.code));
+    return ['individual', 'group', 'team'].map(fam => {
+      const list = shown.filter(k => (k.family || 'individual') === fam);
+      if (!list.length) return '';
+      return `<optgroup label="${esc(this._copyTactics('fam_' + fam) || fam)}">${list.map(k =>
+        `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</optgroup>`;
+    }).join('');
   }
 
   // "with?" — one of ours for a partnered job (straddle): every outfield
