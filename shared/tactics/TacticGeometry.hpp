@@ -156,6 +156,25 @@ public:
 protected:
     virtual bool needsMen() const { return true; }
     virtual Point place(const Placement& p) const = 0;
+
+    // His men without the one on the ball (within 0.5 m — the straddle's
+    // threshold).  A lane or a shadow from the ball to the man who HAS it
+    // is no lane: 3-R2 "ball to their 5", 7 on "deter 5 and 3" was drawn on
+    // top of 5 (11/7).  The lane rules average over these instead.
+    static std::vector<Point> offBall(const Placement& p) {
+        std::vector<Point> out;
+        const Point bm = Pitch::toM(p.ball);
+        for (const auto& man : p.men) {
+            const Point m = Pitch::toM(man);
+            if (std::hypot(m.x - bm.x, m.y - bm.y) >= 0.5) out.push_back(man);
+        }
+        return out;
+    }
+    // Every man he watches has the ball → he presses it: press_m (else
+    // 1.5 m) goal-side of the ball.
+    static Point onTheBall(const Placement& p) {
+        return Pitch::step(p.ball, Pitch::OUR_GOAL, p.kind.pressM.value_or(1.5));
+    }
 };
 
 // No movement: the formation spot, the concept is his instruction.
@@ -189,7 +208,8 @@ protected:
 
 // B has the ball → press_m from the ball along the mean direction ball →
 // each shadowed man (pressing with all of them behind him); otherwise the
-// mean of dist_m off each man toward the ball (sitting in the lanes).
+// mean of dist_m off each man toward the ball (sitting in the lanes; the
+// man on the ball is no lane — offBall).
 class CoverShadowRule : public JobRule {
 public:
     const char* code() const override { return "cover_shadow"; }
@@ -215,22 +235,27 @@ protected:
             const double pm = p.kind.pressM.value_or(1.5);
             return Pitch::toPct({bm.x + d.x / l * pm, bm.y + d.y / l * pm});
         }
+        const std::vector<Point> men = offBall(p);
+        if (men.empty()) return onTheBall(p);
         std::vector<Point> spots;
-        for (const auto& man : p.men) spots.push_back(Pitch::step(man, p.ball, p.kind.distM));
+        for (const auto& man : men) spots.push_back(Pitch::step(man, p.ball, p.kind.distM));
         return Pitch::mean(spots);
     }
 };
 
 // In the passing lanes: the mean over his men of lane_t of the way ball →
-// man (deter nearer the passer, read nearer the receivers).
+// man (deter nearer the passer, read nearer the receivers).  The man on
+// the ball is skipped; if he is the only one, press him.
 class LaneRule : public JobRule {
 public:
     const char* code() const override { return "lane"; }
 protected:
     Point place(const Placement& p) const override {
         if (!p.kind.laneT) return p.home;
+        const std::vector<Point> men = offBall(p);
+        if (men.empty()) return onTheBall(p);
         std::vector<Point> spots;
-        for (const auto& man : p.men) spots.push_back(Pitch::lerp(p.ball, man, *p.kind.laneT));
+        for (const auto& man : men) spots.push_back(Pitch::lerp(p.ball, man, *p.kind.laneT));
         return Pitch::mean(spots);
     }
 };

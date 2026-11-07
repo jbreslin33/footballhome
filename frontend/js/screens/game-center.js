@@ -406,6 +406,10 @@ class GameCenterScreen extends EventScreen {
     // query values the data answers; stateId = the state on screen;
     // draft = a coach's unsaved copy of it; playing = the animation runs.
     this._tacticsMode = 'plan';
+    // The pitch's view (owner 11/7): ↕ upright / ↔ sideways — remembered per
+    // browser — and ⛶ Big = the whole tactics panel full screen.
+    this._tacticsView = { big: false, orientation: 'portrait' };
+    try { if (localStorage.getItem('fh.tactics.orientation') === 'landscape') this._tacticsView.orientation = 'landscape'; } catch (e) { /* private mode */ }
     this._plan = { key: '', data: null, loading: false, error: null, oppFormationId: 0, moment: 'out_of_possession', block: 'high',
                    stateId: 0, editing: false, draft: null, msg: '', playing: false, speed: 1, popupPid: 0 };
     this._tacticsPitchObj = null;
@@ -845,6 +849,7 @@ class GameCenterScreen extends EventScreen {
     if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
     if (this._planRaf) { cancelAnimationFrame(this._planRaf); this._planRaf = null; }
     this._plan.playing = false;
+    this._tacticsBigOff();
     this.overlayOpen = false;
     this._closeSwapSheet();
   }
@@ -1205,6 +1210,15 @@ class GameCenterScreen extends EventScreen {
       if (e.target.closest('[data-gc-tactics-save]') && this._tacticsCanEdit()) { this._saveTactics(); return; }
       const tMode = e.target.closest('[data-gc-tactics-mode]');
       if (tMode) { this._stopPlanPlay(); this._tacticsMode = tMode.dataset.gcTacticsMode; this._render(); return; }
+      const tOrient = e.target.closest('[data-gc-tactics-orient]');
+      if (tOrient) {
+        this._stopPlanPlay();
+        this._tacticsView.orientation = tOrient.dataset.gcTacticsOrient === 'landscape' ? 'landscape' : 'portrait';
+        try { localStorage.setItem('fh.tactics.orientation', this._tacticsView.orientation); } catch (err) { /* private mode */ }
+        this._render();
+        return;
+      }
+      if (e.target.closest('[data-gc-tactics-big]')) { this._setTacticsBig(!this._tacticsView.big); return; }
       if (e.target.matches('[data-gc-tp-popup-bg]') || e.target.closest('[data-gc-tp-popup-x]')) { this._plan.popupPid = 0; this._render(); return; }
       const tpState = e.target.closest('[data-gc-tp-state]');
       if (tpState && !this._plan.editing) { this._stopPlanPlay(); this._plan.stateId = Number(tpState.dataset.gcTpState); this._plan.msg = ''; this._render(); return; }
@@ -2017,13 +2031,83 @@ class GameCenterScreen extends EventScreen {
     const mode = this._tacticsMode === 'drawn' ? 'drawn' : 'plan';
     const modes = [['plan', this._copyTactics('mode_plan') || '🧠 Game model'], ['drawn', this._copyTactics('mode_drawn') || '✏️ Drawn']]
       .map(([k, label]) => `<button type="button" data-gc-tactics-mode="${k}" class="btn btn-sm ${k === mode ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.74rem; padding:3px 10px;">${esc(label)}</button>`).join('');
-    return `<div style="display:flex; gap:6px; margin-bottom:8px;">${modes}</div>`
+    const v = this._tacticsView;
+    const orient = [['portrait', this._copyTactics('orient_portrait') || '↕ Upright'], ['landscape', this._copyTactics('orient_landscape') || '↔ Sideways']]
+      .map(([k, label]) => `<button type="button" data-gc-tactics-orient="${k}" class="btn btn-sm ${k === v.orientation ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.72rem; padding:3px 9px;">${esc(label)}</button>`).join('');
+    const big = `<button type="button" data-gc-tactics-big class="btn btn-sm ${v.big ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.72rem; padding:3px 10px;">${esc(v.big ? (this._copyTactics('big_close') || '✕ Close') : (this._copyTactics('big') || '⛶ Big'))}</button>`;
+    const body = `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">${modes}
+        <span style="flex:1;"></span>${orient}${big}</div>`
       + (mode === 'drawn' ? this._tacticsDrawnHtml() : this._planHtml());
+    if (!v.big) return body;
+    // Full screen: the same panel over everything (the job sheet, z 1000,
+    // still opens above it).  The pitch is fitted to what is left of the
+    // screen by _fitTacticsBig after mount.
+    // Wide screen: controls in a left column, the pitch beside them at full
+    // height (sticky while the job list scrolls).  Narrow: stacked.
+    return `<style>
+        @media (min-width: 900px) {
+          [data-gc-tactics-bigbox] { display:grid; grid-template-columns:minmax(260px, 320px) 1fr; column-gap:14px; align-content:start; }
+          [data-gc-tactics-bigbox] > * { grid-column:1; min-width:0; }
+          [data-gc-tactics-bigbox] > [data-gc-tactics-pitch] { grid-column:2; grid-row:1 / span 40; position:sticky; top:0; align-self:start; }
+        }
+      </style>
+      <div data-gc-tactics-bigbox style="position:fixed; inset:0; z-index:999; background:var(--bg-color, #0b1220); overflow:auto; padding:10px 12px; box-sizing:border-box;">${body}</div>`;
+  }
+
+  // The pitch's view settings, for TacticsPitch.
+  _tacticsPitchView() { return { orientation: this._tacticsView.orientation, big: this._tacticsView.big }; }
+
+  // Big off without a render: leaving the pill or the screen.
+  _tacticsBigOff() {
+    if (!this._tacticsView.big && !this._tacticsBigKeys) return;
+    this._tacticsView.big = false;
+    try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) { /* no fullscreen API */ }
+    if (this._tacticsBigKeys) {
+      document.removeEventListener('keydown', this._tacticsBigKeys);
+      window.removeEventListener('resize', this._tacticsBigResize);
+      document.removeEventListener('fullscreenchange', this._tacticsBigFs);
+      this._tacticsBigKeys = this._tacticsBigResize = this._tacticsBigFs = null;
+    }
+  }
+
+  _setTacticsBig(on) {
+    if (!on) { this._tacticsBigOff(); this._render(); return; }
+    const v = this._tacticsView;
+    v.big = true;
+    // The browser's own full screen too (phones lose the address bar); the
+    // whole page goes, so re-renders keep it.  Refused = the overlay alone.
+    try {
+      if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {});
+    } catch (e) { /* no fullscreen API */ }
+    if (!this._tacticsBigKeys) {
+      this._tacticsBigKeys = (e) => { if (e.key === 'Escape' && this._tacticsView.big && !this._plan.popupPid) this._setTacticsBig(false); };
+      this._tacticsBigResize = () => this._fitTacticsBig();
+      this._tacticsBigFs = () => { if (!document.fullscreenElement && this._tacticsView.big) this._setTacticsBig(false); };
+      document.addEventListener('keydown', this._tacticsBigKeys);
+      window.addEventListener('resize', this._tacticsBigResize);
+      document.addEventListener('fullscreenchange', this._tacticsBigFs);
+    }
+    this._render();
+  }
+
+  // Big view: the pitch takes the screen height left under the controls
+  // above it (keeping ~44 px for the Play / Save row under it), never less
+  // than 260 px.
+  _fitTacticsBig() {
+    const box = document.querySelector('[data-gc-tactics-bigbox]');
+    const host = box && box.querySelector('[data-gc-tactics-pitch]');
+    if (!host) return;
+    // Side by side (wide): the whole height.  Stacked: what is left under
+    // the controls, keeping ~54 px for the Play / Save row.
+    const side = getComputedStyle(host).gridColumnStart === '2';
+    const top = host.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+    box.style.setProperty('--tp-fit-h', `${Math.max(260, side ? box.clientHeight - 24 : box.clientHeight - top - 54)}px`);
   }
 
   _mountTactics() {
     if (this._tacticsMode === 'drawn') this._mountTacticsDrawn();
     else this._mountPlan();
+    if (this._tacticsView.big) this._fitTacticsBig();
   }
 
   // ── 🧠 Game model: jobs per ball position (mig 1121) ─────────────────
@@ -2382,6 +2466,7 @@ class GameCenterScreen extends EventScreen {
       chipFor: (pid) => ({ ...chip(pid), job: this._planJobText(jobs.get(pid)) }),
       editable: p.editing,
       dragKinds: ['opp'],
+      ...this._tacticsPitchView(),
       // Dragging theirs edits the draft (the pitch moved the copy in sit).
       onChange: () => {
         if (!p.draft) return;
@@ -2619,7 +2704,7 @@ class GameCenterScreen extends EventScreen {
     const list = this._tacticsSituations();
     const sit = t.editing && t.draft ? t.draft : list[Math.min(t.idx, list.length - 1)];
     if (!sit) return;
-    new TacticsPitch({ situation: sit, chipFor: this._tacticsChipFor(), editable: t.editing }).mount(el);
+    new TacticsPitch({ situation: sit, chipFor: this._tacticsChipFor(), editable: t.editing, ...this._tacticsPitchView() }).mount(el);
   }
 
   // Split squad on: every position still without a 2nd takes the next
@@ -3491,6 +3576,7 @@ class GameCenterScreen extends EventScreen {
         this._mountTactics();
         return;
       }
+      this._tacticsBigOff();
       head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
         + this._duesAlternateStripHtml()
