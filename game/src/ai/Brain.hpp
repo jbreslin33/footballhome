@@ -73,7 +73,8 @@ public:
         return spec_[setup_.team_of_slot[slot]].positions[index_in_team_[slot]].number;
     }
     // A slot's role as the brain plays it (formation role name first, then number).
-    const Possession& possession() const { return poss_; }   // the harness reads the line jobs (§8.150)
+    const Possession& possession() const { return poss_; }
+    const std::vector<std::uint8_t>& teamOfSlot() const { return setup_.team_of_slot; }   // the harness reads the line jobs (§8.150)
     Role roleOf(core::SlotIndex slot) const { return slot < role_of_slot_.size() ? role_of_slot_[slot] : Role::DM; }
     using FlightRead = Reads::FlightRead;
     const FlightRead& flightRead(const core::World& world) const { return reads_.flightRead(world); }

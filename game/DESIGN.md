@@ -6643,3 +6643,35 @@ same at all three within noise (2.1-3.3 m short at 10-50 m out, as §8.149). 1.0
 frames where the most advanced man is the carrier, the pass's man or a runner. (2) In behind
 17 v 37.7 (on their role mix). (3) Crosses 0.7 v 11.47. (4) Completion 83.5 v 79.1. (5) Law 8,
 Law 13 walls, cards. (6) Take-ons.
+
+### 8.151 G5.51 — the front man's deep tail: measured (no behaviour change)
+
+§8.150's next: our most advanced man is 4+ m short of their line 26-33% of frames with the ball
+20-50 m out (real 10-18).
+
+**Measured** (new harness line FRONT MAN 4+ m SHORT; `Brain::teamOfSlot`, `Possession::frontSince`).
+On those frames the most advanced man is:
+
+| He is | Share | Mean gap |
+|---|---|---|
+| the FRONT job man (Support) | 67% | 6.3 m short |
+| the pass's man | 10% | |
+| a box runner | 7% | |
+| the SECOND job man | 7% | |
+| on the ball | 6% | |
+
+So the deep tail is mostly the front man himself, short of his own spot. His target is 2.7 m short,
+and he is 6.3 m short. The line is dropping away at 1.5 m/s and he moves at 1.8 m/s: ordered 2.3
+(the line's velocity + a closing capped at §8.150's 1.0 m/s). The body delivers ~0.5 m/s less than
+it is told, so he gains only ~0.3 m/s. He has held the job 1.3 / 3.1 / 6.5 s (p25 / median / p75).
+Uncapped (close_mps 0, 4 × 90): ordered 3.2, moving 2.3, the tail 26-27% at 30-50 m out (32-33
+capped). Ball-still runs double back (§8.150). The cap stays.
+
+**What it says.** He only reacts to a dropping line. Real front men read it (the carrier looking up,
+the line dropping as he does) and are with it at 2.4 m short as it drops 2+ (ours 4.2, §8.147).
+That is anticipation, a bigger step, and in behind did not answer the front man's gap through
+§8.147-8.150 (17-20 every run). Parked as a known gap.
+
+**Next moles.** (1) **Crosses 0.7 v 11.47 a team-match**, the largest single miss left. (2) In
+behind 17 v 37.7. (3) Completion 83.5 v 79.1 and passes 538 v 434 (61% to men 18+ m short v 53).
+(4) The front man reading the line (above). (5) Law 8, Law 13 walls, cards. (6) Take-ons.

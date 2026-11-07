@@ -123,6 +123,7 @@ public:
     // Once a tick per team (after assignRuns): who is the front man (G5.47).
     void assignFront(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
     std::uint8_t front(std::uint8_t team, int k = 0) const { return front_[team & 1][k & 1]; }
+    std::uint64_t frontSince(std::uint8_t team, int k = 0) const { return front_at_[team & 1][k & 1]; }
     bool onLine(std::uint8_t team, std::uint8_t slot) const { return front_[team & 1][0] == slot || front_[team & 1][1] == slot; }
     // The front / second man's gap short of their line for this tenure (G5.47 / G5.49), metres.
     math::Fixed64 frontGap(const PlayerView& v) const;

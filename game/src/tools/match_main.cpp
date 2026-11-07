@@ -110,6 +110,7 @@ struct Stats {
     double lg_xy[2][ai::kRoleCount + 1] = {}, lg_xx[2][ai::kRoleCount + 1] = {}, lg_sx[2][ai::kRoleCount + 1] = {}, lg_sy[2][ai::kRoleCount + 1] = {}; long lg_s1[2][ai::kRoleCount + 1] = {};
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
+    long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
     int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {};   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
@@ -700,6 +701,28 @@ int main(int argc, char** argv) {
                         if (sh >= 0 && sh < 1) ++S.fm_w1[bd];
                         if (sh >= 0 && sh < 2) ++S.fm_w2[bd];
                         if (sh >= 4) ++S.fm_w4[bd];
+                        if (sh >= 4 && bd >= 2 && bd <= 4) {   // §8.151
+                            const auto& PO = s.brain().possession();
+                            const std::uint8_t fu = static_cast<std::uint8_t>(fj), tm_ = W.player(fu).team;
+                            const ai::Why wy = s.lastOrders()[fu].why;
+                            int cat = 8;
+                            if (b.owner && *b.owner == fu) cat = 0;
+                            else if (b.pass_to == fu) cat = 1;
+                            else if (PO.front(tm_, 0) == fu) cat = 2;
+                            else if (PO.front(tm_, 1) == fu) cat = 3;
+                            else if (wy == ai::Why::AttackBox) cat = 4;
+                            else if (wy == ai::Why::RunLine) cat = 5;
+                            else if (PO.front(tm_, 0) == 0xFF) cat = 6;
+                            else if (wy == ai::Why::Hold) cat = 7;
+                            ++S.ft_c[cat]; S.ft_g[cat] += sh;
+                            if (cat == 2) {
+                                S.ft_tg += hx - s.lastOrders()[fu].target.x.toDouble() * sg - line;
+                                S.ft_v += W.player(fu).vel.x.toDouble() * sg;
+                                S.ft_cmd += s.lastOrders()[fu].move.move.x.toDouble() * W.player(fu).max_speed.toDouble() * sg;
+                                S.ft_lv += ai::Possession::offsideLineVelX(tm_, W, s.brain().teamOfSlot()).toDouble() * sg;
+                                S.ft_age.push_back(static_cast<float>((W.tickCount() - PO.frontSince(tm_, 0)) * core::kTickDt.toDouble()));
+                            }
+                        }
                         if (sh < 0) ++S.fm_past[bd];
                         ++S.fm_r[bd][role(static_cast<std::uint8_t>(fj))];
                     }
@@ -1252,6 +1275,18 @@ int main(int argc, char** argv) {
             std::printf("   RunLine: eligible man-seconds (0-12 m short, ball under 2 m/s on) / starts a team-match:");
             for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.0f / %.1f;", kRn[r], S.run_el[r] / 5.0 / tm, S.run_st[r] / tm);
             std::printf(" (0-12 m man-s %.0f, carried %.0f, slow %.0f)\n", S.run_c[0] / 5.0 / tm, S.run_c[1] / 5.0 / tm, S.run_c[2] / 5.0 / tm);
+        }
+        {   // §8.151: the front man 4+ m short with the ball 20-50 m out — what he is
+            static const char* kC[9] = {"on the ball", "the pass's man", "FRONT job", "SECOND job", "box runner", "RunLine", "no front job (not ours/live)", "hold, no line job", "other"};
+            long t = 0; for (long v : S.ft_c) t += v;
+            std::printf("FRONT MAN 4+ m SHORT (ball 20-50 m out), what he is: share %% / mean gap:");
+            for (int i = 0; i < 9; ++i) if (S.ft_c[i]) std::printf(" %s %.0f%% / %.1f;", kC[i], 100.0 * S.ft_c[i] / std::max(1L, t), S.ft_g[i] / S.ft_c[i]);
+            if (S.ft_c[2]) {
+                std::sort(S.ft_age.begin(), S.ft_age.end());
+                std::printf("\n   the FRONT job man then: his target %.1f m short, his speed at goal %.2f m/s (ordered %.2f), the line's %.2f m/s, in the job p25/median/p75 %.1f / %.1f / %.1f s",
+                            S.ft_tg / S.ft_c[2], S.ft_v / S.ft_c[2], S.ft_cmd / S.ft_c[2], S.ft_lv / S.ft_c[2], S.ft_age[S.ft_age.size() / 4], S.ft_age[S.ft_age.size() / 2], S.ft_age[3 * S.ft_age.size() / 4]);
+            }
+            std::printf("\n");
         }
         {   // §8.150: ball-still runs by the runner's order at the run's start
             std::printf("BALL-STILL RUNS by his order at the start (a team-match):");
