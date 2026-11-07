@@ -6567,3 +6567,45 @@ Ours are 3.2% (real 8.0% on theirs).
 **Next moles.** (1) The pass to the man on the line: 3.2% v ~5% expected, in behind 20.2 v 37.7
 (on their mix). (2) Wide men nearer the line, every band. (3) Ball-still runs 67.9 v 41.7.
 (4) Crosses. (5) Law 8, Law 13 walls, cards. (6) Take-ons.
+
+### 8.149 G5.49 — the second man on their line; the pass to the line man measured (no migration)
+
+§8.148's next: the pass to the man on the line, and why the strip is thin per man.
+
+**The pass, measured.** In a temporary chooser trace (4 × 90, not kept), a mate 0-2 m short of their
+line is ground-safe 26% of the times he is a candidate (everyone else 53%); 60% of his candidacies
+fall to `risk_weight`. That parameter was still its [FH] start, 0.25, never fitted, with completion
+82.8% (79.1). Tried 0.4 / 0.6 / 0.8: completion 82.2 / 81.1 / 80.8%, passes to the man 0-2 m short
+3.5 / 3.5 / 3.8% (3.2), in behind 21.1 / 22.9 / 22.5 (17.2). Completion barely answers, so it does
+not identify the parameter. Even with no safety at all, the line man holds ~4% of candidate weight
+(the zone-to-zone table split among the mates in his zone), about his share of men near the line.
+So the pass is not the lever; how many men stand there is. `risk_weight` stays 0.25.
+
+**Real, the second man** (`benchmarks_tracking_shoulder.py`, now with his quantiles; DFL). The
+side's second most advanced outfielder stands 1.2 / 2.5 / 4.2 / 6.7 / 9.9 m short of their line
+(p10 … p90, ball 10-60 m out), 2.7-3.4 m behind the front man. Ours stood 3.6-4.6 m behind him.
+
+**The change** [FH, fitted to DFL]. `Possession::assignFront` now names two: the front man and the
+second (the most advanced eligible man other than the front man, with the same swap_m to take the
+job). The second man's spot depth is the live line less a gap rolled a tenure from the real
+second-man spread (`physics.front.second_p10..p90`), never nearer than the front man's gap.
+`Possession::onLine` marks both, and both track the line's velocity (§8.147).
+
+**After** (8 × 90, the same fixtures and seeds as §8.148).
+- Second man behind the front man 3.4 m at every band 20-50 (real 2.8-3.2; was 3.6-4.6).
+- 2-4 m short a frame at 18-35: 0.56 → 0.61 (0.87 on their mix).
+- WIDE 2-4 m share 9.3 → 10.7% (13.1). 0-2 m unchanged (0.43).
+- In behind 17.2 → 19.8 (37.7). Offsides 0.5 → 0.8 (~1.1). Completion 81.4%.
+- **Cost:** ball-still runs 67.5 → 84.7 (41.7). A man taking the second job crosses to it at the
+  forward shape cap, 4.5 m/s, which counts as a run (4+ m/s at goal). G5.46's spell re-rolls do the
+  same.
+- Goldens re-locked.
+
+**What it says.** The top two are now shaped as real ones, but the 0-2 m strip did not fill. The
+front man is still within 2 m only 31-37% of frames at 20-50 m out (38-49), and 4+ m short 26-28%
+(10-18). Those are frames where the most advanced man isn't in Support (the carrier, the pass's
+man, a runner), or he trails a line dropping 2+ m in a second (4.2 v 2.4, §8.147).
+
+**Next moles.** (1) Ball-still runs 84.7 v 41.7: a man whose spot jumps (a new spell's depth, a new
+line job) should walk or jog into it, not sprint. Real runs are the few at 4+ m/s. (2) The front
+man's 4+ m tail. (3) Crosses 0.88 v 11.47. (4) Law 8, Law 13 walls, cards. (5) Take-ons.

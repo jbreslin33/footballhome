@@ -334,7 +334,7 @@ public:
         if (line < Fixed64::zero()) line = Fixed64::zero();
         const Fixed64 lim = line - c.poss.params().onside_margin_m;
         // G5.47: the front man stands on their line, his tenure's gap short of it.
-        if (c.poss.front(v.team) == v.slot) t.x = (line - c.poss.frontGap(v)) * v.sg;
+        if (c.poss.onLine(v.team, v.slot)) t.x = (line - c.poss.frontGap(v)) * v.sg;
         if (t.x * v.sg > lim) t.x = lim * v.sg;
         o.target = t;
         o.move.move = seek(c.world.player(v.slot).pos, t, Fixed64::fromFraction(1, 2));
@@ -647,38 +647,54 @@ void Possession::assignRuns(std::uint8_t team, const core::World& world, const s
 void Possession::assignFront(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
     const auto& b = world.ball();
     const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
-    std::uint8_t& f = front_[team & 1];
-    if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { f = 0xFF; return; }
+    std::uint8_t* f = front_[team & 1];
+    std::uint64_t* at = front_at_[team & 1];
+    if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { f[0] = f[1] = 0xFF; return; }
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
-    // Our most advanced outfielder in Support: not on the ball, not the pass's
+    // Our most advanced outfielders in Support: not on the ball, not the pass's
     // man, not running into the box or onto the line.
     auto ok = [&](std::uint8_t j) {
-        return team_of_slot[j] == team && !world.isKeeper(j) && !(b.owner && *b.owner == j) && b.pass_to != j && !runner(j) && !running(j);
+        return j < world.playerCount() && team_of_slot[j] == team && !world.isKeeper(j) && !(b.owner && *b.owner == j) &&
+               b.pass_to != j && !runner(j) && !running(j);
     };
-    std::uint8_t best = 0xFF; Fixed64 bx{};
-    for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
-        if (!ok(j)) continue;
-        const Fixed64 x = world.player(j).pos.x * sg;
-        if (best == 0xFF || x > bx) { best = j; bx = x; }
+    // k = 0 the front man, 1 the second; each keeps the job until a mate (not the
+    // one above him) is front_swap_m further on.
+    for (int k = 0; k < 2; ++k) {
+        const std::uint8_t above = k ? f[0] : 0xFF;
+        std::uint8_t best = 0xFF; Fixed64 bx{};
+        for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+            if (!ok(j) || j == above) continue;
+            const Fixed64 x = world.player(j).pos.x * sg;
+            if (best == 0xFF || x > bx) { best = j; bx = x; }
+        }
+        if (best == 0xFF) { f[k] = 0xFF; continue; }
+        if (f[k] != 0xFF && f[k] != above && ok(f[k]) && world.player(f[k]).pos.x * sg + params_.front_swap_m >= bx) continue;
+        f[k] = best;
+        at[k] = world.tickCount();
     }
-    if (best == 0xFF) { f = 0xFF; return; }
-    if (f != 0xFF && f < world.playerCount() && ok(f) && world.player(f).pos.x * sg + params_.front_swap_m >= bx) return;
-    f = best;
-    front_at_[team & 1] = world.tickCount();
+}
+
+Fixed64 Possession::rollGap(const Fixed64* q, std::uint64_t at, const PlayerView& v, int salt) const {
+    // One roll a tenure, piecewise through the real p10 … p90 (tails held).
+    const Fixed64 u = (core::detNoise(v.match_seed, at, v.slot, salt) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
+                                   Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
+    if (u <= kAt[0]) return q[0];
+    for (int i = 0; i < 4; ++i)
+        if (u <= kAt[i + 1]) return q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]);
+    return q[4];
 }
 
 Fixed64 Possession::frontGap(const PlayerView& v) const {
-    // One roll a tenure, piecewise through the real p10 … p90 (tails held), never
-    // nearer than onside_margin_m.
-    const Fixed64 u = (core::detNoise(v.match_seed, front_at_[v.team & 1], v.slot, 66) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-    const Fixed64* q = params_.front_q;
-    static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
-                                   Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
-    Fixed64 g = q[4];
-    if (u <= kAt[0]) g = q[0];
-    else for (int i = 0; i < 4; ++i)
-        if (u <= kAt[i + 1]) { g = q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]); break; }
-    if (g < params_.onside_margin_m) g = params_.onside_margin_m;
+    // Never nearer than onside_margin_m; the second man never nearer than the front man.
+    const std::uint8_t* f = front_[v.team & 1];
+    const std::uint64_t* at = front_at_[v.team & 1];
+    Fixed64 g0 = rollGap(params_.front_q, at[0], PlayerView{v}, 66);
+    if (f[0] != 0xFF && f[0] != v.slot) { PlayerView w = v; w.slot = f[0]; g0 = rollGap(params_.front_q, at[0], w, 66); }
+    if (g0 < params_.onside_margin_m) g0 = params_.onside_margin_m;
+    if (f[1] != v.slot) return g0;
+    Fixed64 g = rollGap(params_.second_q, at[1], v, 67);
+    if (g < g0) g = g0;
     return g;
 }
 
@@ -756,6 +772,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
     static const int kFront[5] = {-700, 500, 1600, 3000, 4800};
     for (int k = 0; k < 5; ++k) front_q[k] = p.fixed(("physics.front.gap_" + std::string(kDq[k])).c_str(), kFront[k]);
     front_swap_m = p.fixed("physics.front.swap_m", 1000);
+    static const int kSecond[5] = {1200, 2500, 4200, 6700, 9900};   // G5.49, the same source
+    for (int k = 0; k < 5; ++k) second_q[k] = p.fixed(("physics.front.second_" + std::string(kDq[k])).c_str(), kSecond[k]);
     for (int z = 0; z < 6; ++z) {
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);

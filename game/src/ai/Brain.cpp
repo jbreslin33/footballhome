@@ -602,7 +602,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const {
     // G5.47 (§8.147): the front man's spot is their line less his gap — it moves
     // as the line does, so he runs with the line's own velocity (tracking).
-    if (o.why == Why::Hold && poss_.front(setup_.team_of_slot[slot]) == slot &&
+    if (o.why == Why::Hold && poss_.onLine(setup_.team_of_slot[slot], slot) &&
         players_[slot & 31].machine.current() == Possession::support())
         return Vec2{Possession::offsideLineVelX(setup_.team_of_slot[slot], world, setup_.team_of_slot), Fixed64::zero()};
     if (o.why != Why::Hold || players_[slot & 31].machine.current() != DefendingBlock::holdBlockSpot()) return Vec2{};
