@@ -131,6 +131,7 @@ void Brain::think(const World& world) const {
     {
         block_.assign(t, world, setup_.team_of_slot, role_of_slot_, fr, restartTaker(world, t));
         poss_.assignRunners(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
+        poss_.assignRuns(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
     }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[s] & 1], now};

@@ -6380,3 +6380,54 @@ measured per state, not a spread on one target.
 
 **Next moles.** (1) The runs in behind and onto the line (above). (2) Runners in the box at
 18-35 m (0.13 v 1.04), crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards. (4) Take-ons 83 v 18.
+
+### 8.145 G5.45 — runs onto their line: measured, the run added at the real rate; the strip by the line is a standing matter (no migration)
+
+§8.144's next: the runs.
+
+**Real** (new `scripts/benchmarks_tracking_runs.py`, DFL [Bassek et al. 2025], the side in
+possession against their offside line — second-last, keeper in, or the ball). *Men by gap*: a frame
+holds 0.54-0.82 of ours 0-2 m short of the line and 0.59-0.87 2-4 m short (58% / 47% STs, 26% / 32%
+wide men), 0.14-0.19 just past it. *Each role's gap* (p10 / median / p90, ball 18-35 m out): ST
+0.5 / 3.2 / 11.8, WIDE 1.9 / 8.2 / 20.2, AM 2.1 / 9.4 / 19.8 — wide spreads. *Runs* (a man 0-12 m
+short or past, at their goal 4+ m/s for 0.6 s+): 209 a team-match (WIDE 74, ST 62, DM 25, AM 23, FB
+17, CB 8); start a median 8.4 m short, get to 3.9 (p25 1.5), last 1.8 s, 8.9 m forward, |dy| 2.2,
+past the line only 7%. **80% come with the ball going forward 2+ m/s** (167 a team-match: the side
+moving up with it); with it not, 41.7, at per eligible man-second CB .042, FB .024, DM .022, AM .011,
+WIDE .015, ST .009, getting to (p25 / median / p75) ST 1.1 / 2.9 / 5.6, WIDE 1.9 / 4.5 / 7.4, AM
+2.1 / 4.4 / 6.7, all 1.6 / 4.3 / 7.2.
+
+**The game, before** (new harness lines MEN BY GAP, EACH ROLE's gap, RUNS): runs 181.5 a team-match
+— by role WIDE 79, ST 64, AM 28 right — but they get to 7.5 m short (3.9) and last 1.2 s (1.8). Each
+role's MEDIAN gap is right (ST 4.4, WIDE 9.2, AM 9.4 at 18-35); the spread is not (WIDE p10 5.0,
+real 1.9; ST p90 8.8, real 11.8). The strip by the line is a third full: 0-2 m 0.19 a frame (0.73),
+2-4 m 0.35 (0.87); a lump 8-10 m short (1.02, real 0.57). Named passes to a man 0-2 m short 0.8%
+of all (real 8.0%) — which is why balls in behind are 11.8 (37.7): the real share in behind is by
+the man's gap (50% at 0-2 m, §8.125) and ours are not there.
+
+**The change** [FH, fitted to DFL]. A new job, RunLine (`Possession::assignRuns`, once a tick per
+team after the box runners): a man of ours 0-12 m short of their line, the ball ours (carried or
+on its way, as DFL's BallPossession) and not going forward 2+ m/s, not on the ball nor the pass's
+man, not a box runner, starts a run at his role's real rate a second (`physics.run.rate_<role>`);
+he runs straight at their goal to a gap short of the LIVE line rolled through his role's real p25 /
+median / p75 (`physics.run.end_p25|p50|p75_<role>`, tails as far again, never past it less
+`onside_margin_m`); a run under `physics.run.min_m` (3 m) isn't one; done there, after
+`run_max_s` (4 s), or when the ball isn't ours, he is back in Support. Only the ball-still runs: the
+ones with the ball going forward are the shape moving with it, which Support already does
+(ours 143 v 167). `Possession::offsideLine` is the shared Law 11 line. New `Why::RunLine`.
+
+**After** (8 × 90, scratch DB): RunLine starts ~20 a team-match (WIDE 11.8, AM 4.1, ST 2.8 — STs
+already stand 3-4 m short, so few runs of 3 m+ are left for them); runs with the ball not going
+forward 44.9 (41.7), getting to 5.2 m short (4.3); all runs 188 (209). The strip by the line barely
+moved (0-2 m at 18-35: 0.19 → 0.22, real 0.73), in behind 11.8 → 11.5, shots 10.4 → 10.6.
+
+**What it says.** The run is real and now ours, at the real rate — but runs are not what fills the
+strip by the line: a real ball-still run is ~1.5 s, a few a man a match. Real men simply *stand*
+nearer the line — the gap is two moving things (their line steps up and drops; ours hold, check,
+drift) and it spreads; ours are two near-fixed spots, so the gap is narrow. The next try is the gap
+itself, measured per state: how the real gap moves when THEIR line steps up or drops (do our men
+hold their ground and let the line come to them?), and the checking movement off the line.
+
+**Next moles.** (1) The gap to their line when it moves (above) — balls in behind 11.5 v 37.7.
+(2) Runners in the box at 18-35 m, crosses (0.19 v 11.47). (3) Law 8, Law 13 walls, cards.
+(4) Take-ons 83 v 18.

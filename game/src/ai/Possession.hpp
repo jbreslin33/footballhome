@@ -69,6 +69,11 @@ struct PossessionParams {
     // past the line as it stood at the kick); where it is met past the line (p25-p75
     // roll); the share in the air — DFL tracking (benchmarks_tracking_behind.py).
     math::Fixed64 behind_gap[9]{}, behind_past_lo{}, behind_past_hi{}, behind_air{}, behind_lead_s{};
+    // Runs onto their line (G5.45): a man of ours 0-12 m short of it, the ball not
+    // going forward, starts a run at his role's real rate a second; he runs to a
+    // gap short of the (live) line rolled from his role's real p25 / median / p75
+    // of where such runs get to — DFL tracking (benchmarks_tracking_runs.py).
+    math::Fixed64 run_rate[kRoleCount]{}, run_end[kRoleCount][3]{}, run_min_m{}, run_max_s{}, run_ball_fwd{};
     void configure(const core::ModelParams& p);
 };
 
@@ -84,16 +89,27 @@ public:
     static const ActingState* receive();
     static const ActingState* keeper();
     static const ActingState* attackBox();
+    static const ActingState* runLine();
 
     // Once a tick per team (Brain::think): who runs into the box — how many from
     // the real shares for the ball's zone, who by the real role counts (nearest
     // first among equals); re-drawn when the ball changes zone or every 3 s.
     void assignRunners(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                        const std::vector<Role>& role_of_slot, std::uint64_t match_seed);
+    // Once a tick per team (Brain::think, after assignRunners): who starts a run
+    // onto their line (G5.45), and whose run is over.
+    void assignRuns(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                    const std::vector<Role>& role_of_slot, std::uint64_t match_seed);
+    bool running(std::uint8_t slot) const { return slot < 32 && run_[slot].on; }
+    math::Fixed64 runEndGap(std::uint8_t slot) const { return slot < 32 ? run_[slot].end_gap : math::Fixed64{}; }
+    math::Fixed64 runY(std::uint8_t slot) const { return slot < 32 ? run_[slot].y : math::Fixed64{}; }
+    // Their offside line in `team`'s attack direction (Law 11): their second-last
+    // man, else halfway; never behind the ball. Metres along +sg.
+    static math::Fixed64 offsideLine(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
     bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; for (auto& l : led_) l = Led{}; }
+    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
 
     // A ball in behind as the passer meant it (G5.27): for whom, the spot it is
     // played to, the tick he asked for it. The man it is for runs to the spot
@@ -110,6 +126,8 @@ private:
     int zone_[2] = {-1, -1};
     std::uint64_t drawn_[2] = {0, 0};
     Led led_[32]{};
+    struct Run { bool on = false; std::uint64_t until = 0; math::Fixed64 end_gap{}, y{}; };
+    Run run_[32]{};
 };
 
 }  // namespace fh::game::ai

@@ -103,6 +103,10 @@ struct Stats {
     std::vector<double> sh_near, sh_held; long sh_gs = 0;   // at the strike: nearest opponent to the shooter, s on the ball   // §8.138: bodies in the ±1 m lane at the strike; blocked by count   // the save curve: aimed on target, saved (held/parried) or scored, by band x keeper gap   // §8.135: shots by aimed cell ([0] = aimed off): n, goals, keeper holds, keeper parries
     long sh_n[5][ai::kRoleCount][3] = {}; double sh_at[5][ai::kRoleCount][3] = {}, sh_tg[5][ai::kRoleCount][3] = {};   // §8.143: possession side, ball still: holders / box runners / other, at v target
     std::vector<double> st_short[10];   // §8.144: every ST's metres short of their line
+    long gb_f[4] = {}, gb_k[4][11] = {}; double gb_v[4][11] = {};   // §8.145: men by gap short of their line (2 m bins from -4), speed at goal
+    long rn_n[4] = {}, rn_r[ai::kRoleCount] = {}, rn_past = 0; std::vector<double> rn_g0, rn_min, rn_len;   // §8.145: runs
+    std::vector<float> rq[4][ai::kRoleCount];   // §8.145: each role's gap short of their line
+    long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
     long fm_n[10] = {}, fm_w1[10] = {}, fm_w2[10] = {}, fm_w4[10] = {}, fm_past[10] = {}, fm_r[10][ai::kRoleCount] = {}; double fm_gap[10] = {}, fm_gap2[10] = {}, fm_dy[10] = {};   // §8.144: the front man v their line
     long pl_n[5][4] = {}; long pl_k[5][4][ai::kRoleCount] = {}; double pl_s[5][4][ai::kRoleCount] = {}, pl_line[5][4] = {}, pl_front[5][4] = {};   // §8.143: the side in possession, the same split
     long dl_n[5][4] = {}; long dl_k[5][4][ai::kRoleCount] = {}; double dl_s[5][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
@@ -591,6 +595,46 @@ int main(int argc, char** argv) {
                     }
                     if (fj >= 0 && f2 < 1e8 && l2 < 1e8) {
                         const double line = std::min(l2, tl), sh = f1 - line;
+                        {   // §8.145: every man of ours by gap, and runs (0-12 m short or past, 4+ m/s at goal, 0.6 s+)
+                            const int zq = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : 3;
+                            ++S.gb_f[zq];
+                            auto closeRun = [&](int j) {
+                                if (S.rn_k[j] >= 3) {
+                                    ++S.rn_n[S.rn_z[j]]; ++S.rn_r[role(static_cast<std::uint8_t>(j))];
+                                    S.rn_g0.push_back(S.rn_s0[j]); S.rn_min.push_back(S.rn_sm[j]); S.rn_len.push_back(0.2 * S.rn_k[j]);
+                                    if (S.rn_sm[j] < 0) ++S.rn_past;
+                                    ++S.rn_nb[S.rn_b[j]]; S.rn_minb[S.rn_b[j]].push_back(S.rn_sm[j]);
+                                }
+                                S.rn_k[j] = 0;
+                            };
+                            for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                                if (W.player(j).team == dteam || W.isKeeper(j)) continue;
+                                const double gp = hx - W.player(j).pos.x.toDouble() * sg - line;
+                                const double vg = W.player(j).vel.x.toDouble() * sg;
+                                const int gq = static_cast<int>(std::floor((gp + 4) / 2));
+                                if (gq >= 0 && gq < 11) { ++S.gb_k[zq][gq]; S.gb_v[zq][gq] += vg; }
+                                const bool onrun = s.lastOrders()[j].why == ai::Why::RunLine;
+                                if (onrun) ++S.run_why;
+                                if (onrun && !S.run_was[j]) ++S.run_st[role(j)];
+                                S.run_was[j] = onrun;
+                                if (!onrun && gp >= 0 && gp < 12) {
+                                    ++S.run_c[0];
+                                    if (b.owner) ++S.run_c[1];
+                                    if (b.vel.x.toDouble() * sg < 2) { ++S.run_c[2]; ++S.run_el[role(j)]; }
+                                }
+                                S.rq[zq][role(j)].push_back(static_cast<float>(gp));
+                                const bool cont = S.rn_k[j] > 0 && S.rn_last[j] == static_cast<long>(k) - 6;
+                                if (S.rn_k[j] > 0 && !cont) closeRun(j);
+                                if (gp < 12 && vg >= 4) {
+                                    if (S.rn_k[j] == 0) {
+                                        S.rn_s0[j] = gp; S.rn_sm[j] = gp; S.rn_z[j] = zq;
+                                        const int rb1 = static_cast<int>(((k / 6) + 11) % 16);   // the ball 1 s ago
+                                        S.rn_b[j] = (rk[rb1] == static_cast<long>(k) - 30 && (hx - rbx[rb1] * sg) - tl >= 2) ? 1 : 0;
+                                    }
+                                    ++S.rn_k[j]; if (gp < S.rn_sm[j]) S.rn_sm[j] = gp; S.rn_last[j] = static_cast<long>(k);
+                                } else if (S.rn_k[j] > 0) closeRun(j);
+                            }
+                        }
                         for (std::uint8_t j = 0; j < N; ++j)
                             if (W.player(j).team != dteam && !W.isKeeper(j) && role(j) == 5)
                                 S.st_short[bd].push_back(hx - W.player(j).pos.x.toDouble() * sg - line);
@@ -1088,6 +1132,48 @@ int main(int argc, char** argv) {
             {{45.1, 35.4, 33.6, 26.4, 25.8, 20.8, 17.1, 18.0}, {50.6, 40.0, 37.8, 30.9, 30.3, 25.6, 20.8, 22.2}, {55.5, 44.7, 42.6, 34.7, 33.9, 28.9, 23.8, 26.0}, {60.8, 50.5, 48.3, 39.2, 38.3, 33.1, 27.5, 29.7}},
             {{52.5, 41.9, 39.7, 31.5, 31.2, 27.1, 22.6, 23.7}, {56.5, 45.3, 43.9, 35.7, 35.3, 30.4, 26.0, 27.6}, {61.1, 50.4, 48.4, 40.3, 40.2, 34.5, 29.6, 31.7}, {66.5, 56.9, 54.4, 46.0, 44.3, 38.8, 33.4, 35.9}}};
         static const char* kVb[4] = {"back", "still", "forward 2-5", "forward 5+"};
+        {   // §8.145: real DFL, benchmarks_tracking_runs.py
+            static const double kG[4][11] = {{0.03, 0.19, 0.82, 0.86, 0.73, 0.58, 0.55, 0.47, 0.42, 0.37, 0.37}, {0.02, 0.14, 0.73, 0.87, 0.66, 0.60, 0.57, 0.54, 0.48, 0.45, 0.44},
+                                             {0.03, 0.16, 0.58, 0.68, 0.60, 0.53, 0.51, 0.50, 0.52, 0.50, 0.51}, {0.05, 0.18, 0.54, 0.59, 0.47, 0.42, 0.41, 0.39, 0.39, 0.40, 0.41}};
+            static const char* kZ[4] = {"0-18", "18-35", "35-52", "52+"};
+            std::printf("MEN BY GAP short of their line a frame (2 m bins from -4, - = past it; benchmarks_tracking_runs.py, real DFL count in brackets) count / speed at goal:\n");
+            for (int z = 0; z < 4; ++z) {
+                if (!S.gb_f[z]) continue;
+                std::printf("   ball %-5s", kZ[z]);
+                for (int g = 0; g < 11; ++g) std::printf(" %.2f (%.2f) /%4.1f;", static_cast<double>(S.gb_k[z][g]) / S.gb_f[z], kG[z][g], S.gb_v[z][g] / std::max(1L, S.gb_k[z][g]));
+                std::printf("\n");
+            }
+            static const double kQ[4][ai::kRoleCount][5] = {
+                {{4.2, 25.6, 37.0, 43.3, 48.1}, {4.5, 11.8, 23.5, 33.4, 40.5}, {4.3, 10.8, 19.9, 27.6, 35.2}, {1.7, 4.5, 9.7, 16.2, 21.6}, {1.1, 3.6, 8.7, 15.9, 22.9}, {0.6, 1.9, 4.1, 8.4, 14.4}},
+                {{14.7, 28.7, 33.9, 38.0, 41.7}, {6.9, 13.6, 21.6, 29.4, 35.4}, {6.2, 11.9, 18.7, 24.7, 30.4}, {2.1, 4.5, 9.4, 14.9, 19.8}, {1.9, 4.2, 8.2, 13.4, 20.2}, {0.5, 1.5, 3.2, 6.9, 11.8}},
+                {{23.5, 28.6, 32.5, 35.9, 39.2}, {8.9, 15.6, 22.1, 28.3, 33.4}, {8.1, 14.1, 19.5, 24.2, 28.9}, {2.7, 5.6, 10.5, 15.0, 19.6}, {1.9, 4.6, 9.2, 14.7, 20.2}, {0.3, 1.5, 3.7, 7.6, 12.7}},
+                {{26.7, 31.1, 35.4, 40.0, 44.6}, {11.5, 18.6, 25.9, 32.2, 37.8}, {11.9, 17.6, 23.2, 29.1, 34.2}, {3.4, 7.0, 11.4, 16.6, 22.4}, {2.0, 5.0, 10.6, 18.4, 25.9}, {-0.3, 1.2, 3.1, 7.0, 14.7}}};
+            static const char* kRn[ai::kRoleCount] = {"CB", "FB", "DM", "AM", "WIDE", "ST"};
+            std::printf("EACH ROLE's gap short of their line, p10/p25/median/p75/p90 (benchmarks_tracking_runs.py, real DFL in brackets):\n");
+            for (int z = 0; z < 4; ++z) {
+                std::printf("   ball %-5s", kZ[z]);
+                for (int r = 0; r < ai::kRoleCount; ++r) {
+                    auto& v = S.rq[z][r];
+                    if (v.empty()) continue;
+                    std::sort(v.begin(), v.end());
+                    auto at = [&](double f) { return static_cast<double>(v[std::min(v.size() - 1, static_cast<std::size_t>(f * v.size()))]); };
+                    std::printf(" %s %.1f/%.1f/%.1f/%.1f/%.1f (%.1f/%.1f/%.1f/%.1f/%.1f);", kRn[r], at(.1), at(.25), at(.5), at(.75), at(.9),
+                                kQ[z][r][0], kQ[z][r][1], kQ[z][r][2], kQ[z][r][3], kQ[z][r][4]);
+                }
+                std::printf("\n");
+            }
+            auto med = [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+            long rt = 0; for (int z = 0; z < 4; ++z) rt += S.rn_n[z];
+            std::printf("RUNS (0-12 m short or past, 4+ m/s at goal, 0.6 s+; real DFL in brackets): %.1f a team-match (209.1); by the ball's zone 0-18 %.1f (22.9) 18-35 %.1f (61.7) 35-52 %.1f (64.5) 52+ %.1f (60.0)\n",
+                        rt / tm, S.rn_n[0] / tm, S.rn_n[1] / tm, S.rn_n[2] / tm, S.rn_n[3] / tm);
+            std::printf("   by role CB %.1f (7.9) FB %.1f (17.4) DM %.1f (24.9) AM %.1f (22.7) WIDE %.1f (73.9) ST %.1f (62.4); medians: starts %.1f m short (8.4), gets to %.1f (3.9), lasts %.1f s (1.8); past the line %.0f%% (7%%)\n",
+                        S.rn_r[0] / tm, S.rn_r[1] / tm, S.rn_r[2] / tm, S.rn_r[3] / tm, S.rn_r[4] / tm, S.rn_r[5] / tm, med(S.rn_g0), med(S.rn_min), med(S.rn_len), 100.0 * S.rn_past / std::max(1L, rt));
+            std::printf("   the ball not going forward: %.1f a team-match (41.7), gets to %.1f m short (4.3); going forward 2+: %.1f (167.4), gets to %.1f (3.9); men on a RunLine job %.2f a frame\n",
+                        S.rn_nb[0] / tm, med(S.rn_minb[0]), S.rn_nb[1] / tm, med(S.rn_minb[1]), static_cast<double>(S.run_why) / std::max(1L, S.gb_f[0] + S.gb_f[1] + S.gb_f[2] + S.gb_f[3]));
+            std::printf("   RunLine: eligible man-seconds (0-12 m short, ball under 2 m/s on) / starts a team-match:");
+            for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.0f / %.1f;", kRn[r], S.run_el[r] / 5.0 / tm, S.run_st[r] / tm);
+            std::printf(" (0-12 m man-s %.0f, carried %.0f, slow %.0f)\n", S.run_c[0] / 5.0 / tm, S.run_c[1] / 5.0 / tm, S.run_c[2] / 5.0 / tm);
+        }
         {   // §8.144: real DFL, benchmarks_tracking_shoulder.py: short of line, 0-1 %, 0-2 %, 4+ %, past %, 2nd behind, ST %, WIDE %
             static const double kR[10][8] = {{1.8, 30, 45, 16, 28.6, 4.1, 29, 36}, {1.6, 28, 54, 8, 16.3, 2.7, 46, 27}, {1.7, 22, 49, 10, 14.9, 2.8, 53, 25},
                                              {1.9, 18, 40, 15, 15.6, 3.1, 58, 26}, {2.0, 18, 38, 18, 17.1, 3.2, 61, 25}, {2.1, 15, 35, 20, 18.6, 3.4, 66, 22},

@@ -469,8 +469,31 @@ public:
     }
 };
 
+// ── onto their line ────────────────────────────────────────────────────
+// G5.45 (§8.145): his run (Possession::assignRuns) — straight at their goal on
+// his line, to the gap short of their LIVE line his run was rolled to; never
+// past it less onside_margin_m. Done (there, or out of time), assignRuns ends it
+// and he is back in Support.
+class RunLine final : public ActingState {
+public:
+    std::uint8_t id() const override { return 9; }
+    const char* name() const override { return "run onto the line"; }
+    bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
+        const auto& P = c.poss.params();
+        const Fixed64 line = Possession::offsideLine(v.team, c.world, c.team_of_slot);
+        Fixed64 g = c.poss.runEndGap(v.slot);
+        if (g < P.onside_margin_m) g = P.onside_margin_m;
+        const Vec2 t{(line - g) * v.sg, c.poss.runY(v.slot)};
+        o.target = t;
+        o.move.move = seek(c.world.player(v.slot).pos, t, Fixed64::fromFraction(1, 2));
+        o.why = Why::RunLine;
+        return true;
+    }
+};
+
 const OnBall kOnBall;
 const AttackBox kAttackBox;
+const RunLine kRunLine;
 const Support kSupport;
 const Receive kReceive;
 const Keeper kKeeper;
@@ -482,6 +505,7 @@ const ActingState* Possession::support() { return &kSupport; }
 const ActingState* Possession::receive() { return &kReceive; }
 const ActingState* Possession::keeper() { return &kKeeper; }
 const ActingState* Possession::attackBox() { return &kAttackBox; }
+const ActingState* Possession::runLine() { return &kRunLine; }
 
 int Possession::runnerIndex(std::uint8_t slot) const {
     int k = 0;
@@ -529,6 +553,71 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
         }
         if (best < 0) break;
         runners_ |= 1u << best;
+    }
+}
+
+Fixed64 Possession::offsideLine(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    Fixed64 a{}, b{}; bool ha = false, hb = false;
+    for (std::uint8_t j = 0; j < world.playerCount(); ++j) {
+        if (team_of_slot[j] == team) continue;
+        const Fixed64 x = world.player(j).pos.x * sg;
+        if (!ha || x > a) { b = a; hb = ha; a = x; ha = true; }
+        else if (!hb || x > b) { b = x; hb = true; }
+    }
+    Fixed64 line = hb ? b : world.pitchHalfX();
+    const Fixed64 bx = world.ball().pos.x * sg;
+    if (bx > line) line = bx;
+    if (line < Fixed64::zero()) line = Fixed64::zero();
+    return line;
+}
+
+void Possession::assignRuns(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                            const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
+    const auto& b = world.ball();
+    const auto& P = params_;
+    const std::uint64_t now = world.tickCount();
+    const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
+    const bool live = ours && world.restartTeam() == 0xFF && world.outStage() == 0;
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 line = live ? offsideLine(team, world, team_of_slot) : Fixed64::zero();
+    // Real runs counted here are the ones with the ball NOT going forward (under
+    // 2 m/s at their goal): the ones with it are the shape moving with the ball,
+    // which Support already does (ours 181 a team-match v real 209, §8.145).
+    const bool still = b.vel.x * sg < P.run_ball_fwd;
+    for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+        if (team_of_slot[j] != team) continue;
+        Run& r = run_[j];
+        const Fixed64 gap = line - world.player(j).pos.x * sg;
+        if (r.on) {
+            Fixed64 g = r.end_gap;
+            if (g < P.onside_margin_m) g = P.onside_margin_m;
+            if (!live || now >= r.until || gap <= g + Fixed64::fromFraction(1, 2) || (b.owner && *b.owner == j)) r = Run{};
+            continue;
+        }
+        // Eligible as the real rate was counted: the ball ours, carried or on its way (DFL BallPossession).
+        if (!live || (b.owner && *b.owner == j) || b.pass_to == j || world.isKeeper(j) || runner(j) || !still) continue;
+        if (gap.raw < 0 || gap >= Fixed64::fromInt(12)) continue;
+        const int ro = static_cast<int>(role_of_slot[j]);
+        // His role's real starts a second, a tick's share of it.
+        const Fixed64 u = (core::detNoise(match_seed, now, j, 63) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (u >= P.run_rate[ro] * core::kTickDt) continue;
+        // Where it gets to: piecewise through his role's real p25 / median / p75
+        // (the tails as far again past each quartile, never under 0).
+        const Fixed64 u2 = (core::detNoise(match_seed, now, j, 64) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Fixed64* q = P.run_end[ro];
+        Fixed64 lo = q[0] - (q[1] - q[0]); if (lo.raw < 0) lo = Fixed64::zero();
+        const Fixed64 hi = q[2] + (q[2] - q[1]);
+        const Fixed64 pts[5] = {lo, q[0], q[1], q[2], hi};
+        const Fixed64 f = u2 * Fixed64::fromInt(4);
+        int i = static_cast<int>(f.raw >> Fixed64::FRAC_BITS); if (i > 3) i = 3;
+        const Fixed64 end = pts[i] + (pts[i + 1] - pts[i]) * (f - Fixed64::fromInt(i));
+        // A run, not a step: at least run_min_m on toward it.
+        if (gap - end < P.run_min_m) continue;
+        r.on = true;
+        r.end_gap = end;
+        r.y = world.player(j).pos.y;
+        r.until = now + static_cast<std::uint64_t>((P.run_max_s / core::kTickDt).raw >> Fixed64::FRAC_BITS);
     }
 }
 
@@ -583,6 +672,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
     behind_past_hi = p.fixed("physics.behind.past_p75_m", 9730);
     behind_air = p.fixed("physics.behind.air", 580);
     behind_lead_s = p.fixed("physics.behind.lead_s", 1000);   // [FH] his across drift on the ball's way
+    // Runs onto their line: DFL (benchmarks_tracking_runs.py, the ball not going forward).
+    static const int kRunRate[kRoleCount] = {42, 24, 22, 11, 15, 9};            // starts per eligible man-second, x1000
+    static const int kRunEnd[kRoleCount][3] = {{1600, 4300, 7200}, {1600, 4300, 7200}, {1600, 4300, 7200},
+                                               {2100, 4400, 6700}, {1900, 4500, 7400}, {1100, 2900, 5600}};   // gets to, m short: p25 / median / p75
+    for (int r = 0; r < kRoleCount; ++r) {
+        run_rate[r] = p.fixed(("physics.run.rate_" + std::string(kRoleKey[r])).c_str(), kRunRate[r]);
+        static const char* const kQ[3] = {"p25", "p50", "p75"};
+        for (int k = 0; k < 3; ++k) run_end[r][k] = p.fixed(("physics.run.end_" + std::string(kQ[k]) + "_" + kRoleKey[r]).c_str(), kRunEnd[r][k]);
+    }
+    run_min_m = p.fixed("physics.run.min_m", 3000);      // real forward p25 4.1 m; a shorter one is a step
+    run_max_s = p.fixed("physics.run.max_s", 4000);      // real lasts p75 2.6 s at 4+ m/s, + the run-up and the brake
+    run_ball_fwd = p.fixed("physics.run.ball_fwd", 2000);
     for (int z = 0; z < 6; ++z) {
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);
