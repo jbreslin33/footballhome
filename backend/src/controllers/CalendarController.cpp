@@ -2687,7 +2687,10 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
         const bool canSetRsvp = !db->query(
             "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.person_id = $1::int LIMIT 1",
             {std::to_string(personId)}).empty();
-        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"can_set_rsvp", canSetRsvp}, {"roster", roster}});
+        // me_person_id: whose card is the caller's own (after view-as) — Event
+        // Center puts ✓/✗ + "your answer" on it for anyone (owner 2026-11-06).
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"can_set_rsvp", canSetRsvp},
+                       {"me_person_id", personId}, {"roster", roster}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetEventAttendance: "
                   << e.what() << std::endl;

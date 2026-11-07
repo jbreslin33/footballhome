@@ -157,7 +157,8 @@ class EventScreen extends Screen {
   // Club admins answer for a player (owner: Game Center's coach override,
   // now on practices) — the same POST/DELETE /api/calendar/rsvp a player
   // uses, with person_id; the row records who answered.  Tapping the lit
-  // answer clears it.
+  // answer clears it.  Your own card answers as you (no person_id — the
+  // same self write #my makes, so its eligibility rules apply).
   async _setRsvp(personId, response, active) {
     const key = `rsvp:${personId}`;
     if (this.saving.has(key)) return;
@@ -165,11 +166,15 @@ class EventScreen extends Screen {
     delete this.rsvpNote[personId];
     this._render();
     const id = this.ev.fh_event_id;
+    const self = !!(this.att && this.att.me && this.att.me === personId);
+    const target = self ? {} : { person_id: personId };
     try {
       if (active) {
-        await this._json('/api/calendar/rsvp', { method: 'DELETE', body: JSON.stringify({ fh_event_id: id, person_id: personId }) });
+        await this._json('/api/calendar/rsvp', { method: 'DELETE', body: JSON.stringify({ fh_event_id: id, ...target }) });
       } else {
-        await this._json('/api/calendar/rsvp', { method: 'POST', body: JSON.stringify({ fh_event_id: id, person_id: personId, response }) });
+        const body = await this._json('/api/calendar/rsvp', { method: 'POST', body: JSON.stringify({ fh_event_id: id, ...target, response }) });
+        if (self && body && body.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(body.sms_opt_in);   // 📲 mig 647
+        if (self && body && body.reg_ask && window.RegAsk) RegAsk.show(body.reg_ask);                   // 📝 mig 725
       }
       const row = (this.ev.rsvps || []).find(r => r.person_id === personId);
       if (row) row.response = active ? null : response;
@@ -614,6 +619,7 @@ class EventScreen extends Screen {
       const body = await this._json(`/api/calendar/events/${id}/attendance`);
       if (!this.ev || this.ev.fh_event_id !== id) return;
       this.att = { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp,
+                   me: Number(body.me_person_id) || 0,
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
       // 🎟 Invites sit under All Players — load them with it.
       if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
@@ -1274,9 +1280,26 @@ class EventScreen extends Screen {
     // ✉ CONTACT on every card for whoever may mark the event (Game Center's).
     const canContact = !!(this.att && this.att.canMark);
     const canSet = !!(this.att && this.att.canSetRsvp) && open;
+    // Your own card (owner 2026-11-06: "you should be able to set going or
+    // not going for yourself from event center … on the card … and it
+    // should show your status"): ✓/✗ for anyone while it's open, a YOU
+    // chip and your answer in words.
+    const me = (this.att && this.att.me) || 0;
+    const isMe = (r) => !!me && Number(r.person_id) === me;
+    const cpy = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const meChip = (r) => isMe(r)
+      ? `<span style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(56,189,248,0.18); border:1px solid rgba(56,189,248,0.6);
+               color:#7dd3fc; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(cpy('me_chip', 'YOU'))}</span>` : '';
+    const meStatus = (r) => {
+      if (!isMe(r)) return '';
+      const [tier, fb, color] = r.response === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
+        : r.response === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
+        : ['me_status_none', "You haven't answered yet", '#fbbf24'];
+      return `<div style="font-size:0.78rem; font-weight:800; color:${color}; margin-top:6px;">${this.escapeHtml(cpy(tier, fb))}</div>`;
+    };
     // ✓ / ✗ — tap the lit one to clear the answer (DELETE /rsvp).
     const rsvpBtns = (r) => {
-      if (!canSet) return '';
+      if (!canSet && !(open && isMe(r))) return '';
       const busy = this.saving.has(`rsvp:${r.person_id}`);
       const b = (resp, label, color) => {
         const on = r.response === resp;
@@ -1302,12 +1325,13 @@ class EventScreen extends Screen {
       const err = this.rsvpNote[r.person_id];
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
-        name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${chipHtml(r)}`,
+        name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${meChip(r)}${chipHtml(r)}`,
         right: r.suspension ? '' : rsvpBtns(r),   // ⛔ mig 1077: no answer to set
         body: `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
             ${sides ? this._cardSideHtml(r) : '<span></span>'}
             ${this._attendanceCell(r.person_id)}
           </div>
+          ${meStatus(r)}
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
           ${window.PersonStanding ? PersonStanding.html(r.person_id) : ''}
           ${canContact ? this._contactLineHtml(r, remind && canRemind) : ''}
