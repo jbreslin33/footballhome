@@ -153,7 +153,7 @@ public:
         int in_zone[10] = {};
         for (std::uint8_t j = 0; j < w.playerCount(); ++j)
             if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
-        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; };
+        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
         // Their offside line (Law 11): the second-last of theirs, or halfway, or the ball.
@@ -278,6 +278,20 @@ public:
                     if (n < bn) { bn = n; best = j; }
                 }
                 if (best < 0 || bn >= 135 || Fixed64::fromInt(bn) * core::kTickDt > P.space_max_s) continue;   // he must get there in time
+                // G5.55 (§8.156): a ground ball, before any of theirs — real balls into space go to
+                // the man who gets there first (ours went to a mate 17.8 m off it, theirs 11.5 m).
+                // A cross is struck whoever is first (real: 28% completed, 40% cleared next).
+                if (!cross) {
+                    int tn = 1000;
+                    for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                        if (c.team_of_slot[j] == v.team) continue;
+                        const Fixed64 run = math::length(Vec2{at.x - w.player(j).pos.x, at.y - w.player(j).pos.y});
+                        int n = 9;
+                        while (n < bn + 9 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
+                        if (n < tn) tn = n;
+                    }
+                    if (tn < bn + P.space_margin_ticks) continue;
+                }
                 if (cross) {
                     const Loft lf{at, aimedCarry(me.pos, at, reach)};
                     const bool ok = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
@@ -294,7 +308,7 @@ public:
                 if (cm > 255) cm = 255;
                 const Loft lf{at, aimedCarry(me.pos, at, reach)};
                 const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::weightedPassSpeed(Fixed64::fromInt(cm)), Fixed64::one());
-                add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm)});
+                add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
             }
         }
         if (nc > 0) {
@@ -314,7 +328,7 @@ public:
             if (ch.behind) {
                 if (ch.loft) { o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j); }
                 else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; }
-                o.why = Why::InBehind;
+                o.why = ch.space ? Why::IntoSpace : Why::InBehind;
                 o.move.move = carryDir(v, c, sp, goal);   // he carries it until the release
                 return true;
             }
@@ -794,6 +808,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
+    space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this
     space_max_s = p.fixed("physics.space.max_s", 4500);               // G5.54: the first man's run to it, at most
     space_wide_y = p.fixed("physics.space.wide_y_m", 27000);           // [FH] the wide zones' middle (20.16-34)
     cross_depth_m = p.fixed("physics.cross.depth_m", 7500);            // real crosses land ~7.5 m out (StatsBomb, benchmarks_statsbomb_cross.py)

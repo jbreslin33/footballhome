@@ -241,7 +241,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     keepLawDistance(slot, world, o);
     outOfTheirBox(slot, world, o);
     penaltyPlaces(slot, world, o);
-    if (o.why == Why::InBehind && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
+    if ((o.why == Why::InBehind || o.why == Why::IntoSpace) && o.other >= 0) poss_.noteLed(slot, static_cast<std::uint8_t>(o.other), o.target, world.tickCount());
     namePass(slot, world, o);
     brakeToArrive(slot, world, o, blockLead(slot, world, o));
     capAcross(slot, world, o);

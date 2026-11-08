@@ -6865,3 +6865,39 @@ completion comes back to 79.1. (2) Crosses 3.88 v 11.47: crosses
 from 0-18 wide (passes from there 7.2 v 18.6) and corners (0.3 v 3.2; real crosses get deflected
 out). (3) Spells starting wide 31 v 58. (4) Passes 492 v 434. (5) The front man reading the line.
 (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.156 G5.55 — a ground ball into space only for a man who gets there first (no migration)
+
+§8.155's next: why 70-80% of our balls into space are lost (real channel passes complete 70%).
+
+**Traced** (new `Why::IntoSpace` for G5.54's ground ball into space: the receiver still runs onto it
+as for a ball in behind, `Brain` notes it led; new harness line BALLS INTO SPACE). G5.54 played
+65.1 a team-match, far more than the real ~8 into the wide channel. At the kick our receiver,
+the first of ours by run time, stood 17.8 m from the spot and their nearest 11.5 m. Ends: him 32%,
+a mate 18%, them 41%, out 8%. "Ours first" was first among ours, not first.
+
+**The change** [FH, the real choice]. A ground ball into space is a candidate only if no man of
+theirs gets to the spot before ours (the same run-time steps; `physics.space.margin_s`, 0). A
+cross is not raced: real crosses are struck whoever is first (28% completed, 40% cleared next,
+§8.107).
+
+**Tried.** The race for crosses too: crosses 0.69, completion 79.4%. The cross went with it.
+
+**After** (8 × 90, v §8.155).
+- Completion 75.3 → 79.7% (79.1).
+- Balls into space 65.1 → 17.2 a team-match. Ends: him 41%, a mate 6%, them 28%, out 25%. At the
+  kick him 13.4 m from the spot, their nearest 15.1. His closest to the ball 2.4 m after 2.2 s.
+- Crosses 3.88 → 3.56 (11.47). Wide spells: cross 5.2% (7.0); down the line 14.5 → 7.3% (14.5);
+  back to 35+ 32.5% (16.9).
+- In behind 40.8 → 29.2 (37.7). Cut-backs 0.50 (1.03). Shots 9.9.
+- Goldens re-locked (the 3v3's unchanged: no wide zone ahead there).
+
+**What it says.** Completion is real again with the cross kept. Down the line fell back to the
+G5.53 share, because the ball we now play is only the one ours wins. A quarter of those roll out:
+the ground ball is weighted to arrive as he does, at the arrive speed, and runs on past a man still
+2.4 m off it.
+
+**Next moles.** (1) The ball into space that runs out (25%): weight it to stop at the spot, or
+lead him less. (2) Down the line 7.3 v 14.5% and back 32.5 v 16.9%: real wide men stand in the
+channel (0.20-1.35 men there, §8.153's box script), so the pass to feet there exists. (3) Crosses
+3.56 v 11.47. (4) The front man reading the line. (5) Law 8, Law 13 walls, cards. (6) Take-ons.

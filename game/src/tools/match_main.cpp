@@ -110,6 +110,7 @@ struct Stats {
     double lg_xy[2][ai::kRoleCount + 1] = {}, lg_xx[2][ai::kRoleCount + 1] = {}, lg_sx[2][ai::kRoleCount + 1] = {}, lg_sy[2][ai::kRoleCount + 1] = {}; long lg_s1[2][ai::kRoleCount + 1] = {};
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
+    long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
@@ -208,7 +209,7 @@ int main(int argc, char** argv) {
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
-        struct Bh { bool led = false; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
+        struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
@@ -300,7 +301,7 @@ int main(int argc, char** argv) {
                 }
                 // IN BEHIND: an open-play pass to a named man — where he stands against their line at the kick
                 const auto& lo = s.lastOrders()[*before];
-                if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::Cross || lo.why == ai::Why::InBehind) && lo.other >= 0 && lo.other < N) {
+                if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::Cross || lo.why == ai::Why::InBehind || lo.why == ai::Why::IntoSpace) && lo.other >= 0 && lo.other < N) {
                     const int tm0 = W.player(*before).team;
                     const double sg = tm0 == 0 ? 1.0 : -1.0;
                     std::vector<double> dx;
@@ -310,11 +311,15 @@ int main(int argc, char** argv) {
                     if (lo.why == ai::Why::InBehind) ++S.led;
                     bh = Bh{}; bh.on = true; bh.team = tm0; bh.r = lo.other; bh.k0 = k; bh.bx = bx0; bh.by = by0;
                     bh.air = lo.action == core::Action::LoftedKick;
-                    bh.led = lo.why == ai::Why::InBehind; bh.tx = lo.target.x.toDouble(); bh.ty = lo.target.y.toDouble();
+                    bh.led = lo.why == ai::Why::InBehind || lo.why == ai::Why::IntoSpace; bh.space = lo.why == ai::Why::IntoSpace; bh.tx = lo.target.x.toDouble(); bh.ty = lo.target.y.toDouble();
                     bh.line = std::max({dx.size() > 1 ? dx[1] : hx, 0.0, bx0 * sg});
                     const auto& rp = W.player(static_cast<std::uint8_t>(lo.other));
                     bh.rx = rp.pos.x.toDouble(); bh.ry = rp.pos.y.toDouble(); bh.gap = bh.line - bh.rx * sg;
                     bh.spd = std::hypot(rp.vel.x.toDouble(), rp.vel.y.toDouble()); bh.vx = rp.vel.x.toDouble() * sg;
+                    if (bh.space) {   // §8.156: at the kick, him and their nearest to the spot
+                        bh.rd0 = std::hypot(bh.tx - bh.rx, bh.ty - bh.ry); bh.od0 = 1e9;
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != tm0) bh.od0 = std::min(bh.od0, std::hypot(bh.tx - W.player(j).pos.x.toDouble(), bh.ty - W.player(j).pos.y.toDouble()));
+                    }
                     const double ktl = hx - bx0 * sg;
                     bh.z = (ktl < 18 ? 0 : ktl < 35 ? 1 : ktl < 52 ? 2 : ktl < 70 ? 3 : 4) * 2 + (std::fabs(by0) < 20.16 ? 0 : 1);
                     for (std::uint8_t j = 0; j < N; ++j) {
@@ -354,6 +359,11 @@ int main(int argc, char** argv) {
                                      m, bh.k0, bh.team, bh.air ? "air" : "ground", bh.bx, bh.by, bh.line, bh.rx, bh.ry, bh.gap, bh.spd, bh.tx, bh.ty, bh.mrx, bh.mry, bh.best,
                                      (bh.bk - bh.k0) / 30.0, rp.pos.x.toDouble(), rp.pos.y.toDouble(), b.owner ? *b.owner : -1, b.owner ? W.player(*b.owner).team : -1,
                                      b.owner && *b.owner == bh.r, W.outStage());
+                    }
+                    if (bh.space) {   // §8.156
+                        ++S.is_n; if (bh.best < 1e8) { ++S.is_bn; S.is_best += bh.best; S.is_t += (bh.bk - bh.k0) / 30.0; S.is_spot += std::hypot(bh.mrx - bh.tx, bh.mry - bh.ty); } S.is_rd0 += bh.rd0; S.is_od0 += bh.od0;
+                        const int g = W.outStage() != 0 ? 3 : !b.owner ? 4 : *b.owner == bh.r ? 0 : W.player(*b.owner).team == bh.team ? 1 : 2;
+                        ++S.is_got[g];
                     }
                     if (bh.behind) {
                         const bool ok = b.owner && W.player(*b.owner).team == bh.team;
@@ -1106,6 +1116,11 @@ int main(int argc, char** argv) {
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", bzn[z], S.bx_ln[z] / S.bx_f[z], real_ln[z], S.bx_lead[z] / S.bx_f[z], real_lead[z]);
+        if (S.is_n) {   // §8.156: the ball into space (G5.54), how it ends
+            const double n = static_cast<double>(S.is_n);
+            std::printf("\n   BALLS INTO SPACE (G5.54): %.1f a team-match; got by him %.0f%% / a mate %.0f%% / them %.0f%% / out %.0f%% / nobody %.0f%%; at the kick him %.1f m from the spot, their nearest %.1f m; his closest to the ball %.1f m after %.1f s, then %.1f m from the spot",
+                        n / tm, 100 * S.is_got[0] / n, 100 * S.is_got[1] / n, 100 * S.is_got[2] / n, 100 * S.is_got[3] / n, 100 * S.is_got[4] / n, S.is_rd0 / n, S.is_od0 / n, S.is_best / std::max(1L, S.is_bn), S.is_t / std::max(1L, S.is_bn), S.is_spot / std::max(1L, S.is_bn));
+        }
         {   // §8.155: real StatsBomb benchmarks_statsbomb_wide.py
             static const double kF[6] = {78, 11, 5, 4, 2, 0};
             static const char* kFn[6] = {"18-35 wide", "0-18 wide", "18-35 centre", "35+ wide", "0-18 centre", "35+ centre"};
