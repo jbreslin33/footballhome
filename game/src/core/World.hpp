@@ -105,11 +105,13 @@ public:
     // pass_to: the mate it is played to (ball().pass_to), 0xFF = nobody.
     // first_time (G4.95): a kick he hits without taking a touch first — a
     // clearance — goes inside his control touch, at 1.5x the strike error.
+    // die (G5.57): a GroundKick weighted to come to rest carry_m away (dieAtSpeed),
+    // not to arrive there at kPassArriveSpeed — the ball into space.
     // aim (G5.29): the point he kicks at, if set — he can carry one way and
     // pass another; unset (a human's press), the kick goes where he pushes.
     void setAction(SlotIndex slot, Action action, std::uint8_t carry_m = 0,
                    std::uint8_t pass_to = 0xFF, bool first_time = false,
-                   const math::Vec2* aim = nullptr, math::Fixed64 aim_z = math::Fixed64::zero());
+                   const math::Vec2* aim = nullptr, math::Fixed64 aim_z = math::Fixed64::zero(), bool die = false);
 
     // Spawn/reset placement (scenario setup, not gameplay). `face` is the
     // initial kick/carry direction (toward the opponent goal).
@@ -284,6 +286,7 @@ private:
     std::vector<std::uint8_t> has_aim_;
     std::vector<math::Fixed64> aim_z_;   // G5.37: an aimed shot's height at its aim point
     std::vector<std::uint8_t> first_time_; // latched with the action (G4.95)
+    std::vector<std::uint8_t> die_;        // latched with the action (G5.57)
     std::vector<std::uint8_t> pass_to_;   // latched with the action (G4.81)
     std::vector<bool>        keeper_;
     Locomotion loco_;

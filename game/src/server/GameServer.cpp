@@ -410,7 +410,7 @@ void GameServer::tickOnce() {
         const bool kick = o.action == core::Action::GroundKick || o.action == core::Action::ShortPass ||
                           o.action == core::Action::LoftedKick || o.action == core::Action::Shot;
         if (o.action != core::Action::None)
-            world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time, kick ? &o.target : nullptr, o.aim_z);
+            world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time, kick ? &o.target : nullptr, o.aim_z, o.die);
     }
 
     last_events_ = world_.tick();

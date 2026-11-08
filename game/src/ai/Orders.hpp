@@ -35,6 +35,7 @@ struct Orders {
     std::int16_t other = -1;      // the pass receiver, pressed carrier
     // A loft's first-bounce distance; a ground pass's weight (metres to its target).
     std::uint8_t carry_m = 0;
+    bool die = false;   // G5.57: a GroundKick that comes to rest carry_m away (the ball into space)
     bool first_time = false;      // G4.95: hit it first time, no control touch
     // A kick played to a mate (G4.81): who meets it; 0xFF = nobody.
     std::uint8_t pass_to = 0xFF;

@@ -109,6 +109,22 @@ FH_TEST(ground_kick_releases_ball_east) {
     FH_EXPECT_EQ(w.ball().pos.z.raw, 0);
 }
 
+// G5.57 (DESIGN §8.158): a ground kick weighted to DIE carry_m away comes to
+// rest there (dieAtSpeed); the plain weighted kick of the same carry runs on.
+FH_TEST(die_at_ground_kick_stops_near_carry) {
+    for (int d : {8, 15, 25}) {
+        World w = makeWorld();
+        captureBall(w);
+        w.setIntent(0, idle());
+        const double x0 = w.ball().pos.x.toDouble();
+        w.setAction(0, Action::GroundKick, static_cast<std::uint8_t>(d), 0xFF, false, nullptr, Fixed64::zero(), true);
+        for (int i = 0; i < 900; ++i) w.tick();
+        const double rolled = w.ball().pos.x.toDouble() - x0;
+        std::printf("die-at %d m: rolled %.2f m\n", d, rolled);
+        FH_EXPECT(rolled > d - 1.5 && rolled < d + 1.5);
+    }
+}
+
 FH_TEST(kicked_ball_cannot_be_instantly_recaptured) {
     World w = makeWorld();
     captureBall(w);

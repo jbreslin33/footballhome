@@ -266,6 +266,8 @@ public:
                 const bool cross = ez == 0 && oz % 2 == 1;
                 const Fixed64 dep = ez == 0 ? P.cross_depth_m : Fixed64::fromInt(kMid[ez / 2]);
                 const Vec2 at{(hx - dep) * v.sg, wide ? side * P.space_wide_y : Fixed64::zero()};
+                // G5.57: ahead of the ball (a band's middle can be behind him in his own band).
+                if ((at.x - sp.x) * v.sg < Fixed64::fromInt(3)) continue;
                 const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
                 if (bd < P.pass_min_m || bd > reach) continue;
                 // Who gets there first (his run's ticks, 0.3 s steps to 4.5 s).
@@ -298,16 +300,21 @@ public:
                     add(Cand{best, ok ? wz : wz * P.space_risk, true, lf, true, at, 0, true});
                     continue;
                 }
+                // G5.57 (§8.158): a die-at kick (core::dieAtSpeed): on the old weighted kick's
+                // floor (9 m/s at the spot) it ran ~23 m on and out a quarter of the time.
+                // Timed to reach the spot as he does (the G5.54 weight), never softer than one
+                // that dies space_roll_m past it: the strike that rolls to rest d_tot away.
                 Fixed64 rn = Fixed64::one();
                 for (int i = 0; i < bn; ++i) rn = rn * core::kBallRollDecayPerTick;
                 const Fixed64 one_r = Fixed64::one() - core::kBallRollDecayPerTick;
-                Fixed64 v0 = bd * one_r / (core::kTickDt * (Fixed64::one() - rn));
-                if (v0 > Fixed64::fromInt(20)) v0 = Fixed64::fromInt(20);
-                std::int64_t cm = ((v0 - core::kPassArriveSpeed) / (one_r * Fixed64::fromInt(30))).raw >> Fixed64::FRAC_BITS;
+                const Fixed64 v_timed = bd * one_r / (core::kTickDt * (Fixed64::one() - rn));
+                Fixed64 d_tot = v_timed * core::kTickDt * core::kBallRollDecayPerTick / one_r;
+                if (d_tot < bd + P.space_roll_m) d_tot = bd + P.space_roll_m;
+                std::int64_t cm = (d_tot.raw + Fixed64::fromFraction(1, 2).raw) >> Fixed64::FRAC_BITS;
                 if (cm < 1) cm = 1;
                 if (cm > 255) cm = 255;
                 const Loft lf{at, aimedCarry(me.pos, at, reach)};
-                const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::weightedPassSpeed(Fixed64::fromInt(cm)), Fixed64::one());
+                const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::dieAtSpeed(Fixed64::fromInt(cm)), Fixed64::one());
                 add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
             }
         }
@@ -327,7 +334,7 @@ public:
             }
             if (ch.behind) {
                 if (ch.loft) { o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j); }
-                else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; }
+                else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; o.die = ch.space; }
                 o.why = ch.space ? Why::IntoSpace : Why::InBehind;
                 o.move.move = carryDir(v, c, sp, goal);   // he carries it until the release
                 return true;
@@ -847,6 +854,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this
+    space_roll_m = p.fixed("physics.space.roll_m", 2000);             // G5.57 [FH]: dies this far past the spot
     space_max_s = p.fixed("physics.space.max_s", 4500);               // G5.54: the first man's run to it, at most
     space_wide_y = p.fixed("physics.space.wide_y_m", 27000);           // [FH] the wide zones' middle (20.16-34)
     cross_depth_m = p.fixed("physics.cross.depth_m", 7500);            // real crosses land ~7.5 m out (StatsBomb, benchmarks_statsbomb_cross.py)

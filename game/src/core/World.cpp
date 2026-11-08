@@ -29,6 +29,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       has_aim_(player_count, 0),
       aim_z_(player_count),
       first_time_(player_count, 0),
+      die_(player_count, 0),
       pass_to_(player_count, 0xFF),
       bodies_(player_count),
       keeper_(player_count, false),
@@ -51,12 +52,13 @@ void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
 }
 
 void World::setAction(SlotIndex slot, Action action, std::uint8_t carry_m,
-                      std::uint8_t pass_to, bool first_time, const Vec2* aim, Fixed64 aim_z) {
+                      std::uint8_t pass_to, bool first_time, const Vec2* aim, Fixed64 aim_z, bool die) {
     if (slot >= actions_.size()) return;
     if (action == Action::None) return;  // only non-None latches
     actions_[slot] = action;
     carry_m_[slot] = carry_m;
     first_time_[slot] = first_time ? 1 : 0;
+    die_[slot] = die ? 1 : 0;
     pass_to_[slot] = pass_to;
     has_aim_[slot] = aim ? 1 : 0;
     if (aim) aim_[slot] = *aim;
@@ -439,7 +441,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 ball_.pos = Vec3{restart_spot_.x, restart_spot_.y, kThrowHeight};
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
             } else if (act == Action::GroundKick) {
-                const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
+                const Fixed64 v = (carry_m_[kicker] > 0 ? (die_[kicker] ? dieAtSpeed(Fixed64::fromInt(carry_m_[kicker]))
+                                                                        : weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker])))
                                                         : kGroundKickSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::Shot) {

@@ -126,6 +126,11 @@ inline const math::Fixed64 kShortPassSpeed   = math::Fixed64::fromInt(8);
 // shots 29 -> 20 a team, spells 515 -> 365; at 12 bad touches rose (the
 // semipro control speed is 13) and it all went back up. 10 matches each.
 inline const math::Fixed64 kPassArriveSpeed = math::Fixed64::fromInt(9);
+// G5.57 (DESIGN §8.158): a ground ball weighted to DIE d metres away — the
+// strike whose roll (decay r a tick) comes to rest there: d = v0·dt·r/(1−r).
+// weightedPassSpeed arrives at a man at kPassArriveSpeed (9 m/s) and rolls on
+// ~23 m; a ball into space has to stop where it is meant to be met.
+inline math::Fixed64 dieAtSpeed(math::Fixed64 d);
 inline math::Fixed64 weightedPassSpeed(math::Fixed64 d) {
     const math::Fixed64 per_m =
         (math::Fixed64::one() - kBallRollDecayPerTick) * math::Fixed64::fromInt(30);
@@ -173,5 +178,11 @@ struct BallState {
     int contest_ticks = 0;              // consecutive ticks an opponent is touch-tight
     std::uint8_t pass_to = 0xFF;        // the mate the last kick was played to (G4.81)
 };
+
+inline math::Fixed64 dieAtSpeed(math::Fixed64 d) {
+    const math::Fixed64 v = d * (math::Fixed64::one() - kBallRollDecayPerTick) * math::Fixed64::fromInt(30) / kBallRollDecayPerTick;   // 30 Hz, as weightedPassSpeed
+    const math::Fixed64 cap = math::Fixed64::fromInt(20);
+    return v > cap ? cap : v;
+}
 
 }  // namespace fh::game::core

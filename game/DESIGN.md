@@ -6944,3 +6944,36 @@ the channel spot, and `runnerIndex` counts only box runners).
 (passes from there 5.1 v 18.6) and corners (0.1 v 3.2). (3) The weighted ground kick that dies at
 its spot (World encoding, §8.156). (4) Spells starting wide 29 v 58. (5) The front man reading the
 line. (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.158 G5.57 — a ground kick that dies at its spot (World), and what it showed (no migration)
+
+§8.156's physics limit, with James's go-ahead ("continue yes", 7 Nov): the softest weighted ground
+kick was ~9.4 m/s and rolled ~24 m, so a ball into space ran past its spot unless met.
+
+**The change, World** [FH physics]. `World::setAction` takes `die`. A GroundKick with it is struck
+at `core::dieAtSpeed(carry_m)`, so its roll comes to rest carry_m away (v0 = d(1 − r)·30 / r, r
+the 0.987 roll decay, capped at 20 m/s), instead of arriving there at `kPassArriveSpeed`. `Orders`
+carries `die`, and `GameServer` passes it. Every other kick is unchanged (`die` defaults off).
+New `test_ball` die_at_ground_kick_stops_near_carry: asked 8 / 15 / 25 m, it rests at 8.08 /
+15.17 / 25.30 m.
+
+**Used by the ball into space** (`Why::IntoSpace`). Tried in order (8 × 90 each):
+1. **Die 2 m past the spot** (`physics.space.roll_m`). Out 29% → 0%, throw-ins 29.4 → 23.4 (19.9),
+   but them 26% → 51%: a slow ball gives their man time, and ours is 4.0 m off it at his closest.
+   The trace also showed balls into space played sideways or backward: a band's middle depth can
+   be behind the passer in his own band. Now **forward only**, the spot 3 m+ ahead of the ball.
+   With that: them 64%, completion 79.7%.
+2. **Timed to reach the spot as he does** (the G5.54 weight), never softer than dying 2 m past it,
+   struck die-at so it rests d_tot away. Out 30%, them 25%, him 39%. Completion 79.3% (79.1).
+   Crosses 3.06, in behind 29.7, throw-ins 29.4. Taken: it is G5.56's ball with the backward ones
+   gone and a floor on the weight.
+
+**What it says.** The kick was not the cause. A slow ball is won by the man of theirs who gets to
+it; a timed one is missed. Our receiver gets within ~2 m (closest 2.1 m after 2.3 s) and does not
+take it, then it runs on. The miss is in the meeting: `Receive`'s meet point and his run onto a
+ball that is still moving.
+
+**Next moles.** (1) The receiver meeting the ball into space (2.1 m closest; in behind completes
+46-54%, real 47.5, so the same meet works there; why not here?). (2) Back to 35+ from wide 28 v
+17%. (3) Crosses 3-4 v 11.5. (4) Spells starting wide 28 v 58. (5) The front man reading the line.
+(6) Law 8, Law 13 walls, cards. (7) Take-ons.

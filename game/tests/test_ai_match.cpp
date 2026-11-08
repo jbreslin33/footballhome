@@ -81,7 +81,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.54 (2026-11-07): the ball into an empty zone ahead (space, crosses).
 // Re-locked G5.55 (2026-11-07): a ground ball into space only if ours gets there first.
 // Re-locked G5.56 (2026-11-07): a man in their wide channel by their line's depth.
-constexpr std::uint64_t kGolden3v3   = 0x4737b234dbe57ec2ULL;
+// Re-locked G5.57 (2026-11-07): the ball into space forward only, a die-at kick never softer than dying past its spot.
+constexpr std::uint64_t kGolden3v3   = 0x1c303d4083e5d7ddULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -104,7 +105,8 @@ constexpr std::uint64_t kGolden3v3   = 0x4737b234dbe57ec2ULL;
 // Re-locked G5.54 (2026-11-07): as the 3v3.
 // Re-locked G5.55 (2026-11-07): as the 3v3.
 // Re-locked G5.56 (2026-11-07): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x63c64400f1cdb743ULL;
+// Re-locked G5.57 (2026-11-07): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0xde891f3d0a5c16c3ULL;
 
 struct Rig {
     World world;
