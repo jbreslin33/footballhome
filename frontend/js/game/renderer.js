@@ -24,6 +24,7 @@
 
   const INTERP_DELAY_TICKS = 4;  // ~133 ms behind live at 30 Hz
   const NO_OWNER = 255;
+  const BALL_R = 0.109;          // the engine's kBallRadius (core/Ball.hpp), a size 5
 
   // Grass: mowing stripes (pitch) or plain (surround) + per-pixel blade
   // noise, so the surface reads as turf rather than flat paint.
@@ -183,7 +184,10 @@
         new THREE.MeshStandardMaterial({ map: pitchTexture(hx, hy), roughness: 1 }));
       pitch.material.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
       pitch.rotation.x = -Math.PI / 2;
-      pitch.position.y = 0.05;
+      // At y 0, where the players' feet and the ball's underside are: at 0.05
+      // everything stood 5 cm into the turf (James 11/7: "the ball is like in
+      // ground"). The polygon offset keeps it over the site's grass (-0.05).
+      pitch.position.y = 0;
       pitch.material.polygonOffset = true;
       pitch.material.polygonOffsetFactor = -4;
       pitch.material.polygonOffsetUnits = -16;
@@ -256,8 +260,9 @@
       this.scene.add(this.watchRing);
       this.watchSlot = null;
 
-      // Ball: classic white with dark panels, a touch over regulation size
-      // so it reads at broadcast distance; spins as it rolls.
+      // Ball: classic white with dark panels at the real size (radius
+      // BALL_R = the engine's kBallRadius 0.109 m, a size 5); spins as it
+      // rolls. It was drawn at 0.22, twice regulation (James 11/7: "too big").
       const c = document.createElement('canvas');
       c.width = 64; c.height = 32;
       const x = c.getContext('2d');
@@ -266,9 +271,9 @@
       for (let i = 0; i < 6; i++)
         x.fillRect(i * 11 + (i % 2) * 3, (i % 2) * 14 + 4, 6, 8);
       this.ballMesh = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 20, 14),
+        new THREE.SphereGeometry(BALL_R, 20, 14),
         new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.45 }));
-      this.ballMesh.position.set(0, 0.22, 0);
+      this.ballMesh.position.set(0, BALL_R, 0);
       this.ballMesh.castShadow = true;
       this.scene.add(this.ballMesh);
     }
@@ -401,9 +406,11 @@
           const d = Math.hypot(mx, mz);
           if (d > 1e-4 && d < 3) {
             const axis = new THREE.Vector3(mz / d, 0, -mx / d);
-            m.rotateOnWorldAxis(axis, d / 0.22);
+            m.rotateOnWorldAxis(axis, d / BALL_R);
           }
-          m.position.set(x, 0.22 + z, y);
+          // The wire's z is the height of the ball's underside (the engine
+          // floors it at 0), so its centre is BALL_R above that.
+          m.position.set(x, BALL_R + Math.max(0, z), y);
           ballPos = { x, y, z };
         }
         // Officials: interpolated like the players; their velocity is the

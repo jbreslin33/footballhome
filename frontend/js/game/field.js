@@ -931,7 +931,7 @@
         ring(spot, 0, 9.15, mid - half, mid + half);
         ring(spot, 0, 0.2, 0, Math.PI * 2);
       }
-      // Over the game pitch too (it sits at y 0.05 with a polygon offset),
+      // Over the game pitch too (it sits at y 0 with a polygon offset),
       // so the whole of today's pitch reads where the two overlap.
       const pm = paint.mesh(new THREE.MeshStandardMaterial({ color: 0xffd400, roughness: 0.8,
         side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -6, polygonOffsetUnits: -24 }));
