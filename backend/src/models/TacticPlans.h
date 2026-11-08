@@ -18,6 +18,13 @@ public:
     //   stances: [{code,label}], restarts: [{code,label,law,our_max_y}] }
     nlohmann::json lookups();
 
+    // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
+    // [code], in the dropdown's order.  lookups() carries it as "shortcuts".
+    nlohmann::json shortcuts();
+
+    // Puts a job on the list (on) or takes it away.  False = no such kind.
+    bool setShortcut(const std::string& kind, bool on, long long byUserId);
+
     // The plan for a matchup, or null; with its states (root first, then by
     // id), each { id, parent_state_id, ball_with, restart|null, opponents: [{number,x,y}],
     // jobs: [{position_id,kind,targets:[their numbers],target_b,partner_position_id,stance}] }.  Also our formation's

@@ -105,6 +105,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
     router.put (prefix + "/states/:stateId",  [this](const Request& r) { return handlePutState(r); });
     router.del (prefix + "/states/:stateId",  [this](const Request& r) { return handleDeleteState(r); });
+    router.post(prefix + "/shortcuts",        [this](const Request& r) { return handleShortcut(r); });
 }
 
 bool TacticPlansController::requireStaff(const Request& request, long long* userId, Response* error) {
@@ -152,6 +153,26 @@ Response TacticPlansController::handleCreate(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleCreate: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /shortcuts { kind, on } — ⭐ Add (on true) or take away (on false) a
+// job on the shortcut list atop the job dropdown (mig 1177).
+Response TacticPlansController::handleShortcut(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireStaff(request, &userId, &error)) return error;
+    try {
+        const json b = json::parse(request.getBody());
+        const std::string kind = b.value("kind", std::string());
+        if (kind.empty() || !b.contains("on") || !b["on"].is_boolean()) return jsonError(HttpStatus::BAD_REQUEST, "kind and on (true/false) are required.");
+        if (!model_->setShortcut(kind, b["on"].get<bool>(), userId)) return jsonError(HttpStatus::NOT_FOUND, "No such job.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}, {"shortcuts", model_->shortcuts()}});
+    } catch (const json::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleShortcut: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
@@ -210,7 +231,8 @@ Response TacticPlansController::handlePutState(const Request& request) {
     if (!bad.empty()) return jsonError(HttpStatus::BAD_REQUEST, bad);
     try {
         if (!model_->putState(id, b)) return jsonError(HttpStatus::NOT_FOUND, "No such state.");
-        return jsonOut(HttpStatus::OK, {{"ok", true}, {"id", id}});
+        // The list a pick may have grown (mig 1177 trigger), for the dropdown.
+        return jsonOut(HttpStatus::OK, {{"ok", true}, {"id", id}, {"shortcuts", model_->shortcuts()}});
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handlePutState: " << e.what() << std::endl;
         return jsonError(HttpStatus::BAD_REQUEST, e.what());   // most likely an unknown job kind (FK)

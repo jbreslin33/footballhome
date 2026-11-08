@@ -13,7 +13,8 @@
 //     ├─ CoverShadowRule       each child overrides only place() and, when
 //     ├─ LaneRule              it differs, covers() / needsMen()
 //     ├─ HoldBetweenRule
-//     └─ StraddleRule
+//     ├─ StraddleRule
+//     └─ CoverOverTopRule
 //   RuleBook                   rule code (tactic_job_rules) → its JobRule
 //   Solver                     a state → our eleven spots + who is free/doubled
 //
@@ -92,17 +93,18 @@ struct Job {
 
 struct Opponent { int number = 0; Point at; };
 
-// tactic_restarts: the box we stay out of until the ball is played (Law 16
-// goal kick = their penalty area).  No zone → our_max_y across the width.
+// tactic_restarts: where we stay until the ball is played.  The zone is the
+// box the Law keeps us out of (Law 16 goal kick = their penalty area);
+// our_max_y is the line nobody of ours passes, across the whole width (goal
+// kick = their 18, owner 11/7: "on goal kicks no player on def can be past
+// 18").  Both hold.
 struct RestartLaw {
     std::optional<double> ourMaxY, zoneMinX, zoneMaxX, zoneMinY;
 
     Point cap(Point p) const {
-        if (zoneMinY && zoneMinX && zoneMaxX) {
-            if (p.x >= *zoneMinX && p.x <= *zoneMaxX && p.y > *zoneMinY) return {p.x, *zoneMinY};
-        } else if (ourMaxY && p.y > *ourMaxY) {
-            return {p.x, *ourMaxY};
-        }
+        if (zoneMinY && zoneMinX && zoneMaxX && p.x >= *zoneMinX && p.x <= *zoneMaxX && p.y > *zoneMinY)
+            p.y = *zoneMinY;
+        if (ourMaxY && p.y > *ourMaxY) p.y = *ourMaxY;
         return p;
     }
 };
@@ -307,12 +309,33 @@ protected:
     }
 };
 
+// Covers the presser from behind A (owner 11/7: "our 4 … does not have to
+// initially be in tight coverage of their 11 but instead be back and in and
+// cover the ball over the top of the 11 … also help with support coverage
+// of the 9").  lane_t of the way from A toward B, then dist_m toward our
+// goal: deep enough to win the ball played over A, close enough to back up
+// whoever is on B.  No B → dist_m straight goal-side of A.
+class CoverOverTopRule : public JobRule {
+public:
+    const char* code() const override { return "cover_over_top"; }
+    void covers(const Job& j, std::set<int>& out) const override {
+        JobRule::covers(j, out);
+        if (j.targetB) out.insert(*j.targetB);
+    }
+protected:
+    Point place(const Placement& p) const override {
+        const Point a = p.men[0];
+        const Point in = p.b ? Pitch::lerp(a, *p.b, p.kind.laneT.value_or(0.33)) : a;
+        return Pitch::step(in, Pitch::OUR_GOAL, p.kind.distM);
+    }
+};
+
 // ── The rule book: tactic_job_rules.code → its rule ─────────────────────
 class RuleBook {
 public:
     RuleBook() {
         add<HomeRule>(); add<MarkRule>(); add<PressRule>(); add<CoverShadowRule>();
-        add<LaneRule>(); add<HoldBetweenRule>(); add<StraddleRule>();
+        add<LaneRule>(); add<HoldBetweenRule>(); add<StraddleRule>(); add<CoverOverTopRule>();
     }
     // nullptr = a rule this build doesn't know (the man stays home).
     const JobRule* find(const std::string& code) const {

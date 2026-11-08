@@ -121,6 +121,7 @@ json TacticPlans::lookups() {
                                    {"zone", r["zone"].is_null() ? json(nullptr) : json(r["zone"].as<std::string>())},
                                    {"zone_min_x", num(r["zone_min_x"])}, {"zone_max_x", num(r["zone_max_x"])},
                                    {"zone_min_y", num(r["zone_min_y"])}});
+    out["shortcuts"] = shortcuts();
     for (const auto& r : db->query("SELECT code, label FROM tactic_job_stances ORDER BY sort_order"))
         out["stances"].push_back({{"code", r["code"].as<std::string>()}, {"label", r["label"].as<std::string>()}});
     for (const auto& r : db->query("SELECT code, title FROM game_moments ORDER BY sort_order"))
@@ -151,6 +152,24 @@ json TacticPlans::lookups() {
                                 {"lane_t", r["lane_t"].is_null() ? json(nullptr) : json(r["lane_t"].as<double>())}});
     }
     return out;
+}
+
+json TacticPlans::shortcuts() {
+    json out = json::array();
+    for (const auto& r : Database::getInstance()->query(
+             "SELECT s.kind FROM tactic_job_shortcuts s JOIN tactic_job_kinds k ON k.code = s.kind "
+             " WHERE s.on_list ORDER BY k.sort_order, s.kind"))
+        out.push_back(r["kind"].as<std::string>());
+    return out;
+}
+
+bool TacticPlans::setShortcut(const std::string& kind, bool on, long long byUserId) {
+    auto* db = Database::getInstance();
+    if (db->query("SELECT 1 FROM tactic_job_kinds WHERE code = $1", {kind}).empty()) return false;
+    db->query("INSERT INTO tactic_job_shortcuts (kind, on_list, changed_by_user_id, changed_at) VALUES ($1, $2::boolean, NULLIF($3, '0')::int, now()) "
+              "ON CONFLICT (kind) DO UPDATE SET on_list = EXCLUDED.on_list, changed_by_user_id = EXCLUDED.changed_by_user_id, changed_at = now()",
+              {kind, on ? "true" : "false", std::to_string(byUserId)});
+    return true;
 }
 
 json TacticPlans::find(long long formationId, long long opponentFormationId,

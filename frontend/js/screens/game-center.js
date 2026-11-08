@@ -817,7 +817,8 @@ class GameCenterScreen extends EventScreen {
   _resolvePill(params) {
     // #event/<id>/<pill> (EventKindSwitch) names it pill; older doors postType.
     if (params.pill && (POST_PILLS.some(p => p.key === params.pill) || params.pill === TACTICS_PILL.key)) return params.pill;
-    if (params.postType && POST_PILLS.some(p => p.key === params.postType)) return params.postType;
+    // #game-center/<id>/<pill> (app.js) hands the pill over as postType, 🎯 too.
+    if (params.postType && (POST_PILLS.some(p => p.key === params.postType) || params.postType === TACTICS_PILL.key)) return params.postType;
     if (params.mode === 'gameday') return 'lineup';
     return DEFAULT_PILL;
   }
@@ -1232,6 +1233,8 @@ class GameCenterScreen extends EventScreen {
         else if (cur && this._tacticsCanEdit()) this._addPlanState(cur.id, n);
         return;
       }
+      const star = e.target.closest('[data-gc-tp-shortcut]');
+      if (star && this._tacticsCanEdit()) { this._togglePlanShortcut(star.dataset.gcTpShortcut, star.dataset.on !== '1'); return; }
       const tgt = e.target.closest('[data-gc-tp-tgt]');
       if (tgt && this._tacticsCanEdit()) { this._editPlanJob(Number(tgt.dataset.gcTpTgt), 'toggle', tgt.dataset.n); return; }
       if (e.target.closest('[data-gc-tp-edit]') && this._tacticsCanEdit()) { this._startPlanEdit(); return; }
@@ -2102,6 +2105,7 @@ class GameCenterScreen extends EventScreen {
     const side = getComputedStyle(host).gridColumnStart === '2';
     const top = host.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
     box.style.setProperty('--tp-fit-h', `${Math.max(260, side ? box.clientHeight - 24 : box.clientHeight - top - 54)}px`);
+    if (this._tacticsPitchObj) this._tacticsPitchObj.remeasure();
   }
 
   _mountTactics() {
@@ -2231,7 +2235,16 @@ class GameCenterScreen extends EventScreen {
     const opps = this._planOpps(st);
     const solved = this._planSolution(st, opps);
     return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players.map(q => ({ ...q })),
-             opponents: opps.map(o => ({ ...o, label: o.number })), free: solved.free || [], doubled: solved.doubled || [] };
+             opponents: opps.map(o => ({ ...o, label: o.number })), free: solved.free || [], doubled: solved.doubled || [],
+             holdY: this._planHoldY(st) };
+  }
+
+  // The line nobody of ours passes under this state's restart (goal kick:
+  // their 18, tactic_restarts.our_max_y), or null when the ball is in play.
+  _planHoldY(st) {
+    const r = this._planRestart(st);
+    const y = r && r.our_max_y != null ? Number(r.our_max_y) : null;
+    return y != null && y < 100 ? y : null;
   }
 
   _lerp(a, b, t) { return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }; }
@@ -2370,6 +2383,7 @@ class GameCenterScreen extends EventScreen {
       return `<select data-gc-tp-job="${pid}" data-gc-tp-field="kind" style="${css}">
           <option value="">${esc(this._copyTactics('no_job') || '— no job —')}</option>
           ${this._planKindOptions(job)}</select>
+        ${job && kind ? this._planShortcutStar(job.kind, size) : ''}
         ${whoHtml}
         ${job && kind && kind.target_b_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.target_b_label)}</span> ${numSel('target_b', job.target_b)}` : ''}
         ${job && kind && kind.partner_label ? `<span style="font-size:${size}; opacity:0.75;">${esc(kind.partner_label)}</span> ${this._planPartnerSel(pid, job.partner_position_id, css)}` : ''}
@@ -2387,12 +2401,45 @@ class GameCenterScreen extends EventScreen {
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const kinds = (this._plan.data && this._plan.data.kinds) || [];
     const shown = kinds.filter(k => !k.moment || k.moment === this._plan.moment || (job && job.kind === k.code));
-    return ['individual', 'group', 'team'].map(fam => {
-      const list = shown.filter(k => (k.family || 'individual') === fam);
+    // ⭐ Shortcuts first (mig 1177): every job we use, plus what a coach
+    // added; each kind is listed once, so they leave their family group.
+    const starred = new Set(this._planShortcuts());
+    const opt = (k) => `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`;
+    const top = shown.filter(k => starred.has(k.code));
+    return (top.length ? `<optgroup label="${esc(this._copyTactics('fam_shortcuts') || '⭐ Shortcuts')}">${top.map(opt).join('')}</optgroup>` : '')
+      + ['individual', 'group', 'team'].map(fam => {
+      const list = shown.filter(k => (k.family || 'individual') === fam && !starred.has(k.code));
       if (!list.length) return '';
       return `<optgroup label="${esc(this._copyTactics('fam_' + fam) || fam)}">${list.map(k =>
         `<option value="${esc(k.code)}" ${job && job.kind === k.code ? 'selected' : ''}>${esc(k.label)}</option>`).join('')}</optgroup>`;
     }).join('');
+  }
+
+  _planShortcuts() { return (this._plan.data && this._plan.data.shortcuts) || []; }
+
+  // ★ = on ⭐ Shortcuts (tap takes it off), ☆ = not (tap adds it).
+  _planShortcutStar(code, size) {
+    const on = this._planShortcuts().includes(code);
+    const tip = this.escapeHtml(this._copyTactics(on ? 'shortcut_remove' : 'shortcut_add') || (on ? 'Take this job off ⭐ Shortcuts' : 'Add this job to ⭐ Shortcuts'));
+    return `<button type="button" data-gc-tp-shortcut="${this.escapeHtml(code)}" data-on="${on ? 1 : 0}" title="${tip}" aria-label="${tip}"
+      style="font-size:${size}; line-height:1; padding:2px 5px; min-height:0; min-width:0; height:auto; width:auto; border-radius:4px; cursor:pointer; border:1px solid ${on ? '#ca8a04' : '#475569'};
+      background:${on ? 'rgba(202,138,4,0.18)' : 'transparent'}; color:${on ? '#facc15' : '#94a3b8'};">${on ? '★' : '☆'}</button>`;
+  }
+
+  async _togglePlanShortcut(code, on) {
+    const p = this._plan;
+    if (!p.data) return;
+    const before = this._planShortcuts();
+    p.data.shortcuts = on ? [...new Set([...before, code])] : before.filter(c => c !== code);   // show it now
+    this._render();
+    try {
+      const body = await this._planFetch('/api/tactic-plans/shortcuts', { method: 'POST', body: JSON.stringify({ kind: code, on }) });
+      if (Array.isArray(body.shortcuts)) p.data.shortcuts = body.shortcuts;
+    } catch (err) {
+      p.data.shortcuts = before;
+      p.msg = `⚠ ${err.message}`;
+    }
+    this._render();
   }
 
   // "with?" — one of ours for a partnered job (straddle): every outfield
@@ -2575,7 +2622,7 @@ class GameCenterScreen extends EventScreen {
     if (i >= 0) list[i] = d;
     p.msg = '';
     this._render();
-    this._putPlanState(d).then(() => { p.msg = mine && !this._planJobComplete(mine) ? '' : (this._copyTactics('saved') || 'Saved ✓'); this._render(); })
+    this._putPlanState(d).then((body) => { if (body && Array.isArray(body.shortcuts) && p.data) p.data.shortcuts = body.shortcuts; p.msg = mine && !this._planJobComplete(mine) ? '' : (this._copyTactics('saved') || 'Saved ✓'); this._render(); })
       .catch(err => { p.msg = `⚠ ${err.message}`; this._reloadPlanTo(d.id); });
   }
 
@@ -2704,7 +2751,8 @@ class GameCenterScreen extends EventScreen {
     const list = this._tacticsSituations();
     const sit = t.editing && t.draft ? t.draft : list[Math.min(t.idx, list.length - 1)];
     if (!sit) return;
-    new TacticsPitch({ situation: sit, chipFor: this._tacticsChipFor(), editable: t.editing, ...this._tacticsPitchView() }).mount(el);
+    this._tacticsPitchObj = new TacticsPitch({ situation: sit, chipFor: this._tacticsChipFor(), editable: t.editing, ...this._tacticsPitchView() });
+    this._tacticsPitchObj.mount(el);
   }
 
   // Split squad on: every position still without a 2nd takes the next
