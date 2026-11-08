@@ -84,14 +84,28 @@ class WeekendSlides {
       this.ticked.set(key, new Set(this._weekGames().filter(ev => {
         const t = new Date(ev.starts_at);
         return ev.match_id != null && [5, 6, 0].includes(t.getDay()) && t.getTime() + 3 * 3600 * 1000 > now;
-      }).map(ev => ev.match_id).slice(0, WeekendSlides.MAX_SLIDES)));
+      }).map(ev => Number(ev.match_id)).slice(0, WeekendSlides.MAX_SLIDES)));
     }
     return this.ticked.get(key);
   }
 
+  // The week's carousel row while it is posted (or publishing) — its games
+  // are locked until unlocked (mig 1184).
+  _postedCar() {
+    const car = this.carousels.get(this._key());
+    return car && (car.status === 'posted' || car.status === 'publishing') ? car : null;
+  }
+
+  // What the list shows ticked: the games that went out once posted, else
+  // the coach's ticks.
+  _activeSet() {
+    const car = this._postedCar();
+    return car ? new Set((car.slides || []).map(sl => Number(sl.match_id))) : this._tickedSet();
+  }
+
   _chosen() {
-    const set = this._tickedSet();
-    return this._weekGames().filter(ev => ev.match_id != null && set.has(ev.match_id));
+    const set = this._activeSet();
+    return this._weekGames().filter(ev => ev.match_id != null && set.has(Number(ev.match_id)));
   }
 
   // ── paint ────────────────────────────────────────────────────────────
@@ -139,10 +153,10 @@ class WeekendSlides {
   _panelHtml() {
     const type = this.open;
     const games = this._weekGames();
-    const set = this._tickedSet();
+    const set = this._activeSet();
     const chosen = this._chosen();
     const car = this.carousels.get(this._key());
-    const posted = car && (car.status === 'posted' || car.status === 'publishing');
+    const posted = !!this._postedCar();
     const fmtWeek = (off) => {
       const d = this._monday(off);
       return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -152,7 +166,7 @@ class WeekendSlides {
 
     const rows = games.length ? games.map(ev => {
       const linked = ev.match_id != null;
-      const on = linked && set.has(ev.match_id);
+      const on = linked && set.has(Number(ev.match_id));
       return `<label style="display:flex; gap:8px; align-items:flex-start; padding:6px 4px; border-bottom:1px solid var(--border-color); ${linked ? '' : 'opacity:0.5;'}">
         <input type="checkbox" data-ws-tick="${linked ? ev.match_id : ''}" ${on ? 'checked' : ''} ${linked && !posted ? '' : 'disabled'} style="margin-top:3px;">
         <span style="display:flex; flex-direction:column; gap:1px;">
@@ -179,11 +193,18 @@ class WeekendSlides {
     const caption = this.captions.has(this._key()) ? this.captions.get(this._key())
       : (car && car.caption && posted ? car.caption : this._caption(chosen));
     const ready = chosen.length && extra <= 0 && chosen.every(ev => { const s = this.slides.get(`${type}:${ev.match_id}`); return s && s.dataUrl; });
-    const reopen = window.MessageCopy ? MessageCopy.block('social_post', 'reopen_button') : '';
+    const when = car && car.posted_at ? new Date(car.posted_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+    // Posted → say so at the top, with the way out right there (mig 1184).
+    const lockedHtml = posted ? `
+        <div style="margin-bottom:8px; padding:8px 10px; border-radius:6px; border:1px solid rgba(74,222,128,0.5); background:rgba(74,222,128,0.1);">
+          <div style="font-weight:700; color:#4ade80; font-size:0.82rem;">${this.esc(this.copy('locked', { when }))}</div>
+          ${car.status === 'posted' && this.copy('unlock_button') ? `<button type="button" data-ws-reopen="${car.id}" class="btn btn-secondary" style="margin-top:6px; font-size:0.78rem; font-weight:700;">${this.esc(this.copy('unlock_button'))}</button>` : ''}
+        </div>` : '';
 
     return `
       <div style="margin-top:8px; padding:10px; border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary, rgba(255,255,255,0.03));">
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px;">${weekPill(0)}${weekPill(1)}</div>
+        ${lockedHtml}
         <div style="font-size:0.75rem; opacity:0.85; margin-bottom:6px;">${this.esc(this.copy('hint'))}${type === 'starters_bench' && this.copy('hint_starters_bench') ? ' ' + this.esc(this.copy('hint_starters_bench')) : ''}</div>
         <div>${rows}</div>
         ${chosen.length ? `<div style="display:flex; gap:8px; overflow-x:auto; padding:10px 0 6px;">${thumbs}</div>` : ''}
@@ -191,9 +212,7 @@ class WeekendSlides {
         ${chosen.length ? `
           <label style="display:block; font-size:0.72rem; font-weight:700; margin:6px 0 2px;">${this.esc(this.copy('caption_label'))}</label>
           <textarea data-ws-caption rows="8" ${posted ? 'readonly' : ''} style="width:100%; box-sizing:border-box; font-size:0.8rem; padding:6px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary, #0f172a); color:inherit;">${this.esc(caption)}</textarea>` : ''}
-        ${posted ? `
-          <div style="margin-top:8px; font-weight:700; color:#4ade80;">${this.esc(this.copy('posted', { when: car.posted_at ? new Date(car.posted_at).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '' }))}</div>
-          ${car.status === 'posted' && reopen ? `<button type="button" data-ws-reopen="${car.id}" class="btn btn-secondary" style="margin-top:6px; font-size:0.75rem;">${this.esc(reopen)}</button>` : ''}`
+        ${posted ? ''
         : chosen.length ? `
           ${this.collab ? this.collab.html((t) => this.esc(t), { disabled: !!this.busy }) : ''}
           <button type="button" data-ws-post class="btn btn-primary" ${ready && !this.busy ? '' : 'disabled'} style="width:100%; margin-top:8px; font-weight:700; padding:10px;">
@@ -574,7 +593,7 @@ class WeekendSlides {
   async _reopen(btn) {
     if (btn.dataset.armed !== '1') {
       btn.dataset.armed = '1';
-      const confirmText = window.MessageCopy ? MessageCopy.block('social_post', 'reopen_confirm') : '';
+      const confirmText = this.copy('unlock_confirm');
       if (confirmText) btn.textContent = confirmText;
       setTimeout(() => { if (btn.isConnected) this.paint(); }, 4000);
       return;
@@ -584,6 +603,10 @@ class WeekendSlides {
       const res = await this.auth.fetch(`/api/social/carousels/${btn.getAttribute('data-ws-reopen')}/reopen`, { method: 'POST' });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body || !body.success) throw new Error((body && body.message) || `HTTP ${res.status}`);
+      // Unlocked: start from the games that went out, free to change.
+      const car = this.carousels.get(this._key());
+      if (car) this.ticked.set(this._key(), new Set((car.slides || []).map(sl => Number(sl.match_id))));
+      this.captions.delete(this._key());
       this.note = '';
     } catch (err) {
       this.note = (window.MessageCopy && MessageCopy.block('social_post', 'reopen_failed', { reason: err.message })) || err.message;
