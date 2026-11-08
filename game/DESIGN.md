@@ -6977,3 +6977,50 @@ ball that is still moving.
 46-54%, real 47.5, so the same meet works there; why not here?). (2) Back to 35+ from wide 28 v
 17%. (3) Crosses 3-4 v 11.5. (4) Spells starting wide 28 v 58. (5) The front man reading the line.
 (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.159 G5.58 — the receiver meeting the ball into space, and the ball into a man's path (no migration)
+
+§8.158's next: our receiver gets within ~2 m of a ball into space and doesn't take it.
+
+**Traced** (`GAME_BEHIND_TRACE`, now every tick of a ball into space once he is near it). Three faults,
+all ours, none the kick's:
+1. **Beside it, slowing.** He closed to 0.6-0.9 m and ran alongside a ball doing 5 m/s for a second,
+   braking, outside the 0.5 m reach, until it crossed the touchline. `brakeToArrive` braked him to
+   arrive at a meet point that itself rolled on.
+2. **Back to the spot.** `Receive`'s led branch (G5.27) tested "the ball still behind him" on x only.
+   Played across or down the wide channel, that stayed true after the ball had passed the spot, and
+   he turned back to the spot with the ball 0.9 m from him running out.
+3. **The wrong man.** With 1 and 2 fixed, the rest were balls to a spot 18 m *behind* the receiver:
+   "ours first there" picked a man upfield who sprinted back across the ball's line at 7 m/s, at it
+   0.1-0.2 s late, carried 2-3 m past.
+
+**The changes** [FH].
+- **Tracking** (`Brain::blockLead` / `brakeToArrive`). Meeting a rolling ball within
+  `physics.receive.track_m` (3 m; 0 = off), he runs with the ball's velocity, less any part of it
+  coming at him, and closes the gap on top of that. This is G5.30's tracking for the block (§8.128),
+  applied to the ball.
+- **Short of the spot** (`Receive`). The led branch holds only while the ball is still short of the
+  spot it was played to (the spot minus the ball, dotted with its velocity, is positive).
+- **Into his path** (`Possession`, the ball into space). A ground ball into space is never for a mate
+  more than `physics.space.back_m` (2 m) past the spot. Crosses are unchanged.
+
+**After** (8 × 90, v §8.158's numbers re-run).
+- Balls into space 11.8 → 9.2 a team-match. Ends: him 39 → 41%, a mate 5 → 11%, them 25 → 35%,
+  out 30 → 11%.
+- Tracking and short-of-the-spot alone (without the path rule): out 25%, him 41%. The path rule did
+  most of the work.
+- Wide spells: down the line completed 2.9 → 5.2% (10.2), let go as down the line 9.2% (14.5); back
+  to 35+ 31.7% (16.9); cross 3.8% (7.0).
+- Completion 79.3 → 79.9% (79.1). Crosses 3.31 (11.47). In behind 30.6, completed 46% (47.5).
+  Throw-ins 29.4 → 27.2 (19.9). Shots 11.1, goals 1.94.
+- Goldens unchanged (neither 2000-tick rig meets a rolling ball within 3 m or plays a ball into space).
+
+**What it says.** The ball into space now goes out about as often as a real one might (11%). Theirs
+win more, 35%: men already past the spot no longer count, so the race is closer. A real down-the-line
+ball goes into the stride of a man running past his full-back, and ours still go to a fixed spot
+(|y| 27, the band's middle) rather than to where the runner beats his man.
+
+**Next moles.** (1) Back to 35+ from wide 32 v 17%. (2) The ball into space to the runner's path
+rather than a fixed spot (theirs win 35%). (3) Crosses 3.3 v 11.5 (0-18 wide passes, corners 0.3 v
+3.2). (4) Spells starting wide 31 v 58. (5) The front man reading the line. (6) Law 8, Law 13 walls,
+cards. (7) Take-ons.

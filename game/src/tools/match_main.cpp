@@ -331,7 +331,7 @@ int main(int argc, char** argv) {
             }
             if (bh.on) {   // the ball's arrival: nearest him in the next 4 s (stop under 1.5 m), then who got it
                 const double sg = bh.team == 0 ? 1.0 : -1.0;
-                if (bh_trace && bh.led && (k - bh.k0) % 6 == 0 && !bh.geo) {
+                if (bh_trace && bh.led && (!bh.geo ? (k - bh.k0) % 6 == 0 : bh.space && k - bh.k0 <= 150)) {   // a ball into space: every tick after he is near it (§8.159)
                     const auto& rp = W.player(static_cast<std::uint8_t>(bh.r));
                     const auto* st = s.brain().stateOf(static_cast<std::uint8_t>(bh.r));
                     std::fprintf(stderr, "   +%.1fs ball %.1f,%.1f,%.1f v %.1f | him %.1f,%.1f v %.1f,%.1f %s why %s tgt %.1f,%.1f pass_to %d\n", (k - bh.k0) / 30.0,

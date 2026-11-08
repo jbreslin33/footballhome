@@ -90,6 +90,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     restart_play_.penalty_arc_m = p.fixed("physics.restart.penalty_arc_m", 9150);
     arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
     arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
+    track_ball_m_ = p.fixed("physics.receive.track_m", 3000);   // G5.58: 0 = off
     shape_tau_ = p.fixed("physics.body.shape_tau_s", 0);
     shape_tau_ours_ = p.fixed("physics.body.shape_tau_ours_s", 0);
     shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
@@ -600,6 +601,28 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 // holding the block with their man carrying it in play; a free ball's spot is
 // where it will be taken, which stands still while it travels.
 Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const {
+    // G5.58 (§8.159): meeting a rolling ball within track_m of it, he runs with
+    // the ball's own velocity (less any part of it coming at him) and closes the
+    // gap on top — tracking, as the block's G5.30. Braked to arrive at a meet
+    // point that itself rolls on at 5 m/s, the receiver of a ball into space ran
+    // beside it 0.6-0.9 m off for a second, slowing, outside the 0.5 m reach,
+    // and it ran out (§8.158: 30% out, his closest 2.1 m).
+    if (o.why == Why::MeetPass && track_ball_m_.raw > 0) {
+        const auto& b = world.ball();
+        if (!b.owner && world.restartTeam() == 0xFF && world.outStage() == 0 && b.pos.z.raw == 0 && b.vel.z.raw == 0 &&
+            (b.vel.x.raw != 0 || b.vel.y.raw != 0)) {
+            const auto& me = world.player(slot);
+            const Vec2 to_me{me.pos.x - b.pos.x, me.pos.y - b.pos.y};
+            const Fixed64 d = math::length(to_me);
+            if (d.raw > 0 && d <= track_ball_m_) {
+                const Vec2 u{to_me.x / d, to_me.y / d};
+                Vec2 lead{b.vel.x, b.vel.y};
+                const Fixed64 at_me = math::dot(lead, u);
+                if (at_me.raw > 0) lead = Vec2{lead.x - u.x * at_me, lead.y - u.y * at_me};
+                return lead;
+            }
+        }
+    }
     // G5.47 (§8.147): the front man's spot is their line less his gap — it moves
     // as the line does, so he runs with the line's own velocity (tracking).
     if (o.why == Why::Hold && poss_.onLine(setup_.team_of_slot[slot], slot) &&
@@ -752,6 +775,14 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         poss_.params().front_close.raw > 0 && v_ok > poss_.params().front_close) {
         const Fixed64 sgf = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
         if (world.ball().vel.x * sgf < poss_.params().run_ball_fwd) v_ok = poss_.params().front_close;
+    }
+    if (leading && o.why == Why::MeetPass) {   // G5.58: with the ball, closing on top
+        const Vec2 want = dist.raw > 0 ? Vec2{lead.x + d.x * v_ok / dist, lead.y + d.y * v_ok / dist} : lead;
+        const Fixed64 sp = math::length(want);
+        Vec2 w = want;
+        if (sp > me.max_speed) w = Vec2{w.x * me.max_speed / sp, w.y * me.max_speed / sp};
+        o.move.move = Vec2{w.x / me.max_speed, w.y / me.max_speed};
+        return;
     }
     if (leading && o.why == Why::Hold) {
         const Vec2 want = dist.raw > 0 ? Vec2{lead.x + d.x * v_ok / dist, lead.y + d.y * v_ok / dist} : lead;

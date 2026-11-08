@@ -274,6 +274,10 @@ public:
                 int best = -1, bn = 1000;
                 for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
                     if (j == v.slot || c.team_of_slot[j] != v.team || w.isKeeper(j)) continue;
+                    // G5.58 (§8.159): a ground ball into space is played into a man's path —
+                    // never to a mate already past the spot, sprinting back across its line
+                    // (traced: 18 m upfield of it, at it 0.1-0.2 s late at 7 m/s, 2-3 m past).
+                    if (!cross && (at.x - w.player(j).pos.x) * v.sg < -P.space_back_m) continue;
                     const Fixed64 run = math::length(Vec2{at.x - w.player(j).pos.x, at.y - w.player(j).pos.y});
                     int n = 9;
                     while (n < 135 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
@@ -440,8 +444,13 @@ public:
         const bool rolling = b.z.raw == 0 && bv.z.raw == 0;
         const Fixed64 roll = core::kTickDt / (Fixed64::one() - core::kBallRollDecayPerTick);
         const bool reaches = !rolling || (b.x + bv.x * roll) * v.sg > me.pos.x * v.sg;
+        // G5.58 (§8.159): only while the ball is still short of that spot. Played
+        // across or down the wide channel, "behind him" on x stayed true after it
+        // had passed the spot, and he turned back to the spot with the ball 0.9 m
+        // from him running out of play.
+        const bool short_of = math::dot(Vec2{led.at.x - b.x, led.at.y - b.y}, Vec2{bv.x, bv.y}).raw > 0;
         if (!c.world.ball().owner && led.to == v.slot && led.tick + 2 >= c.world.flightTick() && led.tick <= c.world.flightTick() &&
-            reaches && b.x * v.sg + Fixed64::one() < me.pos.x * v.sg && distSq(me.pos, Vec3{led.at.x, led.at.y, Fixed64::zero()}) > Fixed64::one()) {
+            reaches && short_of && b.x * v.sg + Fixed64::one() < me.pos.x * v.sg && distSq(me.pos, Vec3{led.at.x, led.at.y, Fixed64::zero()}) > Fixed64::one()) {
             o.target = led.at;
             o.move.move = seek(me.pos, led.at, Fixed64::fromFraction(1, 10));
             o.move.face = Vec2{b.x - me.pos.x, b.y - me.pos.y};
@@ -856,7 +865,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this
     space_roll_m = p.fixed("physics.space.roll_m", 2000);             // G5.57 [FH]: dies this far past the spot
     space_max_s = p.fixed("physics.space.max_s", 4500);               // G5.54: the first man's run to it, at most
-    space_wide_y = p.fixed("physics.space.wide_y_m", 27000);           // [FH] the wide zones' middle (20.16-34)
+    space_wide_y = p.fixed("physics.space.wide_y_m", 27000);
+    space_back_m = p.fixed("physics.space.back_m", 2000);              // G5.58 [FH]: the runner no further past the spot           // [FH] the wide zones' middle (20.16-34)
     cross_depth_m = p.fixed("physics.cross.depth_m", 7500);            // real crosses land ~7.5 m out (StatsBomb, benchmarks_statsbomb_cross.py)
     behind_risk = p.fixed("physics.behind.risk_weight", 1000);   // G5.51 fit: 0.5 / 0.75 / 1.0 → in behind 21.0 / 26.3 / 29.3 (37.7), completed 46 / 52 / 50% (47.5) — the read does not pick the ones that fail   // [FH] start; fit to completion 79.1%
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);

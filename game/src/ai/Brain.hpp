@@ -134,6 +134,7 @@ private:
     // The body (G4.80 brake to arrive; G5.5 / G5.10 / G5.14 shape caps, DFL-fitted).
     math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);
     math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
+    math::Fixed64 track_ball_m_ = math::Fixed64::fromInt(3);   // physics.receive.track_m (G5.58)
     math::Fixed64 shape_tau_{}, shape_tau_ours_{}, shape_max_{}, defend_max_{}, shape_danger_{}, tau_back_{}, wb_tuck_y_{};
     std::int64_t shape_danger_sprint_ = 0;
     // Across (G5.7): his base's y plus the ball's y × shift, capped.
