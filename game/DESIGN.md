@@ -6897,7 +6897,15 @@ G5.53 share, because the ball we now play is only the one ours wins. A quarter o
 the ground ball is weighted to arrive as he does, at the arrive speed, and runs on past a man still
 2.4 m off it.
 
-**Next moles.** (1) The ball into space that runs out (25%): weight it to stop at the spot, or
-lead him less. (2) Down the line 7.3 v 14.5% and back 32.5 v 16.9%: real wide men stand in the
+**Found after: a physics limit.** A ground kick's speed is `weightedPassSpeed(carry_m)` =
+`kPassArriveSpeed` (9 m/s) + (1 − r)/dt per metre of carry (`World.cpp`, GroundKick / ShortPass),
+and carry_m ≥ 1. So the softest weighted ground ball is ~9.4 m/s, and it rolls ~24 m before it stops
+(r 0.987 a tick at 30 Hz). Any ball into space shorter than ~21 m reaches its spot at 9 m/s and runs
+on ~23 m unless it is met. A ball weighted to die at the spot needs a new kick encoding in the
+World (a softer floor, or a target "stop here" distance). That is a core physics change touching
+every pass, so it is a deliberate next step, not a tweak.
+
+**Next moles.** (1) The ball into space that runs out (25%): a weighted ground kick that dies at
+its spot (World kick encoding, above). (2) Down the line 7.3 v 14.5% and back 32.5 v 16.9%: real wide men stand in the
 channel (0.20-1.35 men there, §8.153's box script), so the pass to feet there exists. (3) Crosses
 3.56 v 11.47. (4) The front man reading the line. (5) Law 8, Law 13 walls, cards. (6) Take-ons.
