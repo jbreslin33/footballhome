@@ -78,7 +78,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.51 (2026-11-07): a ball in behind is played whatever the race read says.
 // Re-locked G5.52 (2026-11-07): the block's depth for their possession.
 // Re-locked G5.53 (2026-11-07): how many go into the box goes by their line's depth.
-constexpr std::uint64_t kGolden3v3   = 0xd15e5df03bcedc2aULL;
+// Re-locked G5.54 (2026-11-07): the ball into an empty zone ahead (space, crosses).
+constexpr std::uint64_t kGolden3v3   = 0x73a95577691a2f80ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -98,7 +99,8 @@ constexpr std::uint64_t kGolden3v3   = 0xd15e5df03bcedc2aULL;
 // Re-locked G5.51 (2026-11-07): as the 3v3.
 // Re-locked G5.52 (2026-11-07): as the 3v3.
 // Re-locked G5.53 (2026-11-07): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x281e868530a5c75dULL;
+// Re-locked G5.54 (2026-11-07): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x994de2b4a8fa9889ULL;
 
 struct Rig {
     World world;

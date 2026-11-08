@@ -153,7 +153,7 @@ public:
         int in_zone[10] = {};
         for (std::uint8_t j = 0; j < w.playerCount(); ++j)
             if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
-        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; };
+        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
         // Their offside line (Law 11): the second-last of theirs, or halfway, or the ball.
@@ -249,6 +249,54 @@ public:
             // deep: 52+ m out ours 3.7 a team-match v 14.9 real.
             else add(Cand{j, bw * P.behind_risk, air_first, lf, true, at, carry});
         }
+        // G5.54 (§8.155): a zone ahead with no mate in it keeps its real share — the
+        // ball into space there, for the mate who gets to it first (real passes into
+        // their wide channel complete 70%, StatsBomb; a cross lands ~7.5 m out around
+        // the middle). Without it the share vanished and went back and inside: from
+        // wide 18-35 m out ours played 33% back (17), 7.6% down the line (14.5).
+        if (P.space_on) {
+            const int ob = oz / 2;
+            const Fixed64 side = sp.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+            static const int kMid[5] = {9, 26, 43, 61, 80};
+            for (int ez = 0; ez < 10; ++ez) {
+                if (in_zone[ez] > 0 || ez / 2 > ob || ez == oz) continue;
+                const Fixed64 wz = P.pass_to[oz][ez];
+                if (wz.raw <= 0) continue;
+                const bool wide = ez % 2 == 1;
+                const bool cross = ez == 0 && oz % 2 == 1;
+                const Fixed64 dep = ez == 0 ? P.cross_depth_m : Fixed64::fromInt(kMid[ez / 2]);
+                const Vec2 at{(hx - dep) * v.sg, wide ? side * P.space_wide_y : Fixed64::zero()};
+                const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
+                if (bd < P.pass_min_m || bd > reach) continue;
+                // Who gets there first (his run's ticks, 0.3 s steps to 4.5 s).
+                int best = -1, bn = 1000;
+                for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                    if (j == v.slot || c.team_of_slot[j] != v.team || w.isKeeper(j)) continue;
+                    const Fixed64 run = math::length(Vec2{at.x - w.player(j).pos.x, at.y - w.player(j).pos.y});
+                    int n = 9;
+                    while (n < 135 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
+                    if (n < bn) { bn = n; best = j; }
+                }
+                if (best < 0 || bn >= 135 || Fixed64::fromInt(bn) * core::kTickDt > P.space_max_s) continue;   // he must get there in time
+                if (cross) {
+                    const Loft lf{at, aimedCarry(me.pos, at, reach)};
+                    const bool ok = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
+                    add(Cand{best, ok ? wz : wz * P.space_risk, true, lf, true, at, 0, true});
+                    continue;
+                }
+                Fixed64 rn = Fixed64::one();
+                for (int i = 0; i < bn; ++i) rn = rn * core::kBallRollDecayPerTick;
+                const Fixed64 one_r = Fixed64::one() - core::kBallRollDecayPerTick;
+                Fixed64 v0 = bd * one_r / (core::kTickDt * (Fixed64::one() - rn));
+                if (v0 > Fixed64::fromInt(20)) v0 = Fixed64::fromInt(20);
+                std::int64_t cm = ((v0 - core::kPassArriveSpeed) / (one_r * Fixed64::fromInt(30))).raw >> Fixed64::FRAC_BITS;
+                if (cm < 1) cm = 1;
+                if (cm > 255) cm = 255;
+                const Loft lf{at, aimedCarry(me.pos, at, reach)};
+                const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::weightedPassSpeed(Fixed64::fromInt(cm)), Fixed64::one());
+                add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm)});
+            }
+        }
         if (nc > 0) {
             const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 41) + Fixed64::one()) *
                               Fixed64::fromFraction(1, 2) * sum;
@@ -257,6 +305,12 @@ public:
             const Cand& ch = cand[k];
             const auto& m = w.player(static_cast<std::uint8_t>(ch.j));
             o.other = static_cast<std::int16_t>(ch.j);
+            if (ch.behind && ch.cross) {   // G5.54: a cross into the box to space
+                o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j);
+                o.why = Why::Cross;
+                o.move.move = carryDir(v, c, sp, goal);
+                return true;
+            }
             if (ch.behind) {
                 if (ch.loft) { o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j); }
                 else { o.action = Action::GroundKick; o.target = ch.at; o.carry_m = ch.carry; }
@@ -738,6 +792,11 @@ void PossessionParams::configure(const core::ModelParams& p) {
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
+    space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
+    space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
+    space_max_s = p.fixed("physics.space.max_s", 4500);               // G5.54: the first man's run to it, at most
+    space_wide_y = p.fixed("physics.space.wide_y_m", 27000);           // [FH] the wide zones' middle (20.16-34)
+    cross_depth_m = p.fixed("physics.cross.depth_m", 7500);            // real crosses land ~7.5 m out (StatsBomb, benchmarks_statsbomb_cross.py)
     behind_risk = p.fixed("physics.behind.risk_weight", 1000);   // G5.51 fit: 0.5 / 0.75 / 1.0 → in behind 21.0 / 26.3 / 29.3 (37.7), completed 46 / 52 / 50% (47.5) — the read does not pick the ones that fail   // [FH] start; fit to completion 79.1%
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);

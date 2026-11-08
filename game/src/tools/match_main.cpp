@@ -110,6 +110,7 @@ struct Stats {
     double lg_xy[2][ai::kRoleCount + 1] = {}, lg_xx[2][ai::kRoleCount + 1] = {}, lg_sx[2][ai::kRoleCount + 1] = {}, lg_sy[2][ai::kRoleCount + 1] = {}; long lg_s1[2][ai::kRoleCount + 1] = {};
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
+    long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
     int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {};   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
@@ -211,7 +212,8 @@ int main(int argc, char** argv) {
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false; } rel;
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false; } rel;
+        bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
@@ -431,7 +433,13 @@ int main(int argc, char** argv) {
 
             // ── concept acts by ownership (StatsBomb's cuts) ──────────────
             const int own = b.owner ? static_cast<int>(*b.owner) : -1;
-            auto endPass = [&](double ex, double ey) {
+            auto wsz = [](double tl, double y) { const bool w = std::fabs(y) >= 14; return tl < 18 ? (w ? 1 : 4) : tl < 35 ? (w ? 0 : 2) : (w ? 3 : 5); };
+            auto endPass = [&](double ex, double ey, bool ok = false) {
+                if (rel.ws && !rel.set && !rel.shot && !rel.cross) {   // §8.155: pass to 18-35w / 35+ / 0-18w / 18-35c / 0-18c
+                    const double sgw = rel.team == 0 ? 1.0 : -1.0; const int ez = wsz(hx - ex * sgw, ey);
+                    const int cat = ez == 0 ? 0 : (ez == 3 || ez == 5) ? 1 : ez == 1 ? 2 : ez == 2 ? 4 : 6;
+                    ++S.ws_as[cat]; if (ok) ++S.ws_ok[cat];
+                }
                 if (rel.p < 0 || rel.set || rel.shot) { rel = Rel{}; return; }
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
@@ -456,6 +464,12 @@ int main(int argc, char** argv) {
                             ++S.rel_n[rb]; if (why == ai::Why::Shoot) ++S.rel_shot[rb];
                         }
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
+                        if (ws_on && !own_set) {   // §8.155
+                            const double sgw = owner_team == 0 ? 1.0 : -1.0;
+                            ++S.ws_from[wsz(hx - own_px * sgw, own_py)];
+                            if (why == ai::Why::Cross) ++S.ws_as[5]; else if (why == ai::Why::Shoot) ++S.ws_as[7]; else rel.ws = true;
+                        }
+                        ws_on = false;
                         if (!own_set && !rel.shot && from[owner] >= 0 && owner_got - from_t[owner] <= 1 && k - owner_got <= 150) {
                             ++S.ret_base;
                             if (s.lastOrders()[owner].other == from[owner]) ++S.ret;
@@ -468,9 +482,15 @@ int main(int argc, char** argv) {
                         const bool mate = rel.team == q.team && rel.p != own;
                         if (mate && !rel.set && !rel.shot) ++S.pass_ok;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
-                        endPass(q.pos.x.toDouble(), q.pos.y.toDouble());
+                        endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot);
                     } else from[own] = -1;
                     if (owner_team >= 0 && q.team != owner_team) loss_tick[owner_team] = k;
+                    if (ws_on && owner >= 0 && q.team != owner_team) {   // §8.155: taken off him
+                        const double sgw = owner_team == 0 ? 1.0 : -1.0; ++S.ws_from[wsz(hx - own_px * sgw, own_py)]; ++S.ws_as[3];
+                    }
+                    {   const double sgw = q.team == 0 ? 1.0 : -1.0;
+                        ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
+                        if (ws_on) ++S.ws_n; }
                     owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble();
                     for (int j = 0; j < 32; ++j) { pressed_in[j] = -1; facing[j] = 0; }
                 } else owner = -1;
@@ -1086,6 +1106,17 @@ int main(int argc, char** argv) {
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", bzn[z], S.bx_ln[z] / S.bx_f[z], real_ln[z], S.bx_lead[z] / S.bx_f[z], real_lead[z]);
+        {   // §8.155: real StatsBomb benchmarks_statsbomb_wide.py
+            static const double kF[6] = {78, 11, 5, 4, 2, 0};
+            static const char* kFn[6] = {"18-35 wide", "0-18 wide", "18-35 centre", "35+ wide", "0-18 centre", "35+ centre"};
+            static const double kA[9] = {30.2, 16.9, 14.5, 13.3, 9.7, 7.0, 5.9, 2.2, 0}, kAo[9] = {24.7, 16.3, 10.2, 0, 8.0, 0, 2.4, 0, 0};
+            static const char* kAn[9] = {"pass to 18-35 wide", "pass to 35+", "pass to 0-18 wide", "lost", "pass to 18-35 centre", "cross", "pass to 0-18 centre", "shot", "other"};
+            long t = 0; for (long v : S.ws_from) t += v;
+            std::printf("\n   SPELLS STARTING WIDE (|y| 14+) 18-35 m out: %.1f a team-match (57.8 real StatsBomb); let go from:", S.ws_n / tm);
+            for (int i = 0; i < 6; ++i) std::printf(" %s %.0f%% (%.0f);", kFn[i], 100.0 * S.ws_from[i] / std::max(1L, t), kF[i]);
+            std::printf("\n     let go as, %% of spells (real) [completed]:");
+            for (int i = 0; i < 8; ++i) std::printf(" %s %.1f (%.1f) [%.1f (%.1f)];", kAn[i], 100.0 * S.ws_as[i] / std::max(1L, t), kA[i], 100.0 * S.ws_ok[i] / std::max(1L, t), kAo[i]);
+        }
         {   // §8.152b: their line's spread, real DFL benchmarks_tracking_box.py
             static const int kLq[6][5] = {{2, 4, 7, 10, 13}, {2, 5, 8, 11, 13}, {11, 14, 18, 22, 26}, {11, 14, 17, 22, 26}, {19, 22, 27, 33, 37}, {19, 23, 27, 32, 36}};
             static const int kL16[6] = {97, 97, 35, 38, 3, 3};

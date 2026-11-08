@@ -6802,3 +6802,59 @@ include men already there. The ball reaching the last 18 m is unchanged.
 there in real play (passes into zone 0/1 from 18-35, carries), and what do ours do instead (548
 passes, the extra in our own half)? (2) Crosses 0.69 v 11.47 follow. (3) In behind from wide.
 (4) The front man reading the line. (5) Law 8, Law 13 walls, cards. (6) Take-ons.
+
+### 8.155 G5.54 — the ball into an empty zone ahead: down the line and crosses to space (no migration)
+
+§8.154's next: how the ball reaches their last 18 m (8.8 v 29.6 passes a team-match).
+
+**Real** (`benchmarks_statsbomb_wide.py`, StatsBomb PL 15/16). Spells starting wide (|y| 14+)
+18-35 m out: 57.8 a team-match, let go from there 78% (0-18 wide 11%). Let go as, % of spells:
+pass to 18-35 wide 30.2, to 35+ 16.9, to 0-18 wide 14.5 (70% completed), lost 13.3, to 18-35
+centre 9.7, cross 7.0, to 0-18 centre 5.9, shot 2.2. From 18-35 wide, 14.1% of passes go into the
+box zone and 13.7% into the wide channel 0-18 m out (`benchmarks_statsbomb_passes.py`).
+
+**The game, before** (new harness line SPELLS STARTING WIDE, the same cuts). 28.1 a team-match. Let
+go as: to 35+ 33.4%, to 18-35 centre 18.9, to 0-18 wide 7.6 (2.2 completed), cross 1.1. The pass
+policy gives each end zone its real share, split among the mates standing in it. A zone with no
+mate (their wide channel, the box: the usual case there) lost its share, and the options behind
+and inside took it. Real passes into those zones go to space for a man arriving, and real crosses
+land ~7.5 m out around the middle (§8.107, `benchmarks_statsbomb_cross.py`).
+
+**The change** [FH, DFL / StatsBomb shares]. In the chooser, a zone with no mate in it, ahead of
+the ball's band (or level with it, not the ball's own), keeps its real share as a ball into space.
+- The spot: the band's middle depth (9 / 26 / 43 / 61 / 80 m out; the box: `physics.cross.depth_m`
+  7.5), at y 0 for central zones or `physics.space.wide_y_m` (27) on the ball's side for wide ones.
+- The receiver: the mate who gets there first (0.3 s steps; `physics.space.max_s`, 4.5).
+- Into the box from wide it is a cross (lofted to the spot, `Why::Cross`). Otherwise a ground ball
+  weighted to arrive as he does (as the ball in behind, `Why::InBehind`, so he runs onto it).
+- Weight: the zone's share if the race read says we win, else `physics.space.risk_weight` (0.25)
+  of it.
+
+**Tried.** Capping his run at 1.2 / 2.1 / 3.0 s: crosses 0.56 / 1.00 / 2.31, completion 81.0 /
+79.2 / 77.1%. Passes into the channel completed ~26% at every cap. A ball into space only when the
+read says we win (weight 0): crosses 1.06, completion 79.4%, the mechanism gone, because the read
+says we lose nearly every one. At 0.1: crosses 2.19, completion 76.2%.
+
+**After** (8 × 90, v §8.154).
+- Spells starting wide 18-35 m out 28.1 → 31.1 (57.8).
+- Let go as: to 0-18 wide 7.6 → 14.5% (14.5), cross 1.1 → 6.8% (7.0), to 35+ 33.4 → 23.9% (16.9),
+  to 18-35 centre 18.9 → 14.5% (9.7).
+- From 18-35 wide into the box / channel 10.4 / 5.7 → 13.9 / 13.3% (14.1 / 13.7).
+- Crosses 0.69 → 3.88 a team-match (11.47). Cut-backs 0.19 → 1.06 (1.03). Passes from 0-18 wide
+  3.6 → 7.2 (18.6).
+- In behind 27.8 → 40.8 (37.7), in the air 21% (58).
+- **Cost:** completion 80.7 → 75.3% (79.1). Our passes into the channel complete 4.2 of 14.5%
+  (real 10.2): defenders win them, and they do not go out (goal kicks 7.0, throw-ins 27.8 barely
+  moved). Shots 11.8 → 10.1.
+- Goldens re-locked.
+
+**What it says.** The choice is now real: down the line and the early cross at the real shares.
+The ball is not, because the spot is a fixed point in the zone. Real balls into the channel go where
+a runner is beating his man (70% completed); ours go to the middle of an empty zone for whoever is
+nearest, and a defender is nearer the spot.
+
+**Next moles.** (1) The spot for the ball into space: along the runner's line, where he beats his
+man (the in-behind spot logic), so completion comes back to 79.1. (2) Crosses 3.88 v 11.47: crosses
+from 0-18 wide (passes from there 7.2 v 18.6) and corners (0.3 v 3.2; real crosses get deflected
+out). (3) Spells starting wide 31 v 58. (4) Passes 492 v 434. (5) The front man reading the line.
+(6) Law 8, Law 13 walls, cards. (7) Take-ons.
