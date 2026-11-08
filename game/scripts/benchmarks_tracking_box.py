@@ -81,6 +81,9 @@ def one(pos_path):
             else:
                 c[("wide", bz)] += 1
         c[("k", bz, min(inbox, 3))] += 1
+        if len(dtl) >= 2:   # G5.53: the same shares split by their line inside 16 m or not
+            dp = 1 if min(dtl[1], btl) < 16 else 0
+            c[("kL", bz, dp, min(inbox, 3))] += 1; c[("fL", bz, dp)] += 1; c[("nL", bz, dp)] += inbox
     return c
 
 
@@ -102,6 +105,9 @@ for bz, nm in enumerate(names):
           + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
     ln = max(1, c[("lnn", bz)])
     if np_: print(f"      in the box: past their offside line {100*c[('past',bz)]/np_:.0f}% of them (by {c[('pastm',bz)]/max(1,c[('past',bz)]):.1f} m); their line {c[('Lin',bz)]/np_:.1f} m off their goal on those frames (G5.52)")
+    for dp, lab in ((1, "line inside 16 m"), (0, "line 16+ m")):
+        fl = c[("fL", bz, dp)]
+        if fl: print(f"      {lab}: {100*fl/max(1,f):.0f}% of frames, in the box {c[('nL',bz,dp)]/fl:.2f}, 0 / 1 / 2 / 3+ " + " / ".join(f"{1000*c[('kL',bz,dp,k)]/fl:.0f}" for k in range(4)) + " permille (G5.53)")
     lq = [(m, c[("Lq", bz, m)]) for m in range(61)]; tot = sum(k for _, k in lq)
     def lqq(f):
         acc = 0

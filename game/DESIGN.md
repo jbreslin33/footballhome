@@ -6764,3 +6764,38 @@ the zone whatever the line does.
 **Next moles.** (1) How many go into the box when their line is deep. (2) The ball into the last
 18 m (8.8 v 29.6 passes) and crosses. (3) In behind from wide. (4) Passes 548 v 434. (5) The
 front man reading the line. (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.154 G5.53 — how many go into the box goes by their line (no migration)
+
+§8.153's next: how many go into the box when their line is deep.
+
+**Real** (`benchmarks_tracking_box.py`, the box shares split by their line inside 16 m or not;
+DFL). With the ball 18-35 m out centrally, their line is inside 16 m on 35% of frames. Then the
+box holds 2.71 men (0 / 1 / 2 / 3+ 5 / 20 / 25 / 49%); with the line 16+ m, 0.15 (90% none). Wide:
+1.97 v 0.09. With the ball 0-18 m out the line is inside 16 m 97% of the time.
+
+**Before.** `assignRunners` drew the count from the zone's unconditional shares, which already hold
+the line's effect (a high line, an empty box). The onside clamp then held the runners out when the
+line was high, so the effect counted twice. Box runners stood at a mean ~20 m target at 18-35,
+outside the box.
+
+**The change** [FH structure, DFL shares]. The count is drawn from the shares for the ball's zone
+and whether their line (`offsideLine`) is inside `physics.box.line_deep_m` (16): `physics.box.kl_
+<zone>_<deep>_<k>`. It is redrawn when either changes, or every 3 s as before. 3+ is still 3.
+
+**After** (8 × 90).
+- Box runners' target with the ball 18-35 m out: 19.7 → 15.7 m (inside the box).
+- Ours in the box with the ball 18-35 m out: centre 0.37 → 0.41 (1.04), wide 0.39 → 0.47 (0.79).
+  0-18 wide 1.53 → 1.36 (2.29).
+- Passes from the last 18 m 8.8 (29.6). Crosses 0.69. In behind 27.8. Completion 80.7%.
+- Goldens re-locked.
+
+**What it says.** Who goes in now follows the line as it does in real play, but the box still holds
+half the real men. A deep-line spell is short, and runners drawn at its start take seconds to get
+there. Real deep-line boxes hold 3+ men half the time (ours cap at 3), and real box occupants
+include men already there. The ball reaching the last 18 m is unchanged.
+
+**Next moles.** (1) The ball into the last 18 m (8.8 v 29.6 passes a team-match): how does it get
+there in real play (passes into zone 0/1 from 18-35, carries), and what do ours do instead (548
+passes, the extra in our own half)? (2) Crosses 0.69 v 11.47 follow. (3) In behind from wide.
+(4) The front man reading the line. (5) Law 8, Law 13 walls, cards. (6) Take-ons.

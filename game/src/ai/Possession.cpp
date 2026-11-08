@@ -537,13 +537,17 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const int z = (tl < Fixed64::fromInt(18) ? 0 : tl < Fixed64::fromInt(35) ? 1 : 2) * 2 +
                   (math::fx_abs(b.pos.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1);
     const std::uint64_t now = world.tickCount();
-    if (z == zone_[team & 1] && now - drawn_[team & 1] < 90) return;
-    zone_[team & 1] = z; drawn_[team & 1] = now;
+    // G5.53 (§8.154): whether their line has dropped inside line_deep_m — real box
+    // presence goes by it (ball 18-35 centre: 2.71 men with it, 0.15 without).
+    const bool deep = world.pitchHalfX() - offsideLine(team, world, team_of_slot) < params_.box_line_deep_m;
+    if (z == zone_[team & 1] && deep == deep_[team & 1] && now - drawn_[team & 1] < 90) return;
+    zone_[team & 1] = z; drawn_[team & 1] = now; deep_[team & 1] = deep;
     runners_ &= ~mine_mask;
     // How many: the real 0 / 1 / 2 / 3+ shares (3+ = 3, 4 at the mean's excess).
     const Fixed64 u = (core::detNoise(match_seed, now, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-    int n = 0; Fixed64 acc = params_.box_k[z][0];
-    while (n < 3 && u >= acc) { ++n; acc += params_.box_k[z][n]; }
+    const Fixed64* kz = params_.box_kl[z][deep ? 1 : 0];
+    int n = 0; Fixed64 acc = kz[0];
+    while (n < 3 && u >= acc) { ++n; acc += kz[n]; }
     if (n == 0) return;
     // Who: weight = his role's real mean count ÷ the men of that role in this team; nearest first among equals.
     int per_role[kRoleCount] = {};
@@ -742,6 +746,11 @@ void PossessionParams::configure(const core::ModelParams& p) {
     // Runs into the box: DFL (benchmarks_tracking_box.py), the ball's zone 0-18 / 18-35 / 35-52 × centre / wide.
     static const int kK[6][4] = {{60, 110, 140, 690}, {180, 160, 240, 420}, {600, 120, 100, 180},
                                  {620, 160, 100, 110}, {930, 30, 20, 20}, {950, 30, 10, 10}};   // per mille
+    // G5.53: the same by their line (second-last, keeper in, or the ball) 16+ m off its goal / inside 16 (DFL).
+    static const int kKL[6][2][4] = {{{667, 283, 36, 14}, {41, 103, 145, 711}}, {{870, 110, 21, 0}, {156, 158, 249, 437}},
+                                     {{899, 69, 23, 9}, {53, 203, 254, 490}},  {{925, 67, 7, 1}, {117, 316, 266, 301}},
+                                     {{962, 29, 6, 3}, {89, 184, 291, 436}},   {{974, 22, 4, 0}, {192, 293, 324, 191}}};
+    box_line_deep_m = p.fixed("physics.box.line_deep_m", 16000);
     static const int kRole[6][kRoleCount] = {   // CB, FB, DM/CM, AM, WIDE, ST — mean count, ×1000
         {500, 210, 430, 340, 900, 1080}, {220, 80, 280, 210, 540, 950}, {160, 60, 110, 80, 230, 400},
         {90, 20, 60, 60, 170, 400}, {20, 0, 10, 10, 30, 60}, {10, 0, 0, 10, 20, 50}};
@@ -781,6 +790,9 @@ void PossessionParams::configure(const core::ModelParams& p) {
     static const int kSecond[5] = {1200, 2500, 4200, 6700, 9900};   // G5.49, the same source
     for (int k = 0; k < 5; ++k) second_q[k] = p.fixed(("physics.front.second_" + std::string(kDq[k])).c_str(), kSecond[k]);
     for (int z = 0; z < 6; ++z) {
+        for (int d = 0; d < 2; ++d)
+            for (int k = 0; k < 4; ++k)
+                box_kl[z][d][k] = p.fixed(("physics.box.kl_" + std::to_string(z) + "_" + std::to_string(d) + "_" + std::to_string(k)).c_str(), kKL[z][d][k]);
         for (int k = 0; k < 4; ++k) box_k[z][k] = p.fixed(("physics.box.k_" + std::to_string(z) + "_" + std::to_string(k)).c_str(), kK[z][k]);
         for (int r = 0; r < kRoleCount; ++r) box_role[z][r] = p.fixed(("physics.box.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kRole[z][r]);
         box_depth[z] = p.fixed(("physics.box.depth_" + std::to_string(z)).c_str(), kDepth[z]);
