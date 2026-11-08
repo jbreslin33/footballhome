@@ -66,7 +66,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
+    long bx_ch[6] = {}; long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
@@ -804,6 +804,7 @@ int main(int argc, char** argv) {
                     if (W.isKeeper(j) || W.player(j).team != a) continue;
                     const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
                     if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) ++S.bx_in[bz];
+                    else if (ptl < 18) ++S.bx_ch[bz];   // §8.157: in their wide channels (0-18 m, |y| 20.16+)
                     if (s.lastOrders()[j].why == ai::Why::AttackBox) { ++S.bx_run[bz]; S.bx_run_tl[bz] += hx - s.lastOrders()[j].target.x.toDouble() * sg; }
                 }
                 {   // §8.141: their offside line (second-last, keeper in) and our most advanced outfielder, off their line
@@ -1113,6 +1114,11 @@ int main(int argc, char** argv) {
         std::printf("   IN THE BOX (ours, 0-18 m |y| < 20.16) by the ball's zone (real DFL):");
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.2f (%.2f) [runners %.2f, target %.1f m];", bzn[z], static_cast<double>(S.bx_in[z]) / S.bx_f[z], real_in[z],
                                                              static_cast<double>(S.bx_run[z]) / S.bx_f[z], S.bx_run_tl[z] / std::max(1L, S.bx_run[z]));
+        {   // §8.157: real DFL benchmarks_tracking_box.py "in the wide channels"
+            static const double real_ch[6] = {0.51, 1.35, 0.12, 0.20, 0.01, 0.02};
+            std::printf("\n     ours in their WIDE CHANNELS (0-18 m, |y| 20.16+) by the ball's zone (real DFL):");
+            for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.2f (%.2f);", bzn[z], static_cast<double>(S.bx_ch[z]) / S.bx_f[z], real_ch[z]);
+        }
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};
         for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", bzn[z], S.bx_ln[z] / S.bx_f[z], real_ln[z], S.bx_lead[z] / S.bx_f[z], real_lead[z]);

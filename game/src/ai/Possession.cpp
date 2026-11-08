@@ -520,8 +520,9 @@ public:
         const int k = c.poss.runnerIndex(v.slot);
         // Spots: ball side at |y|, then far side, then the middle, then again deeper.
         static const int kSide[4] = {1, -1, 0, 1};
-        const Fixed64 y = side * P.box_ay[z] * Fixed64::fromInt(kSide[k & 3]);
-        const Fixed64 depth = P.box_depth[z] - Fixed64::fromInt(3) * Fixed64::fromInt(k / 4);
+        Fixed64 y = side * P.box_ay[z] * Fixed64::fromInt(kSide[k & 3]);
+        Fixed64 depth = P.box_depth[z] - Fixed64::fromInt(3) * Fixed64::fromInt(k / 4);
+        if (c.poss.channel(v.slot)) { y = side * P.chan_ay[z]; depth = P.chan_depth[z]; }   // G5.56: the wide channel
         Vec2 t{(hx - depth) * v.sg, y};
         // Law 11: no further on than their second-last man (or the ball), less a margin.
         Fixed64 a{}, b{}; bool ha = false, hb = false;
@@ -583,7 +584,7 @@ const ActingState* Possession::runLine() { return &kRunLine; }
 
 int Possession::runnerIndex(std::uint8_t slot) const {
     int k = 0;
-    for (std::uint8_t j = 0; j < slot && j < 32; ++j) if ((runners_ >> j) & 1u) ++k;
+    for (std::uint8_t j = 0; j < slot && j < 32; ++j) if (((runners_ & ~chan_) >> j) & 1u) ++k;
     return k;
 }
 
@@ -591,7 +592,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
                                const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
     const auto& b = world.ball();
     const std::uint32_t mine_mask = [&] { std::uint32_t m = 0; for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) if (team_of_slot[j] == team) m |= 1u << j; return m; }();
-    auto clear = [&] { runners_ &= ~mine_mask; zone_[team & 1] = -1; };
+    auto clear = [&] { runners_ &= ~mine_mask; chan_ &= ~mine_mask; zone_[team & 1] = -1; };
     const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
     {   // G5.46: the live spell on the ball (as DFL's BallPossession with the ball in play)
         const bool live = ours && world.restartTeam() == 0xFF && world.outStage() == 0;
@@ -610,13 +611,13 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const bool deep = world.pitchHalfX() - offsideLine(team, world, team_of_slot) < params_.box_line_deep_m;
     if (z == zone_[team & 1] && deep == deep_[team & 1] && now - drawn_[team & 1] < 90) return;
     zone_[team & 1] = z; drawn_[team & 1] = now; deep_[team & 1] = deep;
-    runners_ &= ~mine_mask;
+    runners_ &= ~mine_mask; chan_ &= ~mine_mask;
     // How many: the real 0 / 1 / 2 / 3+ shares (3+ = 3, 4 at the mean's excess).
     const Fixed64 u = (core::detNoise(match_seed, now, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
     const Fixed64* kz = params_.box_kl[z][deep ? 1 : 0];
     int n = 0; Fixed64 acc = kz[0];
     while (n < 3 && u >= acc) { ++n; acc += kz[n]; }
-    if (n == 0) return;
+    if (n == 0) { assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep); return; }
     // Who: weight = his role's real mean count ÷ the men of that role in this team; nearest first among equals.
     int per_role[kRoleCount] = {};
     for (std::uint8_t j = 0; j < world.playerCount(); ++j)
@@ -636,6 +637,43 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
         }
         if (best < 0) break;
         runners_ |= 1u << best;
+    }
+    assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep);
+}
+
+// G5.56 (§8.157): who stands in their wide channel on the ball's side — the real
+// mean count for the zone and their line inside line_deep_m or not (whole part
+// sure, the rest a roll), by the real role counts, nearest the channel spot
+// first; never a box runner.
+void Possession::assignChannel(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                               const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep) {
+    const auto& b = world.ball();
+    const Fixed64 m = params_.chan_n[z][deep ? 1 : 0];
+    int n = static_cast<int>(m.raw >> Fixed64::FRAC_BITS);
+    const Fixed64 frac = m - Fixed64::fromInt(n);
+    const Fixed64 u = (core::detNoise(match_seed, world.tickCount(), team, 69) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    if (u < frac) ++n;
+    if (n <= 0) return;
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 side = b.pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+    const Vec2 spot{sg * (world.pitchHalfX() - params_.chan_depth[z]), side * params_.chan_ay[z]};
+    int per_role[kRoleCount] = {};
+    for (std::uint8_t j = 0; j < world.playerCount(); ++j)
+        if (team_of_slot[j] == team && !world.isKeeper(j)) ++per_role[static_cast<int>(role_of_slot[j])];
+    for (int pick = 0; pick < n; ++pick) {
+        int best = -1; Fixed64 bw{};
+        for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+            if (team_of_slot[j] != team || world.isKeeper(j) || ((runners_ >> j) & 1u)) continue;
+            if (b.owner && *b.owner == j) continue;
+            const int r = static_cast<int>(role_of_slot[j]);
+            if (params_.chan_role[z][r].raw <= 0) continue;
+            const Fixed64 d = math::length(Vec2{world.player(j).pos.x - spot.x, world.player(j).pos.y - spot.y});
+            const Fixed64 wgt = params_.chan_role[z][r] / Fixed64::fromInt(per_role[r]) / (Fixed64::one() + d / Fixed64::fromInt(15));
+            if (best < 0 || wgt > bw) { best = j; bw = wgt; }
+        }
+        if (best < 0) break;
+        runners_ |= 1u << best;
+        chan_ |= 1u << best;
     }
 }
 
@@ -825,6 +863,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
                                      {{899, 69, 23, 9}, {53, 203, 254, 490}},  {{925, 67, 7, 1}, {117, 316, 266, 301}},
                                      {{962, 29, 6, 3}, {89, 184, 291, 436}},   {{974, 22, 4, 0}, {192, 293, 324, 191}}};
     box_line_deep_m = p.fixed("physics.box.line_deep_m", 16000);
+    // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
+    // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
+    static const int kChN[6][2] = {{60, 520}, {310, 1390}, {20, 310}, {10, 500}, {0, 220}, {10, 470}};
+    static const int kChRole[6][kRoleCount] = {{14, 122, 96, 46, 185, 46}, {33, 307, 181, 104, 541, 184}, {4, 25, 15, 8, 52, 15},
+                                               {2, 45, 35, 20, 64, 31},   {0, 1, 0, 0, 5, 3},          {0, 2, 0, 1, 12, 6}};
+    static const int kChD[6] = {10000, 11200, 14900, 14300, 15300, 13500}, kChY[6] = {26800, 28200, 26100, 27500, 25700, 27100};
+    for (int z = 0; z < 6; ++z) {
+        for (int d = 0; d < 2; ++d) chan_n[z][d] = p.fixed(("physics.chan.n_" + std::to_string(z) + "_" + std::to_string(d)).c_str(), kChN[z][d]);
+        for (int r = 0; r < kRoleCount; ++r) chan_role[z][r] = p.fixed(("physics.chan.role_" + std::to_string(z) + "_" + std::string(kRoleKey[r])).c_str(), kChRole[z][r]);
+        chan_depth[z] = p.fixed(("physics.chan.depth_" + std::to_string(z)).c_str(), kChD[z]);
+        chan_ay[z] = p.fixed(("physics.chan.ay_" + std::to_string(z)).c_str(), kChY[z]);
+    }
     static const int kRole[6][kRoleCount] = {   // CB, FB, DM/CM, AM, WIDE, ST — mean count, ×1000
         {500, 210, 430, 340, 900, 1080}, {220, 80, 280, 210, 540, 950}, {160, 60, 110, 80, 230, 400},
         {90, 20, 60, 60, 170, 400}, {20, 0, 10, 10, 30, 60}, {10, 0, 0, 10, 20, 50}};

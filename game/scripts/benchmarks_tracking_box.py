@@ -80,6 +80,10 @@ def one(pos_path):
                 c[("d", bz)] += tl; c[("ay", bz)] += abs(y); c[("ys", bz)] += y * (1 if by >= 0 else -1); c[("np", bz)] += 1
             else:
                 c[("wide", bz)] += 1
+                c[("chrole", bz, ROLE.get(pos_of.get(pid, ""), "?"))] += 1   # G5.56: who stands in their wide channels
+                c[("chys", bz)] += 1 if (y > 0) == (by > 0) else 0           # on the ball's side
+                c[("chd", bz)] += tl; c[("chay", bz)] += abs(y)
+                if len(dtl) >= 2: c[("chL", bz, 1 if min(dtl[1], btl) < 16 else 0)] += 1
         c[("k", bz, min(inbox, 3))] += 1
         if len(dtl) >= 2:   # G5.53: the same shares split by their line inside 16 m or not
             dp = 1 if min(dtl[1], btl) < 16 else 0
@@ -105,6 +109,11 @@ for bz, nm in enumerate(names):
           + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
     ln = max(1, c[("lnn", bz)])
     if np_: print(f"      in the box: past their offside line {100*c[('past',bz)]/np_:.0f}% of them (by {c[('pastm',bz)]/max(1,c[('past',bz)]):.1f} m); their line {c[('Lin',bz)]/np_:.1f} m off their goal on those frames (G5.52)")
+    wn = c[("wide", bz)]
+    if wn:
+        rr = sorted({k[2] for k in c if k[0] == "chrole" and k[1] == bz})
+        print(f"      wide channels (G5.56): {wn/f:.2f} a frame, ball's side {100*c[('chys',bz)]/wn:.0f}%, by role " + " ".join(f"{r} {c[('chrole',bz,r)]/f:.3f}" for r in rr) +
+              f"; stand {c[('chd',bz)]/wn:.1f} m off the line, |y| {c[('chay',bz)]/wn:.1f}; with the line inside 16 m {c[('chL',bz,1)]/max(1,c[('fL',bz,1)]):.2f} a frame, 16+ {c[('chL',bz,0)]/max(1,c[('fL',bz,0)]):.2f}")
     for dp, lab in ((1, "line inside 16 m"), (0, "line 16+ m")):
         fl = c[("fL", bz, dp)]
         if fl: print(f"      {lab}: {100*fl/max(1,f):.0f}% of frames, in the box {c[('nL',bz,dp)]/fl:.2f}, 0 / 1 / 2 / 3+ " + " / ".join(f"{1000*c[('kL',bz,dp,k)]/fl:.0f}" for k in range(4)) + " permille (G5.53)")

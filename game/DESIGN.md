@@ -6909,3 +6909,38 @@ every pass, so it is a deliberate next step, not a tweak.
 its spot (World kick encoding, above). (2) Down the line 7.3 v 14.5% and back 32.5 v 16.9%: real wide men stand in the
 channel (0.20-1.35 men there, §8.153's box script), so the pass to feet there exists. (3) Crosses
 3.56 v 11.47. (4) The front man reading the line. (5) Law 8, Law 13 walls, cards. (6) Take-ons.
+
+### 8.157 G5.56 — a man in their wide channel when their line is deep (no migration)
+
+§8.156's next (with the softer kick left for a deliberate World change): real wide men stand in the
+channel, so the pass down the line to feet exists.
+
+**Real** (`benchmarks_tracking_box.py`, the wide channels 0-18 m out, |y| 20.16+; DFL). With the
+ball 18-35 m out, their channel holds 0.12 (centre) / 0.20 (wide) men a frame. With their line
+inside 16 m that is 0.31 / 0.50; with it 16+, 0.02 / 0.01. 81-97% are on the ball's side. By
+role (wide ball, a frame): WIDE 0.064, FB 0.045, DM 0.035, ST 0.031, AM 0.020. They stand 14-15 m
+off the line at |y| 26-28. With the ball 0-18 m out wide: 1.35 a frame (0.31 with the line 16+).
+
+**The game, before** (new harness line ours in their WIDE CHANNELS). With the ball 18-35 m out,
+0.03 / 0.07. 0-18 wide 1.05 (1.35).
+
+**The change** [FH structure, DFL numbers]. `Possession::assignChannel`, called with every box-runner
+draw (the same zone and line-deep flag, §8.154), names the men who go to their wide channel on the
+ball's side. How many: the real mean for the zone and the line (`physics.chan.n_<zone>_<deep>`,
+whole part sure, the rest a roll). Who: the real role counts per man of the role, nearest the spot
+first (`physics.chan.role_*`), never a box runner. Where: the real depth and |y|
+(`physics.chan.depth_* / ay_*`), onside as the box runner (they run `AttackBox`; `channel()` gives
+the channel spot, and `runnerIndex` counts only box runners).
+
+**After** (8 × 90).
+- Ours in their channel with the ball 18-35 m out: 0.03 → 0.08 (0.12) / 0.07 → 0.10 (0.20). 0-18
+  wide 1.11 (1.35).
+- Wide spells: down the line 7.3 → 9.9% (14.5), cross 5.2 → 6.7% (7.0), back to 35+ 33.4% (16.9).
+- Crosses 3.56 → 4.12 (11.47). Cut-backs 0.50 → 1.06 (1.03). Completion 78.7% (79.1). In behind
+  28.7. Shots 10.1.
+- Goldens re-locked.
+
+**Next moles.** (1) Back to 35+ from wide 33 v 17%. (2) Crosses 4.1 v 11.5: crosses from 0-18 wide
+(passes from there 5.1 v 18.6) and corners (0.1 v 3.2). (3) The weighted ground kick that dies at
+its spot (World encoding, §8.156). (4) Spells starting wide 29 v 58. (5) The front man reading the
+line. (6) Law 8, Law 13 walls, cards. (7) Take-ons.

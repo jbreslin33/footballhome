@@ -68,6 +68,8 @@ struct PossessionParams {
     math::Fixed64 box_k[6][4]{}, box_role[6][kRoleCount]{}, box_depth[6]{}, box_ay[6]{};
     // G5.53 (§8.154): how many, by their line inside box_line_deep_m (16) or not — [zone][deep][0..3+], DFL.
     math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{};
+    // G5.56 (§8.157): their wide channel on the ball's side — [zone][deep] mean men, by role, depth, |y| (DFL).
+    math::Fixed64 chan_n[6][2]{}, chan_role[6][kRoleCount]{}, chan_depth[6]{}, chan_ay[6]{};
     // Balls in behind (G5.27): by the man's gap short of their line (2 m bins,
     // 0-18 m), the real share of passes for him that are played in behind him (met
     // past the line as it stood at the kick); where it is met past the line (p25-p75
@@ -141,9 +143,10 @@ public:
     // (their second-last man, or the ball past him); 0 at halfway.
     static math::Fixed64 offsideLineVelX(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot);
     bool runner(std::uint8_t slot) const { return slot < 32 && ((runners_ >> slot) & 1u); }
+    bool channel(std::uint8_t slot) const { return slot < 32 && ((chan_ >> slot) & 1u); }   // G5.56: his runner spot is their wide channel
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
+    void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
     // His depth offset for this spell (G5.46), metres further from their line.
@@ -161,6 +164,9 @@ public:
 private:
     PossessionParams params_{};
     std::uint32_t runners_ = 0;
+    std::uint32_t chan_ = 0;   // G5.56: those of runners_ whose spot is the wide channel
+    void assignChannel(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                       const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep);
     int zone_[2] = {-1, -1};
     std::uint64_t drawn_[2] = {0, 0};
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw
