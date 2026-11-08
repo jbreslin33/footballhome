@@ -6853,8 +6853,15 @@ The ball is not, because the spot is a fixed point in the zone. Real balls into 
 a runner is beating his man (70% completed); ours go to the middle of an empty zone for whoever is
 nearest, and a defender is nearer the spot.
 
-**Next moles.** (1) The spot for the ball into space: along the runner's line, where he beats his
-man (the in-behind spot logic), so completion comes back to 79.1. (2) Crosses 3.88 v 11.47: crosses
+**Tried after, dropped (G5.55 attempt, 7 Nov).** The spot on each mate's own line: the zone's depth
+at his across, the first he wins by the race read, else the nearest man's (a cross held within 6 m
+of the middle). Completion 75.3 → 73.9%. Channel passes completed 3.8 of 18.0% (still ~21%,
+real 70%). Crosses 4.06, in behind 44.0. No better, so reverted. The spot is not the cause: the
+ball is lost with his own line as the spot too. Next is to trace those passes (who meets them,
+where, the receiver's order and speed on the way) before another change.
+
+**Next moles.** (1) Trace the ball into space: why 70-80% of ours are lost (real 30%), so
+completion comes back to 79.1. (2) Crosses 3.88 v 11.47: crosses
 from 0-18 wide (passes from there 7.2 v 18.6) and corners (0.3 v 3.2; real crosses get deflected
 out). (3) Spells starting wide 31 v 58. (4) Passes 492 v 434. (5) The front man reading the line.
 (6) Law 8, Law 13 walls, cards. (7) Take-ons.
