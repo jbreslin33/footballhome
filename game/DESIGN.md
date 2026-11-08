@@ -6093,6 +6093,9 @@ save reaches a running match on reload (Game Center may send it after saving).
   target within 0.5 m of the ball (`JobRule::offBall`). If every target has the ball, the man
   stands press_m (else 1.5 m) goal-side of it (`JobRule::onTheBall`). Club app, 11/7: 3-R2, ball
   to their 5, 7 on deter 5 + 3 was drawn on top of 5.
+- *cover_over_top A, B* (11/7, mig 1178; kind cover_over_top: concept cover, dist_m 8, lane_t
+  0.33): lane_t of the way from A toward B, then dist_m toward our goal; with no B, dist_m
+  straight goal-side of A (`CoverOverTopRule`). It covers both A and B.
 - *Stance* (`tactic_job_stances`, `tactic_jobs.stance`): goal_side by default; intercept (concept
   168 defend-your-man) — a mark stands dist_m BALL-side of his man instead of goal-side.
 - *Restarts* (mig 1142, `tactic_restarts`; `tactic_states.restart`): every out_of_possession root
