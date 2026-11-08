@@ -6,6 +6,7 @@
 #include <regex>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include <cstdlib>
 #include <cstdio>   // popen/pclose/sscanf — ffprobe for the video overlay's size
 #include <thread>
@@ -302,6 +303,28 @@ void SocialController::registerRoutes(Router& router, const std::string& prefix)
     // media type. See the note in SocialController.h for why.
     router.post(prefix + "/posts/:postId/media-raw", [this](const Request& request) {
         return this->handleUploadMediaRaw(request);
+    });
+
+    // Weekend slideshows (mig 1179): one Instagram carousel, a slide per
+    // game.  GET ?week_start=YYYY-MM-DD → that week's carousels + slides;
+    // POST saves the slide list; a slide's image is raw image/jpeg bytes.
+    router.get(prefix + "/collaborators", [this](const Request& request) {
+        return this->handleGetCollaborators(request);
+    });
+    router.get(prefix + "/carousels", [this](const Request& request) {
+        return this->handleGetCarousels(request);
+    });
+    router.post(prefix + "/carousels", [this](const Request& request) {
+        return this->handleSaveCarousel(request);
+    });
+    router.post(prefix + "/carousels/:carouselId/slides/:position", [this](const Request& request) {
+        return this->handleUploadCarouselSlide(request);
+    });
+    router.post(prefix + "/carousels/:carouselId/publish", [this](const Request& request) {
+        return this->handlePublishCarousel(request);
+    });
+    router.post(prefix + "/carousels/:carouselId/reopen", [this](const Request& request) {
+        return this->handleReopenCarousel(request);
     });
 
     // GET /api/social/schedule/team/:teamId - Get schedule templates for a team
@@ -1249,7 +1272,8 @@ Response SocialController::handlePostToInstagram(const Request& request) {
                 "&access_token=" + HttpClient::urlEncode(igToken);
             std::cout << "📤 Instagram: Creating image container for post " << postId << std::endl;
         }
-        std::string createResponse = httpPost(createUrl, createData);
+        const std::string collab = collaboratorsParam(request.getBody());
+        std::string createResponse = createContainer(createUrl, createData, collab);
         std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
         std::string creationId = extractJsonField(createResponse, "id");
@@ -1292,7 +1316,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
                 "&caption=" + HttpClient::urlEncode(caption) +
                 "&access_token=" + HttpClient::urlEncode(igToken);
 
-            std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
+            std::string fallbackCreateResp = createContainer(createUrl, fallbackCreateData, collab);
             std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
             if (fallbackCreationId.empty()) {
                 std::string fallbackErr = extractJsonField(fallbackCreateResp, "message");
@@ -1341,7 +1365,7 @@ Response SocialController::handlePostToInstagram(const Request& request) {
                     "&caption=" + HttpClient::urlEncode(caption) +
                     "&access_token=" + HttpClient::urlEncode(igToken);
 
-                std::string fallbackCreateResp = httpPost(createUrl, fallbackCreateData);
+                std::string fallbackCreateResp = createContainer(createUrl, fallbackCreateData, collab);
                 std::string fallbackCreationId = extractJsonField(fallbackCreateResp, "id");
                 if (!fallbackCreationId.empty()) {
                     std::string fallbackPublishData = "creation_id=" + fallbackCreationId + "&access_token=" + igToken;
@@ -1778,7 +1802,7 @@ Response SocialController::handlePublishHolidayPost(const Request& request) {
             "&access_token=" + HttpClient::urlEncode(igToken);
 
         std::cout << "📤 Instagram: Creating media container for holiday " << holidayId << std::endl;
-        std::string createResponse = httpPost(createUrl, createData);
+        std::string createResponse = createContainer(createUrl, createData, collaboratorsParam(request.getBody()));
         std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
         std::string creationId = extractJsonField(createResponse, "id");
@@ -2121,7 +2145,7 @@ Response SocialController::handlePublishPromoPost(const Request& request) {
         }
 
         std::string errorMsg;
-        bool ok = publishPromoById(promoId, errorMsg);
+        bool ok = publishPromoById(promoId, errorMsg, request.getBody());
         if (!ok) {
             return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                 createJSONResponse(false, errorMsg));
@@ -2135,7 +2159,7 @@ Response SocialController::handlePublishPromoPost(const Request& request) {
     }
 }
 
-bool SocialController::publishPromoById(const std::string& promoId, std::string& errorOut) {
+bool SocialController::publishPromoById(const std::string& promoId, std::string& errorOut, const std::string& body) {
     ensurePromotionalPostsSchema();
 
     pqxx::result result = db_->query(
@@ -2188,7 +2212,7 @@ bool SocialController::publishPromoById(const std::string& promoId, std::string&
     }
 
     std::cout << "📤 Instagram: Creating media container for promo " << promoId << std::endl;
-    std::string createResponse = httpPost(createUrl, createData);
+    std::string createResponse = createContainer(createUrl, createData, collaboratorsParam(body));
     std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
     std::string creationId = extractJsonField(createResponse, "id");
@@ -2626,7 +2650,8 @@ Response SocialController::handlePublishContentPost(const Request& request) {
         }
 
         std::cout << "📤 Instagram: Creating media container for content " << contentId << " (format: " << format << ")" << std::endl;
-        std::string createResponse = httpPost(createUrl, createData);
+        std::string createResponse = createContainer(createUrl, createData,
+            (!isVideoPost && format == "story") ? "" : collaboratorsParam(request.getBody()));
         std::cout << "📤 Instagram create response: " << createResponse << std::endl;
 
         std::string creationId = extractJsonField(createResponse, "id");
@@ -3027,4 +3052,434 @@ Response SocialController::handleGetMatchStats(const Request& request) {
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
             createJSONResponse(false, std::string("Error: ") + e.what()));
     }
+}
+
+// ---------- Weekend slideshows (mig 1179) ----------
+//
+// One Instagram carousel per (post type, week): a slide per game.  The
+// browser draws every slide with SocialPostCard.buildCardHtml — the same
+// drawing as the single posts — pads it to 4:5 and uploads it as JPEG;
+// this side stores the files and publishes the carousel.
+
+#include "../third_party/json.hpp"
+
+namespace {
+
+std::string carouselIdFromPath(const std::string& path) {
+    std::smatch m;
+    static const std::regex r(R"(/api/social/carousels/(\d+))");
+    return std::regex_search(path, m, r) ? m[1].str() : "";
+}
+
+std::string carouselPositionFromPath(const std::string& path) {
+    std::smatch m;
+    static const std::regex r(R"(/api/social/carousels/\d+/slides/(\d+))");
+    return std::regex_search(path, m, r) ? m[1].str() : "";
+}
+
+bool isIsoDate(const std::string& s) {
+    static const std::regex r(R"(\d{4}-\d{2}-\d{2})");
+    return std::regex_match(s, r);
+}
+
+} // namespace
+
+Response SocialController::handleGetCarousels(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        const std::string week = request.getQueryParam("week_start");
+        if (!isIsoDate(week)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "week_start must be YYYY-MM-DD"));
+        }
+        pqxx::result rows = db_->query(
+            "SELECT c.id, spt.name AS post_type, c.caption, c.status, c.posted_at, c.error_message, "
+            "       COALESCE(json_agg(json_build_object('position', s.position, 'match_id', s.match_id, "
+            "                 'slide_type', st.name, 'image_url', s.image_url) ORDER BY s.position) "
+            "                 FILTER (WHERE s.position IS NOT NULL), '[]') AS slides "
+            "  FROM social_carousels c "
+            "  JOIN social_post_types spt ON spt.id = c.post_type_id "
+            "  LEFT JOIN social_carousel_slides s ON s.carousel_id = c.id "
+            "  LEFT JOIN social_post_types st ON st.id = s.slide_post_type_id "
+            " WHERE c.week_start = $1::date AND c.platform = 'instagram' "
+            " GROUP BY c.id, spt.name",
+            {week});
+        nlohmann::json list = nlohmann::json::array();
+        for (const auto& r : rows) {
+            list.push_back({
+                {"id", r["id"].as<int>()},
+                {"post_type", r["post_type"].c_str()},
+                {"caption", r["caption"].is_null() ? "" : r["caption"].c_str()},
+                {"status", r["status"].c_str()},
+                {"posted_at", r["posted_at"].is_null() ? nlohmann::json(nullptr) : nlohmann::json(r["posted_at"].c_str())},
+                {"error_message", r["error_message"].is_null() ? nlohmann::json(nullptr) : nlohmann::json(r["error_message"].c_str())},
+                {"slides", nlohmann::json::parse(r["slides"].c_str())},
+            });
+        }
+        return Response(HttpStatus::OK, createJSONResponse(true, "OK", list.dump()));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// Body: {post_type, week_start, caption, slides:[{match_id, slide_type}]}.
+// Replaces the slide list (images cleared — the browser uploads fresh ones
+// right after).  A posted carousel is left alone until it is reopened.
+Response SocialController::handleSaveCarousel(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        nlohmann::json body = nlohmann::json::parse(request.getBody());
+        const std::string postType = body.value("post_type", "");
+        const std::string week = body.value("week_start", "");
+        const std::string caption = body.value("caption", "");
+        const auto slides = body.value("slides", nlohmann::json::array());
+        if (postType.empty() || !isIsoDate(week)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "post_type and week_start are required"));
+        }
+        if (!slides.is_array() || slides.empty() || slides.size() > 10) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "A slideshow takes 1 to 10 slides"));
+        }
+
+        pqxx::result c = db_->query(
+            "INSERT INTO social_carousels (post_type_id, week_start, caption) "
+            "SELECT id, $2::date, $3 FROM social_post_types WHERE name = $1 "
+            "ON CONFLICT (post_type_id, week_start, platform) DO UPDATE "
+            "   SET caption = EXCLUDED.caption, updated_at = NOW(), "
+            "       status = CASE WHEN social_carousels.status = 'error' THEN 'draft' ELSE social_carousels.status END, "
+            "       error_message = NULL "
+            " WHERE social_carousels.status NOT IN ('posted', 'publishing') "
+            "RETURNING id",
+            {postType, week, caption});
+        if (c.empty()) {
+            return Response(HttpStatus::CONFLICT,
+                createJSONResponse(false, "This slideshow is already posted (or publishing) — reopen it first"));
+        }
+        const std::string id = c[0]["id"].c_str();
+
+        db_->query("DELETE FROM social_carousel_slides WHERE carousel_id = $1::int", {id});
+        int pos = 0;
+        for (const auto& s : slides) {
+            ++pos;
+            const std::string matchId = std::to_string(s.value("match_id", 0));
+            const std::string slideType = s.value("slide_type", postType);
+            db_->query(
+                "INSERT INTO social_carousel_slides (carousel_id, position, match_id, slide_post_type_id) "
+                "SELECT $1::int, $2::smallint, $3::int, id FROM social_post_types WHERE name = $4",
+                {id, std::to_string(pos), matchId, slideType});
+        }
+        return Response(HttpStatus::OK, createJSONResponse(true, "Saved", "{\"id\":" + id + "}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// The body IS the JPEG (same raw-bytes path as handleUploadMediaRaw).  The
+// file name carries a stamp so Instagram never fetches a stale copy.
+Response SocialController::handleUploadCarouselSlide(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        const std::string id = carouselIdFromPath(request.getPath());
+        const std::string pos = carouselPositionFromPath(request.getPath());
+        const std::string& bytes = request.getBody();
+        if (id.empty() || pos.empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing carousel or slide"));
+        }
+        const bool isVideo = request.getHeader("Content-Type").rfind("video/", 0) == 0;
+        if (!isVideo && (bytes.size() < 4 || static_cast<unsigned char>(bytes[0]) != 0xFF || static_cast<unsigned char>(bytes[1]) != 0xD8)) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Slide must be a JPEG or a video"));
+        }
+        pqxx::result slide = db_->query(
+            "SELECT s.image_path, s.video_path FROM social_carousel_slides s JOIN social_carousels c ON c.id = s.carousel_id "
+            " WHERE s.carousel_id = $1::int AND s.position = $2::smallint AND c.status NOT IN ('posted', 'publishing')",
+            {id, pos});
+        if (slide.empty()) {
+            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "No such slide (or the slideshow is posted)"));
+        }
+
+        const std::string dir = postsMediaDir();
+        mkdir(dir.c_str(), 0755);
+        const std::string stem = "carousel_" + id + "_" + pos + "_" +
+            std::to_string(std::chrono::duration_cast<std::chrono::seconds>(
+                std::chrono::system_clock::now().time_since_epoch()).count());
+
+        // The beam clip (mig 1182): the card at its own size, padded here to
+        // 1080×1350 in the card's edge colour (?pad=RRGGBB) so the carousel
+        // never crops it.
+        if (isVideo) {
+            std::string pad = request.getQueryParam("pad");
+            static const std::regex hex(R"([0-9a-fA-F]{6})");
+            if (!std::regex_match(pad, hex)) pad = "000000";
+            const std::string src = dir + "/" + stem + "_src.webm";
+            const std::string mp4 = stem + ".mp4";
+            {
+                std::ofstream vout(src, std::ios::binary);
+                if (!vout.is_open()) return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write slide video"));
+                vout.write(bytes.data(), bytes.size());
+            }
+            const std::string cmd = "ffmpeg -y -i " + src +
+                " -vf \"scale=1080:1350:force_original_aspect_ratio=decrease,pad=1080:1350:(ow-iw)/2:(oh-ih)/2:color=0x" + pad + ",setsar=1\"" +
+                kX264Args + " -an -movflags +faststart " + dir + "/" + mp4 + " > /dev/null 2>&1";
+            const int rc = system(cmd.c_str());
+            std::remove(src.c_str());
+            if (rc != 0) return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Video conversion failed"));
+            if (!slide[0]["video_path"].is_null()) std::remove((dir + "/" + slide[0]["video_path"].c_str()).c_str());
+            const std::string vurl = "https://footballhome.org/images/posts/" + mp4;
+            db_->query("UPDATE social_carousel_slides SET video_path = $3, video_url = $4 "
+                       " WHERE carousel_id = $1::int AND position = $2::smallint",
+                       {id, pos, mp4, vurl});
+            return Response(HttpStatus::OK, createJSONResponse(true, "Slide video stored",
+                "{\"video_url\":\"" + escapeJson(vurl) + "\"}"));
+        }
+
+        const std::string filename = stem + ".jpg";
+        std::ofstream out(dir + "/" + filename, std::ios::binary);
+        if (!out.is_open()) {
+            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to write slide"));
+        }
+        out.write(bytes.data(), bytes.size());
+        out.close();
+        if (!slide[0]["image_path"].is_null()) {
+            std::remove((dir + "/" + slide[0]["image_path"].c_str()).c_str());
+        }
+        const std::string url = "https://footballhome.org/images/posts/" + filename;
+        db_->query("UPDATE social_carousel_slides SET image_path = $3, image_url = $4 "
+                   " WHERE carousel_id = $1::int AND position = $2::smallint",
+                   {id, pos, filename, url});
+        return Response(HttpStatus::OK, createJSONResponse(true, "Slide stored",
+            "{\"image_url\":\"" + escapeJson(url) + "\"}"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// Instagram carousel: a container per slide (is_carousel_item), then a
+// CAROUSEL container naming them, then media_publish.  One slide posts as
+// a plain image — Instagram wants at least two for a carousel.
+Response SocialController::handlePublishCarousel(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    const std::string id = carouselIdFromPath(request.getPath());
+    if (id.empty()) {
+        return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing carousel ID"));
+    }
+    auto fail = [&](const std::string& msg, HttpStatus code = HttpStatus::INTERNAL_SERVER_ERROR) {
+        db_->query("UPDATE social_carousels SET status = 'error', error_message = $2, updated_at = NOW() "
+                   " WHERE id = $1::int", {id, msg});
+        return Response(code, createJSONResponse(false, msg));
+    };
+    try {
+        // Claim it: only a draft/error carousel moves to publishing, so a
+        // double tap can't post twice.
+        pqxx::result claim = db_->query(
+            "UPDATE social_carousels SET status = 'publishing', updated_at = NOW() "
+            " WHERE id = $1::int AND status IN ('draft', 'error') RETURNING caption",
+            {id});
+        if (claim.empty()) {
+            return Response(HttpStatus::CONFLICT, createJSONResponse(false, "Already posted or publishing"));
+        }
+        const std::string caption = claim[0]["caption"].is_null() ? "" : claim[0]["caption"].c_str();
+        // Collaborators (mig 1183) go on the post's own container, never a slide.
+        const std::string collabParam = collaboratorsParam(request.getBody());
+        pqxx::result slides = db_->query(
+            "SELECT position, image_url, video_url FROM social_carousel_slides WHERE carousel_id = $1::int ORDER BY position",
+            {id});
+        std::vector<std::string> urls, videos;
+        for (const auto& s : slides) {
+            if (s["image_url"].is_null()) return fail("Slide " + std::string(s["position"].c_str()) + " has no image yet", HttpStatus::BAD_REQUEST);
+            urls.push_back(s["image_url"].c_str());
+            videos.push_back(s["video_url"].is_null() ? "" : s["video_url"].c_str());
+        }
+        if (urls.empty()) return fail("No slides", HttpStatus::BAD_REQUEST);
+
+        const char* accessToken = std::getenv("INSTAGRAM_ACCESS_TOKEN");
+        const char* userId = std::getenv("INSTAGRAM_USER_ID");
+        if (!accessToken || std::string(accessToken).empty()) return fail("INSTAGRAM_ACCESS_TOKEN not configured");
+        const std::string igUserId = userId ? std::string(userId) : "26233831926285183";
+        const std::string igToken(accessToken);
+        const std::string apiBase = "https://graph.instagram.com/v21.0";
+        const std::string createUrl = apiBase + "/" + igUserId + "/media";
+
+        auto waitFinished = [&](const std::string& containerId, int attempts) {
+            const std::string statusUrl = apiBase + "/" + containerId + "?fields=status_code&access_token=" + igToken;
+            for (int i = 0; i < attempts; i++) {
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+                const std::string code = extractJsonField(httpGet(statusUrl), "status_code");
+                if (code == "FINISHED") return true;
+                if (code == "ERROR") return false;
+            }
+            return false;
+        };
+        auto igError = [&](const std::string& resp, const std::string& fallback) {
+            std::string m = extractJsonField(resp, "message");
+            return m.empty() ? fallback : m;
+        };
+
+        // withCollab drops to "" if Instagram refuses the collaborators, so
+        // the post still goes out, just untagged.
+        std::string withCollab = collabParam;
+        // A slide goes up as its beam video when it has one; if Instagram
+        // won't take the video, that slide falls back to its still.
+        auto imageChild = [&](size_t i, bool item) {
+            const std::string resp = httpPost(createUrl,
+                "image_url=" + HttpClient::urlEncode(urls[i]) +
+                (item ? "&is_carousel_item=true" : "&caption=" + HttpClient::urlEncode(caption) + withCollab) +
+                "&access_token=" + HttpClient::urlEncode(igToken));
+            return extractJsonField(resp, "id");
+        };
+        auto videoChild = [&](size_t i, bool item) {
+            const std::string resp = httpPost(createUrl,
+                std::string(item ? "media_type=VIDEO&is_carousel_item=true" : "media_type=REELS&caption=" + HttpClient::urlEncode(caption) + withCollab) +
+                "&video_url=" + HttpClient::urlEncode(videos[i]) +
+                "&access_token=" + HttpClient::urlEncode(igToken));
+            return extractJsonField(resp, "id");
+        };
+
+        std::string creationId;
+        if (urls.size() == 1) {
+            if (!videos[0].empty()) {
+                creationId = videoChild(0, false);
+                if (!creationId.empty() && !waitFinished(creationId, 45)) creationId.clear();
+            }
+            if (creationId.empty()) creationId = imageChild(0, false);
+            if (creationId.empty() && !withCollab.empty()) { withCollab.clear(); creationId = imageChild(0, false); }
+            if (creationId.empty()) return fail("Failed to create the post container");
+        } else {
+            // Create every child first, then wait: Instagram processes the
+            // videos side by side, so ten slides take about as long as one.
+            std::vector<std::string> ids(urls.size());
+            std::vector<bool> isVid(urls.size(), false);
+            for (size_t i = 0; i < urls.size(); i++) {
+                if (!videos[i].empty()) { ids[i] = videoChild(i, true); isVid[i] = !ids[i].empty(); }
+                if (ids[i].empty()) ids[i] = imageChild(i, true);
+                if (ids[i].empty()) return fail("Slide " + std::to_string(i + 1) + ": Instagram refused it");
+            }
+            std::string children;
+            for (size_t i = 0; i < urls.size(); i++) {
+                if (!waitFinished(ids[i], isVid[i] ? 60 : 15)) {
+                    if (!isVid[i]) return fail("Slide " + std::to_string(i + 1) + ": Instagram could not process the image");
+                    std::cout << "⚠️ Instagram: carousel " << id << " slide " << i + 1 << " video failed, using the still" << std::endl;
+                    ids[i] = imageChild(i, true);
+                    if (ids[i].empty() || !waitFinished(ids[i], 15))
+                        return fail("Slide " + std::to_string(i + 1) + ": Instagram could not process it");
+                }
+                children += (children.empty() ? "" : ",") + ids[i];
+            }
+            std::cout << "📤 Instagram: carousel " << id << " children " << children << std::endl;
+            auto parent = [&]() {
+                return httpPost(createUrl,
+                    "media_type=CAROUSEL&children=" + HttpClient::urlEncode(children) +
+                    "&caption=" + HttpClient::urlEncode(caption) + withCollab +
+                    "&access_token=" + HttpClient::urlEncode(igToken));
+            };
+            std::string resp = parent();
+            creationId = extractJsonField(resp, "id");
+            if (creationId.empty() && !withCollab.empty()) {
+                std::cout << "⚠️ Instagram: carousel " << id << " collaborators refused (" << resp << "), posting untagged" << std::endl;
+                withCollab.clear();
+                resp = parent();
+                creationId = extractJsonField(resp, "id");
+            }
+            if (creationId.empty()) return fail(igError(resp, "Failed to create the carousel container"));
+        }
+        if (!waitFinished(creationId, 45)) return fail("Instagram did not finish processing the post");
+
+        const std::string pubResp = httpPost(apiBase + "/" + igUserId + "/media_publish",
+            "creation_id=" + creationId + "&access_token=" + HttpClient::urlEncode(igToken));
+        const std::string mediaId = extractJsonField(pubResp, "id");
+        if (mediaId.empty()) return fail(igError(pubResp, "Failed to publish to Instagram"));
+
+        db_->query("UPDATE social_carousels SET status = 'posted', external_media_id = $2, posted_at = NOW(), "
+                   "       error_message = NULL, updated_at = NOW() WHERE id = $1::int", {id, mediaId});
+        std::cout << "✅ Instagram: carousel " << id << " published (" << urls.size() << " slides) media " << mediaId << std::endl;
+        return Response(HttpStatus::OK, createJSONResponse(true, "Posted to Instagram!",
+            "{\"media_id\":\"" + escapeJson(mediaId) + "\"}"));
+    } catch (const std::exception& e) {
+        return fail(std::string("Error: ") + e.what());
+    }
+}
+
+// Deleted on Instagram → back to a draft so a fresh one can go out (same
+// idea as handleReopenPost).
+Response SocialController::handleReopenCarousel(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        const std::string id = carouselIdFromPath(request.getPath());
+        if (id.empty()) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Missing carousel ID"));
+        db_->query("UPDATE social_carousels SET status = 'draft', posted_at = NULL, external_media_id = NULL, "
+                   "       error_message = NULL, updated_at = NOW() WHERE id = $1::int AND status <> 'publishing'", {id});
+        return Response(HttpStatus::OK, createJSONResponse(true, "Reopened"));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// ---------- Instagram collaborators (mig 1183) ----------
+
+// GET /api/social/collaborators → the list each post panel ticks from.
+Response SocialController::handleGetCollaborators(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) {
+        return Response(denialStatus(request), createJSONResponse(false, "Unauthorized"));
+    }
+    try {
+        nlohmann::json out = nlohmann::json::array();
+        for (const auto& r : db_->query(
+                "SELECT username, default_on FROM social_collaborators "
+                " WHERE platform = 'instagram' AND is_active ORDER BY sort_order, username")) {
+            out.push_back({{"username", r["username"].c_str()}, {"default_on", r["default_on"].as<bool>()}});
+        }
+        return Response(HttpStatus::OK, createJSONResponse(true, "OK", out.dump()));
+    } catch (const std::exception& e) {
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, std::string("Error: ") + e.what()));
+    }
+}
+
+// "&collaborators=[...]" for a post's container, or "".  A publish body
+// carrying {"collaborators":[...]} is the panel's ticks — only names on the
+// active list count; no such key (scheduled posts, screens without the
+// ticks) = the default_on names.  Instagram takes at most 3.
+std::string SocialController::collaboratorsParam(const std::string& body) {
+    try {
+        nlohmann::json picked;
+        bool fromBody = false;
+        if (!body.empty()) {
+            auto j = nlohmann::json::parse(body, nullptr, false);
+            if (j.is_object() && j.contains("collaborators") && j["collaborators"].is_array()) {
+                picked = j["collaborators"];
+                fromBody = true;
+            }
+        }
+        std::vector<std::string> names;
+        for (const auto& r : db_->query(
+                "SELECT username, default_on FROM social_collaborators "
+                " WHERE platform = 'instagram' AND is_active ORDER BY sort_order, username")) {
+            const std::string u = r["username"].c_str();
+            const bool want = fromBody
+                ? std::any_of(picked.begin(), picked.end(), [&](const nlohmann::json& v) { return v.is_string() && v.get<std::string>() == u; })
+                : r["default_on"].as<bool>();
+            if (want && names.size() < 3) names.push_back(u);
+        }
+        if (names.empty()) return "";
+        return "&collaborators=" + HttpClient::urlEncode(nlohmann::json(names).dump());
+    } catch (const std::exception& e) {
+        std::cerr << "⚠️ collaborators lookup failed: " << e.what() << std::endl;
+        return "";
+    }
+}
+
+// Create a media container with the collaborators; if Instagram refuses
+// (a renamed or private account), the post still goes out untagged.
+std::string SocialController::createContainer(const std::string& url, const std::string& data, const std::string& collab) {
+    if (collab.empty()) return httpPost(url, data);
+    std::string resp = httpPost(url, data + collab);
+    if (!extractJsonField(resp, "id").empty()) return resp;
+    std::cout << "⚠️ Instagram: collaborators refused (" << resp << "), posting untagged" << std::endl;
+    return httpPost(url, data);
 }

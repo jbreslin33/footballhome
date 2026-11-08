@@ -54,11 +54,21 @@ class ContentPostsScreen extends Screen {
         <h1>\ud83d\udcf7 Content Posts</h1>
         <p class="subtitle">Upload photos & videos for Instagram</p>
       </div>
+      <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
+      <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="content-posts-area" style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
       </div>
     `;
     this.element = div;
+    // 🤝 Collaborators (mig 1183): one row for every post published from
+    // this screen; the publish POSTs send its ticks (CollaboratorPicks.body).
+    if (window.CollaboratorPicks) {
+      const host = div.querySelector('.collab-host');
+      const esc = (t) => String(t ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+      this.collab = new CollaboratorPicks(this.auth, () => { host.innerHTML = this.collab.html(esc); });
+      host.addEventListener('change', (e) => this.collab.handle(e));
+    }
     return div;
   }
 
@@ -957,8 +967,7 @@ class ContentPostsScreen extends Screen {
 
     try {
       const resp = await this.auth.fetch(`/api/social/content/${id}/publish`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.collab ? this.collab.body() : {})
       });
       const result = await resp.json();
       if (!result.success) throw new Error(result.message);

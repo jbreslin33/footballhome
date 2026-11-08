@@ -672,6 +672,9 @@ class GameCenterScreen extends EventScreen {
       <div id="gc-social" style="padding: 0 var(--space-4);"></div>
       <div id="gl-body" style="padding: 0 var(--space-4) var(--space-6);"></div>
 
+      <!-- 🎞 Weekend slideshows (mig 1179): staff who may post. Owned by
+           WeekendSlides, never rewritten by _render(). -->
+      <div id="gc-weekend" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <!-- RSVP & Player Details, moved here from #game-day-roster.
            Also outside #gl-body: it's a modal, and _render() must not
            tear it down (or reset its search box) while a coach has it
@@ -3405,6 +3408,23 @@ class GameCenterScreen extends EventScreen {
   }
 
   // Posted = inside the schedule release window My Schedule shows
+    this._paintWeekend();
+  }
+
+  // 🎞 Weekend slideshows (mig 1179, owner 11/7): one Instagram carousel of
+  // every game that weekend — Game Announcements, or Lineups (a game with
+  // no lineup gets its announcement slide).  Club-wide, so it sits above
+  // the game's own pills, for the roles that may post.
+  _paintWeekend() {
+    const host = this.find('#gc-weekend');
+    if (!host) return;
+    if (!this._canPostSocial() || typeof WeekendSlides === 'undefined') { host.innerHTML = ''; return; }
+    this.weekendSlides = this.weekendSlides || new WeekendSlides(this.auth, {
+      navigation: this.navigation,
+      games: () => this._feedGames || [],
+      escapeHtml: (t) => this.escapeHtml(t),
+    });
+    this.weekendSlides.mount(host);
   // (schedule_window_end, mig 334); an event without one falls back to the
   // end of this week.  Owner 2026-09-18: "only show this weeks games. not
   // future unposted for rsvp ones".

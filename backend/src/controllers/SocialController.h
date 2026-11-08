@@ -47,6 +47,18 @@ private:
     Response handleUploadMediaRaw(const Request& request);
     Response handleUploadOverlay(const Request& request);
 
+    // Weekend slideshows (mig 1179) — Instagram carousel posts
+    Response handleGetCarousels(const Request& request);
+    Response handleSaveCarousel(const Request& request);
+    Response handleUploadCarouselSlide(const Request& request);
+    Response handlePublishCarousel(const Request& request);
+    Response handleReopenCarousel(const Request& request);
+
+    // Instagram collaborators (mig 1183)
+    Response handleGetCollaborators(const Request& request);
+    std::string collaboratorsParam(const std::string& body);
+    std::string createContainer(const std::string& url, const std::string& data, const std::string& collab);
+
     // Schedule templates
     Response handleGetScheduleTemplates(const Request& request);
     Response handleSaveScheduleTemplates(const Request& request);
@@ -71,7 +83,7 @@ private:
     std::string extractPromoIdFromPath(const std::string& path);
     void ensureSocialSchema();
     void ensurePromotionalPostsSchema();
-    bool publishPromoById(const std::string& promoId, std::string& errorOut);
+    bool publishPromoById(const std::string& promoId, std::string& errorOut, const std::string& body = "");
 
     // Content posts (user-uploaded media)
     Response handleGetContentPosts(const Request& request);

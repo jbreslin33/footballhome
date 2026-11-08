@@ -52,6 +52,11 @@ class SocialPostCard {
     // the result can say the clip is missing its club layer rather than
     // leaving that looking like the intended output.
     this._overlayFailed = null;
+    // 🤝 Collaborators, ticked by default (mig 1183); repaints only its own row.
+    this.collab = window.CollaboratorPicks ? new CollaboratorPicks(auth, () => {
+      const row = this.container && this.container.querySelector('.spc-collab');
+      if (row) row.innerHTML = this.collab.html((t) => this.escapeHtml(t));
+    }) : null;
   }
 
   resolveAssetUrl(url) {
@@ -696,6 +701,7 @@ class SocialPostCard {
               <input type="datetime-local" class="spc-schedule-input" value="${isScheduled && p.scheduled_at ? this.toLocalISOString(p.scheduled_at) : ''}" />
               <button class="spc-btn spc-btn-schedule">📅 Schedule</button>
             </div>
+            <div class="spc-collab" style="width:100%;">${this.collab ? this.collab.html((t) => this.escapeHtml(t)) : ''}</div>
             <button class="spc-btn spc-btn-post">${this.escapeHtml(this.postButtonLabel())}</button>
           ` : `
             <div class="spc-reopen" style="display:flex; flex-direction:column; gap:6px; width:100%;">
@@ -2111,6 +2117,8 @@ class SocialPostCard {
   }
 
   attachListeners() {
+    const collabRow = this.container.querySelector('.spc-collab');
+    if (collabRow && this.collab) collabRow.addEventListener('change', (e) => this.collab.handle(e));
     const mediaInput = this.container.querySelector('.spc-media-input');
     if (mediaInput) {
       mediaInput.addEventListener('change', (e) => {
@@ -2407,7 +2415,8 @@ class SocialPostCard {
       // Step 2: Publish to Instagram
       if (postBtn) postBtn.textContent = '⏳ Publishing to Instagram...';
       const pubRes = await this.auth.fetch(`/api/social/posts/${this.post.post_id}/publish`, {
-        method: 'POST'
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.collab ? this.collab.body() : {}),
       });
       const pubText = await pubRes.text();
       let pubData = null;

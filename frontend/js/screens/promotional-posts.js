@@ -76,11 +76,21 @@ class PromotionalPostsScreen extends Screen {
         <h1>📢 Promotional Posts</h1>
         <p class="subtitle">Lighthouse 1893 Instagram promotional posts</p>
       </div>
+      <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
+      <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="promo-area" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
         <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
       </div>
     `;
     this.element = div;
+    // 🤝 Collaborators (mig 1183): one row for every post published from
+    // this screen; the publish POSTs send its ticks (CollaboratorPicks.body).
+    if (window.CollaboratorPicks) {
+      const host = div.querySelector('.collab-host');
+      const esc = (t) => String(t ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+      this.collab = new CollaboratorPicks(this.auth, () => { host.innerHTML = this.collab.html(esc); });
+      host.addEventListener('change', (e) => this.collab.handle(e));
+    }
     return div;
   }
 
@@ -2063,7 +2073,7 @@ class PromotionalPostsScreen extends Screen {
       if (btn) btn.textContent = '⏳ Publishing...';
 
       // 3. Publish
-      const pubResp = await this.auth.fetch(`/api/social/promos/${postId}/publish`, { method: 'POST' });
+      const pubResp = await this.auth.fetch(`/api/social/promos/${postId}/publish`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.collab ? this.collab.body() : {}) });
       const pubResult = await pubResp.json();
       if (!pubResult.success) throw new Error(pubResult.message || 'Publish failed');
 
@@ -2085,7 +2095,7 @@ class PromotionalPostsScreen extends Screen {
 
     try {
       const pubResp = await this.auth.fetch(`/api/social/promos/${postId}/publish`, {
-        method: 'POST'
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.collab ? this.collab.body() : {})
       });
       if (!pubResp.ok) throw new Error(`Publish HTTP ${pubResp.status}`);
       const pubResult = await pubResp.json();

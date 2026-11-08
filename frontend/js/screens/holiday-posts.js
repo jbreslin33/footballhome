@@ -38,11 +38,21 @@ class HolidayPostsScreen extends Screen {
         <h1>🎉 Holiday Posts</h1>
         <p class="subtitle">Lighthouse 1893 Instagram holiday posts</p>
       </div>
+      <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
+      <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="holiday-list" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
         <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
       </div>
     `;
     this.element = div;
+    // 🤝 Collaborators (mig 1183): one row for every post published from
+    // this screen; the publish POSTs send its ticks (CollaboratorPicks.body).
+    if (window.CollaboratorPicks) {
+      const host = div.querySelector('.collab-host');
+      const esc = (t) => String(t ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+      this.collab = new CollaboratorPicks(this.auth, () => { host.innerHTML = this.collab.html(esc); });
+      host.addEventListener('change', (e) => this.collab.handle(e));
+    }
     return div;
   }
 
@@ -1026,7 +1036,7 @@ class HolidayPostsScreen extends Screen {
 
       // 3. Publish to Instagram
       const pubResp = await this.auth.fetch(`/api/social/holidays/${postId}/publish`, {
-        method: 'POST'
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.collab ? this.collab.body() : {})
       });
       if (!pubResp.ok) throw new Error(`Publish HTTP ${pubResp.status}`);
       const pubResult = await pubResp.json();
