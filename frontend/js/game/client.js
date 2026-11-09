@@ -495,8 +495,8 @@
     else { resumeSpeed = simSpeed; net.setSpeed(0); }
   });
 
-  // Off until the club's POST /api/tactic-plans/copies is live (footballhome-3c builds it).
-  const COPY_READY = false;
+  // On since the club's POST /api/tactic-plans/copies went live (5092f607, mig 1202).
+  const COPY_READY = true;
   // ── Trainer step 4 — owner: "except right to copy it over to … the event center".
   // The frozen PL moment as a plan step on our 🎯 Tactics board: the side WITHOUT the
   // ball is "us" (its men carry the concepts), the side with it "them". Plan frame
@@ -567,12 +567,14 @@
                                                          body: JSON.stringify(body) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-      btn.textContent = '📋 Copied ✓';
+      // A new 📋 step under the plan's root on the board ("Ours:" picks the formation).
+      const skipped = (j.skipped || []).length;
+      btn.textContent = `📋 Copied to our tactics: ${j.us} v ${j.them}, ${j.block} block` + (skipped ? ` (${skipped} with no job)` : '');
       if (j.url) window.open(j.url, '_blank', 'noopener');
     } catch (e) {
       btn.textContent = '📋 ' + (e.message || 'Copy failed');
     } finally {
-      setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 4000);
+      setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 6000);
     }
   }
 

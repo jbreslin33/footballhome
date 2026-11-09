@@ -7444,4 +7444,4 @@ with it. The copy carries:
 
 The 📋 Copy to our tactics button sits in the freeze beside ⏭ Next pass and POSTs to
 `/api/tactic-plans/copies` (club session, footballhome-3c). That endpoint always adds a fresh state,
-so nothing authored is overwritten. The button stays off (`COPY_READY`) until the endpoint is live.
+so nothing authored is overwritten. The endpoint went live in club commit 5092f607 (mig 1202) and the button is on. The reply names the plan ("Copied to our tactics: 4-2-3-1 v 4-3-3, high block"). The copy lands as a 📋 step under the plan's root, found with the board's "Ours:" formation dropdown. Concepts with no fitting job kind (11 recover without a target) come back as skipped and are counted on the button.
