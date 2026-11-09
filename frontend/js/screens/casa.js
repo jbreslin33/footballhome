@@ -16,8 +16,8 @@
 //                   (mig 520): Text / Email per manager, logged per game.
 //
 // 📸 buttons (mig 699): each club's Instagram (club_social_handles), edited on
-// the contacts card; #casa-scores has a row of every team on the schedule plus
-// one per side of each game and "open all" for the unscored games.  Instagram
+// the contacts card; #casa-scores offers them ONLY for clubs still owing a
+// score (mig 1188): one per side of each game card and "open all" for them.  Instagram
 // is blocked at home — the VPN runs in the CASA Chrome profile.  The terminal
 // check ("check all casa scores from insta") is .claude/skills/casa-insta-scores.
 //
@@ -578,6 +578,8 @@ class CasaScoresScreen extends Screen {
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="cz-back">← Back</button>
         <div style="flex:1;"><h1 style="margin:0;" id="cz-title">🥅 CASA scores</h1><div id="cz-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <button class="cz-btn sm ghost" data-refresh>↻</button>
+        <button class="cz-btn sm ghost" data-go="casa-contacts">📇</button>
       </div>
       <div class="screen-content" id="cz-body"><div class="loading">Loading…</div></div>`;
     this.element = div;
@@ -710,18 +712,15 @@ class CasaScoresScreen extends Screen {
       <div class="cz-pills">
         <button class="cz-pill ${!this.division ? 'on' : ''}" data-division="">All<span class="n">${nDiv('')}</span></button>
         ${divs.map(d => `<button class="cz-pill ${this.division === d ? 'on' : ''}" data-division="${esc(d)}">${esc(d)}<span class="n">${nDiv(d)}</span></button>`).join('')}
-        <button class="cz-btn sm ghost" data-refresh>↻ Check again</button>
-        <button class="cz-btn sm ghost" data-go="casa-contacts">📇 Edit contacts</button>
       </div>
-      ${this.view === 'waiting' ? `
-      ${this._report()}
+      <div class="cz-sec">${esc(this.view === 'waiting' ? (this._copy('scores_waiting') || 'Scores we need') : (this._copy(head[1]) || head[3]))} · ${list.length}</div>
+      ${this.view === 'waiting' && list.length ? `
       <div class="cz-pills">
-        <span style="font-size:0.8rem; opacity:0.8;">Message:</span>
-        ${[['score_request', 'scores_pick_request', '🙋 Ask for the score'], ['score_app', 'scores_pick_app', '📲 Get the app & enter it']].map(([k, c, d]) => `<button class="cz-pill ${this.tier === k ? 'on' : ''}" data-tier="${k}">${k === 'score_app' ? '📲' : '🙋'} ${esc(this._copy(c) || d.slice(3))}</button>`).join('')}
-      </div>
-      <div class="cz-hint">${esc(this._copy('scores_hint'))}</div>` : ''}
-      <div class="cz-sec">${esc(this.view === 'waiting' ? (this._copy('scores_waiting') || 'Waiting on a score') : (this._copy(head[1]) || head[3]))} · ${list.length}</div>
-      ${html || `<div class="cz-hint">${esc(none)}</div>`}`;
+        ${[['score_request', 'scores_pick_request', '🙋 Ask for the score'], ['score_app', 'scores_pick_app', '📲 Get the app & enter it']].map(([k, c, d]) => `<button class="cz-pill ${this.tier === k ? 'on' : ''}" data-tier="${k}" title="${esc(this._copy('scores_hint'))}">${k === 'score_app' ? '📲' : '🙋'} ${esc(this._copy(c) || d.slice(3))}</button>`).join('')}
+        ${this._instaNeeded()}
+      </div>` : ''}
+      ${html || `<div class="cz-hint">${esc(none)}</div>`}
+      ${this.view === 'waiting' ? this._report() : ''}`;
     this.flash = '';
   }
 
@@ -764,8 +763,8 @@ class CasaScoresScreen extends Screen {
       return `<div class="cz-post"><span class="when">${esc(p.posted)}</span><a href="${esc(p.post_url)}" target="_blank" rel="noopener">@${esc(p.handle)}</a>${hit}${p.note ? `<span class="note">${esc(p.note)}</span>` : ''}</div>`;
     }).join('');
     return `
-      <div class="cz-report">
-        <h3>${esc(this._copy('insta_report_title') || '🤖 Auto-check report')}</h3>
+      <details class="cz-report">
+        <summary style="margin:0;">${esc(this._copy('insta_report_title') || '🤖 Auto-check report')}${last && last.problem ? ' ⚠' : ''}</summary>
         <div class="cz-hint">${esc(this._copy('insta_report_hint'))}</div>
         ${last ? `<div class="cz-hint" style="opacity:0.9;">${esc(this._copy('insta_auto', { when: last.started, posts: last.posts_read, found: last.scores_found }))}</div>`
                : `<div class="cz-hint">${esc(this._copy('insta_report_never') || 'The auto-check hasn\'t run yet.')}</div>`}
@@ -773,26 +772,21 @@ class CasaScoresScreen extends Screen {
         ${runs.length ? `<details><summary>${esc(this._copy('insta_report_runs') || 'Last runs')} · ${runs.length}</summary>
           <div style="overflow-x:auto;"><table class="cz-runs"><tr><th>Ran</th><th>Games</th><th>Clubs</th><th>Posts</th><th>Found</th><th>Problem</th></tr>${runRows}</table></div></details>` : ''}
         <details><summary>${esc(this._copy('insta_report_posts', { n: posts.length }) || `Posts read · ${posts.length}`)}</summary>${postRows || '<div class="cz-hint">None yet.</div>'}</details>
-        ${this._instaRow()}
-      </div>`;
+      </details>`;
   }
 
-  // 📸 every team on the schedule, by division, plus open-all for the
-  // clubs still owing a score (mig 699).
-  _instaRow() {
+  // 📸 only the clubs still owing a score (in the division picked): one
+  // open-all for them and who has no handle (mig 699).  Owner 2026-11-09:
+  // a club whose scores we already have is never offered here (mig 1188 —
+  // the every-team row is gone; each game card's 📸 stays).
+  _instaNeeded() {
     const esc = (t) => this.escapeHtml(t);
-    const teams = (this.data.teams || []).filter(t => !this.division || t.division_label === this.division);
-    if (!teams.length) return '';
-    const divs = [...new Set(teams.map(t => t.division_label))];
     const waiting = this._waitingClubs();
+    const name = (id) => { const t = (this.data.teams || []).find(x => x.club_id === id); return t ? t.name : ''; };
     const withH = waiting.filter(id => this._insta(id));
-    const missing = waiting.filter(id => !this._insta(id)).map(id => (teams.find(t => t.club_id === id) || {}).name).filter(Boolean);
-    return `
-      <div class="cz-sec">📸 Instagram</div>
-      ${withH.length ? `<button class="cz-btn sm alt" data-insta-all>${esc(this._copy('insta_open_all', { n: withH.length }) || `📸 Open all ${withH.length}`)}</button>` : ''}
-      ${missing.length ? `<div class="cz-hint">${esc(this._copy('insta_missing', { clubs: missing.join(', ') }))}</div>` : ''}
-      <div class="cz-hint">${esc(this._copy('insta_popups'))}</div>
-      ${divs.map(d => `<div class="cz-hint" style="margin-bottom:0;"><b>${esc(d)}</b></div><div class="cz-igs">${teams.filter(t => t.division_label === d).map(t => this._igLink(t.club_id, t.name)).join('')}</div>`).join('')}`;
+    const missing = waiting.filter(id => !this._insta(id)).map(name).filter(Boolean);
+    return `${withH.length ? `<button class="cz-btn sm alt" data-insta-all title="${esc(this._copy('insta_popups'))}">${esc(this._copy('insta_open_all', { n: withH.length }) || `📸 Open all ${withH.length}`)}</button>` : ''}
+      ${missing.length ? `<span class="cz-hint" style="margin:0;">${esc(this._copy('insta_missing', { clubs: missing.join(', ') }))}</span>` : ''}`;
   }
 
   _game(f) {
@@ -820,7 +814,7 @@ class CasaScoresScreen extends Screen {
     const key = `${f.id}:${clubId}`;
     const open = this.more.has(key);
     const withPhone = tagged.filter(c => c.phone).map(c => c.id), withEmail = tagged.filter(c => c.email).map(c => c.id);
-    const allBtns = tagged.length > 1 ? `<span style="margin-left:auto; display:flex; gap:6px;">
+    const allBtns = tagged.length > 1 ? `<span style="display:flex; gap:6px; padding:4px 0;">
         <button class="cz-btn sm" data-ask="sms" data-fixture="${f.id}" data-contacts="${withPhone.join(',')}" ${withPhone.length ? '' : 'disabled'}>💬 Text all ${withPhone.length}</button>
         <button class="cz-btn sm alt" data-ask="email" data-fixture="${f.id}" data-contacts="${withEmail.join(',')}" ${withEmail.length ? '' : 'disabled'}>✉️ Email all ${withEmail.length}</button></span>` : '';
     const person = (c, onCard) => {
@@ -840,11 +834,16 @@ class CasaScoresScreen extends Screen {
                    : `<button class="cz-btn sm ghost" data-score-role="manager" data-contact="${c.id}" title="Show on the game cards">＋ card</button>`}
         </div>`;
     };
+    // Card shows ONE person (the ★, else the first tagged); the rest of the
+    // tagged, Text/Email all and the untagged sit behind "more" (2026-11-09).
+    const first = tagged.find(c => c.score_role === 'main') || tagged[0];
+    const rest = tagged.filter(c => c !== first);
+    const nMore = rest.length + others.length;
     return `
-      <div class="cz-team">${head(allBtns)}
-        ${tagged.length ? tagged.map(c => person(c, true)).join('') : `<div class="cz-hint">${esc(this._copy('scores_no_contact') || 'Nobody tagged for scores yet.')}</div>`}
-        ${others.length ? `<button class="cz-btn sm ghost" data-more="${key}" style="margin-top:2px;">${open ? '▾ Hide' : `▸ ${others.length} more at this club`}</button>` : ''}
-        ${open ? others.map(c => person(c, false)).join('') : ''}
+      <div class="cz-team">${head()}
+        ${first ? person(first, true) : `<div class="cz-hint">${esc(this._copy('scores_no_contact') || 'Nobody tagged for scores yet.')}</div>`}
+        ${nMore ? `<button class="cz-btn sm ghost" data-more="${key}" style="margin-top:2px;">${open ? '▾ Hide' : `▸ ${nMore} more at this club`}</button>` : ''}
+        ${open ? `${allBtns}${rest.map(c => person(c, true)).join('')}${others.map(c => person(c, false)).join('')}` : ''}
       </div>`;
   }
 }
