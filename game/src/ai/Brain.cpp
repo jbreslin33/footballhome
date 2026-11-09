@@ -41,6 +41,14 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y, Format
     for (std::size_t i = 0; i < n; ++i) index_in_team_[i] = count[setup_.team_of_slot[i]]++;
     spec_[0] = home.valid(count[0]) ? std::move(home) : builtinFormation(count[0]);
     spec_[1] = away.valid(count[1]) ? std::move(away) : builtinFormation(count[1]);
+    // G5.68 (§8.169): a formation's base.y is across the pitch as the side attacks
+    // (club board x: left → right, mapClubPosition). Home attacks +x, so its left is
+    // -y (three.js z = y); away attacks -x, so its left is +y — its shape is the home
+    // shape turned 180°, y mirrored as well as x. Every spot reads base.y as world y,
+    // so the away side's is mirrored once here. Unmirrored, the away side played as a
+    // reflection: its right-back on its own left, against our right-back (found by the
+    // trainer's copy to the board, footballhome-3c).
+    for (auto& p : spec_[1].positions) p.base.y = -p.base.y;
     role_of_slot_.resize(n);
     for (std::size_t i = 0; i < n; ++i) {
         const auto& pos = spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]];

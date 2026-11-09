@@ -7445,3 +7445,24 @@ with it. The copy carries:
 The 📋 Copy to our tactics button sits in the freeze beside ⏭ Next pass and POSTs to
 `/api/tactic-plans/copies` (club session, footballhome-3c). That endpoint always adds a fresh state,
 so nothing authored is overwritten. The endpoint went live in club commit 5092f607 (mig 1202) and the button is on. The reply names the plan ("Copied to our tactics: 4-2-3-1 v 4-3-3, high block"). The copy lands as a 📋 step under the plan's root, found with the board's "Ours:" formation dropdown. Concepts with no fitting job kind (11 recover without a target) come back as skipped and are counted on the button.
+
+### 8.169 G5.68 — the away side turned 180°, not reflected (no migration)
+
+Found by the trainer's first copy to the board (footballhome-3c, state 84). Ours came out right
+(Arsenal 2 at x 74, 3 at 23). Theirs came out with West Ham's right side on our right: 2 at 84,
+7 at 79, so our right-back met their right winger. The copy transforms all 22 men one way, so the
+mirror was in the engine.
+
+A formation's `base.y` is across the pitch as the side attacks (the club board's x, left → right,
+`mapClubPosition`). Every spot reads it as world y, but the away side attacks −x, so its left is +y.
+Its shape must be the home shape turned 180°: x and y both mirrored. Only x was (the spot tables
+are by distance from our own line). So the away side played as a reflection, with its right-back on
+its own left. Ends never swap, and the old `anchorFor` (which had the same flaw) has no callers.
+
+The change: `Brain`'s constructor negates the away side's `base.y` once. Nothing else reads a
+formation's y.
+
+Effect: the away side's men stand on the flanks their numbers say, so facing sides meet (our 2 v
+their 11). The real tables are side-symmetric, so the realism numbers barely move (8 × 90 v §8.164):
+shots 9.3 → 9.8, goals 2.00 → 1.56 (noise), box 0-18 wide 1.63 → 1.80, front man 10-20 4+ m short
+32% → 32%. Both goldens re-locked.
