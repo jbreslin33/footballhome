@@ -17,13 +17,12 @@
 #include "persistence/FormationStore.hpp"
 #include "server/GameServer.hpp"
 #include "server/MatchSetup.hpp"
+#include "server/Rooms.hpp"
 
-#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <tuple>
 #include <string>
-#include <thread>
 
 namespace {
 
@@ -79,8 +78,32 @@ int main() {
     tcfg.port = static_cast<std::uint16_t>(std::atoi(envOr("GAME_PORT", "9200")));
     net::ws::WebSocketTransport transport{tcfg, &verifier};
 
-    server::GameServer server{cfg, transport};
-    if (speed > 0) server.setSpeedPct(static_cast<std::uint16_t>(speed * 100));
+    // Tactics trainer step 2 (server/Rooms.hpp): the live match is room 0; a practice
+    // link opens a room of the viewer's own — two PL sides from a goal kick, paused.
+    const server::GameServer::Config base = cfg;
+    std::uint64_t practice_n = 0;
+    auto practice = [&base, &practice_n](const server::PracticeAsk& ask) -> std::optional<server::GameServer::Config> {
+        if (!base.db) return std::nullopt;
+        server::GameServer::Config pc = base;
+        const std::string hn = ask.home.empty() ? base.roster_home.name : ask.home;
+        const std::string an = ask.away.empty() ? base.roster_away.name : ask.away;
+        if (hn == an) return std::nullopt;
+        auto home = persistence::loadDemoTeam(*base.db, hn);
+        auto away = persistence::loadDemoTeam(*base.db, an);
+        if (!home || !away) return std::nullopt;
+        for (auto [team, spec] : {std::pair{&*home, &pc.formation_home}, std::pair{&*away, &pc.formation_away}})
+            if (!team->formation_code.empty())
+                if (auto f = persistence::loadFormation(*base.db, team->formation_code)) *spec = std::move(*f);
+        pc.roster_home = std::move(*home);
+        pc.roster_away = std::move(*away);
+        pc.practice = true;
+        pc.goal_kick_team = ask.goal_kick == "home" ? 0 : 1;
+        ++practice_n;
+        pc.match_id = base.match_id * 1000 + practice_n;
+        pc.match_seed = base.match_seed + practice_n;   // each practice match its own noise
+        return pc;
+    };
+    server::RoomRouter rooms{transport, cfg, static_cast<std::uint16_t>(speed > 0 ? speed * 100 : 0), practice};
 
     if (!transport.start()) {
         std::fprintf(stderr, "fh-game: failed to bind %s:%u\n",
@@ -88,48 +111,10 @@ int main() {
         return 1;
     }
 
-    std::printf("fh-game: match %llu, %u slots, port %u, speed %dx\n",
+    std::printf("fh-game: match %llu, %u slots, port %u, speed %dx, practice rooms on\n",
                 static_cast<unsigned long long>(cfg.match_id),
                 cfg.slot_count, transport.boundPort(), speed);
     std::fflush(stdout);  // container logs must see the boot line immediately
 
-    using clock = std::chrono::steady_clock;
-    const auto tick_period =
-        std::chrono::microseconds{1'000'000 / core::kTickRate};
-    auto next = clock::now();
-
-    for (;;) {
-        // Drain the socket right up to the tick boundary, then advance.
-        transport.poll(/*timeout_ms=*/0);
-        // Paused (G4.61): no ticks; a frozen snapshot every 200 ms keeps
-        // the clients' watchdogs quiet; the socket is drained meanwhile.
-        if (speed > 0 && server.speedPct() == 0) {
-            transport.poll(/*timeout_ms=*/200);
-            server.heartbeat();
-            next = clock::now();
-            continue;
-        }
-        server.tickOnce();
-
-        if (speed > 0) {
-            // The live speed: the gap between ticks stretches (slow motion)
-            // or shrinks (fast forward); each tick is the same tick.
-            next += tick_period * 100 / server.speedPct();
-            const auto now = clock::now();
-            if (next > now) {
-                // Wait on the socket, not a sleep: at 5 % a tick is 667 ms
-                // away, and the coach's next tap must land now. A speed
-                // change re-times the next tick.
-                const std::uint16_t was = server.speedPct();
-                for (auto t = clock::now(); t < next; t = clock::now()) {
-                    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(next - t).count();
-                    transport.poll(static_cast<int>(ms > 0 ? ms : 1));
-                    if (server.speedPct() != was) { next = clock::now(); break; }
-                }
-            } else {
-                next = now;  // fell behind — don't try to "catch up" with a burst
-            }
-        }
-        // speed == 0: free-run (headless calibration / fast-forward).
-    }
+    for (;;) rooms.step();
 }

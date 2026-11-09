@@ -86,6 +86,7 @@ target_link_libraries(game_persistence PUBLIC game_ai PkgConfig::PQXX)
 # ── game_server + daemon (G0.4) ─────────────────────────────────────────
 add_library(game_server STATIC
   src/server/GameServer.cpp
+  src/server/Rooms.cpp
 )
 target_link_libraries(game_server PUBLIC game_ai game_core game_net game_ws)
 

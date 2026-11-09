@@ -24,8 +24,18 @@
         return;
       }
       const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+      // Tactics trainer step 2: a trainer link (game.html?trainer=1&home=…&away=…&gk=…)
+      // opens a room of this viewer's own on the same socket path — the live match is
+      // untouched (game/src/server/Rooms.hpp).
+      const q = new URLSearchParams(location.search);
+      let path = '/game';
+      if (q.get('trainer') === '1') {
+        const p = new URLSearchParams({ trainer: '1' });
+        for (const k of ['home', 'away', 'gk']) if (q.get(k)) p.set(k, q.get(k));
+        path += '?' + p.toString();
+      }
       this.ws = new WebSocket(
-        `${scheme}://${location.host}/game`,
+        `${scheme}://${location.host}${path}`,
         `fh-game.v2.bearer.${token}`
       );
       this.ws.binaryType = 'arraybuffer';

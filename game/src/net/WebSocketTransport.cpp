@@ -347,6 +347,7 @@ void WebSocketTransport::advanceHandshake(ClientState& c) {
     queueOutbound(c, std::span<const std::uint8_t>(
         reinterpret_cast<const std::uint8_t*>(resp.data()), resp.size()));
     c.claims        = *claims_opt;
+    c.request_path  = pr.request.request_path;
     c.authenticated = true;
     c.phase         = Phase::Open;
 
@@ -471,6 +472,13 @@ void WebSocketTransport::disconnect(ClientId cid) {
     const auto it = id_to_fd_.find(cid);
     if (it == id_to_fd_.end()) { return; }
     queueClose(it->second);
+}
+
+std::string WebSocketTransport::requestPath(ClientId id) const {
+    const auto it = id_to_fd_.find(id);
+    if (it == id_to_fd_.end()) return {};
+    const auto cit = clients_.find(it->second);
+    return cit == clients_.end() ? std::string{} : cit->second.request_path;
 }
 
 std::size_t WebSocketTransport::clientCount() const {

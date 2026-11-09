@@ -390,6 +390,19 @@
     `style="border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;` +
     `background:#ffcc00;color:#0b1c3d;">⚽ Kick off</button>`;
   document.body.appendChild(matchBar);
+  // Tactics trainer step 2: a trainer room (game.html?trainer=1) is this viewer's own —
+  // two PL sides from a goal kick, paused; the live match carries on without him.
+  const trainer = new URLSearchParams(location.search).get('trainer') === '1';
+  if (trainer) {
+    const badge = document.createElement('div');
+    badge.className = 'game-only';
+    badge.textContent = 'Tactics trainer · from a goal kick · only you see this';
+    badge.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 4px);' +
+      'z-index:21;background:#7fd7ff;color:#0b1c3d;border-radius:12px;padding:2px 10px;font:700 11px system-ui,sans-serif;';
+    document.body.appendChild(badge);
+    matchBar.querySelector('[data-mb="go"]').textContent = '⚽ Goal kick';
+    matchBar.querySelector('[data-mb="go"]').title = 'Start this match from a goal kick';
+  }
   const mbHome = matchBar.querySelector('[data-mb="home"]');
   const mbAway = matchBar.querySelector('[data-mb="away"]');
   const mbGo = matchBar.querySelector('[data-mb="go"]');

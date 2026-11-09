@@ -85,6 +85,10 @@ public:
     void        disconnect(ClientId)                          override;
     std::size_t clientCount() const                           override;
 
+    // The HTTP request target the client upgraded on ("/game?trainer=1&…"); empty if
+    // the client is unknown. Rooms route on it (tactics trainer step 2).
+    std::string requestPath(ClientId) const;
+
 private:
     enum class Phase : std::uint8_t {
         Handshaking,   // reading HTTP Upgrade request bytes
@@ -101,6 +105,7 @@ private:
         std::vector<std::uint8_t> outbound;
         std::size_t               outbound_pos = 0;   // bytes already flushed to socket
         auth::JwtClaims           claims;    // populated after successful handshake
+        std::string               request_path;   // the upgrade's request target
     };
 
     // --- socket ops ---------------------------------------------------

@@ -69,6 +69,11 @@ public:
         // G5.35 (2.1): every team a match can be made of (TEAM_LIST).
         std::vector<std::string> team_names;
         std::vector<persistence::ActConcept> acts;   // tactics trainer (mig 1199)
+        // Tactics trainer step 2 (Rooms.hpp): a practice room — whoever is in it runs it
+        // (speed, pause, teams), and every match in it starts frozen on a goal kick.
+        bool practice = false;
+        std::uint8_t goal_kick_team = 1;   // whose goal kick (0 home, 1 away)
+        std::uint32_t practice_preroll_ticks = 300;   // 10 s with the taker held: both sides take their shape
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -97,6 +102,8 @@ public:
 private:
     // G5.35: build the match from cfg_ (formations, rosters) at kick-off.
     void startMatch();
+    void practiceStart();   // the goal kick, the pre-roll, then paused
+    void applyOrders(std::uint8_t slot, const ai::Orders& o);
     void onConnect(ClientId id, const auth::JwtClaims& claims);
     void onDisconnect(ClientId id);
     void onMessage(ClientId id, std::span<const std::uint8_t> bytes);

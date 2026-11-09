@@ -46,6 +46,7 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
     }
 
     startMatch();
+    if (cfg_.practice) practiceStart();
 }
 
 // G5.35: the match from cfg_ — a fresh World and Brain on its formations
@@ -160,6 +161,7 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
     admin = admin ||
         claims.role == "super" || claims.role == "admin" ||
         claims.role == "club" || claims.role == "system";
+    admin = admin || cfg_.practice;   // a practice room is its viewer's own (Rooms.hpp)
     if (admin) admins_.emplace(id, true);
 
     HelloFrame hello;
@@ -326,6 +328,11 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             last_orders_.clear();
             last_events_.clear();
             startMatch();
+            if (cfg_.practice) {   // a new practice match: its goal kick, paused
+                practiceStart();
+                const Bytes sp = encodeFrame(FrameType::Speed, encodeSpeed(SpeedFrame{speed_pct_}));
+                for (const auto& [cid, _] : clients_) transport_.send(cid, sp);
+            }
             broadcastTeams();
             broadcastRoster();
             const Bytes snap = buildSnapshotFrame();
@@ -401,6 +408,37 @@ net::Bytes GameServer::buildSnapshotFrame() const {
     return encodeFrame(FrameType::Snapshot, encodeSnapshot(s));
 }
 
+void GameServer::applyOrders(std::uint8_t slot, const ai::Orders& o) {
+    world_.setIntent(slot, o.move);
+    // The brain aims every kick at its order's target (G5.29); a tackle or a dive has none.
+    const bool kick = o.action == core::Action::GroundKick || o.action == core::Action::ShortPass ||
+                      o.action == core::Action::LoftedKick || o.action == core::Action::Shot;
+    if (o.action != core::Action::None)
+        world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time, kick ? &o.target : nullptr, o.aim_z, o.die);
+}
+
+// Tactics trainer step 2: a practice match starts from a goal kick (Law 16) — the ball
+// in the kicking side's goal area, the taker held practice_preroll_ticks while every
+// other man takes the engine's own shape for it, then paused: the coach sees the
+// shape and plays it. Silent: nothing goes to clients until the room is shown.
+void GameServer::practiceStart() {
+    const std::uint8_t team = cfg_.goal_kick_team & 1;
+    const Fixed64 gx = world_.pitchHalfX() - Fixed64::fromFraction(11, 2);   // the goal area's front edge
+    world_.setDeadBall(core::MatchEventType::GoalKick, team, math::Vec3{team == 0 ? -gx : gx, Fixed64::zero(), Fixed64::zero()});
+    last_orders_.assign(cfg_.slot_count, ai::Orders{});
+    for (std::uint32_t t = 0; t < cfg_.practice_preroll_ticks; ++t) {
+        const int taker = world_.restartTeam() == team ? brain_.restartTaker(world_, team) : -1;
+        for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
+            ai::Orders o = brain_.ordersFor(slot, world_);
+            if (slot == taker) { o = ai::Orders{}; o.why = ai::Why::TakeRestart; }   // he waits for the coach
+            last_orders_[slot] = o;
+            applyOrders(slot, o);
+        }
+        last_events_ = world_.tick();
+    }
+    speed_pct_ = 0;
+}
+
 void GameServer::tickOnce() {
     // AI drives every slot no human holds (claims always override; a
     // released slot reverts to its brain next tick).
@@ -417,12 +455,7 @@ void GameServer::tickOnce() {
         }
         const ai::Orders o = brain_.ordersFor(slot, world_);
         last_orders_[slot] = o;
-        world_.setIntent(slot, o.move);
-        // The brain aims every kick at its order's target (G5.29); a tackle or a dive has none.
-        const bool kick = o.action == core::Action::GroundKick || o.action == core::Action::ShortPass ||
-                          o.action == core::Action::LoftedKick || o.action == core::Action::Shot;
-        if (o.action != core::Action::None)
-            world_.setAction(slot, o.action, o.carry_m, o.passTo(), o.first_time, kick ? &o.target : nullptr, o.aim_z, o.die);
+        applyOrders(slot, o);
     }
 
     last_events_ = world_.tick();

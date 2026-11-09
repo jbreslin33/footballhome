@@ -9,6 +9,7 @@
 #include "net/Codec.hpp"
 #include "net/Wire.hpp"
 #include "server/GameServer.hpp"
+#include "server/Rooms.hpp"
 
 #include <map>
 #include <vector>
@@ -294,6 +295,55 @@ FH_TEST(admin_sets_the_sim_speed_everyone_hears_it) {
     r.s.heartbeat();
     FH_EXPECT_EQ(r.s.world().tickCount(), tick);
     FH_EXPECT_EQ(framesOf(r.t.sent[200], FrameType::Snapshot).size(), snaps + 1);
+}
+
+// ── tactics trainer step 2: practice rooms (Rooms.hpp) ──────────────────
+
+FH_TEST(practice_link_parses) {
+    FH_EXPECT(!server::parsePracticeAsk("/game").has_value());
+    FH_EXPECT(!server::parsePracticeAsk("/game?trainer=0&home=Arsenal").has_value());
+    const auto a = server::parsePracticeAsk("/game?trainer=1&home=West%20Ham+United&away=Arsenal&gk=home");
+    FH_EXPECT(a.has_value());
+    FH_EXPECT(a->home == "West Ham United" && a->away == "Arsenal" && a->goal_kick == "home");
+    const auto b = server::parsePracticeAsk("/game?trainer=1");
+    FH_EXPECT(b.has_value() && b->home.empty() && b->goal_kick == "away");
+}
+
+FH_TEST(practice_room_starts_paused_on_their_goal_kick) {
+    FakeTransport t;
+    server::GameServer::Config cfg;
+    cfg.match_id = 9;
+    cfg.slot_count = 22;
+    cfg.practice = true;
+    cfg.goal_kick_team = 1;
+    server::GameServer s{cfg, t};
+    FH_EXPECT_EQ(s.speedPct(), 0);                  // frozen for the coach
+    FH_EXPECT_EQ(s.world().restartTeam(), 1);       // still their dead ball: the taker waited
+    FH_EXPECT(s.world().restartSpot().x.raw > 0);   // at the away goal (+x)
+    FH_EXPECT(s.world().tickCount() >= 300u);       // the shape had its 10 s
+    t.scriptConnect(100);                           // the viewer runs his own room
+    const auto hellos = framesOf(t.sent[100], FrameType::Hello);
+    FH_EXPECT(hellos.size() == 1u && (decodeHello(hellos[0])->capabilities & kCapAdmin));
+    FH_EXPECT_EQ(framesOf(t.sent[100], FrameType::ConceptLegend).size(), 1u);
+    // Played on, the keeper takes it (the engine's wait, then the kick): the ball is live.
+    bool live = false;
+    for (int i = 0; i < 600 && !live; ++i) { s.tickOnce(); live = s.world().restartTeam() == 0xFF; }
+    FH_EXPECT(live);
+}
+
+FH_TEST(room_transport_sends_only_to_its_members) {
+    FakeTransport real;
+    server::RoomTransport a{real}, b{real};
+    auth::JwtClaims c;
+    a.join(1, c);
+    b.join(2, c);
+    const Bytes x{1, 2, 3};
+    FH_EXPECT(a.send(1, x));
+    FH_EXPECT(!a.send(2, x));   // a client of another room
+    FH_EXPECT_EQ(real.sent[2].size(), 0u);
+    FH_EXPECT_EQ(a.clientCount(), 1u);
+    a.leave(1);
+    FH_EXPECT_EQ(a.clientCount(), 0u);
 }
 
 FH_TEST_MAIN()

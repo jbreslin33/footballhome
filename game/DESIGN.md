@@ -7351,3 +7351,45 @@ presser a side.
 
 Next: step 2, a practice match between two PL sides from their goal kick, separate from the live
 match.
+
+### 8.166 G5.65 — tactics trainer step 2: a practice match of your own (no migration)
+
+docs/tactics-trainer.md step 2: two Premier League sides from their goal kick, separate from the
+one live match.
+
+**One process, rooms.** The live match keeps its socket path and its clock. `server::RoomRouter`
+(Rooms.hpp) owns the real WebSocket transport and hands each client to a room by the request
+target it upgraded on (`WebSocketTransport::requestPath`):
+- `/game`: room 0, the live match, as before;
+- `/game?trainer=1&home=<team>&away=<team>&gk=home|away`: a new room of that viewer's own.
+
+Each room's GameServer sees a `RoomTransport` that sends to and closes its own members only, and
+each room ticks at its own speed (`RoomRouter::step`: a running room on its own next tick, a paused
+one on a 200 ms heartbeat). A practice room closes with its last viewer. At most 4 are open; a
+fifth link, or a team that is not in `game_demo_teams`, is refused. nginx's `location = /game`
+already passes the query, so there is no new container or route.
+
+**The practice match.** `GameServer::Config::practice`: whoever is in the room runs it (the admin
+capability, so the existing pause, speed and matchup controls work), and every match in it starts
+from a goal kick (Law 16). `practiceStart` puts the ball at the front of the kicking side's goal
+area and runs 300 ticks (10 s) with the taker held, so every other man takes the engine's own
+shape for it. Then the room is paused: the coach sees the shape and plays it. A new matchup in the
+room starts from its goal kick again. Teams and formations are the PL sides' own (as NEW_MATCH),
+with a seed of their own per room.
+
+**The link** (for the board's 🎮 3D view pill):
+`/game.html?trainer=1&home=<game_demo_teams.name>&away=<…>&gk=away`. Names are URL-encoded; left
+out, they are the live match's teams; `gk` defaults to away. The page shows a "Tactics trainer"
+badge and the matchup button reads "Goal kick".
+
+Not changed: the engine, the live match, the goldens. `GAME_SPEED=0` (flat out, never used live)
+now runs room 0 paced at 100%.
+
+Tests: the link parses (encoded names, defaults); a practice room starts paused on the away goal
+kick after its 10 s, its viewer has the admin capability and gets the concept legend, and played on
+the keeper takes it; a RoomTransport sends only to its own members. Smoke (a local fh-game on a
+spare port): `/game` live at 100%, a trainer link paused, Chelsea v Arsenal, match id 1001, admin;
+an unknown team refused; at 4× the room ticks.
+
+Next: step 3, freeze and step. Every man labelled on the pitch with his concept and target, step
+pass by pass, play on.
