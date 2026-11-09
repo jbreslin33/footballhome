@@ -195,7 +195,7 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
     const auto laws = restartLaws(db);
     const json opponentBase = out["opponent_base"];
     for (const auto& s : db->query(
-             "SELECT id, parent_state_id, ball_with, restart, (copied_from->'source')::text AS copied FROM tactic_states WHERE plan_id = $1::int "
+             "SELECT id, parent_state_id, ball_with, restart, CASE WHEN copied_from IS NOT NULL THEN (COALESCE(copied_from->'source', '{}'::jsonb) || jsonb_build_object('ours', copied_from->'ours', 'ball', copied_from->'ball'))::text END AS copied FROM tactic_states WHERE plan_id = $1::int "
              " ORDER BY parent_state_id IS NOT NULL, id", {planId})) {
         const std::string sid = s["id"].as<std::string>();
         json st = {{"id", s["id"].as<long long>()},
