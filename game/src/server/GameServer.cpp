@@ -431,7 +431,8 @@ void GameServer::applyOrders(std::uint8_t slot, const ai::Orders& o) {
 }
 
 // Tactics trainer step 2: a practice match starts from a goal kick (Law 16) — the ball
-// in the kicking side's goal area, the taker held practice_preroll_ticks while every
+// in the kicking side's goal area, the taker's kick held practice_preroll_ticks (he walks
+// to the ball; G5.69: holding all of him left the keeper on the spawn line) while every
 // other man takes the engine's own shape for it, then paused: the coach sees the
 // shape and plays it. Silent: nothing goes to clients until the room is shown.
 void GameServer::practiceStart() {
@@ -443,7 +444,7 @@ void GameServer::practiceStart() {
         const int taker = world_.restartTeam() == team ? brain_.restartTaker(world_, team) : -1;
         for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
             ai::Orders o = brain_.ordersFor(slot, world_);
-            if (slot == taker) { o = ai::Orders{}; o.why = ai::Why::TakeRestart; }   // he waits for the coach
+            if (slot == taker) o.action = core::Action::None;   // he walks to the ball and waits for the coach: no kick
             last_orders_[slot] = o;
             applyOrders(slot, o);
         }

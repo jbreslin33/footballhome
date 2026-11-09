@@ -11,6 +11,8 @@
 #include "server/GameServer.hpp"
 #include "server/Rooms.hpp"
 
+#include <cstdlib>
+#include <cstdio>
 #include <map>
 #include <vector>
 
@@ -321,6 +323,15 @@ FH_TEST(practice_room_starts_paused_on_their_goal_kick) {
     FH_EXPECT_EQ(s.world().restartTeam(), 1);       // still their dead ball: the taker waited
     FH_EXPECT(s.world().restartSpot().x.raw > 0);   // at the away goal (+x)
     FH_EXPECT(s.world().tickCount() >= 300u);       // the shape had its 10 s
+    {   // G5.69: the taker is the away keeper, by the ball (within 6 m), not on the spawn line
+        const auto& w = s.world();
+        int near = -1;
+        for (std::uint8_t i = 0; i < w.playerCount(); ++i) {
+            const auto dx = (w.player(i).pos.x - w.ball().pos.x).toDouble(), dy = (w.player(i).pos.y - w.ball().pos.y).toDouble();
+            if (dx * dx + dy * dy < 36.0) near = i;   // at the ball, or at his run-up
+        }
+        FH_EXPECT(near >= 11 && w.isKeeper(static_cast<std::uint8_t>(near)));
+    }
     t.scriptConnect(100);                           // the viewer runs his own room
     const auto hellos = framesOf(t.sent[100], FrameType::Hello);
     FH_EXPECT(hellos.size() == 1u && (decodeHello(hellos[0])->capabilities & kCapAdmin));

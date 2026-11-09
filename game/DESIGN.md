@@ -7466,3 +7466,12 @@ Effect: the away side's men stand on the flanks their numbers say, so facing sid
 their 11). The real tables are side-symmetric, so the realism numbers barely move (8 × 90 v §8.164):
 shots 9.3 → 9.8, goals 2.00 → 1.56 (noise), box 0-18 wide 1.63 → 1.80, front man 10-20 4+ m short
 32% → 32%. Both goldens re-locked.
+
+### 8.170 G5.69 — the trainer's goal kick: the keeper walks to the ball (no migration)
+
+Found by the trainer's second copy (footballhome-3c, state 85). The away keeper was at his spawn
+spot, out wide at midfield, with nobody within 9 m of the ball. `practiceStart` held the taker
+completely through the 10 s pre-roll (empty orders), so the keeper never left the spawn line. Now
+only his kick is held (`action = None`): he walks to the ball and waits for the coach. Test: after
+the pre-roll, the away keeper is within 6 m of the ball (in a run 4.6 m off it, at his run-up). The
+live match is not affected.
