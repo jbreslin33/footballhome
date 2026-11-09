@@ -2141,7 +2141,10 @@ class GameCenterScreen extends EventScreen {
   _planDefaultOpp() {
     const m = (this.matchups || []).find(x => x.id === this.matchupId);
     const code = m && m.opponentCode ? m.opponentCode : '4-3-3';
-    const f = (this.formations || []).find(x => x.code === code) || (this.formations || []).find(x => x.code === '4-3-3');
+    // A note's bare family ("3-5-2", "3-4-3") means its classic shape: the
+    // first formation of that family in sort order (3-5-2 (3-2), 3-4-3 (2-3)).
+    const fs = this.formations || [];
+    const f = fs.find(x => x.code === code) || fs.find(x => String(x.code).startsWith(`${code} (`)) || fs.find(x => x.code === '4-3-3');
     return f ? Number(f.id) : 0;
   }
 
