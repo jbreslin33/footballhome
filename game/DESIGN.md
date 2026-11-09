@@ -7423,3 +7423,25 @@ Next: step 4, copy a frozen moment to our tactics board (club API, one-way PL �
 trainer is as good as the engine's defending: the labels show only what it runs (block, press,
 chase, cover, recover). Marking, cover-shadow and traps are engine work, and the realism moles in
 §8.164 continue.
+
+### 8.168 G5.67 — tactics trainer step 4, the game half: copy a frozen moment (no migration)
+
+docs/tactics-trainer.md step 4 (owner: "except right to copy it over to … the event center"). This
+is the one bridge, PL → our 🎯 Tactics board, never back.
+
+`client.js trainerMoment()` builds the frozen frame in the plan frame of shared/tactics/
+TacticGeometry.hpp:
+- 0–100 from "us"'s view, x left → right as we attack, y 0 = our goal line, 68 × 105 m;
+- left/right as the 3D view shows it (three.js z = game y: attacking +x, left is −y);
+- each side's end from its keeper (ends swap at half time).
+
+"Us" is the side whose men carry concept labels, i.e. the side without the ball. "Them" is the side
+with it. The copy carries:
+- their 11 by formation position number (the ROSTER numbers);
+- ours with each man's concept id and target (the man he's acting on, if theirs);
+- the ball, and ball_with: their man on it, or within 2 m of a loose ball;
+- team names. The club server resolves formations from `game_demo_teams.formation_code`.
+
+The 📋 Copy to our tactics button sits in the freeze beside ⏭ Next pass and POSTs to
+`/api/tactic-plans/copies` (club session, footballhome-3c). That endpoint always adds a fresh state,
+so nothing authored is overwritten. The button stays off (`COPY_READY`) until the endpoint is live.

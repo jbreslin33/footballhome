@@ -77,6 +77,7 @@
   // where), saved to the club DB; the match re-reads the teams. G5.23: the
   // PLAYER (made-up attributes) and KNOWLEDGE (concept ratings) tabs are gone.
   let teams = null;            // { home, away } from the TEAMS frame
+  let lastSnap = null;         // the latest SNAPSHOT (trainer step 4 copies the frozen one)
   let isAdmin = false;         // HELLO capability bit 3
   let idTeams = null;          // [home, away] roster payloads: slot numbers
   // Each on-pitch figure: its formation slot's shirt number + last name.
@@ -456,7 +457,9 @@
     `<span data-speed-label style="min-width:44px;text-align:right;">1×</span>` +
     `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>` +
     // Trainer step 3: from the freeze, play the next pass (at the slider's speed) and freeze again.
-    `<button type="button" data-speed="step" title="Play the next pass, then freeze" hidden style="${spPill}background:#7fd7ff;color:#0b1c3d;">⏭ Next pass</button>`;
+    `<button type="button" data-speed="step" title="Play the next pass, then freeze" hidden style="${spPill}background:#7fd7ff;color:#0b1c3d;">⏭ Next pass</button>` +
+    // Trainer step 4: this frozen moment onto our 🎯 Tactics board (one way: PL → board).
+    `<button type="button" data-speed="copy" title="Copy this moment to our tactics board" hidden style="${spPill}background:#fff;color:#0b1c3d;">📋 Copy to our tactics</button>`;
   document.body.appendChild(speedBar);
   const speedRange = speedBar.querySelector('input');
   const speedLabel = speedBar.querySelector('[data-speed-label]');
@@ -466,6 +469,7 @@
     speedLabel.textContent = fmtSpeed(simSpeed);
     speedBar.querySelector('[data-speed="pause"]').textContent = simSpeed === 0 ? '▶' : '⏸';
     speedBar.querySelector('[data-speed="step"]').hidden = simSpeed !== 0;   // from a freeze only
+    speedBar.querySelector('[data-speed="copy"]').hidden = simSpeed !== 0 || !trainer || !COPY_READY;
     if (simSpeed > 0) {
       let k = 0;   // nearest stop
       SPEEDS.forEach((s, i) => { if (Math.abs(s - simSpeed) < Math.abs(SPEEDS[k] - simSpeed)) k = i; });
@@ -480,7 +484,8 @@
   speedBar.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-speed]');
     if (!b) return;
-    if (b.dataset.speed === 'step') net.step(SPEEDS[Number(speedRange.value)] || 100);
+    if (b.dataset.speed === 'copy') copyToTactics(b);
+    else if (b.dataset.speed === 'step') net.step(SPEEDS[Number(speedRange.value)] || 100);
     else if (b.dataset.speed === 'live') net.setSpeed(100);
     else if (b.dataset.speed === 'down' || b.dataset.speed === 'up') {
       // One stop along the slider (from the resume speed while paused).
@@ -489,6 +494,87 @@
     } else if (simSpeed === 0) net.setSpeed(resumeSpeed || 100);
     else { resumeSpeed = simSpeed; net.setSpeed(0); }
   });
+
+  // Off until the club's POST /api/tactic-plans/copies is live (footballhome-3c builds it).
+  const COPY_READY = false;
+  // ── Trainer step 4 — owner: "except right to copy it over to … the event center".
+  // The frozen PL moment as a plan step on our 🎯 Tactics board: the side WITHOUT the
+  // ball is "us" (its men carry the concepts), the side with it "them". Plan frame
+  // (shared/tactics/TacticGeometry.hpp): 0–100 from our view, x left → right as we
+  // attack, y 0 = our goal line, 68 × 105 m. One way: nothing comes back to the engine.
+  function trainerMoment() {
+    const s = lastSnap;
+    if (!s || !s.players || !hello) return null;
+    const n = s.players.length, half = Math.floor(n / 2);
+    const teamOf = (i) => (i < half ? 0 : 1);
+    // Which end each side defends: its keeper's side of halfway (ends swap at half time).
+    const goalSign = [0, 1].map((t) => {
+      let sx = 0, c = 0;
+      for (let i = 0; i < n; i++) if (teamOf(i) === t && renderer.figures && renderer.figures[i] && renderer.figures[i].keeper) { sx += s.players[i].x; c++; }
+      if (!c) for (let i = 0; i < n; i++) if (teamOf(i) === t) { sx += s.players[i].x; c++; }
+      return sx < 0 ? -1 : 1;
+    });
+    // "Us" = the side with concept labels (out of possession); else the side not on the ball.
+    let us = -1;
+    if (brainEntries) for (let i = 0; i < n && us < 0; i++) if (brainEntries[i] && brainEntries[i].concept !== 255) us = teamOf(i);
+    if (us < 0 && s.ball.owner !== 255) us = 1 - teamOf(s.ball.owner);
+    if (us < 0) return null;
+    const them = 1 - us, gx = 52.5 * goalSign[us];
+    const xy = (px, py) => {
+      const fromGoal = Math.abs(px - gx);                     // metres off our goal line
+      const left = goalSign[us] < 0 ? -py : py;               // metres left of centre: attacking +x, left is -y (three.js: z = y)
+      const cl = (v) => Math.max(0, Math.min(100, Math.round(v * 10) / 10));
+      return { x: cl((34 - left) / 68 * 100), y: cl(fromGoal / 105 * 100) };
+    };
+    const num = (i) => (roster[i] && roster[i].number) || null;
+    let ballWith = null;
+    if (s.ball.owner !== 255 && teamOf(s.ball.owner) === them) ballWith = num(s.ball.owner);
+    else {
+      let best = 4;   // their man within 2 m of a loose ball
+      for (let i = 0; i < n; i++) if (teamOf(i) === them) {
+        const d = (s.players[i].x - s.ball.x) ** 2 + (s.players[i].y - s.ball.y) ** 2;
+        if (d < best) { best = d; ballWith = num(i); }
+      }
+    }
+    const opponents = [], ours = [];
+    for (let i = 0; i < n; i++) {
+      const p = xy(s.players[i].x, s.players[i].y);
+      if (!num(i)) continue;
+      if (teamOf(i) === them) opponents.push({ number: num(i), x: p.x, y: p.y });
+      else {
+        const e = brainEntries && brainEntries[i];
+        const concept = e && e.concept !== 255 ? e.concept : null;
+        const target = e && e.other !== 255 && teamOf(e.other) === them ? num(e.other) : null;
+        ours.push({ position_id: num(i), x: p.x, y: p.y, concept_id: concept, target });
+      }
+    }
+    const names = [(teams && teams.home) || '', (teams && teams.away) || ''];
+    const mm = String(Math.floor(s.match.clockSec / 60)).padStart(2, '0'), ss = String(s.match.clockSec % 60).padStart(2, '0');
+    return {
+      source: { home: names[0], away: names[1], clock: `${mm}:${ss}`, period: s.match.period, match_id: hello.matchId },
+      us_team: names[us], them_team: names[them], moment: 'out_of_possession',
+      ball_with: ballWith, ball: xy(s.ball.x, s.ball.y), opponents, ours,
+    };
+  }
+  async function copyToTactics(btn) {
+    const body = trainerMoment();
+    if (!body) { btn.textContent = '📋 Nothing to copy yet'; return; }
+    btn.disabled = true;
+    const was = '📋 Copy to our tactics';
+    btn.textContent = '📋 Copying…';
+    try {
+      const r = await fetch('/api/tactic-plans/copies', { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+                                                         body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      btn.textContent = '📋 Copied ✓';
+      if (j.url) window.open(j.url, '_blank', 'noopener');
+    } catch (e) {
+      btn.textContent = '📋 ' + (e.message || 'Copy failed');
+    } finally {
+      setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 4000);
+    }
+  }
 
   // ── Replay (G4.62) — James: "not seeing replay or rewind more
   // importantly" / "slider bar needs buttons on the side to increment".
@@ -644,6 +730,7 @@
       }, 1000 / (h.tickRate || 30));
     },
     onSnapshot(s) {
+      lastSnap = s;
       renderer.pushSnapshot(s);
       if (s.match && boardEl) {
         const m = s.match;
