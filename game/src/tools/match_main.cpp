@@ -67,7 +67,7 @@ struct Stats {
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
     long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {};   // §8.160: mates by zone, by the ball's zone
-    long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
+    long bx_gf[2][2] = {}, bx_g[2][2][5] = {}; long bx_lf[6][2] = {}, bx_li[6][2] = {}, bx_lst[6][2] = {}; double bx_lsd[6][2] = {}; long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
      long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
@@ -817,11 +817,27 @@ int main(int argc, char** argv) {
                 ++S.bx_f[bz];
                 const double since = (static_cast<long>(k) - dead_last) / 30.0; const int sb = since < 3 ? 0 : since < 6 ? 1 : 2;   // §8.162
                 ++S.bx_sf[bz][sb];
+                int dpi = 0;   // §8.162: their line (second-last, keeper in, or the ball) inside 16 m
+                {   double d1 = 1e9, d2 = 1e9;
+                    for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != a) { const double ptl = hx - W.player(j).pos.x.toDouble() * sg; if (ptl < d1) { d2 = d1; d1 = ptl; } else if (ptl < d2) d2 = ptl; }
+                    dpi = std::min(d2, tl) < 16 ? 1 : 0; }
+                ++S.bx_lf[bz][dpi];
+                if (bz == 2 || bz == 3) {   // §8.163: ours by metres short of their line (benchmarks_tracking_linegaps.py)
+                    double d1 = 1e9, d2 = 1e9;
+                    for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != a) { const double ptl = hx - W.player(j).pos.x.toDouble() * sg; if (ptl < d1) { d2 = d1; d1 = ptl; } else if (ptl < d2) d2 = ptl; }
+                    const double L = std::min(d2, tl);
+                    ++S.bx_gf[bz - 2][dpi];
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        if (W.isKeeper(j) || W.player(j).team != a) continue;
+                        const double gp = hx - W.player(j).pos.x.toDouble() * sg - L;
+                        ++S.bx_g[bz - 2][dpi][gp < 0 ? 0 : gp < 2 ? 1 : gp < 5 ? 2 : gp < 10 ? 3 : 4];
+                    }
+                }
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j) || W.player(j).team != a) continue;
                     const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
                     if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) {
-                        ++S.bx_in[bz]; ++S.bx_si[bz][sb];
+                        ++S.bx_in[bz]; ++S.bx_si[bz][sb]; ++S.bx_li[bz][dpi]; ++S.bx_lst[bz][dpi]; S.bx_lsd[bz][dpi] += ptl;
                         const int r2 = static_cast<int>(((k / 6) + 6) % 16);   // §8.162: 10 frames (2 s) back
                         if (rk[r2] == static_cast<long>(k) - 60 && j < 32) {
                             ++S.bx_i2[bz];
@@ -1155,6 +1171,21 @@ int main(int argc, char** argv) {
             static const double ri[6][3] = {{5.24, 4.06, 2.97}, {3.21, 2.65, 2.03}, {2.52, 2.05, 0.86}, {1.46, 0.92, 0.70}, {0.25, 0.29, 0.11}, {0.16, 0.15, 0.07}};
             std::printf("\n     in the box by seconds since the ball was dead <3 / 3-6 / 6+, %% of frames (real) in box (real):");
             for (int z = 0; z < 6; ++z) if (S.bx_f[z]) { std::printf(" %s", bzn[z]); for (int q = 0; q < 3; ++q) std::printf(" %.0f%% (%.0f) %.2f (%.2f)%s", 100.0 * S.bx_sf[z][q] / S.bx_f[z], rf[z][q], static_cast<double>(S.bx_si[z][q]) / std::max(1L, S.bx_sf[z][q]), ri[z][q], q < 2 ? " /" : ";"); }
+        }
+        {   // §8.163: real DFL benchmarks_tracking_box.py (G5.53 lines): by their line inside 16 m / 16+, % of frames and in the box
+            static const double rf[6] = {97, 97, 35, 38, 3, 3}, ri[6][2] = {{0.40, 3.54}, {0.15, 2.37}, {0.15, 2.71}, {0.09, 1.97}, {0.05, 2.39}, {0.03, 1.62}};
+            std::printf("\n     in the box by their line inside 16 m: %% of frames (real), in the box (real), they stand m off the line | 16+: in the box (real):");
+            for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.0f%% (%.0f) %.2f (%.2f) %.1f m | %.2f (%.2f);", bzn[z], 100.0 * S.bx_lf[z][1] / S.bx_f[z], rf[z],
+                static_cast<double>(S.bx_li[z][1]) / std::max(1L, S.bx_lf[z][1]), ri[z][1], S.bx_lsd[z][1] / std::max(1L, S.bx_lst[z][1]), static_cast<double>(S.bx_li[z][0]) / std::max(1L, S.bx_lf[z][0]), ri[z][0]);
+        }
+        {   // §8.163: real DFL benchmarks_tracking_linegaps.py
+            static const double rg[2][2][5] = {{{0.15, 0.60, 1.06, 1.38, 6.72}, {0.35, 1.14, 1.50, 1.61, 5.25}}, {{0.09, 0.52, 1.09, 1.43, 6.79}, {0.18, 0.94, 1.41, 1.61, 5.75}}};
+            std::printf("\n     ours by metres short of their line, past / 0-2 / 2-5 / 5-10 / 10+ (real):");
+            for (int z = 0; z < 2; ++z) for (int d = 1; d >= 0; --d) if (S.bx_gf[z][d]) {
+                std::printf(" ball 18-35 %s line %s:", z ? "wide" : "centre", d ? "<16" : "16+");
+                for (int q = 0; q < 5; ++q) std::printf(" %.2f (%.2f)", static_cast<double>(S.bx_g[z][d][q]) / S.bx_gf[z][d], rg[z][d][q]);
+                std::printf(";");
+            }
         }
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};

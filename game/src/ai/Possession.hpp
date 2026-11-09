@@ -75,6 +75,7 @@ struct PossessionParams {
     math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{}, box_line_deep_out_m{};   // G5.61: deep until back past out_m
     bool box_spot_near = true;   // G5.60: the box spots go to the runners nearest them (physics.box.spot_near)
     bool box_from_pass = true;   // G5.60: the zone our pass is going to (physics.box.from_pass)
+    math::Fixed64 line_usual[14]{}, follow_line_m{};   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
     bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)
     bool box_stay = true;   // G5.61: a box runner in the box stays one when a redraw rolls fewer (physics.box.stay)
     bool box_spell_roll = true;   // G5.61: one roll a spell for how many run (box and channel), each zone reads it (physics.box.spell_roll)
@@ -119,7 +120,7 @@ public:
     Possession() { params_.configure(core::ModelParams{}); }   // the real tables, no DB needed
     void configure(const core::ModelParams& p) { params_.configure(p); }
     const PossessionParams& params() const { return params_; }
-    math::Vec2 spot(const PlayerView& v, const core::World& world) const;
+    math::Vec2 spot(const PlayerView& v, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) const;
 
     static const ActingState* onBall();
     static const ActingState* support();

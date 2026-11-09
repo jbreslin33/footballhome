@@ -401,7 +401,7 @@ public:
     std::uint8_t id() const override { return 5; }
     const char* name() const override { return "support"; }
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
-        Vec2 t = c.poss.spot(v, c.world);
+        Vec2 t = c.poss.spot(v, c.world, c.team_of_slot);
         // Law 11: no further on than their second-last man (or the ball, or
         // halfway), less onside_margin_m.
         Fixed64 a{}, b{};   // their deepest two, in our attack direction
@@ -959,7 +959,12 @@ void PossessionParams::configure(const core::ModelParams& p) {
     box_stay = p.fixed("physics.box.stay", 1000).raw > 0;   // G5.61
     box_restart_keep = p.fixed("physics.box.restart_keep", 1000).raw > 0;   // G5.61
     box_line_deep_m = p.fixed("physics.box.line_deep_m", 16000);
-    box_line_deep_out_m = p.fixed("physics.box.line_deep_out_m", 18000);   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
+    box_line_deep_out_m = p.fixed("physics.box.line_deep_out_m", 18000);
+    // G5.62: their line's mean depth by the ball's metres off it (5 m bins, centres 2.5 … 67.5),
+    // DFL benchmarks_tracking_linebyball.py; the support men follow a deeper line (follow_line_m 0 = off).
+    static const int kLineUsual[14] = {2500, 6400, 9500, 12700, 15800, 18800, 21600, 24600, 27300, 29800, 32600, 35500, 37800, 39700};
+    for (int i = 0; i < 14; ++i) line_usual[i] = p.fixed(("physics.support.line_usual_" + std::to_string(i * 5)).c_str(), kLineUsual[i]);
+    follow_line_m = p.fixed("physics.support.follow_line_m", 10000);   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
     static const int kChN[6][2] = {{60, 520}, {310, 1390}, {20, 310}, {10, 500}, {0, 220}, {10, 470}};
@@ -1034,10 +1039,34 @@ Fixed64 Possession::spellDepth(const PlayerView& v) const {
     return q[4];
 }
 
-Vec2 Possession::spot(const PlayerView& v, const core::World& world) const {
+Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) const {
     const Fixed64 hx = world.pitchHalfX();
     const Fixed64 off_their = hx - world.ball().pos.x * v.sg;   // ball metres off their line
     Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role_ours)], off_their) + spellDepth(v);
+    if (params_.follow_line_m.raw > 0) {
+        // G5.62 (§8.163): a man near their line keeps his gap to it as it drops. The spot
+        // is by the ball; the line's usual depth for this ball (DFL mean, 5 m bins) is
+        // where the spot assumes it is. Deeper than that, he goes on by the difference —
+        // all of it on the line, none follow_line_m behind it. Real (ball 18-35 wide):
+        // men 0-5 m short of the line 1.61 → 2.35 as it drops inside 16 m; ours 1.40 → 1.17.
+        // between the bins' centres (2.5, 7.5 … 67.5 m), held past the ends
+        Fixed64 tl = off_their - Fixed64::fromFraction(5, 2);
+        if (tl < Fixed64::zero()) tl = Fixed64::zero();
+        const int bi = static_cast<int>(tl.raw >> Fixed64::FRAC_BITS) / 5;
+        Fixed64 usual;
+        if (bi >= 13) usual = params_.line_usual[13];
+        else {
+            const Fixed64 f = (tl - Fixed64::fromInt(bi * 5)) / Fixed64::fromInt(5);
+            usual = params_.line_usual[bi] + (params_.line_usual[bi + 1] - params_.line_usual[bi]) * f;
+        }
+        const Fixed64 line = hx - offsideLine(v.team, world, team_of_slot);
+        const Fixed64 drop = usual - line;
+        if (drop.raw > 0) {
+            const Fixed64 behind = x - usual;
+            Fixed64 w = behind.raw <= 0 ? Fixed64::one() : Fixed64::one() - behind / params_.follow_line_m;
+            if (w.raw > 0) x -= drop * w;
+        }
+    }
     if (x.raw < 0) x = Fixed64::zero();
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }

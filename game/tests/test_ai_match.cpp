@@ -84,7 +84,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.57 (2026-11-07): the ball into space forward only, a die-at kick never softer than dying past its spot.
 // Re-locked G5.60 (2026-11-08): box runners kept on a redraw, nearest spots, drawn from our pass's man.
 // Re-locked G5.61 (2026-11-09): box count one roll per 3 s of the spell, deep hysteresis, runners in the box stay, held through our restarts.
-constexpr std::uint64_t kGolden3v3   = 0xb53e3a3eb39b28b8ULL;
+// Re-locked G5.62 (2026-11-09): support men follow their line in as it drops below its usual depth.
+constexpr std::uint64_t kGolden3v3   = 0x10260d61f66e1ad9ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -111,7 +112,8 @@ constexpr std::uint64_t kGolden3v3   = 0xb53e3a3eb39b28b8ULL;
 // Re-locked G5.59 (2026-11-08, 11v11 only): the pass shares × the chooser's when-occupied kappa (DFL).
 // Re-locked G5.60 (2026-11-08): as the 3v3.
 // Re-locked G5.61 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xe929e2bf57ce14e9ULL;
+// Re-locked G5.62 (2026-11-09): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x92643ab01b72e717ULL;
 
 struct Rig {
     World world;

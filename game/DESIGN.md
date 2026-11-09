@@ -7199,3 +7199,58 @@ boxprior's 70-91%. (2) Our set-piece shape: men into the box for our throw-ins, 
 corners in the final third whoever touched it last (boxsince <3 s 1.46 v 0.50). (3) Their line
 3 m high with the ball in the box (0-18 centre 11.4 v 8.7). (4) Back to 35+ 29 v 17. (5) Crosses
 4.7 v 11.5. (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.163 G5.62 — support men follow their line in as it drops (no migration)
+
+§8.162's next: who stands in the box as a resting position.
+
+**Real** (DFL 7 matches [Bassek 2025]). Box presence is almost all "their line has dropped inside
+16 m" (`benchmarks_tracking_box.py`, G5.53 lines). With the ball 18-35 wide: 1.97 men in the box
+with the line inside 16 m, 0.09 without. With the ball 18-35 centre: 2.71 / 0.15. The men in it
+stand 14.5 m out, on the line. New `scripts/benchmarks_tracking_linegaps.py` counts the side in
+possession by metres short of their line. When the line drops (ball 18-35 wide), real men follow
+it in: 0-5 m short 1.61 → 2.35, 10+ m 6.79 → 5.75.
+
+**Measured first** (new harness lines, 8 × 90).
+- In the box with the line inside 16 m (ball 18-35 wide): 1.13 (1.97). It drops about as often
+  as real (30% v 38%).
+- Ours 0-5 m short when it drops: 1.40 → 1.17, the wrong way. 10+ m short 6.76 → 7.21.
+
+The Support spot is by the ball (`spot[role][band]`). A line deeper than usual for that ball
+leaves every man where the table put him.
+
+**The change** [FH, DFL table]. In `Possession::spot`, the line's usual depth for the ball comes
+from new `scripts/benchmarks_tracking_linebyball.py`: the DFL mean in 5 m bins, interpolated
+between bin centres (`physics.support.line_usual_*`). When the live line is deeper than that, a
+man goes on by the difference. The weight is 1 at or ahead of the usual line, falling linearly to
+0 at `physics.support.follow_line_m` (10) behind it. A higher line moves nobody, since the onside
+cap already holds them. 0 turns it off.
+
+**Tried, not shipped: `front.close_mps`.** With the line deep, the front man stands 8.4 m short
+against a target of 2.2, and the second man 14.9 against 5.2. The 1 m/s close cap (§8.150) looked
+like the cause. Refit 1.0 / 2.0 / 3.0:
+- front gap 8.4 / 7.9 / 7.7;
+- ball 18-35 wide in the box 0.42 / 0.54 / 0.57;
+- ball-still runs from the line jobs 7.6 / 12.6 / 18.2, on a total already about 57 (41.7).
+
+The cap is not the cause. The front job churns (in it p25 / median 1.3 / 3.3 s), so each new
+holder starts several metres back. Left at 1.0.
+
+**After** (8 × 90, v the run before).
+- Ball 18-35 wide: in the box 0.38 → 0.52 (0.79); with the line inside 16 m 1.13 → 1.34 (1.97);
+  0-5 m short with it deep 1.17 → 1.33 (2.35).
+- Ball 18-35 centre: in the box 0.45 → 0.39 (1.04), within noise; deep 1.34 → 1.23 (2.71).
+- 0-18: centre 2.17 → 2.10 (3.45), wide 1.77 → 1.84 (2.29).
+- Ball-still runs from hold shape 28.9 → 21.8. Shots 9.2 → 10.7, goals 1.62 → 1.88 (8 matches;
+  noisy). Crosses 4.2 (11.5).
+- Both goldens re-locked.
+
+**What it says.** Following the line is right, and it moved the wide numbers, but only the third
+man on is free to follow. The front two are line jobs already, and they are the gap: target
+2.2 m short, standing 8.4 m. The job passes on every 3 s, and the new man walks in.
+
+**Next moles.** (1) Front-job churn: why the job changes hands every 3.3 s (box draws taking the
+front men, the pass's man, front_swap_m 1 m), and the new holder starting 6+ m back. Measure
+first. (2) Our set-piece box shape. (3) Their line 3 m high with the ball in the box (0-18 centre
+11.2 v 8.7). (4) Back to 35+ 28 v 17. (5) Crosses 4.2 v 11.5. (6) Law 8, Law 13 walls, cards.
+(7) Take-ons.
