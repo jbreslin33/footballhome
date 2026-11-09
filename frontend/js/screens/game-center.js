@@ -2130,8 +2130,12 @@ class GameCenterScreen extends EventScreen {
     return [this._formationId(), this._plan.oppFormationId, this._plan.moment, this._plan.block].join('|');
   }
 
+  // The game's picked opponent shape (mig 912 matchup) when there is one,
+  // else 4-3-3 — so a 2-3-2-3 matched to a 4-2-3-1 opens on that plan.
   _planDefaultOpp() {
-    const f = (this.formations || []).find(x => x.code === '4-3-3');
+    const m = (this.matchups || []).find(x => x.id === this.matchupId);
+    const code = m && m.opponentCode ? m.opponentCode : '4-3-3';
+    const f = (this.formations || []).find(x => x.code === code) || (this.formations || []).find(x => x.code === '4-3-3');
     return f ? Number(f.id) : 0;
   }
 
