@@ -37,7 +37,13 @@ FH_TEST(block_spot_is_the_real_table) {
     ai::DefendingBlock b;
     // The table itself: G5.52's depth for their possession (a roll a spell) held at 0.
     core::ModelParams mp;
-    for (const char* q : {"p10", "p25", "p50", "p75", "p90"}) mp.setMilli(std::string("physics.block.line_") + q, 0);
+    for (const char* q : {"p10", "p25", "p50", "p75", "p90"}) {
+        mp.setMilli(std::string("physics.block.line_") + q, 0);
+        for (const char* r : {"am", "wide", "st"}) {   // G5.70's per-forward roll, held at 0 too
+            mp.setMilli(std::string("physics.block.man_") + q + "_" + r, 0);
+            mp.setMilli(std::string("physics.block.man_near_") + q + "_" + r, 0);
+        }
+    }
     b.configure(mp);
     ai::PlayerView v;
     v.slot = 3; v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB; v.across_def = Fixed64::fromInt(6);

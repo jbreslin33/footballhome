@@ -43,6 +43,29 @@ def one(pos_path):
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
     c = collections.Counter(); T = collections.defaultdict(list); H = collections.defaultdict(list)
+    # §8.171: the front two's gap to their line by seconds since the spell began (5 Hz, in play)
+    spell0 = None; prevk = None
+    for (sc, n) in sorted(ball):
+        bx, by, att = ball[(sc, n)]; fr = pl.get((sc, n))
+        if att < 0 or not fr: prevk = None; continue
+        if prevk is None or prevk[0] != sc or prevk[1] != n - 5 or prevk[2] != att: spell0 = n
+        prevk = (sc, n, att)
+        dfd = 1 - att; g = own[(sc, dfd)]
+        dl = sorted(half - x * g for pid, (x, y) in fr.items() if who.get(pid) == dfd)
+        if len(dl) < 2: continue
+        L = min(dl[1], half - bx * g)
+        onb = None; bd = 4.0
+        for pid, (x, y) in fr.items():
+            if who.get(pid) != att: continue
+            dd = (x - bx) ** 2 + (y - by) ** 2
+            if dd < bd: bd = dd; onb = pid
+        A = sorted(half - x * g - L for pid, (x, y) in fr.items() if who.get(pid) == att and pid not in keepers and pid != onb)
+        if len(A) < 2: continue
+        since = (n - spell0) / 25; b = 0 if since < 3 else 1 if since < 6 else 2 if since < 10 else 3 if since < 20 else 4
+        if since < 1:   # at the turnover: their line and our front man, metres off their goal, by the ball's
+            btl = half - bx * g; zb = 0 if btl < 35 else 1 if btl < 52 else 2 if btl < 70 else 3
+            H[("tL", zb)].append(L); H[("tA", zb)].append(L + A[0])
+        H[("s1", b)].append(A[0]); H[("s2", b)].append(A[1] - A[0])
     for h in HS:
         hold = None; since = None; prev = None; hist = {}
         for (sc, n) in sorted(ball):
@@ -105,5 +128,15 @@ if __name__ == "__main__":
               f"tenure to a handover p25/med/p75 {q(T[(h,'hand')])} s, to the spell's end {q(T[(h,'end')])} s")
         why = ["on ball", "gone", "old dropped", "new on", "drift"]
         print("     why: " + "  ".join(f"{w} {100*c[(h,w)]/max(1,n):4.1f}%" for w in why))
+        pass
         print(f"     at the handover gap to their line p25/med/p75: new man {q(H[(h,'new')])}  old man {q(H[(h,'old')])};"
               f" the new man moved on over the last 2 s {q(H[(h,'new2')])} m")
+    SB = ["<3 s", "3-6", "6-10", "10-20", "20+"]
+    print("  §8.171 by seconds since the spell began: front man m short of their line p25/med/p75 | 4+ m short % | the second man behind him p25/med/p75")
+    for b in range(5):
+        v = H[("s1", b)]
+        if v: print(f"     {SB[b]:6s} {q(v)}  {100*sum(x >= 4 for x in v)/len(v):5.1f}%   | {q(H[('s2', b)])}   ({len(v)} frames)")
+    ZB = ["ball 0-35", "35-52", "52-70", "70+"]
+    print("  §8.171 in the first second of the spell, m off their goal p25/med/p75: their line | our front man (not on the ball)")
+    for z in range(4):
+        if H[("tL", z)]: print(f"     {ZB[z]:9s} {q(H[('tL', z)])} | {q(H[('tA', z)])}   ({len(H[('tL', z)])})")

@@ -135,6 +135,20 @@ void BlockParams::configure(const core::ModelParams& p) {
     static const int kLine[5] = {-5600, -3500, -800, 2400, 5400};   // G5.52, DFL spell offsets (m x1000)
     static const char* const kLq[5] = {"p10", "p25", "p50", "p75", "p90"};
     for (int k = 0; k < 5; ++k) line_q[k] = p.fixed(("physics.block.line_" + std::string(kLq[k])).c_str(), kLine[k]);
+    // G5.70 (§8.171): each FORWARD's own offset off his role's spot, one roll a spell of theirs —
+    // DFL (benchmarks_tracking_blockspread.py), net of the block's own offset (line_q), m x1000;
+    // with the ball 20 m+ out (man_*) and inside 20 m of our goal (man_near_*), where one stays up
+    // and another drops in. Defenders (CB / FB / DM) are 0: their real spread is who they mark,
+    // which the block doesn't model — a random roll there is holes, not marking (the rows exist).
+    static const int kMan[kRoleCount][5] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+                                            {-7300, -4000, -400, 3500, 7700}, {-7500, -3100, 800, 5200, 9600}, {-8500, -4100, 200, 3400, 6500}};
+    static const int kManNear[kRoleCount][5] = {{0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
+                                                {-9300, -5800, -1000, 5000, 12700}, {-8700, -5300, -300, 5400, 12300}, {-15900, -6800, 3600, 9600, 13200}};
+    for (int r = 0; r < kRoleCount; ++r)
+        for (int k = 0; k < 5; ++k) {
+            man_q[r][k] = p.fixed((std::string("physics.block.man_") + kLq[k] + "_" + kRoleKey[r]).c_str(), kMan[r][k]);
+            man_near_q[r][k] = p.fixed((std::string("physics.block.man_near_") + kLq[k] + "_" + kRoleKey[r]).c_str(), kManNear[r][k]);
+        }
     for (int r = 0; r < kRoleCount; ++r)
         for (int b = 0; b < kBandCount; ++b) {
             const std::string key = std::string("physics.block.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
@@ -253,14 +267,24 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         const Fixed64* q = params_.line_q;
         static const Fixed64 kAt[5] = {Fixed64::fromFraction(1, 10), Fixed64::fromFraction(1, 4), Fixed64::fromFraction(1, 2),
                                        Fixed64::fromFraction(3, 4), Fixed64::fromFraction(9, 10)};
-        Fixed64 off = q[4];
-        if (u <= kAt[0]) off = q[0];
-        else for (int i = 0; i < 4; ++i)
-            if (u <= kAt[i + 1]) { off = q[i] + (q[i + 1] - q[i]) * (u - kAt[i]) / (kAt[i + 1] - kAt[i]); break; }
+        auto roll = [&](const Fixed64* qq, Fixed64 uu) {
+            if (uu <= kAt[0]) return qq[0];
+            for (int i = 0; i < 4; ++i)
+                if (uu <= kAt[i + 1]) return qq[i] + (qq[i + 1] - qq[i]) * (uu - kAt[i]) / (kAt[i + 1] - kAt[i]);
+            return qq[4];
+        };
+        Fixed64 off = roll(q, u);
         // Full from 18 m out, fading to nothing at 9 m [FH].
         if (off_line < Fixed64::fromInt(18))
             off = off_line <= Fixed64::fromInt(9) ? Fixed64::zero() : off * (off_line - Fixed64::fromInt(9)) / Fixed64::fromInt(9);
         x += off;
+        // G5.70: and his own, one roll a man a spell (the tails held at p10 / p90), no fade:
+        // the near-goal table inside 15 m, the far one from 25 m, blended between.
+        const Fixed64 um = (core::detNoise(v.match_seed, their_won_[v.team & 1], v.slot, 71) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const int ri = static_cast<int>(v.role);
+        const Fixed64 far = roll(params_.man_q[ri], um), near = roll(params_.man_near_q[ri], um);
+        const Fixed64 n15 = Fixed64::fromInt(15), n25 = Fixed64::fromInt(25);
+        x += off_line <= n15 ? near : off_line >= n25 ? far : near + (far - near) * (off_line - n15) / (n25 - n15);
         if (x < Fixed64::one()) x = Fixed64::one();
     }
     return Vec2{(x - hx) * v.sg, v.across_def};

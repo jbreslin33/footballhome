@@ -120,6 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
+    std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
     long fm_n[10] = {}, fm_w1[10] = {}, fm_w2[10] = {}, fm_w4[10] = {}, fm_past[10] = {}, fm_r[10][ai::kRoleCount] = {}; double fm_gap[10] = {}, fm_gap2[10] = {}, fm_dy[10] = {};   // §8.144: the front man v their line
     long pl_n[5][4] = {}; long pl_k[5][4][ai::kRoleCount] = {}; double pl_s[5][4][ai::kRoleCount] = {}, pl_line[5][4] = {}, pl_front[5][4] = {};   // §8.143: the side in possession, the same split
@@ -575,6 +576,11 @@ int main(int argc, char** argv) {
             const double tl = hx - bx * sg;   // ball metres off THEIR line
             const int ri = static_cast<int>((k / 6) % 16), rj = static_cast<int>(((k / 6) + 1) % 16);   // rj = 15 frames back
             const bool then_ok = rk[rj] == k - 90;
+            {   // §8.171: the defending side's most advanced outfielder, m off its own line, by the ball's band
+                double top = -1e9; const double ds = dteam == 0 ? 1.0 : -1.0;
+                for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == dteam && !W.isKeeper(j)) top = std::max(top, hx + W.player(j).pos.x.toDouble() * ds);
+                S.bk_top[std::min(9, std::max(0, static_cast<int>(tl / 10)))].push_back(top);
+            }
             {   // shapes
                 const int bd = std::min(9, std::max(0, static_cast<int>(tl / 10)));   // ball metres off the defenders' own line
                 const int bp = std::min(9, std::max(0, static_cast<int>(tl / 10)));
@@ -1027,6 +1033,17 @@ int main(int argc, char** argv) {
                 const bool ok1 = rk[r1] == static_cast<long>(k) - 30, ok2 = rk[r2] == static_cast<long>(k) - 60;
                 int best = -1;
                 for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team == a && !W.isKeeper(j) && j != onb && (best < 0 || A(j) < A(best))) best = j;
+                {   // §8.171: the front two v their line by seconds since the spell began (benchmarks_tracking_frontjob.py)
+                    double a1 = 1e9, a2 = 1e9;
+                    for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team == a && !W.isKeeper(j) && j != onb) {
+                        const double g = A(j) - L; if (g < a1) { a2 = a1; a1 = g; } else if (g < a2) a2 = g; }
+                    if (a2 < 1e8) {
+                        const double since = (static_cast<long>(k) - rc_k) / 30.0;
+                        const int sb = since < 3 ? 0 : since < 6 ? 1 : since < 10 ? 2 : since < 20 ? 3 : 4;
+                        S.fs_1[sb].push_back(a1); S.fs_2[sb].push_back(a2 - a1);
+                        if (since < 1) { const int zb = tl < 35 ? 0 : tl < 52 ? 1 : tl < 70 ? 2 : 3; S.ft_L[zb].push_back(L); S.ft_A[zb].push_back(L + a1); }
+                    }
+                }
                 if (best >= 0) {
                     ++S.fj_t;
                     const bool held = fj_hold >= 0 && fj_hold != onb;
@@ -1251,6 +1268,34 @@ int main(int argc, char** argv) {
                         n / tm, S.fj_t / 5.0 / std::max(1.0, n), a1, a2);
             std::printf("\n     why: on ball %.0f%% (22.8), old dropped %.0f%% (22.8), new on %.0f%% (42.5), drift %.0f%% (11.9); gap to their line new man %s (1.2/2.7/5.2), old %s (2.4/3.8/5.9); new man moved on over 2 s %s m (0.0/3.2/7.8)",
                         100 * S.fj_why[0] / n, 100 * S.fj_why[2] / n, 100 * S.fj_why[3] / n, 100 * S.fj_why[4] / n, a3, a4, a5);
+            {   // §8.171: real DFL benchmarks_tracking_frontjob.py
+                static const char* sbn[5] = {"<3 s", "3-6", "6-10", "10-20", "20+"};
+                static const double r_med[5] = {2.1, 2.1, 1.7, 1.3, 1.2}, r_4[5] = {29.4, 25.6, 18.7, 10.6, 7.0}, r_2[5] = {3.6, 3.1, 2.5, 2.1, 2.0};
+                std::printf("\n     by seconds since the spell began, front man m short (real) / 4+ m short %% (real) / the second man behind him (real):");
+                for (int b = 0; b < 5; ++b) {
+                    if (S.fs_1[b].empty()) continue;
+                    std::vector<double> v = S.fs_1[b], w = S.fs_2[b];
+                    std::sort(v.begin(), v.end()); std::sort(w.begin(), w.end());
+                    long f4 = 0; for (double x : v) f4 += x >= 4;
+                    std::printf(" %s %.1f (%.1f) / %.0f%% (%.0f) / %.1f (%.1f);", sbn[b], v[v.size() / 2], r_med[b], 100.0 * f4 / v.size(), r_4[b], w[w.size() / 2], r_2[b]);
+                }
+                static const double r_top[10] = {42.0, 45.7, 49.8, 53.6, 57.7, 63.2, 67.6, 74.5, 82.5, 91.6};   // benchmarks_tracking_blockspread.py
+                std::printf("\n     the block's most advanced outfielder, m off its own line, median by the ball's band (real):");
+                for (int b2 = 0; b2 < 10; ++b2) {
+                    if (S.bk_top[b2].empty()) continue;
+                    std::vector<double> v = S.bk_top[b2]; std::sort(v.begin(), v.end());
+                    std::printf(" %d-%d %.1f (%.1f);", b2 * 10, b2 * 10 + 10, v[v.size() / 2], r_top[b2]);
+                }
+                static const char* zbn[4] = {"ball 0-35", "35-52", "52-70", "70+"};
+                static const double rL[4] = {11.5, 25.2, 36.9, 50.5}, rA[4] = {12.1, 27.7, 41.0, 53.0};
+                std::printf("\n     in the spell's first second, m off their goal, their line (real) / our front man (real):");
+                for (int z = 0; z < 4; ++z) {
+                    if (S.ft_L[z].empty()) continue;
+                    std::vector<double> v = S.ft_L[z], w = S.ft_A[z];
+                    std::sort(v.begin(), v.end()); std::sort(w.begin(), w.end());
+                    std::printf(" %s %.1f (%.1f) / %.1f (%.1f);", zbn[z], v[v.size() / 2], rL[z], w[w.size() / 2], rA[z]);
+                }
+            }
             const double e = static_cast<double>(std::max<std::size_t>(1, S.fe_ten.size()));
             std::printf("\n     the engine's front JOB: changes %.1f a team-match, tenure %s s; old man on the ball %.0f%% / the pass's man %.0f%% / box runner %.0f%% / channel run %.0f%% / overtaken by a freed man %.0f%% / overtaken %.0f%%; new man's gap %s, moved on over 2 s %s m",
                         e / tm, a6, 100 * S.fe_why[0] / e, 100 * S.fe_why[1] / e, 100 * S.fe_why[2] / e, 100 * S.fe_why[3] / e, 100 * S.fe_why[4] / e, 100 * S.fe_why[5] / e, a7, a8);

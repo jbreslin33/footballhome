@@ -7475,3 +7475,60 @@ completely through the 10 s pre-roll (empty orders), so the keeper never left th
 only his kick is held (`action = None`): he walks to the ball and waits for the coach. Test: after
 the pre-roll, the away keeper is within 6 m of the ball (in a run 4.6 m off it, at his run-up). The
 live match is not affected.
+
+### 8.171 G5.70 — forwards out of possession: one stays up, another drops in (no migration)
+
+§8.164's next: the second man's depth.
+
+**Measured first** (new harness lines, 8 × 90; DFL in brackets).
+- The front two by seconds since our spell began (`benchmarks_tracking_frontjob.py`, new cut). The
+  front man is 7.2 m short of their line in the first 3 s (2.1), 6.6 at 3-6 s (2.1), 4.2 at 6-10
+  (1.7), 2.4 at 10-20 (1.3). The second man behind him: 7.9 (3.6), 6.3 (3.1), 4.3 (2.5), 2.2 (2.1).
+  Settled play is near real; the gap is the turnover.
+- In the spell's first second, metres off their goal, their line / our front man: ball 70+ m out
+  56.7 (50.5) / 65.6 (53.0); 35-52 32.9 (25.2) / 40.3 (27.7). Both are wrong. Their line is 6-9 m
+  high, and our front man is further back still.
+- Our block's most advanced outfielder (the man a turnover finds furthest up), metres off his own
+  line: 38.4 (42.0) with the ball 0-10 m out, 38.8 (45.7) at 10-20, 42.4 (49.8) at 20-30, 47.8
+  (53.6) at 30-40. Real: a striker 74% of the time.
+
+**Real** (new `scripts/benchmarks_tracking_blockspread.py`). Each defending man's offset off his
+role's mean spot, net of the block's own offset (line_q, G5.52), held over the opponents' spell. By
+role p10 / p90: about ±7 m, and wider with the ball inside 20 m of goal, where one forward stays up
+and another drops in (ST −15.9 / +13.2, AM −9.3 / +12.7, WIDE −8.7 / +12.3). Our block had no
+per-man spread: every man stood at his role's mean, so the most advanced man was the mean striker.
+
+(A first run of the script measured depth from the wrong goal, `half + x·g`. The tell was "the most
+advanced is a CB 80%". Fixed before any number was used.)
+
+**The change** [DFL table, FH scope]. `DefendingBlock::spot`: each forward (AM, WIDE, ST) adds his
+own offset, one roll a man a spell of theirs, through the real p10 … p90.
+- `physics.block.man_*` applies with the ball 25 m+ out, `man_near_*` inside 15 m, blended between.
+- No fade near goal (the near-goal spread is the larger one).
+- Defenders' rows are 0. Their real spread is who they mark, which the block doesn't model, and a
+  random roll there is holes, not marking. With it on (all roles, corrected table), goals went 1.56
+  → 2.88 and shots 9.8 → 13.4 with no gain at the front.
+
+**After** (8 × 90, v the run before).
+- Most advanced block man: 0-10 38.4 → 41.7 (42.0), 10-20 38.8 → 41.8 (45.7), 20-30 42.4 → 43.6
+  (49.8), 30-40 47.8 → 48.4 (53.6). Further out, about as before and real.
+- Second man behind the front man: <3 s 7.9 → 5.6 (3.6), 3-6 6.3 → 4.4 (3.1), 6-10 4.3 → 3.2 (2.5),
+  settled 2.2 → 2.0 (2.1), 20+ 1.9 → 1.8 (2.0).
+- Front man <3 s 7.2 → 6.7 (2.1), settled 2.2-2.4 → 2.1-2.3 (1.2-1.3).
+- At the turnover, ball 70+: our front man 65.6 → 62.2 (53.0).
+- Shots 9.8 → 9.1, goals 1.56 → 1.75 (noise).
+- Goldens unchanged: the test rig's built-in formation has no forwards. test_defending_block holds
+  the roll at 0, as it does line_q.
+
+**What it says.** The second man is fixed when settled and much better at the turnover. The front
+man after a turnover is still 4-5 m short, for two reasons. Their line is 6-9 m too high at the
+moment we win it (the side in possession's back line). And the block's top man is still 4-6 m deep
+with the ball 10-50 m out. `kRealSpotDm` is "settled, ball still" (G5.42), while blockspread's role
+means (all frames) put the ST higher (45 v 40 at 20-30): transition frames, when forwards are still
+up, aren't in the spot table.
+
+**Next moles.** (1) Their line at the turnover, 6-9 m high: the possession side's back line height
+when it loses the ball (DFL by ball band v ours). (2) The block's top man 4-6 m deep with the ball
+10-50 m out: the spot table is settled and ball-still; transition frames. (3) Our set-piece box
+shape. (4) Their line 3 m high with the ball in the box. (5) Back to 35+ 28 v 17. (6) Crosses 4.2 v
+11.5. (7) Law 8, Law 13 walls, cards. (8) Take-ons.

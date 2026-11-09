@@ -41,6 +41,9 @@ struct BlockParams {
     // through the real spell offset p10 … p90 (+ = higher) — DFL
     // (benchmarks_tracking_linespell.py); faded out inside 18 m (fitted 18-52 only).
     math::Fixed64 line_q[5]{};
+    // G5.70 (§8.171): each forward's own offset off his role's spot, by role p10 … p90 — one roll
+    // a man a spell of theirs (DFL benchmarks_tracking_blockspread.py, net of line_q).
+    math::Fixed64 man_q[kRoleCount][5]{}, man_near_q[kRoleCount][5]{};   // 20 m+ out / inside 20 m (forwards only)
     void configure(const core::ModelParams& p);
 };
 

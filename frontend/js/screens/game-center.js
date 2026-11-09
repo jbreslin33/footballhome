@@ -2254,6 +2254,19 @@ class GameCenterScreen extends EventScreen {
   _planSituation(st) {
     const opps = this._planOpps(st);
     const solved = this._planSolution(st, opps);
+    // A step copied from a Premier League moment (mig 1202) shows ours where
+    // the PL side's men actually stood — the copy IS the lesson; the jobs
+    // underneath still say what each man was doing.
+    const pl = st.copied_from && Array.isArray(st.copied_from.ours) && st.copied_from.ours.length ? st.copied_from.ours : null;
+    if (pl) {
+      const players = solved.players.map(q => {
+        const m = pl.find(o => Number(o.position_id) === Number(q.position_id));
+        return m ? { ...q, x: Number(m.x), y: Number(m.y) } : { ...q };
+      });
+      const b = st.copied_from.ball;
+      return { ball: b ? { x: Number(b.x) + 1.2, y: Number(b.y) - 1.2 } : { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players,
+               opponents: opps.map(o => ({ ...o, label: o.number })), free: [], doubled: [], holdY: null };
+    }
     return { ball: { x: solved.ball.x + 1.2, y: solved.ball.y - 1.2 }, players: solved.players.map(q => ({ ...q })),
              opponents: opps.map(o => ({ ...o, label: o.number })), free: solved.free || [], doubled: solved.doubled || [],
              holdY: this._planHoldY(st) };
