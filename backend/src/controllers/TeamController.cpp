@@ -162,7 +162,7 @@ Response TeamController::handleGetTerms(const Request& request) {
         auto rows = db_->query(
             "SELECT json_build_object("
             "  'terms',   (SELECT COALESCE(json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order), '[]') FROM year_terms),"
-            "  'current', fh_current_term(),"
+            "  'current', fh_board_term(),"  // mig 1189: year_terms.board_default, else today's season
             // Start date per season (owner 11/4, Ryan back by winter): the
             // current season's latest start, every other season's next one.
             // The Team pill drops an injury that ends by the lit season's start.

@@ -1884,8 +1884,36 @@ class RosterScreenBase extends Screen {
   // every team.  A team with no term rows shows under every pill.
   setTerm(termInfo) {
     this._term = termInfo || null;
-    this.teamFocusId = null;   // a focused column may not be in the new season
     if (this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
+  }
+
+  // Column pills (owner 2026-11-09: "pills to toggle them on and off on
+  // teams"): each team pill toggles its column in or out; none lit = every
+  // column.  Remembered per board in this browser only (a convenience —
+  // a blocked storage just starts with every column).
+  _focusKey() { return `fh.teamFocus.${this.constructor.name}`; }
+  _focusSet() {
+    if (!this._teamFocus) {
+      let ids = [];
+      try { ids = JSON.parse(localStorage.getItem(this._focusKey()) || '[]'); } catch (_) { ids = []; }
+      this._teamFocus = new Set(Array.isArray(ids) ? ids.map(Number).filter(Boolean) : []);
+    }
+    return this._teamFocus;
+  }
+  _saveFocus() { try { localStorage.setItem(this._focusKey(), JSON.stringify([...this._focusSet()])); } catch (_) { /* storage off */ } }
+  hasTeamFocus(cols) { const s = this._focusSet(); return cols ? cols.some(c => s.has(c.teamId)) : s.size > 0; }
+  isTeamFocused(teamId) { return this._focusSet().has(teamId); }
+  // Lit teams not on this board (other season / category) don't count.
+  focusedCols(cols) {
+    const lit = cols.filter(c => this._focusSet().has(c.teamId));
+    return lit.length ? lit : cols;
+  }
+  onTeamFocusPillClick(btn) {
+    const id = parseInt(btn.dataset.teamFocusId, 10) || 0;
+    const set = this._focusSet();
+    if (!id) set.clear(); else if (set.has(id)) set.delete(id); else set.add(id);
+    this._saveFocus();
+    if (this._data) this.renderRoster(this._data);
   }
 
   // Every board's team-column filter: the season pill (mig 795) and, on

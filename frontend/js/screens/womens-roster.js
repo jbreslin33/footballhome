@@ -223,10 +223,7 @@ class WomensRosterScreen extends RosterScreenBase {
     // Only offered on the Teams panel (columnScope==='unassigned' always
     // has exactly one column, nothing to focus down to).
     const showFocusPills = this.columnScope !== 'unassigned' && cols.length > 1;
-    if (this.teamFocusId && !cols.some(c => c.teamId === this.teamFocusId)) {
-      this.teamFocusId = null;
-    }
-    const visibleCols = this.teamFocusId ? cols.filter(c => c.teamId === this.teamFocusId) : cols;
+    const visibleCols = this.focusedCols(cols);
 
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
@@ -234,14 +231,14 @@ class WomensRosterScreen extends RosterScreenBase {
         ${showFocusPills ? `
           <button type="button" class="wr-team-focus-pill" data-team-focus-id="0"
                   style="font-size:0.8rem; font-weight:700; padding:2px 10px; border-radius:999px; cursor:pointer;
-                         border:1px solid ${this.teamFocusId ? 'var(--border-color)' : '#94a3b8'};
-                         background:${this.teamFocusId ? 'transparent' : '#94a3b8'};
-                         color:${this.teamFocusId ? 'inherit' : '#0f172a'};">All</button>
+                         border:1px solid ${this.hasTeamFocus(cols) ? 'var(--border-color)' : '#94a3b8'};
+                         background:${this.hasTeamFocus(cols) ? 'transparent' : '#94a3b8'};
+                         color:${this.hasTeamFocus(cols) ? 'inherit' : '#0f172a'};">All</button>
         ` : ''}
         ${cols.map(c => {
           const count = c.isUnassigned ? c.count : ((data.buckets[String(c.teamId)] || []).length);
           const cap = c.maxRoster != null ? `(${count}/${c.maxRoster})` : `(${count})`;
-          const active = this.teamFocusId === c.teamId;
+          const active = this.isTeamFocused(c.teamId) && this.hasTeamFocus(cols);
           if (!showFocusPills) {
             return `
               <span style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; padding:2px 8px; border-radius:4px; border-left:3px solid #64748b;">
@@ -250,7 +247,7 @@ class WomensRosterScreen extends RosterScreenBase {
           }
           return `
             <button type="button" class="wr-team-focus-pill" data-team-focus-id="${c.teamId}"
-                    title="${active ? `Showing only ${c.label} — click All to see every team` : `Show only ${c.label}`}"
+                    title="${active ? `${c.label} is on — tap to hide it (All shows every team)` : `Tap to add ${c.label} — light several to see them side by side`}"
                     style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:${active ? 700 : 400}; padding:2px 8px; border-radius:999px; cursor:pointer;
                            border:1px solid #64748b; border-left:3px solid #64748b;
                            background:${active ? '#94a3b8' : 'transparent'}; color:${active ? '#0f172a' : 'inherit'};">
@@ -270,13 +267,6 @@ class WomensRosterScreen extends RosterScreenBase {
     `;
   }
 
-  // Purely client-side — re-renders from the already-loaded data, no
-  // network round-trip (see renderRoster's showFocusPills block).
-  onTeamFocusPillClick(btn) {
-    const id = parseInt(btn.dataset.teamFocusId, 10) || 0;
-    this.teamFocusId = id || null;
-    if (this._data) this.renderRoster(this._data);
-  }
 
   // Feeds the wrapping grid's minmax() floor above — columns that don't
   // fit on one row wrap to the next instead of needing overflow-x scroll,
