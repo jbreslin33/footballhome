@@ -120,6 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2];   // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
     long fm_n[10] = {}, fm_w1[10] = {}, fm_w2[10] = {}, fm_w4[10] = {}, fm_past[10] = {}, fm_r[10][ai::kRoleCount] = {}; double fm_gap[10] = {}, fm_gap2[10] = {}, fm_dy[10] = {};   // §8.144: the front man v their line
@@ -208,10 +209,12 @@ int main(int argc, char** argv) {
         // §8.143: the brain's role (formation role name, then number) — by number a "ten" in an 8 shirt was a DM here
         auto role = [&](std::uint8_t j) { return static_cast<int>(s.brain().roleOf(j)); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
+        bool hb_rose = false; double hb_pz = 0; struct HbP { long k; int po, z; }; std::vector<HbP> hb_p;   // §8.172: high balls coming down
+        long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; } shot;
-        int last_kick_why = ai::kWhyCount, last_kick_team = -1;
+        int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
@@ -293,7 +296,8 @@ int main(int argc, char** argv) {
 
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
                 last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
-                last_kick_team = W.player(*before).team;
+                last_kick_team = W.player(*before).team; last_kick_k = static_cast<long>(k);
+                last_kick_own = hx + W.player(*before).pos.x.toDouble() * (last_kick_team == 0 ? 1.0 : -1.0);
                 if (std::getenv("GAME_OUT_TRACE")) {
                     const auto& lo2 = s.lastOrders()[*before];
                     const auto& kp = W.player(*before);
@@ -538,6 +542,50 @@ int main(int argc, char** argv) {
                 for (std::uint8_t tm = 0; tm < 2; ++tm) ++S.ph[static_cast<int>(s.brain().phaseOf(tm))];
                 ++S.ph_n;
             }
+            {   // §8.172: a high ball (rose past 4 m since last under 0.5 m) coming down through 2.4 m, in play (benchmarks_tracking_aerial.py)
+                const double bz = b.pos.z.toDouble();
+                const bool live = W.outStage() == 0 && W.restartTeam() == 0xFF;
+                const long kk = static_cast<long>(k);
+                for (std::size_t i = 0; i < hb_p.size();) {
+                    const bool lost = W.lastTouchTeam() == (hb_p[i].po ^ 1);
+                    if (lost || kk - hb_p[i].k >= 90) { if (lost) ++S.hb_lost[hb_p[i].z]; hb_p.erase(hb_p.begin() + static_cast<long>(i)); } else ++i;
+                }
+                if (!live || bz < 0.5) hb_rose = false;
+                if (live && bz > 4.0) hb_rose = true;
+                if (live && hb_rose && hb_pz > 2.4 && bz <= 2.4 && W.lastTouchTeam() <= 1) {
+                    hb_rose = false;
+                    const int po = W.lastTouchTeam();
+                    const double bx2 = b.pos.x.toDouble(), by2 = b.pos.y.toDouble();
+                    double na = 99, nd = 99;
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        if (W.isKeeper(j)) continue;
+                        const double dd = std::hypot(W.player(j).pos.x.toDouble() - bx2, W.player(j).pos.y.toDouble() - by2);
+                        if (W.player(j).team == po) na = std::min(na, dd); else nd = std::min(nd, dd);
+                    }
+                    const double own = hx + bx2 * (po == 0 ? 1.0 : -1.0);   // m off the kicker's own goal
+                    const int z = own < 35 ? 0 : own < 70 ? 1 : 2;
+                    ++S.hb_n[z]; S.hb_a[z].push_back(na); S.hb_d[z].push_back(nd);
+                    {   // what it was: the kicker's order if his side's last kick was within 4 s, else a header / deflection
+                        const bool kicked = last_kick_team == po && static_cast<long>(k) - last_kick_k < 120;
+                        ++S.hb_why[z][kicked ? last_kick_why : ai::kWhyCount];
+                        if (kicked) S.hb_from[z].push_back(last_kick_own);
+                    }
+                    {   // the other side's chaser then: his metres off the ball and his target's; and his metres off it at the kick
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != po && !W.isKeeper(j) && s.lastOrders()[j].why == ai::Why::Chase) {
+                            ++S.hb_c[z];
+                            S.hb_cd[z].push_back(std::hypot(W.player(j).pos.x.toDouble() - bx2, W.player(j).pos.y.toDouble() - by2));
+                            S.hb_ct[z].push_back(std::hypot(s.lastOrders()[j].target.x.toDouble() - bx2, s.lastOrders()[j].target.y.toDouble() - by2));
+                            S.hb_cv[z].push_back(std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()));
+                            break;
+                        }
+                    }
+                    if (na < 2 && nd < 2) ++S.hb_both[z];
+                    if (nd < 2) ++S.hb_o2[z];
+                    if (na >= 3 && nd >= 3) ++S.hb_none[z];
+                    hb_p.push_back(HbP{kk, po, z});
+                }
+                hb_pz = bz;
+            }
             if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team) { rc_team = W.lastTouchTeam(); rc_k = static_cast<long>(k); }
             if (W.outStage() != 0 || W.restartTeam() != 0xFF) dead_last = static_cast<long>(k);   // §8.162
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
@@ -580,6 +628,53 @@ int main(int argc, char** argv) {
                 double top = -1e9; const double ds = dteam == 0 ? 1.0 : -1.0;
                 for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == dteam && !W.isKeeper(j)) top = std::max(top, hx + W.player(j).pos.x.toDouble() * ds);
                 S.bk_top[std::min(9, std::max(0, static_cast<int>(tl / 10)))].push_back(top);
+            }
+            {   // §8.172: the side in possession's own line (second-last, keeper in), m off its goal (benchmarks_tracking_turnline.py)
+                double l1 = 1e9, l2 = 1e9;
+                for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == a) {
+                    const double d = hx + W.player(j).pos.x.toDouble() * sg; if (d < l1) { l2 = l1; l1 = d; } else if (d < l2) l2 = d; }
+                const double bb = hx + bx * sg;   // ball m off its own goal
+                if (tp_k >= 0 && (tn_k != static_cast<long>(k) - 6 || a != tp_w || static_cast<long>(k) - tp_k >= 60)) {   // resolve: kept 2 s+ (or dead after 2 s+)
+                    const long kept_to = (tn_k == static_cast<long>(k) - 6 && a == tp_w) ? static_cast<long>(k) : tn_k;
+                    if (kept_to - tp_k >= 60) { ++S.lk_k[tp_ab][tp_kind]; ++S.tn_nk[tp_z]; S.tn_gk[tp_z].emplace_back(tp_b5, tp_L); S.tn_dk[tp_z].push_back(tp_du); }
+                    tp_k = -1;
+                }
+                {   // a spell won in play: resolve the old one when it ends, open the new one on a win
+                    const long kk = static_cast<long>(k);
+                    const bool cont = ws_k >= 0 && ws_last == kk - 6;
+                    if (ws_k >= 0 && (!cont || a != ws_a)) {
+                        const double du = (ws_last - ws_k) / 30.0; const bool lost = cont && a != ws_a;
+                        if (du >= 2) {
+                            ++S.wsp_n[ws_z]; const double Ts[3] = {3, 6, 10};
+                            for (int t = 0; t < 3; ++t) if (lost && du < Ts[t]) ++S.wsp_l[ws_z][t];
+                            if (ws_f3 < 1e8) S.wsp_f[ws_z][0].push_back(ws_f3);
+                            if (ws_f6 < 1e8) S.wsp_f[ws_z][1].push_back(ws_f6);
+                        }
+                        ws_k = -1;
+                    }
+                    if (ws_k < 0 && tn_k == kk - 6 && tn_a == (a ^ 1)) { ws_k = kk; ws_a = a; ws_b = bb; ws_z = bb < 35 ? 0 : bb < 52 ? 1 : bb < 70 ? 2 : 3; ws_f3 = ws_f6 = 1e9; }
+                    if (ws_k >= 0 && a == ws_a) { ws_last = kk; if (kk - ws_k == 90) ws_f3 = bb - ws_b; if (kk - ws_k == 180) ws_f6 = bb - ws_b; }
+                }
+                if (tn_k == static_cast<long>(k) - 6 && tn_a == (a ^ 1)) {   // it lost it, unbroken in play: the frame before
+                    const int z = tn_bb < 35 ? 0 : tn_bb < 52 ? 1 : tn_bb < 70 ? 2 : 3;
+                    ++S.tn_n[z]; S.tn_L[z].push_back(tn_L); S.tn_b[z].push_back(tn_bb); S.tn_d[z].push_back(tn_du);
+                    if (tn_fw < 1e8) S.tn_f[z].push_back(tn_fw);
+                    S.tn_g[z].emplace_back(std::min(24, std::max(0, static_cast<int>(tn_bb / 5))), tn_L);
+                    {   // the ball at the change: kicked (8+ m/s over the last 0.2 s) on the ground / in the air (1.5 m+, then or now) / at feet
+                        const double spd = pb_k == static_cast<long>(k) - 12 ? 5 * std::hypot(pb_x[1] - pb_x[0], pb_y[1] - pb_y[0]) : 0.0;
+                        tp_kind = spd >= 8 ? (std::max(pb_z, b.pos.z.toDouble()) >= 1.5 ? 1 : 0) : 2;
+                        tp_ab = tn_du < 3 ? 0 : tn_du < 6 ? 1 : 2;
+                        ++S.lk_n[tp_ab][tp_kind];
+                    }
+                    tp_k = static_cast<long>(k); tp_w = a; tp_z = z; tp_b5 = std::min(24, std::max(0, static_cast<int>(tn_bb / 5))); tp_L = tn_L; tp_du = tn_du;
+                }
+                pb_x[0] = pb_x[1]; pb_y[0] = pb_y[1]; pb_x[1] = bx; pb_y[1] = by; pb_z = b.pos.z.toDouble(); pb_k = static_cast<long>(k) - 6;
+                if (l2 < 1e8) {
+                    const int b5 = std::min(24, std::max(0, static_cast<int>(bb / 5)));
+                    S.tn_as[b5] += l2; ++S.tn_an[b5]; ++S.tn_z[bb < 35 ? 0 : bb < 52 ? 1 : bb < 70 ? 2 : 3];
+                    tn_k = static_cast<long>(k); tn_a = a; tn_bb = bb; tn_L = l2; tn_du = (static_cast<long>(k) - rc_k) / 30.0;
+                    tn_fw = (then_ok && rat[rj] == a && static_cast<long>(k) - rc_k >= 90) ? bb - (hx + rbx[rj] * sg) : 1e9;
+                }
             }
             {   // shapes
                 const int bd = std::min(9, std::max(0, static_cast<int>(tl / 10)));   // ball metres off the defenders' own line
@@ -1081,6 +1176,7 @@ int main(int argc, char** argv) {
         }
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
+        S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = W.score(0), ag = W.score(1);
         if (hg > ag) ++S.w; else if (hg == ag) ++S.d; else ++S.l;
     }
@@ -1285,6 +1381,62 @@ int main(int argc, char** argv) {
                     if (S.bk_top[b2].empty()) continue;
                     std::vector<double> v = S.bk_top[b2]; std::sort(v.begin(), v.end());
                     std::printf(" %d-%d %.1f (%.1f);", b2 * 10, b2 * 10 + 10, v[v.size() / 2], r_top[b2]);
+                }
+                {   // §8.172: real DFL benchmarks_tracking_turnline.py
+                    static const double rLn[4] = {12.9, 24.8, 37.0, 51.8}, rB[4] = {23.9, 45.2, 61.8, 87.2}, rG[4] = {-6.3, -7.4, -4.6, -2.2}, rF[4] = {4.3, 12.8, 17.2, 15.1}, rD[4] = {2.0, 3.2, 3.6, 5.4}, rN[4] = {26.4, 29.8, 37.4, 71.8};
+                    auto md = [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+                    const double tmn = 2.0 * matches;
+                    std::printf("\n     §8.172 the side in possession's own line as it loses the ball (last frame before, in play), m off its goal, by the ball's band: losses a team-match (real) / line med (real) / ball med (real) / line minus its usual there (real) / ball forward over 3 s (real) / spell s (real)");
+                    for (int z = 0; z < 4; ++z) {
+                        if (S.tn_L[z].empty()) continue;
+                        std::vector<double> gp; for (const auto& [b5, L] : S.tn_g[z]) if (S.tn_an[b5]) gp.push_back(L - S.tn_as[b5] / S.tn_an[b5]);
+                        static const char* tzn[4] = {"ball 0-35", "35-52", "52-70", "70+"};
+                        std::printf("\n        %s %5.1f (%4.1f) / %4.1f (%4.1f) / %4.1f (%4.1f) / %+4.1f (%+4.1f) / %4.1f (%4.1f) / %3.1f (%3.1f)", tzn[z], S.tn_n[z] / tmn, rN[z],
+                                    md(S.tn_L[z]), rLn[z], md(S.tn_b[z]), rB[z], md(gp), rG[z], md(S.tn_f[z]), rF[z], md(S.tn_d[z]), rD[z]);
+                        static const double rNk[4] = {14.9, 20.3, 24.3, 48.1}, rGk[4] = {-7.2, -9.2, -5.9, -2.9}, rDk[4] = {2.2, 3.4, 3.6, 5.6};
+                        std::vector<double> gk; for (const auto& [b5, L] : S.tn_gk[z]) if (S.tn_an[b5]) gk.push_back(L - S.tn_as[b5] / S.tn_an[b5]);
+                        std::printf(" | kept 2 s+ by the winner %4.1f (%4.1f), line minus usual %+4.1f (%+4.1f), spell s %3.1f (%3.1f)", S.tn_nk[z] / tmn, rNk[z], md(gk), rGk[z], md(S.tn_dk[z]), rDk[z]);
+                    }
+                    {
+                        static const double rW[4] = {48.3, 23.6, 21.1, 14.5}, rL3[4][3] = {{15.1, 40.4, 54.6}, {13.3, 42.1, 55.5}, {16.9, 42.2, 57.1}, {20.2, 49.8, 62.1}}, rF3[4] = {8.1, 6.5, 8.3, 0.5}, rF6[4] = {14.9, 6.2, 10.2, -1.0};
+                        static const char* wzn[4] = {"ball 0-35", "35-52", "52-70", "70+"};
+                        std::printf("\n        spells won in play and kept 2 s+, by the ball's band (m off the winner's goal) at the win: a team-match (real) | lost again by 3 / 6 / 10 s %% (real) | ball forward at +3 s / +6 s med (real)");
+                        for (int z = 0; z < 4; ++z) if (S.wsp_n[z]) {
+                            const double n = S.wsp_n[z];
+                            std::printf("\n          %s %5.1f (%4.1f) | %4.1f / %4.1f / %4.1f (%4.1f / %4.1f / %4.1f) | %5.1f / %5.1f (%4.1f / %4.1f)", wzn[z], n / tmn, rW[z],
+                                        100 * S.wsp_l[z][0] / n, 100 * S.wsp_l[z][1] / n, 100 * S.wsp_l[z][2] / n, rL3[z][0], rL3[z][1], rL3[z][2], md(S.wsp_f[z][0]), md(S.wsp_f[z][1]), rF3[z], rF6[z]);
+                        }
+                    }
+                    {
+                        static const double rK[3] = {68.4, 38.9, 58.1}, rKk[3] = {43.4, 25.3, 38.8}, rKs[3][3] = {{13.4, 22.0, 64.6}, {11.4, 20.9, 67.7}, {19.1, 24.4, 56.6}}, rKks[3][3] = {{15.3, 22.9, 61.8}, {12.7, 20.3, 66.9}, {20.3, 26.0, 53.8}};
+                        static const char* an[3] = {"<3 s", "3-6", "6+"};
+                        std::printf("\n        losses by the spell's age: a team-match (real) | ball at the change ground / air / feet %% (real) || kept 2 s+ by the winner: a team-match (real) | ground / air / feet %% (real)");
+                        for (int ab = 0; ab < 3; ++ab) {
+                            const double n = S.lk_n[ab][0] + S.lk_n[ab][1] + S.lk_n[ab][2], nk = S.lk_k[ab][0] + S.lk_k[ab][1] + S.lk_k[ab][2];
+                            if (n <= 0) continue;
+                            std::printf("\n          %-4s %5.1f (%4.1f) | %4.1f / %4.1f / %4.1f (%4.1f / %4.1f / %4.1f) || %5.1f (%4.1f) | %4.1f / %4.1f / %4.1f (%4.1f / %4.1f / %4.1f)", an[ab], n / tmn, rK[ab],
+                                        100 * S.lk_n[ab][0] / n, 100 * S.lk_n[ab][1] / n, 100 * S.lk_n[ab][2] / n, rKs[ab][0], rKs[ab][1], rKs[ab][2],
+                                        nk / tmn, rKk[ab], 100 * S.lk_k[ab][0] / std::max(1.0, nk), 100 * S.lk_k[ab][1] / std::max(1.0, nk), 100 * S.lk_k[ab][2] / std::max(1.0, nk), rKks[ab][0], rKks[ab][1], rKks[ab][2]);
+                        }
+                    }
+                    std::printf("\n        HEADERS (benchmarks_statsbomb_aerial.py, real PL 15/16 in brackets): aerial duels a match %.1f (44.1), lone headers a match %.1f, headed clearances a team %.1f (16.1), headers at goal a team %.1f", S.aer_d / static_cast<double>(matches), S.aer_l / static_cast<double>(matches), S.aer_c / tmn, S.aer_g / tmn);
+                    {
+                        static const double rN[3] = {15.5, 41.8, 27.6}, rA[3] = {1.7, 1.8, 1.8}, rD[3] = {2.0, 1.6, 1.2}, rB[3] = {36.4, 39.3, 43.0}, rO[3] = {49.8, 56.8, 65.3}, rX[3] = {24.0, 19.3, 18.7}, rL[3] = {61.8, 71.6, 74.4};
+                        static const char* hzn[3] = {"0-35", "35-70", "70+"};
+                        auto md2 = [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+                        std::printf("\n        HIGH BALLS COMING DOWN through 2.4 m in open play (benchmarks_tracking_aerial.py, real DFL in brackets), by m off the kicker's own goal: a team-match | nearest of the kicker's side med | of the other side med | both within 2 m %% | other side within 2 m %% | nobody within 3 m %% | other side touches it within 3 s %%");
+                        for (int z = 0; z < 3; ++z) if (S.hb_n[z]) {
+                            const double n = S.hb_n[z];
+                            std::printf("\n          %-5s %5.1f (%4.1f) | %4.1f (%3.1f) | %4.1f (%3.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f)", hzn[z], n / tmn, rN[z], md2(S.hb_a[z]), rA[z], md2(S.hb_d[z]), rD[z],
+                                        100 * S.hb_both[z] / n, rB[z], 100 * S.hb_o2[z] / n, rO[z], 100 * S.hb_none[z] / n, rX[z], 100 * S.hb_lost[z] / n, rL[z]);
+                            std::printf(" || what:"); for (int w = 0; w <= ai::kWhyCount; ++w) if (S.hb_why[z][w] * 100 >= 5 * n) std::printf(" %s %.0f%%", w < ai::kWhyCount ? ai::kWhyNames[w] : "header/deflection", 100 * S.hb_why[z][w] / n);
+                            std::printf(", kicked from %.1f m off his goal", md2(S.hb_from[z]));
+                            std::printf(" || their chaser then %4.1f%%, off the ball %4.1f m, his target off it %4.1f m, at %3.1f m/s", 100 * S.hb_c[z] / n, md2(S.hb_cd[z]), md2(S.hb_ct[z]), md2(S.hb_cv[z]));
+                        }
+                    }
+                    static const double rU[21] = {6.6, 9.6, 14.2, 16.8, 19.8, 22.9, 25.6, 28.9, 31.3, 34.0, 37.4, 40.4, 42.7, 45.1, 48.0, 49.9, 52.3, 54.2, 56.5, 57.8, 60.5};
+                    std::printf("\n        its line in all possession frames, ball 5 m bins off its goal (real):");
+                    for (int b5 = 0; b5 < 21; ++b5) if (S.tn_an[b5]) std::printf(" %d %.1f (%.1f);", b5 * 5, S.tn_as[b5] / S.tn_an[b5], rU[b5]);
                 }
                 static const char* zbn[4] = {"ball 0-35", "35-52", "52-70", "70+"};
                 static const double rL[4] = {11.5, 25.2, 36.9, 50.5}, rA[4] = {12.1, 27.7, 41.0, 53.0};

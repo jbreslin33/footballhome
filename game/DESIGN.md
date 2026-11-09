@@ -7532,3 +7532,65 @@ when it loses the ball (DFL by ball band v ours). (2) The block's top man 4-6 m 
 10-50 m out: the spot table is settled and ball-still; transition frames. (3) Our set-piece box
 shape. (4) Their line 3 m high with the ball in the box. (5) Back to 35+ 28 v 17. (6) Crosses 4.2 v
 11.5. (7) Law 8, Law 13 walls, cards. (8) Take-ons.
+
+### 8.172 G5.71 — the scrappy phase: real sides give the ball straight back; ours contest no high ball (no migration)
+
+§8.171's next (1): their line 6-9 m high at the turnover.
+
+**Measured first** (new harness lines, 8 × 90; real in brackets).
+- The side in possession's own line (second-last, keeper in), m off its goal, in every possession
+  frame: within 1-2 m of real at every 5 m ball bin (new `scripts/benchmarks_tracking_turnline.py`,
+  DFL [Bassek 2025]). So the shape in possession is not the fault.
+- In the last frame before it loses the ball, the real line is 2-7 m *below* its usual height for
+  that ball (−6.3 / −7.4 / −4.6 / −2.2 by the ball's band 0-35 / 35-52 / 52-70 / 70+ m off its goal).
+  The ball came forward 13-17 m in the 3 s before, and the spell was 2-5 s old (median). Ours: −0.9 /
+  −0.7 / −2.4 / 0.0, spells 6-18 s old. Ours loses the ball in settled play. Real sides mostly lose
+  it seconds after winning it, before the line has stepped up.
+- Losses a team-match (ball to the other side in play): 98 (165). Counting only losses the winner
+  keeps 2 s+ (DFL's flag can flicker): 80 (108). By the losing spell's age: <3 s 14 (68), 3-6 s 11
+  (39), 6 s+ 73 (58). The whole gap is the short spells.
+- Of spells won in play and kept 2 s+, lost again by 3 / 6 / 10 s: ours 2-12 / 13-24 / 23-39%, real
+  13-20 / 40-50 / 55-62%.
+- It is not bolder first passes. Real passes in the first 3 s after an open-play win go forward a
+  little more than settled ones (median +5.2 m v +3.8) and complete *more* often (87.3% v 82.3%; new
+  `scripts/benchmarks_statsbomb_loss.py`, StatsBomb PL 15/16). StatsBomb merges brief touches into
+  the other side's possession, so its spell ages are not compared. Only the mix of how losses end is:
+  passes ~65%, duels ~20%, miscontrols ~11%.
+- With the ball in the air (1.5 m+) at the change: 4% of our short-spell losses, real 22%.
+- Headers: aerial duels 18.4 a match (44.1, `benchmarks_statsbomb_aerial.py`), while 36.6 a match
+  are headed with no one challenging. About as many balls are headed as real; few are contested.
+
+**Real** (new `scripts/benchmarks_tracking_aerial.py`, DFL). Every high ball in open play (rose past
+4 m since it was last under 0.5 m), at its first frame down through 2.4 m: 85 a team-match. The
+nearest opponent to the ball, median, by its zone (m off the kicker's own goal) 0-35 / 35-70 / 70+:
+2.0 / 1.6 / 1.2 m, and an opponent is within 2 m 50 / 57 / 65% of the time. Ours: 17.3 / 5.7 / 4.0 m,
+4 / 12 / 24%. Our receiver is under the ball as often as real (1.9 m v 1.8 in midfield).
+
+**The change** [FH, read from the DFL drop table]. `DefendingBlock::assign`: their high ball in the
+air (`physics.block.contest_min_z_m`, 1.5 m; 0 = off) that their man meets first. Our nearest
+outfielder to where he meets it (the race read's point; held until another is `switch_m` nearer) is
+the chaser, and runs to that point, to contest the header or be on him as it lands (Brain::viewOf
+`chase_to` = `contestAt`). Before, our chaser ran to where *he* could first take the ball, past their
+man, so nobody challenged the meeting point. Coaching: compete for the first ball.
+
+**After** (8 × 90, v the run before).
+- Midfield high balls (35-70): nearest opponent 5.7 → 3.6 m (1.6), within 2 m 12 → 22% (57), both
+  sides within 2 m 3 → 9% (39). Their final third (70+): 4.0 → 2.7 (1.2).
+- Aerial duels 18.4 → 24.9 a match (44.1).
+- Losses 98 → 106 a team-match (165); kept 2 s+ 80 → 88 (108). <3 s 14 → 16 (68), 3-6 s 11 → 12.5
+  (39). Spells won and lost again by 6 s 13-24 → 15-27% (40-50).
+- Shots 9.1 → 9.4, goals 1.75 → 1.56, completion 78.5 → 77.8% (79.1): noise.
+- 11v11 golden re-locked (behaviour change); 3v3 unchanged.
+
+**What it says.** The challenger goes every time, aims within 1.8 m of the drop and arrives at 5.6
+m/s, but is still 3.7 m off when it comes down. He starts too far away: our block holds zonal spots
+and marks nobody, so their receiver is free at the kick. The rest of the scrappy phase waits on that.
+Two other findings from the same trace. Throw-ins are 25-44% of our high balls by zone (throws
+looping past 4 m). And in our own third, short lofted passes come down with nobody of either side
+near (kicker's side 6.6 m, real 1.7). The receiver meets them after the bounce.
+
+**Next moles.** (1) Marking: the receiver of their high ball is free at the kick. Where is his nearest
+defender at the kick, real v ours (DFL)? Defenders' spread off their spots is marking (§8.171). (2)
+Throw-ins past 4 m: the throw's launch v real (DFL ball height after a throw). (3) Own-third lofted
+passes landing where no one is. (4) The block's top man 4-6 m deep, ball 10-50 m out (§8.171 (2)).
+(5) Our set-piece box shape. (6) Crosses 4.2 v 11.5. (7) Law 8, Law 13 walls, cards. (8) Take-ons.

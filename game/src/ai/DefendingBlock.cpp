@@ -167,6 +167,7 @@ void BlockParams::configure(const core::ModelParams& p) {
     for (int b = 0; b < kBandCount; ++b)
         stagger[b] = p.fixed(std::string("physics.block.stagger_") + std::to_string(b * 10 + 5), kStagger[b]);
     switch_m = p.fixed("physics.press.switch_m", 2000);
+    contest_min_z = p.fixed("physics.block.contest_min_z_m", 1500);
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
 }
 
@@ -206,6 +207,28 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         // Nobody of ours can get there inside the race read's horizon (a ball come
         // to rest far from everyone): our nearest goes — else it sat there for good.
         else ch = nearest(ch);
+        // G5.71 (§8.172): their high ball, their man first to it — our nearest outfielder to
+        // where he meets it goes there, to contest it in the air or be on him as it lands.
+        // Without it our chaser ran to where HE could first take it, past their man: the
+        // nearest of ours was 5.7 m off a high ball at head height in midfield (real 1.6),
+        // aerial duels 18 a match (real 44), and their side kept the ball it had just won.
+        int& ct = contest_[team & 1];
+        const int mine = fr.first[team];
+        if (params_.contest_min_z.raw > 0 && world.lastTouchTeam() != team && ball.pos.z >= params_.contest_min_z &&
+            theirs >= 0 && fr.tick[theirs] >= 0 && (mine < 0 || fr.tick[mine] < 0 || fr.tick[theirs] < fr.tick[mine])) {
+            const Vec2 at = fr.at[theirs];
+            const Vec3 at3{at.x, at.y, Fixed64::zero()};
+            int best = -1; Fixed64 bd{};
+            for (std::uint8_t j = 0; j < world.playerCount(); ++j) {
+                if (team_of_slot[j] != team || world.isKeeper(j)) continue;
+                const Fixed64 d = distSq(world.player(j).pos, at3);
+                if (best < 0 || d < bd) { best = j; bd = d; }
+            }
+            if (ct >= 0 && ct != best && team_of_slot[ct] == team && !world.isKeeper(static_cast<std::uint8_t>(ct)) &&
+                math::fx_sqrt(distSq(world.player(static_cast<std::uint8_t>(ct)).pos, at3)) < math::fx_sqrt(bd) + params_.switch_m) best = ct;
+            ct = best; contest_at_[team & 1] = at;
+            if (best >= 0) ch = best;
+        } else ct = -1;
     } else if (live && !ball.owner) {
         ch = nearest(ch);
     } else if (world.restartTeam() == team && world.outStage() == 0 && !ball.owner) {
@@ -213,6 +236,7 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         // (restartTaker, at its spot); a kick-off or free kick, the nearest man.
         ch = world.heldRestart() ? restart_taker : nearest(ch);
     } else ch = -1;
+    if (!(live && !ball.owner && fr.live)) contest_[team & 1] = -1;
     int& pr = presser_[team & 1];
     if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
     else pr = nearest(pr);

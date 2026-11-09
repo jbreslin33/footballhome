@@ -44,6 +44,10 @@ struct BlockParams {
     // G5.70 (§8.171): each forward's own offset off his role's spot, by role p10 … p90 — one roll
     // a man a spell of theirs (DFL benchmarks_tracking_blockspread.py, net of line_q).
     math::Fixed64 man_q[kRoleCount][5]{}, man_near_q[kRoleCount][5]{};   // 20 m+ out / inside 20 m (forwards only)
+    // G5.71 (§8.172): their high ball in the air (this high or more) that their man meets first — our
+    // nearest outfielder goes to where he meets it, to contest it (0 = off). Real: the nearest of the
+    // other side is 1.2-2.0 m off a high ball at head height (DFL benchmarks_tracking_aerial.py).
+    math::Fixed64 contest_min_z{};
     void configure(const core::ModelParams& p);
 };
 
@@ -58,7 +62,9 @@ public:
     int deepCb(std::uint8_t team) const { return deep_cb_[team & 1]; }
     int chaser(std::uint8_t team) const { return chaser_[team & 1]; }
     int presser(std::uint8_t team) const { return presser_[team & 1]; }
-    void reset() { chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
+    int contester(std::uint8_t team) const { return contest_[team & 1]; }       // G5.71: our man contesting their high ball
+    math::Vec2 contestAt(std::uint8_t team) const { return contest_at_[team & 1]; }
+    void reset() { contest_[0] = contest_[1] = -1; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
 
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;
     // His share of his formation width for this ball (ball metres off our line).
@@ -73,6 +79,8 @@ private:
                      const std::vector<Role>& role_of_slot);
     BlockParams params_{};
     int chaser_[2] = {-1, -1};
+    int contest_[2] = {-1, -1};
+    math::Vec2 contest_at_[2]{};
     int presser_[2] = {-1, -1};
     int deep_cb_[2] = {-1, -1};    // G5.41: the pair's deeper man (held), and his partner
     int other_cb_[2] = {-1, -1};

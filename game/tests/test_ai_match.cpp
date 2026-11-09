@@ -118,7 +118,7 @@ constexpr std::uint64_t kGolden3v3   = 0x1d8c977c1e22f69cULL;
 // Re-locked G5.62 (2026-11-09): as the 3v3.
 // Re-locked G5.63 (2026-11-09): as the 3v3.
 // Re-locked G5.68 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xf9eda55d47641501ULL;
+constexpr std::uint64_t kGolden11v11 = 0xb257988a9fb94b64ULL;
 
 struct Rig {
     World world;

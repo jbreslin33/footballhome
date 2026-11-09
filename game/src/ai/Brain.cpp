@@ -215,6 +215,7 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     v.across_ours = slideY(mine.base, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
                                                                          : Vec2{world.ball().pos.x, world.ball().pos.y};
+    if (block_.contester(team) == static_cast<int>(slot)) v.chase_to = block_.contestAt(team);   // G5.71: contest their high ball
     v.match_seed = match_seed_;
     return v;
 }
