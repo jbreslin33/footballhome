@@ -72,9 +72,12 @@ struct PossessionParams {
     // (metres off the line, |y|) — DFL tracking (benchmarks_tracking_box.py).
     math::Fixed64 box_k[6][4]{}, box_role[6][kRoleCount]{}, box_depth[6]{}, box_ay[6]{};
     // G5.53 (§8.154): how many, by their line inside box_line_deep_m (16) or not — [zone][deep][0..3+], DFL.
-    math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{};
+    math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{}, box_line_deep_out_m{};   // G5.61: deep until back past out_m
     bool box_spot_near = true;   // G5.60: the box spots go to the runners nearest them (physics.box.spot_near)
     bool box_from_pass = true;   // G5.60: the zone our pass is going to (physics.box.from_pass)
+    bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)
+    bool box_stay = true;   // G5.61: a box runner in the box stays one when a redraw rolls fewer (physics.box.stay)
+    bool box_spell_roll = true;   // G5.61: one roll a spell for how many run (box and channel), each zone reads it (physics.box.spell_roll)
     bool box_sticky = true;   // G5.60 (§8.161): a redraw keeps the men already running (physics.box.sticky)
     // G5.56 (§8.157): their wide channel on the ball's side — [zone][deep] mean men, by role, depth, |y| (DFL).
     math::Fixed64 chan_n[6][2]{}, chan_role[6][kRoleCount]{}, chan_depth[6]{}, chan_ay[6]{};

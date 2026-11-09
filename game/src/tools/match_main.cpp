@@ -67,7 +67,8 @@ struct Stats {
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
     long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {};   // §8.160: mates by zone, by the ball's zone
-    long bx_ch[6] = {}; long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
+    long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
+     long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
@@ -220,7 +221,7 @@ int main(int argc, char** argv) {
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
         // 5 Hz ring for "3 s before" (ball x, every man's x).
-        long rk[16]; double rbx[16], rpx[16][32]; int rat[16] = {}; for (long& v : rk) v = -1;
+        long dead_last = 0; long rk[16]; double rbx[16], rpx[16][32], rpy[16][32]; int rat[16] = {}; for (long& v : rk) v = -1;
         bool en_arm[2] = {false, false}; double en_prev[2] = {0, 0}; long en_pk[2] = {-100, -100};
         long dead_k0 = -1; int dead_kind = 0, dead_why = 0; char out_note[256] = "";
         struct Tk { int car = -1; long last = -100000; bool faced = false; std::uint32_t pressed = 0; double prev[32]; bool has[32]; } tk{};
@@ -535,6 +536,7 @@ int main(int argc, char** argv) {
                 ++S.ph_n;
             }
             if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team) { rc_team = W.lastTouchTeam(); rc_k = static_cast<long>(k); }
+            if (W.outStage() != 0 || W.restartTeam() != 0xFF) dead_last = static_cast<long>(k);   // §8.162
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
@@ -813,10 +815,21 @@ int main(int argc, char** argv) {
             if (tl < 52) {   // in the box, by the ball's zone (benchmarks_tracking_box.py)
                 const int bz = (tl < 18 ? 0 : tl < 35 ? 1 : 2) * 2 + (std::fabs(by) < 20.16 ? 0 : 1);
                 ++S.bx_f[bz];
+                const double since = (static_cast<long>(k) - dead_last) / 30.0; const int sb = since < 3 ? 0 : since < 6 ? 1 : 2;   // §8.162
+                ++S.bx_sf[bz][sb];
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j) || W.player(j).team != a) continue;
                     const double ptl = hx - W.player(j).pos.x.toDouble() * sg;
-                    if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) ++S.bx_in[bz];
+                    if (ptl < 18 && std::fabs(W.player(j).pos.y.toDouble()) < 20.16) {
+                        ++S.bx_in[bz]; ++S.bx_si[bz][sb];
+                        const int r2 = static_cast<int>(((k / 6) + 6) % 16);   // §8.162: 10 frames (2 s) back
+                        if (rk[r2] == static_cast<long>(k) - 60 && j < 32) {
+                            ++S.bx_i2[bz];
+                            const bool was = hx - rpx[r2][j] * sg < 18 && std::fabs(rpy[r2][j]) < 20.16;
+                            if (was) ++S.bx_was[bz];
+                            S.bx_mv[bz] += std::hypot(W.player(j).pos.x.toDouble() - rpx[r2][j], W.player(j).pos.y.toDouble() - rpy[r2][j]);
+                        }
+                    }
                     else if (ptl < 18) ++S.bx_ch[bz];   // §8.157: in their wide channels (0-18 m, |y| 20.16+)
                     if (s.lastOrders()[j].why == ai::Why::AttackBox) { ++S.bx_run[bz]; S.bx_run_tl[bz] += hx - s.lastOrders()[j].target.x.toDouble() * sg; }
                 }
@@ -980,7 +993,7 @@ int main(int argc, char** argv) {
                 }
             }
             rk[ri] = k; rbx[ri] = bx; rat[ri] = a;
-            for (std::uint8_t j = 0; j < N && j < 32; ++j) rpx[ri][j] = W.player(j).pos.x.toDouble();
+            for (std::uint8_t j = 0; j < N && j < 32; ++j) { rpx[ri][j] = W.player(j).pos.x.toDouble(); rpy[ri][j] = W.player(j).pos.y.toDouble(); }
         }
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
@@ -1131,6 +1144,17 @@ int main(int argc, char** argv) {
             static const double real_ch[6] = {0.51, 1.35, 0.12, 0.20, 0.01, 0.02};
             std::printf("\n     ours in their WIDE CHANNELS (0-18 m, |y| 20.16+) by the ball's zone (real DFL):");
             for (int z = 0; z < 6; ++z) if (S.bx_f[z]) std::printf(" %s %.2f (%.2f);", bzn[z], static_cast<double>(S.bx_ch[z]) / S.bx_f[z], real_ch[z]);
+        }
+        {   // §8.162: real DFL benchmarks_tracking_boxprior.py: of the men in the box, in it 2 s before / moved m
+            static const double real_was[6] = {68, 74, 70, 71, 91, 91}, real_mv[6] = {5.8, 4.1, 4.4, 3.6, 4.1, 3.7};
+            std::printf("\n     of ours in the box, there 2 s before / moved m in those 2 s (real DFL):");
+            for (int z = 0; z < 6; ++z) if (S.bx_i2[z]) std::printf(" %s %.0f%% (%.0f%%) / %.1f (%.1f);", bzn[z], 100.0 * S.bx_was[z] / S.bx_i2[z], real_was[z], S.bx_mv[z] / S.bx_i2[z], real_mv[z]);
+        }
+        {   // §8.162: real DFL benchmarks_tracking_boxsince.py: by seconds since the ball was last dead, share of frames / in the box
+            static const double rf[6][3] = {{16, 10, 73}, {18, 8, 74}, {5, 8, 86}, {10, 7, 82}, {5, 9, 86}, {10, 8, 83}};
+            static const double ri[6][3] = {{5.24, 4.06, 2.97}, {3.21, 2.65, 2.03}, {2.52, 2.05, 0.86}, {1.46, 0.92, 0.70}, {0.25, 0.29, 0.11}, {0.16, 0.15, 0.07}};
+            std::printf("\n     in the box by seconds since the ball was dead <3 / 3-6 / 6+, %% of frames (real) in box (real):");
+            for (int z = 0; z < 6; ++z) if (S.bx_f[z]) { std::printf(" %s", bzn[z]); for (int q = 0; q < 3; ++q) std::printf(" %.0f%% (%.0f) %.2f (%.2f)%s", 100.0 * S.bx_sf[z][q] / S.bx_f[z], rf[z][q], static_cast<double>(S.bx_si[z][q]) / std::max(1L, S.bx_sf[z][q]), ri[z][q], q < 2 ? " /" : ";"); }
         }
         std::printf("\n     their offside line / our most advanced outfielder, m off their line (real DFL):");
         static const double real_ln[6] = {8.7, 9.0, 18.8, 18.5, 28.2, 27.8}, real_lead[6] = {9.1, 10.1, 20.2, 20.2, 30.1, 29.8};

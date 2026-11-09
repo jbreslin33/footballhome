@@ -592,6 +592,7 @@ const Keeper kKeeper;
 
 }  // namespace
 
+
 const ActingState* Possession::onBall() { return &kOnBall; }
 const ActingState* Possession::support() { return &kSupport; }
 const ActingState* Possession::receive() { return &kReceive; }
@@ -617,6 +618,11 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
         if (live && !had_[team & 1]) won_[team & 1] = world.tickCount();
         had_[team & 1] = live;
     }
+    // G5.61 (§8.162): the ball dead and the restart ours (or the call still to come after
+    // our touch) — the runners hold as they are, no redraw. Real: with the ball 18-35 out
+    // in the 3 s after a dead ball, 1.46-2.52 men in the box; ours 0.43-0.50, cleared.
+    if (params_.box_restart_keep && world.restartTeam() == team) return;
+    if (params_.box_restart_keep && world.outStage() != 0 && world.restartTeam() == 0xFF && world.lastTouchTeam() != team) return;
     if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { clear(); return; }
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     // G5.60 (§8.161): with our pass on its way, the zone it is going to — the man it is
@@ -632,7 +638,10 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const std::uint64_t now = world.tickCount();
     // G5.53 (§8.154): whether their line has dropped inside line_deep_m — real box
     // presence goes by it (ball 18-35 centre: 2.71 men with it, 0.15 without).
-    const bool deep = world.pitchHalfX() - offsideLine(team, world, team_of_slot) < params_.box_line_deep_m;
+    // G5.61 (§8.162): once deep, deep until the line is back past line_deep_out_m — a
+    // line hovering at 16 m flipped deep and back, and each flip re-read the count.
+    const Fixed64 lnd = world.pitchHalfX() - offsideLine(team, world, team_of_slot);
+    const bool deep = lnd < (deep_[team & 1] && zone_[team & 1] >= 0 ? params_.box_line_deep_out_m : params_.box_line_deep_m);
     if (z == zone_[team & 1] && deep == deep_[team & 1] && now - drawn_[team & 1] < 90) return;
     zone_[team & 1] = z; drawn_[team & 1] = now; deep_[team & 1] = deep;
     // G5.60 (§8.161): the men already running stay first in line — a redraw (every
@@ -642,10 +651,26 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const std::uint32_t keepc = params_.box_sticky ? (chan_ & mine_mask) : 0u;
     runners_ &= ~mine_mask; chan_ &= ~mine_mask;
     // How many: the real 0 / 1 / 2 / 3+ shares (3+ = 3, 4 at the mean's excess).
-    const Fixed64 u = (core::detNoise(match_seed, now, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    // G5.61 (§8.162): one roll a spell, read through each zone's real shares — a new
+    // zone or their line dropping re-reads how many from the same roll, so the count
+    // falls only where the real shares fall; a fresh roll per draw ended 39% of runs.
+    const std::uint64_t at_t = params_.box_spell_roll ? won_[team & 1] + (now - won_[team & 1]) / 90 * 90 : now;
+    const Fixed64 u = (core::detNoise(match_seed, at_t, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
     const Fixed64* kz = params_.box_kl[z][deep ? 1 : 0];
     int n = 0; Fixed64 acc = kz[0];
     while (n < 3 && u >= acc) { ++n; acc += kz[n]; }
+    if (params_.box_stay) {
+        // G5.61 (§8.162): a runner who has reached the box stays — a lower count does not
+        // send him out. Real: of the men in the box, 70% (ball 18-35) to 91% (35-52) were
+        // in it 2 s before; ours 43-51%, gone as the ball went back a zone.
+        int there = 0;
+        for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
+            if (!((keep >> j) & 1u)) continue;
+            const auto& q = world.player(j);
+            if (world.pitchHalfX() - q.pos.x * sg < Fixed64::fromInt(18) && math::fx_abs(q.pos.y) < Fixed64::fromFraction(2016, 100)) ++there;
+        }
+        if (there > n) n = std::min(there, 4);
+    }
     if (n == 0) { assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep, keepc); return; }
     // Who: weight = his role's real mean count ÷ the men of that role in this team; nearest first among equals.
     int per_role[kRoleCount] = {};
@@ -703,7 +728,7 @@ void Possession::assignChannel(std::uint8_t team, const core::World& world, cons
     const Fixed64 m = params_.chan_n[z][deep ? 1 : 0];
     int n = static_cast<int>(m.raw >> Fixed64::FRAC_BITS);
     const Fixed64 frac = m - Fixed64::fromInt(n);
-    const Fixed64 u = (core::detNoise(match_seed, world.tickCount(), team, 69) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    const Fixed64 u = (core::detNoise(match_seed, params_.box_spell_roll ? won_[team & 1] + (world.tickCount() - won_[team & 1]) / 90 * 90 : world.tickCount(), team, 69) + Fixed64::one()) * Fixed64::fromFraction(1, 2);   // G5.61
     if (u < frac) ++n;
     if (n <= 0) return;
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
@@ -930,7 +955,11 @@ void PossessionParams::configure(const core::ModelParams& p) {
     box_sticky = p.fixed("physics.box.sticky", 1000).raw > 0;   // G5.60
     box_spot_near = p.fixed("physics.box.spot_near", 1000).raw > 0;   // G5.60
     box_from_pass = p.fixed("physics.box.from_pass", 1000).raw > 0;   // G5.60
+    box_spell_roll = p.fixed("physics.box.spell_roll", 1000).raw > 0;   // G5.61
+    box_stay = p.fixed("physics.box.stay", 1000).raw > 0;   // G5.61
+    box_restart_keep = p.fixed("physics.box.restart_keep", 1000).raw > 0;   // G5.61
     box_line_deep_m = p.fixed("physics.box.line_deep_m", 16000);
+    box_line_deep_out_m = p.fixed("physics.box.line_deep_out_m", 18000);   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
     static const int kChN[6][2] = {{60, 520}, {310, 1390}, {20, 310}, {10, 500}, {0, 220}, {10, 470}};

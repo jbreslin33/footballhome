@@ -7137,3 +7137,65 @@ and whether the count should follow the line's depth with a lag rather than per 
 advanced man 2-4 m short of their line. (3) Back to 35+ 30 v 17 (own wide zone 0.63 v 0.84).
 (4) Crosses 4.2 v 11.5. (5) Spells starting wide 32 v 58. (6) Law 8, Law 13 walls, cards.
 (7) Take-ons.
+
+### 8.162 G5.61 — box runs: one roll per 3 s, deep hysteresis, men in the box stay, held through our restarts (no migration)
+
+§8.161's next: what ends a box run, and whether the count should follow the line's depth with a lag.
+
+**Measured first** (a one-off tracer in `assignRunners`, 8 × 90, every box run's end). 60% ended
+with the ball lost or dead, 27% at a redraw that rolled zero, 11% at one that rolled fewer. Zone
+changes set off 873 of the 1,310 redraws with a runner on. Each redraw rolled a fresh count, so
+the ball moving one zone could cancel a man mid-run. Line-depth flips set off 235 more; 63% of
+those rolled zero (the line hovering at 16 m).
+
+**The changes** [FH].
+- **One roll per 3 s of the spell** (`physics.box.spell_roll`; the channel count too). A new zone
+  or a deep flip re-reads the count from the same roll through that zone's real shares. The count
+  falls only where the real shares fall. Each zone's per-frame marginal is unchanged. One roll for
+  the *whole* spell was tried first: it cut 0-18 presence (centre 2.13 → 1.92, wide 1.95 → 1.64),
+  because spells that rolled low stayed near the box longest. The roll now refreshes every 3 s.
+- **Deep hysteresis** (`physics.box.line_deep_out_m` 18). Once their line is inside 16 m it stays
+  "deep" until it is back past 18 m.
+- **Men in the box stay** (`physics.box.stay`). On a redraw, a runner already in the box keeps
+  his run even if the count drops below the number of runners there.
+- **Held through our restarts** (`physics.box.restart_keep`). With the restart ours, or the call
+  still to come after their touch, the runners hold and nothing is redrawn. Before, every dead
+  ball cleared them.
+
+**Real** (new, DFL 7 matches [Bassek 2025]):
+- `scripts/benchmarks_tracking_boxprior.py`: of the men in the box, the share already in it 2 s
+  before is 68% (ball 0-18 centre), 74% (0-18 wide), 70% (18-35 centre), 71% (18-35 wide) and
+  91% (35-52). They moved 3.6-5.8 m in those 2 s. Real box presence is men who are already there,
+  not late sprints.
+- `scripts/benchmarks_tracking_boxsince.py`: by seconds since the ball was last dead. With the
+  ball 18-35 wide: <3 s 1.46 in the box, 3-6 s 0.92, 6+ s 0.70. With it 0-18 centre: 5.24 / 4.06 /
+  2.97.
+
+Both are new harness lines under IN THE BOX.
+
+**After** (8 × 90, v a HEAD-equivalent run).
+- Run ends at a redraw 38.6 → about 21%; ended with the ball lost or dead 60 → 74%; mean run
+  2.1 → 2.8 s.
+- In the box, ours (real): 0-18 centre 2.13 → 2.17 (3.45), 0-18 wide 1.95 → 1.77 (2.29),
+  18-35 centre 0.41 → 0.45 (1.04), 18-35 wide 0.42 → 0.38 (0.79). This is within run-to-run noise:
+  box presence did not move.
+- Under 3 s from a dead ball: 0-18 centre 2.30 → 2.67 (5.24), 18-35 centre 0.43 → 0.65 (2.52),
+  18-35 wide 0.50 → 0.50 (1.46). After a ball out off them we never had runners to hold.
+- In the box 2 s before: 43-51% → 43-51% (68-91%), moved 6.0-7.0 m (3.6-5.8).
+- Wide spells: back to 35+ 30.3 → 29.0% (16.9), cross 6.5 → 7.9% (7.0). Crosses 4.2 → 4.7
+  (11.5), cut-backs 0.88 → 1.38 (1.03). Shots 9.7 → 9.2, goals 1.69 → 1.62.
+- Both goldens re-locked.
+
+**What it says.** All four were wrong behaviour, and fixing them stopped runs from being cancelled
+by churn. They did not fill the box. The new lines show why. Of ours in the box, 80% are box
+runners (ball 18-35 wide), and fewer than half were there 2 s before. Our box is fresh sprinters
+arriving as the ball does. The real box is men who are already in it, walking (3.6 m in 2 s), and
+loaded at every set piece. A draw on the ball's zone can't produce that: whatever the count, the
+men start too late.
+
+**Next moles.** (1) Occupancy, not runs: who stands in the box as a resting position (the
+striker's home spot in the final third, held through zone changes and turnovers), against
+boxprior's 70-91%. (2) Our set-piece shape: men into the box for our throw-ins, free kicks and
+corners in the final third whoever touched it last (boxsince <3 s 1.46 v 0.50). (3) Their line
+3 m high with the ball in the box (0-18 centre 11.4 v 8.7). (4) Back to 35+ 29 v 17. (5) Crosses
+4.7 v 11.5. (6) Law 8, Law 13 walls, cards. (7) Take-ons.
