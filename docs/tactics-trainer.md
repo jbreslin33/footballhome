@@ -12,13 +12,13 @@ they are mature we add lh specific? this way the premier league stuff is not con
   the teachers. **Nothing from the club's tactic plans ever feeds a PL side.**
 - The club's plans (Game Center 🎯 Tactics, `tactic_plans` …) are hand-drawn and partly
   estimated. They stay on the board until the PL trainer is mature.
-- If Lighthouse ever comes back, it's PL → Lighthouse only, never the reverse.
+- The one bridge is a copy PL → our Event Center tactics board (step 4), never the reverse.
 - `tactic_buildout_shapes` holds measured shapes only (mig 1198 removed two [FH] estimates);
   estimates live inside a plan's own `tactic_state_opponents`.
 
 ## Build order
 
-Game session owns 1–3 (`game/`, `frontend/game*`); the club session owns the board.
+Game session owns 1–3 and the game half of 4 (`game/`, `frontend/game*`); the club session owns the board and the API half of 4.
 
 1. **Each man says what he's doing.** At every tick the engine knows which game concept each
    outfield man is running out of possession (cover-shadow on #6, mark #9, press, line-hold …).
@@ -30,7 +30,13 @@ Game session owns 1–3 (`game/`, `frontend/game*`); the club session owns the b
    play on live. Freeze frame / play-practice-play is the design input (coaching methodology).
    A lesson may say "measured" only for what was measured: PL data = StatsBomb events (pressure
    and ball-win locations, no off-ball tracking); off-ball shape is from DFL (Bundesliga).
-Lighthouse is out of scope for now (owner: "don't worry about lh"). No plan reader, no
-copy-into-our-plan, nothing club-side in the engine until the owner asks.
+4. **Copy a moment over to our tactics** (owner: "except right to copy it over to … the event
+   center"): from a frozen PL moment, "copy to our tactics" → a plan step on the Event Center /
+   Game Center 🎯 Tactics board — `POST /api/tactic-plans/states {parent_state_id, ball_with}` then
+   `PUT /api/tactic-plans/states/:id {opponents, jobs}` with their positions and each man's concept
+   as his job. One-way: PL → our board, never back.
+
+Otherwise Lighthouse is out of scope (owner: "don't worry about lh"): no plan reader, nothing
+club-side in the engine until the owner asks.
 
 The board gets a 🎮 3D view pill once step 2 exists (deep link from the game session).
