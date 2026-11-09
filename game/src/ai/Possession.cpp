@@ -5,6 +5,7 @@
 #include "core/Ball.hpp"
 #include "math/FixedMath.hpp"
 
+#include <algorithm>
 #include <string>
 
 namespace fh::game::ai {
@@ -599,6 +600,7 @@ const ActingState* Possession::attackBox() { return &kAttackBox; }
 const ActingState* Possession::runLine() { return &kRunLine; }
 
 int Possession::runnerIndex(std::uint8_t slot) const {
+    if (params_.box_spot_near && slot < 32) return spot_k_[slot];
     int k = 0;
     for (std::uint8_t j = 0; j < slot && j < 32; ++j) if (((runners_ & ~chan_) >> j) & 1u) ++k;
     return k;
@@ -617,30 +619,41 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     }
     if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { clear(); return; }
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
-    const Fixed64 tl = world.pitchHalfX() - b.pos.x * sg;   // ball metres off their line
+    // G5.60 (§8.161): with our pass on its way, the zone it is going to — the man it is
+    // played to — so the runs start as it is played, not as it lands (the ball stays
+    // in 18-35 wide 1.5 s; runners drawn on arrival were 11-13 m from their spots).
+    Vec2 at{b.pos.x, b.pos.y};
+    if (params_.box_from_pass && !b.owner && b.pass_to < world.playerCount() && team_of_slot[b.pass_to] == team)
+        at = Vec2{world.player(b.pass_to).pos.x, world.player(b.pass_to).pos.y};
+    const Fixed64 tl = world.pitchHalfX() - at.x * sg;   // ball (or its man) metres off their line
     if (tl >= Fixed64::fromInt(52)) { clear(); return; }
     const int z = (tl < Fixed64::fromInt(18) ? 0 : tl < Fixed64::fromInt(35) ? 1 : 2) * 2 +
-                  (math::fx_abs(b.pos.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1);
+                  (math::fx_abs(at.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1);
     const std::uint64_t now = world.tickCount();
     // G5.53 (§8.154): whether their line has dropped inside line_deep_m — real box
     // presence goes by it (ball 18-35 centre: 2.71 men with it, 0.15 without).
     const bool deep = world.pitchHalfX() - offsideLine(team, world, team_of_slot) < params_.box_line_deep_m;
     if (z == zone_[team & 1] && deep == deep_[team & 1] && now - drawn_[team & 1] < 90) return;
     zone_[team & 1] = z; drawn_[team & 1] = now; deep_[team & 1] = deep;
+    // G5.60 (§8.161): the men already running stay first in line — a redraw (every
+    // 3 s, a new zone, their line dropping) re-rolls how many, not who; before it,
+    // a man 13 m into his run was dropped and another started (14% at their spot).
+    const std::uint32_t keep = params_.box_sticky ? (runners_ & ~chan_ & mine_mask) : 0u;
+    const std::uint32_t keepc = params_.box_sticky ? (chan_ & mine_mask) : 0u;
     runners_ &= ~mine_mask; chan_ &= ~mine_mask;
     // How many: the real 0 / 1 / 2 / 3+ shares (3+ = 3, 4 at the mean's excess).
     const Fixed64 u = (core::detNoise(match_seed, now, team, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
     const Fixed64* kz = params_.box_kl[z][deep ? 1 : 0];
     int n = 0; Fixed64 acc = kz[0];
     while (n < 3 && u >= acc) { ++n; acc += kz[n]; }
-    if (n == 0) { assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep); return; }
+    if (n == 0) { assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep, keepc); return; }
     // Who: weight = his role's real mean count ÷ the men of that role in this team; nearest first among equals.
     int per_role[kRoleCount] = {};
     for (std::uint8_t j = 0; j < world.playerCount(); ++j)
         if (team_of_slot[j] == team && !world.isKeeper(j)) ++per_role[static_cast<int>(role_of_slot[j])];
     const Vec2 box{sg * (world.pitchHalfX() - Fixed64::fromInt(12)), Fixed64::zero()};
     for (int pick = 0; pick < n; ++pick) {
-        int best = -1; Fixed64 bw{};
+        int best = -1; Fixed64 bw{}; bool bkept = false;
         for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
             if (team_of_slot[j] != team || world.isKeeper(j) || ((runners_ >> j) & 1u)) continue;
             if (b.owner && *b.owner == j) continue;
@@ -649,12 +662,35 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
             const Fixed64 d = math::length(Vec2{world.player(j).pos.x - box.x, world.player(j).pos.y - box.y});
             // role weight, a little less per 10 m from the box (nearest first among equals)
             const Fixed64 wgt = params_.box_role[z][r] / Fixed64::fromInt(per_role[r]) / (Fixed64::one() + d / Fixed64::fromInt(40));
-            if (best < 0 || wgt > bw) { best = j; bw = wgt; }
+            const bool kept = (keep >> j) & 1u;
+            if (best < 0 || kept > bkept || (kept == bkept && wgt > bw)) { best = j; bw = wgt; bkept = kept; }
         }
         if (best < 0) break;
         runners_ |= 1u << best;
     }
-    assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep);
+    if (params_.box_spot_near) {
+        // G5.60 (§8.161): the n spots to the n runners, least total distance (n ≤ 3, every order
+        // tried). By slot number the far winger got the near post: 72% of a runner's gap was across.
+        std::uint8_t who[4]; int m = 0;
+        for (std::uint8_t j = 0; j < world.playerCount() && j < 32 && m < 4; ++j)
+            if (team_of_slot[j] == team && ((runners_ >> j) & 1u)) who[m++] = j;
+        const Fixed64 side = at.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        static const int kSide[4] = {1, -1, 0, 1};
+        Fixed64 dist[4][4];
+        for (int k = 0; k < m; ++k) {
+            const Vec2 t{(world.pitchHalfX() - (params_.box_depth[z] - Fixed64::fromInt(3) * Fixed64::fromInt(k / 4))) * sg,
+                         side * params_.box_ay[z] * Fixed64::fromInt(kSide[k & 3])};
+            for (int i = 0; i < m; ++i) dist[i][k] = math::length(Vec2{world.player(who[i]).pos.x - t.x, world.player(who[i]).pos.y - t.y});
+        }
+        int perm[4] = {0, 1, 2, 3}, bestp[4] = {0, 1, 2, 3}; Fixed64 bd{}; bool have = false;
+        do {
+            Fixed64 tot{};
+            for (int i = 0; i < m; ++i) tot += dist[i][perm[i]];
+            if (!have || tot < bd) { bd = tot; have = true; for (int i = 0; i < m; ++i) bestp[i] = perm[i]; }
+        } while (std::next_permutation(perm, perm + m));
+        for (int i = 0; i < m; ++i) spot_k_[who[i]] = static_cast<std::uint8_t>(bestp[i]);
+    }
+    assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep, keepc);
 }
 
 // G5.56 (§8.157): who stands in their wide channel on the ball's side — the real
@@ -662,7 +698,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
 // sure, the rest a roll), by the real role counts, nearest the channel spot
 // first; never a box runner.
 void Possession::assignChannel(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
-                               const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep) {
+                               const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep, std::uint32_t keep) {
     const auto& b = world.ball();
     const Fixed64 m = params_.chan_n[z][deep ? 1 : 0];
     int n = static_cast<int>(m.raw >> Fixed64::FRAC_BITS);
@@ -677,7 +713,7 @@ void Possession::assignChannel(std::uint8_t team, const core::World& world, cons
     for (std::uint8_t j = 0; j < world.playerCount(); ++j)
         if (team_of_slot[j] == team && !world.isKeeper(j)) ++per_role[static_cast<int>(role_of_slot[j])];
     for (int pick = 0; pick < n; ++pick) {
-        int best = -1; Fixed64 bw{};
+        int best = -1; Fixed64 bw{}; bool bkept = false;
         for (std::uint8_t j = 0; j < world.playerCount() && j < 32; ++j) {
             if (team_of_slot[j] != team || world.isKeeper(j) || ((runners_ >> j) & 1u)) continue;
             if (b.owner && *b.owner == j) continue;
@@ -685,7 +721,8 @@ void Possession::assignChannel(std::uint8_t team, const core::World& world, cons
             if (params_.chan_role[z][r].raw <= 0) continue;
             const Fixed64 d = math::length(Vec2{world.player(j).pos.x - spot.x, world.player(j).pos.y - spot.y});
             const Fixed64 wgt = params_.chan_role[z][r] / Fixed64::fromInt(per_role[r]) / (Fixed64::one() + d / Fixed64::fromInt(15));
-            if (best < 0 || wgt > bw) { best = j; bw = wgt; }
+            const bool kept = (keep >> j) & 1u;
+            if (best < 0 || kept > bkept || (kept == bkept && wgt > bw)) { best = j; bw = wgt; bkept = kept; }
         }
         if (best < 0) break;
         runners_ |= 1u << best;
@@ -890,6 +927,9 @@ void PossessionParams::configure(const core::ModelParams& p) {
     static const int kKL[6][2][4] = {{{667, 283, 36, 14}, {41, 103, 145, 711}}, {{870, 110, 21, 0}, {156, 158, 249, 437}},
                                      {{899, 69, 23, 9}, {53, 203, 254, 490}},  {{925, 67, 7, 1}, {117, 316, 266, 301}},
                                      {{962, 29, 6, 3}, {89, 184, 291, 436}},   {{974, 22, 4, 0}, {192, 293, 324, 191}}};
+    box_sticky = p.fixed("physics.box.sticky", 1000).raw > 0;   // G5.60
+    box_spot_near = p.fixed("physics.box.spot_near", 1000).raw > 0;   // G5.60
+    box_from_pass = p.fixed("physics.box.from_pass", 1000).raw > 0;   // G5.60
     box_line_deep_m = p.fixed("physics.box.line_deep_m", 16000);
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.

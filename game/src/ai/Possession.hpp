@@ -73,6 +73,9 @@ struct PossessionParams {
     math::Fixed64 box_k[6][4]{}, box_role[6][kRoleCount]{}, box_depth[6]{}, box_ay[6]{};
     // G5.53 (§8.154): how many, by their line inside box_line_deep_m (16) or not — [zone][deep][0..3+], DFL.
     math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{};
+    bool box_spot_near = true;   // G5.60: the box spots go to the runners nearest them (physics.box.spot_near)
+    bool box_from_pass = true;   // G5.60: the zone our pass is going to (physics.box.from_pass)
+    bool box_sticky = true;   // G5.60 (§8.161): a redraw keeps the men already running (physics.box.sticky)
     // G5.56 (§8.157): their wide channel on the ball's side — [zone][deep] mean men, by role, depth, |y| (DFL).
     math::Fixed64 chan_n[6][2]{}, chan_role[6][kRoleCount]{}, chan_depth[6]{}, chan_ay[6]{};
     // Balls in behind (G5.27): by the man's gap short of their line (2 m bins,
@@ -169,9 +172,10 @@ public:
 private:
     PossessionParams params_{};
     std::uint32_t runners_ = 0;
+    std::uint8_t spot_k_[32]{};   // G5.60: his box spot (0 ball side, 1 far side, 2 middle, 3+ deeper) from the draw
     std::uint32_t chan_ = 0;   // G5.56: those of runners_ whose spot is the wide channel
     void assignChannel(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
-                       const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep);
+                       const std::vector<Role>& role_of_slot, std::uint64_t match_seed, int z, bool deep, std::uint32_t keep = 0);
     int zone_[2] = {-1, -1};
     std::uint64_t drawn_[2] = {0, 0};
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw

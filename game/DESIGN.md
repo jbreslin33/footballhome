@@ -7082,3 +7082,58 @@ in (0.79), so do they arrive late, or does the onside cap hold them out? (2) A m
 zone (0.63 v 0.84) and fewer central (18-35 centre 2.87 v 2.47, 35-52 centre 2.94 v 2.13). (3) Then
 back to 35+ again. (4) Crosses 4.9 v 11.5. (5) Spells starting wide 32 v 58. (6) Law 8, Law 13
 walls, cards. (7) Take-ons.
+
+### 8.161 G5.60 — box runners: kept, nearest spot, gone as the pass is played (no migration)
+
+§8.160's next: with the ball 18-35 wide, 0.70 box runners are drawn but only 0.39 are in the box
+(0.79 real).
+
+**Measured first** (a one-off per-runner counter in the harness, 4 × 90). Of runner samples with
+the ball 18-35 wide:
+- 14% at their spot. The rest were 12.8 m away (72% of that across the pitch), running 4.6 m/s.
+- The onside cap clipped 32%. The cap is not the cause.
+- 52% of runner time was in a run's first second, 79% in its first two. The ball stays in that
+  zone 1.5 s.
+- Their line drops inside 16 m 34% of the time (38% real), so the line is not the cause either.
+
+The runs start too late and go too far. Three faults, all in `Possession::assignRunners`:
+1. **Redrawn from scratch.** Every 3 s, every new zone and every flip of the line's depth
+   re-rolled who runs as well as how many. A man halfway into his run was dropped and another
+   started.
+2. **Spots by slot number.** The k-th runner by slot index got the k-th spot (ball side, far side,
+   middle). The far-side winger could get the near post and cross the whole box.
+3. **Drawn as the ball lands.** The zone was the ball's, so a pass out wide started the runs only
+   when it arrived.
+
+**The changes** [FH].
+- **Kept** (`physics.box.sticky`). A redraw rolls the count as before. Then the men already
+  running (box or channel) are picked first, before the role weight.
+- **Nearest spot** (`physics.box.spot_near`). At the draw, the n spots go to the n runners with
+  the least total distance (n ≤ 3, every order tried), fixed for the run.
+- **From the pass** (`physics.box.from_pass`). With our pass on its way, the zone is that of the
+  man it is played to.
+
+**After** (8 × 90, v §8.160's run).
+- In the box, ours (real): ball 0-18 wide 1.76 → 1.95 (2.29), 0-18 centre 2.09 → 2.13 (3.45),
+  18-35 wide 0.39 → 0.42 (0.79), 18-35 centre 0.36 → 0.41 (1.04).
+- Runners with the ball 18-35 wide: at their spot 14 → 21%, gap 12.8 → 9.7 m, across share
+  0.72 → 0.64.
+- Wide spells: back to 35+ 33.8 → 30.3% (16.9), to 18-35 wide 17.5 → 21.9% (30.2), cross
+  8.6 → 6.5% (7.0).
+- Balls into space: them 34 → 26%, a mate 7 → 13%.
+- Completion 78.6% (79.1). Shots 9.7, goals 1.69. Crosses 4.2 (11.5).
+- Both goldens re-locked.
+
+**What it says.** All three were wrong behaviour, and fixing them moved every box number toward
+real, but only a little. The bigger fault is still there: runs die young (49% of runner time
+under 1 s, ball 18-35 wide). A redraw with the line not deep rolls zero runners 92% of the time
+(DFL `box_kl`), and the line hovering around 16 m flips `deep` back and forth. Real men attacking
+the box are why the line drops; ours run only once it has dropped. Our most advanced man also
+stands 2-4 m further from their line than the real one in every zone (18-35 wide 22.1 v 20.2,
+0-18 centre 13.2 v 9.1).
+
+**Next moles.** (1) What ends a box run (a zero roll, `deep` flicker, another state taking him),
+and whether the count should follow the line's depth with a lag rather than per draw. (2) The most
+advanced man 2-4 m short of their line. (3) Back to 35+ 30 v 17 (own wide zone 0.63 v 0.84).
+(4) Crosses 4.2 v 11.5. (5) Spells starting wide 32 v 58. (6) Law 8, Law 13 walls, cards.
+(7) Take-ons.
