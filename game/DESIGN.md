@@ -7024,3 +7024,61 @@ ball goes into the stride of a man running past his full-back, and ours still go
 rather than a fixed spot (theirs win 35%). (3) Crosses 3.3 v 11.5 (0-18 wide passes, corners 0.3 v
 3.2). (4) Spells starting wide 31 v 58. (5) The front man reading the line. (6) Law 8, Law 13 walls,
 cards. (7) Take-ons.
+
+### 8.160 G5.59 — the pass chooser's weights when a zone is held (no migration)
+
+§8.159's next: from wide 18-35 m out ours play back to 35+ 32% of spells (17).
+
+**Measured first** (a one-off counter in the chooser, 8 × 90, the passer in 18-35 wide). Of the
+weight the chooser held: forward 3%, level 36%, back 35%, in behind 24%, into space 1.5%. The real
+row (StatsBomb end zones) is 28 / 52 / 20. On average half the row sat in zones with no mate. The box
+centre was empty 79% of these moments, the wide box 93%, his own wide zone 56%. The share of an empty
+zone fell to whichever zones were held, and the zones behind him are always held.
+
+**Real** (new: `scripts/benchmarks_tracking_passzone.py`, DFL 7 matches [Bassek 2025]: open-play
+passes naming a Recipient, every man's zone at the kick, 25 Hz). From 18-35 wide, n 313: forward
+18%, own zone 34%, level other 20%, back 27%. With his own zone empty (27% of passes): back 39%.
+A real wide man with nobody beside him goes back too, but his zone is empty less often.
+
+New: `scripts/benchmarks_tracking_zonemates.py` and the harness line **MATES BY ZONE** (5 Hz, the
+man on the ball not counted). With the ball 18-35 wide, ours v real, mean (none):
+- box centre 0.47 (72%) v 0.86 (58%);
+- his own wide zone 0.63 (48%) v 0.84 (38%);
+- 18-35 centre 2.87 v 2.47;
+- 35-52 centre 2.94 v 2.13.
+
+Ours are too central, too short of the box and too rarely beside him.
+
+**The change** [FH method on DFL data]. The chooser picks only among held zones, so a zone's weight
+must be its weight *when held*, not its share of all passes. The two differ most where occupancy
+differs most: 35-52 centre is almost always held, so its share overstates it; the wide box is rarely
+held, so its share understates it. The script fits that weight by iterative proportional fitting
+over the real frames. A zone's weight is the probability of being picked divided by the summed weight
+of the held zones, matched to the real Recipient zones. kappa = fit ÷ share is scaled so the cells
+with 10+ passes pool to 1, clamped to 0.25-4. Cells under 10 passes are 1. `Possession` multiplies
+`pass_to[oz][ez]` by `physics.pass.kappa_<o>_<d>` for a man standing in the zone. Balls into space
+and in behind are unchanged. `physics.pass.kappa_on` 0 turns it off. From 18-35 wide: box 1.25,
+wide box 3.2, level centre 0.53, 35-52 centre 0.51.
+
+Caveat: kappa is DFL Recipient zones at the kick, applied to StatsBomb end-zone shares. It is the
+nearest matched pair we hold; one source for both would be cleaner.
+
+**After** (8 × 90).
+- Passes from 18-35 wide (as played, end zones): forward 23.7 → 30.2% (27.8), level 42.7 → 34.9%
+  (51.7), back 33.5 → 34.9% (20.3). Balls from there 20.5 → 23.8 a team-match.
+- Wide spells: cross 3.8 → 8.6% (7.0), down the line 9.2 → 11.8% (14.5), back to 35+ 31.7 → 33.8%
+  (16.9), to 18-35 wide 23.0 → 17.5% (30.2).
+- Crosses 3.31 → 4.94 (11.47). Balls into space 9.2 → 11.9, got by him 46%.
+- Completion 79.9 → 79.0% (79.1). Shots 11.1 → 9.4, goals 1.94 → 1.69 (8 matches; noisy).
+- 11v11 golden re-locked; 3v3 unchanged.
+
+**What it says.** Forward is now right, and back is not. Back is a support problem, not a chooser
+problem: his own wide zone is empty half the time, and the level weight it should hold goes
+elsewhere. The box runners are drawn about right (0.70 a moment v 0.79 real), but only 0.39 are in
+the box when it counts.
+
+**Next moles.** (1) Box runners drawn but not there: with the ball 18-35 wide, 0.70 assigned and 0.39
+in (0.79), so do they arrive late, or does the onside cap hold them out? (2) A mate in his own wide
+zone (0.63 v 0.84) and fewer central (18-35 centre 2.87 v 2.47, 35-52 centre 2.94 v 2.13). (3) Then
+back to 35+ again. (4) Crosses 4.9 v 11.5. (5) Spells starting wide 32 v 58. (6) Law 8, Law 13
+walls, cards. (7) Take-ons.

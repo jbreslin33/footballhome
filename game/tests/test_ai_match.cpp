@@ -106,7 +106,8 @@ constexpr std::uint64_t kGolden3v3   = 0x1c303d4083e5d7ddULL;
 // Re-locked G5.55 (2026-11-07): as the 3v3.
 // Re-locked G5.56 (2026-11-07): as the 3v3.
 // Re-locked G5.57 (2026-11-07): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xde891f3d0a5c16c3ULL;
+// Re-locked G5.59 (2026-11-08, 11v11 only): the pass shares × the chooser's when-occupied kappa (DFL).
+constexpr std::uint64_t kGolden11v11 = 0x47d26d22fe168d4cULL;
 
 struct Rig {
     World world;

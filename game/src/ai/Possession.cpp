@@ -183,7 +183,7 @@ public:
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg);
-            const Fixed64 w0 = P.pass_to[oz][ez] / Fixed64::fromInt(in_zone[ez]);
+            const Fixed64 w0 = P.pass_to[oz][ez] * P.pass_kappa[oz][ez] / Fixed64::fromInt(in_zone[ez]);
             if (w0.raw <= 0) continue;
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
@@ -850,9 +850,19 @@ void PossessionParams::configure(const core::ModelParams& p) {
         {7, 5, 42, 18, 91, 48, 167, 117, 383, 123},  {6, 6, 21, 22, 48, 71, 96, 191, 263, 277}};
     static const int kLoft[10] = {214, 265, 122, 134, 122, 118, 128, 172, 298, 289};
     static const int kCross[10] = {256, 296, 7, 78, 0, 0, 0, 0, 0, 0};
+    // G5.59 (§8.160): DFL 7 matches, benchmarks_tracking_passzone.py; cells under 10 passes 1000.
+    static const int kKappa[10][10] = {
+        {854, 2339, 740, 1000, 1000, 1000, 1000, 1000, 1000, 1000}, {609, 1390, 563, 876, 1000, 1000, 1000, 1000, 1000, 1000},
+        {1465, 4000, 550, 1054, 510, 1111, 1000, 1000, 1000, 1000}, {1248, 3199, 525, 839, 514, 867, 1000, 1000, 1000, 1000},
+        {4000, 1000, 860, 1360, 650, 1055, 744, 1657, 1000, 1000},  {1000, 1000, 829, 1106, 664, 945, 718, 1349, 4000, 1000},
+        {1000, 1000, 1322, 2600, 687, 922, 682, 1100, 1328, 4000},  {1000, 1000, 1510, 3400, 657, 779, 606, 1042, 1071, 2591},
+        {1000, 1000, 4000, 1000, 878, 1319, 721, 992, 811, 1417},   {1000, 1000, 1000, 1000, 1146, 1846, 829, 1045, 775, 1307}};
+    const bool kappa_on = p.fixed("physics.pass.kappa_on", 1000).raw > 0;
     for (int o = 0; o < 10; ++o) {
-        for (int d = 0; d < 10; ++d)
+        for (int d = 0; d < 10; ++d) {
             pass_to[o][d] = p.fixed(("physics.pass.to_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kTo[o][d]);
+            pass_kappa[o][d] = kappa_on ? p.fixed(("physics.pass.kappa_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kKappa[o][d]) : Fixed64::one();
+        }
         pass_loft[o] = p.fixed(("physics.pass.loft_" + std::to_string(o)).c_str(), kLoft[o]);
         pass_cross[o] = p.fixed(("physics.pass.cross_" + std::to_string(o)).c_str(), kCross[o]);
     }

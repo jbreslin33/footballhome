@@ -54,6 +54,10 @@ struct PossessionParams {
     // passes ending in each zone, and the share lofted / crossed — StatsBomb PL
     // 2015/16 open play (benchmarks_statsbomb_passes.py PASS POLICY).
     math::Fixed64 pass_to[10][10]{}, pass_loft[10]{}, pass_cross[10]{};
+    // G5.59 (§8.160): the share is over every pass, but the chooser only picks among
+    // zones holding a mate; × this when the zone is held (DFL recipient zones at the
+    // kick, iterative fit — benchmarks_tracking_passzone.py kKappa). 1 = off.
+    math::Fixed64 pass_kappa[10][10]{};
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
     bool space_on = true; math::Fixed64 space_wide_y{}, cross_depth_m{}, space_max_s{}, space_risk{}, space_roll_m{}; int space_margin_ticks = 0;   // G5.54: the ball into an empty zone ahead   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share

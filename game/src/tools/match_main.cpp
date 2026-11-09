@@ -66,6 +66,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {};   // §8.160: mates by zone, by the ball's zone
     long bx_ch[6] = {}; long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
     long pass_ok = 0;
@@ -797,6 +798,18 @@ int main(int argc, char** argv) {
                         }
                 }
             }
+            if (b.owner && k % 6 == 0) {   // §8.160: mates by zone, by the ball's zone (benchmarks_tracking_zonemates.py)
+                auto zm = [&](double t, double y) { const int bb = t < 18 ? 0 : t < 35 ? 1 : t < 52 ? 2 : t < 70 ? 3 : 4;
+                                                    return std::fabs(y) < 20.16 ? bb * 3 : bb * 3 + ((y > 0) == (by > 0) ? 1 : 2); };
+                const int bz = zm(tl, by);
+                int cnt[15] = {};
+                for (std::uint8_t j = 0; j < N; ++j) {
+                    if (W.isKeeper(j) || W.player(j).team != a || j == *b.owner) continue;
+                    ++cnt[zm(hx - W.player(j).pos.x.toDouble() * sg, W.player(j).pos.y.toDouble())];
+                }
+                ++S.zm_f[bz];
+                for (int z = 0; z < 15; ++z) { S.zm_n[bz][z] += cnt[z]; S.zm_0[bz][z] += cnt[z] == 0; }
+            }
             if (tl < 52) {   // in the box, by the ball's zone (benchmarks_tracking_box.py)
                 const int bz = (tl < 18 ? 0 : tl < 35 ? 1 : 2) * 2 + (std::fabs(by) < 20.16 ? 0 : 1);
                 ++S.bx_f[bz];
@@ -1126,6 +1139,14 @@ int main(int argc, char** argv) {
             const double n = static_cast<double>(S.is_n);
             std::printf("\n   BALLS INTO SPACE (G5.54): %.1f a team-match; got by him %.0f%% / a mate %.0f%% / them %.0f%% / out %.0f%% / nobody %.0f%%; at the kick him %.1f m from the spot, their nearest %.1f m; his closest to the ball %.1f m after %.1f s, then %.1f m from the spot",
                         n / tm, 100 * S.is_got[0] / n, 100 * S.is_got[1] / n, 100 * S.is_got[2] / n, 100 * S.is_got[3] / n, 100 * S.is_got[4] / n, S.is_rd0 / n, S.is_od0 / n, S.is_best / std::max(1L, S.is_bn), S.is_t / std::max(1L, S.is_bn), S.is_spot / std::max(1L, S.is_bn));
+        }
+        {   // §8.160: mates by zone (not the man on the ball), by the ball's zone; real DFL benchmarks_tracking_zonemates.py
+            static const char* bn[5] = {"0-18", "18-35", "35-52", "52-70", "70+"}; static const char* sd[3] = {"centre", "wide", "far wide"};
+            std::printf("\n   MATES BY ZONE, by the ball's zone (mean, none %%):");
+            for (int bz : {1, 3, 4, 6, 7}) if (S.zm_f[bz]) {
+                std::printf("\n     ball %s %s:", bn[bz / 3], sd[bz % 3]);
+                for (int z = 0; z < 15; ++z) if (S.zm_n[bz][z]) std::printf(" %s %s %.2f (%.0f%%);", bn[z / 3], sd[z % 3], static_cast<double>(S.zm_n[bz][z]) / S.zm_f[bz], 100.0 * S.zm_0[bz][z] / S.zm_f[bz]);
+            }
         }
         {   // §8.155: real StatsBomb benchmarks_statsbomb_wide.py
             static const double kF[6] = {78, 11, 5, 4, 2, 0};
