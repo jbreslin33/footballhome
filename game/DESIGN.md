@@ -7393,3 +7393,33 @@ an unknown team refused; at 4× the room ticks.
 
 Next: step 3, freeze and step. Every man labelled on the pitch with his concept and target, step
 pass by pass, play on.
+
+### 8.167 G5.66 — tactics trainer step 3: freeze, every man labelled, step pass by pass (no migration)
+
+docs/tactics-trainer.md step 3. Freeze frame and play-practice-play are the design input.
+
+**Every man labelled.** A trainer room turns the brain overlay on for all 22. Each man shows his
+target (line and ring), the man he's acting on (dashed), and a label above him. Out of possession
+the label is his concept's title from `game_concepts` (blue, §8.165); otherwise it's the engine's
+decision (yellow). The same labels show in the live match's brain overlay. A paused room still
+gets the labels: BRAIN_WATCH sends the last orders at once, and the pre-roll leaves them set.
+
+**Step pass by pass.** New c→s STEP (0x48, admin, so the trainer room's viewer): from the freeze,
+play on at the slider's pace until the pass ends, then pause again.
+- `GameServer::stepWatch`, stage 1: the ball with its man (or dead, e.g. the goal kick) waits for
+  it to go live and loose.
+- Stage 2: it travels until a man has it or it goes dead.
+- A tackle in stage 1 (a new owner without the ball going loose) ends the step too.
+- 20 s at most.
+
+The ⏭ Next pass button shows only while paused. ▶ plays on live.
+
+Tests: STEP round-trips (0 = 1×). In a trainer room two steps each end paused with the ball owned
+or dead. A live-match viewer can't step. Smoke (local fh-game, Arsenal v West Ham, their goal
+kick): paused → step → 1× → paused 10.3 s later (the keeper's wait plus the kick), → step → paused
+1.8 s later.
+
+Next: step 4, copy a frozen moment to our tactics board (club API, one-way PL → board). Then the
+trainer is as good as the engine's defending: the labels show only what it runs (block, press,
+chase, cover, recover). Marking, cover-shadow and traps are engine work, and the realism moles in
+§8.164 continue.

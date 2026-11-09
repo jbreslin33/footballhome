@@ -98,11 +98,18 @@ public:
 
     // Exposed for tests.
     bool slotClaimedBy(std::uint8_t slot, ClientId client) const;
+    bool stepping() const noexcept { return step_stage_ != 0; }
 
 private:
     // G5.35: build the match from cfg_ (formations, rosters) at kick-off.
     void startMatch();
     void practiceStart();   // the goal kick, the pre-roll, then paused
+    // Trainer step 3: STEP plays to the next pass, then pauses. 0 = not stepping; 1 = the
+    // ball still with its man (or dead), waiting for it to go; 2 = it's travelling.
+    std::uint8_t step_stage_ = 0;
+    int step_owner_ = -1;
+    std::uint64_t step_cap_tick_ = 0;
+    void stepWatch();
     void applyOrders(std::uint8_t slot, const ai::Orders& o);
     void onConnect(ClientId id, const auth::JwtClaims& claims);
     void onDisconnect(ClientId id);

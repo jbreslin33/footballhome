@@ -215,6 +215,14 @@ struct ConceptLegendFrame {
 Bytes encodeConceptLegend(const ConceptLegendFrame& f);
 std::optional<ConceptLegendFrame> decodeConceptLegend(const Bytes& payload);
 
+// 2.2 STEP (tactics trainer step 3): play on at pct % of real time until the next pass
+// is received, the ball goes dead or is won, then pause. u16 pct (0 = 100).
+struct StepFrame {
+    std::uint16_t pct = 100;
+};
+Bytes encodeStep(const StepFrame& f);
+std::optional<StepFrame> decodeStep(const Bytes& payload);
+
 Bytes encodeBrain(const BrainFrame& f);
 std::optional<BrainFrame> decodeBrain(const Bytes& payload);
 

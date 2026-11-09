@@ -500,7 +500,7 @@
       return h.length ? { first: h[0].tick, last: h[h.length - 1].tick } : null;
     }
 
-    setBrain(view) { this.brain = view; }   // { entries, legend, show: Set }
+    setBrain(view) { this.brain = view; }   // { entries, legend, concepts?, show: Set }
     drawBrain() {
       const v = this.brain;
       this.brainParts = this.brainParts || [];
@@ -541,7 +541,10 @@
         part.act.visible = !!other;
         if (other) { set(part.act, p, other); part.act.computeLineDistances(); }
         part.talk.visible = false;   // G5.23: no call system
-        const text = (v.legend && v.legend[e.why]) || '?';
+        // Trainer step 3: out of possession his concept, in the board's words (blue);
+        // otherwise the engine's decision (yellow).
+        const concept = e.concept !== undefined && e.concept !== 255 && v.concepts ? v.concepts[e.concept] : null;
+        const text = concept ? concept.title : (v.legend && v.legend[e.why]) || '?';
         if (text !== part.text) {
           if (part.sprite) { this.figures[i].root.remove(part.sprite); part.sprite.material.map.dispose(); part.sprite.material.dispose(); }
           const c = document.createElement('canvas');
@@ -550,7 +553,7 @@
           x.font = 'bold 28px system-ui, sans-serif';
           x.textAlign = 'center'; x.textBaseline = 'middle';
           const w = Math.min(250, x.measureText(text).width + 18);
-          x.fillStyle = 'rgba(255,204,0,0.92)';
+          x.fillStyle = concept ? 'rgba(127,215,255,0.94)' : 'rgba(255,204,0,0.92)';
           x.fillRect(128 - w / 2, 8, w, 40);
           x.fillStyle = '#10161f';
           x.fillText(text, 128, 29);

@@ -82,6 +82,7 @@
     reloadRosters() { this.send(GameWire.encodeReloadRosters()); }
     brainWatch(on) { this.send(GameWire.encodeBrainWatch(on)); }
     setSpeed(pct) { this.send(GameWire.encodeSpeed(pct)); }
+    step(pct) { this.send(GameWire.encodeStep(pct)); }   // trainer step 3: the next pass, then pause
     newMatch(home, away) { this.send(GameWire.encodeNewMatch(home, away)); }
   }
 

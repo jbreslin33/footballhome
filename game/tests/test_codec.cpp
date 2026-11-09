@@ -280,6 +280,15 @@ FH_TEST(brain_frame_round_trips) {
     FH_EXPECT(back->slots[0].concept_id == 164 && back->slots[1].concept_id == 255);   // 2.2
 }
 
+// 2.2 STEP: the pace to play the next pass at; 0 means 1×.
+FH_TEST(step_round_trips) {
+    const auto a = decodeStep(encodeStep(StepFrame{25}));
+    FH_EXPECT(a.has_value() && a->pct == 25);
+    const auto b = decodeStep(encodeStep(StepFrame{0}));
+    FH_EXPECT(b.has_value() && b->pct == 100);
+    FH_EXPECT(!decodeStep(Bytes{1}).has_value());
+}
+
 // 2.2 CONCEPT_LEGEND: the trainer's labels, titles past the 40-byte NAMES cap.
 FH_TEST(concept_legend_round_trips) {
     ConceptLegendFrame f;

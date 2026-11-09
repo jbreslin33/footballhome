@@ -331,6 +331,34 @@ FH_TEST(practice_room_starts_paused_on_their_goal_kick) {
     FH_EXPECT(live);
 }
 
+// Trainer step 3: from the freeze, STEP plays the goal kick to where it lands — a man has
+// it or it's dead — and pauses again; then the next pass the same way.
+FH_TEST(trainer_step_plays_one_pass_then_freezes) {
+    FakeTransport t;
+    server::GameServer::Config cfg;
+    cfg.slot_count = 22;
+    cfg.practice = true;
+    server::GameServer s{cfg, t};
+    t.scriptConnect(100);
+    for (int k = 0; k < 2; ++k) {
+        t.scriptMessage(100, encodeFrame(FrameType::Step, encodeStep(StepFrame{100})));
+        FH_EXPECT(s.stepping());
+        FH_EXPECT_EQ(s.speedPct(), 100);
+        int ticks = 0;
+        while (s.stepping() && ticks < 30 * 25) { s.tickOnce(); ++ticks; }
+        FH_EXPECT(!s.stepping());
+        FH_EXPECT_EQ(s.speedPct(), 0);
+        const auto& w = s.world();
+        FH_EXPECT(w.ball().owner.has_value() || w.restartTeam() != 0xFF || w.outStage() != 0);
+    }
+    // A viewer of the live match can't step it.
+    FakeTransport lt;
+    server::GameServer live{server::GameServer::Config{.slot_count = 4}, lt};
+    lt.scriptConnect(5);
+    lt.scriptMessage(5, encodeFrame(FrameType::Step, encodeStep(StepFrame{100})));
+    FH_EXPECT(!live.stepping());
+}
+
 FH_TEST(room_transport_sends_only_to_its_members) {
     FakeTransport real;
     server::RoomTransport a{real}, b{real};

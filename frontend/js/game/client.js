@@ -330,7 +330,7 @@
         el.textContent = c ? `${why} · concept ${e.concept} ${c.name}` : why;
       }
     }
-    renderer.setBrain({ entries: brainEntries, legend: brainLegend, show: brainPick });
+    renderer.setBrain({ entries: brainEntries, legend: brainLegend, concepts: conceptLegend, show: brainPick });
   }
   for (const side of brainSides) {
     side.el.addEventListener('click', (ev) => {
@@ -454,7 +454,9 @@
     `aria-label="Speed" style="width:110px;min-height:0;accent-color:#ffcc00;">` +
     `<button type="button" data-speed="up" title="Faster" aria-label="Faster" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">+</button>` +
     `<span data-speed-label style="min-width:44px;text-align:right;">1×</span>` +
-    `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>`;
+    `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>` +
+    // Trainer step 3: from the freeze, play the next pass (at the slider's speed) and freeze again.
+    `<button type="button" data-speed="step" title="Play the next pass, then freeze" hidden style="${spPill}background:#7fd7ff;color:#0b1c3d;">⏭ Next pass</button>`;
   document.body.appendChild(speedBar);
   const speedRange = speedBar.querySelector('input');
   const speedLabel = speedBar.querySelector('[data-speed-label]');
@@ -463,6 +465,7 @@
     speedBar.hidden = !isAdmin;
     speedLabel.textContent = fmtSpeed(simSpeed);
     speedBar.querySelector('[data-speed="pause"]').textContent = simSpeed === 0 ? '▶' : '⏸';
+    speedBar.querySelector('[data-speed="step"]').hidden = simSpeed !== 0;   // from a freeze only
     if (simSpeed > 0) {
       let k = 0;   // nearest stop
       SPEEDS.forEach((s, i) => { if (Math.abs(s - simSpeed) < Math.abs(SPEEDS[k] - simSpeed)) k = i; });
@@ -477,7 +480,8 @@
   speedBar.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-speed]');
     if (!b) return;
-    if (b.dataset.speed === 'live') net.setSpeed(100);
+    if (b.dataset.speed === 'step') net.step(SPEEDS[Number(speedRange.value)] || 100);
+    else if (b.dataset.speed === 'live') net.setSpeed(100);
     else if (b.dataset.speed === 'down' || b.dataset.speed === 'up') {
       // One stop along the slider (from the resume speed while paused).
       const k = Number(speedRange.value) + (b.dataset.speed === 'up' ? 1 : -1);
@@ -598,6 +602,11 @@
       // Admin capability (bit 3) shows the level pickers.
       isAdmin = !!(h.capabilities & 8);
       paintSpeedBar();
+      // Trainer step 3: every man labelled from the first freeze (not saved as this device's picks).
+      if (trainer && !brainOn) {
+        for (const t of [0, 1]) for (const i of teamSlots(t)) brainPick.add(i);
+        setBrainOn(true);
+      }
       paintMatchBar();
       paintReplayBar();
       if ((h.capabilities & 8) && editBtn) {

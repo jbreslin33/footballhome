@@ -448,6 +448,23 @@ std::optional<ConceptLegendFrame> decodeConceptLegend(const Bytes& payload) {
     return f;
 }
 
+// ── STEP (2.2) ──────────────────────────────────────────────────────────
+
+Bytes encodeStep(const StepFrame& f) {
+    Writer w;
+    w.u16(f.pct);
+    return std::move(w.out);
+}
+
+std::optional<StepFrame> decodeStep(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    StepFrame f;
+    f.pct = r.u16();
+    if (!r.ok) return std::nullopt;
+    if (f.pct == 0) f.pct = 100;
+    return f;
+}
+
 // ── BRAIN / BRAIN_WATCH (1.7, G4.41) ────────────────────────────────────
 
 Bytes encodeBrain(const BrainFrame& f) {

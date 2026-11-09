@@ -29,6 +29,7 @@
     TEAM_LIST: 0x45,      // 2.1 s→c: every team a match can be made of (a names list)
     NEW_MATCH: 0x46,      // 2.1 c→s admin: a TEAMS payload, names only — kick off that match
     CONCEPT_LEGEND: 0x47, // 2.2 s→c: the trainer's labels — game_concepts id, name, title (mig 1199)
+    STEP: 0x48,           // 2.2 c→s admin: play to the next pass, then pause (trainer step 3)
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
 
@@ -246,6 +247,12 @@
     new DataView(p).setUint16(0, pct, true);
     return envelope(FrameType.SPEED, p);
   }
+  // 2.2 STEP: u16 pct — the speed to play the pass at (0 = 1×).
+  function encodeStep(pct) {
+    const p = new ArrayBuffer(2);
+    new DataView(p).setUint16(0, pct || 100, true);
+    return envelope(FrameType.STEP, p);
+  }
   function decodeSpeed(view, at) {
     return view.getUint16(at, true);
   }
@@ -299,6 +306,7 @@
     decodeRoster,
     decodeNames,
     decodeConceptLegend,
+    encodeStep,
     decodeBrain,
     encodeBrainWatch,
     decodeFrame,

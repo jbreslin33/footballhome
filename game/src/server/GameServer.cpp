@@ -342,6 +342,19 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             std::fflush(stdout);
             return;
         }
+        case FrameType::Step: {
+            // Admin (2.2, trainer step 3): from the freeze, play the next pass.
+            if (!admins_.count(id)) return;
+            const auto st = decodeStep(frame.payload);
+            if (!st || step_stage_) return;
+            const auto& b = world_.ball();
+            const bool dead = world_.restartTeam() != 0xFF || world_.outStage() != 0;
+            step_owner_ = b.owner ? static_cast<int>(*b.owner) : -1;
+            step_stage_ = (b.owner || dead) ? 1 : 2;
+            step_cap_tick_ = world_.tickCount() + 20 * core::kTickRate;   // a step is at most 20 s
+            setSpeedPct(st->pct);
+            return;
+        }
         case FrameType::Speed: {
             // Admin-only (G4.61): one match, one clock — everyone watching
             // runs at the speed the coach picks.
@@ -439,6 +452,24 @@ void GameServer::practiceStart() {
     speed_pct_ = 0;
 }
 
+// Trainer step 3: a step ends when the pass is received (a man has it), the ball goes
+// dead, or it is won off its man (a tackle), or after 20 s — then the freeze.
+void GameServer::stepWatch() {
+    const auto& b = world_.ball();
+    const bool dead = world_.restartTeam() != 0xFF || world_.outStage() != 0;
+    bool done = world_.tickCount() >= step_cap_tick_;
+    if (step_stage_ == 1) {
+        if (!dead && !b.owner) step_stage_ = 2;                                    // it's gone
+        else if (b.owner && step_owner_ >= 0 && *b.owner != step_owner_) done = true;   // won off him
+        else if (b.owner && step_owner_ < 0 && !dead) step_owner_ = *b.owner;          // the restart's taker has it
+    } else if (b.owner || dead) {
+        done = true;                                                               // received, or dead
+    }
+    if (!done) return;
+    step_stage_ = 0;
+    setSpeedPct(0);
+}
+
 void GameServer::tickOnce() {
     // AI drives every slot no human holds (claims always override; a
     // released slot reverts to its brain next tick).
@@ -459,6 +490,7 @@ void GameServer::tickOnce() {
     }
 
     last_events_ = world_.tick();
+    if (step_stage_) stepWatch();
     if (world_.restartTeam() == 0xFF) {
         signal_until_tick_ = 0;       // and the arm comes down
     }
