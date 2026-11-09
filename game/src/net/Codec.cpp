@@ -408,6 +408,46 @@ std::optional<TeamsFrame> decodeTeams(const Bytes& payload) {
     return f;
 }
 
+// ── CONCEPT_LEGEND (2.2) ────────────────────────────────────────────────
+
+Bytes encodeConceptLegend(const ConceptLegendFrame& f) {
+    Writer w;
+    const std::size_t n = f.entries.size() > 255 ? 255 : f.entries.size();
+    w.u8(static_cast<std::uint8_t>(n));
+    auto str = [&](const std::string& t) {
+        const std::size_t len = t.size() > 255 ? 255 : t.size();
+        w.u8(static_cast<std::uint8_t>(len));
+        for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>(t[i]));
+    };
+    for (std::size_t i = 0; i < n; ++i) {
+        w.u8(f.entries[i].id);
+        str(f.entries[i].name);
+        str(f.entries[i].title);
+    }
+    return std::move(w.out);
+}
+
+std::optional<ConceptLegendFrame> decodeConceptLegend(const Bytes& payload) {
+    Reader r{payload.data(), payload.size()};
+    ConceptLegendFrame f;
+    auto str = [&]() {
+        std::string t;
+        const std::uint8_t len = r.u8();
+        for (std::uint8_t i = 0; i < len && r.ok; ++i) t.push_back(static_cast<char>(r.u8()));
+        return t;
+    };
+    const std::uint8_t n = r.u8();
+    for (std::uint8_t i = 0; i < n && r.ok; ++i) {
+        ConceptLegendFrame::Entry e;
+        e.id = r.u8();
+        e.name = str();
+        e.title = str();
+        f.entries.push_back(std::move(e));
+    }
+    if (!r.ok) return std::nullopt;
+    return f;
+}
+
 // ── BRAIN / BRAIN_WATCH (1.7, G4.41) ────────────────────────────────────
 
 Bytes encodeBrain(const BrainFrame& f) {
@@ -418,6 +458,7 @@ Bytes encodeBrain(const BrainFrame& f) {
         w.u16(static_cast<std::uint16_t>(e.target_dm_x));
         w.u16(static_cast<std::uint16_t>(e.target_dm_y));
         w.u8(e.other);
+        w.u8(e.concept_id);
     }
     return std::move(w.out);
 }
@@ -432,6 +473,7 @@ std::optional<BrainFrame> decodeBrain(const Bytes& payload) {
         e.target_dm_x = static_cast<std::int16_t>(r.u16());
         e.target_dm_y = static_cast<std::int16_t>(r.u16());
         e.other = r.u8();
+        e.concept_id = r.u8();
         f.slots.push_back(e);
     }
     if (!r.ok) return std::nullopt;

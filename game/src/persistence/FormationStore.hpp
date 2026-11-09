@@ -77,6 +77,15 @@ std::map<std::string, std::int64_t> loadRestartLawsMilli(const DbConfig& cfg);
 // G5.35: every game_demo_teams name, A-Z — the page's matchup dropdowns.
 std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg);
 
+// Tactics trainer step 1 (mig 1199): each engine behaviour code (ai::kActCodes) and the
+// game_concepts row it plays — id, name and title. Empty if the table is not there yet.
+struct ActConcept {
+    std::string code;
+    int concept_id = -1;
+    std::string name, title;
+};
+std::vector<ActConcept> loadActConcepts(const DbConfig& cfg);
+
 // The match officials (G4.88, mig 822): the crew of `level` (the home
 // team's band; falls back to semipro), each man's role and own ratings
 // (game_official_ratings). Empty = the World's 50-rated crew.

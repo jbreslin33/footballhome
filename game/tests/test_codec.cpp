@@ -270,13 +270,26 @@ FH_TEST(team_list_round_trip) {
 
 FH_TEST(brain_frame_round_trips) {
     BrainFrame f;
-    BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7;
+    BrainEntry a; a.why = 3; a.target_dm_x = -120; a.target_dm_y = 45; a.other = 7; a.concept_id = 164;
     BrainEntry b; b.why = 0;
     f.slots = {a, b};
     const auto back = decodeBrain(encodeBrain(f));
     FH_EXPECT(back.has_value() && back->slots.size() == 2);
     FH_EXPECT(back->slots[0].target_dm_x == -120 && back->slots[0].target_dm_y == 45 && back->slots[0].other == 7);
     FH_EXPECT(back->slots[1].why == 0 && back->slots[1].other == 255);
+    FH_EXPECT(back->slots[0].concept_id == 164 && back->slots[1].concept_id == 255);   // 2.2
+}
+
+// 2.2 CONCEPT_LEGEND: the trainer's labels, titles past the 40-byte NAMES cap.
+FH_TEST(concept_legend_round_trips) {
+    ConceptLegendFrame f;
+    f.entries.push_back({164, "pressing-distance", "Stay in pressing distance"});
+    f.entries.push_back({168, "defend-your-man", "Defend your man: intercept, no turn, contain"});
+    const auto back = decodeConceptLegend(encodeConceptLegend(f));
+    FH_EXPECT(back.has_value() && back->entries.size() == 2);
+    FH_EXPECT(back->entries[0].id == 164 && back->entries[0].name == "pressing-distance");
+    FH_EXPECT(back->entries[1].title == "Defend your man: intercept, no turn, contain");
+    FH_EXPECT(!decodeConceptLegend(Bytes{1, 5, 3, 'a'}).has_value());   // truncated
 }
 
 // 2.0: ROSTER = each slot's name, then each slot's position number.

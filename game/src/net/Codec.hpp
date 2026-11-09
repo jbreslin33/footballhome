@@ -201,10 +201,20 @@ struct BrainEntry {
     std::uint8_t why = 0;        // index into the BRAIN_LEGEND names
     std::int16_t target_dm_x = 0, target_dm_y = 0;  // decimetres
     std::uint8_t other = 255;    // slot he's acting on (receiver / mark / carrier); 255 = none
+    std::uint8_t concept_id = 255;   // 2.2: the game_concepts id he's playing out of possession; 255 = none
 };
 struct BrainFrame {
     std::vector<BrainEntry> slots;
 };
+// 2.2 CONCEPT_LEGEND (tactics trainer step 1): the concepts the BRAIN feed names —
+// u8 count, per entry u8 id | u8 len name | u8 len title (wording from game_concepts).
+struct ConceptLegendFrame {
+    struct Entry { std::uint8_t id = 0; std::string name, title; };
+    std::vector<Entry> entries;
+};
+Bytes encodeConceptLegend(const ConceptLegendFrame& f);
+std::optional<ConceptLegendFrame> decodeConceptLegend(const Bytes& payload);
+
 Bytes encodeBrain(const BrainFrame& f);
 std::optional<BrainFrame> decodeBrain(const Bytes& payload);
 

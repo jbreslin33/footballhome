@@ -34,6 +34,16 @@ GameServer::GameServer(Config cfg, INetworkTransport& transport)
         [this](ClientId id, std::span<const std::uint8_t> b) {
             onMessage(id, b);
         });
+    // Tactics trainer step 1: ai::Act codes → the game_concepts rows they play (mig 1199).
+    for (auto& c : act_concept_) c = 255;
+    for (const auto& a : cfg_.acts) {
+        if (a.concept_id < 0 || a.concept_id > 254) continue;
+        for (int i = 1; i < ai::kActCount; ++i)
+            if (a.code == ai::kActCodes[i]) act_concept_[i] = static_cast<std::uint8_t>(a.concept_id);
+        bool have = false;
+        for (const auto& e : concept_legend_.entries) have = have || e.id == a.concept_id;
+        if (!have) concept_legend_.entries.push_back({static_cast<std::uint8_t>(a.concept_id), a.name, a.title});
+    }
 
     startMatch();
 }
@@ -171,6 +181,8 @@ void GameServer::onConnect(ClientId id, const auth::JwtClaims& claims) {
         for (int i = 0; i < ai::kWhyCount; ++i) lf.names.push_back(ai::kWhyNames[i]);
         transport_.send(id, encodeFrame(FrameType::BrainLegend, encodeNames(lf)));
     }
+    // 2.2: the trainer's labels — the concepts the BRAIN feed names (mig 1199).
+    transport_.send(id, encodeFrame(FrameType::ConceptLegend, encodeConceptLegend(concept_legend_)));
     sendTeams(id);      // G4.30: which teams are playing
     {   // G5.35 (2.1): every team a match can be made of
         TeamListFrame tl;
@@ -481,6 +493,10 @@ void GameServer::sendBrain() {
         e.target_dm_x = dm(o.target.x);
         e.target_dm_y = dm(o.target.y);
         e.other = o.other >= 0 && o.other < 255 ? static_cast<std::uint8_t>(o.other) : 255;
+        {   // 2.2: the concept he's playing out of possession (tactics trainer step 1)
+            const auto slot = static_cast<core::SlotIndex>(bf.slots.size());
+            e.concept_id = act_concept_[static_cast<int>(brain_.actOf(slot, world_, o))];
+        }
         bf.slots.push_back(e);
     }
     const Bytes frame = encodeFrame(FrameType::Brain, encodeBrain(bf));

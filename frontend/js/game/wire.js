@@ -28,6 +28,7 @@
     BRAIN_LEGEND: 0x3D,
     TEAM_LIST: 0x45,      // 2.1 s→c: every team a match can be made of (a names list)
     NEW_MATCH: 0x46,      // 2.1 c→s admin: a TEAMS payload, names only — kick off that match
+    CONCEPT_LEGEND: 0x47, // 2.2 s→c: the trainer's labels — game_concepts id, name, title (mig 1199)
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
 
@@ -197,15 +198,37 @@
     return names;
   }
 
-  // u8 count, per slot u8 why | i16 target x dm | i16 target y dm | u8 other (255 none).
+  // u8 count, per slot u8 why | i16 target x dm | i16 target y dm | u8 other (255 none)
+  // | u8 concept (2.2: the game_concepts id he's playing out of possession, 255 none).
   function decodeBrain(view, at) {
     const n = view.getUint8(at);
     const out = [];
     let p = at + 1;
     for (let i = 0; i < n; i++) {
       out.push({ why: view.getUint8(p), tx: view.getInt16(p + 1, true) / 10,
-                 ty: view.getInt16(p + 3, true) / 10, other: view.getUint8(p + 5) });
-      p += 6;
+                 ty: view.getInt16(p + 3, true) / 10, other: view.getUint8(p + 5),
+                 concept: view.getUint8(p + 6) });
+      p += 7;
+    }
+    return out;
+  }
+
+  // 2.2 CONCEPT_LEGEND: u8 count, per entry u8 id | u8 len name | u8 len title.
+  // Returns { id: { name, title } } — the wording is game_concepts' (the board's).
+  function decodeConceptLegend(view, at) {
+    const n = view.getUint8(at);
+    let p = at + 1;
+    const out = {};
+    const str = () => {
+      const len = view.getUint8(p); p += 1;
+      const t = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len));
+      p += len;
+      return t;
+    };
+    for (let i = 0; i < n; i++) {
+      const id = view.getUint8(p); p += 1;
+      const name = str();
+      out[id] = { name, title: str() };
     }
     return out;
   }
@@ -275,6 +298,7 @@
     decodeSpeed,
     decodeRoster,
     decodeNames,
+    decodeConceptLegend,
     decodeBrain,
     encodeBrainWatch,
     decodeFrame,

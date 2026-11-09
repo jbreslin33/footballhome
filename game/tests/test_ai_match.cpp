@@ -11,6 +11,7 @@
 #include "core/CanonicalHash.hpp"
 #include "core/World.hpp"
 
+#include <cstdlib>
 #include <cstdio>
 
 using namespace fh::game;
@@ -255,6 +256,33 @@ FH_TEST(teammate_never_steals) {
     for (int i = 0; i < core::kStealTicks * 3; ++i) w.tick();
     FH_EXPECT(w.ball().owner.has_value());
     FH_EXPECT_EQ(*w.ball().owner, 0);
+}
+
+// Tactics trainer step 1: a man carries a label only while his side's phase is a
+// defending one (block, transition to defend, their set piece) and never in goal; the
+// label follows the engine, so a side that has just won it keeps it until its phase
+// flips. At most one presser a side.
+FH_TEST(trainer_labels_out_of_possession) {
+    Rig r{22};
+    int labelled = 0, press_frames = 0;
+    for (int t = 0; t < 1500; ++t) {
+        r.run(1);
+        int press[2] = {0, 0};
+        for (std::uint8_t s = 0; s < r.world.playerCount(); ++s) {
+            const ai::Act a = r.brain.actOf(s, r.world, r.brain.ordersFor(s, r.world));
+            if (a == ai::Act::None) continue;
+            const std::uint8_t tm = r.world.player(s).team;
+            const ai::Phase ph = r.brain.phaseOf(tm);
+            FH_EXPECT(!r.world.isKeeper(s));
+            FH_EXPECT(ph == ai::Phase::DefendingBlock || ph == ai::Phase::DefensiveTransition || ph == ai::Phase::TheirSetPiece);
+            ++labelled;
+            if (a == ai::Act::PressBall) ++press[tm & 1];
+        }
+        FH_EXPECT(press[0] <= 1 && press[1] <= 1);
+        press_frames += press[0] + press[1];
+    }
+    FH_EXPECT(labelled > 0);
+    FH_EXPECT(press_frames > 0);
 }
 
 FH_TEST(ai_goldens_3v3_and_11v11) {

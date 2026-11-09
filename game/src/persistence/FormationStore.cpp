@@ -139,6 +139,22 @@ std::vector<std::string> loadDemoTeamNames(const DbConfig& cfg) {
     return out;
 }
 
+std::vector<ActConcept> loadActConcepts(const DbConfig& cfg) {
+    std::vector<ActConcept> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        if (!tx.exec("SELECT to_regclass('game_engine_acts') IS NOT NULL")[0][0].as<bool>()) return out;
+        for (const auto& r : tx.exec("SELECT a.code, c.id, c.name, c.title FROM game_engine_acts a "
+                                     "JOIN game_concepts c ON c.id = a.concept_id ORDER BY a.code"))
+            out.push_back(ActConcept{r[0].as<std::string>(), r[1].as<int>(), r[2].as<std::string>(), r[3].as<std::string>()});
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_engine_acts load failed: %s\n", e.what());
+    }
+    return out;
+}
+
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name) {
     try {
         pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +

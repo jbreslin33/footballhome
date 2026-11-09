@@ -55,7 +55,7 @@ Brain::Brain(const Brain& o)
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
       shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
-      theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_) {
+      theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
     for (int i = 0; i < 32; ++i) { players_[i] = o.players_[i]; dbg_anchor_[i] = o.dbg_anchor_[i]; }
@@ -95,6 +95,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     shape_tau_ours_ = p.fixed("physics.body.shape_tau_ours_s", 0);
     shape_max_ = p.fixed("physics.body.shape_max_mps", 0);
     defend_max_ = p.fixed("physics.body.defend_max_mps", 0);
+    trainer_recover_m_ = p.fixed("physics.trainer.recover_m", 5000);   // the trainer's "recover goal-side" label [FH]
     shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
     wb_tuck_y_ = p.fixed("physics.shape.wb_tuck_y", 700);
     tau_back_ = p.fixed("physics.body.shape_tau_back_s", 0);
@@ -213,6 +214,27 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
 bool Brain::actAs(const ActingState* st, SlotIndex slot, const World& world, Orders& o) const {
     const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[slot] & 1], world.tickCount()};
     return st->act(viewOf(slot, world), c, o);
+}
+
+// docs/tactics-trainer.md step 1: what this outfielder is doing out of possession
+// (his side's phase a defending one),
+// as the engine runs it — the presser (stand-off from DFL) and the loose ball's
+// man by their states; in the block, the deeper CB of the pair (G5.41), a man
+// whose spot is recover_m+ goal-side of him (closing it at the back pace,
+// G5.32), else his block spot. Label only.
+Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
+    if (slot >= world.playerCount() || world.isKeeper(slot)) return Act::None;
+    const Phase ph = teams_[setup_.team_of_slot[slot] & 1].phase();   // a loose ball in our own phase is not out of possession
+    if (ph != Phase::DefendingBlock && ph != Phase::DefensiveTransition && ph != Phase::TheirSetPiece) return Act::None;
+    const PlayerState* st = players_[slot & 31].machine.current();
+    if (st == DefendingBlock::pressBall()) return Act::PressBall;
+    if (st == DefendingBlock::chaseBall()) return Act::ChaseBall;
+    if (st != DefendingBlock::holdBlockSpot()) return Act::None;
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    if (trainer_recover_m_.raw > 0 && (world.player(slot).pos.x - o.target.x) * sg >= trainer_recover_m_) return Act::BlockRecover;
+    if (block_.deepCb(team) == static_cast<int>(slot)) return Act::BlockCover;
+    return Act::BlockSpot;
 }
 
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {

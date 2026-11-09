@@ -237,6 +237,7 @@
   // decision. Ticks are remembered on this
   // device.
   let brainOn = false, brainLegend = [], brainEntries = null, brainOpen = null;
+  let conceptLegend = {};   // 2.2: game_concepts id → { name, title } (the trainer's labels, mig 1199)
   let watchPicking = false;
   const brainPick = new Set();
   const BRAIN_KEY = 'fh-game-brain-picks';
@@ -313,16 +314,20 @@
       for (const el of side.el.querySelectorAll('[data-why]')) {
         const i = Number(el.dataset.why);
         const e = brainEntries && brainEntries[i];
-        const why = e ? brainLegend[e.why] || '?' : '…';
+        // Out of possession: the concept he's playing, in the board's words (trainer step 1).
+        const c = e && e.concept !== 255 ? conceptLegend[e.concept] : null;
+        const why = c ? c.title : e ? brainLegend[e.why] || '?' : '…';
         const other = e && e.other !== 255 ? ' → ' + slotName(e.other) : '';
         el.textContent = why + other;
+        el.style.color = c ? '#7fd7ff' : '#ffcc00';
       }
       for (const el of side.el.querySelectorAll('[data-det]')) {
         if (el.hidden) continue;
         const i = Number(el.dataset.det);
         const e = brainEntries && brainEntries[i];
         const why = e ? brainLegend[e.why] || '' : '';
-        el.textContent = why;
+        const c = e && e.concept !== 255 ? conceptLegend[e.concept] : null;
+        el.textContent = c ? `${why} · concept ${e.concept} ${c.name}` : why;
       }
     }
     renderer.setBrain({ entries: brainEntries, legend: brainLegend, show: brainPick });
@@ -661,6 +666,9 @@
     },
     onBrainLegend(names) {
       brainLegend = names;
+    },
+    onConceptLegend(map) {
+      conceptLegend = map;
     },
     onTeamList(names) {
       teamList = names;

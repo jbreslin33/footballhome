@@ -26,6 +26,14 @@ inline constexpr const char* kWhyNames[] = {
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
+// The trainer's label (docs/tactics-trainer.md step 1): which out-of-possession
+// behaviour the engine is running for a man, by code. The codes are rows of
+// game_engine_acts (mig 1199), which name the game_concepts row each one plays;
+// the wording lives there, never here. Read-only: never fed back into the sim.
+enum class Act : std::uint8_t { None, BlockSpot, BlockRecover, BlockCover, PressBall, ChaseBall };
+inline constexpr const char* kActCodes[] = {"", "block_spot", "block_recover", "block_cover", "press_ball", "chase_ball"};
+inline constexpr int kActCount = static_cast<int>(sizeof(kActCodes) / sizeof(kActCodes[0]));
+
 struct Orders {
     core::MoveIntent move;
     core::Action action = core::Action::None;

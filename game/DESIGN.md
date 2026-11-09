@@ -7312,3 +7312,42 @@ gets the ball nobody near is ready to step in.
 whether real side-in-possession men keep a third man near the line too. (2) Our set-piece box
 shape. (3) Their line 3 m high with the ball in the box (0-18 centre 11.5 v 8.7). (4) Back to 35+
 28 v 17. (5) Crosses 4.2 v 11.5. (6) Law 8, Law 13 walls, cards. (7) Take-ons.
+
+### 8.165 G5.64 — tactics trainer step 1: each man says what he's doing (mig 1199)
+
+docs/tactics-trainer.md step 1 (owner 11/9: Premier League sides teach first; nothing from the
+club's tactic plans reaches a PL side). The trainer labels men in the board's vocabulary: the
+`game_concepts` id the 🎯 Tactics board uses for a job (mig 1153).
+
+**What the engine labels is what it runs.** `ai::Act` (Orders.hpp) names the clean engine's
+out-of-possession behaviours by code, and `Brain::actOf` reads them from the man's state and the
+orders he was just given:
+- `press_ball`: PressBall, the one man on their carrier at the real stand-off (G5.25);
+- `chase_ball`: ChaseBall, the loose ball's man (G5.21);
+- `block_cover`: the deeper centre-back of the pair (G5.41);
+- `block_recover`: his block spot 5 m+ goal-side of him (`physics.trainer.recover_m` [FH]), which he
+  closes at the back pace first (G5.32);
+- `block_spot`: his block spot by role and band (DFL).
+
+Only while his side's phase is a defending one (block, transition to defend, their set piece), so
+a loose ball in our own phase is not labelled. Keepers are not labelled. The label follows the
+engine: a side that has just won the ball keeps its block labels until its phase flips. The engine
+has no man-marking, cover-shadow or trap yet, so no label claims one.
+
+**Which concept is a DB row.** New `game_engine_acts` (code → concept id, mig 1199):
+block_spot → 67 compact-block, block_recover → 11 recover, block_cover → 2 cover, press_ball →
+164 pressing-distance, chase_ball → 131 nearest-decides. fh-game loads it at boot
+(`persistence::loadActConcepts`). Titles come from `game_concepts`, so the wording is the board's.
+A new engine behaviour = a new code + a row.
+
+**Wire 2.2.** A BRAIN entry gains `u8 concept` (the game_concepts id, 255 none). The new
+CONCEPT_LEGEND (0x47) sends id, name and title on connect. The brain rows show the concept's title
+(blue) in place of the decision name, and the engine's decision with the concept id when a row is
+opened. Label only: never fed back into the sim, so goldens are unchanged.
+
+Tests: codec round-trips (BRAIN concept, CONCEPT_LEGEND titles past the 40-byte NAMES cap); in
+2000 ticks of 11v11, labels appear only in defending phases and never on a keeper, with at most one
+presser a side.
+
+Next: step 2, a practice match between two PL sides from their goal kick, separate from the live
+match.

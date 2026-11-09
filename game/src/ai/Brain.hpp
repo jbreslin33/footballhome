@@ -67,6 +67,9 @@ public:
     const PlayerState* stateOf(core::SlotIndex slot) const { return players_[slot & 31].machine.current(); }
     // Orders for ONE slot given the current world (deterministic).
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
+    // The trainer's label for an outfielder out of possession (Act::None otherwise), from his
+    // state and the orders he was just given (docs/tactics-trainer.md step 1).
+    Act actOf(core::SlotIndex slot, const core::World& world, const Orders& o) const;
 
     // A slot's position number (2 RB … 9 striker; 0 = unknown).
     int numberOf(core::SlotIndex slot) const {
@@ -139,6 +142,7 @@ private:
     std::int64_t shape_danger_sprint_ = 0;
     // Across (G5.7): his base's y plus the ball's y × shift, capped.
     math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};
+    math::Fixed64 trainer_recover_m_ = math::Fixed64::fromInt(5);
 };
 
 }  // namespace fh::game::ai

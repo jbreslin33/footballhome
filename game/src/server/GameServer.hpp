@@ -68,6 +68,7 @@ public:
         std::vector<persistence::CrewMember> crew;
         // G5.35 (2.1): every team a match can be made of (TEAM_LIST).
         std::vector<std::string> team_names;
+        std::vector<persistence::ActConcept> acts;   // tactics trainer (mig 1199)
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
@@ -135,6 +136,8 @@ private:
     std::uint64_t signal_until_tick_ = 0;
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
+    std::uint8_t act_concept_[ai::kActCount];   // ai::Act → game_concepts id (255 none)
+    net::ConceptLegendFrame concept_legend_;
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so
     // disconnect is O(1); iteration order doesn't matter — clients receive
     // identical bytes.
