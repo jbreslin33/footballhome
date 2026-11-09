@@ -85,7 +85,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.60 (2026-11-08): box runners kept on a redraw, nearest spots, drawn from our pass's man.
 // Re-locked G5.61 (2026-11-09): box count one roll per 3 s of the spell, deep hysteresis, runners in the box stay, held through our restarts.
 // Re-locked G5.62 (2026-11-09): support men follow their line in as it drops below its usual depth.
-constexpr std::uint64_t kGolden3v3   = 0x10260d61f66e1ad9ULL;
+// Re-locked G5.63 (2026-11-09): a busy front man (the pass's man, a runner) keeps the front job.
+constexpr std::uint64_t kGolden3v3   = 0x6a6d3cff70ac8099ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -113,7 +114,8 @@ constexpr std::uint64_t kGolden3v3   = 0x10260d61f66e1ad9ULL;
 // Re-locked G5.60 (2026-11-08): as the 3v3.
 // Re-locked G5.61 (2026-11-09): as the 3v3.
 // Re-locked G5.62 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x92643ab01b72e717ULL;
+// Re-locked G5.63 (2026-11-09): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x686a704ac1faff7dULL;
 
 struct Rig {
     World world;

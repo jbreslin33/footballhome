@@ -7254,3 +7254,61 @@ front men, the pass's man, front_swap_m 1 m), and the new holder starting 6+ m b
 first. (2) Our set-piece box shape. (3) Their line 3 m high with the ball in the box (0-18 centre
 11.2 v 8.7). (4) Back to 35+ 28 v 17. (5) Crosses 4.2 v 11.5. (6) Law 8, Law 13 walls, cards.
 (7) Take-ons.
+
+### 8.164 G5.63 — a busy front man keeps the front job (no migration)
+
+§8.163's next: front-job churn.
+
+**Real** (DFL 7 matches [Bassek 2025]). New `scripts/benchmarks_tracking_frontjob.py`: the front
+man is the outfielder of the side in possession nearest their goal, not the man on the ball
+(nearest it within 2 m). He keeps the role until a mate is h m further on. With h = 1 m:
+- 192.5 hand-overs a team-match, one per 8.2 s in possession;
+- tenure p25 / median / p75 1.4 / 3.0 / 5.8 s;
+- why: the old man went on the ball 22.8%, dropped 22.8%, the new man came on 42.5%, drift 11.9%;
+- at the hand-over the new man is 2.7 m short of their line (p25 1.2, p75 5.2), the old man
+  3.8 m. The new man moved on a median 3.2 m over the last 2 s.
+
+So real men hand over as often as ours did. What differs is that the next man is already near.
+
+**Measured first** (the same cut as a new harness line, 8 × 90).
+- Hand-overs 167.8 a team-match (192.5), tenure 1.0 / 2.6 / 6.0 s: the churn is real.
+- On the ball 34% (22.8). The new man is 4.7 m short (2.7), the old 6.3 (3.8), and the new man
+  moved on 6.1 m over 2 s (3.2).
+- The engine's front JOB changed hands 183.9 a team-match. Why: the holder became the pass's man
+  27%, a box runner 24%, was overtaken by a man just freed from those 23%, plain overtaken 21%. The
+  new holder started a median 7.3 m short. The job went to a man 7 m back, then went back to the
+  first man when he was free.
+
+**The change** [FH]. In `Possession::assignFront`, a holder who is only busy for a moment (the
+pass is his, or he is running into the box or a channel) keeps the job. Others still cannot take
+it up while busy. Going on the ball still hands it on. `physics.front.keep_busy` (default on; 0
+turns it off).
+
+**After** (8 × 90, v the run before).
+- The engine's job changes 183.9 → 90.8 a team-match, tenure 2.6 → 3.2 s. The pass's man and box
+  runner causes went to 0-1%.
+- Runs with the ball going forward 196.8 → 180.6 (167.4). Ball still 53.9 → 56.2 (41.7), within
+  noise.
+- The front man by the shoulder table: 4+ m short 30-35% (8-21% real), unchanged. The new man at
+  the hand-over 5.0 m (2.7).
+- In the box: 18-35 centre 0.39 → 0.44 (1.04), wide 0.52 → 0.54 (0.79). Shots 10.7 → 9.3, goals
+  1.88 → 2.00 (8 matches; noisy).
+- Both goldens re-locked.
+
+**Traced** (1 match, the front-job holder every 0.2 s). In hold shape 88% of the time, and 3+ m
+behind his spot in 27% of those frames. A lag lasts a median 1.6 s (p90 6.6 s), mostly with the
+ball 50-90 m out. 65% of lag spells start with a new holder. He closes on the spot only about 1 m/s
+faster than their line drops, and his actual speed is 2.8 m/s against 4.5 ordered (acceleration).
+
+**Tried again, not shipped: `front.close_mps` 3.0** with keep_busy on. 4+ m short 30-35 → 28-30%.
+Ball-still runs from the line jobs 12.7 → 23.0. Left at 1.0.
+
+**What it says.** Keeping the job was right (the job no longer swaps for a pass or a run), but it
+was not the gap. The front man lags because the man who takes over comes from further back than
+real. Our second man stands 3.6-5.9 m behind the front man (real 2.7-4.1), so when the front man
+gets the ball nobody near is ready to step in.
+
+**Next moles.** (1) The second man's depth: why he stands 1-2 m deeper than his rolled gap, and
+whether real side-in-possession men keep a third man near the line too. (2) Our set-piece box
+shape. (3) Their line 3 m high with the ball in the box (0-18 centre 11.5 v 8.7). (4) Back to 35+
+28 v 17. (5) Crosses 4.2 v 11.5. (6) Law 8, Law 13 walls, cards. (7) Take-ons.

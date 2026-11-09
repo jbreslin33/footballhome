@@ -860,6 +860,11 @@ void Possession::assignFront(std::uint8_t team, const core::World& world, const 
             if (best == 0xFF || x > bx) { best = j; bx = x; }
         }
         if (best == 0xFF) { f[k] = 0xFF; continue; }
+        // G5.63: a holder who is only busy for a moment (the pass is his, or he is
+        // running into the box or a channel) keeps the job, so it does not jump to
+        // a man 7 m back and jump back when he is free (§8.164).
+        if (params_.front_keep_busy && f[k] != 0xFF && f[k] != above && f[k] < world.playerCount() && team_of_slot[f[k]] == team &&
+            !(b.owner && *b.owner == f[k]) && (b.pass_to == f[k] || runner(f[k]) || running(f[k]))) continue;
         if (f[k] != 0xFF && f[k] != above && ok(f[k]) && world.player(f[k]).pos.x * sg + params_.front_swap_m >= bx) continue;
         f[k] = best;
         at[k] = world.tickCount();
@@ -1012,6 +1017,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     static const int kFront[5] = {-700, 500, 1600, 3000, 4800};
     for (int k = 0; k < 5; ++k) front_q[k] = p.fixed(("physics.front.gap_" + std::string(kDq[k])).c_str(), kFront[k]);
     front_swap_m = p.fixed("physics.front.swap_m", 1000);
+    front_keep_busy = p.fixed("physics.front.keep_busy", 1000).raw > 0;   // G5.63 [FH]
     front_close = p.fixed("physics.front.close_mps", 1000);   // fitted: 1.0 / 1.5 / 2.0 → ball-still runs 43.8 / 47.5 / 49.8 (41.7)
     static const int kSecond[5] = {1200, 2500, 4200, 6700, 9900};   // G5.49, the same source
     for (int k = 0; k < 5; ++k) second_q[k] = p.fixed(("physics.front.second_" + std::string(kDq[k])).c_str(), kSecond[k]);
