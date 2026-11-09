@@ -1327,6 +1327,7 @@ class GameCenterScreen extends EventScreen {
         const which = tpSel.dataset.gcTpSelect;
         if (which === 'speed') { this._plan.speed = Number(tpSel.value) || 1; return; }
         this._stopPlanPlay();
+        if (which === 'us') this._plan.usFormationId = Number(tpSel.value) || 0;
         if (which === 'opp') this._plan.oppFormationId = Number(tpSel.value) || 0;
         if (which === 'moment') this._plan.moment = tpSel.value;
         if (which === 'block') this._plan.block = tpSel.value;
@@ -2132,7 +2133,7 @@ class GameCenterScreen extends EventScreen {
   // we can").  Each state arrives solved; an edited one is solved by POST
   // /api/tactic-plans/solve.  No placement rule lives in this file.
   _planKey() {
-    return [this._formationId(), this._plan.oppFormationId, this._plan.moment, this._plan.block].join('|');
+    return [this._planUsId(), this._plan.oppFormationId, this._plan.moment, this._plan.block].join('|');
   }
 
   // The game's picked opponent shape (mig 912 matchup) when there is one,
@@ -2148,11 +2149,11 @@ class GameCenterScreen extends EventScreen {
     const p = this._plan;
     if (!p.oppFormationId) p.oppFormationId = this._planDefaultOpp();
     const key = this._planKey();
-    if (!this._formationId() || !p.oppFormationId) return;
+    if (!this._planUsId() || !p.oppFormationId) return;
     Object.assign(p, { key, loading: true, error: null, editing: false, draft: null, msg: '' });
     this._render();
     try {
-      const q = new URLSearchParams({ formation_id: this._formationId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block });
+      const q = new URLSearchParams({ formation_id: this._planUsId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block });
       const res = await this.auth.fetch(`/api/tactic-plans?${q}`);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
@@ -2188,7 +2189,14 @@ class GameCenterScreen extends EventScreen {
     return path;
   }
 
+  // Our side of the plan: the game's formation unless the coach picked
+  // another (a step copied from a PL side lives under that side's shape).
+  _planUsId() { return this._plan.usFormationId || this._formationId(); }
+
   _planStateLabel(st) {
+    const c = st.copied_from;   // mig 1202: copied from the game's trainer
+    if (c && this._copyTactics('copied_pill'))
+      return this._copyTactics('copied_pill', { home: c.home || '', away: c.away || '', clock: c.clock || '', ball: st.ball_with });
     return Number(st.ball_with) === 1
       ? (this._copyTactics('ball_gk') || 'their GK')
       : (this._copyTactics('ball_with', { n: st.ball_with }) || `their ${st.ball_with}`);
@@ -2223,7 +2231,7 @@ class GameCenterScreen extends EventScreen {
       p.solving.add(key);
       const planKey = p.key;
       this._planFetch('/api/tactic-plans/solve', { method: 'POST', body: JSON.stringify({
-        formation_id: this._formationId(), block: p.block,
+        formation_id: this._planUsId(), block: p.block,
         state: { ball_with: Number(st.ball_with), restart: st.restart || null, opponents: opps, jobs: st.jobs || [] } }) })
         .then(sol => {
           if (p.key !== planKey) return;
@@ -2293,13 +2301,14 @@ class GameCenterScreen extends EventScreen {
     const p = this._plan;
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     if (!p.oppFormationId) p.oppFormationId = this._planDefaultOpp();
-    if (this._formationId() && p.oppFormationId && p.key !== this._planKey() && !p.loading) setTimeout(() => this._loadPlan(), 0);
+    if (this._planUsId() && p.oppFormationId && p.key !== this._planKey() && !p.loading) setTimeout(() => this._loadPlan(), 0);
     const data = p.data;
     const sel = (which, options, value) => `<select data-gc-tp-select="${which}" ${p.editing ? 'disabled' : ''}
         style="font-size:0.72rem; font-weight:700; padding:3px 6px; border-radius:4px; border:1px solid #475569; background:#0f172a; color:#fff;">
         ${options.map(([v, label]) => `<option value="${esc(v)}" ${String(v) === String(value) ? 'selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
     const controls = `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
-        <span style="font-size:0.74rem; font-weight:800;">${esc(this.formation)}</span>
+        ${this._copyTactics('us_game') ? sel('us', [[0, this._copyTactics('us_game', { formation: this.formation || '' })]].concat((this.formations || []).filter(f => f.code !== this.formation).map(f => [f.id, f.code])), p.usFormationId || 0)
+          : `<span style="font-size:0.74rem; font-weight:800;">${esc(this.formation)}</span>`}
         <span style="font-size:0.72rem; opacity:0.75;">${esc(this._copyTactics('vs') || 'vs')}</span>
         ${sel('opp', (this.formations || []).map(f => [f.id, f.code]), p.oppFormationId)}
         ${data ? sel('moment', (data.moments || []).map(m => [m.code, m.title]), p.moment) : ''}
@@ -2326,7 +2335,7 @@ class GameCenterScreen extends EventScreen {
     // ⚽ Pass to: their 2–11 (not the man on the ball).  Green = already
     // drawn (opens it); grey = a new pass for a coach (copies these jobs).
     const passTo = Array.from({ length: 10 }, (_, i) => i + 2).filter(n => n !== Number(cur.ball_with)).map(n => {
-      const kid = kids.find(st => Number(st.ball_with) === n);
+      const kid = kids.find(st => Number(st.ball_with) === n && !st.copied_from);
       if (!kid && !this._tacticsCanEdit()) return '';
       return `<button type="button" data-gc-tp-pass="${n}" ${p.editing || p.playing ? 'disabled' : ''} title="${esc(kid ? '' : this._copyTactics('pass_to_new'))}"
         style="font-size:0.72rem; min-width:28px; padding:2px 6px; border-radius:999px; cursor:pointer; font-weight:800; color:#fff;
@@ -2355,6 +2364,7 @@ class GameCenterScreen extends EventScreen {
       + `<div style="display:flex; gap:4px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">${pathHtml}${nextHtml}</div>` + passHtml
       + (!p.editing ? `<div style="font-size:0.7rem; opacity:0.75; margin-bottom:4px;">${esc(this._copyTactics(canEdit ? 'pass_hint' : 'player_hint'))}</div>` : '')
       + `<div style="font-size:0.72rem; font-weight:700; margin-bottom:6px; color:${cov.free.length || cov.doubled.length ? '#fbbf24' : '#4ade80'};">${covHtml}</div>`
+      + (cur.copied_from && this._copyTactics('copied_note') ? `<div style="font-size:0.7rem; opacity:0.85; margin-bottom:6px;">📋 ${esc(this._copyTactics('copied_note', { home: cur.copied_from.home || '', away: cur.copied_from.away || '', clock: cur.copied_from.clock || '' }))}</div>` : '')
       + (this._planRestart(shown) ? `<div style="font-size:0.7rem; opacity:0.85; margin-bottom:6px;" title="${esc(this._planRestart(shown).law)}">${esc(this._copyTactics('restart', { label: this._planRestart(shown).label }))}</div>` : '')
       + `<div data-gc-tactics-pitch></div>` + tools + this._planJobsHtml(shown) + this._planPopupHtml(shown);
   }
@@ -2582,7 +2592,7 @@ class GameCenterScreen extends EventScreen {
   async _createPlan() {
     const p = this._plan;
     try {
-      await this._planFetch('/api/tactic-plans', { method: 'POST', body: JSON.stringify({ formation_id: this._formationId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block }) });
+      await this._planFetch('/api/tactic-plans', { method: 'POST', body: JSON.stringify({ formation_id: this._planUsId(), opponent_formation_id: p.oppFormationId, moment: p.moment, block: p.block }) });
       await this._reloadPlanTo(0);
     } catch (err) { p.msg = `⚠ ${err.message}`; this._render(); }
   }

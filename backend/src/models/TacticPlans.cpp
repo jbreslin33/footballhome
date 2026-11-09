@@ -195,13 +195,14 @@ json TacticPlans::find(long long formationId, long long opponentFormationId,
     const auto laws = restartLaws(db);
     const json opponentBase = out["opponent_base"];
     for (const auto& s : db->query(
-             "SELECT id, parent_state_id, ball_with, restart FROM tactic_states WHERE plan_id = $1::int "
+             "SELECT id, parent_state_id, ball_with, restart, (copied_from->'source')::text AS copied FROM tactic_states WHERE plan_id = $1::int "
              " ORDER BY parent_state_id IS NOT NULL, id", {planId})) {
         const std::string sid = s["id"].as<std::string>();
         json st = {{"id", s["id"].as<long long>()},
                    {"parent_state_id", s["parent_state_id"].is_null() ? json(nullptr) : json(s["parent_state_id"].as<long long>())},
                    {"ball_with", s["ball_with"].as<int>()},
                    {"restart", s["restart"].is_null() ? json(nullptr) : json(s["restart"].as<std::string>())},
+                   {"copied_from", s["copied"].is_null() ? json(nullptr) : json::parse(s["copied"].as<std::string>())},
                    {"opponents", json::array()}, {"jobs", json::array()}};
         for (const auto& o : db->query(
                  "SELECT number, x::float8 AS x, y::float8 AS y FROM tactic_state_opponents WHERE state_id = $1::int ORDER BY number", {sid}))
@@ -293,11 +294,11 @@ long long TacticPlans::addState(long long parentStateId, int ballWith) {
         const long long planId = parent[0]["plan_id"].as<long long>();
         auto ins = tx->exec_params(
             "INSERT INTO tactic_states (plan_id, parent_state_id, ball_with) VALUES ($1, $2, $3) "
-            "ON CONFLICT (plan_id, parent_state_id, ball_with) DO NOTHING RETURNING id",
+            "ON CONFLICT (plan_id, parent_state_id, ball_with) WHERE copied_from IS NULL DO NOTHING RETURNING id",
             planId, parentStateId, ballWith);
         long long id;
         if (ins.empty()) {
-            id = tx->exec_params("SELECT id FROM tactic_states WHERE plan_id = $1 AND parent_state_id = $2 AND ball_with = $3",
+            id = tx->exec_params("SELECT id FROM tactic_states WHERE plan_id = $1 AND parent_state_id = $2 AND ball_with = $3 AND copied_from IS NULL",
                                  planId, parentStateId, ballWith)[0]["id"].as<long long>();
         } else {
             id = ins[0]["id"].as<long long>();
@@ -333,8 +334,12 @@ bool TacticPlans::putState(long long stateId, const json& body) {
             const bool hasP = j.contains("partner_position_id") && j["partner_position_id"].is_number_integer();
             const std::string kind = j.at("kind").get<std::string>();
             const auto& targets = j.at("targets");
-            auto k = tx->exec_params("SELECT multi_a FROM tactic_job_kinds WHERE code = $1", kind);
+            auto k = tx->exec_params("SELECT multi_a, target_a_label IS NULL AS names_nobody FROM tactic_job_kinds WHERE code = $1", kind);
             if (k.empty()) throw std::runtime_error("unknown job kind: " + kind);
+            // A kind with no target label (line-hold, compact-block, the 'home'
+            // rule) names nobody; every other kind needs at least one man.
+            if (targets.empty() && !k[0]["names_nobody"].as<bool>())
+                throw std::runtime_error("job " + kind + " needs one of their men");
             if (!k[0]["multi_a"].as<bool>() && targets.size() > 1)
                 throw std::runtime_error("job " + kind + " takes one man");
             const int pid = j.at("position_id").get<int>();
@@ -351,6 +356,92 @@ bool TacticPlans::putState(long long stateId, const json& body) {
         tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", st[0]["plan_id"].as<long long>());
         db->commit(tx);
         return true;
+    } catch (...) {
+        db->rollback(tx);
+        throw;
+    }
+}
+
+json TacticPlans::copyFromGame(const json& b, long long byUserId) {
+    auto* db = Database::getInstance();
+    auto formationOf = [&](const std::string& team) -> long long {
+        auto r = db->query("SELECT f.id FROM game_demo_teams t JOIN formations f ON f.code = t.formation_code "
+                           " WHERE t.name = $1 LIMIT 1", {team});
+        return r.empty() ? 0 : r[0]["id"].as<long long>();
+    };
+    const std::string usTeam = b.value("us_team", std::string()), themTeam = b.value("them_team", std::string());
+    const long long us = formationOf(usTeam), them = formationOf(themTeam);
+    if (!us) return {{"error", "No formation for team: " + usTeam}};
+    if (!them) return {{"error", "No formation for team: " + themTeam}};
+    const std::string moment = b.value("moment", std::string("out_of_possession"));
+    // The block from where the ball is, in our frame (y 0 = our goal line):
+    // in their third we're pressing high, in ours we're in a low block.
+    const double ballY = b.at("ball").at("y").get<double>();
+    const std::string block = ballY >= 66.7 ? "high" : ballY >= 33.3 ? "mid" : "low";
+    const long long planId = create(us, them, moment, block, byUserId);
+    if (!planId) return {{"error", "Unknown formation, moment or block."}};
+
+    // Their man on the ball, else the one nearest it.
+    int ballWith = b.contains("ball_with") && b["ball_with"].is_number_integer() ? b["ball_with"].get<int>() : 0;
+    if (ballWith < 1 || ballWith > 11) {
+        const double bx = b["ball"]["x"].get<double>() * 0.68, by = ballY * 1.05;
+        double best = 1e18;
+        for (const auto& o : b.at("opponents")) {
+            const double dx = o["x"].get<double>() * 0.68 - bx, dy = o["y"].get<double>() * 1.05 - by, d = dx * dx + dy * dy;
+            if (d < best) { best = d; ballWith = o["number"].get<int>(); }
+        }
+    }
+
+    auto tx = db->beginTransaction();
+    try {
+        auto root = tx->exec_params("SELECT id FROM tactic_states WHERE plan_id = $1 AND parent_state_id IS NULL", planId);
+        if (root.empty()) { db->rollback(tx); return {{"error", "Plan has no root."}}; }
+        const long long rootId = root[0]["id"].as<long long>();
+        const json copied = {{"source", b.value("source", json::object())}, {"ball", b["ball"]},
+                             {"ours", b.value("ours", json::array())}, {"by_user_id", byUserId}};
+        auto st = tx->exec_params(
+            "INSERT INTO tactic_states (plan_id, parent_state_id, ball_with, copied_from) "
+            "VALUES ($1, $2, $3, $4::jsonb || jsonb_build_object('at', now())) RETURNING id",
+            planId, rootId, ballWith, copied.dump());
+        const long long stateId = st[0]["id"].as<long long>();
+        for (const auto& o : b.at("opponents"))
+            tx->exec_params("INSERT INTO tactic_state_opponents (state_id, number, x, y) VALUES ($1, $2, $3, $4)",
+                            stateId, o.at("number").get<int>(), o.at("x").get<double>(), o.at("y").get<double>());
+        int jobs = 0;
+        json skipped = json::array();
+        for (const auto& m : b.value("ours", json::array())) {
+            const int pid = m.value("position_id", 0);
+            if (pid < 2 || pid > 11 || !m.contains("concept_id") || !m["concept_id"].is_number_integer()) continue;
+            bool hasTarget = m.contains("target") && m["target"].is_number_integer() &&
+                             m["target"].get<int>() >= 1 && m["target"].get<int>() <= 11;
+            int target = hasTarget ? m["target"].get<int>() : 0;
+            // The concept's kind that fits: one naming nobody when there is no
+            // target, one taking a man when there is.
+            auto k = tx->exec_params(
+                "SELECT code FROM tactic_job_kinds WHERE concept_id = $1 AND (target_a_label IS NULL) = $2 "
+                " ORDER BY sort_order, code LIMIT 1", m["concept_id"].get<int>(), !hasTarget);
+            // A press with no man named presses the man on the ball.
+            if (k.empty() && !hasTarget) {
+                k = tx->exec_params("SELECT code FROM tactic_job_kinds WHERE concept_id = $1 AND rule = 'press' "
+                                    " ORDER BY sort_order, code LIMIT 1", m["concept_id"].get<int>());
+                if (!k.empty()) { hasTarget = true; target = ballWith; }
+            }
+            if (k.empty()) { skipped.push_back({{"position_id", pid}, {"concept_id", m["concept_id"]}}); continue; }
+            tx->exec_params("INSERT INTO tactic_jobs (state_id, position_id, kind) VALUES ($1, $2, $3)",
+                            stateId, pid, k[0]["code"].as<std::string>());
+            if (hasTarget)
+                tx->exec_params("INSERT INTO tactic_job_targets (state_id, position_id, number, ord) VALUES ($1, $2, $3, 1)",
+                                stateId, pid, target);
+            ++jobs;
+        }
+        tx->exec_params("UPDATE tactic_plans SET updated_at = now() WHERE id = $1", planId);
+        db->commit(tx);
+        auto codes = db->query("SELECT (SELECT code FROM formations WHERE id = $1::int) AS us, "
+                               "       (SELECT code FROM formations WHERE id = $2::int) AS them",
+                               {std::to_string(us), std::to_string(them)});
+        return {{"plan_id", planId}, {"state_id", stateId}, {"us", codes[0]["us"].as<std::string>()},
+                {"them", codes[0]["them"].as<std::string>()}, {"block", block}, {"ball_with", ballWith},
+                {"jobs", jobs}, {"skipped", skipped}};
     } catch (...) {
         db->rollback(tx);
         throw;

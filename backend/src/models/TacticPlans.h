@@ -53,6 +53,15 @@ public:
     // False when there is no such state.
     bool putState(long long stateId, const nlohmann::json& body);
 
+    // A frozen game moment copied to the board (mig 1202, trainer step 4):
+    // finds or makes the plan (us_team / them_team → game_demo_teams
+    // formation, moment, block from the ball's height) and ALWAYS adds a
+    // fresh state under its root — never an authored one.  Concepts map to
+    // job kinds by concept_id; a man whose concept needs a target the copy
+    // doesn't name keeps no job (home).  Returns {plan_id, state_id, us,
+    // them, block, jobs, skipped} or {error} (bad team / formation).
+    nlohmann::json copyFromGame(const nlohmann::json& body, long long byUserId);
+
     // Deletes a non-root state and everything after it.  False when there is
     // no such state or it is the root.
     bool deleteState(long long stateId);

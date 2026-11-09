@@ -25,5 +25,6 @@ private:
     Response handleSolve(const Request& request);        // POST /solve (shared geometry, nothing saved)
     Response handlePutState(const Request& request);     // PUT /states/:stateId
     Response handleDeleteState(const Request& request);  // DELETE /states/:stateId
-    Response handleShortcut(const Request& request);     // POST /shortcuts { kind, on }
+    Response handleShortcut(const Request& request);    // POST /shortcuts { kind, on }
+    Response handleCopy(const Request& request);        // POST /copies (a frozen game moment → a new state)
 };

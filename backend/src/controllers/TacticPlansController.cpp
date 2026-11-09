@@ -61,8 +61,10 @@ std::string invalid(const json& b) {
         if (p < 2 || p > 11 || pos[p]) return "job position_id 2–11, once each";
         pos[p] = true;
         if (!j.contains("kind") || !j["kind"].is_string() || j["kind"].get<std::string>().size() > 40) return "job kind";
-        if (!j.contains("targets") || !j["targets"].is_array() || j["targets"].empty() || j["targets"].size() > 4)
-            return "job targets: 1–4 of their numbers";
+        // Empty is fine for a kind that names nobody (line-hold, compact-block);
+        // the model checks the kind (TacticPlans::putState).
+        if (!j.contains("targets") || !j["targets"].is_array() || j["targets"].size() > 4)
+            return "job targets: up to 4 of their numbers";
         bool tseen[12] = {};
         for (const auto& t : j["targets"]) {
             if (!t.is_number_integer() || t.get<int>() < 1 || t.get<int>() > 11) return "job targets 1–11";
@@ -106,6 +108,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.put (prefix + "/states/:stateId",  [this](const Request& r) { return handlePutState(r); });
     router.del (prefix + "/states/:stateId",  [this](const Request& r) { return handleDeleteState(r); });
     router.post(prefix + "/shortcuts",        [this](const Request& r) { return handleShortcut(r); });
+    router.post(prefix + "/copies",           [this](const Request& r) { return handleCopy(r); });
 }
 
 bool TacticPlansController::requireStaff(const Request& request, long long* userId, Response* error) {
@@ -173,6 +176,67 @@ Response TacticPlansController::handleShortcut(const Request& request) {
         return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleShortcut: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// POST /copies — a frozen moment from the game's tactics trainer copied to
+// the board (mig 1202, docs/tactics-trainer.md step 4).  Staff only.
+// { source: {home, away, clock, period?, match_id?}, us_team, them_team (game_demo_teams.name),
+//   moment?, ball_with: 1–11|null, ball: {x,y}, opponents: [{number,x,y}] (11),
+//   ours: [{position_id 1–11, x, y, concept_id|null, target 1–11|null}] }
+// → { ok, plan_id, state_id, us, them, block, ball_with, jobs, skipped, url }.
+// Always a NEW state: nothing authored on the board is overwritten.
+Response TacticPlansController::handleCopy(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireStaff(request, &userId, &error)) return error;
+    try {
+        const json b = json::parse(request.getBody());
+        if (!b.is_object()) return jsonError(HttpStatus::BAD_REQUEST, "body must be an object");
+        for (const char* k : {"us_team", "them_team"})
+            if (!b.contains(k) || !b[k].is_string() || b[k].get<std::string>().empty() || b[k].get<std::string>().size() > 80)
+                return jsonError(HttpStatus::BAD_REQUEST, std::string(k) + " (a game team name)");
+        if (b.contains("moment") && !b["moment"].is_string()) return jsonError(HttpStatus::BAD_REQUEST, "moment");
+        auto inPitch = [](const json& p) {
+            return p.is_object() && p.contains("x") && p.contains("y") && p["x"].is_number() && p["y"].is_number() &&
+                   p["x"].get<double>() >= 0 && p["x"].get<double>() <= 100 && p["y"].get<double>() >= 0 && p["y"].get<double>() <= 100;
+        };
+        if (!b.contains("ball") || !inPitch(b["ball"])) return jsonError(HttpStatus::BAD_REQUEST, "ball {x, y} within 0–100");
+        if (b.contains("ball_with") && !b["ball_with"].is_null() && !num1to11(b, "ball_with"))
+            return jsonError(HttpStatus::BAD_REQUEST, "ball_with 1–11 or null");
+        if (!b.contains("opponents") || !b["opponents"].is_array() || b["opponents"].empty() || b["opponents"].size() > 11)
+            return jsonError(HttpStatus::BAD_REQUEST, "opponents: 1–11");
+        bool seen[12] = {};
+        for (const auto& o : b["opponents"]) {
+            if (!num1to11(o, "number") || !inPitch(o)) return jsonError(HttpStatus::BAD_REQUEST, "bad opponent: " + o.dump());
+            if (seen[o["number"].get<int>()]) return jsonError(HttpStatus::BAD_REQUEST, "opponent numbers once each");
+            seen[o["number"].get<int>()] = true;
+        }
+        if (b.contains("ours")) {
+            if (!b["ours"].is_array() || b["ours"].size() > 11) return jsonError(HttpStatus::BAD_REQUEST, "ours: up to 11");
+            bool pos[12] = {};
+            for (const auto& m : b["ours"]) {
+                if (!num1to11(m, "position_id") || !inPitch(m)) return jsonError(HttpStatus::BAD_REQUEST, "bad ours: " + m.dump());
+                if (pos[m["position_id"].get<int>()]) return jsonError(HttpStatus::BAD_REQUEST, "ours position_id once each");
+                pos[m["position_id"].get<int>()] = true;
+                if (m.contains("concept_id") && !m["concept_id"].is_null() && !m["concept_id"].is_number_integer())
+                    return jsonError(HttpStatus::BAD_REQUEST, "ours concept_id");
+                if (m.contains("target") && !m["target"].is_null() && !num1to11(m, "target"))
+                    return jsonError(HttpStatus::BAD_REQUEST, "ours target 1–11 or null");
+            }
+        }
+        if (b.contains("source") && (!b["source"].is_object() || b["source"].dump().size() > 1000))
+            return jsonError(HttpStatus::BAD_REQUEST, "source");
+        json out = model_->copyFromGame(b, userId);
+        if (out.contains("error")) return jsonError(HttpStatus::BAD_REQUEST, out["error"].get<std::string>());
+        out["ok"] = true;
+        out["url"] = nullptr;   // the board lives inside a game (#game-center/<id>/tactics); no game-free link yet
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const json::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleCopy: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
