@@ -7594,3 +7594,62 @@ defender at the kick, real v ours (DFL)? Defenders' spread off their spots is ma
 Throw-ins past 4 m: the throw's launch v real (DFL ball height after a throw). (3) Own-third lofted
 passes landing where no one is. (4) The block's top man 4-6 m deep, ball 10-50 m out (§8.171 (2)).
 (5) Our set-piece box shape. (6) Crosses 4.2 v 11.5. (7) Law 8, Law 13 walls, cards. (8) Take-ons.
+
+### 8.173 G5.72 — marking: the man in his zone, goal-side (mig 1206, trainer label only)
+
+§8.172's next (1): the receiver of their high ball is free at the kick.
+
+**Measured first** (new `scripts/benchmarks_tracking_marking.py`, DFL events + tracking; new harness
+line RECEIVER'S MARKER AT THE KICK). Completed open-play passes (DFL tags a Recipient of the passer's
+own side only on completed passes; on lost ones the tag is the opponent who took it, dropped). The
+receiver's nearest opponent where he stood at the kick, and every other outfielder of the passer's
+side in the same zone (the men he could have picked).
+- Flat passes: as real at every zone (midfield receiver 7.1 m v 8.3, within 2 m 4.6% v 4.5).
+- High passes go to a *marked* man in real football: 4.7 m v 5.3 for his mates (midfield), within
+  2 m 15.1%. Ours loft only to free men: 7.4 v 6.5 for his mates, within 2 m 4.8%. That is the
+  passer's choice, a mole of its own.
+- The mates column is the defence. Midfield is near real. In the final third ours are free: within
+  2 m 9% v 19-22%.
+
+**Real** (new `scripts/benchmarks_tracking_markers.py`, every 5 Hz frame, the side without it). Each
+attacker's nearest defending outfielder by his metres off their goal, ball within 20 m of him / not:
+inside 18 m 2.5 / 2.6 m median, within 2 m 39 / 37%, that man goal-side 73%. Each CB's nearest
+attacker 3.2-5.0 m by the ball's band, within 3 m 47-24%. Ours (purely zonal block, nobody marks):
+box, ball far 4.7 m, 13% within 2 m, goal-side 51%; CB 5.4-7.7 m, 23-6% within 3 m.
+
+**The change** [FH, fitted to the DFL tables; coaching: goal-side, see man and ball].
+`DefendingBlock::assignMarks`, in play on their ball. Every CB / FB / DM who is not the chaser,
+presser or contester is paired with each of their outfielders (not the carrier: the presser has him)
+within `physics.block.mark_r_<band>` of his *block spot* (his zone). Pairs are taken nearest first by
+where our men actually are, one marker a man. A pair already on counts `switch_m` nearer and holds to
+`mark_r + 2·switch_m`. New state `MarkMan` (Why::Mark, Act::Mark `block_mark`): stand
+`physics.block.mark_d_<band>` off him on his line to our goal's centre, run with his velocity
+(Brain::blockLead), face the ball. Bands by his metres off our goal 0-18 / 18-35 / 35-52 / 52+:
+radius 12 / 8 / 8 / 6 m, stand-off 1.5 / 3 / 3 / 4 m.
+- First cut (cost by spot distance) jumped the mark between men every few ticks. The spot slides with
+  the ball, so a man 13-17 m away was given him. Markers were 5.7 m off their man, 43% goal-side.
+- A wider stand-off (2 / 3.5) left the box loose with the ball far (28% within 2 m v 37).
+
+**After** (8 × 90, v the run before; real in brackets).
+- Attacker inside 18 m, ball near: 2.9 → 2.1 m (2.5), within 2 m 29.9 → 47.0% (39.0), goal-side
+  52 → 59% (73). Ball far: 4.7 → 2.7 (2.6), 12.9 → 38.9% (36.7), goal-side 51 → 67% (72.5).
+- 18-35: ball near 3.9 → 3.1 (3.8), a little tight; ball far 5.4 → 4.1 (4.6), 7.7 → 14.4% (13.3).
+  35+ unchanged and near real.
+- CB nearest attacker 5.4-7.7 → 4.4-7.1 m (3.2-5.0); FB 5.7-9.3 → 4.7-8.4; DM/CM 4.1-6.3 (4.1-5.7).
+- Marked men in the box: 76% have a marker, 2.7 m off, 62% goal-side.
+- Shots 9.4 → 9.8, goals 1.56 → 1.50, completion 77.8 → 78.3%: noise. Shooter's nearest opponent
+  1.87 → 1.51 m.
+- Aerial duels 24.9 → 22.0 (44.1); midfield high balls, other side within 2 m 21.8 → 16.1% (56.8).
+  The markers stay on their men while the ball drops.
+- Both goldens re-locked. New test: marking_nearest_in_zone_goal_side.
+
+**Trainer** (mig 1206). `block_mark` → game_concepts 18. The BRAIN entry's `other` is the man he
+marks, so a copied PL moment carries the job and its target. 18 is "man-oriented, follow him
+anywhere"; the engine's is zonal with a man (hands him on), as the row's note says. Cover-shadow (27)
+is not engine behaviour, so it has no row.
+
+**Next moles.** (1) The aerial contest lost ground: their high ball's meeting point v the marker of
+the man meeting it. Should the marker of the receiver be the contester? (2) The passer lofts only to
+free men (real: to a marked target man, 4.7 m). (3) Goal-side 59-67% v 73 in the box: markers trail
+runners. (4) CBs still 1-2 m loose with the ball 35+ m out. (5) Throw-ins past 4 m. (6) Own-third
+lofted passes landing where nobody is. (7) Crosses 3.8 v 11.5. (8) Law 8, Law 13 walls, cards.

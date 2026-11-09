@@ -140,6 +140,17 @@ void Brain::think(const World& world) const {
     for (std::uint8_t t = 0; t < 2; ++t)
     {
         block_.assign(t, world, setup_.team_of_slot, role_of_slot_, fr, restartTaker(world, t));
+        {   // G5.72 (§8.173): marking, from each man's block spot
+            std::vector<Vec2> spot_of(world.playerCount());
+            std::vector<bool> marks(world.playerCount(), false);
+            for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
+                if (setup_.team_of_slot[s] != t || world.isKeeper(s)) continue;
+                const PlayerView v = viewOf(s, world);
+                marks[s] = v.role == Role::CB || v.role == Role::FB || v.role == Role::DM;
+                if (marks[s]) spot_of[s] = block_.spot(v, world);
+            }
+            block_.assignMarks(t, world, setup_.team_of_slot, spot_of, marks);
+        }
         poss_.assignRunners(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
         poss_.assignRuns(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
         poss_.assignFront(t, world, setup_.team_of_slot);
@@ -238,6 +249,7 @@ Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
     const PlayerState* st = players_[slot & 31].machine.current();
     if (st == DefendingBlock::pressBall()) return Act::PressBall;
     if (st == DefendingBlock::chaseBall()) return Act::ChaseBall;
+    if (st == DefendingBlock::markMan()) return Act::Mark;
     if (st != DefendingBlock::holdBlockSpot()) return Act::None;
     const std::uint8_t team = setup_.team_of_slot[slot];
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
@@ -659,6 +671,11 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
     if (o.why == Why::Hold && poss_.onLine(setup_.team_of_slot[slot], slot) &&
         players_[slot & 31].machine.current() == Possession::support())
         return Vec2{Possession::offsideLineVelX(setup_.team_of_slot[slot], world, setup_.team_of_slot), Fixed64::zero()};
+    // G5.72: marking, he runs with his man.
+    if (o.why == Why::Mark && o.other >= 0 && o.other < world.playerCount()) {
+        const auto& mv = world.player(static_cast<std::uint8_t>(o.other)).vel;
+        return Vec2{mv.x, mv.y};
+    }
     if (o.why != Why::Hold || players_[slot & 31].machine.current() != DefendingBlock::holdBlockSpot()) return Vec2{};
     const auto& b = world.ball();
     if (!b.owner || world.restartTeam() != 0xFF || world.outStage() != 0) return Vec2{};

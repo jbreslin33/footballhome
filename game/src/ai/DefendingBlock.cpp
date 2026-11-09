@@ -6,6 +6,7 @@
 #include "core/PlayerSkill.hpp"
 #include "math/FixedMath.hpp"
 
+#include <algorithm>
 #include <string>
 
 namespace fh::game::ai {
@@ -121,6 +122,27 @@ public:
     }
 };
 
+// G5.72 (§8.173): goal-side of the man he marks, mark_d off him on the man's line to our goal's
+// centre, running with him (Brain::blockLead) and facing the ball. Coaching: goal-side, see man
+// and ball; tighter the nearer our goal [FH, fitted to DFL].
+class MarkMan final : public ActingState {
+public:
+    std::uint8_t id() const override { return 4; }
+    const char* name() const override { return "mark his man"; }
+    bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
+        const int m = c.block.markOf(v.team, v.slot);
+        if (m < 0) return false;
+        const auto& me = c.world.player(v.slot);
+        o.target = c.block.markPoint(v.team, m, c.world);
+        o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 4));
+        o.move.face = Vec2{c.world.ball().pos.x - me.pos.x, c.world.ball().pos.y - me.pos.y};
+        o.other = static_cast<std::int16_t>(m);
+        o.why = Why::Mark;
+        return true;
+    }
+};
+
+const MarkMan kMark;
 const HoldBlockSpot kHold;
 const PressBall kPress;
 const ChaseBall kChase;
@@ -130,6 +152,7 @@ const ChaseBall kChase;
 const ActingState* DefendingBlock::holdBlockSpot() { return &kHold; }
 const ActingState* DefendingBlock::pressBall() { return &kPress; }
 const ActingState* DefendingBlock::chaseBall() { return &kChase; }
+const ActingState* DefendingBlock::markMan() { return &kMark; }
 
 void BlockParams::configure(const core::ModelParams& p) {
     static const int kLine[5] = {-5600, -3500, -800, 2400, 5400};   // G5.52, DFL spell offsets (m x1000)
@@ -166,6 +189,13 @@ void BlockParams::configure(const core::ModelParams& p) {
     static const int kStagger[kBandCount] = {3200, 2800, 2800, 2800, 3000, 2800, 2800, 2900, 2800, 3700};
     for (int b = 0; b < kBandCount; ++b)
         stagger[b] = p.fixed(std::string("physics.block.stagger_") + std::to_string(b * 10 + 5), kStagger[b]);
+    {   // G5.72 (§8.173): marking radius / stand-off by the attacker's m off our goal, mm [FH, fitted]
+        static const int kR[4] = {12000, 8000, 8000, 6000}, kD[4] = {1500, 3000, 3000, 4000};
+        for (int b = 0; b < 4; ++b) {
+            mark_r[b] = p.fixed(("physics.block.mark_r_" + std::to_string(b)).c_str(), kR[b]);
+            mark_d[b] = p.fixed(("physics.block.mark_d_" + std::to_string(b)).c_str(), kD[b]);
+        }
+    }
     switch_m = p.fixed("physics.press.switch_m", 2000);
     contest_min_z = p.fixed("physics.block.contest_min_z_m", 1500);
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
@@ -241,6 +271,64 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
     if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
     else pr = nearest(pr);
     assignCover(team, world, team_of_slot, role_of_slot);
+}
+
+namespace {
+int markBand(Fixed64 off_goal) {
+    return off_goal < Fixed64::fromInt(18) ? 0 : off_goal < Fixed64::fromInt(35) ? 1 : off_goal < Fixed64::fromInt(52) ? 2 : 3;
+}
+}  // namespace
+
+// G5.72 (§8.173): who marks whom. In play, their ball (on it, or loose after their touch): every
+// pair of our marking man (CB / FB / DM, not the chaser / presser / contester) and their outfielder
+// (not the carrier — the presser has him) within mark_r of our man's block spot (his zone); nearest
+// in fact first, one marker a man, one man a marker; a pair already on counts switch_m nearer than
+// it is and holds to mark_r + 2·switch_m (held).
+void DefendingBlock::assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
+                                 const std::vector<Vec2>& spot_of, const std::vector<bool>& marks) {
+    int* mk = mark_[team & 1];
+    const auto& ball = world.ball();
+    const bool theirs = inPlay(world) && (ball.owner ? team_of_slot[*ball.owner] != team : world.lastTouchTeam() != team && world.lastTouchTeam() <= 1);
+    int prev[32];
+    for (int j = 0; j < 32; ++j) { prev[j] = mk[j]; mk[j] = -1; }
+    if (!theirs || params_.mark_r[0].raw <= 0) return;
+    const Fixed64 hx = world.pitchHalfX();
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();   // our attack direction
+    struct Pair { Fixed64 cost; int d, a; };
+    std::vector<Pair> pairs;
+    const int t = team & 1;
+    for (std::uint8_t d = 0; d < world.playerCount() && d < 32; ++d) {
+        if (team_of_slot[d] != team || world.isKeeper(d) || d >= marks.size() || !marks[d]) continue;
+        if (d == chaser_[t] || d == presser_[t] || d == contest_[t]) continue;
+        for (std::uint8_t a = 0; a < world.playerCount() && a < 32; ++a) {
+            if (team_of_slot[a] == team || world.isKeeper(a) || (ball.owner && *ball.owner == a)) continue;
+            const auto& ap = world.player(a).pos;
+            const Fixed64 r = params_.mark_r[markBand(hx + ap.x * sg)];
+            if (r.raw <= 0) continue;
+            const Fixed64 dist = math::length(Vec2{ap.x - spot_of[d].x, ap.y - spot_of[d].y});
+            if (dist >= (prev[d] == a ? r + params_.switch_m * 2 : r)) continue;   // a man already marked is kept a little further
+            // In his zone by the spot; who takes him by where our men actually are (the spot slides with the
+            // ball — by it, a man 15 m off got him and the mark jumped between men every few ticks).
+            const auto& dp = world.player(d).pos;
+            const Fixed64 real = math::length(Vec2{ap.x - dp.x, ap.y - dp.y});
+            pairs.push_back({prev[d] == a ? real - params_.switch_m : real, d, a});
+        }
+    }
+    std::sort(pairs.begin(), pairs.end(), [](const Pair& x, const Pair& y) { return x.cost.raw != y.cost.raw ? x.cost.raw < y.cost.raw : (x.d != y.d ? x.d < y.d : x.a < y.a); });
+    bool taken[32] = {};
+    for (const auto& pr : pairs)
+        if (mk[pr.d] < 0 && !taken[pr.a]) { mk[pr.d] = pr.a; taken[pr.a] = true; }
+}
+
+Vec2 DefendingBlock::markPoint(std::uint8_t team, int man, const core::World& world) const {
+    const Fixed64 hx = world.pitchHalfX();
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const auto& ap = world.player(static_cast<std::uint8_t>(man)).pos;
+    const Vec2 to_goal{-sg * hx - ap.x, -ap.y};
+    const Fixed64 len = math::length(to_goal);
+    const Fixed64 d = params_.mark_d[markBand(hx + ap.x * sg)];
+    if (len <= d) return Vec2{ap.x, ap.y};
+    return Vec2{ap.x + to_goal.x * d / len, ap.y + to_goal.y * d / len};
 }
 
 // G5.41 (§8.141): with exactly two CBs on, the one nearer their most advanced

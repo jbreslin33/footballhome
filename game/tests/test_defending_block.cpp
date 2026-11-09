@@ -96,3 +96,36 @@ FH_TEST(one_presser_nearest_and_sticky) {
 }
 
 FH_TEST_MAIN()
+
+// G5.72 (§8.173): marking — their man inside our zone radius is taken by the nearest of ours in
+// fact (not by spot), one marker a man, and the mark point is mark_d goal-side of him.
+FH_TEST(marking_nearest_in_zone_goal_side) {
+    core::World w = world22();
+    const auto team_of = ai::TeamSetup::splitHalves(22).team_of_slot;
+    const std::vector<ai::Role> roles(22, ai::Role::DM);
+    // Their carrier far out on the right; their 9 in our box, 12 m off our line.
+    w.placePlayer(20, Vec3{Fixed64::fromInt(10), Fixed64::fromInt(25), Fixed64::zero()}, Vec2{-Fixed64::one(), Fixed64::zero()});
+    w.giveBall(20);
+    const Vec3 nine{Fixed64::fromFraction(-81, 2), Fixed64::zero(), Fixed64::zero()};
+    w.placePlayer(16, nine, Vec2{-Fixed64::one(), Fixed64::zero()});
+    // Two of ours whose zone (spot) covers him: 4 is 3 m off him, 5 is 7 m off.
+    w.placePlayer(4, Vec3{Fixed64::fromFraction(-75, 2), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(5, Vec3{Fixed64::fromFraction(-67, 2), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
+    ai::DefendingBlock b;
+    ai::Reads::FlightRead fr{};
+    b.assign(0, w, team_of, roles, fr, -1);
+    std::vector<Vec2> spots(22, Vec2{Fixed64::fromInt(-36), Fixed64::zero()});   // both spots 4.5 m off him
+    std::vector<bool> marks(22, false);
+    marks[4] = marks[5] = true;
+    b.assignMarks(0, w, team_of, spots, marks);
+    FH_EXPECT_EQ(b.markOf(0, 4), 16);
+    FH_EXPECT_EQ(b.markOf(0, 5), -1);   // one marker a man
+    // Goal-side: on his line to our goal's centre (-52.5, 0), mark_d (1.5 m, 0-18 band) off him.
+    const Vec2 m = b.markPoint(0, 16, w);
+    FH_EXPECT(near(m.x, Fixed64::fromInt(-42), 1));
+    FH_EXPECT(near(m.y, Fixed64::zero(), 1));
+    // Our ball: nobody marks.
+    w.giveBall(4);
+    b.assignMarks(0, w, team_of, spots, marks);
+    FH_EXPECT_EQ(b.markOf(0, 4), -1);
+}

@@ -88,7 +88,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.62 (2026-11-09): support men follow their line in as it drops below its usual depth.
 // Re-locked G5.63 (2026-11-09): a busy front man (the pass's man, a runner) keeps the front job.
 // Re-locked G5.68 (2026-11-09): the away side's formation turned 180° (y mirrored too).
-constexpr std::uint64_t kGolden3v3   = 0x1d8c977c1e22f69cULL;
+// Re-locked G5.72 (2026-11-09): marking — CB/FB/DM goal-side of the man in their zone (§8.173).
+constexpr std::uint64_t kGolden3v3   = 0x1a0f7a1e631fd9c5ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -118,7 +119,8 @@ constexpr std::uint64_t kGolden3v3   = 0x1d8c977c1e22f69cULL;
 // Re-locked G5.62 (2026-11-09): as the 3v3.
 // Re-locked G5.63 (2026-11-09): as the 3v3.
 // Re-locked G5.68 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xb257988a9fb94b64ULL;
+// Re-locked G5.72 (2026-11-09): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0xed541215a5fc7dadULL;
 
 struct Rig {
     World world;

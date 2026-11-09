@@ -17,12 +17,12 @@ namespace fh::game::ai {
 // clean player states and restarts decide.
 enum class Why : std::uint8_t {
     Hold, Shoot, Pass, Cross, Dribble, Clear, KeeperPunt, KeeperPosition, KeeperDive,
-    Press, Chase, MeetPass, Human, TakeRestart, ThrowIn, CornerKick, LawDistance, AttackBox, InBehind, RunLine, IntoSpace,
+    Press, Chase, MeetPass, Human, TakeRestart, ThrowIn, CornerKick, LawDistance, AttackBox, InBehind, RunLine, IntoSpace, Mark,
 };
 inline constexpr const char* kWhyNames[] = {
     "hold shape", "shoot", "pass", "cross", "dribble", "clear", "keeper punt", "keeper position", "keeper dive",
     "press", "chase ball", "meet the pass", "human", "take the restart", "throw-in", "corner", "the law's distance",
-    "attack the box", "ball in behind", "run onto the line", "ball into space",
+    "attack the box", "ball in behind", "run onto the line", "ball into space", "mark his man",
 };
 inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWhyNames[0]));
 
@@ -30,8 +30,8 @@ inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWh
 // behaviour the engine is running for a man, by code. The codes are rows of
 // game_engine_acts (mig 1199), which name the game_concepts row each one plays;
 // the wording lives there, never here. Read-only: never fed back into the sim.
-enum class Act : std::uint8_t { None, BlockSpot, BlockRecover, BlockCover, PressBall, ChaseBall };
-inline constexpr const char* kActCodes[] = {"", "block_spot", "block_recover", "block_cover", "press_ball", "chase_ball"};
+enum class Act : std::uint8_t { None, BlockSpot, BlockRecover, BlockCover, PressBall, ChaseBall, Mark };
+inline constexpr const char* kActCodes[] = {"", "block_spot", "block_recover", "block_cover", "press_ball", "chase_ball", "block_mark"};
 inline constexpr int kActCount = static_cast<int>(sizeof(kActCodes) / sizeof(kActCodes[0]));
 
 struct Orders {
