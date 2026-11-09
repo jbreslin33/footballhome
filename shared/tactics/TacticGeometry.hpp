@@ -122,7 +122,26 @@ struct PlanFrame {
     std::map<std::string, JobKind> kinds;     // by code
     std::map<int, Point> home;                // our formation spots by position id 1–11
     std::optional<double> gkY;                // tactic_block_heights.gk_y
+    // The block's depth band (tactic_block_heights.back_y / front_y, mig
+    // 1185): our outfield spots, deepest to highest, squeezed linearly into
+    // back..front.  Unset (the high block) = the formation as drawn.
+    std::optional<double> backY;
+    std::optional<double> frontY;
 };
+
+// Our outfield formation spots moved into the block's depth band: the
+// deepest man to back_y, the highest to front_y, everyone between in
+// proportion, x untouched.  The keeper is the block's gk_y (Solver).
+inline std::map<int, Point> blockHome(const PlanFrame& f) {
+    std::map<int, Point> out = f.home;
+    if (!f.backY || !f.frontY) return out;
+    double lo = 1e9, hi = -1e9;
+    for (const auto& [pid, p] : f.home) if (pid != 1) { lo = std::min(lo, p.y); hi = std::max(hi, p.y); }
+    if (hi <= lo) return out;
+    const double k = (*f.frontY - *f.backY) / (hi - lo);
+    for (auto& [pid, p] : out) if (pid != 1) p.y = *f.backY + (p.y - lo) * k;
+    return out;
+}
 
 // ── Parent: a placement rule ────────────────────────────────────────────
 
@@ -363,7 +382,11 @@ class Solver {
 public:
     explicit Solver(const RuleBook& book = RuleBook::instance()) : book_(book) {}
 
-    Solution solve(const State& s, const PlanFrame& f) const {
+    Solution solve(const State& s, const PlanFrame& raw) const {
+        // Every rule sees the block's home spots (blockHome), so a man with
+        // no job, or a rule that falls back to home, sits in the block.
+        PlanFrame f = raw;
+        f.home = blockHome(raw);
         Solution out;
         std::map<int, Point> opp;
         for (const auto& o : s.opponents) opp[o.number] = o.at;

@@ -58,8 +58,13 @@ tg::PlanFrame planFrame(Database* db, long long formationId, const std::string& 
                                                 r["dist_m"].as<double>(), optNum(r["press_m"]), optNum(r["lane_t"])};
     for (const auto& r : db->query(kSlotsSql, {std::to_string(formationId)}))
         f.home[r["pid"].as<int>()] = {r["x"].as<double>(), r["y"].as<double>()};
-    auto gk = db->query("SELECT gk_y::float8 AS gk_y FROM tactic_block_heights WHERE code = $1", {block});
-    if (!gk.empty()) f.gkY = gk[0]["gk_y"].as<double>();
+    auto gk = db->query("SELECT gk_y::float8 AS gk_y, back_y::float8 AS back_y, front_y::float8 AS front_y "
+                        "FROM tactic_block_heights WHERE code = $1", {block});
+    if (!gk.empty()) {
+        f.gkY = gk[0]["gk_y"].as<double>();
+        f.backY = optNum(gk[0]["back_y"]);    // the block's depth band (mig 1185)
+        f.frontY = optNum(gk[0]["front_y"]);
+    }
     return f;
 }
 
