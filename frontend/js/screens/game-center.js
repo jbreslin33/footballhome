@@ -4336,6 +4336,14 @@ class GameCenterScreen extends EventScreen {
     const duesAlt = !!(pl.playerId != null && this.stats.get(Number(pl.playerId))?.duesAlternate);
     const noResp = !!(pl.playerId != null && this._noRespIds && (this._noRespIds.has(pl.playerId) || this._noRespIds.has(Number(pl.playerId)) || this._noRespIds.has(String(pl.playerId))));
     const ctx = [];
+    // 💤 Inactive (mig 1217, owner 2026-11-10: "it should have that as
+    // option just like active players"): his RSVP link is the 🎟 call-up —
+    // first and preselected; the game link alone can't let him answer.
+    const cand = !pl.callUp && pl.squadStatus === 'inactive' && this.invites
+      ? (this.invites.candidates || []).find(c => Number(c.person_id) === personId) : null;
+    if (cand && this._fhEventId()) ctx.push(SectionContact.callupMessage(this, this._fhEventId(), personId, {
+      onSent: () => this._loadInvites().then(() => this._render()),
+    }));
     if (regOn) ctx.push({
       key: 'reg', label: this._cm('what_reg', { form: gap.form_label || '' }) || '📝 Registration form',
       subject: gap.subject || '', body: gap.body || '', purpose: `reg_link:${this._fhEventId()}`,

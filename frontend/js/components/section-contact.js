@@ -123,10 +123,14 @@
   // game — and the server writes the words with the recipient's own
   // sign-in link.  Each parent separately (recipient_person_ids).  'copy'
   // invites and hands back the text for someone with no phone or email.
-  function callupMessage(screen, fhEventId, playerId, { resend = false, onSent = null } = {}) {
+  // practice: the 💤 Inactive card's RSVP link to a practice (mig 1217) —
+  // same invite, its own label.
+  function callupMessage(screen, fhEventId, playerId, { resend = false, onSent = null, practice = false } = {}) {
     return {
       key: 'callup',
-      label: resend ? cp('msg_callup_resend', '🎟 Call-up (re-send)') : cp('msg_callup', '🎟 Call up to this game'),
+      label: resend ? cp('msg_callup_resend', '🎟 Call-up (re-send)')
+           : practice ? cp('msg_callup_practice', '🎟 RSVP link — invite to this practice')
+           : cp('msg_callup', '🎟 Call up to this game'),
       purpose: `callup:${fhEventId}`,
       copyOk: true,
       resolve: async (r, channel) => {

@@ -619,7 +619,11 @@ class EventScreen extends Screen {
   // then the section's list (components/section-contact.js) — the same
   // list #teams offers for Men's / Women's / Boys / Girls.  Recipients are
   // the card's own contact rows (every parent of a kid, mig 682).
-  _contactButtonHtml(r, st, noResp) {
+  // inactive: a 💤 Inactive card (mig 1217, owner 2026-11-10: "it should
+  // have that as option just like active players") — he owes no answer, so
+  // no reminder; his RSVP link is the 🎟 invite, preselected, for a game or
+  // a practice.
+  _contactButtonHtml(r, st, noResp, inactive = false) {
     if (!window.ContactPopup || !window.SectionContact || !st) return '';
     const pid = r.person_id;
     const rows = Array.isArray(st.recipients) && st.recipients.length ? st.recipients : [st];
@@ -642,19 +646,26 @@ class EventScreen extends Screen {
       },
       onSent: () => this._loadReminders().then(() => this._render()),
     }] : [];
+    const cand = inactive && this.invites && Array.isArray(this.invites.candidates)
+      ? this.invites.candidates.find(c => Number(c.person_id) === Number(pid)) : null;
+    const invite = cand && this.ev && this.ev.fh_event_id ? [SectionContact.callupMessage(this, this.ev.fh_event_id, pid, {
+      practice: this.ev.kind !== 'match',
+      onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]),
+    })] : [];
     return ContactPopup.button({
       key: `ec:${this.eventId()}:${pid}`, screen: this, recipients,
       messages: SectionContact.messages(this.ev && this.ev.category, {
         screen: this, playerId: pid, first,
         parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0] : '',
-        context: remind,
+        context: [...invite, ...remind],
       }),
+      ...(invite.length ? { defaultKey: 'callup' } : {}),
       flagged: noResp,
       title: `Contact ${r.name || first}`,
     });
   }
 
-  _contactLineHtml(r, noResp) {
+  _contactLineHtml(r, noResp, inactive = false) {
     const pid = r.person_id;
     const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(pid)]) || null;
     const cb = (tier, tokens) => (window.MessageCopy && MessageCopy.block('contact_box', tier, tokens)) || '';
@@ -679,7 +690,7 @@ class EventScreen extends Screen {
       <div data-gc-contact style="margin-top:6px;">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
           <span style="font-size:0.68rem; font-weight:800;">${this.escapeHtml(badge)}</span>
-          ${this._contactButtonHtml(r, st, noResp)}
+          ${this._contactButtonHtml(r, st, noResp, inactive)}
         </div>
         <div data-gc-squad-note style="font-size:0.66rem; opacity:0.85; min-height:1.3em; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${status || '&nbsp;'}</div>
       </div>`;
@@ -1416,7 +1427,7 @@ class EventScreen extends Screen {
           ${meStatus(r)}
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
           ${window.PersonStanding ? PersonStanding.html(r.person_id) : ''}
-          ${canContact ? this._contactLineHtml(r, remind && canRemind) : ''}
+          ${canContact ? this._contactLineHtml(r, remind && canRemind, callIn) : ''}
           ${callIn ? callInBtn(r) : ''}`,
       });
     };
