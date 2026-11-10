@@ -216,7 +216,11 @@ public:
                 const bool gsafe = c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one());
                 // Past his range the high share is not his to play, and is not handed to the ground:
                 // nobody drives a 55 m pass along the floor (real 50+ m passes 87-98% high).
-                const Fixed64 ph = P.highShare(own_end, d);
+                // G5.75 (§8.176): and its direction — real 30-40 m passes from our third go high 73%
+                // forward, 12% across, 4% back; by length alone our lateral balls went up at the forward rate.
+                const Fixed64 fwd = (to.x - sp.x) * v.sg;
+                const int dir = fwd * Fixed64::fromInt(2) > d ? 0 : fwd * Fixed64::fromInt(2) < -d ? 2 : 1;
+                const Fixed64 ph = P.highShare(own_end, d, dir);
                 Fixed64 gw = wgt * (Fixed64::one() - ph);
                 if (!gsafe) gw = gw * P.risk_weight;
                 add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
@@ -930,9 +934,9 @@ Fixed64 Possession::frontGap(const PlayerView& v) const {
 
 // G5.73 (§8.174): the real high share for a pass this long from this far off our goal, linear
 // between the length bands' middles (5, 15, … 55 m), held past the ends.
-Fixed64 PossessionParams::highShare(Fixed64 own_m, Fixed64 len) const {
+Fixed64 PossessionParams::highShare(Fixed64 own_m, Fixed64 len, int dir) const {
     const int o = own_m < Fixed64::fromInt(35) ? 0 : own_m < Fixed64::fromInt(70) ? 1 : 2;
-    const Fixed64* h = pass_high[o];
+    const Fixed64* h = high_dir_on && dir >= 0 && dir < 3 ? pass_high_dir[o][dir] : pass_high[o];
     if (len <= Fixed64::fromInt(5)) return h[0];
     if (len >= Fixed64::fromInt(55)) return h[5];
     const Fixed64 u = (len - Fixed64::fromInt(5)) / Fixed64::fromInt(10);
@@ -985,6 +989,17 @@ void PossessionParams::configure(const core::ModelParams& p) {
             for (int l = 0; l < 6; ++l)
                 pass_high[o][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(l)).c_str(), kHigh[o][l]);
         high_on = pass_high[0][0].raw > 0;
+        // G5.75 (§8.176): by direction too (fwd within 60° / lateral / back), permille; a cell under
+        // 30 real passes holds the next-shorter band's value (back 40 m+ from our third: 8 passes).
+        static const int kHighDir[3][3][6] = {
+            {{78, 78, 276, 729, 931, 982}, {36, 24, 36, 122, 473, 786}, {21, 19, 11, 44, 44, 44}},
+            {{85, 92, 249, 643, 840, 937}, {36, 30, 40, 206, 692, 896}, {32, 24, 40, 78, 210, 210}},
+            {{76, 107, 313, 625, 881, 881}, {62, 81, 163, 386, 737, 892}, {25, 24, 49, 143, 361, 361}}};
+        for (int o = 0; o < 3; ++o)
+            for (int d = 0; d < 3; ++d)
+                for (int l = 0; l < 6; ++l)
+                    pass_high_dir[o][d][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(d) + "_" + std::to_string(l)).c_str(), kHighDir[o][d][l]);
+        high_dir_on = p.fixed("physics.pass.high_dir_on", 1000).raw > 0;
     }
     {   // G5.74 (§8.175): DFL 7 matches, benchmarks_tracking_passpick.py — lambda by maximum likelihood, m
         static const int kPick[3] = {15000, 10000, 8000};

@@ -120,7 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
-    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {};   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {};   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
     // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
@@ -339,6 +339,11 @@ int main(int argc, char** argv) {
                     hp.z = own_t < 35 ? 0 : own_t < 70 ? 1 : 2;
                     hp.oz = own_k < 35 ? 0 : own_k < 70 ? 1 : 2; hp.lb = len < 10 ? 0 : len < 20 ? 1 : len < 30 ? 2 : len < 40 ? 3 : len < 50 ? 4 : 5;
                     ++S.hl_n[hp.oz][hp.lb]; if (hp.high) ++S.hl_h[hp.oz][hp.lb];
+                    {   // §8.176: forward within 60° of straight at their goal / lateral / back
+                        const double fw = (hp.tx - W.player(*before).pos.x.toDouble()) * sgk;
+                        const int hd = 2 * fw > len ? 0 : 2 * fw < -len ? 2 : 1;
+                        ++S.hd_n[hp.oz][hd][hp.lb]; if (hp.high) ++S.hd_h[hp.oz][hd][hp.lb];
+                    }
                     if (hp.high) { ++S.hp_n[hp.z]; S.hp_len[hp.z].push_back(len); }
                 }
                 if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::Cross || lo.why == ai::Why::InBehind || lo.why == ai::Why::IntoSpace) && lo.other >= 0 && lo.other < N) {
@@ -1551,6 +1556,21 @@ int main(int argc, char** argv) {
                         for (int oz = 0; oz < 3; ++oz) {
                             std::printf("\n          %-5s", zn3[oz]);
                             for (int lb = 0; lb < 6; ++lb) { const long nn = S.hl_n[oz][lb], hh = S.hl_h[oz][lb]; std::printf(" [%4.1f %4.1f%% (%4.1f) %3.0f (%2.0f)/%3.0f]", nn / tmn, 100.0 * hh / std::max(1L, nn), rh[oz][lb], 100.0 * S.hl_hc[oz][lb] / std::max(1L, hh), rhc[oz][lb], 100.0 * S.hl_gc[oz][lb] / std::max(1L, nn - hh)); }
+                        }
+                    }
+                    {   // §8.176
+                        std::printf("\n        HIGH BY DIRECTION (benchmarks_statsbomb_highpass.py --dir): origin m off own goal, forward (within 60 deg) / lateral / back | by length 0-10/10-20/20-30/30-40/40-50/50+: a team-match (real), high %% (real)");
+                        static const double rn[3][3][6] = {{{6.4, 14.6, 8.3, 5.6, 6.0, 9.4}, {3.3, 8.8, 6.9, 2.0, 0.4, 0.1}, {2.5, 4.0, 2.8, 0.5, 0.0, 0.0}},
+                                                           {{18.5, 35.5, 14.1, 7.6, 4.9, 2.8}, {16.1, 31.8, 16.2, 5.2, 1.7, 0.6}, {15.0, 20.6, 5.3, 1.7, 0.3, 0.0}},
+                                                           {{11.8, 13.4, 4.2, 0.9, 0.2, 0.0}, {13.8, 13.5, 3.5, 1.0, 0.4, 0.1}, {11.9, 10.5, 1.4, 0.2, 0.0, 0.0}}};
+                        static const double rp[3][3][6] = {{{7.8, 7.8, 27.6, 72.9, 93.1, 98.2}, {3.6, 2.4, 3.6, 12.2, 47.3, 78.6}, {2.1, 1.9, 1.1, 4.4, 4.4, 4.4}},
+                                                           {{8.5, 9.2, 24.9, 64.3, 84.0, 93.7}, {3.6, 3.0, 4.0, 20.6, 69.2, 89.6}, {3.2, 2.4, 4.0, 7.8, 21.0, 21.0}},
+                                                           {{7.6, 10.7, 31.3, 62.5, 88.1, 88.1}, {6.2, 8.1, 16.3, 38.6, 73.7, 89.2}, {2.5, 2.4, 4.9, 14.3, 36.1, 36.1}}};
+                        static const char* zd[3] = {"0-35", "35-70", "70+"}; static const char* dn[3] = {"fwd", "lat", "back"};
+                        for (int oz = 0; oz < 3; ++oz) for (int d = 0; d < 3; ++d) {
+                            std::printf("\n          %-5s %-4s", zd[oz], dn[d]);
+                            for (int lb = 0; lb < 6; ++lb) { const long nn = S.hd_n[oz][d][lb];
+                                std::printf(" [%4.1f (%4.1f) %4.1f%% (%4.1f)]", nn / tmn, rn[oz][d][lb], 100.0 * S.hd_h[oz][d][lb] / std::max(1L, nn), rp[oz][d][lb]); }
                         }
                     }
                     std::printf("\n        HEADERS (benchmarks_statsbomb_aerial.py, real PL 15/16 in brackets): aerial duels a match %.1f (44.1), lone headers a match %.1f, headed clearances a team %.1f (16.1), headers at goal a team %.1f", S.aer_d / static_cast<double>(matches), S.aer_l / static_cast<double>(matches), S.aer_c / tmn, S.aer_g / tmn);

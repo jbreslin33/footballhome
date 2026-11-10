@@ -7778,3 +7778,51 @@ duel outcome. (2) Own-third 20-40 m passes 59-66 v 26 a team-match, switches 20 
 men stand when we have it in our third. (3) Ground passes in their third complete 50-70% (74-87).
 (4) Throws past 4 m. (5) Goal-side 59-67% v 73 in the box. (6) Crosses 3.8-4.4 v 11.5. (7) Law 8,
 Law 13 walls, cards.
+
+### 8.176 G5.75 — high passes by direction: a long ball goes up forward, not across or back (no migration)
+
+§8.175's next (1), high passes completing too often. Looked at where they come down first.
+
+**Measured first** (8 × 90, seed 1000, G5.74; real in brackets). HIGH BALLS COMING DOWN in the
+kicker's own third: 24.1 a team-match (15.5), and the nearest of the kicker's side is 17.7 m off
+(1.7), the other side's 19.5 m (2.0); nobody within 3 m 63% (24). These are not contests at all.
+Lofted balls drop into empty grass in our own third and our man runs onto them, hence 93% arrived.
+New HIGH BY DIRECTION line: from our third, 30-40 m passes go high 52-56% whether forward, lateral
+or back (real 73 / 12 / 4); from midfield 42 / 47 / 46% (64 / 21 / 8). G5.73's table is by length
+only, and our long passes from deep are lateral far more often than real ones.
+
+**Real** (`scripts/benchmarks_statsbomb_highpass.py --dir`, StatsBomb PL 15/16, 380 matches;
+direction forward = within 60° of straight at their goal, back = within 60° of our own). A 30-40 m
+pass from our third goes high 72.9% forward, 12.2% lateral, 4.4% back; 40-50 m 93 / 47 / (8
+passes). From midfield 30-40 m 64 / 21 / 8, 40-50 m 84 / 69 / 21. From their third 63 / 39 / 14.
+Under 20 m: 8-11% forward, 2-8% lateral, 2-3% back. A long ball goes up when it goes forward.
+
+**The change** [StatsBomb table, FH scope]. `PossessionParams::highShare(own, len, dir)` reads
+`pass_high_dir[origin][dir][band]` (`physics.pass.high_<o>_<d>_<l>`, permille; a cell under 30
+real passes holds the shorter band's value, as the script prints it). Possession's pass to feet
+passes the direction of the pass to its man. `physics.pass.high_dir_on` 0 = G5.73's length-only
+table.
+
+**After** (on v off; seed 1000, then seed 2000).
+- Our third, 30-40 m high: lateral 51 → 23%, 59 → 21% (12); back 47 → 0%, 46 → 1% (4); forward
+  56 → 65%, 52 → 59% (73). Midfield 30-40 m lateral 47 → 34% (21), back 46 → 4%, 33 → 15% (8).
+- High balls aimed in our third 24.4 → 16.3, 27.6 → 17.3 a team-match (3.3), median 35 → 27 m
+  (22.7). Coming down in our third 24.1 → 14.9, 24.5 → 15.2 (15.5): the kicker's side's nearest
+  17.7 → 2.6 m, 17.6 → 3.1 (1.7), the other side's 19.5 → 6.2, 18.5 → 6.6 (2.0); nobody within
+  3 m 63 → 38%, 62 → 40% (24).
+- High passes aimed in midfield 36.9 → 32.8, 39.1 → 32.4 (26.3), completion unchanged 70-73% (46).
+- Passes completed 76.5 → 76.8%, 77.7 → 76.3% (79.1). Aerial duels 42.6 → 38.4, 41.1 → 41.9 (44.1).
+  Switches 20.2 → 20.5, 19.9 → 21.9 (10.7). Shots and goals: noise.
+- 11v11 golden re-locked; the 3v3 is unchanged. New test: pass_high_share_by_direction.
+
+**What it says.** The empty-grass drops in our own third are mostly gone: a ball coming down there
+now has our man 3 m off, as real. Still 17 high balls a team-match are aimed into our own third
+(3.3). The forward ones from deep stay short of real at 40 m+ (63% v 93), and 50 m+ passes from deep
+are 3.4 v 9.4: we play the short-forward ball, not the long one. Midfield high passes still arrive
+70% (46). That is the receive and the contest, unchanged by this.
+
+**Next moles.** (1) Back passes of 40-50 m from midfield, 9-10 a team-match (real 0.3), most of
+them high (30%): balls back to our keeper from the halfway line. (2) High passes aimed in midfield
+complete 70-73% (46): the aerial receive. (3) Own-third 20-40 m passes 2-3× real; switches 20-22
+v 10.7. (4) Ground passes in their third complete 50-70% (74-87). (5) Throws past 4 m. (6) Goal-side
+in the box 59-67% v 73. (7) Crosses 4 v 11.5. (8) Law 8, Law 13 walls, cards.

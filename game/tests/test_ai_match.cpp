@@ -123,7 +123,8 @@ constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
 // Re-locked G5.72 (2026-11-09): as the 3v3.
 // Re-locked G5.73 (2026-11-09): as the 3v3.
 // Re-locked G5.74 (2026-11-09): a zone's share split by distance; the 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0x794a0cb9a97a2117ULL;
+// Re-locked G5.75 (2026-11-09): high share by direction too; the 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0xd20a13a503c719e1ULL;
 
 struct Rig {
     World world;
@@ -343,6 +344,22 @@ FH_TEST(pass_pick_lambda_by_origin) {
     core::ModelParams off; off.setMilli("physics.pass.pick_lambda_1", 0);
     ai::PossessionParams Q; Q.configure(off);
     FH_EXPECT_EQ(Q.pick_lambda[1].raw, 0);
+}
+
+FH_TEST(pass_high_share_by_direction) {
+    // G5.75 (§8.176): StatsBomb PL 15/16 — a 35 m pass from our third goes high 73% forward,
+    // 12% across, 4% back; high_dir_on 0 (or no direction) = the length-only table.
+    ai::PossessionParams P;
+    P.configure(core::ModelParams{});
+    auto pm = [](Fixed64 v) { return static_cast<int>((v * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS); };
+    FH_EXPECT(P.high_dir_on);
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35), 0)) - 729) <= 1);
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35), 1)) - 122) <= 1);
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35), 2)) - 44) <= 1);
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35))) - 539) <= 1);
+    core::ModelParams off; off.setMilli("physics.pass.high_dir_on", 0);
+    ai::PossessionParams Q; Q.configure(off);
+    FH_EXPECT(std::abs(pm(Q.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35), 1)) - 539) <= 1);
 }
 
 FH_TEST_MAIN()

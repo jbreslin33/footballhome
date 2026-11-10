@@ -2,7 +2,7 @@
 """game/scripts/benchmarks_statsbomb_highpass.py — real high passes: how many, how often they're won,
 and how often an aerial duel follows (G5.73, game/DESIGN.md §8.174).
 
-    python3 -I game/scripts/benchmarks_statsbomb_highpass.py <events dir> [--length]
+    python3 -I game/scripts/benchmarks_statsbomb_highpass.py <events dir> [--length | --dir]
 
 Open-play passes (set pieces out, crosses out) of StatsBomb height "High Pass", by where they were
 aimed (end_location), in metres off the passer's own goal 0-35 / 35-70 / 70+. Per zone: a
@@ -15,6 +15,11 @@ whatever comes of it. fh-game-match prints the same as HIGH PASSES.
 70+ and its length 0-10 / 10-20 / 20-30 / 30-40 / 40-50 / 50+ m: a team-match, the share high, and
 completed % high / not. The high share is Possession's physics.pass.high_* table (G5.73);
 fh-game-match prints the same as HIGH BY LENGTH.
+
+--dir (G5.75, §8.176): the same by direction too, forward (within 60 deg of straight at their goal) /
+lateral / back: a team-match and the share high per cell, and the permille table Possession's
+physics.pass.high_<origin>_<dir>_<band> carries (a cell under 30 passes holds the shorter band's
+value). fh-game-match prints the same as HIGH BY DIRECTION.
 
 Pitch: StatsBomb 120 x 80 scaled to 105 x 68. Data: StatsBomb Open Data (PL 2015/16), free with
 attribution to StatsBomb (github.com/statsbomb/open-data). FH original.
@@ -37,6 +42,39 @@ def aerial(e):
 
 files = sorted(glob.glob(os.path.join(sys.argv[1], "*.json")))
 files = [f for f in files if os.path.basename(f)[0].isdigit()]
+if "--dir" in sys.argv[2:]:
+    LB = (10, 20, 30, 40, 50)
+    n = collections.Counter(); h = collections.Counter()
+    for f in files:
+        for e in json.load(open(f, encoding="utf8")):
+            if e["type"]["name"] != "Pass":
+                continue
+            p = e["pass"]
+            if p.get("type") is not None or p.get("cross"):
+                continue
+            x, y = e["location"]; ex, ey = p["end_location"]
+            dx = (ex - x) * SX; L = math.hypot(dx, (ey - y) * SY)
+            d = 0 if 2 * dx > L else 2 if 2 * dx < -L else 1
+            o = x * SX
+            k = (0 if o < 35 else 1 if o < 70 else 2, d, sum(L >= t for t in LB))
+            n[k] += 1
+            h[k] += p.get("height", {}).get("name") == "High Pass"
+    tm = 2 * len(files)
+    print(f"{len(files)} matches (StatsBomb PL 2015/16): open-play passes (crosses out)")
+    print("origin, direction | by length 0-10/10-20/20-30/30-40/40-50/50+: [a team-match, high %]")
+    for o, on in enumerate(("0-35", "35-70", "70+")):
+        for d, dn in enumerate(("fwd", "lat", "back")):
+            print(f"   {on:5s} {dn:4s} " + " ".join(f"[{n[(o, d, b)] / tm:5.1f} {100 * h[(o, d, b)] / max(1, n[(o, d, b)]):5.1f}%]" for b in range(6)))
+    print("permille table (cells under 30 passes hold the shorter band):")
+    for o in range(3):
+        rows = []
+        for d in range(3):
+            v = []
+            for b in range(6):
+                v.append(round(1000 * h[(o, d, b)] / n[(o, d, b)]) if n[(o, d, b)] >= 30 else v[-1])
+            rows.append("{" + ", ".join(map(str, v)) + "}")
+        print("   {" + ", ".join(rows) + "},")
+    sys.exit(0)
 if "--length" in sys.argv[2:]:
     LB = (10, 20, 30, 40, 50)
     n = collections.Counter(); h = collections.Counter(); hc = collections.Counter(); gc = collections.Counter()

@@ -66,7 +66,12 @@ struct PossessionParams {
     bool high_on = true;
     math::Fixed64 pick_lambda[3]{};   // G5.74 (§8.175): a zone's share split among its mates ~ e^(-d/lambda), by the passer's m off our goal 0-35 / 35-70 / 70+ (0 = even)
     math::Fixed64 high_risk{};   // a high pass the race read says they win, at this share (physics.pass.high_risk_weight)
-    math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len) const;
+    // G5.75 (§8.176): the same by the pass's direction too — forward (within 60° of straight at
+    // their goal) / lateral / back — [origin][dir][band], benchmarks_statsbomb_highpass.py --dir.
+    // Off (physics.pass.high_dir_on 0) = pass_high. dir < 0 = pass_high.
+    math::Fixed64 pass_high_dir[3][3][6]{};
+    bool high_dir_on = true;
+    math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len, int dir = -1) const;
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
     bool space_on = true; math::Fixed64 space_wide_y{}, cross_depth_m{}, space_max_s{}, space_risk{}, space_roll_m{}; int space_margin_ticks = 0;   // G5.54: the ball into an empty zone ahead   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share
