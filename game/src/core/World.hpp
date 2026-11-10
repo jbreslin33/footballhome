@@ -162,6 +162,7 @@ public:
     std::uint32_t kicksWaited() const noexcept { return kicks_waited_; }
     std::uint32_t kickWaitTicks() const noexcept { return kick_wait_ticks_; }
     std::uint32_t kicksCancelled() const noexcept { return kicks_cancelled_; }
+    std::uint32_t firstTouches() const noexcept { return first_touches_; }   // G5.80
     std::uint32_t steals() const noexcept { return steals_; }              // the touch-to-steal contest won
     // G5.28 (Law 12): a challenge on the man on the ball is a foul at the real
     // share for the third it is in (StatsBomb PL 2015/16: fouls ÷ (tackle duels +
@@ -389,13 +390,15 @@ private:
         math::Vec2 aim{}; math::Fixed64 aim_z{}; std::uint64_t since = 0, until = 0;
         math::Vec2 mate_at{};   // where his intended receiver stood when he asked (he re-reads him as he strikes)
     } pend_;
-    bool kicks_on_ = true, last_kick_weak_ = false;
+    bool kicks_on_ = true, last_kick_weak_ = false, first_touch_on_ = false;   // first_touch: G5.80, off (§8.181)
+    std::uint32_t first_touches_ = 0;
     math::Fixed64 kick_reach_ = math::Fixed64::one(), weak_deg_ = math::Fixed64::fromInt(3);
     std::int32_t kick_wait_max_ = 15;
     std::vector<std::uint8_t> strong_, kick_foot_;
     std::vector<math::Fixed64> weakp_;
     std::uint32_t kicks_waited_ = 0, kick_wait_ticks_ = 0, kicks_cancelled_ = 0, last_kick_wait_ = 0;
     void assignFeet();
+    void firstTouch(SlotIndex slot);   // G5.80
     std::uint8_t chooseFoot(SlotIndex s) const;
     // pressed (an opponent within 3 m of him): the real ball sits this much closer (DFL free − pressed median), m
     math::Fixed64 dribble_press_[8] = {math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(18, 100),

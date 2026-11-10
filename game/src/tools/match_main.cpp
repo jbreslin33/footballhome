@@ -120,7 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
-    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0;   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0; std::vector<double> ft_r, ft_g5, ft_g10; long ft_n = 0, ft_kept = 0;   // §8.181 FIRST TOUCH   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
     // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
@@ -239,9 +239,37 @@ int main(int argc, char** argv) {
 
         struct Env { double x[32][29], y[32][29]; bool live[29]; } env{};   // §8.178: the last 29 ticks of every man
         struct Cr { std::uint32_t touches = 0; long last_k = -1000; int last_o = -1; double peak = 0; } cr{};   // §8.179
+        struct Ft { long k0; int who; double vin, r = -1; } ;
+        std::vector<Ft> fts; int ft_prev_owner = -1; double ft_pbx = 0, ft_pby = 0, ft_bvx = 0, ft_bvy = 0;   // §8.181
         for (long k = 0; k < ticks; ++k) {
             const auto before = W.ball().owner;
             s.tickOnce();
+            {   // §8.181 FIRST TOUCH, as benchmarks_tracking_firsttouch.py: a free ground ball 3 m/s+ becomes
+                // his (not a keeper's): off-touch speed / incoming 0.13-0.33 s on, his gap at 0.5 s and 1 s,
+                // kept 1 s (still his, within 1.5 m); controlled = off-touch < 0.7 x incoming
+                const auto& bb = W.ball();
+                const double bx = bb.pos.x.toDouble(), by = bb.pos.y.toDouble();
+                const int ow = bb.owner ? static_cast<int>(*bb.owner) : -1;
+                const bool live = W.outStage() == 0 && W.restartTeam() == 0xFF;
+                if (ow >= 0 && ft_prev_owner < 0 && live && !W.isKeeper(static_cast<std::uint8_t>(ow)) && bb.pos.z.toDouble() < 0.5) {
+                    const double vin = std::hypot(ft_bvx, ft_bvy);
+                    if (vin >= 3) fts.push_back(Ft{k, ow, vin});
+                }
+                for (std::size_t i = 0; i < fts.size();) {
+                    Ft& f = fts[i]; const long dk = k - f.k0;
+                    const auto& pp = W.player(static_cast<std::uint8_t>(f.who));
+                    const double gap = std::hypot(bx - pp.pos.x.toDouble(), by - pp.pos.y.toDouble());
+                    if (dk == 7) f.r = std::hypot(ft_bvx, ft_bvy) / f.vin;
+                    if (dk == 15 && f.r >= 0 && f.r < 0.7) S.ft_g5.push_back(gap);
+                    if (dk == 30) {
+                        if (f.r >= 0 && f.r < 0.7) { ++S.ft_n; S.ft_r.push_back(f.r); S.ft_g10.push_back(gap); if (ow == f.who && gap < 1.5) ++S.ft_kept; }
+                        fts.erase(fts.begin() + static_cast<long>(i)); continue;
+                    }
+                    ++i;
+                }
+                ft_bvx = (bx - ft_pbx) * 30; ft_bvy = (by - ft_pby) * 30; ft_pbx = bx; ft_pby = by;
+                ft_prev_owner = live ? ow : -1;
+            }
             {   // §8.179 CARRY, as benchmarks_tracking_carry.py: the carrier 1 m/s+, ball on the ground, in
                 // play — the ball's gap ahead along his travel and across it, by his speed; the engine's touches
                 const auto& bb = W.ball();
@@ -1646,6 +1674,11 @@ int main(int argc, char** argv) {
                         std::printf("\n        TO OUR KEEPER (open-play passes, crosses out; real StatsBomb PL 15/16 in brackets), passer 10 m bins off his own goal: a team-match | share of the bin's passes %% | length med | high %% | completed %%");
                         static const double rs[10] = {5.42, 12.07, 9.83, 4.81, 1.54, 0.42, 0.12, 0.03, 0.02, 0.02};
                         for (int b = 0; b < 8; ++b) std::printf("\n          %2d-%-3d %5.2f (%4.2f) | %5.2f (%5.2f) | %4.1f (%4.1f) | %4.1f | %5.1f", b * 10, b * 10 + 10, S.gp_k[b] / tmn, rk[b], 100.0 * S.gp_k[b] / std::max(1L, S.gp_n[b]), rs[b], [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; }(S.gp_len[b]), rl[b], 100.0 * S.gp_h[b] / std::max(1L, S.gp_k[b]), 100.0 * S.gp_ok[b] / std::max(1L, S.gp_k[b]));
+                    }
+                    {   // §8.181 FIRST TOUCH v benchmarks_tracking_firsttouch.py (DFL controlled first touches)
+                        auto qf = [](std::vector<double> v, double p) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[std::min(v.size() - 1, static_cast<std::size_t>(v.size() * p))]; };
+                        std::printf("\n        FIRST TOUCH (controlled: a free ground ball 3 m/s+ made his, off the touch < 0.7 x; real DFL in brackets): %.1f a team-match (146.8) | off-touch / incoming p25 %.2f med %.2f p75 %.2f (0.20 / 0.33 / 0.48) | gap 0.5 s p25 %.2f med %.2f p90 %.2f (0.59 / 0.81 / 1.51) | gap 1 s med %.2f (0.94) | kept 1 s %.1f%% (72.3)",
+                                    S.ft_n / tmn, qf(S.ft_r, .25), qf(S.ft_r, .5), qf(S.ft_r, .75), qf(S.ft_g5, .25), qf(S.ft_g5, .5), qf(S.ft_g5, .9), qf(S.ft_g10, .5), 100.0 * S.ft_kept / std::max(1L, S.ft_n));
                     }
                     {   // §8.180 KICK FOOT v benchmarks_statsbomb_foot.py (StatsBomb PL 15/16)
                         long nw = 0, ns = 0; for (int lb = 0; lb < 3; ++lb) { ns += S.kf_n[0][lb]; nw += S.kf_n[1][lb]; }

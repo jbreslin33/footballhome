@@ -8029,3 +8029,50 @@ with no plant model on both seeds, not because of the wait — a mole to find.
 first touch: still settled at his feet for the control time — roadmap slice 4 with headers. (3) Real
 feet per player (the roster's own strong foot and habit) instead of drawn. (4) Touch rate 1.1-1.6 v
 0.9-1.0. (5) Aerial duels 35 v 44.
+
+### 8.181 G5.80 — the first touch, measured and built, left OFF; the carrier chases his rolling ball (no migration)
+
+Roadmap slice 4, first half (§8.178). A received pass still settles at the receiver's feet for his
+control time (G4.92) — the last glue left.
+
+**Real** (`scripts/benchmarks_tracking_firsttouch.py`, DFL 7 matches: a free ground ball 3 m/s+ that
+nobody was within 1.5 m of for 0.4 s reaches a man — his closest frame over the next 0.32 s; CONTROLLED
+= the ball leaves under 0.7× its incoming speed, 147 a team-match). Off the touch at a share of the
+incoming speed p25 0.20 / med 0.33 / p75 0.48 (pressed, an opponent inside 3 m: med 0.47), about 2-4 m/s;
+his gap to it 0.5 s later p25 0.59 / med 0.81 / p75 1.13 / p90 1.51 m (pressed 0.62 / 1.08 / 1.80 /
+3.66), 1 s later 0.94; touched on along his line 59%, dead 26%, across 11%, back 5%; still his 1 s on
+72% (pressed 46%).
+
+**Built** (`World::firstTouch`, on receipt, a won tackle and a steal; `physics.first_touch.on`): the
+ball off his touch the way he wants to go, to a gap drawn from the real spread (capped at p75: past it
+the data is mostly slow one-touch passes and balls off a man), at the speed his body will have half a
+second on (his footstep braking bounds how fast he sheds pace); standing he lets it die at the gap,
+moving he gives it the dribble touch's push (§8.179). Steals and won tackles take it with the winner's
+own touch instead of the old carrier's roll. A new FIRST TOUCH harness line (the same measure).
+
+**Measured, step by step by logging every loss** (seed 1000; slice 3 had 4.9 heavy-touch losses, 8.6
+steals): a third of the incoming pace for a receiver standing waiting → 33 losses a team-match, 18
+steals; the half-second gap instead → 26; the follow-up touch one tick later read the hold's ease-up
+→ the first touch counts as his touch, and every touch plays it at the speed he can actually be at;
+"a touch never adds pace" left a man running onto a still ball behind → removed; steals kept the old
+carrier's roll (5-8 m/s) → the winner's touch; the gap's tail capped; the reflex chased at the hold's
+pace → at least the ball's; a ball he runs past re-touchable after 0.1 s → 15 losses, 16 steals,
+kept 1 s 54% (72.3).
+
+**Why OFF.** Two-thirds of what is still lost has his wish pointing away from where the touch sent it:
+at the moment of the touch the brain's wish is still "go to the ball". A real receiver's oriented touch
+goes where his NEXT action wants it; our brain decides that only once he has it. The first touch needs
+the brain's decision before the ball arrives — that is the next step, not more tuning here. Until then
+the settle stays, and the general fixes found on the way stay on:
+- a carrier chasing his rolling ball goes at least as fast as it (+15%), not at the hold's pace;
+- a ball he is running past (behind him, in reach) can be touched again after 0.1 s, not 0.3;
+- a dribble touch plays it no slower than his body can be half a second on.
+
+**After** (G5.79 v G5.80 with the first touch off; seed 1000, then seed 2000). Lost to a heavy touch
+4.9 → 2.7, 4.8 → 3.4 a team-match (4.1); stolen 8.6 → 9.1, 8.5 → 8.7 (8.0); passes completed 74.8 →
+75.2, 74.1 → 74.6% (79.1); FIRST TOUCH (settle): gap 0.5 s 0.40 every time (0.81), kept 1 s 58-59%
+(72.3). Goldens re-locked (determinism, 3v3, 11v11).
+
+**Next moles.** (1) The receiver's next action decided before the ball arrives, so the first touch can
+go where it is wanted — then `physics.first_touch.on`. (2) Headers and aerial duels (35 v 44): roadmap
+slice 4's second half. (3) Strong-foot short passes (§8.180). (4) Real feet per player.

@@ -92,7 +92,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.73 (2026-11-09): a pass goes high at the real share for its origin and length (§8.174).
 // Re-locked G5.77 (2026-11-10): the footstep body (velocity only through a planted foot).
 // Re-locked G5.79 (2026-11-10): kicks off a plant foot, strong / weak foot.
-constexpr std::uint64_t kGolden3v3   = 0x5774531659a1dea5ULL;
+// Re-locked G5.80 (2026-11-10): the carrier chases his ball at its speed.
+constexpr std::uint64_t kGolden3v3   = 0xbf1221ce96a676b1ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -129,7 +130,8 @@ constexpr std::uint64_t kGolden3v3   = 0x5774531659a1dea5ULL;
 // Re-locked G5.76 (2026-11-10): our keeper out of the zone split, at his real share; the 3v3 unchanged.
 // Re-locked G5.77 (2026-11-10): the footstep body.
 // Re-locked G5.79 (2026-11-10): kicks off a plant foot.
-constexpr std::uint64_t kGolden11v11 = 0x64cd452c6ee8397eULL;
+// Re-locked G5.80 (2026-11-10): the carrier chases his ball at its speed.
+constexpr std::uint64_t kGolden11v11 = 0x21290447ad662b56ULL;
 
 struct Rig {
     World world;
