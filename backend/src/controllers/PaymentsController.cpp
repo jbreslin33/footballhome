@@ -831,7 +831,55 @@ Response PaymentsController::handleStanding(const Request& request) {
                 // The dues pill opens his LeagueApps member page (owner
                 // 11/5: run his card from any player card).
                 {"laUserId", r["la_user_id"].is_null() ? json(nullptr) : json(r["la_user_id"].c_str())},
-                {"activity", nullptr}};
+                {"activity", nullptr},
+                {"rosters", json::array()}};
+        }
+
+        // Tuition card roster pills (mig 1221, owner 11/10: "APSL Active,
+        // APSL Inactive, APSL OFFICIAL, LIGA 1 OFFICIAL"): one entry per
+        // team — his live team status (squad status, or active) and
+        // whether the league's own list (official_roster_seen) has him.
+        // Teams with on_tuition_card off (Cup mirror, pools) are skipped.
+        for (const auto& r : db->query(R"SQL(
+            WITH st AS (
+              SELECT tp.person_id, tp.team_id,
+                     CASE WHEN ss.code IS NOT NULL THEN ss.code
+                          WHEN tp.invite_only THEN 'call_in'
+                          ELSE 'active' END AS status
+                FROM team_persons tp
+                LEFT JOIN squad_statuses ss ON ss.id = tp.squad_status_id
+               WHERE tp.person_id = ANY($1::int[]) AND tp.removed_at IS NULL
+            ), off AS (
+              SELECT DISTINCT ON (s.person_id, src.team_id)
+                     s.person_id, src.team_id,
+                     concat_ws(' ', src.league_label, src.section_label) AS list,
+                     src.last_fetched_at
+                FROM official_roster_seen s
+                JOIN official_roster_sources src ON src.id = s.source_id AND src.is_active
+               WHERE s.person_id = ANY($1::int[])
+               ORDER BY s.person_id, src.team_id, src.last_fetched_at DESC NULLS LAST
+            )
+            SELECT COALESCE(st.person_id, off.person_id) AS person_id,
+                   t.id AS team_id,
+                   -- full label: ❄️ U8 (winter) and ⚽ U8 (fall) differ only by it
+                   COALESCE(NULLIF(t.label, ''), t.name) AS team,
+                   st.status,
+                   off.list AS official_list,
+                   to_char(off.last_fetched_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD') AS official_at
+              FROM st
+              FULL JOIN off ON off.person_id = st.person_id AND off.team_id = st.team_id
+              JOIN teams t ON t.id = COALESCE(st.team_id, off.team_id)
+             WHERE t.on_tuition_card AND t.is_active AND t.board_archived_at IS NULL
+             ORDER BY 1, t.club_section_id NULLS LAST, t.board_sort_order NULLS LAST, t.id)SQL", {arr})) {
+            auto it = people.find(r["person_id"].c_str());
+            if (it == people.end()) continue;
+            (*it)["rosters"].push_back({
+                {"teamId",       r["team_id"].as<long long>()},
+                {"team",         r["team"].c_str()},
+                {"status",       r["status"].is_null() ? json(nullptr) : json(r["status"].c_str())},
+                {"official",     !r["official_list"].is_null()},
+                {"officialList", r["official_list"].is_null() ? json(nullptr) : json(r["official_list"].c_str())},
+                {"officialAt",   r["official_at"].is_null() ? json(nullptr) : json(r["official_at"].c_str())}});
         }
 
         const int windowDays = 30;

@@ -927,6 +927,8 @@ class PaymentsScreen extends Screen {
 
     m.innerHTML = inactiveHtml + overdueMonthsHtml + overdueUnknownHtml
       + statusOrder.filter((st) => st !== 'overdue').map(groupHtml).join('') + otherHtml;
+    // Team status + official-list pills (mig 1221) arrive after the cards.
+    if (window.PersonStanding && PersonStanding.fillRosters) PersonStanding.fillRosters(this.auth, m);
   }
 
   // Parses a "YYYY-MM-DD..." prefix into a LOCAL calendar date, ignoring
@@ -1346,6 +1348,7 @@ class PaymentsScreen extends Screen {
           <div style="font-weight:700; font-size:1rem;">${name}</div>
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${prorateCell}${finesCells}${badge}</div>
         </div>
+        ${m.personId ? `<div data-roster-standing="${m.personId}"></div>` : ''}
         ${finesDetail}
         ${duesFree ? `<div style="font-size:0.8rem; color:${m.status === 'injured' ? '#fbbf24' : '#93c5fd'}; background:${m.status === 'injured' ? '#3a2e05' : '#172554'}; border:1px solid ${m.status === 'injured' ? '#d97706' : '#2563eb'}; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
         ${dobLine}

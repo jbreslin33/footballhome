@@ -146,6 +146,52 @@
       + `<span title="${esc(lastTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:700; white-space:nowrap;">${esc(lastTxt)}</span>`;
   }
 
+  // Tuition card roster pills (mig 1221, owner 11/10: "show their status,
+  // active, inactive, what official rosters they are on. like APSL Active,
+  // APSL Inactive, APSL OFFICIAL, LIGA 1 OFFICIAL"): per team his #teams
+  // status, then 📋 Official when the league's own list has him.
+  const ROSTER_STYLE = {
+    active:         ['#052e16', '#86efac', '#16a34a'],
+    inactive:       ['#1e293b', '#cbd5e1', '#64748b'],
+    practice_squad: ['#3a2e05', '#fbbf24', '#d97706'],
+    call_in:        ['#3a2e05', '#fbbf24', '#d97706'],
+  };
+  const ROSTER_FALLBACK = {
+    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in',
+  };
+  function rosterHtml(personId) {
+    const hit = cache.get(Number(personId));
+    const rosters = hit && hit.data && Array.isArray(hit.data.rosters) ? hit.data.rosters : [];
+    if (!rosters.length) return '';
+    const bits = [];
+    rosters.forEach((r) => {
+      const team = r.team || '';
+      if (r.status) {
+        const [bg, fg, border] = ROSTER_STYLE[r.status] || ROSTER_STYLE.inactive;
+        bits.push(pill(t(`roster_${r.status}`, { team }, `${team} ${ROSTER_FALLBACK[r.status] || r.status}`),
+          t('roster_status_tip', { team }, `Status on ${team} (#teams)`), bg, fg, border));
+      }
+      if (r.official) {
+        bits.push(pill(t('roster_official', { team }, `📋 ${team} Official`),
+          t('roster_official_tip', { list: r.officialList || team, date: r.officialAt || '' },
+            `On the league's official list — ${r.officialList || team}`),
+          '#0c1e3a', '#93c5fd', '#2563eb'));
+      }
+    });
+    return bits.length
+      ? `<div data-roster-standing-line style="font-size:0.68rem; display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:2px;">${bits.join('')}</div>`
+      : '';
+  }
+
+  // Fill every [data-roster-standing] under root once its ids are loaded.
+  async function fillRosters(auth, root) {
+    if (!root) return;
+    const els = [...root.querySelectorAll('[data-roster-standing]')];
+    if (!els.length) return;
+    await load(auth, els.map(e => e.dataset.rosterStanding));
+    els.forEach(e => { e.innerHTML = rosterHtml(e.dataset.rosterStanding); });
+  }
+
   // Has he (or his parent) ever answered an RSVP himself?  true / false,
   // or null while unknown (not loaded, or a viewer without access).
   function answered(personId) {
@@ -163,5 +209,5 @@
     els.forEach(e => { e.innerHTML = chip(e.dataset.standingChip, { inactive: e.dataset.standingInactive !== '0' }); });
   }
 
-  window.PersonStanding = { load, html, chip, fillChips, answered, laMemberUrl, laLink, laUserId };
+  window.PersonStanding = { load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId };
 })();
