@@ -3,8 +3,18 @@
 // Humanoid player figures + procedural animation (pure dressing: the
 // server is the authority; nothing here touches gameplay). A jointed rig
 // built from capsules — pelvis, torso, neck/head, hips/knees/ankles,
-// shoulders/elbows — animated in LAYERS over the run cycle:
-//   locomotion (stride/cadence by speed, dribble touch, turn lean)
+// shoulders/elbows — animated in LAYERS over the gait:
+//   locomotion (James 11/10 "more realistic player animations"): a GAIT
+//     model, not a sine on the joints. Each foot follows a stance/swing
+//     path in the body frame and a two-bone IK solves hip + knee, so a
+//     planted foot moves back at exactly the body's speed (no skating) and
+//     the knee bend comes out of where the foot is. Timing from running /
+//     walking biomechanics: contact length ~constant and swing time ~0.5 →
+//     0.34 s as speed rises [Weyand 2000]; duty factor walk 0.62, jog ~0.39,
+//     sprint ~0.22, the COM low at mid-stance running and high walking,
+//     heel recovery under the buttock at speed [Novacheck 1998]. The body
+//     leans along its real horizontal acceleration (atan a/g: into turns,
+//     forward speeding up, back braking) — FH original.
 //   → look (head + chest track the ball)
 //   → overlays, each with an eased weight so nothing snaps:
 //     kick · slide tackle · stumble · keeper dive · header jump · celebrate
@@ -48,6 +58,7 @@
   }
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const ease = (cur, want, rate, dt) => cur + (want - cur) * Math.min(1, dt * rate);
+  const smooth = (u) => { u = clamp(u, 0, 1); return u * u * (3 - 2 * u); };
   function wrap(a) { return ((a + Math.PI) % TAU + TAU) % TAU - Math.PI; }
 
   function numberDecal(n, kit) {
@@ -184,6 +195,7 @@
       // a trim band) → ankle → boot.
       this.legs = [-1, 1].map((side) => {
         const hip = new THREE.Group();
+        hip.rotation.order = 'ZYX';   // Rz·Rx: tilt the leg's plane, then flex in it (the IK)
         hip.position.set(side * 0.1, -0.06, 0);
         pelvis.add(hip);
         const thigh = cap(0.074, 0.28, skin, -0.21);
@@ -207,12 +219,142 @@
       });
     }
 
+    // ── the gait (see the header): sets pelvis height/lean/yaw and solves
+    // both legs by IK. Leaves this.moveAmt, runAmt, halfStride, leg.along.
+    gait(dt, vx, vy, speed, W) {
+      const s = this.speed;
+      const m = smooth((s - 0.15) / 0.6);            // standing → moving
+      const r = smooth((s - 1.9) / 0.7);             // walk → run, ~2.0-2.6 m/s
+      const dribble = W.dribble;
+      // Stride period and duty factor. Walk: stride 0.75 + 0.55 v m.
+      // Run: contact length ~0.95 m (leg 0.9 m), swing 0.50 s at 3 m/s →
+      // 0.34 s at 13 m/s [Weyand 2000]. 5 m/s: 1.5 strides/s, duty 0.29.
+      const vs = Math.max(s, 0.3);
+      const Tw = Math.min(1.4, (0.75 + 0.55 * vs) / vs), dw = 0.62;
+      const tc = 0.95 * (1 - 0.15 * dribble) / Math.max(s, 1.6);
+      const tsw = clamp(0.5 - 0.016 * (s - 3), 0.34, 0.5) * (1 - 0.12 * dribble);
+      const Tr = tc + tsw, dr = tc / Tr;
+      const T = Tw + (Tr - Tw) * r, duty = dw + (dr - dw) * r;
+      this.phase = (this.phase + dt / T) % 1;
+      // Ankle travel in stance = contact length less the heel-to-toe roll.
+      const contact = s * duty * T;
+      const Ls = Math.max(0, contact - (0.25 - 0.13 * r)) * m;
+      const centre = (0.02 - 0.1 * r) * m;           // running lands ahead, leaves well behind
+      this.halfStride = Ls / 2;
+      // Travel direction in the body frame (backpedal / side-step step that way).
+      const rel = speed > 0.3 ? wrap(Math.atan2(vx, vy) - this.yaw) : 0;
+      this.fwd = ease(this.fwd ?? 1, Math.cos(rel), 10, dt);   // eased as
+      this.lat = ease(this.lat ?? 0, Math.sin(rel), 10, dt);   // components: no wrap
+      const dz = this.fwd, dx = this.lat;
+      // Swing height: walking toe clearance; running the heel comes up
+      // behind toward the buttock, more the faster [Novacheck 1998].
+      const lift = (0.07 + r * clamp(0.1 + 0.075 * (s - 2.5), 0, 0.5)) * m;
+      // Pelvis: COM high at mid-stance walking, low running; ±2 / ±3.5 cm.
+      const stepPh = (this.phase * 2) % 1;
+      const osc = Math.cos(TAU * (stepPh - duty / 2));
+      const ready = this.readyAmt || 0;
+      let py = 0.95 - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * osc - 0.035 * r * osc) - 0.05 * ready * (1 - m);
+      // Lean along the horizontal acceleration (body frame), so the ground
+      // force goes through the body: into turns, forward accelerating.
+      const ax0 = (vx - (this.pvx ?? vx)) / Math.max(dt, 1e-3), ay0 = (vy - (this.pvy ?? vy)) / Math.max(dt, 1e-3);
+      this.pvx = vx; this.pvy = vy;
+      this.awx = ease(this.awx || 0, clamp(ax0, -15, 15), 5, dt);
+      this.awy = ease(this.awy || 0, clamp(ay0, -15, 15), 5, dt);
+      const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+      const aLat = this.awx * cy - this.awy * sy, aFwd = this.awx * sy + this.awy * cy;
+      const pitch = 0.04 * m + 0.08 * r + clamp(Math.atan(aFwd / 9.81) * 0.8, -0.3, 0.35);
+      const roll = -clamp(Math.atan(aLat / 9.81) * 0.7, -0.3, 0.3);
+      // Hips turn with the forward leg (±~6°); the chest counters (update()).
+      const L = this.legs;
+      const feet = [0, 1].map((i) => {
+        const side = i === 0 ? -1 : 1;
+        const ps = (this.phase + i * 0.5) % 1;
+        let along, h, pitchF;
+        if (ps < duty) {                             // stance: moves back at body speed
+          const u = ps / duty;
+          along = centre + Ls / 2 - u * Ls; h = 0;
+          // walk: heel strike toe-up, flat, heel rise; run: flat, toe-off push
+          pitchF = m * (u < 0.15 ? -0.25 * (1 - r) * (1 - u / 0.15)
+                      : u > 0.6 ? (0.45 + 0.2 * r) * smooth((u - 0.6) / 0.4) : 0);
+          h = 0.12 * Math.sin(Math.max(0, pitchF));
+        } else {                                     // swing: up and through
+          const u = (ps - duty) / (1 - duty);
+          const late = 0.12 * r;                     // running: the foot stays back while the heel rises
+          along = centre - Ls / 2 + Ls * smooth((u - late) / (1 - late));
+          // Walking: a low arc. Running: the heel peaks early (recovery under
+          // the buttock) and the foot drops under the knee as the shin swings
+          // through — never a straight leg reaching out in the air.
+          const hw = Math.sin(Math.PI * u);
+          const hr = smooth(u / 0.35) * (1 - smooth((u - 0.35) / 0.6));
+          h = lift * (hw + (hr - hw) * r);
+          pitchF = m * ((0.55 + 0.2 * r) * (1 - smooth(u / 0.45)) - 0.12 * Math.sin(Math.PI * u) - 0.25 * (1 - r) * smooth((u - 0.8) / 0.2));
+        }
+        const base = side * (0.11 - 0.04 * r + 0.06 * Math.abs(dx) * m);
+        L[i].along = along - centre;
+        return { x: base + dx * along, z: dz * along, y: h + 0.085, pitchF };
+      });
+      // Pelvis yaw follows the forward foot of the right leg (side -1).
+      const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
+      this.pelvis.position.set(0, py, 0);
+      this.pelvis.rotation.set(pitch, yawP, roll);
+      this.pelvis.updateMatrix();
+      const qi = this._qi || (this._qi = new THREE.Quaternion());
+      const v = this._v || (this._v = new THREE.Vector3());
+      qi.copy(this.pelvis.quaternion).invert();
+      for (let i = 0; i < 2; i++) {
+        const f = feet[i], leg = L[i];
+        v.set(f.x, f.y, f.z).sub(this.pelvis.position).applyQuaternion(qi).sub(leg.hip.position);
+        this.solveLeg(leg, v, f.pitchF, pitch);
+      }
+      this.moveAmt = m; this.runAmt = r;
+    }
+
+    // Re-solve leg i to a planted foot at (x, z) in the root frame, blended
+    // by w over its current pose — for overlays that move the pelvis.
+    plantLeg(i, x, z, w) {
+      const leg = this.legs[i];
+      const h0 = leg.hip.rotation.x, hz = leg.hip.rotation.z, k0 = leg.knee.rotation.x, a0 = leg.ankle.rotation.x;
+      const q = (this._qi || (this._qi = new THREE.Quaternion())).copy(this.pelvis.quaternion).invert();
+      const v = (this._v || (this._v = new THREE.Vector3())).set(x, 0.085, z).sub(this.pelvis.position).applyQuaternion(q).sub(leg.hip.position);
+      this.solveLeg(leg, v, 0, this.pelvis.rotation.x);
+      leg.hip.rotation.x = h0 + (leg.hip.rotation.x - h0) * w;
+      leg.hip.rotation.z = hz + (leg.hip.rotation.z - hz) * w;
+      leg.knee.rotation.x = k0 + (leg.knee.rotation.x - k0) * w;
+      leg.ankle.rotation.x = a0 + (leg.ankle.rotation.x - a0) * w;
+    }
+
+    // Two-bone IK, hip at the origin, target t (pelvis frame, from the hip):
+    // tilt the leg plane (hip z), flex in it (hip x), knee forward; the boot
+    // set to pitchF (+ = toe down) against the chain above it.
+    solveLeg(leg, t, pitchF, pelvisPitch) {
+      const a = 0.42, b = 0.40;
+      const phi = Math.atan2(t.x, -t.y);
+      const dy = -Math.hypot(t.x, t.y), dz = t.z;
+      const D = clamp(Math.hypot(dy, dz), 0.25, a + b - 0.002);
+      const beta = Math.atan2(dz, -dy);
+      const alpha = Math.acos(clamp((a * a + D * D - b * b) / (2 * a * D), -1, 1));
+      const knee = Math.PI - Math.acos(clamp((a * a + b * b - D * D) / (2 * a * b), -1, 1));
+      const hipX = -(beta + alpha);
+      leg.hip.rotation.set(hipX, 0, phi);
+      leg.knee.rotation.x = knee;
+      leg.ankle.rotation.x = clamp(pitchF - (pelvisPitch + hipX + knee), -0.6, 1.0);
+    }
+
     setKeeper(keeper) {
       if (keeper !== this.keeper) this.build(this.home, keeper);
     }
     setGlow() {}
 
-    kick() { this.kickT = 0.38; }
+    // A kick (renderer.js arms it up to INTERP_DELAY ticks before the ball
+    // leaves): lead = sim seconds to contact, power 0..1 from the ball's
+    // speed off the foot. The foot is the one on the ball's side (right by
+    // default); the other leg plants.
+    kick(lead, power) {
+      const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.2);
+      this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1),
+                  leg: (this.ballLocalX || 0) > 0.12 ? 1 : 0 };
+      this.kk.end = this.kk.contact + 0.3 + 0.2 * this.kk.power;
+    }
     setFlag(up) { this.flagUp = !!up; }   // G4.93: an assistant's flag
     // G5.2: an official's signal for a ball out (OfficialSnap bits 1-3):
     // 1/2 throw, up toward the attack (+x / -x); 3/4 goal kick, level at the
@@ -231,7 +373,6 @@
       const speed = Math.hypot(vx, vy);
       this.speed = ease(this.speed, speed, 10, dt);
       const s = this.speed;
-      const run = Math.min(s / 6, 1);
       const flags = ctx.flags || 0;
       const W = this.w;
 
@@ -250,9 +391,11 @@
       const b = ctx.ball;
       let bdx = 0, bdz = 0, bd = 99, bz = 0;
       if (b) { bdx = b.x - ctx.me.x; bdz = b.y - ctx.me.y; bd = Math.hypot(bdx, bdz); bz = b.z; }
+      this.ballLocalX = bdx * Math.cos(this.yaw) - bdz * Math.sin(this.yaw);
       W.slide = ease(W.slide, flags & 4 ? 1 : 0, flags & 4 ? 14 : 5, dt);
       W.stumble = ease(W.stumble, flags & 8 ? 1 : 0, 10, dt);
       W.dribble = ease(W.dribble, ctx.hasBall ? 1 : 0, 6, dt);
+      this.readyAmt = ease(this.readyAmt || 0, !this.official && bd < 25 ? 1 : 0, 2, dt);   // knees bent, on his toes near play
       // Keeper dive: moving fast while a ball is close and on its way.
       let diveWant = 0;
       if (this.keeper && s > 3.2 && bd < 11 && !ctx.hasBall) {
@@ -269,51 +412,24 @@
       W.signal = ease(W.signal || 0, this.signal ? 1 : 0, 9, dt);       // G5.2
       W.throwIn = ease(W.throwIn || 0, flags & 16 ? 1 : 0, 10, dt);     // G5.2
 
-      // ── locomotion: the stride ───────────────────────────────────────
-      // Dribbling: quicker, shorter steps — the ball is in the stride.
-      const cadence = 0.7 + s * (0.27 + 0.06 * W.dribble);
-      this.phase = (this.phase + dt * cadence) % 1;
-      const p = this.phase * TAU;
-      const swing = (0.15 + 0.75 * run) * (1 - 0.3 * W.dribble);
-      const moving = s > 0.3 ? 1 : 0;
-      // G4.80: the legs step the way he MOVES, not the way he faces — a
-      // man backpedalling or shuffling side-on while he watches the ball
-      // had forward strides under a body sliding sideways (James 10/27:
-      // "look like they are on skates"). rel = travel off the body's line.
-      const rel = speed > 0.3 ? wrap(Math.atan2(vx, vy) - this.yaw) : 0;
-      this.fwd = ease(this.fwd ?? 1, Math.cos(rel), 10, dt);   // eased as
-      this.lat = ease(this.lat ?? 0, Math.sin(rel), 10, dt);   // components: no wrap
-      const fwd = this.fwd, lat = this.lat;
-      for (let i = 0; i < 2; i++) {
-        const leg = this.legs[i];
-        const lp = p + i * Math.PI;
-        leg.hip.rotation.set(-Math.sin(lp) * swing * moving * fwd, 0,
-                             Math.sin(lp) * swing * 0.7 * moving * lat);
-        leg.knee.rotation.x = moving
-          ? Math.max(0, -Math.cos(lp)) * (0.4 + 1.1 * run) + 0.08
-          : 0.05;
-        leg.ankle.rotation.x = moving ? Math.sin(lp) * 0.3 * run : 0;
-      }
+      // ── locomotion: the gait ─────────────────────────────────────────
+      this.chest.rotation.set(0, 0, 0);
+      this.gait(dt, vx, vy, speed, W);
+      const m = this.moveAmt, r = this.runAmt;
       for (const arm of this.arms) {
-        const ap = p + (arm.side > 0 ? 0 : Math.PI);
         if (this.keeper && s < 1.5) {           // keeper set position
           arm.sh.rotation.set(-0.55, 0, arm.side * 0.5);
           arm.elbow.rotation.x = -0.7;
-        } else {
-          arm.sh.rotation.set(Math.sin(ap) * swing * 0.85,
-                              0, arm.side * (0.08 + 0.18 * W.dribble));
-          arm.elbow.rotation.x = -(0.25 + 1.1 * run);
+          continue;
         }
+        // The arm swings against its own side's leg: that foot forward,
+        // this hand back. Elbow ~20° walking, ~85° running [Novacheck 1998].
+        const leg = this.legs[arm.side < 0 ? 0 : 1];
+        const amp = (0.32 + r * (0.28 + 0.05 * clamp(s - 3, 0, 6))) * m;
+        const sw = clamp(leg.along / Math.max(0.12, this.halfStride), -1, 1) * amp;
+        arm.sh.rotation.set(sw + 0.22 * r * m, 0, arm.side * (0.07 + 0.06 * r + 0.18 * W.dribble));   // running: the upper arm swings about a point behind vertical
+        arm.elbow.rotation.x = -(0.3 + 1.2 * r) - Math.max(0, -sw) * 0.35;
       }
-      // Lean into the run, bank into turns, bob twice per stride.
-      this.pelvis.rotation.set(0.05 + 0.2 * run,
-                               0,
-                               clamp(-this.yawRate * 0.05 * run, -0.35, 0.35));
-      this.pelvis.position.y = 0.95 + (moving
-        ? Math.abs(Math.sin(p)) * 0.05 * run
-        : Math.sin(performance.now() / 600 + this.slot) * 0.006);
-      this.chest.rotation.set(0, 0, 0);
-
       // ── look: head (and a little chest) track the ball ──────────────
       let lookYaw = 0, lookPitch = 0.1;
       if (b && bd < 45) {
@@ -323,21 +439,48 @@
       this.look.yaw = ease(this.look.yaw, lookYaw, 6, dt);
       this.look.pitch = ease(this.look.pitch, lookPitch, 6, dt);
       this.neck.rotation.set(this.look.pitch, this.look.yaw * 0.75, 0);
-      this.chest.rotation.y = this.look.yaw * 0.25;
+      this.chest.rotation.y = this.look.yaw * 0.25 - this.pelvis.rotation.y * 0.8;   // shoulders counter the hips
 
       // ── overlays ─────────────────────────────────────────────────────
       const L = this.legs, A = this.arms;
-      // Kick: right leg winds back then strikes through (~0.4 s).
-      if (this.kickT > 0) {
-        this.kickT = Math.max(0, this.kickT - dt);
-        const k = 1 - this.kickT / 0.38;
-        const wind = k < 0.35 ? -0.9 * (k / 0.35) : -0.9 + 2.5 * ((k - 0.35) / 0.65);
-        L[1].hip.rotation.x = -wind;
-        L[1].knee.rotation.x = k < 0.35 ? 1.3 * (k / 0.35) : 1.3 * (1 - (k - 0.35) / 0.65);
-        A[0].sh.rotation.x = -0.9 * Math.sin(k * Math.PI);
-        A[0].sh.rotation.z = -0.5 * Math.sin(k * Math.PI);
-        this.pelvis.rotation.x -= 0.15 * Math.sin(k * Math.PI);
-        this.chest.rotation.y -= 0.35 * Math.sin(k * Math.PI);
+      // Kick: back-swing, strike, follow-through on the ball-side leg; the
+      // other leg planted and flexed, the opposite arm out for balance, the
+      // shoulders wound open then turned through. Contact as the ball leaves.
+      if (this.kk) {
+        const K = this.kk;
+        K.t += dt;
+        if (K.t >= K.end) this.kk = null;
+        else {
+          const P = K.power, t = K.t, tc = K.contact;
+          const back = 0.45 + 0.45 * P, through = -(0.75 + 0.65 * P);
+          const ws = Math.max(0.06, Math.min(0.1, tc * 0.6));   // the strike itself
+          let hipX, kneeX, twist;
+          if (t < tc - ws) {                       // back-swing
+            const u = smooth(t / Math.max(1e-3, tc - ws));
+            hipX = back * u; kneeX = 0.3 + (1.3 + 0.5 * P) * u; twist = 0.3 * u;
+          } else if (t < tc) {                     // strike: thigh drives, knee snaps straight
+            const u = (t - (tc - ws)) / ws;
+            hipX = back + (-0.3 - back) * smooth(u); kneeX = (1.6 + 0.5 * P) * (1 - u * u) + 0.25 * u * u;
+            twist = 0.3 - 0.6 * u;
+          } else {                                 // follow-through, then back to the gait
+            const u = smooth((t - tc) / (K.end - tc));
+            hipX = -0.3 + (through + 0.3) * Math.min(1, u * 2.2); kneeX = 0.25 + 0.4 * u; twist = -0.3 * (1 - u);
+          }
+          const w = Math.min(1, t / 0.035) * Math.min(1, (K.end - t) / 0.12);
+          const kl = L[K.leg], pl = L[1 - K.leg], ka = A[1 - K.leg], sd = K.leg === 0 ? 1 : -1;
+          kl.hip.rotation.x += (hipX - kl.hip.rotation.x) * w;
+          kl.hip.rotation.z += (sd * 0.08 - kl.hip.rotation.z) * w;
+          kl.knee.rotation.x += (kneeX - kl.knee.rotation.x) * w;
+          kl.ankle.rotation.x += (0.5 - kl.ankle.rotation.x) * w;   // toe down, laces through
+          this.pelvis.position.y -= 0.05 * w;
+          this.pelvis.rotation.x += (0.08 + 0.1 * P) * w;          // over the ball
+          // The standing foot planted beside the ball (IK against the moved pelvis).
+          this.plantLeg(1 - K.leg, sd * 0.13, 0.02, w);
+          this.chest.rotation.y += sd * twist * w;
+          ka.sh.rotation.z += (sd * (0.9 + 0.3 * P) - ka.sh.rotation.z) * w;   // out to the side
+          ka.sh.rotation.x += (-0.35 - ka.sh.rotation.x) * w;
+          ka.elbow.rotation.x += (-0.4 - ka.elbow.rotation.x) * w;
+        }
       }
       // Slide tackle: drop to the turf, lead leg out straight, trail leg
       // tucked, lean back, arms behind for balance.

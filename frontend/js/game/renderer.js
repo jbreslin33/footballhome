@@ -391,9 +391,23 @@
         if (renderTick <= a.tick) b = a;
         const span = Math.max(b.tick - a.tick, 1);
         const alpha = Math.min(Math.max((renderTick - a.tick) / span, 0), 1);
-        while (!rp && this.kicks.length && this.kicks[0].tick <= renderTick) {
+        // Kicks are armed as soon as they are known (up to the interpolation
+        // delay ahead), so the back-swing plays BEFORE the ball leaves and
+        // the contact lands on it. Power = the ball's speed off the foot.
+        while (!rp && this.kicks.length && this.kicks[0].tick <= renderTick + INTERP_DELAY_TICKS) {
           const k = this.kicks.shift();
-          if (this.figures[k.slot]) this.figures[k.slot].kick();
+          const f = this.figures[k.slot];
+          if (!f) continue;
+          const lead = Math.max(0, k.tick - renderTick) / (this.tickRate || 30);
+          let power = 0.5;
+          const at = buf.find((e) => e.tick >= k.tick);
+          const after = buf.filter((e) => e.tick > k.tick && e.tick <= k.tick + 3).pop();
+          if (at && after && at.snap.ball && after.snap.ball) {
+            const sp = Math.hypot(after.snap.ball.x - at.snap.ball.x, after.snap.ball.y - at.snap.ball.y,
+                                  after.snap.ball.z - at.snap.ball.z) * (this.tickRate || 30) / (after.tick - at.tick);
+            power = Math.min(1, Math.max(0, (sp - 6) / 22));   // 6 m/s tap … 28 m/s shot
+          }
+          f.kick(lead, power);
         }
         // Ball first: every figure looks at it.
         if (this.ballMesh && a.snap.ball && b.snap.ball) {
