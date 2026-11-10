@@ -460,8 +460,17 @@
           const vy = pa.vy + (pb.vy - pa.vy) * alpha;
           const f = this.figures[i];
           f.root.position.set(x, 0, y);
+          // 2.3 feet: the later snapshot's plants, progress interpolated while the foot holds its state.
+          let feet = null;
+          if (pb.feet) {
+            feet = pb.feet.map((fb, k) => {
+              const fa = pa.feet && pa.feet[k];
+              const prog = fa && fa.down === fb.down && fb.prog >= fa.prog ? fa.prog + (fb.prog - fa.prog) * alpha : fb.prog;
+              return { down: fb.down, x: fb.x, y: fb.y, prog };
+            });
+          }
           f.update(simDt, { vx, vy, fx: pb.fx, fy: pb.fy, flags: pb.flags, ball: ballPos,
-                         hasBall: owner === i, me: { x, y } });
+                         hasBall: owner === i, me: { x, y }, feet });
           if (owner === i) {
             this.carrierSlot = i;
             this.lastOwnerPos = { x, y, team: i < this.halfN ? 0 : 1, yaw: f.yaw };

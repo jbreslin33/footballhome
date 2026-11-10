@@ -7871,3 +7871,57 @@ held there too long, or recycled there instead of carried or played long (carrie
 (3) Switches 20-22 v 10.7. (4) Ground passes in their third complete 50-70% (74-87). (5) Throws
 past 4 m. (6) Goal-side in the box 59-67% v 73. (7) Crosses 4.6 v 11.5. (8) Law 8, Law 13 walls,
 cards.
+
+### 8.178 G5.77 — the footstep body: velocity changes only through a planted foot (no migration; protocol 2.3)
+
+James 11/10: "is it possible for movement of players to be completely depending on their legs? or are
+we sliding them there and just making leg animations?" We were sliding them: a point mass whose velocity
+relaxed toward the wanted one every tick (Locomotion.hpp), legs drawn after the fact by the viewer. He
+chose, over full physics bodies (MuJoCo + RL from motion capture: no elite limb data to check it against,
+GPU training, slow harness), a FOOTSTEP body: every part checkable against our data, cheap, and the
+targets a full body could learn later. The first of seven slices (memory: body engine roadmap): footsteps
+→ dribble touches → kicks off a plant foot → headers → keeper → body contact with fouls and cards → laws
+by body part. Target: elite (PL) first, scaled down later.
+
+**Measured first** — new BODY ENVELOPE line v `scripts/benchmarks_tracking_envelope.py` (DFL 7 matches,
+outfielders, ball in play, v and a by central differences over ±0.24 s, the harness the same over ±7
+ticks). Real p99 by speed: speeding up 4.4 m/s² from a walk falling to 2.4 at 7-8 m/s; braking ~5 flat;
+lateral 4.2 rising to ~6; tightest turn at 5-6 m/s a 4.7 m radius. Ours (G5.76, seed 1000): braking p95
+5-6 (real ~3), p99 6-7 (4.7-5.3); lateral p99 at 4-8 m/s 3.9-4.5 (5.8-6.1); turn radius at 4-5 m/s 4.5 m
+(3.2). Time at speed: 19% at 4-5 m/s (9.3), 17% at 1-2 (32.0) — we run too much (a brain mole).
+
+**The change** [FH original on Weyand 2000, Novacheck 1998, LIPM (Kajita 2001)]. `core::Footsteps`: each
+player has two feet on a stride cycle — walking stride 0.75 + 0.55 v m, duty 0.62; running contact length
+0.95 m, swing 0.50 → 0.34 s with speed, blended 1.9-2.6 m/s. `Body::accel` is the G4.51 law with the
+footstep caps at his speed (the DFL p99 table, `physics.body.acc_/brk_/lat_<band>`, each scaled by his
+own brake/turn against a 50-rated body's), and World applies it ONLY while a foot is down, at 1/cf of the
+stride-average (cf = share of the stride with a foot down: 1 walking, 0.44 at 8 m/s), nothing in flight.
+The fall of the speeding-up envelope with speed is the fall of the contact share (0.39 → 0.22 duty =
+0.56×; real p99 4.4 → 2.4 = 0.55×). A foot lands half a contact ahead, 0.11 m to his side of his facing,
+offset by −a/ω² (ω² = g/0.9 m: behind to speed up, ahead to brake, outside to turn); planted, it never
+moves; in the air the engine re-reads where it will land. Standing, the feet stay put until the body is
+0.3 m off them; a man set down 4 m away (a restart) gets new feet. `physics.body.steps_on` 0 = the G4.51
+point mass. Protocol 2.3: an 11-byte feet tail per player on SNAPSHOT (PROTOCOL.md); players.js plants
+the engine's feet exactly and swings each from where it lifted to where it will land (its own gait stays
+for officials and 2.2 servers).
+
+**After** (on v off; seed 1000, then seed 2000).
+- Braking p99 6.0-6.9 → 5.0-5.7 every band (4.7-5.3); p95 5-6 → 4.7-5.1 (~3).
+- Speeding up p99 inside the real envelope every band (e.g. 1-2 m/s 5.1 → 4.4 (4.2)).
+- Lateral p99 at 4-8 m/s 3.9-4.5 → 4.1-4.7 (5.8-6.1): the body now allows ~6, the brain never asks;
+  turn radius at 4-5 m/s 4.5 → 4.3 (3.2).
+- Pressures 352 → 326, 361 → 333 a team-match (152). Aerial duels 39.1 → 35.6, 41.1 → 35.9 (44.1).
+  Passes completed 76.4 → 75.2, 76.7 → 74.4% (79.1). Goals 2.12 → 1.69, 1.69 → 1.31.
+- New tests: footsteps_velocity_changes_only_through_a_planted_foot (no change in flight, a planted foot
+  never moves, flight at speed), footsteps_envelope_falls_with_speed, snapshot_feet_tail_round_trips.
+  world_integrates_exactly now runs with steps off. Goldens re-locked (determinism, 3v3, 11v11).
+
+**What it says.** The body is now right where the data can see it (braking and speeding up at the real
+p99); what stays off is what the BRAIN asks of it — hard stops far too often (braking p95 5 v 3), sharp
+turns at speed never (lateral 4.5 v 6), too much time at 4-6 m/s. Aerial duels fell: a man in flight can
+no longer adjust under a high ball — the headers slice gives him a real take-off.
+
+**Next moles.** (1) Dribble touches: the ball glued 0.4 m ahead; real carries touch every 0.7-0.9 s,
+ball median 0.44 → 0.79 m ahead by speed (`benchmarks_tracking_carry.py`) — roadmap slice 2. (2) The
+brain's braking (p95 5 v 3) and its turns at speed (lateral 4.5 v 6). (3) Time at speed 4-6 m/s twice
+real. (4) Aerial duels 36 v 44. (5) §8.177's own-third pass volume.

@@ -90,7 +90,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.68 (2026-11-09): the away side's formation turned 180° (y mirrored too).
 // Re-locked G5.72 (2026-11-09): marking — CB/FB/DM goal-side of the man in their zone (§8.173).
 // Re-locked G5.73 (2026-11-09): a pass goes high at the real share for its origin and length (§8.174).
-constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
+// Re-locked G5.77 (2026-11-10): the footstep body (velocity only through a planted foot).
+constexpr std::uint64_t kGolden3v3   = 0x57434eeb03680ddeULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -125,7 +126,8 @@ constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
 // Re-locked G5.74 (2026-11-09): a zone's share split by distance; the 3v3 unchanged.
 // Re-locked G5.75 (2026-11-09): high share by direction too; the 3v3 unchanged.
 // Re-locked G5.76 (2026-11-10): our keeper out of the zone split, at his real share; the 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0xb032b019f542e0e0ULL;
+// Re-locked G5.77 (2026-11-10): the footstep body.
+constexpr std::uint64_t kGolden11v11 = 0x7925d738c56b05e4ULL;
 
 struct Rig {
     World world;

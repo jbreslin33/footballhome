@@ -144,7 +144,17 @@ facing (appended in 1.8, G4.53):
 officials (appended in 1.16, G4.93):
   u8 official_count |
   per official: i64 pos_x | i64 pos_y | i8 face_x | i8 face_y | u8 flags
+feet (appended in 2.3, G5.77), per player in slot order:
+  u8 feet_down | i16 foot0_x | i16 foot0_y | i16 foot1_x | i16 foot1_y | u8 prog0 | u8 prog1
 ```
+
+- Feet (2.3): the engine's footstep body (`core::Footsteps`, DESIGN §8.178).
+  `feet_down` bit0 / bit1 = foot 0 (his right) / foot 1 on the ground. The
+  i16s are centimetres in pitch coordinates: where a planted foot stands,
+  or where a foot in the air will land (re-read every tick until it does).
+  `prog` = 0..255 through the current stance or swing. 11 B per player,
+  242 B for 22. A 2.2 decoder ignores the tail (§9); a 2.3 decoder of a 2.2
+  frame gets no feet and the viewer falls back to its own gait.
 
 - Officials (1.16): index 0 the referee, 1 the assistant on the +y
   touchline (judges the +x half), 2 the assistant on −y (the −x half) —

@@ -59,6 +59,7 @@ void GameServer::startMatch() {
                        Fixed64::fromFraction(105, 2), Fixed64::fromInt(cfg_.pitch_half_y),
                        cfg_.formation_home, cfg_.formation_away};
     world_.setLocomotion(core::Locomotion(cfg_.model_params));   // G4.51
+    world_.setFootsteps(core::Footsteps(cfg_.model_params));     // G5.77
     world_.setBallFlight(core::BallFlight(cfg_.model_params));   // G4.87
     brain_.setModelParams(cfg_.model_params);
     world_.setMatchSeed(cfg_.match_seed);
@@ -390,6 +391,15 @@ net::Bytes GameServer::buildSnapshotFrame() const {
             (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0) |
             (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0) |
             (world_.takingThrow(i) ? 16 : 0));   // bit4 (G5.2): ball in both hands, overhead
+        {   // 2.3 (G5.77): his feet
+            const core::FootState& ft = world_.feet(i);
+            snap.feet_down = static_cast<std::uint8_t>((ft.down[0] ? 1 : 0) | (ft.down[1] ? 2 : 0));
+            for (int k = 0; k < 2; ++k) {
+                snap.foot_x[k] = static_cast<std::int16_t>((ft.plant[k].x * Fixed64::fromInt(100)).raw >> Fixed64::FRAC_BITS);
+                snap.foot_y[k] = static_cast<std::int16_t>((ft.plant[k].y * Fixed64::fromInt(100)).raw >> Fixed64::FRAC_BITS);
+                snap.foot_prog[k] = ft.prog[k];
+            }
+        }
         s.players.push_back(snap);
     }
     const core::BallState& b = world_.ball();

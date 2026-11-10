@@ -10,6 +10,7 @@
 
 #include "core/Ball.hpp"
 #include "core/BallFlight.hpp"
+#include "core/Footsteps.hpp"
 #include "core/Locomotion.hpp"
 #include "core/Officials.hpp"
 #include "core/PlayerSkill.hpp"
@@ -128,6 +129,9 @@ public:
     void setKeeper(SlotIndex slot, bool keeper);
     // G4.51: the shared dive timings (mig 678); G4.52: each slot's Body.
     void setLocomotion(const Locomotion& l) { loco_ = l; }
+    // G5.77 (§8.178): the footstep body — velocity changes only through a planted foot.
+    void setFootsteps(const Footsteps& f) { steps_ = f; }
+    const FootState& feet(SlotIndex slot) const { return feet_[slot]; }
     const Locomotion& locomotion() const noexcept { return loco_; }
     // G4.87: how the ball flies (air drag) — the one law World and Brain share.
     void setBallFlight(const BallFlight& f) { ball_flight_ = f; }
@@ -295,6 +299,8 @@ private:
     math::Fixed64 keeper_reach_ = kKeeperReach;
     math::Fixed64 keeper_shot_reach_{};
     std::vector<Body> bodies_;
+    std::vector<FootState> feet_;   // G5.77: presentation + the contact gate (not hashed: the motion it gates is)
+    Footsteps steps_;
     // G5.3: who heads it, or -1. Fills `duel` when both teams went up for it.
     int aerialWinner(bool& duel) const;
     void headIt(SlotIndex slot, bool duel);

@@ -17,7 +17,7 @@ namespace fh::game::net {
 
 // Protocol version — major bumps reject at HELLO, minor is additive.
 inline constexpr std::uint8_t kProtoMajor = 2;
-inline constexpr std::uint8_t kProtoMinor = 2;  // 2.0 (G5.23): the old brain's frames and fields gone; 2.1 (G5.35) TEAM_LIST + NEW_MATCH; 2.2 (G5.64) BRAIN concept + CONCEPT_LEGEND
+inline constexpr std::uint8_t kProtoMinor = 3;  // 2.3 (G5.77) feet tail on SNAPSHOT; 2.0 (G5.23): the old brain's frames and fields gone; 2.1 (G5.35) TEAM_LIST + NEW_MATCH; 2.2 (G5.64) BRAIN concept + CONCEPT_LEGEND
 inline constexpr std::uint8_t kProtoPatch = 0;
 
 // Envelope: u16 payload_length | u8 frame_type | u8 flags | payload.

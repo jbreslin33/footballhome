@@ -325,6 +325,44 @@
         const fx = base + dx * along, fz = dz * along, ct = Math.cos(leg.tw), st = Math.sin(leg.tw);
         return { x: fx * ct + fz * st, z: -fx * st + fz * ct, y: h + 0.085, pitchF };
       });
+      // The engine's feet (2.3 wire, G5.77): when the snapshot carries them, each leg goes where
+      // the engine put that foot — a planted foot stays on its spot in the world, a foot in the
+      // air travels from where it left the ground to where the engine says it lands. The
+      // procedural gait above stays as the fallback (officials, older servers).
+      const WF = this.wireFeet;
+      if (WF && this.me) {
+        const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
+        const toLocal = (wx, wy) => { const ex = wx - this.me.x, ez = wy - this.me.y; return { x: ex * cy - ez * sy, z: ex * sy + ez * cy }; };
+        this.liftFrom = this.liftFrom || [null, null];
+        let downU = -1;
+        for (let i = 0; i < 2; i++) {
+          const ft = WF[i], leg = L[i];
+          let wx, wy, h, pitchF;
+          if (ft.down) {
+            this.liftFrom[i] = { x: ft.x, y: ft.y };
+            wx = ft.x; wy = ft.y;
+            const u = ft.prog;
+            pitchF = m * (u < 0.15 ? -0.25 * (1 - r) * (1 - u / 0.15) : u > 0.6 ? (0.45 + 0.2 * r) * smooth((u - 0.6) / 0.4) : 0);
+            h = 0.12 * Math.sin(Math.max(0, pitchF));
+            downU = Math.max(downU, 1 - Math.abs(u - 0.5) * 2);
+          } else {
+            const u = ft.prog, from = this.liftFrom[i] || { x: ft.x, y: ft.y };
+            const late = 0.12 * r, k = smooth((u - late) / (1 - late));
+            wx = from.x + (ft.x - from.x) * k; wy = from.y + (ft.y - from.y) * k;
+            const hw = Math.sin(Math.PI * u), hr = smooth(u / 0.35) * (1 - smooth((u - 0.35) / 0.6));
+            const run = Math.hypot(ft.x - from.x, ft.y - from.y);   // a step in place barely lifts
+            h = Math.min(lift + 0.03, 0.04 + run * 0.4) * (hw + (hr - hw) * r);
+            pitchF = m * ((0.55 + 0.2 * r) * (1 - smooth(u / 0.45)) - 0.12 * Math.sin(Math.PI * u) - 0.25 * (1 - r) * smooth((u - 0.8) / 0.2));
+          }
+          const lp = toLocal(wx, wy);
+          feet[i] = { x: lp.x, z: lp.z, y: h + 0.085, pitchF };
+          leg.along = lp.z * dz + lp.x * dx;
+          leg.tw = 0;
+        }
+        // COM low at mid-stance running / high walking; in flight (no foot down) it rides high.
+        const oscW = downU >= 0 ? downU * 2 - 1 : -0.8;
+        py = 0.95 - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * oscW - 0.035 * r * oscW) - 0.05 * ready * (1 - m);
+      }
       // Pelvis yaw follows the forward foot of the right leg (side -1).
       const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
       this.pelvis.position.set(0, py, 0);
@@ -415,6 +453,8 @@
 
     // ctx: { vx, vy, flags, ball:{x,y,z}|null, hasBall, me:{x,y} }
     update(dt, ctx) {
+      this.wireFeet = ctx.feet || null;   // 2.3: the engine's feet
+      this.me = ctx.me;
       const { vx, vy } = ctx;
       const speed = Math.hypot(vx, vy);
       this.speed = ease(this.speed, speed, 10, dt);

@@ -131,6 +131,31 @@ public:
         return math::Vec2{v.x + a.x * dt, v.y + a.y * dt};
     }
 
+    // G5.77 (§8.178): the same law as step(), as an ACCELERATION, its caps the footstep body's at
+    // this speed (core::Footsteps, the DFL envelope) — speeding up, braking, sideways — each scaled
+    // by this player's own against a 50-rated body's (brake 7, turn 6). World applies it only while
+    // a foot is down.
+    math::Vec2 accel(math::Vec2 v, math::Vec2 wanted, math::Fixed64 acc_cap, math::Fixed64 brk_cap,
+                     math::Fixed64 lat_cap) const {
+        math::Vec2 a{(wanted.x - v.x) / tau_, (wanted.y - v.y) / tau_};
+        const math::Fixed64 kb = brake_ / math::Fixed64::fromInt(7), kt = turn_ / math::Fixed64::fromInt(6);
+        const math::Fixed64 speed2 = math::lengthSquared(v);
+        if (speed2 < math::Fixed64::fromFraction(1, 4)) {
+            const math::Fixed64 c = acc_cap > brk_cap * kb ? acc_cap : brk_cap * kb;
+            return capped(a, c);
+        }
+        const math::Fixed64 speed = math::fx_sqrt(speed2);
+        const math::Vec2 u{v.x / speed, v.y / speed};
+        math::Fixed64 along = a.x * u.x + a.y * u.y;
+        math::Vec2 side{a.x - u.x * along, a.y - u.y * along};
+        if (along.raw < 0) {
+            along = along * tau_ / brake_tau_;
+            if (along < -brk_cap * kb) along = -brk_cap * kb;
+        } else if (along > acc_cap) along = acc_cap;
+        side = capped(side, lat_cap * kt);
+        return math::Vec2{u.x * along + side.x, u.y * along + side.y};
+    }
+
     // How far he gets along a straight line in t seconds, starting at v0
     // (his speed along that line, may be negative) with top speed `top`:
     // top·t − (top − v0)·τ·(1 − e^(−t/τ)). Exact for the uncapped law; the

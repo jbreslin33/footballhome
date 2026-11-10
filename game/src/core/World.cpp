@@ -32,6 +32,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
       die_(player_count, 0),
       pass_to_(player_count, 0xFF),
       bodies_(player_count),
+      feet_(player_count),
       keeper_(player_count, false),
       half_x_{pitch_half_x},
       half_y_{pitch_half_y},
@@ -130,9 +131,25 @@ void World::tickPlayers() {
         Fixed64 share = Fixed64::one();
         if (desire.x.raw != 0 || desire.y.raw != 0)
             share = body.gait(p.face, math::normalized(desire));
-        const Vec2 v = flying ? Vec2{p.vel.x, p.vel.y}
-                              : body.step(Vec2{p.vel.x, p.vel.y},
-                                           Vec2{desire.x * top * share, desire.y * top * share}, kTickDt);
+        Vec2 v;
+        const Vec2 v0{p.vel.x, p.vel.y};
+        const Vec2 vw{desire.x * top * share, desire.y * top * share};
+        if (flying) {
+            v = v0;
+            feet_[i].down[0] = feet_[i].down[1] = false;
+        } else if (steps_.on()) {
+            // G5.77 (§8.178): his feet decide. The law's push at this speed's caps, delivered only
+            // while a foot is down, at 1/cf of the stride-average so the stride adds up the same.
+            const Fixed64 s0 = math::length(v0);
+            const Vec2 a = body.accel(v0, vw, steps_.accCap(s0), steps_.brkCap(s0), steps_.latCap(s0));
+            const Footsteps::Timing tm = Footsteps::timing(s0);
+            const Vec2 ac{a.x / tm.cf, a.y / tm.cf};
+            const bool moving = s0 > Fixed64::fromFraction(1, 4) || math::lengthSquared(vw) > Fixed64::fromFraction(1, 16);
+            const bool contact = steps_.advance(feet_[i], Vec2{p.pos.x, p.pos.y}, v0, ac, p.face, moving, kTickDt);
+            v = contact ? Vec2{v0.x + ac.x * kTickDt, v0.y + ac.y * kTickDt} : v0;
+        } else {
+            v = body.step(v0, vw, kTickDt);
+        }
         p.vel = Vec3{v.x, v.y, Fixed64::zero()};
         p.pos += p.vel * kTickDt;
         // Pitch bounds (+2 m apron): G1's live test watched a scorer chase

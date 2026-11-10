@@ -122,6 +122,19 @@
         }
       }
     }
+    // Feet (2.3 tail, G5.77): per player u8 down bits | i16 x0 | i16 y0 | i16 x1 | i16 y1 (cm) |
+    // u8 prog0 | u8 prog1 — where each foot stands (in the air: where it will land) and how far
+    // through its stance / swing. The engine's own steps: the viewer plants them exactly.
+    if (p + 11 * count <= view.byteLength) {
+      for (let i = 0; i < count; i++) {
+        const d = view.getUint8(p);
+        players[i].feet = [
+          { down: !!(d & 1), x: view.getInt16(p + 1, true) / 100, y: view.getInt16(p + 3, true) / 100, prog: view.getUint8(p + 9) / 255 },
+          { down: !!(d & 2), x: view.getInt16(p + 5, true) / 100, y: view.getInt16(p + 7, true) / 100, prog: view.getUint8(p + 10) / 255 },
+        ];
+        p += 11;
+      }
+    }
     return { tick, players, ball, match, officials };
   }
 

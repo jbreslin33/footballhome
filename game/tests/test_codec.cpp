@@ -135,8 +135,8 @@ FH_TEST(snapshot_truncated_player_list_fails) {
     // 2-byte levels, 1.8's 2-byte facing per player) AND into the last
     // player record. (Missing/partial tails alone are tolerated; the
     // PLAYER array is 1.0 structure and must be whole.)
-    // (1.16 adds a 1-byte officials count, empty here.)
-    p.resize(p.size() - 1 - 2 * 3 - 25 - 6 - 4);
+    // (1.16 adds a 1-byte officials count, empty here; 2.3 an 11-byte feet record per player.)
+    p.resize(p.size() - 11 * 3 - 1 - 2 * 3 - 25 - 6 - 4);
     FH_EXPECT(!decodeSnapshot(p).has_value());
 }
 
@@ -181,11 +181,30 @@ FH_TEST(snapshot_officials_tail_round_trips) {
     FH_EXPECT_EQ(d->officials[0].flags, 0);
     // A 1.15 snapshot (no officials tail) still decodes, with none.
     Bytes old = payload;
-    old.resize(old.size() - 1 - 3 * 19);
+    old.resize(old.size() - 11 * 22 - 1 - 3 * 19);   // 2.3's feet and 1.16's officials off
     auto o = decodeSnapshot(old);
     FH_EXPECT(o.has_value());
     FH_EXPECT_EQ(o->officials.size(), 0u);
     FH_EXPECT_EQ(o->players.size(), 22u);
+}
+
+FH_TEST(snapshot_feet_tail_round_trips) {
+    // 2.3 (G5.77): his feet — down bits, plants in cm (negative too), progress.
+    SnapshotFrame s;
+    s.tick = 4;
+    s.players.resize(2);
+    s.players[1].feet_down = 2;
+    s.players[1].foot_x[0] = -5012; s.players[1].foot_y[0] = 3311;
+    s.players[1].foot_x[1] = 77; s.players[1].foot_y[1] = -1;
+    s.players[1].foot_prog[0] = 200; s.players[1].foot_prog[1] = 9;
+    auto d = decodeSnapshot(encodeSnapshot(s));
+    FH_EXPECT(d.has_value());
+    FH_EXPECT_EQ(d->players[1].feet_down, 2);
+    FH_EXPECT_EQ(d->players[1].foot_x[0], -5012);
+    FH_EXPECT_EQ(d->players[1].foot_y[0], 3311);
+    FH_EXPECT_EQ(d->players[1].foot_y[1], -1);
+    FH_EXPECT_EQ(d->players[1].foot_prog[0], 200);
+    FH_EXPECT_EQ(d->players[0].feet_down, 3);
 }
 
 FH_TEST(event_round_trip) {

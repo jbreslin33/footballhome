@@ -5,6 +5,7 @@
 
 #include "test_harness.hpp"
 #include "core/World.hpp"
+#include <cstdlib>
 
 using fh::game::core::MoveIntent;
 using fh::game::core::World;
@@ -32,7 +33,9 @@ FH_TEST(world_starts_at_origin_tick_zero) {
 FH_TEST(world_integrates_exactly) {
     // G4.51: velocity follows the locomotion law, integrated with the
     // world's own ops. Off the ball (y = 10) so he runs at full top speed.
+    // G5.77: the point-mass law, with the footstep body off (physics.body.steps_on 0).
     World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    { fh::game::core::ModelParams off; off.setMilli("physics.body.steps_on", 0); w.setFootsteps(fh::game::core::Footsteps(off)); }
     w.placePlayer(0, {Fixed64::zero(), Fixed64::fromInt(10), Fixed64::zero()},
                   {Fixed64::one(), Fixed64::zero()});
     MoveIntent intent;
@@ -191,6 +194,50 @@ FH_TEST(players_cannot_occupy_same_spot) {
         FH_EXPECT(fh::game::math::lengthSquared(d).raw >=
                   (min_d_sq * Fixed64::fromFraction(9, 10)).raw);
     }
+}
+
+// G5.77 (§8.178): the footstep body. Running flat out, his velocity changes only on ticks with a
+// foot on the ground (none in the stride's flight), a planted foot never moves while it is down,
+// and the stride has flight at speed.
+FH_TEST(footsteps_velocity_changes_only_through_a_planted_foot) {
+    World w{1, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    w.placePlayer(0, {Fixed64::fromInt(-40), Fixed64::fromInt(10), Fixed64::zero()},
+                  {Fixed64::one(), Fixed64::zero()});
+    MoveIntent intent;
+    intent.move = Vec2{Fixed64::one(), Fixed64::zero()};
+    w.setIntent(0, intent);
+    int flight = 0, contact = 0, moved_while_down = 0, changed_in_air = 0;
+    Vec2 plant_was[2] = {};
+    bool down_was[2] = {false, false};
+    for (int t = 0; t < 150; ++t) {
+        const Fixed64 vx0 = w.player(0).vel.x, vy0 = w.player(0).vel.y;
+        w.tick();
+        const auto& f = w.feet(0);
+        const bool any = f.down[0] || f.down[1];
+        if (any) ++contact; else ++flight;
+        if (!any && t > 30 && (w.player(0).vel.x != vx0 || w.player(0).vel.y != vy0)) ++changed_in_air;
+        for (int i = 0; i < 2; ++i) {
+            if (f.down[i] && down_was[i] && (f.plant[i].x != plant_was[i].x || f.plant[i].y != plant_was[i].y)) ++moved_while_down;
+            plant_was[i] = f.plant[i]; down_was[i] = f.down[i];
+        }
+    }
+    FH_EXPECT(flight > 10);          // a running stride leaves the ground
+    FH_EXPECT(contact > flight);
+    FH_EXPECT_EQ(changed_in_air, 0);
+    FH_EXPECT_EQ(moved_while_down, 0);
+}
+
+FH_TEST(footsteps_envelope_falls_with_speed) {
+    // DFL p99 (benchmarks_tracking_envelope.py): speeding up 4.4 m/s^2 slow, 2.4 at 7-8 m/s.
+    const fh::game::core::Footsteps F;
+    auto ms = [](Fixed64 v) { return static_cast<int>((v * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS); };
+    FH_EXPECT(std::abs(ms(F.accCap(Fixed64::fromFraction(1, 2))) - 4400) <= 2);
+    FH_EXPECT(std::abs(ms(F.accCap(Fixed64::fromFraction(15, 2))) - 2400) <= 2);
+    FH_EXPECT(std::abs(ms(F.latCap(Fixed64::fromFraction(13, 2))) - 6100) <= 2);
+    const auto slow = fh::game::core::Footsteps::timing(Fixed64::fromFraction(3, 2));
+    const auto fast = fh::game::core::Footsteps::timing(Fixed64::fromInt(8));
+    FH_EXPECT(slow.cf == Fixed64::one());         // walking: always a foot down
+    FH_EXPECT(fast.cf < Fixed64::fromFraction(1, 2));   // sprinting: mostly in the air
 }
 
 FH_TEST_MAIN()

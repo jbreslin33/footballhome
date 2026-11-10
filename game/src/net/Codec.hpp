@@ -55,6 +55,11 @@ struct PlayerSnap {
     // 1.8 tail (G4.53): where his body faces, a unit vector ×127 — apart
     // from his velocity now (a backpedal faces against it).
     std::int8_t   face_x = 127, face_y = 0;
+    // 2.3 tail (G5.77): his feet — bit0/bit1 foot 0/1 on the ground; where each stands (or, in
+    // the air, will land), centimetres; how far through its stance / swing, 0..255.
+    std::uint8_t  feet_down = 3;
+    std::int16_t  foot_x[2] = {0, 0}, foot_y[2] = {0, 0};
+    std::uint8_t  foot_prog[2] = {0, 0};
 };
 
 struct BallSnap {

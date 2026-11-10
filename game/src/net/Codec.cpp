@@ -187,6 +187,12 @@ Bytes encodeSnapshot(const SnapshotFrame& f) {
         w.u8(static_cast<std::uint8_t>(o.face_y));
         w.u8(o.flags);
     }
+    // 2.3 tail (G5.77): per player u8 feet down | i16 x0 | i16 y0 | i16 x1 | i16 y1 (cm) | u8 prog0 | u8 prog1.
+    for (const PlayerSnap& p : f.players) {
+        w.u8(p.feet_down);
+        for (int i = 0; i < 2; ++i) { w.u16(static_cast<std::uint16_t>(p.foot_x[i])); w.u16(static_cast<std::uint16_t>(p.foot_y[i])); }
+        w.u8(p.foot_prog[0]); w.u8(p.foot_prog[1]);
+    }
     return std::move(w.out);
 }
 
@@ -239,6 +245,13 @@ std::optional<SnapshotFrame> decodeSnapshot(const Bytes& payload) {
                 o.flags = r.u8();
                 f.officials.push_back(o);
             }
+        }
+    }
+    if (r.at + std::size_t{11} * f.players.size() <= payload.size()) {  // 2.3 tail: feet
+        for (PlayerSnap& p : f.players) {
+            p.feet_down = r.u8();
+            for (int i = 0; i < 2; ++i) { p.foot_x[i] = static_cast<std::int16_t>(r.u16()); p.foot_y[i] = static_cast<std::int16_t>(r.u16()); }
+            p.foot_prog[0] = r.u8(); p.foot_prog[1] = r.u8();
         }
     }
     return f;
