@@ -155,6 +155,7 @@ struct Placement {
     std::vector<Point> men;                   // his targets that are on the pitch, in order
     std::optional<Point> b;                   // target B, when on the pitch
     int ballWith;
+    std::vector<Point> theirs;                // their outfielders (not #1), any order
 };
 
 class JobRule {
@@ -349,12 +350,37 @@ protected:
     }
 };
 
+// The free man at the back (libero, concept 26).  Owner's match-up notes
+// (mig 912): everyone else takes a man, "5 is the libero" takes nobody.
+// He was on 'home' and sat on our keeper (the match shapes draw him at
+// y 15–18) — 30 m behind a high press (11/9).  Now he sweeps: dist_m
+// goal-side of their deepest outfielder, so he sits behind the man-markers
+// (mark = 2 m goal-side of their man) ready for the ball over or through;
+// across, lane_t of the way from the middle toward the ball, so he leans to
+// the ball side without leaving the centre.  Never closer than 5% to our
+// line.  [FH] geometry, not measured.
+class SweepRule : public JobRule {
+public:
+    const char* code() const override { return "sweep"; }
+protected:
+    bool needsMen() const override { return false; }
+    Point place(const Placement& p) const override {
+        if (p.theirs.empty()) return p.home;
+        Point deep = p.theirs[0];
+        for (const auto& o : p.theirs) if (o.y < deep.y) deep = o;
+        const double x = 50 + (p.ball.x - 50) * p.kind.laneT.value_or(0.33);
+        const double y = deep.y - p.kind.distM * 100.0 / Pitch::L;
+        return {x, std::max(5.0, y)};
+    }
+};
+
 // ── The rule book: tactic_job_rules.code → its rule ─────────────────────
 class RuleBook {
 public:
     RuleBook() {
         add<HomeRule>(); add<MarkRule>(); add<PressRule>(); add<CoverShadowRule>();
         add<LaneRule>(); add<HoldBetweenRule>(); add<StraddleRule>(); add<CoverOverTopRule>();
+        add<SweepRule>();
     }
     // nullptr = a rule this build doesn't know (the man stays home).
     const JobRule* find(const std::string& code) const {
@@ -389,7 +415,8 @@ public:
         f.home = blockHome(raw);
         Solution out;
         std::map<int, Point> opp;
-        for (const auto& o : s.opponents) opp[o.number] = o.at;
+        std::vector<Point> theirs;
+        for (const auto& o : s.opponents) { opp[o.number] = o.at; if (o.number != 1) theirs.push_back(o.at); }
         const auto ballMan = opp.find(s.ballWith);
         out.ball = ballMan != opp.end() ? ballMan->second : Point{50, 95};
 
@@ -411,7 +438,7 @@ public:
                     for (int n : job.targets) { const auto o = opp.find(n); if (o != opp.end()) men.push_back(o->second); }
                     std::optional<Point> b;
                     if (job.targetB) { const auto o = opp.find(*job.targetB); if (o != opp.end()) b = o->second; }
-                    spot = rule->spot(Placement{job, kt->second, f, out.ball, home, std::move(men), b, s.ballWith});
+                    spot = rule->spot(Placement{job, kt->second, f, out.ball, home, std::move(men), b, s.ballWith, theirs});
                 }
             }
             if (s.law && pid != 1) spot = s.law->cap(spot);
