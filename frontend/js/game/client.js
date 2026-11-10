@@ -22,6 +22,7 @@
     document.getElementById('btn-tackle'));
 
   const mySlots = new Set();
+  let viewMenu = null;    // ☰ View (view-menu.js), set once the controls exist
   let activeSlot = null;  // the ONE slot the controls drive right now
   let autoSwitch = false; // AUTO: drive whichever held player is ball-nearest
   let hello = null;
@@ -247,6 +248,7 @@
   const brainBar = document.createElement('button');
   brainBar.type = 'button';
   brainBar.className = 'game-only';
+  brainBar.dataset.hud = 'brain';
   brainBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);' +
     'top:calc(env(safe-area-inset-top, 0px) + 30px);z-index:20;border:0;border-radius:14px;' +
     'padding:5px 14px;font:700 11px system-ui,sans-serif;cursor:pointer;';
@@ -254,6 +256,7 @@
   const brainSides = [0, 1].map((team) => {
     const el = document.createElement('div');
     el.className = 'game-only';
+    el.dataset.hud = 'brain';
     el.hidden = true;
     el.setAttribute('role', 'region');
     el.style.cssText = `position:fixed;${team === 0 ? 'left' : 'right'}:max(8px, env(safe-area-inset-${team === 0 ? 'left' : 'right'}, 0px));` +
@@ -374,6 +377,7 @@
   let teamList = [];
   const matchBar = document.createElement('div');
   matchBar.className = 'game-only';
+  matchBar.dataset.hud = 'match';
   matchBar.hidden = true;
   matchBar.setAttribute('role', 'group');
   matchBar.setAttribute('aria-label', 'Matchup');
@@ -441,6 +445,7 @@
   let simSpeed = 100, resumeSpeed = 100;
   const speedBar = document.createElement('div');
   speedBar.className = 'game-only';
+  speedBar.dataset.hud = 'speed';
   speedBar.hidden = true;
   speedBar.setAttribute('role', 'group');
   speedBar.setAttribute('aria-label', 'Game speed');
@@ -588,6 +593,7 @@
   const brainHist = [];   // [{tick, entries}] — the BRAIN feed, by the tick it arrived at
   const replayBar = document.createElement('div');
   replayBar.className = 'game-only';
+  replayBar.dataset.hud = 'replay';
   replayBar.setAttribute('role', 'group');
   replayBar.setAttribute('aria-label', 'Replay');
   replayBar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);display:flex;flex-wrap:wrap;' +
@@ -921,6 +927,7 @@
   const camBtn = document.getElementById('btn-cam');
   renderer.rig.onModeChange = (label) => {
     if (camBtn) camBtn.textContent = 'CAM ' + label;
+    if (viewMenu) viewMenu.paint();
   };
   if (camBtn) {
     camBtn.textContent = 'CAM ' + renderer.rig.label();
@@ -951,6 +958,7 @@
   // the list is the sure way. [ and ] step through them, 7 is the camera.
   const watchBar = document.createElement('div');
   watchBar.className = 'game-only';
+  watchBar.dataset.hud = 'watch';
   watchBar.style.cssText = 'position:fixed;right:12px;top:284px;width:150px;z-index:20;' +
     'display:flex;flex-direction:column;gap:4px;';
   const watchSel = document.createElement('select');
@@ -1030,6 +1038,7 @@
   const leavesBtn = document.getElementById('btn-leaves');
   let leavesOn = false;
   const toggleLeaves = () => {
+    if (viewMenu && mode === 'game') { viewMenu.set('leaves', !viewMenu.get('leaves')); return; }
     leavesOn = !leavesOn;
     if (renderer.field && renderer.field.setLeaves) renderer.field.setLeaves(leavesOn);
     if (leavesBtn) leavesBtn.textContent = leavesOn ? 'LEAVES ON' : 'LEAVES OFF';
@@ -1048,6 +1057,7 @@
                    off: 'CONTOURS OFF' };
   let cmode = 0;
   const toggleContours = () => {
+    if (viewMenu && mode === 'game') { viewMenu.set('contours', !viewMenu.get('contours')); return; }
     cmode = (cmode + 1) % CMODES.length;
     if (renderer.field && renderer.field.setContours) renderer.field.setContours(CMODES[cmode]);
     if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
@@ -1102,7 +1112,7 @@
     const big = ps.find((p) => p.id === '11v11');
     const seven = ps.find((p) => p.id === '7v7');
     if (big) f.setGamePitch({ x: big.x, z: big.z, rotDeg: big.rot });
-    f.setGameSeven(mode === 'game' && seven
+    f.setGameSeven(mode === 'game' && seven && (!viewMenu || viewMenu.get('seven'))
       ? { x: seven.x, z: seven.z, rotDeg: seven.rot, length: seven.size[0] * 0.9144, width: seven.size[1] * 0.9144 }
       : null);
   }
@@ -1110,6 +1120,7 @@
     const design = mode === 'design';
     const other = !!COMING[mode];
     document.body.classList.toggle('mode-design', design);
+    document.body.classList.toggle('mode-game', mode === 'game');
     document.body.classList.toggle('mode-other', other);
     // The match (players + ball) only in GAME and DESIGN; the other modes
     // show the complex itself — field, animals, buildings, trees.
@@ -1133,6 +1144,8 @@
     // Last: in DESIGN the planner's layer pills decide contours, today's
     // pitch, water and the match, over the mode defaults above.
     if (planner) planner.setOn(design);
+    // GAME: the ☰ View menu decides what's drawn (essentials only by default).
+    if (viewMenu) { viewMenu.apply(); viewMenu.paint(); }
   };
   const setMode = (m) => {
     if (m === mode) return;
@@ -1146,6 +1159,18 @@
       b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); setMode(b.dataset.mode); });
     }
   }
+  // ☰ View (James 11/10): everything beyond field, ball, players and refs is opt-in, and every
+  // floating control can be hidden; the menu carries camera, brain and mode so nothing is lost.
+  viewMenu = window.ViewMenu ? new window.ViewMenu({
+    renderer,
+    isGame: () => mode === 'game',
+    cam: { label: () => renderer.rig.label(), cycle: () => renderer.rig.cycle(), zoom: zoomBy,
+           follow: () => renderer.rig.follow, toggleFollow },
+    brain: { on: () => brainOn, toggle: () => setBrainOn(!brainOn) },
+    modes: { list: [['game', '🎮 Game'], ['design', '📐 Design'], ['practice', '🦺 Practice'], ['barn', '🎪 Barn'], ['rodeo', '🐂 Rodeo']],
+             current: () => mode, set: (m) => setMode(m) },
+    syncSeven: () => syncGameField(),
+  }) : null;
   applyMode();
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch'];
   window.addEventListener('keydown', (e) => {
@@ -1164,6 +1189,7 @@
 
   function loop() {
     renderer.frame();
+    if (viewMenu) viewMenu.tick();
     if (renderer.replay) { syncReplayBar(); syncReplayBrain(); }
     // Stale-socket watchdog: a dead TCP path can go minutes without a
     // close event. No snapshot for 4 s while "open" → force the close

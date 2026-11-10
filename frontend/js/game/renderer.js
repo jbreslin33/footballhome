@@ -145,6 +145,7 @@
       sun.shadow.bias = -0.0004;
       sun.shadow.normalBias = 0.03;
       this.scene.add(sun);
+      this.sun = sun;   // view-menu.js switches its shadow
       this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5));
 
       window.addEventListener('resize', () => this.resize());
