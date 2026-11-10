@@ -6096,6 +6096,13 @@ save reaches a running match on reload (Game Center may send it after saving).
 - *cover_over_top A, B* (11/7, mig 1178; kind cover_over_top: concept cover, dist_m 8, lane_t
   0.33): lane_t of the way from A toward B, then dist_m toward our goal; with no B, dist_m
   straight goal-side of A (`CoverOverTopRule`). It covers both A and B.
+- *sweep* (11/9, mig 1208, b6e2d593; the libero, concept 26; dist_m 8, lane_t 0.33): dist_m
+  goal-side of their deepest outfielder (y in pitch %, so dist_m × 100 / L), across at
+  x = 50 + (ball.x − 50) × lane_t, never below y 5 (`SweepRule`). He used to stand on 'home' and
+  sat on our keeper (y 15-18) 30 m behind a high press; now he is behind the markers, ready for
+  the ball over or through. `Placement.theirs` (their outfielders, #1 out) carries what he reads.
+  [FH] geometry, not measured. Mig 1209 adds opponent-only formations 4-1-4-1, 5-3-2 and 5-4-1
+  (no formation_slot_roles) and plans 25/26/27.
 - *Stance* (`tactic_job_stances`, `tactic_jobs.stance`): goal_side by default; intercept (concept
   168 defend-your-man) — a mark stands dist_m BALL-side of his man instead of goal-side.
 - *Restarts* (mig 1142, `tactic_restarts`; `tactic_states.restart`): every out_of_possession root
