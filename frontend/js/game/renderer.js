@@ -315,6 +315,9 @@
         const o = snap.ball.owner;
         if (this.lastOwner !== NO_OWNER && o === NO_OWNER)
           this.kicks.push({ tick: snap.tick - 1, slot: this.lastOwner });
+        // A first touch: nobody → a player (the same queue; armed the same way).
+        if (this.lastOwner === NO_OWNER && o !== NO_OWNER && this.lastOwner !== undefined)
+          this.kicks.push({ tick: snap.tick, slot: o, rx: true, z: snap.ball.z });
         this.lastOwner = o;
       }
       this.buffer.push({ tick: snap.tick, snap });
@@ -399,6 +402,7 @@
           const f = this.figures[k.slot];
           if (!f) continue;
           const lead = Math.max(0, k.tick - renderTick) / (this.tickRate || 30);
+          if (k.rx) { if (f.receive) f.receive(lead, k.z); continue; }
           let power = 0.5;
           const at = buf.find((e) => e.tick >= k.tick);
           const after = buf.filter((e) => e.tick > k.tick && e.tick <= k.tick + 3).pop();

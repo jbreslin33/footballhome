@@ -17,7 +17,8 @@
 //     forward speeding up, back braking) — FH original.
 //   → look (head + chest track the ball)
 //   → overlays, each with an eased weight so nothing snaps:
-//     kick · slide tackle · stumble · keeper dive · header jump · celebrate
+//     kick · first touch · slide tackle · stumble · keeper dive · header
+//     jump · celebrate (kick / touch / dive / header are timelines)
 // Inputs are all on the wire: interpolated velocity, snapshot flags
 // (keeper, down-in-a-tackle, dispossessed), ball position and owner.
 // Model space faces +z; three y is up.
@@ -93,7 +94,7 @@
       this.speed = 0;
       this.kickT = 0;
       this.celebrateT = 0;
-      this.w = { slide: 0, stumble: 0, dive: 0, jump: 0, dribble: 0, cele: 0 };
+      this.w = { slide: 0, stumble: 0, dribble: 0, cele: 0 };
       this.diveSide = 1;
       this.look = { yaw: 0, pitch: 0 };
       this.build(home, keeper);
@@ -195,7 +196,7 @@
       // a trim band) → ankle → boot.
       this.legs = [-1, 1].map((side) => {
         const hip = new THREE.Group();
-        hip.rotation.order = 'ZYX';   // Rz·Rx: tilt the leg's plane, then flex in it (the IK)
+        hip.rotation.order = 'YZX';   // Ry·Rz·Rx: turn the leg, tilt its plane, flex in it (the IK)
         hip.position.set(side * 0.1, -0.06, 0);
         pelvis.add(hip);
         const thigh = cap(0.074, 0.28, skin, -0.21);
@@ -234,8 +235,18 @@
       const tc = 0.95 * (1 - 0.15 * dribble) / Math.max(s, 1.6);
       const tsw = clamp(0.5 - 0.016 * (s - 3), 0.34, 0.5) * (1 - 0.12 * dribble);
       const Tr = tc + tsw, dr = tc / Tr;
-      const T = Tw + (Tr - Tw) * r, duty = dw + (dr - dw) * r;
+      // Turning on the spot: little steps round (a planted foot keeps its
+      // place and its toes' direction in the world while the body turns).
+      const dyaw = wrap(this.yaw - (this.gYaw ?? this.yaw));
+      this.gYaw = this.yaw;
+      const turn = smooth((Math.abs(this.yawRate) - 0.7) / 1.5) * (1 - m);
+      this.turnAmt = ease(this.turnAmt || 0, turn, 8, dt);
+      const ta = this.turnAmt;
+      const T0 = Tw + (Tr - Tw) * r, duty = dw + (dr - dw) * r;
+      const T = T0 + (0.62 - T0) * ta;
+      const ph0 = this.phase;
       this.phase = (this.phase + dt / T) % 1;
+      if (this.phase < ph0) this.strides = (this.strides || 0) + 1;
       // Ankle travel in stance = contact length less the heel-to-toe roll.
       const contact = s * duty * T;
       const Ls = Math.max(0, contact - (0.25 - 0.13 * r)) * m;
@@ -248,7 +259,7 @@
       const dz = this.fwd, dx = this.lat;
       // Swing height: walking toe clearance; running the heel comes up
       // behind toward the buttock, more the faster [Novacheck 1998].
-      const lift = (0.07 + r * clamp(0.1 + 0.075 * (s - 2.5), 0, 0.5)) * m;
+      const lift = Math.max((0.07 + r * clamp(0.1 + 0.075 * (s - 2.5), 0, 0.5)) * m, 0.07 * ta);
       // Pelvis: COM high at mid-stance walking, low running; ±2 / ±3.5 cm.
       const stepPh = (this.phase * 2) % 1;
       const osc = Math.cos(TAU * (stepPh - duty / 2));
@@ -264,6 +275,8 @@
       const aLat = this.awx * cy - this.awy * sy, aFwd = this.awx * sy + this.awy * cy;
       const pitch = 0.04 * m + 0.08 * r + clamp(Math.atan(aFwd / 9.81) * 0.8, -0.3, 0.35);
       const roll = -clamp(Math.atan(aLat / 9.81) * 0.7, -0.3, 0.3);
+      // Braking hard: shorter, flexed steps — the hips sit down into it.
+      py -= 0.06 * smooth((-aFwd - 2) / 4) * m;
       // Hips turn with the forward leg (±~6°); the chest counters (update()).
       const L = this.legs;
       const feet = [0, 1].map((i) => {
@@ -289,9 +302,28 @@
           h = lift * (hw + (hr - hw) * r);
           pitchF = m * ((0.55 + 0.2 * r) * (1 - smooth(u / 0.45)) - 0.12 * Math.sin(Math.PI * u) - 0.25 * (1 - r) * smooth((u - 0.8) / 0.2));
         }
+        // Dribbling: every other stride the ball-side foot pushes the ball on
+        // with the laces — a longer, toe-down reach at the end of its swing.
+        if (dribble > 0.05 && ps >= duty && i === (this.dribbleLeg || 0) && (this.strides || 0) % 2 === 0) {
+          const u = (ps - duty) / (1 - duty);
+          if (u > 0.5) {
+            const k = Math.sin(Math.PI * (u - 0.5) / 0.5) * dribble * m;
+            along += 0.14 * k; h += 0.05 * k; pitchF += 0.45 * k;
+          }
+        }
+        // The foot's twist off the body: planted, it holds still in the world
+        // as the body turns (−dyaw); in the air it swings back square.
+        const leg = L[i];
+        if (ps < duty) leg.tw = (leg.tw || 0) - dyaw;
+        else {
+          const left = (1 - (ps - duty) / (1 - duty)) * (1 - duty) * T;
+          leg.tw = (leg.tw || 0) * (1 - Math.min(1, dt / Math.max(left, dt)));
+        }
+        leg.tw = clamp(leg.tw, -0.9, 0.9);
         const base = side * (0.11 - 0.04 * r + 0.06 * Math.abs(dx) * m);
-        L[i].along = along - centre;
-        return { x: base + dx * along, z: dz * along, y: h + 0.085, pitchF };
+        leg.along = along - centre;
+        const fx = base + dx * along, fz = dz * along, ct = Math.cos(leg.tw), st = Math.sin(leg.tw);
+        return { x: fx * ct + fz * st, z: -fx * st + fz * ct, y: h + 0.085, pitchF };
       });
       // Pelvis yaw follows the forward foot of the right leg (side -1).
       const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
@@ -304,7 +336,7 @@
       for (let i = 0; i < 2; i++) {
         const f = feet[i], leg = L[i];
         v.set(f.x, f.y, f.z).sub(this.pelvis.position).applyQuaternion(qi).sub(leg.hip.position);
-        this.solveLeg(leg, v, f.pitchF, pitch);
+        this.solveLeg(leg, v, f.pitchF, pitch, leg.tw);
       }
       this.moveAmt = m; this.runAmt = r;
     }
@@ -326,8 +358,13 @@
     // Two-bone IK, hip at the origin, target t (pelvis frame, from the hip):
     // tilt the leg plane (hip z), flex in it (hip x), knee forward; the boot
     // set to pitchF (+ = toe down) against the chain above it.
-    solveLeg(leg, t, pitchF, pelvisPitch) {
+    solveLeg(leg, t, pitchF, pelvisPitch, yaw) {
       const a = 0.42, b = 0.40;
+      const yw = yaw || 0;
+      if (yw) {   // solve in the leg's own turned frame
+        const c = Math.cos(yw), sn = Math.sin(yw), x = t.x, z = t.z;
+        t.x = x * c - z * sn; t.z = x * sn + z * c;
+      }
       const phi = Math.atan2(t.x, -t.y);
       const dy = -Math.hypot(t.x, t.y), dz = t.z;
       const D = clamp(Math.hypot(dy, dz), 0.25, a + b - 0.002);
@@ -335,7 +372,7 @@
       const alpha = Math.acos(clamp((a * a + D * D - b * b) / (2 * a * D), -1, 1));
       const knee = Math.PI - Math.acos(clamp((a * a + b * b - D * D) / (2 * a * b), -1, 1));
       const hipX = -(beta + alpha);
-      leg.hip.rotation.set(hipX, 0, phi);
+      leg.hip.rotation.set(hipX, yw, phi);
       leg.knee.rotation.x = knee;
       leg.ankle.rotation.x = clamp(pitchF - (pelvisPitch + hipX + knee), -0.6, 1.0);
     }
@@ -354,6 +391,15 @@
       this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1),
                   leg: (this.ballLocalX || 0) > 0.12 ? 1 : 0 };
       this.kk.end = this.kk.contact + 0.3 + 0.2 * this.kk.power;
+    }
+    // A first touch (renderer.js arms it as the ball reaches him): lead =
+    // sim seconds to the touch, z = the ball's height then. Foot (inside of
+    // the foot, opened), thigh, or chest by height; the touch cushions back.
+    receive(lead, z) {
+      const zz = z || 0;
+      this.rc = { t: 0, contact: clamp(lead || 0, 0.05, 0.2), leg: (this.ballLocalX || 0) > 0.1 ? 1 : 0,
+                  kind: zz > 1.05 ? 2 : zz > 0.35 ? 1 : 0 };
+      this.rc.end = this.rc.contact + 0.32;
     }
     setFlag(up) { this.flagUp = !!up; }   // G4.93: an assistant's flag
     // G5.2: an official's signal for a ball out (OfficialSnap bits 1-3):
@@ -392,20 +438,37 @@
       let bdx = 0, bdz = 0, bd = 99, bz = 0;
       if (b) { bdx = b.x - ctx.me.x; bdz = b.y - ctx.me.y; bd = Math.hypot(bdx, bdz); bz = b.z; }
       this.ballLocalX = bdx * Math.cos(this.yaw) - bdz * Math.sin(this.yaw);
+      // The ball's velocity, from frame to frame (for headers and dives).
+      const BV = this.bv || (this.bv = { x: 0, y: 0, z: 0, px: null });
+      if (b && dt > 1e-4) {
+        if (BV.px !== null) {
+          const k = Math.min(1, dt * 12);
+          BV.x += ((b.x - BV.px) / dt - BV.x) * k; BV.y += ((b.y - BV.py) / dt - BV.y) * k; BV.z += ((b.z - BV.pz) / dt - BV.z) * k;
+        }
+        BV.px = b.x; BV.py = b.y; BV.pz = b.z;
+      }
+      const closing = bd > 0.05 ? -(bdx * BV.x + bdz * BV.y) / bd : 0;   // m/s toward him
+      if (ctx.hasBall && !this.hadBall) this.dribbleLeg = this.ballLocalX > 0.1 ? 1 : 0;
+      this.hadBall = !!ctx.hasBall;
+      // Header: a ball he will meet at head height within ~0.4 s → a timed
+      // jump, its peak on the ball's arrival (crouch 0.12 s, up 0.22 s).
+      if (b && !this.hd && !this.dv && !ctx.hasBall && closing > 3) {
+        const tA = Math.max(0, bd - 0.35) / closing;
+        const zA = bz + BV.z * tA - 4.9 * tA * tA;
+        if (tA < 0.36 && zA > 1.45 && zA < 2.75) this.hd = { t: Math.max(0, 0.34 - tA), up: clamp((zA - 1.6) * 0.5 + 0.18, 0.08, 0.5) };
+      }
+      // Keeper dive: a shot coming at him, wide of his body → a timed dive
+      // to that side (launch, flight, land, lie, up).
+      if (this.keeper && b && !this.dv && !ctx.hasBall && closing > 9 && bd < 16) {
+        const tA = Math.max(0.05, bd / closing);
+        const lx = (b.x + BV.x * tA - ctx.me.x) * Math.cos(this.yaw) - (b.y + BV.y * tA - ctx.me.y) * Math.sin(this.yaw);
+        const zA = bz + BV.z * tA - 4.9 * tA * tA;
+        if (Math.abs(lx) > 0.9 && Math.abs(lx) < 4.5 && tA < 0.6) this.dv = { t: 0, sd: lx > 0 ? 1 : -1, high: clamp(zA / 2.2, 0, 1) };
+      }
       W.slide = ease(W.slide, flags & 4 ? 1 : 0, flags & 4 ? 14 : 5, dt);
       W.stumble = ease(W.stumble, flags & 8 ? 1 : 0, 10, dt);
       W.dribble = ease(W.dribble, ctx.hasBall ? 1 : 0, 6, dt);
       this.readyAmt = ease(this.readyAmt || 0, !this.official && bd < 25 ? 1 : 0, 2, dt);   // knees bent, on his toes near play
-      // Keeper dive: moving fast while a ball is close and on its way.
-      let diveWant = 0;
-      if (this.keeper && s > 3.2 && bd < 11 && !ctx.hasBall) {
-        const side = Math.sign(Math.sin(wrap(Math.atan2(vx, vy) - this.yaw + Math.PI / 2))) || 1;
-        this.diveSide = side;
-        diveWant = 1;
-      }
-      W.dive = ease(W.dive, diveWant, diveWant ? 12 : 4, dt);
-      // Header: a ball at head height arriving at this player.
-      W.jump = ease(W.jump, bz > 1.3 && bz < 2.6 && bd < 1.4 ? 1 : 0, 12, dt);
       if (this.celebrateT > 0) this.celebrateT -= dt;
       W.cele = ease(W.cele, this.celebrateT > 0 ? 1 : 0, 5, dt);
       W.flag = ease(W.flag || 0, this.carriesFlag && this.flagUp ? 1 : 0, 9, dt);
@@ -488,6 +551,8 @@
         const w = W.slide;
         this.pelvis.position.y += (0.32 - this.pelvis.position.y) * w;
         this.pelvis.rotation.x += (-1.05 - this.pelvis.rotation.x) * w;
+        this.pelvis.rotation.z += (-0.4 - this.pelvis.rotation.z) * w;   // onto the trail-leg side
+        L[1].ankle.rotation.x += (-0.4 - L[1].ankle.rotation.x) * w;     // lead toe up, studs at the ball
         L[1].hip.rotation.x += (-1.45 - L[1].hip.rotation.x) * w;
         L[1].knee.rotation.x *= 1 - w;
         L[0].hip.rotation.x += (-0.5 - L[0].hip.rotation.x) * w;
@@ -509,32 +574,104 @@
           a.sh.rotation.x += (-0.6 - a.sh.rotation.x) * w;
         }
       }
-      // Keeper dive: launch sideways — body rolls flat, arms stretch past
-      // the head toward the ball, legs trail.
-      if (W.dive > 0.01) {
-        const w = W.dive, sd = this.diveSide;
-        this.pelvis.position.y += (0.75 - this.pelvis.position.y) * w;
-        this.pelvis.rotation.z += (-sd * 1.25 - this.pelvis.rotation.z) * w;
-        for (const a of A) {
-          a.sh.rotation.x += (-3.0 - a.sh.rotation.x) * w;
-          a.sh.rotation.z += (-sd * 0.25 - a.sh.rotation.z) * w;
-          a.elbow.rotation.x *= 1 - w;
-        }
-        for (const l of L) {
-          l.hip.rotation.x *= 1 - w * 0.8;
-          l.knee.rotation.x += (0.3 - l.knee.rotation.x) * w;
+      // First touch: the receiving part goes to meet the ball and gives
+      // with it (cushion), the other leg planted.
+      if (this.rc) {
+        const R = this.rc;
+        R.t += dt;
+        if (R.t >= R.end) this.rc = null;
+        else {
+          const t = R.t, tc = R.contact;
+          const reach = t < tc ? smooth(t / tc) : 1 - smooth((t - tc) / (R.end - tc));   // out, then gives
+          const w = Math.min(1, t / 0.04) * Math.min(1, (R.end - t) / 0.1);
+          const kl = L[R.leg], sd = R.leg === 0 ? 1 : -1, side = -sd;
+          if (R.kind === 0) {           // inside of the foot, toes turned out
+            kl.hip.rotation.x += (-0.45 * reach - kl.hip.rotation.x) * w;
+            kl.hip.rotation.y += (side * 0.75 * reach - kl.hip.rotation.y) * w;
+            kl.knee.rotation.x += (0.15 + 0.35 * reach - kl.knee.rotation.x) * w;
+            kl.ankle.rotation.x += (-0.1 - kl.ankle.rotation.x) * w;
+            this.plantLeg(1 - R.leg, sd * 0.12, -0.02, w);
+          } else if (R.kind === 1) {    // thigh up to it
+            kl.hip.rotation.x += (-1.15 * reach - kl.hip.rotation.x) * w;
+            kl.knee.rotation.x += (0.2 + 1.2 * reach - kl.knee.rotation.x) * w;
+            this.plantLeg(1 - R.leg, sd * 0.1, 0, w);
+            for (const a of A) a.sh.rotation.z += (a.side * 0.45 - a.sh.rotation.z) * w * reach;
+          } else {                      // chest: lean back, arms out, knees soft
+            this.pelvis.rotation.x += (-0.3 * reach) * w;
+            this.chest.rotation.x = -0.15 * reach * w;
+            this.pelvis.position.y -= 0.04 * w;
+            this.plantLeg(0, -0.13, 0.05, w);
+            this.plantLeg(1, 0.13, -0.05, w);
+            for (const a of A) {
+              a.sh.rotation.z += (a.side * 0.85 - a.sh.rotation.z) * w * reach;
+              a.sh.rotation.x += (-0.3 - a.sh.rotation.x) * w * reach;
+            }
+          }
         }
       }
-      // Header: spring up, arms up for leverage, head snaps forward.
-      if (W.jump > 0.01) {
-        const w = W.jump;
-        this.pelvis.position.y += 0.35 * w;
-        for (const l of L) l.knee.rotation.x += (0.9 - l.knee.rotation.x) * w;
-        for (const a of A) {
-          a.sh.rotation.x += (-1.6 - a.sh.rotation.x) * w;
-          a.sh.rotation.z += (a.side * 0.5 - a.sh.rotation.z) * w;
+      // Keeper dive: crouch and push off (0.1 s), fly sideways near level
+      // with arms past the head (to 0.45 s), land on the side, lie, get up.
+      if (this.dv) {
+        const D = this.dv, sd = D.sd;
+        D.t += dt;
+        const t = D.t, END = 1.5;
+        if (t >= END) this.dv = null;
+        else {
+          let rollT, py, armUp, w = Math.min(1, (END - t) / 0.35);
+          if (t < 0.1) { const u = t / 0.1; rollT = 0.25 * u; py = 0.95 - 0.15 * u; armUp = 0.5 * u; }
+          else if (t < 0.45) { const u = (t - 0.1) / 0.35; rollT = 0.25 + 1.2 * smooth(u); py = 0.8 + (0.25 + 0.35 * D.high) * Math.sin(Math.PI * u * 0.8) - 0.3 * smooth((u - 0.6) / 0.4); armUp = 1; }
+          else { rollT = 1.45; py = 0.32; armUp = 1 - 0.6 * smooth((t - 0.45) / 0.5); }
+          w = Math.min(1, t / 0.05) * w;
+          this.pelvis.position.y += (py - this.pelvis.position.y) * w;
+          this.pelvis.rotation.z += (sd * -rollT - this.pelvis.rotation.z) * w;
+          this.pelvis.rotation.x += (0.05 - this.pelvis.rotation.x) * w;
+          for (const a of A) {
+            a.sh.rotation.x += (-3.0 * armUp - 0.3 - a.sh.rotation.x) * w;
+            a.sh.rotation.z += (-sd * 0.2 - a.sh.rotation.z) * w;
+            a.elbow.rotation.x *= 1 - w * armUp;
+          }
+          for (const l of L) {
+            l.hip.rotation.x += (-0.15 - l.hip.rotation.x) * w;
+            l.hip.rotation.y *= 1 - w;
+            l.hip.rotation.z += (0 - l.hip.rotation.z) * w;
+            l.knee.rotation.x += (0.25 - l.knee.rotation.x) * w;
+          }
+          L[sd > 0 ? 0 : 1].knee.rotation.x += 0.5 * w * (t < 0.12 ? 1 : 0.3);   // the push leg
         }
-        this.neck.rotation.x += 0.4 * w;
+      }
+      // Header: crouch, spring off one leg (the other knee driven up), back
+      // arched with the arms up for leverage, snap forward through the ball
+      // at the top, land.
+      if (this.hd) {
+        const H = this.hd;
+        H.t += dt;
+        const t = H.t;
+        if (t >= 0.75) this.hd = null;
+        else {
+          const w = Math.min(1, t / 0.04) * Math.min(1, (0.75 - t) / 0.08);
+          let lift = 0, crouch = 0, arch = 0, tuck = 0;
+          if (t < 0.12) crouch = smooth(t / 0.12);
+          else if (t < 0.56) { const u = (t - 0.12) / 0.44; lift = Math.sin(Math.PI * u); crouch = Math.max(0, 1 - u * 6); tuck = Math.sin(Math.PI * u);
+                               arch = u < 0.5 ? -smooth(u / 0.5) : -1 + 1.8 * smooth((u - 0.5) / 0.15); }
+          else crouch = 0.6 * (1 - smooth((t - 0.56) / 0.19));
+          this.pelvis.position.y += (-0.13 * crouch + H.up * lift);
+          this.pelvis.rotation.x += 0.16 * arch * w;
+          this.chest.rotation.x += 0.12 * arch * w;
+          this.neck.rotation.x += (arch > 0 ? 0.35 * arch : -0.25 * -arch) * w;
+          if (lift === 0) { this.plantLeg(0, -0.12, 0, w); this.plantLeg(1, 0.12, 0, w); }
+          else {
+            L[0].hip.rotation.x += (-0.9 * tuck - L[0].hip.rotation.x) * w;   // drive knee
+            L[0].knee.rotation.x += (1.3 * tuck - L[0].knee.rotation.x) * w;
+            L[1].hip.rotation.x += (0.1 - L[1].hip.rotation.x) * w;           // take-off leg trails
+            L[1].knee.rotation.x += (0.5 * tuck + 0.1 - L[1].knee.rotation.x) * w;
+            L[1].ankle.rotation.x += (0.6 - L[1].ankle.rotation.x) * w;
+          }
+          for (const a of A) {
+            a.sh.rotation.x += (-1.7 * Math.max(lift, crouch * 0.4) - a.sh.rotation.x) * w;
+            a.sh.rotation.z += (a.side * 0.6 - a.sh.rotation.z) * w;
+            a.elbow.rotation.x += (-0.9 - a.elbow.rotation.x) * w;
+          }
+        }
       }
       // Celebrate: arms up and pumping, little jumps.
       if (W.cele > 0.01) {
