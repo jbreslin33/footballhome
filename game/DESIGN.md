@@ -7980,3 +7980,52 @@ ball slowing back inside it is touched at once — the next lever is the touch's
 3-4 (kicks off a plant foot, receiving). (2) Touch rate 1.1-1.6 v 0.9-1.0; at 2-3 m/s the ball sits
 close (0.26 v 0.52). (3) Carries 10 m+ 16-18 v 34.6 a team-match (the brain). (4) §8.178's brain braking
 and turns at speed. (5) Aerial duels 35 v 44.
+
+### 8.180 G5.79 — kicks off a plant foot: ball in reach, the other foot down, strong foot and weak foot (no migration)
+
+Roadmap slice 3 (§8.178). Until now a kick left the instant the brain asked, from wherever the ball
+was, with no foot at all.
+
+**Real** (`scripts/benchmarks_statsbomb_foot.py`, StatsBomb PL 15/16, 336 outfielders with 100+ footed
+open-play passes; strong foot = the foot of most of them). 24.1% are left-footed. A man plays 12.7% of
+his footed passes off his weak foot (p10 5.1, p25 8.9, p75 17.3, p90 24.2%); 13.8% of all passes, 21.9%
+of open-play shots. Elite players choose when to use it, so it costs little: completion strong / weak
+0-15 m 87.6 / 85.4%, 15-30 m 86.3 / 85.2, 30 m+ 58.8 / 54.2; shots on target and goals per shot level
+(34.0 / 33.9%, 9.9 / 9.9%).
+
+**The change** [FH original on the StatsBomb table and the footstep body]. Each man has a strong foot
+(left at 24.1%) and a weak-foot habit drawn from the real spread (by slot and match seed until the
+roster carries real feet). A kick he asks for picks its foot (weak at his habit's rate) and is struck
+only with the ball within `physics.kick.reach_m` (1 m) and his OTHER foot planted (§8.178's feet); not
+yet, it waits — still on the ball, still dribbling — up to `physics.kick.wait_ms` (500), carried tick to
+tick (a new wish replaces it); never in reach by then, the wish is gone. A first-time ball needs only the
+reach (he set his feet before it came). Struck after a wait, he re-reads his mate: the aim moves with the
+receiver. Off the weak foot a pass strays `physics.kick.weak_deg` (3°) either side; shots don't. Held
+restarts and keepers as before; `physics.kick.plant_on` 0 = off. The kicking foot goes on the wire
+(players[i].flags bit5 = his left) and the viewer swings that leg.
+
+**Measured on the way** (seed 1000): short-pass completion 85.0 → 80.2% with the plant on; re-reading
+the mate on a delayed strike and the first-time exemption took it to 81.6. A split by set-up wait showed
+the wait is not the cause: short passes struck at once complete 81.2%, after 1-3 / 4-8 / 9+ ticks 83.2 /
+82.6 / 84.8.
+
+**After** (on v off; seed 1000, then seed 2000).
+- Weak foot 12.2%, 14.4% of passes (13.8). Completion strong / weak, 0-15 m 81.6 / 83.3, 80.4 / 82.0
+  (87.6 / 85.4); 15-30 m 81.8 / 82.3, 81.0 / 84.2 (86.3 / 85.2); 30 m+ 51.4 / 51.0, 52.0 / 46.3 (58.8 /
+  54.2). Off (no foot) 0-15 m 85.0, 83.0; 30 m+ 48.3, 51.2.
+- 146 kicks a team-match waited for reach and a plant, 144 ms on average; 2.9 given up.
+- Passes 466 → 446, 460 → 453 a team-match (434); completed 75.2 → 74.8, 74.4 → 74.1% (79.1).
+- Lost to a heavy touch 2.0 → 4.9, 2.6 → 4.8 (4.1): waiting to strike he dribbles on. Stolen 7.3 → 8.6,
+  8.0 → 8.5 (8.0). Goals 2.00 → 1.81, 1.94 → 1.69.
+- New test kicks_strong_foot_share_and_plant (left share across 60 seeds, a kick only with the plant
+  down). AI goldens re-locked (determinism unchanged: its scripted run has no kicks).
+
+**What it says.** Every strike now stands on a planted foot with the ball in reach, and the foot it
+comes off is a real footballer's foot. The heavy-touch losses land on the real rate because a man
+setting up a pass is still on a rolling ball. Strong-foot short passes complete 2.6-3.4 points less than
+with no plant model on both seeds, not because of the wait — a mole to find.
+
+**Next moles.** (1) Strong-foot short passes 80-82% v 85 without the plant (and 87.6 real). (2) The
+first touch: still settled at his feet for the control time — roadmap slice 4 with headers. (3) Real
+feet per player (the roster's own strong foot and habit) instead of drawn. (4) Touch rate 1.1-1.6 v
+0.9-1.0. (5) Aerial duels 35 v 44.

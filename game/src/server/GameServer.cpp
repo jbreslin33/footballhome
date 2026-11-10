@@ -76,6 +76,7 @@ void GameServer::startMatch() {
     world_.configureAerial(cfg_.model_params);   // G5.3
     world_.configureTempo(cfg_.model_params);    // G5.4
     world_.configureDribble(cfg_.model_params);  // G5.78
+    world_.configureKicks(cfg_.model_params);    // G5.79
     world_.configureFouls(cfg_.model_params);    // G5.28
     for (const auto& m : cfg_.crew) {
         auto rating = [&](const char* code) -> std::int16_t {
@@ -391,7 +392,8 @@ net::Bytes GameServer::buildSnapshotFrame() const {
         snap.flags = static_cast<std::uint8_t>(
             (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0) |
             (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0) |
-            (world_.takingThrow(i) ? 16 : 0));   // bit4 (G5.2): ball in both hands, overhead
+            (world_.takingThrow(i) ? 16 : 0) |   // bit4 (G5.2): ball in both hands, overhead
+            (world_.lastKickFoot(i) ? 32 : 0));  // bit5 (G5.79): his last kick was off foot 1 (his left)
         {   // 2.3 (G5.77): his feet
             const core::FootState& ft = world_.feet(i);
             snap.feet_down = static_cast<std::uint8_t>((ft.down[0] ? 1 : 0) | (ft.down[1] ? 2 : 0));

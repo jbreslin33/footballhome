@@ -45,6 +45,45 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
     // The opening kickoff belongs to home; the ball starts dead on the
     // spot so an away player can't poach it before "the whistle".
     restart_team_ = 0;
+    assignFeet();
+}
+
+// G5.79 (§8.180): each man's strong foot — left 24.1% of PL 15/16 outfielders — and his weak-foot habit,
+// the share of his footed passes off his weaker foot, drawn from the real spread over players
+// (p10 .051, p25 .089, med .127, p75 .173, p90 .242; benchmarks_statsbomb_foot.py). By slot and match
+// seed until the roster carries real feet.
+void World::assignFeet() {
+    const std::size_t n = players_.size();
+    strong_.assign(n, 0); kick_foot_.assign(n, 0); weakp_.assign(n, Fixed64::fromFraction(127, 1000));
+    static const int kQ[7][2] = {{0, 20}, {100, 51}, {250, 89}, {500, 127}, {750, 173}, {900, 242}, {1000, 400}};   // (quantile, share) permille
+    for (SlotIndex i = 0; i < n; ++i) {
+        const Fixed64 u1 = (detNoise(match_seed_, 0, i, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Fixed64 u2 = (detNoise(match_seed_, 0, i, 51) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        strong_[i] = u1 < Fixed64::fromFraction(241, 1000) ? 1 : 0;
+        kick_foot_[i] = strong_[i];
+        for (int q = 1; q < 7; ++q) {
+            const Fixed64 a = Fixed64::fromFraction(kQ[q - 1][0], 1000), b = Fixed64::fromFraction(kQ[q][0], 1000);
+            if (u2 <= b || q == 6) {
+                const Fixed64 f = (u2 - a) / (b - a);
+                weakp_[i] = Fixed64::fromFraction(kQ[q - 1][1], 1000) + (Fixed64::fromFraction(kQ[q][1], 1000) - Fixed64::fromFraction(kQ[q - 1][1], 1000)) * f;
+                break;
+            }
+        }
+    }
+}
+
+// The foot for this kick: his weak one at his own habit's rate, else his strong one.
+std::uint8_t World::chooseFoot(SlotIndex s) const {
+    if (s >= strong_.size()) return 0;
+    const Fixed64 u = (detNoise(match_seed_, clock_.tick(), s, 52) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    return u < weakp_[s] ? static_cast<std::uint8_t>(1 - strong_[s]) : strong_[s];
+}
+
+void World::configureKicks(const ModelParams& p) {
+    kicks_on_ = p.fixed("physics.kick.plant_on", 1000).raw > 0;
+    kick_reach_ = p.fixed("physics.kick.reach_m", 1000);
+    weak_deg_ = p.fixed("physics.kick.weak_deg", 3000);
+    kick_wait_max_ = p.integer("physics.kick.wait_ms", 500) * kTickRate / 1000;
 }
 
 void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
@@ -373,6 +412,17 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // Consume a latched kick before gluing, so the kick leaves from
         // the carry point of the PREVIOUS tick (feels like a real release).
         const SlotIndex kicker = *ball_.owner;
+        // G5.79 (§8.180): a kick he asked for and is still setting up (ball into reach, plant foot
+        // down) carries on from tick to tick, up to physics.kick.wait_ms; a new wish replaces it.
+        if (pend_.act != Action::None && (pend_.slot != kicker || clock_.tick() > pend_.until)) pend_.act = Action::None;
+        if (actions_[kicker] == Action::None && pend_.act != Action::None) {
+            actions_[kicker] = pend_.act; carry_m_[kicker] = pend_.carry_m; pass_to_[kicker] = pend_.pass_to;
+            first_time_[kicker] = pend_.first_time; die_[kicker] = pend_.die; has_aim_[kicker] = pend_.has_aim;
+            aim_[kicker] = pend_.aim; aim_z_[kicker] = pend_.aim_z;
+        } else if (actions_[kicker] != Action::None && pend_.act != Action::None &&
+                   (actions_[kicker] != pend_.act || carry_m_[kicker] != pend_.carry_m)) {
+            pend_.act = Action::None;   // he changed his mind
+        }
         const Action act = actions_[kicker];
         // G4.92: controlled first — unless he hits it first time (G4.95).
         const bool first_time = first_time_[kicker] != 0 && clock_.tick() < control_until_tick_;
@@ -391,9 +441,49 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             const Fixed64 r = own_d < Fixed64::fromInt(35) ? Fixed64::fromFraction(5, 2) : hold_press_m_;
             if (math::lengthSquared(d) < r * r) hold_it = false;
         }
+        // G5.79 (§8.180): the strike needs the ball within reach of his kicking foot and the other
+        // foot planted beside it (the footstep body, §8.178). Not yet: he waits, still on the ball.
+        bool wait = false, cancel = false;
+        std::uint8_t kfoot = kick_foot_.empty() ? 0 : kick_foot_[kicker];
         if (act != Action::None && players_[kicker].recovery_ticks == 0 && !hold_it &&
+            (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0) && kicks_on_ && !heldRestart() && !isKeeper(kicker)) {
+            if (pend_.act == Action::None) {
+                pend_ = PendingKick{kicker, act, carry_m_[kicker], pass_to_[kicker], first_time_[kicker], die_[kicker], has_aim_[kicker],
+                                    chooseFoot(kicker), aim_[kicker], aim_z_[kicker], clock_.tick(), clock_.tick() + static_cast<std::uint64_t>(kick_wait_max_)};
+                if (pend_.pass_to < players_.size()) pend_.mate_at = Vec2{players_[pend_.pass_to].pos.x, players_[pend_.pass_to].pos.y};
+            }
+            kfoot = pend_.foot;
+            const Vec2 db{ball_.pos.x - o.pos.x, ball_.pos.y - o.pos.y};
+            const bool reach = math::lengthSquared(db) <= kick_reach_ * kick_reach_;
+            const FootState& ft = feet_[kicker];
+            // A first-time ball: he set his feet before it arrived — the plant is already made.
+            const bool planted = !steps_.on() || ft.down[1 - kfoot] || first_time_[kicker] != 0;
+            if (!(reach && planted)) {
+                if (clock_.tick() < pend_.until) wait = true;
+                else if (!reach) cancel = true;   // never got to it in time: the wish is gone
+            }
+            if (wait) actions_[kicker] = Action::None;
+            if (cancel) { actions_[kicker] = Action::None; pend_.act = Action::None; ++kicks_cancelled_; }
+        }
+        if (act != Action::None && !wait && !cancel && players_[kicker].recovery_ticks == 0 && !hold_it &&
             (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0)) {
             actions_[kicker] = Action::None;
+            // G5.79: struck — with which foot, and how long he set it up
+            last_kick_weak_ = false; last_kick_wait_ = 0;
+            if (pend_.act != Action::None && pend_.slot == kicker) {
+                last_kick_wait_ = static_cast<std::uint32_t>(clock_.tick() - pend_.since);
+                if (clock_.tick() > pend_.since) { ++kicks_waited_; kick_wait_ticks_ += static_cast<std::uint32_t>(clock_.tick() - pend_.since); }
+                // He re-reads his mate as he strikes: the aim moves with him (a set-up of 0.1-0.5 s).
+                if (clock_.tick() > pend_.since && has_aim_[kicker] && pend_.pass_to < players_.size()) {
+                    aim_[kicker].x += players_[pend_.pass_to].pos.x - pend_.mate_at.x;
+                    aim_[kicker].y += players_[pend_.pass_to].pos.y - pend_.mate_at.y;
+                }
+                pend_.act = Action::None;
+            }
+            if (kicks_on_ && !heldRestart() && !isKeeper(kicker) && kicker < kick_foot_.size()) {
+                kick_foot_[kicker] = kfoot;
+                last_kick_weak_ = kfoot != strong_[kicker];
+            }
             // Direction: live desire when pushing a direction, else facing.
             Vec2 desire = intents_[*ball_.owner].move;
             Vec2 dir = (desire.x.raw != 0 || desire.y.raw != 0)
@@ -457,6 +547,15 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             if (clear_err_.raw > 0 && act == Action::LoftedKick && first_time_[kicker] != 0 && !isKeeper(kicker)) {
                 const Fixed64 n3 = detNoise(match_seed_, clock_.tick(), kicker, 24);
                 const Fixed64 ang = n3 * clear_err_ * Fixed64::fromFraction(71, 4068);
+                const Fixed64 c = math::fx_cos(ang), sn = math::fx_sin(ang);
+                dir = Vec2{dir.x * c - dir.y * sn, dir.x * sn + dir.y * c};
+            }
+            // G5.79 (§8.180): off his weak foot a pass strays a little more (PL 15/16: completion 1-2
+            // points lower short, 58.8 → 54.2% at 30 m+); shots don't (goals per shot level — he takes
+            // them when the chance is easy). physics.kick.weak_deg either side.
+            if (last_kick_weak_ && act != Action::Shot && weak_deg_.raw > 0) {
+                const Fixed64 n4 = detNoise(match_seed_, clock_.tick(), kicker, 53);
+                const Fixed64 ang = n4 * weak_deg_ * Fixed64::fromFraction(71, 4068);
                 const Fixed64 c = math::fx_cos(ang), sn = math::fx_sin(ang);
                 dir = Vec2{dir.x * c - dir.y * sn, dir.x * sn + dir.y * c};
             }

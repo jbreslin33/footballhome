@@ -421,7 +421,11 @@
                                   after.snap.ball.z - at.snap.ball.z) * (this.tickRate || 30) / (after.tick - at.tick);
             power = Math.min(1, Math.max(0, (sp - 6) / 22));   // 6 m/s tap … 28 m/s shot
           }
-          f.kick(lead, power);
+          // G5.79: the engine's kicking foot (players[i].flags bit5 = foot 1, his left) on the first
+          // snapshot after the strike.
+          const post = buf.find((e) => e.tick > k.tick);
+          const pf = post && post.snap.players && post.snap.players[k.slot];
+          f.kick(lead, power, undefined, pf ? ((pf.flags & 32) ? 1 : 0) : undefined);
         }
         // Ball first: every figure looks at it.
         if (this.ballMesh && a.snap.ball && b.snap.ball) {

@@ -266,4 +266,39 @@ FH_TEST(dribble_ball_rolls_and_is_touched) {
     FH_EXPECT(n >= 2 && n <= 16);                     // 5 s running: a touch every 0.3-2.5 s
 }
 
+// G5.79 (§8.180): kicks off a plant foot. Across many matches about a quarter of players are left-footed
+// (PL 15/16: 24.1%); a kick is struck only with the ball in reach and the other foot planted.
+FH_TEST(kicks_strong_foot_share_and_plant) {
+    int left = 0, n = 0;
+    for (std::uint64_t seed = 1; seed <= 60; ++seed) {
+        World w{22, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+        w.setMatchSeed(seed);
+        for (int i = 0; i < 22; ++i) { left += w.strongFoot(static_cast<std::uint8_t>(i)); ++n; }
+    }
+    const double share = 100.0 * left / n;
+    FH_EXPECT(share > 18.0 && share < 30.0);
+
+    World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    w.setTeam(1, 1);
+    w.placePlayer(0, {Fixed64::fromInt(-40), Fixed64::zero(), Fixed64::zero()}, {Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(1, {Fixed64::fromInt(45), Fixed64::fromInt(30), Fixed64::zero()}, {-Fixed64::one(), Fixed64::zero()});
+    w.giveBall(0);
+    MoveIntent run;
+    run.move = Vec2{Fixed64::one(), Fixed64::zero()};
+    w.setIntent(0, run);
+    for (int t = 0; t < 60; ++t) w.tick();
+    bool struck = false, planted = false;
+    for (int t = 0; t < 30 && !struck; ++t) {
+        w.setAction(0, fh::game::core::Action::GroundKick, 20, 0xFF, false, nullptr, Fixed64::zero(), false);
+        w.tick();
+        if (!w.ball().owner) {
+            struck = true;
+            const std::uint8_t kf = w.lastKickFoot(0);
+            planted = w.feet(0).down[1 - kf];
+        }
+    }
+    FH_EXPECT(struck);
+    FH_EXPECT(planted);
+}
+
 FH_TEST_MAIN()

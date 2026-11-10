@@ -152,6 +152,16 @@ public:
     std::uint32_t dribbleTouches() const noexcept { return dribble_touches_; }
     std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
+    // G5.79 (§8.180): kicks off a plant foot. Each player's strong foot (0 = right, 1 = left) and his
+    // weak-foot habit; the foot of his last kick (on the wire); and the kicks that waited for a plant.
+    void configureKicks(const ModelParams& p);
+    std::uint8_t strongFoot(SlotIndex s) const { return s < strong_.size() ? strong_[s] : 0; }
+    std::uint8_t lastKickFoot(SlotIndex s) const { return s < kick_foot_.size() ? kick_foot_[s] : 0; }
+    bool lastKickWeak() const noexcept { return last_kick_weak_; }
+    std::uint32_t lastKickWait() const noexcept { return last_kick_wait_; }   // ticks his last kick waited for reach + plant
+    std::uint32_t kicksWaited() const noexcept { return kicks_waited_; }
+    std::uint32_t kickWaitTicks() const noexcept { return kick_wait_ticks_; }
+    std::uint32_t kicksCancelled() const noexcept { return kicks_cancelled_; }
     std::uint32_t steals() const noexcept { return steals_; }              // the touch-to-steal contest won
     // G5.28 (Law 12): a challenge on the man on the ball is a foul at the real
     // share for the third it is in (StatsBomb PL 2015/16: fouls ÷ (tackle duels +
@@ -173,7 +183,7 @@ public:
     void setSkill(SlotIndex slot, const PlayerSkill& s) { if (slot < skill_.size()) skill_[slot] = s; }
     void setSkillAll(const PlayerSkill& s) { skill_.assign(skill_.size(), s); }
     const PlayerSkill& skillOf(SlotIndex slot) const { return skill_[slot]; }
-    void setMatchSeed(std::uint64_t seed) { match_seed_ = seed; }
+    void setMatchSeed(std::uint64_t seed) { match_seed_ = seed; assignFeet(); }
     std::uint64_t matchSeed() const noexcept { return match_seed_; }
 
     // Advance one tick. Returns match events (usually empty).
@@ -373,6 +383,20 @@ private:
                                       math::Fixed64::fromFraction(88, 100), math::Fixed64::fromFraction(95, 100)};
     std::uint64_t last_touch_tick_ = 0;
     std::uint32_t dribble_touches_ = 0, dribble_lost_ = 0, steals_ = 0;
+    // G5.79 (§8.180)
+    struct PendingKick {
+        SlotIndex slot = 0xFF; Action act = Action::None; std::uint8_t carry_m = 0, pass_to = 0xFF, first_time = 0, die = 0, has_aim = 0, foot = 0;
+        math::Vec2 aim{}; math::Fixed64 aim_z{}; std::uint64_t since = 0, until = 0;
+        math::Vec2 mate_at{};   // where his intended receiver stood when he asked (he re-reads him as he strikes)
+    } pend_;
+    bool kicks_on_ = true, last_kick_weak_ = false;
+    math::Fixed64 kick_reach_ = math::Fixed64::one(), weak_deg_ = math::Fixed64::fromInt(3);
+    std::int32_t kick_wait_max_ = 15;
+    std::vector<std::uint8_t> strong_, kick_foot_;
+    std::vector<math::Fixed64> weakp_;
+    std::uint32_t kicks_waited_ = 0, kick_wait_ticks_ = 0, kicks_cancelled_ = 0, last_kick_wait_ = 0;
+    void assignFeet();
+    std::uint8_t chooseFoot(SlotIndex s) const;
     // pressed (an opponent within 3 m of him): the real ball sits this much closer (DFL free − pressed median), m
     math::Fixed64 dribble_press_[8] = {math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(18, 100),
                                        math::Fixed64::fromFraction(13, 100), math::Fixed64::fromFraction(9, 100), math::Fixed64::fromFraction(5, 100),
