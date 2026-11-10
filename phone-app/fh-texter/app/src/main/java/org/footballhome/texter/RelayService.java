@@ -202,6 +202,13 @@ public class RelayService extends Service {
             update("⚠ Can't send — open FH Texter and allow SMS");
             return;
         }
+        if (!MainActivity.hasPhone(this)) {
+            // v1.3: without Phone, Samsung's SMS stack throws
+            // "getGroupIdLevel1" on every send.
+            SmsResultReceiver.report(this, id, "failed", "Phone permission is off for FH Texter on the phone — open the app and allow it");
+            update("⚠ Can't send — open FH Texter and allow Phone");
+            return;
+        }
         try {
             SmsManager sms = Build.VERSION.SDK_INT >= 31 ? getSystemService(SmsManager.class) : SmsManager.getDefault();
             ArrayList<String> parts = sms.divideMessage(body);

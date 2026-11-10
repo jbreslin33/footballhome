@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 // in this app's private preferences.  Call off the main thread.
 final class Api {
     static final String BASE = "https://footballhome.org/api/phone-relay";
-    static final String VERSION = "1.2";
+    static final String VERSION = "1.3";
     private static final String PREFS = "fh_texter";
 
     static final class Result {

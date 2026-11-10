@@ -128,6 +128,9 @@ public class MainActivity extends Activity {
             status.setText("⚠ Allow \"Send SMS\" so it can send your texts.\nTap \"SMS settings\" → Permissions → SMS → Allow."
                     + "\n(Greyed out? ⋮ at the top right → Allow restricted settings first.)");
             status.setTextColor(Color.parseColor("#B45309"));
+        } else if (!hasPhone()) {
+            status.setText("⚠ Allow \"Phone\" too — Samsung won't send texts without it.\nTap \"SMS settings\" → Permissions → Phone → Allow.");
+            status.setTextColor(Color.parseColor("#B45309"));
         } else if (paired) {
             String who = Api.prefs(this).getString("first_name", "");
             long ok = Api.prefs(this).getLong("last_ok_at", 0);
@@ -189,6 +192,8 @@ public class MainActivity extends Activity {
     private void askPermissions() {
         List<String> want = new ArrayList<>();
         if (!hasSms()) want.add(Manifest.permission.SEND_SMS);
+        // v1.3: Samsung's SMS stack needs Phone (getGroupIdLevel1) to send.
+        if (!hasPhone()) want.add(Manifest.permission.READ_PHONE_STATE);
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
             want.add(Manifest.permission.POST_NOTIFICATIONS);
         if (!want.isEmpty()) requestPermissions(want.toArray(new String[0]), 1);
@@ -213,6 +218,12 @@ public class MainActivity extends Activity {
             startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getPackageName())));
         } catch (Exception e) { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
     }
+
+    static boolean hasPhone(android.content.Context c) {
+        return c.checkSelfPermission(Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private boolean hasPhone() { return hasPhone(this); }
 
     private boolean hasSms() {
         return checkSelfPermission(Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED;
