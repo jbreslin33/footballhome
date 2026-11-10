@@ -7653,3 +7653,76 @@ the man meeting it. Should the marker of the receiver be the contester? (2) The 
 free men (real: to a marked target man, 4.7 m). (3) Goal-side 59-67% v 73 in the box: markers trail
 runners. (4) CBs still 1-2 m loose with the ball 35+ m out. (5) Throw-ins past 4 m. (6) Own-third
 lofted passes landing where nobody is. (7) Crosses 3.8 v 11.5. (8) Law 8, Law 13 walls, cards.
+
+### 8.174 G5.73 — high passes: high at the real share for the pass's length, never a chip because the lane is shut (no migration)
+
+§8.173's next (1) and (2): the aerial contest lost ground when marking landed, and the passer lofts
+only to free men.
+
+**Measured first** (new harness lines, 8 × 90, seed 1000; real in brackets).
+- At a midfield high ball's drop (35-70 m off the kicker's goal) the other side's nearest man is
+  their chaser 93% of the time, 3.5 m off it. The kicker's side's man nearest the drop has a
+  marker only 8% of the time, 13.6 m off him. Nobody is marking the man it drops to, because he was
+  picked for being free.
+- HIGH PASSES (new; open play, crosses out, by the aim's metres off the passer's own goal): aimed
+  in our own third 35.8 a team-match (3.3), 94% completed (57), median 22.8 m; aimed in midfield
+  48.8 (26.3), 86% completed (46), 21.8 m (36.2); aimed in their third 26.1 (29.3), 40% (36).
+  An aerial duel at the aim within 5 s: 1 / 5 / 6% (4 / 16 / 12).
+- HIGH BY LENGTH (new; origin 35-70, length 0-10 / 10-20 / 20-30 / 30-40 / 40-50 / 50+ m): high
+  11.7 / 18.0 / 23.3 / 29.1 / 34.6 / 16.4% (5.3 / 5.4 / 12.3 / 41.9 / 77.5 / 92.7). Those high
+  passes completed 99 / 94 / 73 / 47 / 72 / 82% (50 / 51 / 46 / 47 / 49 / 40). Own third the same
+  shape: short passes high 19-31% (5-14), 40 m+ passes 0-19% (90-98).
+
+**Real** (new `scripts/benchmarks_statsbomb_highpass.py`, StatsBomb PL 15/16, 380 matches). Open-play
+passes, crosses out. Whatever its origin, a pass under 20 m goes high about 5% of the time, 20-30 m
+12-21%, 30-40 m 42-54%, 40-50 m 74-90%, 50 m+ 87-98%. A high pass completes 35-57% at every length
+and origin; a ground pass of the same length 74-95%. An aerial duel (Duel "Aerial Lost" or any
+`aerial_won`, either side) within 5 s and 6 m of a high pass's end: 16% aimed in midfield, 12% in
+their third. A first window of 3 s missed half of them: long balls fly 2-3 s (median duel 2.9 s
+after the kick, at the end location ±0.1 m).
+
+So the length of a pass decides whether it goes high, not whether the ground lane is open. Ours went
+high when a blocked ground lane had a loft the race read called safe: a chip over the presser to
+a free man, nearly always arriving. Long passes stayed on the ground.
+
+**The change** [StatsBomb table, FH scope]. `Possession` OnBall, a pass to feet (not the cross into
+the box, not in behind, not into space): each mate is two candidates. On the ground, his share ×
+(1 − high share). High, his share × high share. The high share is `physics.pass.high_<origin>_<band>`
+(origin 0-35 / 35-70 / 70+ m off our goal, band middles 5 … 55 m, linear between, held past the ends).
+- The race read sets each mode's risk, never the mode. An unsafe ground pass is × `risk_weight`
+  (0.25, as before). An unsafe high one is × `physics.pass.high_risk_weight`, fitted 0.25 / 0.6 / 1.0
+  → aerial duels 29.8 / 40.8 / 55.1 a match (44.1): 0.6. A high ball is a contest by nature, and as
+  with balls in behind (G5.51) the read doesn't pick the ones that fail. Completion barely moves
+  with it.
+- Past the passer's loft range the high share is dropped, not handed to the ground. Nobody drives a
+  55 m pass along the floor.
+- The old roll (`pass_loft` by origin zone, then loft if safe) stays only for the ball into the box
+  (the cross share). `physics.pass.high_0_0` 0 = the old behaviour.
+
+**After** (8 × 90, seed 1000 v the run before; seed 2000 on v off in the second column).
+- Aerial duels 22.0 → 44.6 a match; 24.4 → 47.2 (44.1).
+- Origin 35-70, high by length: 5.4 / 8.1 / 19.4 / 45.1 / 67.8 / 36.8% (5.3 / 5.4 / 12.3 / 41.9 /
+  77.5 / 92.7). Own third: 6.3 / 9.1 / 17.6 / 55.5 / 62.8 / 9.1% (5.5 / 5.2 / 14.3 / 53.9 / 90.2 / 97.9).
+  50 m+ passes from our third 5.3 → 2.8-4.6 a team-match (9.5); the rest are in-behind and
+  into-space balls, which have their own air share.
+- High passes aimed in midfield 48.8 → 42.3 (26.3), completed 86 → 73% (46), 21.8 → 31.3 m (36.2),
+  duel at the aim 5 → 24% (16). Their third 26.1 → 26.6 (29.3), 40 → 32% (36).
+- Midfield high balls coming down: the other side within 2 m 16.1 → 23.8%, 20.6 → 28.1% (56.8); both
+  within 2 m 5.7 → 10.7%, 9.4 → 14.0 (39.3).
+- Passes completed 78.3 → 74.8%, 78.9 → 75.5% (79.1). Shots 9.8 → 8.4, 9.9 → 9.3; goals 1.50 → 1.69,
+  1.69 → 1.25: noise.
+- Both goldens re-locked. New test: pass_high_share_by_origin_and_length. A run is ~10% slower: every
+  pass to feet with a high share now runs the loft race read.
+
+**What it says.** The mode is real now, and the contest follows from it. Completion fell because the
+pass *policy* is off. Our high passes aimed in our own third are still 30 a team-match (3.3), median
+34 m: long lateral passes across our own third, which are now high at their real share for that
+length. Our own-third passes run 20-40 m twice as often as real (68 a team-match v 26), and
+switches are 26.9 v 10.7 a team-match (§8.160). The high ones still complete 74-94% there, so the
+receiving end (first touch, duel outcome) is too kind to a lofted ball.
+
+**Next moles.** (1) Long lateral passes in our own third: 20-40 m from 0-35 m out 68 v 26 a
+team-match, switches 26.9 v 10.7. (2) High passes complete too often (own third 74-94% v 35-49):
+the aerial receive and duel outcome. (3) Ground passes in their third complete 50-70% (real 74-87%).
+(4) Throw-ins are 41% of midfield high balls: throws past 4 m. (5) Goal-side 59-67% v 73 in the
+box. (6) Crosses 3.8 v 11.5. (7) Law 8, Law 13 walls, cards.

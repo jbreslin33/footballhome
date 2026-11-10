@@ -120,7 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
-    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4];   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3];   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
     // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
@@ -222,6 +222,7 @@ int main(int argc, char** argv) {
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
+        struct Hp { bool on = false; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false; } rel;
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
@@ -296,6 +297,23 @@ int main(int argc, char** argv) {
                 std::fprintf(stderr, "dead-trace m%d k%ld restart %d kind %d owner %d ball %.1f,%.1f\n", m, k, W.restartTeam(),
                              static_cast<int>(W.restartKind()), b.owner ? *b.owner : -1, b.pos.x.toDouble(), b.pos.y.toDouble());
 
+            if (hp.on) {   // §8.174: the first touch after a high pass — a mate's = completed; an aerial duel near the aim within 5 s
+                const long dk = static_cast<long>(k) - hp.k0;
+                if (W.aerialDuels() > hp.duels0) { hp.duels0 = W.aerialDuels(); if (std::hypot(b.pos.x.toDouble() - hp.tx, b.pos.y.toDouble() - hp.ty) <= 6) hp.duel = true; }
+                int toucher = -1;
+                if (dk > 0 && b.owner && *b.owner != hp.kicker) toucher = *b.owner;
+                else if (dk > 0 && b.last_kicker != hp.kicker && b.last_kicker < N) toucher = b.last_kicker;
+                const bool dead = W.outStage() != 0 || W.restartTeam() != 0xFF;
+                if (toucher >= 0 || dead || dk > 150) {
+                    const bool ok = toucher >= 0 && W.player(static_cast<std::uint8_t>(toucher)).team == hp.team;
+                    if (hp.high) {
+                        if (ok) { ++S.hp_ok[hp.z]; if (hp.duel) ++S.hp_duc[hp.z]; }
+                        if (hp.duel) ++S.hp_du[hp.z];
+                        if (ok) ++S.hl_hc[hp.oz][hp.lb];
+                    } else if (ok) ++S.hl_gc[hp.oz][hp.lb];
+                    hp.on = false;
+                }
+            }
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
                 last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
                 last_kick_team = W.player(*before).team; last_kick_k = static_cast<long>(k);
@@ -312,6 +330,17 @@ int main(int argc, char** argv) {
                 }
                 // IN BEHIND: an open-play pass to a named man — where he stands against their line at the kick
                 const auto& lo = s.lastOrders()[*before];
+                if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::InBehind || lo.why == ai::Why::IntoSpace)) {
+                    hp = Hp{}; hp.on = true; hp.kicker = *before; hp.team = W.player(*before).team; hp.k0 = static_cast<long>(k); hp.duels0 = W.aerialDuels();
+                    hp.high = lo.action == core::Action::LoftedKick;
+                    hp.tx = lo.target.x.toDouble(); hp.ty = lo.target.y.toDouble();
+                    const double sgk = hp.team == 0 ? 1.0 : -1.0, own_t = hx + hp.tx * sgk, own_k = hx + W.player(*before).pos.x.toDouble() * sgk;
+                    const double len = std::hypot(hp.tx - W.player(*before).pos.x.toDouble(), hp.ty - W.player(*before).pos.y.toDouble());
+                    hp.z = own_t < 35 ? 0 : own_t < 70 ? 1 : 2;
+                    hp.oz = own_k < 35 ? 0 : own_k < 70 ? 1 : 2; hp.lb = len < 10 ? 0 : len < 20 ? 1 : len < 30 ? 2 : len < 40 ? 3 : len < 50 ? 4 : 5;
+                    ++S.hl_n[hp.oz][hp.lb]; if (hp.high) ++S.hl_h[hp.oz][hp.lb];
+                    if (hp.high) { ++S.hp_n[hp.z]; S.hp_len[hp.z].push_back(len); }
+                }
                 if (!own_set && (lo.why == ai::Why::Pass || lo.why == ai::Why::Cross || lo.why == ai::Why::InBehind || lo.why == ai::Why::IntoSpace) && lo.other >= 0 && lo.other < N) {
                     const int tm0 = W.player(*before).team;
                     const double sg = tm0 == 0 ? 1.0 : -1.0;
@@ -594,6 +623,23 @@ int main(int argc, char** argv) {
                             S.hb_ct[z].push_back(std::hypot(s.lastOrders()[j].target.x.toDouble() - bx2, s.lastOrders()[j].target.y.toDouble() - by2));
                             S.hb_cv[z].push_back(std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()));
                             break;
+                        }
+                    }
+                    {   // §8.174: the other side's nearest outfielder at the drop — his job and metres off it; and the man of the
+                        // kicker's side nearest the ball: is he marked, and how far is his marker
+                        int jn = -1, ja = -1; double dn = 1e9, da = 1e9;
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.isKeeper(j)) continue;
+                            const double dd = std::hypot(W.player(j).pos.x.toDouble() - bx2, W.player(j).pos.y.toDouble() - by2);
+                            if (W.player(j).team != po && dd < dn) { dn = dd; jn = j; }
+                            if (W.player(j).team == po && dd < da) { da = dd; ja = j; }
+                        }
+                        if (jn >= 0) { const int w = static_cast<int>(s.lastOrders()[jn].why); if (w < ai::kWhyCount) { ++S.hn_why[z][w]; S.hn_d[z][w].push_back(dn); } }
+                        if (ja >= 0) {
+                            ++S.hm_n[z];
+                            for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != po && s.lastOrders()[j].why == ai::Why::Mark && s.lastOrders()[j].other == ja) {
+                                ++S.hm_on[z]; S.hm_d[z].push_back(std::hypot(W.player(j).pos.x.toDouble() - W.player(ja).pos.x.toDouble(), W.player(j).pos.y.toDouble() - W.player(ja).pos.y.toDouble()));
+                            }
                         }
                     }
                     if (na < 2 && nd < 2) ++S.hb_both[z];
@@ -1463,6 +1509,19 @@ int main(int argc, char** argv) {
                                         nk / tmn, rKk[ab], 100 * S.lk_k[ab][0] / std::max(1.0, nk), 100 * S.lk_k[ab][1] / std::max(1.0, nk), 100 * S.lk_k[ab][2] / std::max(1.0, nk), rKks[ab][0], rKks[ab][1], rKks[ab][2]);
                         }
                     }
+                    {   // §8.174
+                        auto mdh = [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+                        static const char* zn3[3] = {"0-35", "35-70", "70+"}; static const double rn[3] = {3.3, 26.3, 29.3}, rc[3] = {57.0, 46.0, 36.0}, rl[3] = {22.7, 36.2, 37.8}, rd[3] = {4.2, 16.2, 11.7};
+                        std::printf("\n        HIGH PASSES, open play, crosses out (benchmarks_statsbomb_highpass.py, real PL 15/16 in brackets), by the aim's m off the passer's own goal: a team-match | completed %% | length med | aerial duel at it within 5 s %% (on completed %%)");
+                        for (int z = 0; z < 3; ++z) if (S.hp_n[z]) std::printf("\n          %-5s %5.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) (%4.1f)", zn3[z], S.hp_n[z] / tmn, rn[z], 100.0 * S.hp_ok[z] / S.hp_n[z], rc[z], mdh(S.hp_len[z]), rl[z], 100.0 * S.hp_du[z] / S.hp_n[z], rd[z], 100.0 * S.hp_duc[z] / std::max(1L, S.hp_ok[z]));
+                        static const double rh[3][6] = {{5.5, 5.2, 14.3, 53.9, 90.2, 97.9}, {5.3, 5.4, 12.3, 41.9, 77.5, 92.7}, {5.5, 7.4, 21.4, 46.2, 74.4, 87.4}};
+                        static const double rhc[3][6] = {{35, 49, 45, 42, 35, 28}, {50, 51, 46, 47, 49, 40}, {33, 38, 39, 55, 67, 64}};
+                        std::printf("\n        HIGH BY LENGTH (benchmarks_statsbomb_highpass.py --length): origin m off own goal | by the pass's length 0-10/10-20/20-30/30-40/40-50/50+: a team-match, high %% (real), high completed %% (real) / ground completed %%");
+                        for (int oz = 0; oz < 3; ++oz) {
+                            std::printf("\n          %-5s", zn3[oz]);
+                            for (int lb = 0; lb < 6; ++lb) { const long nn = S.hl_n[oz][lb], hh = S.hl_h[oz][lb]; std::printf(" [%4.1f %4.1f%% (%4.1f) %3.0f (%2.0f)/%3.0f]", nn / tmn, 100.0 * hh / std::max(1L, nn), rh[oz][lb], 100.0 * S.hl_hc[oz][lb] / std::max(1L, hh), rhc[oz][lb], 100.0 * S.hl_gc[oz][lb] / std::max(1L, nn - hh)); }
+                        }
+                    }
                     std::printf("\n        HEADERS (benchmarks_statsbomb_aerial.py, real PL 15/16 in brackets): aerial duels a match %.1f (44.1), lone headers a match %.1f, headed clearances a team %.1f (16.1), headers at goal a team %.1f", S.aer_d / static_cast<double>(matches), S.aer_l / static_cast<double>(matches), S.aer_c / tmn, S.aer_g / tmn);
                     {
                         static const double rN[3] = {15.5, 41.8, 27.6}, rA[3] = {1.7, 1.8, 1.8}, rD[3] = {2.0, 1.6, 1.2}, rB[3] = {36.4, 39.3, 43.0}, rO[3] = {49.8, 56.8, 65.3}, rX[3] = {24.0, 19.3, 18.7}, rL[3] = {61.8, 71.6, 74.4};
@@ -1510,6 +1569,9 @@ int main(int argc, char** argv) {
                             std::printf(" || what:"); for (int w = 0; w <= ai::kWhyCount; ++w) if (S.hb_why[z][w] * 100 >= 5 * n) std::printf(" %s %.0f%%", w < ai::kWhyCount ? ai::kWhyNames[w] : "header/deflection", 100 * S.hb_why[z][w] / n);
                             std::printf(", kicked from %.1f m off his goal", md2(S.hb_from[z]));
                             std::printf(" || their chaser then %4.1f%%, off the ball %4.1f m, his target off it %4.1f m, at %3.1f m/s", 100 * S.hb_c[z] / n, md2(S.hb_cd[z]), md2(S.hb_ct[z]), md2(S.hb_cv[z]));
+                            std::printf("\n                 §8.174 the other side's nearest at the drop, by job: ");
+                            for (int w = 0; w < ai::kWhyCount; ++w) if (S.hn_why[z][w] * 100 >= 3 * n) std::printf(" %s %.0f%% (%.1f m)", ai::kWhyNames[w], 100 * S.hn_why[z][w] / n, md2(S.hn_d[z][w]));
+                            if (S.hm_n[z]) std::printf(" || the kicker's side's nearest marked %.0f%%, marker off him %.1f m", 100.0 * S.hm_on[z] / S.hm_n[z], md2(S.hm_d[z]));
                         }
                     }
                     static const double rU[21] = {6.6, 9.6, 14.2, 16.8, 19.8, 22.9, 25.6, 28.9, 31.3, 34.0, 37.4, 40.4, 42.7, 45.1, 48.0, 49.9, 52.3, 54.2, 56.5, 57.8, 60.5};

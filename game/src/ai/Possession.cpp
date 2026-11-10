@@ -154,7 +154,7 @@ public:
         int in_zone[10] = {};
         for (std::uint8_t j = 0; j < w.playerCount(); ++j)
             if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
-        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; };
+        struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
         // Their offside line (Law 11): the second-last of theirs, or halfway, or the ball.
@@ -193,7 +193,26 @@ public:
             if (!w.isKeeper(j) && gap.raw >= 0 && gap < Fixed64::fromInt(18))
                 pb = P.behind_gap[static_cast<int>(gap.raw >> Fixed64::FRAC_BITS) / 2];
             const Fixed64 wgt = w0 * (Fixed64::one() - pb);
-            if (wgt.raw > 0) {
+            // G5.73 (§8.174): to feet, outside the cross into the box — high or on the ground at the
+            // real share for his spot and this length; the race read sets each mode's risk, never the
+            // mode. Before, a blocked ground lane with a safe loft became a chip: 12-30% of our passes
+            // under 30 m went high (real 5-14%) and 94-99% arrived (real 35-50%), while 40-50 m passes
+            // stayed on the ground (19-35% high, real 77-90%).
+            const bool box_ball = ez == 0 && oz != 0;
+            if (wgt.raw > 0 && P.high_on && !box_ball) {
+                const bool gsafe = c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one());
+                // Past his range the high share is not his to play, and is not handed to the ground:
+                // nobody drives a 55 m pass along the floor (real 50+ m passes 87-98% high).
+                const Fixed64 ph = P.highShare(own_end, d);
+                Fixed64 gw = wgt * (Fixed64::one() - ph);
+                if (!gsafe) gw = gw * P.risk_weight;
+                add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
+                if (ph.raw > 0 && d <= reach) {
+                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
+                    const bool lsafe = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
+                    add(Cand{j, lsafe ? wgt * ph : wgt * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
+                }
+            } else if (wgt.raw > 0) {
                 if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
                     add(Cand{j, wgt, false, Loft{}, false, to, 0});
                 } else {
@@ -359,7 +378,7 @@ public:
                 p_air = P.pass_cross[oz] / P.pass_to[oz][0];
                 if (p_air > Fixed64::one()) p_air = Fixed64::one();
             }
-            if (!air && u2 < p_air) {
+            if (!air && !ch.moded && u2 < p_air) {
                 const Loft l2 = loftTo(w.ballFlight(), m, me.pos, reach);
                 if (c.reads.loftSafe(w, v.slot, sp, l2.at, l2.carry_m, Fixed64::one())) { air = true; lf = l2; crossed = into_box; }
             }
@@ -895,6 +914,20 @@ Fixed64 Possession::frontGap(const PlayerView& v) const {
     return g;
 }
 
+
+// G5.73 (§8.174): the real high share for a pass this long from this far off our goal, linear
+// between the length bands' middles (5, 15, … 55 m), held past the ends.
+Fixed64 PossessionParams::highShare(Fixed64 own_m, Fixed64 len) const {
+    const int o = own_m < Fixed64::fromInt(35) ? 0 : own_m < Fixed64::fromInt(70) ? 1 : 2;
+    const Fixed64* h = pass_high[o];
+    if (len <= Fixed64::fromInt(5)) return h[0];
+    if (len >= Fixed64::fromInt(55)) return h[5];
+    const Fixed64 u = (len - Fixed64::fromInt(5)) / Fixed64::fromInt(10);
+    const int i = static_cast<int>(u.raw >> Fixed64::FRAC_BITS);
+    const Fixed64 f = u - Fixed64::fromInt(i);
+    return h[i] + (h[i + 1] - h[i]) * f;
+}
+
 void PossessionParams::configure(const core::ModelParams& p) {
     for (int r = 0; r < kRoleCount; ++r)
         for (int b = 0; b < kBandCount; ++b) {
@@ -933,10 +966,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
         pass_loft[o] = p.fixed(("physics.pass.loft_" + std::to_string(o)).c_str(), kLoft[o]);
         pass_cross[o] = p.fixed(("physics.pass.cross_" + std::to_string(o)).c_str(), kCross[o]);
     }
+    {   // G5.73 (§8.174): StatsBomb PL 15/16 open play, crosses out — high share by origin x length, permille
+        static const int kHigh[3][6] = {{55, 52, 143, 539, 902, 979}, {53, 54, 123, 419, 775, 927}, {55, 74, 214, 462, 744, 874}};
+        for (int o = 0; o < 3; ++o)
+            for (int l = 0; l < 6; ++l)
+                pass_high[o][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(l)).c_str(), kHigh[o][l]);
+        high_on = pass_high[0][0].raw > 0;
+    }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
+    high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this

@@ -89,7 +89,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.63 (2026-11-09): a busy front man (the pass's man, a runner) keeps the front job.
 // Re-locked G5.68 (2026-11-09): the away side's formation turned 180° (y mirrored too).
 // Re-locked G5.72 (2026-11-09): marking — CB/FB/DM goal-side of the man in their zone (§8.173).
-constexpr std::uint64_t kGolden3v3   = 0x1a0f7a1e631fd9c5ULL;
+// Re-locked G5.73 (2026-11-09): a pass goes high at the real share for its origin and length (§8.174).
+constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -120,7 +121,8 @@ constexpr std::uint64_t kGolden3v3   = 0x1a0f7a1e631fd9c5ULL;
 // Re-locked G5.63 (2026-11-09): as the 3v3.
 // Re-locked G5.68 (2026-11-09): as the 3v3.
 // Re-locked G5.72 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xed541215a5fc7dadULL;
+// Re-locked G5.73 (2026-11-09): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0xbf04c691d4797d9aULL;
 
 struct Rig {
     World world;
@@ -307,6 +309,22 @@ FH_TEST(ai_goldens_3v3_and_11v11) {
     // Locked 2026-10-21 with slice G2.6:
     FH_EXPECT_EQ(h3, kGolden3v3);
     FH_EXPECT_EQ(h11, kGolden11v11);
+}
+
+// G5.73 (§8.174): the real high share by the passer's metres off his own goal and the pass's
+// length — the table at the band middles, linear between, held past the ends; 0 in [0][0] = off.
+FH_TEST(pass_high_share_by_origin_and_length) {
+    ai::PossessionParams P;
+    P.configure(core::ModelParams{});
+    auto pm = [](Fixed64 x) { return static_cast<int>((x * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS); };
+    FH_EXPECT(P.high_on);
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(3))) - 55) <= 1);    // own third, short
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35))) - 539) <= 1);  // a band middle
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(50), Fixed64::fromInt(40))) - 597) <= 1);  // 419 .. 775 halfway
+    FH_EXPECT(std::abs(pm(P.highShare(Fixed64::fromInt(80), Fixed64::fromInt(70))) - 874) <= 1);  // held past 55 m
+    core::ModelParams off; off.setMilli("physics.pass.high_0_0", 0);
+    ai::PossessionParams Q; Q.configure(off);
+    FH_EXPECT(!Q.high_on);
 }
 
 FH_TEST_MAIN()

@@ -58,6 +58,14 @@ struct PossessionParams {
     // zones holding a mate; × this when the zone is held (DFL recipient zones at the
     // kick, iterative fit — benchmarks_tracking_passzone.py kKappa). 1 = off.
     math::Fixed64 pass_kappa[10][10]{};
+    // G5.73 (§8.174): the share of real passes played high (StatsBomb height High), by the
+    // passer's metres off his own goal 0-35 / 35-70 / 70+ and the pass's length at the band
+    // middles 5 … 55 m — benchmarks_statsbomb_highpass.py --length. A pass to feet goes high at
+    // this share, the race read deciding only its risk. 0 in [0][0] = off (the old pass_loft roll).
+    math::Fixed64 pass_high[3][6]{};
+    bool high_on = true;
+    math::Fixed64 high_risk{};   // a high pass the race read says they win, at this share (physics.pass.high_risk_weight)
+    math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len) const;
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
     bool space_on = true; math::Fixed64 space_wide_y{}, cross_depth_m{}, space_max_s{}, space_risk{}, space_roll_m{}; int space_margin_ticks = 0;   // G5.54: the ball into an empty zone ahead   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share
