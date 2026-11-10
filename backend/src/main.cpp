@@ -62,6 +62,7 @@
 #include "controllers/MatchPlanController.h"
 #include "controllers/TacticalLiveController.h"
 #include "controllers/FinesController.h"
+#include "controllers/VolunteerController.h"
 #include "controllers/ScheduleLinksController.h"
 #include "controllers/DashboardController.h"
 #include "controllers/CupRosterController.h"
@@ -162,6 +163,7 @@ private:
     std::shared_ptr<MatchPlanController> match_plan_controller_;
     std::shared_ptr<TacticalLiveController> tactical_live_controller_;
     std::shared_ptr<FinesController> fines_controller_;
+    std::shared_ptr<VolunteerController> volunteer_controller_;
     std::shared_ptr<ScheduleLinksController> schedule_links_controller_;
     std::shared_ptr<DashboardController> dashboard_controller_;
     std::shared_ptr<CupRosterController> cup_roster_controller_;
@@ -271,6 +273,7 @@ public:
         match_plan_controller_ = std::make_shared<MatchPlanController>();
         tactical_live_controller_ = std::make_shared<TacticalLiveController>();
         fines_controller_ = std::make_shared<FinesController>();
+        volunteer_controller_ = std::make_shared<VolunteerController>();
         schedule_links_controller_ = std::make_shared<ScheduleLinksController>();
         dashboard_controller_ = std::make_shared<DashboardController>();
         cup_roster_controller_ = std::make_shared<CupRosterController>();
@@ -610,6 +613,8 @@ private:
         router_.useController("/api/finances", finances_controller_);
         // #fines (mig 534): the Men's fines by month and player.
         router_.useController("/api/fines", fines_controller_);
+        // 🙋 volunteer shifts (mig 1222): approve / decline a player's pick.
+        router_.useController("/api/volunteer", volunteer_controller_);
         // #film (mig 599): the league's game-film sheet, read-only, fuzzily
         // matched to games.
         router_.useController("/api/film", film_controller_);

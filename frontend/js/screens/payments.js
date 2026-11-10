@@ -119,6 +119,9 @@ class PaymentsScreen extends Screen {
         <div id="pay-status" style="text-align:center; padding: var(--space-4); opacity:0.6;">Loading…</div>
         <div id="pay-error"  style="display:none; color: var(--color-error, #ef4444); padding: var(--space-3); text-align:center;"></div>
 
+        <!-- 🙋 Volunteer requests (mig 1222): approve / decline a pick -->
+        <div id="pay-volunteers"></div>
+
         <!-- Members view -->
         <div id="pay-members" style="display:none;"></div>
 
@@ -202,6 +205,13 @@ class PaymentsScreen extends Screen {
       const copyFinesBtn = e.target.closest('[data-copy-fines]');
       if (copyFinesBtn) {
         this._copyToClipboard(copyFinesBtn.getAttribute('data-copy-fines'), copyFinesBtn.getAttribute('data-copy-fines-toast'));
+        return;
+      }
+      // 🙋 volunteer request → Make volunteer / Decline (mig 1222).
+      const volBtn = e.target.closest('[data-pay-volunteer]');
+      if (volBtn) {
+        volBtn.closest('[data-pay-vol-row]')?.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        this._decideVolunteer(Number(volBtn.getAttribute('data-pay-volunteer')), volBtn.getAttribute('data-decision'));
         return;
       }
       const ranBtn = e.target.closest('[data-resolve-flag]');
@@ -664,6 +674,7 @@ class PaymentsScreen extends Screen {
     try {
       const copyReady = MessageCopy.load(this.auth); // payment notice wording (migration 367), in parallel
       const formsReady = window.SectionContact ? SectionContact.load(this.auth) : Promise.resolve(); // 📇 section forms
+      copyReady.then(() => this._loadVolunteerRequests());           // 🙋 panel (mig 1222)
       const res = await this.auth.fetch(`/api/payments/${key}/members`);
       await Promise.all([copyReady, formsReady]);
       if (!res.ok) {
@@ -1046,6 +1057,11 @@ class PaymentsScreen extends Screen {
       pause_date:   dates.pauseDate,    // first Friday they reach the pause threshold
       pause_months: pauseAt,            // dues_policies.pause_after_months
       partial_amounts: MessageCopy.partialAmountsText, // dues_policies.partial_amounts_usd (mig 414)
+      // 🙋 "Out of work? volunteer one evening a week instead" (mig 1222):
+      // only when the server offers it (volunteerOffer = the days); empty
+      // drops the notice's [[{volunteer}]] block.
+      volunteer:    m.volunteerOffer ? (MessageCopy.block('payment_notice_volunteer', channel === 'sms' ? 'sms' : 'email',
+                                                          { days: m.volunteerOffer }) || '') : '',
       ...this._pauseLine(standing, pauseAt),            // {pause_amount} {keep_active_amount} {min_payment} (mig 415/416)
     };
     // Men today (mig 1149, duesSelection from the dues policy): the
@@ -1473,6 +1489,47 @@ class PaymentsScreen extends Screen {
       case 'not_posted': return this._billCopy('not_posted', {}, 'NOT POSTED');
       default:           return this._billCopy('post', { date: md(b.firstFriday) }, `post ${md(b.firstFriday)}`);
     }
+  }
+
+  // 🙋 Volunteer requests (mig 1222, owner 2026-11-10: an overdue man picks
+  // ONE evening — Mon / Wed / Fri 5–7 PM — to help instead of paying; "You
+  // approve first").  Make volunteer → club_volunteers (mig 704): $0
+  // balance, no notices, not an alternate.  Words: kind volunteer_shift.
+  async _loadVolunteerRequests() {
+    const host = this.find('#pay-volunteers');
+    if (!host) return;
+    let list = [];
+    try {
+      const res = await this.auth.fetch('/api/volunteer/requests');
+      const body = res.ok ? await res.json() : {};
+      list = Array.isArray(body.requests) ? body.requests : [];
+    } catch (_) { list = []; }
+    if (!list.length) { host.innerHTML = ''; return; }
+    const t = (tier, tokens) => (window.MessageCopy && MessageCopy.block('volunteer_shift', tier, tokens)) || '';
+    const money = (n) => (Number.isInteger(Number(n)) ? `$${Number(n)}` : `$${Number(n).toFixed(2)}`);
+    const btn = (bg) => `background:${bg}; color:#fff; border:0; border-radius:6px; padding:5px 10px; font-weight:700; font-size:0.8rem; cursor:pointer;`;
+    host.innerHTML = `<div style="margin-bottom:var(--space-3); padding:10px 12px; border-radius:8px; border:1px solid #2563eb; background:rgba(37,99,235,0.12);">
+      <div style="font-weight:800; margin-bottom:6px;">${this.escape(t('requests_heading'))} (${list.length})</div>
+      ${list.map((r) => `<div data-pay-vol-row style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:4px 0;">
+          <span style="font-size:0.85rem;">${this.escape(t('request_line', { name: r.name, shift: r.shift, owed: money(r.owed), when: this.fmtDate(r.created_at) }))}</span>
+          <span style="display:inline-flex; gap:6px;">
+            <button type="button" data-pay-volunteer="${Number(r.id)}" data-decision="approve" style="${btn('#16a34a')}">${this.escape(t('approve'))}</button>
+            <button type="button" data-pay-volunteer="${Number(r.id)}" data-decision="deny" style="${btn('#6b7280')}">${this.escape(t('deny'))}</button>
+          </span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  async _decideVolunteer(id, decision) {
+    try {
+      const res = await this.auth.fetch(`/api/volunteer/requests/${id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    } catch (err) { this._toast(`Could not save: ${err.message}`, 'error'); }
+    this._loadVolunteerRequests();
+    // Approved → 🙋 Volunteer, $0 balance: refetch for the new status.
+    if (decision === 'approve') this.loadMembers(this.tab);
   }
 
   renderFinesCells(m) {

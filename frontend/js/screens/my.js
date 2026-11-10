@@ -160,6 +160,7 @@ class MyScreen extends Screen {
         <section id="my-chat" style="margin-bottom: 6px;"></section>
         <section id="my-groupme" style="margin-bottom: 6px;" hidden></section>
         <div id="my-dues-banner"></div>
+        <div id="my-volunteer"></div>
         <section id="my-fines" style="margin-bottom: 6px;" hidden></section>
         <section id="my-events">
           <div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>
@@ -204,6 +205,9 @@ class MyScreen extends Screen {
       // Pill labels are DB copy; the pills appear once it lands.
       MessageCopy.load(this.auth).then(() => this._renderEvents());
       this._loadFines().catch(() => {});
+      // 🙋 Overdue → volunteer one evening a week instead (mig 1222).
+      MessageCopy.load(this.auth).then(() => window.VolunteerShiftCard
+        && VolunteerShiftCard.mount(this.find('#my-volunteer'), (url, opts) => this._fetch(url, opts))).catch(() => {});
       this._fetch('/api/calendar/drive-times').then(d => { this.drive = d; this._renderEvents(); }).catch(() => {});
       await this._loadNextWeekOpens();
       this._renderEvents();

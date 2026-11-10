@@ -1,6 +1,7 @@
 #include "MyController.h"
 
 #include "../models/PersonFines.h"
+#include "../models/VolunteerShifts.h"
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
@@ -367,6 +368,9 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
     router.get (prefix + "/fines",          [this](const Request& r) { return handleGetFines(r); });
     router.post(prefix + "/fines/dispute",  [this](const Request& r) { return handlePostFineDispute(r); });
+    router.get (prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
+    router.post(prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
+    router.del (prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
     router.post(prefix + "/groupme/messages", [this](const Request& r) { return handlePostGroupMeMessage(r); });
     router.post(prefix + "/events/push-remind", [this](const Request& r) { return handlePushRemind(r); });
     router.post(prefix + "/push-test", [this](const Request& r) { return handlePushTest(r); });
@@ -528,6 +532,39 @@ Response MyController::handlePostFineDispute(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "[MyController::fineDispute] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not send the dispute");
+    }
+}
+
+// /api/my/volunteer (mig 1222) — 🙋 an overdue player picks ONE evening to
+// help instead of paying.  GET (view-as reads), POST {shift_id, agreed}
+// picks after the commitment tick, DELETE cancels a pending pick.  Writes
+// run as the caller only.
+Response MyController::handleVolunteer(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long personId = gate.session->personId;
+    const HttpMethod method = request.getMethod();
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/method == HttpMethod::GET, &personId))
+        return *err;
+    try {
+        if (method == HttpMethod::GET) return jsonOk(VolunteerShifts::mine(personId));
+        VolunteerShifts::Result r;
+        if (method == HttpMethod::DELETE) {
+            r = VolunteerShifts::withdraw(personId);
+        } else {
+            json body;
+            try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+            catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
+            const long long shiftId = body.contains("shift_id") && body["shift_id"].is_number_integer()
+                                    ? body["shift_id"].get<long long>() : 0;
+            const bool agreed = body.contains("agreed") && body["agreed"].is_boolean() && body["agreed"].get<bool>();
+            r = VolunteerShifts::pick(personId, shiftId, agreed);
+        }
+        if (!r.ok) return jsonError(static_cast<HttpStatus>(r.status), r.error);
+        return jsonOk(r.body);
+    } catch (const std::exception& e) {
+        std::cerr << "[MyController::volunteer] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save your pick");
     }
 }
 

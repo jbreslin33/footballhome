@@ -57,6 +57,7 @@ private:
     Response handleGetGroupMeFeed(const Request& request);
     Response handleGetFines(const Request& request);
     Response handlePostFineDispute(const Request& request);
+    Response handleVolunteer(const Request& request);   // 🙋 mig 1222: GET / POST / DELETE
     Response handlePostGroupMeMessage(const Request& request);
     Response handlePushRemind(const Request& request);
     Response handlePushTest(const Request& request);

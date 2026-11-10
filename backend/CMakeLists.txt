@@ -160,6 +160,8 @@ set(SOURCES
     src/controllers/TacticalLiveController.cpp
     src/services/CarpoolRouting.cpp
     src/controllers/FinesController.cpp
+    src/controllers/VolunteerController.cpp
+    src/models/VolunteerShifts.cpp
     src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp
     src/controllers/CupRosterController.cpp

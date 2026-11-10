@@ -650,18 +650,30 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
             }
         }
         std::unordered_map<int, bool> sel;
+        // volunteerOffer (mig 1222): "Monday, Wednesday or Friday, 5–7 PM"
+        // when he could volunteer instead — the dues notice's {volunteer}
+        // line; null drops it.
+        std::unordered_map<int, std::string> vol;
         if (!ids.empty()) {
             for (const auto& r : Database::getInstance()->query(
-                     "SELECT p AS person_id, fh_dues_selection_policy(p) AS sel FROM unnest(ARRAY[" + ids + "]::int[]) AS p"))
+                     "SELECT p AS person_id, fh_dues_selection_policy(p) AS sel, "
+                     "       CASE WHEN fh_volunteer_offer(p) THEN fh_volunteer_days_text(p) END AS vol "
+                     "  FROM unnest(ARRAY[" + ids + "]::int[]) AS p")) {
                 sel[r["person_id"].as<int>()] = r["sel"].as<bool>();
+                if (!r["vol"].is_null()) vol[r["person_id"].as<int>()] = r["vol"].c_str();
+            }
         }
         for (auto& row : members) {
             bool v = false;
+            json offer = nullptr;
             if (row.contains("personId") && row["personId"].is_number_integer()) {
                 auto it = sel.find(row["personId"].get<int>());
                 if (it != sel.end()) v = it->second;
+                auto vt = vol.find(row["personId"].get<int>());
+                if (vt != vol.end()) offer = vt->second;
             }
             row["duesSelection"] = v;
+            row["volunteerOffer"] = offer;
         }
     } catch (const std::exception& e) {
         std::cerr << "[PaymentsController] dues selection policy failed: " << e.what() << std::endl;
