@@ -160,4 +160,32 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] pending bank attach failed: " << e.what() << std::endl;
     }
+
+    // 🙋 volunteerOffer (mig 1222/1231): "Monday, Wednesday or Friday 5–7
+    // PM, …" on every player row (personId) who could volunteer instead of
+    // paying — the 💸 PAY text's {volunteer} line, as on #payments.  Rows
+    // without an offer get null.
+    try {
+        auto* db = Database::getInstance();
+        std::unordered_map<long long, std::string> offer;
+        for (const auto& r : db->query(
+            "SELECT tp.person_id, fh_volunteer_days_text(tp.person_id) AS days "
+            "  FROM (SELECT DISTINCT person_id FROM team_persons WHERE removed_at IS NULL) tp "
+            " WHERE fh_volunteer_offer(tp.person_id)"))
+            if (!r["days"].is_null()) offer[r["person_id"].as<long long>()] = r["days"].c_str();
+        std::function<void(nlohmann::json&)> walk = [&](nlohmann::json& j) {
+            if (j.is_array()) { for (auto& e : j) walk(e); return; }
+            if (!j.is_object()) return;
+            const auto pid = j.find("personId");
+            if (pid != j.end() && j.contains("outstandingBalance")) {
+                const auto it = pid->is_number_integer() ? offer.find(pid->get<long long>()) : offer.end();
+                j["volunteerOffer"] = it != offer.end() ? nlohmann::json(it->second) : nlohmann::json(nullptr);
+                return;
+            }
+            for (auto& [k, v] : j.items()) walk(v);
+        };
+        walk(body);
+    } catch (const std::exception& e) {
+        std::cerr << "[" << logTag << "] volunteer offer attach failed: " << e.what() << std::endl;
+    }
 }

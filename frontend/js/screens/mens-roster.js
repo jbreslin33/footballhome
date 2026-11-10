@@ -718,6 +718,9 @@ class MensRosterScreen extends RosterScreenBase {
         reg_date:    prorateOwed ? pr.regDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
         days_remain: prorateOwed ? pr.daysRemain : '',
         cycle_days:  prorateOwed ? pr.cycleDays : '',
+        // 🙋 "Out of work? volunteer one day a week instead" (mig 1231) —
+        // server's volunteerOffer = the days; empty drops [[ {volunteer}]].
+        volunteer:   p.volunteerOffer ? (MessageCopy.block('payment_notice_volunteer', 'sms', { days: p.volunteerOffer }) || '') : '',
       });
       const payHref   = (p.phone && payBody) ? `sms:${p.phone}?&body=${encodeURIComponent(Screen.withSmsLinkHint(payBody))}` : null;
       const payBtn    = payHref

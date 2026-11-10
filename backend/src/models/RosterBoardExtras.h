@@ -13,7 +13,8 @@
 //   officialRosters  the league's OWN roster names per team (mig 620)
 //
 // and nets each player's LA outstandingBalance of bank payments LA has
-// recorded but not applied yet (mig 690), adding pendingBankUsd.
+// recorded but not applied yet (mig 690), adding pendingBankUsd, and
+// volunteerOffer (🙋 mig 1231) — the days he could volunteer instead, or null.
 //
 // The queries are club-wide (not section-scoped): each board only reads
 // the keys matching its own columns' team ids, so one shape serves all.

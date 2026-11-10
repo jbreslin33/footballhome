@@ -982,7 +982,8 @@ Response RsvpBoardController::handleDuesNote(const Request& request) {
     try {
         auto* db = Database::getInstance();
         auto d = db->query(
-            "SELECT fh_dues_alternate($1::int, $2::int) AS alt, fh_dues_balance_usd($1::int) AS bal",
+            "SELECT fh_dues_alternate($1::int, $2::int) AS alt, fh_dues_balance_usd($1::int) AS bal, "
+            "       CASE WHEN fh_volunteer_offer($1::int) THEN fh_volunteer_days_text($1::int) END AS vol_days",
             {std::to_string(personId), std::to_string(WelcomeLog::kLighthouseClubId)});
         if (d.empty() || !d[0]["alt"].as<bool>())
             return jsonError(HttpStatus::CONFLICT, "That player doesn't owe dues on a team with the alternate rule.");
@@ -1003,6 +1004,14 @@ Response RsvpBoardController::handleDuesNote(const Request& request) {
         const std::string playerFirst = pf.empty() ? "" : pf[0]["fn"].c_str();
         MessageCopy copy;
         const std::string when = ctx.day + " " + ctx.time;
+        // 🙋 "Out of work? volunteer one day a week instead" (mig 1222/1231)
+        // — the same line the dues notices carry; empty drops [[{volunteer}]].
+        std::string volunteer;
+        if (!d[0]["vol_days"].is_null()) {
+            const auto v = copy.render("payment_notice_volunteer", channel == "email" ? "email" : "sms",
+                                       {{"days", d[0]["vol_days"].c_str()}});
+            if (v.ok()) volunteer = v.body;
+        }
         json sends = json::array();
         for (const auto& rcp : recipients) {
             const bool parent = rcp.personId != personId;
@@ -1013,7 +1022,8 @@ Response RsvpBoardController::handleDuesNote(const Request& request) {
             const auto minted = MagicLinkService::mint(rcp.personId, channel, contact, scope.userId);
             const auto msg = copy.render("dues_alternate_note", parent ? "parent" : "adult", {
                 {"first", rcp.firstName}, {"child", playerFirst}, {"amount", amount},
-                {"when", when}, {"event", ctx.shortEvent}, {"link", minted.url}, {"sender", senderName}});
+                {"when", when}, {"event", ctx.shortEvent}, {"link", minted.url}, {"sender", senderName},
+                {"volunteer", parent ? std::string{} : volunteer}});
             if (!msg.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "dues_alternate_note template missing (migration 687)");
             json one = {{"recipient_person_id", rcp.personId}, {"recipient_name", rcp.firstName},
                         {"contact", contact}, {"token_id", minted.tokenId}};
