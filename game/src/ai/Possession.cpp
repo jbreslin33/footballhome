@@ -152,8 +152,21 @@ public:
         // we win (ground, else lofted) stay in; one roll for the spell picks.
         const int oz = zoneOf(hx, sp, v.sg);
         int in_zone[10] = {};
-        for (std::uint8_t j = 0; j < w.playerCount(); ++j)
-            if (j != v.slot && c.team_of_slot[j] == v.team) ++in_zone[zoneOf(hx, v2(w.player(j).pos), v.sg)];
+        // G5.74 (§8.175): a zone's share is split among the mates standing there by e^(-d/lambda),
+        // d = his metres from the passer (DFL: the man a pass is for is the nearest in his zone 50-62%
+        // of the time, 37-40% if even; wide to wide with a mate on each flank, the passer's own
+        // flank 95-100%). Split evenly, the far flank's man took half of every wide-to-wide share.
+        const int lb = own_end < Fixed64::fromInt(35) ? 0 : own_end < Fixed64::fromInt(70) ? 1 : 2;
+        const Fixed64 lam = P.pick_lambda[lb];
+        Fixed64 pick[32] = {}, zsum[10] = {};
+        for (std::uint8_t j = 0; j < w.playerCount() && j < 32; ++j)
+            if (j != v.slot && c.team_of_slot[j] == v.team) {
+                const Vec2 to = v2(w.player(j).pos);
+                const int ez = zoneOf(hx, to, v.sg);
+                ++in_zone[ez];
+                pick[j] = lam.raw > 0 ? math::fx_exp_neg(math::length(Vec2{to.x - sp.x, to.y - sp.y}) / lam) : Fixed64::one();
+                zsum[ez] += pick[j];
+            }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
@@ -184,7 +197,7 @@ public:
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg);
-            const Fixed64 w0 = P.pass_to[oz][ez] * P.pass_kappa[oz][ez] / Fixed64::fromInt(in_zone[ez]);
+            const Fixed64 w0 = zsum[ez].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * pick[j] / zsum[ez] : Fixed64{};
             if (w0.raw <= 0) continue;
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
@@ -972,6 +985,10 @@ void PossessionParams::configure(const core::ModelParams& p) {
             for (int l = 0; l < 6; ++l)
                 pass_high[o][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(l)).c_str(), kHigh[o][l]);
         high_on = pass_high[0][0].raw > 0;
+    }
+    {   // G5.74 (§8.175): DFL 7 matches, benchmarks_tracking_passpick.py — lambda by maximum likelihood, m
+        static const int kPick[3] = {15000, 10000, 8000};
+        for (int o = 0; o < 3; ++o) pick_lambda[o] = p.fixed(("physics.pass.pick_lambda_" + std::to_string(o)).c_str(), kPick[o]);
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);

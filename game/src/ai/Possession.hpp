@@ -64,6 +64,7 @@ struct PossessionParams {
     // this share, the race read deciding only its risk. 0 in [0][0] = off (the old pass_loft roll).
     math::Fixed64 pass_high[3][6]{};
     bool high_on = true;
+    math::Fixed64 pick_lambda[3]{};   // G5.74 (§8.175): a zone's share split among its mates ~ e^(-d/lambda), by the passer's m off our goal 0-35 / 35-70 / 70+ (0 = even)
     math::Fixed64 high_risk{};   // a high pass the race read says they win, at this share (physics.pass.high_risk_weight)
     math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len) const;
     math::Fixed64 risk_weight{};

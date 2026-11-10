@@ -7726,3 +7726,48 @@ team-match, switches 26.9 v 10.7. (2) High passes complete too often (own third 
 the aerial receive and duel outcome. (3) Ground passes in their third complete 50-70% (real 74-87%).
 (4) Throw-ins are 41% of midfield high balls: throws past 4 m. (5) Goal-side 59-67% v 73 in the
 box. (6) Crosses 3.8 v 11.5. (7) Law 8, Law 13 walls, cards.
+
+### 8.175 G5.74 — pass pick: a zone's share goes mostly to the nearer of the men standing in it (no migration)
+
+§8.174's next (1): long lateral passes across our own third, switches 26.9 v 10.7 a team-match.
+
+**Measured first** (new PASS PICK harness line; 8 × 90, seed 1000; real in brackets). The pass policy
+gives each end zone its real share (G5.17+), then split it *evenly* among the mates standing there.
+Take an open-play pass whose receiver's zone holds 2+ mates at the kick. By the passer's metres off
+his own goal, 0-35 / 35-70 / 70+, the receiver is the nearest of them 28.5 / 36.4 / 38.5% of the
+time. That is exactly the even-split rate, 30.9 / 36.8 / 37.7 (real 49.5 / 61.8 / 62.4). Wide to wide
+with a mate on each flank, the far flank's man took half of every such pass.
+
+**Real** (new `scripts/benchmarks_tracking_passpick.py`, DFL 7 matches, Bassek et al. 2025). Open-play
+passes that name a Recipient, positions at the kick, on the pass policy's own zone grid. With 2+
+mates in his zone the man it is for is the nearest 49.5 / 61.8 / 62.4% of the time (even 37-40). He
+is 20.6 / 16.8 / 14.1 m off, against the zone's mean of 23.7 / 21.4 / 18.5. Wide to wide with both
+flanks held, the passer's own flank gets it 95-100% (n 37 / 90 / 25). The share fits
+e^(-d/lambda), d being the passer-to-man distance. By maximum likelihood, lambda = 15 / 10 / 8 m.
+
+**The change** [DFL, FH original]. `Possession` OnBall splits a zone's share among its mates by
+e^(-d/lambda) instead of evenly. Lambda is `physics.pass.pick_lambda_<origin>`, 15 / 10 / 8 m by the
+passer's m off our goal; 0 = the old even split. The zone shares themselves are untouched.
+
+**After** (on v lambda 0; seed 1000, then seed 2000).
+- Nearest 28.5 / 36.4 / 38.5 → 41.3 / 54.5 / 54.9%; seed 2000 30.7 / 38.4 / 38.2 → 41.0 / 53.3 /
+  60.1 (49.5 / 61.8 / 62.4). The lift over even is +10 / +17 / +18 points v real +12 / +22 / +24.
+  Wide to wide, own flank 100% (95-100).
+- Switches 32.6 → 20.2; 30.9 → 19.9 a team-match (10.7).
+- Own-third passes 20-40 m 69 → 59; 64 → 66 a team-match (26). High passes aimed in our third 30.0 →
+  24.4; 30.8 → 27.6 (3.3), still completing 93-95% (57).
+- Passes completed 74.8 → 76.5%; 75.5 → 77.7% (79.1). Passes 473 → 495; 479 → 496 (434).
+- Aerial duels 44.6 → 42.6; 47.2 → 41.1 (44.1). Shots 8.4 → 9.3, 9.3 → 10.0; goals noise.
+- 11v11 golden re-locked; the 3v3 is unchanged. New test: pass_pick_lambda_by_origin.
+
+**What it says.** A pass now goes to the man near the passer, as in the real game. Switches fell
+by a third, but they are still twice real, and own-third 20-40 m passes barely moved. So the
+far man is no longer the problem. The likely suspect, not yet measured, is where our men stand
+when we have the ball in our third: the zone shares are real, but they send long balls whenever
+someone is standing in a far zone. The high ones still nearly always arrive.
+
+**Next moles.** (1) High passes complete too often (own third 93-95% v 57): the aerial receive and
+duel outcome. (2) Own-third 20-40 m passes 59-66 v 26 a team-match, switches 20 v 10.7: where our
+men stand when we have it in our third. (3) Ground passes in their third complete 50-70% (74-87).
+(4) Throws past 4 m. (5) Goal-side 59-67% v 73 in the box. (6) Crosses 3.8-4.4 v 11.5. (7) Law 8,
+Law 13 walls, cards.

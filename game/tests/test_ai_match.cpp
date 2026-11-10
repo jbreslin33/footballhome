@@ -122,7 +122,8 @@ constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
 // Re-locked G5.68 (2026-11-09): as the 3v3.
 // Re-locked G5.72 (2026-11-09): as the 3v3.
 // Re-locked G5.73 (2026-11-09): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xbf04c691d4797d9aULL;
+// Re-locked G5.74 (2026-11-09): a zone's share split by distance; the 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0x794a0cb9a97a2117ULL;
 
 struct Rig {
     World world;
@@ -325,6 +326,23 @@ FH_TEST(pass_high_share_by_origin_and_length) {
     core::ModelParams off; off.setMilli("physics.pass.high_0_0", 0);
     ai::PossessionParams Q; Q.configure(off);
     FH_EXPECT(!Q.high_on);
+}
+
+FH_TEST(pass_pick_lambda_by_origin) {
+    // G5.74 (§8.175): a zone's share split among its mates by e^(-d/lambda), DFL fit 15 / 10 / 8 m;
+    // 0 = the old even split.
+    ai::PossessionParams P;
+    P.configure(core::ModelParams{});
+    FH_EXPECT_EQ(P.pick_lambda[0].raw, Fixed64::fromInt(15).raw);
+    FH_EXPECT_EQ(P.pick_lambda[1].raw, Fixed64::fromInt(10).raw);
+    FH_EXPECT_EQ(P.pick_lambda[2].raw, Fixed64::fromInt(8).raw);
+    // A wide man's two wide mates, 12 m and 52 m off: the near flank takes nearly all of it.
+    const Fixed64 n = math::fx_exp_neg(Fixed64::fromInt(12) / P.pick_lambda[0]);
+    const Fixed64 f = math::fx_exp_neg(Fixed64::fromInt(52) / P.pick_lambda[0]);
+    FH_EXPECT(n / (n + f) > Fixed64::fromFraction(9, 10));
+    core::ModelParams off; off.setMilli("physics.pass.pick_lambda_1", 0);
+    ai::PossessionParams Q; Q.configure(off);
+    FH_EXPECT_EQ(Q.pick_lambda[1].raw, 0);
 }
 
 FH_TEST_MAIN()
