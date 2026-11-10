@@ -159,8 +159,13 @@ public:
         const int lb = own_end < Fixed64::fromInt(35) ? 0 : own_end < Fixed64::fromInt(70) ? 1 : 2;
         const Fixed64 lam = P.pick_lambda[lb];
         Fixed64 pick[32] = {}, zsum[10] = {};
+        // G5.76 (§8.177): our keeper is not in a zone's split — he has his own real share (below).
+        // Alone in the deep zone when our backs push up, he took all of it: 31 passes a team-match
+        // (real 7.7), 12 from 40-60 m out (1.2).
+        const bool gk_own = P.gk_on && !v.keeper;
+        const int gkb = std::min(9, std::max(0, static_cast<int>(own_end.raw >> Fixed64::FRAC_BITS) / 10));
         for (std::uint8_t j = 0; j < w.playerCount() && j < 32; ++j)
-            if (j != v.slot && c.team_of_slot[j] == v.team) {
+            if (j != v.slot && c.team_of_slot[j] == v.team && !(gk_own && w.isKeeper(j))) {
                 const Vec2 to = v2(w.player(j).pos);
                 const int ez = zoneOf(hx, to, v.sg);
                 ++in_zone[ez];
@@ -190,14 +195,18 @@ public:
         const Fixed64 past = P.behind_past_lo + (P.behind_past_hi - P.behind_past_lo) * u3;
         const Fixed64 u4 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 44) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
         auto add = [&](const Cand& cd) { if (nc < 64 && cd.wgt.raw > 0) { cand[nc++] = cd; sum += cd.wgt; } };
+        int gk_lo = -1, gk_hi = -1; Fixed64 gk_w{};   // G5.76: our keeper's candidates, at unit weight until the rest are in
         for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
             if (j == v.slot || c.team_of_slot[j] != v.team) continue;
+            const bool is_gk = gk_own && w.isKeeper(j);
+            const int nc0 = nc; const Fixed64 s0 = sum;
             const auto& m = w.player(j);
             const Vec2 to = v2(m.pos);
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg);
-            const Fixed64 w0 = zsum[ez].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * pick[j] / zsum[ez] : Fixed64{};
+            const Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
+                             : zsum[ez].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * pick[j] / zsum[ez] : Fixed64{};
             if (w0.raw <= 0) continue;
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
@@ -243,6 +252,7 @@ public:
                         add(Cand{j, wgt * P.risk_weight, false, Loft{}, false, to, 0});
                 }
             }
+            if (is_gk) { gk_lo = nc0; gk_hi = nc; gk_w = sum - s0; sum = s0; }
             if (pb.raw <= 0) continue;
             // The ball in behind: into the space a real roll past the line on his
             // line of run; on the ground weighted to arrive as he does (his run's
@@ -359,6 +369,15 @@ public:
                 add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
             }
         }
+        // G5.76 (§8.177): the keeper takes his real share s of the passes actually on offer —
+        // s/(1-s) of everything else's weight. As a bare share beside mates cut by risk_weight
+        // and the in-behind split he won far above it (10-30 m out 15.6 a team-match v 4.1).
+        if (gk_lo >= 0 && gk_w.raw > 0 && sum.raw > 0) {
+            const Fixed64 sh = P.gk_share[gkb];
+            const Fixed64 tot = sum * sh / (Fixed64::one() - sh);
+            for (int i = gk_lo; i < gk_hi; ++i) cand[i].wgt = cand[i].wgt * tot / gk_w;
+            sum += tot;
+        } else if (gk_lo >= 0) sum += gk_w;   // nothing else on: he is the pass
         if (nc > 0) {
             const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 41) + Fixed64::one()) *
                               Fixed64::fromFraction(1, 2) * sum;
@@ -1000,6 +1019,12 @@ void PossessionParams::configure(const core::ModelParams& p) {
                 for (int l = 0; l < 6; ++l)
                     pass_high_dir[o][d][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(d) + "_" + std::to_string(l)).c_str(), kHighDir[o][d][l]);
         high_dir_on = p.fixed("physics.pass.high_dir_on", 1000).raw > 0;
+    }
+    {   // G5.76 (§8.177): StatsBomb PL 15/16 open play, crosses out — the share of passes to the
+        // passer's own keeper, by the passer's 10 m off his own goal, permille (to 0.1 permille)
+        static const int kGk[10] = {54200, 120700, 98300, 48100, 15400, 4200, 1200, 300, 200, 200};   // benchmarks_statsbomb_gkpass.py, keeper's own passes out
+        for (int b = 0; b < 10; ++b) gk_share[b] = p.fixed(("physics.pass.gk_" + std::to_string(b)).c_str(), kGk[b]) / Fixed64::fromInt(1000);   // the row is permille
+        gk_on = p.fixed("physics.pass.gk_on", 1000).raw > 0;
     }
     {   // G5.74 (§8.175): DFL 7 matches, benchmarks_tracking_passpick.py — lambda by maximum likelihood, m
         static const int kPick[3] = {15000, 10000, 8000};

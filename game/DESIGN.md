@@ -7826,3 +7826,48 @@ them high (30%): balls back to our keeper from the halfway line. (2) High passes
 complete 70-73% (46): the aerial receive. (3) Own-third 20-40 m passes 2-3× real; switches 20-22
 v 10.7. (4) Ground passes in their third complete 50-70% (74-87). (5) Throws past 4 m. (6) Goal-side
 in the box 59-67% v 73. (7) Crosses 4 v 11.5. (8) Law 8, Law 13 walls, cards.
+
+### 8.177 G5.76 — our keeper takes his real share of the passes, not a whole zone's (no migration)
+
+§8.176's next (1), 40-50 m back passes from midfield, 9-10 a team-match v 0.3.
+
+**Measured first** (8 × 90, seeds 1000 and 2000, G5.75; real in brackets). New TO OUR KEEPER line,
+passes by the passer's 10 m off his own goal: 31.7 / 31.8 a team-match to our keeper (7.8), 12-14
+of them from 40-60 m out (1.2), 22-28% of those high. The cause: the pass policy splits each zone's
+real share among the mates standing in it (§8.175), and when our back line pushes up the keeper is
+often alone in the deep zone, so he takes all of that zone's share. The balls back to him from the
+halfway line were the "40-50 m back passes" of §8.176.
+
+**Real** (`scripts/benchmarks_statsbomb_gkpass.py`, StatsBomb PL 15/16, 380 matches; open play,
+crosses out, the keeper's own passes out). The share of an outfielder's passes that go to his own
+keeper, by his 10 m off his goal: 5.4% (0-10), 12.1% (10-20), 9.8% (20-30), 4.8% (30-40), 1.5%
+(40-50), 0.4% (50-60), 0.1% past. 7.8 a team-match, median 16-41 m, 1-15% high, 96-100% completed.
+
+**The change** [StatsBomb table, FH scope]. Our keeper is out of the zone split. He gets his own
+weight: his real share s for the passer's bin (`physics.pass.gk_<bin>`, permille), set as
+s/(1-s) of the summed weight of every other candidate actually on offer, after risk and the
+in-behind split. As a bare share beside mates already cut by risk_weight, he won far above s (an
+earlier try: 10-30 m out 15.6 a team-match v 4.1). If nothing else is on, he is the pass.
+`physics.pass.gk_on` 0 = him back in the zone split.
+
+**After** (on v off; seed 1000, then seed 2000).
+- To our keeper 31.7 → 16.1, 31.8 → 15.1 a team-match (7.8). Share of the bin's passes now real
+  every bin: 10-20 m 13.6 / 13.9% (12.1), 20-30 m 10.2 / 9.5% (9.8), 30-40 m 3.5 / 5.6% (4.8),
+  40-50 m 1.4 / 1.1% (1.5), 50-60 m 0.3 / 0.2% (0.4).
+- From 40-60 m out 12.4 → 1.4, 12.1 → 1.1 a team-match (1.2).
+- Midfield back passes 40-50 m 9.6 → 1.2, 9.1 → 1.1 (0.3); 50 m+ 3.0 → 0.4, 3.2 → 0.1 (0.0).
+- High balls aimed in our own third 16.3 → 9.1, 17.3 → 8.6 a team-match (3.3).
+- Passes completed 76.8 → 76.4%, 76.3 → 76.7% (79.1); switches 20.5 → 20.7, 21.9 → 21.1 (10.7);
+  aerial duels 38.4 → 39.1, 41.9 → 41.1 (44.1); goals 1.81 → 2.12, 1.75 → 1.69. Noise.
+- 11v11 golden re-locked; the 3v3 unchanged. New test: pass_to_own_keeper_share.
+
+**What it says.** The share is right; the count from 10-30 m is still 9.6 v 4.1 because we play
+far more passes from there than real teams do: 36 a team-match from 10-20 m (11.8) and 46 from
+20-30 m (26.7). That is the old mole (3), now isolated: our own-third volume, not who it goes to.
+
+**Next moles.** (1) Pass volume from our own third, 10-30 m out ~3× / 1.7× real. Possession is
+held there too long, or recycled there instead of carried or played long (carries 10 m+ 15 v 34.6;
+50 m+ from deep 3 v 9.4). (2) High passes aimed in midfield complete 70% (46): the aerial receive.
+(3) Switches 20-22 v 10.7. (4) Ground passes in their third complete 50-70% (74-87). (5) Throws
+past 4 m. (6) Goal-side in the box 59-67% v 73. (7) Crosses 4.6 v 11.5. (8) Law 8, Law 13 walls,
+cards.

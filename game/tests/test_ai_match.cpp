@@ -124,7 +124,8 @@ constexpr std::uint64_t kGolden3v3   = 0x63a94b71fe078f1aULL;
 // Re-locked G5.73 (2026-11-09): as the 3v3.
 // Re-locked G5.74 (2026-11-09): a zone's share split by distance; the 3v3 unchanged.
 // Re-locked G5.75 (2026-11-09): high share by direction too; the 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0xd20a13a503c719e1ULL;
+// Re-locked G5.76 (2026-11-10): our keeper out of the zone split, at his real share; the 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0xb032b019f542e0e0ULL;
 
 struct Rig {
     World world;
@@ -360,6 +361,22 @@ FH_TEST(pass_high_share_by_direction) {
     core::ModelParams off; off.setMilli("physics.pass.high_dir_on", 0);
     ai::PossessionParams Q; Q.configure(off);
     FH_EXPECT(std::abs(pm(Q.highShare(Fixed64::fromInt(20), Fixed64::fromInt(35), 1)) - 539) <= 1);
+}
+
+FH_TEST(pass_to_own_keeper_share) {
+    // G5.76 (§8.177): StatsBomb PL 15/16 — the share of an outfielder's passes to his own keeper,
+    // by the passer's 10 m off his own goal: 12% from 10-20 m, 1.5% from 40-50, ~0 past halfway.
+    // gk_on 0 = the keeper back in the zone split.
+    ai::PossessionParams P;
+    P.configure(core::ModelParams{});
+    auto pm = [](Fixed64 v) { return static_cast<int>((v * Fixed64::fromInt(10000)).raw >> Fixed64::FRAC_BITS); };
+    FH_EXPECT(P.gk_on);
+    FH_EXPECT(std::abs(pm(P.gk_share[1]) - 1207) <= 1);
+    FH_EXPECT(std::abs(pm(P.gk_share[4]) - 154) <= 1);
+    FH_EXPECT(pm(P.gk_share[7]) <= 3);
+    core::ModelParams off; off.setMilli("physics.pass.gk_on", 0);
+    ai::PossessionParams Q; Q.configure(off);
+    FH_EXPECT(!Q.gk_on);
 }
 
 FH_TEST_MAIN()

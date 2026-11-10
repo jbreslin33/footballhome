@@ -65,6 +65,10 @@ struct PossessionParams {
     math::Fixed64 pass_high[3][6]{};
     bool high_on = true;
     math::Fixed64 pick_lambda[3]{};   // G5.74 (§8.175): a zone's share split among its mates ~ e^(-d/lambda), by the passer's m off our goal 0-35 / 35-70 / 70+ (0 = even)
+    // G5.76 (§8.177): the share of passes to our own keeper by the passer's 10 m off our goal
+    // (StatsBomb PL 15/16); he is out of the zone split. physics.pass.gk_on 0 = in the split as before.
+    math::Fixed64 gk_share[10]{};
+    bool gk_on = true;
     math::Fixed64 high_risk{};   // a high pass the race read says they win, at this share (physics.pass.high_risk_weight)
     // G5.75 (§8.176): the same by the pass's direction too — forward (within 60° of straight at
     // their goal) / lateral / back — [origin][dir][band], benchmarks_statsbomb_highpass.py --dir.
