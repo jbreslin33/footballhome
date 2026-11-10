@@ -75,6 +75,7 @@ void GameServer::startMatch() {
     world_.officials().configure(cfg_.model_params);
     world_.configureAerial(cfg_.model_params);   // G5.3
     world_.configureTempo(cfg_.model_params);    // G5.4
+    world_.configureDribble(cfg_.model_params);  // G5.78
     world_.configureFouls(cfg_.model_params);    // G5.28
     for (const auto& m : cfg_.crew) {
         auto rating = [&](const char* code) -> std::int16_t {

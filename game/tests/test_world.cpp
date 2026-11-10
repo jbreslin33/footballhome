@@ -240,4 +240,30 @@ FH_TEST(footsteps_envelope_falls_with_speed) {
     FH_EXPECT(fast.cf < Fixed64::fromFraction(1, 2));   // sprinting: mostly in the air
 }
 
+// G5.78 (§8.179): the carried ball rolls and he touches it — never glued at a fixed lead, touched
+// every 0.3-2 s running, never more than 2.5 m off; a keeper's stays in his hands (glued).
+FH_TEST(dribble_ball_rolls_and_is_touched) {
+    World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    w.setTeam(1, 1);
+    w.placePlayer(0, {Fixed64::fromInt(-40), Fixed64::zero(), Fixed64::zero()}, {Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(1, {Fixed64::fromInt(45), Fixed64::fromInt(30), Fixed64::zero()}, {-Fixed64::one(), Fixed64::zero()});
+    w.giveBall(0);
+    MoveIntent run;
+    run.move = Vec2{Fixed64::one(), Fixed64::zero()};
+    w.setIntent(0, run);
+    double lo = 9, hi = -9;
+    const std::uint32_t t0 = w.dribbleTouches();
+    for (int t = 0; t < 150; ++t) {
+        w.tick();
+        if (!w.ball().owner) break;
+        const double gap = (w.ball().pos.x - w.player(0).pos.x).toDouble();
+        if (t > 30) { lo = std::min(lo, gap); hi = std::max(hi, gap); }
+    }
+    FH_EXPECT(w.ball().owner.has_value());           // he kept it
+    FH_EXPECT(hi - lo > 0.15);                        // it rolls out and back, not a fixed lead
+    FH_EXPECT(hi < 2.5);
+    const std::uint32_t n = w.dribbleTouches() - t0;
+    FH_EXPECT(n >= 2 && n <= 16);                     // 5 s running: a touch every 0.3-2.5 s
+}
+
 FH_TEST_MAIN()

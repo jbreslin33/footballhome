@@ -318,6 +318,15 @@
         // A first touch: nobody → a player (the same queue; armed the same way).
         if (this.lastOwner === NO_OWNER && o !== NO_OWNER && this.lastOwner !== undefined)
           this.kicks.push({ tick: snap.tick, slot: o, rx: true, z: snap.ball.z });
+        // A dribble touch (G5.78: the carried ball rolls): his ball's velocity jumps while he keeps it.
+        if (o !== NO_OWNER && o === this.lastOwner && this.lastBall) {
+          const dt = Math.max(1, snap.tick - this.lastBall.tick);
+          const vx = (snap.ball.x - this.lastBall.x) / dt, vy = (snap.ball.y - this.lastBall.y) / dt;
+          if (this.lastBallV && Math.hypot(vx - this.lastBallV.x, vy - this.lastBallV.y) * (this.tickRate || 30) > 0.6)
+            this.kicks.push({ tick: snap.tick - 1, slot: o, touch: true });
+          this.lastBallV = { x: vx, y: vy };
+        } else this.lastBallV = null;
+        this.lastBall = { x: snap.ball.x, y: snap.ball.y, tick: snap.tick };
         this.lastOwner = o;
       }
       this.buffer.push({ tick: snap.tick, snap });
@@ -403,6 +412,7 @@
           if (!f) continue;
           const lead = Math.max(0, k.tick - renderTick) / (this.tickRate || 30);
           if (k.rx) { if (f.receive) f.receive(lead, k.z); continue; }
+          if (k.touch) { if (!f.kk) f.kick(lead, 0, 0.3); continue; }   // a dribble touch: a small push
           let power = 0.5;
           const at = buf.find((e) => e.tick >= k.tick);
           const after = buf.filter((e) => e.tick > k.tick && e.tick <= k.tick + 3).pop();

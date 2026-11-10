@@ -44,7 +44,8 @@ namespace {
 //   G5.2 2026-10-31 ball out called, held restarts 0x43320399541f4254
 //   G5.23 2026-11-05 levels deleted: every player's PlayerSkill in the hash 0x9bb0ae52bba1b314
 //   G5.77 2026-11-10 the footstep body: velocity only through a planted foot 0x7e4e857807d9d056
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x7e4e857807d9d056ULL;
+//   G5.78 2026-11-10 dribble touches: the carried ball rolls 0xbc7b9c153e90f794
+constexpr std::uint64_t kGolden400TicksSeed42 = 0xbc7b9c153e90f794ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

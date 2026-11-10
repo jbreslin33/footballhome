@@ -424,11 +424,13 @@
     // leaves): lead = sim seconds to contact, power 0..1 from the ball's
     // speed off the foot. The foot is the one on the ball's side (right by
     // default); the other leg plants.
-    kick(lead, power) {
+    // amp < 1: a dribble touch (G5.78) — the same strike, small and quick.
+    kick(lead, power, amp) {
       const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.2);
-      this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1),
+      const A = amp === undefined ? 1 : clamp(amp, 0.1, 1);
+      this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1), amp: A,
                   leg: (this.ballLocalX || 0) > 0.12 ? 1 : 0 };
-      this.kk.end = this.kk.contact + 0.3 + 0.2 * this.kk.power;
+      this.kk.end = this.kk.contact + (0.3 + 0.2 * this.kk.power) * (A < 1 ? 0.5 : 1);
     }
     // A first touch (renderer.js arms it as the ball reaches him): lead =
     // sim seconds to the touch, z = the ball's height then. Foot (inside of
@@ -554,8 +556,8 @@
         K.t += dt;
         if (K.t >= K.end) this.kk = null;
         else {
-          const P = K.power, t = K.t, tc = K.contact;
-          const back = 0.45 + 0.45 * P, through = -(0.75 + 0.65 * P);
+          const P = K.power, t = K.t, tc = K.contact, AM = K.amp || 1;
+          const back = (0.45 + 0.45 * P) * AM, through = -(0.75 + 0.65 * P) * AM;
           const ws = Math.max(0.06, Math.min(0.1, tc * 0.6));   // the strike itself
           let hipX, kneeX, twist;
           if (t < tc - ws) {                       // back-swing
@@ -569,18 +571,19 @@
             const u = smooth((t - tc) / (K.end - tc));
             hipX = -0.3 + (through + 0.3) * Math.min(1, u * 2.2); kneeX = 0.25 + 0.4 * u; twist = -0.3 * (1 - u);
           }
-          const w = Math.min(1, t / 0.035) * Math.min(1, (K.end - t) / 0.12);
+          if (AM < 1) { kneeX = 0.3 + (kneeX - 0.3) * AM; twist *= AM; }
+          const w = Math.min(1, t / 0.035) * Math.min(1, (K.end - t) / 0.12) * (AM < 1 ? 0.8 : 1);
           const kl = L[K.leg], pl = L[1 - K.leg], ka = A[1 - K.leg], sd = K.leg === 0 ? 1 : -1;
           kl.hip.rotation.x += (hipX - kl.hip.rotation.x) * w;
           kl.hip.rotation.z += (sd * 0.08 - kl.hip.rotation.z) * w;
           kl.knee.rotation.x += (kneeX - kl.knee.rotation.x) * w;
           kl.ankle.rotation.x += (0.5 - kl.ankle.rotation.x) * w;   // toe down, laces through
-          this.pelvis.position.y -= 0.05 * w;
-          this.pelvis.rotation.x += (0.08 + 0.1 * P) * w;          // over the ball
+          this.pelvis.position.y -= 0.05 * w * AM;
+          this.pelvis.rotation.x += (0.08 + 0.1 * P) * w * AM;     // over the ball
           // The standing foot planted beside the ball (IK against the moved pelvis).
           this.plantLeg(1 - K.leg, sd * 0.13, 0.02, w);
           this.chest.rotation.y += sd * twist * w;
-          ka.sh.rotation.z += (sd * (0.9 + 0.3 * P) - ka.sh.rotation.z) * w;   // out to the side
+          ka.sh.rotation.z += (sd * (0.9 + 0.3 * P) * AM - ka.sh.rotation.z) * w;   // out to the side
           ka.sh.rotation.x += (-0.35 - ka.sh.rotation.x) * w;
           ka.elbow.rotation.x += (-0.4 - ka.elbow.rotation.x) * w;
         }

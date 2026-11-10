@@ -7925,3 +7925,58 @@ no longer adjust under a high ball — the headers slice gives him a real take-o
 ball median 0.44 → 0.79 m ahead by speed (`benchmarks_tracking_carry.py`) — roadmap slice 2. (2) The
 brain's braking (p95 5 v 3) and its turns at speed (lateral 4.5 v 6). (3) Time at speed 4-6 m/s twice
 real. (4) Aerial duels 36 v 44. (5) §8.177's own-third pass volume.
+
+### 8.179 G5.78 — dribble touches: the carried ball rolls, and he touches it (no migration)
+
+Roadmap slice 2 (§8.178). James watching: "ball is stuck in player feet lol" — it was: World glued a
+carried ball 0.4 m ahead of his facing every tick [v1], no touches at all.
+
+**Real** (`scripts/benchmarks_tracking_carry.py`, DFL 7 matches: the possessing side's nearest within
+1.5 m of a ball on the ground, the same man 1 s+, moving 1 m/s+). By his speed 1-2 … 7+ m/s: the ball
+ahead along his travel median 0.44 → 0.79 m (p25 0.03 → 0.60, p90 0.93 → 1.24), 0.18-0.28 m to the side;
+a touch about every 0.7-0.9 s (0.88-0.99 a second); between touches it runs out to a median 0.57 →
+0.95 m. Pressed (an opponent within 3 m) it sits 0.1-0.2 m closer at low speed (1-2 m/s 0.26 v 0.47),
+the same at speed. Open-play losses (`benchmarks_statsbomb_loss.py`, StatsBomb PL 15/16): by a
+miscontrol 4.1 a team-match, by a duel / dispossessed 8.0.
+
+**The change** [FH original on the DFL and StatsBomb tables]. A carried ball (not a keeper's, not a
+held restart) now rolls under the same roll decay as any ball. He touches it when it is within 1 m and
+back to his touch gap for his speed (the DFL p25, `physics.dribble.touch_<band>`; less the pressed
+offset `press_<band>` with an opponent inside 3 m), or drifting off his line while still short of the
+peak — never more than once in 0.3 s. The touch goes the way he is running, 30% steered toward his wish,
+at the slower of his speed and his wanted speed (the G5.4 hold included) plus just enough to roll out to
+the real farthest-ahead (`peak_<band>`) under the roll's own deceleration. Wanting to turn back at speed
+he rolls it on along his run to die where his footstep braking stops him; under 1.5 m/s he drags it the
+new way. A carrier whose ball is out of reach (0.9 m+) steers to it first (3:1 over the brain's wish,
+which still thinks it at his feet). 2.5 m off he has lost it: loose. On receipt the first touch still
+settles it at his feet for the control time (first touches: slices 3-4). A kick aims from where the
+ball is. Off: `physics.dribble.on` 0. The viewer arms a small strike on each touch (the ball's velocity
+jumps while he keeps it).
+
+**Measured on the way** (seed 1000; each step diagnosed by logging every loss): touch aimed at the wish,
+ball off his line → touched every 0.2 s, passes completed 75.2 → 61.1%; aimed at his run and kicks from
+the ball → 64.5%; first touch settled → 69.7%, 30 losses a team-match to a heavy touch (4.1): all in the
+G5.4 hold, whose scaled wish the touch never read → 11.9; a ball stopped dead behind a man still
+running 4-5 m/s (braking ~5.5 m/s², 2.5 m to stop) → rolled on to where he pulls up → 2.0.
+
+**After** (on v off; seed 1000, then seed 2000).
+- Ball ahead at 3-4 m/s p25 / med / p90 0.30 / 0.40 / 0.71 m (0.35 / 0.59 / 1.06), 4-5 m/s 0.39 /
+  0.57 / 0.79 (0.41 / 0.63 / 1.07); side 0.18-0.22 (0.24-0.25); farthest between touches 4-5 m/s 0.69
+  (0.79); touches 1.1-1.6 a second (0.9-1.0); at 2-3 m/s short (0.26 v 0.52). At 5 m/s+ still mostly
+  the settled first touch (a fast carrier has just received it).
+- Lost to a heavy touch 0 → 2.0, 0 → 2.6 a team-match (4.1); stolen off his feet 2.4 → 7.3, 1.8 → 8.0
+  (8.0).
+- Passes completed 75.3 → 75.2, 74.8 → 74.4% (79.1); counter-press 36.4 → 38.1, 36.6 → 39.6% (21.0);
+  carries 10 m+ 20.3 → 17.5, 18.3 → 16.2 (34.6); goals 1.69 → 2.00, 1.12 → 1.94.
+- New test: dribble_ball_rolls_and_is_touched. Determinism golden re-locked; the AI goldens are unchanged
+  (their 2000 ticks keep every carry inside a settled first touch).
+
+**What it says.** The ball now leaves his feet the way an elite carrier's does, and losing it costs what
+it costs in the Premier League: steals rose from 2 to the real 8 a team-match because a ball out in front
+can be nicked. Touches come a little too often (1.1-1.6 v 0.9-1.0): the touch gap is the DFL p25, so a
+ball slowing back inside it is touched at once — the next lever is the touch's own timing by step.
+
+**Next moles.** (1) The first touch is still a settle at his feet for the control time — roadmap slices
+3-4 (kicks off a plant foot, receiving). (2) Touch rate 1.1-1.6 v 0.9-1.0; at 2-3 m/s the ball sits
+close (0.26 v 0.52). (3) Carries 10 m+ 16-18 v 34.6 a team-match (the brain). (4) §8.178's brain braking
+and turns at speed. (5) Aerial duels 35 v 44.

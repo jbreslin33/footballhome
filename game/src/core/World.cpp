@@ -103,6 +103,21 @@ void World::tickPlayers() {
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
+        // G5.78 (§8.179): a carrier whose rolling ball is out of his reach goes to it — the
+        // body keeps the ball (the brain still thinks it is at his feet). The ball first (3:1
+        // over his wish, which can point straight away from it), at least a jog's share.
+        if (dribble_on_ && ball_.owner && *ball_.owner == i && !keeper_[i] && !heldRestart()) {
+            const Vec2 tb{ball_.pos.x - p.pos.x, ball_.pos.y - p.pos.y};
+            const Fixed64 db2 = math::lengthSquared(tb);
+            if (db2 > Fixed64::fromFraction(81, 100)) {
+                const Vec2 u = math::normalized(tb);
+                Fixed64 m = math::length(desire);
+                if (m < Fixed64::fromFraction(3, 5)) m = Fixed64::fromFraction(3, 5);
+                const Vec2 w = math::lengthSquared(desire) > Fixed64::fromFraction(1, 100) ? math::normalized(desire) : u;
+                desire = math::normalized(Vec2{w.x + u.x * Fixed64::fromInt(3), w.y + u.y * Fixed64::fromInt(3)});   // the ball first
+                desire = Vec2{desire.x * m, desire.y * m};
+            }
+        }
         // G5.2: the man taking a throw, goal kick or corner stands on his
         // spot until he's played it; the move is only his aim.
         if (heldRestart() && ball_.owner && *ball_.owner == i) {
@@ -384,8 +399,8 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             Vec2 dir = (desire.x.raw != 0 || desire.y.raw != 0)
                            ? math::normalized(desire)
                            : o.face;
-            if (has_aim_[kicker]) {   // G5.29: at the point he aimed, from where he is now
-                const Vec2 to{aim_[kicker].x - o.pos.x, aim_[kicker].y - o.pos.y};
+            if (has_aim_[kicker]) {   // G5.29: at the point he aimed, from where the ball is now (G5.78: it rolls)
+                const Vec2 to{aim_[kicker].x - ball_.pos.x, aim_[kicker].y - ball_.pos.y};
                 if (to.x.raw != 0 || to.y.raw != 0) dir = math::normalized(to);
             }
 
@@ -547,10 +562,92 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             return;
         }
 
-        // Glue [v1]: ball rides at the owner's feet, ahead of facing.
-        ball_.pos = Vec3{o.pos.x + o.face.x * kBallCarryLead,
-                         o.pos.y + o.face.y * kBallCarryLead, Fixed64::zero()};
-        ball_.vel = o.vel;
+        // The first touch settles it at his feet (and he keeps it there while he controls it); the
+        // roll starts after. First touches as their own model: roadmap slice 3/4.
+        if (!dribble_on_ || isKeeper(*ball_.owner) || clock_.tick() <= owned_at_tick_ + 1 || clock_.tick() < control_until_tick_) {
+            // Glue [v1]: ball rides at the owner's feet, ahead of facing (a keeper: in his hands).
+            ball_.pos = Vec3{o.pos.x + o.face.x * kBallCarryLead,
+                             o.pos.y + o.face.y * kBallCarryLead, Fixed64::zero()};
+            ball_.vel = o.vel;
+        } else {
+            // G5.78 (§8.179): the ball rolls; he touches it. Between touches it runs on the
+            // grass under the roll decay like any ball; he touches it when it is within his
+            // reach and back to his touch gap for his speed (or drifting off his line), sending
+            // it the way he wants to go just hard enough to run out to the real farthest-ahead
+            // before he reaches it again (DFL carries, benchmarks_tracking_carry.py).
+            ball_.pos.z = Fixed64::zero(); ball_.vel.z = Fixed64::zero();
+            ball_.pos.x += ball_.vel.x * kTickDt; ball_.pos.y += ball_.vel.y * kTickDt;
+            ball_.vel.x = ball_.vel.x * kBallRollDecayPerTick; ball_.vel.y = ball_.vel.y * kBallRollDecayPerTick;
+            const SlotIndex c = *ball_.owner;
+            // He plays it the way he is going, steering a little toward where he wants to go.
+            Vec2 want = intents_[c].move;
+            if (math::lengthSquared(want) < Fixed64::fromFraction(1, 100)) want = o.face;
+            want = math::normalized(want);
+            const Fixed64 vo0 = math::length(Vec2{o.vel.x, o.vel.y});
+            Vec2 dir = want;
+            const bool turning_back = vo0 > Fixed64::one() && (o.vel.x * want.x + o.vel.y * want.y).raw < 0;
+            if (vo0 > Fixed64::one() && !turning_back) {   // turning back: he drags it the new way
+                const Vec2 vd{o.vel.x / vo0, o.vel.y / vo0};
+                dir = math::normalized(Vec2{vd.x * Fixed64::fromFraction(7, 10) + want.x * Fixed64::fromFraction(3, 10),
+                                            vd.y * Fixed64::fromFraction(7, 10) + want.y * Fixed64::fromFraction(3, 10)});
+            }
+            const Vec2 d{ball_.pos.x - o.pos.x, ball_.pos.y - o.pos.y};
+            const Fixed64 dist = math::length(d);
+            if (dist > Fixed64::fromFraction(5, 2)) {
+                // Too heavy a touch, or he turned away from it: it's loose.
+                ++dribble_lost_;
+                ball_.owner.reset();
+                ball_.contest_ticks = 0;
+                ball_.kicker_lockout = 0;
+                return;
+            }
+            const Fixed64 gap = d.x * dir.x + d.y * dir.y;
+            const Fixed64 lat = math::fx_abs(d.x * dir.y - d.y * dir.x);
+            const Fixed64 vo = math::length(Vec2{o.vel.x, o.vel.y});
+            const int bnd = std::min(7, static_cast<int>(vo.raw >> Fixed64::FRAC_BITS));
+            const bool moving = vo > Fixed64::fromFraction(1, 2) || math::lengthSquared(intents_[c].move) > Fixed64::fromFraction(1, 16);
+            const bool reach = dist < Fixed64::one();
+            // Pressed (an opponent within 3 m): he keeps it closer (DFL carries, pressed v free).
+            bool pressed = false;
+            for (SlotIndex j = 0; j < players_.size() && !pressed; ++j) {
+                if (players_[j].team == o.team) continue;
+                const Vec2 e{players_[j].pos.x - o.pos.x, players_[j].pos.y - o.pos.y};
+                pressed = math::lengthSquared(e) < Fixed64::fromInt(9);
+            }
+            const Fixed64 tg = pressed ? dribble_touch_[bnd] - dribble_press_[bnd] : dribble_touch_[bnd];
+            const Fixed64 pk = pressed ? dribble_peak_[bnd] - dribble_press_[bnd] : dribble_peak_[bnd];
+            const bool due = gap <= tg || (lat > Fixed64::fromFraction(45, 100) && gap < pk) ||
+                             (!moving && dist > Fixed64::fromFraction(3, 5));
+            if (reach && due && clock_.tick() >= last_touch_tick_ + 9) {
+                // As fast as he is going — or as he wants to go, if that is slower: a man easing up
+                // touches it softer.
+                const Fixed64 along = o.vel.x * dir.x + o.vel.y * dir.y;
+                Fixed64 base = along.raw > 0 ? along : Fixed64::zero();
+                Fixed64 wanted = math::length(intents_[c].move) * o.max_speed * bodies_[c].dribble();
+                if (carry_share_.raw > 0 && clock_.tick() < hold_until_tick_) wanted = wanted * carry_share_;   // the hold: as tickPlayers
+                if (turning_back) base = Fixed64::zero();
+                if (wanted < base) base = wanted;
+                Fixed64 run = pk - (gap.raw > 0 ? gap : Fixed64::zero());
+                if (run.raw < 0) run = Fixed64::zero();
+                // The roll's own deceleration at the ball's speed: (1 - decay) per tick, x30.
+                const Fixed64 decel = (Fixed64::one() - kBallRollDecayPerTick) * Fixed64::fromInt(kTickRate) * (base + Fixed64::one());
+                Fixed64 push = moving ? math::fx_sqrt(Fixed64::fromInt(2) * decel * run) : Fixed64::zero();
+                Fixed64 sp = base + push;
+                // Turning back at speed he can't take it with him: he rolls it on along his run just
+                // enough to die where he pulls up (his stopping distance at full braking, less the gap
+                // it has; the roll loses (1 − decay)·30 m/s per metre); under 1.5 m/s he drags it the
+                // new way.
+                if (turning_back && vo0 > Fixed64::fromFraction(3, 2)) {
+                    dir = Vec2{o.vel.x / vo0, o.vel.y / vo0};
+                    Fixed64 stop = vo0 * vo0 / (Fixed64::fromInt(2) * steps_.brkCap(vo0)) - (gap.raw > 0 ? gap : Fixed64::zero());
+                    if (stop.raw < 0) stop = Fixed64::zero();
+                    sp = (Fixed64::one() - kBallRollDecayPerTick) * Fixed64::fromInt(kTickRate) * stop;
+                }
+                ball_.vel = Vec3{dir.x * sp, dir.y * sp, Fixed64::zero()};
+                last_touch_tick_ = clock_.tick();
+                ++dribble_touches_;
+            }
+        }
 
         // Law 9 (G5.2): carried over a line it's out like any other ball —
         // a dribbler used to stay in play 2 m off the grass, on the apron.
@@ -588,6 +685,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 turnover_tick_ = clock_.tick();
                 turnover_ball_x_ = ball_.pos.x;
                 ball_.owner = thief;
+                ++steals_;
                 owned_at_tick_ = clock_.tick();
                 settleControl(thief, Fixed64::zero());
                 box_clear_team_ = 0xFF;
@@ -1046,6 +1144,17 @@ void World::configureTempo(const ModelParams& p) {
     hold_p_under4_ = p.fixed("physics.tempo.hold_pressed_under4", 0);
     hold_pressed_m_ = p.fixed("physics.tempo.hold_pressed_m", 0);
     hold_strict_ = p.integer("physics.tempo.hold_strict", 0);
+}
+
+void World::configureDribble(const ModelParams& p) {
+    dribble_on_ = p.fixed("physics.dribble.on", 1000).raw > 0;
+    static const int kT[8] = {30, 30, 230, 350, 410, 490, 550, 600}, kP[8] = {450, 570, 620, 720, 790, 820, 880, 950},
+                     kQ[8] = {210, 210, 180, 130, 90, 50, 20, 70};
+    for (int b = 0; b < 8; ++b) {
+        dribble_press_[b] = p.fixed("physics.dribble.press_" + std::to_string(b), kQ[b]);
+        dribble_touch_[b] = p.fixed("physics.dribble.touch_" + std::to_string(b), kT[b]);
+        dribble_peak_[b] = p.fixed("physics.dribble.peak_" + std::to_string(b), kP[b]);
+    }
 }
 
 void World::configureFouls(const ModelParams& p) {

@@ -147,6 +147,12 @@ public:
     void configureAerial(const ModelParams& p);
     // G5.4 (§8.102): real time on the ball. Off unless the rows exist.
     void configureTempo(const ModelParams& p);
+    // G5.78 (§8.179): the carried ball rolls and the carrier touches it (DFL carries). On by default.
+    void configureDribble(const ModelParams& p);
+    std::uint32_t dribbleTouches() const noexcept { return dribble_touches_; }
+    std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
+    std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
+    std::uint32_t steals() const noexcept { return steals_; }              // the touch-to-steal contest won
     // G5.28 (Law 12): a challenge on the man on the ball is a foul at the real
     // share for the third it is in (StatsBomb PL 2015/16: fouls ÷ (tackle duels +
     // fouls)); the referee plays advantage at the real share; else a free kick to
@@ -355,6 +361,22 @@ private:
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool hold_on_ = false;
+    // G5.78 (§8.179): dribble touches. By the carrier's speed band 0-1 … 7+ m/s: the ball's gap
+    // ahead of him when he touches it (DFL carries' p25) and how far it runs out before he reaches
+    // it again (median farthest-ahead between touches), m — benchmarks_tracking_carry.py.
+    bool dribble_on_ = true;
+    math::Fixed64 dribble_touch_[8] = {math::Fixed64::fromFraction(3, 100), math::Fixed64::fromFraction(3, 100), math::Fixed64::fromFraction(23, 100),
+                                       math::Fixed64::fromFraction(35, 100), math::Fixed64::fromFraction(41, 100), math::Fixed64::fromFraction(49, 100),
+                                       math::Fixed64::fromFraction(55, 100), math::Fixed64::fromFraction(60, 100)};
+    math::Fixed64 dribble_peak_[8] = {math::Fixed64::fromFraction(45, 100), math::Fixed64::fromFraction(57, 100), math::Fixed64::fromFraction(62, 100),
+                                      math::Fixed64::fromFraction(72, 100), math::Fixed64::fromFraction(79, 100), math::Fixed64::fromFraction(82, 100),
+                                      math::Fixed64::fromFraction(88, 100), math::Fixed64::fromFraction(95, 100)};
+    std::uint64_t last_touch_tick_ = 0;
+    std::uint32_t dribble_touches_ = 0, dribble_lost_ = 0, steals_ = 0;
+    // pressed (an opponent within 3 m of him): the real ball sits this much closer (DFL free − pressed median), m
+    math::Fixed64 dribble_press_[8] = {math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(21, 100), math::Fixed64::fromFraction(18, 100),
+                                       math::Fixed64::fromFraction(13, 100), math::Fixed64::fromFraction(9, 100), math::Fixed64::fromFraction(5, 100),
+                                       math::Fixed64::fromFraction(2, 100), math::Fixed64::fromFraction(7, 100)};
     math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
     math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{};
     std::uint32_t fouls_[2] = {0, 0};

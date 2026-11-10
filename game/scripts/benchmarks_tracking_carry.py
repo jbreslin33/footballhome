@@ -55,7 +55,7 @@ def one(pos_path):
                 cur = pid; halves[sec]["pl"][pid] = ({}, team_no[tid])
     out = {"ahead": collections.defaultdict(list), "side": collections.defaultdict(list), "frames": collections.Counter(),
            "touch": collections.Counter(), "secs": collections.Counter(), "intv": collections.defaultdict(list),
-           "peak": collections.defaultdict(list)}
+           "peak": collections.defaultdict(list), "ahP": collections.defaultdict(list), "ahF": collections.defaultdict(list)}
     for H in halves.values():
         ball, pl = H["ball"], H["pl"]
         if not ball:
@@ -111,6 +111,12 @@ def one(pos_path):
                 ah = bx * ux + by * uy; sd = abs(-bx * uy + by * ux)
                 bi = band(sp)
                 out["ahead"][bi].append(ah); out["side"][bi].append(sd); out["frames"][bi] += 1
+                # pressed: an opponent within 3 m of the carrier
+                tm = pl[pid][1]; near = 99.0
+                for qid, (qpos, qtm) in pl.items():
+                    if qtm != tm and n in qpos:
+                        near = min(near, math.hypot(qpos[n][0] - pos[n][0], qpos[n][1] - pos[n][1]))
+                out["ahP" if near < 3 else "ahF"][bi].append(ah)
                 rel = (bv[0] - v[0]) * ux + (bv[1] - v[1]) * uy
                 rels[n] = rel
                 peak = max(peak, ah)
@@ -152,7 +158,8 @@ def main():
         secs = tot["secs"][i]
         print(f"  {a}-{b if b < 99 else '+':<3} | {secs:7.0f} | {q(A, .25):5.2f} / {q(A, .5):5.2f} / {q(A, .75):5.2f} / {q(A, .9):5.2f} | "
               f"{q(tot['side'][i], .5):4.2f} | {tot['touch'][i] / max(secs, 1e-9):4.2f} | {q(tot['intv'][i], .5):4.2f} | "
-              f"{q(tot['peak'][i], .5):4.2f} / {q(tot['peak'][i], .75):4.2f}")
+              f"{q(tot['peak'][i], .5):4.2f} / {q(tot['peak'][i], .75):4.2f} | pressed (opp < 3 m) {len(tot['ahP'][i]) / max(1, len(A)):.0%}: ahead p25/med/p75 "
+              f"{q(tot['ahP'][i], .25):4.2f}/{q(tot['ahP'][i], .5):4.2f}/{q(tot['ahP'][i], .75):4.2f}, free {q(tot['ahF'][i], .25):4.2f}/{q(tot['ahF'][i], .5):4.2f}/{q(tot['ahF'][i], .75):4.2f}")
 
 
 if __name__ == "__main__":
