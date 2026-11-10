@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include <pqxx/pqxx>
+
 #include "../third_party/json.hpp"
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -14,7 +16,8 @@
 // The evenings are volunteer_shifts rows per section (Men: Mon/Wed/Fri
 // 5–7 PM).  A player picks ONE (volunteer_requests, after ticking the
 // commitment); the owner approves, which makes him a 🙋 Volunteer
-// (club_volunteers, mig 704: $0 balance, no notices, not an alternate).
+// (club_volunteers, mig 704: $0 balance, no notices, not an alternate) and
+// an assistant coach for his evening — #my 📋 Coach (mig 1224).
 // Until then his dues stand.  Every word is message_templates kind
 // volunteer_shift.
 // ────────────────────────────────────────────────────────────────────────────
@@ -38,4 +41,9 @@ public:
     static nlohmann::json pending();
     // approve → club_volunteers row; deny → nothing else changes.
     static Result decide(long long requestId, const std::string& decision, long long userId);
+
+private:
+    // Approve → assistant coach on the helped section's teams, coach
+    // schedule = his day (practices only when new) — #my 📋 Coach (mig 1224).
+    static void assignCoachDay(pqxx::work& tx, long long personId, long long shiftId);
 };
