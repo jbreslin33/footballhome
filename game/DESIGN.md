@@ -8507,3 +8507,39 @@ down there.
 **Next moles.** (1) **Down the line**: from 18-35 wide, who carries or passes on to 0-18 wide (releases
 there 4.6 v 12.0). (2) The ST's level drift lost to the front-man job. (3) Carriers through the middle
 (take-ons 50 v 18). (4) Crosses labelled lofted only. (5) Possessions twice too long (§8.172).
+
+### 8.191 G5.90 — down the line: the channel ball, measured; dying it inside the line tried and not shipped (no migration)
+
+§8.190's next (1): from wide 18-35 m out, the ball on to 0-18 wide (releases there 4.6 v 12.0).
+
+**ARRIVE** (new harness line, against `benchmarks_statsbomb_cross.py arrive`, StatsBomb PL 15/16): into
+their crossing zone (0-18 m off their line, |y| 14+), a team-match, seed 1000 (real): carried in 2.25
+(8.76); completed passes in 5.88 (12.89), from wide 3.62 (8.53); passes within it 1.06 (5.79). A third
+to a quarter of real on every route in.
+
+**DOWN THE LINE** (new harness line): spells starting wide 18-35 m, their passes to 0-18 wide by kind
+— a team-match, completed %, median length, and how the failed ones failed. Seed 1000 / 3000 (16 matches):
+- balls in behind 2.06 / 2.12, completed 39 / 32%, 21 / 19 m; failed out of play 36 / 37%, to an outfielder
+  21 / 31%;
+- passes to feet 1.25 / 1.59, 50 / 57%; balls into space 0.50 / 0.38, 38 / 42%.
+Real: 14.5% of these spells pass to 0-18 wide, 70% completed (SPELLS STARTING WIDE). Ours 11.5-14.4%,
+43%. Half of ours are balls in behind, and a third of those run out.
+
+**Tried, not shipped** [FH]: `physics.behind.die_in`. A ground ball in behind is weighted to reach its
+spot as the runner does, so it arrives at `kPassArriveSpeed` (9 m/s) and rolls on ~20 m. When that roll
+would leave the pitch, weight it like the ball into space instead: die inside the line, ≤ 2 m past
+the spot. Seed 1000 / 2000 / 3000 (16 matches), off → on:
+- out of play 36 → 14%, 31 → 26%, 37 → 19%;
+- completed 39 → 37%, 53 → 33%, 32 → 32%;
+- to an outfielder 21 → 49%, 16 → 40%, 31 → 48%.
+The ball stays in and their defender gets to it. And goal kicks are already short of real (ours ~5.2 a
+team-match, StatsBomb 8.3; off passes ~2.0 v 2.65), so fewer balls out goes the wrong way. Removed.
+
+**Shipped.** ARRIVE and DOWN THE LINE (with the release's why on Rel), harness only. Outputs and goldens
+are as G5.89; tests 22/22.
+
+**Next moles.** (1) **Our runner loses the race for the channel ball.** The ball in behind down the line
+goes to their man 21-31% (48% once it stays in): who wins it (their FB / CB / keeper), from where, and
+the race read's verdict at the kick. (2) Spells starting wide back to 35+ 26-32% (16.9). (3) Spells
+starting wide 18-35 m: 30-33 a team-match (57.8). (4) Carries into the crossing zone 2.3 (8.8). (5) Take-ons
+3×. (6) Possessions twice too long (§8.172).

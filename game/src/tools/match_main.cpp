@@ -81,7 +81,7 @@ struct Stats {
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
     double sl_xy[ai::kRoleCount] = {}, sl_xx[ai::kRoleCount] = {}; long sl_n[ai::kRoleCount] = {}; std::vector<double> sl_w[ai::kRoleCount][2];   // §8.189 SLIDE BY ROLE
-    long xz_n[4][3] = {}, xz_c[4][3] = {};   // §8.188 RELEASES BY ZONE: open-play passes by origin (their line 0-6/6-18/18-30/30+ x |y| 24+/14-24/centre), crosses
+    long xz_n[4][3] = {}, xz_c[4][3] = {}; long ar_carry = 0, ar_pass = 0, ar_pass_wide = 0, ar_within = 0; long dwl_n[ai::kWhyCount] = {}, dwl_ok[ai::kWhyCount] = {}, dwl_out[ai::kWhyCount] = {}, dwl_gk[ai::kWhyCount] = {}; std::vector<double> dwl_len[ai::kWhyCount];   // §8.191 DOWN THE LINE by kind   // §8.191 ARRIVE in the crossing zone (their line 0-18 m, |y| 14+)   // §8.188 RELEASES BY ZONE: open-play passes by origin (their line 0-6/6-18/18-30/30+ x |y| 24+/14-24/centre), crosses
     double iw_n[2][3] = {}, iw_dy[2][3] = {}, iw_dx[2][3] = {}; long iw_e[2][3] = {};   // §8.188 INWARD [carried / passed][centre / mid / wide]
     std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
@@ -233,6 +233,7 @@ int main(int argc, char** argv) {
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
         long iw_k = -1; int iw_a = -1; double iw_x = 0, iw_y = 0;   // §8.188
+        int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0; } shot;
@@ -243,7 +244,7 @@ int main(int argc, char** argv) {
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
@@ -718,6 +719,7 @@ int main(int argc, char** argv) {
                     const double sgw = rel.team == 0 ? 1.0 : -1.0; const int ez = wsz(hx - ex * sgw, ey);
                     const int cat = ez == 0 ? 0 : (ez == 3 || ez == 5) ? 1 : ez == 1 ? 2 : ez == 2 ? 4 : 6;
                     ++S.ws_as[cat]; if (ok) ++S.ws_ok[cat];
+                    if (cat == 2 && rel.why >= 0 && rel.why < ai::kWhyCount) { ++S.dwl_n[rel.why]; if (ok) ++S.dwl_ok[rel.why]; else if (W.outStage() != 0 || W.restartTeam() != 0xFF) ++S.dwl_out[rel.why]; else if (b.owner && W.isKeeper(*b.owner)) ++S.dwl_gk[rel.why]; S.dwl_len[rel.why].push_back(std::hypot(ex - rel.x, ey - rel.y)); }
                 }
                 if (rel.p < 0 || rel.set || rel.shot) { rel = Rel{}; return; }
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
@@ -733,6 +735,11 @@ int main(int argc, char** argv) {
                 if (std::fabs(ey - rel.y) >= 34) ++S.switches;
                 if (rel.cross) ++S.crosses;
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
+                if (ok) {   // §8.191 ARRIVE (benchmarks_statsbomb_cross.py arrive: completed passes ending there)
+                    const bool e_in = etl < 18 && std::fabs(ey) >= 14, s_in = stl < 18 && std::fabs(rel.y) >= 14;
+                    if (e_in && !s_in) { ++S.ar_pass; if (std::fabs(rel.y) >= 14) ++S.ar_pass_wide; }
+                    if (e_in && s_in) ++S.ar_within;
+                }
                 {   // §8.188 RELEASES BY ZONE (benchmarks_statsbomb_cross.py crosses)
                     const int zx = stl < 6 ? 0 : stl < 18 ? 1 : stl < 30 ? 2 : 3, ay = std::fabs(rel.y) >= 24 ? 0 : std::fabs(rel.y) >= 14 ? 1 : 2;
                     ++S.xz_n[zx][ay]; S.xz_c[zx][ay] += rel.cross;
@@ -756,6 +763,7 @@ int main(int argc, char** argv) {
                         }
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
+                        rel.why = static_cast<int>(why);   // §8.191
                         {   // §8.175 PASS PICK: the man the pass is for v the other mates standing in his zone at the kick
                             const std::uint8_t pt = s.lastOrders()[owner].pass_to;
                             if (!own_set && why != ai::Why::Cross && why != ai::Why::Shoot && pt < N && W.player(pt).team == owner_team) {
@@ -1058,6 +1066,16 @@ int main(int argc, char** argv) {
                         sl_b[j] += by2; sl_y[j] += y; sl_bb[j] += by2 * by2; sl_by[j] += by2 * y; ++sl_c[j];
                         if (std::fabs(by2) >= 14) S.sl_w[role(j)][(y > 0) == (by2 > 0) ? 0 : 1].push_back(std::fabs(y));
                     }
+            }
+            {   // §8.191 ARRIVE: a carrier who goes into their crossing zone with it at his feet
+                const int ow = b.owner ? static_cast<int>(*b.owner) : -1;
+                bool in = false;
+                if (ow >= 0) {
+                    const double sgo = W.player(ow).team == 0 ? 1.0 : -1.0, px = W.player(ow).pos.x.toDouble(), py = W.player(ow).pos.y.toDouble();
+                    in = hx - px * sgo < 18 && std::fabs(py) >= 14;
+                    if (ow == ar_own && in && !ar_in) ++S.ar_carry;
+                }
+                ar_own = ow; ar_in = in;
             }
             {   // §8.188 INWARD (benchmarks_tracking_inward.py): the attack's ball within 35 m of the goal line it attacks
                 const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
@@ -2347,6 +2365,18 @@ int main(int argc, char** argv) {
                 }
                 std::printf("\n");
             }
+            {   // §8.191 DOWN THE LINE by kind
+                long n = 0; for (long v : S.dwl_n) n += v;
+                std::printf("   DOWN THE LINE (spells starting wide 18-35 m: passes to 0-18 wide; real StatsBomb completed 70%% of 14.5%% of spells) %.2f a team-match, by kind: completed %% / median length m:", n / tm);
+                for (int w = 0; w < ai::kWhyCount; ++w) if (S.dwl_n[w]) {
+                    auto v = S.dwl_len[w]; std::sort(v.begin(), v.end());
+                    std::printf(" %s %.2f %.0f%% %.1f m (failed: out %.0f%%, their keeper %.0f%%, an outfielder %.0f%%);", ai::kWhyNames[w], S.dwl_n[w] / tm, 100.0 * S.dwl_ok[w] / S.dwl_n[w], v[v.size() / 2],
+                                100.0 * S.dwl_out[w] / S.dwl_n[w], 100.0 * S.dwl_gk[w] / S.dwl_n[w], 100.0 * (S.dwl_n[w] - S.dwl_ok[w] - S.dwl_out[w] - S.dwl_gk[w]) / S.dwl_n[w]);
+                }
+                std::printf("\n");
+            }
+            std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
+                        S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);
             static const double re[2][3] = {{2.6, 4.5, 9.8}, {9.4, 15.1, 22.1}};
             std::printf("   ENTRIES into the last 35 m by |y| there, centre / mid / wide:");
             for (int kk = 0; kk < 2; ++kk)
