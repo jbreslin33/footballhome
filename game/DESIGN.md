@@ -8386,3 +8386,42 @@ v along v out by his place, real from DFL), passes ending central, or the block 
 Measure each against real first. (2) Possessions twice too long, losses half (§8.172). (3) Lofts a mix of
 driven and hung. (4) No 50-70 m lofts. (5) The defender off the attacker at the launch, 9 v 7 m.
 (6) `risk_weight` (§8.184).
+
+### 8.188 G5.87 — how their ball comes inside: few releases from wide near goal, so few crosses — measured (no migration)
+
+§8.187's next (1): what brings the attack inside near goal.
+
+**INWARD** (new `scripts/benchmarks_tracking_inward.py`, DFL; harness line INWARD). Ball-only, so ours
+and real cut the same: 5 Hz steps with the same side on the ball, within 35 m of the goal line it
+attacks, by the ball's |y| at the start (centre 0-9 / mid 9-20 / wide 20+) and carried (under 7 m/s)
+or passed (7+). A team-match, seed 1000 / 2000 (real):
+- carried time: centre 42.5 / 38.0 s (25.9), mid 34.7 / 37.9 (46.7), wide 83.4 / 77.3 (108.2).
+  Carried from the centre, toward the line +93 / +77 m (+42): ours drive at goal through the middle.
+- passed from wide, toward the line +81 / +111 m (+235); |y| −123 / −124 (−189).
+- entries into the last 35 m by |y| there, centre / mid / wide: carried 4.3 / 4.4 / 6.8 (2.6 / 4.5 /
+  9.8); passed 13.1 / 14.4 / 16.3 (9.4 / 15.1 / 22.1). Totals are real (carried 15.5 v 16.9, passed 44
+  v 47). The mix is not: 40% more come in through the centre and a quarter fewer down the wings. The
+  ball is central before 35 m, not brought inside after.
+
+**RELEASES BY ZONE** (harness, against `benchmarks_statsbomb_cross.py crosses`, StatsBomb PL 15/16;
+open-play passes by m off their line × |y|, a team-match and cross %). Seed 1000 (real):
+- 6-18 m: wide 24+ 5.1 (12.0) cross 11% (25); half-space 14-24 2.1 (7.6) cross 6% (31); centre 1.9 (4.6).
+- 18-30 m: wide 10.5 (18.2) cross 9% (10); half-space 7.5 (15.3) cross 3% (6); centre 10.2 (14.3).
+- 0-6 m: wide 1.5 (2.5) cross 4% (32); half-space 0.6 (3.0) cross 0% (54).
+Crosses 3.1 / 3.5 a team-match (11.5). The choice from 0-18 m wide is real as played (to the box 40%,
+`pass.to_1_0` 41.9%; in the air 71% of those, `cross_1` / `to_1_0`). **The gap is the volume**: under
+half the real releases from wide inside 18 m (zone 1 7.8 a team-match), so under a third of the crosses.
+Some of the cross % gap is the label. StatsBomb tags ground and low crosses (32% of its crosses);
+ours is `Why::Cross` only when lofted. Also take-ons 50 / 55 tried (18.1).
+
+`benchmarks_statsbomb_cross.py` reads `<dir>/matches.json` + `<dir>/events/`. The PL 15/16 copy on
+the host is flat files, so build a shim dir (matches.json listing the ids, events → the dir).
+
+**Shipped.** INWARD, its ENTRIES row, RELEASES BY ZONE, the new script. Harness only. Outputs and
+goldens are as G5.85; tests 22/22.
+
+**Next moles.** (1) **The ball gets central before the last 35 m**: entries 40% too central, a quarter
+too few wide — which passes from 35-70 m go wide too seldom (as played, 35-52 wide → 18-35 wide 11% v
+`to_5_3` 17%), and whether our wide men are there to take them. (2) Carriers drive through the middle
+(carried centre time 1.6×, take-ons 3×). (3) Crosses labelled lofted only (ground / low crosses).
+(4) Possessions twice too long (§8.172). (5) Lofts a mix of driven and hung. (6) No 50-70 m lofts.

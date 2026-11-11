@@ -80,6 +80,8 @@ struct Stats {
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
+    long xz_n[4][3] = {}, xz_c[4][3] = {};   // §8.188 RELEASES BY ZONE: open-play passes by origin (their line 0-6/6-18/18-30/30+ x |y| 24+/14-24/centre), crosses
+    double iw_n[2][3] = {}, iw_dy[2][3] = {}, iw_dx[2][3] = {}; long iw_e[2][3] = {};   // §8.188 INWARD [carried / passed][centre / mid / wide]
     std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
@@ -228,6 +230,7 @@ int main(int argc, char** argv) {
         struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
+        long iw_k = -1; int iw_a = -1; double iw_x = 0, iw_y = 0;   // §8.188
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0; } shot;
@@ -728,6 +731,10 @@ int main(int argc, char** argv) {
                 if (std::fabs(ey - rel.y) >= 34) ++S.switches;
                 if (rel.cross) ++S.crosses;
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
+                {   // §8.188 RELEASES BY ZONE (benchmarks_statsbomb_cross.py crosses)
+                    const int zx = stl < 6 ? 0 : stl < 18 ? 1 : stl < 30 ? 2 : 3, ay = std::fabs(rel.y) >= 24 ? 0 : std::fabs(rel.y) >= 14 ? 1 : 2;
+                    ++S.xz_n[zx][ay]; S.xz_c[zx][ay] += rel.cross;
+                }
                 auto zn = [](double d, double y) { int b = d < 18 ? 0 : d < 35 ? 1 : d < 52 ? 2 : d < 70 ? 3 : 4; return b * 2 + (std::fabs(y) < 20.16 ? 0 : 1); };
                 { const int oz = zn(stl, rel.y), ez = zn(etl, ey); ++S.pz_n[oz]; ++S.pz_to[oz][ez]; }
                 if (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.cutbacks;
@@ -1039,6 +1046,19 @@ int main(int argc, char** argv) {
                         ++S.mf_cn[r][bb]; S.mf_cb[r][bb].push_back(dd); S.mf_c3[r][bb] += dd < 3;
                     }
                 }
+            }
+            {   // §8.188 INWARD (benchmarks_tracking_inward.py): the attack's ball within 35 m of the goal line it attacks
+                const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                if (iw_k == static_cast<long>(k) - 6 && iw_a == a) {
+                    const double gx = a == 0 ? hx : -hx, v = std::hypot(bx - iw_x, by - iw_y) / 0.2;
+                    if (std::fabs(gx - iw_x) >= 35 && std::fabs(gx - bx) < 35 && v <= 40)
+                        ++S.iw_e[v >= 7 ? 1 : 0][std::fabs(by) < 9 ? 0 : std::fabs(by) < 20 ? 1 : 2];
+                    if (std::fabs(gx - iw_x) < 35 && v <= 40) {
+                        const int yb = std::fabs(iw_y) < 9 ? 0 : std::fabs(iw_y) < 20 ? 1 : 2, kk = v >= 7 ? 1 : 0;
+                        S.iw_n[kk][yb] += 1; S.iw_dy[kk][yb] += std::fabs(by) - std::fabs(iw_y); S.iw_dx[kk][yb] += std::fabs(gx - iw_x) - std::fabs(gx - bx);
+                    }
+                }
+                iw_k = static_cast<long>(k); iw_a = a; iw_x = bx; iw_y = by;
             }
             {   // §8.187 HOLD SPOT
                 const int fs = b.owner ? (W.player(*b.owner).team == a ? 0 : -1) : 1;
@@ -2260,6 +2280,35 @@ int main(int argc, char** argv) {
     {
         long tot = 0; for (int i = 0; i < 5; ++i) tot += S.rc_n[i];
         static const char* lab[5] = {"0-2", "2-4", "4-6", "6-10", "10+"};
+        {   // §8.188 INWARD — benchmarks_tracking_inward.py (DFL)
+            static const double rn[2][3] = {{25.9, 46.7, 108.2}, {32.8, 47.8, 59.3}}, ry[2][3] = {{2.3, -8.7, 10.0}, {-25.1, -180.5, -188.9}},
+                                rx[2][3] = {{41.6, 91.2, 172.2}, {208.0, 270.3, 234.9}};
+            static const char* yl[3] = {"centre 0-9", "mid 9-20", "wide 20+"};
+            std::printf("INWARD (§8.188; 5 Hz, the attack's ball within 35 m of the goal line it attacks, a team-match; real DFL in brackets):\n");
+            for (int kk = 0; kk < 2; ++kk) {
+                std::printf("   %s:", kk ? "passed (7+ m/s)" : "carried (under 7 m/s)");
+                for (int yb = 0; yb < 3; ++yb)
+                    std::printf(" from %s %.1f s (%.1f), |y| %+.1f m (%+.1f), toward the line %+.1f m (%+.1f);", yl[yb], S.iw_n[kk][yb] * 0.2 / tm, rn[kk][yb],
+                                S.iw_dy[kk][yb] / tm, ry[kk][yb], S.iw_dx[kk][yb] / tm, rx[kk][yb]);
+                std::printf("\n");
+            }
+            {   // §8.188 RELEASES BY ZONE — benchmarks_statsbomb_cross.py crosses (StatsBomb PL 15/16)
+                static const double rn[3][3] = {{2.5, 3.0, 1.1}, {12.0, 7.6, 4.6}, {18.2, 15.3, 14.3}}, rc[3][3] = {{32, 54, 51}, {25, 31, 1}, {10, 6, 0}};
+                static const char* zl[3] = {"0-6", "6-18", "18-30"}; static const char* yl2[3] = {"wide 24+", "half-space 14-24", "centre"};
+                std::printf("   RELEASES BY ZONE (open-play passes, m off their line x |y|; a team-match, cross %%; real StatsBomb PL 15/16 in brackets):");
+                for (int zx = 0; zx < 3; ++zx) {
+                    std::printf("\n      %-5s:", zl[zx]);
+                    for (int ay = 0; ay < 3; ++ay)
+                        std::printf(" %s %.1f (%.1f) cross %.0f%% (%.0f);", yl2[ay], S.xz_n[zx][ay] / tm, rn[zx][ay], 100.0 * S.xz_c[zx][ay] / std::max(1L, S.xz_n[zx][ay]), rc[zx][ay]);
+                }
+                std::printf("\n");
+            }
+            static const double re[2][3] = {{2.6, 4.5, 9.8}, {9.4, 15.1, 22.1}};
+            std::printf("   ENTRIES into the last 35 m by |y| there, centre / mid / wide:");
+            for (int kk = 0; kk < 2; ++kk)
+                std::printf(" %s %.1f / %.1f / %.1f (%.1f / %.1f / %.1f);", kk ? "passed" : "carried", S.iw_e[kk][0] / tm, S.iw_e[kk][1] / tm, S.iw_e[kk][2] / tm, re[kk][0], re[kk][1], re[kk][2]);
+            std::printf("\n");
+        }
         for (int f = 0; f < 2; ++f) {   // §8.187 HOLD SPOT
             const double n = std::max(1L, S.hs_n[f]);
             std::printf("HOLD SPOT (§8.187; the side without it, holders, 5 Hz, ball %s): %.0f a team-match | spot moves under 2 / 2-5 / 5-10 / 10+ m/s %.1f / %.1f / %.1f / %.1f%%; "
