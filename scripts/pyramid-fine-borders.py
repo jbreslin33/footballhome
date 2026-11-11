@@ -7,7 +7,8 @@ whole county went by one point) / "you need to check the x,y of these
 borders from city centers at multiple points lol".
 For each plan:
   * border counties = counties sharing an outline edge with a county of a
-    different conference (open ground doesn't count);
+    different conference on either border, or changing sides between the
+    two, plus one ring of neighbours (mig 1287; open ground doesn't count);
   * a grid of points over them (STEP degrees of latitude: current 0.03 ≈
     3 km, proposed 0.10 ≈ 11 km — kinder to the free OSRM server), kept if inside the county outline;
   * each point's candidates = the conferences of its county and its
@@ -22,7 +23,8 @@ For each plan:
 These lines replace the county-edge borders between two conferences in
 pyramid_proposal_borders (fine = true); edges facing open ground stay.
 Run after SELECT fh_pyramid_proposal_refresh(), before pyramid-sea-borders.py.
-  python3 scripts/pyramid-fine-borders.py [current|proposed]
+  python3 scripts/pyramid-fine-borders.py [current|proposed] [--count]
+  (--count: how many grid points and new drives, nothing fetched or written)
 """
 import json
 import math
@@ -201,14 +203,25 @@ def trace(cells, step, dlon):
 
 def run(plan, adj):
     step = STEP[plan]
-    reg = dict(l.split('|') for l in psql(
-        f"SELECT fips || '|' || COALESCE('c' || conference_id, 'p' || proposed_id) FROM pyramid_proposal_counties WHERE plan = '{plan}'").split())
+    reg, reg_p = {}, {}               # county → conference: coloured border (travel) / dashed (plain)
+    for l in psql(f"SELECT fips || '|' || COALESCE('c' || conference_id, 'p' || proposed_id)"
+                  f" || '|' || COALESCE('c' || plain_conference_id, 'p' || plain_proposed_id, '')"
+                  f" FROM pyramid_proposal_counties WHERE plan = '{plan}'").split():
+        f, t, pl = l.split('|')
+        reg[f], reg_p[f] = t, pl or t
     cen = defaultdict(list)          # region → [(point, traffic factor, weight)] (mig 1285)
     for l in psql(f"SELECT COALESCE('c' || conference_id, 'p' || proposed_id) || '|' || round(lat::numeric, 4) || '|' || round(lon::numeric, 4)"
                   f" || '|' || factor || '|' || weight FROM pyramid_region_points WHERE plan = '{plan}'").split():
         k, la, lo, f, w = l.split('|')
         cen[k].append(((f'{float(la):.4f}', f'{float(lo):.4f}'), float(f), float(w)))
-    border = {f for f in reg if any(n in reg and reg[n] != reg[f] for n in adj[f])}
+    # mig 1287: border counties by EITHER border (the dashed one runs apart
+    # from the coloured one), every county that changes sides between them,
+    # and one ring of neighbours around those — a line that leaves its county
+    # (Monmouth's dashed line into Ocean, 11/11) must find grid there, or it
+    # stops on land at the grid's edge instead of meeting a border or the sea
+    core = {f for f in reg if reg[f] != reg_p[f]
+            or any(n in reg and (reg[n] != reg[f] or reg_p[n] != reg_p[f]) for n in adj[f])}
+    border = core | {n for f in core for n in adj[f] if n in reg}
     geo = json.loads(psql("SELECT json_object_agg(fips, geometry) FROM pyramid_counties WHERE fips IN ("
                           + ','.join(f"'{f}'" for f in border) + ')'))
     lat0 = 39.0
@@ -223,7 +236,7 @@ def run(plan, adj):
             for x, y in poly[0]:
                 xs.append(x)
                 ys.append(y)
-        cand = {reg[f]} | {reg[n] for n in adj[f] if n in reg}
+        cand = {reg[f], reg_p[f]} | {reg[n] for n in adj[f] if n in reg} | {reg_p[n] for n in adj[f] if n in reg}
         for i in range(math.floor(min(ys) / step), math.ceil(max(ys) / step) + 1):
             for j in range(math.floor(min(xs) / dlon), math.ceil(max(xs) / dlon) + 1):
                 if (i, j) in cells_c:
@@ -232,7 +245,7 @@ def run(plan, adj):
                 if in_geom(j * dlon, i * step, g):
                     cells_c[(i, j)] = set(cand)
                     cell_county[(i, j)] = f
-    print(f'{plan}: {len(border)} border counties, {len(cells_c)} grid points', file=sys.stderr)
+    print(f'{plan}: {len(core)} border counties + {len(border) - len(core)} around them, {len(cells_c)} grid points', file=sys.stderr)
     pt = {c: (f'{c[0] * step:.4f}', f'{c[1] * dlon:.4f}') for c in cells_c}
     have = {}
     for l in psql('SELECT from_lat || \'|\' || from_lon || \'|\' || to_lat || \'|\' || to_lon || \'|\' || minutes FROM pyramid_grid_drive_times').split():
@@ -245,6 +258,8 @@ def run(plan, adj):
                 if (pt[c], q) not in have:
                     need[pt[c]].add(q)
     print(f'  {sum(len(v) for v in need.values())} drives to fetch', file=sys.stderr)
+    if '--count' in sys.argv:
+        return
     if need:
         fetch(need, have)
     reach = float(psql('SELECT proposal_reach_min FROM pyramid_territory_policy LIMIT 1'))
@@ -261,7 +276,7 @@ def run(plan, adj):
         if plan == 'current':    # today's conferences reach 2 h (as the county fill, mig 1278)
             sc = [x for x in sc if x[2] <= reach]
             if not sc and c in cell_county:
-                lab_t[c] = lab_p[c] = reg[cell_county[c]]
+                lab_t[c], lab_p[c] = reg[cell_county[c]], reg_p[cell_county[c]]
                 continue
         if not sc:
             continue

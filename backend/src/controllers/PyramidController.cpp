@@ -264,11 +264,12 @@ Response PyramidController::handleProposal(const Request&) {
                              {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()}, {"anchors", strOrNull(r, "anchors")}});
         }
         // a_left (mig 1249): region a lies on the left of the line's direction.
-        // + the borders carried out to sea (mig 1252, scripts/pyramid-sea-borders.py)
+        // + the borders carried out to sea (mig 1252, scripts/pyramid-sea-borders.py;
+        //   both kinds since mig 1287)
         // kind (mig 1255): 'travel' = the coloured border (city centres × traffic
         // factor), 'plain' = straight distance where it runs apart from it.
         for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left, kind FROM pyramid_proposal_borders"
-                                        " UNION ALL SELECT region_a, region_b, line::text, a_left, 'travel' FROM pyramid_proposal_sea_borders"))
+                                        " UNION ALL SELECT region_a, region_b, line::text, a_left, kind FROM pyramid_proposal_sea_borders"))
             borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
                                {"a_left", r["a_left"].as<bool>()}, {"kind", str(r, "kind")}});
         // The neutral zone (mig 1255): counties whose region by straight

@@ -52,20 +52,48 @@ def psql(sql, stdin_sql=False):
     return subprocess.run(args + ['-c', sql], text=True, capture_output=True, check=True, stdin=subprocess.DEVNULL).stdout
 
 
-def load(plan):
-    """One plan's borders and counties (mig 1274: 'current' = c-keys, 'proposed' = p-keys)."""
+def load(plan, kind):
+    """One plan's borders of one kind and its counties (mig 1274: 'current' =
+    c-keys, 'proposed' = p-keys).  mig 1287: kind 'travel' = the coloured
+    border, counties owned by drive x traffic; 'plain' = the dashed one,
+    counties owned by straight drive (plain_* columns, mig 1255)."""
     pre = 'c' if plan == 'current' else 'p'
+    own = "COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)" if kind == 'travel' \
+        else "COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id)"
     borders = json.loads(psql(
         "SELECT COALESCE(json_agg(json_build_object('id', id, 'a', region_a, 'b', region_b, 'line', line, 'a_left', COALESCE(a_left, false))), '[]')"
-        f" FROM pyramid_proposal_borders WHERE kind = 'travel' AND region_a LIKE '{pre}%'"))   # the coloured border (mig 1255)
+        f" FROM pyramid_proposal_borders WHERE kind = '{kind}' AND region_a LIKE '{pre}%'"))
+    others = json.loads(psql(   # every line of the plan, for "this end meets another border"
+        "SELECT COALESCE(json_agg(json_build_object('id', id, 'line', line)), '[]')"
+        # a coloured end only meets coloured lines (the dashed one often runs on
+        # top of it out to the coast); a dashed end may rejoin either
+        f" FROM pyramid_proposal_borders WHERE region_a LIKE '{pre}%'"
+        + (" AND kind = 'travel'" if kind == 'travel' else '')))
     counties = json.loads(psql(
-        "SELECT json_agg(json_build_object('f', k.fips, 'r', COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id),"
+        f"SELECT json_agg(json_build_object('f', k.fips, 'r', {own},"
         " 'lat', k.lat, 'lon', k.lon, 'g', k.geometry))"
         # every county is land (mig 1285 fix: the Current plan leaves open ground
         # beyond its 2 h reach in no conference — that is land, not sea); only
         # counties in a conference give a region shore (r null otherwise)
         f" FROM pyramid_counties k LEFT JOIN pyramid_proposal_counties pc ON pc.fips = k.fips AND pc.plan = '{plan}'"))
-    return borders, counties
+    return borders, others, counties
+
+
+def km(a, b):
+    return math.hypot((a[0] - b[0]) * KY, (a[1] - b[1]) * 111.32 * math.cos(math.radians(a[0])))
+
+
+def meets_other(e, others, within=1.5):
+    """The end touches another border line (a three-way junction, or a dashed
+    border rejoining the coloured one) — not a loose end at all."""
+    p = e['p']
+    for o in others:
+        if o['id'] == e['b']['id']:
+            continue
+        for pt in o['line']:
+            if abs(pt[0] - p[0]) < 0.03 and abs(pt[1] - p[1]) < 0.04 and km(p, pt) < within:
+                return True
+    return False
 
 
 def loose_ends(borders):
@@ -288,20 +316,29 @@ def straight(patch, e):
 
 
 def main():
-    rows = []
+    rows, report = [], []
     for plan in ('current', 'proposed'):   # mig 1274: both plans
-        plan_rows(plan, rows)
+        for kind in ('travel', 'plain'):   # mig 1287: the dashed border too
+            plan_rows(plan, kind, rows, report)
     write(rows)
+    # mig 1287 check: every end that still stops short of the water
+    for plan, kind, b, p, why in report:
+        print(f"SHORT {plan} {kind} {b['a']}|{b['b']} at {p}: {why}", file=sys.stderr)
 
 
-def plan_rows(plan, rows):
-    borders, counties = load(plan)
+def plan_rows(plan, kind, rows, report):
+    borders, all_lines, counties = load(plan, kind)
     if not borders or not counties:
         return
     ends = loose_ends(borders)
+    stat = {'sea': 0, 'joins': 0, 'short': 0}
     walked = {}          # pair → the lines walked so far (for bay crossings)
     for e in ends:
         if e.get('joined'):
+            stat['sea'] += 1
+            continue
+        if meets_other(e, all_lines):
+            stat['joins'] += 1
             continue
         b = e['b']
         patch = Patch(counties, e['p'][0], e['p'][1])
@@ -315,19 +352,25 @@ def plan_rows(plan, rows):
             # it straight on along its own last direction instead
             pts = straight(patch, e)
         if len(pts) < 3:
+            stat['short'] += 1
+            land = patch.on_land(patch.xy(*e['p']))
+            report.append((plan, kind, b, e['p'], 'on land, no water ahead (a gap in the trace)' if land
+                           else 'at the water but no way out found'))
             continue
+        stat['sea'] += 1
         walked.setdefault(pair, []).append(pts)
         # keep the land line's direction so a_left still holds
         line = pts if e['at_end'] else pts[::-1]
-        rows.append((b['a'], b['b'], [list(x) for x in line], b['a_left']))
-        print(f"{b['a']}|{b['b']} from {e['p']}: {len(pts)} points → {pts[-1]}", file=sys.stderr)
+        rows.append((b['a'], b['b'], [list(x) for x in line], b['a_left'], kind))
+    print(f"{plan} {kind}: {len(borders)} lines, {len(ends)} loose ends → {stat['sea']} to sea,"
+          f" {stat['joins']} meet another border, {stat['short']} short", file=sys.stderr)
 
 
 def write(rows):
     sql = "BEGIN;\nDELETE FROM pyramid_proposal_sea_borders;\n" + "".join(
-        "INSERT INTO pyramid_proposal_sea_borders (region_a, region_b, line, a_left) VALUES "
-        f"('{a}', '{b}', '{json.dumps(line)}'::jsonb, {'true' if al else 'false'});\n"
-        for a, b, line, al in rows) + "COMMIT;\n"
+        "INSERT INTO pyramid_proposal_sea_borders (region_a, region_b, line, a_left, kind) VALUES "
+        f"('{a}', '{b}', '{json.dumps(line)}'::jsonb, {'true' if al else 'false'}, '{k}');\n"
+        for a, b, line, al, k in rows) + "COMMIT;\n"
     if DRY:
         print(sql)
     else:
