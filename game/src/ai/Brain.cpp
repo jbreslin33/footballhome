@@ -62,7 +62,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -107,6 +107,10 @@ void Brain::setModelParams(const core::ModelParams& p) {
     shape_danger_ = p.fixed("physics.body.shape_danger_m", 0);
     wb_tuck_y_ = p.fixed("physics.shape.wb_tuck_y", 700);
     tau_back_ = p.fixed("physics.body.shape_tau_back_s", 0);
+    run_max_ = p.fixed("physics.run.line_max_mps", 7000);   // G5.94 (§8.195) [FH]: 6 / 7 / 8 the same (the body caps first); 0 = off
+    run_zone_ = p.fixed("physics.run.line_zone_m", 12000);  // the real run cut: 0-12 m short of their line
+    run_tgap_ = p.fixed("physics.run.line_spot_m", 4000);   // his spot on or within this of the line
+    run_tau_ = p.fixed("physics.run.line_tau_s", 400);
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
     theirs_cap_y_ = p.fixed("physics.shape.theirs_cap_y_m", 0);
@@ -709,8 +713,26 @@ void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
     else if (o.move.move.y < -lim) o.move.move.y = -lim;
     const Fixed64 sg = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 fwd = o.move.move.x * sg;
-    if (fwd > lim) o.move.move.x = lim * sg;
+    // G5.94 (§8.195): a run at their line goes at a run's pace; the shape's shift keeps shape_max.
+    const Fixed64 flim = lineRun(slot, world, o) ? run_max_ / top : lim;
+    if (fwd > flim) o.move.move.x = flim * sg;
     if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
+}
+
+// G5.94 (§8.195): a holder with our ball making a RUN, not shifting with the shape — within
+// run_zone of their offside line, his spot ahead of him and on the line or within run_tgap of it.
+// Real players shift at a jog and run at the line at 5-6 m/s (DFL runs: speed over the run med
+// 4.93, peak 5.45); ours did both at shape_max 4.5, so a run never arrived (§8.193-8.194).
+bool Brain::lineRun(SlotIndex slot, const World& world, const Orders& o) const {
+    if (run_max_.raw <= 0 || o.why != Why::Hold) return false;
+    const auto& b = world.ball();
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
+    if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) return false;
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 line = Possession::offsideLine(team, world, setup_.team_of_slot);
+    const Fixed64 gap = line - world.player(slot).pos.x * sg, tgap = line - o.target.x * sg;
+    return gap < run_zone_ && tgap < run_tgap_ && (o.target.x - world.player(slot).pos.x) * sg > Fixed64::one();
 }
 
 // Their ball inside shape_danger_m of our goal (G5.10, §8.108).
@@ -801,6 +823,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
             // 2.8 — DFL, benchmarks_tracking_recover.py). No row = off.
             const Fixed64 sgn = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
             if (!ours && tau_back_.raw > 0 && d.x * sgn < -Fixed64::one()) tau = tau_back_;
+            if (ours && lineRun(slot, world, o) && run_tau_.raw > 0) tau = run_tau_;   // G5.94: a run closes, it doesn't ease
         }
         const Fixed64 ease = dist / tau;
         if (ease < v_ok) v_ok = ease;

@@ -8633,3 +8633,32 @@ of their line, his spot on or past it) goes at a run's pace, at a run's real rat
 
 **Shipped.** Run speed lines (real and harness) and GAME_RUN_TRACE. Harness only; outputs and goldens as
 G5.91; tests 22/22.
+
+### 8.195 G5.94 — a run at their line goes at a run's pace; the shape's shift keeps its jog (no migration)
+
+§8.194's next: split the shape's shift from the run.
+
+**The change** [FH, against DFL runs]. `Brain::lineRun`: a holder with our ball whose spot is ahead of
+him, who is within `physics.run.line_zone_m` (12) of their offside line, his spot on it or within
+`line_spot_m` (4) of it, is making a run. `capAcross` lets his forward speed up to `line_max_mps` (7; 6 / 7 / 8
+give the same, the body caps first) instead of `shape_max` (4.5), and `brakeToArrive` closes him in
+`line_tau_s` (0.4) instead of `shape_tau_ours` (1.0). Every other holder shifts as before. `line_max_mps` 0 =
+off. The goldens are untouched: the test rig never meets a line run.
+
+**Fit** (seed 1000): spot within 4 m / 2 m / 2 m and zone 8 m / 1 m → runs 271 / 258 / 234 / 233 a team-match
+(209), ending 5.1 / 5.5 / 5.6 / 5.8 m short (3.9), front man 4+ m short at ball 20-30 m out 24 / 27 / 28 / 29%
+(10). Count against arrival, nearly one for one. The widest cut is taken: running at a run's pace is
+the behaviour, the count the next mole.
+
+**After** (seed 1000 / 2000 / 3000 v G5.91 2000 / 3000; real in brackets).
+- Run speed, mean med 4.38 → 4.65 / 4.66 / 4.66 m/s (4.93); peak med 4.48 → 5.03 / 5.04 / 5.05 (5.45).
+- Runs end 6.0 / 6.1 → 5.1 / 5.3 / 5.3 m short (3.9). Runs 217 / 228 → 271 / 260 / 264 (209): WIDE ~100 (74), FB
+  ~37 (17).
+- Front man 4+ m short, ball 20-30 m out: 28 / 29 → 24 / 26 / 27% (10); 40-50 m: 31 / 30 → 28 / 29 / 29 (18).
+- In behind: receiver speed at the kick 2.6 / 2.7 → 3.0 / 3.0 / 2.8 m/s (3.8); 36-37 → 38-40 a team-match (37.7).
+- Shots with nobody goal-side 22.2 / 22.4 → 21.7 / 15.7 / 15.4% (4.8). Completion 81.1-81.3% (79.1).
+- Crosses 2.8-4.0 (11.47), noise.
+
+**Next moles.** (1) Run count 260-271 (209): wide men and full-backs run the line too often. (2) Runs still
+end 5.1-5.3 m short (3.9); the front man 4+ m short 24-29% (10-18). (3) Down the line and crosses (§8.191).
+(4) Possessions twice too long.

@@ -100,6 +100,7 @@ private:
     math::Vec2 blockLead(core::SlotIndex slot, const core::World& world, const Orders& o) const;
     void capAcross(core::SlotIndex slot, const core::World& world, Orders& o) const;
     bool inDanger(core::SlotIndex slot, const core::World& world) const;
+    bool lineRun(core::SlotIndex slot, const core::World& world, const Orders& o) const;   // G5.94 (§8.195)
     void brakeToArrive(core::SlotIndex slot, const core::World& world, Orders& o, math::Vec2 lead = {}) const;
     void wingBack(const FormationSpec::Pos& mine, PlayerView& v) const;
     math::Fixed64 acrossDef(const math::Vec2& base, const PlayerView& v) const;
@@ -139,6 +140,7 @@ private:
     math::Fixed64 arrive_through_ = math::Fixed64::fromInt(3);
     math::Fixed64 track_ball_m_ = math::Fixed64::fromInt(3);   // physics.receive.track_m (G5.58)
     math::Fixed64 shape_tau_{}, shape_tau_ours_{}, shape_max_{}, defend_max_{}, shape_danger_{}, tau_back_{}, wb_tuck_y_{};
+    math::Fixed64 run_max_{}, run_zone_{}, run_tgap_{}, run_tau_{};   // G5.94 (§8.195): a run at their line, not a shape shift (run_max 0 = off)
     std::int64_t shape_danger_sprint_ = 0;
     // Across (G5.7): his base's y plus the ball's y × shift, capped.
     math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};
