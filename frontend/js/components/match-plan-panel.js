@@ -48,7 +48,7 @@ class MatchPlanPanel {
     this.tactics = '';
     this.dirty = false;
     this.busy = false;
-    this.open = new Set(['plan']);
+    this.open = new Set();     // closed until opened (owner 11/11: roll everything up)
   }
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('match_plan', tier, tokens) : ''; }

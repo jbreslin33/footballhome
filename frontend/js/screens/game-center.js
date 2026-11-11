@@ -3729,6 +3729,7 @@ class GameCenterScreen extends EventScreen {
       }
       this._tacticsBigOff();
       head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+        + this._unplacedTopHtml()
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
         + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
@@ -6611,6 +6612,24 @@ class GameCenterScreen extends EventScreen {
         </span>
         <span style="display:flex; gap:4px;">${zb('bench', 'side_bench', 'Bench')}${zb('alternate', 'side_alt', 'Alt')}</span>
       </span>`;
+  }
+
+  // ⚔️ Starters & Bench opens on the Going players not placed yet, open,
+  // at the top (owner 11/11: "i just need to see unrolled going players
+  // who are not assigned yet … at top"); everything under it is a fold.
+  // Same cards and buttons as 👥 All Players, so the same click wiring.
+  _unplacedTopHtml() {
+    if (this.pill !== 'starters_bench' || !this.isCoach || this.lineupView !== 'official') return '';
+    if (!this.ev || !Array.isArray(this.ev.rsvps)) return '';
+    try {
+      const html = this._comingHtml({ unplacedOnly: true });
+      if (!html) return '';
+      EventScreen.ensureCardStyles();
+      return `<div data-gc-players-pane>${html}</div>`;
+    } catch (err) {
+      console.error('[game-center] unplaced list failed:', err);
+      return '';
+    }
   }
 
   _playersPaneHtml() {

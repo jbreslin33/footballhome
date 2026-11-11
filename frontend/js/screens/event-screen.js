@@ -1656,7 +1656,9 @@ class EventScreen extends Screen {
   // P/A/L/E, and on No response the reminder buttons.  Coaches get their
   // own section with the same cards and reminders, never in a player count
   // (owner 2026-10-06, 2026-11-02).
-  _comingHtml() {
+  // { unplacedOnly }: just the game's ⚠️ Going · Not placed yet block
+  // (Game Center draws it atop ⚔️ Starters & Bench too, owner 11/11).
+  _comingHtml({ unplacedOnly = false } = {}) {
     // 💤 Inactive (mig 945; owner 2026-11-03: "show in sep section on all
     // screens including event center so i don't bother with them"): their
     // own closed fold, never No response / Not going / a reminder.  The
@@ -1686,6 +1688,7 @@ class EventScreen extends Screen {
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(text)}</span>`;
     };
     if (!rsvps.length && !inactive.length) {
+      if (unplacedOnly) return '';
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
     }
     const open = !this._isPast(this.ev);
@@ -1849,6 +1852,7 @@ class EventScreen extends Screen {
       return this.cardFoldHtml('data-ec-fold', key, isOpen, L('sec_coaches', '🧑‍🏫 Coaches'), coaches.length, body,
                                { aside: presentAside(coaches), top: bar });
     };
+    if (unplacedOnly) return split ? unplacedHtml() : '';
     return `
       ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
