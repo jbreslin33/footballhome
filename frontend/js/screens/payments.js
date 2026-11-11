@@ -29,6 +29,10 @@ class PaymentsScreen extends Screen {
     // grouped by status so the operator can spot "who owes me" without
     // scrolling; the chips let them narrow to a single status.
     this.statusFilter = '';
+    // 📊 stats pill: which programmes the stats section counts.  Follows
+    // the category filter when that changes; its own pills move only the
+    // stats, never the cards.
+    this.statsTab = 'all';
     // Members-view state
     this.membersByTab       = { mens: null, womens: null, boys: null, girls: null };
     this.membersLoadingByTab= { mens: false, womens: false, boys: false, girls: false };
@@ -67,14 +71,16 @@ class PaymentsScreen extends Screen {
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
         <!-- Summary + Projections lived here for a day (mig 489); they are
              on #finances since mig 490 so billing stays clean. -->
-        <div id="pay-all-programs"
-             style="display:flex; gap:var(--space-3); flex-wrap:wrap;
-                    padding: var(--space-3);
-                    background: linear-gradient(90deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02));
-                    border: 1px solid rgba(14,165,233,0.4);
+        <!-- 📊 ONE stats section (11/11): pills pick which programmes it
+             counts — replaces the old "🌐 All Programs" bar + the per-tab
+             strip, which showed the same numbers twice. -->
+        <div id="pay-stats"
+             style="padding: var(--space-3);
+                    background: var(--bg-tertiary, #1f2937);
+                    border: 1px solid var(--border-color, #374151);
                     border-radius: 6px; margin-bottom: var(--space-3);
                     font-size: 0.85rem;">
-          <div style="opacity:0.7;">🌐 <b>All Programs</b> — loading…</div>
+          <div style="opacity:0.7;">📊 Stats — loading…</div>
         </div>
 
         <!-- Standardized filter chip rows (FilterBar): category / program / status.
@@ -158,6 +164,7 @@ class PaymentsScreen extends Screen {
     if (params) {
       if (['all','mens','womens','boys','girls'].includes(params.initialTab)) {
         this.tab = params.initialTab;
+        this.statsTab = this.tab;
       }
       if (['members','transactions','queue'].includes(params.initialView)) {
         this.view = params.initialView;
@@ -175,6 +182,8 @@ class PaymentsScreen extends Screen {
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
+      const statsPill = e.target.closest('[data-stats-tab]');
+      if (statsPill) { this.statsTab = statsPill.getAttribute('data-stats-tab'); this._renderStats(); return; }
       const viewBtn = e.target.closest('.pay-view');
       if (viewBtn) return this.switchView(viewBtn.dataset.view);
       const openLa = e.target.closest('[data-open-la-user]');
@@ -212,6 +221,13 @@ class PaymentsScreen extends Screen {
       if (volBtn) {
         volBtn.closest('[data-pay-vol-row]')?.querySelectorAll('button').forEach((b) => { b.disabled = true; });
         this._decideVolunteer(Number(volBtn.getAttribute('data-pay-volunteer')), volBtn.getAttribute('data-decision'));
+        return;
+      }
+      // ⚖️ dispute strip → Approve (marks present) / Deny (mig 691/1210).
+      const disputeBtn = e.target.closest('[data-pay-dispute]');
+      if (disputeBtn) {
+        disputeBtn.closest('.pay-dispute-strip')?.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        this._decideFineDispute(Number(disputeBtn.getAttribute('data-pay-dispute')), disputeBtn.getAttribute('data-decision'), disputeBtn.getAttribute('data-tab'));
         return;
       }
       const ranBtn = e.target.closest('[data-resolve-flag]');
@@ -290,7 +306,7 @@ class PaymentsScreen extends Screen {
     for (const k of ['mens','womens','boys','girls']) {
       if (this.membersByTab[k] || this.membersLoadingByTab[k]) continue;
       // loadMembers already re-renders the "All Programs" bar via
-      // renderMembers() → _renderAllProgramsBar() when it lands.
+      // renderMembers() → _renderStats() when it lands.
       this.loadMembers(k);
     }
   }
@@ -387,6 +403,7 @@ class PaymentsScreen extends Screen {
             this.tab = id;
             this._programVariant = null;
           }
+          this.statsTab = this.tab;
           this.loadCurrent();
         },
       },
@@ -400,6 +417,7 @@ class PaymentsScreen extends Screen {
             // Toggle-off → fall back to "All".
             this.tab = 'all';
             this._programVariant = null;
+            this.statsTab = 'all';
             this.loadCurrent();
             return;
           }
@@ -407,6 +425,7 @@ class PaymentsScreen extends Screen {
           if (variant === 'pickup') return; // safety — chip is disabled
           this.tab = cat;
           this._programVariant = 'club';
+          this.statsTab = this.tab;
           this.loadCurrent();
         },
       },
@@ -582,6 +601,7 @@ class PaymentsScreen extends Screen {
     if (!key || this.tab === key) return;
     this.tab = key;
     this._programVariant = null;
+    this.statsTab = key;
     this._buildFilterBar();
     this.loadCurrent();
   }
@@ -674,9 +694,10 @@ class PaymentsScreen extends Screen {
     try {
       const copyReady = MessageCopy.load(this.auth); // payment notice wording (migration 367), in parallel
       const formsReady = window.SectionContact ? SectionContact.load(this.auth) : Promise.resolve(); // 📇 section forms
+      const disputesReady = this._loadFineDisputes();                // ⚖️ strip on the card (mig 1210)
       copyReady.then(() => this._loadVolunteerRequests());           // 🙋 panel (mig 1222)
       const res = await this.auth.fetch(`/api/payments/${key}/members`);
-      await Promise.all([copyReady, formsReady]);
+      await Promise.all([copyReady, formsReady, disputesReady]);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -695,7 +716,7 @@ class PaymentsScreen extends Screen {
       // Always refresh the All-Programs roll-up bar — even for tabs
       // loaded in the background (see _loadAllProgramsInBackground) so
       // totals accumulate as each program's data lands.
-      this._renderAllProgramsBar();
+      this._renderStats();
     } catch (err) {
       this.membersErrorByTab[key] = err.message;
       if (this._showsTab(key) && this.view === 'members') this.showError(err.message);
@@ -724,39 +745,13 @@ class PaymentsScreen extends Screen {
     if (qv) qv.style.display = 'none';
     if (m) m.style.display = '';
 
-    // Summary strip
-    const c = data.counts || {};
-    const fin = this._summarize(data);
-    const inactiveCount = data.inactiveCount || 0;
-    this.find('#pay-summary').innerHTML = `
-      <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${(data.total ?? 0) - inactiveCount}</span></div>
-      <div><span style="opacity:0.7;">🟢 Current:</span> <span style="font-weight:700; color:#86efac;">${c.current || 0}</span></div>
-      <div><span style="opacity:0.7;">🟡 Behind:</span> <span style="font-weight:700; color:#fbbf24;">${c.behind || 0}</span></div>
-      <div><span style="opacity:0.7;">🔴 Overdue:</span> <span style="font-weight:700; color:#fca5a5;">${c.overdue || 0}</span></div>
-      <div><span style="opacity:0.7;">⚫ Never paid:</span> <span style="font-weight:700; color:#e5e7eb;">${c.never || 0}</span></div>
-      <div><span style="opacity:0.7;">${this.escape(this._duesFreeCopy('volunteer', 'label'))}:</span> <span style="font-weight:700; color:#93c5fd;">${c.volunteer || 0}</span></div>
-      <div><span style="opacity:0.7;">${this.escape(this._duesFreeCopy('injured', 'label'))}:</span> <span style="font-weight:700; color:#fbbf24;">${c.injured || 0}</span></div>
-      <div><span style="opacity:0.7;">🚫 Inactive:</span> <span style="font-weight:700; color:#c4b5fd;">${inactiveCount}</span></div>
-      <div style="flex-basis:100%; height:0;"></div>
-      <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.netCollected)}</span></div>
-      <div><span style="opacity:0.7;">This Month:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(fin.thisMonth)}</span></div>
-      <div><span style="opacity:0.7;">Avg / Month:</span> <span style="font-weight:700;">${this.fmtMoney(fin.avgPerMonth)}</span>${fin.monthsElapsed ? `<span style="opacity:0.5; font-size:0.75rem;"> (${fin.monthsElapsed} mo)</span>` : ''}</div>
-      <div style="flex-basis:100%; height:0;"></div>
-      <div><span style="opacity:0.7;">🔴 Outstanding:</span>
-           <span style="font-weight:700; color:#fca5a5;">${fin.outstandingCount} member${fin.outstandingCount === 1 ? '' : 's'}</span></div>
-      <div title="Outstanding × est. per-member fee (median of paid members: ${this.fmtMoney(fin.estFeePerMember)})">
-        <span style="opacity:0.7;">Est. Owed:</span>
-        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(fin.outstandingTotal)}</span></div>
-      <div title="Estimated outstanding ÷ months elapsed">
-        <span style="opacity:0.7;">Est. Owed / Month:</span>
-        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(fin.outstandingPerMonth)}</span></div>
-      <div style="opacity:0.55; font-size:0.72rem; margin-left:auto; align-self:center;">
-        est. fee = median of paid: ${this.fmtMoney(fin.estFeePerMember)}
-      </div>
-    `;
+    // Members view has no strip of its own — the 📊 stats section counts
+    // (Transactions / Charge Queue keep their view-specific lines).
+    const sumEl = this.find('#pay-summary');
+    if (sumEl) { sumEl.innerHTML = ''; sumEl.style.display = 'none'; }
 
-    // Refresh the cross-program roll-up whenever a tab finishes loading.
-    this._renderAllProgramsBar();
+    // Refresh the stats section whenever a tab finishes loading.
+    this._renderStats();
 
     // Rebuild the FilterBar so status-chip counts reflect the latest
     // data (works for both single-tab and 'all' aggregation modes).
@@ -1365,6 +1360,7 @@ class PaymentsScreen extends Screen {
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${prorateCell}${finesCells}${badge}</div>
         </div>
         ${m.personId ? `<div data-roster-standing="${m.personId}"></div>` : ''}
+        ${this.renderDisputeStrip(m)}
         ${finesDetail}
         ${duesFree ? `<div style="font-size:0.8rem; color:${m.status === 'injured' ? '#fbbf24' : '#93c5fd'}; background:${m.status === 'injured' ? '#3a2e05' : '#172554'}; border:1px solid ${m.status === 'injured' ? '#d97706' : '#2563eb'}; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
         ${dobLine}
@@ -1532,24 +1528,91 @@ class PaymentsScreen extends Screen {
     if (decision === 'approve') this.loadMembers(this.tab);
   }
 
+  // Pending "I was there" disputes (mig 691), keyed by person, for the ⚖️
+  // strip on each card.  A failure just leaves the strip off.
+  async _loadFineDisputes() {
+    try {
+      const res = await this.auth.fetch('/api/fines/disputes');
+      const body = res.ok ? await res.json() : {};
+      const by = new Map();
+      for (const d of (Array.isArray(body.disputes) ? body.disputes : [])) {
+        if (!by.has(d.person_id)) by.set(d.person_id, []);
+        by.get(d.person_id).push(d);
+      }
+      this.fineDisputesByPerson = by;
+    } catch (_) { this.fineDisputesByPerson = new Map(); }
+  }
+
+  async _decideFineDispute(id, decision, tab) {
+    try {
+      const res = await this.auth.fetch(`/api/fines/disputes/${id}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision }) });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+    } catch (err) { this._toast(`Could not save: ${err.message}`, 'error'); }
+    // Approve marks the player present, so the fine itself goes away —
+    // refetch the tab for the new totals.
+    this.loadMembers(tab || this.tab);
+  }
+
+  // ⚖️ one line per pending dispute, Approve / Deny on the card front
+  // (owner 2026-11-10, mig 1210).  Words: the 'fines' rows from mig 691.
+  renderDisputeStrip(m) {
+    // A dispute with no live fine behind it (amount null — waived, or the
+    // fine no longer applies) stays on #fines only.
+    const list = ((this.fineDisputesByPerson && this.fineDisputesByPerson.get(m.personId)) || []).filter((d) => d.amount != null);
+    if (!list.length) return '';
+    const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
+    const copy = (tier, tokens, fallback) =>
+      (window.MessageCopy && MessageCopy.has('fines', tier)) ? MessageCopy.block('fines', tier, tokens) : fallback;
+    const btn = (bg) => `background:${bg}; color:#fff; border:0; border-radius:6px; padding:5px 10px; font-weight:700; font-size:0.8rem; cursor:pointer;`;
+    const tab = this.escape(m._tab || this.tab);
+    return list.map((d) => {
+      const amount = d.amount != null ? fmtAmt(Number(d.amount)) : '';
+      const line = copy('dispute_line', { name: d.name, event: d.event, amount },
+                        `${d.name} says they were at ${d.event} (${amount} no-show fine)`);
+      return `
+        <div class="pay-dispute-strip" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.82rem;
+             background:#3a2e05; border:1px solid #d97706; border-radius:6px; padding:6px 10px;">
+          <div style="flex:1; min-width:200px;">⚖️ ${this.escape(line)}${d.note ? ` — <i>“${this.escape(d.note)}”</i>` : ''}</div>
+          <button type="button" data-pay-dispute="${d.id}" data-decision="approve" data-tab="${tab}" style="${btn('#059669')}">${this.escape(copy('dispute_approve', {}, 'Approve'))}</button>
+          <button type="button" data-pay-dispute="${d.id}" data-decision="deny" data-tab="${tab}" style="${btn('#7f1d1d')}">${this.escape(copy('dispute_deny', {}, 'Deny'))}</button>
+        </div>`;
+    }).join('');
+  }
+
   renderFinesCells(m) {
     const f = m && m.fines;
     if (!f || !Array.isArray(f.months) || !f.months.length) return '';
     const fmtAmt = (n) => (Number.isInteger(n) ? `$${n}` : `$${Number(n).toFixed(2)}`);
     const bills = this._bills(f);
+    const finished = f.months.filter((mo) => !mo.current);
+    const lastYm = finished.length ? finished[finished.length - 1].month : '';   // the "last" Friday→Friday period
 
     const finesCell = (mo) => {
       const n = Array.isArray(mo.items) ? mo.items.length : 0;
       const total = Number(mo.total) || 0;
       const p = mo.posting || null;
       const status = (!mo.current && p) ? p.status : '';
+      const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
+      const name = mo.from ? `${mo.label} (${md(mo.from)}–${md(mo.to)})` : mo.label;   // period dates, mig 1207
       const lines = n
-        ? `${mo.label} fines: ${n} — ` + mo.items.map((it) => `${this.fmtDate(it.startAt)} ${it.label} ${fmtAmt(it.amount)}`).join('; ')
-        : `${mo.label} fines: none${mo.current ? ' so far' : ''}`;
-      const tip = lines + (p && (total > 0 || p.status === 'drift') ? ` · ${this._postingTip(mo, p)}` : '');
+        ? `${name} fines: ${n} — ` + mo.items.map((it) => `${this.fmtDate(it.startAt)} ${it.label} ${fmtAmt(it.amount)}`).join('; ')
+        : `${name} fines: none${mo.current ? ' so far' : ''}`;
+      // The last finished period: "$10 ($5)" — the total, and what is left
+      // if every pending dispute is approved (owner 2026-11-10, mig 1210).
+      const disputed = mo.month === lastYm
+        ? (mo.items || []).filter((it) => it.dispute === 'pending').reduce((s, it) => s + (Number(it.amount) || 0), 0) : 0;
+      const left = total - disputed;
+      const big = disputed > 0
+        ? this._billCopy('disputed_big', { total: fmtAmt(total), left: fmtAmt(left) }, `${fmtAmt(total)} (${fmtAmt(left)})`)
+        : fmtAmt(total);
+      const tip = lines + (p && (total > 0 || p.status === 'drift') ? ` · ${this._postingTip(mo, p)}` : '')
+        + (disputed > 0 ? ` · ${this._billCopy('disputed_tip', { disputed: fmtAmt(disputed), left: fmtAmt(left) },
+                                               `${fmtAmt(disputed)} under dispute — ${fmtAmt(left)} if approved`)}` : '');
       return this._cellHtml({ cls: 'pay-fines-cell', attrs: `data-fines-month="${this.escape(mo.month)}"`, tip,
                               colors: this._postingColors(status, total > 0),
-                              top: `${mo.label.toUpperCase()} FINES`, big: fmtAmt(total),
+                              top: `${mo.label.toUpperCase()} FINES`, big,
                               bottom: this._postingLine(mo.current ? null : p, mo.current) });
     };
 
@@ -1629,33 +1692,13 @@ class PaymentsScreen extends Screen {
 
   // The billing cycle a month names runs first Friday → next month's first
   // Friday (owner 2026-11-07: "october billing cycle so first friday of oct
-  // to first fri of nov").  The boxes group by calendar month, so the cycle
-  // gathers its items from every month shown.  Dates are club time.
-  _firstFriday(ym) {
-    const [y, m] = ym.split('-').map(Number);
-    const d = new Date(y, m - 1, 1);
-    d.setDate(1 + ((5 - d.getDay() + 7) % 7));
-    return d;
-  }
-
+  // to first fri of nov").  Since mig 1207 the boxes ARE those periods —
+  // the backend sends each one's from/to and its own items.
   _finesCycle(f, mo) {
-    const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const start = this._firstFriday(mo.month);
-    const [y, m] = mo.month.split('-').map(Number);
-    const end = this._firstFriday(`${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, '0')}`);
-    const last = new Date(end); last.setDate(last.getDate() - 1);
-    const from = ymd(start), until = ymd(end);
+    const md = (iso) => { const d = this._parseIsoDateOnly(iso); return d ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
     const etDay = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-    const items = [];
-    for (const each of f.months) {
-      for (const it of (Array.isArray(each.items) ? each.items : [])) {
-        const day = etDay(it.startAt);
-        if (day >= from && day < until) items.push({ ...it, day });
-      }
-    }
-    items.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
-    const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
-    return { items, from: md(start), to: md(last), total: items.reduce((s, it) => s + (Number(it.amount) || 0), 0) };
+    const items = (Array.isArray(mo.items) ? mo.items : []).map((it) => ({ ...it, day: etDay(it.startAt) }));
+    return { items, from: md(mo.from), to: md(mo.to), total: items.reduce((s, it) => s + (Number(it.amount) || 0), 0) };
   }
 
   _finesCopyButton(f, mo) {
@@ -2159,6 +2202,7 @@ class PaymentsScreen extends Screen {
     if (chipsEl) chipsEl.style.display = 'none';
     if (w) w.style.display = '';
 
+    this.find('#pay-summary').style.display = 'flex';
     this.find('#pay-summary').innerHTML = `
       <div><span style="opacity:0.7;">Program:</span> <span style="font-weight:700;">${this.escape(data.programName || '—')}</span></div>
       <div><span style="opacity:0.7;">Payments:</span> <span style="font-weight:700;">${data.total ?? 0}</span></div>
@@ -2300,6 +2344,7 @@ class PaymentsScreen extends Screen {
     if (qv) qv.style.display = '';
 
     const c = data.counts || {};
+    this.find('#pay-summary').style.display = 'flex';
     this.find('#pay-summary').innerHTML = `
       <div><span style="opacity:0.7;">🚩 Pending:</span>
            <span style="font-weight:700; color:#fca5a5;">${c.pending || 0}</span></div>
@@ -2500,7 +2545,7 @@ class PaymentsScreen extends Screen {
   // ── Financial roll-ups ──────────────────────────────────────────────
   // Given a members-endpoint response, compute the per-tab money numbers
   // shown in the summary strip.  Kept pure so we can also feed it into
-  // _renderAllProgramsBar() for the cross-program total.
+  // _renderStats() for the 📊 stats section.
   //
   // "This Month" is the CALENDAR month (1st → end, in the viewer's
   //   local time), not the 15th-to-14th dues cycle the backend uses for
@@ -2599,14 +2644,15 @@ class PaymentsScreen extends Screen {
   // Sum the per-tab summaries into a cross-program roll-up.  Uses the
   // earliest firstPaidAt across programs for the avg-per-month
   // denominator so combined avg is calculated on a common timeline.
-  _combinedSummary() {
-    const tabs = ['mens','womens','boys','girls'];
+  _combinedSummary(tabs = PaymentsScreen.ALL_TABS) {
     let netCollected     = 0;
     let thisMonth        = 0;
     let totalMembers     = 0;
     let outstandingCount = 0;
     let outstandingTotal = 0;
     let earliestMonthsElapsed = 0;   // biggest monthsElapsed = earliest start
+    let inactiveCount = 0;
+    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0 };
     const loaded = [];
     for (const k of tabs) {
       const d = this.membersByTab[k];
@@ -2618,42 +2664,79 @@ class PaymentsScreen extends Screen {
       outstandingCount += s.outstandingCount;
       outstandingTotal += s.outstandingTotal;
       if (s.monthsElapsed > earliestMonthsElapsed) earliestMonthsElapsed = s.monthsElapsed;
+      inactiveCount += d.inactiveCount || 0;
+      for (const c of Object.keys(counts)) counts[c] += (d.counts && d.counts[c]) || 0;
       loaded.push(k);
     }
     const avgPerMonth         = earliestMonthsElapsed > 0 ? netCollected     / earliestMonthsElapsed : 0;
     const outstandingPerMonth = earliestMonthsElapsed > 0 ? outstandingTotal / earliestMonthsElapsed : 0;
     return {
-      loaded, loadedCount: loaded.length,
-      totalMembers, netCollected, thisMonth,
+      loaded, loadedCount: loaded.length, wanted: tabs.length,
+      totalMembers, inactiveCount, counts, netCollected, thisMonth,
       monthsElapsed: earliestMonthsElapsed, avgPerMonth,
       outstandingCount, outstandingTotal, outstandingPerMonth,
     };
   }
 
-  _renderAllProgramsBar() {
-    const el = this.find('#pay-all-programs');
+  // 📊 The one stats section.  Pills: All / Mens / Womens / Boys / Girls;
+  // Boys counts Boys + Girls (same rule as every screen —
+  // Screen.sectionIncludes), so the pill says so.  Multi-programme sums
+  // add each programme's own estimate (fees differ per programme).
+  _renderStats() {
+    const el = this.find('#pay-stats');
     if (!el) return;
-    const s = this._combinedSummary();
-    const tabsTotal = 4;
-    const doneLabel = s.loadedCount === tabsTotal
-      ? '<span style="color:#86efac;">all 4 loaded</span>'
-      : `<span style="opacity:0.6;">${s.loadedCount}/${tabsTotal} loaded\u2026</span>`;
+    const keys = this._shardKeys(this.statsTab);
+    const s = this._combinedSummary(keys);
+    const pills = [
+      { id: 'all',    label: '🌐 All programs' },
+      { id: 'mens',   label: '👨 Mens' },
+      { id: 'womens', label: '👩 Womens' },
+      { id: 'boys',   label: '👦 Boys + Girls' },
+      { id: 'girls',  label: '👧 Girls only' },
+    ].map((p) => {
+      const on = p.id === this.statsTab;
+      return `<button type="button" data-stats-tab="${p.id}"
+        style="padding:4px 12px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.8rem;
+               background:${on ? '#0ea5e9' : 'transparent'}; color:${on ? '#fff' : 'var(--fg, #e5e7eb)'};
+               border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${p.label}</button>`;
+    }).join('');
+    const stat = (label, value, color, title) =>
+      `<div${title ? ` title="${this.escape(title)}"` : ''} style="min-width:110px;">
+         <div style="opacity:0.65; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em;">${label}</div>
+         <div style="font-weight:800; font-size:1.05rem;${color ? ` color:${color};` : ''}">${value}</div>
+       </div>`;
+    const row = (title, cells) => `
+      <div style="margin-top:var(--space-3);">
+        <div style="opacity:0.55; font-size:0.72rem; font-weight:700; margin-bottom:4px;">${title}</div>
+        <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">${cells}</div>
+      </div>`;
+    const c = s.counts;
+    const loading = s.loadedCount < s.wanted
+      ? `<span style="opacity:0.6; font-size:0.75rem;">${s.loadedCount}/${s.wanted} loaded…</span>` : '';
     el.innerHTML = `
-      <div style="font-weight:700;">🌐 All Programs</div>
-      <div>${doneLabel}</div>
-      <div><span style="opacity:0.7;">Members:</span> <span style="font-weight:700;">${s.totalMembers}</span></div>
-      <div><span style="opacity:0.7;">💰 Collected:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(s.netCollected)}</span></div>
-      <div><span style="opacity:0.7;">This Month:</span> <span style="font-weight:700; color:#86efac;">${this.fmtMoney(s.thisMonth)}</span></div>
-      <div><span style="opacity:0.7;">Avg / Month:</span> <span style="font-weight:700;">${this.fmtMoney(s.avgPerMonth)}</span>${s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.75rem;"> (${s.monthsElapsed} mo)</span>` : ''}</div>
-      <div style="flex-basis:100%; height:0;"></div>
-      <div><span style="opacity:0.7;">🔴 Outstanding:</span>
-           <span style="font-weight:700; color:#fca5a5;">${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}</span></div>
-      <div title="Outstanding × est. per-member fee (median of paid members)">
-        <span style="opacity:0.7;">Est. Owed:</span>
-        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(s.outstandingTotal)}</span></div>
-      <div title="Estimated outstanding ÷ months elapsed">
-        <span style="opacity:0.7;">Est. Owed / Month:</span>
-        <span style="font-weight:700; color:#fca5a5;">~${this.fmtMoney(s.outstandingPerMonth)}</span></div>
+      <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
+        <span style="font-weight:800; margin-right:4px;">📊 Stats</span>${pills}${loading}
+      </div>
+      ${row('PLAYERS', [
+        stat('Members', s.totalMembers - s.inactiveCount),
+        stat('🟢 Paid up', c.current, '#86efac'),
+        stat('🟡 Behind', c.behind, '#fbbf24'),
+        stat('🔴 Overdue', c.overdue, '#fca5a5'),
+        stat('⚫ Never paid', c.never, '#e5e7eb'),
+        stat(this.escape(this._duesFreeCopy('volunteer', 'label')), c.volunteer, '#93c5fd'),
+        stat(this.escape(this._duesFreeCopy('injured', 'label')), c.injured, '#fbbf24'),
+        stat('🚫 Inactive', s.inactiveCount, '#c4b5fd'),
+      ].join(''))}
+      ${row('MONEY IN', [
+        stat('💰 Collected', this.fmtMoney(s.netCollected), '#86efac'),
+        stat('This month', this.fmtMoney(s.thisMonth), '#86efac'),
+        stat('Avg / month', this.fmtMoney(s.avgPerMonth) + (s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.72rem; font-weight:400;"> (${s.monthsElapsed} mo)</span>` : '')),
+      ].join(''))}
+      ${row('OWED', [
+        stat('🔴 Outstanding', `${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}`, '#fca5a5', 'Never paid + overdue'),
+        stat('Est. owed', `~${this.fmtMoney(s.outstandingTotal)}`, '#fca5a5', 'Outstanding × est. fee (median of paid members, per programme)'),
+        stat('Est. owed / month', `~${this.fmtMoney(s.outstandingPerMonth)}`, '#fca5a5', 'Est. owed ÷ months elapsed'),
+      ].join(''))}
     `;
   }
 
