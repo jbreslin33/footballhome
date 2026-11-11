@@ -6541,6 +6541,72 @@ class GameCenterScreen extends EventScreen {
     return list;
   }
 
+  // ── 👥 All Players, game side (mig 1284; owner 11/11: "the ones 'going'
+  // who have not been assinged starter or bench or alt need to show at top
+  // of page so i can immediaely assing them … rolled up … expandable") ──
+  _rollUp() { return true; }
+  _ecCopy(tier, fb) { return (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb; }
+  _playerIdOfPerson(personId) {
+    const p = (this.players || []).find(x => Number(x.personId) === Number(personId));
+    return p && p.playerId != null ? Number(p.playerId) : null;
+  }
+  // Going split by this game's official lineup.  Everyone-plays games and
+  // a lineup still loading keep the one Going section.
+  _goingSplit(going) {
+    if (!this.loaded || this.everyonePlays) return null;
+    const by = { unplaced: [], starter: [], bench: [], alternate: [] };
+    const pidOf = new Map();
+    for (const r of going) {
+      const pid = this._playerIdOfPerson(r.person_id);
+      pidOf.set(r.person_id, pid);
+      const z = pid != null ? this.zones.get(pid) : null;
+      (by[z] || by.unplaced).push(r);
+    }
+    const sortOf = new Map((this.positionList || []).map(p => [p.id, p.sortOrder]));
+    const posRank = (r) => sortOf.get(this.positions.get(pidOf.get(r.person_id))) ?? 99;
+    by.starter.sort((a, b) => posRank(a) - posRank(b));
+    by.bench.sort((a, b) => (this.benchOrder.get(pidOf.get(a.person_id)) ?? 99) - (this.benchOrder.get(pidOf.get(b.person_id)) ?? 99));
+    const esc = (t) => this.escapeHtml(t);
+    return {
+      unplaced: by.unplaced,
+      groups: [
+        { key: 'starters', label: esc(this._ecCopy('sec_starters', '⭐ Starters')), list: by.starter },
+        { key: 'bench',    label: esc(this._ecCopy('sec_bench', '🪑 Bench')),       list: by.bench },
+        { key: 'alt',      label: esc(this._ecCopy('sec_alt', '🔁 Alt')),           list: by.alternate },
+      ],
+    };
+  }
+  // On each Going card: the position numbers (tap = start there; a taken
+  // number opens the swap sheet as in the lineup editor), Bench, Alt.
+  // Same data-lineup-* buttons, so the lineup's own click wiring saves.
+  _cardSideHtml(r) {
+    if (!this.isCoach || this.everyonePlays || !this.loaded || r.response !== 'yes') return '<span></span>';
+    const pid = this._playerIdOfPerson(r.person_id);
+    const esc = (t) => this.escapeHtml(t);
+    if (pid == null) return `<span style="font-size:0.72rem; opacity:0.6;">${esc(this._ecCopy('side_no_roster', 'Not on this game\'s roster'))}</span>`;
+    const { slotToPlayerId, startingPositions, rosterById } = this._slotMaps();
+    const nums = startingPositions.map(pos => {
+      const occ = slotToPlayerId.get(pos.id);
+      const mine = occ === pid;
+      const taken = occ != null && !mine;
+      const style = mine ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e;'
+        : taken ? 'background:#1e293b; color:#64748b; border:1px solid #334155;'
+        : 'background:#334155; color:#fff; border:1px solid #475569;';
+      const title = taken ? `${pos.name} — ${(rosterById.get(occ) || {}).name || 'taken'}` : pos.name;
+      return `<button type="button" data-lineup-position-btn="${pos.id}" data-player-id="${pid}" title="${esc(title)}"
+        style="padding:2px 7px; font-size:0.7rem; font-weight:800; border-radius:3px; min-width:22px; cursor:pointer; ${style}">${pos.sortOrder}</button>`;
+    }).join('');
+    const zone = this.zones.get(pid);
+    const zb = (z, tier, fb) => `<button type="button" data-lineup-zone-btn="${z}" data-player-id="${pid}"
+        class="btn btn-sm ${zone === z ? 'btn-primary' : 'btn-secondary'}" style="padding:2px 8px; font-size:0.72rem;">${esc(this._ecCopy(tier, fb))}</button>`;
+    return `<span style="display:flex; flex-direction:column; gap:4px; min-width:0;">
+        <span style="display:flex; gap:3px; flex-wrap:wrap; align-items:center;">
+          <span style="font-size:0.68rem; opacity:0.7; margin-right:2px;">${esc(this._ecCopy('side_start', 'Start:'))}</span>${nums}
+        </span>
+        <span style="display:flex; gap:4px;">${zb('bench', 'side_bench', 'Bench')}${zb('alternate', 'side_alt', 'Alt')}</span>
+      </span>`;
+  }
+
   _playersPaneHtml() {
     if (!this.ev || !Array.isArray(this.ev.rsvps)) return `<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>`;
     try {

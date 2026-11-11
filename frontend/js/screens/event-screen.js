@@ -102,6 +102,13 @@ class EventScreen extends Screen {
   // swatches), and the strip over the Going cards (its groups in play).
   _cardSideHtml(_r) { return '<span></span>'; }
   _goingTopHtml(_going) { return ''; }
+  // A game splits Going by its lineup (mig 1284): { unplaced: [rsvp rows],
+  // groups: [{ key, label, list }] } — unplaced open at the very top,
+  // groups folded.  null = one Going section (practice, everyone-plays).
+  _goingSplit(_going) { return null; }
+  // Roll the list up (mig 1284): every section a fold, closed until the
+  // coach opens it, so the page is a short list of counts.
+  _rollUp() { return false; }
 
   // Leaving the page stops the live refresh.
   onExit() { this._stopLivePoll(); }
@@ -358,6 +365,10 @@ class EventScreen extends Screen {
     const aside = `<span style="font-size:0.78rem;">${esc(cp('jobs_filled', { filled: String(filled), needed: String(needed) }, `${filled} of ${needed} filled`))}</span>`;
     const top = `<div style="text-align:right; margin:0 0 6px;"><button type="button" class="btn btn-secondary" data-ec-jobs
         style="padding:4px 12px; font-size:0.8rem;">${esc(cp('jobs_edit', {}, '✏️ Edit on Jobs board'))}</button></div>`;
+    if (this._rollUp()) {
+      return this.cardFoldHtml('data-ec-fold', 'jobs', !!this.folds.get('jobs'), esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length,
+                               this.cardGridHtml(cards), { aside: esc(cp('jobs_filled', { filled: String(filled), needed: String(needed) }, `${filled} of ${needed} filled`)), top });
+    }
     return this.cardSectionHtml(esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length, this.cardGridHtml(cards), { aside, top });
   }
 
@@ -1706,7 +1717,8 @@ class EventScreen extends Screen {
       });
     };
     const grid = (list, opts) => this.cardGridHtml(list.map(r => card(r, opts)));
-    const presentAside = (list) => this.att ? `<span style="color:#22c55e;">${present(list)} present</span>` : '';
+    // "N present" only once attendance can be taken (event day on).
+    const presentAside = (list) => this.att && this._eventDayReached() ? `<span style="color:#22c55e;">${present(list)} present</span>` : '';
     const section = (label, list, opts = {}) => list.length
       ? this.cardSectionHtml(label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' }) : '';
     // Folds keep their open/closed state across the 15s refresh and a
@@ -1760,6 +1772,18 @@ class EventScreen extends Screen {
     const remindBar = canRemind && noResp.length
       ? remindBarHtml(cp('remind_group', { n: noResp.length }) || `📣 Remind all ${noResp.length} who haven't answered`, this.groupNote, 'player') : '';
 
+    // A game (mig 1284): Going players with no Starter / Bench / Alt yet
+    // open at the very top, each card carrying the numbers / Bench / Alt;
+    // the placed ones fold under Starters / Bench / Alt.
+    const roll = this._rollUp();
+    const split = this._goingSplit(going);
+    const unplacedHtml = () => split.unplaced.length
+      ? `<div style="border:2px solid #f59e0b; border-radius:10px; padding:4px 10px 10px; margin:0 0 var(--space-3); background:rgba(245,158,11,0.08);">
+          ${section(L('sec_unplaced', '⚠️ Going · Not placed yet'), split.unplaced, { sides: true,
+            top: `<div style="font-size:0.75rem; opacity:0.8; margin:0 0 6px;">${L('sec_unplaced_note', 'Tap a number to start them, or Bench / Alt')}</div>` })}
+        </div>`
+      : (going.length ? `<div style="font-size:0.8rem; font-weight:700; color:#22c55e; margin:0 0 var(--space-2);">${L('sec_all_placed', '✅ Every Going player is placed')}</div>` : '');
+
     // Coaches: their own section, unanswered first, each answer under its
     // own small heading.  Open until the coach folds it.
     const coachSection = () => {
@@ -1768,7 +1792,7 @@ class EventScreen extends Screen {
       const part = (label, list, opts = {}) => list.length
         ? `<div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:8px 0 4px;">${label} (${list.length})</div>${grid(list, opts)}` : '';
       const key = 'coaches';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : true;
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : !roll;
       const bar = canRemind && noAnswer.length
         ? remindBarHtml(cp('remind_group_coaches', { n: noAnswer.length }) || `📣 Remind all ${noAnswer.length} coaches who haven't answered`, this.coachGroupNote, 'coach') : '';
       const body = part(L('sec_noresp', '– No response'), noAnswer, { remind: true })
@@ -1778,11 +1802,13 @@ class EventScreen extends Screen {
                                { aside: presentAside(coaches), top: bar });
     };
     return `
+      ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
+      ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
       ${going.length ? section(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
-      ${section(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}
-      ${section(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
-      ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: true })}
+      ${section(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}`}
+      ${(roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
+      ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll })}
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
       ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
       ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true })}
