@@ -28,6 +28,7 @@ class FinesScreen extends Screen {
     super(navigation, auth);
     this.data = null; this.disputes = []; this.err = ''; this.loading = false;
     this.tab = 'all'; this.view = 'players'; this.search = '';
+    this.period = null;   // 'YYYY-MM' of a finished period, null = now (the normal board)
   }
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('fines', tier, tokens) : ''; }
@@ -70,6 +71,7 @@ class FinesScreen extends Screen {
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
         <div id="fi-stats" style="${MoneyBoard.STATS_STYLE}"><div style="opacity:0.7;">📊 Stats — loading…</div></div>
         <div id="fi-filters" style="margin-bottom: var(--space-3);"></div>
+        <div id="fi-periods" style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom: var(--space-3);"></div>
         <div id="fi-views" style="display:flex; gap:var(--space-2); margin-bottom: var(--space-3);"></div>
         <div style="margin-bottom: var(--space-3);">
           <input id="fi-search" type="text" placeholder="🔎 Filter by name…"
@@ -101,6 +103,8 @@ class FinesScreen extends Screen {
     if (absolve) { e.stopPropagation(); this._absolve(absolve); return; }
     const undo = e.target.closest('[data-fi-undo]');
     if (undo) { e.stopPropagation(); this._undo(Number(undo.dataset.fiUndo), undo); return; }
+    const per = e.target.closest('[data-fi-period]');
+    if (per) { const k = per.dataset.fiPeriod; this.period = k === 'now' ? null : k; this._renderAll(); return; }
     const view = e.target.closest('.fi-view');
     if (view) { this.view = view.dataset.view; MoneyBoard.paintViewTabs(this.element, 'fi-view', this.view); this._renderBody(); return; }
     const sheetBtn = e.target.closest('[data-player-sheet]');
@@ -129,9 +133,12 @@ class FinesScreen extends Screen {
   static TAB_CODES = { mens: ['M'], womens: ['W'], boys: ['B', 'G'], girls: ['G'] };
   _inTab(p) { return this.tab === 'all' || (FinesScreen.TAB_CODES[this.tab] || []).includes(p.section_code); }
 
+  // A finished period is paid once it is on LA and his LA balance is $0.
+  static paidOff(p, m) { return !!(m && m.posting && m.posting.status === 'posted' && !(Number(p.la_balance) > 0.005)); }
+
   _row(p) {
     const months = p.months || [];
-    const paidOff = (m) => m.posting && m.posting.status === 'posted' && !(Number(p.la_balance) > 0.005);
+    const paidOff = (m) => FinesScreen.paidOff(p, m);
     const owedPeriods = months.filter(m => !m.current && Number(m.total) > 0 && !paidOff(m));
     const current = months.find(m => m.current) || null;
     return {
@@ -156,7 +163,48 @@ class FinesScreen extends Screen {
   }
 
   // ── Drawing ─────────────────────────────────────────────────────────
-  _renderAll() { this._renderStats(); this._renderBody(); }
+  _renderAll() { this._paintPeriods(); this._renderStats(); this._renderBody(); }
+
+  // ── Period pills (owner 2026-11-11: "show what is owed for each month 1st
+  // friday to day before first friday for fines just like tuition" / "show
+  // each month separate and allow me to absolve each month separate and
+  // thus charge each month separate").  One pill per tuition period that
+  // had fines; the running one = the normal board.  A finished period
+  // shows only that period: who owes it, who paid it, who had none — each
+  // card with 🕊 Absolve <period>.
+  _periods() {
+    const list = ((this.data && this.data.months) || []).filter(m => m.current || Number(m.total) > 0);
+    return list.slice().sort((a, b) => String(b.month).localeCompare(String(a.month)));
+  }
+  _selPeriod() {
+    if (!this.period) return null;
+    return this._periods().find(m => m.month === this.period && !m.current) || null;
+  }
+  _paintPeriods() {
+    const host = this.find('#fi-periods');
+    if (!host) return;
+    const list = this._periods();
+    if (this.loading || list.length < 2) { host.innerHTML = ''; return; }
+    if (this.period && !this._selPeriod()) this.period = null;
+    host.innerHTML = list.map(m => {
+      const key = m.current ? 'now' : m.month;
+      const on = m.current ? !this.period : this.period === m.month;
+      const label = m.current
+        ? this._w('period_pill_current', `${this._period(m)} so far`, { period: this._period(m) })
+        : this._period(m);
+      return `<button type="button" data-fi-period="${this.escapeHtml(key)}"
+          style="padding:3px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; cursor:pointer;
+                 border:1px solid #38bdf8; background:${on ? '#38bdf8' : 'transparent'}; color:${on ? '#0f172a' : '#7dd3fc'};">${this.escapeHtml(label)}</button>`;
+    }).join('');
+  }
+  // One player's standing in one finished period.
+  _inPeriod(r, P) {
+    const m = (r.months || []).find(x => x.month === P.month) || null;
+    const total = m ? Number(m.total) || 0 : 0;
+    const state = !(total > 0.005) ? 'none' : (FinesScreen.paidOff(r, m) ? 'paid' : 'owes');
+    return { m, total, state };
+  }
+  _itemsAttr(list) { return (list || []).map(it => `${it.fhEventId}:${it.kind}`).join(','); }
 
   _renderViews() {
     const el = this.find('#fi-views');
@@ -177,6 +225,8 @@ class FinesScreen extends Screen {
       return;
     }
     const rows = this._rows();
+    const P = this._selPeriod();
+    if (P) { this._renderPeriodStats(el, rows, P); return; }
     const owes = rows.filter(r => r.owed > 0.005);
     const byKind = {};
     for (const r of rows) for (const m of (r.months || [])) for (const it of (m.items || [])) {
@@ -207,6 +257,38 @@ class FinesScreen extends Screen {
     });
   }
 
+  _renderPeriodStats(el, rows, P) {
+    const name = this._period(P);
+    const per = rows.map(r => ({ r, ...this._inPeriod(r, P) }));
+    const sum = (st) => per.filter(x => x.state === st).reduce((a, x) => a + x.total, 0);
+    const n = (st) => per.filter(x => x.state === st).length;
+    const byKind = {};
+    for (const x of per) for (const it of ((x.m && x.m.items) || [])) {
+      const k = byKind[it.kind] || (byKind[it.kind] = { label: it.label, n: 0, total: 0 });
+      k.n++; k.total += Number(it.amount) || 0;
+    }
+    const absolved = rows.reduce((a, r) => a + r.absolved.filter(x => x.month === P.month).length, 0);
+    const cell = (label, value, color) => ({ label, value, color });
+    el.innerHTML = MoneyBoard.statsHtml({
+      title: `📊 ${this.escapeHtml(this._w('period_stats_title', `Stats · ${name}`, { period: name }))} · ${this._tabLabel()}`,
+      rows: [
+        { title: this._w('stats_money', 'FINES'), cells: [
+          cell(this._w('period_stat_fined', 'Fined'), FinesScreen.money(sum('owes') + sum('paid'))),
+          cell(this._w('period_stat_owed', '🔴 Still owed'), FinesScreen.money(sum('owes')), '#fca5a5'),
+          cell(this._w('period_stat_paid', '✅ Paid'), FinesScreen.money(sum('paid')), '#86efac'),
+        ] },
+        { title: this._w('stats_players', 'PLAYERS'), cells: [
+          cell(this._w('stat_owes', '🔴 Owe'), n('owes'), '#fca5a5'),
+          cell(this._w('period_stat_paid_n', '✅ Paid'), n('paid'), '#86efac'),
+          cell(this._w('period_stat_none', '🟢 No fines'), n('none')),
+          cell(this._w('stat_absolved', '🕊 Absolved'), absolved, '#93c5fd'),
+        ] },
+        ...(Object.keys(byKind).length ? [{ title: this._w('stats_kinds', 'BY KIND'),
+          cells: Object.values(byKind).map(k => cell(this.escapeHtml(k.label), `${FinesScreen.money(k.total)} <span style="opacity:0.5; font-size:0.72rem; font-weight:400;">(${k.n})</span>`)) }] : []),
+      ],
+    });
+  }
+
   _renderBody() {
     const el = this.find('#fi-body');
     if (!el) return;
@@ -220,6 +302,8 @@ class FinesScreen extends Screen {
     }
     if (this.view === 'fines') { el.innerHTML = this._finesTable(rows); return; }
     if (this.view === 'to_bill') { el.innerHTML = this._toBill(rows); return; }
+    const P = this._selPeriod();
+    if (P) { this._renderPeriodBody(el, rows, P); return; }
     const owes = rows.filter(r => r.owed > 0.005).sort((a, b) => b.owed - a.owed || a.name.localeCompare(b.name));
     const clear = rows.filter(r => !(r.owed > 0.005)).sort((a, b) => b.soFar - a.soFar || a.name.localeCompare(b.name));
     const sec = (meta, list) => list.length ? MoneyBoard.section(meta, list.length, list.map(r => this._card(r)).join('')) : '';
@@ -228,6 +312,47 @@ class FinesScreen extends Screen {
       + sec({ icon: '🟢', label: this._w('sec_clear', 'NOTHING OWED'), fg: '#14532d', bg: '#dcfce7', border: '#16a34a' }, clear)
       + this._waivedHtml() + this._rulesHtml();
     if (window.PersonStanding && PersonStanding.fillRosters) PersonStanding.fillRosters(this.auth, el);
+  }
+
+  _renderPeriodBody(el, rows, P) {
+    const name = this._period(P);
+    const per = rows.map(r => ({ r, ...this._inPeriod(r, P) }));
+    const pick = (st) => per.filter(x => x.state === st).sort((a, b) => b.total - a.total || a.r.name.localeCompare(b.r.name));
+    const sec = (meta, list) => list.length ? MoneyBoard.section(meta, list.length, list.map(x => this._periodCard(x, P)).join('')) : '';
+    el.innerHTML =
+        sec({ icon: '🔴', label: this._w('period_sec_owes', `OWES FOR ${name}`, { period: name }), fg: '#7f1d1d', bg: '#fee2e2', border: '#dc2626' }, pick('owes'))
+      + sec({ icon: '✅', label: this._w('period_sec_paid', `PAID FOR ${name}`, { period: name }), fg: '#14532d', bg: '#dcfce7', border: '#16a34a' }, pick('paid'))
+      + sec({ icon: '🟢', label: this._w('period_sec_none', `NO FINES IN ${name}`, { period: name }), fg: '#1e3a8a', bg: '#dbeafe', border: '#2563eb' }, pick('none'));
+    if (window.PersonStanding && PersonStanding.fillRosters) PersonStanding.fillRosters(this.auth, el);
+  }
+
+  // A card for one period: that period's amount, where it stands on LA,
+  // its fines, and 🕊 Absolve <period> (lets off every fine in it).
+  _periodCard(x, P) {
+    const { r, m, total, state } = x;
+    const key = r.person_id;
+    const name = this._period(P);
+    let hero = `<div style="font-size:0.85rem; font-weight:700; color:#86efac;">🟢 ${this.escapeHtml(this._w('period_none_hero', `No fines in ${name}`, { period: name }))}</div>`;
+    if (state !== 'none') {
+      const owes = state === 'owes';
+      hero = `<div style="background:#0b1220; border:1px solid ${owes ? '#7f1d1d' : '#15803d'}; border-radius:6px; padding:8px 10px;">
+           <div style="display:flex; align-items:baseline; gap:6px; flex-wrap:wrap;">
+             <span style="font-size:0.65rem; opacity:0.55; text-transform:uppercase; letter-spacing:0.5px;">${this.escapeHtml(owes ? this._w('owes_hero', 'OWES') : this._w('period_paid_hero', 'PAID'))}</span>
+             <span style="font-size:1.4rem; font-weight:800; color:${owes ? '#fca5a5' : '#86efac'}; line-height:1;">${FinesScreen.money(total)}</span>
+             ${this._postPill(m)}
+           </div>
+           ${(m.items || []).map(it => `<div style="font-size:0.78rem; margin-top:3px; opacity:0.85;">${this.escapeHtml(this._md(it.startAt))} ${this.escapeHtml(this._event(it))} — ${this.escapeHtml(it.label)} · <b>${FinesScreen.money(it.amount)}</b></div>`).join('')}
+           ${owes ? `<div style="margin-top:8px;"><button type="button" class="fi-btn" data-fi-absolve="${key}" data-items="${this._itemsAttr(m.items)}">${this.escapeHtml(this._w('absolve_period', `🕊 Absolve all of ${name}`, { period: name }))}</button></div>` : ''}
+         </div>`;
+    }
+    return `${MoneyBoard.cardOpen(key)}
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+          <div style="font-weight:700; font-size:1rem;">${this.escapeHtml(r.name)}</div>
+          <div style="display:flex; align-items:center; gap:6px;">${window.PlayerSheet ? PlayerSheet.button(key, { tab: 'fines', flagged: r.disputes.length > 0 }) : ''}</div>
+        </div>
+        <div data-roster-standing="${key}"></div>
+        ${hero}
+      ${MoneyBoard.cardClose}`;
   }
 
   _postPill(m) {
@@ -278,8 +403,10 @@ class FinesScreen extends Screen {
   // 🧾 Every fine in the window, newest first (like Transactions).
   _finesTable(rows) {
     const lines = [];
-    for (const r of rows) for (const m of (r.months || [])) for (const it of (m.items || [])) lines.push({ r, m, it, absolved: null });
-    for (const r of rows) for (const a of r.absolved) lines.push({ r, m: (r.months || []).find(m => m.month === a.month), it: a, absolved: a });
+    const P = this._selPeriod();
+    const inP = (month) => !P || month === P.month;
+    for (const r of rows) for (const m of (r.months || [])) if (inP(m.month)) for (const it of (m.items || [])) lines.push({ r, m, it, absolved: null });
+    for (const r of rows) for (const a of r.absolved) if (inP(a.month)) lines.push({ r, m: (r.months || []).find(m => m.month === a.month), it: a, absolved: a });
     lines.sort((a, b) => String(b.it.startAt).localeCompare(String(a.it.startAt)));
     if (!lines.length) return `<div class="fi-card fi-note" style="text-align:center;">${this.escapeHtml(this._w('empty', 'No fines.', { month: '' }))}</div>`;
     return `<div style="overflow:auto; border:1px solid var(--border-color, #374151); border-radius:6px;">
@@ -300,7 +427,8 @@ class FinesScreen extends Screen {
   // 🚩 Finished periods not on LeagueApps yet — what the next bill carries.
   _toBill(rows) {
     const list = [];
-    for (const r of rows) for (const m of r.owedPeriods) if (!m.posting || m.posting.status !== 'posted') list.push({ r, m });
+    const P = this._selPeriod();
+    for (const r of rows) for (const m of r.owedPeriods) if ((!P || m.month === P.month) && (!m.posting || m.posting.status !== 'posted')) list.push({ r, m });
     if (!list.length) return `<div class="fi-card fi-note" style="text-align:center;">${this.escapeHtml(this._w('to_bill_empty', 'Nothing waiting to go on a bill.'))}</div>`;
     list.sort((a, b) => a.r.name.localeCompare(b.r.name) || a.m.month.localeCompare(b.m.month));
     const total = list.reduce((a, x) => a + Number(x.m.total), 0);
