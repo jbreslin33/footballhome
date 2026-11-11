@@ -12,13 +12,21 @@
 // overpainted by region (shirt / shorts / socks / boots), chosen per vertex from its dominant bone
 // and bind-pose height, in the figure's kit colours.
 //
-//   ?bodies=one   one home outfielder (slot 1) gets the body — a side-by-side test
-//   ?bodies=all   every player
+//   default       every player (11/11), unless this device fell back (too slow) — then capsules
+//   ?bodies=off   the capsule men      ?bodies=all   every player, fallback ignored
+//   ?bodies=one   one home outfielder (slot 1) — a side-by-side test
 // FH original (the retarget and the region paint); the body is Quaternius's.
 (function () {
   'use strict';
-  const q = new URLSearchParams(location.search).get('bodies');
-  if (!q || !window.PlayerFigure || !window.THREE_ADDONS || !THREE_ADDONS.GLTFLoader) return;
+  // On by default (11/11). ?bodies=off = the capsule men; ?bodies=all forces bodies even where this
+  // device fell back; ?bodies=one = slot 1 only. A device whose frames ran too slow with bodies
+  // remembers it (localStorage fh.game.bodies = 'off') and gets capsules until ?bodies=all.
+  const AUTO_KEY = 'fh.game.bodies';
+  let fellBack = false;
+  try { fellBack = localStorage.getItem(AUTO_KEY) === 'off'; } catch (_) { /* no storage */ }
+  const q = new URLSearchParams(location.search).get('bodies') || (fellBack ? 'off' : 'all');
+  if (q === 'off' || !window.PlayerFigure || !window.THREE_ADDONS || !THREE_ADDONS.GLTFLoader) return;
+  const forced = new URLSearchParams(location.search).get('bodies') === 'all';
   const want = (fig) => !fig.official && (q === 'all' || (q === 'one' && fig.slot === 1));
 
   const URL_BODY = 'game-assets/ubc/body_male.gltf';
@@ -183,7 +191,7 @@
   function relPos(root, obj, out) { return root.worldToLocal(obj.getWorldPosition(out)); }
 
   function attach(fig) {
-    if (!proto || !want(fig) || fig.body) return;
+    if (!proto || disabled || !want(fig) || fig.body) return;
     const SU = THREE_ADDONS.SkeletonUtils;
     const model = SU.clone(proto.scene);
     model.scale.setScalar(proto.scale);
@@ -266,7 +274,10 @@
     fig.pelvis.position.copy(pelvisAt);
     fig.root.updateMatrixWorld(true);
     // the capsule figure stays the animator, unseen (its name tag stays)
-    fig.root.traverse((o) => { if (o.isMesh && !isIn(o, model)) o.visible = false; });
+    const hidden = [];
+    fig.root.traverse((o) => { if (o.isMesh && o.visible && !isIn(o, model)) { o.visible = false; hidden.push(o); } });
+    fig.body.hidden = hidden;
+    watchFrames();
   }
   function isIn(o, top) { for (let p = o; p; p = p.parent) if (p === top) return true; return false; }
 
@@ -285,6 +296,46 @@
       m.bone.updateMatrixWorld(true);
     }
   }
+
+  // Back to the capsule man: the body off, his capsules on, the capsule rig's own proportions.
+  function detach(fig) {
+    const b = fig.body;
+    if (!b) return;
+    fig.root.remove(b.model);
+    for (const o of b.hidden) o.visible = true;
+    fig.body = null;
+    fig.setProportions(0.42, 0.40, 0.95);
+  }
+
+  // ── the safety net: too slow with bodies → capsules ──────────────────
+  // Over the first 15 s with bodies on screen (visible tab; gaps over 250 ms — a tab switch, a
+  // stall — ignored), if the median frame takes over 45 ms (~22 fps), every body goes and this
+  // device remembers. ?bodies=all ignores it.
+  let watching = false;
+  function watchFrames() {
+    if (watching || forced) return;
+    watching = true;
+    const dts = []; let last = 0; const t0 = performance.now();
+    const step = (now) => {
+      if (document.visibilityState === 'visible' && last && now - last < 250) dts.push(now - last);
+      last = now;
+      if (now - t0 < 15000 || dts.length < 60) { requestAnimationFrame(step); return; }
+      dts.sort((a, b) => a - b);
+      const med = dts[dts.length >> 1];
+      if (med > 45) {
+        console.warn('bodies: median frame', med.toFixed(1), 'ms with bodies on — back to the capsule figures on this device (?bodies=all to force)');
+        for (const f of figures) detach(f);
+        disabled = true;
+        try { localStorage.setItem(AUTO_KEY, 'off'); } catch (_) { /* this visit only */ }
+      } else {
+        console.log('bodies: median frame', med.toFixed(1), 'ms — bodies stay');
+      }
+    };
+    requestAnimationFrame(step);
+  }
+  let disabled = false;
+  // console / test handle: what the safety net does, on demand
+  window.__bodies = { figures, detachAll() { for (const f of figures) detach(f); disabled = true; } };
 
   // ── hooks ────────────────────────────────────────────────────────────
   const buildBody = P.buildBody, update = P.update;
