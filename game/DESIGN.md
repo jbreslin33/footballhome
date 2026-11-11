@@ -8076,3 +8076,49 @@ the settle stays, and the general fixes found on the way stay on:
 **Next moles.** (1) The receiver's next action decided before the ball arrives, so the first touch can
 go where it is wanted — then `physics.first_touch.on`. (2) Headers and aerial duels (35 v 44): roadmap
 slice 4's second half. (3) Strong-foot short passes (§8.180). (4) Real feet per player.
+
+### 8.182 G5.81 — the first touch waits for his carrier wish and is played from where his body will be; pressed, his line comes from the real pressed touches (no migration)
+
+The §8.181 mole: at the touch his wish was still the receive's ("meet the pass").
+
+**Built.**
+- **The touch waits one tick** (`physics.first_touch.defer`, 33 ms): the receipt is in `tickFreeBall`,
+  after the carry step, so on the next tick his intents are OnBall's — the touch is played then, the
+  ball sitting where he met it meanwhile (a tackle won this tick: next tick too).
+- **From where his body will be** (`physics.first_touch.body`): his velocity goes toward his wish at the
+  footstep caps (§8.178: braking shedding pace, speeding up otherwise) for 15 ticks; the ball is played
+  to that spot plus the real gap the way he wants to go, timed to be there in the half second (standing
+  at the end, let die there). Traced first: with the wish in but the touch from where he stood, 51
+  heavy-touch losses a team-match — running in at 5 m/s, a touch the other way that dies a metre off
+  is 2.5 m behind him before he has stopped. Now a man still running the wrong way plays it on along
+  his run and turns with it (the real touch goes along his line 59%).
+- **Pressed, his line** (`Possession` carryDir, `physics.onball.press_*`): a man of theirs inside 3 m,
+  the line he carries it on is drawn once a spell from the real pressed first touches — new
+  PRESSED TOUCH measure (`benchmarks_tracking_firsttouch.py`, DFL controlled first touches with an
+  opponent inside 3 m, 10.0 a team-match): the touch's line v the line to him, toward (< 60°) 14%,
+  across 27%, away (> 120°) 56%, still 2%; 0.5 s on the ball is nearer him than the receiver 19%, his
+  gap to it med 2.16 m. A line already in the drawn cone stays; else it turns, on its own side of the
+  man, into it. "At goal + 0.7 × away" (G5.29) still pointed into a marker standing goal-side. In the
+  brain, not the touch: put in the World's touch alone (traced), the ball went away from the man while
+  his wish ran at goal — steals 21 → 13, heavy-touch losses 11 → 36. The brain decides; the World plays it.
+- Harness: a PRESSED TOUCH line (the same measure). Test `first_touch_from_where_his_body_will_be`
+  (running in, turning back: worst gap 0.91 m v 1.65 from where he stands).
+
+**Measured** (8 matches, seed 1000; real in brackets). First touch ON: G5.80 → defer → + body → + pressed
+line: lost to a heavy touch 15.1 → 51 → 10.9 → 9.9 (4.1); stolen 16.4 → 15.7 → 15.7 → 13.0 (8.0);
+completion 73.5 → 69.9 → 72.9 → 74.0 (79.1). With it off: 2.7 / 9.1 / 75.2. **Still OFF** —
+`physics.first_touch.on` stays 0; the defer and the body ride along for when it goes on.
+
+**After** (first touch off; pressed line off → on; seed 1000, then 2000). Stolen 9.06 → 8.19, 8.69 →
+7.88 (8.0); heavy-touch losses 2.69 → 3.94, 3.44 → 3.06 (4.1); completion 75.2 → 74.1, 74.6 → 75.0
+(79.1); kept 1 s 59.0 → 57.4, 57.8 → 57.1 (72.3). 11v11 golden re-locked (3v3 unchanged).
+
+**The mole under it.** PRESSED TOUCH: our receivers have a man inside 3 m at a controlled first touch
+50-56 times a team-match (10.0) — five times real (pressures already read 2× real, §8.178). Most of what
+the first touch loses (and the steals) is a receiver met by a man real defenders don't have there.
+The out-of-possession side's distance to the receiver at the receipt is the next measure, before any
+more touch work.
+
+**Next moles.** (1) Defenders on the receiver at the receipt (5× real). (2) Then the first touch on,
+with what is left of the heavy touches (a man outrunning a ball rolling 1-2 m/s on his line; a touch
+running 6-8 m/s ahead). (3) Headers and aerial duels (§8.181). (4) Strong-foot short passes (§8.180).

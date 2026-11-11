@@ -81,6 +81,9 @@ struct PossessionParams {
     bool space_on = true; math::Fixed64 space_wide_y{}, cross_depth_m{}, space_max_s{}, space_risk{}, space_roll_m{}; int space_margin_ticks = 0;   // G5.54: the ball into an empty zone ahead   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share
     math::Fixed64 space_back_m = math::Fixed64::fromInt(2);   // physics.space.back_m (G5.58)
     math::Fixed64 clear_from_m{};                   // our end: within this of our line
+    // G5.81 (§8.182): pressed (a man inside 3 m), his carry's line to that man — toward / across / the
+    // rest away — DFL controlled first touches (benchmarks_tracking_firsttouch.py PRESSED TOUCH).
+    bool press_on = true; math::Fixed64 press_toward{}, press_across{};
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
     math::Fixed64 keeper_depth_m{}, keeper_depth_k{}, keeper_depth_max_m{}, keeper_long_m{};

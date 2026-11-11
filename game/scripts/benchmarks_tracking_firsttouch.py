@@ -88,12 +88,26 @@ def one(pos_path):
                         g5 = math.hypot(ball[n + 12][0] - pos[n + 12][0], ball[n + 12][1] - pos[n + 12][1])
                         g10 = math.hypot(ball[n + 25][0] - pos[n + 25][0], ball[n + 25][1] - pos[n + 25][1])
                         w25, _ = near(n + 25, 1.5)
-                        tm = pl[who][1]; prs = 99
+                        tm = pl[who][1]; prs = 99; pq = None
                         for qid, (qpos, qtm) in pl.items():
                             if qtm != tm and n in qpos:
-                                prs = min(prs, math.hypot(qpos[n][0] - pos[n][0], qpos[n][1] - pos[n][1]))
+                                e = math.hypot(qpos[n][0] - pos[n][0], qpos[n][1] - pos[n][1])
+                                if e < prs: prs, pq = e, qpos
+                        # G5.81 (§8.182) PRESSED TOUCH: the touch's line v the line to the nearest opponent at
+                        # the touch (toward < 60 deg, away > 120), and 0.5 s on whether the ball is nearer him
+                        # than the receiver, and the opponent's gap to it.
+                        rel = None
+                        if pq is not None and prs < 3 and (n + 12) in pq:
+                            qx, qy = pq[n][0] - pos[n][0], pq[n][1] - pos[n][1]
+                            if vout > 0.5 and prs > 0.1:
+                                cq = (ox * qx + oy * qy) / (vout * prs)
+                                rel = "toward" if cq > 0.5 else "away" if cq < -0.5 else "across"
+                            else:
+                                rel = "still"
+                            q5 = math.hypot(ball[n + 12][0] - pq[n + 12][0], ball[n + 12][1] - pq[n + 12][1])
+                            rel = (rel, q5 < g5, q5, prs)
                         b = next(i for i, (lo, hi) in enumerate(SP) if lo <= vin < hi)
-                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3)
+                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel)
                         out[b].append(rec); out["P" if prs < 3 else "F"].append(rec); out["all"].append(rec)
                 last_touch = n
             free_since = None
@@ -130,6 +144,16 @@ def main():
     for i, (lo, hi) in enumerate(SP):
         summ([r for r in tot[i] if r[0] < 0.7], f"in {lo}-{hi if hi < 99 else '+'}")
     summ([r for r in tot["P"] if r[0] < 0.7], "pressed"); summ([r for r in tot["F"] if r[0] < 0.7], "free"); summ([r for r in tot["all"] if r[0] < 0.7], "all")
+    # G5.81 (§8.182) PRESSED TOUCH: controlled touches with an opponent inside 3 m, by his distance
+    for lo, hi in ((0, 1.5), (1.5, 3), (0, 3)):
+        v = [r[7] for r in tot["all"] if r[0] < 0.7 and r[7] is not None and lo <= r[7][3] < hi]
+        if not v:
+            continue
+        c = collections.Counter(x[0] for x in v)
+        q = lambda xs, p: sorted(xs)[min(len(xs) - 1, int(len(xs) * p))]
+        print(f"PRESSED TOUCH opp {lo}-{hi} m: n {len(v)} ({len(v) / (2 * len(files)):.1f} a team-match) | touch toward / across / away / still % "
+              + " / ".join(f"{100 * c[k] / len(v):.0f}" for k in ("toward", "across", "away", "still"))
+              + f" | 0.5 s on: ball nearer him than the receiver {100 * sum(1 for x in v if x[1]) / len(v):.0f}% | his gap to it p25 {q([x[2] for x in v], .25):.2f} med {q([x[2] for x in v], .5):.2f}")
 
 
 if __name__ == "__main__":

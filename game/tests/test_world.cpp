@@ -5,6 +5,9 @@
 
 #include "test_harness.hpp"
 #include "core/World.hpp"
+#include "core/ModelParams.hpp"
+#include <cmath>
+#include <cstdio>
 #include <cstdlib>
 
 using fh::game::core::MoveIntent;
@@ -299,6 +302,51 @@ FH_TEST(kicks_strong_foot_share_and_plant) {
     }
     FH_EXPECT(struck);
     FH_EXPECT(planted);
+}
+
+// G5.81 (§8.182): the first touch is played once his carrier wish is in, from where his body will be.
+// Running in at a pass and wanting to go back the other way once he has it, the touch goes on along
+// his run (he can't stop dead) and he keeps it — the touch that died at a gap the wanted way was
+// behind him before he had stopped (traced: 51 heavy-touch losses a team-match).
+static double receiveAndTurn(bool body) {   // his worst gap to the ball over 1.5 s on it; 99 = lost
+    World w{2, kMaxSpeed, Fixed64::fromInt(52), Fixed64::fromInt(34)};
+    w.setTeam(1, 1);
+    fh::game::core::ModelParams p;
+    p.setMilli("physics.first_touch.on", 1000);
+    p.setMilli("physics.first_touch.body", body ? 1000 : 0);
+    w.configureKicks(p);
+    w.placePlayer(0, {Fixed64::fromInt(10), Fixed64::zero(), Fixed64::zero()}, {-Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(1, {Fixed64::fromInt(45), Fixed64::fromInt(30), Fixed64::zero()}, {-Fixed64::one(), Fixed64::zero()});
+    MoveIntent in;
+    in.move = Vec2{-Fixed64::one(), Fixed64::zero()};
+    w.setIntent(0, in);
+    for (int t = 0; t < 45; ++t) w.tick();   // up to speed toward -x
+    fh::game::core::BallState b;
+    b.pos = {w.player(0).pos.x - Fixed64::fromInt(8), Fixed64::zero(), Fixed64::zero()};
+    b.vel = {Fixed64::fromInt(10), Fixed64::zero(), Fixed64::zero()};
+    w.placeBall(b);
+    int owned = -1;
+    double worst = 0;
+    for (int t = 0; t < 120; ++t) {
+        w.tick();
+        if (owned < 0 && w.ball().owner) {
+            owned = t;
+            MoveIntent back;   // his carrier wish: the other way (+x)
+            back.move = Vec2{Fixed64::one(), Fixed64::zero()};
+            w.setIntent(0, back);
+        }
+        if (owned >= 0 && !w.ball().owner) return 99;   // lost
+        if (owned >= 0) worst = std::max(worst, std::hypot((w.ball().pos.x - w.player(0).pos.x).toDouble(), (w.ball().pos.y - w.player(0).pos.y).toDouble()));
+        if (owned >= 0 && t - owned >= 45) return worst;
+    }
+    return owned < 0 ? -1 : worst;
+}
+
+FH_TEST(first_touch_from_where_his_body_will_be) {
+    const double on = receiveAndTurn(true), off = receiveAndTurn(false);
+    std::printf("first touch, running in and turning: worst gap %.2f m (from where he stands: %.2f)\n", on, off);
+    FH_EXPECT(on > 0 && on < 1.5);   // kept, never far off him (the real gap 0.5 s on: p90 1.51 m)
+    FH_EXPECT(on < off);
 }
 
 FH_TEST_MAIN()

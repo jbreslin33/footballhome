@@ -82,6 +82,30 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         const auto& d = w.player(static_cast<std::uint8_t>(near));
         const Vec2 away = math::normalized(Vec2{sp.x - d.pos.x, sp.y - d.pos.y});
         dir = math::normalized(Vec2{dir.x + away.x * Fixed64::fromFraction(7, 10), dir.y + away.y * Fixed64::fromFraction(7, 10)});
+        // G5.81 (§8.182): pressed (his man inside 3 m), the line he takes it on is drawn from the
+        // real pressed first touches — away from the man 56%, across 27%, toward 14% (DFL controlled
+        // first touches, PRESSED TOUCH: the touch's line v the line to the nearest opponent, away
+        // > 120 deg, toward < 60) — one draw a spell, so his wish holds while he has it. A line
+        // already in the drawn cone stays; else it turns, on its own side of the man, into it. The
+        // first touch plays the ball his way (World::playFirstTouch): "at goal" with the marker
+        // behind him had it stolen inside half a second.
+        const auto& P = c.poss.params();
+        if (P.press_on && nd < Fixed64::fromInt(9)) {
+            const Vec2 q = Vec2{-away.x, -away.y};
+            auto roll = [&](int ch) { return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2); };
+            const Fixed64 u1 = roll(57), u2 = roll(58), half = Fixed64::fromFraction(1, 2);
+            Fixed64 lo = -Fixed64::one(), hi = -half;   // cos to his line: away [-1, -0.5]
+            if (u1 < P.press_toward) { lo = half; hi = Fixed64::one(); }
+            else if (u1 < P.press_toward + P.press_across) { lo = -half; hi = half; }
+            const Fixed64 c0 = dir.x * q.x + dir.y * q.y;
+            if (c0 < lo || c0 > hi) {
+                const Fixed64 cs = lo + (hi - lo) * u2;
+                const Fixed64 s2 = Fixed64::one() - cs * cs;
+                Fixed64 sn = s2.raw > 0 ? math::fx_sqrt(s2) : Fixed64::zero();
+                if ((q.x * dir.y - q.y * dir.x).raw < 0) sn = -sn;   // his line's side of the man
+                dir = Vec2{q.x * cs - q.y * sn, q.y * cs + q.x * sn};
+            }
+        }
     }
     return dir;
 }
@@ -1031,6 +1055,9 @@ void PossessionParams::configure(const core::ModelParams& p) {
         for (int o = 0; o < 3; ++o) pick_lambda[o] = p.fixed(("physics.pass.pick_lambda_" + std::to_string(o)).c_str(), kPick[o]);
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
+    press_on = p.fixed("physics.onball.press_on", 1000).raw > 0;        // G5.81 (§8.182), DFL PRESSED TOUCH
+    press_toward = p.fixed("physics.onball.press_toward", 140);         // toward the man 14%
+    press_across = p.fixed("physics.onball.press_across", 270);         // across 27%, away the rest
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);

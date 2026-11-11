@@ -85,6 +85,8 @@ void World::configureKicks(const ModelParams& p) {
     weak_deg_ = p.fixed("physics.kick.weak_deg", 3000);
     kick_wait_max_ = p.integer("physics.kick.wait_ms", 500) * kTickRate / 1000;
     first_touch_on_ = p.fixed("physics.first_touch.on", 0).raw > 0;   // OFF: §8.181 — the receiver's wish at the touch is still "go to the ball"
+    touch_defer_ = p.fixed("physics.first_touch.defer", 1000).raw > 0;   // G5.81 (§8.182)
+    touch_body_ = p.fixed("physics.first_touch.body", 1000).raw > 0;     // G5.81 (§8.182)
 }
 
 void World::setIntent(SlotIndex slot, const MoveIntent& intent) {
@@ -684,6 +686,12 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // it the way he wants to go just hard enough to run out to the real farthest-ahead
             // before he reaches it again (DFL carries, benchmarks_tracking_carry.py).
             ball_.pos.z = Fixed64::zero(); ball_.vel.z = Fixed64::zero();
+            // G5.81 (§8.182): his deferred first touch, now his carrier orders are in.
+            if (touch_due_ != 0xFF && !(touch_due_ == *ball_.owner && clock_.tick() == owned_at_tick_)) {   // a tackle won this tick: next tick
+                const SlotIndex due = touch_due_;
+                touch_due_ = 0xFF;
+                if (due == *ball_.owner && touch_due_owned_ == owned_at_tick_) playFirstTouch(due);
+            }
             ball_.pos.x += ball_.vel.x * kTickDt; ball_.pos.y += ball_.vel.y * kTickDt;
             ball_.vel.x = ball_.vel.x * kBallRollDecayPerTick; ball_.vel.y = ball_.vel.y * kBallRollDecayPerTick;
             const SlotIndex c = *ball_.owner;
@@ -1430,6 +1438,15 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
 // first touches); then it rolls (§8.179). A keeper, a held restart or a ball in the air: as before.
 void World::firstTouch(SlotIndex slot) {
     if (!(dribble_on_ && first_touch_on_ && !keeper_[slot] && !heldRestart() && ball_.pos.z < Fixed64::fromFraction(1, 2))) return;
+    // G5.81 (§8.182): on the tick the ball becomes his, his wish is still the receive's ("meet the
+    // pass": at the ball). A real receiver has his next action picked before it arrives; ours picks it
+    // on his first tick on the ball (OnBall). So the touch is played then, one tick (33 ms) on, the
+    // way his carrier orders want it — the ball sits where he met it for that tick.
+    if (touch_defer_) { touch_due_ = slot; touch_due_owned_ = owned_at_tick_; return; }
+    playFirstTouch(slot);
+}
+
+void World::playFirstTouch(SlotIndex slot) {
     {
         const PlayerState& r = players_[slot];
         bool pressed = false;
@@ -1472,6 +1489,42 @@ void World::firstTouch(SlotIndex slot) {
         const Fixed64 push = math::fx_sqrt(Fixed64::fromInt(2) * die * (fut + Fixed64::one()) * g);
         Fixed64 off = fut + die * g + (push - die * g) * mv;
         ball_.vel = Vec3{dir.x * off, dir.y * off, Fixed64::zero()};
+        if (touch_body_) {
+            // G5.81 (§8.182): the gap is from where his BODY will be half a second on, not from
+            // where he stands. Running in to meet the pass at 5 m/s, a touch the other way that dies
+            // a metre off is 2.5 m behind him before he has stopped (traced: 51 heavy-touch losses a
+            // team-match, the ball still behind his run and his wish pointing back at it). His
+            // velocity goes toward his wish at the footstep caps (§8.178: braking when shedding,
+            // speeding up otherwise), 15 ticks; the ball is played to that spot plus the real gap
+            // the way he wants to go — so a man still running the wrong way plays it on along his
+            // run (the real touch goes along his line 59%) and turns with it.
+            Vec2 v{r.vel.x, r.vel.y}, disp{};
+            const Vec2 vt{dir.x * fut, dir.y * fut};
+            for (int k = 0; k < kTickRate / 2; ++k) {
+                const Vec2 dv{vt.x - v.x, vt.y - v.y};
+                const Fixed64 dl = math::length(dv);
+                if (dl.raw > 0) {
+                    const Fixed64 sp = math::length(v);
+                    const Fixed64 a = (v.x * dv.x + v.y * dv.y).raw < 0 ? steps_.brkCap(sp) : steps_.accCap(sp);
+                    Fixed64 st = a * kTickDt;
+                    if (st > dl) st = dl;
+                    v = Vec2{v.x + dv.x / dl * st, v.y + dv.y / dl * st};
+                }
+                disp = Vec2{disp.x + v.x * kTickDt, disp.y + v.y * kTickDt};
+            }
+            const Vec2 D{r.pos.x + disp.x + dir.x * g - ball_.pos.x, r.pos.y + disp.y + dir.y * g - ball_.pos.y};
+            const Fixed64 dd = math::length(D);
+            // there in the half second: a roll covers v0·dt·(1 − r¹⁵)/(1 − r); standing still at the
+            // end he lets it die there instead (v0 = (1 − r)·30·d), by his speed then as before
+            Fixed64 r15 = Fixed64::one();
+            for (int k = 0; k < kTickRate / 2; ++k) r15 = r15 * kBallRollDecayPerTick;
+            const Fixed64 timed = dd * die / (Fixed64::one() - r15);
+            Fixed64 mv2 = math::length(v) / Fixed64::fromInt(2);
+            if (mv2 > Fixed64::one()) mv2 = Fixed64::one();
+            const Fixed64 v0 = dd * die + (timed - dd * die) * mv2;
+            const Vec2 bdir = dd.raw > 0 ? Vec2{D.x / dd, D.y / dd} : dir;
+            ball_.vel = Vec3{bdir.x * v0, bdir.y * v0, Fixed64::zero()};
+        }
         last_touch_tick_ = clock_.tick();   // the first touch IS his touch
         ++first_touches_;
     }

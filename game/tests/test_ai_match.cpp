@@ -131,7 +131,8 @@ constexpr std::uint64_t kGolden3v3   = 0xbf1221ce96a676b1ULL;
 // Re-locked G5.77 (2026-11-10): the footstep body.
 // Re-locked G5.79 (2026-11-10): kicks off a plant foot.
 // Re-locked G5.80 (2026-11-10): the carrier chases his ball at its speed.
-constexpr std::uint64_t kGolden11v11 = 0x21290447ad662b56ULL;
+// Re-locked G5.81 (2026-11-10): pressed, his carry's line from the real pressed first touches; the 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0xe1fb24ffdbaded03ULL;
 
 struct Rig {
     World world;
