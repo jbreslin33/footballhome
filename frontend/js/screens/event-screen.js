@@ -632,7 +632,10 @@ class EventScreen extends Screen {
       .map(x => ({ personId: x.recipient_person_id || pid, name: x.recipient_name || r.name || '',
                    phone: x.phone || null, email: x.email || null, forPersonId: pid }))
       .filter(x => x.phone || x.email);
-    if (!recipients.length) return '';
+    // Never a person without a contact button (owner 11/11): no phone and
+    // no email → the popup still opens, each route greyed with its reason
+    // ("No email on file", "No mobile number on file") and 📋 Copy.
+    if (!recipients.length) recipients.push({ personId: pid, name: r.name || '', phone: null, email: null, forPersonId: pid });
     const first = r.first_name || String(r.name || '').split(' ')[0] || '';
     const parentRow = recipients.find(x => x.personId !== pid);
     const remind = noResp ? [{

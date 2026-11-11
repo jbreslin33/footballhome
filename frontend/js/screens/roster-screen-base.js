@@ -2445,10 +2445,13 @@ class RosterScreenBase extends Screen {
   // lives in the shared ContactPopup (components/contact-popup.js).
   // Boards hand it recipients and their board's own messages.  Fuchsia
   // while a welcome is owed, and the welcome is then the preselected
-  // message.  Only for people with a phone or email.
+  // message.  Everyone gets it (owner 11/11: "we should never show a
+  // person without a contact button") — with no phone or email the popup
+  // greys each route with its reason and still offers 📋 Copy.
   renderContactButton(p, { recipients, section, parentFirst = '', needsDocs = false, context = [], vcard = null, title = '' }) {
     if (!window.ContactPopup || !window.SectionContact) return '';
     const people = (recipients || []).filter(r => r.personId && (r.phone || r.email));
+    if (!people.length && p && p.personId) people.push({ personId: p.personId, name: `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.name || '', phone: null, email: null, forPersonId: p.personId });
     if (!people.length) return '';
     const due = !!(p.welcome && p.welcome.due);
     const key = `teams:${this.constructor.name}:${p.personId}`;

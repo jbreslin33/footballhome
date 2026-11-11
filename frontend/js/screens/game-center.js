@@ -4296,7 +4296,9 @@ class GameCenterScreen extends EventScreen {
                                   name: x.recipient_name || pl.name || '', phone: x.phone || null, email: x.email || null, forPersonId: personId }))
       : gr ? [{ personId, rid: null, name: gr.name || '', phone: gr.phone || null, email: gr.email || null, forPersonId: personId }] : [])
       .filter(x => x.phone || x.email);
-    if (!recipients.length) return null;
+    // Never a person without a contact button (owner 11/11): the popup
+    // greys each route with its reason and still offers 📋 Copy.
+    if (!recipients.length) recipients.push({ personId, rid: null, name: pl.name || (gr && gr.name) || '', phone: null, email: null, forPersonId: personId });
 
     const only = (rc) => (rc.rid ? { recipient_person_ids: [rc.rid] } : {});
     const hrefOf = (data, channel) => {
