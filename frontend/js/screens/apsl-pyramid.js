@@ -19,6 +19,17 @@
 // page opens on the view alone.  ☰ (or M) opens one panel — View,
 // Conferences, Show on screen (the view's floating panels, off by default,
 // remembered per device), Actions.  Same idea as game/view-menu.js.
+// Black or white text on a conference colour (mig 1249), by its luminance.
+const PyramidScreenColor = {
+  ink(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return '#fff';
+    const n = parseInt(m[1], 16), lum = (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255;
+    return lum > 0.6 ? '#111827' : '#fff';
+  },
+};
+window.PyramidScreenColor = PyramidScreenColor;
+
 class ApslPyramidScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -59,6 +70,11 @@ class ApslPyramidScreen extends Screen {
         .ap-pill { padding:5px 14px; border-radius:999px; border:1px solid var(--border-color, #374151); background:transparent; color:inherit; font-weight:700; font-size:0.85rem; cursor:pointer; min-height:0; min-width:0; }
         .ap-readonly .fc-edit, .ap-readonly [data-cc="edit"], .ap-readonly #ap-refresh { display:none; }
         .ap-pill.on { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
+        /* A conference pill wears its colour (mig 1249): ringed + dot when off, filled when on. */
+        .ap-pill.cc { border-color:var(--cc); }
+        .ap-pill.cc::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--cc); margin-right:6px; vertical-align:0; }
+        .ap-pill.cc.on { background:var(--cc); border-color:var(--cc); color:var(--cc-fg, #fff); }
+        .ap-pill.cc.on::before { background:var(--cc-fg, #fff); }
         .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
         .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; }
         .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
@@ -227,7 +243,7 @@ class ApslPyramidScreen extends Screen {
     if (this.model) {
       const views = this.views.map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}"${v.built ? '' : ` disabled title="${esc(this._copy('view_soon'))}"`}>${esc(this._copy(v.tier))}</button>`).join('');
       const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`]
-        .concat(this._conferences().map((c) => `<button class="ap-pill ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}">${esc(c.short_name || c.name)}</button>`))
+        .concat(this._conferences().map((c) => `<button class="ap-pill ${c.color ? 'cc' : ''} ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}"${c.color ? ` style="--cc:${esc(c.color)}; --cc-fg:${PyramidScreenColor.ink(c.color)}"` : ''}>${esc(c.short_name || c.name)}</button>`))
         .join('');
       // The view's floating panels; the map's Club HUD comes and goes with a pick.
       const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => h.dataset.hud !== 'map-club');

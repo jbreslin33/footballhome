@@ -38,7 +38,7 @@ constexpr const char* kTreeCte = R"SQL(
 
 constexpr const char* kCompetitionsSql = R"SQL(
     SELECT tr.id, tr.parent_id, tr.kind, tr.tier, tr.name, tr.short_name, tr.region,
-           tr.website_url, tr.standings_url, o.logo_url, tr.lat, tr.lon,
+           tr.website_url, tr.standings_url, o.logo_url, tr.lat, tr.lon, tr.color,
            (SELECT string_agg(s.state_code, ',' ORDER BY s.state_code)
               FROM pyramid_competition_states s WHERE s.competition_id = tr.id) AS states,
            ps.system, ps.last_fetch_ok,
@@ -202,6 +202,7 @@ Response PyramidController::handleProposal(const Request&) {
                 SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
                        pc.conference_id, pc.proposed_id,
                        COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier, p.core_population,
+                       COALESCE(c.color, p.color) AS color,
                        sum(k.population) AS population, count(*) AS counties,
                        sum(k.lat * k.population) / NULLIF(sum(k.population), 0) AS lat,
                        sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
@@ -211,7 +212,7 @@ Response PyramidController::handleProposal(const Request&) {
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
                   LEFT JOIN pyramid_proposed_conferences p ON p.id = pc.proposed_id
-                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, p.name, p.note, p.tier, p.core_population, p.sort_order
+                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
@@ -219,7 +220,7 @@ Response PyramidController::handleProposal(const Request&) {
                                {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
                                {"population", r["population"].as<long long>()}, {"counties", num(r, "counties")},
                                {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()},
-                               {"anchors", strOrNull(r, "anchors")}});
+                               {"anchors", strOrNull(r, "anchors")}, {"color", strOrNull(r, "color")}});
         }
         for (const auto& r : db->query(R"SQL(
                 SELECT p.name, p.note, p.tier, p.core_population,
@@ -233,8 +234,10 @@ Response PyramidController::handleProposal(const Request&) {
                              {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
                              {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()}, {"anchors", strOrNull(r, "anchors")}});
         }
-        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line FROM pyramid_proposal_borders ORDER BY id"))
-            borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)}});
+        // a_left (mig 1249): region a lies on the left of the line's direction.
+        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left FROM pyramid_proposal_borders ORDER BY id"))
+            borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
+                               {"a_left", r["a_left"].as<bool>()}});
         auto bar = db->query(R"SQL(
             SELECT min(pop) AS bar FROM (SELECT sum(k.population) AS pop FROM pyramid_county_conference cc
               JOIN pyramid_counties k ON k.fips = cc.fips WHERE cc.conference_id IS NOT NULL GROUP BY cc.conference_id) s)SQL");
@@ -489,7 +492,7 @@ Response PyramidController::handleGet(const Request& request) {
                                     {"kind", str(r, "kind")}, {"tier", num(r, "tier")}, {"name", str(r, "name")},
                                     {"short_name", strOrNull(r, "short_name")}, {"region", strOrNull(r, "region")},
                                     {"website_url", strOrNull(r, "website_url")}, {"standings_url", strOrNull(r, "standings_url")},
-                                    {"logo_url", strOrNull(r, "logo_url")},
+                                    {"logo_url", strOrNull(r, "logo_url")}, {"color", strOrNull(r, "color")},   // mig 1249
                                     {"lat", r["lat"].is_null() ? json(nullptr) : json(r["lat"].as<double>())},
                                     {"lon", r["lon"].is_null() ? json(nullptr) : json(r["lon"].as<double>())},
                                     {"states", states}, {"source", source}});

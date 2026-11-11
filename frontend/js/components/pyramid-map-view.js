@@ -135,8 +135,8 @@ class PyramidMapView {
       .mp-ov-body { overflow:auto; padding:10px; flex:1; }
       .mp-pin { pointer-events:none !important; overflow:visible; }
       .mp-pin .mp-label { pointer-events:auto; }
-      .mp-label { background:#1d4ed8; color:#fff; font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
-                  border:2px solid #93c5fd; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
+      .mp-label { background:var(--cc, #1d4ed8); color:var(--cc-fg, #fff); font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
+                  border:2px solid rgba(255,255,255,0.75); white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
       .mp-label.on { background:#facc15; color:#111827; border-color:#fff; }
       .mp-prop { transform:translate(-50%, -50%); display:inline-block; white-space:nowrap; pointer-events:none;
                  color:#fbcfe8; font-weight:700; font-size:11px; opacity:0.9; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220; }
@@ -252,10 +252,13 @@ class PyramidMapView {
       if (!at) continue;
       // A zero-size marker box: only the visible bubble takes clicks (a
       // content-sized box hung down-right of it and swallowed dots' clicks).
-      const icon = L.divIcon({ className: 'mp-pin', html: `<span class="mp-label" data-conf-label="${col.conf.id}">${this._esc(model.label(col.conf))}</span>`, iconSize: [0, 0] });
+      // The bubble wears the conference's colour (mig 1249).
+      const cc = col.conf.color || '#1d4ed8';
+      const ink = window.PyramidScreenColor ? PyramidScreenColor.ink(cc) : '#fff';
+      const icon = L.divIcon({ className: 'mp-pin', html: `<span class="mp-label" data-conf-label="${col.conf.id}" style="--cc:${this._esc(cc)}; --cc-fg:${ink}">${this._esc(model.label(col.conf))}</span>`, iconSize: [0, 0] });
       const anchor = L.latLng(at[0], at[1]);
-      const line = L.polyline([anchor, anchor], { color: '#93c5fd', weight: 1.5, opacity: 0.85, interactive: false }).addTo(this.map);
-      const ring = L.circleMarker(anchor, { radius: 5, color: '#93c5fd', weight: 2, fill: false, interactive: false }).addTo(this.map);
+      const line = L.polyline([anchor, anchor], { color: cc, weight: 1.5, opacity: 0.9, interactive: false }).addTo(this.map);
+      const ring = L.circleMarker(anchor, { radius: 5, color: cc, weight: 2, fill: false, interactive: false }).addTo(this.map);
       const mk = L.marker(anchor, { icon, zIndexOffset: 1000 }).addTo(this.map);
       mk.on('click', () => this.select(col.conf.id, true));
       this.labels.set(col.conf.id, { mk, anchor, line, ring });
@@ -272,6 +275,8 @@ class PyramidMapView {
     ppane.style.pointerEvents = 'none';
     this.propRenderer = L.svg({ pane: 'mp-proposal' });
     this.propLayer = L.layerGroup().addTo(this.map);
+    this.propLines = L.layerGroup().addTo(this.map);
+    this.map.on('zoomend', () => this._drawBorders());
     if (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) this._showProposal(true);
     this.map.on('zoomend moveend', () => this._relayout());
     // Picking a team: the dots don't take clicks themselves (5–7px circles,
@@ -638,6 +643,7 @@ class PyramidMapView {
     const L = window.L;
     if (!this.map || !this.propLayer) return;
     this.propLayer.clearLayers();
+    if (this.propLines) this.propLines.clearLayers();
     if (!on) { this.screen._renderMenu(); return; }
     if (!this.proposal) {
       try {
@@ -649,12 +655,39 @@ class PyramidMapView {
     if (!this.map || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
-    for (const b of this.proposal.borders || [])
-      L.polyline(b.line, { renderer: this.propRenderer, interactive: false, color: '#f472b6', weight: 1.5, opacity: 0.7, dashArray: '6 5' }).addTo(this.propLayer);
+    this._drawBorders();
     for (const r of (this.proposal.regions || []).filter((x) => x.proposed_id))
       L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
-        html: `<span class="mp-prop">${this._esc(r.name.replace(/ Conference$/, ''))}</span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
+        html: `<span class="mp-prop" style="color:${this._esc(r.color || '#fbcfe8')}">${this._esc(r.name.replace(/ Conference$/, ''))}</span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
     this.screen._renderMenu();
+  }
+
+  // Two-tone borders (mig 1249, owner: "color of one conference on dividing
+  // line and other on the divide line so line is 2 tone"): each border is
+  // two lines side by side, each pushed HALF px to its own region's side
+  // (a_left says which side region a is on) in that region's colour.
+  // Offsets are in screen pixels, so it redraws on every zoom.
+  _drawBorders() {
+    const L = window.L;
+    if (!this.map || !this.propLines) return;
+    this.propLines.clearLayers();
+    const P = this.proposal;
+    if (!P || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
+    const color = new Map((P.regions || []).map((r) => [r.key, r.color || '#94a3b8']));
+    const HALF = 2, W = 4;
+    const shift = (pts, d) => pts.map((p, i) => {
+      const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+      const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1;
+      // screen y points down: (dy, -dx) is the left of travel as seen on the map
+      return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
+    });
+    for (const b of P.borders || []) {
+      const pts = b.line.map((ll) => this.map.latLngToLayerPoint(L.latLng(ll[0], ll[1])));
+      if (pts.length < 2) continue;
+      const aSide = b.a_left ? HALF : -HALF;
+      L.polyline(shift(pts, aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.a), weight: W, opacity: 0.95, lineCap: 'butt' }).addTo(this.propLines);
+      L.polyline(shift(pts, -aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.b), weight: W, opacity: 0.95, lineCap: 'butt' }).addTo(this.propLines);
+    }
   }
 
   onResize() {
