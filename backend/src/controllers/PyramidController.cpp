@@ -210,7 +210,7 @@ Response PyramidController::handleProposal(const Request&) {
                        sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
                        COALESCE((SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id), cm.city) AS anchors,
                        COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2,
-                       st.span_km, dt.km AS drive_km, dt.minutes AS drive_min,      -- the pill (mig 1270)
+                       st.span_km, st.area_km2, dt.km AS drive_km, dt.minutes AS drive_min,      -- the pill (mig 1270)
                        ka.name || ', ' || ka.state AS far_a, kb.name || ', ' || kb.state AS far_b
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
@@ -222,7 +222,7 @@ Response PyramidController::handleProposal(const Request&) {
                   LEFT JOIN pyramid_counties ka ON ka.fips = st.a_fips
                   LEFT JOIN pyramid_counties kb ON kb.fips = st.b_fips
                  GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
-                          st.span_km, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state
+                          st.span_km, st.area_km2, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
@@ -232,6 +232,7 @@ Response PyramidController::handleProposal(const Request&) {
                                {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()},
                                {"anchors", strOrNull(r, "anchors")}, {"color", strOrNull(r, "color")},
                                {"span_km", r["span_km"].is_null() ? json(nullptr) : json(r["span_km"].as<double>())},
+                               {"area_km2", r["area_km2"].is_null() ? json(nullptr) : json(r["area_km2"].as<double>())},
                                {"drive_km", r["drive_km"].is_null() ? json(nullptr) : json(r["drive_km"].as<double>())},
                                {"drive_min", r["drive_min"].is_null() ? json(nullptr) : json(r["drive_min"].as<double>())},
                                {"far_a", strOrNull(r, "far_a")}, {"far_b", strOrNull(r, "far_b")}});

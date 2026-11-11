@@ -108,22 +108,58 @@ class PyramidMapView {
     const esc = (t) => this._esc(t);
     const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
     const tierLabel = (t) => this._copy(`tier_${t}`) || t;
-    const row = (r) => {
-      const live = !!r.conference_id;
-      const tip = live ? (r.anchors || '') : `${tierLabel(r.tier)} — ${r.note || ''}`;
-      return `<div class="row" data-pzrow="${r.lat},${r.lon}" title="${esc(tip)}">
-        <i class="dot" style="background:${esc(r.color || '#64748b')}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
-        <span class="tag ${live ? 'live' : esc(r.tier)}">${esc(this._copy(live ? 'mark_live' : 'mark_proposed'))}</span>
-        <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}${r.drive_min != null ? ` · ${esc(this._pillStats(r).split(' · ').slice(1).join(' · '))}` : ''}</span></div>`;
-    };
     const live = (P.regions || []).filter((r) => r.conference_id);
     const proposed = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || []);
-    const all = live.concat(proposed).sort((a, b) => (b.core_population || 0) - (a.core_population || 0));
     const count = this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
+    // The table (mig 1272, owner: "show me data in the menu that i can sort
+    // by longest trip asc,desc … longest dist … pop … land area"): one row a
+    // conference; a column header / sort pill sorts by it, tapped again flips.
+    const cols = [
+      { key: 'name', label: this._copy('col_name'), val: (r) => r.name.replace(/ Conference$/, ''), txt: true },
+      { key: 'pop', label: this._copy('col_pop'), val: (r) => r.population, fmt: (v) => M(v).replace(' ', '') },
+      { key: 'area', label: this._copy('col_area'), val: (r) => r.area_km2, fmt: (v) => (v == null ? '—' : `${Math.round(v / 1000)}k`) },
+      { key: 'dist', label: this._copy('col_dist'), val: (r) => r.span_km, fmt: (v) => (v == null ? '—' : Math.round(v)) },
+      { key: 'drive', label: this._copy('col_drive'), val: (r) => r.drive_min, fmt: (v) => (v == null ? '—' : `${Math.floor(Math.round(v) / 60)}:${String(Math.round(v) % 60).padStart(2, '0')}`) },
+      { key: 'counties', label: this._copy('col_counties'), val: (r) => r.counties, fmt: (v) => (v == null ? '—' : v) },
+    ];
+    const sort = this.pzSort || (this.pzSort = { key: 'pop', dir: -1 });
+    const col = cols.find((c) => c.key === sort.key) || cols[1];
+    const all = live.concat(proposed).sort((a, b) => {
+      const x = col.val(a), y = col.val(b);
+      if (col.txt) return sort.dir * String(x).localeCompare(String(y));
+      return sort.dir * ((x == null ? -Infinity : x) - (y == null ? -Infinity : y));
+    });
+    const arrow = (c) => (c.key === sort.key ? (sort.dir > 0 ? ' ↑' : ' ↓') : '');
+    const head = cols.map((c) => `<th data-pzsort="${c.key}" class="${c.key === sort.key ? 'on' : ''}">${esc(c.label)}${arrow(c)}</th>`).join('');
+    const body = all.map((r) => {
+      const isLive = !!r.conference_id;
+      const tip = isLive ? (r.anchors || '') : `${tierLabel(r.tier)} — ${r.note || ''}`;
+      const far = r.far_a ? ` · ${this._copy('pill_far', { a: r.far_a, b: r.far_b })}` : '';
+      return `<tr data-pzrow="${r.lat},${r.lon}" title="${esc(tip + far)}">
+        <td class="nm"><i class="dot" style="background:${esc(r.color || '#64748b')}"></i>${esc(cols[0].val(r))}
+          <span class="tag ${isLive ? 'live' : esc(r.tier)}">${esc(this._copy(isLive ? 'mark_live' : 'mark_proposed'))}</span></td>
+        ${cols.slice(1).map((c) => `<td>${esc(c.fmt(c.val(r)))}</td>`).join('')}</tr>`;
+    }).join('');
     return [{ tier: 'proposal_hud',
-      html: `<div class="mp-pz"><div class="count">${esc(count)}</div><div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
+      html: `<div class="mp-pz"><div class="count">${esc(count)}</div>
+        <div class="intro">${esc(this._copy('sort_label'))}</div>
+        <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
+        <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
+        <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }];
+  }
+  _hm(min) {
+    if (min == null) return '—';
+    const m = Math.round(min);
+    return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
   }
   menuClick(e) {
+    const srt = e.target.closest('[data-pzsort]');
+    if (srt) {   // sort the table (mig 1272): a new column starts biggest-first (names A→Z), the same one flips
+      const k = srt.dataset.pzsort, cur = this.pzSort || { key: 'pop', dir: -1 };
+      this.pzSort = cur.key === k ? { key: k, dir: -cur.dir } : { key: k, dir: k === 'name' ? 1 : -1 };
+      this.screen._renderMenu();
+      return true;
+    }
     const r = e.target.closest('[data-pzrow]');
     if (!r || !this.map) return false;
     const [lat, lon] = r.dataset.pzrow.split(',').map(Number);
@@ -142,8 +178,7 @@ class PyramidMapView {
   // "8.1 M · ↔ 520 km · 5 h 10" — people, furthest-apart county centres (mig 1270).
   _pillStats(r) {
     const pop = r.population == null ? '—' : `${(r.population / 1e6).toFixed(1)} M`;
-    const m = r.drive_min == null ? null : Math.round(r.drive_min);
-    const drive = m == null ? '—' : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+    const drive = this._hm(r.drive_min);
     return this._copy('pill_stats', { pop, km: r.span_km == null ? '—' : Math.round(r.span_km), drive });
   }
 
@@ -192,6 +227,18 @@ class PyramidMapView {
       .mp-pz .tag { flex:0 0 auto; font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:1px 5px; border-radius:6px; border:1px solid currentColor; }
       .mp-pz .tag.live { color:#e2e8f0; background:rgba(226,232,240,0.14); }
       .mp-pz .tag.ready { color:#22c55e; } .mp-pz .tag.borderline { color:#eab308; } .mp-pz .tag.developing { color:#94a3b8; }
+      .mp-sorts { display:flex; flex-wrap:wrap; gap:4px; margin:2px 0 6px; }
+      .mp-sorts .ap-pill { font-size:0.7rem; padding:2px 8px; }
+      .mp-tbl { overflow-x:auto; margin-bottom:6px; }
+      .mp-tbl table { border-collapse:collapse; width:100%; font-size:0.7rem; }
+      .mp-tbl th { position:sticky; top:0; background:rgba(15,23,42,0.96); text-align:right; font-weight:800; padding:3px 4px; cursor:pointer; white-space:nowrap; opacity:0.8; }
+      .mp-tbl th:first-child, .mp-tbl td:first-child { text-align:left; }
+      .mp-tbl th.on { color:#facc15; opacity:1; }
+      .mp-tbl td { text-align:right; padding:3px 4px; border-top:1px solid rgba(148,163,184,0.12); white-space:nowrap; font-variant-numeric:tabular-nums; }
+      .mp-tbl tr { cursor:pointer; } .mp-tbl tr:hover td { background:rgba(148,163,184,0.1); }
+      .mp-tbl .nm { font-weight:800; } .mp-tbl .nm .dot { display:inline-block; margin-right:4px; vertical-align:middle; }
+      .mp-tbl .nm .tag { display:table; margin:1px 0 0 13px; font-size:0.5rem; padding:0 3px; }
+      .mp-tbl td, .mp-tbl th { padding:3px 3px; }
       .mp-pz .count { font-weight:800; font-size:0.85rem; margin-bottom:4px; }
       .mp-pz .intro { font-size:0.72rem; opacity:0.65; margin-bottom:4px; white-space:normal; }
 `;
