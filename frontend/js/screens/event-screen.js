@@ -1312,6 +1312,7 @@ class EventScreen extends Screen {
     });
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
+      if (this._sheetClick(e)) return;
       const t = (sel) => e.target.closest(sel);
       let el;
       if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
@@ -1354,6 +1355,24 @@ class EventScreen extends Screen {
     return false;
   }
 
+  // ── ⋯ the shared player sheet (owner 11/11: one popup, same tabs on
+  // every screen) ─────────────────────────────────────────────────────
+  // The person behind a card: this event's RSVP row (every kind has one).
+  _sheetPerson(pid) {
+    const r = ((this.ev && this.ev.rsvps) || []).find(x => x && Number(x.person_id) === Number(pid));
+    return r ? { personId: Number(pid), firstName: r.first_name || r.name || '', lastName: r.last_name || '', returnTo: 'event-center' }
+             : { personId: Number(pid), firstName: '', lastName: '', returnTo: 'event-center' };
+  }
+  // A ⋯ tap on a card (not one inside the open sheet) → the sheet.
+  _sheetClick(e) {
+    const btn = e.target.closest && e.target.closest('[data-player-sheet]');
+    if (!btn || btn.closest('.player-sheet') || !window.PlayerSheet) return false;
+    const pid = Number(btn.dataset.playerSheet);
+    if (!pid) return false;
+    PlayerSheet.open({ host: this.element, auth: this.auth, tab: btn.dataset.sheetTab || 'person', resolve: () => this._sheetPerson(pid) });
+    return true;
+  }
+
   // ── one player card ─────────────────────────────────────────────────
   // Every EventScreen draws its people the same way (owner 2026-10-27:
   // "same behaviour for practice and game except where we have to
@@ -1388,8 +1407,11 @@ class EventScreen extends Screen {
   // One card.  name / right / body are html; banner sits over the card (a
   // game's registration-gap warning), cls styles the whole card, attrs
   // are extra attributes (data-person-row …).
-  cardHtml({ id = '', name = '', right = '', body = '', banner = '', cls = '', attrs = '' } = {}) {
+  // sheet = the person id when the viewer is staff: the card's ⋯ opens the
+  // shared player sheet (PlayerSheet — same tabs as #payments / #teams).
+  cardHtml({ id = '', name = '', right = '', body = '', banner = '', cls = '', attrs = '', sheet = null } = {}) {
     EventScreen.ensureCardStyles();
+    if (sheet && window.PlayerSheet) right = `${right || ''}${PlayerSheet.button(String(sheet), { compact: true, tab: 'person' })}`;
     return `<div${id ? ` id="${id}"` : ''} class="ev-card ${cls}" ${attrs}>${banner}<div class="ev-card-in">
         <div class="ev-card-head"><span class="ev-card-name">${name}</span>${right ? `<span class="ev-card-right">${right}</span>` : ''}</div>
         ${body}
@@ -1728,6 +1750,7 @@ class EventScreen extends Screen {
       const err = this.rsvpNote[r.person_id];
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
+        sheet: canContact ? r.person_id : null,
         name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${meChip(r)}${chipHtml(r)}`,
         right: r.suspension ? '' : rsvpBtns(r),   // ⛔ mig 1077: no answer to set
         body: `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">

@@ -1045,6 +1045,7 @@ class GameCenterScreen extends EventScreen {
         this.navigation.goBack();
         return;
       }
+      if (this._sheetClick(e)) return;   // ⋯ on a card → the shared player sheet
       const mpBtn = e.target.closest('[data-mp-save]');
       if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
       // ✅ Attendance P/A/L/E on a game card (EventScreen._attendanceCell).
@@ -4253,6 +4254,15 @@ class GameCenterScreen extends EventScreen {
   }
 
   // The details roster (coach-only) is what knows a card's person.
+  // ⋯ sheet: the RSVP row when there is one, else the roster's name (a
+  // player on the lineup who never answered).
+  _sheetPerson(pid) {
+    const base = super._sheetPerson(pid);
+    if (base.firstName) return base;
+    const r = (this.roster || []).find(x => Number(this._personIdFor(x.id)) === Number(pid));
+    return r ? { ...base, firstName: r.name || '' } : base;
+  }
+
   _personIdFor(playerId) {
     const row = (this.players || []).find(x => Number(x.playerId) === Number(playerId));
     return row && row.personId ? Number(row.personId) : null;
@@ -4912,7 +4922,8 @@ class GameCenterScreen extends EventScreen {
     const personId = this._personIdFor(p.id);
     const g = this.isCoach && personId ? this._regGapFor(personId) : null;
     const id = personId ? `gc-card-${personId}` : '';
-    if (!g) return this.cardHtml({ id, ...parts });
+    const sheet = this.realIsCoach && personId ? personId : null;
+    if (!g) return this.cardHtml({ id, sheet, ...parts });
     this._ensureWarnStyles();
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const waiting = !!g.player_done;
@@ -4926,7 +4937,7 @@ class GameCenterScreen extends EventScreen {
           ${g.reason === 'calldown_cap_full' ? `<span style="font-weight:600; opacity:0.9;">${esc(this._regWarnCopy('calldown_alt'))}</span>` : ''}
         </div>` : ''}
       </div>`;
-    return this.cardHtml({ id, ...parts, banner, cls: waiting ? 'gc-warn-wait' : 'gc-warn-alert' });
+    return this.cardHtml({ id, sheet, ...parts, banner, cls: waiting ? 'gc-warn-wait' : 'gc-warn-alert' });
   }
 
   // The pulse lives in one stylesheet; reduced-motion users get a steady
