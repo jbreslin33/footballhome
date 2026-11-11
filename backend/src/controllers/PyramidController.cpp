@@ -209,13 +209,20 @@ Response PyramidController::handleProposal(const Request&) {
                        sum(k.lat * k.population) / NULLIF(sum(k.population), 0) AS lat,
                        sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
                        COALESCE((SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id), cm.city) AS anchors,
-                       COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2
+                       COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2,
+                       st.span_km, dt.km AS drive_km, dt.minutes AS drive_min,      -- the pill (mig 1270)
+                       ka.name || ', ' || ka.state AS far_a, kb.name || ', ' || kb.state AS far_b
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
                   LEFT JOIN pyramid_proposed_conferences p ON p.id = pc.proposed_id
                   LEFT JOIN pyramid_conference_metro cm ON cm.conference_id = pc.conference_id
-                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city
+                  LEFT JOIN pyramid_proposal_region_stats st ON st.region = COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)
+                  LEFT JOIN pyramid_drive_times dt ON dt.a_fips = st.a_fips AND dt.b_fips = st.b_fips
+                  LEFT JOIN pyramid_counties ka ON ka.fips = st.a_fips
+                  LEFT JOIN pyramid_counties kb ON kb.fips = st.b_fips
+                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
+                          st.span_km, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
@@ -223,7 +230,11 @@ Response PyramidController::handleProposal(const Request&) {
                                {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
                                {"population", r["population"].as<long long>()}, {"counties", num(r, "counties")},
                                {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()},
-                               {"anchors", strOrNull(r, "anchors")}, {"color", strOrNull(r, "color")}});
+                               {"anchors", strOrNull(r, "anchors")}, {"color", strOrNull(r, "color")},
+                               {"span_km", r["span_km"].is_null() ? json(nullptr) : json(r["span_km"].as<double>())},
+                               {"drive_km", r["drive_km"].is_null() ? json(nullptr) : json(r["drive_km"].as<double>())},
+                               {"drive_min", r["drive_min"].is_null() ? json(nullptr) : json(r["drive_min"].as<double>())},
+                               {"far_a", strOrNull(r, "far_a")}, {"far_b", strOrNull(r, "far_b")}});
         }
         for (const auto& r : db->query(R"SQL(
                 SELECT p.name, p.note, p.tier, p.core_population,
@@ -231,7 +242,8 @@ Response PyramidController::handleProposal(const Request&) {
                   FROM pyramid_proposed_conferences p
                   JOIN pyramid_proposed_anchors a ON a.proposed_id = p.id
                   JOIN pyramid_counties k ON k.fips = a.fips
-                 WHERE p.developing
+                 WHERE p.developing   -- a proposal with a region is in regions (mig 1270: all are)
+                   AND NOT EXISTS (SELECT 1 FROM pyramid_proposal_counties pc WHERE pc.proposed_id = p.id)
                  GROUP BY p.id ORDER BY p.sort_order)SQL")) {
             watch.push_back({{"name", str(r, "name")}, {"note", strOrNull(r, "note")}, {"tier", strOrNull(r, "tier")},
                              {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},

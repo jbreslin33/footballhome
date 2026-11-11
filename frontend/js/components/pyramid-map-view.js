@@ -114,7 +114,7 @@ class PyramidMapView {
       return `<div class="row" data-pzrow="${r.lat},${r.lon}" title="${esc(tip)}">
         <i class="dot" style="background:${esc(r.color || '#64748b')}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
         <span class="tag ${live ? 'live' : esc(r.tier)}">${esc(this._copy(live ? 'mark_live' : 'mark_proposed'))}</span>
-        <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}</span></div>`;
+        <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}${r.drive_min != null ? ` · ${esc(this._pillStats(r).split(' · ').slice(1).join(' · '))}` : ''}</span></div>`;
     };
     const live = (P.regions || []).filter((r) => r.conference_id);
     const proposed = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || []);
@@ -139,6 +139,13 @@ class PyramidMapView {
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
   _copy(tier, tokens) { return this.screen._copy(tier, tokens); }
+  // "8.1 M · ↔ 520 km · 5 h 10" — people, furthest-apart county centres (mig 1270).
+  _pillStats(r) {
+    const pop = r.population == null ? '—' : `${(r.population / 1e6).toFixed(1)} M`;
+    const m = r.drive_min == null ? null : Math.round(r.drive_min);
+    const drive = m == null ? '—' : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+    return this._copy('pill_stats', { pop, km: r.span_km == null ? '—' : Math.round(r.span_km), drive });
+  }
 
   static css() {
     return `
@@ -170,8 +177,11 @@ class PyramidMapView {
       .mp-label { background:var(--cc, #1d4ed8); color:var(--cc-fg, #fff); font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
                   border:2px solid rgba(255,255,255,0.75); white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
       .mp-label.on { background:#facc15; color:#111827; border-color:#fff; }
-      .mp-prop { transform:translate(-50%, -50%); display:inline-block; white-space:nowrap; pointer-events:none;
-                 color:#fbcfe8; font-weight:700; font-size:11px; opacity:0.9; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220; }
+      .mp-prop { transform:translate(-50%, -50%); display:inline-flex; flex-direction:column; align-items:center; white-space:nowrap; pointer-events:auto;
+                 background:rgba(11,18,32,0.88); border:2px solid var(--pc, #94a3b8); border-radius:10px; padding:2px 8px; line-height:1.2;
+                 color:#e2e8f0; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.45); }
+      .mp-prop b { color:var(--pc, #e2e8f0); font-size:11px; font-weight:800; }
+      .mp-prop.live { transform:translate(-50%, 16px); border-style:solid; }
       .mp-pz .row { display:flex; align-items:baseline; gap:6px; padding:4px 0; border-top:1px solid rgba(148,163,184,0.12); cursor:pointer; font-size:0.82rem; }
       .mp-pz .row:hover .nm { text-decoration:underline; }
       .mp-pz .nm { font-weight:800; white-space:nowrap; }
@@ -707,9 +717,18 @@ class PyramidMapView {
       L.geoJSON(this.proposal.neutral, { renderer: this.propRenderer, interactive: false,
         style: { stroke: false, fillColor: '#f8fafc', fillOpacity: 0.22 } }).addTo(this.propLayer);
     this._drawBorders();
-    for (const r of (this.proposal.regions || []).filter((x) => x.proposed_id))
+    // A pill on every conference, live or proposed (mig 1270, owner: "pill on
+    // each conf proposed or not proposed on map with distance from furthest
+    // points and pop" / "dist and drive time"): name, people, the two county
+    // centres furthest apart — straight km and the road drive.  A live
+    // conference's pill hangs under its club bubble.
+    for (const r of (this.proposal.regions || [])) {
+      const live = !!r.conference_id;
+      const tip = r.far_a ? this._copy('pill_far', { a: r.far_a, b: r.far_b }) : '';
       L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
-        html: `<span class="mp-prop" style="color:${this._esc(r.color || '#fbcfe8')}">${this._esc(r.name.replace(/ Conference$/, ''))}</span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
+        html: `<span class="mp-prop${live ? ' live' : ''}" style="--pc:${this._esc(r.color || '#94a3b8')}" title="${this._esc(tip)}">`
+          + `<b>${this._esc(r.name.replace(/ Conference$/, ''))}</b><span>${this._esc(this._pillStats(r))}</span></span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
+    }
     this.screen._renderMenu();
   }
 
