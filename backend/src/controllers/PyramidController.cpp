@@ -183,6 +183,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/roots", [this](const Request& r) { return handleRoots(r); });
     router.get(prefix + "/territory", [this](const Request& r) { return handleTerritory(r); });
     router.get(prefix + "/proposal", [this](const Request& r) { return handleProposal(r); });
+    router.get(prefix + "/state-borders", [this](const Request& r) { return handleStateBorders(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
@@ -264,6 +265,18 @@ Response PyramidController::handleProposal(const Request&) {
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] proposal: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/pyramid/state-borders (mig 1257) — state lines for the map:
+// [[[lat, lon], …], …], computed once into pyramid_state_borders.
+Response PyramidController::handleStateBorders(const Request&) {
+    try {
+        auto rows = Database::getInstance()->query("SELECT COALESCE(json_agg(line ORDER BY id), '[]')::text AS lines FROM pyramid_state_borders");
+        return jsonOut(HttpStatus::OK, {{"lines", json::parse(rows.empty() ? std::string("[]") : str(rows[0], "lines"), nullptr, false)}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] state-borders: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

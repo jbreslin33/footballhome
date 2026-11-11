@@ -68,9 +68,32 @@
 class PyramidMapView {
   features() {
     const u = this.screen.auth && this.screen.auth.getUser && this.screen.auth.getUser();
-    return [{ key: 'proposal', tier: 'feature_proposal', def: !!(u && ['club', 'super'].includes(u.role)) }];
+    return [{ key: 'proposal', tier: 'feature_proposal', def: !!(u && ['club', 'super'].includes(u.role)) },
+            { key: 'states', tier: 'feature_states', def: true }];
   }
-  onFeature(key, on) { if (key === 'proposal') this._showProposal(on); }
+  onFeature(key, on) {
+    if (key === 'proposal') this._showProposal(on);
+    if (key === 'states') this._showStates(on);
+  }
+
+  // State lines (mig 1257, owner: "show state borders clearer"): their own
+  // layer over the tiles, under the conference borders.  Fetched once.
+  async _showStates(on) {
+    const L = window.L;
+    if (!this.map || !this.stateLayer) return;
+    this.stateLayer.clearLayers();
+    if (!on) return;
+    if (!PyramidMapView._states) {
+      try {
+        const res = await this.screen.auth.fetch('/api/pyramid/state-borders');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        PyramidMapView._states = (await res.json()).lines || [];
+      } catch (e) { console.warn('state borders', e); return; }
+    }
+    if (!this.map || !this.screen.feature('states', true)) return;
+    for (const line of PyramidMapView._states)
+      L.polyline(line, { renderer: this.stateRenderer, interactive: false, color: '#e2e8f0', weight: 2, opacity: 0.85 }).addTo(this.stateLayer);
+  }
 
   // The proposal's list lives in the ☰ menu (owner: "proposed confs gui
   // should be in main gui" / "get rid of clutter!"): one row per proposed
@@ -269,6 +292,12 @@ class PyramidMapView {
     this.terrRenderer = L.svg({ pane: 'mp-territory' });
     this.terrLayer = L.layerGroup().addTo(this.map);
     this.terrCache = this.terrCache || new Map();
+    const spane = this.map.createPane('mp-states');
+    spane.style.zIndex = 330;
+    spane.style.pointerEvents = 'none';
+    this.stateRenderer = L.svg({ pane: 'mp-states' });
+    this.stateLayer = L.layerGroup().addTo(this.map);
+    if (this.screen.feature && this.screen.feature('states', true)) this._showStates(true);
     const ppane = this.map.createPane('mp-proposal');
     ppane.style.zIndex = 340;
     ppane.style.pointerEvents = 'none';
@@ -276,7 +305,7 @@ class PyramidMapView {
     this.propLayer = L.layerGroup().addTo(this.map);
     this.propLines = L.layerGroup().addTo(this.map);
     this.map.on('zoomend', () => this._drawBorders());
-    if (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) this._showProposal(true);
+    if (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) this._showProposal(true);   // features()[0] = proposal
     this.map.on('zoomend moveend', () => this._relayout());
     // Picking a team: the dots don't take clicks themselves (5–7px circles,
     // fanned rings overlap); the map finds the NEAREST dot within 16px of
