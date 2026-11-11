@@ -87,6 +87,15 @@ class EventCenterScreen extends Screen {
 
   onExit() { this._unmountMine(); }
 
+  // Club admins, coaches and club staff get the week calendar under Mine;
+  // a player or parent (or an admin viewing as one) does not.
+  _staffView() {
+    if (this.auth && this.auth.viewAsPersonId) return false;
+    const role = ((this.navigation.context && this.navigation.context.user) || {}).role;
+    if (['club', 'sport_division', 'team', 'super', 'system', 'league', 'marketing'].includes(role)) return true;
+    return (this.events || []).some(e => e && (e.my_role === 'coach' || e.my_role === 'staff'));
+  }
+
   // 👤 Mine — the whole #my page (MyScreen: banners, dues, volunteer
   // shifts, GroupMe, your week with Go / No, call-in, kids' pills …)
   // drawn in its own section above the club calendar.  The same MyScreen
@@ -275,7 +284,12 @@ class EventCenterScreen extends Screen {
     const sub = this.find('#ec-sub');
     if (!body) return;
     const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.innerHTML = EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t));
+    // Players and parents: 👤 Mine IS their week (Go / No, call-in, times,
+    // kids) — the club calendar under it would list the same events again,
+    // so it is for staff only (owner 11/11: #my → Event Center).
+    const staff = this._staffView();
+    body.style.display = staff ? '' : 'none';
+    if (kinds) kinds.innerHTML = staff ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
