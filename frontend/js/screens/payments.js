@@ -1378,7 +1378,8 @@ class PaymentsScreen extends Screen {
         ${title ? `<div style="opacity:0.6; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">${title}</div>` : ''}
         ${html}
       </div>`;
-    const actions = [c.laBtn, c.duesFree ? '' : c.pauseBtn + c.flagBtn].join('');
+    // 🔗 Open in LA is the sheet's own (PlayerSheet core, Money + Fines).
+    const actions = [c.duesFree ? '' : c.pauseBtn + c.flagBtn].join('');
     const money = `
       ${c.duesFree ? `<div style="font-size:0.85rem; color:#93c5fd; background:#172554; border:1px solid #2563eb; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
       <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px;">${c.prorateCell}${c.badge}</div>

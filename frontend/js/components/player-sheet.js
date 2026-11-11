@@ -125,11 +125,25 @@
       case 'health':
         return healthHtml(p);
       case 'money':
+        return `${pid && window.PersonStanding ? (PersonStanding.html(pid) || '') : ''}${laButton(p)}`;
+      case 'fines':
+        return laButton(p);
       case 'activity':
         return pid && window.PersonStanding ? (PersonStanding.html(pid) || '') : '';
       default:
         return '';
     }
+  }
+
+  // 🔗 Open in LA — on 💳 Money and ⚖️ Fines on every screen (owner
+  // 2026-11-11: fines tab "needs a button to access la right like in
+  // tuitions"): dues and fines are both charged / run on LeagueApps.
+  function laButton(p) {
+    const url = window.PersonStanding && PersonStanding.laMemberUrl ? PersonStanding.laMemberUrl(p.laUserId) : '';
+    if (!url) return '';
+    return `<div style="display:flex; margin-top:8px;"><a href="${esc(url)}" target="_blank" rel="noopener" data-ps-la
+        title="${esc(t('la_title', {}, 'Open in LeagueApps — run card, see tuition and fines charges'))}"
+        style="padding:6px 10px; border-radius:4px; text-decoration:none; background:#1e3a8a; color:#dbeafe; border:1px solid #3b82f6; font-size:0.75rem; font-weight:700;">${esc(t('la_button', {}, '🔗 Open in LA'))}</a></div>`;
   }
 
   function healthHtml(p) {
