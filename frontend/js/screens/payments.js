@@ -21,6 +21,7 @@ class PaymentsScreen extends Screen {
     this.search = '';
     // Members-view state
     this.membersByTab       = { mens: null, womens: null, boys: null, girls: null };
+    this.membersRawByTab    = { mens: null, womens: null, boys: null, girls: null };   // unfiltered (🔁 pickup toggle)
     this.membersLoadingByTab= { mens: false, womens: false, boys: false, girls: false };
     this.membersErrorByTab  = { mens: null, womens: null, boys: null, girls: null };
     // Transactions-view state (existing raw ledger)
@@ -69,6 +70,8 @@ class PaymentsScreen extends Screen {
              Replaces the old pay-tabs tab bar + inline status-chip row so the
              Payments screen shares styling and behaviour with Members. -->
         <div id="pay-filters" style="margin-bottom: var(--space-3);"></div>
+        <!-- 🔁 Pickup toggle (mig 1253): pickup-program members hidden by default -->
+        <div id="pay-pickup" style="margin:-4px 0 var(--space-3);"></div>
 
         <!-- Views (MoneyBoard, same tabs style as #fines) -->
         <div id="pay-views" style="display:flex; gap:var(--space-2); margin-bottom: var(--space-3);">
@@ -276,6 +279,58 @@ class PaymentsScreen extends Screen {
     MoneyBoard.sectionPills(this, this.find('#pay-filters'), this.tab || 'all', (id) => {
       this.tab = id;
       this.loadCurrent();
+    });
+    this._paintPickupToggle();
+  }
+
+  // 🔁 Pickup members (mig 1240 folded LA pickup registrations into
+  // Tuition; owner 11/11: "why are we showing pickup guys on tuition? i
+  // can see having a pill for them but by default?"): hidden unless the
+  // pill is on — list, status counts and stats all follow, because each
+  // programme's payload is filtered as it lands (membersRawByTab keeps
+  // the full one).  Their balance still counts toward dues (mig 1240);
+  // this is display only.  Remembered per device.
+  _pickupShown() {
+    if (this.showPickup == null) {
+      try { this.showPickup = localStorage.getItem('fh.payments.showPickup') === '1'; } catch (_e) { this.showPickup = false; }
+    }
+    return this.showPickup;
+  }
+
+  _applyPickupFilter(key) {
+    const raw = this.membersRawByTab && this.membersRawByTab[key];
+    if (!raw) return;
+    if (this._pickupShown() || !Array.isArray(raw.members)) { this.membersByTab[key] = raw; return; }
+    const members = raw.members.filter(m => m.variant !== 'pickup');
+    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0 };
+    for (const m of members) if (m.variant !== 'inactive' && counts[m.status] != null) counts[m.status]++;
+    this.membersByTab[key] = { ...raw, members, counts, total: members.length };
+  }
+
+  _paintPickupToggle() {
+    const host = this.find('#pay-pickup');
+    if (!host) return;
+    const n = this._shardKeys().reduce((sum, k) => {
+      const raw = this.membersRawByTab && this.membersRawByTab[k];
+      return sum + (((raw && raw.members) || []).filter(m => m.variant === 'pickup').length);
+    }, 0);
+    if (!n) { host.innerHTML = ''; return; }
+    const on = this._pickupShown();
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has('payments_overview', tier))
+      ? MessageCopy.block('payments_overview', tier, { n: String(n) }) : fb;
+    const label = on ? cp('pickup_toggle_on', `🔁 Pickup · showing ${n}`) : cp('pickup_toggle_off', `🔁 Pickup · ${n} hidden`);
+    const title = cp('pickup_toggle_title', 'Members whose LA registration is in the pickup program — tap to show or hide');
+    host.innerHTML = `<button type="button" data-pay-pickup title="${this.escape(title)}"
+        style="padding:3px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; cursor:pointer;
+               border:1px solid #a78bfa; background:${on ? '#a78bfa' : 'transparent'}; color:${on ? '#111827' : '#c4b5fd'};">${this.escape(label)}</button>`;
+    const btn = host.querySelector('[data-pay-pickup]');
+    btn.addEventListener('click', () => {
+      this.showPickup = !this._pickupShown();
+      try { localStorage.setItem('fh.payments.showPickup', this.showPickup ? '1' : '0'); } catch (_e) {}
+      for (const k of PaymentsScreen.ALL_TABS) this._applyPickupFilter(k);
+      this.rerender ? this.rerender() : this.renderMembers();
+      this._renderStats();
+      this._paintPickupToggle();
     });
   }
 
@@ -523,7 +578,8 @@ class PaymentsScreen extends Screen {
       // Remember which programme each row came from: merged tabs (Boys =
       // Boys + Girls, All) need it to flag a charge on the right one.
       for (const m of ((data && data.members) || [])) m._tab = key;
-      this.membersByTab[key] = data;
+      this.membersRawByTab[key] = data;
+      this._applyPickupFilter(key);
       if (data && data.programId) {
         this.programIdByTab[key] = data.programId;
       }
