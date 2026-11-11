@@ -28,6 +28,10 @@
 //     onChange,    (what) after the sheet itself saved something ('health')
 //   })
 //   PlayerSheet.refresh()   the screen re-rendered — redraw from resolve()
+//   PlayerSheet.page({ container, auth, person, tab, sections, onTab })
+//                → the same tabs drawn inline: the full page #person
+//                  (PersonScreen), its cards handed over per tab as nodes
+//   PlayerSheet.openFull(person, tab) — the popup's ⤢ → #person/<id>/<tab>
 //   PlayerSheet.close()
 //   PlayerSheet.loadHealth(auth) / injuryFor(personId) — shared health data
 //
@@ -150,8 +154,9 @@
     </div>`;
   }
 
-  async function saveHealth(root) {
-    const p = state && state.person;
+  // Save the health control in `root` for person p.  Shared by the popup
+  // and the full page (#person): `after()` redraws whichever is showing.
+  async function saveHealthFor(root, auth, p, after, say) {
     if (!p || !p.personId) return;
     const code = root.querySelector('.ps-health-select').value;
     const status = HEALTH.statuses.find(s => s.code === code);
@@ -168,28 +173,60 @@
     }
     root.querySelectorAll('select, input').forEach(el => { el.disabled = true; });
     try {
-      const res = await state.opts.auth.fetch('/api/person-health', {
+      const res = await auth.fetch('/api/person-health', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       if (data.health) HEALTH.people[p.personId] = data.health; else delete HEALTH.people[p.personId];
-      toast(t('health_saved', {}, 'Health saved.'));
-      if (state.opts.onChange) state.opts.onChange('health');
+      say(t('health_saved', {}, 'Health saved.'));
+      after(true);
     } catch (err) {
-      toast(`Could not save: ${err.message}`, true);
+      say(`Could not save: ${err.message}`, true);
+      after(false);
     }
-    draw();
+  }
+
+  function saveHealth(root) {
+    if (!state || !state.person) return;
+    const opts = state.opts;
+    saveHealthFor(root, opts.auth, state.person, (ok) => {
+      if (ok && opts.onChange) opts.onChange('health');
+      draw();
+    }, toast);
+  }
+
+  function toastIn(panel, msg, bad) {
+    if (!panel) return;
+    const n = document.createElement('div');
+    n.textContent = msg;
+    n.style.cssText = `position:${panel === document.body ? 'fixed' : 'absolute'}; left:50%; bottom:18px; transform:translateX(-50%); padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.85rem; z-index:9001;
+                       background:${bad ? '#7f1d1d' : '#14532d'}; color:#fff;`;
+    panel.appendChild(n);
+    setTimeout(() => n.remove(), 2200);
   }
 
   function toast(msg, bad) {
-    if (!state || !state.el) return;
-    const n = document.createElement('div');
-    n.textContent = msg;
-    n.style.cssText = `position:absolute; left:50%; bottom:18px; transform:translateX(-50%); padding:8px 14px; border-radius:6px; font-weight:700; font-size:0.85rem; z-index:2;
-                       background:${bad ? '#7f1d1d' : '#14532d'}; color:#fff;`;
-    state.el.querySelector('.ps-panel').appendChild(n);
-    setTimeout(() => n.remove(), 2200);
+    if (state && state.el) toastIn(state.el.querySelector('.ps-panel'), msg, bad);
   }
+
+  function tabLabel(k) { return t(`tab_${k}`, {}, TAB_FALLBACK[k]); }
+  function tabButtons(active, flagOf) {
+    return TABS.map((k) => {
+      const on = k === active;
+      const flag = flagOf ? flagOf(k) : false;
+      return `<button type="button" data-ps-tab="${k}"
+        style="flex:0 0 auto; padding:6px 12px; border-radius:999px; cursor:pointer; font-weight:800; font-size:0.82rem; white-space:nowrap; position:relative;
+               background:${on ? '#0ea5e9' : 'transparent'}; color:${on ? '#fff' : '#e5e7eb'}; border:1px solid ${on ? '#0ea5e9' : '#374151'};">
+        ${esc(tabLabel(k))}${flag ? '<span style="position:absolute; top:-3px; right:-3px; width:10px; height:10px; border-radius:50%; background:#e879f9;"></span>' : ''}
+      </button>`;
+    }).join('');
+  }
+  const EMPTY = {
+    person: null, health: null,
+    contact: ['empty_contact', 'No email or phone on file.'], teams: ['empty_teams', 'Not on a team.'],
+    money: ['empty_money', 'No dues on record.'], fines: ['empty_fines', 'No fines.'],
+    activity: ['empty_activity', 'No RSVP or attendance on record.'],
+  };
 
   // ── Drawing ─────────────────────────────────────────────────────────
   function draw() {
@@ -200,30 +237,17 @@
     const extras = (state.opts.extras && state.opts.extras(p)) || {};
     const part = (k) => {
       const x = extras[k];
-      return x == null ? { html: '', flag: false } : (typeof x === 'string' ? { html: x, flag: false } : { html: x.html || '', flag: !!x.flag });
+      return x == null ? { html: '', flag: false }
+        : (typeof x === 'string' ? { html: x, flag: false } : { html: x.html || '', flag: !!x.flag });
     };
-    const tabBtns = TABS.map((k) => {
-      const on = k === state.tab;
-      const flag = part(k).flag;
-      return `<button type="button" data-ps-tab="${k}"
-        style="flex:0 0 auto; padding:6px 12px; border-radius:999px; cursor:pointer; font-weight:800; font-size:0.82rem; white-space:nowrap; position:relative;
-               background:${on ? '#0ea5e9' : 'transparent'}; color:${on ? '#fff' : '#e5e7eb'}; border:1px solid ${on ? '#0ea5e9' : '#374151'};">
-        ${esc(t(`tab_${k}`, {}, TAB_FALLBACK[k]))}${flag ? '<span style="position:absolute; top:-3px; right:-3px; width:10px; height:10px; border-radius:50%; background:#e879f9;"></span>' : ''}
-      </button>`;
-    }).join('');
+    const tabBtns = tabButtons(state.tab, (k) => part(k).flag);
     const coreHtml = core(state.tab, p);
     const extraHtml = part(state.tab).html;
-    const EMPTY = {
-      person: null, health: null,
-      contact: ['empty_contact', 'No email or phone on file.'], teams: ['empty_teams', 'Not on a team.'],
-      money: ['empty_money', 'No dues on record.'], fines: ['empty_fines', 'No fines.'],
-      activity: ['empty_activity', 'No RSVP or attendance on record.'],
-    };
     const body = (coreHtml || extraHtml)
       ? `${coreHtml}${coreHtml && extraHtml ? '<div style="height:10px;"></div>' : ''}${extraHtml}`
       : (EMPTY[state.tab] ? empty(EMPTY[state.tab][0], EMPTY[state.tab][1]) : '');
     const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || '—';
-    state.el.querySelector('.ps-name').textContent = name;
+    state.el.querySelector('.ps-title').textContent = name;
     state.el.querySelector('.ps-tabs').innerHTML = tabBtns;
     const bodyEl = state.el.querySelector('.ps-body');
     const keepScroll = bodyEl.dataset.tab === state.tab ? bodyEl.scrollTop : 0;
@@ -247,19 +271,21 @@
     const el = document.createElement('div');
     el.className = 'player-sheet';
     el.style.cssText = 'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,0.55); display:flex; justify-content:flex-end;';
+    const hdrBtn = 'background:transparent; color:#e5e7eb; border:1px solid #374151; border-radius:6px; padding:2px 10px; cursor:pointer; font-size:1rem;';
     el.innerHTML = `
       <div class="ps-panel" style="position:relative; width:min(620px, 100%); height:100%; background:var(--bg-secondary, #111827);
                                    border-left:1px solid var(--border-color, #374151); display:flex; flex-direction:column; color:var(--fg, #e5e7eb);">
         <div style="display:flex; align-items:center; gap:10px; padding:14px 16px 8px;">
-          <div class="ps-name" style="flex:1; font-weight:800; font-size:1.15rem;"></div>
-          <button type="button" data-ps-close title="${esc(t('close', {}, 'Close (Esc)'))}"
-                  style="background:transparent; color:#e5e7eb; border:1px solid #374151; border-radius:6px; padding:2px 10px; cursor:pointer; font-size:1rem;">✕</button>
+          <div class="ps-title" style="flex:1; font-weight:800; font-size:1.15rem;"></div>
+          <button type="button" data-ps-full title="${esc(t('full_page', {}, 'Open as a full page'))}" style="${hdrBtn}">⤢</button>
+          <button type="button" data-ps-close title="${esc(t('close', {}, 'Close (Esc)'))}" style="${hdrBtn}">✕</button>
         </div>
         <div class="ps-tabs" style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 16px 10px; border-bottom:1px solid var(--border-color, #374151);"></div>
         <div class="ps-body" style="flex:1; overflow-y:auto; padding:14px 16px 60px; font-size:0.9rem;"></div>
       </div>`;
     el.addEventListener('click', (e) => {
       if (e.target === el || e.target.closest('[data-ps-close]')) { close(); return; }
+      if (e.target.closest('[data-ps-full]')) { openFull(state.person, state.tab); return; }
       const tb = e.target.closest('[data-ps-tab]');
       if (tb) { state.tab = tb.getAttribute('data-ps-tab'); draw(); }
     });
@@ -285,5 +311,92 @@
   function refresh() { if (state) draw(); }
   function isOpen() { return !!state; }
 
-  window.PlayerSheet = { TABS, button, open, close, refresh, isOpen, loadHealth, injuryFor, HEALTH };
+  // ⤢ — the same sheet as the full page #person (PersonScreen draws it
+  // with PlayerSheet.page).  Back returns to the screen it came from.
+  function openFull(p, tab) {
+    if (!p || (!p.personId && !p.laUserId)) return;
+    const params = { tab: tab || 'person' };
+    if (p.personId) { params.personId = String(p.personId); params.entity = `${p.personId}/${params.tab}`; }
+    if (p.laUserId) params.leagueAppsUserId = String(p.laUserId);
+    close();
+    const nav = window.app && window.app.navigation;
+    if (nav && typeof nav.goTo === 'function') nav.goTo('person', params);
+    else window.location.hash = 'person?' + new URLSearchParams(params).toString();
+  }
+
+  // ── Full page (#person) ─────────────────────────────────────────────
+  // The same tabs, same order, same core parts as the popup, drawn inline
+  // in `container`.  The page hands over its own cards as DOM nodes per tab
+  // (`sections`) — they move into the tab panes untouched, so the page's
+  // handlers keep working.  Returns { setTab, refresh, tab }.
+  //   PlayerSheet.page({ container, auth, person, tab, sections, onTab })
+  function page(opts) {
+    const c = opts.container;
+    c.innerHTML = `
+      <div class="ps-page-tabs" style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 0 12px; margin-bottom:12px; border-bottom:1px solid var(--border-color, #374151);"></div>
+      ${TABS.map(k => `<div class="ps-page-pane" data-ps-pane="${k}" style="display:none;">
+        <div class="ps-page-core" style="font-size:0.9rem;"></div>
+        <div class="ps-page-extra"></div>
+        <div class="ps-page-empty"></div>
+      </div>`).join('')}`;
+    const ctl = { tab: TABS.includes(opts.tab) ? opts.tab : 'person', person: opts.person };
+    const sections = opts.sections || {};
+    TABS.forEach(k => {
+      const extra = c.querySelector(`[data-ps-pane="${k}"] .ps-page-extra`);
+      (sections[k] || []).filter(Boolean).forEach(node => extra.appendChild(node));
+    });
+    const visible = (node) => node && node.style.display !== 'none';
+    function paint() {
+      const p = ctl.person || {};
+      c.querySelector('.ps-page-tabs').innerHTML = tabButtons(ctl.tab);
+      TABS.forEach(k => {
+        const pane = c.querySelector(`[data-ps-pane="${k}"]`);
+        pane.style.display = k === ctl.tab ? 'block' : 'none';
+        // The page's header card already is the identity — no self-link.
+        const coreHtml = k === 'person' ? '' : core(k, p);
+        const coreEl = pane.querySelector('.ps-page-core');
+        coreEl.innerHTML = coreHtml;
+        coreEl.style.marginBottom = coreHtml ? '14px' : '0';
+        const hasExtra = Array.from(pane.querySelector('.ps-page-extra').children).some(visible);
+        pane.querySelector('.ps-page-empty').innerHTML =
+          (!coreHtml && !hasExtra && EMPTY[k]) ? empty(EMPTY[k][0], EMPTY[k][1]) : '';
+      });
+    }
+    c.addEventListener('click', (e) => {
+      const tb = e.target.closest('[data-ps-tab]');
+      if (!tb || !c.contains(tb)) return;
+      ctl.setTab(tb.getAttribute('data-ps-tab'));
+    });
+    c.addEventListener('change', (e) => {
+      const h = e.target.closest('.ps-health');
+      if (h) saveHealthFor(h, opts.auth, ctl.person, () => paint(), (m, bad) => toastIn(document.body, m, bad));
+    });
+    ctl.setTab = (k) => {
+      if (!TABS.includes(k)) return;
+      ctl.tab = k;
+      paint();
+      if (opts.onTab) opts.onTab(k);
+    };
+    // Team pills / standing line arrive once PersonStanding has the person.
+    function standing() {
+      const pid = ctl.person && ctl.person.personId;
+      if (!pid || !window.PersonStanding) return;
+      PersonStanding.load(opts.auth, [pid]).then(() => {
+        if (ctl.person && ctl.person.personId === pid) paint();
+      });
+    }
+    // The screen re-entered (same person or another): redraw + re-read.
+    ctl.refresh = (p) => {
+      if (p) ctl.person = p;
+      paint();
+      if (opts.auth) loadHealth(opts.auth).then(() => paint());
+      standing();
+    };
+    paint();
+    if (opts.auth) loadHealth(opts.auth).then(() => paint());
+    standing();
+    return ctl;
+  }
+
+  window.PlayerSheet = { TABS, button, open, close, refresh, isOpen, page, openFull, tabLabel, loadHealth, injuryFor, HEALTH };
 })();

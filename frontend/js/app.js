@@ -369,6 +369,13 @@ class App {
         this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
         return;
       }
+      // One player, full page — #person/<persons.id>[/<tab>] (the player
+      // sheet's tabs, player-sheet.js).
+      const personLink = (window.location.hash || '').match(/^#person\/(\d+)(?:\/([a-z]+))?$/);
+      if (personLink) {
+        this.navigation.goTo('person', { personId: personLink[1], entity: personLink[2] ? `${personLink[1]}/${personLink[2]}` : personLink[1], tab: personLink[2] || null });
+        return;
+      }
       if (window.location.hash === '#apsl-pyramid') {
         this.navigation.goTo('apsl-pyramid');
         return;

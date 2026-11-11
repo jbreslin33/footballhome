@@ -124,7 +124,7 @@ class PersonActions {
 
       const params = {};
       if (laUid) params.leagueAppsUserId = laUid;
-      if (pid)   params.personId = pid;
+      if (pid)   { params.personId = pid; params.entity = pid; }   // URL #person/<id>
       if (action === 'edit') params.edit = '1';
       if (returnTo) params.returnTo = returnTo;
 

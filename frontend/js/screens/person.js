@@ -52,6 +52,12 @@ class PersonScreen extends Screen {
 
         <div id="person-body" style="display:none;">
 
+          <!-- The player sheet's tabs (PlayerSheet.page): the cards below
+               move into their tab on first load — 👤 Person · 📇 Contact ·
+               ⚽ Teams · 🩹 Health · 💳 Money · ⚖️ Fines · 📅 Activity, the
+               same tabs as the ⋯ popup on every screen. -->
+          <div id="ps-sheet"></div>
+
           <!-- Header card: name, birth date, FH-member status, LA payment status -->
           <section class="ps-card" id="ps-header-card"></section>
 
@@ -343,6 +349,8 @@ class PersonScreen extends Screen {
     // View and Edit land on this same Person hub; Edit remembers the
     // operator intent as editable controls expand here.
     this._editMode = params?.edit === '1' || params?.edit === true;
+    // Starting tab — the ⋯ popup's ⤢ carries the tab it was on.
+    this._tab = params?.tab || 'person';
 
     if (!this.leagueAppsUserId && !this.personId) {
       this._showError('No leagueAppsUserId or personId provided');
@@ -474,6 +482,56 @@ class PersonScreen extends Screen {
     this._renderRecentRsvpsCard(data.recentRsvps || []);
     this._renderDataQualityCard(data.overrides || [], data.merges || []);
     this._loadScrapedCandidates(data.personId);
+    this._mountSheet(data);
+  }
+
+  // The page IS the player sheet (owner 2026-11-11: "this could also
+  // replace going into the player screen"): same tabs, same order, same
+  // core parts as the ⋯ popup; this screen's cards ride in their tab.
+  _mountSheet(data) {
+    if (!window.PlayerSheet || !PlayerSheet.page) return;
+    const p = data.person || {};
+    const person = {
+      personId: data.personId || null,
+      laUserId: data.leagueAppsUserId || null,
+      firstName: p.firstName || '',
+      lastName: p.lastName || '',
+    };
+    if (this._sheet) {
+      this._sheet.refresh(person);
+      this._sheet.setTab(this._tab);
+      return;
+    }
+    const card = (id) => this.element.querySelector('#' + id);
+    this._sheet = PlayerSheet.page({
+      container: this.element.querySelector('#ps-sheet'),
+      auth: this.auth,
+      person,
+      tab: this._tab,
+      sections: {
+        person:   [card('ps-header-card'), card('ps-account-card'), card('ps-memberships-card'),
+                   card('ps-dq-card'), card('ps-scraped-card')],
+        contact:  [card('ps-contact-card')],
+        teams:    [card('ps-teams-card')],
+        money:    [card('ps-billing-card')],
+        activity: [card('ps-rsvp-card'), card('ps-recent-rsvps-card')],
+      },
+      onTab: (k) => this._tabChanged(k),
+    });
+  }
+
+  // The tab rides in the URL — #person/<id>/<tab> — so a reload or a
+  // shared link opens on the same tab, and Back still leaves the page
+  // (replace, not push).
+  _tabChanged(k) {
+    this._tab = k;
+    if (!this.personId) return;
+    const params = { ...(this.navigation.currentParams || {}), personId: this.personId, tab: k, entity: `${this.personId}/${k}` };
+    if (this.navigation.currentState === 'person') this.navigation.currentParams = params;
+    try {
+      const st = window.history.state && typeof window.history.state === 'object' ? window.history.state : {};
+      window.history.replaceState({ ...st, params }, '', `#person/${this.personId}/${k}`);
+    } catch (e) { /* URL stays as it was */ }
   }
 
   // Mens-selection + women/boys teams — keep in sync with
