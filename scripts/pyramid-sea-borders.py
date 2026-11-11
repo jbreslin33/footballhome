@@ -43,6 +43,7 @@ BOX = 1.0           # degrees of counties loaded around a loose end
 CHANNEL = 0.6       # km: both shores this close = a channel, land test waived
 OPEN = 6.0          # km from both shores = out past the coast: the line has done its job
 KY = 110.57
+JOIN_KM = {'current': 2.5, 'proposed': 7.0}   # ~half a fine-borders grid cell (0.03° / 0.10°) + smoothing
 
 
 def psql(sql, stdin_sql=False):
@@ -83,15 +84,28 @@ def km(a, b):
     return math.hypot((a[0] - b[0]) * KY, (a[1] - b[1]) * 111.32 * math.cos(math.radians(a[0])))
 
 
-def meets_other(e, others, within=1.5):
-    """The end touches another border line (a three-way junction, or a dashed
-    border rejoining the coloured one) — not a loose end at all."""
+def meets_other(e, others, within):
+    """The end touches another border line (a three-way junction, a dashed
+    border rejoining the coloured one, or the edge of the Current plan's open
+    ground) — not a loose end at all.  Measured to the line's segments; a
+    traced end sits up to half a grid cell from what it meets."""
     p = e['p']
+    kx = 111.32 * math.cos(math.radians(p[0]))
+    box = within / 100 + 0.02
     for o in others:
         if o['id'] == e['b']['id']:
             continue
-        for pt in o['line']:
-            if abs(pt[0] - p[0]) < 0.03 and abs(pt[1] - p[1]) < 0.04 and km(p, pt) < within:
+        ln = o['line']
+        for a, b in zip(ln, ln[1:]):
+            if min(a[0], b[0]) - box > p[0] or max(a[0], b[0]) + box < p[0] \
+                    or min(a[1], b[1]) - box * 1.4 > p[1] or max(a[1], b[1]) + box * 1.4 < p[1]:
+                continue
+            ax, ay = (a[1] - p[1]) * kx, (a[0] - p[0]) * KY
+            bx, by = (b[1] - p[1]) * kx, (b[0] - p[0]) * KY
+            dx, dy = bx - ax, by - ay
+            L = dx * dx + dy * dy
+            t = 0.0 if L == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / L))
+            if math.hypot(ax + t * dx, ay + t * dy) < within:
                 return True
     return False
 
@@ -280,11 +294,16 @@ def walk(patch, a, b, start, prev, others, walked=()):
     return pts
 
 
+LAND_MAX = 12.0     # km of land a carried end may cross to reach the water (≈ the proposed grid's half cell + smoothing)
+
+
 def straight(patch, e):
-    """A traced line's loose end at the water, carried on along its own last
-    ~3 km heading: out past the coast (OPEN km from every shore) or across a
-    bay to the far shore.  An end on land with no water ahead (a gap in the
-    trace, not the coast) gives nothing."""
+    """A traced line's loose end near the water, carried on to it and out past
+    the coast (OPEN km from every shore) or across a bay to the far shore.
+    Straight on along its own last ~3 km heading when that finds water within
+    LAND_MAX km; otherwise turned (up to 120°) toward the nearest water,
+    preferring directions close to its own (1 km per 30°).  An end with no
+    water within reach (a gap in the trace, not the coast) gives nothing."""
     line = e['b']['line'] if e['at_end'] else e['b']['line'][::-1]
     p = patch.xy(*e['p'])
     q = p
@@ -292,21 +311,39 @@ def straight(patch, e):
         q = patch.xy(*pt)
         if math.hypot(p[0] - q[0], p[1] - q[1]) >= 3:
             break
-    d = (p[0] - q[0], p[1] - q[1])
-    L = math.hypot(*d)
+    d0 = (p[0] - q[0], p[1] - q[1])
+    L = math.hypot(*d0)
     if L < 0.2:
         return []
-    d = (d[0] / L, d[1] / L)
+    d0 = (d0[0] / L, d0[1] / L)
 
     def shore(c):        # every county edge counts: at sea that is the coast
         return patch.dist(c, None, True)
 
+    def land_to_water(d):
+        for i in range(1, int(LAND_MAX / STEP) + 1):
+            if not patch.on_land((p[0] + d[0] * STEP * i, p[1] + d[1] * STEP * i)):
+                return i * STEP
+        return None
+
+    best = None
+    for ang in (0, 15, -15, 30, -30, 45, -45, 60, -60, 90, -90, 120, -120):
+        r = math.radians(ang)
+        d = (d0[0] * math.cos(r) - d0[1] * math.sin(r), d0[0] * math.sin(r) + d0[1] * math.cos(r))
+        k = land_to_water(d)
+        if k is not None and (best is None or k + abs(ang) / 30 < best[0]):
+            best = (k + abs(ang) / 30, d)
+        if ang == 0 and k is not None and k <= 3:
+            break        # straight on works: keep the line's own direction
+    if best is None:
+        return []
+    d = best[1]
     pts, wet = [patch.ll(p)], False
     for i in range(1, MAX_STEPS):
         c = (p[0] + d[0] * STEP * i, p[1] + d[1] * STEP * i)
         land = patch.on_land(c)
-        if land and (wet or i * STEP > 3):
-            break        # the far shore of a bay, or no water ahead at all
+        if land and wet:
+            break        # the far shore of a bay
         pts.append(patch.ll(c))
         if not land:
             wet = True
@@ -331,13 +368,13 @@ def plan_rows(plan, kind, rows, report):
     if not borders or not counties:
         return
     ends = loose_ends(borders)
-    stat = {'sea': 0, 'joins': 0, 'short': 0}
+    stat = {'sea': 0, 'wet': 0, 'joins': 0, 'short': 0}
     walked = {}          # pair → the lines walked so far (for bay crossings)
     for e in ends:
         if e.get('joined'):
             stat['sea'] += 1
             continue
-        if meets_other(e, all_lines):
+        if meets_other(e, all_lines, JOIN_KM[plan]):
             stat['joins'] += 1
             continue
         b = e['b']
@@ -352,18 +389,20 @@ def plan_rows(plan, kind, rows, report):
             # it straight on along its own last direction instead
             pts = straight(patch, e)
         if len(pts) < 3:
+            if not patch.on_land(patch.xy(*e['p'])):
+                stat['wet'] += 1      # already ends in the water (inside a bay the outlines enclose)
+                continue
             stat['short'] += 1
-            land = patch.on_land(patch.xy(*e['p']))
-            report.append((plan, kind, b, e['p'], 'on land, no water ahead (a gap in the trace)' if land
-                           else 'at the water but no way out found'))
+            report.append((plan, kind, b, e['p'], 'on land, no water within reach (a gap in the trace)'))
             continue
         stat['sea'] += 1
         walked.setdefault(pair, []).append(pts)
         # keep the land line's direction so a_left still holds
         line = pts if e['at_end'] else pts[::-1]
         rows.append((b['a'], b['b'], [list(x) for x in line], b['a_left'], kind))
+        print(f"  {plan} {kind} {b['a']}|{b['b']} from {e['p']}: {len(pts)} points → {pts[-1]}", file=sys.stderr)
     print(f"{plan} {kind}: {len(borders)} lines, {len(ends)} loose ends → {stat['sea']} to sea,"
-          f" {stat['joins']} meet another border, {stat['short']} short", file=sys.stderr)
+          f" {stat['wet']} already in the water, {stat['joins']} meet another border, {stat['short']} short", file=sys.stderr)
 
 
 def write(rows):
