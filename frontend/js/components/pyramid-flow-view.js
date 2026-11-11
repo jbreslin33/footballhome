@@ -9,15 +9,23 @@
 // "d<table>") so other views (the presentation) can find and fly to it.
 // Arrows are an SVG overlay measured from the laid-out boxes; drawArrows()
 // works on a zoomed stage too (it divides out the stage's scale).
+//
+// Panning (owner 2026-11-11: "flowchart view needs to be able to be
+// draggable right to left and up to down"): the view fills the stage and
+// .fc-scroll is its ONE scroller, both directions — grab with the mouse and
+// drag; a finger pans it natively.  A drag never fires the click under it
+// (club card, ✏️), a plain click still does.
 class PyramidFlowView {
-  constructor(screen) { this.screen = screen; }
+  constructor(screen) { this.screen = screen; this.fill = true; }
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
   _copy(tier, tokens) { return this.screen._copy(tier, tokens); }
 
   static css() {
     return `
-      .fc-scroll { overflow-x:auto; padding-bottom:var(--space-4); }
+      .fc-scroll { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
+      .fc-scroll.dragging { cursor:grabbing; user-select:none; }
+      .fc-scroll.dragging * { cursor:grabbing !important; }
       .fc-chart { position:relative; display:grid; column-gap:22px; row-gap:46px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
       .fc-arrows { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
       .fc-cell { display:flex; gap:10px; justify-content:center; position:relative; z-index:1; }
@@ -134,7 +142,49 @@ class PyramidFlowView {
       <div class="fc-scroll">${this.chartHtml(model, confs)}</div>`;
   }
 
-  mount(root, model, confs) { this.drawArrows(root.querySelector('.fc-chart'), model, confs); }
+  mount(root, model, confs) {
+    this.drawArrows(root.querySelector('.fc-chart'), model, confs);
+    this.pannable(root.querySelector('.fc-scroll'));
+  }
+
+  // Mouse / pen drag pans the scroller (touch already does).  Past 5 px it
+  // is a drag and the click that ends it is swallowed.
+  pannable(el) {
+    if (!el || el._pan) return;
+    el._pan = true;
+    let drag = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch' || e.button !== 0) return;
+      if (e.target.closest('input, select, textarea, .ap-hud')) return;
+      drag = { x: e.clientX, y: e.clientY, left: el.scrollLeft, top: el.scrollTop, moved: false, id: e.pointerId };
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.moved) {
+        if (Math.abs(dx) + Math.abs(dy) < 5) return;
+        drag.moved = true;
+        el.classList.add('dragging');
+        try { el.setPointerCapture(e.pointerId); } catch (_) { /* gone */ }
+      }
+      el.scrollLeft = drag.left - dx;
+      el.scrollTop = drag.top - dy;
+      e.preventDefault();
+    });
+    const end = (e) => {
+      if (!drag || (e && e.pointerId !== drag.id)) return;
+      const moved = drag.moved;
+      drag = null;
+      el.classList.remove('dragging');
+      if (moved) {
+        const eat = (c) => { c.stopPropagation(); c.preventDefault(); };
+        el.addEventListener('click', eat, { capture: true, once: true });
+        setTimeout(() => el.removeEventListener('click', eat, { capture: true }), 0);
+      }
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
   onResize(root, model, confs) { this.mount(root, model, confs); }
   unmount() {}
 
