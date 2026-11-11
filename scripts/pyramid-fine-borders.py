@@ -203,11 +203,11 @@ def run(plan, adj):
     step = STEP[plan]
     reg = dict(l.split('|') for l in psql(
         f"SELECT fips || '|' || COALESCE('c' || conference_id, 'p' || proposed_id) FROM pyramid_proposal_counties WHERE plan = '{plan}'").split())
-    cen = {}
+    cen = defaultdict(list)          # region → [(point, traffic factor, weight)] (mig 1284)
     for l in psql(f"SELECT COALESCE('c' || conference_id, 'p' || proposed_id) || '|' || round(lat::numeric, 4) || '|' || round(lon::numeric, 4)"
-                  f" || '|' || factor FROM pyramid_region_centers WHERE plan = '{plan}'").split():
-        k, la, lo, f = l.split('|')
-        cen[k] = ((f'{float(la):.4f}', f'{float(lo):.4f}'), float(f))
+                  f" || '|' || factor || '|' || weight FROM pyramid_region_points WHERE plan = '{plan}'").split():
+        k, la, lo, f, w = l.split('|')
+        cen[k].append(((f'{float(la):.4f}', f'{float(lo):.4f}'), float(f), float(w)))
     border = {f for f in reg if any(n in reg and reg[n] != reg[f] for n in adj[f])}
     geo = json.loads(psql("SELECT json_object_agg(fips, geometry) FROM pyramid_counties WHERE fips IN ("
                           + ','.join(f"'{f}'" for f in border) + ')'))
@@ -241,29 +241,73 @@ def run(plan, adj):
     need = defaultdict(set)
     for c, cs in cells_c.items():
         for r in cs:
-            q = cen[r][0]
-            if (pt[c], q) not in have:
-                need[pt[c]].add(q)
+            for q, _, _ in cen[r]:
+                if (pt[c], q) not in have:
+                    need[pt[c]].add(q)
     print(f'  {sum(len(v) for v in need.values())} drives to fetch', file=sys.stderr)
     if need:
         fetch(need, have)
     reach = float(psql('SELECT proposal_reach_min FROM pyramid_territory_policy LIMIT 1'))
     lab_t, lab_p = {}, {}
     for c, cs in cells_c.items():
-        sc = [(have[(pt[c], cen[r][0])], cen[r][1], r) for r in cs if (pt[c], cen[r][0]) in have]
+        # (traffic score, plain score, nearest point minutes, region): people-weighted over its points
+        sc = []
+        for r in cs:
+            ps = [(have[(pt[c], q)], f, w) for q, f, w in cen[r] if (pt[c], q) in have]
+            if len(ps) != len(cen[r]):
+                continue
+            W = sum(w for _, _, w in ps)
+            sc.append((sum(m * f * w for m, f, w in ps) / W, sum(m * w for m, _, w in ps) / W, min(m for m, _, _ in ps), r))
         if plan == 'current':    # today's conferences reach 2 h (as the county fill, mig 1278)
-            sc = [x for x in sc if x[0] <= reach]
+            sc = [x for x in sc if x[2] <= reach]
             if not sc and c in cell_county:
                 lab_t[c] = lab_p[c] = reg[cell_county[c]]
                 continue
         if not sc:
             continue
-        lab_t[c] = min(sc, key=lambda x: x[0] * x[1])[2]
-        lab_p[c] = min(sc, key=lambda x: x[0])[2]
+        lab_t[c] = min(sc)[3]
+        lab_p[c] = min(sc, key=lambda x: x[1])[3]
+    # Carry a line's loose end on to the coast (11/11: the grid stops a few km
+    # inland, so the sea-border script found no shore end to continue from):
+    # step along the end's own direction in ½ km steps while still on land;
+    # keep the extension only if it reaches water within 12 km.
+    boxes = {}
+    for f in border:
+        g = geo[f]
+        polys = [g['coordinates']] if g['type'] == 'Polygon' else g['coordinates']
+        xs = [x for poly in polys for x, _ in poly[0]]
+        ys = [y for poly in polys for _, y in poly[0]]
+        boxes[f] = (min(xs), min(ys), max(xs), max(ys))
+
+    def land(lat, lon):
+        return any(bx[0] <= lon <= bx[2] and bx[1] <= lat <= bx[3] and in_geom(lon, lat, geo[f]) for f, bx in boxes.items())
+
+    def to_coast(line):
+        out = list(line)
+        for end in (0, 1):
+            pts = out if end else out[::-1]
+            if len(pts) < 2 or not land(*pts[-1]):
+                continue
+            (la1, lo1), (la2, lo2) = pts[-2], pts[-1]
+            dy, dx = la2 - la1, (lo2 - lo1) * math.cos(math.radians(la2))
+            n = math.hypot(dx, dy)
+            if not n:
+                continue
+            uy, ux = dy / n * 0.0045, dx / n * 0.0045 / math.cos(math.radians(la2))
+            ext = []
+            for k in range(1, 25):
+                q = (round(la2 + uy * k, 4), round(lo2 + ux * k, 4))
+                ext.append(q)
+                if not land(*q):
+                    pts = pts + ext
+                    break
+            out = pts if end else pts[::-1]
+        return out
+
     rows = []
     for kind, lab in (('travel', lab_t), ('plain', lab_p)):
         for a, b, line in trace(lab, step, dlon):
-            rows.append((a, b, kind, line))
+            rows.append((a, b, kind, to_coast(line)))
     pairs = {(a, b) for a, b, _, _ in rows}
     pre = 'c' if plan == 'current' else 'p'
     sql = ['BEGIN;']

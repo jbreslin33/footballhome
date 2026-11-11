@@ -4,7 +4,7 @@ Owner 2026-11-11: "travel time and travel time+traffic i should say because
 distance may go across water lol right?" / "the border for del and metro
 should primarily factor drive time for the two".
 For every lower-48 county point (pyramid_county_points) and each plan's
-conference cities (pyramid_region_centers), asks the public OSRM router
+conference measuring points (pyramid_region_points, mig 1284), asks the public OSRM router
 (OpenStreetMap roads, no traffic) for the drive to the county's K nearest
 cities (straight km × traffic factor) — the ones that can win it — and
 stores minutes + km in pyramid_county_drive_times.  Pairs already stored
@@ -47,17 +47,22 @@ def km(a, b):
 
 def main():
     pts = json.loads(psql("SELECT json_agg(json_build_object('f', fips, 'lat', lat, 'lon', lon)) FROM pyramid_county_points"))
-    cens = json.loads(psql("SELECT json_agg(json_build_object('plan', plan, 'lat', round(lat::numeric, 4), 'lon', round(lon::numeric, 4),"
-                           " 'factor', factor)) FROM pyramid_region_centers"))
+    # mig 1284: every measuring point of a conference (base metro + other big metros in it)
+    cens = json.loads(psql("SELECT json_agg(json_build_object('plan', plan, 'r', COALESCE('c' || conference_id, 'p' || proposed_id),"
+                           " 'lat', round(lat::numeric, 4), 'lon', round(lon::numeric, 4), 'factor', factor, 'base', is_base))"
+                           " FROM pyramid_region_points"))
+    pts_of = defaultdict(list)
+    for c in cens:
+        pts_of[(c['plan'], c['r'])].append(c)
     have = set(psql("SELECT fips || '|' || from_lat || '|' || from_lon || '|' || to_lat || '|' || to_lon FROM pyramid_county_drive_times").split())
     fmt = lambda x: f'{float(x):.4f}'
     need = defaultdict(set)      # county → set of city points
     for p in pts:
         a = (float(p['lat']), float(p['lon']))
         for plan in ('current', 'proposed'):
-            cs = [c for c in cens if c['plan'] == plan]
+            cs = [c for c in cens if c['plan'] == plan and c['base']]
             cs.sort(key=lambda c: km(a, (float(c['lat']), float(c['lon']))) * float(c['factor']))
-            for c in cs[:K]:
+            for c in [q for b in cs[:K] for q in pts_of[(plan, b['r'])]]:
                 key = f"{p['f']}|{fmt(p['lat'])}|{fmt(p['lon'])}|{fmt(c['lat'])}|{fmt(c['lon'])}"
                 if key not in have:
                     need[p['f']].add((fmt(c['lat']), fmt(c['lon'])))
@@ -118,14 +123,18 @@ def venues():
     conference goes by drive time from its own ground)."""
     vs = json.loads(psql("SELECT COALESCE(json_agg(json_build_object('id', v.id, 'lat', round(v.lat::numeric, 4), 'lon', round(v.lon::numeric, 4))), '[]')"
                          " FROM pyramid_venues v WHERE v.lat IS NOT NULL AND EXISTS (SELECT 1 FROM pyramid_teams t WHERE t.venue_id = v.id AND t.removed_at IS NULL)"))
-    cens = json.loads(psql("SELECT json_agg(json_build_object('lat', round(lat::numeric, 4), 'lon', round(lon::numeric, 4), 'factor', factor))"
-                           " FROM pyramid_region_centers WHERE conference_id IS NOT NULL"))
+    cens = json.loads(psql("SELECT json_agg(json_build_object('r', conference_id, 'lat', round(lat::numeric, 4), 'lon', round(lon::numeric, 4),"
+                           " 'factor', factor, 'base', is_base)) FROM pyramid_region_points WHERE plan = 'current'"))
+    pts_of = defaultdict(list)
+    for c in cens:
+        pts_of[c['r']].append(c)
     have = set(psql("SELECT venue_id || '|' || from_lat || '|' || from_lon || '|' || to_lat || '|' || to_lon FROM pyramid_venue_drive_times").split())
     fmt = lambda x: f'{float(x):.4f}'
     need = {}
     for v in vs:
         a = (float(v['lat']), float(v['lon']))
-        cs = sorted(cens, key=lambda c: km(a, (float(c['lat']), float(c['lon']))) * float(c['factor']))[:3]
+        cs = sorted([c for c in cens if c['base']], key=lambda c: km(a, (float(c['lat']), float(c['lon']))) * float(c['factor']))[:3]
+        cs = [q for b in cs for q in pts_of[b['r']]]
         miss = [(fmt(c['lat']), fmt(c['lon'])) for c in cs
                 if f"{v['id']}|{fmt(v['lat'])}|{fmt(v['lon'])}|{fmt(c['lat'])}|{fmt(c['lon'])}" not in have]
         if miss:

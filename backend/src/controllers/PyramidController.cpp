@@ -213,7 +213,12 @@ Response PyramidController::handleProposal(const Request&) {
                        COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2,
                        st.span_km, st.area_km2, dt.km AS drive_km, dt.minutes AS drive_min,      -- the pill (mig 1270)
                        ka.name || ', ' || ka.state AS far_a, kb.name || ', ' || kb.state AS far_b,
-                       rc.lat AS center_lat, rc.lon AS center_lon   -- the point it is measured from (mig 1283)
+                       rc.lat AS center_lat, rc.lon AS center_lon,  -- the point it is measured from (mig 1283)
+                       (SELECT json_agg(json_build_object('lat', rp.lat, 'lon', rp.lon, 'label', rp.label, 'weight', rp.weight, 'base', rp.is_base)
+                                        ORDER BY rp.weight DESC)::text
+                          FROM pyramid_region_points rp
+                         WHERE rp.plan = pc.plan AND rp.conference_id IS NOT DISTINCT FROM pc.conference_id
+                           AND rp.proposed_id IS NOT DISTINCT FROM pc.proposed_id) AS points   -- every measuring point (mig 1284)
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
@@ -242,7 +247,8 @@ Response PyramidController::handleProposal(const Request&) {
                                {"drive_min", r["drive_min"].is_null() ? json(nullptr) : json(r["drive_min"].as<double>())},
                                {"far_a", strOrNull(r, "far_a")}, {"far_b", strOrNull(r, "far_b")},
                                {"center_lat", r["center_lat"].is_null() ? json(nullptr) : json(r["center_lat"].as<double>())},
-                               {"center_lon", r["center_lon"].is_null() ? json(nullptr) : json(r["center_lon"].as<double>())}});
+                               {"center_lon", r["center_lon"].is_null() ? json(nullptr) : json(r["center_lon"].as<double>())},
+                               {"points", r["points"].is_null() ? json::array() : json::parse(str(r, "points"), nullptr, false)}});
         }
         for (const auto& r : db->query(R"SQL(
                 SELECT p.name, p.note, p.tier, p.core_population,

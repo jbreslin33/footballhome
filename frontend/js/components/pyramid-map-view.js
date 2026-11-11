@@ -228,7 +228,7 @@ class PyramidMapView {
       const [dx, dy] = pick;
       if (dx || dy) p.mk.setLatLng(this.map.containerPointToLatLng(this.map.latLngToContainerPoint(p.base).add([dx, dy])));
       boxes.push({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy });
-      if (p.line) p.line.setLatLngs([p.mk.getLatLng(), p.ctr]);
+      for (const l of p.lines || []) l.line.setLatLngs([p.mk.getLatLng(), l.ll]);
     }
   }
   _effPlan() {
@@ -896,12 +896,19 @@ class PyramidMapView {
       const tip = r.far_a ? this._copy('pill_far', { a: r.far_a, b: r.far_b }) : '';
       const base = L.latLng(r.lat, r.lon);
       const ctr = r.center_lat != null ? L.latLng(r.center_lat, r.center_lon) : null;
-      const line = ctr ? L.polyline([base, ctr], { renderer: this.propRenderer, interactive: false, color, weight: 1.5, opacity: 0.9, dashArray: '4 3' }).addTo(this.propLayer) : null;
-      if (ctr) L.circleMarker(ctr, { renderer: this.propRenderer, interactive: false, radius: 5, color: '#f8fafc', weight: 2, fillColor: color, fillOpacity: 1 }).addTo(this.propLayer);
+      // every measuring point (mig 1284: base metro + other big metros in it,
+      // weighted by people) — a line to each, the base dot the biggest
+      const pts = (r.points && r.points.length) ? r.points : (ctr ? [{ lat: r.center_lat, lon: r.center_lon, base: true }] : []);
+      const lines = pts.map((q) => {
+        const ll = L.latLng(q.lat, q.lon);
+        L.circleMarker(ll, { renderer: this.propRenderer, interactive: false, radius: q.base ? 5 : 3.5, color: '#f8fafc', weight: q.base ? 2 : 1.5, fillColor: color, fillOpacity: 1 }).addTo(this.propLayer);
+        return { ll, line: L.polyline([base, ll], { renderer: this.propRenderer, interactive: false, color, weight: q.base ? 1.5 : 1, opacity: q.base ? 0.9 : 0.7, dashArray: '4 3' }).addTo(this.propLayer) };
+      });
+      const line = null;
       const mk = L.marker(base, { interactive: false, keyboard: false, zIndexOffset: 900, icon: L.divIcon({ className: 'mp-pin',
         html: `<span class="mp-prop${live ? ' live' : ''}" style="--pc:${this._esc(color)}" title="${this._esc(tip)}">`
           + `<b>${this._esc(r.name.replace(/ Conference$/, ''))}</b><span>${this._esc(this._pillStats(r))}</span></span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
-      this.pills.push({ mk, base, ctr, line });
+      this.pills.push({ mk, base, ctr, line, lines });
     }
     this._layoutPills();
     this.screen._renderMenu();
