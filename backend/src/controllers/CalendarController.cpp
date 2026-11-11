@@ -658,6 +658,15 @@ void CalendarController::registerRoutes(Router& router, const std::string& prefi
     router.post(prefix + "/calendar/events/:fhEventId/auto-invites", [this](const Request& req) {
         return this->handlePostAutoInvite(req);
     });
+    router.post(prefix + "/calendar/events/:fhEventId/callin", [this](const Request& req) {
+        return this->handlePostCallin(req);
+    });
+    router.get(prefix + "/calendar/events/:fhEventId/callins", [this](const Request& req) {
+        return this->handleGetCallins(req);
+    });
+    router.post(prefix + "/calendar/events/:fhEventId/callins", [this](const Request& req) {
+        return this->handlePostCallinDecision(req);
+    });
 }
 
 // POST /api/calendar/events/:fhEventId/auto-invites — the 🎟 panel's ⭐
@@ -1112,6 +1121,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- CALL-UP · APSL and why the game is on their week.
                 CASE WHEN fh_event_invited(fe.id, $1::int)
                      THEN fh_event_invite_badge(fe.id, $1::int)::text END AS my_callup,
+                -- 🙋 Call-in (mig 1265): a Liga 1 player sees the APSL game
+                -- with Request call-in instead of Go / No until invited.
+                -- {state: open|requested|declined, request_id, from} | NULL.
+                CASE WHEN fe.kind = 'match' AND $1::int > 0
+                     THEN fh_event_callin(fe.id, $1::int)::text END AS my_callin,
                 -- ⛔ Suspended for this game (mig 1077): the card shows it
                 -- with no Go / No.  'league' | 'club' | NULL.
                 fh_event_suspension(fe.id, $1::int) AS my_suspension,
@@ -1721,6 +1735,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             FROM base
             WHERE $1::int = 0 OR base.eligible
                OR base.guardian_children IS NOT NULL
+               OR base.my_callin IS NOT NULL
             ORDER BY base.raw_starts_at ASC, base.raw_gcal_id ASC
             LIMIT 500
         )SQL";
@@ -1837,7 +1852,15 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 ev["my_jobs"] = json::array();
             }
             ev["is_mine"]           = row["is_mine"].as<bool>();
+            // 🙋 Call-in (mig 1265): the game is on his week, without Go / No.
+            if (row["my_callin"].is_null()) ev["my_callin"] = nullptr;
+            else {
+                try { ev["my_callin"] = json::parse(row["my_callin"].c_str()); ev["is_mine"] = true; }
+                catch (...) { ev["my_callin"] = nullptr; }
+            }
             ev["my_role"]           = textOrNull(row, "my_role");
+            // 🙋 A call-in game sits under his player hat on #my (mig 1265).
+            if (ev["my_role"].is_null() && ev.contains("my_callin") && !ev["my_callin"].is_null()) ev["my_role"] = "player";
             ev["my_suspension"]       = textOrNull(row, "my_suspension");
             ev["my_suspension_until"] = textOrNull(row, "my_suspension_until");
             if (row["my_callup"].is_null()) ev["my_callup"] = nullptr;
@@ -3866,5 +3889,159 @@ Response CalendarController::handleGetDriveTimes(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "[calendar drive-times] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+
+// ── 🙋 Call-in requests (mig 1265) ────────────────────────────────────
+// Owner 2026-11-11: Liga 1 players see APSL games with "Request call-in"
+// instead of Go / No; accepting = an invite (no text) → Go / No shows and
+// he sits in No Response until he answers.  Who may ask: fh_event_callin
+// (team_callin_sources; an invite, incl. a standing one, beats it).
+
+// POST /api/calendar/events/:id/callin  {action: "request" | "withdraw"}
+Response CalendarController::handlePostCallin(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON body"); }
+    const std::string action = body.value("action", std::string("request"));
+    const std::string e = std::to_string(fhEventId), p = std::to_string(gate.personId);
+    try {
+        auto* db = Database::getInstance();
+        if (action == "withdraw") {
+            db->query("UPDATE fh_event_callin_requests SET withdrawn_at = now() "
+                      " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND withdrawn_at IS NULL "
+                      "   AND decision IS NULL", {e, p});
+        } else if (action == "request") {
+            auto src = db->query("SELECT fh_event_callin_source($1::bigint, $2::int) AS src, "
+                                 "       fh_event_callin($1::bigint, $2::int) IS NOT NULL AS open, "
+                                 "       fh_event_suspension($1::bigint, $2::int) AS susp, "
+                                 "       (SELECT ge.starts_at > now() FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+                                 "         WHERE fe.id = $1::bigint) AS ahead", {e, p});
+            if (src.empty() || src[0]["src"].is_null() || !src[0]["open"].as<bool>())
+                return jsonError(HttpStatus::FORBIDDEN, "You can't request a call-in for this game.");
+            if (!src[0]["susp"].is_null())
+                return jsonError(HttpStatus::FORBIDDEN, "Suspended for this game.");
+            if (src[0]["ahead"].is_null() || !src[0]["ahead"].as<bool>())
+                return jsonError(HttpStatus::BAD_REQUEST, "This game has started.");
+            // An old accepted ask (its invite since revoked) is closed first.
+            db->query("UPDATE fh_event_callin_requests SET withdrawn_at = now() "
+                      " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND withdrawn_at IS NULL "
+                      "   AND decision = 'accepted'", {e, p});
+            db->query("INSERT INTO fh_event_callin_requests (fh_event_id, person_id, from_team_id) "
+                      "VALUES ($1::bigint, $2::int, $3::int) "
+                      "ON CONFLICT (fh_event_id, person_id) WHERE withdrawn_at IS NULL DO NOTHING",
+                      {e, p, src[0]["src"].c_str()});
+        } else {
+            return jsonError(HttpStatus::BAD_REQUEST, "action must be request or withdraw");
+        }
+        auto st = db->query("SELECT fh_event_callin($1::bigint, $2::int)::text AS j", {e, p});
+        json callin = nullptr;
+        if (!st.empty() && !st[0]["j"].is_null()) callin = json::parse(st[0]["j"].c_str());
+        return jsonOk({{"fh_event_id", fhEventId}, {"callin", callin}});
+    } catch (const std::exception& ex) {
+        std::cerr << "[callin] request: " << ex.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the call-in request");
+    }
+}
+
+// GET /api/calendar/events/:id/callins — staff (coach of the event / admin).
+Response CalendarController::handleGetCallins(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+            return jsonOk({{"fh_event_id", fhEventId}, {"can_decide", false}, {"requests", json::array()}});
+        json out = json::array();
+        for (const auto& r : db->query(R"SQL(
+                SELECT r.id, r.person_id, COALESCE(p.first_name, '') AS first_name, COALESCE(p.last_name, '') AS last_name,
+                       r.decision,
+                       to_char(r.requested_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS requested_at,
+                       NULLIF(regexp_replace(COALESCE(ft.label, ft.name, ''), '^[^[:alnum:]]+\s*', ''), '') AS from_team,
+                       -- on the league list of any team on this game (APSL: TeamPass)
+                       EXISTS (SELECT 1 FROM fh_event_teams fet
+                                WHERE fet.fh_event_id = r.fh_event_id
+                                  AND fh_on_league_list(fet.team_id, r.person_id)) AS on_list,
+                       fh_event_invited(r.fh_event_id, r.person_id) AS invited
+                  FROM fh_event_callin_requests r
+                  JOIN persons p ON p.id = r.person_id
+                  LEFT JOIN teams ft ON ft.id = r.from_team_id
+                 WHERE r.fh_event_id = $1::bigint AND r.withdrawn_at IS NULL
+                   AND (r.decision IS DISTINCT FROM 'accepted')
+                 ORDER BY r.requested_at
+            )SQL", {std::to_string(fhEventId)})) {
+            if (r["invited"].as<bool>()) continue;   // invited some other way — nothing to decide
+            out.push_back({
+                {"request_id",   r["id"].as<long long>()},
+                {"person_id",    r["person_id"].as<long long>()},
+                {"first_name",   r["first_name"].c_str()},
+                {"last_name",    r["last_name"].c_str()},
+                {"decision",     r["decision"].is_null() ? json(nullptr) : json(r["decision"].c_str())},
+                {"requested_at", r["requested_at"].c_str()},
+                {"from_team",    r["from_team"].is_null() ? json(nullptr) : json(r["from_team"].c_str())},
+                {"on_list",      r["on_list"].as<bool>()},
+            });
+        }
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_decide", true}, {"requests", out}});
+    } catch (const std::exception& ex) {
+        std::cerr << "[callin] list: " << ex.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load call-in requests");
+    }
+}
+
+// POST /api/calendar/events/:id/callins {request_id, decision: accept|decline|undo}
+//   accept  → fh_event_invites row (from_team = his Liga team, channel 'copy'
+//             = nothing sent); he gets Go / No and sits in No Response.
+//   decline → not this week (his card says so).  undo → back to open ask.
+Response CalendarController::handlePostCallinDecision(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    const long long fhEventId = extractEventIdFromAttendancePath(request.getPath());
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON body"); }
+    const auto rid = jsonInt(body, "request_id");
+    const std::string decision = body.value("decision", std::string(""));
+    if (!rid || *rid <= 0) return jsonError(HttpStatus::BAD_REQUEST, "request_id required");
+    try {
+        auto* db = Database::getInstance();
+        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+            return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can decide call-ins");
+        auto req = db->query("SELECT person_id, from_team_id FROM fh_event_callin_requests "
+                             " WHERE id = $1::bigint AND fh_event_id = $2::bigint AND withdrawn_at IS NULL",
+                             {std::to_string(*rid), std::to_string(fhEventId)});
+        if (req.empty()) return jsonError(HttpStatus::NOT_FOUND, "That request is gone (taken back?)");
+        const std::string uid = resolveUserId(db, gate.personId);
+        const std::string r = std::to_string(*rid);
+        if (decision == "accept") {
+            db->query(
+                "INSERT INTO fh_event_invites (fh_event_id, person_id, from_team_id, recipient_person_id, invited_by_user_id, channel, note) "
+                "VALUES ($1::bigint, $2::int, $3::int, $2::int, NULLIF($4, '')::int, 'copy', 'call-in request (mig 1265)') "
+                "ON CONFLICT (fh_event_id, person_id) WHERE revoked_at IS NULL DO NOTHING",
+                {std::to_string(fhEventId), req[0]["person_id"].c_str(),
+                 req[0]["from_team_id"].is_null() ? std::string() : std::string(req[0]["from_team_id"].c_str()), uid});
+            db->query("UPDATE fh_event_callin_requests SET decision = 'accepted', decided_at = now(), "
+                      "       decided_by_user_id = NULLIF($2, '')::int WHERE id = $1::bigint", {r, uid});
+        } else if (decision == "decline") {
+            db->query("UPDATE fh_event_callin_requests SET decision = 'declined', decided_at = now(), "
+                      "       decided_by_user_id = NULLIF($2, '')::int WHERE id = $1::bigint", {r, uid});
+        } else if (decision == "undo") {
+            db->query("UPDATE fh_event_callin_requests SET decision = NULL, decided_at = NULL, decided_by_user_id = NULL "
+                      " WHERE id = $1::bigint AND decision = 'declined'", {r});
+        } else {
+            return jsonError(HttpStatus::BAD_REQUEST, "decision must be accept, decline or undo");
+        }
+        return jsonOk({{"ok", true}, {"request_id", *rid}, {"decision", decision}});
+    } catch (const std::exception& ex) {
+        std::cerr << "[callin] decide: " << ex.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the decision");
     }
 }

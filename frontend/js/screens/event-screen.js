@@ -226,6 +226,7 @@ class EventScreen extends Screen {
     this.pill = params.pill || 'players';   // render() falls back when the kind has no such pill
     this.att = null;
     this.invites = null;
+    this.callins = null;      // 🙋 call-in requests (mig 1265) — staff, games only
     this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
     this.remindNote = {};     // person_id → last send error, shown on their row
     this.groupNote = '';      // the 📣 bar's result line (html)
@@ -706,11 +707,77 @@ class EventScreen extends Screen {
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
       // 🎟 Invites sit under All Players — load them with it.
       if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
+      if (this.att.canMark && this.ev.kind === 'match') this._loadCallins();
     } catch (err) {
       console.error('[event] attendance load failed:', err);
       this.att = { canMark: false, canSetRsvp: false, roster: new Map() };
     }
     this._render();
+  }
+
+  // 🙋 Call-in requests (mig 1265): Liga 1 players asking in to this game.
+  async _loadCallins() {
+    const id = this.ev.fh_event_id;
+    try {
+      const body = await this._json(`/api/calendar/events/${id}/callins`);
+      if (!this.ev || this.ev.fh_event_id !== id) return;
+      this.callins = body && body.can_decide ? (body.requests || []) : null;
+    } catch (err) {
+      console.error('[event] call-in load failed:', err);
+      this.callins = null;
+    }
+    this._render();
+  }
+
+  // Accept = invited (he gets Go / No, lands in No Response; nothing sent);
+  // decline = not this week; undo = back to waiting.
+  async _decideCallin(requestId, decision) {
+    const key = `callin:${requestId}`;
+    if (this.saving.has(key)) return;
+    this.saving.add(key);
+    this._render();
+    const id = this.ev.fh_event_id;
+    try {
+      await this._json(`/api/calendar/events/${id}/callins`, {
+        method: 'POST', body: JSON.stringify({ request_id: requestId, decision }),
+      });
+      await Promise.all([this._loadCallins(), decision === 'accept' ? this._loadEvent(id) : null]);
+    } catch (err) {
+      alert(`Could not save: ${err.message}`);
+    } finally {
+      this.saving.delete(key);
+      this._render();
+    }
+  }
+
+  _callinsHtml() {
+    const list = Array.isArray(this.callins) ? this.callins : [];
+    if (!list.length) return '';
+    const c = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('callin', tier))
+      ? MessageCopy.block('callin', tier, tokens) : fb;
+    const open = list.filter(r => !r.decision);
+    const declined = list.filter(r => r.decision === 'declined');
+    const row = (r, actions) => {
+      const name = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
+      const busy = this.saving.has(`callin:${r.request_id}`) ? 'disabled' : '';
+      return `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--border-color, #374151);">
+          <span style="flex:1; min-width:150px; font-weight:700;">${this.escapeHtml(name)}
+            ${r.from_team ? `<span style="font-size:0.7rem; opacity:0.7; font-weight:600;"> · ${this.escapeHtml(r.from_team)}</span>` : ''}
+            ${r.on_list ? '' : `<span style="font-size:0.68rem; color:#fbbf24; font-weight:800; margin-left:4px;">${this.escapeHtml(c('off_list', '⚠ not on the APSL list'))}</span>`}</span>
+          ${actions(busy)}
+        </div>`;
+    };
+    const openHtml = open.map(r => row(r, (busy) => `
+        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="accept" ${busy} style="background:#22c55e;">${this.escapeHtml(c('accept', '✓ Accept'))}</button>
+        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="decline" ${busy} style="background:#475569; color:#e2e8f0;">${this.escapeHtml(c('decline', 'Not this week'))}</button>`)).join('');
+    const declinedHtml = declined.length ? `
+        <div style="font-size:0.72rem; opacity:0.7; margin-top:8px; font-weight:700;">${this.escapeHtml(c('declined_title', `Not this week (${declined.length})`, { n: declined.length }))}</div>
+        ${declined.map(r => row(r, (busy) => `<button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="undo" ${busy} style="background:#334155; color:#e2e8f0;">${this.escapeHtml(c('undo_decline', 'Undo'))}</button>`)).join('')}` : '';
+    return `<div class="ec-box" style="border-color:#38bdf8;">
+        <div style="font-weight:800; color:#7dd3fc;">${this.escapeHtml(c('staff_title', `🙋 CALL-IN REQUESTS (${open.length})`, { n: open.length }))}</div>
+        <div style="font-size:0.72rem; opacity:0.75; margin:2px 0 6px;">${this.escapeHtml(c('staff_note', 'Accept = invited: Go / No shows for him and he sits in No Response until he answers. No text is sent.'))}</div>
+        ${openHtml}${declinedHtml}
+      </div>`;
   }
 
   async _loadInvites() {
@@ -1215,6 +1282,7 @@ class EventScreen extends Screen {
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
       if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return; }
       if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return; }
+      if ((el = t('[data-ec-callin]'))) { this._decideCallin(Number(el.dataset.ecCallin), el.dataset.decision); return; }
       if ((el = t('[data-ec-mark-all]'))) {
         this._markAllPresent(el.dataset.ecMarkAll.split(',').map(Number).filter(Boolean));
         return;
@@ -1549,6 +1617,7 @@ class EventScreen extends Screen {
                                { aside: presentAside(coaches), top: bar });
     };
     return `
+      ${this._callinsHtml()}
       ${going.length ? section(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
       ${section(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}
       ${section(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}

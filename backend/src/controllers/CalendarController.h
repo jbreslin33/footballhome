@@ -134,4 +134,11 @@ private:
     Response handlePostEventInvite     (const Request& request);
     Response handleDeleteEventInvite   (const Request& request);
     Response handlePostAutoInvite      (const Request& request);
+    // 🙋 Call-in requests (mig 1265): a Liga 1 player asks in to an APSL game.
+    //   POST /api/calendar/events/:id/callin    {action: request|withdraw} (self)
+    //   GET  /api/calendar/events/:id/callins   staff: open + declined asks
+    //   POST /api/calendar/events/:id/callins   staff: {request_id, decision: accept|decline|undo}
+    Response handlePostCallin          (const Request& request);
+    Response handleGetCallins          (const Request& request);
+    Response handlePostCallinDecision  (const Request& request);
 };

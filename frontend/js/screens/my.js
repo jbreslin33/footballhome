@@ -429,6 +429,12 @@ class MyScreen extends Screen {
         this._setRoleChoice(parseInt(roleBtn.getAttribute('data-fh-event-id'), 10), roleBtn.getAttribute('data-role-choice'));
         return;
       }
+      const callinBtn = target.closest('[data-callin]');
+      if (callinBtn) {
+        e.stopPropagation();
+        this._sendCallin(parseInt(callinBtn.getAttribute('data-fh-event-id'), 10), callinBtn.getAttribute('data-callin'));
+        return;
+      }
       const evBtn = target.closest('[data-ev-btn]');
       if (evBtn) {
         e.stopPropagation();
@@ -1948,7 +1954,7 @@ class MyScreen extends Screen {
     const evYesSaving = this.eventSaving.has(evYesKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const evNoSaving  = this.eventSaving.has(evNoKey) || this.eventSaving.has(`${ev.fh_event_id}:me:clear`);
     const ownDuesPill = !isPast && this._duesBlocksEvent(kind) && this._duesPillHtml(this._duesFor(null));
-    const ownButtonsHtml = ev.my_suspension ? suspendedPill() : ownDuesPill || `
+    const ownButtonsHtml = ev.my_suspension ? suspendedPill() : ev.my_callin ? this._callinButtonHtml(ev, isPast) : ownDuesPill || `
       ${this._btn('Go', 'yes', per === 'yes', 'solid', evYesSaving,
                  `data-ev-btn="yes" data-fh-event-id="${ev.fh_event_id}"`, disabledMsg)}
       ${this._btn('No', 'no', per === 'no', 'solid', evNoSaving,
@@ -2064,7 +2070,8 @@ class MyScreen extends Screen {
     // 🎟 Invited myself (mig 1069): the chip names the way in — CALL-UP ·
     // Reserves — in place of a bare INVITED pill.
     const callupSelf = !whoChild && ev.my_role === 'invited' && ev.my_callup;
-    const rolePillHtml = whoChild ? '' : callupSelf ? this._callupChipHtml(ev.my_callup) : this._rolePillHtml(ev.dual_role ? 'both' : ev.my_role);   // mig 688: COACH + PLAYER   // a child's view is about the child, not my role
+    const rolePillHtml = whoChild ? '' : callupSelf ? this._callupChipHtml(ev.my_callup)
+      : ev.my_callin ? this._callinChipHtml(ev.my_callin) : this._rolePillHtml(ev.dual_role ? 'both' : ev.my_role);   // mig 688: COACH + PLAYER   // a child's view is about the child, not my role
 
     // 🧹 Event job(s) (mig 625/629): the viewer's own assignment and
     // their kids', straight off the feed's my_jobs.  Scoped like the
@@ -2154,6 +2161,7 @@ class MyScreen extends Screen {
             + this._callupNoteHtml(soloChild.callup_badge, { child: String(soloChild.name || '').split(' ')[0], fromFallback: soloChild.callup_from }) : ''}
         ${!soloChild && callupSelf ? this._callupNoteHtml(ev.my_callup) : ''}
         ${!soloChild && ev.my_suspension ? this._suspensionLineHtml(ev.my_suspension, { until: ev.my_suspension_until }) : ''}
+        ${!soloChild && !whoChild && ev.my_callin && !ev.my_suspension ? this._callinNoteHtml(ev) : ''}
         ${soloChild && soloChild.suspension ? this._suspensionLineHtml(soloChild.suspension, { child: String(soloChild.name || '').split(' ')[0], until: soloChild.suspension_until }) : ''}
         ${(() => {
           // 💰 Dues alternate (migs 613–615) on the game card itself (owner:
@@ -2305,6 +2313,59 @@ class MyScreen extends Screen {
     const text = (window.MessageCopy && MessageCopy.block('suspended', tier, { child, until: until || '' }))
       || (child ? `⛔ ${child} is suspended — can't play this game.` : "⛔ You're suspended — you can't play this game.");
     return `<div style="font-size:0.6rem; line-height:1.25; color:#fca5a5; font-weight:700; margin-top:2px;">${this.escapeHtml(text)}</div>`;
+  }
+
+  // 🙋 Call-in (mig 1265): a Liga 1 player sees the APSL game with a
+  // Request call-in button where Go / No would be.  The coach accepting it
+  // = an invite: the next load shows Go / No.  Words: kind 'callin'.
+  _callinCopy(tier, fb, tokens = {}) {
+    return (window.MessageCopy && MessageCopy.has && MessageCopy.has('callin', tier))
+      ? MessageCopy.block('callin', tier, tokens) : fb;
+  }
+  _callinChipHtml(c) {
+    const from = (c && c.from) || '';
+    return `<span style="display:inline-block; margin-right:6px; padding:1px 6px; border-radius:999px; vertical-align:middle;
+                   background:rgba(56,189,248,0.16); color:#7dd3fc; border:1px solid rgba(56,189,248,0.55);
+                   font-size:0.56rem; font-weight:800; letter-spacing:0.03em;">${this.escapeHtml(this._callinCopy('chip', 'CALL-IN', { from }))}</span>`;
+  }
+  _callinButtonHtml(ev, isPast) {
+    const c = ev.my_callin || {};
+    if (isPast || c.state !== 'open') return '';
+    const saving = this.eventSaving.has(`${ev.fh_event_id}:callin`);
+    return `<button type="button" data-callin="request" data-fh-event-id="${ev.fh_event_id}" ${saving ? 'disabled' : ''}
+        style="padding:4px 10px; border-radius:6px; cursor:pointer; font-weight:800; font-size:0.72rem; white-space:nowrap;
+               background:#0369a1; color:#fff; border:1px solid #38bdf8; opacity:${saving ? 0.6 : 1};">${this.escapeHtml(this._callinCopy('button', '🙋 Request call-in'))}</button>`;
+  }
+  _callinNoteHtml(ev) {
+    const c = ev.my_callin || {};
+    const from = c.from || '';
+    const line = (text, color) => `<div style="font-size:0.6rem; line-height:1.3; margin-top:3px; font-weight:700; color:${color};">${text}</div>`;
+    if (c.state === 'requested') {
+      const saving = this.eventSaving.has(`${ev.fh_event_id}:callin`);
+      return line(`${this.escapeHtml(this._callinCopy('requested', '🙋 Call-in requested — the coach will let you know.', { from }))}
+        <button type="button" data-callin="withdraw" data-fh-event-id="${ev.fh_event_id}" ${saving ? 'disabled' : ''}
+          style="margin-left:6px; padding:1px 7px; border-radius:4px; cursor:pointer; font-size:0.58rem; font-weight:700;
+                 background:transparent; color:#cbd5e1; border:1px solid #475569;">${this.escapeHtml(this._callinCopy('withdraw', 'Take it back'))}</button>`, '#7dd3fc');
+    }
+    if (c.state === 'declined') return line(this.escapeHtml(this._callinCopy('declined', 'Not this week — thanks for putting your hand up.', { from })), '#94a3b8');
+    return line(this.escapeHtml(this._callinCopy('note', 'Want in for this one? Put your hand up and the coach will let you know.', { from })), 'rgba(255,255,255,0.8)');
+  }
+  async _sendCallin(fhEventId, action) {
+    const key = `${fhEventId}:callin`;
+    if (this.eventSaving.has(key)) return;
+    this.eventSaving.add(key);
+    this._renderEvents();
+    try {
+      const body = await this._fetch(`/api/calendar/events/${fhEventId}/callin`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }) });
+      const ev = (this.events || []).find(e => e.fh_event_id === fhEventId);
+      if (ev && body && 'callin' in body) ev.my_callin = body.callin;
+    } catch (err) {
+      console.warn('call-in request failed', err);
+    } finally {
+      this.eventSaving.delete(key);
+      this._renderEvents();
+    }
   }
 
   _callupKind(badge) {
