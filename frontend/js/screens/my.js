@@ -2358,28 +2358,44 @@ class MyScreen extends Screen {
     const c = ev.my_callin || {};
     const from = c.from || 'Liga 1';
     const day = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: MyScreen.NY });
-    const kick = new Date(ev.starts_at).getTime();
-    const prev = (this.events || [])
+    const ms = (iso) => new Date(iso).getTime();
+    const kick = ms(ev.starts_at);
+    // His own game the same day (the Liga game), before or after this one.
+    const same = (this.events || [])
       .filter(o => o !== ev && o.kind === 'match' && !o.my_callin && o.my_role && o.my_role !== 'coach'
-                && o.ends_at && day(o.starts_at) === day(ev.starts_at) && new Date(o.starts_at).getTime() < kick)
-      .sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
+                && day(o.starts_at) === day(ev.starts_at))
+      .sort((a, b) => Math.abs(ms(a.starts_at) - kick) - Math.abs(ms(b.starts_at) - kick))[0];
     let text = this._callinCopy('both_note', `You can do both — just leave after ${from} is over and head to APSL.`, { from });
-    if (prev) {
-      const drive = this._travelMinutes(prev, ev);
+    if (same) {
+      const otherFirst = ms(same.starts_at) < kick;
+      const first = otherFirst ? same : ev, second = otherFirst ? ev : same;
+      const drive = first.ends_at ? this._travelMinutes(first, second) : undefined;
       if (drive !== undefined) {
         const step = ((this.drive && this.drive.policy && this.drive.policy.round_to_minutes) || 5) * 60000;
-        const end = new Date(prev.ends_at).getTime();
+        const end = ms(first.ends_at);
         const arrive = Math.ceil((end + (drive || 0) * 60000) / step) * step;
-        const parts = String(prev.location || '').split(',').map(x => x.trim()).filter(Boolean);
-        const place = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] || '');
-        const tokens = { from, end: this._nyLabel(end), place, arrive: this._nyLabel(arrive),
-                         minutes: String(drive || 0), kickoff: this._nyLabel(kick) };
-        text = this._callinCopy('after_game',
-          `You can do both — just leave after ${from} is over and head to APSL. You'll get here about ${tokens.arrive} (kickoff ${tokens.kickoff}) and that's fine.`, tokens);
+        const city = (loc) => { const p = String(loc || '').split(',').map(x => x.trim()).filter(Boolean); return p.length >= 3 ? p[p.length - 3] : (p[0] || ''); };
+        const venue = (loc) => String(loc || '').split(',')[0].trim();
+        if (otherFirst) {
+          // Liga first → leave it, drive to APSL.
+          const to = venue(ev.location) || 'the APSL game';
+          const tokens = { from, start: this._nyLabel(ms(same.starts_at)), end: this._nyLabel(end), place: city(same.location), to,
+                           arrive: this._nyLabel(arrive), minutes: String(drive || 0), kickoff: this._nyLabel(kick) };
+          text = this._callinCopy('after_game',
+            `Play ${from} first (${tokens.start} in ${tokens.place}). Leave as soon as it ends (~${tokens.end}) and drive straight to ${to} (~${tokens.minutes} min). You'll get there about ${tokens.arrive} for the ${tokens.kickoff} kickoff — that's fine.`, tokens);
+        } else {
+          // APSL first → leave it when it's over, drive to Liga.
+          const tokens = { from, start: this._nyLabel(kick), end: this._nyLabel(end), place: venue(ev.location) || 'the APSL game',
+                           to: city(same.location) || venue(same.location), arrive: this._nyLabel(arrive), minutes: String(drive || 0),
+                           kickoff: this._nyLabel(ms(same.starts_at)) };
+          text = this._callinCopy('before_game',
+            `APSL is first (${tokens.start} at ${tokens.place}). Leave as soon as it ends (~${tokens.end}) and drive straight to ${from} in ${tokens.to} (~${tokens.minutes} min). You'll get there about ${tokens.arrive} for the ${tokens.kickoff} ${from} kickoff — that's fine.`, tokens);
+        }
       }
     }
     return `<div style="font-size:0.6rem; line-height:1.3; margin-top:3px; font-weight:700; color:#86efac;">${this.escapeHtml(text)}</div>`;
   }
+
   async _sendCallin(fhEventId, action) {
     const key = `${fhEventId}:callin`;
     if (this.eventSaving.has(key)) return;
