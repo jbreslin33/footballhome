@@ -6,6 +6,7 @@
 #include <regex>
 #include <sstream>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -60,7 +61,12 @@ PaymentsController::PaymentsController()
       mensInactiveProgramId_   (envIntOr("LEAGUEAPPS_MENS_INACTIVE_PROGRAM_ID",   5093107)),
       womensInactiveProgramId_ (envIntOr("LEAGUEAPPS_WOMENS_INACTIVE_PROGRAM_ID", 5114228)),
       boysInactiveProgramId_   (envIntOr("LEAGUEAPPS_BOYS_INACTIVE_PROGRAM_ID",   0)),
-      girlsInactiveProgramId_  (envIntOr("LEAGUEAPPS_GIRLS_INACTIVE_PROGRAM_ID",  0)) {}
+      girlsInactiveProgramId_  (envIntOr("LEAGUEAPPS_GIRLS_INACTIVE_PROGRAM_ID",  0)),
+      // leagueapps_programs variant='pickup' rows.
+      mensPickupProgramId_     (envIntOr("LEAGUEAPPS_MENS_PICKUP_PROGRAM_ID",     5070075)),
+      womensPickupProgramId_   (envIntOr("LEAGUEAPPS_WOMENS_PICKUP_PROGRAM_ID",   5064686)),
+      boysPickupProgramId_     (envIntOr("LEAGUEAPPS_BOYS_PICKUP_PROGRAM_ID",     5064618)),
+      girlsPickupProgramId_    (envIntOr("LEAGUEAPPS_GIRLS_PICKUP_PROGRAM_ID",    5064662)) {}
 
 PaymentsController::~PaymentsController() = default;
 
@@ -115,31 +121,35 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
     // reads person_la_memberships.
     std::vector<int> mensMembersPrograms = {mensProgramId_};
     if (mensInactiveProgramId_ > 0) mensMembersPrograms.push_back(mensInactiveProgramId_);
+    if (mensPickupProgramId_ > 0) mensMembersPrograms.push_back(mensPickupProgramId_);
     laGet(router, prefix + "/mens/members", mensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
-            return this->handleGetMembersForProgram("mens", mensProgramId_, mensInactiveProgramId_, sync);
+            return this->handleGetMembersForProgram("mens", mensProgramId_, mensInactiveProgramId_, mensPickupProgramId_, sync);
         });
     std::vector<int> womensMembersPrograms = {womensProgramId_};
     if (womensInactiveProgramId_ > 0) womensMembersPrograms.push_back(womensInactiveProgramId_);
+    if (womensPickupProgramId_ > 0) womensMembersPrograms.push_back(womensPickupProgramId_);
     laGet(router, prefix + "/womens/members", womensMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
-            return this->handleGetMembersForProgram("womens", womensProgramId_, womensInactiveProgramId_, sync);
+            return this->handleGetMembersForProgram("womens", womensProgramId_, womensInactiveProgramId_, womensPickupProgramId_, sync);
         });
     std::vector<int> boysMembersPrograms = {boysProgramId_};
     if (boysInactiveProgramId_ > 0) boysMembersPrograms.push_back(boysInactiveProgramId_);
+    if (boysPickupProgramId_ > 0) boysMembersPrograms.push_back(boysPickupProgramId_);
     laGet(router, prefix + "/boys/members", boysMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
-            return this->handleGetMembersForProgram("boys", boysProgramId_, boysInactiveProgramId_, sync);
+            return this->handleGetMembersForProgram("boys", boysProgramId_, boysInactiveProgramId_, boysPickupProgramId_, sync);
         });
     std::vector<int> girlsMembersPrograms = {girlsProgramId_};
     if (girlsInactiveProgramId_ > 0) girlsMembersPrograms.push_back(girlsInactiveProgramId_);
+    if (girlsPickupProgramId_ > 0) girlsMembersPrograms.push_back(girlsPickupProgramId_);
     laGet(router, prefix + "/girls/members", girlsMembersPrograms,
         [this](const Request& req, const LaSyncMap& sync) {
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
-            return this->handleGetMembersForProgram("girls", girlsProgramId_, girlsInactiveProgramId_, sync);
+            return this->handleGetMembersForProgram("girls", girlsProgramId_, girlsInactiveProgramId_, girlsPickupProgramId_, sync);
         });
 
     // GET /api/payments/standing?person_ids=1,2,3 — one line per player card
@@ -228,6 +238,7 @@ Response PaymentsController::handleGetForProgram(const std::string& programKey,
 Response PaymentsController::handleGetMembersForProgram(const std::string& programKey,
                                                         long long programId,
                                                         long long inactiveProgramId,
+                                                        long long pickupProgramId,
                                                         const LaSyncMap& sync) {
     // 1. Membership state has ALREADY been refreshed by laGet's wrapper
     //    (LaProgramSync::run(programId) fired before dispatch).  All we
@@ -261,6 +272,17 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         }
     }
 
+    // Pickup-program LA payments (same sync map) — the balance of a member
+    // whose registration currently sits in pickup.
+    std::unordered_map<long long, LaProgramSync::LaPayment> laPaymentsPickup;
+    bool laReachablePickup = false;
+    if (pickupProgramId > 0) {
+        if (auto it = sync.find(static_cast<int>(pickupProgramId)); it != sync.end()) {
+            laPaymentsPickup = it->second.paymentByRegistration;
+            laReachablePickup = true;
+        }
+    }
+
     // 2. Refresh payment cursor — cheap after the first pass on this
     //    process (0 rows once caught up).
     try {
@@ -289,6 +311,26 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
             inactiveRows = payments_->loadMembersForProgram(inactiveProgramId);
         } catch (const std::exception& e) {
             std::cerr << "[PaymentsController::members] inactive-program load failed: "
+                      << e.what() << std::endl;
+        }
+    }
+
+    // 3c. Members whose registration currently sits in the category's
+    // pickup program.  They are club members for dues (the registration —
+    // and every payment on it — moves with them), so they join the active
+    // list: same status sections, same counts, a Pickup chip on the card.
+    // A person already on the active list keeps that row.
+    if (pickupProgramId > 0) {
+        try {
+            std::unordered_set<int> onActive;
+            for (const auto& m : rows) if (m.personId) onActive.insert(m.personId);
+            for (auto& m : payments_->loadMembersForProgram(pickupProgramId)) {
+                if (m.personId && onActive.count(m.personId)) continue;
+                m.variant = "pickup";
+                rows.push_back(std::move(m));
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "[PaymentsController::members] pickup-program load failed: "
                       << e.what() << std::endl;
         }
     }
@@ -347,7 +389,8 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         row["nextDueSource"] = m.nextDueSource.empty() ? json(nullptr) : json(m.nextDueSource);
         row["finalNotice"]   = m.finalNotice;
         row["upcomingDueAt"] = m.upcomingDueAt.empty() ? json(nullptr) : json(m.upcomingDueAt);
-        row["variant"]       = "active";
+        const bool isPickup  = m.variant == "pickup";
+        row["variant"]       = isPickup ? "pickup" : "active";
         if (m.finalNotice) ++cFinalNotice;
 
         // Reconciliation.  Skip entirely if LA was unreachable OR if we
@@ -355,9 +398,11 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         // an ancient row from before migration 081 that hasn't been
         // touched by a re-sync yet).
         json discrepancy = json(nullptr);
-        if (laReachable && m.laRegistrationId != 0) {
-            auto it = laPayments.find(m.laRegistrationId);
-            if (it != laPayments.end()) {
+        const auto& laMap      = isPickup ? laPaymentsPickup : laPayments;
+        const bool  laMapReady = isPickup ? laReachablePickup : laReachable;
+        if (laMapReady && m.laRegistrationId != 0) {
+            auto it = laMap.find(m.laRegistrationId);
+            if (it != laMap.end()) {
                 const auto& la = it->second;
                 row["laAmountPaid"]         = la.amountPaid;
                 row["laOutstandingBalance"] = la.outstanding;

@@ -19,20 +19,6 @@ class PaymentsScreen extends Screen {
     this.tab  = 'all';                      // program tab ('all' aggregates the 4 categories)
     this.view = 'members';                  // view mode: members / transactions / queue
     this.search = '';
-    // Program-variant modifier that pairs with `this.tab` when the
-    // operator picked a specific Program chip.  `null` = category
-    // row is active (or 'all').  `'club'` = the Club variant for
-    // `this.tab` is selected.  (Pickup is disabled for now.)
-    this._programVariant = null;
-    // Status filter for the Members view.  '' = All; otherwise one of
-    // 'current' | 'behind' | 'overdue' | 'never'.  Cards are rendered
-    // grouped by status so the operator can spot "who owes me" without
-    // scrolling; the chips let them narrow to a single status.
-    this.statusFilter = '';
-    // 📊 stats pill: which programmes the stats section counts.  Follows
-    // the category filter when that changes; its own pills move only the
-    // stats, never the cards.
-    this.statsTab = 'all';
     // Members-view state
     this.membersByTab       = { mens: null, womens: null, boys: null, girls: null };
     this.membersLoadingByTab= { mens: false, womens: false, boys: false, girls: false };
@@ -164,7 +150,6 @@ class PaymentsScreen extends Screen {
     if (params) {
       if (['all','mens','womens','boys','girls'].includes(params.initialTab)) {
         this.tab = params.initialTab;
-        this.statsTab = this.tab;
       }
       if (['members','transactions','queue'].includes(params.initialView)) {
         this.view = params.initialView;
@@ -182,8 +167,6 @@ class PaymentsScreen extends Screen {
 
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
-      const statsPill = e.target.closest('[data-stats-tab]');
-      if (statsPill) { this.statsTab = statsPill.getAttribute('data-stats-tab'); this._renderStats(); return; }
       // ⋯ / banner / injury chip → the player sheet (mig 1235).
       const sheetBtn = e.target.closest('[data-player-sheet]');
       if (sheetBtn) { this.openPlayerSheet(sheetBtn.getAttribute('data-player-sheet'), sheetBtn.getAttribute('data-sheet-tab')); return; }
@@ -294,81 +277,26 @@ class PaymentsScreen extends Screen {
     }
   }
 
-  // ── Program / category / status filters (FilterBar) ─────────────────
-  // Payments mirrors the Members screen's filter layout via the shared
-  // `FilterBar` component: three rows (category / program / status) so
-  // an admin can slice the ledger the same way they slice membership.
-  //
-  // Row 1 — Category  [💰 All] [👨 Mens] [👩 Womens] [👦 Boys] [👧 Girls]
-  //         Radio; mutually exclusive with the program row.  Selecting
-  //         a category loads the corresponding LA program (or, for
-  //         'all', aggregates the four background-loaded ones).
-  //
-  // Row 2 — Program   [👨 Mens Club Payments] [👨 Mens Pickup Payments] …
-  //         Radio; mutually exclusive with the category row.  Pickup
-  //         chips are DISABLED for now — pickup is free, so there's no
-  //         ledger to show.  Rendered anyway so the visual parity with
-  //         Members holds; when we start charging for pickup we flip
-  //         the `disabled` flag and add the endpoint.
-  //
-  // Row 3 — Status    [All] [🔴 Overdue] [⚫ Never Paid] [🟡 Behind] [🟢 Paid Up]
-  //         Radio; narrows the Members list to a single status band.
-  //         Counts come from whatever data the current tab has loaded.
+  // ── Section pills (FilterBar) ───────────────────────────────────────
+  // ONE row (owner 2026-11-11: "drop all the pills except all, men,
+  // women, boys, girls and boys/girls"):
+  //   [💰 All] [👨 Mens] [👩 Womens] [👦 Boys + Girls] [👧 Girls]
+  // It picks the section for the stats box AND the list.  Boys shows Boys
+  // + Girls (club rule, Screen.sectionIncludes), so its pill says so —
+  // that is the "boys/girls" pill; Girls is girls only.  Gone: the stats
+  // box's own pills, the Club / Pickup program row (pickup members sit in
+  // their section with a Pickup chip — mig 1240) and the status row (the
+  // list is already split into status sections, the stats box counts).
   _buildFilterBar() {
     const host = this.find('#pay-filters');
     if (!host) return;
-
-    // ── Row 1: Category chips ──
     const categoryChips = [
-      { id: 'all',    label: '💰 All'    },
-      { id: 'mens',   label: '👨 Mens'   },
-      { id: 'womens', label: '👩 Womens' },
-      { id: 'boys',   label: '👦 Boys'   },
-      { id: 'girls',  label: '👧 Girls'  },
+      { id: 'all',    label: '💰 All'          },
+      { id: 'mens',   label: '👨 Mens'         },
+      { id: 'womens', label: '👩 Womens'       },
+      { id: 'boys',   label: '👦 Boys + Girls' },
+      { id: 'girls',  label: '👧 Girls'        },
     ];
-
-    // ── Row 2: Program chips (Club + Pickup per category) ──
-    // Pickup is disabled until we charge for it — but we render the
-    // chip so admins see the future shape of the filter.
-    const emoji = (cat) => ({ mens:'👨', womens:'👩', boys:'👦', girls:'👧' }[cat] || '💰');
-    const clubLabel   = (cat) => `${emoji(cat)} ${this._titleCase(cat)} Club Payments`;
-    const pickupLabel = (cat) => `${emoji(cat)} ${this._titleCase(cat)} Pickup Payments`;
-    const programChips = [];
-    for (const cat of ['mens','womens','boys','girls']) {
-      programChips.push({ id: `${cat}-club`,   label: clubLabel(cat)   });
-      programChips.push({
-        id:       `${cat}-pickup`,
-        label:    pickupLabel(cat),
-        disabled: true,   // Pickup is free — no charges to show yet.
-      });
-    }
-
-    // ── Row 3: Status chips (Members-view only) ──
-    // Counts come from the currently selected tab's data (or from the
-    // aggregated all-tab data when 'all' is selected).  Rebuilt on
-    // every setRows() call so numbers stay live.
-    const c = this._activeCounts();
-    const statusChips = [
-      { id: 'all',          label: 'All',                 count: this._activeTotal() },
-      { id: 'final-notice', label: '⚠️ Final Notice',    count: c.finalNotice || 0 },
-      { id: 'overdue',      label: '🔴 Overdue',         count: c.overdue || 0 },
-      { id: 'never',        label: '⚫ Never Paid',      count: c.never   || 0 },
-      { id: 'behind',       label: '🟡 Behind',          count: c.behind  || 0 },
-      { id: 'current',      label: '🟢 Paid Up',         count: c.current || 0 },
-      { id: 'volunteer',    label: this._duesFreeCopy('volunteer', 'label'), count: c.volunteer || 0 },
-      { id: 'injured',      label: this._duesFreeCopy('injured', 'label'),   count: c.injured || 0 },
-    ];
-
-    // Category-row selection reflects the current tab; program-row
-    // selection reflects the current tab when a Club variant is
-    // implicitly chosen (pickup is disabled so program-selected can
-    // only be `<cat>-club`).  When the category row is set to
-    // anything, the program row is cleared, and vice-versa.
-    const categorySelected = this._catSelectedId();
-    const programSelected  = (this.tab !== 'all' && this._programVariant === 'club')
-                             ? `${this.tab}-club` : null;
-    const statusSelected   = this.statusFilter || 'all';
-
     if (!this._filterBar) {
       this._filterBar = new FilterBar({ host });
     }
@@ -376,62 +304,13 @@ class PaymentsScreen extends Screen {
       {
         name: 'category',
         chips: categoryChips,
-        selected: categorySelected,
-        clears: ['program'],
+        selected: this.tab || 'all',
         onSelect: (id) => {
-          if (id == null || id === 'all') {
-            this.tab = 'all';
-            this._programVariant = null;
-          } else {
-            this.tab = id;
-            this._programVariant = null;
-          }
-          this.statsTab = this.tab;
+          this.tab = (id == null || id === 'all') ? 'all' : id;
           this.loadCurrent();
-        },
-      },
-      {
-        name: 'program',
-        chips: programChips,
-        selected: programSelected,
-        clears: ['category'],
-        onSelect: (id) => {
-          if (id == null) {
-            // Toggle-off → fall back to "All".
-            this.tab = 'all';
-            this._programVariant = null;
-            this.statsTab = 'all';
-            this.loadCurrent();
-            return;
-          }
-          const [cat, variant] = id.split('-');
-          if (variant === 'pickup') return; // safety — chip is disabled
-          this.tab = cat;
-          this._programVariant = 'club';
-          this.statsTab = this.tab;
-          this.loadCurrent();
-        },
-      },
-      {
-        name: 'status',
-        chips: statusChips,
-        selected: statusSelected,
-        onSelect: (id) => {
-          this.statusFilter = (id === 'all' || id == null) ? '' : id;
-          this.rerender();
         },
       },
     ]);
-  }
-
-  // Returns the id of the category chip that should render as selected
-  // given the current tab.  `null` means the whole row is cleared
-  // (never happens for Payments — we always have a tab).
-  _catSelectedId() {
-    // If a specific Club program is chosen, the category row is
-    // cleared (mutual exclusion with the program row).
-    if (this._programVariant === 'club') return null;
-    return this.tab || 'all';
   }
 
   _titleCase(s) {
@@ -483,14 +362,6 @@ class PaymentsScreen extends Screen {
     }
     return c;
   }
-
-  // Counts used to label the status chips — summed over the tab's shards.
-  _activeCounts() { return this._countsFor(this._shardKeys()); }
-
-  // Excludes the Inactive section — this feeds the "All" status chip,
-  // which is a payment-status total, not a headcount of everyone shown
-  // on the screen.
-  _activeTotal() { return this._countsFor(this._shardKeys()).active; }
 
   // ── 'All' aggregation helpers ───────────────────────────────────────
   // Combine the four per-category payloads (mens/womens/boys/girls) that
@@ -585,8 +456,6 @@ class PaymentsScreen extends Screen {
   switchTab(key) {
     if (!key || this.tab === key) return;
     this.tab = key;
-    this._programVariant = null;
-    this.statsTab = key;
     this._buildFilterBar();
     this.loadCurrent();
   }
@@ -765,10 +634,7 @@ class PaymentsScreen extends Screen {
     const injuredOf = (mm) => (mm.status !== 'volunteer' ? this._injuryOf(mm) : null);
     const rows = (data.members || []).filter((mm) => {
       if (mm.variant === 'inactive') return false;
-      if (this.statusFilter === 'injured') return !!injuredOf(mm) && searchMatch(mm);
-      if (injuredOf(mm)) return !this.statusFilter && searchMatch(mm);
-      if (this.statusFilter === 'final-notice') return !!mm.finalNotice;
-      if (this.statusFilter && mm.status !== this.statusFilter) return false;
+      if (injuredOf(mm)) return searchMatch(mm);
       return searchMatch(mm);
     });
 
@@ -1390,6 +1256,13 @@ class PaymentsScreen extends Screen {
                         background:${injury.status.colorBg || '#3a2e05'}; color:${injury.status.colorFg || '#fde68a'}; border:1px solid ${injury.status.colorBorder || '#d97706'};">
            ${this.escape(injury.label || injury.status.displayName)}</button>`
       : '';
+    // In LA's pickup program right now — still a club member for dues
+    // (the registration and its payments move with them; mig 1240).
+    const pickupChip = m.variant === 'pickup'
+      ? `<span title="${this.escape(this._sheetCopy('pickup_chip_title', 'Registration is in the LA pickup program right now — counts toward club dues'))}"
+               style="align-self:flex-start; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:4px; background:#1e293b; color:#a5f3fc; border:1px solid #0891b2;">
+           ${this.escape(this._sheetCopy('pickup_chip', '🔁 Pickup'))}</span>`
+      : '';
     return `
       <div class="pay-member-card"
            data-player-key="${this.escape(key)}"
@@ -1400,6 +1273,7 @@ class PaymentsScreen extends Screen {
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${c.prorateCell}${c.finesCells}${c.badge}${window.PlayerSheet ? PlayerSheet.button(key, { tab: 'money' }) : ''}</div>
         </div>
         ${m.personId ? `<div data-roster-standing="${m.personId}"></div>` : ''}
+        ${pickupChip}
         ${injuryChip}
         ${banner}
         ${c.duesFree ? `<div style="font-size:0.8rem; color:#93c5fd; background:#172554; border:1px solid #2563eb; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
@@ -2768,28 +2642,14 @@ class PaymentsScreen extends Screen {
     };
   }
 
-  // 📊 The one stats section.  Pills: All / Mens / Womens / Boys / Girls;
-  // Boys counts Boys + Girls (same rule as every screen —
-  // Screen.sectionIncludes), so the pill says so.  Multi-programme sums
+  // 📊 The one stats section — counts the section the pill row picked
+  // (Boys = Boys + Girls, Screen.sectionIncludes).  Multi-programme sums
   // add each programme's own estimate (fees differ per programme).
   _renderStats() {
     const el = this.find('#pay-stats');
     if (!el) return;
-    const keys = this._shardKeys(this.statsTab);
+    const keys = this._shardKeys(this.tab);
     const s = this._combinedSummary(keys);
-    const pills = [
-      { id: 'all',    label: '🌐 All programs' },
-      { id: 'mens',   label: '👨 Mens' },
-      { id: 'womens', label: '👩 Womens' },
-      { id: 'boys',   label: '👦 Boys + Girls' },
-      { id: 'girls',  label: '👧 Girls only' },
-    ].map((p) => {
-      const on = p.id === this.statsTab;
-      return `<button type="button" data-stats-tab="${p.id}"
-        style="padding:4px 12px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.8rem;
-               background:${on ? '#0ea5e9' : 'transparent'}; color:${on ? '#fff' : 'var(--fg, #e5e7eb)'};
-               border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${p.label}</button>`;
-    }).join('');
     const stat = (label, value, color, title) =>
       `<div${title ? ` title="${this.escape(title)}"` : ''} style="min-width:110px;">
          <div style="opacity:0.65; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em;">${label}</div>
@@ -2805,7 +2665,7 @@ class PaymentsScreen extends Screen {
       ? `<span style="opacity:0.6; font-size:0.75rem;">${s.loadedCount}/${s.wanted} loaded…</span>` : '';
     el.innerHTML = `
       <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
-        <span style="font-weight:800; margin-right:4px;">📊 Stats</span>${pills}${loading}
+        <span style="font-weight:800; margin-right:4px;">📊 Stats · ${this.escape(this._shardLabel(keys))}</span>${loading}
       </div>
       ${row('PLAYERS', [
         stat('Members', s.totalMembers - s.inactiveCount),

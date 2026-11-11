@@ -47,12 +47,24 @@ private:
     int boysInactiveProgramId_;
     int girlsInactiveProgramId_;
 
+    // "Pickup" program per category.  LA moves a member between club and
+    // pickup by MOVING the same registration (same la_registration_id), so
+    // the payment-advance math already counts pickup money toward club
+    // dues; these rows put the people currently sitting in pickup on the
+    // section's Tuition list too (owner 2026-11-11: "count pickup toward
+    // club dues").  0 = none for that category.
+    int mensPickupProgramId_;
+    int womensPickupProgramId_;
+    int boysPickupProgramId_;
+    int girlsPickupProgramId_;
+
     Response handleGetForProgram(const std::string& programKey,
                                  long long programId,
                                  const LaSyncMap& sync);
     Response handleGetMembersForProgram(const std::string& programKey,
                                         long long programId,
                                         long long inactiveProgramId,
+                                        long long pickupProgramId,
                                         const LaSyncMap& sync);
     // Operator override: POST /api/payments/members/:regId/next-due.
     Response handleSetNextDue(const Request& request);

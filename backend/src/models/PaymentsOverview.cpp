@@ -28,7 +28,7 @@ json PaymentsOverview::build(int clubId) {
                    fh_dues_balance_usd(m.person_id) AS owed
               FROM person_la_memberships m
               JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
-             WHERE m.ended_at IS NULL AND lp.variant = 'active'
+             WHERE m.ended_at IS NULL AND lp.variant IN ('active', 'pickup')   -- pickup = club member for dues (mig 1240)
              ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
         )
         SELECT sec.id, sec.name, sec.code, sec.category, sec.rate, sec.line,
@@ -75,7 +75,7 @@ json PaymentsOverview::build(int clubId) {
                    fh_dues_free_reason(m.person_id) AS free_reason, fh_dues_balance_usd(m.person_id) AS owed,
                    cash_flow_dues_scope(m.person_id, lp.category, now()) AS scope
               FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
-             WHERE m.ended_at IS NULL AND lp.variant = 'active'
+             WHERE m.ended_at IS NULL AND lp.variant IN ('active', 'pickup')   -- pickup = club member for dues (mig 1240)
              ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
         )
         SELECT mem.scope, sec.code, sec.rate, sec.line, sc.label, sc.sort_order,

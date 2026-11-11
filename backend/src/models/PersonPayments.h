@@ -130,6 +130,7 @@ public:
         int         personId = 0;
         long long   laUserId = 0;
         long long   laRegistrationId = 0;  // join key back to LA registration record
+        std::string variant;               // "" = the program loaded; "pickup" when folded in from the pickup program
         std::string firstName;
         std::string lastName;
         std::string dob;                   // ISO date (YYYY-MM-DD) or empty
