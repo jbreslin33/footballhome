@@ -129,7 +129,7 @@ struct Stats {
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
-    int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {};   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
+    int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {}; std::vector<double> rn_wm[ai::kWhyCount + 2], rn_wt[ai::kWhyCount + 2]; double rn_tg[32] = {};   // §8.193: every run by his order at its start: where it got to, and his target's gap then   // §8.150: a ball-still run by his order at its start (+ front man, second man)   // §8.148: outfield starters by role
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
@@ -1295,6 +1295,7 @@ int main(int argc, char** argv) {
                                     if (S.rn_sm[j] < 0) ++S.rn_past;
                                     ++S.rn_nb[S.rn_b[j]]; S.rn_minb[S.rn_b[j]].push_back(S.rn_sm[j]);
                                     if (S.rn_b[j] == 0) ++S.rn_whn[S.rn_wh[j]];
+                                    S.rn_wm[S.rn_wh[j]].push_back(S.rn_sm[j]); S.rn_wt[S.rn_wh[j]].push_back(S.rn_tg[j]);
                                 }
                                 S.rn_k[j] = 0;
                             };
@@ -1348,6 +1349,7 @@ int main(int argc, char** argv) {
                                                    : static_cast<int>(s.lastOrders()[j].why);
                                     }
                                     ++S.rn_k[j]; if (gp < S.rn_sm[j]) S.rn_sm[j] = gp; S.rn_last[j] = static_cast<long>(k);
+                                    S.rn_tg[j] = hx - s.lastOrders()[j].target.x.toDouble() * sg - line;   // §8.193: his target's gap, last frame of the run
                                 } else if (S.rn_k[j] > 0) closeRun(j);
                             }
                         }
@@ -2568,6 +2570,15 @@ int main(int argc, char** argv) {
                         rt / tm, S.rn_n[0] / tm, S.rn_n[1] / tm, S.rn_n[2] / tm, S.rn_n[3] / tm);
             std::printf("   by role CB %.1f (7.9) FB %.1f (17.4) DM %.1f (24.9) AM %.1f (22.7) WIDE %.1f (73.9) ST %.1f (62.4); medians: starts %.1f m short (8.4), gets to %.1f (3.9), lasts %.1f s (1.8); past the line %.0f%% (7%%)\n",
                         S.rn_r[0] / tm, S.rn_r[1] / tm, S.rn_r[2] / tm, S.rn_r[3] / tm, S.rn_r[4] / tm, S.rn_r[5] / tm, med(S.rn_g0), med(S.rn_min), med(S.rn_len), 100.0 * S.rn_past / std::max(1L, rt));
+            {   // §8.193 every run by his order at its start
+                std::printf("   RUNS by his order at the start: a team-match | gets to m short median | his target's gap at the end median:");
+                for (int w = 0; w < ai::kWhyCount + 2; ++w) {
+                    if (S.rn_wm[w].size() < 8) continue;
+                    const char* nm = w == ai::kWhyCount ? "FRONT MAN" : w == ai::kWhyCount + 1 ? "SECOND MAN" : ai::kWhyNames[w];
+                    std::printf(" %s %.1f | %.1f | %.1f;", nm, S.rn_wm[w].size() / tm, med(S.rn_wm[w]), med(S.rn_wt[w]));
+                }
+                std::printf("\n");
+            }
             std::printf("   the ball not going forward: %.1f a team-match (41.7), gets to %.1f m short (4.3); going forward 2+: %.1f (167.4), gets to %.1f (3.9); men on a RunLine job %.2f a frame\n",
                         S.rn_nb[0] / tm, med(S.rn_minb[0]), S.rn_nb[1] / tm, med(S.rn_minb[1]), static_cast<double>(S.run_why) / std::max(1L, S.gb_f[0] + S.gb_f[1] + S.gb_f[2] + S.gb_f[3]));
             std::printf("   RunLine: eligible man-seconds (0-12 m short, ball under 2 m/s on) / starts a team-match:");

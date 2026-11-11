@@ -8579,3 +8579,30 @@ receiver is still 1 m/s slower than real, and runners at the line at a forward p
 **Next moles.** (1) **Runs**: men on the move at their line when the ball can be played forward (0.01
 v 0.06 a pass; receiver at the kick 2.7 v 3.8 m/s). (2) Spells starting wide back to 35+ (28-32 v 17%).
 (3) Carries into the crossing zone 2.3 (8.8). (4) Take-ons 3×. (5) Possessions twice too long.
+
+### 8.193 G5.92 — runs end short of their spot: measured; the ease and the forward cap tried, neither shipped (no migration)
+
+§8.192's next (1): runs. We make about as many as real (RUNS 223 a team-match v 209), but they end
+6.1 m short of their line (3.9). The front man sits 4+ m short 29-36% of frames with the ball 20-70 m
+out (10-21), past it 6-11% (15-21).
+
+**Measured** (new harness row RUNS by his order at the start: count, where the run ended, his target's
+gap at its last frame; seed 1000). Hold shape 73.1 a team-match, ended 8.3 m short, target 3.6; front man
+48.4, 3.8 / 0.9; second man 46.2, 6.0 / 2.8; attack the box 29.2, 4.2 / 1.9. Every kind stops running (under
+4 m/s at goal) 3-5 m before its spot.
+
+**Tried** (8 × 90, seed 1000; ended / target, runs a team-match):
+- `front.close_mps` 1.0 → 2.0 / 3.0: front man 4+ m short 29 / 34 / 36 → 26 / 26 / 29 → 26 / 25 / 28%;
+  ball-still runs 55.5 → 64.2 → 72.1 (41.7). Better at the line, worse on runs. Left at 1.0.
+- A shorter ease for a spot ahead with our ball (`shape_tau_fwd_s` 0.5 / 0.3, instead of shape_tau_ours
+  1.0): hold-shape runs 73 → 93, still ending 7.8-8.1 m short, target 4.1-4.3.
+- No forward cap for a holder with our ball (`ours_fwd_free`, G5.31's cap was fitted on the side without
+  it): runs 223 → 321 (376 with the shorter ease) v 209; still ending ~6 m short.
+Neither is the cause. Both removed.
+
+**What it says.** A run doesn't stop because a cap or an ease slows it: the runs multiply and still
+stop the same 3-5 m short. Likely the spot moves at him (their line stepping up as he runs), or he
+reaches it moving and the measure ends where his speed falls. Next: trace one run frame by frame
+(his gap, his target's gap, their line's speed).
+
+**Shipped.** The RUNS-by-order row, harness only. Outputs and goldens are as G5.91; tests 22/22.
