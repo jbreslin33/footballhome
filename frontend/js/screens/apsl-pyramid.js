@@ -135,6 +135,8 @@ class ApslPyramidScreen extends Screen {
     div.querySelector('.ap-stage').addEventListener('click', (e) => {
       // ☰ (✕ while open) opens and closes the one menu.
       if (e.target.closest('[data-menu]')) { this._menu(); return; }
+      // A view's own ☰ section (the map's proposed conferences).
+      if (e.target.closest('.ap-menu') && this._impl().menuClick && this._impl().menuClick(e)) return;
       const act = e.target.closest('[data-act]');
       if (act) { this._menuAction(act.dataset.act); return; }
       if (e.target.closest('[data-show], [data-feature]')) return;   // checkbox: handled on change
@@ -228,7 +230,7 @@ class ApslPyramidScreen extends Screen {
         .concat(this._conferences().map((c) => `<button class="ap-pill ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}">${esc(c.short_name || c.name)}</button>`))
         .join('');
       // The view's floating panels; the map's Club HUD comes and goes with a pick.
-      const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => !['map-club', 'map-proposal'].includes(h.dataset.hud));
+      const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => h.dataset.hud !== 'map-club');
       // …and the view's on/off features (impl.features(): outlier lines on
       // the chart, proposed borders on the map — mig 1238/1239).
       const feats = (this._impl().features ? this._impl().features() : [])
@@ -240,7 +242,8 @@ class ApslPyramidScreen extends Screen {
         <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
         ${sec('menu_view', `<div class="ap-pills">${views}</div>`)}
         ${sec('menu_conf', `<div class="ap-pills">${confs}</div>`)}
-        ${sec('menu_show', `<div class="ap-show">${show}</div>`)}`;
+        ${sec('menu_show', `<div class="ap-show">${show}</div>`)}
+        ${(this._impl().menuSections ? this._impl().menuSections() : []).map((x) => sec(x.tier, x.html)).join('')}`;
     }
     const acts = [
       `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
@@ -290,8 +293,7 @@ class ApslPyramidScreen extends Screen {
   // Off until ticked in ☰ (the map's Club HUD always rides its pick).
   hud(key, title, body, pos = 'hud-bl', extra = '') {
     const c = this._hudCollapsed(key);
-    // The Club HUD rides a pick and the proposal HUD its ☰ feature switch.
-    const off = !['map-club', 'map-proposal'].includes(key) && !this._hudShown(key);
+    const off = key !== 'map-club' && !this._hudShown(key);
     return `
       <div class="ap-hud ${pos}${c ? ' collapsed' : ''}${off ? ' off' : ''} ${extra}" data-hud="${key}">
         <div class="ap-hud-head"><span class="t">${this.escapeHtml(title || '')}</span><button class="btn btn-secondary" data-hud-toggle>${c ? '▸' : '▾'}</button></div>

@@ -72,6 +72,32 @@ class PyramidMapView {
   }
   onFeature(key, on) { if (key === 'proposal') this._showProposal(on); }
 
+  // The proposal's list lives in the ☰ menu (owner: "proposed confs gui
+  // should be in main gui" / "get rid of clutter!"): one row per proposed
+  // conference — tier dot, name, cities · people within 100 km; the
+  // judgement is the row's tooltip.  Tap → fly there.
+  menuSections() {
+    const P = this.proposal;
+    if (!P || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return [];
+    const esc = (t) => this._esc(t);
+    const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
+    const tierLabel = (t) => this._copy(`tier_${t}`) || t;
+    const row = (r) => `<div class="row" data-pz="${r.lat},${r.lon}" title="${esc(`${tierLabel(r.tier)} — ${r.note || ''}`)}">
+        <i class="tier ${esc(r.tier)}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
+        <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}</span></div>`;
+    const all = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || [])
+      .sort((a, b) => b.core_population - a.core_population);
+    return [{ tier: 'proposal_hud',
+      html: `<div class="mp-pz"><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
+  }
+  menuClick(e) {
+    const r = e.target.closest('[data-pz]');
+    if (!r || !this.map) return false;
+    const [lat, lon] = r.dataset.pz.split(',').map(Number);
+    this.map.flyTo([lat, lon], Math.max(this.map.getZoom(), 6), { duration: 0.6 });
+    return true;
+  }
+
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
     this.fill = true;   // a canvas: fills the stage, writing in HUDs
@@ -112,22 +138,15 @@ class PyramidMapView {
       .mp-label { background:#1d4ed8; color:#fff; font-weight:800; font-size:12px; padding:3px 9px; border-radius:999px;
                   border:2px solid #93c5fd; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,0.5); cursor:pointer; transform:translate(-50%, -50%); display:inline-block; }
       .mp-label.on { background:#facc15; color:#111827; border-color:#fff; }
-      .hud-tr { top:10px; right:10px; width:min(360px, calc(100% - 24px)); max-height:calc(100% - 90px); overflow:auto; }
-      .hud-proposal:not(.has-proposal) { display:none !important; }
-      .mp-prop { transform:translate(-50%, -50%); display:inline-block; white-space:nowrap; text-align:center; pointer-events:auto; cursor:pointer;
-                 color:#fbcfe8; font-weight:800; font-size:11px; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220; }
-      .mp-prop small { display:block; font-weight:600; font-size:10px; opacity:0.85; }
-      .mp-prop.watch { color:#cbd5e1; font-weight:700; }
-      .mp-pz h5 { margin:8px 0 4px; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.04em; opacity:0.75; }
-      .mp-pz .row { padding:5px 0; border-top:1px solid rgba(148,163,184,0.15); cursor:pointer; }
+      .mp-prop { transform:translate(-50%, -50%); display:inline-block; white-space:nowrap; pointer-events:none;
+                 color:#fbcfe8; font-weight:700; font-size:11px; opacity:0.9; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220; }
+      .mp-pz .row { display:flex; align-items:baseline; gap:6px; padding:4px 0; border-top:1px solid rgba(148,163,184,0.12); cursor:pointer; font-size:0.82rem; }
       .mp-pz .row:hover .nm { text-decoration:underline; }
-      .mp-pz .nm { font-weight:800; }
-      .mp-pz .tier { display:inline-block; font-size:0.68rem; font-weight:800; padding:0 6px; border-radius:999px; margin-left:6px; vertical-align:1px; }
-      .mp-pz .tier.ready { background:#166534; color:#dcfce7; }
-      .mp-pz .tier.borderline { background:#854d0e; color:#fef9c3; }
-      .mp-pz .tier.developing { background:#334155; color:#e2e8f0; }
-      .mp-pz .sub { font-size:0.76rem; opacity:0.8; }
-      .mp-pz .intro { font-size:0.76rem; opacity:0.8; max-width:330px; white-space:normal; }
+      .mp-pz .nm { font-weight:800; white-space:nowrap; }
+      .mp-pz .sub { flex:1; opacity:0.7; font-size:0.74rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .mp-pz .tier { width:8px; height:8px; border-radius:50%; flex:0 0 auto; align-self:center; }
+      .mp-pz .tier.ready { background:#22c55e; } .mp-pz .tier.borderline { background:#eab308; } .mp-pz .tier.developing { background:#64748b; }
+      .mp-pz .intro { font-size:0.72rem; opacity:0.65; margin-bottom:4px; white-space:normal; }
 `;
   }
 
@@ -167,7 +186,6 @@ class PyramidMapView {
           <div style="margin-top:2px; opacity:0.7;">${esc(this._copy('map_hint'))}</div>`, 'hud-bl')}
         ${this.screen.hud('map-stats', this._copy('hud_stats'), `<div class="mp-hud-stats">${esc(this._copy('map_pick'))}</div>`, 'hud-tl')}
         ${this.screen.hud('map-club', this._copy('hud_club'), '<div data-cc-host="hud"></div>', '', 'hud-club')}
-        ${this.screen.hud('map-proposal', this._copy('proposal_hud'), '<div class="mp-pz"></div>', 'hud-tr', 'hud-proposal')}
         <div class="mp-ov" hidden style="opacity:${alpha}">
           <div class="mp-ov-head">
             <h3></h3>
@@ -618,11 +636,9 @@ class PyramidMapView {
   // ── proposal layer (mig 1241) ────────────────────────────────────────
   async _showProposal(on) {
     const L = window.L;
-    const hud = this.root && this.root.querySelector('.hud-proposal');
     if (!this.map || !this.propLayer) return;
     this.propLayer.clearLayers();
-    if (hud) hud.classList.toggle('has-proposal', !!on);
-    if (!on) return;
+    if (!on) { this.screen._renderMenu(); return; }
     if (!this.proposal) {
       try {
         const res = await this.screen.auth.fetch('/api/pyramid/proposal');
@@ -631,43 +647,14 @@ class PyramidMapView {
       } catch (e) { console.warn('proposal', e); return; }
     }
     if (!this.map || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
-    const P = this.proposal;
-    const esc = (t) => this._esc(t);
-    const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
-    for (const b of P.borders || [])
-      L.polyline(b.line, { renderer: this.propRenderer, interactive: false, color: '#f472b6', weight: 2, opacity: 0.85, dashArray: '6 5' }).addTo(this.propLayer);
-    const tierLabel = (t) => this._copy(`tier_${t}`) || t;
-    const fly = (lat, lon) => this.map.flyTo([lat, lon], Math.max(this.map.getZoom(), 6), { duration: 0.6 });
-    for (const r of (P.regions || []).filter((x) => x.proposed_id)) {
-      const mk = L.marker([r.lat, r.lon], { icon: L.divIcon({ className: 'mp-pin',
-        html: `<span class="mp-prop">${esc(r.name)}<small>${esc(tierLabel(r.tier))} · ${esc(M(r.core_population))}</small></span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
-      mk.on('click', () => fly(r.lat, r.lon));
-    }
-    for (const w of P.watch || []) {
-      L.circleMarker([w.lat, w.lon], { renderer: this.propRenderer, interactive: false, radius: 16, color: '#cbd5e1', weight: 1.5, dashArray: '4 4', fill: false }).addTo(this.propLayer);
-      L.marker([w.lat, w.lon], { icon: L.divIcon({ className: 'mp-pin',
-        html: `<span class="mp-prop watch">${esc(w.name)}<small>${esc(tierLabel('developing'))} · ${esc(M(w.core_population))}</small></span>`, iconSize: [0, 0] }), interactive: false }).addTo(this.propLayer);
-    }
-    const box = hud && hud.querySelector('.mp-pz');
-    if (!box) return;
-    const row = (r, core) => `
-      <div class="row" data-pz="${r.lat},${r.lon}">
-        <span class="nm">${esc(r.name)}</span>${r.tier ? `<span class="tier ${esc(r.tier)}">${esc(tierLabel(r.tier))}</span>` : ''}
-        ${r.anchors ? `<div class="sub">${esc(r.anchors)}</div>` : ''}
-        <div class="sub">${esc(core ? this._copy('proposal_pop', { core: M(r.core_population), region: M(r.population) }) : M(r.population))}</div>
-        ${r.note ? `<div class="sub">${esc(r.note)}</div>` : ''}
-      </div>`;
-    const fresh = (P.regions || []).filter((r) => r.proposed_id).sort((a, b) => b.core_population - a.core_population);
-    const live = (P.regions || []).filter((r) => r.conference_id).sort((a, b) => b.population - a.population);
-    box.innerHTML = `
-      <div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>
-      <h5>${esc(this._copy('proposal_new'))}</h5>${fresh.map((r) => row(r, true)).join('')}
-      <h5>${esc(this._copy('proposal_watch'))}</h5>${(P.watch || []).map((w) => row(w, false)).join('')}
-      <h5>${esc(this._copy('proposal_live'))}</h5>${live.map((r) => row(r, false)).join('')}`;
-    box.onclick = (e) => {
-      const r = e.target.closest('[data-pz]');
-      if (r) { const [lat, lon] = r.dataset.pz.split(',').map(Number); fly(lat, lon); }
-    };
+    // On the map: the border lines and each proposed conference's name —
+    // nothing else (the watch list and the numbers are in ☰).
+    for (const b of this.proposal.borders || [])
+      L.polyline(b.line, { renderer: this.propRenderer, interactive: false, color: '#f472b6', weight: 1.5, opacity: 0.7, dashArray: '6 5' }).addTo(this.propLayer);
+    for (const r of (this.proposal.regions || []).filter((x) => x.proposed_id))
+      L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
+        html: `<span class="mp-prop">${this._esc(r.name.replace(/ Conference$/, ''))}</span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
+    this.screen._renderMenu();
   }
 
   onResize() {
