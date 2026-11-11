@@ -636,6 +636,35 @@ class RosterScreenBase extends Screen {
     return true;
   }
 
+  // Never answered an RSVP himself (standing defaults and admin answers
+  // don't count) — known once PersonStanding loads (admins only).
+  needsOnboard(p) {
+    return !!(p && window.PersonStanding && typeof PersonStanding.answered === 'function' && PersonStanding.answered(p.personId) === false);
+  }
+
+  // Never-answered cards lead with when he registered and what we sent
+  // (owner 2026-11-05: "show date they registered for needs onboard
+  // players atleast so i know if i sent them anything or if they just
+  // need to be dropped because they are ghost").  laRegisteredAt is on
+  // every board row; p.welcome.lastSentAt is the 👋 welcome log.  Both
+  // pills, every season (owner 2026-11-10: "put it on both … and it needs
+  // to be on winter etc") — on every card of a man who never answered.
+  onboardLeadHtml(p) {
+    if (!this.needsOnboard(p)) return '';
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
+    const fmt = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
+    const ago = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${Math.max(0, Math.floor((Date.now() - d) / 86400000))}d ago`; };
+    const reg = p.laRegisteredAt
+      ? (copy('board_onboard_registered', { date: fmt(p.laRegisteredAt), ago: ago(p.laRegisteredAt) }) || `📝 Registered ${fmt(p.laRegisteredAt)} · ${ago(p.laRegisteredAt)}`)
+      : (copy('board_onboard_reg_unknown') || '📝 Registration date unknown');
+    const sent = p.welcome && p.welcome.lastSentAt
+      ? (copy('board_onboard_welcomed', { date: fmt(p.welcome.lastSentAt), channel: p.welcome.lastChannel || '' })
+         || `👋 Welcome sent ${fmt(p.welcome.lastSentAt)}`)
+      : (copy('board_onboard_not_welcomed') || '👋 No welcome sent');
+    return `<div style="font-size:0.68rem; font-weight:700; color:#f0abfc; padding:4px 6px 0;">${esc(reg)} · ${esc(sent)}</div>`;
+  }
+
   renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
     if (!col || !col.teamId) return renderList(shown) + ridersHtml;
     const esc = RosterScreenBase.escapeHtml;
@@ -678,10 +707,11 @@ class RosterScreenBase extends Screen {
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
       const flag = this.boardView === 'roster' && !this.rosterFrozen(col.teamId) && laneFlag[sectionOf(p)];
+      const lead = this.onboardLeadHtml(p);
       return flag
         ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
-             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${html}</div>`
-        : html;
+             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${lead}${html}</div>`
+        : lead + html;
     };
     const ordered = (list) => {
       const keep = new Set(list);
@@ -738,35 +768,16 @@ class RosterScreenBase extends Screen {
           + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>'
         : '');
       const cats = { onboard: [], active: [], injured: [], practice_squad: [], inactive: [] };
-      // NEEDS ONBOARD cards lead with when he registered and what we sent
-      // (owner 2026-11-05: "show date they registered for needs onboard
-      // players atleast so i know if i sent them anything or if they just
-      // need to be dropped because they are ghost").  laRegisteredAt is on
-      // every board row; p.welcome.lastSentAt is the 👋 welcome log.
-      const onboardLine = (p) => {
-        const fmt = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); };
-        const ago = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : `${Math.max(0, Math.floor((Date.now() - d) / 86400000))}d ago`; };
-        const reg = p.laRegisteredAt
-          ? (copy('board_onboard_registered', { date: fmt(p.laRegisteredAt), ago: ago(p.laRegisteredAt) }) || `📝 Registered ${fmt(p.laRegisteredAt)} · ${ago(p.laRegisteredAt)}`)
-          : (copy('board_onboard_reg_unknown') || '📝 Registration date unknown');
-        const sent = p.welcome && p.welcome.lastSentAt
-          ? (copy('board_onboard_welcomed', { date: fmt(p.welcome.lastSentAt), channel: p.welcome.lastChannel || '' })
-             || `👋 Welcome sent ${fmt(p.welcome.lastSentAt)}`)
-          : (copy('board_onboard_not_welcomed') || '👋 No welcome sent');
-        return `<div style="font-size:0.68rem; font-weight:700; color:#f0abfc; padding:4px 6px 0;">${esc(reg)} · ${esc(sent)}</div>`;
-      };
-      const onboardCard = (p) => onboardLine(p) + card(p);
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
       // Inactive or 🩹 Injured — he leaves the moment he answers once.
       // Known from PersonStanding (admins); anyone else sees no section.
-      const needsOnboard = (p) => !!(window.PersonStanding && typeof PersonStanding.answered === 'function' && PersonStanding.answered(p.personId) === false);
       for (const p of shown) {
         const cat = this.columnCategoryOf(p);
         // Every man who never answered, whatever his spot (owner 11/3: "any
         // player with no rsvp ever needs to be in needs onboard") — only
         // 💤 Inactive and 🩹 Injured keep their own group.
-        cats[cat !== 'injured' && cat !== 'inactive' && needsOnboard(p) ? 'onboard' : cat].push(p);
+        cats[cat !== 'injured' && cat !== 'inactive' && this.needsOnboard(p) ? 'onboard' : cat].push(p);
       }
       // ACTIVE = who plays.  Men the Roster pill has in an add lane
       // (Needs Add → … → No Room, roster_statuses.board_section) sit in
@@ -821,7 +832,7 @@ class RosterScreenBase extends Screen {
       // NEEDS ONBOARD: each card under its registered / welcomed line.
       const onboardGroup = shows('active')
         ? head(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard.length, '#e879f9', 'rgba(232,121,249,0.14)')
-          + (cats.onboard.length ? ordered(cats.onboard).map(onboardCard).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
+          + (cats.onboard.length ? ordered(cats.onboard).map(p => card(p)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
         : '';
       return activeHtml
         + onboardGroup
@@ -1095,7 +1106,7 @@ class RosterScreenBase extends Screen {
     const p = home ? home.p : e.p;
     // The per-extra-team status dropdowns under the card went 11/4 (owner:
     // "what is purpose? get rid of it") — the card's own dropdown is enough.
-    return this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
+    return this.onboardLeadHtml(p) + this.renderPlayer({ ...p, nameChipHtml: (p.nameChipHtml || '') + tags }, data.columns, home ? home.col : col, i + 1, n);
   }
 
   // The left column on the Roster pill (owner 2026-11-02): one team-free
@@ -1985,13 +1996,15 @@ class RosterScreenBase extends Screen {
     if (this._standingChipTimer || !window.PersonStanding) return;
     this._standingChipTimer = setTimeout(() => {
       this._standingChipTimer = null;
+      // NEEDS ONBOARD + the 📝 Registered line (both pills, every season)
+      // hang on who has ever answered — known only once loaded.  Repaint
+      // whenever this fill learned it for a card on screen; the repaint's
+      // own fill finds nothing new, so it stops there.
+      const unknown = [...this.element.querySelectorAll('[data-standing-chip]')]
+        .map(e => e.dataset.standingChip).filter(id => PersonStanding.answered(id) === null);
       PersonStanding.fillChips(this.auth, this.element).then(() => {
-        // NEEDS ONBOARD (Team pill) sorts by who has ever answered — known
-        // only now; paint the board once more the first time it lands.
-        if (this.boardView === 'team' && !this._onboardPainted && this._data && typeof this.renderRoster === 'function') {
-          this._onboardPainted = true;
-          this.renderRoster(this._data);
-        }
+        const learned = unknown.some(id => PersonStanding.answered(id) !== null);
+        if (learned && this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
       }).catch(() => {});
     }, 50);
   }
