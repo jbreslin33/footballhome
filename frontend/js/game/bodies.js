@@ -98,6 +98,54 @@
     g.computeBoundingSphere();
   }
 
+  // ── boots and the number, read off the slimmed bind mesh ────────────
+  // Boots: each foot's convex hull (its foot / toe vertices under 14 cm), puffed 4%, pinned to the
+  // foot bone — a smooth boot over the modelled toes. The number: a patch on the upper back, pinned
+  // to spine_03 at the back's own depth there. [FH]
+  function bootsAndBack(mesh, bones) {
+    const g = mesh.geometry, names = mesh.skeleton.bones.map((b) => b.name);
+    const si = g.getAttribute('skinIndex'), sw = g.getAttribute('skinWeight'), pos = g.getAttribute('position'), reg = g.getAttribute('aRegion');
+    const pts = { l: [], r: [] }; let backZ = Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      if (reg.getX(i) === 1 && y > 1.28 && y < 1.42 && Math.abs(x) < 0.08) backZ = Math.min(backZ, z);
+      if (y >= 0.14) continue;
+      let best = 0, bw = -1;
+      for (let k = 0; k < 4; k++) { const w = sw.getComponent(i, k); if (w > bw) { bw = w; best = si.getComponent(i, k); } }
+      const m = /^(foot|ball)_(l|r)$/.exec(names[best] || '');
+      if (m) pts[m[2]].push(new THREE.Vector3(x, y, z));
+    }
+    const boots = {};
+    for (const s of ['l', 'r']) {
+      if (pts[s].length < 8) continue;
+      const geo = new THREE_ADDONS.ConvexGeometry(pts[s]);
+      geo.computeBoundingBox();
+      const c = geo.boundingBox.getCenter(new THREE.Vector3());
+      geo.translate(-c.x, -c.y, -c.z); geo.scale(1.04, 1.06, 1.04); geo.translate(c.x, c.y + 0.002, c.z);
+      geo.applyMatrix4(bones['foot_' + s].matrixWorld.clone().invert());   // into the foot bone's frame
+      geo.computeVertexNormals();
+      boots['foot_' + s] = geo;
+    }
+    const back = isFinite(backZ)
+      ? bones.spine_03.matrixWorld.clone().invert().multiply(new THREE.Matrix4().makeTranslation(0, 1.35, backZ - 0.012))
+      : null;
+    return { boots, back };
+  }
+  function numberPatch(n, kit) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const x = c.getContext('2d');
+    x.fillStyle = '#' + (kit.trim ?? 0xffffff).toString(16).padStart(6, '0');
+    x.font = 'bold 92px system-ui, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText(String(n), 64, 70);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.24),
+      new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), transparent: true, roughness: 0.8, depthWrite: false,
+                                       polygonOffset: true, polygonOffsetFactor: -2 }));
+    m.rotation.y = Math.PI;   // faces −z: the back
+    return m;
+  }
+
   function kitMaterial(base, kit, skinTint) {
     const m = base.clone();
     const u = {
@@ -152,6 +200,18 @@
     });
     skinned.material = kitMaterial(skinned.material, fig.kit, tintOver(fig.skinHex ?? 0xc68642, SKIN_TEX));
     // hair: one of the pack's cuts by slot, pinned to the head bone at its bind offset, in his colour
+    for (const [bn, geo] of Object.entries(proto.boots)) {
+      if (!bones[bn]) continue;
+      const boot = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: fig.kit.boots ?? 0x111111, roughness: 0.45 }));
+      boot.castShadow = true; boot.frustumCulled = false;
+      bones[bn].add(boot);
+    }
+    if (proto.back && bones.spine_03 && !fig.official) {
+      const holder = new THREE.Group();
+      holder.matrixAutoUpdate = false; holder.matrix.copy(proto.back);
+      holder.add(numberPatch(fig.number || fig.slot % 11 + 1, fig.kit));
+      bones.spine_03.add(holder);
+    }
     const hairMat = proto.hairMat.clone();
     hairMat.color = tintOver(fig.hairHex ?? 0x2b1b10, HAIR_TEX);
     for (const n of (bones.Head ? LOOKS[fig.slot % LOOKS.length] : [])) {
@@ -248,6 +308,8 @@
     gltf.scene.updateMatrixWorld(true);
     paintRegions(skinned);
     slimBody(skinned);
+    const bnames = {}; gltf.scene.traverse((o) => { if (o.isBone) bnames[o.name] = o; });
+    const extra = bootsAndBack(skinned, bnames);
     const bones = {}; gltf.scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const p = (n) => bones[n].getWorldPosition(new THREE.Vector3());
     const headInv = bones.Head.matrixWorld.clone().invert();
@@ -261,6 +323,7 @@
       for (const [u, v] of pairs) if (v) hair[u.replace(/^.*\/|\.gltf$/g, '')] = v;
       const any = Object.values(hair)[0];
       proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
+                boots: extra.boots, back: extra.back,
                 legA: p('thigh_l').distanceTo(p('calf_l')), legB: p('calf_l').distanceTo(p('foot_l')) };
       console.log('bodies: loaded, thigh', proto.legA.toFixed(3), 'shin', proto.legB.toFixed(3), 'm, full size · hair', pairs.filter((x) => x[1]).length);
       for (const f of figures) attach(f);
