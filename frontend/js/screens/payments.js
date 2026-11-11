@@ -2666,12 +2666,20 @@ class PaymentsScreen extends Screen {
         <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">${cells}</div>
       </div>`;
     const c = s.counts;
-    const loading = s.loadedCount < s.wanted
-      ? `<span style="opacity:0.6; font-size:0.75rem;">${s.loadedCount}/${s.wanted} loaded…</span>` : '';
+    // ⏳ LoadProgress (mig 1246): the sums grow as each programme lands —
+    // bar + percent, numbers dimmed until the last one is in.  A programme
+    // that failed counts as in (its error shows on the list), so the bar
+    // never sticks.
+    const done = keys.filter(k => this.membersByTab[k] || this.membersErrorByTab[k]).length;
+    const partial = window.LoadProgress ? LoadProgress.loading(done, keys.length) : done < keys.length;
+    const progress = window.LoadProgress
+      ? LoadProgress.html({ done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' }) : '';
     el.innerHTML = `
       <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
-        <span style="font-weight:800; margin-right:4px;">📊 Stats · ${this.escape(this._shardLabel(keys))}</span>${loading}
+        <span style="font-weight:800; margin-right:4px;">📊 Stats · ${this.escape(this._shardLabel(keys))}</span>
       </div>
+      ${progress}
+      <div style="${partial ? 'opacity:0.4;' : ''} transition:opacity 0.3s;">
       ${row('PLAYERS', [
         stat('Members', s.totalMembers - s.inactiveCount),
         stat('🟢 Paid up', c.current, '#86efac'),
@@ -2692,6 +2700,7 @@ class PaymentsScreen extends Screen {
         stat('Est. owed', `~${this.fmtMoney(s.outstandingTotal)}`, '#fca5a5', 'Outstanding × est. fee (median of paid members, per programme)'),
         stat('Est. owed / month', `~${this.fmtMoney(s.outstandingPerMonth)}`, '#fca5a5', 'Est. owed ÷ months elapsed'),
       ].join(''))}
+      </div>
     `;
   }
 
