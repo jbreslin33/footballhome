@@ -265,7 +265,7 @@
       // 11/11 (James "the run with stiff no bend legs at the knee"): the heel came up 0.36 m at
       // 5 m/s — a 60-70° knee at most; real swing flexion is ~90-100° jogging, ~110° running,
       // ~130° sprinting [Novacheck 1998]. Higher recovery, rising with speed.
-      const lift = Math.max((0.07 + r * clamp(0.2 + 0.1 * (s - 2.5), 0, 0.62)) * m, 0.07 * ta);
+      const lift = Math.max((0.07 + r * clamp(0.18 + 0.085 * (s - 2.5), 0, 0.55)) * m, 0.07 * ta);   // trimmed: swing p90 came out 133° at 4-6 m/s
       // Pelvis: COM high at mid-stance walking, low running; ±2 / ±3.5 cm.
       const stepPh = (this.phase * 2) % 1;
       const osc = Math.cos(TAU * (stepPh - duty / 2));
@@ -384,6 +384,9 @@
       qi.copy(this.pelvis.quaternion).invert();
       for (let i = 0; i < 2; i++) {
         const f = feet[i], leg = L[i];
+        // The toe can't go through the turf: toe-down only as far as the ankle's height allows
+        // over a ~0.18 m foot (the skinned body's ankle → toe tip). 11/11: 1% of toe-offs dipped 4 cm.
+        f.pitchF = Math.min(f.pitchF, Math.asin(clamp((f.y - 0.01) / 0.18, -1, 1)));
         v.set(f.x, f.y, f.z).sub(this.pelvis.position).applyQuaternion(qi).sub(leg.hip.position);
         this.solveLeg(leg, v, f.pitchF, pitch, leg.tw);
       }
