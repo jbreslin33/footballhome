@@ -689,16 +689,17 @@ class PyramidMapView {
       return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
     });
     for (const b of P.borders || []) {
-      // The straight-distance border (mig 1255): dashed white, on the line itself.
-      if (b.kind === 'plain') {
-        L.polyline(b.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 3, opacity: 0.95, dashArray: '7 6' }).addTo(this.propLines);
-        continue;
-      }
+      // The straight-distance border (mig 1255) is drawn exactly like the
+      // traffic one — two-tone in the same conferences' colours (owner: "i
+      // need them same colors" / "same colors as each other"); the traffic
+      // line is always the one nearer New York ("it will be obvious the one
+      // closer is the traffic one").
+      const dash = null;
       const pts = b.line.map((ll) => this.map.latLngToLayerPoint(L.latLng(ll[0], ll[1])));
       if (pts.length < 2) continue;
       const aSide = b.a_left ? HALF : -HALF;
-      L.polyline(shift(pts, aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.a), weight: W, opacity: 0.95, lineCap: 'butt' }).addTo(this.propLines);
-      L.polyline(shift(pts, -aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.b), weight: W, opacity: 0.95, lineCap: 'butt' }).addTo(this.propLines);
+      L.polyline(shift(pts, aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.a), weight: W, opacity: 0.95, lineCap: 'butt', dashArray: dash }).addTo(this.propLines);
+      L.polyline(shift(pts, -aSide), { renderer: this.propRenderer, interactive: false, color: color.get(b.b), weight: W, opacity: 0.95, lineCap: 'butt', dashArray: dash }).addTo(this.propLines);
     }
   }
 
