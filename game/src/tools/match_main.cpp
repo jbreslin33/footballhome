@@ -80,6 +80,7 @@ struct Stats {
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
+    std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
@@ -102,6 +103,10 @@ struct Stats {
     long rc_fast[ai::kWhyCount][3] = {}, rc_fast_role[ai::kRoleCount] = {}, rc_hold_near[3] = {};   // + holders with the ball inside 40 m of their goal
     long rc_zn[2] = {}, rc_z[2][3] = {}, rc_zk[2][5] = {}, rc_zkb[2][5] = {};   // + by s since lost: steps, 5+ back
     long rc_gap[4] = {}, rc_gapb[4] = {};
+    // §8.187 HOLD SPOT: the side without it, holders, 5 Hz — his spot's speed (target moved over 0.2 s, same
+    // order both ends) v his own, by the ball [0 carried by them / 1 free]; lag added by the spot / closed by him.
+    std::vector<double> hs_rl[2][ai::kRoleCount];
+    long hs_n[2] = {}, hs_sp[2][4] = {}, hs_mv[2][4] = {}; double hs_lag[2] = {}, hs_add[2] = {}, hs_close[2] = {}, hs_jump_add[2] = {};
     long pc_n[13] = {}, pc_g[13] = {}, pc_k[13] = {}, pc_p[13] = {};
     long sc_n[4][7] = {}, sc_s[4][7] = {};
     long ln_n[4] = {}, ln_b[4] = {}; std::vector<double> ln_near;
@@ -223,6 +228,7 @@ int main(int argc, char** argv) {
         struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
+        long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
         struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
@@ -979,11 +985,13 @@ int main(int argc, char** argv) {
                 const double db = std::hypot(gx - bx, by);
                 if (db < 30 && std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()) < 7) {
                     const int bb = db < 12 ? 0 : db < 18 ? 1 : db < 25 ? 2 : 3;
-                    int g = 0; double deep = 1e9;
+                    int g = 0, dl = 0, bxn = 0; double deep = 1e9;
                     for (std::uint8_t j = 0; j < N; ++j) {
                         if (W.player(j).team != dteam || W.isKeeper(j)) continue;
                         const double px = W.player(j).pos.x.toDouble(), py = W.player(j).pos.y.toDouble();
                         if (std::hypot(gx - px, py) < db) ++g;
+                        if (std::fabs(gx - px) < std::fabs(gx - bx)) { ++dl; S.gsd_ay[bb].push_back(std::fabs(py - by)); }
+                        if (std::fabs(gx - px) < 16.5 && std::fabs(py) < 20.16) ++bxn;
                         deep = std::min(deep, std::fabs(gx - px));
                     }
                     if (std::getenv("GAME_GS_TRACE") && (bb == 0 || std::getenv("GAME_GS_TRACE")[0] == 'a')) {   // §8.186: who is where (=all: every band)
@@ -1001,7 +1009,7 @@ int main(int argc, char** argv) {
                         }
                         std::fprintf(stderr, "\n");
                     }
-                    ++S.gsd_n[bb]; S.gsd_g[bb].push_back(g); S.gsd_deep[bb].push_back(std::fabs(gx - bx) - deep);
+                    ++S.gsd_n[bb]; S.gsd_g[bb].push_back(g); S.gsd_deep[bb].push_back(std::fabs(gx - bx) - deep); S.gsd_dl[bb].push_back(dl); S.gsd_box[bb].push_back(bxn); S.gsd_by[bb].push_back(std::fabs(by));
                     ++S.gsd_k[bb][g == 0 ? 0 : g <= 2 ? 1 : g <= 4 ? 2 : 3];
                 }
             }
@@ -1030,6 +1038,26 @@ int main(int argc, char** argv) {
                         const int bb = std::min(4, std::max(0, static_cast<int>((hx + bx3 * ds) / 18)));
                         ++S.mf_cn[r][bb]; S.mf_cb[r][bb].push_back(dd); S.mf_c3[r][bb] += dd < 3;
                     }
+                }
+            }
+            {   // §8.187 HOLD SPOT
+                const int fs = b.owner ? (W.player(*b.owner).team == a ? 0 : -1) : 1;
+                for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                    const auto& lo = s.lastOrders()[j];
+                    const bool on = fs >= 0 && !W.isKeeper(j) && W.player(j).team == dteam && lo.why == ai::Why::Hold;
+                    const double tx = lo.target.x.toDouble(), ty = lo.target.y.toDouble();
+                    const double px = W.player(j).pos.x.toDouble(), py = W.player(j).pos.y.toDouble();
+                    if (on && hs_k[j] == static_cast<long>(k) - 6) {
+                        const double sp = std::hypot(tx - hs_tx[j], ty - hs_ty[j]) / 0.2, mv = std::hypot(px - hs_px[j], py - hs_py[j]) / 0.2;
+                        const double lag0 = std::hypot(hs_tx[j] - hs_px[j], hs_ty[j] - hs_py[j]);
+                        const double mid = std::hypot(tx - hs_px[j], ty - hs_py[j]), lag1 = std::hypot(tx - px, ty - py);
+                        auto bin = [](double v) { return v < 2 ? 0 : v < 5 ? 1 : v < 10 ? 2 : 3; };
+                        ++S.hs_n[fs]; ++S.hs_sp[fs][bin(sp)]; ++S.hs_mv[fs][bin(mv)];
+                        S.hs_rl[fs][role(j)].push_back(lag1);
+                        S.hs_lag[fs] += lag1; S.hs_add[fs] += mid - lag0; S.hs_close[fs] += mid - lag1;
+                        if (sp >= 10) S.hs_jump_add[fs] += mid - lag0;
+                    }
+                    if (on) { hs_k[j] = static_cast<long>(k); hs_tx[j] = tx; hs_ty[j] = ty; hs_px[j] = px; hs_py[j] = py; } else hs_k[j] = -1;
                 }
             }
             {   // RECOVERY: the side without it, each outfielder, by seconds since it lost it
@@ -2173,6 +2201,16 @@ int main(int argc, char** argv) {
                             bl[d], n * 0.2 / tm, rs[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rq[d][0], rq[d][1], rq[d][2],
                             100 * S.gsd_k[d][0] / n, rk[d][0], 100 * S.gsd_k[d][1] / n, rk[d][1], 100 * S.gsd_k[d][2] / n, rk[d][2], 100 * S.gsd_k[d][3] / n, rk[d][3],
                             w[w.size() / 4], w[w.size() / 2], w[w.size() * 3 / 4], rd[d][0], rd[d][1], rd[d][2]);
+                {   // §8.187 — benchmarks_tracking_goalside.py
+                    static const int rdl[4][3] = {{0, 1, 3}, {0, 2, 5}, {0, 3, 5}, {1, 4, 6}}, rbx[4][3] = {{4, 6, 8}, {3, 5, 7}, {1, 4, 5}, {0, 2, 5}};
+                    static const double ray[4][3] = {{1.6, 4.1, 7.9}, {1.7, 4.8, 9.9}, {3.0, 7.8, 14.2}, {3.2, 9.0, 17.4}}, rby[4] = {5.2, 10.1, 15.4, 18.7};
+                    auto q = [](std::vector<int> x, double f) { std::sort(x.begin(), x.end()); return x.empty() ? 0 : x[static_cast<std::size_t>(x.size() * f)]; };
+                    auto qd = [](std::vector<double> x, double f) { std::sort(x.begin(), x.end()); return x.empty() ? 0.0 : x[static_cast<std::size_t>(x.size() * f)]; };
+                    std::printf("            deeper than the ball %d / %d / %d (%d / %d / %d) | in their box %d / %d / %d (%d / %d / %d) | those deeper, m across from the ball %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) | ball |y| med %.1f (%.1f)\n",
+                                q(S.gsd_dl[d], .25), q(S.gsd_dl[d], .5), q(S.gsd_dl[d], .75), rdl[d][0], rdl[d][1], rdl[d][2],
+                                q(S.gsd_box[d], .25), q(S.gsd_box[d], .5), q(S.gsd_box[d], .75), rbx[d][0], rbx[d][1], rbx[d][2],
+                                qd(S.gsd_ay[d], .25), qd(S.gsd_ay[d], .5), qd(S.gsd_ay[d], .75), ray[d][0], ray[d][1], ray[d][2], qd(S.gsd_by[d], .5), rby[d]);
+                }
             }
         }
         {   // §8.186 IN BEHIND THEN — benchmarks_tracking_behind.py
@@ -2222,6 +2260,20 @@ int main(int argc, char** argv) {
     {
         long tot = 0; for (int i = 0; i < 5; ++i) tot += S.rc_n[i];
         static const char* lab[5] = {"0-2", "2-4", "4-6", "6-10", "10+"};
+        for (int f = 0; f < 2; ++f) {   // §8.187 HOLD SPOT
+            const double n = std::max(1L, S.hs_n[f]);
+            std::printf("HOLD SPOT (§8.187; the side without it, holders, 5 Hz, ball %s): %.0f a team-match | spot moves under 2 / 2-5 / 5-10 / 10+ m/s %.1f / %.1f / %.1f / %.1f%%; "
+                        "he moves %.1f / %.1f / %.1f / %.1f%% | lag mean %.2f m; per 0.2 s the spot adds %.3f m (jumps 10+ m/s %.3f), he closes %.3f\n",
+                        f ? "free (their pass / loose)" : "carried by them", S.hs_n[f] / tm, 100 * S.hs_sp[f][0] / n, 100 * S.hs_sp[f][1] / n, 100 * S.hs_sp[f][2] / n, 100 * S.hs_sp[f][3] / n,
+                        100 * S.hs_mv[f][0] / n, 100 * S.hs_mv[f][1] / n, 100 * S.hs_mv[f][2] / n, 100 * S.hs_mv[f][3] / n, S.hs_lag[f] / n, S.hs_add[f] / n, S.hs_jump_add[f] / n, S.hs_close[f] / n);
+            static const char* rn[ai::kRoleCount] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+            std::printf("   his lag p25 / median / p75 m by role:");
+            for (int r = 0; r < ai::kRoleCount; ++r) {
+                auto v = S.hs_rl[f][r]; if (v.empty()) continue; std::sort(v.begin(), v.end());
+                std::printf(" %s %.1f / %.1f / %.1f (%zu);", rn[r], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], v.size());
+            }
+            std::printf("\n");
+        }
         std::printf("RECOVERY (the side without it, outfielders, 5 Hz, by s since it lost it; real DFL benchmarks_tracking_recover.py):\n"
                     "   since  share | under 2 / 2-5 / 5+ m/s | 5+ back | mean m/s, back m/s\n");
         long s0 = 0, s1 = 0, s2 = 0, fb = 0; double sv = 0, sb = 0;

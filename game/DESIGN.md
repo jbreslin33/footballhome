@@ -8349,3 +8349,40 @@ the lead covers only a carried ball). Measure each spot's speed against the hold
 distance off a role-mean spot, before building. (2) Possessions twice too long, losses half (§8.172).
 (3) Lofts a mix of driven and hung (§8.185 (2)). (4) No 50-70 m lofts. (5) The defender off the
 attacker at the launch, 9 v 7 m. (6) `risk_weight` (§8.184).
+
+### 8.187 G5.86 — the gap at our goal is where their ball is, not where our men are: measured (no migration)
+
+§8.186's next (1): the holder trails a right target.
+
+**The trail is the body's, by design.** New HOLD SPOT line (5 Hz, the side without the ball, holders;
+seeds 1000 / 2000). With their ball carried, his spot moves under 2 m/s 67% of the time and 10+ m/s
+1.6%. Median lag CB 5.5, FB 6.5, DM/CM 6.3 m. With their ball free (a pass or loose), 60% of these
+frames, the spot moves 10+ m/s 10.6%: it jumps at the kick to where the first taker will meet it
+(`ball_to`). Median lag CB 10.8, FB 11.5, DM/CM 12.3 m. The jumps add 0.48 of the 0.62 m of lag per
+0.2 s. That is §8.142's design: the spot is where a real man stands once the ball is still (the real
+STILL rows), and trailing a moving ball is the body, as real men trail. The SETTLED SHAPE BY THE
+BALL'S SPEED line still matches real by role and band, so the trail is not the fault.
+
+**The fault is the ball's position.** New in GOAL-SIDE (and `benchmarks_tracking_goalside.py`, DFL):
+the depth-only count (outfielders nearer the goal line than the ball), the count in their box, how far
+across from the ball the deeper men stand, and the ball's |y|. Ours (seed 1000 / 2000) v real. Ball
+<12 / 12-18 / 18-25 / 25-30 m from the goal centre:
+- in their box, median: 6 / 6 (6); 4 / 5 (5); 3 / 3 (4); 2 / 2 (2) — about real.
+- deeper than the ball, median: 0 / 0 (1); 2 / 1 (2); 4 / 3 (3); 4 / 4 (4) — about real.
+- those deeper, m across from the ball, median: 3.0 / 2.7 (4.1); 6.0 / 6.7 (4.8); 8.4 / 8.1 (7.8);
+  8.6 / 8.8 (9.0) — about real.
+- **the ball's |y|, median: 5.8 / 5.8 (5.2); 6.0 / 7.3 (10.1); 7.3 / 9.8 (15.4); 14.6 / 16.3 (18.7).**
+
+Coming closer, a real attack stays wide; ours comes inside between 30 and 12 m. Count by distance to
+the goal centre, and a defence that would be goal-side of a wide ball is not goal-side of a central
+one. Hence §8.186's shots with nobody goal-side, 4× real. It ties to the standing gap in SPELLS
+STARTING WIDE 18-35 m out: 31.5 a team-match (57.8 real, StatsBomb).
+
+**Shipped.** The HOLD SPOT line and the new GOAL-SIDE row, harness only. Outputs and goldens are as
+G5.85; tests 22/22.
+
+**Next moles.** (1) **The attack comes inside near goal**: which part does it — the carrier's run (in
+v along v out by his place, real from DFL), passes ending central, or the block leaving the middle open.
+Measure each against real first. (2) Possessions twice too long, losses half (§8.172). (3) Lofts a mix of
+driven and hung. (4) No 50-70 m lofts. (5) The defender off the attacker at the launch, 9 v 7 m.
+(6) `risk_weight` (§8.184).

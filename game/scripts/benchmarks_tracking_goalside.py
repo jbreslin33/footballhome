@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """benchmarks_tracking_goalside.py — how many defenders stay goal-side of the ball near their goal
-(G5.85, game/DESIGN.md §8.186).
+(G5.85, game/DESIGN.md §8.186; G5.86 §8.187 the depth-only count, the box, the width).
 
     python3 -I game/scripts/benchmarks_tracking_goalside.py <dfl dir>
 
@@ -60,7 +60,10 @@ def one(pos_path):
         outs = [p for pid, p in ps.items() if who.get(pid) == dt and pid not in keepers]
         g = sum(1 for p in outs if math.hypot(gx - p[0], p[1]) < db)
         deep = min(abs(gx - p[0]) for p in outs) if outs else 0
-        out.append((sum(db >= x for x in BANDS[:-1]), g, abs(gx - b[0]) - deep))
+        # G5.86 (§8.187): deeper than the ball (depth only), in their box, and how far across from the ball the deeper men stand
+        dl = [p for p in outs if abs(gx - p[0]) < abs(gx - b[0])]
+        box = sum(1 for p in outs if abs(gx - p[0]) < 16.5 and abs(p[1]) < 20.16)
+        out.append((sum(db >= x for x in BANDS[:-1]), g, abs(gx - b[0]) - deep, len(dl), box, [abs(p[1] - b[1]) for p in dl], abs(b[1])))
     return out, 1
 
 
@@ -78,3 +81,7 @@ if __name__ == "__main__":
         print(f"   ball {lab[b]:5s} m from goal centre: {k / 5 / len(files) / 2:5.1f} s a team-match | goal-side p25/med/p75 {v[k // 4]} / {v[k // 2]} / {v[3 * k // 4]} | "
               f"0 {100 * sum(x == 0 for x in v) / k:4.1f}% 1-2 {100 * sum(1 <= x <= 2 for x in v) / k:4.1f}% 3-4 {100 * sum(3 <= x <= 4 for x in v) / k:4.1f}% 5+ {100 * sum(x >= 5 for x in v) / k:4.1f}% | "
               f"deepest man above the ball m p25/med/p75 {w[k // 4]:.1f} / {w[k // 2]:.1f} / {w[3 * k // 4]:.1f}")
+        R = [r for r in allr if r[0] == b]
+        d = sorted(r[3] for r in R); bx = sorted(r[4] for r in R); ay = sorted(y for r in R for y in r[5]); by = sorted(r[6] for r in R)
+        print(f"        deeper than the ball p25/med/p75 {d[k // 4]} / {d[k // 2]} / {d[3 * k // 4]} | in their box {bx[k // 4]} / {bx[k // 2]} / {bx[3 * k // 4]} | "
+              f"those deeper, m across from the ball {ay[len(ay) // 4]:.1f} / {ay[len(ay) // 2]:.1f} / {ay[3 * len(ay) // 4]:.1f} | ball |y| med {by[k // 2]:.1f}")
