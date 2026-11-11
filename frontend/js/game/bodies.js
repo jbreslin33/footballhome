@@ -61,6 +61,43 @@
     g.setAttribute('aRegion', new THREE.BufferAttribute(out, 1));
   }
 
+  // ── a footballer, not a superhero: slim the bind mesh once ──────────
+  // Each vertex is pulled toward its bones' axes (bone → its child, bind pose), by a factor per
+  // bone, blended by its skin weights so nothing creases. Arms and the shoulder / trapezius mass
+  // most, the torso and thighs a little, head / hands / feet not at all. [FH]
+  const SLIM = [[/^(upperarm|lowerarm)/, 0.8], [/^clavicle/, 0.78], [/^neck/, 0.88], [/^spine_03/, 0.86],
+                [/^spine_0[12]/, 0.9], [/^pelvis/, 0.95], [/^thigh/, 0.9], [/^calf/, 0.94]];
+  function slimBody(mesh) {
+    const g = mesh.geometry;
+    if (g.userData.fhSlim) return;
+    g.userData.fhSlim = true;
+    const bones = mesh.skeleton.bones;
+    const axis = bones.map((b) => {
+      const f = (SLIM.find(([re]) => re.test(b.name)) || [null, 1])[1];
+      const kid = b.children.find((c) => c.isBone);
+      const a = b.getWorldPosition(new THREE.Vector3());
+      const e = kid ? kid.getWorldPosition(new THREE.Vector3()) : a.clone();
+      return { f, a, d: e.sub(a), len2: Math.max(1e-6, e.lengthSq()) };
+    });
+    const si = g.getAttribute('skinIndex'), sw = g.getAttribute('skinWeight'), pos = g.getAttribute('position');
+    const p = new THREE.Vector3(), q = new THREE.Vector3(), out = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      p.fromBufferAttribute(pos, i);
+      out.set(0, 0, 0); let wsum = 0;
+      for (let k = 0; k < 4; k++) {
+        const w = sw.getComponent(i, k); if (w <= 0) continue;
+        const ax = axis[si.getComponent(i, k)];
+        const t = Math.min(1, Math.max(0, q.copy(p).sub(ax.a).dot(ax.d) / ax.len2));
+        q.copy(ax.d).multiplyScalar(t).add(ax.a);             // the nearest point on the bone
+        out.addScaledVector(q.add(p.clone().sub(q).multiplyScalar(ax.f)), w);
+        wsum += w;
+      }
+      if (wsum > 0) pos.setXYZ(i, out.x / wsum, out.y / wsum, out.z / wsum);
+    }
+    pos.needsUpdate = true;
+    g.computeBoundingSphere();
+  }
+
   function kitMaterial(base, kit, skinTint) {
     const m = base.clone();
     const u = {
@@ -208,8 +245,9 @@
     let skinned = null;
     gltf.scene.traverse((o) => { if (o.isSkinnedMesh && (!skinned || o.geometry.attributes.position.count > skinned.geometry.attributes.position.count)) skinned = o; });
     if (!skinned) { console.warn('bodies: no skinned mesh in', URL_BODY); return; }
-    paintRegions(skinned);
     gltf.scene.updateMatrixWorld(true);
+    paintRegions(skinned);
+    slimBody(skinned);
     const bones = {}; gltf.scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const p = (n) => bones[n].getWorldPosition(new THREE.Vector3());
     const headInv = bones.Head.matrixWorld.clone().invert();
