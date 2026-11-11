@@ -5,14 +5,16 @@
 // loader (real skinned bodies) and post-processing (ambient occlusion, bloom).
 import * as T from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 
 window.THREE = Object.assign({}, T);
-window.THREE_ADDONS = { GLTFLoader };
+window.THREE_ADDONS = { GLTFLoader, SkeletonUtils };
 
 const SCRIPTS = [
   'js/game/wire.js?v=20261110feet1',
   'js/game/net.js?v=20261109step',
   'js/game/players.js?v=20261110foot1',
+  'js/game/bodies.js?v=20261111b2',
   'js/game/lighthouse-site.js?v=20261022s',
   'js/game/lighthouse-trees.js?v=20261022zi',
   'js/game/lighthouse-contours.js?v=20261022zs',
