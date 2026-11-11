@@ -8183,3 +8183,50 @@ within 5 m at the release 18% of the time (5) — we pass to men already marked.
 real passers pick free men; then `risk_weight` re-measured. (2) Long-pass completion 64-68 v 54-59%.
 (3) FIRST TOUCH / PRESSED TOUCH still count scrambles (269 v 147 a team-match): match them to RECEIVER
 SPACE's cut. (4) Headers and aerial duels (35 v 44). (5) Take-ons 57 v 18.
+
+### 8.184 G5.83 — the pass picks the free man: within his zone a marked mate gets less of the share (no migration)
+
+§8.183's mole: our receivers had a man near them at the release far more than real ones. RECEIVER'S
+MARKER AT THE KICK showed it cleanest in the final third: the man a completed pass was for had nobody
+within 5 m 30.7% of the time (50.3), while every mate in that zone had nobody within 5 m 38.4% (39.0)
+— real passers pick the free man of those there; ours picked the marked one.
+
+**Real** (`benchmarks_tracking_passpick.py`, new MARKED PICK; DFL 7 matches, open-play passes naming a
+Recipient, his zone at the kick holding 2+ mates). Each mate there by his nearest opponent 0-2 / 2-3.5 /
+3.5-5 / 5-8 / 8+ m; the split ~ e^(-d/λ) (§8.175's λ) × a lift by that bin, fitted by iterative scaling
+(8+ m = 1). By the receiver's m off his own goal: 0-35 0.25 / 0.20 / 0.23 / 0.33 / 1 (log-likelihood
++94 over the distance split alone); 35-70 0.27 / 0.26 / 0.27 / 0.41 / 1 (+91); 70+ 0.24 / 0.22 / 0.31 /
+0.42 / 1 (+23). A man with theirs inside 5 m is picked about a quarter as often as a free one his distance
+away, in every third. Raw shares, mates / receivers: 0-35 8+ m 56 / 75%, 35-70 35 / 43, 70+ 17 / 19.
+
+**Ours** (G5.82, harness MARKED PICK, the same cut on completed passes): the receiver shares sat on the
+mates' — 0-35 8+ m 54 / 64%, 35-70 41 / 40, 70+ 19 / 13. The chooser split a zone's share by distance
+only (§8.175); marking reached it only through the pass-safety read.
+
+**The change** [FH original on the DFL fit]. `Possession` pick: each mate's distance weight × the lift
+for his nearest opponent's bin and his third (`physics.pass.mark_lift_<third>_<bin>`, x1000;
+`physics.pass.mark_on` 1, 0 = off). The zone keeps its real share; only its split moves. Harness: MARKED
+PICK (completed passes || all passes). Test `pass_pick_marked_lift`; 11v11 golden re-locked, 3v3 unchanged.
+
+**After** (G5.82 → G5.83; seed 1000, then seed 2000; real in brackets).
+- MARKED PICK receivers 0-2 / … / 8+ m (seed 1000): 0-35 3 / 5 / 7 / 21 / 64 → 2 / 4 / 6 / 17 / 71% (3 / 5
+  / 5 / 12 / 75); 35-70 6 / 12 / 13 / 28 / 40 → 3 / 9 / 11 / 27 / 49 (7 / 12 / 13 / 25 / 43); 70+ 20 / 37 /
+  12 / 18 / 13 → 17 / 29 / 16 / 18 / 20 (16 / 24 / 18 / 22 / 19).
+- RECEIVER'S MARKER AT THE KICK, 5 m+ free: 0-35 85.8 → 87.9, 86.0 → 90.0 (89.7); 35-70 71.3 → 74.7, 71.8 →
+  77.2 (75.6); 70+ 30.7 → 34.1, 32.5 → 36.4 (50.3).
+- RECEIVER SPACE, from a mate's pass inside 3 m at the touch 8.9 → 7.2, 8.4 → 7.2% (5.5); the man nearest at
+  the touch within 5 m at the release 18 → 16, 18 → 15% (5).
+- Passes completed 81.0 → 81.1, 80.9 → 81.6% (79.1); take-ons tried 56.7 → 51.3, 57.7 → 50.9 (18.1);
+  pressures (DFL cut) 364 → 356, 372 → 359 (375); counter-press 30.0 → 30.0, 31.5 → 29.0% (21.0).
+
+**What it says.** Within a zone the pass now goes to the free man at the real rate in our third and the
+final third; in midfield the marked man is now picked too seldom (0-2 m 3% v 7) — the pass-safety read
+already cut marked men there, and the two now stack. The final third's receivers are still tight (5 m+
+free 34-36 v 50): that is not the split but which ZONE gets the ball — with one mate in a zone, its
+share goes to him marked or not.
+
+**Next moles.** (1) `risk_weight` (the share a pass the race read says they win keeps, fitted to 79.1%
+completion when our men still ran onto every receiver): re-measure, completion 81-82 v 79, and midfield's
+marked picks 3 v 7%. (2) The final third's zone choice: a zone whose only mate is marked keeps its full
+share. (3) Long-pass completion (§8.183). (4) FIRST TOUCH / PRESSED TOUCH counting scrambles.
+(5) Aerial duels 35 v 44; take-ons 51 v 18.

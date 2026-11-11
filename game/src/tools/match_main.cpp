@@ -120,7 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
-    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0; std::vector<double> ft_r, ft_g5, ft_g10; long ft_n = 0, ft_kept = 0; long pt_n = 0, pt_rel[4] = {}, pt_near = 0; std::vector<double> pt_q5; std::vector<double> rs_t[2], rs_r[2], rs_c[2], rs_dt[2]; long rs_in3[2] = {}, rs_far[2] = {}, rs_why[2][ai::kWhyCount] = {}, rs_kind[2][2] = {}, rs_kin3[2][2] = {}, rs_zn[3] = {}, rs_z3[3] = {}, rs_ln[2][4] = {}, rs_lt3[2][4] = {}, rs_lr3[2][4] = {}, rs_sn[2][4] = {}, rs_s3[2][4] = {}; std::vector<double> rs_sc[2][4];   // §8.183 RECEIVER SPACE   // §8.182 PRESSED TOUCH   // §8.181 FIRST TOUCH   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0; std::vector<double> ft_r, ft_g5, ft_g10; long ft_n = 0, ft_kept = 0; long pt_n = 0, pt_rel[4] = {}, pt_near = 0; std::vector<double> pt_q5; long mp_av[2][3][5] = {}, mp_pk[2][3][5] = {}, mp_n[2][3] = {}; std::vector<double> rs_t[2], rs_r[2], rs_c[2], rs_dt[2]; long rs_in3[2] = {}, rs_far[2] = {}, rs_why[2][ai::kWhyCount] = {}, rs_kind[2][2] = {}, rs_kin3[2][2] = {}, rs_zn[3] = {}, rs_z3[3] = {}, rs_ln[2][4] = {}, rs_lt3[2][4] = {}, rs_lr3[2][4] = {}, rs_sn[2][4] = {}, rs_s3[2][4] = {}; std::vector<double> rs_sc[2][4];   // §8.184 MARKED PICK [all, completed]   // §8.183 RECEIVER SPACE   // §8.182 PRESSED TOUCH   // §8.181 FIRST TOUCH   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
     // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
@@ -223,7 +223,7 @@ int main(int argc, char** argv) {
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
         struct Hp { bool on = false; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; } rel;
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
@@ -671,6 +671,8 @@ int main(int argc, char** argv) {
                 if (rel.p < 0 || rel.set || rel.shot) { rel = Rel{}; return; }
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
+                if (rel.mp_rb >= 0 && rel.mp_pb >= 0)   // §8.184 MARKED PICK
+                    for (int g = 0; g <= (ok ? 1 : 0); ++g) { ++S.mp_n[g][rel.mp_rb]; ++S.mp_pk[g][rel.mp_rb][rel.mp_pb]; for (int q = 0; q < 5; ++q) S.mp_av[g][rel.mp_rb][q] += rel.mp_av[q]; }
                 {   // §8.180 KICK FOOT: strong v weak by length
                     const double L = std::hypot(ex - rel.x, ey - rel.y);
                     const int lb = L < 15 ? 0 : L < 30 ? 1 : 2, wk = rel.weak ? 1 : 0;
@@ -716,6 +718,17 @@ int main(int argc, char** argv) {
                                     const double d = std::hypot(jx - px, jy - py);
                                     ++kz; sum += d; if (d < nd) { nd = d; near = j; }
                                     fl[jy * py > 0 ? 1 : 0] = true;
+                                }
+                                if (kz >= 2) {   // §8.184 MARKED PICK: each mate in his zone by his nearest opponent's metres
+                                    auto mbin = [](double m) { return m < 2 ? 0 : m < 3.5 ? 1 : m < 5 ? 2 : m < 8 ? 3 : 4; };
+                                    auto nopp = [&](std::uint8_t q) { double b = 99; for (std::uint8_t o = 0; o < N; ++o) if (W.player(o).team != owner_team) b = std::min(b, std::hypot(W.player(o).pos.x.toDouble() - W.player(q).pos.x.toDouble(), W.player(o).pos.y.toDouble() - W.player(q).pos.y.toDouble())); return b; };
+                                    const double ro = hx + W.player(pt).pos.x.toDouble() * sgp;
+                                    rel.mp_rb = ro < 35 ? 0 : ro < 70 ? 1 : 2;
+                                    for (std::uint8_t j = 0; j < N; ++j) {
+                                        if (j == owner || W.player(j).team != owner_team) continue;
+                                        if (zq(W.player(j).pos.x.toDouble(), W.player(j).pos.y.toDouble()) != ez) continue;
+                                        const int bq = mbin(nopp(j)); ++rel.mp_av[bq]; if (j == pt) rel.mp_pb = bq;
+                                    }
                                 }
                                 if (kz >= 2) {
                                     ++S.pk_k[ob]; S.pk_even[ob] += 1.0 / kz; if (near == pt) ++S.pk_near[ob];
@@ -1732,6 +1745,22 @@ int main(int argc, char** argv) {
                             for (int ob = 0; ob < 3; ++ob) { const long kk = std::max(1L, S.pk_k[ob]);
                                 std::printf("\n          %-5s 2+ %3.0f%% (%2.0f), nearest %4.1f%% (%4.1f) even %4.1f, %4.1f m v %4.1f, own flank %4.1f%% of %ld (%5.1f)", nm[ob], 100.0 * S.pk_k[ob] / std::max(1L, S.pk_n[ob]), rk[ob],
                                             100.0 * S.pk_near[ob] / kk, rn[ob], 100.0 * S.pk_even[ob] / kk, S.pk_drc[ob] / kk, S.pk_dm[ob] / kk, 100.0 * S.pk_same[ob] / std::max(1L, S.pk_w2[ob]), S.pk_w2[ob], rf[ob]); } }
+                        {   // §8.184 MARKED PICK v benchmarks_tracking_passpick.py (DFL, completed passes naming a Recipient)
+                            static const char* real[3] = {"5 / 10 / 10 / 18 / 56 | 3 / 5 / 5 / 12 / 75", "9 / 15 / 16 / 25 / 35 | 7 / 12 / 13 / 25 / 43", "20 / 26 / 18 / 20 / 17 | 16 / 24 / 18 / 22 / 19"};
+                            static const char* nm[3] = {"0-35", "35-70", "70+"};
+                            std::printf("\n        MARKED PICK (his zone holding 2+ mates; each mate by his nearest opponent 0-2 / 2-3.5 / 3.5-5 / 5-8 / 8+ m; real DFL completed passes in brackets), by the receiver's m off own goal: mates %% | receivers %%, completed passes || all passes");
+                            for (int rb = 0; rb < 3; ++rb) {
+                                std::printf("\n          %-5s", nm[rb]);
+                                for (int g = 1; g >= 0; --g) {
+                                    long ta = 0; for (int q = 0; q < 5; ++q) ta += S.mp_av[g][rb][q];
+                                    const double n = static_cast<double>(std::max(1L, S.mp_n[g][rb])), a = static_cast<double>(std::max(1L, ta));
+                                    std::printf(" %s", g ? "" : "||");
+                                    for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100 * S.mp_av[g][rb][q] / a);
+                                    std::printf(" |"); for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100 * S.mp_pk[g][rb][q] / n);
+                                }
+                                std::printf("  (%s)", real[rb]);
+                            }
+                        }
                         std::printf("\n        HIGH BY LENGTH (benchmarks_statsbomb_highpass.py --length): origin m off own goal | by the pass's length 0-10/10-20/20-30/30-40/40-50/50+: a team-match, high %% (real), high completed %% (real) / ground completed %%");
                         for (int oz = 0; oz < 3; ++oz) {
                             std::printf("\n          %-5s", zn3[oz]);

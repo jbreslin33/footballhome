@@ -132,7 +132,8 @@ constexpr std::uint64_t kGolden3v3   = 0xbf1221ce96a676b1ULL;
 // Re-locked G5.79 (2026-11-10): kicks off a plant foot.
 // Re-locked G5.80 (2026-11-10): the carrier chases his ball at its speed.
 // Re-locked G5.81 (2026-11-10): pressed, his carry's line from the real pressed first touches; the 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0xe1fb24ffdbaded03ULL;
+// Re-locked G5.83 (2026-11-10): within his zone a marked man gets less of the share (DFL lift); the 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0x4b163a66c9533c82ULL;
 
 struct Rig {
     World world;
@@ -352,6 +353,22 @@ FH_TEST(pass_pick_lambda_by_origin) {
     core::ModelParams off; off.setMilli("physics.pass.pick_lambda_1", 0);
     ai::PossessionParams Q; Q.configure(off);
     FH_EXPECT_EQ(Q.pick_lambda[1].raw, 0);
+}
+
+FH_TEST(pass_pick_marked_lift) {
+    // G5.83 (§8.184): within his zone a man's share x the DFL lift by his nearest opponent's metres
+    // (8+ m = 1; inside 2 m a quarter in every third); mark_on 0 = the distance split alone.
+    ai::PossessionParams P;
+    P.configure(core::ModelParams{});
+    FH_EXPECT(P.mark_on);
+    for (int b = 0; b < 3; ++b) {
+        FH_EXPECT_EQ(P.mark_lift[b][4].raw, Fixed64::one().raw);
+        FH_EXPECT(P.mark_lift[b][0] < Fixed64::fromFraction(3, 10));
+        FH_EXPECT(P.mark_lift[b][3] > P.mark_lift[b][2] && P.mark_lift[b][3] < Fixed64::fromFraction(1, 2));
+    }
+    core::ModelParams off; off.setMilli("physics.pass.mark_on", 0);
+    ai::PossessionParams Q; Q.configure(off);
+    FH_EXPECT(!Q.mark_on);
 }
 
 FH_TEST(pass_high_share_by_direction) {

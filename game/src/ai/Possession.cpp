@@ -194,6 +194,15 @@ public:
                 const int ez = zoneOf(hx, to, v.sg);
                 ++in_zone[ez];
                 pick[j] = lam.raw > 0 ? math::fx_exp_neg(math::length(Vec2{to.x - sp.x, to.y - sp.y}) / lam) : Fixed64::one();
+                if (P.mark_on) {   // G5.83 (§8.184): a man with theirs close gets less of his zone's share
+                    Fixed64 nd2 = Fixed64::fromInt(10000);
+                    for (std::uint8_t q = 0; q < w.playerCount(); ++q)
+                        if (c.team_of_slot[q] != v.team) { const Fixed64 e = distSq(w.player(q).pos, w.player(j).pos); if (e < nd2) nd2 = e; }
+                    const int qb = nd2 < Fixed64::fromInt(4) ? 0 : nd2 < Fixed64::fromFraction(49, 4) ? 1 : nd2 < Fixed64::fromInt(25) ? 2 : nd2 < Fixed64::fromInt(64) ? 3 : 4;
+                    const Fixed64 off = w.pitchHalfX() + to.x * v.sg;
+                    const int rb = off < Fixed64::fromInt(35) ? 0 : off < Fixed64::fromInt(70) ? 1 : 2;
+                    pick[j] = pick[j] * P.mark_lift[rb][qb];
+                }
                 zsum[ez] += pick[j];
             }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
@@ -1053,6 +1062,14 @@ void PossessionParams::configure(const core::ModelParams& p) {
     {   // G5.74 (§8.175): DFL 7 matches, benchmarks_tracking_passpick.py — lambda by maximum likelihood, m
         static const int kPick[3] = {15000, 10000, 8000};
         for (int o = 0; o < 3; ++o) pick_lambda[o] = p.fixed(("physics.pass.pick_lambda_" + std::to_string(o)).c_str(), kPick[o]);
+    }
+    {   // G5.83 (§8.184): DFL 7 matches, benchmarks_tracking_passpick.py MARKED PICK — within his zone the split
+        // ~ e^(-d/lambda) x lift by his nearest opponent's metres, iterative scaling (8+ m = 1), x1000
+        static const int kLift[3][5] = {{250, 200, 230, 330, 1000}, {270, 260, 270, 410, 1000}, {240, 220, 310, 420, 1000}};
+        for (int b = 0; b < 3; ++b)
+            for (int q = 0; q < 5; ++q)
+                mark_lift[b][q] = p.fixed(("physics.pass.mark_lift_" + std::to_string(b) + "_" + std::to_string(q)).c_str(), kLift[b][q]);
+        mark_on = p.fixed("physics.pass.mark_on", 1000).raw > 0;
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     press_on = p.fixed("physics.onball.press_on", 1000).raw > 0;        // G5.81 (§8.182), DFL PRESSED TOUCH

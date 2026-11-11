@@ -55,6 +55,7 @@ def one(ev_path):
                 if m and m.group(1).upper() != "BALL": cur = m.group(2); team[cur] = m.group(1)
                 else: cur = None
     c = collections.Counter(); ll = collections.Counter()
+    mk = []   # G5.83 (§8.184): per pass with 2+ mates in his zone: (receiver band, [(d, marker m, is him)])
     for t, pa, rc, tm in passes:
         F = fr.get(t, {})
         if pa not in F or rc not in F or team.get(rc) != tm: continue
@@ -74,6 +75,10 @@ def one(ev_path):
         c[(ob, "n")] += 1
         if k < 2: continue
         dist = {p: math.hypot(F[p][0] - px, F[p][1] - py) for p in inz}
+        opp = [F[q] for q in F if team.get(q) != tm and team.get(q) is not None]
+        own_r = half + F[rc][0] * g
+        rb = 0 if own_r < 35 else 1 if own_r < 70 else 2
+        mk.append((ob, rb, [(dist[p], min((math.hypot(F[p][0] - o[0], F[p][1] - o[1]) for o in opp), default=99), p == rc) for p in inz]))
         c[(ob, "k")] += 1; c[(ob, "even")] += 1.0 / k
         if min(inz, key=lambda p: dist[p]) == rc: c[(ob, "nearest")] += 1
         c[(ob, "drc")] += dist[rc]; c[(ob, "dmean")] += sum(dist.values()) / k
@@ -86,15 +91,15 @@ def one(ev_path):
                 c[(ob, "w2")] += 1
                 if F[rc][1] * py > 0: c[(ob, "same")] += 1
     for k_, v in ll.items(): c[("ll",) + k_] = v
-    return c
+    return c, mk
 
 
 if __name__ == "__main__":
     files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_03_02_events_raw_*.xml")))
-    tot = collections.Counter()
+    tot = collections.Counter(); MK = []
     with multiprocessing.Pool(3) as pool:
-        for c in pool.imap_unordered(one, files):
-            tot.update(c)
+        for c, mk in pool.imap_unordered(one, files):
+            tot.update(c); MK += mk
     print(f"{len(files)} DFL matches: open-play passes naming a Recipient; his zone at the kick holding 2+ mates")
     for ob, nm in enumerate(("0-35", "35-70", "70+")):
         k = tot[(ob, "k")]
@@ -106,3 +111,37 @@ if __name__ == "__main__":
               f"wide to wide, both flanks held {tot[(ob, 'w2')]:.0f}: own flank {100 * tot[(ob, 'same')] / max(1, tot[(ob, 'w2')]):.1f}%; "
               f"lambda {best if best < 1e8 else 'inf'} m")
         print("      log-lik by lambda: " + " ".join(f"{l if l < 1e8 else 'inf'}:{tot[('ll', ob, l)] - tot[('ll', ob, 1e9)]:+.0f}" for l in LAMS))
+
+    # G5.83 (§8.184) MARKED PICK: within his zone (2+ mates), the split ~ exp(-d / lambda) x lift(his nearest
+    # opponent's metres, binned) — lift fitted by iterative scaling with lambda held at the passer band's best;
+    # lift 1 everywhere = the distance split alone. Raw: share of receivers v share of the mates there, per bin.
+    MB = (0, 2, 3.5, 5, 8, 99)
+    mb = lambda x: next(i for i in range(5) if MB[i] <= x < MB[i + 1])
+    best_l = {ob: max(LAMS, key=lambda l: tot[("ll", ob, l)]) for ob in range(3)}
+    print("MARKED PICK (his zone holding 2+ mates; nearest opponent 0-2 / 2-3.5 / 3.5-5 / 5-8 / 8+ m), by the receiver's m off his own goal:")
+    for rb, nm in enumerate(("0-35", "35-70", "70+")):
+        rows = [(best_l[ob], ms_) for ob, r, ms_ in MK if r == rb]
+        if not rows: continue
+        av = [0] * 5; pk = [0] * 5
+        for _, ms_ in rows:
+            for d, m, isr in ms_:
+                av[mb(m)] += 1; pk[mb(m)] += isr
+        lift = [1.0] * 5
+        for _ in range(50):
+            exp_ = [0.0] * 5
+            for lam, ms_ in rows:
+                w = [math.exp(-d / lam if lam < 1e8 else 0) * lift[mb(m)] for d, m, _ in ms_]
+                sw = sum(w)
+                for (d, m, _), wi in zip(ms_, w): exp_[mb(m)] += wi / sw
+            lift = [lift[i] * pk[i] / exp_[i] if exp_[i] > 0 and pk[i] > 0 else lift[i] for i in range(5)]
+            ref = lift[4]; lift = [x / ref for x in lift]
+        ll0 = ll1 = 0.0
+        for lam, ms_ in rows:
+            w0 = [math.exp(-d / lam if lam < 1e8 else 0) for d, m, _ in ms_]
+            w1 = [w0[i] * lift[mb(ms_[i][1])] for i in range(len(ms_))]
+            i = next(i for i, x in enumerate(ms_) if x[2])
+            ll0 += math.log(w0[i] / sum(w0)); ll1 += math.log(w1[i] / sum(w1))
+        n = len(rows)
+        print(f"   receiver {nm:5s}: passes {n:5d} | mates per bin % " + " / ".join(f"{100 * a / sum(av):.0f}" for a in av)
+              + " | receivers % " + " / ".join(f"{100 * x / n:.0f}" for x in pk)
+              + " | lift (8+ = 1) " + " / ".join(f"{x:.2f}" for x in lift) + f" | log-lik gain {ll1 - ll0:+.0f}")

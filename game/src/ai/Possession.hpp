@@ -64,6 +64,8 @@ struct PossessionParams {
     // this share, the race read deciding only its risk. 0 in [0][0] = off (the old pass_loft roll).
     math::Fixed64 pass_high[3][6]{};
     bool high_on = true;
+    math::Fixed64 mark_lift[3][5]{};  // G5.83 (§8.184): x his nearest opponent 0-2 / 2-3.5 / 3.5-5 / 5-8 / 8+ m, by his m off our goal 0-35 / 35-70 / 70+
+    bool mark_on = false;
     math::Fixed64 pick_lambda[3]{};   // G5.74 (§8.175): a zone's share split among its mates ~ e^(-d/lambda), by the passer's m off our goal 0-35 / 35-70 / 70+ (0 = even)
     // G5.76 (§8.177): the share of passes to our own keeper by the passer's 10 m off our goal
     // (StatsBomb PL 15/16); he is out of the zone split. physics.pass.gk_on 0 = in the split as before.
