@@ -82,7 +82,7 @@ class PyramidMapView {
     const esc = (t) => this._esc(t);
     const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
     const tierLabel = (t) => this._copy(`tier_${t}`) || t;
-    const row = (r) => `<div class="row" data-pz="${r.lat},${r.lon}" title="${esc(`${tierLabel(r.tier)} — ${r.note || ''}`)}">
+    const row = (r) => `<div class="row" data-pzrow="${r.lat},${r.lon}" title="${esc(`${tierLabel(r.tier)} — ${r.note || ''}`)}">
         <i class="tier ${esc(r.tier)}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
         <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}</span></div>`;
     const all = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || [])
@@ -91,9 +91,9 @@ class PyramidMapView {
       html: `<div class="mp-pz"><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
   }
   menuClick(e) {
-    const r = e.target.closest('[data-pz]');
+    const r = e.target.closest('[data-pzrow]');
     if (!r || !this.map) return false;
-    const [lat, lon] = r.dataset.pz.split(',').map(Number);
+    const [lat, lon] = r.dataset.pzrow.split(',').map(Number);
     this.map.flyTo([lat, lon], Math.max(this.map.getZoom(), 6), { duration: 0.6 });
     return true;
   }
@@ -125,7 +125,6 @@ class PyramidMapView {
       .mp-name.shown { pointer-events:auto; cursor:pointer; }
       .mp-name.shown:hover { text-decoration:underline; }
       .mp-name.on { color:#facc15; font-size:12px; font-weight:800; }
-      .hud-club { left:10px; width:min(380px, calc(100% - 24px)); overflow:auto; }
       .hud-club:not(.has-club) { display:none; }
       .mp-ov-head { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(148,163,184,0.2); }
       .mp-ov-head h3 { margin:0; flex:1; font-size:1rem; }
@@ -297,7 +296,7 @@ class PyramidMapView {
       if (d) this.pickClub(d.clubId, false);
     });
     this._bindHud(root);
-    const count = root.querySelector('.mp-hud-count');
+    const count = this.screen.find('.mp-hud-count');
     if (count) count.textContent = this._copy('map_located', { located, clubs: seen.size });
     this.all = all;
     if (this.sel && this.columns.some((c) => c.conf.id === this.sel)) this.select(this.sel, false, true);
@@ -423,7 +422,7 @@ class PyramidMapView {
     const L = window.L;
     if (!this.map || !this.terrLayer) return;
     this.terrLayer.clearLayers();
-    const stats = this.root.querySelector('.mp-hud-stats');
+    const stats = this.screen.find('.mp-hud-stats');
     const conf = this.sel;
     if (!conf) { if (stats) stats.textContent = this._copy('map_pick'); return; }
     let t = this.terrCache.get(conf);
@@ -547,9 +546,11 @@ class PyramidMapView {
   pickClub(clubId, fly = false) {
     if (!this.map || !clubId) return;
     this.club = clubId;
-    const hud = this.root.querySelector('.hud-club');
+    const hud = this.screen.find('.hud-club');
     hud.classList.add('has-club');
-    this._fitClubHud();
+    // The club card is a ☰ section now — open the menu on it.
+    this.screen._menu(true);
+    requestAnimationFrame(() => hud.scrollIntoView({ block: 'nearest' }));
     this.screen.clubCard.open(clubId, hud.querySelector('[data-cc-host]'), () => this._dropClub());
     this._styleDots();
     const pts = (this.dots || []).filter((d) => d.clubId === clubId).map((d) => d.at);
@@ -563,7 +564,7 @@ class PyramidMapView {
 
   _dropClub() {
     this.club = null;
-    const hud = this.root && this.root.querySelector('.hud-club');
+    const hud = this.screen.find('.hud-club');
     if (hud) hud.classList.remove('has-club');
     this._styleDots();
     this._relayout();
@@ -583,6 +584,7 @@ class PyramidMapView {
   // The Club HUD: under the Conference HUD, down to the map key (or the
   // bottom when the key is collapsed out of the way).
   _fitClubHud() {
+    return;   // the club card lives in the ☰ menu since 2026-11-11
     const hud = this.root && this.root.querySelector('.hud-club');
     const stage = this.root && this.root.querySelector('.mp-stage');
     if (!hud || !stage) return;
@@ -612,7 +614,8 @@ class PyramidMapView {
 
   _bindHud(root) {
     const stage = root.querySelector('.mp-stage');
-    root.querySelectorAll('[data-mp]').forEach((el) => {
+    // Layer pills sit in the ☰ dock (Map key); the overlay's slider / ✕ in root.
+    [...root.querySelectorAll('[data-mp]'), ...this.screen.element.querySelectorAll('.ap-dock [data-mp]')].forEach((el) => {
       const a = el.dataset.mp;
       if (a === 'alpha') {
         el.addEventListener('input', () => {

@@ -85,6 +85,8 @@ class ApslPyramidScreen extends Screen {
         .ap-hud-head .t { flex:1; overflow:hidden; text-overflow:ellipsis; }
         .ap-hud-head button { min-height:0; min-width:0; padding:1px 8px; font-size:0.78rem; }
         .ap-hud-body { padding:2px 10px 8px; }
+        .ap-dock .ap-hud-body { padding:0; }
+        .ap-dock .mp-layers { margin-bottom:6px; }
         .ap-hud.collapsed .ap-hud-body { display:none; }
         .ap-hud.off { display:none !important; }
         .ap-menu-btn { position:absolute; top:10px; left:10px; z-index:1300; width:44px; height:44px; min-width:0; min-height:0; padding:0;
@@ -138,7 +140,7 @@ class ApslPyramidScreen extends Screen {
       <div class="ap-stage">
         <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
         <button class="ap-menu-btn" data-menu aria-label="☰">☰</button>
-        <div class="ap-menu" hidden></div>
+        <div class="ap-menu" hidden><div class="ap-menu-main"></div><div class="ap-dock"></div><div class="ap-menu-extra"></div><div class="ap-menu-tail"></div></div>
       </div>`;
     this.element = div;
     this._onFullLabel = () => this._renderMenu();
@@ -234,7 +236,7 @@ class ApslPyramidScreen extends Screen {
 
   // Sections: title + totals, View, Conferences, Show on screen, Actions.
   _renderMenu() {
-    const m = this.find('.ap-menu');
+    const m = this.find('.ap-menu-main'), tail = this.find('.ap-menu-tail');
     if (!m || !this.menuOpen) return;
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const root = this.model && this.model.root();
@@ -245,21 +247,19 @@ class ApslPyramidScreen extends Screen {
       const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`]
         .concat(this._conferences().map((c) => `<button class="ap-pill ${c.color ? 'cc' : ''} ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}"${c.color ? ` style="--cc:${esc(c.color)}; --cc-fg:${PyramidScreenColor.ink(c.color)}"` : ''}>${esc(c.short_name || c.name)}</button>`))
         .join('');
-      // The view's floating panels; the map's Club HUD comes and goes with a pick.
-      const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => h.dataset.hud !== 'map-club');
+      // No floating panels (owner 2026-11-11: "it should all be in
+      // hamburger"): a view's panels are sections of this menu (the dock,
+      // below); Show on screen is only the view's on/off features.
       // …and the view's on/off features (impl.features(): outlier lines on
       // the chart, proposed borders on the map — mig 1238/1239).
       const feats = (this._impl().features ? this._impl().features() : [])
         .map((f) => `<label><input type="checkbox" data-feature="${esc(f.key)}" ${this.feature(f.key, f.def) ? 'checked' : ''}> ${esc(this._copy(f.tier))}</label>`);
-      const rows = huds.map((h) => `<label><input type="checkbox" data-show="${esc(h.dataset.hud)}" ${this._hudShown(h.dataset.hud) ? 'checked' : ''}> ${esc(h.querySelector('.ap-hud-head .t').textContent)}</label>`)
-        .concat(feats);
-      const show = rows.length ? rows.join('') : `<div class="none">${esc(this._copy('menu_show_none'))}</div>`;
+      const show = feats.join('');
       body = `
         <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
         ${sec('menu_view', `<div class="ap-pills">${views}</div>`)}
         ${sec('menu_conf', `<div class="ap-pills">${confs}</div>`)}
-        ${sec('menu_show', `<div class="ap-show">${show}</div>`)}
-        ${(this._impl().menuSections ? this._impl().menuSections() : []).map((x) => sec(x.tier, x.html)).join('')}`;
+        ${show ? sec('menu_show', `<div class="ap-show">${show}</div>`) : ''}`;
     }
     const acts = [
       `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
@@ -271,8 +271,11 @@ class ApslPyramidScreen extends Screen {
         ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}
         <span class="t">${esc(this._copy('title'))}</span>
       </div>
-      ${body}
-      ${sec('menu_actions', `<div class="ap-acts">${acts}</div>`)}`;
+      ${body}`;
+    // A view's own sections (the map's proposed conferences) go under its dock panels.
+    const extra = this.find('.ap-menu-extra');
+    if (extra) extra.innerHTML = this.model && this._impl().menuSections ? this._impl().menuSections().map((x) => sec(x.tier, x.html)).join('') : '';
+    if (tail) tail.innerHTML = sec('menu_actions', `<div class="ap-acts">${acts}</div>`);
   }
 
   findAll(sel) { return this.element ? this.element.querySelectorAll(sel) : []; }
@@ -307,14 +310,18 @@ class ApslPyramidScreen extends Screen {
   }
   // A view's HUD panel: title + ▾/▸ + body; pos = hud-tl / hud-bl / hud-br / hud-bc.
   // Off until ticked in ☰ (the map's Club HUD always rides its pick).
-  hud(key, title, body, pos = 'hud-bl', extra = '') {
-    const c = this._hudCollapsed(key);
-    const off = key !== 'map-club' && !this._hudShown(key);
-    return `
-      <div class="ap-hud ${pos}${c ? ' collapsed' : ''}${off ? ' off' : ''} ${extra}" data-hud="${key}">
-        <div class="ap-hud-head"><span class="t">${this.escapeHtml(title || '')}</span><button class="btn btn-secondary" data-hud-toggle>${c ? '▸' : '▾'}</button></div>
+  // Since 2026-11-11 a "HUD" is a section of the ☰ menu's dock, not a
+  // floating panel: the view's html() calls this while _renderBody collects
+  // the parts, and they are written into .ap-dock (which menu re-renders
+  // never touch, so a view's live content — conference stats, the club card
+  // — survives).  Views find these elements with screen.find().
+  hud(key, title, body, pos = '', extra = '') {
+    (this._dock = this._dock || []).push(`
+      <div class="ap-sec ap-dock-sec ${extra}" data-hud="${key}">
+        <h4>${this.escapeHtml(title || '')}</h4>
         <div class="ap-hud-body">${body}</div>
-      </div>`;
+      </div>`);
+    return '';
   }
 
   // The club card (mig 856): host = an element to sit in (the map's stage),
@@ -376,9 +383,12 @@ class ApslPyramidScreen extends Screen {
     const shown = this._shown();
     // A view that is a canvas (map, presentation) fills the stage edge to edge.
     el.classList.toggle('flush', !!this._impl().fill);
+    this._dock = [];
     el.innerHTML = `
       <div id="ap-view">${shown.length ? this._impl().html(this.model, shown) : `<div class="fc-none">${esc(this._copy('none_on'))}</div>`}</div>
       ${this.edit ? this._editorHtml() : ''}`;
+    const dock = this.find('.ap-dock');
+    if (dock) dock.innerHTML = this._dock.join('');
     this._renderMenu();
     if (shown.length) requestAnimationFrame(() => this._viewCall('mount'));
   }

@@ -112,14 +112,14 @@ class PyramidPresentView {
     this.free = false;
     this.step = Math.max(0, Math.min(i, this.steps.length - 1));
     const st = this.steps[this.step];
-    const cap = this.root.querySelector('.pz-cap');
+    const cap = this.screen.find('.pz-cap');
     if (cap) cap.textContent = `${this.step + 1} / ${this.steps.length} · ${st.cap || ''}`;
     if (st.el === this.chart) this.fit(animate); else this.flyTo([st.el], animate);
   }
 
   _stop() { if (this.timer) { clearInterval(this.timer); this.timer = null; } this._playLabel(); }
   _playLabel() {
-    const b = this.root && this.root.querySelector('[data-pz="play"]');
+    const b = this.screen.find('[data-pz="play"]');
     if (b) b.textContent = this._copy(this.timer ? 'present_pause' : 'present_play');
   }
   _toggle() {
@@ -178,7 +178,7 @@ class PyramidPresentView {
   // ── input ────────────────────────────────────────────────────────────
   _bind() {
     const vp = this.vp;
-    this.root.querySelectorAll('[data-pz]').forEach((b) => b.addEventListener('click', () => {
+    this.screen.element.querySelectorAll('.pz-bar [data-pz]').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.pz;
       if (a === 'prev') { this._stop(); this.go(this.step - 1); }
       else if (a === 'next') { this._stop(); this.go(this.step + 1); }
