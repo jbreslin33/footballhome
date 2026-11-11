@@ -2363,7 +2363,7 @@ class MyScreen extends Screen {
       .filter(o => o !== ev && o.kind === 'match' && !o.my_callin && o.my_role && o.my_role !== 'coach'
                 && o.ends_at && day(o.starts_at) === day(ev.starts_at) && new Date(o.starts_at).getTime() < kick)
       .sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
-    let text = this._callinCopy('both_note', `Asking doesn't stop you playing ${from} — you can do both.`, { from });
+    let text = this._callinCopy('both_note', `You can do both — just leave after ${from} is over and head to APSL.`, { from });
     if (prev) {
       const drive = this._travelMinutes(prev, ev);
       if (drive !== undefined) {
@@ -2375,7 +2375,7 @@ class MyScreen extends Screen {
         const tokens = { from, end: this._nyLabel(end), place, arrive: this._nyLabel(arrive),
                          minutes: String(drive || 0), kickoff: this._nyLabel(kick) };
         text = this._callinCopy('after_game',
-          `${from} ends about ${tokens.end} in ${place}. Leave right after and you'll get here about ${tokens.arrive} (~${tokens.minutes} min drive) — kickoff is ${tokens.kickoff}. That's fine.`, tokens);
+          `You can do both — just leave after ${from} is over and head to APSL. You'll get here about ${tokens.arrive} (kickoff ${tokens.kickoff}) and that's fine.`, tokens);
       }
     }
     return `<div style="font-size:0.6rem; line-height:1.3; margin-top:3px; font-weight:700; color:#86efac;">${this.escapeHtml(text)}</div>`;
