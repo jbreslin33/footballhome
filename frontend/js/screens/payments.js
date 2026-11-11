@@ -125,7 +125,7 @@ class PaymentsScreen extends Screen {
           <table id="pay-table" style="width:100%; border-collapse:collapse; font-size:0.8rem; font-variant-numeric: tabular-nums;">
             <thead style="background: var(--bg-tertiary, #1f2937); position:sticky; top:0; z-index:1;">
               <tr>
-                <th style="text-align:left;  padding:8px 10px; border-bottom:1px solid var(--border-color, #374151);">Date</th>
+                <th style="text-align:left;  padding:8px 10px; border-bottom:1px solid var(--border-color, #374151);">When</th>
                 <th style="text-align:left;  padding:8px 10px; border-bottom:1px solid var(--border-color, #374151);">Payer</th>
                 <th style="text-align:right; padding:8px 10px; border-bottom:1px solid var(--border-color, #374151);">Amount</th>
                 <th style="text-align:right; padding:8px 10px; border-bottom:1px solid var(--border-color, #374151);">Net</th>
@@ -418,13 +418,18 @@ class PaymentsScreen extends Screen {
       out.totalRefunds  += (d.totalRefunds  || 0);
       if (Array.isArray(d.payments)) out.payments.push(...d.payments);
     }
-    // Newest first so the aggregate ledger still reads DESC by date.
-    out.payments.sort((a, b) => {
-      const at = String(a.paidAt || a.paid_at || '');
-      const bt = String(b.paidAt || b.paid_at || '');
-      return bt.localeCompare(at);
-    });
+    // Newest first by the full timestamp (same as each programme's own
+    // ORDER BY paid_at DESC, la_transaction_id DESC).
+    out.payments.sort(PaymentsScreen.byPaidAtDesc);
     return out;
+  }
+
+  // Transactions order: paid_at (full timestamp) newest first, then the
+  // higher transaction id — two items of one LA transaction share a time.
+  static byPaidAtDesc(a, b) {
+    const at = Date.parse(a.paidAt || a.paid_at || '') || 0;
+    const bt = Date.parse(b.paidAt || b.paid_at || '') || 0;
+    return (bt - at) || ((Number(b.transactionId) || 0) - (Number(a.transactionId) || 0));
   }
 
   _aggregatedFlags(keys = PaymentsScreen.ALL_TABS) {
@@ -1115,7 +1120,7 @@ class PaymentsScreen extends Screen {
     const recentHtml = recent.length
       ? recent.map((t) => `
           <div style="display:flex; justify-content:space-between; gap:8px; padding:2px 0;">
-            <span style="opacity:0.7; white-space:nowrap;">${this.fmtDate(t.paidAt)}</span>
+            <span style="opacity:0.7; white-space:nowrap;">${this.fmtDateTime(t.paidAt)}</span>
             <span style="font-weight:700; color:${t.txnType && t.txnType.includes('Refund') ? '#fca5a5' : '#86efac'};">
               ${t.txnType && t.txnType.includes('Refund') ? '−' : ''}${this.fmtMoney(t.amount)}
             </span>
@@ -2185,7 +2190,7 @@ class PaymentsScreen extends Screen {
       ].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     };
-    const rows = (data.payments || []).filter(filter);
+    const rows = (data.payments || []).filter(filter).sort(PaymentsScreen.byPaidAtDesc);
     const tbody = this.find('#pay-tbody');
     if (rows.length === 0) {
       tbody.innerHTML = `
@@ -2204,7 +2209,7 @@ class PaymentsScreen extends Screen {
     const name = `${this.escape(p.firstName || '')} ${this.escape(p.lastName || '')}`.trim() || '—';
     return `
       <tr style="border-bottom:1px solid var(--border-color, #374151);">
-        <td style="padding:6px 10px; white-space:nowrap;">${this.fmtDate(p.paidAt)}</td>
+        <td style="padding:6px 10px; white-space:nowrap;">${this.fmtDateTime(p.paidAt)}</td>
         <td style="padding:6px 10px;">${name}</td>
         <td style="padding:6px 10px; text-align:right; color:${amountColour}; font-weight:700;">${amountSign}${this.fmtMoney(p.amount)}</td>
         <td style="padding:6px 10px; text-align:right; opacity:0.85;">${p.netAmount == null ? '—' : this.fmtMoney(p.netAmount)}</td>
@@ -2695,6 +2700,19 @@ class PaymentsScreen extends Screen {
     const n = Number(v);
     if (!isFinite(n)) return '$?';
     return `$${n.toFixed(2)}`;
+  }
+
+  // A transaction's full time in club time (Philadelphia) — "11/11/2026
+  // 7:16 AM".  LA stamps every payment to the second; a UTC date alone
+  // put evening payments on the next day.
+  fmtDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return this.escape(iso);
+    return d.toLocaleString('en-US', {
+      timeZone: 'America/New_York', month: 'numeric', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    }).replace(',', '');
   }
 
   fmtDate(iso) {
