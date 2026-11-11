@@ -1,8 +1,10 @@
-// RoleSelectionScreen - Choose which role to use (Coach, Player, Admin)
-class RoleSelectionScreen extends Screen {
+// MainMenuScreen — #main-menu (was #role-selection until 2026-11-11; owner:
+// "i don't like role-selection screen name … shouldn't it be main-menu").
+// The six group buttons are lib/main-menu.js (MainMenu, mig 1244).
+class MainMenuScreen extends Screen {
   render() {
     const div = document.createElement('div');
-    div.className = 'screen screen-role-selection';
+    div.className = 'screen screen-main-menu';
     
     const user = this.navigation.context.user;
     const userName = user?.name || user?.email || 'User';

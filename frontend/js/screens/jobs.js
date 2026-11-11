@@ -109,7 +109,7 @@ class JobsScreen extends Screen {
       <div id="jb-body" style="padding: 0 var(--space-4) var(--space-4); max-width: 900px;">Loading…</div>
     `;
     this.element = div;
-    div.querySelector('#jb-back').addEventListener('click', () => this.navigation.goTo('role-selection'));
+    div.querySelector('#jb-back').addEventListener('click', () => this.navigation.goTo('main-menu'));
     div.addEventListener('click', (e) => this._onClick(e));
     div.addEventListener('change', (e) => this._onChange(e));
     return div;

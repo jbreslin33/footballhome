@@ -109,6 +109,9 @@ class NavigationStateMachine {
   }
 
   goTo(state, params = {}) {
+    // #role-selection was renamed #main-menu (2026-11-11); a saved return
+    // point or an old link still lands.
+    if (state === 'role-selection') state = 'main-menu';
     // Store current state in history — every time, same screen or not,
     // because the browser gets an entry every time (see constructor).
     if (this.currentState) {
@@ -158,7 +161,7 @@ class NavigationStateMachine {
   // #role-selection") — #dashboard stays one tap away as the first
   // "Run the week" tile.
   home() {
-    return 'role-selection';
+    return 'main-menu';
   }
 
   // Coming back to the app after a few minutes away.  Owner 2026-10-22:
@@ -313,8 +316,8 @@ class NavigationStateMachine {
       case 'practice-list':
         // Going back from these screens - nothing to clear (team stays)
         break;
-      case 'role-selection':
-        // Going back from role selection clears user (would go to login)
+      case 'main-menu':
+        // Going back from the main menu clears user (would go to login)
         this.context.user = null;
         break;
     }

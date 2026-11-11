@@ -1,4 +1,4 @@
-// MainMenu — six groups on #role-selection, a group's pages as pills.
+// MainMenu — six groups on #main-menu, a group's pages as pills.
 //
 // Owner 2026-11-11: "main menu … is too cluttered … x amount of basic
 // standard categories on main menu and then from there … pills" / "rsvp
@@ -155,7 +155,7 @@ class MainMenu {
     const host = document.getElementById('menu-pills');
     if (!host) return;
     const hide = () => { host.style.display = 'none'; host.innerHTML = ''; };
-    if (!screen || screen === 'role-selection' || screen === 'login' || screen === 'oauth-success') return hide();
+    if (!screen || screen === 'login' || screen === 'oauth-success') return hide();
     try { await MainMenu.load(); } catch (_) { return hide(); }
     // A newer show() may have run while the menu loaded.
     const current = window.app && window.app.navigation && window.app.navigation.currentState;
@@ -181,7 +181,7 @@ class MainMenu {
     if (!host._wired) {
       host._wired = true;
       host.addEventListener('click', (e) => {
-        if (e.target.closest('[data-menu-home]')) { const n = MainMenu._nav; if (n) n.goTo('role-selection'); return; }
+        if (e.target.closest('[data-menu-home]')) { const n = MainMenu._nav; if (n) n.goTo('main-menu'); return; }
         const b = e.target.closest('[data-menu-page]');
         if (b) MainMenu.open(b.getAttribute('data-menu-page'));
       });

@@ -100,7 +100,7 @@ class DashboardScreen extends Screen {
         <div id="db-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#db-tools').addEventListener('click', () => this.navigation.goTo('role-selection'));
+    div.querySelector('#db-tools').addEventListener('click', () => this.navigation.goTo('main-menu'));
     div.querySelector('#db-refresh').addEventListener('click', () => this.load());
     div.addEventListener('click', (e) => {
       // A row inside a cell wins over the cell itself (a section → that
