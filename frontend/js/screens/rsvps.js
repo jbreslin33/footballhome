@@ -277,6 +277,10 @@ class RsvpBoardScreen extends Screen {
   _wireEvents() {
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
+      // ⋯ → the shared player sheet (owner 2026-11-11), on 📅 Activity.
+      const sheetBtn = e.target.closest('[data-player-sheet]');
+      if (sheetBtn && !sheetBtn.closest('.player-sheet')) { this._openSheet(Number(sheetBtn.dataset.playerSheet), sheetBtn.dataset.sheetTab || 'activity'); return; }
+      if (e.target.closest('.player-sheet')) return;
       const sec = e.target.closest('[data-section]');
       if (sec) { this.section = sec.dataset.section; this.teamIds = new Set(); this.eventId = null; this.who = null; this._renderChips(); this.load(); return; }
       const dayChip = e.target.closest('[data-day]');
@@ -864,6 +868,18 @@ class RsvpBoardScreen extends Screen {
     return days <= 0 ? `${when} (today)` : `${when} (${days}d ago)`;
   }
 
+  _openSheet(pid, tab) {
+    if (!window.PlayerSheet || !pid) return;
+    const find = () => ((this.data && this.data.people) || []).find(x => x.person_id === pid);
+    PlayerSheet.open({
+      host: this.element,
+      auth: this.auth,
+      tab: tab || 'activity',
+      resolve: () => { const p = find(); return p ? { personId: p.person_id, firstName: p.first_name, lastName: p.last_name, returnTo: 'rsvps' } : null; },
+      extras: () => { const p = find(); return p ? { activity: this._weekTable(p) } : {}; },
+    });
+  }
+
   _renderCard(p) {
     const pct = p.rsvp_pct;
     const pctCls = pct == null ? 'rb-none' : pct >= 80 ? 'rb-good' : pct >= 50 ? 'rb-mid' : 'rb-bad';
@@ -925,6 +941,7 @@ class RsvpBoardScreen extends Screen {
             ${p.injury ? `<div style="margin-top:2px;"><span class="rb-pill" style="background:rgba(245,158,11,0.2); color:#fbbf24;" title="Injured (set on Teams): no RSVP owed, no reminders, no fines while it lasts">${this.escapeHtml(p.injury)}</span></div>` : ''}
           </div>
           <div style="text-align:right;">
+            ${window.PlayerSheet ? `<div style="margin-bottom:2px;">${PlayerSheet.button(String(p.person_id), { tab: 'activity' })}</div>` : ''}
             <div class="rb-pct ${pctCls}">${pct == null ? '—' : pct + '%'}</div>
             <div style="font-size:0.68rem; opacity:0.6;">${p.expected ? `answered ${p.answered} of ${p.expected}` : 'no events in window'}</div>
           </div>

@@ -254,33 +254,18 @@ class MembersScreen extends Screen {
         }
         return;
       }
-      // Card body → open the PersonScreen for that member.  Guard so
-      // clicks on the View button (or any inner control) stay with their
-      // own handler.  Also skip if there's no LA user id (rare: manual
-      // FH-member with no LA alias).
-      const anchorInside = e.target.closest('a, button, input, textarea, select, label');
-      if (anchorInside) return;
-      const card = e.target.closest('.paused-card[data-la-user-id]');
-      if (card) {
-        const laUid = card.getAttribute('data-la-user-id');
-        if (laUid) {
-          // Before pushing /person onto history, snapshot the current
-          // chip + search state INTO the current /members browser
-          // history entry.  This is what makes PersonScreen's Back
-          // (a plain window.history.back()) land on the exact
-          // filtered card list we came from.  Without this, the
-          // /members entry still holds the params from the initial
-          // admin-club → members navigation, so back-nav would render
-          // the wrong chip (or the default chip).
-          this._snapshotHistoryState();
-          this.navigation.goTo('person', {
-            leagueAppsUserId: laUid,
-            returnTo: 'members',
-            returnToParams: this._returnParams(),
-          });
-        }
+      // ⋯ or the card body → the shared player sheet, over this list
+      // (close = back on the same filtered cards).
+      const sheetBtn = e.target.closest('[data-player-sheet]');
+      if (sheetBtn && !sheetBtn.closest('.player-sheet')) {
+        this._openSheet(sheetBtn.getAttribute('data-player-sheet'), sheetBtn.getAttribute('data-sheet-tab') || 'person');
         return;
       }
+      if (e.target.closest('.player-sheet')) return;
+      const anchorInside = e.target.closest('a, button, input, textarea, select, label');
+      if (anchorInside) return;
+      const card = e.target.closest('.paused-card[data-sheet-key]');
+      if (card) this._openSheet(card.getAttribute('data-sheet-key'), 'person');
     });
 
     const search = this.find('#members-search');
@@ -1166,10 +1151,31 @@ class MembersScreen extends Screen {
     }).join('');
 
     groupsEl.innerHTML = html || `<div style="opacity:0.6; text-align:center; padding: var(--space-4);">No matches.</div>`;
+    if (window.PlayerSheet) PlayerSheet.refresh();
   }
 
   // Slim membership mirror card: name + DOB + View/Edit.  Contact,
   // onboarding, and LeagueApps actions live on the Person profile.
+  // p<person_id> or la<LA user id> (manual FH members have no LA id).
+  _sheetKey(m) { return m.person_id ? `p${m.person_id}` : `la${m.leagueapps_user_id || ''}`; }
+  _openSheet(key, tab) {
+    if (!window.PlayerSheet || !key) return;
+    this._snapshotHistoryState();   // ⤢ full page → Back lands on this filtered list
+    PlayerSheet.open({
+      host: this.element,
+      auth: this.auth,
+      tab: tab || 'person',
+      resolve: () => {
+        const m = (this._visibleMembers() || []).find(x => this._sheetKey(x) === key);
+        return m ? {
+          personId: m.person_id || null, laUserId: m.leagueapps_user_id || null,
+          firstName: m.first_name || '', lastName: m.last_name || '', dob: m.dob || null,
+          email: m.email || null, phone: m.phone || null, returnTo: 'members',
+        } : null;
+      },
+    });
+  }
+
   _renderCard(m, _sinceLabel, _groupVariant) {
     const name = `${m.first_name || ''} ${m.last_name || ''}`.trim() || '(no name)';
     const dob  = m.dob || '';
@@ -1177,32 +1183,27 @@ class MembersScreen extends Screen {
       ? `<div style="font-size:0.8rem; opacity:0.75;">${this._esc(this._fmtDob(dob))}</div>`
       : `<div style="font-size:0.8rem; opacity:0.45;">No DOB</div>`;
 
-    const viewEdit = (window.PersonActions)
-      ? window.PersonActions.buttonsHtml(
-          {
-            leagueAppsUserId: m.leagueapps_user_id,
-            personId:         m.person_id,
-            firstName:        m.first_name,
-            fullName:         name,
-          },
-          { returnTo: 'members', size: 'md' }
-        )
+    // ONE ⋯ → the shared player sheet (owner 2026-11-11: one consistent
+    // popup on every screen; it replaces going into the person screen).
+    const sheetBtn = (window.PlayerSheet && (m.person_id || m.leagueapps_user_id))
+      ? PlayerSheet.button(this._sheetKey(m), { tab: 'person' })
       : '';
 
     return `
       <div class="paused-card"
            data-la-user-id="${m.leagueapps_user_id || ''}"
            data-person-id="${m.person_id || ''}"
+           data-sheet-key="${this._esc(this._sheetKey(m))}"
            style="background: var(--bg-secondary);
             border-radius: var(--radius-md); padding: var(--space-3);
             border: 1px solid var(--color-border);
             display:flex; flex-direction:column; gap:4px;
-            ${m.leagueapps_user_id ? 'cursor:pointer;' : ''}">
-        <div style="font-weight:600;">${this._esc(name)}</div>
+            ${sheetBtn ? 'cursor:pointer;' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
+          <div style="font-weight:600; min-width:0;">${this._esc(name)}</div>
+          ${sheetBtn}
+        </div>
         ${dobLine}
-        ${viewEdit
-          ? `<div style="display:flex; gap:6px; margin-top: var(--space-2); flex-wrap:wrap;">${viewEdit}</div>`
-          : ''}
       </div>
     `;
   }
