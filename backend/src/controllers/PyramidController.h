@@ -59,6 +59,7 @@ private:
     Response handleZoneRules(const Request& request);
     Response handleRoots(const Request& request);
     Response handleTerritory(const Request& request);
+    Response handleProposal(const Request& request);   // mig 1241
     Response handleClub(const Request& request);
     Response handleClubSave(const Request& request);
 };

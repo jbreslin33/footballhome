@@ -182,9 +182,68 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix, [this](const Request& r) { return handleGet(r); });
     router.get(prefix + "/roots", [this](const Request& r) { return handleRoots(r); });
     router.get(prefix + "/territory", [this](const Request& r) { return handleTerritory(r); });
+    router.get(prefix + "/proposal", [this](const Request& r) { return handleProposal(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
+}
+
+// GET /api/pyramid/proposal (mig 1241) — the map's proposal layer: every
+// region (live conference with its proposed border, or a proposed new one)
+// with its people and a label point (population-weighted centre of its
+// counties), the watch list (developing proposals, no region), the bar
+// (smallest live conference's ground) and the border lines.  All computed
+// by fh_pyramid_proposal_refresh(); this only reads.
+Response PyramidController::handleProposal(const Request&) {
+    try {
+        auto* db = Database::getInstance();
+        json regions = json::array(), watch = json::array(), borders = json::array();
+        for (const auto& r : db->query(R"SQL(
+                SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
+                       pc.conference_id, pc.proposed_id,
+                       COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier, p.core_population,
+                       sum(k.population) AS population, count(*) AS counties,
+                       sum(k.lat * k.population) / NULLIF(sum(k.population), 0) AS lat,
+                       sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
+                       (SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id) AS anchors,
+                       COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2
+                  FROM pyramid_proposal_counties pc
+                  JOIN pyramid_counties k ON k.fips = pc.fips
+                  LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
+                  LEFT JOIN pyramid_proposed_conferences p ON p.id = pc.proposed_id
+                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, p.name, p.note, p.tier, p.core_population, p.sort_order
+                 ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
+            regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
+                               {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
+                               {"note", strOrNull(r, "note")}, {"tier", strOrNull(r, "tier")},
+                               {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
+                               {"population", r["population"].as<long long>()}, {"counties", num(r, "counties")},
+                               {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()},
+                               {"anchors", strOrNull(r, "anchors")}});
+        }
+        for (const auto& r : db->query(R"SQL(
+                SELECT p.name, p.note, p.tier, p.core_population,
+                       avg(k.lat) AS lat, avg(k.lon) AS lon, string_agg(a.label, ' · ' ORDER BY a.label) AS anchors
+                  FROM pyramid_proposed_conferences p
+                  JOIN pyramid_proposed_anchors a ON a.proposed_id = p.id
+                  JOIN pyramid_counties k ON k.fips = a.fips
+                 WHERE p.developing
+                 GROUP BY p.id ORDER BY p.sort_order)SQL")) {
+            watch.push_back({{"name", str(r, "name")}, {"note", strOrNull(r, "note")}, {"tier", strOrNull(r, "tier")},
+                             {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
+                             {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()}, {"anchors", strOrNull(r, "anchors")}});
+        }
+        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line FROM pyramid_proposal_borders ORDER BY id"))
+            borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)}});
+        auto bar = db->query(R"SQL(
+            SELECT min(pop) AS bar FROM (SELECT sum(k.population) AS pop FROM pyramid_county_conference cc
+              JOIN pyramid_counties k ON k.fips = cc.fips WHERE cc.conference_id IS NOT NULL GROUP BY cc.conference_id) s)SQL");
+        return jsonOut(HttpStatus::OK, {{"regions", regions}, {"watch", watch}, {"borders", borders},
+                                        {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] proposal: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 // GET /api/pyramid/territory?conf=<id> (mig 852) — a conference's ground:
