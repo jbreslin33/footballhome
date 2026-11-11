@@ -86,10 +86,11 @@ constexpr const char* kZonesSql = R"SQL(
 // One row carries both directions (promotes up, relegates down).
 constexpr const char* kLinksSql = R"SQL(
     SELECT l.id, ld.id AS lower_division, ud.id AS upper_division, l.upper_competition_id,
-           l.promotes, l.relegates
+           l.promotes, l.relegates, array_to_string(o.team_ids, ',') AS outlier_teams
       FROM pyramid_links l
       JOIN td ld ON ld.source_id = l.lower_source_id AND ld.name = l.lower_division
       LEFT JOIN td ud ON ud.source_id = l.upper_source_id AND ud.name = l.upper_division
+      LEFT JOIN pyramid_link_outliers o ON o.link_id = l.id   -- mig 1238
      WHERE l.upper_competition_id IS NOT NULL OR ud.id IS NOT NULL
      ORDER BY l.id)SQL";
 
@@ -472,10 +473,22 @@ Response PyramidController::handleGet(const Request& request) {
         }
 
         json links = json::array();
-        for (const auto& r : db->query(cte + kLinksSql, {root}))
+        for (const auto& r : db->query(cte + kLinksSql, {root})) {
+            // outlier_teams (mig 1238): the minority link of a table that
+            // feeds two conferences — drawn from these teams' rows.
+            json outliers = json::array();
+            const std::string ot = r["outlier_teams"].is_null() ? std::string() : str(r, "outlier_teams");
+            for (size_t p = 0; !ot.empty();) {
+                const size_t c = ot.find(',', p);
+                outliers.push_back(std::stoi(ot.substr(p, c == std::string::npos ? std::string::npos : c - p)));
+                if (c == std::string::npos) break;
+                p = c + 1;
+            }
             links.push_back({{"lower", num(r, "lower_division")}, {"upper_division", intOrNull(r, "upper_division")},
                              {"upper_competition", intOrNull(r, "upper_competition_id")},
-                             {"promotes", r["promotes"].as<bool>()}, {"relegates", r["relegates"].as<bool>()}});
+                             {"promotes", r["promotes"].as<bool>()}, {"relegates", r["relegates"].as<bool>()},
+                             {"outlier_teams", outliers}});
+        }
 
         json clubs = json::array();
         for (const auto& r : db->query(cte + kClubsSql, {root})) {

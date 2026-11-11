@@ -225,7 +225,8 @@ class PyramidModel {
     // One arrow per link: head up if it promotes, head down if it relegates.
     for (const l of this.links) {
       if (!placed.has(l.lower)) continue;
-      const e = { from: l.lower, up: l.promotes, down: l.relegates };
+      // teams: the outlier rows a minority conference link starts from (mig 1238).
+      const e = { from: l.lower, up: l.promotes, down: l.relegates, teams: l.outlier_teams || [] };
       if (l.upper_competition && confIds.has(l.upper_competition)) edges.push({ ...e, to: `c${l.upper_competition}` });
       else if (l.upper_division && placed.has(l.upper_division)) edges.push({ ...e, to: `d${l.upper_division}` });
     }

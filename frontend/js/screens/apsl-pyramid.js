@@ -137,7 +137,7 @@ class ApslPyramidScreen extends Screen {
       if (e.target.closest('[data-menu]')) { this._menu(); return; }
       const act = e.target.closest('[data-act]');
       if (act) { this._menuAction(act.dataset.act); return; }
-      if (e.target.closest('[data-show]')) return;   // checkbox: handled on change
+      if (e.target.closest('[data-show], [data-feature]')) return;   // checkbox: handled on change
       // ▾ / ▸ on any HUD: collapse to its title, remembered (owner: "the
       // huds should be collapsable").
       const tg = e.target.closest('[data-hud-toggle]');
@@ -166,6 +166,8 @@ class ApslPyramidScreen extends Screen {
     div.querySelector('.ap-stage').addEventListener('change', (e) => {
       const show = e.target.closest('[data-show]');
       if (show) { this._setShown(show.dataset.show, show.checked); return; }
+      const feat = e.target.closest('[data-feature]');
+      if (feat) { this._setFeature(feat.dataset.feature, feat.checked); return; }
       if (e.target.closest('.ap-editor')) this._editorRead();
     });
     return div;
@@ -227,9 +229,13 @@ class ApslPyramidScreen extends Screen {
         .join('');
       // The view's floating panels; the map's Club HUD comes and goes with a pick.
       const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => h.dataset.hud !== 'map-club');
-      const show = huds.length
-        ? huds.map((h) => `<label><input type="checkbox" data-show="${esc(h.dataset.hud)}" ${this._hudShown(h.dataset.hud) ? 'checked' : ''}> ${esc(h.querySelector('.ap-hud-head .t').textContent)}</label>`).join('')
-        : `<div class="none">${esc(this._copy('menu_show_none'))}</div>`;
+      // …and the view's on/off features (impl.features(): outlier lines on
+      // the chart, proposed borders on the map — mig 1238/1239).
+      const feats = (this._impl().features ? this._impl().features() : [])
+        .map((f) => `<label><input type="checkbox" data-feature="${esc(f.key)}" ${this.feature(f.key, f.def) ? 'checked' : ''}> ${esc(this._copy(f.tier))}</label>`);
+      const rows = huds.map((h) => `<label><input type="checkbox" data-show="${esc(h.dataset.hud)}" ${this._hudShown(h.dataset.hud) ? 'checked' : ''}> ${esc(h.querySelector('.ap-hud-head .t').textContent)}</label>`)
+        .concat(feats);
+      const show = rows.length ? rows.join('') : `<div class="none">${esc(this._copy('menu_show_none'))}</div>`;
       body = `
         <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
         ${sec('menu_view', `<div class="ap-pills">${views}</div>`)}
@@ -258,6 +264,16 @@ class ApslPyramidScreen extends Screen {
     try { localStorage.setItem(`apsl-show-${key}`, on ? '1' : '0'); } catch (_) { /* private mode */ }
     this.findAll(`#ap-view [data-hud="${key}"]`).forEach((el) => el.classList.toggle('off', !on));
     this._viewCall('onResize');
+  }
+  // A view feature switched in ☰ Show on screen; `def` until the viewer
+  // picks, remembered per device.
+  feature(key, def = true) {
+    try { const v = localStorage.getItem(`apsl-feat-${key}`); return v == null ? def : v === '1'; } catch (_) { return def; }
+  }
+  _setFeature(key, on) {
+    try { localStorage.setItem(`apsl-feat-${key}`, on ? '1' : '0'); } catch (_) { /* private mode */ }
+    if (this._impl().onFeature) this._impl().onFeature(key, on);
+    else { this._viewCall('unmount'); this._renderBody(); }
   }
   _hudCollapsed(key) { try { return localStorage.getItem(`apsl-hud-${key}`) === '1'; } catch (_) { return false; } }
   _toggleHud(el) {

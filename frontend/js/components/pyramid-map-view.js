@@ -459,7 +459,7 @@ class PyramidMapView {
     body.innerHTML = this.flow.chartHtml(this.model, [col.conf]);
     ov.hidden = false;
     this._fitOverlay();
-    requestAnimationFrame(() => this.flow.drawArrows(body.querySelector('.fc-chart'), this.model, [col.conf]));
+    requestAnimationFrame(() => this.flow.drawArrows(body.querySelector('.fc-chart'), this.model, [col.conf], { outliers: false }));
   }
 
   // The overlay starts just under the screen's ☰ button (mig 1234).
@@ -581,7 +581,7 @@ class PyramidMapView {
     this._fitClubHud();
     const col = this.sel && this.columns && this.columns.find((c) => c.conf.id === this.sel);
     const chart = this.root && this.root.querySelector('.mp-ov .fc-chart');
-    if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf]);
+    if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf], { outliers: false });
   }
 
   unmount() {

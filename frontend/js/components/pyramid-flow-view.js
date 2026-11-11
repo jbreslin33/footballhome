@@ -15,8 +15,17 @@
 // .fc-scroll is its ONE scroller, both directions — grab with the mouse and
 // drag; a finger pans it natively.  A drag never fires the click under it
 // (club card, ✏️), a plain click still does.
+//
+// Outlier links (owner 2026-11-11, mig 1238): a table that feeds two
+// conferences sends its MINORITY link (the conference fewer of its teams'
+// grounds are nearest) from those teams' rows — one branch per row, merged
+// into one line beside the table.  Switch: ☰ Show on screen → "outliers".
+// Not on the map (proposed borders live there).
 class PyramidFlowView {
   constructor(screen) { this.screen = screen; this.fill = true; }
+
+  features() { return [{ key: 'outliers', tier: 'feature_outliers', def: true }]; }
+  onFeature() { this.screen._viewCall('mount'); }
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
   _copy(tier, tokens) { return this.screen._copy(tier, tokens); }
@@ -28,6 +37,7 @@ class PyramidFlowView {
       .fc-scroll.dragging * { cursor:grabbing !important; }
       .fc-chart { position:relative; display:grid; column-gap:22px; row-gap:46px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
       .fc-arrows { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
+      .fc-tbl tr.fc-out td.tm { text-decoration:underline dotted #94a3b8; text-underline-offset:3px; }
       .fc-cell { display:flex; gap:10px; justify-content:center; position:relative; z-index:1; }
       .fc-conf { border:2px solid #2563eb; border-radius:14px; padding:10px; background:rgba(37,99,235,0.08); position:relative; z-index:1; }
       .fc-conf h2 { margin:0; font-size:1.1rem; text-align:center; }
@@ -66,7 +76,7 @@ class PyramidFlowView {
       const z = model.zoneOf(d, t.pos);
       const tip = z ? (z.targets ? this._copy('moves_to', { zone: z.label, targets: z.targets }) : z.label) : '';
       return `
-      <tr class="${z ? 'z' : ''}${(opts.club && t.club === opts.club) || (opts.find && t.name.toLowerCase().includes(opts.find)) ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
+      <tr data-team="${t.id}" class="${z ? 'z' : ''}${(opts.club && t.club === opts.club) || (opts.find && t.name.toLowerCase().includes(opts.find)) ? ' mine' : ''}" data-pos="${t.pos == null ? '' : esc(t.pos)}"${z ? ` style="--zc:${esc(z.color)}" title="${esc(tip)}"` : ''}>
         <td>${t.pos == null ? '' : esc(t.pos)}</td><td class="tm"${t.club_id ? ` data-club="${t.club_id}" title="${esc(this._copy('card_hint'))}"` : ''}>${esc(t.name)}</td>
         <td>${t.gp}</td>${opts.full ? `<td>${t.w}</td><td>${t.d}</td><td>${t.l}</td><td>${t.gf}</td><td>${t.ga}</td>` : ''}<td>${t.gd > 0 ? '+' : ''}${t.gd}</td><td><b>${t.pts}</b></td>
       </tr>`;
@@ -190,17 +200,40 @@ class PyramidFlowView {
 
   // Lower table's top edge → its target's bottom edge, in chart-local
   // coordinates (a zoomed stage's scale divided out).
-  drawArrows(chart, model, confs) {
+  // Branches from each outlier row out to the table's edge on the target's
+  // side, a trunk up that edge, then the usual curve into the conference.
+  // Promotion head at the conference; relegation heads into the rows.
+  _outlierPath(rows, a, b, box, k, e) {
+    const L = (x) => (x - box.left) / k, T = (y) => (y - box.top) / k;
+    const right = (b.left + b.right) / 2 >= (a.left + a.right) / 2;
+    const edge = right ? L(a.right) : L(a.left);
+    const jx = edge + (right ? 11 : -11);
+    const ys = rows.map((r) => { const rr = r.getBoundingClientRect(); return T(rr.top + rr.height / 2); });
+    const top = T(a.top) - 8;
+    const bl = L(b.left), br = L(b.right);
+    const x2 = Math.min(Math.max(jx, bl + 24), br - 24), y2 = T(b.bottom) + 3;
+    const my = (top + y2) / 2;
+    const branch = ys.map((y) => `<path d="M${jx},${y} H${edge + (right ? 1 : -1)}"${e.down ? ' marker-end="url(#fc-down)"' : ''} />`).join('');
+    return `<g class="fc-out-link">${branch}<path d="M${jx},${Math.max(...ys)} V${top} C${jx},${my} ${x2},${my} ${x2},${y2}"${e.up ? ' marker-end="url(#fc-up)"' : ''} /></g>`;
+  }
+
+  // opts.outliers false: every link from the table edge (the map's
+  // conference overlay — outlier lines are for the chart views only).
+  drawArrows(chart, model, confs, opts = {}) {
     const svg = chart && chart.querySelector('.fc-arrows');
     if (!svg) return;
     const box = chart.getBoundingClientRect();
     const k = chart.offsetWidth ? box.width / chart.offsetWidth : 1;
     const paths = [];
+    const outliers = opts.outliers !== false && (this.screen.feature ? this.screen.feature('outliers', true) : true);
     for (const e of model.layout(confs).edges) {
       const from = chart.querySelector(`.fc-cell.lv [data-node="d${e.from}"]`);
       const to = chart.querySelector(`[data-node="${e.to}"]`);
       if (!from || !to) continue;
       const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
+      const rows = outliers && e.teams && e.teams.length
+        ? e.teams.map((id) => from.querySelector(`tr[data-team="${id}"]`)).filter(Boolean) : [];
+      if (rows.length) { paths.push(this._outlierPath(rows, a, b, box, k, e)); continue; }
       const x1 = (a.left + a.width / 2 - box.left) / k, y1 = (a.top - box.top) / k;
       // Into a conference: aim above the feeder (clamped into the
       // container) so the arrows fan in instead of meeting mid-box.
@@ -210,6 +243,9 @@ class PyramidFlowView {
       const my = (y1 + y2) / 2;
       paths.push(`<path d="M${x1},${y1 - 2} C${x1},${my} ${x2},${my} ${x2},${y2}"${e.up ? ' marker-end="url(#fc-up)"' : ''}${e.down ? ' marker-start="url(#fc-down)"' : ''} />`);
     }
+    chart.querySelectorAll('tr.fc-out').forEach((tr) => tr.classList.remove('fc-out'));
+    if (outliers) for (const e of model.layout(confs).edges)
+      for (const id of e.teams || []) chart.querySelectorAll(`.fc-cell.lv [data-node="d${e.from}"] tr[data-team="${id}"]`).forEach((tr) => tr.classList.add('fc-out'));
     svg.setAttribute('width', chart.offsetWidth);
     svg.setAttribute('height', chart.offsetHeight);
     svg.innerHTML = `
