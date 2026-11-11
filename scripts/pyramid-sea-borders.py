@@ -61,7 +61,10 @@ def load(plan):
     counties = json.loads(psql(
         "SELECT json_agg(json_build_object('f', k.fips, 'r', COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id),"
         " 'lat', k.lat, 'lon', k.lon, 'g', k.geometry))"
-        f" FROM pyramid_proposal_counties pc JOIN pyramid_counties k USING (fips) WHERE pc.plan = '{plan}'"))
+        # every county is land (mig 1285 fix: the Current plan leaves open ground
+        # beyond its 2 h reach in no conference — that is land, not sea); only
+        # counties in a conference give a region shore (r null otherwise)
+        f" FROM pyramid_counties k LEFT JOIN pyramid_proposal_counties pc ON pc.fips = k.fips AND pc.plan = '{plan}'"))
     return borders, counties
 
 
@@ -80,7 +83,7 @@ def loose_ends(borders):
         q = line[-2] if at_end else line[1]
         lat, lon = p
         # the land border with Canada (49th parallel; 45th along NY/VT) and Mexico
-        if lat >= 48.98 or (abs(lat - 45.0) < 0.02 and -75.5 < lon < -71.4) or (lat < 32.8 and lon < -104.0):
+        if lat >= 48.9 or (abs(lat - 45.0) < 0.1 and -75.5 < lon < -71.4) or (lat < 32.8 and lon < -104.0):
             continue
         out.append({'b': b, 'at_end': at_end, 'p': (lat, lon), 'q': tuple(q)})
     return out
@@ -94,6 +97,7 @@ class Patch:
         self.kx = 111.32 * math.cos(math.radians(lat0))
         self.rings = []      # (fips, [(x, y), …], (x0, y0, x1, y1))
         self.segs = {}       # region → [(ax, ay, bx, by)]
+        self.edges = []      # every county's edges, in a conference or not
         self.local = None
         for c in counties:
             if abs(float(c['lat']) - lat0) > BOX or abs(float(c['lon']) - lon0) > BOX * 1.3:
@@ -105,9 +109,10 @@ class Patch:
                     pts = [self.xy(la, lo) for lo, la in ring]
                     xs, ys = [q[0] for q in pts], [q[1] for q in pts]
                     self.rings.append((c['f'], pts, (min(xs), min(ys), max(xs), max(ys))))
-                    s = self.segs.setdefault(c['r'], [])
-                    for i in range(len(pts) - 1):
-                        s.append((pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]))
+                    edges = [(pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]) for i in range(len(pts) - 1)]
+                    self.edges.extend(edges)       # every county edge: at sea, the coast
+                    if c['r']:
+                        self.segs.setdefault(c['r'], []).extend(edges)
 
     def xy(self, lat, lon):
         return ((lon - self.lon0) * self.kx, (lat - self.lat0) * KY)
@@ -126,7 +131,7 @@ class Patch:
         best = 1e9
         px, py = p
         pool = self.segs if everywhere or self.local is None else self.local
-        for ax, ay, bx, by in pool.get(region, ()):
+        for ax, ay, bx, by in (self.edges if region is None else pool.get(region, ())):
             dx, dy = bx - ax, by - ay
             L = dx * dx + dy * dy
             t = 0.0 if L == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / L))
@@ -247,6 +252,41 @@ def walk(patch, a, b, start, prev, others, walked=()):
     return pts
 
 
+def straight(patch, e):
+    """A traced line's loose end at the water, carried on along its own last
+    ~3 km heading: out past the coast (OPEN km from every shore) or across a
+    bay to the far shore.  An end on land with no water ahead (a gap in the
+    trace, not the coast) gives nothing."""
+    line = e['b']['line'] if e['at_end'] else e['b']['line'][::-1]
+    p = patch.xy(*e['p'])
+    q = p
+    for pt in reversed(line[:-1]):
+        q = patch.xy(*pt)
+        if math.hypot(p[0] - q[0], p[1] - q[1]) >= 3:
+            break
+    d = (p[0] - q[0], p[1] - q[1])
+    L = math.hypot(*d)
+    if L < 0.2:
+        return []
+    d = (d[0] / L, d[1] / L)
+
+    def shore(c):        # every county edge counts: at sea that is the coast
+        return patch.dist(c, None, True)
+
+    pts, wet = [patch.ll(p)], False
+    for i in range(1, MAX_STEPS):
+        c = (p[0] + d[0] * STEP * i, p[1] + d[1] * STEP * i)
+        land = patch.on_land(c)
+        if land and (wet or i * STEP > 3):
+            break        # the far shore of a bay, or no water ahead at all
+        pts.append(patch.ll(c))
+        if not land:
+            wet = True
+            if shore(c) > OPEN:
+                break
+    return pts if wet else []
+
+
 def main():
     rows = []
     for plan in ('current', 'proposed'):   # mig 1274: both plans
@@ -269,6 +309,11 @@ def plan_rows(plan, rows):
                   and {o['b']['a'], o['b']['b']} == {b['a'], b['b']}]
         pair = frozenset((b['a'], b['b']))
         pts = walk(patch, b['a'], b['b'], e['p'], e['q'], others, walked.get(pair, []))
+        if len(pts) < 3:
+            # mig 1285 traced borders cut through counties, so at the coast the
+            # line is nowhere near the county-shore split walk() follows: carry
+            # it straight on along its own last direction instead
+            pts = straight(patch, e)
         if len(pts) < 3:
             continue
         walked.setdefault(pair, []).append(pts)
