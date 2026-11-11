@@ -187,12 +187,17 @@ class PyramidMapView {
           <span class="tag ${isLive ? 'live' : esc(r.tier)}">${esc(this._copy(isLive ? 'mark_live' : 'mark_proposed'))}</span></td>
         ${cols.slice(1).map((c) => `<td>${esc(c.fmt(c.val(r)))}</td>`).join('')}</tr>`;
     }).join('');
-    return [{ tier: 'proposal_hud',
+    // The rules that make conferences, in order (mig 1279, owner: "in menu
+    // show hierarchy of rules to make conferences" / "so you can go by it and
+    // others can see").
+    const rules = (P.rules || []).length ? [{ tier: 'rules_hud',
+      html: `<ol class="mp-rules">${P.rules.map((r) => `<li><b>${esc(r.title)}</b><span>${esc(r.body)}</span></li>`).join('')}</ol>` }] : [];
+    return rules.concat([{ tier: 'proposal_hud',
       html: `<div class="mp-pz"><div class="mp-sorts">${planPills}</div><div class="count">${esc(count)}</div>
         <div class="intro">${esc(this._copy('sort_label'))}</div>
         <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
         <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-        <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(plan === 'current' ? this._copy('plan_current_intro') : this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }];
+        <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(plan === 'current' ? this._copy('plan_current_intro') : this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }]);
   }
   // The plan on screen (11/11, owner: "if we uncheck proposed borders +
   // new conf we still need to show assumed current borders"): the proposal
@@ -307,6 +312,9 @@ class PyramidMapView {
       .mp-tbl .nm { font-weight:800; } .mp-tbl .nm .dot { display:inline-block; margin-right:4px; vertical-align:middle; }
       .mp-tbl .nm .tag { display:table; margin:1px 0 0 13px; font-size:0.5rem; padding:0 3px; }
       .mp-tbl td, .mp-tbl th { padding:3px 3px; }
+      .mp-rules { margin:0; padding-left:18px; font-size:0.74rem; line-height:1.35; }
+      .mp-rules li { margin-bottom:6px; } .mp-rules li b { display:block; font-size:0.8rem; }
+      .mp-rules li span { opacity:0.75; }
       .mp-pz .count { font-weight:800; font-size:0.85rem; margin-bottom:4px; }
       .mp-pz .intro { font-size:0.72rem; opacity:0.65; margin-bottom:4px; white-space:normal; }
 `;

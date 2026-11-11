@@ -276,8 +276,13 @@ Response PyramidController::handleProposal(const Request&) {
                                {"geometry", json::parse(str(r, "g"), nullptr, false)}});
         // The bar (mig 1265): the smallest metro area anchoring a live conference.
         auto bar = db->query("SELECT bar FROM pyramid_proposal_bar");
+        // The rules that make conferences, highest first (mig 1279) — public, shown in ☰.
+        json rules = json::array();
+        for (const auto& r : db->query("SELECT rank, title, body FROM pyramid_conference_rules ORDER BY rank"))
+            rules.push_back({{"rank", num(r, "rank")}, {"title", str(r, "title")}, {"body", str(r, "body")}});
         return jsonOut(HttpStatus::OK, {{"regions", regions}, {"watch", watch}, {"borders", borders},
                                         {"neutral", {{"type", "FeatureCollection"}, {"features", neutral}}},
+                                        {"rules", rules},
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] proposal: " << e.what() << std::endl;
