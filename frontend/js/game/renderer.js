@@ -22,6 +22,48 @@
 (function () {
   'use strict';
 
+  // Graphics tier 1 (James 11/11 "how realistic can we get the mesh/graphics" → lighting first):
+  // colour managed (sRGB in, linear light, sRGB out), filmic tone mapping, image-based light from
+  // a generated sky, the sun's shadow box following the play. ?gfx=classic = the old flat look.
+  const GFX_CLASSIC = /[?&]gfx=classic\b/.test(location.search);
+  if (!GFX_CLASSIC) {
+    // three r149: hex colours are sRGB and get linearised; every canvas-drawn texture in the
+    // game (grass, ball, numbers, labels, overlays) is sRGB too — one place, all files.
+    THREE.ColorManagement.legacyMode = false;
+    const BaseCanvasTexture = THREE.CanvasTexture;
+    THREE.CanvasTexture = class extends BaseCanvasTexture {
+      constructor(...a) { super(...a); this.encoding = THREE.sRGBEncoding; }
+    };
+  }
+
+  // The sky as a light source: a gradient dome (zenith, horizon haze, a dark grass-coloured
+  // ground) with a bright disc where the sun is, prefiltered (PMREM) for every material's
+  // ambient and reflections — what the flat hemisphere light can't give (rim light, glossy
+  // ball and boots, shaded undersides). Built once, a few ms.
+  function skyEnvironment(renderer, sunDir) {
+    const sc = new THREE.Scene();
+    const dome = new THREE.Mesh(new THREE.SphereGeometry(100, 48, 24), new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false,
+      uniforms: { sun: { value: sunDir.clone().normalize() } },
+      vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+      fragmentShader: [
+        'uniform vec3 sun; varying vec3 vD;',
+        'void main(){',
+        '  float h = vD.y;',
+        '  vec3 zen = vec3(0.16, 0.34, 0.70), hor = vec3(0.70, 0.80, 0.92), gnd = vec3(0.10, 0.16, 0.08);',
+        '  vec3 c = h > 0.0 ? mix(hor, zen, pow(h, 0.5)) : mix(hor * 0.6, gnd, pow(-h, 0.35));',
+        '  float d = max(dot(vD, sun), 0.0);',
+        '  c += vec3(1.0, 0.92, 0.80) * (pow(d, 600.0) * 40.0 + pow(d, 12.0) * 0.6);',
+        '  gl_FragColor = vec4(c, 1.0);',
+        '}'].join('\n'),
+    }));
+    sc.add(dome);
+    const pm = new THREE.PMREMGenerator(renderer);
+    const env = pm.fromScene(sc, 0.02).texture;
+    pm.dispose(); dome.geometry.dispose(); dome.material.dispose();
+    return env;
+  }
+
   const INTERP_DELAY_TICKS = 4;  // ~133 ms behind live at 30 Hz
   const NO_OWNER = 255;
   const BALL_R = 0.109;          // the engine's kBallRadius (core/Ball.hpp), a size 5
@@ -146,7 +188,18 @@
       sun.shadow.normalBias = 0.03;
       this.scene.add(sun);
       this.sun = sun;   // view-menu.js switches its shadow
-      this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5));
+      this.sunOffset = sun.position.clone();
+      this.scene.add(sun.target);
+      if (GFX_CLASSIC) {
+        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5));
+      } else {
+        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 0.55;   // tuned by eye against ?gfx=classic, 11/11
+        sun.intensity = 2.4;   // ACES compresses: the sun carries the picture, the sky fills
+        this.scene.environment = skyEnvironment(this.renderer, this.sunOffset);
+        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.15));
+      }
 
       window.addEventListener('resize', () => this.resize());
       this.resize();
@@ -365,6 +418,18 @@
       const fogNear = Math.max(220, cd * 1.3), fogFar = Math.max(520, cd * 3), far = Math.max(1400, cd * 3.5);
       if (this.scene.fog.near !== fogNear) { this.scene.fog.near = fogNear; this.scene.fog.far = fogFar; }
       if (this.camera.far !== far) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
+      if (!GFX_CLASSIC && this.sun) {
+        // The shadow box follows the play and tightens with the camera: the same map over
+        // ~60 m instead of the whole complex = shadows 2-3× sharper up close.
+        const t = this.rig.target, half = Math.min(80, Math.max(30, cd * 0.9));
+        this.sun.position.set(t.x + this.sunOffset.x, this.sunOffset.y, t.z + this.sunOffset.z);
+        this.sun.target.position.set(t.x, 0, t.z);
+        const sc = this.sun.shadow.camera;
+        if (sc.right !== half) {
+          Object.assign(sc, { left: -half, right: half, top: half, bottom: -half });
+          sc.updateProjectionMatrix();
+        }
+      }
       const now = performance.now();
       const dt = this.lastFrameAt ? Math.min((now - this.lastFrameAt) / 1000, 0.1) : 0.016;
       let simDt = dt * this.speed;   // figures move in sim time
