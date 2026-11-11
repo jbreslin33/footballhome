@@ -262,12 +262,20 @@
       const dz = this.fwd, dx = this.lat;
       // Swing height: walking toe clearance; running the heel comes up
       // behind toward the buttock, more the faster [Novacheck 1998].
-      const lift = Math.max((0.07 + r * clamp(0.1 + 0.075 * (s - 2.5), 0, 0.5)) * m, 0.07 * ta);
+      // 11/11 (James "the run with stiff no bend legs at the knee"): the heel came up 0.36 m at
+      // 5 m/s — a 60-70° knee at most; real swing flexion is ~90-100° jogging, ~110° running,
+      // ~130° sprinting [Novacheck 1998]. Higher recovery, rising with speed.
+      const lift = Math.max((0.07 + r * clamp(0.2 + 0.1 * (s - 2.5), 0, 0.62)) * m, 0.07 * ta);
       // Pelvis: COM high at mid-stance walking, low running; ±2 / ±3.5 cm.
       const stepPh = (this.phase * 2) % 1;
       const osc = Math.cos(TAU * (stepPh - duty / 2));
       const ready = this.readyAmt || 0;
-      let py = this.pelvisH - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * osc - 0.035 * r * osc) - 0.05 * ready * (1 - m);
+      // Running the hips sit ~8-9 cm under standing through the whole stance: the knee lands bent
+      // (~20°), sinks to ~40° at mid-stance and pushes off bent [Novacheck 1998]. 4.5 cm left the
+      // leg locked straight whenever the foot was ahead or behind (median knee 8°, 11/11); 6.5 still
+      // landed and pushed off straight (p10 8°) with the engine's plants ±0.48 m.
+      const RUN_SIT = 0.10;
+      let py = this.pelvisH - 0.02 * m - RUN_SIT * r + m * (0.018 * (1 - r) * osc - 0.035 * r * osc) - 0.05 * ready * (1 - m);
       // Lean along the horizontal acceleration (body frame), so the ground
       // force goes through the body: into turns, forward accelerating.
       const ax0 = (vx - (this.pvx ?? vx)) / Math.max(dt, 1e-3), ay0 = (vy - (this.pvy ?? vy)) / Math.max(dt, 1e-3);
@@ -301,7 +309,7 @@
           // the buttock) and the foot drops under the knee as the shin swings
           // through — never a straight leg reaching out in the air.
           const hw = Math.sin(Math.PI * u);
-          const hr = smooth(u / 0.35) * (1 - smooth((u - 0.35) / 0.6));
+          const hr = smooth(u / 0.35) * (1 - smooth((u - 0.55) / 0.42));   // held up longer: the knee extends late, just before contact
           h = lift * (hw + (hr - hw) * r);
           pitchF = m * ((0.55 + 0.2 * r) * (1 - smooth(u / 0.45)) - 0.12 * Math.sin(Math.PI * u) - 0.25 * (1 - r) * smooth((u - 0.8) / 0.2));
         }
@@ -352,7 +360,7 @@
             const u = ft.prog, from = this.liftFrom[i] || { x: ft.x, y: ft.y };
             const late = 0.12 * r, k = smooth((u - late) / (1 - late));
             wx = from.x + (ft.x - from.x) * k; wy = from.y + (ft.y - from.y) * k;
-            const hw = Math.sin(Math.PI * u), hr = smooth(u / 0.35) * (1 - smooth((u - 0.35) / 0.6));
+            const hw = Math.sin(Math.PI * u), hr = smooth(u / 0.35) * (1 - smooth((u - 0.55) / 0.42));   // as the procedural swing
             const run = Math.hypot(ft.x - from.x, ft.y - from.y);   // a step in place barely lifts
             h = Math.min(lift + 0.03, 0.04 + run * 0.4) * (hw + (hr - hw) * r);
             pitchF = m * ((0.55 + 0.2 * r) * (1 - smooth(u / 0.45)) - 0.12 * Math.sin(Math.PI * u) - 0.25 * (1 - r) * smooth((u - 0.8) / 0.2));
@@ -364,7 +372,7 @@
         }
         // COM low at mid-stance running / high walking; in flight (no foot down) it rides high.
         const oscW = downU >= 0 ? downU * 2 - 1 : -0.8;
-        py = this.pelvisH - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * oscW - 0.035 * r * oscW) - 0.05 * ready * (1 - m);
+        py = this.pelvisH - 0.02 * m - RUN_SIT * r + m * (0.018 * (1 - r) * oscW - 0.035 * r * oscW) - 0.05 * ready * (1 - m);
       }
       // Pelvis yaw follows the forward foot of the right leg (side -1).
       const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
@@ -554,7 +562,21 @@
       this.look.yaw = ease(this.look.yaw, lookYaw, 6, dt);
       this.look.pitch = ease(this.look.pitch, lookPitch, 6, dt);
       this.neck.rotation.set(this.look.pitch, this.look.yaw * 0.75, 0);
-      this.chest.rotation.y = this.look.yaw * 0.25 - this.pelvis.rotation.y * 0.8;   // shoulders counter the hips
+      // Shoulders counter the hips: running, the thorax turns opposite the pelvis by a little more
+      // than the pelvis turns (out of phase; thorax ~1.2× the pelvis's transverse range in the world
+      // [Schache, Bennell, Blanch & Wrigley 1999]). Was 0.8 of it cancelled — square, stiff shoulders.
+      this.chest.rotation.y = this.look.yaw * 0.25 - this.pelvis.rotation.y * (0.8 + 1.4 * r);
+      // Standing he is never still (11/11, James "players look stiff"): a slow sway of the upper body
+      // side to side, breathing in the chest, the head drifting a touch — each man on his own phase, gone
+      // as he moves. [FH]
+      const still = (1 - m) * (1 - (W.slide || 0)) * (1 - (W.stumble || 0));
+      if (still > 0.01) {
+        this.idleT = (this.idleT || this.phase * 20) + dt;
+        const t = this.idleT, ws = Math.sin(t * 1.7 + this.slot);
+        this.chest.rotation.z += 0.03 * ws * still;   // the upper body sways (the legs are solved: feet stay planted)
+        this.chest.rotation.x += 0.012 * Math.sin(t * 1.5) * still;              // ~4 s a breath
+        this.neck.rotation.y += 0.05 * Math.sin(t * 0.6 + this.slot * 2) * still;
+      }
 
       // ── overlays ─────────────────────────────────────────────────────
       const L = this.legs, A = this.arms;
