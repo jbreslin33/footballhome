@@ -69,6 +69,31 @@
     g.setAttribute('aRegion', new THREE.BufferAttribute(out, 1));
   }
 
+  // ── relaxed hands: the T-pose's straight fingers curled once, before any clone ──
+  // Each finger joint turns toward the palm (palms face down in the bind pose) about its own
+  // direction × down: knuckle 0.35, middle 0.55, tip 0.4 rad; the thumb 0.2 each. [FH]
+  function relaxHands(scene) {
+    const bones = {}; scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+    const down = new THREE.Vector3(0, -1, 0), a = new THREE.Vector3(), c = new THREE.Vector3();
+    const qw = new THREE.Quaternion(), qb = new THREE.Quaternion(), qp = new THREE.Quaternion();
+    for (const side of ['l', 'r']) for (const [f, angs] of [['index', [0.35, 0.55, 0.4]], ['middle', [0.35, 0.55, 0.4]],
+                                                            ['ring', [0.4, 0.6, 0.4]], ['pinky', [0.45, 0.6, 0.4]], ['thumb', [0.2, 0.2, 0.2]]]) {
+      for (let k = 0; k < 3; k++) {
+        const b = bones[`${f}_0${k + 1}_${side}`]; if (!b) continue;
+        const ch = b.children.find((x) => x.isBone); if (!ch) continue;
+        scene.updateMatrixWorld(true);
+        b.getWorldPosition(a); ch.getWorldPosition(c);
+        const axis = c.sub(a).normalize().cross(down).normalize();
+        if (axis.lengthSq() < 0.5) continue;
+        qw.setFromAxisAngle(axis, angs[k]);
+        b.parent.getWorldQuaternion(qp).invert();
+        b.getWorldQuaternion(qb);
+        b.quaternion.copy(qp.multiply(qw).multiply(qb));
+      }
+    }
+    scene.updateMatrixWorld(true);
+  }
+
   // ── a footballer, not a superhero: slim the bind mesh once ──────────
   // Each vertex is pulled toward its bones' axes (bone → its child, bind pose), by a factor per
   // bone, blended by its skin weights so nothing creases. Arms and the shoulder / trapezius mass
@@ -182,7 +207,7 @@
   }
 
   // ── attach / retarget ────────────────────────────────────────────────
-  const tq = new THREE.Quaternion(), tq2 = new THREE.Quaternion(), rootInv = new THREE.Quaternion();
+  const tq = new THREE.Quaternion(), tq2 = new THREE.Quaternion(), tq3 = new THREE.Quaternion(), rootInv = new THREE.Quaternion();
   const tv = new THREE.Vector3();
   function rel(root, obj, out) {           // obj's rotation in the figure's frame
     root.getWorldQuaternion(rootInv).invert();
@@ -241,32 +266,49 @@
     fig.root.updateMatrixWorld(true);
     const side = (o) => Math.sign(relPos(fig.root, o, new THREE.Vector3()).x);
     const pick = (stem, o) => (side(bones[stem + '_l']) === side(o) ? bones[stem + '_l'] : bones[stem + '_r']);
-    // [rig joint, bone, where the rig segment points to (a point on the rig), the bone's child]:
-    // the body is bound in a T-pose, the rig rests with arms down — each bone's rest is first
-    // swung to point along its rig segment, so "rest" means the same pose on both.
+    // Each bone's target is a rotation-from-rest in the figure's frame (a "delta"), times its rest.
+    // Most take their rig joint's delta; the spine, collarbones, neck and head blend between two
+    // (11/11, James "players look stiff"): the chest's turn spread up spine_01 / 02 / 03 (35 / 70 /
+    // 100% of it over the pelvis), each collarbone 20% of its arm's swing, the neck half the head's.
+    const restInv = new Map();
+    for (const j of joints) restInv.set(j, rel(fig.root, j, new THREE.Quaternion()).invert());
     const at = (o, x, y, z) => () => o.localToWorld(new THREE.Vector3(x, y, z));
-    const pairs = [[fig.pelvis, bones.pelvis], [fig.chest, bones.spine_01], [fig.neck, bones.neck_01]];
+    const dir = (from, to) => relPos(fig.root, to, new THREE.Vector3()).sub(relPos(fig.root, from, new THREE.Vector3())).normalize();
+    // the body is bound in a T-pose, the rig rests with arms down — a limb bone's rest is first
+    // swung to point along its rig segment, so "rest" means the same pose on both
+    const restOf = (bone, rig, rigTo, child) => {
+      const q = rel(fig.root, bone, new THREE.Quaternion());
+      if (rigTo && child) {
+        const pt = rigTo(); fig.root.worldToLocal(pt);
+        const rd = pt.sub(relPos(fig.root, rig, new THREE.Vector3())).normalize();
+        q.premultiply(new THREE.Quaternion().setFromUnitVectors(dir(bone, child), rd));
+      }
+      return q;
+    };
+    const kid = (b) => b && b.children.find((c) => c.isBone);
+    const map = [];
+    const add = (bone, delta, rig, rigTo, child) => { if (bone) map.push({ bone, delta, boneRest: restOf(bone, rig, rigTo, child) }); };
+    const D = (j) => ['d', j], B = (a, b2, f) => ['b', a, b2, f];
+    add(bones.pelvis, D(fig.pelvis));
+    add(bones.spine_01, B(fig.pelvis, fig.chest, 0.35));
+    add(bones.spine_02, B(fig.pelvis, fig.chest, 0.7));
+    add(bones.spine_03, D(fig.chest));
+    for (const a of fig.arms) add(pick('clavicle', a.sh), B(fig.chest, a.sh, 0.2));
+    add(bones.neck_01, B(fig.chest, fig.neck, 0.5));
+    add(bones.Head, D(fig.neck));
     for (const a of fig.arms) {
       const up = pick('upperarm', a.sh), lo = pick('lowerarm', a.elbow);
-      pairs.push([a.sh, up, at(a.elbow, 0, 0, 0), lo], [a.elbow, lo, at(a.elbow, 0, -0.26, 0), lo && lo.children.find((c) => c.isBone)]);
+      add(up, D(a.sh), a.sh, at(a.elbow, 0, 0, 0), lo);
+      add(lo, D(a.elbow), a.elbow, at(a.elbow, 0, -0.26, 0), kid(lo));
     }
     for (const l of fig.legs) {
       const th = pick('thigh', l.hip), ca = pick('calf', l.knee), fo = pick('foot', l.ankle);
-      pairs.push([l.hip, th, at(l.knee, 0, 0, 0), ca], [l.knee, ca, at(l.ankle, 0, 0, 0), fo],
-                 [l.ankle, fo, at(l.ankle, 0, -0.04, 0.14), fo && fo.children.find((c) => c.isBone)]);
+      add(th, D(l.hip), l.hip, at(l.knee, 0, 0, 0), ca);
+      add(ca, D(l.knee), l.knee, at(l.ankle, 0, 0, 0), fo);
+      add(fo, D(l.ankle), l.ankle, at(l.ankle, 0, -0.04, 0.14), kid(fo));
     }
-    const dir = (from, to) => relPos(fig.root, to, new THREE.Vector3()).sub(relPos(fig.root, from, new THREE.Vector3())).normalize();
-    const map = pairs.filter(([a, b]) => a && b).map(([a, b, rigTo, child]) => {
-      const boneRest = rel(fig.root, b, new THREE.Quaternion());
-      if (rigTo && child) {
-        const pt = rigTo(); fig.root.worldToLocal(pt);
-        const rd = pt.sub(relPos(fig.root, a, new THREE.Vector3())).normalize();
-        boneRest.premultiply(new THREE.Quaternion().setFromUnitVectors(dir(b, child), rd));
-      }
-      return { rig: a, bone: b, rigRestInv: rel(fig.root, a, new THREE.Quaternion()).invert(), boneRest };
-    });
     fig.body = {
-      model, map, pelvisBone: bones.pelvis,
+      model, map, restInv, pelvisBone: bones.pelvis,
       rigPelvisRest: relPos(fig.root, fig.pelvis, new THREE.Vector3()),
       bonePelvisRest: relPos(fig.root, bones.pelvis, new THREE.Vector3()),
     };
@@ -289,8 +331,22 @@
     fig.root.localToWorld(tv);
     b.pelvisBone.parent.worldToLocal(tv);
     b.pelvisBone.position.copy(tv);
+    const cache = b.cache || (b.cache = new Map());
+    cache.clear();
+    const delta = (j) => {                 // the rig joint's rotation from rest, in the figure's frame
+      let q = cache.get(j);
+      if (!q) { q = rel(fig.root, j, new THREE.Quaternion()).multiply(b.restInv.get(j)); cache.set(j, q); }
+      return q;
+    };
     for (const m of b.map) {               // parents first (the list's order)
-      rel(fig.root, m.rig, tq).multiply(m.rigRestInv).multiply(m.boneRest);   // the bone's rotation in the figure's frame
+      const d = m.delta;
+      if (d[0] === 'd') tq.copy(delta(d[1]));
+      else {                               // blend: a's delta, then f of the way on to b's
+        const qa = delta(d[1]);
+        tq2.copy(qa).invert().multiply(delta(d[2]));
+        tq.copy(qa).multiply(tq3.identity().slerp(tq2, d[3]));
+      }
+      tq.multiply(m.boneRest);             // the bone's rotation in the figure's frame
       rel(fig.root, m.bone.parent, tq2).invert();
       m.bone.quaternion.copy(tq2.multiply(tq));
       m.bone.updateMatrixWorld(true);
@@ -357,6 +413,7 @@
     gltf.scene.traverse((o) => { if (o.isSkinnedMesh && (!skinned || o.geometry.attributes.position.count > skinned.geometry.attributes.position.count)) skinned = o; });
     if (!skinned) { console.warn('bodies: no skinned mesh in', URL_BODY); return; }
     gltf.scene.updateMatrixWorld(true);
+    relaxHands(gltf.scene);
     paintRegions(skinned);
     slimBody(skinned);
     const bnames = {}; gltf.scene.traverse((o) => { if (o.isBone) bnames[o.name] = o; });
