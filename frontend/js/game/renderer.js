@@ -26,15 +26,19 @@
   // colour managed (sRGB in, linear light, sRGB out), filmic tone mapping, image-based light from
   // a generated sky, the sun's shadow box following the play. ?gfx=classic = the old flat look.
   const GFX_CLASSIC = /[?&]gfx=classic\b/.test(location.search);
-  if (!GFX_CLASSIC) {
-    // three r149: hex colours are sRGB and get linearised; every canvas-drawn texture in the
-    // game (grass, ball, numbers, labels, overlays) is sRGB too — one place, all files.
-    THREE.ColorManagement.legacyMode = false;
+  // three 0.160 (boot.js): hex colours are sRGB and get linearised by default; every
+  // canvas-drawn texture in the game (grass, ball, numbers, labels, overlays) is sRGB too —
+  // one place, all files. Classic turns colour management off, as r149 had it.
+  if (GFX_CLASSIC) {
+    THREE.ColorManagement.enabled = false;
+  } else {
     const BaseCanvasTexture = THREE.CanvasTexture;
     THREE.CanvasTexture = class extends BaseCanvasTexture {
-      constructor(...a) { super(...a); this.encoding = THREE.sRGBEncoding; }
+      constructor(...a) { super(...a); this.colorSpace = THREE.SRGBColorSpace; }
     };
   }
+  // Lights: physically based since 0.155 — a legacy intensity × π gives the same light.
+  const LEGACY = Math.PI;
 
   // The sky as a light source: a gradient dome (zenith, horizon haze, a dark grass-coloured
   // ground) with a bright disc where the sun is, prefiltered (PMREM) for every material's
@@ -178,7 +182,7 @@
       this.rig = new CameraRig(this.camera, canvas);
 
       // Low evening sun from the main-stand side: long readable shadows.
-      const sun = new THREE.DirectionalLight(0xfff1dc, 1.15);
+      const sun = new THREE.DirectionalLight(0xfff1dc, 1.15 * LEGACY);
       sun.position.set(-40, 70, 45);
       sun.castShadow = true;
       const mobile = matchMedia('(pointer: coarse)').matches;
@@ -191,14 +195,15 @@
       this.sunOffset = sun.position.clone();
       this.scene.add(sun.target);
       if (GFX_CLASSIC) {
-        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5));
+        this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;   // r149's default
+        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.5 * LEGACY));
       } else {
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 0.55;   // tuned by eye against ?gfx=classic, 11/11
-        sun.intensity = 2.4;   // ACES compresses: the sun carries the picture, the sky fills
+        sun.intensity = 2.4 * LEGACY;   // ACES compresses: the sun carries the picture, the sky fills
         this.scene.environment = skyEnvironment(this.renderer, this.sunOffset);
-        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.15));
+        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x355e2f, 0.15 * LEGACY));
       }
 
       window.addEventListener('resize', () => this.resize());
