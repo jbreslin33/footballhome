@@ -386,7 +386,8 @@ class WomensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + this.renderContactButton(p, {
+      viewButtonHtml: profileBtn,
+      contactHtml: this.renderContactButton(p, {
         recipients: [{ personId: p.personId, name: p.fullName || `${p.firstName || ''} ${p.lastName || ''}`.trim(), ...this.contactFor(p) }],
         section: 'womens',
         title: `Contact ${p.firstName || 'player'}`,

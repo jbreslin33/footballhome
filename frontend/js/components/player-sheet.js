@@ -15,7 +15,8 @@
 // already holds (#payments: the dues hero, due date, LA / flag buttons, the
 // fines boxes, dispute Approve / Deny).
 //
-//   PlayerSheet.button(key, { tab, flagged })   → the card's ⋯ button html
+//   PlayerSheet.button(key, { tab, flagged, compact })   → the card's ⋯ button html
+//                (compact = #teams-size cards)
 //   PlayerSheet.open({
 //     host,        the screen element: the sheet mounts inside it so the
 //                  screen's delegated click / change handlers keep working
@@ -88,7 +89,7 @@
   function button(key, opts = {}) {
     return `<button type="button" data-player-sheet="${esc(key)}"${opts.tab ? ` data-sheet-tab="${esc(opts.tab)}"` : ''}
       title="${esc(t('button_title', {}, 'Everything for this player'))}"
-      style="min-width:34px; padding:2px 10px; border-radius:6px; cursor:pointer; font-size:1.05rem; font-weight:900; line-height:1.2;
+      style="${opts.compact ? 'min-width:0; min-height:0; padding:0 7px; border-radius:3px; font-size:0.8rem; margin:0;' : 'min-width:34px; padding:2px 10px; border-radius:6px; font-size:1.05rem;'} cursor:pointer; font-weight:900; line-height:1.2;
              background:${opts.flagged ? '#c026d3' : '#334155'}; color:#fff; border:1px solid ${opts.flagged ? '#e879f9' : '#475569'};">⋯</button>`;
   }
 

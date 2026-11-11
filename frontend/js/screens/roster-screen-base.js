@@ -1169,7 +1169,7 @@ class RosterScreenBase extends Screen {
     if (!this.element || !teamId) return;
     const tally = this.element.querySelector(`[data-on-roster-tally="${teamId}"]`);
     if (!tally) return;
-    const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
+    const selects = this._cardStatusSelects(teamId);
     const n = Array.from(selects).filter(s => RosterScreenBase.countsAsOnRoster(s.value)).length;
     tally.innerHTML = this.onRosterTallyHtml(n, Number(tally.dataset.fieldSize) || 0);
   }
@@ -1327,7 +1327,7 @@ class RosterScreenBase extends Screen {
     if (!this.element || !teamId) return;
     const strip = this.element.querySelector(`[data-status-tallies="${teamId}"]`);
     if (!strip) return;
-    const selects = this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`);
+    const selects = this._cardStatusSelects(teamId);
     const codes = Array.from(selects).map(s => s.value || '');
     strip.innerHTML = this.rosterStatusTalliesHtml({ teamId, leagueId: Number(strip.dataset.leagueId) || 0 }, codes);
   }
@@ -1556,6 +1556,15 @@ class RosterScreenBase extends Screen {
 
     const prevValue = Array.from(select.options).find(o => o.defaultSelected)?.value ?? '';
     select.disabled = true;
+    // Picked in the player sheet: the card's own copy follows, so the
+    // column tallies and the card chip move with it.
+    const mirror = (v) => {
+      if (!select.closest('.player-sheet')) return;
+      this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"][data-person-id="${personId}"]`).forEach(s => {
+        if (s !== select && !s.closest('.player-sheet')) { s.value = v; this.applyRosterStatusStyle(s); }
+      });
+    };
+    mirror(select.value);
     this.applyRosterStatusStyle(select);
     this.refreshOnRosterTally(teamId);
     this.refreshRosterStatusTallies(teamId);
@@ -1575,6 +1584,7 @@ class RosterScreenBase extends Screen {
       if (typeof this.onMembershipChanged === 'function') this.onMembershipChanged();
     } catch (err) {
       select.value = prevValue;
+      mirror(prevValue);
       this.applyRosterStatusStyle(select);
       this.refreshOnRosterTally(teamId);
       this.refreshRosterStatusTallies(teamId);
@@ -2009,6 +2019,69 @@ class RosterScreenBase extends Screen {
     }, 50);
   }
 
+  // The roster-status <select>s the column tallies count — the ones on
+  // the cards, never the player sheet's copy of the same picker.
+  _cardStatusSelects(teamId) {
+    return Array.from(this.element.querySelectorAll(`.mr-status-select[data-team-id="${teamId}"]`))
+      .filter(s => !s.closest('.player-sheet'));
+  }
+
+  // ⋯ on a card → the player sheet, mounted inside this board's element so
+  // the board's own delegated click / change handlers (move, status, role,
+  // team status, contact) work on the sheet's pickers too.  Wired once.
+  _wirePlayerSheet() {
+    if (this._sheetWired || !this.element) return;
+    this._sheetWired = true;
+    this.element.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-player-sheet]');
+      if (!btn || !this.element.contains(btn) || btn.closest('.player-sheet')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      this._openPlayerSheet(btn.getAttribute('data-player-sheet'), btn.getAttribute('data-sheet-tab') || 'teams');
+    });
+  }
+
+  _openPlayerSheet(key, tab) {
+    const entry = () => (this._sheetCards && this._sheetCards.get(key)) || null;
+    PlayerSheet.open({
+      host: this.element,
+      auth: this.auth,
+      tab,
+      resolve: () => {
+        const c = entry();
+        if (!c) return null;
+        const p = c.player;
+        return {
+          personId: p.personId, laUserId: p.leagueAppsUserId,
+          firstName: p.firstName || '', lastName: p.lastName || '',
+          returnTo: 'teams',
+        };
+      },
+      extras: () => {
+        const c = entry();
+        if (!c) return {};
+        const label = c.col && (c.col.shortLabel || c.col.label);
+        return {
+          teams: c.teams ? `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+              ${label ? `<div style="font-size:0.75rem; font-weight:800; opacity:0.75;">${this.escape(RosterScreenBase.dropClubName(label))}</div>` : ''}
+              ${c.teams}</div>` : '',
+          contact: c.contact,
+        };
+      },
+      onChange: () => { if (typeof this.load === 'function') this.load({ quiet: true }); },
+    });
+  }
+
+  // The board re-rendered (a save reloads it): the open sheet redraws
+  // from the fresh card data.  One redraw per render burst.
+  _scheduleSheetRefresh() {
+    if (this._sheetRefreshTimer || !window.PlayerSheet || !PlayerSheet.isOpen()) return;
+    this._sheetRefreshTimer = setTimeout(() => {
+      this._sheetRefreshTimer = null;
+      PlayerSheet.refresh();
+    }, 0);
+  }
+
   renderCompactCard({
     player,
     col,
@@ -2020,6 +2093,7 @@ class RosterScreenBase extends Screen {
     roleSelectHtml = '',
     statusSelectHtml = '',
     viewButtonHtml = '',
+    contactHtml = '',
     duesLabel = '',
     dobShort = '',
     borderColor = RosterScreenBase.NEUTRAL_CARD_BORDER,
@@ -2104,6 +2178,7 @@ class RosterScreenBase extends Screen {
     // sizes the column from. flex:0 0 auto keeps the name at its natural
     // width and makes the column widen to hold it.
     this._scheduleStandingChips();
+    this._scheduleSheetRefresh();
     const isScroll = this.viewMode === 'scroll';
     // Same min-width story as colBoxMinWidth(), one level down: every
     // wrapper between the grid track and the name has to keep its
@@ -2130,7 +2205,7 @@ class RosterScreenBase extends Screen {
     // the column tallies that count those selects are unaffected.
     // Same <details> popover as the move control, so the shared
     // outside-click closer (installMoveDropdownOutsideClose) shuts it.
-    const menuItems = `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}${viewButtonHtml}`.trim();
+    const menuItems = `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}${viewButtonHtml}${contactHtml}`.trim();
     const actionsMenu = menuItems
       ? `
       <details class="roster-move-details roster-actions-menu" style="position:relative; display:flex;">
@@ -2141,7 +2216,26 @@ class RosterScreenBase extends Screen {
         </div>
       </details>`
       : '';
-    const controls = actionsMenu;
+    // The one player sheet (owner 2026-11-11, player-sheet.js): ⋯ opens
+    // the same seven tabs as every other screen, on ⚽ Teams.  The team /
+    // status / role pickers ride in that tab, the CONTACT button in 📇
+    // Contact; the 👤 tab's own profile buttons replace viewButtonHtml.
+    // A hidden copy of the status <select> stays on the card: the column
+    // tallies count those (sheet copies are left out) and its chip
+    // mirrors it.
+    let controls = actionsMenu;
+    if (window.PlayerSheet && player.personId && menuItems) {
+      const sheetKey = `${cardId}@${(col && col.teamId) || 0}`;
+      if (!this._sheetCards) this._sheetCards = new Map();
+      this._sheetCards.set(sheetKey, {
+        player, col,
+        teams: `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}`.trim(),
+        contact: contactHtml || '',
+      });
+      this._wirePlayerSheet();
+      controls = PlayerSheet.button(sheetKey, { tab: 'teams', compact: true })
+        + (statusSelectHtml ? `<span hidden data-card-status-copy>${statusSelectHtml}</span>` : '');
+    }
 
     const cardBaseStyle = `background:var(--bg-tertiary, #1f2937); border-radius:5px; padding:1px 5px; border:${borderColor}; min-width:${boxMin};`;
 

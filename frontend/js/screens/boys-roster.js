@@ -819,7 +819,8 @@ class BoysRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + this.renderContactButton(p, {
+      viewButtonHtml: profileBtn,
+      contactHtml: this.renderContactButton(p, {
           // Each parent separately (mig 682); the first is the one the
           // card's contact details already belong to.
           recipients: [

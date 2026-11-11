@@ -865,7 +865,8 @@ class MensRosterScreen extends RosterScreenBase {
       rosterSelectHtml: moveSelect,
       roleSelectHtml: roleSelect,
       statusSelectHtml: statusSelect,
-      viewButtonHtml: profileBtn + this.renderContactButton(p, {
+      viewButtonHtml: profileBtn,
+      contactHtml: this.renderContactButton(p, {
         recipients: [{ personId: p.personId, name: contactName, phone: contactPhone, email: contactEmail }],
         section: 'mens',
         vcard: vcardHref ? { href: vcardHref, filename: vcardFilename } : null,
