@@ -324,10 +324,13 @@ const POST_PILLS = [
 // it swaps the graphic for the coach-drawn situations pitch.  11v11 with a
 // formation only (pills()).
 const TACTICS_PILL = { key: 'tactics', icon: '🎯', title: 'Tactics', accent: '#ef4444', social: 'closed' };
+// 👥 All Players — EventScreen's list, first pill of every event (owner 11/11).
+const PLAYERS_PILL = 'players';
 
-// Starters & Bench is the landing pill: it's the one a coach actually
-// works in, and it's the team sheet a player opens the page to read.
-const DEFAULT_PILL = 'starters_bench';
+// 👥 All Players is the landing pill, as on every event (owner 11/11:
+// "they should look the same except where they need to look diff");
+// Starters & Bench is one tap away.
+const DEFAULT_PILL = PLAYERS_PILL;
 
 // The game child of EventScreen (screens/event-screen.js — owner 2026-10-27:
 // "base class is event … then game or practice child").  Opened by its event
@@ -823,7 +826,7 @@ class GameCenterScreen extends EventScreen {
   // than rendering a blank body.
   _resolvePill(params) {
     // #event/<id>/<pill> (EventKindSwitch) names it pill; older doors postType.
-    if (params.pill && (POST_PILLS.some(p => p.key === params.pill) || params.pill === TACTICS_PILL.key)) return params.pill;
+    if (params.pill && (POST_PILLS.some(p => p.key === params.pill) || params.pill === TACTICS_PILL.key || params.pill === PLAYERS_PILL)) return params.pill;
     // #game-center/<id>/<pill> (app.js) hands the pill over as postType, 🎯 too.
     if (params.postType && (POST_PILLS.some(p => p.key === params.postType) || params.postType === TACTICS_PILL.key)) return params.postType;
     if (params.mode === 'gameday') return 'lineup';
@@ -1033,6 +1036,12 @@ class GameCenterScreen extends EventScreen {
   _wire() {
     if (this._wired) return;
     this._wired = true;
+    // 👥 All Players folds stay as the coach left them (EventScreen's
+    // capture-phase toggle — toggle does not bubble).
+    this.element.addEventListener('toggle', (e) => {
+      const d = e.target.closest && e.target.closest('[data-ec-fold]');
+      if (d) this.folds.set(d.dataset.ecFold, d.open);
+    }, true);
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();
@@ -1150,10 +1159,13 @@ class GameCenterScreen extends EventScreen {
         this._render();
         return;
       }
+      // 👥 All Players pane: EventScreen's own buttons (P/A/L/E, ✓/✗,
+      // remind, 📇, call-in, mark all present).
+      if (e.target.closest('[data-gc-players-pane]') && this._playersPaneClick((sel) => e.target.closest(sel))) return;
       const socialPillBtn = e.target.closest('[data-gc-social-pill]');
       if (socialPillBtn) {
         const key = socialPillBtn.getAttribute('data-gc-social-pill');
-        if (POST_PILLS.some(p => p.key === key) || key === TACTICS_PILL.key) {
+        if (POST_PILLS.some(p => p.key === key) || key === TACTICS_PILL.key || key === PLAYERS_PILL) {
           if (key !== this.pill) {
             this.pill = key;
             this._syncHash();
@@ -3684,6 +3696,19 @@ class GameCenterScreen extends EventScreen {
     // flip the one card, that post's tools and Post button sit right
     // under it, and the lineup editor follows.
     const paint = (bodyHtml) => {
+      if (this.pill === PLAYERS_PILL) {
+        // 👥 All Players: EventScreen's list (Going / No response / Not
+        // going, P/A/L/E, ✓/✗, reminders, 📇, call-in requests, mark all
+        // present) — the very list a practice opens on.
+        this._stopCards();
+        this._tacticsBigOff();
+        head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+          + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
+          + this._duesAlternateStripHtml();
+        EventScreen.ensureCardStyles();
+        box.innerHTML = `<div data-gc-players-pane>${this._playersPaneHtml()}</div>`;
+        return;
+      }
       if (this.pill === TACTICS_PILL.key) {
         // The tactics pitch in place of the graphic; nothing under it.
         this._stopCards();
@@ -6612,10 +6637,23 @@ class GameCenterScreen extends EventScreen {
   // mark: opening a pill creates one, so it would say nothing.
   // EventScreen's pill hook: a game's four moments (POST_PILLS), titles
   // from the DB copy.
-  pills(_ev) {
-    const list = POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) }));
+  pills(ev) {
+    // 👥 All Players first — the same list every Event Center event opens
+    // on (EventScreen), then the game's own moments (owner 11/11: "there
+    // should be no game center. its just event center").
+    const list = [...super.pills(ev), ...POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) }))];
     if (this._tacticsAvailable()) list.push({ ...TACTICS_PILL, title: this._pillTitle(TACTICS_PILL.key) });
     return list;
+  }
+
+  _playersPaneHtml() {
+    if (!this.ev || !Array.isArray(this.ev.rsvps)) return `<div class="loading-state"><div class="spinner"></div><p>Loading…</p></div>`;
+    try {
+      return this._comingHtml() + this._jobsHtml();
+    } catch (err) {
+      console.error('[game-center] players pane failed:', err);
+      return `<div style="opacity:0.7; padding:var(--space-3);">Could not draw the players list.</div>`;
+    }
   }
 
   _socialPillsHtml() {

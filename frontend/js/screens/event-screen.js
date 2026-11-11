@@ -1287,24 +1287,33 @@ class EventScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
-      if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return; }
-      if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return; }
-      if ((el = t('[data-ec-callin]'))) { this._decideCallin(Number(el.dataset.ecCallin), el.dataset.decision); return; }
-      if ((el = t('[data-ec-mark-all]'))) {
-        this._markAllPresent(el.dataset.ecMarkAll.split(',').map(Number).filter(Boolean));
-        return;
-      }
-      if ((el = t('[data-ec-att]'))) {
-        this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
-        return;
-      }
-      if ((el = t('[data-ec-contact-open]'))) { this._openContactSheet(Number(el.dataset.ecContactOpen)); return; }
-      if ((el = t('[data-ec-rsvp]')))       { this._setRsvp(Number(el.dataset.personId), el.dataset.ecRsvp, el.dataset.active === '1'); return; }
-      if ((el = t('[data-ec-remind-all]'))) { this._remindAll(el); return; }
-      if ((el = t('[data-ec-revoke]'))) { this._revokeInvite(Number(el.dataset.ecRevoke)); return; }
+      if (this._playersPaneClick(t)) return;
       if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
       this.onClick(t, e);
     });
+  }
+
+  // The 👥 All Players list's own buttons — shared with Game Center, which
+  // draws the same list on its 👥 pill (one Event Center, owner 11/11).
+  // true = handled.
+  _playersPaneClick(t) {
+    let el;
+    if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return true; }
+    if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return true; }
+    if ((el = t('[data-ec-callin]'))) { this._decideCallin(Number(el.dataset.ecCallin), el.dataset.decision); return true; }
+    if ((el = t('[data-ec-mark-all]'))) {
+      this._markAllPresent(el.dataset.ecMarkAll.split(',').map(Number).filter(Boolean));
+      return true;
+    }
+    if ((el = t('[data-ec-att]'))) {
+      this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
+      return true;
+    }
+    if ((el = t('[data-ec-contact-open]'))) { this._openContactSheet(Number(el.dataset.ecContactOpen)); return true; }
+    if ((el = t('[data-ec-rsvp]')))       { this._setRsvp(Number(el.dataset.personId), el.dataset.ecRsvp, el.dataset.active === '1'); return true; }
+    if ((el = t('[data-ec-remind-all]'))) { this._remindAll(el); return true; }
+    if ((el = t('[data-ec-revoke]'))) { this._revokeInvite(Number(el.dataset.ecRevoke)); return true; }
+    return false;
   }
 
   // ── one player card ─────────────────────────────────────────────────
