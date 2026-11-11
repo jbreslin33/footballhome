@@ -97,6 +97,7 @@ class ApslPyramidScreen extends Screen {
                    background:rgba(11,18,32,0.94); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3); border-radius:12px;
                    color:#e5e7eb; font-size:0.85rem; box-shadow:0 6px 24px rgba(0,0,0,0.5); padding:10px 12px; box-sizing:border-box; }
         .ap-menu[hidden] { display:none; }
+        .ap-menu-home { display:block; width:100%; margin-bottom:10px; }
         .ap-menu-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1rem; }
         .ap-menu-head img { height:28px; width:auto; }
         .ap-menu-head .t { flex:1; }
@@ -266,9 +267,13 @@ class ApslPyramidScreen extends Screen {
     const acts = [
       `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
       `<button class="btn btn-secondary" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>`,
-      this.auth.isLoggedIn() ? `<button class="btn btn-secondary" data-act="home">${esc(this._copy('menu_home') || '🏠 Main menu')}</button>` : '',
     ].join('');
+    // Back to the main menu first, at the very top (owner 11/11: "the go back
+    // to main needs to be at top of menu"); visitors have no main menu.
+    const home = this.auth.isLoggedIn()
+      ? `<button class="btn btn-secondary ap-menu-home" data-act="home">${esc(this._copy('menu_home') || '🏠 Main menu')}</button>` : '';
     m.innerHTML = `
+      ${home}
       <div class="ap-menu-head">
         ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}
         <span class="t">${esc(this._copy('title'))}</span>
