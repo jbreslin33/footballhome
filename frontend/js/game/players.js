@@ -111,6 +111,7 @@
       this.keeper = keeper;
       const skin = SKIN[(this.slot * 7) % SKIN.length];
       const hair = HAIR[(this.slot * 5) % HAIR.length];
+      this.skinHex = skin; this.hairHex = hair;   // bodies.js tints the skinned body with them
       while (this.root.children.length) this.root.remove(this.root.children[0]);
 
       // pelvis: the rig's hub (lean, bob, slide drop all act here)

@@ -21,6 +21,16 @@
   const want = (fig) => !fig.official && (q === 'all' || (q === 'one' && fig.slot === 1));
 
   const URL_BODY = 'game-assets/ubc/body_male.gltf';
+  // The pack's hair: modelled in the body's space; a grey texture made to be tinted. Bald = buzzed.
+  // looks by slot: each a list of the pack's pieces (the beard goes with the buzz cut)
+  const LOOKS = [['hair_parted'], ['hair_buzzed'], ['hair_parted'], ['hair_buzzed', 'hair_beard'], ['hair_buzzed']];
+  const URL_HAIR = [...new Set(LOOKS.flat())].map((n) => `game-assets/ubc/${n}.gltf`);
+  const HAIR_TEX = 0x8f908d, SKIN_TEX = 0xa0734f;   // the textures' mean colours (sRGB)
+  // a tint that turns the texture's mean colour into his: wanted ÷ mean, per channel, in linear light
+  function tintOver(want, mean) {
+    const w = new THREE.Color(want), m = new THREE.Color(mean);
+    return new THREE.Color(Math.min(3, w.r / m.r), Math.min(3, w.g / m.g), Math.min(3, w.b / m.b));
+  }
   const RIG_LEG = 0.42 + 0.40;            // players.js: hip → knee → ankle
   const P = PlayerFigure.prototype;
   const figures = new Set();
@@ -43,26 +53,29 @@
       if (/^(foot|ball)/.test(n) && y < 0.13) r = 4;
       else if (/^(calf|foot)/.test(n) && y < 0.47) r = 3;
       else if (/^(thigh|pelvis)/.test(n) && y > 0.66 && y < 1.0) r = 2;
-      else if (/^(spine|clavicle|pelvis)/.test(n) && y >= 0.92 && y < 1.50) r = 1;
+      else if (/^(spine|clavicle)/.test(n) && y < 1.60) r = 1;          // over the shoulders (the neck bone stays skin)
+      else if (/^pelvis/.test(n) && y >= 0.92) r = 1;
       else if (/^upperarm/.test(n) && ax < 0.36) r = 1;      // short sleeves
       out[i] = r;
     }
     g.setAttribute('aRegion', new THREE.BufferAttribute(out, 1));
   }
 
-  function kitMaterial(base, kit) {
+  function kitMaterial(base, kit, skinTint) {
     const m = base.clone();
     const u = {
       kitShirt: { value: new THREE.Color(kit.shirt) }, kitShorts: { value: new THREE.Color(kit.shorts) },
       kitSocks: { value: new THREE.Color(kit.socks) }, kitBoots: { value: new THREE.Color(kit.boots) },
+      skinTint: { value: skinTint },
     };
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, u);
       sh.vertexShader = 'attribute float aRegion;\nvarying float vRegion;\n' +
         sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  vRegion = aRegion;');
-      sh.fragmentShader = 'uniform vec3 kitShirt, kitShorts, kitSocks, kitBoots;\nvarying float vRegion;\n' +
+      sh.fragmentShader = 'uniform vec3 kitShirt, kitShorts, kitSocks, kitBoots, skinTint;\nvarying float vRegion;\n' +
         sh.fragmentShader.replace('#include <map_fragment>', [
           '#include <map_fragment>',
+          '  if (vRegion < 0.5) diffuseColor.rgb *= skinTint;',   // his skin tone over the texture's mid-tone
           '  if (vRegion > 0.5) {',
           '    vec3 k = vRegion < 1.5 ? kitShirt : vRegion < 2.5 ? kitShorts : vRegion < 3.5 ? kitSocks : kitBoots;',
           '    diffuseColor.rgb = k * (0.9 + 0.2 * dot(diffuseColor.rgb, vec3(0.333)));',   // a hint of the form
@@ -97,7 +110,18 @@
       if (o.isBone) bones[o.name] = o;
       if (o.isMesh) { o.castShadow = true; o.frustumCulled = false; }
     });
-    skinned.material = kitMaterial(skinned.material, fig.kit);
+    skinned.material = kitMaterial(skinned.material, fig.kit, tintOver(fig.skinHex ?? 0xc68642, SKIN_TEX));
+    // hair: one of the pack's cuts by slot, pinned to the head bone at its bind offset, in his colour
+    const hairMat = proto.hairMat.clone();
+    hairMat.color = tintOver(fig.hairHex ?? 0x2b1b10, HAIR_TEX);
+    for (const n of (bones.Head ? LOOKS[fig.slot % LOOKS.length] : [])) {
+      const cut = proto.hair[n];
+      if (!cut) continue;
+      const h = new THREE.Mesh(cut.geometry, hairMat);
+      h.matrixAutoUpdate = false; h.matrix.copy(cut.toHead);
+      h.castShadow = true; h.frustumCulled = false;
+      bones.Head.add(h);
+    }
     // the rig at rest: the pairs, their rest rotations, sides matched by where they stand
     fig.root.updateMatrixWorld(true);
     const side = (o) => Math.sign(relPos(fig.root, o, new THREE.Vector3()).x);
@@ -176,8 +200,19 @@
     const bones = {}; gltf.scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const p = (n) => bones[n].getWorldPosition(new THREE.Vector3());
     const leg = p('thigh_l').distanceTo(p('calf_l')) + p('calf_l').distanceTo(p('foot_l'));
-    proto = { scene: gltf.scene, scale: RIG_LEG / leg, yaw: 0 };
-    console.log('bodies: loaded, leg', leg.toFixed(3), 'm → scale', proto.scale.toFixed(3));
-    for (const f of figures) attach(f);
+    const headInv = bones.Head.matrixWorld.clone().invert();
+    const loader = new THREE_ADDONS.GLTFLoader();
+    Promise.all(URL_HAIR.map((u) => loader.loadAsync(u).then((h) => {
+      let m = null; h.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
+      h.scene.updateMatrixWorld(true);
+      return [u, { geometry: m.geometry, material: m.material, toHead: headInv.clone().multiply(m.matrixWorld) }];
+    }).catch((e) => { console.warn('bodies: hair failed', u, e); return [u, null]; }))).then((pairs) => {
+      const hair = {};
+      for (const [u, v] of pairs) if (v) hair[u.replace(/^.*\/|\.gltf$/g, '')] = v;
+      const any = Object.values(hair)[0];
+      proto = { scene: gltf.scene, scale: RIG_LEG / leg, yaw: 0, hair, hairMat: any ? any.material : new THREE.MeshStandardMaterial() };
+      console.log('bodies: loaded, leg', leg.toFixed(3), 'm → scale', proto.scale.toFixed(3), '· hair', pairs.filter((p) => p[1]).length);
+      for (const f of figures) attach(f);
+    });
   }, undefined, (e) => console.warn('bodies: load failed', e));
 })();
