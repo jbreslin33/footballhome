@@ -1,4 +1,4 @@
--- 1269 (2026-11-11) — Drives of 5 minutes or less count as the same place
+-- 1271 (2026-11-11) — Drives of 5 minutes or less count as the same place
 -- for schedule clashes (was 3, mig 526).
 --
 -- Owner 2026-11-11: "why do you have clash for saturday the sites are
