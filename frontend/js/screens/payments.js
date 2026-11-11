@@ -60,13 +60,9 @@ class PaymentsScreen extends Screen {
         <!-- 📊 ONE stats section (11/11): pills pick which programmes it
              counts — replaces the old "🌐 All Programs" bar + the per-tab
              strip, which showed the same numbers twice. -->
-        <div id="pay-stats"
-             style="padding: var(--space-3);
-                    background: var(--bg-tertiary, #1f2937);
-                    border: 1px solid var(--border-color, #374151);
-                    border-radius: 6px; margin-bottom: var(--space-3);
-                    font-size: 0.85rem;">
+        <div id="pay-stats" style="${MoneyBoard.STATS_STYLE}">
           <div style="opacity:0.7;">📊 Stats — loading…</div>
+        </div>
         </div>
 
         <!-- Standardized filter chip rows (FilterBar): category / program / status.
@@ -74,19 +70,13 @@ class PaymentsScreen extends Screen {
              Payments screen shares styling and behaviour with Members. -->
         <div id="pay-filters" style="margin-bottom: var(--space-3);"></div>
 
-        <div style="display:flex; gap:var(--space-2); margin-bottom: var(--space-3);">
-          <button id="view-members"     class="pay-view" data-view="members"
-                  style="padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.85rem;">
-            👥 Members
-          </button>
-          <button id="view-transactions" class="pay-view" data-view="transactions"
-                  style="padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.85rem;">
-            🧾 Transactions
-          </button>
-          <button id="view-queue" class="pay-view" data-view="queue"
-                  style="padding:6px 14px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.85rem;">
-            🚩 Charge Queue
-          </button>
+        <!-- Views (MoneyBoard, same tabs style as #fines) -->
+        <div id="pay-views" style="display:flex; gap:var(--space-2); margin-bottom: var(--space-3);">
+          ${MoneyBoard.viewTabsHtml([
+            { id: 'members',      label: '👥 Members' },
+            { id: 'transactions', label: '🧾 Transactions' },
+            { id: 'queue',        label: '🚩 Charge Queue' },
+          ], this.view, 'pay-view')}
         </div>
 
         <div id="pay-summary"
@@ -155,13 +145,8 @@ class PaymentsScreen extends Screen {
         this.view = params.initialView;
       }
     }
-    // FilterBar captures its `host` DOM node at construction; the
-    // ScreenManager wipes + rebuilds the DOM on every re-entry, so
-    // the cached instance would write into a detached ghost element
-    // and the category / program / status chip rows would silently
-    // vanish.  Force a fresh FilterBar per entry.  Same fix pattern
-    // as members.js:onEnter.
-    this._filterBar = null;
+    // MoneyBoard.sectionPills makes a fresh FilterBar when the screen's
+    // DOM was rebuilt (re-entry).
     this._buildFilterBar();
     this.paintViewButtons();
 
@@ -288,29 +273,10 @@ class PaymentsScreen extends Screen {
   // their section with a Pickup chip — mig 1240) and the status row (the
   // list is already split into status sections, the stats box counts).
   _buildFilterBar() {
-    const host = this.find('#pay-filters');
-    if (!host) return;
-    const categoryChips = [
-      { id: 'all',    label: '💰 All'          },
-      { id: 'mens',   label: '👨 Mens'         },
-      { id: 'womens', label: '👩 Womens'       },
-      { id: 'boys',   label: '👦 Boys + Girls' },
-      { id: 'girls',  label: '👧 Girls'        },
-    ];
-    if (!this._filterBar) {
-      this._filterBar = new FilterBar({ host });
-    }
-    this._filterBar.setRows([
-      {
-        name: 'category',
-        chips: categoryChips,
-        selected: this.tab || 'all',
-        onSelect: (id) => {
-          this.tab = (id == null || id === 'all') ? 'all' : id;
-          this.loadCurrent();
-        },
-      },
-    ]);
+    MoneyBoard.sectionPills(this, this.find('#pay-filters'), this.tab || 'all', (id) => {
+      this.tab = id;
+      this.loadCurrent();
+    });
   }
 
   _titleCase(s) {
@@ -467,16 +433,7 @@ class PaymentsScreen extends Screen {
 
   // ── View mode (Members vs Transactions) ─────────────────────────────
   paintViewButtons() {
-    const paint = (id, isActive) => {
-      const el = this.find('#' + id);
-      if (!el) return;
-      el.style.background = isActive ? '#0ea5e9' : 'transparent';
-      el.style.color      = isActive ? '#fff' : 'var(--fg, #e5e7eb)';
-      el.style.border     = isActive ? '1px solid #0ea5e9' : '1px solid var(--border-color, #374151)';
-    };
-    paint('view-members',      this.view === 'members');
-    paint('view-transactions', this.view === 'transactions');
-    paint('view-queue',        this.view === 'queue');
+    MoneyBoard.paintViewTabs(this.element, 'pay-view', this.view);
   }
 
   switchView(view) {
@@ -701,44 +658,12 @@ class PaymentsScreen extends Screen {
       }
     }
 
-    // Full-width section bar — bold status label on the left, count
-    // pill on the right, coloured stripe on the left edge.
-    const sectionBar = (meta, count) => `
-      <div style="
-        display:flex; align-items:center; justify-content:space-between;
-        gap:var(--space-3);
-        background:${meta.bg}; color:${meta.fg};
-        border-left:6px solid ${meta.border};
-        border-radius: var(--radius-md, 8px);
-        padding: var(--space-3) var(--space-4);
-        margin: var(--space-4) 0 var(--space-3);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-      ">
-        <div style="display:flex; align-items:center; gap:var(--space-2);
-                    font-weight:800; font-size:1.05rem; letter-spacing:0.06em;">
-          <span style="font-size:1.25rem; line-height:1;">${meta.icon}</span>
-          <span>${meta.label}</span>
-        </div>
-        <span style="
-          background:${meta.border}; color:#fff;
-          padding: 2px 10px; border-radius: 999px;
-          font-weight:700; font-size:0.85rem;
-        ">${count}</span>
-      </div>
-    `;
+    // Section bars + card grids: MoneyBoard, the same as #fines.
+    const grid = (meta, list, note) => MoneyBoard.section(meta, list.length, list.map((mm) => this.renderMemberCard(mm)).join(''), note);
 
     const groupHtml = (st) => {
       const list = byStatus[st] || [];
-      if (list.length === 0) return '';
-      const meta = statusMeta[st];
-      return `
-        <section style="margin-bottom: var(--space-5);">
-          ${sectionBar(meta, list.length)}
-          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-            ${list.map((mm) => this.renderMemberCard(mm)).join('')}
-          </div>
-        </section>
-      `;
+      return list.length ? grid(statusMeta[st], list) : '';
     };
 
     // Worst (most months behind) first — matches the existing work-queue
@@ -747,70 +672,31 @@ class PaymentsScreen extends Screen {
     const overdueMonthsHtml = Object.keys(overdueByMonths)
       .map(Number)
       .sort((a, b) => b - a)
-      .map((mo) => {
-        const list = overdueByMonths[mo];
-        const meta = {
-          icon: '🔴',
-          label: `OVERDUE — ${mo} FULL MONTH${mo === 1 ? '' : 'S'}`,
-          fg: '#7f1d1d', bg: '#fee2e2', border: '#dc2626',
-        };
-        return `
-          <section style="margin-bottom: var(--space-5);">
-            ${sectionBar(meta, list.length)}
-            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-              ${list.map((mm) => this.renderMemberCard(mm)).join('')}
-            </div>
-          </section>
-        `;
-      }).join('');
+      .map((mo) => grid({
+        icon: '🔴',
+        label: `OVERDUE — ${mo} FULL MONTH${mo === 1 ? '' : 'S'}`,
+        fg: '#7f1d1d', bg: '#fee2e2', border: '#dc2626',
+      }, overdueByMonths[mo])).join('');
 
-    const overdueUnknownHtml = overdueUnknown.length
-      ? `
-        <section style="margin-bottom: var(--space-5);">
-          ${sectionBar(statusMeta.overdue, overdueUnknown.length)}
-          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-            ${overdueUnknown.map((mm) => this.renderMemberCard(mm)).join('')}
-          </div>
-        </section>`
-      : '';
+    const overdueUnknownHtml = overdueUnknown.length ? grid(statusMeta.overdue, overdueUnknown) : '';
 
     const otherHtml = other.length
-      ? `
-        <section style="margin-bottom: var(--space-5);">
-          ${sectionBar({ icon:'❓', label:'UNKNOWN STATUS',
-                         fg:'#1f2937', bg:'#f3f4f6', border:'#9ca3af' }, other.length)}
-          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-            ${other.map((mm) => this.renderMemberCard(mm)).join('')}
-          </div>
-        </section>`
+      ? grid({ icon:'❓', label:'UNKNOWN STATUS', fg:'#1f2937', bg:'#f3f4f6', border:'#9ca3af' }, other)
       : '';
 
     // Inactive section always renders first — moved off the active LA
     // program, so they're gone from rosters/pool, but ops still needs
     // eyes on them to catch a payment and restore them.
     const inactiveHtml = inactiveMembers.length
-      ? `
-        <section style="margin-bottom: var(--space-5);">
-          ${sectionBar({ icon:'🚫', label:'INACTIVE — MONITOR FOR REACTIVATION',
-                         fg:'#4c1d95', bg:'#ede9fe', border:'#7c3aed' }, inactiveMembers.length)}
-          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-            ${inactiveMembers.map((mm) => this.renderMemberCard(mm)).join('')}
-          </div>
-        </section>`
+      ? grid({ icon:'🚫', label:'INACTIVE — MONITOR FOR REACTIVATION', fg:'#4c1d95', bg:'#ede9fe', border:'#7c3aed' }, inactiveMembers)
       : '';
 
     const healthOrder = ((window.PlayerSheet && PlayerSheet.HEALTH.statuses) || []).map((h) => h.code);
     const injuredHtml = [...byInjury.entries()]
       .sort((a, b) => healthOrder.indexOf(a[0]) - healthOrder.indexOf(b[0]))
-      .map(([, g]) => `
-        <section style="margin-bottom: var(--space-5);">
-          ${sectionBar({ icon: g.status.icon || '🩹', label: String(g.status.displayName || '').toUpperCase(),
-                         fg:'#78350f', bg:'#fef3c7', border:'#d97706' }, g.list.length)}
-          <div style="font-size:0.8rem; opacity:0.75; margin:-6px 0 8px;">${this.escape(this._sheetCopy('injured_section_note', 'Billed as usual unless you skip them — you decide at billing time.'))}</div>
-          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
-            ${g.list.map((mm) => this.renderMemberCard(mm)).join('')}
-          </div>
-        </section>`).join('');
+      .map(([, g]) => grid({ icon: g.status.icon || '🩹', label: String(g.status.displayName || '').toUpperCase(),
+                             fg:'#78350f', bg:'#fef3c7', border:'#d97706' }, g.list,
+                           this._sheetCopy('injured_section_note', 'Billed as usual unless you skip them — you decide at billing time.'))).join('');
 
     m.innerHTML = inactiveHtml + overdueMonthsHtml + overdueUnknownHtml
       + statusOrder.filter((st) => st !== 'overdue' && st !== 'injured').map(groupHtml).join('') + injuredHtml + otherHtml;
@@ -1269,10 +1155,7 @@ class PaymentsScreen extends Screen {
            ${this.escape(this._sheetCopy('pickup_chip', '🔁 Pickup'))}</span>`
       : '';
     return `
-      <div class="pay-member-card"
-           data-player-key="${this.escape(key)}"
-           style="background: var(--bg-secondary, #111827); border:1px solid var(--border-color, #374151);
-                  border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; cursor:pointer;">
+      ${MoneyBoard.cardOpen(key)}
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
           <div style="font-weight:700; font-size:1rem;">${c.name}</div>
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${c.prorateCell}${c.finesCells}${c.badge}${window.PlayerSheet ? PlayerSheet.button(key, { tab: 'money' }) : ''}</div>
@@ -2655,53 +2538,38 @@ class PaymentsScreen extends Screen {
     if (!el) return;
     const keys = this._shardKeys(this.tab);
     const s = this._combinedSummary(keys);
-    const stat = (label, value, color, title) =>
-      `<div${title ? ` title="${this.escape(title)}"` : ''} style="min-width:110px;">
-         <div style="opacity:0.65; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.03em;">${label}</div>
-         <div style="font-weight:800; font-size:1.05rem;${color ? ` color:${color};` : ''}">${value}</div>
-       </div>`;
-    const row = (title, cells) => `
-      <div style="margin-top:var(--space-3);">
-        <div style="opacity:0.55; font-size:0.72rem; font-weight:700; margin-bottom:4px;">${title}</div>
-        <div style="display:flex; gap:var(--space-4); flex-wrap:wrap;">${cells}</div>
-      </div>`;
+    const cell = (label, value, color, title) => ({ label, value, color, title });
     const c = s.counts;
-    // ⏳ LoadProgress (mig 1246): the sums grow as each programme lands —
-    // bar + percent, numbers dimmed until the last one is in.  A programme
-    // that failed counts as in (its error shows on the list), so the bar
-    // never sticks.
+    // ⏳ LoadProgress (mig 1246): the sums grow as each programme lands.  A
+    // programme that failed counts as in (its error shows on the list), so
+    // the bar never sticks.
     const done = keys.filter(k => this.membersByTab[k] || this.membersErrorByTab[k]).length;
-    const partial = window.LoadProgress ? LoadProgress.loading(done, keys.length) : done < keys.length;
-    const progress = window.LoadProgress
-      ? LoadProgress.html({ done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' }) : '';
-    el.innerHTML = `
-      <div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center;">
-        <span style="font-weight:800; margin-right:4px;">📊 Stats · ${this.escape(this._shardLabel(keys))}</span>
-      </div>
-      ${progress}
-      <div style="${partial ? 'opacity:0.4;' : ''} transition:opacity 0.3s;">
-      ${row('PLAYERS', [
-        stat('Members', s.totalMembers - s.inactiveCount),
-        stat('🟢 Paid up', c.current, '#86efac'),
-        stat('🟡 Behind', c.behind, '#fbbf24'),
-        stat('🔴 Overdue', c.overdue, '#fca5a5'),
-        stat('⚫ Never paid', c.never, '#e5e7eb'),
-        stat(this.escape(this._duesFreeCopy('volunteer', 'label')), c.volunteer, '#93c5fd'),
-        stat(this.escape(this._duesFreeCopy('injured', 'label')), c.injured, '#fbbf24'),
-        stat('🚫 Inactive', s.inactiveCount, '#c4b5fd'),
-      ].join(''))}
-      ${row('MONEY IN', [
-        stat('💰 Collected', this.fmtMoney(s.netCollected), '#86efac'),
-        stat('This month', this.fmtMoney(s.thisMonth), '#86efac'),
-        stat('Avg / month', this.fmtMoney(s.avgPerMonth) + (s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.72rem; font-weight:400;"> (${s.monthsElapsed} mo)</span>` : '')),
-      ].join(''))}
-      ${row('OWED', [
-        stat('🔴 Outstanding', `${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}`, '#fca5a5', 'Never paid + overdue'),
-        stat('Est. owed', `~${this.fmtMoney(s.outstandingTotal)}`, '#fca5a5', 'Outstanding × est. fee (median of paid members, per programme)'),
-        stat('Est. owed / month', `~${this.fmtMoney(s.outstandingPerMonth)}`, '#fca5a5', 'Est. owed ÷ months elapsed'),
-      ].join(''))}
-      </div>
-    `;
+    el.innerHTML = MoneyBoard.statsHtml({
+      title: `📊 Stats · ${this._shardLabel(keys)}`,
+      progress: { done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' },
+      rows: [
+        { title: 'PLAYERS', cells: [
+          cell('Members', s.totalMembers - s.inactiveCount),
+          cell('🟢 Paid up', c.current, '#86efac'),
+          cell('🟡 Behind', c.behind, '#fbbf24'),
+          cell('🔴 Overdue', c.overdue, '#fca5a5'),
+          cell('⚫ Never paid', c.never, '#e5e7eb'),
+          cell(this.escape(this._duesFreeCopy('volunteer', 'label')), c.volunteer, '#93c5fd'),
+          cell(this.escape(this._duesFreeCopy('injured', 'label')), c.injured, '#fbbf24'),
+          cell('🚫 Inactive', s.inactiveCount, '#c4b5fd'),
+        ] },
+        { title: 'MONEY IN', cells: [
+          cell('💰 Collected', this.fmtMoney(s.netCollected), '#86efac'),
+          cell('This month', this.fmtMoney(s.thisMonth), '#86efac'),
+          cell('Avg / month', this.fmtMoney(s.avgPerMonth) + (s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.72rem; font-weight:400;"> (${s.monthsElapsed} mo)</span>` : '')),
+        ] },
+        { title: 'OWED', cells: [
+          cell('🔴 Outstanding', `${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}`, '#fca5a5', 'Never paid + overdue'),
+          cell('Est. owed', `~${this.fmtMoney(s.outstandingTotal)}`, '#fca5a5', 'Outstanding × est. fee (median of paid members, per programme)'),
+          cell('Est. owed / month', `~${this.fmtMoney(s.outstandingPerMonth)}`, '#fca5a5', 'Est. owed ÷ months elapsed'),
+        ] },
+      ],
+    });
   }
 
   // ── Formatters ──────────────────────────────────────────────────────

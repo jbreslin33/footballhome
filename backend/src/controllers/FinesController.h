@@ -18,4 +18,6 @@ private:
     Response handleBoard(const Request& request);
     Response handleDisputes(const Request& request);
     Response handleDecide(const Request& request);
+    Response handleAbsolve(const Request& request);       // mig 1248
+    Response handleUndoAbsolve(const Request& request);
 };

@@ -30,6 +30,67 @@ void FinesController::registerRoutes(Router& router, const std::string& prefix) 
     router.get(prefix, [this](const Request& r) { return handleBoard(r); });
     router.get (prefix + "/disputes",     [this](const Request& r) { return handleDisputes(r); });
     router.post(prefix + "/disputes/:id", [this](const Request& r) { return handleDecide(r); });
+    router.post(prefix + "/absolve",          [this](const Request& r) { return handleAbsolve(r); });
+    router.post(prefix + "/absolve/:id/undo", [this](const Request& r) { return handleUndoAbsolve(r); });
+}
+
+// POST /api/fines/absolve {person_id, items: [{fh_event_id, kind}], reason}
+// — let fines off (mig 1248).  One fine or a whole period's: the sheet sends
+// the period's items.  Already-absolved items are skipped.
+Response FinesController::handleAbsolve(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); } catch (...) {}
+    const long long personId = body.value("person_id", 0LL);
+    const std::string reason = body.value("reason", std::string{});
+    if (personId <= 0 || !body.contains("items") || !body["items"].is_array() || body["items"].empty())
+        return jsonError(HttpStatus::BAD_REQUEST, "person_id and items are required");
+    const std::string userId = std::to_string(bearerUserId(request));
+    try {
+        auto* db = Database::getInstance();
+        auto tx = db->beginTransaction();
+        int added = 0;
+        for (const auto& it : body["items"]) {
+            const long long eventId = it.value("fh_event_id", 0LL);
+            const std::string kind = it.value("kind", std::string{});
+            if (eventId <= 0 || kind.empty()) continue;
+            auto r = tx->exec_params(
+                "INSERT INTO fine_absolutions (person_id, fh_event_id, fine_kind, reason, created_by_user_id)"
+                " SELECT $1, $2, $3, $4, NULLIF($5, '0')::int"
+                "  WHERE NOT EXISTS (SELECT 1 FROM fine_absolutions a WHERE a.person_id = $1 AND a.fh_event_id = $2"
+                "                      AND a.fine_kind = $3 AND a.undone_at IS NULL)",
+                personId, eventId, kind, reason, userId);
+            added += static_cast<int>(r.affected_rows());
+        }
+        db->commit(tx);
+        return jsonOk({{"absolved", added}});
+    } catch (const std::exception& e) {
+        std::cerr << "[FinesController::absolve] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not absolve");
+    }
+}
+
+// POST /api/fines/absolve/:id/undo — the fine counts again (history kept).
+Response FinesController::handleUndoAbsolve(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const std::string path = request.getPath();
+    long long id = 0;
+    try {
+        const std::string head = path.substr(0, path.rfind("/undo"));
+        id = std::stoll(head.substr(head.find_last_of('/') + 1));
+    } catch (...) {}
+    if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, "absolution id required");
+    try {
+        auto r = Database::getInstance()->query(
+            "UPDATE fine_absolutions SET undone_at = now(), undone_by_user_id = NULLIF($2, '0')::int"
+            " WHERE id = $1::bigint AND undone_at IS NULL RETURNING id",
+            {std::to_string(id), std::to_string(bearerUserId(request))});
+        if (r.empty()) return jsonError(HttpStatus::CONFLICT, "Already undone.");
+        return jsonOk({{"undone", id}});
+    } catch (const std::exception& e) {
+        std::cerr << "[FinesController::undoAbsolve] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not undo");
+    }
 }
 
 // GET /api/fines/disputes — pending "I was there" disputes (mig 691).
@@ -126,7 +187,8 @@ Response FinesController::handleBoard(const Request& request) {
         auto who = db->query(R"SQL(
             SELECT p.id AS person_id, COALESCE(p.first_name,'') AS first_name, COALESCE(p.last_name,'') AS last_name,
                    p.la_user_id::text AS la_user_id,
-                   min(cs.name) AS section,
+                   min(cs.name) AS section, min(cs.code) AS section_code,
+                   fh_dues_balance_usd(p.id)::text AS la_balance,
                    string_agg(DISTINCT COALESCE(t.label, t.name), ' · ') AS teams
               FROM team_persons tp
               JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.club_section_id IS NOT NULL
@@ -181,7 +243,9 @@ Response FinesController::handleBoard(const Request& request) {
             }
             people.push_back({{"person_id", pid}, {"name", str(r, "first_name") + " " + str(r, "last_name")},
                               {"la_user_id", r["la_user_id"].is_null() ? json(nullptr) : json(str(r, "la_user_id"))},
-                              {"section", str(r, "section")}, {"teams", str(r, "teams")},
+                              {"section", str(r, "section")}, {"section_code", str(r, "section_code")},
+                              {"la_balance", r["la_balance"].is_null() ? 0.0 : std::atof(r["la_balance"].c_str())},
+                              {"teams", str(r, "teams")},
                               {"total", total}, {"fines", count}, {"months", f["months"]}, {"since", f.value("since", "")}});
         }
         json monthsOut = json::array();
@@ -235,7 +299,40 @@ Response FinesController::handleBoard(const Request& request) {
                                {"total", t}, {"fines", w["n"].as<int>()}, {"by_month", byMonth}});
         }
 
-        return jsonOk({{"months", monthsOut}, {"people", people}, {"rules", rules}, {"waivers", waivers}, {"months_back", months}});
+        // Absolved fines (mig 1248) in the window, for the sheet's undo list.
+        // Only for players who have one: working fines out is the slow part
+        // of this page (fh_person_fines_all), never pay for it twice.
+        json absolved = json::array();
+        std::string ids;
+        if (!pids.empty()) {
+            std::string all;
+            for (size_t i = 0; i < pids.size(); ++i) { if (i) all += ","; all += std::to_string(pids[i]); }
+            for (const auto& r : db->query("SELECT DISTINCT person_id FROM fine_absolutions WHERE undone_at IS NULL"
+                                           " AND person_id = ANY(ARRAY[" + all + "]::int[])")) {
+                if (!ids.empty()) ids += ",";
+                ids += r["person_id"].c_str();
+            }
+        }
+        if (!ids.empty()) {
+            for (const auto& a : db->query(
+                    "SELECT a.absolution_id, a.person_id, a.fh_event_id, a.event_kind, a.opponent, a.fine_kind, k.label,"
+                    "       a.amount_usd::text AS amount, a.reason,"
+                    "       to_char(fh_fine_period_month(a.starts_at), 'YYYY-MM') AS ym,"
+                    "       to_char(a.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS start_iso"
+                    "  FROM fh_person_absolved_fines(ARRAY[" + ids + "]::int[], " + winStart + ") a"
+                    "  JOIN fine_kinds k ON k.code = a.fine_kind"
+                    " ORDER BY a.person_id, a.starts_at")) {
+                absolved.push_back({{"id", a["absolution_id"].as<long long>()}, {"person_id", a["person_id"].as<int>()},
+                                    {"fhEventId", a["fh_event_id"].as<long long>()}, {"eventKind", str(a, "event_kind")},
+                                    {"opponent", a["opponent"].is_null() ? json(nullptr) : json(str(a, "opponent"))},
+                                    {"kind", str(a, "fine_kind")}, {"label", str(a, "label")},
+                                    {"amount", std::atof(a["amount"].c_str())}, {"reason", str(a, "reason")},
+                                    {"month", str(a, "ym")}, {"startAt", str(a, "start_iso")}});
+            }
+        }
+
+        return jsonOk({{"months", monthsOut}, {"people", people}, {"rules", rules}, {"waivers", waivers},
+                       {"absolved", absolved}, {"months_back", months}});
     } catch (const std::exception& e) {
         std::cerr << "[fines] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
