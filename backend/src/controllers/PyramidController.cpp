@@ -206,13 +206,14 @@ Response PyramidController::handleProposal(const Request&) {
                        COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier,
                        COALESCE(p.core_population, cm.population) AS core_population,  -- live: its metro (mig 1269)
                        COALESCE(c.color, p.color) AS color,
-                       sum(k.population) AS population, count(*) AS counties,
+                       COALESCE(st.tract_population, sum(k.population)) AS population, count(*) AS counties,   -- tracts (mig 1283)
                        sum(k.lat * k.population) / NULLIF(sum(k.population), 0) AS lat,
                        sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
                        COALESCE((SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id), cm.city) AS anchors,
                        COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2,
                        st.span_km, st.area_km2, dt.km AS drive_km, dt.minutes AS drive_min,      -- the pill (mig 1270)
-                       ka.name || ', ' || ka.state AS far_a, kb.name || ', ' || kb.state AS far_b
+                       ka.name || ', ' || ka.state AS far_a, kb.name || ', ' || kb.state AS far_b,
+                       rc.lat AS center_lat, rc.lon AS center_lon   -- the point it is measured from (mig 1283)
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
@@ -222,8 +223,10 @@ Response PyramidController::handleProposal(const Request&) {
                   LEFT JOIN pyramid_drive_times dt ON dt.a_fips = st.a_fips AND dt.b_fips = st.b_fips
                   LEFT JOIN pyramid_counties ka ON ka.fips = st.a_fips
                   LEFT JOIN pyramid_counties kb ON kb.fips = st.b_fips
+                  LEFT JOIN pyramid_region_centers rc ON rc.plan = pc.plan
+                        AND rc.conference_id IS NOT DISTINCT FROM pc.conference_id AND rc.proposed_id IS NOT DISTINCT FROM pc.proposed_id
                  GROUP BY pc.plan, p.from_conference_id, pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
-                          st.span_km, st.area_km2, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state
+                          st.span_km, st.area_km2, st.tract_population, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state, rc.lat, rc.lon
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
@@ -237,7 +240,9 @@ Response PyramidController::handleProposal(const Request&) {
                                {"area_km2", r["area_km2"].is_null() ? json(nullptr) : json(r["area_km2"].as<double>())},
                                {"drive_km", r["drive_km"].is_null() ? json(nullptr) : json(r["drive_km"].as<double>())},
                                {"drive_min", r["drive_min"].is_null() ? json(nullptr) : json(r["drive_min"].as<double>())},
-                               {"far_a", strOrNull(r, "far_a")}, {"far_b", strOrNull(r, "far_b")}});
+                               {"far_a", strOrNull(r, "far_a")}, {"far_b", strOrNull(r, "far_b")},
+                               {"center_lat", r["center_lat"].is_null() ? json(nullptr) : json(r["center_lat"].as<double>())},
+                               {"center_lon", r["center_lon"].is_null() ? json(nullptr) : json(r["center_lon"].as<double>())}});
         }
         for (const auto& r : db->query(R"SQL(
                 SELECT p.name, p.note, p.tier, p.core_population,

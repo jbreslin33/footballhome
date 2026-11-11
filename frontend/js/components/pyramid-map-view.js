@@ -202,6 +202,35 @@ class PyramidMapView {
   // The plan on screen (11/11, owner: "if we uncheck proposed borders +
   // new conf we still need to show assumed current borders"): the proposal
   // switch off = today's borders only; on = the Current | Proposed pill.
+  // Keep every conference pill in sight (owner 11/11: "make sure no conf
+  // pill is hidden"): biggest conference first, each pill tries its own spot
+  // then steps out (up / down / sideways, wider each ring) until it clears
+  // the pills already placed and the club bubbles; its line to the metro
+  // centre follows it.  Rerun on every zoom.
+  _layoutPills() {
+    if (!this.map || !this.pills) return;
+    const boxes = [];
+    this.map.getContainer().querySelectorAll('.mp-label').forEach((el) => { const b = el.getBoundingClientRect(); if (b.width) boxes.push(b); });
+    const hit = (b) => boxes.some((o) => b.left < o.right + 3 && b.right > o.left - 3 && b.top < o.bottom + 3 && b.bottom > o.top - 3);
+    for (const p of this.pills) {
+      p.mk.setLatLng(p.base);
+      const el = p.mk.getElement() && p.mk.getElement().querySelector('.mp-prop');
+      if (!el) continue;
+      const b = el.getBoundingClientRect();
+      const sx = b.width / 2 + 8, sy = b.height + 4;
+      const tries = [[0, 0]];
+      for (let k = 1; k <= 8; k++)
+        tries.push([0, -k * sy], [0, k * sy], [k * sx, 0], [-k * sx, 0], [k * sx, -k * sy], [-k * sx, k * sy], [k * sx, k * sy], [-k * sx, -k * sy]);
+      let pick = [0, 0];
+      for (const [dx, dy] of tries) {
+        if (!hit({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy })) { pick = [dx, dy]; break; }
+      }
+      const [dx, dy] = pick;
+      if (dx || dy) p.mk.setLatLng(this.map.containerPointToLatLng(this.map.latLngToContainerPoint(p.base).add([dx, dy])));
+      boxes.push({ left: b.left + dx, right: b.right + dx, top: b.top + dy, bottom: b.bottom + dy });
+      if (p.line) p.line.setLatLngs([p.mk.getLatLng(), p.ctr]);
+    }
+  }
   _effPlan() {
     return (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) ? this._plan() : 'current';
   }
@@ -289,7 +318,7 @@ class PyramidMapView {
                  background:rgba(11,18,32,0.88); border:2px solid var(--pc, #94a3b8); border-radius:10px; padding:2px 8px; line-height:1.2;
                  color:#e2e8f0; font-size:10px; box-shadow:0 2px 6px rgba(0,0,0,0.45); }
       .mp-prop b { color:var(--pc, #e2e8f0); font-size:11px; font-weight:800; }
-      .mp-prop.live { transform:translate(-50%, 16px); border-style:solid; }
+      .mp-prop.live { border-style:solid; }
       .mp-pz .row { display:flex; align-items:baseline; gap:6px; padding:4px 0; border-top:1px solid rgba(148,163,184,0.12); cursor:pointer; font-size:0.82rem; }
       .mp-pz .row:hover .nm { text-decoration:underline; }
       .mp-pz .nm { font-weight:800; white-space:nowrap; }
@@ -459,7 +488,7 @@ class PyramidMapView {
     this.propRenderer = L.svg({ pane: 'mp-proposal' });
     this.propLayer = L.layerGroup().addTo(this.map);
     this.propLines = L.layerGroup().addTo(this.map);
-    this.map.on('zoomend', () => this._drawBorders());
+    this.map.on('zoomend', () => { this._drawBorders(); setTimeout(() => this._layoutPills(), 0); });
     this._showProposal(true);   // always: the proposal switch off still draws today's borders (owner 11/11)
     this.map.on('zoomend moveend', () => this._relayout());
     // Picking a team: the dots don't take clicks themselves (5–7px circles,
@@ -853,13 +882,28 @@ class PyramidMapView {
     // points and pop" / "dist and drive time"): name, people, the two county
     // centres furthest apart — straight km and the road drive.  A live
     // conference's pill hangs under its club bubble.
-    for (const r of (this.proposal.regions || []).filter((x) => x.plan === plan)) {
+    // + a dashed line from each pill to a dot at the point the conference is
+    // measured from — its metro area's centre of population (owner 11/11:
+    // "line/arrow go from pill … to the center of metro that is the point we
+    // work off"); pills never hide one another ("make sure no conf pill is
+    // hidden"): _layoutPills() moves a clashing pill aside, biggest first.
+    this.pills = [];
+    const regs = (this.proposal.regions || []).filter((x) => x.plan === plan)
+      .sort((a, b) => (b.population || 0) - (a.population || 0));
+    for (const r of regs) {
       const live = !!r.conference_id;
+      const color = r.color || '#94a3b8';
       const tip = r.far_a ? this._copy('pill_far', { a: r.far_a, b: r.far_b }) : '';
-      L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
-        html: `<span class="mp-prop${live ? ' live' : ''}" style="--pc:${this._esc(r.color || '#94a3b8')}" title="${this._esc(tip)}">`
+      const base = L.latLng(r.lat, r.lon);
+      const ctr = r.center_lat != null ? L.latLng(r.center_lat, r.center_lon) : null;
+      const line = ctr ? L.polyline([base, ctr], { renderer: this.propRenderer, interactive: false, color, weight: 1.5, opacity: 0.9, dashArray: '4 3' }).addTo(this.propLayer) : null;
+      if (ctr) L.circleMarker(ctr, { renderer: this.propRenderer, interactive: false, radius: 5, color: '#f8fafc', weight: 2, fillColor: color, fillOpacity: 1 }).addTo(this.propLayer);
+      const mk = L.marker(base, { interactive: false, keyboard: false, zIndexOffset: 900, icon: L.divIcon({ className: 'mp-pin',
+        html: `<span class="mp-prop${live ? ' live' : ''}" style="--pc:${this._esc(color)}" title="${this._esc(tip)}">`
           + `<b>${this._esc(r.name.replace(/ Conference$/, ''))}</b><span>${this._esc(this._pillStats(r))}</span></span>`, iconSize: [0, 0] }) }).addTo(this.propLayer);
+      this.pills.push({ mk, base, ctr, line });
     }
+    this._layoutPills();
     this.screen._renderMenu();
   }
 

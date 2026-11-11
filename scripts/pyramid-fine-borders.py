@@ -214,6 +214,7 @@ def run(plan, adj):
     lat0 = 39.0
     dlon = step / math.cos(math.radians(lat0))
     cells_c = {}                     # (i, j) → candidates
+    cell_county = {}                 # (i, j) → the county it lies in
     for f in border:
         g = geo[f]
         xs, ys = [], []
@@ -230,6 +231,7 @@ def run(plan, adj):
                     continue
                 if in_geom(j * dlon, i * step, g):
                     cells_c[(i, j)] = set(cand)
+                    cell_county[(i, j)] = f
     print(f'{plan}: {len(border)} border counties, {len(cells_c)} grid points', file=sys.stderr)
     pt = {c: (f'{c[0] * step:.4f}', f'{c[1] * dlon:.4f}') for c in cells_c}
     have = {}
@@ -245,9 +247,15 @@ def run(plan, adj):
     print(f'  {sum(len(v) for v in need.values())} drives to fetch', file=sys.stderr)
     if need:
         fetch(need, have)
+    reach = float(psql('SELECT proposal_reach_min FROM pyramid_territory_policy LIMIT 1'))
     lab_t, lab_p = {}, {}
     for c, cs in cells_c.items():
         sc = [(have[(pt[c], cen[r][0])], cen[r][1], r) for r in cs if (pt[c], cen[r][0]) in have]
+        if plan == 'current':    # today's conferences reach 2 h (as the county fill, mig 1278)
+            sc = [x for x in sc if x[0] <= reach]
+            if not sc and c in cell_county:
+                lab_t[c] = lab_p[c] = reg[cell_county[c]]
+                continue
         if not sc:
             continue
         lab_t[c] = min(sc, key=lambda x: x[0] * x[1])[2]
@@ -267,6 +275,20 @@ def run(plan, adj):
     sql.append('COMMIT;')
     psql('\n'.join(sql) + '\n', stdin=True)
     print(f'  {len(rows)} border lines for {len(pairs)} conference pairs written', file=sys.stderr)
+    # People tract by tract (mig 1283): a tract in a border county goes with
+    # its grid cell's side (travel), any other tract with its county.
+    people = defaultdict(int)
+    for l in psql("SELECT county_fips || '|' || lat || '|' || lon || '|' || population FROM pyramid_tracts").split():
+        f, la, lo, n = l.split('|')
+        if f not in reg:
+            continue
+        r = reg[f]
+        if f in border:
+            r = lab_t.get((round(float(la) / step), round(float(lo) / dlon)), r)
+        people[r] += int(n)
+    psql('BEGIN;\n' + ''.join(f"UPDATE pyramid_proposal_region_stats SET tract_population = {n} WHERE region = '{r}';\n"
+                              for r, n in people.items()) + 'COMMIT;\n', stdin=True)
+    print(f'  people counted by tract for {len(people)} conferences', file=sys.stderr)
 
 
 def main():
