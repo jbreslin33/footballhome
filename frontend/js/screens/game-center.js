@@ -1063,6 +1063,10 @@ class GameCenterScreen extends EventScreen {
       }
       const remindOne = e.target.closest('[data-gc-remind]');
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
+      const callinBtn = e.target.closest('[data-callin]');
+      if (callinBtn && !callinBtn.disabled) { this._sendMyCallin(callinBtn); return; }
+      const callinDecide = e.target.closest('[data-ec-callin]');
+      if (callinDecide && !callinDecide.disabled) { this._decideCallin(Number(callinDecide.dataset.ecCallin), callinDecide.dataset.decision); return; }
       const availBtn = e.target.closest('[data-gc-avail]');
       if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
       const eligBtn = e.target.closest('[data-elig-rsvp]');
@@ -3682,6 +3686,7 @@ class GameCenterScreen extends EventScreen {
       this._tacticsBigOff();
       head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
+        + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
       box.innerHTML = bodyHtml;
@@ -4188,6 +4193,8 @@ class GameCenterScreen extends EventScreen {
   }
 
   _myAvailabilityHtml() {
+    const callin = this._myCallinHtml();
+    if (callin) return callin;
     const mine = this._myAvailabilityRows();
     if (!mine || !mine.rows.length) return '';
     const { ev, rows } = mine;
@@ -4215,6 +4222,47 @@ class GameCenterScreen extends EventScreen {
           </div>`).join('')}
         <div data-gc-avail-msg style="font-size:0.7rem; margin-top:6px; opacity:0.75;">${this.escapeHtml(closed || 'Plans changed? Change it here any time — the coaches see it right away.')}</div>
       </div>`;
+  }
+
+  // 🙋 Call-in (mig 1265, components/call-in.js): a Liga 1 player on the
+  // APSL game asks in here, the same as on #my, and is told what to do
+  // with his two games that day.
+  _myCallinHtml() {
+    const ev = (this.games || []).find(g => g.match_id === this.matchId);
+    if (!ev || !ev.my_callin || !window.CallIn) return '';
+    if (!this.callinDrive && !this._callinDriveAsked) {
+      this._callinDriveAsked = true;
+      CallIn.loadDrive(this.auth).then(d => { this.callinDrive = d; this._paintMyAvailability(); });
+    }
+    const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
+    const past = end < Date.now();
+    return `
+      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #38bdf8; background:rgba(15,23,42,0.6);">
+        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:4px;">${CallIn.chipHtml(ev.my_callin)}YOUR CALL-IN FOR THIS GAME</div>
+        ${CallIn.panelHtml(ev, this.games, this.callinDrive, { saving: !!this._callinSaving, past })}
+      </div>`;
+  }
+
+  async _sendMyCallin(btn) {
+    const ev = (this.games || []).find(g => g.match_id === this.matchId);
+    if (!ev || this._callinSaving) return;
+    this._callinSaving = true;
+    this._paintMyAvailability();
+    try {
+      ev.my_callin = await CallIn.send(this.auth, Number(btn.dataset.fhEventId), btn.dataset.callin);
+    } catch (err) {
+      alert(`Could not save: ${err.message}`);
+    } finally {
+      this._callinSaving = false;
+      this._paintMyAvailability();
+    }
+  }
+
+  // Coach: accepted = invited → refresh the feed + invites the squad draws from.
+  async _afterCallinAccept() {
+    this._feedAt = 0;
+    await Promise.all([this._loadGames(), this._loadInvites()]);
+    this._render();
   }
 
   _paintMyAvailability() {
@@ -4727,6 +4775,15 @@ class GameCenterScreen extends EventScreen {
   // for adults the section's other squads.  An invite row is the ONLY way
   // a call-up sees the game on their page (never tag the younger team).
   _fhEventId() { return (this.matchDetails && this.matchDetails.fh_event_id) || null; }
+  // 🙋 The EventScreen call-in box (mig 1265), for this game: loads once
+  // per game for its coaches / admins (the API says can_decide).
+  _callinEventId() { return this._fhEventId(); }
+  _callinsHtml() {
+    const id = this._callinEventId();
+    if (!id || !(this.realIsCoach || this.isCoach)) return '';
+    if (this._callinsFor !== id) { this._callinsFor = id; this.callins = null; this._loadCallins(); }
+    return super._callinsHtml();
+  }
 
   async _loadInvites() {
     const id = this._fhEventId();

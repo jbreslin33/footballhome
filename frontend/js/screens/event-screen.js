@@ -716,11 +716,13 @@ class EventScreen extends Screen {
   }
 
   // 🙋 Call-in requests (mig 1265): Liga 1 players asking in to this game.
+  _callinEventId() { return (this.ev && this.ev.fh_event_id) || null; }
   async _loadCallins() {
-    const id = this.ev.fh_event_id;
+    const id = this._callinEventId();
+    if (!id) return;
     try {
       const body = await this._json(`/api/calendar/events/${id}/callins`);
-      if (!this.ev || this.ev.fh_event_id !== id) return;
+      if (this._callinEventId() !== id) return;
       this.callins = body && body.can_decide ? (body.requests || []) : null;
     } catch (err) {
       console.error('[event] call-in load failed:', err);
@@ -736,12 +738,12 @@ class EventScreen extends Screen {
     if (this.saving.has(key)) return;
     this.saving.add(key);
     this._render();
-    const id = this.ev.fh_event_id;
+    const id = this._callinEventId();
     try {
       await this._json(`/api/calendar/events/${id}/callins`, {
         method: 'POST', body: JSON.stringify({ request_id: requestId, decision }),
       });
-      await Promise.all([this._loadCallins(), decision === 'accept' ? this._loadEvent(id) : null]);
+      await Promise.all([this._loadCallins(), decision === 'accept' ? this._afterCallinAccept(id) : null]);
     } catch (err) {
       alert(`Could not save: ${err.message}`);
     } finally {
@@ -750,6 +752,10 @@ class EventScreen extends Screen {
     }
   }
 
+  // Accepted = a new invite: reload what shows the squad (Game Center
+  // overrides — it draws from its own feed).
+  _afterCallinAccept(id) { return this._loadEvent(id); }
+
   _callinsHtml() {
     const list = Array.isArray(this.callins) ? this.callins : [];
     if (!list.length) return '';
@@ -757,6 +763,7 @@ class EventScreen extends Screen {
       ? MessageCopy.block('callin', tier, tokens) : fb;
     const open = list.filter(r => !r.decision);
     const declined = list.filter(r => r.decision === 'declined');
+    const B = 'font-size:0.8rem; font-weight:700; color:#0f172a; padding:4px 9px; border-radius:999px; border:none; cursor:pointer;';
     const row = (r, actions) => {
       const name = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
       const busy = this.saving.has(`callin:${r.request_id}`) ? 'disabled' : '';
@@ -768,12 +775,12 @@ class EventScreen extends Screen {
         </div>`;
     };
     const openHtml = open.map(r => row(r, (busy) => `
-        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="accept" ${busy} style="background:#22c55e;">${this.escapeHtml(c('accept', '✓ Accept'))}</button>
-        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="decline" ${busy} style="background:#475569; color:#e2e8f0;">${this.escapeHtml(c('decline', 'Not this week'))}</button>`)).join('');
+        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="accept" ${busy} style="${B} background:#22c55e;">${this.escapeHtml(c('accept', '✓ Accept'))}</button>
+        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="decline" ${busy} style="${B} background:#475569; color:#e2e8f0;">${this.escapeHtml(c('decline', 'Not this week'))}</button>`)).join('');
     const declinedHtml = declined.length ? `
         <div style="font-size:0.72rem; opacity:0.7; margin-top:8px; font-weight:700;">${this.escapeHtml(c('declined_title', `Not this week (${declined.length})`, { n: declined.length }))}</div>
-        ${declined.map(r => row(r, (busy) => `<button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="undo" ${busy} style="background:#334155; color:#e2e8f0;">${this.escapeHtml(c('undo_decline', 'Undo'))}</button>`)).join('')}` : '';
-    return `<div class="ec-box" style="border-color:#38bdf8;">
+        ${declined.map(r => row(r, (busy) => `<button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="undo" ${busy} style="${B} background:#334155; color:#e2e8f0;">${this.escapeHtml(c('undo_decline', 'Undo'))}</button>`)).join('')}` : '';
+    return `<div class="ec-box" style="border:1px solid #38bdf8; border-radius:10px; padding:12px; margin-bottom:12px; background:rgba(15,23,42,0.6);">
         <div style="font-weight:800; color:#7dd3fc;">${this.escapeHtml(c('staff_title', `🙋 CALL-IN REQUESTS (${open.length})`, { n: open.length }))}</div>
         <div style="font-size:0.72rem; opacity:0.75; margin:2px 0 6px;">${this.escapeHtml(c('staff_note', 'Accept = invited: Go / No shows for him and he sits in No Response until he answers. No text is sent.'))}</div>
         ${openHtml}${declinedHtml}
