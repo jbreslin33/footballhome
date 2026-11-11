@@ -67,6 +67,8 @@ bool AwardsController::gate(const Request& request, Response* error, long long* 
     return false;
 }
 
+// Each team also carries `candidates`: the suggested players for the
+// metric awards (fh_award_candidates, mig 1263), top 3 ranks.
 // The season's teams (team_terms, mig 795 — a team with no terms shows in
 // every season), each with its players, the awards given, its league
 // director and the sends so far.  No term → the current one; no year →
@@ -91,11 +93,14 @@ Response AwardsController::handleBoard(const Request& request) {
              WHERE t.is_active AND t.board_sort_order IS NOT NULL
                AND (EXISTS (SELECT 1 FROM team_terms tt WHERE tt.team_id = t.id AND tt.term = s.term)
                     OR NOT EXISTS (SELECT 1 FROM team_terms tt WHERE tt.team_id = t.id))
+          ), cand AS MATERIALIZED (
+            SELECT c.* FROM season s, fh_award_candidates(s.term, s.year) c
           )
           SELECT json_build_object(
             'term', s.term, 'year', s.year,
             'terms', (SELECT json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order) FROM year_terms),
-            'types', (SELECT json_agg(json_build_object('code', code, 'label', label, 'emoji', emoji, 'is_league', is_league) ORDER BY sort_order)
+            'types', (SELECT json_agg(json_build_object('code', code, 'label', label, 'emoji', emoji, 'is_league', is_league,
+                                                      'audience', audience, 'slots', slots, 'metric', metric, 'blurb', blurb) ORDER BY sort_order)
                         FROM award_types WHERE is_active),
             'teams', COALESCE((SELECT json_agg(json_build_object(
                 'id', tm.id, 'label', COALESCE(tm.label, tm.name), 'color', tm.color, 'section', tm.gender_category,
@@ -115,6 +120,10 @@ Response AwardsController::handleBoard(const Request& request) {
                 'awards', COALESCE((SELECT json_agg(json_build_object('person_id', a.person_id, 'award_code', a.award_code))
                        FROM person_awards a
                       WHERE a.team_id = tm.id AND a.term = s.term AND a.season_year = s.year), '[]'),
+                'candidates', COALESCE((SELECT json_agg(json_build_object('award_code', c.award_code, 'person_id', c.person_id,
+                                    'rank', c.rank, 'value', c.value, 'out_of', c.out_of, 'basis', c.basis)
+                                    ORDER BY c.award_code, c.rank)
+                       FROM cand c WHERE c.team_id = tm.id AND c.rank <= 3), '[]'),
                 'sends', COALESCE((SELECT json_agg(json_build_object('award_code', x.award_code, 'channel', x.channel,
                                                                     'sent_at', x.sent_at) ORDER BY x.sent_at DESC)
                        FROM award_submissions x

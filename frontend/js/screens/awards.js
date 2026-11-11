@@ -39,6 +39,17 @@ class AwardsScreen extends Screen {
         .aw-card { border:1px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-secondary); padding:var(--space-3); }
         .aw-row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:5px 0; border-top:1px solid var(--border-color); }
         .aw-league { border:1px solid #f59e0b; border-radius:var(--radius-md); padding:8px 10px; margin:6px 0 8px; background:rgba(245,158,11,0.08); }
+        .aw-award { display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:7px 0; border-top:1px solid var(--border-color); }
+        .aw-award-name { flex:0 0 210px; min-width:0; }
+        .aw-win { padding:4px 10px; border-radius:999px; font-weight:700; font-size:0.8rem; border:1px solid #f59e0b;
+                  background:rgba(245,158,11,0.18); color:var(--text-primary); cursor:pointer; min-height:0; min-width:0; }
+        .aw-sugg { padding:4px 10px; border-radius:999px; font-size:0.8rem; border:1px dashed #0ea5e9; background:rgba(14,165,233,0.08);
+                   color:var(--text-primary); cursor:pointer; min-height:0; min-width:0; }
+        .aw-pick { font-size:0.8rem; padding:3px 6px; border-radius:6px; border:1px dashed var(--border-color);
+                   background:transparent; color:var(--text-primary); max-width:170px; }
+        .aw-fill { padding:5px 10px; border-radius:8px; cursor:pointer; font-weight:700; font-size:0.78rem; min-height:0;
+                   border:1px solid #0ea5e9; background:transparent; color:#0ea5e9; }
+        @media (max-width: 600px) { .aw-award-name { flex-basis:100%; } }
         .aw-send { padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:0.8rem; min-height:0;
                    border:1px solid var(--primary-color); background:var(--primary-color); color:#fff; }
       </style>
@@ -107,14 +118,35 @@ class AwardsScreen extends Screen {
       if ((el = t('[data-aw-section]'))) { this.section = el.dataset.awSection; this._render(); return; }
       if ((el = t('[data-aw-give]')))    { this._toggle(el); return; }
       if ((el = t('[data-aw-send]')))    { this._send(el); return; }
+      if ((el = t('[data-aw-fill]')))    { this._fill(Number(el.dataset.awFill)); return; }
+    });
+    this.element.addEventListener('change', (e) => {
+      const el = e.target.closest('[data-aw-pick]');
+      if (!el || !el.value) return;
+      this._give(Number(el.dataset.teamId), Number(el.value), el.dataset.awPick, true);
     });
   }
 
-  async _toggle(el) {
+  _toggle(el) {
     const team = this._team(Number(el.dataset.teamId));
     if (!team) return;
     const personId = Number(el.dataset.personId), code = el.dataset.awGive;
-    const on = !team.awards.some(a => a.person_id === personId && a.award_code === code);
+    this._give(team.id, personId, code, !team.awards.some(a => a.person_id === personId && a.award_code === code));
+  }
+
+  // Every #1 suggestion whose tie fits the open slots.
+  async _fill(teamId) {
+    const team = this._team(teamId);
+    if (!team) return;
+    for (const type of this._typesFor(team)) {
+      for (const pid of this._clearPicks(team, type)) await this._give(team.id, pid, type.code, true);
+    }
+  }
+
+  async _give(teamId, personId, code, on) {
+    const team = this._team(teamId);
+    if (!team) return;
+    if (on === team.awards.some(a => a.person_id === personId && a.award_code === code)) return;
     // Optimistic: flip it now, put it back if the save fails.
     if (on) team.awards.push({ person_id: personId, award_code: code });
     else team.awards = team.awards.filter(a => !(a.person_id === personId && a.award_code === code));
@@ -163,6 +195,36 @@ class AwardsScreen extends Screen {
 
   _team(id) { return (this.board?.teams || []).find(t => t.id === id); }
 
+  // The awards a team shows: youth teams youth + all, adult teams adult + all.
+  _typesFor(team) {
+    const youth = ['boys', 'girls'].includes(team.section);
+    return (this.board?.types || []).filter(t => t.audience === 'all' || t.audience === (youth ? 'youth' : 'adult'));
+  }
+
+  // Open suggestions for an award: the best rank among players not yet
+  // given it.  Returns { ids, rows } — rows carry the stat.
+  _suggestions(team, type) {
+    const given = new Set(team.awards.filter(a => a.award_code === type.code).map(a => a.person_id));
+    const rows = (team.candidates || []).filter(c => c.award_code === type.code && !given.has(c.person_id));
+    if (!rows.length) return [];
+    const best = Math.min(...rows.map(r => r.rank));
+    return rows.filter(r => r.rank === best);
+  }
+
+  // Suggestions that can be given without a coin flip: the tie fits the open slots.
+  _clearPicks(team, type) {
+    const open = (type.slots || 1) - team.awards.filter(a => a.award_code === type.code).length;
+    const sugg = this._suggestions(team, type);
+    return open > 0 && sugg.length && sugg.length <= open ? sugg.map(r => r.person_id) : [];
+  }
+
+  _stat(c) {
+    const tier = { attendance: 'stat_attend', rsvp: 'stat_rsvp', mixed: 'stat_mixed' }[c.basis] || 'stat_attend';
+    const fb = { stat_attend: `${c.value} of ${c.out_of} attended`, stat_rsvp: `${c.value} of ${c.out_of} said yes`,
+                 stat_mixed: `${c.value} of ${c.out_of} went` }[tier];
+    return this._copy(tier, { n: c.value, of: c.out_of }, fb);
+  }
+
   _winners(team, code) {
     const ids = new Set(team.awards.filter(a => a.award_code === code).map(a => a.person_id));
     return team.players.filter(p => ids.has(p.person_id));
@@ -173,12 +235,13 @@ class AwardsScreen extends Screen {
     const body = this.find('#aw-body');
     if (!body) return;
     this.find('#aw-title').textContent = this._copy('title', {}, '🏅 Awards');
-    this.find('#aw-sub').textContent = this._copy('sub', {}, 'Pick a season and a team, tap an award on a player');
+    this.find('#aw-sub').textContent = this._copy('sub2', {}, 'Each award has slots per team — 💡 = suggested from attendance, tap to give it');
     if (this.error && !this.board) { body.innerHTML = `<div class="empty-state">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.board) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     const esc = (s) => this.escapeHtml(String(s ?? ''));
     const b = this.board;
-    const sections = [...new Set(b.teams.map(t => t.section).filter(Boolean))];
+    const order = ['mens', 'womens', 'boys', 'girls'];
+    const sections = [...new Set(b.teams.map(t => t.section).filter(Boolean))].sort((x, y) => order.indexOf(x) - order.indexOf(y));
     if (!sections.includes(this.section)) this.section = sections[0] || 'boys';
     const teams = b.teams.filter(t => t.section === this.section);
 
@@ -214,21 +277,48 @@ class AwardsScreen extends Screen {
     };
 
     const card = (team) => {
-      const given = (code) => new Set(team.awards.filter(a => a.award_code === code).map(a => a.person_id));
-      const sets = Object.fromEntries((b.types || []).map(t => [t.code, given(t.code)]));
-      const league = team.director ? (b.types || []).filter(t => t.is_league).map(t => leagueStrip(team, t)).join('') : '';
-      const rows = team.players.map(p => `<div class="aw-row">
-          <span style="flex:1 1 160px; min-width:0; font-weight:600;">${esc(p.name)}${p.age ? ` <span style="font-size:0.72rem; opacity:0.7;">U${esc(p.age)}</span>` : ''}</span>
-          ${(b.types || []).map(t => `<button type="button" class="aw-give ${sets[t.code].has(p.person_id) ? 'on' : ''}"
-              data-aw-give="${esc(t.code)}" data-person-id="${p.person_id}" data-team-id="${team.id}">${esc(t.emoji)} ${esc(t.label)}</button>`).join('')}
-        </div>`).join('');
+      const types = this._typesFor(team);
+      const byId = new Map(team.players.map(p => [p.person_id, p]));
+      const league = team.director ? types.filter(t => t.is_league).map(t => leagueStrip(team, t)).join('') : '';
+      const slotsTotal = types.reduce((n, t) => n + (t.slots || 1), 0);
+      const filled = types.reduce((n, t) => n + Math.min(t.slots || 1, team.awards.filter(a => a.award_code === t.code).length), 0);
+      const canFill = types.some(t => this._clearPicks(team, t).length);
+      const youth = ['boys', 'girls'].includes(team.section);
+      const row = (t) => {
+        const winners = team.awards.filter(a => a.award_code === t.code).map(a => byId.get(a.person_id)).filter(Boolean);
+        const open = Math.max(0, (t.slots || 1) - winners.length);
+        const sugg = open ? this._suggestions(team, t) : [];
+        const taken = new Set(winners.map(p => p.person_id));
+        const win = winners.map(p => `<button type="button" class="aw-win" title="Tap to take back"
+            data-aw-give="${esc(t.code)}" data-person-id="${p.person_id}" data-team-id="${team.id}">${esc(t.emoji)} ${esc(p.name)} ✕</button>`).join('');
+        const tie = sugg.length > open ? `<span style="font-size:0.72rem; opacity:0.7;">${esc(this._copy('tie', { n: sugg.length }, `tied — ${sugg.length} players`))}</span>` : '';
+        const sug = sugg.slice(0, Math.max(open, 4)).map(c => {
+          const p = byId.get(c.person_id);
+          return p ? `<button type="button" class="aw-sugg" title="Tap to give"
+              data-aw-give="${esc(t.code)}" data-person-id="${p.person_id}" data-team-id="${team.id}">${esc(this._copy('suggested',
+              { name: p.name, stat: this._stat(c) }, `💡 ${p.name} · ${this._stat(c)}`))}</button>` : '';
+        }).join('');
+        const pick = open ? `<select class="aw-pick" data-aw-pick="${esc(t.code)}" data-team-id="${team.id}">
+            <option value="">${esc(this._copy('pick', {}, '＋ pick'))}${open > 1 ? ` (${open})` : ''}</option>
+            ${team.players.filter(p => !taken.has(p.person_id)).map(p => `<option value="${p.person_id}">${esc(p.name)}</option>`).join('')}
+          </select>` : '';
+        return `<div class="aw-award">
+          <div class="aw-award-name">
+            <div style="font-weight:800;">${esc(t.emoji)} ${esc(t.label)}${(t.slots || 1) > 1 ? ` <span style="font-weight:400; opacity:0.7; font-size:0.78rem;">× ${t.slots}</span>` : ''}</div>
+            <div style="font-size:0.72rem; opacity:0.7;">${esc(t.blurb || '')}${!t.metric ? ` · ${esc(this._copy('coach_pick', {}, "coach's pick"))}` : ''}</div>
+          </div>
+          ${win}${sug}${tie}${pick}
+        </div>`;
+      };
       return `<div class="aw-card">
-        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:4px;">
           <span style="background:${esc(team.color || 'var(--primary-color)')}; color:#fff; border-radius:6px; padding:2px 8px; font-weight:800;">${esc(team.label)}</span>
-          <span style="font-size:0.8rem; opacity:0.7;">${team.players.length} players · ${team.awards.length} awards</span>
+          <span style="font-size:0.78rem; opacity:0.7;">${esc(this._copy(youth ? 'youth_heading' : 'adult_heading', {}, youth ? 'Youth awards' : 'Adult awards'))}
+            · ${team.players.length} players · ${esc(this._copy('filled', { filled, slots: slotsTotal }, `${filled} of ${slotsTotal} slots filled`))}</span>
+          ${canFill ? `<button type="button" class="aw-fill" data-aw-fill="${team.id}" style="margin-left:auto;">${esc(this._copy('fill', {}, '💡 Give every clear suggestion'))}</button>` : ''}
         </div>
         ${league}
-        ${rows || '<div style="opacity:0.6;">No players on this team.</div>'}
+        ${team.players.length ? types.map(row).join('') : '<div style="opacity:0.6;">No players on this team.</div>'}
       </div>`;
     };
 
