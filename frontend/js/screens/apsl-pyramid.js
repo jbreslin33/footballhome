@@ -231,7 +231,9 @@ class ApslPyramidScreen extends Screen {
       const stage = this.find('.ap-stage');
       if (document.fullscreenElement) document.exitFullscreen(); else if (stage && stage.requestFullscreen) stage.requestFullscreen();
     } else if (act === 'refresh') this.load(true);
-    else if (act === 'back') this.navigation.goBack();
+    // 🏠 Main menu (owner 2026-11-11: "need on hamburger a way to leave
+    // screen to main menu") — straight home, not one step back.
+    else if (act === 'home') { this._menu(false); this.navigation.goTo(this.navigation.home()); }
   }
 
   // Sections: title + totals, View, Conferences, Show on screen, Actions.
@@ -264,7 +266,7 @@ class ApslPyramidScreen extends Screen {
     const acts = [
       `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
       `<button class="btn btn-secondary" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>`,
-      this.auth.isLoggedIn() ? `<button class="btn btn-secondary" data-act="back">${esc(this._copy('menu_back'))}</button>` : '',
+      this.auth.isLoggedIn() ? `<button class="btn btn-secondary" data-act="home">${esc(this._copy('menu_home') || '🏠 Main menu')}</button>` : '',
     ].join('');
     m.innerHTML = `
       <div class="ap-menu-head">
