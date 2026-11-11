@@ -154,6 +154,20 @@ def one(ev_path):
         behind = ra[0] * gdir > line + 0.5 and fwd > 0
         if not behind:
             continue
+        # G5.91 (§8.192) BEHIND PICK: at the kick, every attacking outfielder -1..18 m short of their line
+        # (the men a ball in behind could be for) by his speed toward their goal; and the one it was for.
+        def vbin(v): return 0 if v < 0 else 1 if v < 2 else 2 if v < 4 else 3 if v < 6 else 4
+        for pid, p in fr.items():
+            if who.get(pid) != tm or pid == pa or pid in keepers:
+                continue
+            g2 = line - p[0] * gdir
+            q = frames.get(t - 5, {}).get(pid)
+            if q is None or not (-1 <= g2 <= 18):
+                continue
+            vb = vbin((p[0] - q[0]) * gdir / 0.2)
+            c[("bp_cand", vb)] += 1
+            if pid == re_:
+                c[("bp_recv", vb)] += 1
         c["behind"] += 1
         c[("behind_gap_hist", max(-2, min(9, int(math.floor(gap / 2)))))] += 1
         c[("behind_z", oz)] += 1
@@ -215,6 +229,12 @@ if __name__ == "__main__":
         xs = L[k]
         if xs:
             print(f"  {lab:42s} median {statistics.median(xs):6.2f}  p25 {q(xs, .25):6.2f}  p75 {q(xs, .75):6.2f}  mean {statistics.mean(xs):6.2f}")
+    nc = sum(tot[("bp_cand", b)] for b in range(5)); nr = sum(tot[("bp_recv", b)] for b in range(5))
+    if nc and nr:   # G5.91 (§8.192)
+        lab = ("<0", "0-2", "2-4", "4-6", "6+")
+        print("BEHIND PICK (at the kick, attacking outfielders -1..18 m short of their line, by speed toward their goal m/s): "
+              + "; ".join(f"{lab[b]} candidates {100 * tot[('bp_cand', b)] / nc:.1f}% receivers {100 * tot[('bp_recv', b)] / nr:.1f}% lift "
+                          f"{(tot[('bp_recv', b)] / nr) / max(1e-9, tot[('bp_cand', b)] / nc):.2f}" for b in range(5)) + f" (n {nr})")
     print(f"IN BEHIND THEN (a shot / goal by the passer's side within 10 s; all shots {tot['shots'] / tm:.1f}, goals {tot['goals'] / tm:.2f} a team-match):")
     for k, lab in (("high", "high"), ("low", "flat/medium")):
         n = max(1, tot[("then_n", k)])

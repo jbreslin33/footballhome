@@ -317,7 +317,12 @@ public:
             const std::uint8_t carry = static_cast<std::uint8_t>(cm);
             const Fixed64 vg = core::weightedPassSpeed(Fixed64::fromInt(cm));
             const Loft lf{at, aimedCarry(me.pos, at, reach)};
-            const Fixed64 bw = w0 * pb;
+            Fixed64 bw = w0 * pb;
+            if (P.behind_lift_on) {   // G5.91 (§8.192): to the man already running at their goal
+                const Fixed64 vf = m.vel.x * v.sg;
+                const int vb = vf.raw < 0 ? 0 : vf < Fixed64::fromInt(2) ? 1 : vf < Fixed64::fromInt(4) ? 2 : vf < Fixed64::fromInt(6) ? 3 : 4;
+                bw = bw * P.behind_lift[vb];
+            }
             const bool air_first = u4 < P.behind_air && bd <= reach;
             const bool gsafe = c.reads.passSafe(w, v.slot, sp, at, vg, Fixed64::one());
             const bool lsafe = bd <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
@@ -1087,6 +1092,11 @@ void PossessionParams::configure(const core::ModelParams& p) {
     space_wide_y = p.fixed("physics.space.wide_y_m", 27000);
     space_back_m = p.fixed("physics.space.back_m", 2000);              // G5.58 [FH]: the runner no further past the spot           // [FH] the wide zones' middle (20.16-34)
     cross_depth_m = p.fixed("physics.cross.depth_m", 7500);            // real crosses land ~7.5 m out (StatsBomb, benchmarks_statsbomb_cross.py)
+    {   // G5.91 (§8.192): DFL, 242 balls in behind
+        static const int kLift[5] = {420, 650, 1040, 1730, 2950};
+        for (int b = 0; b < 5; ++b) behind_lift[b] = p.fixed("physics.behind.lift_" + std::to_string(b), kLift[b]);
+        behind_lift_on = p.fixed("physics.behind.lift_on", 1000).raw > 0;
+    }
     behind_risk = p.fixed("physics.behind.risk_weight", 1000);   // G5.51 fit: 0.5 / 0.75 / 1.0 → in behind 21.0 / 26.3 / 29.3 (37.7), completed 46 / 52 / 50% (47.5) — the read does not pick the ones that fail   // [FH] start; fit to completion 79.1%
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);

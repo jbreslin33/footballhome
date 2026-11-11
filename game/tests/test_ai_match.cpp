@@ -94,7 +94,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.79 (2026-11-10): kicks off a plant foot, strong / weak foot.
 // Re-locked G5.80 (2026-11-10): the carrier chases his ball at its speed.
 // Re-locked G5.84 (2026-11-10): a loft's angle by carry (real landing times).
-constexpr std::uint64_t kGolden3v3   = 0xd23ae4af19b6375cULL;
+// Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
+constexpr std::uint64_t kGolden3v3   = 0xa9af7a2a823a8ef8ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -135,7 +136,8 @@ constexpr std::uint64_t kGolden3v3   = 0xd23ae4af19b6375cULL;
 // Re-locked G5.81 (2026-11-10): pressed, his carry's line from the real pressed first touches; the 3v3 unchanged.
 // Re-locked G5.83 (2026-11-10): within his zone a marked man gets less of the share (DFL lift); the 3v3 unchanged.
 // Re-locked G5.84 (2026-11-10): a loft's angle by carry (real landing times).
-constexpr std::uint64_t kGolden11v11 = 0x64debe76c5139ce0ULL;
+// Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
+constexpr std::uint64_t kGolden11v11 = 0x648543b08987f765ULL;
 
 struct Rig {
     World world;

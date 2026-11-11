@@ -8543,3 +8543,39 @@ goes to their man 21-31% (48% once it stays in): who wins it (their FB / CB / ke
 the race read's verdict at the kick. (2) Spells starting wide back to 35+ 26-32% (16.9). (3) Spells
 starting wide 18-35 m: 30-33 a team-match (57.8). (4) Carries into the crossing zone 2.3 (8.8). (5) Take-ons
 3×. (6) Possessions twice too long (§8.172).
+
+### 8.192 G5.91 — the ball in behind to the man already running (no migration)
+
+§8.191's next (1): our runner loses the race for the channel ball.
+
+**Measured** (new harness line RACE, for the ball in behind down the line, seed 3000, 16 matches, 68
+balls). At the kick: our runner 10.4 m from the spot, their nearest outfielder 8.7 (a CB 36 times, an
+FB 25), their keeper 24.6. Our runner was moving toward it at 1.8 m/s. Ours minus theirs: < −3 m 7%
+(completed 60%), −3..0 16% (27), 0..3 47% (41), 3+ 29% (15). Most are played when their man is nearer.
+The existing IN BEHIND line has the same across all balls in behind: receiver speed at the kick 2.4
+m/s (real 3.8), toward goal 1.4 (2.7).
+
+**Real** (new BEHIND PICK in `benchmarks_tracking_behind.py`, DFL, 242 balls in behind). At the kick,
+every attacking outfielder −1..18 m short of their line (the men a ball in behind could be for), by his
+speed toward their goal, and the one it was for. Lift = share of receivers / share of candidates:
+<0 m/s 0.42; 0-2 0.65; 2-4 1.04; 4-6 1.73; 6+ 2.95. The candidates' mean lift is 1, so the volume
+holds where the speeds are real.
+
+**The change** [FH method on DFL data]. `Possession`: the ball-in-behind candidate's weight × the lift
+for its man's speed toward their goal (`physics.behind.lift_<0-4>`; `behind.lift_on` 0 = off).
+
+**After** (seed 1000 / 2000 / 3000; real in brackets).
+- IN BEHIND: 39.4 → 35.1 / 36.2 / 36.7 a team-match (37.7); receiver speed at the kick 2.4 → 2.7 / 2.6 /
+  2.7 m/s (3.8), toward goal 1.4 → 1.8 / 1.7 / 1.8 (2.7); completed 52 → 50 / 49 / 48% (47.5).
+- RACE, seed 3000: our runner toward the spot 1.8 → 2.3 m/s; ours 3 m+ nearer 7 → 20%.
+- Down the line: balls in behind completed 32 → 43 / 32 / 32% — within noise (25-68 balls a run).
+  Passes completed 80.8-81.2% (79.1).
+- Tests 22/22; both goldens re-locked.
+
+**What it says.** The pick now prefers the runner, as real passers do. But our men run less: the
+receiver is still 1 m/s slower than real, and runners at the line at a forward pass were 0.01 a pass
+(0.06, §8.142). The channel race is limited by how few men are running, not by whom the passer picks.
+
+**Next moles.** (1) **Runs**: men on the move at their line when the ball can be played forward (0.01
+v 0.06 a pass; receiver at the kick 2.7 v 3.8 m/s). (2) Spells starting wide back to 35+ (28-32 v 17%).
+(3) Carries into the crossing zone 2.3 (8.8). (4) Take-ons 3×. (5) Possessions twice too long.

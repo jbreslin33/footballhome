@@ -80,6 +80,11 @@ struct PossessionParams {
     math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len, int dir = -1) const;
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
+    // G5.91 (§8.192): the ball in behind goes to a man already running at their goal — the real lift by
+    // his speed toward their goal at the kick (<0 / 0-2 / 2-4 / 4-6 / 6+ m/s), among the attackers -1..18 m
+    // short of their line (DFL benchmarks_tracking_behind.py BEHIND PICK). behind.lift_on 0 = off.
+    math::Fixed64 behind_lift[5]{math::Fixed64::one(), math::Fixed64::one(), math::Fixed64::one(), math::Fixed64::one(), math::Fixed64::one()};   // ×1 until configure() (tests)
+    bool behind_lift_on = true;
     bool space_on = true; math::Fixed64 space_wide_y{}, cross_depth_m{}, space_max_s{}, space_risk{}, space_roll_m{}; int space_margin_ticks = 0;   // G5.54: the ball into an empty zone ahead   // a ball in behind the race read says they win, at this share (G5.51)   // an unsafe pass's weight, × its zone share
     math::Fixed64 space_back_m = math::Fixed64::fromInt(2);   // physics.space.back_m (G5.58)
     math::Fixed64 clear_from_m{};                   // our end: within this of our line
