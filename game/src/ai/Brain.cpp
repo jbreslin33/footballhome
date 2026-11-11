@@ -62,7 +62,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -112,6 +112,8 @@ void Brain::setModelParams(const core::ModelParams& p) {
     run_tgap_ = p.fixed("physics.run.line_spot_m", 4000);   // his spot on or within this of the line
     run_tau_ = p.fixed("physics.run.line_tau_s", 400);
     shift_fwd_max_ = p.fixed("physics.body.shift_fwd_max_mps", 3800);   // G5.95 (§8.196): our ball, forward, not a line run — the build-up jog (0 = shape_max)
+    fwd_back_max_ = p.fixed("physics.body.fwd_back_max_mps", 3500);   // G5.96 (§8.197): forwards back toward our goal, holding, in danger too (0 = defend_max)
+    fwd_back_roles_ = p.integer("physics.body.fwd_back_roles", 56);   // bit per Role CB FB DM AM WIDE ST; 56 = AM WIDE ST
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
     theirs_cap_y_ = p.fixed("physics.shape.theirs_cap_y_m", 0);
@@ -719,7 +721,10 @@ void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
     if (lineRun(slot, world, o)) flim = run_max_ / top;
     else if (shift_fwd_max_.raw > 0 && shift_fwd_max_ < shape_max_ && ourBall(slot, world)) flim = shift_fwd_max_ / top;   // G5.95 (§8.196): the build-up shift at a jog
     if (fwd > flim) o.move.move.x = flim * sg;
-    if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
+    // G5.96 (§8.197): a forward drops back at his own pace, in danger too — real ones stay up as the ball goes past.
+    if (fwd_back_max_.raw > 0 && fwd_back_max_ < defend_max_ && ((fwd_back_roles_ >> static_cast<int>(role_of_slot_[slot])) & 1)) {
+        if (-fwd > fwd_back_max_ / top) o.move.move.x = -(fwd_back_max_ / top) * sg;
+    } else if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
 }
 
 // G5.94 (§8.195): a holder with our ball making a RUN, not shifting with the shape — within

@@ -8695,3 +8695,39 @@ and the arrival gets closer; at 3.5 DM runs fall to 17 (24.9) and ST to 51 (62.4
 
 **Next moles.** (1) The front man trails early in a spell (8 m short <3 s, 2.1). (2) Runs still end 4.5 m
 short (3.9), FB runs 26-28 (17.4). (3) Possessions twice too long. (4) Down the line and crosses (§8.191).
+
+### 8.197 G5.96 — forwards drop back at their own pace; the outlet stays up (no migration)
+
+§8.196's next: the front man trails early in a spell (8.1 m short <3 s, real 2.1).
+
+**Where it starts.** In the spell's first second our front man is 4-9 m deeper than real (ball 35-52 m
+out: 36.2 m off their goal, 27.7), and the block's most advanced man before the turnover is 5-7 m deep
+with the ball 10-50 m out (20-30: 42.3, 49.8). The lag table (§8.142's open item) says why: with the
+ball coming at our goal at 5+ m/s, a real ST stands 9-13 m higher than with it still (20-30: 52.4 v
+40.2); ours only ~4 (43.6 v 38.5). Our forwards follow the ball back at `defend_max` 6 m/s, uncapped
+in danger; real ones are the men it was just played past, and walk.
+
+**The change** [FH, against DFL lag]. `Brain::capAcross`: a forward (`physics.body.fwd_back_roles`, bit
+per role; 56 = AM, WIDE, ST) holding shape goes back toward our goal at most `physics.body.fwd_back_max_mps`
+(3.5; code defaults, no rows; 0 = off), in danger too. Defenders and DMs keep `defend_max` and the
+danger sprint. Coaching: "stay up, be the out ball" [FH]. Goldens untouched (no `shape_max` row in the rig).
+
+**Fit** (seed 1000; real in brackets). Outside danger only, 4.0 / 4.5: front man <3 s 8.1 → 6.3 / 7.1, the
+ST coming 5+ barely moves (the bands that matter are inside 40 m — danger). In danger too, AM+WIDE+ST at
+4 / 3.5 / 3, ST only at 3 / 2.5: front man <3 s 6.0 / 5.3 / 3.9 / 5.2 / 4.2 (2.1); the second man behind
+him 5.1 / 5.3 / 5.2 / 8.3 / 9.1 (3.6) — ST alone leaves the second man behind; goals 1.88 / 1.88 / 1.25 /
+1.12 / 1.50. At 3 the ST stands 3-4 m high even with the ball still; 3.5 kept.
+
+**After** (3.5, seed 1000 / 2000 / 3000 v G5.95).
+- Front man <3 s into our spell 8.1 / 7.9 / 7.9 → 5.3 / 5.1 / 5.1 m short (2.1); 4+ m short 71-72 → 57-58% (29);
+  3-6 s 6.8-7.1 → 5.0-5.2 (2.1). Second man behind him 5.3-5.7 → 5.3-5.4 (3.6).
+- The block's most advanced man, m off its own line: 10-20 40.3-40.8 → 43.5-44.2 (45.7); 20-30 42.2-42.6 →
+  45.2-46.0 (49.8); 30-40 47.9-48.2 → 49.9-50.4 (53.6).
+- ST, ball coming 5+ m/s: 20-30 43.2-43.9 → 46.8-46.9 (52.4); 30-40 49.4-50.3 → 51.6-52.2 (57.8). Ball still:
+  20-30 39.0-39.4 → 41.5-42.7 (40.2), a little high.
+- Runs 204-221 → 208-223 (209); in behind 35-37 → 36-41 (37.7); completion 80.2-81.4% (79.1).
+- Shots 5.9-6.8 → 6.7-7.3 a team-match, goals 1.62-1.94 → 1.75-1.88. Noise at 8 matches.
+
+**Next moles.** (1) The front man still 5 m short in the first 3 s (2.1): their line at the turnover is
+4-6 m high (§8.171 (1)). (2) Runs end 4.5 m short (3.9), FB runs 26-28 (17.4). (3) Possessions twice too
+long. (4) Down the line and crosses (§8.191).
