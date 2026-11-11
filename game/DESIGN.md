@@ -8662,3 +8662,36 @@ the behaviour, the count the next mole.
 **Next moles.** (1) Run count 260-271 (209): wide men and full-backs run the line too often. (2) Runs still
 end 5.1-5.3 m short (3.9); the front man 4+ m short 24-29% (10-18). (3) Down the line and crosses (§8.191).
 (4) Possessions twice too long.
+
+### 8.196 G5.95 — the build-up shift keeps a jog; only the line run runs (no migration)
+
+§8.195's next: runs 260-271 a team-match (209), wide men and full-backs too often.
+
+**Tried first** (not shipped): which roles may make a line run (a bit per role, seed 1000). All (G5.94) /
+ST / WIDE + ST / AM + WIDE + ST → runs 271 / 221 / 256 / 249; FB 38 / 30 / 34 / 34 (17.4); WIDE 100 / 79 / 104
+/ 97 (73.9). Strikers only gets the count by giving back the pace (run speed mean med 4.65 → 4.46, ends 5.1 →
+5.8 m short). And full-backs barred from line runs still made 30: the extra runs were never the line
+run. They are the shape shifting forward in build-up at `shape_max` 4.5, over the 4 m/s run threshold.
+Removed.
+
+**The change** [FH, against DFL runs]. `Brain::capAcross`: a holder with our ball (live, `Brain::ourBall`)
+who is not on a line run goes forward at `physics.body.shift_fwd_max_mps` (3.8; code default, no row; 0 or
+≥ `shape_max` = off) instead of `shape_max` 4.5. Across stays `shape_max`; back stays `defend_max`; their
+ball unchanged. Coaching: "move with the ball, run when it can find you" [FH]. Goldens untouched (the
+test rig has no `shape_max` row, so `capAcross` is off there).
+
+**Fit** (seed 1000; real in brackets). Off / 4.0 / 3.8 / 3.5 / 3.0 → runs 271 / 219 / 221 / 190 / 174 (209);
+FB 38 / 28 / 28 / 24 / – (17.4); runs end 5.1 / 4.6 / 4.5 / 4.3 / – m short (3.9). 3.8 kept: the count lands
+and the arrival gets closer; at 3.5 DM runs fall to 17 (24.9) and ST to 51 (62.4).
+
+**After** (3.8, seed 1000 / 2000 / 3000 v G5.94).
+- Runs 271 / 260 / 264 → 221 / 207 / 204 (209). By role WIDE ~100 → 78-84 (73.9), FB ~37 → 26-28 (17.4), DM 20-24
+  (24.9), AM 24-26 (22.7), ST 53-57 (62.4), CB ~1 (7.9).
+- Runs end 5.1 / 5.3 / 5.3 → 4.5 / 4.5 / 4.5 m short (3.9); start 8.4-8.7 (8.4).
+- Run speed mean med 4.65 → 4.72-4.73 m/s (4.93); peak med 5.03 → 5.16-5.19 (5.45); peak 6+ 20 → 25-26% (34).
+- In behind 38-40 → 35-37 a team-match (37.7), completed 46-50% (47.5). Completion 80.5-82.4% (79.1).
+- Costs: the front man early in a spell trails more (<3 s: 7.0 → 8.1 m short, 2.1); possessions 20 s+ 48 →
+  52-60% (37.7). Goals 1.6-1.9 a team-match, noise at 8 matches.
+
+**Next moles.** (1) The front man trails early in a spell (8 m short <3 s, 2.1). (2) Runs still end 4.5 m
+short (3.9), FB runs 26-28 (17.4). (3) Possessions twice too long. (4) Down the line and crosses (§8.191).

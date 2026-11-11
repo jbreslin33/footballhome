@@ -62,7 +62,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -111,6 +111,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     run_zone_ = p.fixed("physics.run.line_zone_m", 12000);  // the real run cut: 0-12 m short of their line
     run_tgap_ = p.fixed("physics.run.line_spot_m", 4000);   // his spot on or within this of the line
     run_tau_ = p.fixed("physics.run.line_tau_s", 400);
+    shift_fwd_max_ = p.fixed("physics.body.shift_fwd_max_mps", 3800);   // G5.95 (§8.196): our ball, forward, not a line run — the build-up jog (0 = shape_max)
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
     theirs_cap_y_ = p.fixed("physics.shape.theirs_cap_y_m", 0);
@@ -714,7 +715,9 @@ void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
     const Fixed64 sg = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 fwd = o.move.move.x * sg;
     // G5.94 (§8.195): a run at their line goes at a run's pace; the shape's shift keeps shape_max.
-    const Fixed64 flim = lineRun(slot, world, o) ? run_max_ / top : lim;
+    Fixed64 flim = lim;
+    if (lineRun(slot, world, o)) flim = run_max_ / top;
+    else if (shift_fwd_max_.raw > 0 && shift_fwd_max_ < shape_max_ && ourBall(slot, world)) flim = shift_fwd_max_ / top;   // G5.95 (§8.196): the build-up shift at a jog
     if (fwd > flim) o.move.move.x = flim * sg;
     if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
 }
@@ -723,6 +726,14 @@ void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
 // run_zone of their offside line, his spot ahead of him and on the line or within run_tgap of it.
 // Real players shift at a jog and run at the line at 5-6 m/s (DFL runs: speed over the run med
 // 4.93, peak 5.45); ours did both at shape_max 4.5, so a run never arrived (§8.193-8.194).
+// G5.95 (§8.196): our side has the ball, live (as lineRun reads it).
+bool Brain::ourBall(SlotIndex slot, const World& world) const {
+    const auto& b = world.ball();
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
+    return ours && world.restartTeam() == 0xFF && world.outStage() == 0;
+}
+
 bool Brain::lineRun(SlotIndex slot, const World& world, const Orders& o) const {
     if (run_max_.raw <= 0 || o.why != Why::Hold) return false;
     const auto& b = world.ball();
