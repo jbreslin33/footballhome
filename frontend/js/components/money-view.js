@@ -24,7 +24,7 @@ class MoneyView {
   constructor(screen) {
     this.screen = screen; this.auth = screen.auth;
     this.flow = null; this.summary = null; this.expenses = null;
-    this.report = 'current_dues'; this.scope = 'all'; this.dir = 'all'; this.open = new Set(); this.openKinds = new Set(); this.allLines = false; this.err = '';
+    this.report = 'likely'; this.scope = 'all'; this.dir = 'all'; this.open = new Set(); this.openKinds = new Set(); this.allLines = false; this.err = '';
   }
 
   static css() {
@@ -96,6 +96,7 @@ class MoneyView {
   }
 
   _nowYm() { return String(this.expenses.today || '').slice(0, 7); }
+  _lastYm() { let [y, m] = this._nowYm().split('-').map(Number); m--; if (m < 1) { m = 12; y--; } return `${y}-${String(m).padStart(2, '0')}`; }
   _endYm() { return String((this.flow.year || {}).ends_on || '').slice(0, 7); }
 
   // The months after this one, to the end of the budget year.
@@ -114,7 +115,16 @@ class MoneyView {
     const sectionScope = new Map(scopes.filter(s => s.section_code).map(s => [s.section_code, s.code]));
     const shares = this.flow.dues_shares || [];
     const ahead = this._aheadMonths();
-    for (const sec of (this.summary.sections || [])) {
+    if (this.report === 'likely') {
+      // Likely: last month's dues in, scope by scope, every month ahead.
+      const last = this._lastYm(), byScope = new Map();
+      for (const i of items) if (i.dir === 'in' && i.type === 'dues' && i.ym === last) byScope.set(i.scope, (byScope.get(i.scope) || 0) + Number(i.amount));
+      for (const ym of ahead) for (const [scope, amount] of byScope) {
+        if (!amount) continue;
+        const label = (scopes.find(s => s.code === scope) || {}).label || scope;
+        items.push({ ym, dir: 'in', scope, type: 'dues_ahead', category: 'dues', detail: '', name: label, amount, ahead: true });
+      }
+    } else for (const sec of (this.summary.sections || [])) {
       const monthly = Number((sec.projections?.[this.report] || {}).monthly || 0) * ratio;
       if (!monthly) continue;
       let split = shares.filter(x => x.section_code === sec.code);
@@ -254,7 +264,7 @@ class MoneyView {
         <div class="cf-big ${this._sign(showIn && showOut ? moneyIn - moneyOut : showIn ? moneyIn : -moneyOut)}">${M(showIn && showOut ? moneyIn - moneyOut : showIn ? moneyIn : moneyOut)}</div>
         <div class="cf-sub">${showIn ? `<span class="cf-in">${esc(this._copy('in') || 'In')} ${M(moneyIn)}</span>` : ''}${showIn && showOut ? ' · ' : ''}${showOut ? `<span class="cf-out">${esc(this._copy('out') || 'Out')} ${M(moneyOut)}</span>` : ''}</div>
       </div>`;
-    const reports = [['current_dues', this._copy('pill_paid_up') || 'Members current in dues'], ['all_members', this._copy('pill_paying') || 'Every paying member']];
+    const reports = [['current_dues', this._copy('pill_paid_up') || 'Current'], ['likely', this._copy('pill_likely') || 'Likely'], ['all_members', this._copy('pill_paying') || 'Full']];
     const dirs = [['all', this._copy('dir_all') || 'All'], ['in', this._copy('dir_in') || 'In'], ['out', this._copy('dir_out') || 'Out']];
     const rate = ((this.summary.sections || [])[0] || {}).rate || 0;
     const fee = ((1 - (Number(flow.net_ratio) || 1)) * 100).toFixed(1);
@@ -285,7 +295,7 @@ class MoneyView {
         </div>
         <div class="cf-note">${esc(this._copy('tap_month') || '')}</div>
         <div class="cf-note">${esc(this._copy('months_note', { date: startDate }))}</div>
-        <div class="cf-note">${esc(this._copy('ahead_note', { rate: M(rate), fee, through: this._date(flow.refs_through) }))}</div>
+        <div class="cf-note">${esc(this.report === 'likely' ? this._copy('likely_note', { month: this._month(this._lastYm()) }) : this._copy('ahead_note', { rate: M(rate), fee, through: this._date(flow.refs_through) }))}</div>
         <div style="overflow-x:auto;"><table class="cf-table">
           <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
           <tbody>${rows.map(r => {
