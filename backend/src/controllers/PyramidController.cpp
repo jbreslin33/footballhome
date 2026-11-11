@@ -193,7 +193,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
 // region (live conference with its proposed border, or a proposed new one)
 // with its people and a label point (population-weighted centre of its
 // counties), the watch list (developing proposals, no region), the bar
-// (smallest live conference's ground) and the border lines.  All computed
+// (smallest live conference's metro area, mig 1265) and the border lines.  All computed
 // by fh_pyramid_proposal_refresh(); this only reads.
 Response PyramidController::handleProposal(const Request&) {
     try {
@@ -257,9 +257,8 @@ Response PyramidController::handleProposal(const Request&) {
                                {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")},
                                                {"travel", str(r, "travel")}, {"plain", str(r, "plain")}}},
                                {"geometry", json::parse(str(r, "g"), nullptr, false)}});
-        auto bar = db->query(R"SQL(
-            SELECT min(pop) AS bar FROM (SELECT sum(k.population) AS pop FROM pyramid_county_conference cc
-              JOIN pyramid_counties k ON k.fips = cc.fips WHERE cc.conference_id IS NOT NULL GROUP BY cc.conference_id) s)SQL");
+        // The bar (mig 1265): the smallest metro area anchoring a live conference.
+        auto bar = db->query("SELECT bar FROM pyramid_proposal_bar");
         return jsonOut(HttpStatus::OK, {{"regions", regions}, {"watch", watch}, {"borders", borders},
                                         {"neutral", {{"type", "FeatureCollection"}, {"features", neutral}}},
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
