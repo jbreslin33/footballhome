@@ -110,14 +110,13 @@ const char* kBaseCtes = R"SQL(
         JOIN tm ON tm.id = t.id
        WHERE cs.ended_at IS NULL
          AND ($4::int = 0 OR cs.person_id = $4::int)
-    ), expected AS MATERIALIZED (
-      SELECT r.person_id, fe.id AS fh_event_id, fe.kind, fe.opponent,
-             fe.fh_notes, ge.starts_at, ge.ends_at,
-             -- Coaching beats playing for the label, except a coach who
-             -- also plays on this event's team counts as a PLAYER unless
-             -- they chose Coaching only (mig 688).
-             CASE WHEN MIN(r.role_rank) = 1 AND fh_event_counts_as_player(fe.id, r.person_id) THEN 2
-                  ELSE MIN(r.role_rank) END AS role_rank
+    ), cand AS MATERIALIZED (
+      -- Roster × the team's events, cut by the plain date / window tests
+      -- FIRST.  The per-person checks below are functions; run on the raw
+      -- roster × every event a team ever had (~776k rows for one card on
+      -- 11/11) they took a roll call to 15–40 s.  Same rows out.
+      SELECT r.person_id, r.team_id, r.role_rank, fe.id AS fh_event_id, fe.kind, fe.opponent,
+             fe.fh_notes, ge.starts_at, ge.ends_at
         FROM roster r
         JOIN tm ON tm.id = r.team_id
         JOIN fh_event_teams fet ON fet.team_id = r.team_id
@@ -134,25 +133,35 @@ const char* kBaseCtes = R"SQL(
               OR (fe.kind = 'match' AND tm.notice_days IS NOT NULL
                   AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
                   AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
+         AND NOT (r.practice_only AND fe.kind <> 'practice')
+    ), expected AS MATERIALIZED (
+      SELECT c.person_id, c.fh_event_id, c.kind, c.opponent,
+             c.fh_notes, c.starts_at, c.ends_at,
+             -- Coaching beats playing for the label, except a coach who
+             -- also plays on this event's team counts as a PLAYER unless
+             -- they chose Coaching only (mig 688).
+             CASE WHEN MIN(c.role_rank) = 1 AND fh_event_counts_as_player(c.fh_event_id, c.person_id) THEN 2
+                  ELSE MIN(c.role_rank) END AS role_rank
+        FROM cand c
+       WHERE
          -- Call-up-gated team (mig 605): rostered players owe nothing on
          -- its games — only invited ones do (next branch).  The coach and
          -- staff hats (role_rank 1/3) keep every game.
-         AND NOT (r.role_rank = 2 AND fh_team_callup_only(r.team_id))
-         AND NOT (r.practice_only AND fe.kind <> 'practice')
+             NOT (c.role_rank = 2 AND fh_team_callup_only(c.team_id))
          -- A coach owes only the practices on their schedule (mig 955) —
          -- and no games when it is practices only (a volunteer, mig 1224).
-         AND NOT (r.role_rank = 1
-                  AND fh_coach_off_schedule(r.person_id, r.team_id, fe.id))
+         AND NOT (c.role_rank = 1
+                  AND fh_coach_off_schedule(c.person_id, c.team_id, c.fh_event_id))
          -- ⛔ Suspended for this GAME owes nothing (mig 1077); practices normal.
-         AND NOT fh_event_suspended(fe.id, r.person_id)
+         AND NOT fh_event_suspended(c.fh_event_id, c.person_id)
          -- An injured player (person_injuries, mig 510) owes no answer
          -- while it lasts — nothing unanswered, so no reminder — but an
          -- answer they do give still counts.  The player hat only.
-         AND NOT (r.role_rank = 2
-                  AND fh_person_injured_at(r.person_id, ge.starts_at)
+         AND NOT (c.role_rank = 2
+                  AND fh_person_injured_at(c.person_id, c.starts_at)
                   AND NOT EXISTS (SELECT 1 FROM fh_event_rsvps irv
-                                   WHERE irv.fh_event_id = fe.id AND irv.person_id = r.person_id))
-       GROUP BY r.person_id, fe.id, fe.kind, fe.opponent, fe.fh_notes, ge.starts_at, ge.ends_at
+                                   WHERE irv.fh_event_id = c.fh_event_id AND irv.person_id = c.person_id))
+       GROUP BY c.person_id, c.fh_event_id, c.kind, c.opponent, c.fh_notes, c.starts_at, c.ends_at
       UNION
       -- Invited players (fh_event_invites — youth club-pass call-ups and
       -- call-up-gated squads, mig 605) owe an answer like any rostered
@@ -757,7 +766,18 @@ RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long lon
           LEFT JOIN fh_event_rsvps rv ON rv.fh_event_id = e.fh_event_id AND rv.person_id = e.person_id
          WHERE e.fh_event_id = $6::bigint AND e.role_rank = 2
          ORDER BY p.last_name, p.first_name)SQL";
-    auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId), nameStyle});
+    // The base CTEs work out every expected answer since the first RSVP
+    // ever ($2 empty) and only then keep this event — ~15 s a card, per
+    // game.  Starting the window at this event's own kickoff keeps the
+    // same rows for it (the WHERE below picks it) at a fraction of the work.
+    std::string from;
+    {
+        auto st = db->query("SELECT to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"') AS s"
+                            "  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id WHERE fe.id = $1::bigint",
+                            {std::to_string(fhEventId)});
+        if (!st.empty() && !st[0]["s"].is_null()) from = st[0]["s"].c_str();
+    }
+    auto rows = db->query(sql, {sectionCode, from, pgIntArray(teamIds), "0", "all", std::to_string(fhEventId), nameStyle});
     std::set<std::string> phones;
     for (const auto& r : rows) {
         rc.found = true;
