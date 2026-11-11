@@ -199,7 +199,15 @@ class MyScreen extends Screen {
     try {
       // 14 days so a week opened early (migration 334) is in hand; the
       // per-event schedule_window_end from the server decides what shows.
-      const upRes = await this._fetch('/api/calendar/upcoming?days=14');
+      // ⏳ 15 s and still nothing (owner 11/11, a player stuck on
+      // "Loading…" while the server was overloaded): say so and offer a
+      // retry.  The request keeps going — if it lands, the week replaces
+      // the note as usual.
+      this._weekLanded = false;
+      const slow = setTimeout(() => this._renderSlow(), 15000);
+      let upRes;
+      try { upRes = await this._fetch('/api/calendar/upcoming?days=14'); }
+      finally { clearTimeout(slow); this._weekLanded = true; }
       this.events       = upRes.events    || [];
       this.dues         = upRes.dues      || {};   // per person: eligible, min_payment, pay_url (mig 416)
       // Pill labels are DB copy; the pills appear once it lands.
@@ -570,6 +578,20 @@ class MyScreen extends Screen {
       if (!date) return;
       this._onRangeChange(date.value ? `from:${date.value}` : 'current');
     });
+  }
+
+  // The first load is slow (mig 1258 words, kind my_schedule).
+  _renderSlow() {
+    const box = this.find('#my-events');
+    if (!box || this._weekLanded) return;
+    const w = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('my_schedule', tier))
+      ? MessageCopy.block('my_schedule', tier) : fb;
+    box.innerHTML = `
+      <div class="empty-state">
+        <div class="spinner"></div>
+        <p>${this.escapeHtml(w('slow_load', 'Taking longer than usual…'))}</p>
+        <button class="btn btn-primary" onclick="location.reload()">${this.escapeHtml(w('slow_retry', 'Tap to try again'))}</button>
+      </div>`;
   }
 
   _renderError() {
