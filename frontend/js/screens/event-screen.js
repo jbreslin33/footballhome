@@ -751,6 +751,47 @@ class EventScreen extends Screen {
     }
   }
 
+  // From the event's calendar day on (mark-all is for taking the roll, not
+  // pre-filling next week).
+  _eventDayReached() {
+    const d = new Date(this.ev && this.ev.starts_at);
+    if (isNaN(d)) return true;
+    d.setHours(0, 0, 0, 0);
+    return Date.now() >= d.getTime();
+  }
+
+  // ✓ Mark all present: the same POST per person as a P tap, four at a
+  // time; a failed one goes back to unmarked and is named in the alert.
+  async _markAllPresent(personIds) {
+    if (!this.att || !personIds.length || this.saving.has('att:all')) return;
+    const id = this.ev.fh_event_id;
+    this.saving.add('att:all');
+    personIds.forEach(p => { this.saving.add(`att:${p}`); this.att.roster.set(p, { person_id: p, status: 'present' }); });
+    this._render();
+    const failed = [];
+    const queue = personIds.slice();
+    const worker = async () => {
+      while (queue.length) {
+        const p = queue.shift();
+        try {
+          await this._json(`/api/calendar/events/${id}/attendance`, {
+            method: 'POST', body: JSON.stringify({ person_id: p, status: 'present' }),
+          });
+        } catch (err) {
+          console.error('[event] mark-all save failed for', p, err);
+          this.att.roster.delete(p);
+          failed.push(p);
+        } finally {
+          this.saving.delete(`att:${p}`);
+        }
+      }
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    this.saving.delete('att:all');
+    this._render();
+    if (failed.length) alert(`Could not mark ${failed.length} present — tap P on them again.`);
+  }
+
   async _revokeInvite(personId) {
     const key = `inv:${personId}`;
     if (this.saving.has(key)) return;
@@ -1174,6 +1215,10 @@ class EventScreen extends Screen {
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
       if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return; }
       if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return; }
+      if ((el = t('[data-ec-mark-all]'))) {
+        this._markAllPresent(el.dataset.ecMarkAll.split(',').map(Number).filter(Boolean));
+        return;
+      }
       if ((el = t('[data-ec-att]'))) {
         this._markAttendance(Number(el.dataset.personId), el.dataset.ecAtt, el.dataset.active === '1');
         return;
@@ -1461,8 +1506,18 @@ class EventScreen extends Screen {
     const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
     const L = (tier, fb) => this.escapeHtml(cp(tier) || fb);
 
+    // ✓ Mark all present (mig 1239; owner 11/11: "then i can deselect the
+    // absent"): from the event's day on, every Going player with no mark
+    // yet → Present in one tap; the coach then taps A on whoever didn't show.
+    const unmarked = going.filter(r => !(this.att && this.att.roster.get(r.person_id) || {}).status);
+    const markAllBar = this.att && this.att.canMark && this._eventDayReached() && unmarked.length
+      ? `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
+          <button type="button" class="ec-send" data-ec-mark-all="${unmarked.map(r => r.person_id).join(',')}"
+                  ${this.saving.has('att:all') ? 'disabled' : ''} style="background:#22c55e;">${this.escapeHtml(cp('mark_all_present', { n: unmarked.length }) || `✓ Mark all ${unmarked.length} present`)}</button>
+          <span style="font-size:0.72rem; opacity:0.75;">${this.escapeHtml(cp('mark_all_present_note') || "then tap A on whoever didn't show")}</span>
+        </div>` : '';
     // Over the Going cards: whatever the kind adds (a practice's groups).
-    const groupsTop = this._goingTopHtml(going);
+    const groupsTop = markAllBar + this._goingTopHtml(going);
     const remindBarHtml = (label, note, role) => `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
         <span style="font-size:0.78rem; font-weight:700;">${this.escapeHtml(label)}</span>
         <button type="button" class="ec-send" data-ec-remind-all="sms" data-ec-remind-role="${role}" style="background:#38bdf8;">💬</button>
