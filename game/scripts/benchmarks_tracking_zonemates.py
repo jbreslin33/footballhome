@@ -58,10 +58,12 @@ def one(pos_path):
         carrier = dd[0][1]
         bz = zone(half - bx * g, by, by)
         c[("f", bz)] += 1
+        c[("carrier", bz, ROLE.get(pos_of.get(carrier, ""), "?"))] += 1   # G5.88: who has it
         cnt = collections.Counter(); near = 99.0
         for pid, x, y in mates:
             if pid == carrier: continue
             z = zone(half - x * g, y, by); cnt[z] += 1
+            c[("zrole", bz, z, ROLE.get(pos_of.get(pid, ""), "?"))] += 1   # G5.88 (§8.189): every zone's mates by role
             if z == bz:
                 c[("role", bz, ROLE.get(pos_of.get(pid, ""), "?"))] += 1
                 near = min(near, math.hypot(x - bx, y - by))
@@ -87,4 +89,8 @@ if __name__ == "__main__":
         roles = sorted({k[2] for k in c if k[0] == "role" and k[1] == bz})
         print(f"   ball {nm(bz):14s} frames {f:6d}; own zone: {c[('n',bz,bz)]/f:.2f} mates, none {100*c[('zero',bz,bz)]/f:.0f}%, nearest {c[('near',bz)]/max(1,c[('nearn',bz)]):.1f} m; by role "
               + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
+        print("      on the ball: " + " ".join(f"{r} {100*c[('carrier',bz,r)]/f:.0f}%" for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST")))
+        for z in range(15):   # G5.88: who stands in each held zone
+            if c[("n", bz, z)] / f >= 0.3:
+                print(f"      in {nm(z):14s} by role: " + " ".join(f"{r} {c[('zrole',bz,z,r)]/f:.2f}" for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST")))
         print("      mean (none %): " + "; ".join(f"{nm(z)} {c[('n',bz,z)]/f:.2f} ({100*c[('zero',bz,z)]/f:.0f}%)" for z in range(15) if c[("n", bz, z)]))

@@ -68,7 +68,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {};   // §8.160: mates by zone, by the ball's zone
+    long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {};   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
     long bx_gf[2][2] = {}, bx_g[2][2][5] = {}; long bx_lf[6][2] = {}, bx_li[6][2] = {}, bx_lst[6][2] = {}; double bx_lsd[6][2] = {}; long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
      long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
@@ -80,6 +80,7 @@ struct Stats {
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
+    double sl_xy[ai::kRoleCount] = {}, sl_xx[ai::kRoleCount] = {}; long sl_n[ai::kRoleCount] = {}; std::vector<double> sl_w[ai::kRoleCount][2];   // §8.189 SLIDE BY ROLE
     long xz_n[4][3] = {}, xz_c[4][3] = {};   // §8.188 RELEASES BY ZONE: open-play passes by origin (their line 0-6/6-18/18-30/30+ x |y| 24+/14-24/centre), crosses
     double iw_n[2][3] = {}, iw_dy[2][3] = {}, iw_dx[2][3] = {}; long iw_e[2][3] = {};   // §8.188 INWARD [carried / passed][centre / mid / wide]
     std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
@@ -230,6 +231,7 @@ int main(int argc, char** argv) {
         struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
+        double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
         long iw_k = -1; int iw_a = -1; double iw_x = 0, iw_y = 0;   // §8.188
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
@@ -1047,6 +1049,16 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            if (b.owner && W.player(*b.owner).team == a) {   // §8.189 SLIDE BY ROLE (benchmarks_tracking_slide.py): ball 25-60 m off their line
+                const double tl2 = hx - b.pos.x.toDouble() * (a == 0 ? 1.0 : -1.0), by2 = b.pos.y.toDouble();
+                if (tl2 >= 25 && tl2 < 60)
+                    for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                        if (W.isKeeper(j) || W.player(j).team != a || j == *b.owner) continue;
+                        const double y = W.player(j).pos.y.toDouble();
+                        sl_b[j] += by2; sl_y[j] += y; sl_bb[j] += by2 * by2; sl_by[j] += by2 * y; ++sl_c[j];
+                        if (std::fabs(by2) >= 14) S.sl_w[role(j)][(y > 0) == (by2 > 0) ? 0 : 1].push_back(std::fabs(y));
+                    }
+            }
             {   // §8.188 INWARD (benchmarks_tracking_inward.py): the attack's ball within 35 m of the goal line it attacks
                 const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
                 if (iw_k == static_cast<long>(k) - 6 && iw_a == a) {
@@ -1399,8 +1411,10 @@ int main(int argc, char** argv) {
                 int cnt[15] = {};
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j) || W.player(j).team != a || j == *b.owner) continue;
-                    ++cnt[zm(hx - W.player(j).pos.x.toDouble() * sg, W.player(j).pos.y.toDouble())];
+                    const int zj = zm(hx - W.player(j).pos.x.toDouble() * sg, W.player(j).pos.y.toDouble());
+                    ++cnt[zj]; ++S.zm_r[bz][zj][role(j)];
                 }
+                ++S.zm_c[bz][role(*b.owner)];
                 ++S.zm_f[bz];
                 for (int z = 0; z < 15; ++z) { S.zm_n[bz][z] += cnt[z]; S.zm_0[bz][z] += cnt[z] == 0; }
             }
@@ -1662,6 +1676,11 @@ int main(int argc, char** argv) {
             }
             rk[ri] = k; rbx[ri] = bx; rat[ri] = a;
             for (std::uint8_t j = 0; j < N && j < 32; ++j) { rpx[ri][j] = W.player(j).pos.x.toDouble(); rpy[ri][j] = W.player(j).pos.y.toDouble(); }
+        }
+        for (std::uint8_t j = 0; j < N && j < 32; ++j) {   // §8.189: within-man slope, pooled by role
+            if (sl_c[j] < 50) continue;
+            const double n = static_cast<double>(sl_c[j]);
+            S.sl_xy[role(j)] += sl_by[j] - sl_b[j] * sl_y[j] / n; S.sl_xx[role(j)] += sl_bb[j] - sl_b[j] * sl_b[j] / n; S.sl_n[role(j)] += sl_c[j];
         }
         for (const auto& r : bt_rec) {   // §8.186: a shot / goal by the passer's side within 10 s of the kick
             bool sh = false, gl = false;
@@ -2163,6 +2182,13 @@ int main(int argc, char** argv) {
             for (int bz : {1, 3, 4, 6, 7}) if (S.zm_f[bz]) {
                 std::printf("\n     ball %s %s:", bn[bz / 3], sd[bz % 3]);
                 for (int z = 0; z < 15; ++z) if (S.zm_n[bz][z]) std::printf(" %s %s %.2f (%.0f%%);", bn[z / 3], sd[z % 3], static_cast<double>(S.zm_n[bz][z]) / S.zm_f[bz], 100.0 * S.zm_0[bz][z] / S.zm_f[bz]);
+                static const char* rn[ai::kRoleCount] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                const double f = static_cast<double>(S.zm_f[bz]);
+                std::printf("\n       on the ball:"); for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.0f%%", rn[r], 100 * S.zm_c[bz][r] / f);
+                for (int z = 0; z < 15; ++z) if (S.zm_n[bz][z] >= 0.3 * f) {   // §8.189: who stands there
+                    std::printf("\n       in %s %s by role:", bn[z / 3], sd[z % 3]);
+                    for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.2f", rn[r], S.zm_r[bz][z][r] / f);
+                }
             }
         }
         {   // §8.155: real StatsBomb benchmarks_statsbomb_wide.py
@@ -2280,6 +2306,17 @@ int main(int argc, char** argv) {
     {
         long tot = 0; for (int i = 0; i < 5; ++i) tot += S.rc_n[i];
         static const char* lab[5] = {"0-2", "2-4", "4-6", "6-10", "10+"};
+        {   // §8.189 SLIDE BY ROLE — benchmarks_tracking_slide.py (DFL)
+            static const char* rn[ai::kRoleCount] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+            static const double rs[ai::kRoleCount] = {0.33, 0.24, 0.40, 0.34, 0.32, 0.30}, rnr[ai::kRoleCount] = {14.2, 27.2, 14.3, 13.4, 20.0, 10.8}, rfr[ai::kRoleCount] = {6.9, 15.9, 7.9, 5.8, 10.8, 4.5};
+            std::printf("SLIDE BY ROLE (§8.189; in possession, ball 25-60 m off their line, the man on the ball out; real DFL in brackets): slope of his y on the ball's y | |y| med, ball wide (14+) his side / far side\n  ");
+            for (int r = 0; r < ai::kRoleCount; ++r) {
+                if (S.sl_xx[r] <= 0) continue;
+                auto med = [](std::vector<double> v) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+                std::printf(" %s %.2f (%.2f) | %.1f (%.1f) / %.1f (%.1f);", rn[r], S.sl_xy[r] / S.sl_xx[r], rs[r], med(S.sl_w[r][0]), rnr[r], med(S.sl_w[r][1]), rfr[r]);
+            }
+            std::printf("\n");
+        }
         {   // §8.188 INWARD — benchmarks_tracking_inward.py (DFL)
             static const double rn[2][3] = {{25.9, 46.7, 108.2}, {32.8, 47.8, 59.3}}, ry[2][3] = {{2.3, -8.7, 10.0}, {-25.1, -180.5, -188.9}},
                                 rx[2][3] = {{41.6, 91.2, 172.2}, {208.0, 270.3, 234.9}};

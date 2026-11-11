@@ -8425,3 +8425,46 @@ too few wide — which passes from 35-70 m go wide too seldom (as played, 35-52 
 `to_5_3` 17%), and whether our wide men are there to take them. (2) Carriers drive through the middle
 (carried centre time 1.6×, take-ons 3×). (3) Crosses labelled lofted only (ground / low crosses).
 (4) Possessions twice too long (§8.172). (5) Lofts a mix of driven and hung. (6) No 50-70 m lofts.
+
+### 8.189 G5.88 — who is ahead of a wide ball: the static width fits real and makes it worse — measured (no migration)
+
+§8.188's next (1): the ball gets central before the last 35 m.
+
+**MATES BY ZONE by role** (new role and on-the-ball rows in `benchmarks_tracking_zonemates.py` and
+the harness). With the ball 35-52 m out and wide, seed 1000 / 2000 (real DFL):
+- ahead on the wing (18-35 wide): 0.43 / 0.36 (0.60), empty 66 / 69% (54). By role: ST 0.03 (0.14),
+  WIDE 0.22 / 0.20 (0.23), FB 0.09 / 0.06 (0.08), DM 0.08 / 0.05 (0.09). **Real strikers drift into
+  the channel ahead of a wide ball; ours don't.**
+- beside it in the middle (35-52 centre): 2.92 / 2.97 (2.09). CB 0.45 (0.19), FB 0.48 (0.21), DM/CM
+  1.06 (0.70).
+- on the ball: FB 44 / 42% (29), WIDE 33 / 36 (22), DM/CM 13 (22), CB 7 (10), ST 2-3 (9).
+
+**SLIDE BY ROLE** (new `scripts/benchmarks_tracking_slide.py`, DFL; harness line). In possession,
+ball 25-60 m off their line, the man on the ball out. Each man's slope of y on the ball's y (within
+him), and his median |y| with the ball wide (|y| 14+) on his side / the far side. Seed 1000 (real):
+CB 0.44 (0.33) 10.4 / 1.8 (14.2 / 6.9); FB 0.36 (0.24) 31.4 / 12.3 (27.2 / 15.9); DM/CM 0.44 (0.40)
+11.1 / 2.3 (14.3 / 7.9); AM 0.41 (0.34) 11.4 / 2.6 (13.4 / 5.8); WIDE 0.36 (0.32) 29.8 / 9.3 (20.0 /
+10.8); ST 0.37 (0.30) 10.6 / 3.1 (10.8 / 4.5). Ours slide more, the wide pair hugs the touchline,
+and the middle is narrow. The real winger stands at 20 m with the full-back outside him at 27, and
+the real centre-backs and midfielders are ~4 m wider. Real men level off: half the gap between the
+ball-side and far-side man is 3.2-5.7 m with the ball wide, while the slope over all balls is
+0.24-0.40.
+
+**Tried, not shipped.** Per-role possession width (formation y ×), slide and slide cap in
+`Brain::viewOf` (`physics.shape.ours_width_<role>`, `ours_shift_y_<role>`, `ours_cap_y_<role>_m`),
+fitted to the table. Width CB 1.6, FB 0.93, DM 1.6, AM 1.8, WIDE 0.75, ST 1.5; slide 0.35 / 0.31 /
+0.43 / 0.39 / 0.42 / 0.38; cap 3.65 / 5.65 / 3.2 / 3.8 / 4.6 / 3.15 m. Ball-side / far-side |y| then
+real for CB 14.5 / 7.2, FB 27.1 / 16.6, DM 14.1 / 7.7, WIDE 20.0 / 10.7, but slopes half real (0.17-0.23;
+the cap bites too early for one linear slide). And the target got worse: ahead on the wing 0.43 →
+0.18 (0.60), the middle beside it 2.92 → 3.45 (2.09); wide passed entries 16.3 → 12.1 (22.1); 6-18 m
+wide releases 5.1 → 3.5 (12.0). Uncapped (A / B): no gain either. Removed — the real shape's wide
+occupancy is men moving into the space ahead (the striker's channel drift, the full-back outside
+the winger), not where the spots stand.
+
+**Shipped.** The role rows in MATES BY ZONE, SLIDE BY ROLE, the slide script. Harness only. Outputs
+and goldens are as G5.85; tests 22/22.
+
+**Next moles.** (1) **The striker's channel drift ahead of a wide ball** (0.03 v 0.14 in 18-35 wide) —
+a run job like `assignChannel` (G5.56, the last 18 m only), one band out, by the real role counts.
+(2) Our back men and DMs crowd the middle beside a wide ball. (3) Carriers through the middle (take-ons
+3×). (4) Crosses labelled lofted only. (5) Possessions twice too long (§8.172).
