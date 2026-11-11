@@ -371,13 +371,20 @@ class CarpoolPanel {
       </div>` : '';
     const askBtns = mine.map(askBtn).join('') + behalf;
 
-    return `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(this._copy('title') || '🚗 Carpool')}</div>
+    // A host with folds (EventScreen.panelFoldHtml — owner 11/11: every
+    // pill rolled up) draws the panel as one; #my keeps the plain box.
+    const body = `
         ${this._departuresHtml()}
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin-bottom:4px;">${esc(this._copy('hint') || '')}</div>
         ${rows || `<div style="font-size:0.72rem; opacity:0.75;">${esc(this._copy('empty') || 'No ride requests for this game yet.')}</div>`}
         ${askBtns}
+`;
+    const title = esc(this._copy('title') || '🚗 Carpool');
+    if (this.host && typeof this.host.fold === 'function') return this.host.fold('carpool', title, body);
+    return `
+      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
+        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${title}</div>
+        ${body}
       </div>`;
   }
 

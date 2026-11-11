@@ -23,10 +23,9 @@ class PracticeScreen extends EventScreen {
   }
 
   pillHtml(key) {
-    const section = (label, html) => `<div class="ec-h" style="margin:var(--space-4) 0 var(--space-2);">${label}</div>${html}`;
     if (key === 'sides') return this._sidesHtml();
     if (key === 'plan') return this._planHtml()
-      + section((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones', this._conesHtml());
+      + this.panelFoldHtml('cones', this.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), this._conesHtml());
     if (key === 'players') return this._callsHtml() + super.pillHtml(key);
     return super.pillHtml(key);
   }
@@ -82,8 +81,11 @@ class PracticeScreen extends EventScreen {
         body += line(`${cp('strip_last', { round: r.round, time: r.at }, `Round ${r.round} at ${r.at}`)} · 📞 ${r.ok}/${r.tried}${r.live ? '' : ' 🧪'} · ${r.unmarked}`, 'opacity:0.7;');
       });
     }
-    return `<div style="border:1px solid #0ea5e9; background:rgba(14,165,233,0.08); border-radius:8px; padding:8px 10px; margin-bottom:var(--space-3);">
-      <div style="font-weight:800; margin-bottom:2px;">${esc(cp('strip_title', {}, '📞 Attendance calls'))}</div>${body}</div>`;
+    // Rolled up like every pill (owner 11/11); still waiting on marks
+    // shows on the closed summary.
+    const unmarkedN = (c.on && (c.unmarked || []).length) || 0;
+    return this.panelFoldHtml('calls', esc(cp('strip_title', {}, '📞 Attendance calls')), body,
+      { aside: unmarkedN ? `<span style="color:#fca5a5;">${esc(cp('strip_wait', { n: unmarkedN }, `${unmarkedN} going players not marked yet`))}</span>` : '' });
   }
 
   onPill(key) {
@@ -330,18 +332,15 @@ class PracticeScreen extends EventScreen {
     const sessions = this.plan.sessions || [];
     return `
       ${this.plan.notes ? `<div class="ec-box" style="white-space:pre-wrap;">${this.escapeHtml(this.plan.notes)}</div>` : ''}
-      ${sessions.map(s => `<div class="ec-box">
-        <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
-          <span class="ec-h">${this.escapeHtml(s.title || 'Session')}</span>
-          <span style="font-size:0.78rem; opacity:0.7;">${this.escapeHtml(s.start_time)} – ${this.escapeHtml(s.end_time)}</span>
-        </div>
+      ${sessions.map((s, si) => this.panelFoldHtml(`plan_${si}`,
+          `${this.escapeHtml(s.title || 'Session')} <span style="font-weight:400; opacity:0.7;">${this.escapeHtml(s.start_time)} – ${this.escapeHtml(s.end_time)}</span>`, `
         ${s.notes ? `<div style="font-size:0.85rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(s.notes)}</div>` : ''}
         ${(s.exercises || []).map(x => `<div style="padding:6px 0; border-top:1px solid var(--border-color); margin-top:6px;">
             <div style="font-weight:700; font-size:0.92rem;">${this.escapeHtml(x.title)}${x.player_count ? ` <span style="font-weight:400; opacity:0.6; font-size:0.78rem;">· ${x.player_count} players</span>` : ''}</div>
             ${x.description ? `<div style="font-size:0.82rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(x.description)}</div>` : ''}
             ${para('Setup', x.setup)}${para('Coaching points', x.coaching_points)}${para('Notes', x.notes)}
           </div>`).join('') || `<div style="font-size:0.82rem; opacity:0.55;">No exercises yet.</div>`}
-      </div>`).join('')}
+      `)).join('')}
       ${editBtn ? `<div style="text-align:right;">${editBtn}</div>` : ''}`;
   }
 
@@ -360,11 +359,10 @@ class PracticeScreen extends EventScreen {
     const onSide = colors
       .map(c => [c, players.filter(p => p.squad_color === c.code)])
       .filter(([, list]) => list.length);
+    // Each colour a fold (owner 11/11: every pill rolled up).
     const summary = onSide.length
-      ? onSide.map(([c, list]) => `<div class="ec-box">
-          <div class="ec-h">${swatch(c)} ${this.escapeHtml(c.label)} (${list.length})</div>
-          <div style="font-size:0.9rem; margin-top:4px;">${list.map(p => this.escapeHtml(nameOf(p))).join(' · ')}</div>
-        </div>`).join('')
+      ? onSide.map(([c, list]) => this.panelFoldHtml(`side_${c.code}`, `${swatch(c)} ${this.escapeHtml(c.label)} (${list.length})`,
+          `<div style="font-size:0.9rem;">${list.map(p => this.escapeHtml(nameOf(p))).join(' · ')}</div>`)).join('')
       : `<div class="ec-box" style="opacity:0.7;">Nobody is on a ${word} yet.</div>`;
     if (!canEdit) return summary;
 
@@ -383,7 +381,7 @@ class PracticeScreen extends EventScreen {
       </div>`;
     };
     const group = (label, list) => list.length
-      ? `<div class="ec-box"><div class="ec-h">${label} (${list.length})</div>${list.map(row).join('')}</div>` : '';
+      ? this.panelFoldHtml(`sides_${label.replace(/[^a-z]/gi, '').toLowerCase()}`, `${label} (${list.length})`, list.map(row).join('')) : '';
     return `
       ${summary}
       <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin:var(--space-3) 0 var(--space-2);">

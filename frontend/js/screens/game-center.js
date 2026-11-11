@@ -327,10 +327,9 @@ const TACTICS_PILL = { key: 'tactics', icon: '🎯', title: 'Tactics', accent: '
 // 👥 All Players — EventScreen's list, first pill of every event (owner 11/11).
 const PLAYERS_PILL = 'players';
 
-// 👥 All Players is the landing pill, as on every event (owner 11/11:
-// "they should look the same except where they need to look diff");
-// Starters & Bench is one tap away.
-const DEFAULT_PILL = PLAYERS_PILL;
+// A game lands on ⚔️ Starters & Bench (owner 11/11: "games should default
+// to starters and bench pill"); 👥 All Players is one tap away.
+const DEFAULT_PILL = 'starters_bench';
 
 // The game child of EventScreen (screens/event-screen.js — owner 2026-10-27:
 // "base class is event … then game or practice child").  Opened by its event
@@ -342,7 +341,6 @@ class GameCenterScreen extends EventScreen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
-    this._openFolds = new Set();   // No Response / Not Going folds held open (see collapsedSection)
     this.title     = '';
     this.when      = '';
     this.teamId    = null;
@@ -481,6 +479,7 @@ class GameCenterScreen extends EventScreen {
       rerender: () => this._render(),
       toast: (m) => this._toast(m),
       escapeHtml: (t) => this.escapeHtml(t),
+      fold: (key, title, body) => this.panelFoldHtml(key, title, body),
     });
     // 🎯 Match plan (mig 966) — the match-day timeline from getting there to
     // kickoff, set pieces, tactics (components/match-plan-panel.js).
@@ -741,12 +740,11 @@ class GameCenterScreen extends EventScreen {
   resumeState() {
     return {
       matchId: this.matchId, title: this.title, when: this.when, view: this.view,
-      postType: this.pill, folds: [...this._openFolds], invOpen: !!this._invOpen,
+      postType: this.pill, folds: [...this.folds], invOpen: !!this._invOpen,
     };
   }
 
   onEnter(params = {}) {
-    this._openFolds = this._openFolds || new Set();   // No Response / Not Going folds held open
     // The event door (EventKindSwitch.open): the match id, title and time
     // come from the event; the event itself is this.ev, as on every
     // EventScreen.  Older doors pass matchId alone — the feed fills this.ev.
@@ -757,7 +755,7 @@ class GameCenterScreen extends EventScreen {
     this.ev = params.event || null;
     if (params.resume) {
       const r = params.resume;
-      this._openFolds = new Set(Array.isArray(r.folds) ? r.folds : []);
+      this.folds = new Map(Array.isArray(r.folds) ? r.folds.filter(Array.isArray) : []);   // [key, open] pairs (EventScreen.foldOpen)
       this._invOpen = !!r.invOpen;
       params = r.matchId != null
         ? { matchId: r.matchId, title: r.title || '', when: r.when || '', view: r.view || undefined, postType: r.postType }
@@ -1039,7 +1037,7 @@ class GameCenterScreen extends EventScreen {
     // 👥 All Players folds stay as the coach left them (EventScreen's
     // capture-phase toggle — toggle does not bubble).
     this.element.addEventListener('toggle', (e) => {
-      const d = e.target.closest && e.target.closest('[data-ec-fold]');
+      const d = e.target.matches && e.target.matches('[data-ec-fold]') ? e.target : null;   // that fold only, never a parent
       if (d) this.folds.set(d.dataset.ecFold, d.open);
     }, true);
     this.element.addEventListener('click', (e) => {
@@ -1317,8 +1315,6 @@ class GameCenterScreen extends EventScreen {
     // triggers ('toggle' doesn't bubble — capture phase).
     this.element.addEventListener('toggle', (e) => {
       if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-gc-inv-details')) this._invOpen = e.target.open;
-      const fold = e.target && e.target.getAttribute && e.target.getAttribute('data-gc-fold');
-      if (fold) { if (e.target.open) this._openFolds.add(fold); else this._openFolds.delete(fold); }
       if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-mp-fold')) this.matchPlanPanel.toggle(e.target);
     }, true);
     this.element.addEventListener('change', (e) => {
@@ -4003,7 +3999,11 @@ class GameCenterScreen extends EventScreen {
     const cardGrid = (players, extra = null) =>
       this.cardGridHtml(players.map(p => this._cardWrap(p, playerRow(p, extra ? extra(p) : ''))));
 
-    const gridSection = (label, players, extra = null) => this.cardSectionHtml(label, players.length, cardGrid(players, extra));
+    // Rolled up like every Event Center pill (owner 11/11: "no matter what
+    // tab/pill in event center is clicked we need roll up"): Starting,
+    // Bench, Alternates and Going are folds too, keyed by their label.
+    const gridSection = (label, players, extra = null) =>
+      collapsedSection(label, players, { extra, key: String(label).replace(/[^a-z]/gi, '').toLowerCase() || 'going' });
 
     // Not Going / No Response rolled up out of the way by default (owner
     // directive: "...have them rolled up so they are not in way") — a
@@ -4027,8 +4027,11 @@ class GameCenterScreen extends EventScreen {
         onSent: () => this._loadInvites().then(() => this._render()),
       });
     };
+    // Same open/closed memory and standing-open list as every EventScreen
+    // fold (EventScreen.foldOpen); lineup_ keeps these apart from 👥 All
+    // Players' own Not going / No response folds.
     const collapsedSection = (label, players, { top = '', extra = null, key = '' } = {}) =>
-      this.cardFoldHtml('data-gc-fold', key, !!(key && this._openFolds.has(key)), label, players.length, cardGrid(players, extra), { top });
+      this.cardFoldHtml('data-ec-fold', `lineup_${key}`, this.foldOpen(`lineup_${key}`), label, players.length, cardGrid(players, extra), { top });
 
     // No Response gets reminders (owner 2026-09-19: "a group text/email
     // and individual buttons on the player cards for reminders for 'all'
@@ -4476,16 +4479,11 @@ class GameCenterScreen extends EventScreen {
           : `<div style="font-size:0.68rem; opacity:0.75;">${esc(copy('cancel_none') || 'No email on file for the other club or the league yet — add one below.')}</div>`}
       </div>`;
     };
-    const wrap = (title, inner) => `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
-          <div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${title}</div>
-          ${club ? `<button class="btn btn-secondary" data-gc-opp-page="${club.id}" style="padding:2px 8px; font-size:0.66rem;">Opponents page ↗</button>` : ''}
-        </div>
+    const wrap = (title, inner) => this.panelFoldHtml('opp_contacts', title, `
+        ${club ? `<div style="display:flex; justify-content:flex-end; margin-bottom:4px;"><button class="btn btn-secondary" data-gc-opp-page="${club.id}" style="padding:2px 8px; font-size:0.66rem;">Opponents page ↗</button></div>` : ''}
         ${this._panelDraftButtons('data-gc-draft-open')}
         ${cancelRow()}
-        ${inner}
-      </div>`;
+        ${inner}`);
     if (!club) {
       const lg0 = o.league;
       const lgBlock0 = lg0 && (lg0.contacts || []).length ? `<div style="margin-top:8px;"><div style="font-size:0.72rem; font-weight:700; opacity:0.8;">${esc(copy('game_center_league', { league: lg0.name || lg0.label }) || `🏛 ${lg0.name || lg0.label} league directors`)}</div>${lg0.contacts.map(k => `<div style="font-size:0.72rem; padding:3px 0;"><b>${esc(k.name || '')}</b> <span style="opacity:0.65;">${esc(k.role || '')}</span> <span style="opacity:0.7;">${esc([k.phone, k.email].filter(Boolean).join(' · '))}</span> ${this._oppContactButton(k)} ${this._draftBtn(k)}</div>${this._draftsArea(k, lg0)}`).join('')}</div>` : '';
@@ -5195,12 +5193,14 @@ class GameCenterScreen extends EventScreen {
     const title = blocked
       ? this._regWarnCopy('strip_title', { n: blocked }) + (waiting ? ` · ${this._regWarnCopy('strip_waiting', { n: waiting })}` : '')
       : (copy('title', { n: gaps.length }) || `⚠ Going but not on the official roster (${gaps.length})`);
-    return `<div style="margin:0 0 12px; padding:8px 12px; border:2px solid ${red ? '#ef4444' : '#f59e0b'}; border-radius:10px; background:${red ? 'rgba(220,38,38,0.10)' : 'rgba(245,158,11,0.08)'};">
-      <div style="font-weight:800; font-size:0.9rem; color:${blocked ? '#f87171' : 'inherit'};">${esc(title)}</div>
+    // Rolled up like every pill (owner 11/11); the red/amber box and its
+    // count stay on the closed summary.
+    return `<details data-ec-fold="reg_gaps" ${this.foldOpen('reg_gaps') ? 'open' : ''} style="margin:0 0 12px; padding:8px 12px; border:2px solid ${red ? '#ef4444' : '#f59e0b'}; border-radius:10px; background:${red ? 'rgba(220,38,38,0.10)' : 'rgba(245,158,11,0.08)'};">
+      <summary style="cursor:pointer; font-weight:800; font-size:0.9rem; color:${blocked ? '#f87171' : 'inherit'};">${esc(title)}</summary>
       <div style="font-size:0.74rem; opacity:0.75; margin:2px 0 4px;">${esc(copy('hint'))}</div>
       ${lineHtml}
       ${rows}
-    </div>`;
+    </details>`;
   }
 
   // ⭐ Auto toggle (team_auto_invites, mig 617): a standing call-down is
@@ -5436,11 +5436,10 @@ class GameCenterScreen extends EventScreen {
         </div>`;
     }).join('');
     return `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(this._copyGm('title'))}</div>
+      ${this.panelFoldHtml('game_message', `${esc(this._copyGm('title'))}`, `
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4; margin-bottom:4px;">${esc(this._copyGm('hint'))}</div>
         ${rows}
-      </div>`;
+`)}`;
   }
 
   _messageGame(btn) {
@@ -5546,15 +5545,14 @@ class GameCenterScreen extends EventScreen {
     else if (pull.error) status = copy('failed', { reason: pull.error });
     else if (saved) status = saved.fetchedBy ? copy('saved', { when: whenText, name: saved.fetchedBy }) : copy('saved_anon', { when: whenText });
     return `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(copy('title'))}</div>
+      ${this.panelFoldHtml('official_roster', `${esc(copy('title'))}`, `
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4;">${esc(copy('hint'))}</div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px;">
           <button class="btn btn-primary" data-gc-roster-pull ${pull.busy ? 'disabled' : ''} style="padding:5px 12px; font-size:0.75rem;">${esc(copy('pull'))}</button>
           ${saved && !pull.busy ? `<button class="btn btn-secondary" data-gc-roster-open style="padding:3px 8px; font-size:0.68rem;">${esc(copy('reopen'))}</button>` : ''}
         </div>
         <div data-gc-roster-status style="font-size:0.68rem; margin-top:6px; line-height:1.4; ${pull.error ? 'color:#f87171;' : 'opacity:0.7;'}">${esc(status)}</div>
-      </div>`;
+`)}`;
   }
 
   // The league roster sheet for this game (mig 561, owner 2026-10-09: "we
@@ -5570,14 +5568,13 @@ class GameCenterScreen extends EventScreen {
     const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('roster_sheet', tier, tokens) : '';
     const busy = this._sheetBusy;
     return `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">${esc(copy('panel_title') || '🖨 Roster sheet')}</div>
+      ${this.panelFoldHtml('roster_sheet', `${esc(copy('panel_title') || '🖨 Roster sheet')}`, `
         <div style="font-size:0.7rem; opacity:0.75; line-height:1.4;">${esc(copy('panel_hint') || "The league roster drawn from this team's Football Home roster.")}</div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:8px;">
           <button class="btn btn-primary" data-gc-roster-sheet ${busy ? 'disabled' : ''} style="padding:5px 12px; font-size:0.75rem;">${esc(copy('print') || '🖨 Print roster')}</button>
         </div>
         ${this._sheetError ? `<div style="font-size:0.68rem; margin-top:6px; color:#f87171;">${esc(this._sheetError)}</div>` : ''}
-      </div>`;
+`)}`;
   }
   async _printRosterSheet(btn) {
     this._sheetBusy = true; this._sheetError = ''; btn.disabled = true;
@@ -6248,10 +6245,9 @@ class GameCenterScreen extends EventScreen {
       ${row('League', m.league_tag || m.competition_name || '')}`;
 
     const wrap = (inner) => `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:4px;">⚽ Game details</div>
+      ${this.panelFoldHtml('game_details', `⚽ Game details`, `
         ${inner}
-      </div>`;
+`)}`;
 
     if (m.gcal_linked) {
       return wrap(`
@@ -6384,8 +6380,7 @@ class GameCenterScreen extends EventScreen {
                value="${val != null ? this.escapeHtml(String(val)) : ''}" ${this._matchSaving ? 'disabled' : ''}>
       </label>`;
     return `
-      <div style="margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:10px 12px;">
-        <div style="font-size:0.72rem; font-weight:700; opacity:0.8; margin-bottom:6px;">🏆 ${hasScore ? 'Result' : 'Record the result'}</div>
+      ${this.panelFoldHtml('score', `🏆 ${hasScore ? 'Result' : 'Record the result'}`, `
         <div style="display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:end;">
           ${scoreInput('gc-score-home', m.home_team_name || 'Home', hs)}
           <span style="font-size:1.2rem; font-weight:700; opacity:0.6; padding-bottom:8px;">–</span>
@@ -6396,7 +6391,7 @@ class GameCenterScreen extends EventScreen {
           <button type="button" id="gc-score-save" class="btn btn-primary" style="font-size:0.75rem; padding:4px 10px;" ${this._matchSaving ? 'disabled' : ''}>${hasScore ? 'Update result' : 'Save result'}</button>
         </div>
         ${this._scoreMsg ? `<div style="font-size:0.7rem; margin-top:6px; opacity:0.8;">${this.escapeHtml(this._scoreMsg)}</div>` : ''}
-      </div>`;
+`)}`;
   }
 
   async _saveScore(clear) {
@@ -7061,10 +7056,10 @@ class GameCenterScreen extends EventScreen {
       </div>`;
     }).join('');
     return `
-      <div style="max-width:540px; margin:0 auto var(--space-3);">
-        ${heading ? `<h2 style="margin: var(--space-3) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(heading)}</h2>` : ''}
+      <details data-ec-fold="criteria" ${this.foldOpen('criteria') ? 'open' : ''} style="max-width:540px; margin:0 auto var(--space-3);">
+        <summary style="cursor:pointer; margin: var(--space-3) 0 4px; font-size:0.8rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(heading || '')} (${rows.length})</summary>
         <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">${html}</div>
-      </div>`;
+      </details>`;
   }
 
   _renderMyEligibility() {
@@ -7152,9 +7147,11 @@ class GameCenterScreen extends EventScreen {
     // "2 boxes. one for practice criteria and one for rsvp on time for
     // game and have eligibility at top as header").
     return `
-      <div class="public-card" data-gc-eligibility style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
-        ${this._eligCopy('card_heading') ? `<h2 style="margin:0 0 6px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">${this.escapeHtml(this._eligCopy('card_heading'))}</h2>` : ''}
-        ${overallText ? pill(overallText, overall.colour, `data-gc-elig-overall="${overall.state}"`) : ''}
+      <details class="public-card" data-gc-eligibility data-ec-fold="my_eligibility" ${this.foldOpen('my_eligibility') ? 'open' : ''} style="max-width:540px; margin:0 auto var(--space-3); padding: var(--space-3);">
+        <summary style="cursor:pointer; list-style-position:inside;">
+          ${this._eligCopy('card_heading') ? `<span style="font-size:0.8rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8; margin-right:6px;">${this.escapeHtml(this._eligCopy('card_heading'))}</span>` : ''}
+          ${overallText ? pill(overallText, overall.colour, `data-gc-elig-overall="${overall.state}"`) : ''}
+        </summary>
         <div data-gc-elig-msg style="font-size:0.72rem; min-height:0;"></div>
         ${this._duesAlternateBox(s, box)}
         ${box(this._eligCopy('practice_box_heading'), `
@@ -7171,7 +7168,7 @@ class GameCenterScreen extends EventScreen {
           ${pill(rtPill, rt.colour, `data-gc-rsvp-timing="${rt.state}"`)}
           ${rtRule ? `<div style="font-size:0.72rem; opacity:0.7; margin-top:6px;">${this.escapeHtml(rtRule)}</div>` : ''}
           ${gameRemedy}`) : ''}
-      </div>`;
+      </details>`;
   }
 
   // Going / Out on a practice inside the eligibility card; tapping the
@@ -7223,15 +7220,15 @@ class GameCenterScreen extends EventScreen {
       (a.lastName || a.name || '').toLowerCase().localeCompare((b.lastName || b.name || '').toLowerCase()));
     if (!alternates.length) return '';
     return `
-      <div style="max-width:540px; margin:0 auto;">
-        <h2 style="margin: var(--space-4) 0 4px; font-size:0.8rem; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">Alternates</h2>
+      <details data-ec-fold="player_alternates" ${this.foldOpen('player_alternates') ? 'open' : ''} style="max-width:540px; margin:0 auto;">
+        <summary style="cursor:pointer; margin: var(--space-4) 0 4px; font-size:0.8rem; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; opacity:0.8;">Alternates (${alternates.length})</summary>
         <div style="border-top:1px solid var(--border-color); border-radius:4px; overflow:hidden;">
           ${alternates.map(p => `
             <div style="padding:8px var(--space-3); border-bottom:1px solid var(--border-color);">
               <span ${this._eligNameTitle(p.id)}style="font-size:0.95em; ${this._eligNameStyle(p.id)}">${this.escapeHtml(p.name)}</span> ${this._duesFlag(p)}
             </div>`).join('')}
         </div>
-      </div>`;
+      </details>`;
   }
 
   // ── Everyone plays (mig 515) ──────────────────────────────────────────

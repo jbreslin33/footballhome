@@ -54,6 +54,7 @@ class EventScreen extends Screen {
       rerender: () => this._render(),
       toast: (m) => { this.cpError = m; this._render(); setTimeout(() => { this.cpError = null; this._render(); }, 4000); },
       escapeHtml: (t) => this.escapeHtml(t),
+      fold: (key, title, body) => this.panelFoldHtml(key, title, body),
     });
     this.cpError  = null;
     this.rsvpNote = {};        // person_id → last override error, on their card
@@ -75,9 +76,8 @@ class EventScreen extends Screen {
 
   // The body under a lit pill.  🎟 Invites ride inside All Players.
   pillHtml(key) {
-    const section = (label, html) => `<div class="ec-h" style="margin:var(--space-4) 0 var(--space-2);">${label}</div>${html}`;
     if (key !== 'players') return '';
-    return this._comingHtml() + this._jobsHtml() + (this._canInvite() ? section('🎟 Invites', this._invitesHtml()) : '')
+    return this._comingHtml() + this._jobsHtml() + (this._canInvite() ? this.panelFoldHtml('invites', '🎟 Invites', this._invitesHtml()) : '')
       + (this.hasCarpool() ? this.carpoolPanel.html() : '');
   }
 
@@ -106,9 +106,30 @@ class EventScreen extends Screen {
   // groups: [{ key, label, list }] } — unplaced open at the very top,
   // groups folded.  null = one Going section (practice, everyone-plays).
   _goingSplit(_going) { return null; }
-  // Roll the list up (mig 1284): every section a fold, closed until the
-  // coach opens it, so the page is a short list of counts.
-  _rollUp() { return false; }
+  // Roll the list up (mig 1284; owner 11/11: "no matter what tab/pill in
+  // event center is clicked we need roll up"): every section on every
+  // pill a fold, closed until the coach opens it, so the page is a short
+  // list of counts.  Every kind, every pill.
+  _rollUp() { return true; }
+
+  // Folds the owner wants open on arrival ("i will tell you what needs
+  // standing expansion") — fold keys; empty = everything starts closed.
+  static STANDING_OPEN = new Set([]);
+  // Is fold <key> open now: the coach's own toggle wins (kept across the
+  // 15s refresh), else the standing list.
+  foldOpen(key) { return this.folds.has(key) ? !!this.folds.get(key) : EventScreen.STANDING_OPEN.has(key); }
+
+  // A boxed panel (a game's details, contacts, roster sheet, a practice's
+  // groups / plan …) as a fold: the summary is the panel's title, the
+  // body everything under it.  Same open/closed memory as the card folds.
+  panelFoldHtml(key, title, body, { aside = '' } = {}) {
+    EventScreen.ensureCardStyles();
+    if (!body && !title) return '';
+    return `<details class="ev-panel" data-ec-fold="${key}" ${this.foldOpen(key) ? 'open' : ''}>
+        <summary>${title}${aside ? ` <span style="font-weight:600; opacity:0.75;">· ${aside}</span>` : ''}</summary>
+        <div class="ev-panel-in">${body}</div>
+      </details>`;
+  }
 
   // Leaving the page stops the live refresh.
   onExit() { this._stopLivePoll(); }
@@ -794,11 +815,12 @@ class EventScreen extends Screen {
     const declinedHtml = declined.length ? `
         <div style="font-size:0.72rem; opacity:0.7; margin-top:8px; font-weight:700;">${this.escapeHtml(c('declined_title', `Not this week (${declined.length})`, { n: declined.length }))}</div>
         ${declined.map(r => row(r, (busy) => `<button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="undo" ${busy} style="${B} background:#334155; color:#e2e8f0;">${this.escapeHtml(c('undo_decline', 'Undo'))}</button>`)).join('')}` : '';
-    return `<div class="ec-box" style="border:1px solid #38bdf8; border-radius:10px; padding:12px; margin-bottom:12px; background:rgba(15,23,42,0.6);">
-        <div style="font-weight:800; color:#7dd3fc;">${this.escapeHtml(c('staff_title', `🙋 CALL-IN REQUESTS (${open.length})`, { n: open.length }))}</div>
+    // Rolled up like every pill (owner 11/11); the open count is on the summary.
+    return `<details class="ec-box" data-ec-fold="callins" ${this.foldOpen('callins') ? 'open' : ''} style="border:1px solid #38bdf8; border-radius:10px; padding:12px; margin-bottom:12px; background:rgba(15,23,42,0.6);">
+        <summary style="cursor:pointer; font-weight:800; color:#7dd3fc;">${this.escapeHtml(c('staff_title', `🙋 CALL-IN REQUESTS (${open.length})`, { n: open.length }))}</summary>
         <div style="font-size:0.72rem; opacity:0.75; margin:2px 0 6px;">${this.escapeHtml(c('staff_note', 'Accept = invited: Go / No shows for him and he sits in No Response until he answers. No text is sent.'))}</div>
         ${openHtml}${declinedHtml}
-      </div>`;
+      </details>`;
   }
 
   async _loadInvites() {
@@ -1279,7 +1301,7 @@ class EventScreen extends Screen {
     // A fold opened or closed by the coach stays that way (toggle does not
     // bubble — listen in the capture phase).
     this.element.addEventListener('toggle', (e) => {
-      const d = e.target.closest && e.target.closest('[data-ec-fold]');
+      const d = e.target.matches && e.target.matches('[data-ec-fold]') ? e.target : null;   // that fold only, never a parent
       if (d) this.folds.set(d.dataset.ecFold, d.open);
     }, true);
     this.element.addEventListener('change', (e) => {
@@ -1356,7 +1378,10 @@ class EventScreen extends Screen {
                 font-size:0.78rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; }
       .ev-fold { margin:var(--space-3) 0; }
       .ev-fold > summary { cursor:pointer; font-size:0.78rem; font-weight:800; letter-spacing:0.03em; text-transform:uppercase; padding:4px 0; }
-      .ev-none { padding:6px 2px; opacity:0.6; font-size:0.85em; }`;
+      .ev-none { padding:6px 2px; opacity:0.6; font-size:0.85em; }
+      .ev-panel { margin-top:10px; border:1px solid var(--border-color); border-radius:12px; padding:8px 12px; }
+      .ev-panel > summary { cursor:pointer; font-size:0.78rem; font-weight:800; padding:2px 0; }
+      .ev-panel[open] > summary { margin-bottom:6px; }`;
     document.head.appendChild(st);
   }
 
@@ -1725,7 +1750,7 @@ class EventScreen extends Screen {
     // reminder's re-render (as Game Center's do).
     const fold = (key, label, list, opts = {}) => {
       if (!list.length) return '';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : !!opts.defaultOpen;
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : (!!opts.defaultOpen || EventScreen.STANDING_OPEN.has(key));
       return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' });
     };
 
@@ -1792,7 +1817,7 @@ class EventScreen extends Screen {
       const part = (label, list, opts = {}) => list.length
         ? `<div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:8px 0 4px;">${label} (${list.length})</div>${grid(list, opts)}` : '';
       const key = 'coaches';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : !roll;
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : (!roll || EventScreen.STANDING_OPEN.has(key));
       const bar = canRemind && noAnswer.length
         ? remindBarHtml(cp('remind_group_coaches', { n: noAnswer.length }) || `📣 Remind all ${noAnswer.length} coaches who haven't answered`, this.coachGroupNote, 'coach') : '';
       const body = part(L('sec_noresp', '– No response'), noAnswer, { remind: true })
@@ -1805,8 +1830,8 @@ class EventScreen extends Screen {
       ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
       ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
-      ${going.length ? section(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
-      ${section(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}`}
+      ${(roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop })}
+      ${(roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}`}
       ${(roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
       ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll })}
       ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
