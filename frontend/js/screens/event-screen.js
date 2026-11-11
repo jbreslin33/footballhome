@@ -1287,6 +1287,9 @@ class EventScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
+      // Your answer box (every event) — Going / Not Going, 🙋 call-in.
+      if ((el = t('[data-gc-avail]')) && !el.disabled) { this._setMyAvailability(el); return; }
+      if ((el = t('[data-callin]')) && !el.disabled) { this._sendMyCallin(el); return; }
       if (this._playersPaneClick(t)) return;
       if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
       this.onClick(t, e);
@@ -1412,6 +1415,7 @@ class EventScreen extends Screen {
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
       ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
+      <div data-gc-my-avail>${this._myAvailabilityHtml()}</div>
       ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
       ${ev.kind === 'match' && ev.match_id != null
@@ -1420,6 +1424,147 @@ class EventScreen extends Screen {
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
       ${this.pillHtml(this.pill)}
       ${this.cpError ? `<div style="font-size:0.75rem; color:#f59e0b; margin-top:6px;">${this.escapeHtml(this.cpError)}</div>` : ''}`;
+  }
+
+  // ── Your answer (every event; owner 11/11: "they should look the same
+  // except where they need to look diff") ─────────────────────────────
+  // Going / Not Going for you and each of your kids, or 🙋 call-in, at
+  // the top of every Event Center event.  Kinds may say which row is
+  // "this event" (_myAvailEvent) and react to a save (Game Center drops
+  // a standby card).
+  _myAvailEvent() { return this.ev; }
+  _myAvailEvents() { return this.ev ? [this.ev] : []; }
+  // After your answer saved: redraw, so your card in 👥 All Players moves too.
+  _onMyAvailabilitySaved(_data) { this._render(); return true; }
+
+  _myAvailabilityRows() {
+    const ev = this._myAvailEvent();
+    if (!ev) return null;
+    const kids = Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [];
+    const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];
+    const rows = [];
+    if (ev.my_rsvp_eligible !== false && (ev.my_rsvp_eligible === true || !kids.length))
+      rows.push({ personId: null, name: 'You', response: ev.my_rsvp || null });
+    for (const kid of kids)
+      rows.push({ personId: kid.person_id, name: kid.name || 'Your player',
+                  response: (rsvps.find(r => r && r.person_id === kid.person_id) || {}).response || null });
+    return { ev, rows };
+  }
+
+  _myAvailabilityHtml() {
+    const callin = this._myCallinHtml();
+    if (callin) return callin;
+    const mine = this._myAvailabilityRows();
+    if (!mine || !mine.rows.length) return '';
+    const { ev, rows } = mine;
+    // Words: event_center answer_* (mig 1276); {what} = game / practice /
+    // pickup / event, so every kind reads right.
+    const what = ev.kind === 'match' ? 'game' : ev.kind === 'practice' ? 'practice' : ev.kind === 'pickup' ? 'pickup' : 'event';
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier))
+      ? MessageCopy.block('event_center', tier, { what }) : fb;
+    const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
+    const closed = end < Date.now() ? cp('answer_over', `This ${what} is over`)
+      : (ev.rsvps_open_now === false ? cp('answer_not_open', `Availability is not open for this ${what} yet`) : '');
+    const word = (r) => r === 'yes' ? '✅ Going' : r === 'no' ? '❌ Not Going' : r === 'maybe' ? '❔ Maybe' : '— Not answered yet';
+    const btn = (row, response, label, colour) => {
+      const active = row.response === response;
+      return `<button type="button" data-gc-avail="${response}" ${row.personId ? `data-person-id="${row.personId}"` : ''}
+                      ${closed ? `disabled title="${this.escapeHtml(closed)}"` : ''}
+                      style="padding:6px 12px; border-radius:8px; font-weight:800; font-size:0.78rem; cursor:${closed ? 'default' : 'pointer'};
+                             border:2px solid ${colour}; color:#fff; background:${active ? colour : 'transparent'}; opacity:${closed ? 0.45 : 1};">${label}</button>`;
+    };
+    return `
+      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:rgba(15,23,42,0.6);">
+        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:6px; text-transform:uppercase;">${this.escapeHtml(cp('answer_title', `Your availability for this ${what}`))}</div>
+        ${rows.map(row => `
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:4px;">
+            <span style="font-size:0.85rem;"><strong>${this.escapeHtml(row.name)}</strong> · ${word(row.response)}</span>
+            <span style="display:flex; gap:6px;">
+              ${btn(row, 'yes', 'Going', '#16a34a')}
+              ${btn(row, 'no', 'Not Going', '#dc2626')}
+            </span>
+          </div>`).join('')}
+        <div data-gc-avail-msg style="font-size:0.7rem; margin-top:6px; opacity:0.75;">${this.escapeHtml(closed || cp('answer_note', 'Plans changed? Change it here any time — the coaches see it right away.'))}</div>
+      </div>`;
+  }
+
+  // 🙋 Call-in (mig 1265, components/call-in.js): a Liga 1 player on the
+  // APSL game asks in here, the same as on #my, and is told what to do
+  // with his two games that day.
+  _myCallinHtml() {
+    const ev = this._myAvailEvent();
+    if (!ev || !ev.my_callin || !window.CallIn) return '';
+    if (!this.callinDrive && !this._callinDriveAsked) {
+      this._callinDriveAsked = true;
+      CallIn.loadDrive(this.auth).then(d => { this.callinDrive = d; this._paintMyAvailability(); });
+    }
+    const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
+    const past = end < Date.now();
+    return `
+      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #38bdf8; background:rgba(15,23,42,0.6);">
+        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:4px;">${CallIn.chipHtml(ev.my_callin)}YOUR CALL-IN FOR THIS GAME</div>
+        ${CallIn.panelHtml(ev, this._myAvailEvents(), this.callinDrive, { saving: !!this._callinSaving, past })}
+      </div>`;
+  }
+
+  async _sendMyCallin(btn) {
+    const ev = this._myAvailEvent();
+    if (!ev || this._callinSaving) return;
+    this._callinSaving = true;
+    this._paintMyAvailability();
+    try {
+      ev.my_callin = await CallIn.send(this.auth, Number(btn.dataset.fhEventId), btn.dataset.callin);
+    } catch (err) {
+      alert(`Could not save: ${err.message}`);
+    } finally {
+      this._callinSaving = false;
+      this._paintMyAvailability();
+    }
+  }
+
+  _paintMyAvailability() {
+    const slot = this.element && this.element.querySelector('[data-gc-my-avail]');
+    if (slot) slot.innerHTML = this._myAvailabilityHtml();
+  }
+
+  // Tapping the answer you already gave clears it, like #my.
+  async _setMyAvailability(btn) {
+    const mine = this._myAvailabilityRows();
+    if (!mine) return;
+    const { ev } = mine;
+    const response = btn.dataset.gcAvail === 'no' ? 'no' : 'yes';
+    const personId = btn.dataset.personId ? Number(btn.dataset.personId) : null;
+    const row = mine.rows.find(r => r.personId === personId);
+    const clearing = row && row.response === response;
+    const payload = { fh_event_id: ev.fh_event_id };
+    if (!clearing) payload.response = response;
+    if (personId) payload.person_id = personId;
+    btn.disabled = true;
+    try {
+      const res = await this.auth.fetch('/api/calendar/rsvp', {
+        method: clearing ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.sms_opt_in && window.SmsOptInAsk) SmsOptInAsk.show(data.sms_opt_in);   // 📲 mig 647
+      if (data.reg_ask && window.RegAsk) RegAsk.show(data.reg_ask);   // 📝 mig 725
+      const final = clearing ? null : ((data.rsvp && data.rsvp.response) || response);
+      if (!personId) ev.my_rsvp = final;
+      const rsvpPersonId = personId || (data.rsvp && data.rsvp.person_id) || data.person_id;
+      if (rsvpPersonId) {
+        const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : (ev.rsvps = []);
+        const existing = rsvps.find(r => r && r.person_id === rsvpPersonId);
+        if (existing) existing.response = final;
+        else if (final) rsvps.push({ person_id: rsvpPersonId, response: final, created_via: 'manual' });
+      }
+      if (!this._onMyAvailabilitySaved(data)) this._paintMyAvailability();
+    } catch (err) {
+      btn.disabled = false;
+      const msg = this.element.querySelector('[data-gc-avail-msg]');
+      if (msg) msg.innerHTML = `<span style="color:#f87171;">Could not save: ${this.escapeHtml(err.message)}</span>`;
+    }
   }
 
   _attendanceCell(personId) {
