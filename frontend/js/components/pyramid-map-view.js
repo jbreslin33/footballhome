@@ -68,12 +68,50 @@
 class PyramidMapView {
   features() {
     const u = this.screen.auth && this.screen.auth.getUser && this.screen.auth.getUser();
+    // + the map's detail layers (mig 1276, owner: "check box for county
+    // borders and roads etc so it declutters map lines when needed" /
+    // "rivers etc"): one switch per pyramid_map_overlays row.
+    const ov = ((this.model && this.model.data && this.model.data.map_overlays) || [])
+      .map((o) => ({ key: `ov_${o.code}`, tier: `feature_${o.code}`, def: !!o.def_on }));
     return [{ key: 'proposal', tier: 'feature_proposal', def: !!(u && ['club', 'super'].includes(u.role)) },
-            { key: 'states', tier: 'feature_states', def: true }];
+            { key: 'states', tier: 'feature_states', def: true }].concat(ov);
   }
   onFeature(key, on) {
     if (key === 'proposal') this._showProposal(on);
     if (key === 'states') this._showStates(on);
+    if (key.startsWith('ov_')) this._showOverlay(key.slice(3), on);
+  }
+
+  // A detail layer on or off (mig 1276): Esri reference tiles over the base
+  // map, or our county lines (fetched once, drawn on a canvas under the state lines).
+  async _showOverlay(code, on) {
+    const L = window.L;
+    if (!this.map) return;
+    const o = ((this.model.data && this.model.data.map_overlays) || []).find((x) => x.code === code);
+    if (!o) return;
+    this.overlays = this.overlays || new Map();
+    const had = this.overlays.get(code);
+    if (had) { had.remove(); this.overlays.delete(code); }
+    if (!on) return;
+    if (o.kind === 'tiles') {
+      const t = L.tileLayer(o.tile_url, { maxZoom: 18, maxNativeZoom: o.max_zoom, zIndex: 5, attribution: this._esc(o.attribution || '') });
+      t.addTo(this.map);
+      this.overlays.set(code, t);
+      return;
+    }
+    if (!PyramidMapView._countyLines) {
+      try {
+        const res = await this.screen.auth.fetch('/api/pyramid/county-lines');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        PyramidMapView._countyLines = (await res.json()).lines || [];
+      } catch (e) { console.warn('county lines', e); return; }
+    }
+    if (!this.map || !this.screen.feature(`ov_${code}`, o.def_on) || this.overlays.has(code)) return;
+    const g = L.layerGroup();
+    for (const line of PyramidMapView._countyLines)
+      L.polyline(line, { renderer: this.countyRenderer, interactive: false, color: '#94a3b8', weight: 1, opacity: 0.55 }).addTo(g);
+    g.addTo(this.map);
+    this.overlays.set(code, g);
   }
 
   // State lines (mig 1257, owner: "show state borders clearer"): their own
@@ -104,7 +142,7 @@ class PyramidMapView {
   // A proposal's judgement is the row's tooltip.  Tap → fly there.
   menuSections() {
     const P = this.proposal;
-    if (!P || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return [];
+    if (!P) return [];
     const esc = (t) => this._esc(t);
     const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
     const tierLabel = (t) => this._copy(`tier_${t}`) || t;
@@ -112,13 +150,14 @@ class PyramidMapView {
     // because it gives you freedom to move borders or delete or re imagine
     // current to fit new"): Current = today's conferences; Proposed = the
     // re-imagined map (today's ones as proposals of their own, free to change).
-    const plan = this._plan();
+    const plan = this._effPlan();
     const regs = (P.regions || []).filter((r) => r.plan === plan);
     const live = regs.filter((r) => r.conference_id || r.from_conference_id);
     const proposed = regs.filter((r) => r.proposed_id && !r.from_conference_id).concat(plan === 'proposed' ? (P.watch || []) : []);
     const count = plan === 'current' ? this._copy('proposal_count_current', { live: live.length })
       : this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
-    const planPills = ['current', 'proposed'].map((k) => `<button class="ap-pill${k === plan ? ' on' : ''}" data-pzplan="${k}">${esc(this._copy(`plan_${k}`))}</button>`).join('');
+    const planOn = this.screen.feature && this.screen.feature('proposal', this.features()[0].def);
+    const planPills = !planOn ? '' : ['current', 'proposed'].map((k) => `<button class="ap-pill${k === plan ? ' on' : ''}" data-pzplan="${k}">${esc(this._copy(`plan_${k}`))}</button>`).join('');
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
     // conference; a column header / sort pill sorts by it, tapped again flips.
@@ -154,6 +193,12 @@ class PyramidMapView {
         <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
         <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
         <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(plan === 'current' ? this._copy('plan_current_intro') : this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }];
+  }
+  // The plan on screen (11/11, owner: "if we uncheck proposed borders +
+  // new conf we still need to show assumed current borders"): the proposal
+  // switch off = today's borders only; on = the Current | Proposed pill.
+  _effPlan() {
+    return (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) ? this._plan() : 'current';
   }
   _plan() {
     if (!this.pzPlan) {
@@ -393,6 +438,13 @@ class PyramidMapView {
     this.stateRenderer = L.svg({ pane: 'mp-states' });
     this.stateLayer = L.layerGroup().addTo(this.map);
     if (this.screen.feature && this.screen.feature('states', true)) this._showStates(true);
+    const cpane = this.map.createPane('mp-counties');   // county lines (mig 1276), under the state lines
+    cpane.style.zIndex = 320;
+    cpane.style.pointerEvents = 'none';
+    this.countyRenderer = L.canvas({ pane: 'mp-counties' });
+    this.overlays = new Map();
+    for (const o of (this.model.data.map_overlays || []))
+      if (this.screen.feature && this.screen.feature(`ov_${o.code}`, o.def_on)) this._showOverlay(o.code, true);
     const ppane = this.map.createPane('mp-proposal');
     ppane.style.zIndex = 340;
     ppane.style.pointerEvents = 'none';
@@ -400,7 +452,7 @@ class PyramidMapView {
     this.propLayer = L.layerGroup().addTo(this.map);
     this.propLines = L.layerGroup().addTo(this.map);
     this.map.on('zoomend', () => this._drawBorders());
-    if (this.screen.feature && this.screen.feature('proposal', this.features()[0].def)) this._showProposal(true);   // features()[0] = proposal
+    this._showProposal(true);   // always: the proposal switch off still draws today's borders (owner 11/11)
     this.map.on('zoomend moveend', () => this._relayout());
     // Picking a team: the dots don't take clicks themselves (5–7px circles,
     // fanned rings overlap); the map finds the NEAREST dot within 16px of
@@ -771,7 +823,6 @@ class PyramidMapView {
     if (!this.map || !this.propLayer) return;
     this.propLayer.clearLayers();
     if (this.propLines) this.propLines.clearLayers();
-    if (!on) { this.screen._renderMenu(); return; }
     if (!this.proposal) {
       try {
         const res = await this.screen.auth.fetch('/api/pyramid/proposal');
@@ -779,11 +830,11 @@ class PyramidMapView {
         this.proposal = await res.json();
       } catch (e) { console.warn('proposal', e); return; }
     }
-    if (!this.map || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
+    if (!this.map) return;
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
     // The neutral zone (mig 1255): counties the two borders disagree on.
-    const plan = this._plan();
+    const plan = this._effPlan();
     const neutral = { type: 'FeatureCollection', features: ((this.proposal.neutral || {}).features || []).filter((f) => (f.properties.plan || 'proposed') === plan) };
     if (neutral.features.length)
       L.geoJSON(neutral, { renderer: this.propRenderer, interactive: false,
@@ -814,7 +865,7 @@ class PyramidMapView {
     if (!this.map || !this.propLines) return;
     this.propLines.clearLayers();
     const P = this.proposal;
-    if (!P || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
+    if (!P) return;
     const color = new Map((P.regions || []).map((r) => [r.key, r.color || '#94a3b8']));
     const HALF = 2, W = 4;
     const shift = (pts, d) => pts.map((p, i) => {
@@ -823,7 +874,7 @@ class PyramidMapView {
       // screen y points down: (dy, -dx) is the left of travel as seen on the map
       return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
     });
-    const pre = this._plan() === 'current' ? 'c' : 'p';   // a region key sorts before 'x', so b.a names the plan
+    const pre = this._effPlan() === 'current' ? 'c' : 'p';   // a region key sorts before 'x', so b.a names the plan
     for (const b of (P.borders || []).filter((x) => x.a[0] === pre)) {
       // The straight-distance border (mig 1255) is drawn exactly like the
       // traffic one — two-tone in the same conferences' colours (owner: "i

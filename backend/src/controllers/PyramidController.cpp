@@ -184,6 +184,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/territory", [this](const Request& r) { return handleTerritory(r); });
     router.get(prefix + "/proposal", [this](const Request& r) { return handleProposal(r); });
     router.get(prefix + "/state-borders", [this](const Request& r) { return handleStateBorders(r); });
+    router.get(prefix + "/county-lines", [this](const Request& r) { return handleCountyLines(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
@@ -280,6 +281,18 @@ Response PyramidController::handleProposal(const Request&) {
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] proposal: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/pyramid/county-lines (mig 1276) — shared county edges for the
+// "County lines" switch: [[[lat, lon], …], …], computed once into pyramid_county_lines.
+Response PyramidController::handleCountyLines(const Request&) {
+    try {
+        auto rows = Database::getInstance()->query("SELECT COALESCE(json_agg(line ORDER BY id), '[]')::text AS lines FROM pyramid_county_lines");
+        return jsonOut(HttpStatus::OK, {{"lines", json::parse(rows.empty() ? std::string("[]") : str(rows[0], "lines"), nullptr, false)}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] county-lines: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
@@ -642,12 +655,19 @@ Response PyramidController::handleGet(const Request& request) {
                                  {"is_default", r["is_default"].as<bool>()}});
         }
 
+        // Detail layers switched in ☰ (mig 1276): place names, roads, rivers, county lines.
+        json mapOverlays = json::array();
+        for (const auto& r : db->query("SELECT code, kind, tile_url, attribution, max_zoom, def_on FROM pyramid_map_overlays ORDER BY sort_order"))
+            mapOverlays.push_back({{"code", str(r, "code")}, {"kind", str(r, "kind")}, {"tile_url", strOrNull(r, "tile_url")},
+                                   {"attribution", strOrNull(r, "attribution")}, {"max_zoom", num(r, "max_zoom")},
+                                   {"def_on", r["def_on"].as<bool>()}});
+
         return jsonOut(HttpStatus::OK, {
             {"root_id", num(tot[0], "root_id")},
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},
             {"competitions", competitions}, {"divisions", divisions}, {"links", links}, {"zone_kinds", kinds},
-            {"clubs", clubs}, {"places", places}, {"seasons", seasons}, {"map_layers", mapLayers}});
+            {"clubs", clubs}, {"places", places}, {"seasons", seasons}, {"map_layers", mapLayers}, {"map_overlays", mapOverlays}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
