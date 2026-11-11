@@ -2345,10 +2345,40 @@ class MyScreen extends Screen {
       return line(`${this.escapeHtml(this._callinCopy('requested', '🙋 Call-in requested — the coach will let you know.', { from }))}
         <button type="button" data-callin="withdraw" data-fh-event-id="${ev.fh_event_id}" ${saving ? 'disabled' : ''}
           style="margin-left:6px; padding:1px 7px; border-radius:4px; cursor:pointer; font-size:0.58rem; font-weight:700;
-                 background:transparent; color:#cbd5e1; border:1px solid #475569;">${this.escapeHtml(this._callinCopy('withdraw', 'Take it back'))}</button>`, '#7dd3fc');
+                 background:transparent; color:#cbd5e1; border:1px solid #475569;">${this.escapeHtml(this._callinCopy('withdraw', 'Take it back'))}</button>`, '#7dd3fc') + this._callinBothHtml(ev);
     }
     if (c.state === 'declined') return line(this.escapeHtml(this._callinCopy('declined', 'Not this week — thanks for putting your hand up.', { from })), '#94a3b8');
-    return line(this.escapeHtml(this._callinCopy('note', 'Want in for this one? Put your hand up and the coach will let you know.', { from })), 'rgba(255,255,255,0.8)');
+    return line(this.escapeHtml(this._callinCopy('note', 'Want in for this one? Put your hand up and the coach will let you know.', { from })), 'rgba(255,255,255,0.8)')
+      + this._callinBothHtml(ev);
+  }
+  // Asking doesn't stop his Liga game (mig 1266): his own game earlier the
+  // same day → its end + the drive (the clash check's sum: place_drive_times
+  // × traffic + parking buffer, rounded up) = when he gets here.
+  _callinBothHtml(ev) {
+    const c = ev.my_callin || {};
+    const from = c.from || 'Liga 1';
+    const day = (iso) => new Date(iso).toLocaleDateString('en-CA', { timeZone: MyScreen.NY });
+    const kick = new Date(ev.starts_at).getTime();
+    const prev = (this.events || [])
+      .filter(o => o !== ev && o.kind === 'match' && !o.my_callin && o.my_role && o.my_role !== 'coach'
+                && o.ends_at && day(o.starts_at) === day(ev.starts_at) && new Date(o.starts_at).getTime() < kick)
+      .sort((a, b) => new Date(b.ends_at) - new Date(a.ends_at))[0];
+    let text = this._callinCopy('both_note', `Asking doesn't stop you playing ${from} — you can do both.`, { from });
+    if (prev) {
+      const drive = this._travelMinutes(prev, ev);
+      if (drive !== undefined) {
+        const step = ((this.drive && this.drive.policy && this.drive.policy.round_to_minutes) || 5) * 60000;
+        const end = new Date(prev.ends_at).getTime();
+        const arrive = Math.ceil((end + (drive || 0) * 60000) / step) * step;
+        const parts = String(prev.location || '').split(',').map(x => x.trim()).filter(Boolean);
+        const place = parts.length >= 3 ? parts[parts.length - 3] : (parts[0] || '');
+        const tokens = { from, end: this._nyLabel(end), place, arrive: this._nyLabel(arrive),
+                         minutes: String(drive || 0), kickoff: this._nyLabel(kick) };
+        text = this._callinCopy('after_game',
+          `${from} ends about ${tokens.end} in ${place}. Leave right after and you'll get here about ${tokens.arrive} (~${tokens.minutes} min drive) — kickoff is ${tokens.kickoff}. That's fine.`, tokens);
+      }
+    }
+    return `<div style="font-size:0.6rem; line-height:1.3; margin-top:3px; font-weight:700; color:#86efac;">${this.escapeHtml(text)}</div>`;
   }
   async _sendCallin(fhEventId, action) {
     const key = `${fhEventId}:callin`;
