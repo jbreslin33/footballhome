@@ -184,6 +184,9 @@ class PaymentsScreen extends Screen {
       if (e.target.closest('.back-btn')) return this.navigation.goBack();
       const statsPill = e.target.closest('[data-stats-tab]');
       if (statsPill) { this.statsTab = statsPill.getAttribute('data-stats-tab'); this._renderStats(); return; }
+      // ⋯ / banner / injury chip → the player sheet (mig 1235).
+      const sheetBtn = e.target.closest('[data-player-sheet]');
+      if (sheetBtn) { this.openPlayerSheet(sheetBtn.getAttribute('data-player-sheet'), sheetBtn.getAttribute('data-sheet-tab')); return; }
       const viewBtn = e.target.closest('.pay-view');
       if (viewBtn) return this.switchView(viewBtn.dataset.view);
       const openLa = e.target.closest('[data-open-la-user]');
@@ -237,41 +240,21 @@ class PaymentsScreen extends Screen {
         this.resolveFlag(id, status);
         return;
       }
-      // Fines box → show/hide that month's line items on this card.
+      // A fines box on a card → the sheet's Fines tab (every period's
+      // line items are open there).
       const finesBtn = e.target.closest('.pay-fines-cell[data-fines-month]');
       if (finesBtn) {
-        const card = finesBtn.closest('.pay-member-card');
-        const month = finesBtn.getAttribute('data-fines-month');
-        if (card) {
-          card.querySelectorAll('.pay-fines-detail').forEach((d) => {
-            const mine = d.getAttribute('data-fines-month') === month;
-            d.hidden = mine ? !d.hidden : true;
-          });
-        }
+        const fcard = finesBtn.closest('.pay-member-card[data-player-key]');
+        if (fcard) this.openPlayerSheet(fcard.getAttribute('data-player-key'), 'fines');
         return;
       }
-      // Card body → open the universal PersonScreen.  Guard against
-      // clicks on the inline action buttons and anchors above so their
-      // handlers stay in charge.
+      // Card body → the player sheet on Money.  Inline buttons, anchors
+      // and form controls keep their own handlers.
       const anchorInside = e.target.closest('a, button, input, textarea, select, label');
       if (anchorInside) return;
-      const card = e.target.closest('.pay-member-card[data-la-user-id]');
+      const card = e.target.closest('.pay-member-card[data-player-key]');
       if (card) {
-        const laUid = card.getAttribute('data-la-user-id');
-        if (laUid) {
-          // Snapshot current view state (tab + view + search) into the
-          // /payments browser history entry BEFORE pushing /person.
-          // Person's Back uses window.history.back() rather than
-          // navigation.goTo — see PersonScreen._goBack() for the
-          // rationale.  Without this snapshot, back-nav would land us
-          // on payments with the initial-entry params instead of
-          // whatever tab/search the operator was on.
-          this._snapshotHistoryState();
-          this.navigation.goTo('person', {
-            leagueAppsUserId: laUid,
-            returnTo: 'payments',
-          });
-        }
+        this.openPlayerSheet(card.getAttribute('data-player-key'), 'money');
         return;
       }
       // (Category / program / status chip clicks are handled by the
@@ -479,33 +462,35 @@ class PaymentsScreen extends Screen {
   _currentError(bag) { return this._firstError(bag, this._shardKeys()); }
 
   // Counts used to label the status chips — summed over the tab's shards.
-  _activeCounts() {
-    const combined = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0, finalNotice: 0 };
-    for (const k of this._shardKeys()) {
+  // The person's current injury (#teams / player sheet health), or null.
+  // Injured players sit in their own 🩹 sections and count only there
+  // (owner 2026-11-11, mig 1235) — their balance still shows.
+  _injuryOf(m) { return (window.PlayerSheet && m && m.personId) ? PlayerSheet.injuryFor(m.personId) : null; }
+
+  // Status counts for a set of programmes, from the rows themselves so the
+  // 🩹 injured split is the same everywhere (chips, stats).
+  _countsFor(keys) {
+    const c = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0, finalNotice: 0, active: 0 };
+    for (const k of keys) {
       const d = this.membersByTab[k];
-      if (!d || !d.counts) continue;
-      combined.current     += d.counts.current     || 0;
-      combined.behind      += d.counts.behind      || 0;
-      combined.overdue      += d.counts.overdue     || 0;
-      combined.never       += d.counts.never       || 0;
-      combined.volunteer   += d.counts.volunteer   || 0;
-      combined.injured     += d.counts.injured     || 0;
-      combined.finalNotice += d.counts.finalNotice || 0;
+      for (const m of ((d && d.members) || [])) {
+        if (m.variant === 'inactive') continue;
+        c.active++;
+        if (m.status !== 'volunteer' && this._injuryOf(m)) { c.injured++; continue; }
+        if (c[m.status] != null) c[m.status]++;
+        if (m.finalNotice) c.finalNotice++;
+      }
     }
-    return combined;
+    return c;
   }
+
+  // Counts used to label the status chips — summed over the tab's shards.
+  _activeCounts() { return this._countsFor(this._shardKeys()); }
 
   // Excludes the Inactive section — this feeds the "All" status chip,
   // which is a payment-status total, not a headcount of everyone shown
   // on the screen.
-  _activeTotal() {
-    let n = 0;
-    for (const k of this._shardKeys()) {
-      const d = this.membersByTab[k];
-      if (d) n += (d.total || 0) - (d.inactiveCount || 0);
-    }
-    return n;
-  }
+  _activeTotal() { return this._countsFor(this._shardKeys()).active; }
 
   // ── 'All' aggregation helpers ───────────────────────────────────────
   // Combine the four per-category payloads (mens/womens/boys/girls) that
@@ -695,9 +680,10 @@ class PaymentsScreen extends Screen {
       const copyReady = MessageCopy.load(this.auth); // payment notice wording (migration 367), in parallel
       const formsReady = window.SectionContact ? SectionContact.load(this.auth) : Promise.resolve(); // 📇 section forms
       const disputesReady = this._loadFineDisputes();                // ⚖️ strip on the card (mig 1210)
+      const healthReady = window.PlayerSheet ? PlayerSheet.loadHealth(this.auth) : Promise.resolve();   // 🩹 sections (mig 1235)
       copyReady.then(() => this._loadVolunteerRequests());           // 🙋 panel (mig 1222)
       const res = await this.auth.fetch(`/api/payments/${key}/members`);
-      await Promise.all([copyReady, formsReady, disputesReady]);
+      await Promise.all([copyReady, formsReady, disputesReady, healthReady]);
       if (!res.ok) {
         const body = await res.text();
         throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
@@ -776,8 +762,11 @@ class PaymentsScreen extends Screen {
     const inactiveMembers = (data.members || [])
       .filter((mm) => mm.variant === 'inactive' && searchMatch(mm));
 
+    const injuredOf = (mm) => (mm.status !== 'volunteer' ? this._injuryOf(mm) : null);
     const rows = (data.members || []).filter((mm) => {
       if (mm.variant === 'inactive') return false;
+      if (this.statusFilter === 'injured') return !!injuredOf(mm) && searchMatch(mm);
+      if (injuredOf(mm)) return !this.statusFilter && searchMatch(mm);
       if (this.statusFilter === 'final-notice') return !!mm.finalNotice;
       if (this.statusFilter && mm.status !== this.statusFilter) return false;
       return searchMatch(mm);
@@ -810,8 +799,16 @@ class PaymentsScreen extends Screen {
     const byStatus = {};
     for (const st of statusOrder) byStatus[st] = [];
     const other = [];
+    // 🩹 one section per injury kind (Short-term, Long-term — health
+    // statuses in their order), real balances shown: the owner decides at
+    // billing time (mig 1235).
+    const byInjury = new Map();
     for (const row of rows) {
-      if (byStatus[row.status]) byStatus[row.status].push(row);
+      const inj = injuredOf(row);
+      if (inj) {
+        if (!byInjury.has(inj.code)) byInjury.set(inj.code, { status: inj.status, list: [] });
+        byInjury.get(inj.code).list.push(row);
+      } else if (byStatus[row.status]) byStatus[row.status].push(row);
       else other.push(row);
     }
 
@@ -931,8 +928,24 @@ class PaymentsScreen extends Screen {
         </section>`
       : '';
 
+    const healthOrder = ((window.PlayerSheet && PlayerSheet.HEALTH.statuses) || []).map((h) => h.code);
+    const injuredHtml = [...byInjury.entries()]
+      .sort((a, b) => healthOrder.indexOf(a[0]) - healthOrder.indexOf(b[0]))
+      .map(([, g]) => `
+        <section style="margin-bottom: var(--space-5);">
+          ${sectionBar({ icon: g.status.icon || '🩹', label: String(g.status.displayName || '').toUpperCase(),
+                         fg:'#78350f', bg:'#fef3c7', border:'#d97706' }, g.list.length)}
+          <div style="font-size:0.8rem; opacity:0.75; margin:-6px 0 8px;">${this.escape(this._sheetCopy('injured_section_note', 'Billed as usual unless you skip them — you decide at billing time.'))}</div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--space-3);">
+            ${g.list.map((mm) => this.renderMemberCard(mm)).join('')}
+          </div>
+        </section>`).join('');
+
     m.innerHTML = inactiveHtml + overdueMonthsHtml + overdueUnknownHtml
-      + statusOrder.filter((st) => st !== 'overdue').map(groupHtml).join('') + otherHtml;
+      + statusOrder.filter((st) => st !== 'overdue' && st !== 'injured').map(groupHtml).join('') + injuredHtml + otherHtml;
+    // An open player sheet follows the fresh rows (due date moved, dispute
+    // settled, health changed).
+    if (window.PlayerSheet) PlayerSheet.refresh();
     // Team status + official-list pills (mig 1221) arrive after the cards.
     if (window.PersonStanding && PersonStanding.fillRosters) PersonStanding.fillRosters(this.auth, m);
   }
@@ -1200,7 +1213,9 @@ class PaymentsScreen extends Screen {
     return part === 'label' ? ({ volunteer: '🙋 Volunteer', injured: '🩹 Injured' }[status] || status) : '';
   }
 
-  renderMemberCard(m) {
+  // Everything a Tuition row shows, in pieces: the card front takes a
+  // few, the player sheet's tabs take the rest (owner 2026-11-11).
+  _cardParts(m) {
     const duesFree = m.status === 'volunteer' || m.status === 'injured';
     const badge = this.renderStatusBadge(m.status, m.daysOverdue);
     const name  = `${this.escape(m.firstName || '')} ${this.escape(m.lastName || '')}`.trim() || '—';
@@ -1290,6 +1305,7 @@ class PaymentsScreen extends Screen {
                          noText: m.phoneSms === false, noCall: m.phoneCall === false }],
           messages: contactMessages,
           flagged: !!anyNotice,
+          big: true,
           title: anyNotice ? this._paymentNoticeTitle(anyNotice, emailNotice ? 'email' : 'sms') : '',
         })
       : '';
@@ -1349,40 +1365,114 @@ class PaymentsScreen extends Screen {
     const finesCells = this.renderFinesCells(m);
     const finesDetail = this.renderFinesDetail(m);
 
+    return { duesFree, badge, name, lastLine, dobLine, contactLine, activityLine, recentHtml,
+             laBtn, contactBtn, flagBtn, pauseBtn, prorateCell, finesCells, finesDetail, anyNotice };
+  }
+
+  // The card front: name + chips + the ⋯ button, team pills, a banner
+  // when something needs the owner, the dues hero and the ghost line.
+  // Every action lives in the player sheet (PlayerSheet, mig 1235).
+  renderMemberCard(m) {
+    const c = this._cardParts(m);
+    const key = this._sheetKey(m);
+    const disputes = this._pendingDisputes(m);
+    const banner = disputes.length
+      ? `<button type="button" data-player-sheet="${this.escape(key)}" data-sheet-tab="fines"
+                 style="text-align:left; font-size:0.82rem; font-weight:700; cursor:pointer; color:#fde68a;
+                        background:#3a2e05; border:1px solid #d97706; border-radius:6px; padding:6px 10px;">
+           ${this.escape(this._sheetCopy('dispute_banner', `⚖️ ${disputes.length} fine dispute(s) waiting — tap to settle`, { count: disputes.length }))} ›
+         </button>`
+      : '';
+    const injury = m.status !== 'volunteer' ? this._injuryOf(m) : null;
+    const injuryChip = injury
+      ? `<button type="button" data-player-sheet="${this.escape(key)}" data-sheet-tab="health"
+                 style="align-self:flex-start; font-size:0.75rem; font-weight:800; cursor:pointer; padding:2px 8px; border-radius:4px;
+                        background:${injury.status.colorBg || '#3a2e05'}; color:${injury.status.colorFg || '#fde68a'}; border:1px solid ${injury.status.colorBorder || '#d97706'};">
+           ${this.escape(injury.label || injury.status.displayName)}</button>`
+      : '';
     return `
       <div class="pay-member-card"
-           data-la-user-id="${m.laUserId || ''}"
+           data-player-key="${this.escape(key)}"
            style="background: var(--bg-secondary, #111827); border:1px solid var(--border-color, #374151);
-                  border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px;
-                  ${m.laUserId ? 'cursor:pointer;' : ''}">
+                  border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:8px; cursor:pointer;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-          <div style="font-weight:700; font-size:1rem;">${name}</div>
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${prorateCell}${finesCells}${badge}</div>
+          <div style="font-weight:700; font-size:1rem;">${c.name}</div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${c.prorateCell}${c.finesCells}${c.badge}${window.PlayerSheet ? PlayerSheet.button(key, { tab: 'money' }) : ''}</div>
         </div>
         ${m.personId ? `<div data-roster-standing="${m.personId}"></div>` : ''}
-        ${this.renderDisputeStrip(m)}
-        ${finesDetail}
-        ${duesFree ? `<div style="font-size:0.8rem; color:${m.status === 'injured' ? '#fbbf24' : '#93c5fd'}; background:${m.status === 'injured' ? '#3a2e05' : '#172554'}; border:1px solid ${m.status === 'injured' ? '#d97706' : '#2563eb'}; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
-        ${dobLine}
-        ${contactLine}
-        ${activityLine}
-        <div style="font-size:0.8rem; opacity:0.85;">${lastLine}</div>
-        ${duesFree ? '' : this.renderDueDateDropdown(m)}
-        <div style="font-size:0.75rem; opacity:0.7;">
-          Lifetime: ${this.fmtMoney(m.totalPaid || 0)}
-          ${m.totalRefunded ? ` · refunded ${this.fmtMoney(m.totalRefunded)}` : ''}
-          · ${m.txnCount || 0} payment${m.txnCount === 1 ? '' : 's'}
-        </div>
-        <div style="border-top:1px dashed var(--border-color, #374151); padding-top:6px;
-                    font-size:0.75rem; display:flex; flex-direction:column; gap:2px;">
-          <div style="opacity:0.6; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px;">
-            Recent (this month + last)
-          </div>
-          ${recentHtml}
-        </div>
-        <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">${laBtn}${contactBtn}${duesFree ? '' : pauseBtn + flagBtn}${window.PersonActions ? window.PersonActions.buttonsHtml({ leagueAppsUserId: m.laUserId, firstName: m.firstName, fullName: `${m.firstName || ''} ${m.lastName || ''}`.trim() }, { returnTo: 'payments', size: 'md' }) : ''}</div>
+        ${injuryChip}
+        ${banner}
+        ${c.duesFree ? `<div style="font-size:0.8rem; color:#93c5fd; background:#172554; border:1px solid #2563eb; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
+        ${c.activityLine}
       </div>
     `;
+  }
+
+  _sheetKey(m) { return m.laUserId ? `la${m.laUserId}` : `p${m.personId}`; }
+  _memberByKey(key) {
+    for (const k of PaymentsScreen.ALL_TABS) {
+      const hit = ((this.membersByTab[k] && this.membersByTab[k].members) || []).find((m) => this._sheetKey(m) === key);
+      if (hit) return hit;
+    }
+    return null;
+  }
+  _sheetCopy(tier, fallback, tokens) {
+    return (window.MessageCopy && MessageCopy.has('player_sheet', tier)) ? MessageCopy.block('player_sheet', tier, tokens || {}) : fallback;
+  }
+  _pendingDisputes(m) {
+    return ((this.fineDisputesByPerson && this.fineDisputesByPerson.get(m.personId)) || []).filter((d) => d.amount != null);
+  }
+
+  // ⋯ / card tap → the player sheet, starting on `tab`.  #payments adds
+  // what it holds to the sheet's fixed tabs.
+  openPlayerSheet(key, tab) {
+    if (!window.PlayerSheet) return;
+    this._snapshotHistoryState();   // 👤 Full profile → back lands on this tab/search
+    PlayerSheet.open({
+      host: this.element,
+      auth: this.auth,
+      tab: tab || 'money',
+      resolve: () => {
+        const m = this._memberByKey(key);
+        return m ? { personId: m.personId, laUserId: m.laUserId, firstName: m.firstName, lastName: m.lastName,
+                     dob: m.dob ? this.fmtDob(m.dob) : '', email: m.email, phone: m.phone,
+                     phoneLabel: m.phone ? this.fmtPhone(m.phone) : '', returnTo: 'payments', _row: m } : null;
+      },
+      extras: (p) => this._sheetExtras(p._row),
+      onChange: () => this.renderMembers(),
+    });
+  }
+
+  _sheetExtras(m) {
+    const c = this._cardParts(m);
+    const box = (title, html) => `
+      <div style="border-top:1px dashed var(--border-color, #374151); padding-top:8px; margin-top:8px;">
+        ${title ? `<div style="opacity:0.6; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">${title}</div>` : ''}
+        ${html}
+      </div>`;
+    const actions = [c.laBtn, c.duesFree ? '' : c.pauseBtn + c.flagBtn].join('');
+    const money = `
+      ${c.duesFree ? `<div style="font-size:0.85rem; color:#93c5fd; background:#172554; border:1px solid #2563eb; border-radius:6px; padding:6px 10px;">${this.escape(this._duesFreeCopy(m.status, 'note'))}</div>` : this.renderDueHero(m)}
+      <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px;">${c.prorateCell}${c.badge}</div>
+      <div style="font-size:0.85rem; margin-top:8px;">${c.lastLine}</div>
+      ${c.duesFree ? '' : `<div style="margin-top:6px;">${this.renderDueDateDropdown(m)}</div>`}
+      <div style="font-size:0.8rem; opacity:0.75; margin-top:6px;">
+        Lifetime: ${this.fmtMoney(m.totalPaid || 0)}${m.totalRefunded ? ` · refunded ${this.fmtMoney(m.totalRefunded)}` : ''}
+        · ${m.txnCount || 0} payment${m.txnCount === 1 ? '' : 's'}
+      </div>
+      ${box('Recent (this month + last)', `<div style="font-size:0.8rem;">${c.recentHtml}</div>`)}
+      ${actions ? box('', `<div style="display:flex; gap:6px; flex-wrap:wrap;">${actions}</div>`) : ''}`;
+    const disputes = this._pendingDisputes(m);
+    const fines = `${this.renderDisputeStrip(m)}
+      ${c.finesCells ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">${c.finesCells}</div>` : ''}
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">${c.finesDetail.replace(/ hidden\n/g, '\n')}</div>`;
+    return {
+      person: '',
+      contact: c.contactBtn ? `<div style="display:flex;">${c.contactBtn}</div>` : '',
+      money: { html: money, flag: !!c.anyNotice },
+      fines: { html: (disputes.length || c.finesCells) ? fines : '', flag: disputes.length > 0 },
+      activity: c.activityLine,
+    };
   }
 
   // One box per month of fines (row.fines from /api/payments/:program/
@@ -2665,9 +2755,9 @@ class PaymentsScreen extends Screen {
       outstandingTotal += s.outstandingTotal;
       if (s.monthsElapsed > earliestMonthsElapsed) earliestMonthsElapsed = s.monthsElapsed;
       inactiveCount += d.inactiveCount || 0;
-      for (const c of Object.keys(counts)) counts[c] += (d.counts && d.counts[c]) || 0;
       loaded.push(k);
     }
+    Object.assign(counts, (({ current, behind, overdue, never, volunteer, injured }) => ({ current, behind, overdue, never, volunteer, injured }))(this._countsFor(loaded)));
     const avgPerMonth         = earliestMonthsElapsed > 0 ? netCollected     / earliestMonthsElapsed : 0;
     const outstandingPerMonth = earliestMonthsElapsed > 0 ? outstandingTotal / earliestMonthsElapsed : 0;
     return {
