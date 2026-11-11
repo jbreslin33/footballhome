@@ -226,11 +226,8 @@ class CalendarScreen extends Screen {
           alert('This match hasn\'t been linked to a lineup yet — it may be missing a team tag in the calendar sync.');
           return;
         }
-        this.navigation.goTo('game-center', {
-          matchId: ev.match_id,
-          title: s.title,
-          when: [s.dateStr, s.timeStr].filter(Boolean).join(' · '),
-        });
+        // One door for every event (EventKindSwitch.open, #event/<id>).
+        EventKindSwitch.open(this.navigation, ev);
       });
       overlay.querySelector('.ea-result-btn').addEventListener('click', () => {
         close();

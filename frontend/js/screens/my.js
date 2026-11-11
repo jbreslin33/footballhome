@@ -345,17 +345,12 @@ class MyScreen extends Screen {
       const gameCenterBtn = target.closest('[data-game-center-match-id]');
       if (gameCenterBtn) {
         e.stopPropagation();
+        // Every event opens Event Center the one way (owner 2026-11-11:
+        // "they are all events so they need to goto event page when clicked
+        // from anywhere") — EventKindSwitch.open, #event/<id>.
         const matchId = parseInt(gameCenterBtn.getAttribute('data-game-center-match-id'), 10);
-        if (matchId) {
-          this.navigation.goTo('game-center', {
-            matchId,
-            title: gameCenterBtn.getAttribute('data-game-center-title') || '',
-            when: gameCenterBtn.getAttribute('data-game-center-when') || '',
-            // My is for looking, for everyone — staff set lineups from the
-            // top-level Game Center tile (owner 2026-09-17).
-            view: 'player',
-          });
-        }
+        const ev = (this.events || []).concat(this.oldEvents || []).find(x => x.match_id === matchId);
+        if (ev) EventKindSwitch.open(this.navigation, ev);
         return;
       }
       // Bulk "Email N Going" — BCC compose, blank body for a custom message
@@ -374,12 +369,8 @@ class MyScreen extends Screen {
         const fhEventId = parseInt(eventCenterBtn.getAttribute('data-event-center'), 10);
         const ev = (this.events || []).find(x => x.fh_event_id === fhEventId)
                 || (this.oldEvents || []).find(x => x.fh_event_id === fhEventId);
-        // A practice / pickup opens #practice; a game opens the base #event
-        // screen, which marks a game's attendance until Game Center does.
-        if (ev) {
-          if (ev.kind === 'match') this.navigation.goTo('event', { event: ev });
-          else EventKindSwitch.open(this.navigation, ev);
-        }
+        // One door for every kind (EventKindSwitch.open, #event/<id>).
+        if (ev) EventKindSwitch.open(this.navigation, ev);
         return;
       }
       // "Not Going" list show/hide (collapsed by default — can be a long

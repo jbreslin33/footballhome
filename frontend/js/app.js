@@ -23,12 +23,6 @@ class App {
       tactical: new TacticalScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
-      teamDashboard: new TeamDashboardScreen(this.navigation, this.auth),
-      practiceOptions: new PracticeOptionsScreen(this.navigation, this.auth),
-      practiceManagement: new PracticeManagementScreen(this.navigation, this.auth),
-      practiceForm: new PracticeFormScreen(this.navigation, this.auth),
-      practiceList: new PracticeListScreen(this.navigation, this.auth),
-      practiceDetail: new PracticeDetailScreen(this.navigation, this.auth),
       practicePlan: new PracticePlanScreen(this.navigation, this.auth),
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
@@ -120,12 +114,6 @@ class App {
     this.screenManager.register('tactical', this.screens.tactical);
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('club-selection', this.screens.clubSelection);
-    this.screenManager.register('team-dashboard', this.screens.teamDashboard);
-    this.screenManager.register('practice-options', this.screens.practiceOptions);
-    this.screenManager.register('practice-management', this.screens.practiceManagement);
-    this.screenManager.register('practice-form', this.screens.practiceForm);
-    this.screenManager.register('practice-list', this.screens.practiceList);
-    this.screenManager.register('practice-detail', this.screens.practiceDetail);
     this.screenManager.register('practice-plan', this.screens.practicePlan);
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);

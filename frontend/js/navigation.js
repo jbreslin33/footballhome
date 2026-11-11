@@ -112,6 +112,10 @@ class NavigationStateMachine {
     // #role-selection was renamed #main-menu (2026-11-11); a saved return
     // point or an old link still lands.
     if (state === 'role-selection') state = 'main-menu';
+    // Retired screens (2026-11-11, owner: "old code gunking this all up"):
+    // the pre-calendar practice screens + the unlinked team dashboard.
+    // Events live in Event Center now; an old link still lands somewhere.
+    if (NavigationStateMachine.RETIRED[state]) state = NavigationStateMachine.RETIRED[state];
     // Store current state in history — every time, same screen or not,
     // because the browser gets an entry every time (see constructor).
     if (this.currentState) {
@@ -307,15 +311,6 @@ class NavigationStateMachine {
   // Clear context set by specific screens when navigating back
   clearContextForScreen(screenName) {
     switch(screenName) {
-      case 'practice-options':
-        // Going back from practice options clears team (set by team-selection)
-        this.context.team = null;
-        break;
-      case 'practice-management':
-      case 'practice-form':
-      case 'practice-list':
-        // Going back from these screens - nothing to clear (team stays)
-        break;
       case 'main-menu':
         // Going back from the main menu clears user (would go to login)
         this.context.user = null;
@@ -331,3 +326,10 @@ class NavigationStateMachine {
     this._clearPendingBack();
   }
 }
+
+// Old screen names → where they land now (see goTo).
+NavigationStateMachine.RETIRED = {
+  "team-dashboard": "main-menu",
+  "practice-options": "event-center", "practice-management": "event-center",
+  "practice-form": "event-center", "practice-list": "event-center", "practice-detail": "event-center",
+};
