@@ -1713,6 +1713,8 @@ class MyScreen extends Screen {
     if (!f || !Array.isArray(f.months) || !MessageCopy.has('my_fines', 'heading')) { host.hidden = true; host.innerHTML = ''; return; }
     const money = (n) => { const v = Number(n) || 0; return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`; };
     const kindLabel = (k) => ({ match: 'Game', intrasquad: 'Intra Squad', practice: 'Practice' }[k] || k || '');
+    // A period's dates, first Friday → day before the next (mig 1207).
+    const periodDay = (iso) => { const d = iso ? new Date(`${iso}T12:00:00`) : null; return d && !isNaN(d) ? `${d.getMonth() + 1}/${d.getDate()}` : ''; };
     const cell = 'padding:3px 6px; border-bottom:1px solid rgba(255,255,255,0.08); vertical-align:top;';
 
     const rules = this.fineRules.length ? `
@@ -1738,7 +1740,7 @@ class MyScreen extends Screen {
               <td style="${cell} text-align:right; font-weight:800; white-space:nowrap;">${money(it.amount)}</td>
             </tr>`;
           }).join('')}
-          <tr><td colspan="3" style="padding:3px 6px 8px; text-align:right; font-weight:800; font-size:0.72rem;">${this.escapeHtml(MessageCopy.block('my_fines', 'month_total', { month: mo.label, amount: money(mo.total) }))}</td></tr>`).join('')}
+          <tr><td colspan="3" style="padding:3px 6px 8px; text-align:right; font-weight:800; font-size:0.72rem;">${this.escapeHtml(MessageCopy.block('my_fines', 'month_total', { month: mo.label, from: periodDay(mo.from), to: periodDay(mo.to), amount: money(mo.total) }))}</td></tr>`).join('')}
       </table>` : `<div style="font-size:0.74rem; opacity:0.75; margin-top:6px;">${this.escapeHtml(MessageCopy.block('my_fines', 'empty'))}</div>`;
 
     host.hidden = false;

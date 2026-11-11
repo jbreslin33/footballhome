@@ -4,9 +4,11 @@
 //
 // Nothing is typed in here.  GET /api/fines rolls up the same derived
 // fines as the #payments boxes (fh_person_fines, mig 460 — RSVPs and
-// attendance against fine_policies) by month and by player, with where
-// each finished month's LeagueApps posting stands (posted / not on LA /
-// post on the first Friday / LA has a different amount).
+// attendance against fine_policies) by tuition period and by player, with
+// where each finished period's LeagueApps posting stands (posted / not on
+// LA / post on the first Friday / LA has a different amount).  A period
+// runs first Friday → next first Friday, named for the month it starts in
+// (mig 1207: "same schedule as tuition") — "Oct 10/2–11/5".
 //
 //   Month pills   All months, then each month newest first; a month pill
 //                 narrows the table to that month's fines and shows its
@@ -26,6 +28,12 @@ class FinesScreen extends Screen {
 
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('fines', tier, tokens) : ''; }
   static money(n) { const v = Number(n) || 0; return Number.isInteger(v) ? `$${v}` : `$${v.toFixed(2)}`; }
+  // "Oct 10/2–11/5" — a period's name with its dates (mig 1207).
+  _period(m) {
+    if (!m) return '';
+    const tokens = { month: m.label, from: this._md(m.from), to: this._md(m.to) };
+    return (m.from && this._copy('period_range', tokens)) || (m.from ? `${m.label} ${tokens.from}–${tokens.to}` : m.label);
+  }
   _md(iso) { if (!iso) return ''; const d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : '')); return isNaN(d) ? '' : `${d.getMonth() + 1}/${d.getDate()}`; }
 
   render() {
@@ -151,7 +159,7 @@ class FinesScreen extends Screen {
     if (this.month !== 'all' && !months.some(m => m.month === this.month)) this.month = 'all';
     const pill = (key, label, n) => `<button class="fi-pill${this.month === key ? ' on' : ''}" data-fi-month="${key}">${this.escapeHtml(label)}${n != null ? `<span class="n">${this.escapeHtml(n)}</span>` : ''}</button>`;
     el.innerHTML = pill('all', this._copy('month_all') || 'All months', null)
-      + months.map(m => pill(m.month, `${m.label}${m.current ? ` (${this._copy('so_far') || 'so far'})` : ''}`, FinesScreen.money(m.total))).join('')
+      + months.map(m => pill(m.month, `${this._period(m)}${m.current ? ` (${this._copy('so_far') || 'so far'})` : ''}`, FinesScreen.money(m.total))).join('')
       + `<span style="flex:1;"></span>
          <span style="font-size:0.8rem; opacity:0.75;">Sort</span>
          <button class="fi-pill${this.sort === 'total' ? ' on' : ''}" data-fi-sort="total">Highest total</button>
@@ -198,7 +206,7 @@ class FinesScreen extends Screen {
     for (const m of picked) for (const [k, v] of Object.entries(m.by_kind || {})) { byKind[k] = byKind[k] || { label: v.label, count: 0, total: 0 }; byKind[k].count += v.count; byKind[k].total += v.total; }
     const posting = { posted: 0, not_posted: 0, due: 0, drift: 0 };
     for (const m of picked) if (!m.current && m.posting) for (const k of Object.keys(posting)) posting[k] += m.posting[k] || 0;
-    const monthWord = this.month === 'all' ? `over the last ${d.months_back || 6} months` : `in ${(picked[0] || {}).label || this.month}`;
+    const monthWord = this.month === 'all' ? `over the last ${d.months_back || 6} months` : `in ${this._period(picked[0]) || this.month}`;
 
     const stat = (k, v, s) => `<div class="fi-stat"><div class="k">${this.escapeHtml(k)}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`;
     const stats = `<div class="fi-stats">
@@ -209,7 +217,7 @@ class FinesScreen extends Screen {
     </div>`;
 
     const itemsHtml = (p) => p.pickedMonths.map(m => (m.items || []).length ? `
-      <div><b>${this.escapeHtml(m.label)}</b> ${FinesScreen.money(m.total)} ${this._postPill(m)}</div>
+      <div><b>${this.escapeHtml(this._period(m))}</b> ${FinesScreen.money(m.total)} ${this._postPill(m)}</div>
       ${m.items.map(it => `<div>· ${this.escapeHtml(this._md(it.startAt))} ${this.escapeHtml(it.eventKind === 'match' ? `Game${it.opponent ? ' vs ' + it.opponent : ''}` : it.eventKind === 'practice' ? 'Practice' : it.eventKind || 'Event')} — ${this.escapeHtml(it.label)} <b>${FinesScreen.money(it.amount)}</b></div>`).join('')}` : '').join('');
 
     const table = rows.length ? `
@@ -222,7 +230,7 @@ class FinesScreen extends Screen {
               <td style="text-align:left; opacity:0.75; white-space:normal;">${this.escapeHtml(p.teams || '')}</td>
               <td>${p.pickedCount}</td>
               <td class="fi-kinds" style="text-align:left; white-space:normal;">${Object.values(p.byKind).map(v => `${v.n}× ${this.escapeHtml(v.label)}`).join(' · ')}</td>
-              <td style="text-align:left;">${p.pickedMonths.filter(m => (m.items || []).length).map(m => `${this.escapeHtml(m.label)} ${FinesScreen.money(m.total)}${this._postPill(m)}`).join('<br>')}</td>
+              <td style="text-align:left;">${p.pickedMonths.filter(m => (m.items || []).length).map(m => `${this.escapeHtml(this._period(m))} ${FinesScreen.money(m.total)}${this._postPill(m)}`).join('<br>')}</td>
               <td><b>${FinesScreen.money(p.pickedTotal)}</b></td>
             </tr>
             ${this.open.has(p.person_id) ? `<tr class="items"><td colspan="6">${itemsHtml(p)}</td></tr>` : ''}`).join('')}

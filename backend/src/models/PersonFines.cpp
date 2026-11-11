@@ -38,12 +38,18 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     if (ids.empty()) return out;
     if (monthsBack <= 0) monthsBack = 3;
     const std::string back = std::to_string(monthsBack - 1);
+    // Periods run first Friday → next first Friday, the tuition dates
+    // (mig 1207; owner 2026-11-09: "same schedule as tuition").  A period
+    // is named for the month it starts in; `cur` is the one running now.
+    const std::string cur = "fh_fine_period_month(now())";
+    const std::string oldest = "(" + cur + " - interval '" + back + " months')::date";
 
     // Who is fineable, and since when: on an active team in a section with
     // a fine policy in force today.  `since` is the earliest such policy,
     // so the month boxes never reach back before fines existed.
     std::ostringstream who;
-    who << "SELECT tp.person_id, min(fp.effective_from)::text AS since, min(t.club_id) AS club_id"
+    who << "SELECT tp.person_id, min(fp.effective_from)::text AS since, min(t.club_id) AS club_id,"
+        << "       to_char(fh_fine_period_month(min(fp.effective_from)::timestamp AT TIME ZONE 'America/New_York'), 'YYYY-MM') AS since_ym"
         << "  FROM team_persons tp"
         << "  JOIN teams t ON t.id = tp.team_id AND t.is_active AND t.club_section_id IS NOT NULL"
         << "  JOIN fine_policies fp ON fp.club_id = t.club_id"
@@ -54,31 +60,30 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     auto whoRows = db_->query(who.str());
     if (whoRows.empty()) return out;
 
-    // The month boxes: this month and the (monthsBack − 1) before it, club
-    // time, oldest first.
+    // The period boxes: the period running now and the (monthsBack − 1)
+    // before it, oldest first, each with its dates (from … to, inclusive).
     std::ostringstream months;
     months << "SELECT to_char(d, 'YYYY-MM') AS ym, to_char(d, 'Mon') AS label,"
            << "       to_char(d, 'YYYY-MM-DD') AS first_day,"
-           << "       to_char(first_friday_of_month(d::timestamptz), 'YYYY-MM-DD') AS first_friday,"
+           << "       to_char(fh_first_friday(d::date), 'YYYY-MM-DD') AS first_friday,"
+           << "       to_char(fh_first_friday(d::date), 'YYYY-MM-DD') AS period_from,"
+           << "       to_char(fh_first_friday((d + interval '1 month')::date) - 1, 'YYYY-MM-DD') AS period_to,"
            << "       to_char(d + interval '1 month', 'YYYY-MM') AS post_ym,"
            << "       to_char(d + interval '1 month', 'Mon') AS post_label,"
-           << "       to_char(first_friday_of_month((d + interval '1 month')::timestamptz), 'YYYY-MM-DD') AS post_first_friday,"
+           << "       to_char(fh_first_friday((d + interval '1 month')::date), 'YYYY-MM-DD') AS post_first_friday,"
            << "       to_char(now() AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS today"
-           << "  FROM generate_series("
-           << "         date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date - interval '" << back << " months',"
-           << "         date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date,"
-           << "         interval '1 month') d ORDER BY d";
+           << "  FROM generate_series(" << oldest << ", " << cur << ", interval '1 month') d ORDER BY d";
     auto monthRows = db_->query(months.str());
 
-    // Every fine since the first shown month, oldest first, with its label.
+    // Every fine since the first shown period, oldest first, with its label
+    // and the period it falls in.
     std::ostringstream fines;
     fines << "SELECT f.person_id, f.fh_event_id, f.event_kind, f.opponent, f.fine_kind, k.label,"
           << "       f.amount_usd::text AS amount, f.response, f.attendance,"
-          << "       to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym,"
+          << "       to_char(fh_fine_period_month(f.starts_at), 'YYYY-MM') AS ym,"
           << "       to_char(f.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS start_iso"
           << "  FROM fh_person_fines(ARRAY[" << ids << "]::int[],"
-          << "         ((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date"
-          << "            - interval '" << back << " months')::timestamp AT TIME ZONE 'America/New_York')) f"
+          << "         fh_fine_period_start_of(" << oldest << ")) f"
           << "  JOIN fine_kinds k ON k.code = f.fine_kind"
           << " ORDER BY f.person_id, f.starts_at";
     auto fineRows = db_->query(fines.str());
@@ -99,9 +104,9 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     //                                equal fall later is not a posting.
     //   before it                    the card charges (person_payments),
     //                                the only trace there is.
-    const std::string windowStart =
-        "((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date"
-        " - interval '" + back + " months')::timestamp AT TIME ZONE 'America/New_York')";
+    // Charges land on a first Friday, so they are bucketed by calendar
+    // month from the first shown period's month.
+    const std::string windowStart = "(" + oldest + "::timestamp AT TIME ZONE 'America/New_York')";
     std::ostringstream charges;
     charges << "SELECT person_id, amount, ym, day FROM ("
             << "SELECT p.id AS person_id, pp.amount::text AS amount, pp.paid_at AS at,"
@@ -182,7 +187,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     for (const auto& w : whoRows) {
         const int pid = w["person_id"].as<int>();
         const std::string since = w["since"].c_str();          // YYYY-MM-DD
-        const std::string sinceYm = since.substr(0, 7);
+        const std::string sinceYm = w["since_ym"].c_str();   // the period fines began in
         const double rate = rateByClub[w["club_id"].as<int>()];
         auto& myCharges = chargesBy[pid];
 
@@ -302,6 +307,8 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
             monthsJson.push_back({
                 {"month",   ym},
                 {"label",   m["label"].c_str()},
+                {"from",    m["period_from"].c_str()},          // first Friday
+                {"to",      m["period_to"].c_str()},            // day before the next one
                 {"current", ym == currentYm},
                 {"total",   t},
                 {"items",   std::move(items)},

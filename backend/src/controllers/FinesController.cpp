@@ -157,7 +157,8 @@ Response FinesController::handleBoard(const Request& request) {
             for (const auto& m : f["months"]) {
                 const std::string ym = m["month"].get<std::string>();
                 json& agg = monthAgg[ym];
-                if (agg.is_null()) agg = {{"month", ym}, {"label", m["label"]}, {"current", m["current"]}, {"total", 0.0}, {"fines", 0},
+                if (agg.is_null()) agg = {{"month", ym}, {"label", m["label"]}, {"from", m.value("from", "")}, {"to", m.value("to", "")},
+                                          {"current", m["current"]}, {"total", 0.0}, {"fines", 0},
                                           {"players_fined", 0}, {"by_kind", json::object()},
                                           {"posting", {{"posted", 0}, {"not_posted", 0}, {"due", 0}, {"drift", 0}}}};
                 const double t = m["total"].get<double>();
@@ -204,18 +205,19 @@ Response FinesController::handleBoard(const Request& request) {
             return a["section"].get<std::string>() != b["section"].get<std::string>() ? a["section"] < b["section"] : a["sort_order"] < b["sort_order"]; });
 
         // Waivers (mig 997): every unreversed stretch that touches the window,
-        // with what it took to $0 per month.  An open stretch while he is
+        // with what it took to $0 per period (first Friday → first Friday,
+        // mig 1207).  An open stretch while he is
         // still inactive shows $0 — invite-only spots owe nothing anyway.
         json waivers = json::array();
-        const std::string winStart = "((date_trunc('month', (now() AT TIME ZONE 'America/New_York')::date)::date - interval '"
-                                     + std::to_string(months - 1) + " months')::timestamp AT TIME ZONE 'America/New_York')";
+        const std::string winStart = "fh_fine_period_start_of((fh_fine_period_month(now()) - interval '"
+                                     + std::to_string(months - 1) + " months')::date)";
         for (const auto& w : db->query(
                 "SELECT w.id, w.person_id, COALESCE(p.first_name,'') || ' ' || COALESCE(p.last_name,'') AS name,"
                 "       p.la_user_id::text AS la_user_id, w.reason,"
                 "       to_char(w.waived_from AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS wfrom,"
                 "       to_char(w.waived_until AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS wuntil,"
                 "       COALESCE((SELECT json_object_agg(ym, amt)::text FROM ("
-                "           SELECT to_char(f.starts_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym, sum(f.amount_usd) AS amt"
+                "           SELECT to_char(fh_fine_period_month(f.starts_at), 'YYYY-MM') AS ym, sum(f.amount_usd) AS amt"
                 "             FROM fh_person_waived_fines(ARRAY[w.person_id], " + winStart + ") f"
                 "            WHERE f.waiver_id = w.id GROUP BY 1) m), '{}') AS by_month,"
                 "       (SELECT count(*) FROM fh_person_waived_fines(ARRAY[w.person_id], " + winStart + ") f WHERE f.waiver_id = w.id) AS n"

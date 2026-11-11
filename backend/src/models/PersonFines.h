@@ -9,7 +9,9 @@ class Database;
 
 // ────────────────────────────────────────────────────────────────────────────
 // PersonFines — read-only roll-up of the fines a person has earned, by
-// calendar month, for the #payments cards (migration 460).
+// tuition period, for the #payments cards (migration 460).  A period runs
+// first Friday → next first Friday and is named for the month it starts in
+// (mig 1207; owner 2026-11-09: "same schedule as tuition").
 //
 // Owner 2026-09-27: "we need a fines part to financial. similar to pro
 // rate. it should show next to pro rate ... always show last 3 months of
@@ -27,6 +29,7 @@ class Database;
 //   { "since": "2026-09-27",            the policy's first day
 //     "total": 4.00,                    across the shown months
 //     "months": [ { "month": "2026-09", "label": "Sep", "current": true,
+//                   "from": "2026-09-04", "to": "2026-10-01",   period dates
 //                   "total": 4.00,
 //                   "items": [ { "fhEventId", "startAt", "eventKind",
 //                                "opponent", "kind", "label", "amount",
@@ -48,8 +51,8 @@ class Database;
 // neither is dues + fines all the same: the fines posted are the
 // difference (drift when that is not the month's total).  Nothing is
 // marked by hand.
-// The months are the last three calendar months (club time), clipped to
-// the policy's first month, oldest first.  People on no such team are
+// The months are the last three periods (the one running now and the two
+// before), clipped to the policy's first period, oldest first.  People on no such team are
 // absent from the map — the card then shows nothing.
 // ────────────────────────────────────────────────────────────────────────────
 class PersonFines {
