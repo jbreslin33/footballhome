@@ -11,315 +11,21 @@ class RoleSelectionScreen extends Screen {
     const isAdmin = user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' || user.role === 'super' || user.role === 'system' || user.role === 'league');
     const adminButtonDisplay = isAdmin ? 'flex' : 'none';
 
-    // Marketing (Recruitment + all Socials/Communications — see backend
-    // Controller::requireAdminLevel call sites) is the one place for all
-    // of that; Club Admin no longer duplicates it. Visible to the
-    // marketing-only role and to any broader admin level (club/super/
-    // team/etc.) who needs to reach it too.
-    const canSeeMarketing = isAdmin || user?.role === 'marketing';
-    const marketingButtonDisplay = canSeeMarketing ? 'flex' : 'none';
     
     div.innerHTML = `
       <div class="screen-header">
         <h1>Welcome, ${this.escapeHtml(userName)}</h1>
-        <p class="subtitle">Choose your role to continue</p>
+        <p class="subtitle">${this.escapeHtml((window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', 'subtitle') && MessageCopy.block('main_menu', 'subtitle')) || 'Where to?')}</p>
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
-        <div style="display: flex; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Play</div>
+        <!-- Six groups (menu_groups / menu_pages, mig 1244): a button per
+             group; its pages are the pill row on every page inside it
+             (lib/main-menu.js).  Filled once GET /api/menu answers. -->
+        <div class="rs-groups" style="display: flex; flex-direction: column; gap: var(--space-4);">
+          <div style="opacity: 0.6; text-align: center; padding: var(--space-4);">Loading…</div>
+        </div>
 
-        <button class="btn btn-lg btn-primary" data-role="player" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">☑️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">RSVP</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Your schedule this week — say yes or no to each practice and game</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-secondary" data-role="calendar" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🗓️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Calendar</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Every game and practice, week by week</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="files" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📁</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Files</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Files shared with you — admins upload, keep private, or publish by link</div>
-          </div>
-        </button>
-
-        <a href="/game.html" class="btn btn-lg btn-primary" style="display: flex; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
-          <span style="font-size: 2rem;">⚽</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Game</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">11v11 soccer in your browser — tap a player and play (early preview)</div>
-          </div>
-        </a>
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Run the week</div>
-
-        <button class="btn btn-lg btn-primary" data-role="dashboard" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📊</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_title')) || 'Dashboard'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('dashboard', 'tile_sub')) || 'The club at a glance — RSVPs, dues, rosters, kit, leads; tap a cell to open its page'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="rsvps" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">✅</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">RSVP Reminders</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Who owes an answer — players, coaches, staff — remind by text or email with their events + sign-in link</div>
-          </div>
-        </button>
-
-        <!-- 📋 Event Center (owner 2026-10-26) — one tile for the Game Center
-             and Attendance tiles it replaced: games, practices, pickup on
-             type pills (lib/event-kind-switch.js).  Copy: kind=event_center. -->
-        <button class="btn btn-lg btn-primary" data-role="game-center" id="rs-game-center" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📋</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('event_center', 'tile_title')) || 'Event Center'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('event_center', 'tile_sub')) || 'Games, practices and pickup — squads, who\'s coming, attendance, groups'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="jobs" id="rs-jobs" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🧹</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Jobs</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Event jobs auto-assigned from who's going — cones, balls, lights, tents; flag only what didn't get done</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="coach-schedule" id="rs-coach-schedule" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); width: 100%; text-align: left;">
-          <span style="font-size: 2rem;">🗓️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('coach_schedule', 'tile_title')) || 'Coach Schedule'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('coach_schedule', 'tile_sub')) || "Set each coach's practice days"}</div>
-          </div>
-        </button>
-
-        <!-- 🏅 Awards (mig 800): All-Stars to the league director, club awards. Copy: kind=awards. -->
-        <button class="btn btn-lg btn-primary" data-role="awards" id="rs-awards" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏅</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('awards', 'tile_title')) || 'Awards'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('awards', 'tile_sub')) || 'All-Stars to the league, Most Improved, Most Dedicated — per team, per season'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="reports" id="rs-reports" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📊</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Reports</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Attendance &amp; RSVP — who answers, who shows, who went quiet</div>
-          </div>
-        </button>
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">People & teams</div>
-
-        <button class="btn btn-lg btn-primary" data-role="teams" id="rs-teams" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👥</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Teams</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Every player and every team on one board — assign, move, message</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="tactical" id="rs-tactical" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">♟️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Tactical</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Game model, practice plans, days, exercises, and the tactical board</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="kit" id="rs-kit" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👕</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Uniforms &amp; Kit</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Assign uniform numbers — tick off training shirts and pinnies handed out</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="texts" id="rs-texts" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📲</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('sms_opt_in', 'tile_title')) || 'Texts'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('sms_opt_in', 'tile_sub')) || 'Who has said yes to club texts — nudge the rest until they do'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="contacts" id="rs-contacts" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📇</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('contacts', 'tile_title')) || 'Contacts'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('contacts', 'tile_sub')) || 'Members, parents, coaches, leads and opponent contacts into your phone in one tap'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="security" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🔐</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Security</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Upload the photo of the locked gate after the last event — otherwise Football Home keeps calling until it is up</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="in-house-proposal" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏠</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('in_house_proposal', 'tile_title')) || 'In-House Proposal'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('in_house_proposal', 'tile_sub')) || ''}</div>
-          </div>
-        </button>
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Money</div>
-
-        <button class="btn btn-lg btn-primary" data-role="financial" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">💰</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Tuition</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Player dues — paid up, behind, blocked, reminders</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="finances" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📈</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Finances</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Summary · Revenue · Expenses — where the club stands and where it is heading</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="cash-flow" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">💵</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('cash_flow', 'tile_title')) || 'Money In & Out'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('cash_flow', 'tile_sub')) || 'LeagueApps money in against invoices out'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="fines" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">💸</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_title')) || 'Fines'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('fines', 'tile_sub')) || "Men's fines — missed RSVPs and no-shows by month, who owes what, what is on LeagueApps"}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="invoices" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🧾</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Invoices</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Biweekly invoices to The Lighthouse, Inc. — hours, expenses, instalments, print to PDF</div>
-          </div>
-        </button>
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Leagues & opponents</div>
-
-        <button class="btn btn-lg btn-primary" data-role="casa" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">⚽</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">CASA</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Commissioner — Liga 1 &amp; Liga 2 clubs, contacts, league mail</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="apsl" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <img class="apsl-crest" alt="" style="height: 2.4rem; width: 2rem; object-fit: contain; visibility: hidden;">
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_title')) || 'APSL Pyramid'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('apsl_pyramid', 'tile_sub')) || ''}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="opponents" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📇</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Opponents</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Text or email the clubs we play — by league, division and age group</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="league-schedules" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🗓</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('league_schedules', 'tile_title')) || 'League Schedules'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('league_schedules', 'tile_sub')) || "The leagues' own schedule pages — TeamSnap, TeamPass, CASA, GotSport — to check games against the calendar"}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="cup-rosters" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏆</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('cup_roster', 'tile_title')) || 'Cup Rosters'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('cup_roster', 'tile_sub')) || 'USASA / EPSA player pool sheets — tick players from APSL, Reserves and Liga 1, print to PDF'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="logos" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🛡️</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Club Logos</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Upload a folder of opponent crests named after the club, or capture one from a URL</div>
-          </div>
-        </button>
-
-        <div style="display: ${marketingButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">Club site & story</div>
-
-        <button class="btn btn-lg btn-primary" data-role="profiles" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👥</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('profiles', 'tile_title')) || 'Profiles'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('profiles', 'tile_sub')) || 'Players & people of the club — Brian Breslin: video, eulogy, Brian in the Papers, stats'}</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="marketing" style="display: ${marketingButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">📣</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Marketing</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">Leads and outbound communications</div>
-          </div>
-        </button>
-
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">${(window.MessageCopy && MessageCopy.block('installs', 'section')) || 'Installs'}</div>
-
-        <!-- Things you install (mig 670). FH Texter = the APK your Android
-             sends desktop-clicked texts with (mig 667). -->
-        <a href="/app/fh-texter.apk" download class="btn btn-lg btn-primary" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3); text-decoration: none; color: inherit;">
-          <span style="font-size: 2rem;">📱</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${(window.MessageCopy && MessageCopy.block('installs', 'fh_texter_title')) || 'FH Texter (Android)'}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${(window.MessageCopy && MessageCopy.block('installs', 'fh_texter_sub')) || 'Open on your Android to install — your phone then sends the texts you click on the desktop. Pair it from any text button.'}</div>
-          </div>
-        </a>
-
-        <div style="display: ${adminButtonDisplay}; margin: var(--space-2) 0 calc(-1 * var(--space-2)); font-weight: 700; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.55;">System</div>
-
-        <button class="btn btn-lg btn-primary" data-role="admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">👨‍💼</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">System administration</div>
-          </div>
-        </button>
-
-        <button class="btn btn-lg btn-primary" data-role="club-admin" style="display: ${adminButtonDisplay}; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">🏢</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">Club Admin</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">People, RSVP & club structure</div>
-          </div>
-        </button>
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
 
@@ -358,12 +64,14 @@ class RoleSelectionScreen extends Screen {
     // switch context (coach ↔ player, admin ↔ club-admin, etc).
     this._maybeAutoSkipToMy();
 
-    // Handle role selection via event delegation
+    this._drawGroups();
+
+    // Group buttons via event delegation
     this.element.addEventListener('click', (e) => {
-      const roleBtn = e.target.closest('[data-role]');
-      if (roleBtn) {
-        const role = roleBtn.dataset.role;
-        this.handleRoleSelection(role);
+      const groupBtn = e.target.closest('[data-menu-group]');
+      if (groupBtn) {
+        MainMenu.openGroup(groupBtn.dataset.menuGroup);
+        return;
       }
       
       // Handle logout
@@ -394,22 +102,28 @@ class RoleSelectionScreen extends Screen {
     // CSS `display: none` for non-admins, but we also short-circuit
     // the fetch to keep server logs clean.
     this._maybeLoadViewAsPicker();
-    this._loadApslCrest();
   }
 
-  // The APSL Pyramid tile's crest (mig 819): organizations.logo_url via
-  // GET /api/pyramid/roots — owner 2026-10-29: "use apsl logo … on button
-  // in main fh screen".  Admin tile only; no crest → the slot stays empty.
-  async _loadApslCrest() {
-    const img = this.element && this.element.querySelector('.apsl-crest');
-    if (!img || img.offsetParent === null) return;
+  // One big button per group the viewer has pages in; the line under it
+  // names those pages (the pills it opens onto).
+  async _drawGroups() {
+    const host = this.element && this.element.querySelector('.rs-groups');
+    if (!host) return;
     try {
-      const res = await this.auth.fetch('/api/pyramid/roots');
-      if (!res.ok) return;
-      const body = await res.json();
-      const root = (body.roots || []).find((r) => r.slug === 'apsl');
-      if (root && root.logo_url) { img.src = root.logo_url; img.style.visibility = 'visible'; }
-    } catch (_) { /* tile keeps its empty slot */ }
+      await MainMenu.load(this.auth);
+    } catch (err) {
+      console.error('[menu] load failed:', err);
+      host.innerHTML = `<div style="text-align:center; padding: var(--space-4);">${this.escapeHtml((window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', 'unavailable') && MessageCopy.block('main_menu', 'unavailable')) || 'Menu did not load — refresh the page.')}</div>`;
+      return;
+    }
+    host.innerHTML = MainMenu.groups().map((g) => `
+        <button class="btn btn-lg btn-primary" data-menu-group="${this.escapeHtml(g.code)}" style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 2rem;">${this.escapeHtml(g.icon)}</span>
+          <div style="flex: 1; text-align: left;">
+            <div style="font-weight: bold;">${this.escapeHtml(g.label)}</div>
+            <div style="font-size: 0.85rem; opacity: 0.8;">${g.pages.map((p) => this.escapeHtml(p.label)).join(' · ')}</div>
+          </div>
+        </button>`).join('');
   }
 
   async _maybeLoadViewAsPicker() {
@@ -524,136 +238,15 @@ class RoleSelectionScreen extends Screen {
     }
   }
   
+  // The old tile routes live in MainMenu.open (mig 1244) — the menu
+  // buttons and the pill rows share them.
   handleRoleSelection(role) {
-    // Store selected role in navigation context and navigate
-    // Calendar is a screen, not a role — don't let it show as one in the header.
-    if (!['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa', 'game-center', 'event-center', 'kit', 'teams', 'tactical', 'league-schedules', 'apsl'].includes(role)) this.navigation.context.role = role;
-    
-    if (role === 'admin') {
-      // Admin role - go directly to level selection
-      this.navigation.goTo('admin-level-selection');
-    } else if (role === 'club-admin') {
-      // Club Admin - fetch user's club and go to club admin dashboard
-      this.loadClubAdmin();
-    } else if (role === 'financial') {
-      // Tuition (was Financial until 2026-09-29: it is player dues; club
-      // money lives on #finances) — straight to Payments (the only tile this section
-      // has today; formerly buried under Club Admin's Billing group).
-      this.navigation.goTo('payments');
-    } else if (role === 'finances') {
-      // #finances (mig 490): summary, revenue and expense projections.
-      this.navigation.goTo('finances');
-    } else if (role === 'cash-flow') {
-      this.navigation.goTo('cash-flow');
-    } else if (role === 'in-house-proposal') {
-      this.navigation.goTo('in-house-proposal');
-    } else if (role === 'dashboard') {
-      // #dashboard (mig 548): the admin front page.
-      this.navigation.goTo('dashboard');
-    } else if (role === 'fines') {
-      // #fines (mig 534): the Men's fines by month and player.
-      this.navigation.goTo('fines');
-    } else if (role === 'game-center') {
-      // Not a role — the 📋 Event Center tile: the week calendar, every
-      // kind (owner 2026-10-27); a game tapped there opens Game Center.
-      this.navigation.goTo('event-center', { pick: true, kind: 'all' });
-    } else if (role === 'event-center') {
-      // Not a role — the attendance picker: attendance + invites for any
-      // event (moved off #my, owner 2026-09-17: staff tools get dedicated
-      // pages; renamed from Event Center 2026-09-24).
-      this.navigation.goTo('attendance', { pick: true });
-    } else if (role === 'kit') {
-      this.navigation.goTo('kit');
-    } else if (role === 'awards') {
-      // Not a role — #awards (mig 800).
-      this.navigation.goTo('awards');
-    } else if (role === 'coach-schedule') {
-      // Not a role — the days each coach covers (mig 955).
-      this.navigation.goTo('coach-schedule');
-    } else if (role === 'jobs') {
-      // Not a role — event jobs (mig 625): auto-assigned, default-done.
-      this.navigation.goTo('jobs');
-    } else if (role === 'texts') {
-      // Not a role — the club-texts opt-in board (mig 537).
-      this.navigation.goTo('texts');
-    } else if (role === 'profiles') {
-      // Not a role — the public Profiles section (static pages).
-      window.open('/profiles/', '_blank', 'noopener');
-    } else if (role === 'contacts') {
-      // Not a role — the vCard export page (mig 541).
-      this.navigation.goTo('contacts');
-    } else if (role === 'security') {
-      // Not a role — the nightly gate-photo board (mig 421/424).
-      this.navigation.goTo('security');
-    } else if (role === 'casa') {
-      // Not a role — the CASA commissioner hub (mig 486).
-      this.navigation.goTo('casa');
-    } else if (role === 'apsl') {
-      // Not a role — the APSL pyramid (mig 819).
-      this.navigation.goTo('apsl');
-    } else if (role === 'opponents') {
-      // Not a role — opponent contacts (mig 483).
-      this.navigation.goTo('opponents');
-    } else if (role === 'league-schedules') {
-      // Not a role — the leagues' own schedule pages, saved as links (mig 566).
-      this.navigation.goTo('league-schedules');
-    } else if (role === 'cup-rosters') {
-      // #cup-rosters (mig 556): the USASA / EPSA player pool sheet.
-      this.navigation.goTo('cup-rosters');
-    } else if (role === 'invoices') {
-      // Not a role — invoices to The Lighthouse, Inc. (mig 465).
-      this.navigation.goTo('invoices');
-    } else if (role === 'files') {
-      // Not a role — uploaded files, kept, shared or published (mig 455).
-      this.navigation.goTo('files');
-    } else if (role === 'logos') {
-      // Not a role — club crests, ours and opponents' (mig 428).
-      this.navigation.goTo('logos');
-    } else if (role === 'rsvps') {
-      // Not a role — the RSVP follow-up board (owner 2026-09-17: top level).
-      this.navigation.goTo('rsvps');
-    } else if (role === 'reports') {
-      // Not a role — the Reports hub (attendance & RSVP; Payments linked).
-      this.navigation.goTo('reports');
-    } else if (role === 'player') {
-      // Player - jump straight to their unified weekly schedule.
-      // (Team-picking is intentionally skipped; MyController resolves
-      //  eligible events via mens_team_assignments internally.)
-      this.navigation.goTo('my');
-    } else if (role === 'calendar') {
-      // Not a role — the shared Soccer Calendar (owner 2026-09-05: top level).
-      this.navigation.goTo('calendar');
-    } else if (role === 'teams' || role === 'tactical') {
-      // Not roles — the top-level 🎽 Teams board and 🧠 Tactical page
-      // (2026-09-25: the Coach tile and its coach-home page went; these
-      // were all it held).  The board scopes its cards by
-      // navigation.context.role, so say which hat the viewer wears.
-      this.navigation.context.role = this._isAdminUser() ? 'club-admin' : 'coach';
-      this.navigation.goTo(role);
-    } else if (role === 'marketing') {
-      this.navigation.goTo('marketing-home');
-    } else {
-      this.handleError(new Error('Unknown role: ' + role), 'role-selection');
-    }
-  }
-  
-  async loadClubAdmin() {
-    // Go directly to club admin for Lighthouse
-    this.navigation.goTo('admin-club', {
-      clubId: 134,
-      clubName: 'Lighthouse 1893 SC'
-    });
+    MainMenu.open(role);
   }
 
-  _isAdminUser() {
-    const user = this.auth?.user;
-    return !!(user?.role && (user.role === 'club' || user.role === 'sport_division' || user.role === 'team' ||
-                             user.role === 'super' || user.role === 'system' || user.role === 'league' ||
-                             user.role === 'marketing'));
-  }
-  
   handleLogout() {
     this.auth.logout();
+    if (window.MainMenu) MainMenu.reset();
     this.navigation.context = { user: null, role: null, team: null }; // Clear context
     this.navigation.updateContextHeader();
     this.navigation.goTo('login');
@@ -691,15 +284,8 @@ class RoleSelectionScreen extends Screen {
         this.navigation.goTo('my');
         return;
       }
-      // A coach without an admin role still sets lineups, takes
-      // attendance and reads the attendance report for their teams — show
-      // them the 📋 Event Center, 👕 Uniforms & Kit and
-      // 📊 Reports tiles the admin levels get by default (Reports is
-      // scoped server-side to the teams they coach).
-      for (const id of ['#rs-teams', '#rs-tactical', '#rs-game-center', '#rs-kit', '#rs-reports']) {
-        const tile = this.element && this.element.querySelector(id);
-        if (tile) tile.style.display = 'flex';
-      }
+      // A coach without an admin role sees the coach pages (Event Center,
+      // Teams, Tactical, Kit, Reports) — MainMenu reads the same roles.
     } catch (_e) {
       // Non-fatal — fall back to the manual picker.
     }

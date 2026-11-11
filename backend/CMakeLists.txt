@@ -190,6 +190,7 @@ set(SOURCES
     src/controllers/MyController.cpp
     src/controllers/PushController.cpp
     src/controllers/MessageTemplateController.cpp
+    src/controllers/MenuController.cpp
     src/controllers/CalendarController.cpp
     src/controllers/SimLobbyController.cpp
     src/controllers/SimDebugController.cpp

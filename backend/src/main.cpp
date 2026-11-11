@@ -90,6 +90,7 @@
 #include "controllers/MyController.h"
 #include "controllers/PushController.h"
 #include "controllers/MessageTemplateController.h"
+#include "controllers/MenuController.h"
 #include "controllers/CalendarController.h"
 #include "controllers/ReportsController.h"
 #include "controllers/SimLobbyController.h"
@@ -191,6 +192,7 @@ private:
     std::shared_ptr<MyController> my_controller_;
     std::shared_ptr<PushController> push_controller_;
     std::shared_ptr<MessageTemplateController> message_template_controller_;
+    std::shared_ptr<MenuController> menu_controller_;
     std::shared_ptr<CalendarController> calendar_controller_;
     std::shared_ptr<ReportsController> reports_controller_;
     std::shared_ptr<SimLobbyController> sim_lobby_controller_;
@@ -301,6 +303,7 @@ public:
         my_controller_ = std::make_shared<MyController>();
         push_controller_ = std::make_shared<PushController>();
         message_template_controller_ = std::make_shared<MessageTemplateController>();
+        menu_controller_ = std::make_shared<MenuController>();
         calendar_controller_ = std::make_shared<CalendarController>();
         reports_controller_ = std::make_shared<ReportsController>();
         sim_lobby_controller_ = std::make_shared<SimLobbyController>();
@@ -685,6 +688,7 @@ private:
         // POST/DELETE /api/my/push-subscriptions (session required).
         router_.useController("/api/my", push_controller_);
         router_.useController("/api/messages/templates", message_template_controller_);
+        router_.useController("/api/menu", menu_controller_);   // main menu groups + pages (mig 1244)
 
         // Google Calendar mirror read surface (Slice 4, see
         // docs/calendar-design.md). Reads from fh_events joined to

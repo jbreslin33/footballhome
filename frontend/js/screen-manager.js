@@ -81,6 +81,11 @@ class ScreenManager {
       }
       
       this.currentScreen = screen;
+
+      // The main-menu group's pill row for this page, or none (mig 1244).
+      if (window.MainMenu) {
+        MainMenu.onScreen(name).catch((err) => console.warn('menu pills failed (non-fatal):', err));
+      }
       
     } catch (error) {
       console.error('Fatal screen transition error:', error);
