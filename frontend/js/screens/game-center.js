@@ -648,6 +648,10 @@ class GameCenterScreen extends EventScreen {
     // stylesheet rename is not worth coupling to this change.
     el.className = 'screen screen-game-lineup screen-game-center';
     el.innerHTML = `
+      <style>
+        .screen-game-center .ec-att { width:26px; height:26px; padding:0; border-radius:50%; line-height:1; font-size:0.75rem; font-weight:800; cursor:pointer; }
+        .screen-game-center .ec-att[disabled] { opacity:0.5; cursor:wait; }
+      </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="gc-title">🏟️ Game Center</h1>
@@ -668,13 +672,13 @@ class GameCenterScreen extends EventScreen {
            each tap would throw that away and re-fire its four API calls.
            _renderSocial owns that node and only rebuilds it when the
            post or its open/closed state actually changes. -->
+      <!-- 🎞 Weekend slideshows (mig 1179): staff who may post. Owned by
+           WeekendSlides, never rewritten by _render(). -->
+      <div id="gc-weekend" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <div id="gl-head" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <div id="gc-social" style="padding: 0 var(--space-4);"></div>
       <div id="gl-body" style="padding: 0 var(--space-4) var(--space-6);"></div>
 
-      <!-- 🎞 Weekend slideshows (mig 1179): staff who may post. Owned by
-           WeekendSlides, never rewritten by _render(). -->
-      <div id="gc-weekend" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <!-- RSVP & Player Details, moved here from #game-day-roster.
            Also outside #gl-body: it's a modal, and _render() must not
            tear it down (or reset its search box) while a coach has it
@@ -1036,6 +1040,9 @@ class GameCenterScreen extends EventScreen {
       }
       const mpBtn = e.target.closest('[data-mp-save]');
       if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
+      // ✅ Attendance P/A/L/E on a game card (EventScreen._attendanceCell).
+      const attBtn = e.target.closest('[data-ec-att]');
+      if (attBtn) { this._markAttendance(Number(attBtn.dataset.personId), attBtn.dataset.ecAtt, attBtn.dataset.active === '1'); return; }
       const kind = e.target.closest('[data-event-kind]');
       if (kind) {
         EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
@@ -1548,7 +1555,7 @@ class GameCenterScreen extends EventScreen {
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
       const remindersPromise = this.isCoach
-        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites(), this._loadRegGaps(), this._loadTextMarks()]) : Promise.resolve();
+        ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites(), this._loadRegGaps(), this._loadTextMarks(), this._loadGameAttendance()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
       const officialRosterPromise = this._loadOfficialRoster();
@@ -1647,7 +1654,10 @@ class GameCenterScreen extends EventScreen {
       // 💤 Inactive on this team but invited (⭐ standing, or 🎟 CALL IN):
       // the invite wins — his card joins the answer groups with the chip
       // instead of sitting in the Inactive fold (David Masi, APSL, 11/5).
-      if (have && !have.callUp && have.squadStatus === 'inactive') {
+      // Same for a pool-only card (on this game only through a call-up-only
+      // team, APSL Reserves): invited = called up, out of the 🎟 Call-up
+      // pool fold (Lusayo, APSL vs Westtown, Going but hidden, 11/7).
+      if (have && !have.callUp && (have.squadStatus === 'inactive' || have.poolOnly)) {
         Object.assign(have, { callUp: true, fromTeam: inv.from_team || '', fromTeamId: inv.from_team_id || null,
                               standing: !!inv.auto, callIn: !!inv.call_in });
       }
@@ -3437,16 +3447,6 @@ class GameCenterScreen extends EventScreen {
     }
     const today = new Date(); today.setHours(0, 0, 0, 0);
     this.pickerGames = this.games.filter(ev => new Date(ev.starts_at) >= today);
-  }
-
-  // Monday 00:00 of the week holding this date.
-  _weekStart(date) {
-    const d = new Date(date); d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return d;
-  }
-
-  // Posted = inside the schedule release window My Schedule shows
     this._paintWeekend();
   }
 
@@ -3464,6 +3464,16 @@ class GameCenterScreen extends EventScreen {
       escapeHtml: (t) => this.escapeHtml(t),
     });
     this.weekendSlides.mount(host);
+  }
+
+  // Monday 00:00 of the week holding this date.
+  _weekStart(date) {
+    const d = new Date(date); d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+    return d;
+  }
+
+  // Posted = inside the schedule release window My Schedule shows
   // (schedule_window_end, mig 334); an event without one falls back to the
   // end of this week.  Owner 2026-09-18: "only show this weeks games. not
   // future unposted for rsvp ones".
@@ -3941,6 +3951,7 @@ class GameCenterScreen extends EventScreen {
             ${roleButtons(p)}
           </div>
         ` : ''}
+        ${this.isCoach ? this._gameAttendanceHtml(p.id) : ''}
         ${this.isCoach && window.PersonStanding ? PersonStanding.html(this._personIdFor(p.id)) : ''}
         ${this.isCoach && !String(extra).includes('data-gc-contact') ? this._contactLine(p.id) : ''}
         ${extra}`,
@@ -4783,6 +4794,77 @@ class GameCenterScreen extends EventScreen {
     if (!id || !(this.realIsCoach || this.isCoach)) return '';
     if (this._callinsFor !== id) { this._callinsFor = id; this.callins = null; this._loadCallins(); }
     return super._callinsHtml();
+  }
+
+  // ✅ Attendance on game cards (owner 11/7: "we should be able to take
+  // attendance from event center … for games and practices"): the same
+  // P/A/L/E row a practice card carries (EventScreen._attendanceCell), the
+  // same /api/calendar/events/:id/attendance, the same who-may-mark
+  // (can_mark = this game's coaches + club admins).  From game day on, so
+  // the lineup cards stay clean all week; only people the backend counts
+  // on this game (its teams, coaches, live invites) get the row.
+  async _loadGameAttendance() {
+    const id = this._fhEventId();
+    if (!id) { this.att = null; return; }
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${id}/attendance`);
+      const body = res.ok ? await res.json() : null;
+      if (this._fhEventId() !== id) return;
+      this.att = body ? { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp, me: Number(body.me_person_id) || 0,
+                          roster: new Map((body.roster || []).map(r => [Number(r.person_id), r])) } : null;
+    } catch (err) {
+      console.warn('[game-center] attendance unavailable:', err);
+      this.att = null;
+    }
+  }
+
+  _gameDayReached() {
+    const s = this.ev && this.ev.starts_at;
+    if (!s) return true;
+    const d = new Date(s);
+    if (isNaN(d)) return true;
+    d.setHours(0, 0, 0, 0);
+    return Date.now() >= d.getTime();
+  }
+
+  _gameAttendanceHtml(playerId) {
+    if (!this.att || !this.att.canMark || !this._gameDayReached()) return '';
+    const personId = this._personIdFor(playerId);
+    if (!personId || !this.att.roster.has(personId)) return '';
+    const label = (window.MessageCopy && MessageCopy.block('event_center', 'attendance_label')) || 'Attendance';
+    return `<div style="display:flex; justify-content:flex-end; align-items:center; gap:6px; margin-top:4px;">
+      <span style="font-size:0.68rem; opacity:0.7;">${this.escapeHtml(label)}</span>${this._attendanceCell(personId)}</div>`;
+  }
+
+  // EventScreen's save, keyed by the game's fh_event (Game Center may not
+  // hold an event object on a cold #game-center door).
+  async _markAttendance(personId, status, active) {
+    const key = `att:${personId}`;
+    const id = this._fhEventId();
+    if (!this.att || !id || this.saving.has(key)) return;
+    const prev = this.att.roster.get(personId) || null;
+    this.saving.add(key);
+    this.att.roster.set(personId, { ...(prev || { person_id: personId }), status: active ? null : status });
+    this._render();
+    try {
+      const res = await this.auth.fetch(`/api/calendar/events/${id}/attendance`, {
+        method: active ? 'DELETE' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(active ? { person_id: personId } : { person_id: personId, status }),
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const b = await res.json(); msg = b.message || b.error || msg; } catch {}
+        throw new Error(msg);
+      }
+    } catch (err) {
+      console.error('[game-center] attendance save failed:', err);
+      if (prev) this.att.roster.set(personId, prev); else this.att.roster.delete(personId);
+      alert(`Could not save attendance: ${err.message}`);
+    } finally {
+      this.saving.delete(key);
+      this._render();
+    }
   }
 
   async _loadInvites() {
