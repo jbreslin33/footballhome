@@ -202,18 +202,20 @@ Response PyramidController::handleProposal(const Request&) {
         for (const auto& r : db->query(R"SQL(
                 SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
                        pc.conference_id, pc.proposed_id,
-                       COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier, p.core_population,
+                       COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier,
+                       COALESCE(p.core_population, cm.population) AS core_population,  -- live: its metro (mig 1269)
                        COALESCE(c.color, p.color) AS color,
                        sum(k.population) AS population, count(*) AS counties,
                        sum(k.lat * k.population) / NULLIF(sum(k.population), 0) AS lat,
                        sum(k.lon * k.population) / NULLIF(sum(k.population), 0) AS lon,
-                       (SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id) AS anchors,
+                       COALESCE((SELECT string_agg(a.label, ' · ' ORDER BY a.label) FROM pyramid_proposed_anchors a WHERE a.proposed_id = pc.proposed_id), cm.city) AS anchors,
                        COALESCE(c.id, 0) AS sort1, COALESCE(p.sort_order, 0) AS sort2
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
                   LEFT JOIN pyramid_proposed_conferences p ON p.id = pc.proposed_id
-                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color
+                  LEFT JOIN pyramid_conference_metro cm ON cm.conference_id = pc.conference_id
+                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},

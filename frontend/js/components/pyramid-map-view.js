@@ -95,23 +95,33 @@ class PyramidMapView {
       L.polyline(line, { renderer: this.stateRenderer, interactive: false, color: '#e2e8f0', weight: 2, opacity: 0.85 }).addTo(this.stateLayer);
   }
 
-  // The proposal's list lives in the ☰ menu (owner: "proposed confs gui
-  // should be in main gui" / "get rid of clutter!"): one row per proposed
-  // conference — tier dot, name, cities · people within 100 km; the
-  // judgement is the row's tooltip.  Tap → fly there.
+  // The conference list lives in the ☰ menu (owner: "proposed confs gui
+  // should be in main gui" / "get rid of clutter!"; mig 1269: "put the
+  // existing in the list and mark off existing and proposed" / "list by pop
+  // desc"): the count (existing + proposed = total), then one row per
+  // conference, biggest metro first — colour dot, name, Existing / Proposed
+  // tag (a proposal's tag carries its tier colour), cities · metro people.
+  // A proposal's judgement is the row's tooltip.  Tap → fly there.
   menuSections() {
     const P = this.proposal;
     if (!P || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return [];
     const esc = (t) => this._esc(t);
     const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
     const tierLabel = (t) => this._copy(`tier_${t}`) || t;
-    const row = (r) => `<div class="row" data-pzrow="${r.lat},${r.lon}" title="${esc(`${tierLabel(r.tier)} — ${r.note || ''}`)}">
-        <i class="tier ${esc(r.tier)}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
+    const row = (r) => {
+      const live = !!r.conference_id;
+      const tip = live ? (r.anchors || '') : `${tierLabel(r.tier)} — ${r.note || ''}`;
+      return `<div class="row" data-pzrow="${r.lat},${r.lon}" title="${esc(tip)}">
+        <i class="dot" style="background:${esc(r.color || '#64748b')}"></i><span class="nm">${esc(r.name.replace(/ Conference$/, ''))}</span>
+        <span class="tag ${live ? 'live' : esc(r.tier)}">${esc(this._copy(live ? 'mark_live' : 'mark_proposed'))}</span>
         <span class="sub">${esc(r.anchors || '')} · ${esc(M(r.core_population))}</span></div>`;
-    const all = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || [])
-      .sort((a, b) => b.core_population - a.core_population);
+    };
+    const live = (P.regions || []).filter((r) => r.conference_id);
+    const proposed = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || []);
+    const all = live.concat(proposed).sort((a, b) => (b.core_population || 0) - (a.core_population || 0));
+    const count = this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
     return [{ tier: 'proposal_hud',
-      html: `<div class="mp-pz"><div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
+      html: `<div class="mp-pz"><div class="count">${esc(count)}</div><div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
   }
   menuClick(e) {
     const r = e.target.closest('[data-pzrow]');
@@ -168,6 +178,11 @@ class PyramidMapView {
       .mp-pz .sub { flex:1; opacity:0.7; font-size:0.74rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .mp-pz .tier { width:8px; height:8px; border-radius:50%; flex:0 0 auto; align-self:center; }
       .mp-pz .tier.ready { background:#22c55e; } .mp-pz .tier.borderline { background:#eab308; } .mp-pz .tier.developing { background:#64748b; }
+      .mp-pz .dot { width:9px; height:9px; border-radius:50%; flex:0 0 auto; align-self:center; }
+      .mp-pz .tag { flex:0 0 auto; font-size:0.62rem; font-weight:800; text-transform:uppercase; letter-spacing:0.03em; padding:1px 5px; border-radius:6px; border:1px solid currentColor; }
+      .mp-pz .tag.live { color:#e2e8f0; background:rgba(226,232,240,0.14); }
+      .mp-pz .tag.ready { color:#22c55e; } .mp-pz .tag.borderline { color:#eab308; } .mp-pz .tag.developing { color:#94a3b8; }
+      .mp-pz .count { font-weight:800; font-size:0.85rem; margin-bottom:4px; }
       .mp-pz .intro { font-size:0.72rem; opacity:0.65; margin-bottom:4px; white-space:normal; }
 `;
   }
