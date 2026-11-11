@@ -8606,3 +8606,30 @@ reaches it moving and the measure ends where his speed falls. Next: trace one ru
 (his gap, his target's gap, their line's speed).
 
 **Shipped.** The RUNS-by-order row, harness only. Outputs and goldens are as G5.91; tests 22/22.
+
+### 8.194 G5.93 — our runs are the shape jogging at the cap: run speed measured (no migration)
+
+§8.193's next: trace one run.
+
+**Traced** (`GAME_RUN_TRACE=1`, each run's 5 Hz frames: gap / target gap / their line / speed at goal /
+order). Our runners go 4.2-4.4 m/s through the whole run, pinned under G5.31's forward cap for a holder
+(`shape_max` 4.5 m/s), a hair above the run threshold (4). A run "ends" at the first frame that dips under
+4, wherever he is. Several end because the target jumps (a new line job). Some keep their 10 m gap as
+their line retreats at the same pace.
+
+**Run speed** (new in `benchmarks_tracking_runs.py` and the RUNS line: speed at their goal over the run,
+mean and peak). Real DFL: mean p25 / med / p75 4.48 / 4.93 / 5.55 m/s; peak 4.75 / 5.45 / 6.40, 6+ m/s 34%.
+Ours (seed 1000): mean 4.20 / 4.38 / 5.17; peak 4.31 / 4.48 / 5.90; 6+ 23%. Our typical run is the cap.
+
+**Tried** (not shipped): a holder's forward cap with our ball (`shape.ours_fwd_max_mps`) 5.5 / 6.5.
+Speeds near real (mean med 4.73 / 4.81, peak 5.11 / 5.23), but runs 223 → 305 / 321 a team-match (209). The
+extra are WIDE 86 → 116 (74), FB 32 → 43 (17), DM 26 → 40 (25), ball 52+ 64 → 102 (60): the shape shifting
+forward in build-up at running pace. Runs still end 6.0 m short (3.9). Removed.
+
+**What it says.** One cap serves two things real players do differently: the shape shifts at a jog,
+the runs at the line go 5-6 m/s. Ours does both at 4.5, so the count matches by accident and the runs
+never arrive. Next: split them — the shift keeps `shape_max`, a run at the line (the man within ~12 m
+of their line, his spot on or past it) goes at a run's pace, at a run's real rate.
+
+**Shipped.** Run speed lines (real and harness) and GAME_RUN_TRACE. Harness only; outputs and goldens as
+G5.91; tests 22/22.

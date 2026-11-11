@@ -83,9 +83,10 @@ def one(pos_path):
                 seen.add(pid)
                 if pid in open_run:
                     o = open_run[pid]; o["k"] += 1; o["min_gap"] = min(o["min_gap"], gap); o["last"] = n
+                    o["vs"] += vx; o["vmax"] = max(o["vmax"], vx)   # G5.93 (§8.194): its speed
                 else:
                     open_run[pid] = {"pid": pid, "r": r, "k": 1, "g0": gap, "min_gap": gap, "z": z, "start": n, "last": n, "sec": sc, "att": att,
-                                     "bm": bm, "x0": half - fp[pid][0] * g, "y0": fp[pid][1], "x1": half - x * g, "y1": y}
+                                     "bm": bm, "x0": half - fp[pid][0] * g, "y0": fp[pid][1], "x1": half - x * g, "y1": y, "vs": vx, "vmax": vx}
                 if pid in open_run: open_run[pid]["x1"] = half - x * g; open_run[pid]["y1"] = y
         for pid in list(open_run):
             if pid not in seen: close(pid)
@@ -130,6 +131,11 @@ if __name__ == "__main__":
             row.append(f"{NAMES[r]} {qq(.1):.1f}/{qq(.25):.1f}/{qq(.5):.1f}/{qq(.75):.1f}/{qq(.9):.1f}")
         print(f"   {ZN[z]:6s} " + "  ".join(row))
     print(f"RUNS (0-12 m short or past, 4+ m/s at their goal for 0.6 s+): {len(runs)/tm:.1f} a team-match")
+    if runs:   # G5.93 (§8.194): how fast
+        mv = sorted(r["vs"] / r["k"] for r in runs); pk = sorted(r["vmax"] for r in runs)
+        q = lambda v, f: v[int(f * (len(v) - 1))]
+        print(f"   speed at their goal over the run, mean p25/med/p75 {q(mv,.25):.2f} / {q(mv,.5):.2f} / {q(mv,.75):.2f} m/s; "
+              f"peak p25/med/p75 {q(pk,.25):.2f} / {q(pk,.5):.2f} / {q(pk,.75):.2f}; peak 6+ m/s {100 * sum(v >= 6 for v in pk) / len(pk):.0f}%")
     for z in range(4):
         rz = [r for r in runs if r["z"] == z]
         print(f"   ball {ZN[z]:6s}: {len(rz)/tm:5.1f} a team-match")
