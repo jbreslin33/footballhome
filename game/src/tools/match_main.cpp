@@ -68,7 +68,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {};   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
+    long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {}; double zm_tl[15][15][ai::kRoleCount] = {}, zm_ay[15][15][ai::kRoleCount] = {};   // §8.190: where they stand   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
     long bx_gf[2][2] = {}, bx_g[2][2][5] = {}; long bx_lf[6][2] = {}, bx_li[6][2] = {}, bx_lst[6][2] = {}; double bx_lsd[6][2] = {}; long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
      long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
     // Concept acts, StatsBomb's cuts (G5.17).
@@ -1412,7 +1412,7 @@ int main(int argc, char** argv) {
                 for (std::uint8_t j = 0; j < N; ++j) {
                     if (W.isKeeper(j) || W.player(j).team != a || j == *b.owner) continue;
                     const int zj = zm(hx - W.player(j).pos.x.toDouble() * sg, W.player(j).pos.y.toDouble());
-                    ++cnt[zj]; ++S.zm_r[bz][zj][role(j)];
+                    ++cnt[zj]; ++S.zm_r[bz][zj][role(j)]; S.zm_tl[bz][zj][role(j)] += hx - W.player(j).pos.x.toDouble() * sg; S.zm_ay[bz][zj][role(j)] += std::fabs(W.player(j).pos.y.toDouble());
                 }
                 ++S.zm_c[bz][role(*b.owner)];
                 ++S.zm_f[bz];
@@ -2185,6 +2185,13 @@ int main(int argc, char** argv) {
                 static const char* rn[ai::kRoleCount] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
                 const double f = static_cast<double>(S.zm_f[bz]);
                 std::printf("\n       on the ball:"); for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.0f%%", rn[r], 100 * S.zm_c[bz][r] / f);
+                for (int z = 1; z < 15; z += 3)   // §8.190: ST / AM / WIDE share of their frames in each ball-side wide zone, and where
+                    for (int r : {5, 3, 4}) {
+                        const long n = S.zm_r[bz][z][r]; if (n < 0.02 * f) continue;
+                        long tot = S.zm_c[bz][r]; for (int zz = 0; zz < 15; ++zz) tot += S.zm_r[bz][zz][r];
+                        std::printf("\n       %s in %s %s: %.1f%% of his frames, m off their line %.1f, |y| %.1f", rn[r], bn[z / 3], sd[z % 3],
+                                    100.0 * n / std::max(1L, tot), S.zm_tl[bz][z][r] / n, S.zm_ay[bz][z][r] / n);
+                    }
                 for (int z = 0; z < 15; ++z) if (S.zm_n[bz][z] >= 0.3 * f) {   // §8.189: who stands there
                     std::printf("\n       in %s %s by role:", bn[z / 3], sd[z % 3]);
                     for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %.2f", rn[r], S.zm_r[bz][z][r] / f);

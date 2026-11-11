@@ -8468,3 +8468,42 @@ and goldens are as G5.85; tests 22/22.
 a run job like `assignChannel` (G5.56, the last 18 m only), one band out, by the real role counts.
 (2) Our back men and DMs crowd the middle beside a wide ball. (3) Carriers through the middle (take-ons
 3×). (4) Crosses labelled lofted only. (5) Possessions twice too long (§8.172).
+
+### 8.190 G5.89 — the striker and the AM drift wide: into their channel on the ball's side (no migration)
+
+§8.189's next (1): real strikers drift into the channel ahead of a wide ball; ours don't.
+
+**Real** (`benchmarks_tracking_zonemates.py`, new rows: each role's share of his frames in each
+ball-side wide zone, his depth off their line and |y|; DFL). Ball 35-52 m out and wide: ST wide ahead
+(18-35 m) 9.7% at 29.3 m / |y| 26.0, wide level (35-52 m) 7.1%; AM 6.7% / 8.9%. Ball 35-52 central:
+ST 4.1 / 3.6%, AM 4.4 / 4.6%. Ball 52-70 wide: ST level 12.7%, AM 8.9%. The wingers stand there
+about as often as real (WIDE 11.7 / 15.4% v 11.8 / 11.9).
+
+**Ours before** (the same rows in MATES BY ZONE): ball 35-52 wide, ST ahead 3.4%, level under 2%; AM
+never; ball central, neither.
+
+**The change** [FH, fitted to DFL]. `Possession::spot`: a striker or AM, with the ball 35-52 m out
+(centre or wide) or 52-70 wide, rolls once per man per spell per ball zone (`detNoise` on the spell's
+start) against `physics.drift.<zone>_<st|am>_<ahead|level>_p` and takes the real spot: their line minus
+`_m`, `_y` toward the ball's side. The roll is the real share × 2.2. At ×1 the measured share came out
+at about half real (5.1 / 2.7 / 5.0 / 7.3%): a man rolled wide spends part of the spell running
+there. `physics.drift.on` 0 = off. The goldens are untouched: the test rig loads no drift.
+
+**After** (seed 1000 / 2000; real in brackets).
+- Ball 35-52 wide: ST ahead 7.6 / 8.3% (9.7), level 3.8 / 5.7 (7.1); AM ahead 6.6 / 7.4 (6.7), level 9.9 / 7.7
+  (8.9). The ST's level spot comes up short: the front-man job takes him onto their line.
+- Ahead on the wing (18-35 wide), mates 0.43 / 0.36 → 0.55 / 0.51 (0.60), empty 66 / 69 → 58 / 62% (54).
+- ENTRIES into the last 35 m, passed, centre / wide: 13.1 / 16.3 → 12.8 / 19.9; 11.7 / 17.4 → 11.1 / 19.2
+  (9.4 / 22.1). The ball's |y| at 18-25 m from the goal centre 7.3 / 9.8 → 9.8 / 9.9 m (15.4).
+- Crosses 3.06 / 3.50 → 3.50 / 3.62 (11.47). Shots 6.8 / 7.1 → 5.7 / 6.4, goals 1.94 / 2.06 → 1.69 / 1.75.
+  Completion 80.4 / 80.5 → 80.7 / 81.1% (79.1).
+- Shots with nobody goal-side 18.5 / 19.5 → 19.8 / 21.4% (4.8): not moved.
+
+**What it says.** Wide occupancy ahead of the ball is now about real, and the ball reaches the last 35
+m down the wings more often. But crosses and the open shot barely moved. Having a man out wide is not
+enough. Releases from 6-18 m wide stay at 4.6 / 4.8 a team-match (12.0): the ball still seldom gets
+down there.
+
+**Next moles.** (1) **Down the line**: from 18-35 wide, who carries or passes on to 0-18 wide (releases
+there 4.6 v 12.0). (2) The ST's level drift lost to the front-man job. (3) Carriers through the middle
+(take-ons 50 v 18). (4) Crosses labelled lofted only. (5) Possessions twice too long (§8.172).

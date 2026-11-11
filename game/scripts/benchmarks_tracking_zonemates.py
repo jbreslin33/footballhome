@@ -64,6 +64,8 @@ def one(pos_path):
             if pid == carrier: continue
             z = zone(half - x * g, y, by); cnt[z] += 1
             c[("zrole", bz, z, ROLE.get(pos_of.get(pid, ""), "?"))] += 1   # G5.88 (§8.189): every zone's mates by role
+            rr = ROLE.get(pos_of.get(pid, ""), "?")   # G5.89 (§8.190): where in the zone they stand
+            c[("ztl", bz, z, rr)] += half - x * g; c[("zay", bz, z, rr)] += abs(y)
             if z == bz:
                 c[("role", bz, ROLE.get(pos_of.get(pid, ""), "?"))] += 1
                 near = min(near, math.hypot(x - bx, y - by))
@@ -90,6 +92,12 @@ if __name__ == "__main__":
         print(f"   ball {nm(bz):14s} frames {f:6d}; own zone: {c[('n',bz,bz)]/f:.2f} mates, none {100*c[('zero',bz,bz)]/f:.0f}%, nearest {c[('near',bz)]/max(1,c[('nearn',bz)]):.1f} m; by role "
               + " ".join(f"{r} {c[('role',bz,r)]/f:.2f}" for r in roles))
         print("      on the ball: " + " ".join(f"{r} {100*c[('carrier',bz,r)]/f:.0f}%" for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST")))
+        for z in range(15):   # G5.89 (§8.190): ST / AM / WIDE share of their frames in each zone, and where
+            for r in ("ST", "AM", "WIDE"):
+                n = c[("zrole", bz, z, r)]
+                if n / f >= 0.02 and z % 3 == 1:
+                    tot = sum(c[("zrole", bz, zz, r)] for zz in range(15)) + c[("carrier", bz, r)]
+                    print(f"      {r} in {nm(z):14s}: {100 * n / max(1, tot):.1f}% of his frames, m off their line {c[('ztl', bz, z, r)] / n:.1f}, |y| {c[('zay', bz, z, r)] / n:.1f}")
         for z in range(15):   # G5.88: who stands in each held zone
             if c[("n", bz, z)] / f >= 0.3:
                 print(f"      in {nm(z):14s} by role: " + " ".join(f"{r} {c[('zrole',bz,z,r)]/f:.2f}" for r in ("CB", "FB", "DM/CM", "AM", "WIDE", "ST")))

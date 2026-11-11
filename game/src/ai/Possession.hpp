@@ -98,7 +98,13 @@ struct PossessionParams {
     math::Fixed64 box_kl[6][2][4]{}, box_line_deep_m{}, box_line_deep_out_m{};   // G5.61: deep until back past out_m
     bool box_spot_near = true;   // G5.60: the box spots go to the runners nearest them (physics.box.spot_near)
     bool box_from_pass = true;   // G5.60: the zone our pass is going to (physics.box.from_pass)
-    math::Fixed64 line_usual[14]{}, follow_line_m{};   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
+    math::Fixed64 line_usual[14]{}, follow_line_m{};
+    // G5.89 (§8.190): the striker / AM drifts into their wide channel on the ball's side. By the
+    // ball's zone [35-52 centre, 35-52 wide, 52-70 wide] x [ST, AM] x [ahead 18-35 wide, level 35-52
+    // wide]: the real share of his frames there (DFL benchmarks_tracking_zonemates.py), and where
+    // (m off their line, |y|). One roll a man a spell a zone. drift_on 0 = off.
+    math::Fixed64 drift_p[3][2][2]{}, drift_tl[3][2][2]{}, drift_y[3][2][2]{};
+    bool drift_on = true;   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
     bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)
     bool box_stay = true;   // G5.61: a box runner in the box stays one when a redraw rolls fewer (physics.box.stay)
     bool box_spell_roll = true;   // G5.61: one roll a spell for how many run (box and channel), each zone reads it (physics.box.spell_roll)

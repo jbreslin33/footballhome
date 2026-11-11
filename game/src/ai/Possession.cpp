@@ -1111,7 +1111,22 @@ void PossessionParams::configure(const core::ModelParams& p) {
     // DFL benchmarks_tracking_linebyball.py; the support men follow a deeper line (follow_line_m 0 = off).
     static const int kLineUsual[14] = {2500, 6400, 9500, 12700, 15800, 18800, 21600, 24600, 27300, 29800, 32600, 35500, 37800, 39700};
     for (int i = 0; i < 14; ++i) line_usual[i] = p.fixed(("physics.support.line_usual_" + std::to_string(i * 5)).c_str(), kLineUsual[i]);
-    follow_line_m = p.fixed("physics.support.follow_line_m", 10000);   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
+    follow_line_m = p.fixed("physics.support.follow_line_m", 10000);
+    {   // G5.89 (§8.190): real DFL (benchmarks_tracking_zonemates.py, ball-side wide zones), ×1000.
+        // The roll chance is the real share × 2.2 [FH fit]: a man rolled out wide spends part of
+        // the spell getting there, so at ×1 the measured share came out at ~half real.
+        static const int kP[3][2][2] = {{{90, 79}, {97, 101}}, {{213, 156}, {147, 196}}, {{37, 279}, {0, 196}}};
+        static const int kTl[3][2][2] = {{{28500, 42000}, {26800, 42600}}, {{29300, 41100}, {29500, 42700}}, {{30800, 43900}, {30000, 44700}}};
+        static const int kY[3][2][2] = {{{24700, 25500}, {25600, 26100}}, {{26000, 25600}, {26100, 26400}}, {{25100, 25700}, {26000, 24800}}};
+        static const char* zk[3] = {"35c", "35w", "52w"}; static const char* rk[2] = {"st", "am"}; static const char* tk[2] = {"ahead", "level"};
+        for (int z = 0; z < 3; ++z) for (int r = 0; r < 2; ++r) for (int t = 0; t < 2; ++t) {
+            const std::string k = std::string("physics.drift.") + zk[z] + "_" + rk[r] + "_" + tk[t];
+            drift_p[z][r][t] = p.fixed(k + "_p", kP[z][r][t]);
+            drift_tl[z][r][t] = p.fixed(k + "_m", kTl[z][r][t]);
+            drift_y[z][r][t] = p.fixed(k + "_y", kY[z][r][t]);
+        }
+        drift_on = p.fixed("physics.drift.on", 1000).raw > 0;
+    }   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
     static const int kChN[6][2] = {{60, 520}, {310, 1390}, {20, 310}, {10, 500}, {0, 220}, {10, 470}};
@@ -1216,6 +1231,25 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         }
     }
     if (x.raw < 0) x = Fixed64::zero();
+    // G5.89 (§8.190): the striker / AM's drift into their wide channel on the ball's side — real
+    // ones stand there 4-13% of the time with the ball 35-70 m out (ours: ST 0-3%, AM never). One
+    // roll a man a spell a ball zone, against the real share; he takes the real spot. [FH, DFL]
+    if (params_.drift_on && (v.role_ours == Role::ST || v.role_ours == Role::AM)) {
+        const Fixed64 by = world.ball().pos.y;
+        const bool wide = math::fx_abs(by) >= Fixed64::fromFraction(2016, 100);
+        const int z = off_their >= Fixed64::fromInt(35) && off_their < Fixed64::fromInt(52) ? (wide ? 1 : 0)
+                    : (off_their >= Fixed64::fromInt(52) && off_their < Fixed64::fromInt(70) && wide) ? 2 : -1;
+        if (z >= 0) {
+            const int r = v.role_ours == Role::ST ? 0 : 1;
+            const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 80 + z) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            const Fixed64 pa = params_.drift_p[z][r][0], pl = params_.drift_p[z][r][1];
+            const int t = u < pa ? 0 : u < pa + pl ? 1 : -1;
+            if (t >= 0) {
+                const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+                return Vec2{(hx - params_.drift_tl[z][r][t]) * v.sg, side * params_.drift_y[z][r][t]};
+            }
+        }
+    }
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }
 
