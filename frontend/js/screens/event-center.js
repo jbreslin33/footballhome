@@ -57,6 +57,10 @@ class EventCenterScreen extends Screen {
         <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
         <div id="ec-kinds" style="display:contents;"></div>
       </div>
+      <!-- 👤 Mine: everything #my shows, as its own visible section (owner
+           2026-11-11: "bring it all" / "put it in sep section but visible").
+           #my redirects here last; until then both work. -->
+      <section id="ec-mine" style="padding: var(--space-3) var(--space-4) 0; max-width: 1400px; margin: 0 auto;"></section>
       <div id="ec-body" style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;"></div>
     `;
     this.element = div;
@@ -65,6 +69,7 @@ class EventCenterScreen extends Screen {
   }
 
   onEnter(params = {}) {
+    this._mountMine();
     // An old door with one event (saved history) shows that event's week.
     const evAt = params.event && new Date(params.event.starts_at);
     if (evAt && !isNaN(evAt)) { this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
@@ -78,6 +83,41 @@ class EventCenterScreen extends Screen {
     // Pull Google Calendar in the background (GcalRefresh, 11/3) — the week
     // shows from the DB now and reloads once the pull has landed.
     if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._loadEvents());
+  }
+
+  onExit() { this._unmountMine(); }
+
+  // 👤 Mine — the whole #my page (MyScreen: banners, dues, volunteer
+  // shifts, GroupMe, your week with Go / No, call-in, kids' pills …)
+  // drawn in its own section above the club calendar.  The same MyScreen
+  // instance #my uses, mounted here: its own click / change wiring rides
+  // on its element.  Words: event_center mine_title.
+  _mountMine() {
+    const host = this.find('#ec-mine');
+    const my = window.app && window.app.screens && window.app.screens.my;
+    if (!host || !my || typeof my.render !== 'function') return;
+    this._unmountMine();
+    let el;
+    try { el = my.render(); } catch (err) { console.error('[event-center] mine render failed:', err); return; }
+    el.classList.remove('screen');
+    // Event Center has its own ← Back; #my's own "My Schedule" title is the
+    // section heading's job.
+    const back = el.querySelector('.back-btn'); if (back) back.remove();
+    const title = (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', 'mine_title'))
+      ? MessageCopy.block('event_center', 'mine_title') : '👤 Mine';
+    const h = el.querySelector('.screen-header h1'); if (h) h.textContent = title;
+    host.innerHTML = '';
+    host.appendChild(el);
+    this._mine = my;
+    my.isMounted = true;
+    try { my.onEnter({}); } catch (err) { console.error('[event-center] mine enter failed:', err); }
+  }
+
+  _unmountMine() {
+    if (!this._mine) return;
+    try { this._mine.onExit(); } catch (_) {}
+    this._mine.isMounted = false;
+    this._mine = null;
   }
 
   // ── data ────────────────────────────────────────────────────────────
