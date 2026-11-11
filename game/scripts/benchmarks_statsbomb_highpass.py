@@ -102,6 +102,7 @@ if "--length" in sys.argv[2:]:
                                       f"{100 * hc[(oz, lb)] / max(1, h[(oz, lb)]):3.0f}/{100 * gc[(oz, lb)] / max(1, n[(oz, lb)] - h[(oz, lb)]):3.0f}]"
                                       for lb in range(6)))
     sys.exit(0)
+oc = collections.Counter()
 n = collections.Counter(); comp = collections.Counter(); duel = collections.Counter()
 duel_c = collections.Counter(); duel_l = collections.Counter(); lens = collections.defaultdict(list)
 for f in files:
@@ -135,6 +136,26 @@ for f in files:
                 break
         duel[z] += hit
         (duel_c if ok else duel_l)[z] += hit
+        # G5.84 (§8.185) HIGH OUTCOME: completed / out / offside / lost — and a lost one's first touch by
+        # them: in the air (aerial won, or a head / clearance) / a keeper / on the ground
+        if ok:
+            oc[(z, "completed")] += 1
+        else:
+            nm_ = p["outcome"]["name"]
+            if nm_ == "Out": oc[(z, "out")] += 1
+            elif nm_ == "Pass Offside": oc[(z, "offside")] += 1
+            else:
+                kind = "lost, no touch logged"
+                for f2 in E[i + 1:i + 8]:
+                    if f2["team"]["id"] == e["team"]["id"] or f2["type"]["name"] in ("Pressure", "Duel") and not aerial(f2):
+                        continue
+                    tn = f2["type"]["name"]
+                    bp = (f2.get(tn.lower().replace(" ", "_"), {}) or {}).get("body_part", {}).get("name", "")
+                    kind = ("lost: their keeper" if tn == "Goal Keeper" else
+                            "lost: in the air" if aerial(f2) or bp == "Head" else
+                            "lost: on the ground")
+                    break
+                oc[(z, kind)] += 1
 tm = 2 * len(files)
 print(f"{len(files)} matches (StatsBomb PL 2015/16): open-play HIGH PASSES (crosses out), by the aim's m off the passer's own goal")
 print("   zone  | a team-match | completed % | length med | aerial duel within 5 s, 6 m: all % / on completed % / on lost %")
@@ -144,3 +165,8 @@ for z, nm in enumerate(("0-35", "35-70", "70+")):
     c, l = comp[z], n[z] - comp[z]
     print(f"   {nm:5s} | {n[z] / tm:5.1f} | {100 * c / n[z]:5.1f} | {statistics.median(lens[z]):5.1f} | "
           f"{100 * duel[z] / n[z]:5.1f} / {100 * duel_c[z] / max(c, 1):5.1f} / {100 * duel_l[z] / max(l, 1):5.1f}")
+OK = ("completed", "out", "offside", "lost: in the air", "lost: on the ground", "lost: their keeper", "lost, no touch logged")
+print("HIGH OUTCOME (% of the zone's high passes): " + " / ".join(OK))
+for z, nm in enumerate(("0-35", "35-70", "70+")):
+    if n[z]:
+        print(f"   {nm:5s} " + " / ".join(f"{100 * oc[(z, k)] / n[z]:4.1f}" for k in OK))

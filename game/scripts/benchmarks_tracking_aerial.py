@@ -46,24 +46,31 @@ def one(pos_path):
             for pid, p in pl.get((sc, n - n % 5), {}).items():
                 if pid in keepers: gx[who[pid]].append(p[0])
         side = {t: (-1 if (sum(v) / len(v) if v else 0) < 0 else 1) for t, v in gx.items()}   # own goal at side*half
-        rose = False
+        rose = False; low = None
         for i in range(1, len(ks)):
             n = ks[i]; bx, by, bz, live, po = ball[(sc, n)]
-            if not live or ks[i - 1] != n - 1: rose = False; continue
-            if bz < 0.5: rose = False
+            if not live or ks[i - 1] != n - 1: rose = False; low = None; continue
+            if bz < 0.5: rose = False; low = n
             if bz > 4.0: rose = True
             pz = ball[(sc, ks[i - 1])][2]
             if not (rose and pz > 2.4 >= bz and po >= 0): continue
             rose = False
             ps = pl.get((sc, n - n % 5), {})
-            def near(team):
+            def nearp(team):
                 ds = [(math.hypot(p[0] - bx, p[1] - by), pid) for pid, p in ps.items() if who[pid] == team and pid not in keepers]
-                return min(ds)[0] if ds else 99
-            ba = near(po); bd = near(1 - po)
+                return min(ds) if ds else (99, None)
+            (ba, pa), (bd, pd) = nearp(po), nearp(1 - po)
+            # G5.84 (§8.185): at the launch (the last frame the ball was under 0.5 m), where the two men
+            # nearest at the drop stood: each off the drop point, and the defender off the attacker
+            l0 = None if low is None else pl.get((sc, low - low % 5), {})
+            at_kick = None
+            if l0 and pa in l0 and pd in l0:
+                at_kick = (math.hypot(l0[pd][0] - bx, l0[pd][1] - by), math.hypot(l0[pa][0] - bx, l0[pa][1] - by),
+                           math.hypot(l0[pd][0] - l0[pa][0], l0[pd][1] - l0[pa][1]), (n - low) / 25)
             own = half - bx * side[po]   # m off the kicker's own goal (at side*half)
             z = 0 if own < 35 else 1 if own < 70 else 2
             lost = any(ball.get((sc, m), (0, 0, 0, False, -1))[4] == 1 - po for m in range(n, n + 75))
-            out.append((z, ba, bd, lost))
+            out.append((z, ba, bd, lost, at_kick))
     return out
 if __name__ == "__main__":
     files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_04_03_positions_raw_observed_*.xml")))
@@ -79,3 +86,9 @@ if __name__ == "__main__":
         v = [r for r in allr if r[0] == z]
         if not v: continue
         print(f"     {nm:6s} {len(v)/tm:5.1f} | {q([r[1] for r in v])} | {q([r[2] for r in v])} | {100*sum(r[1] < 2 and r[2] < 2 for r in v)/len(v):4.1f} | {100*sum(r[2] < 2 for r in v)/len(v):4.1f} | {100*sum(r[1] >= 3 and r[2] >= 3 for r in v)/len(v):4.1f} | {100*sum(r[3] for r in v)/len(v):4.1f}")
+    print("  AT THE LAUNCH (the men nearest at the drop, where they stood when it was kicked): defender off the drop p25/med/p75 | attacker off the drop | defender off the attacker | flight s med | defender's closing m/s med")
+    for z, nm in enumerate(("0-35", "35-70", "70+")):
+        v = [r[4] for r in allr if r[0] == z and r[4] is not None]
+        w = [r for r in allr if r[0] == z and r[4] is not None]
+        if not v: continue
+        print(f"     {nm:6s} {q([x[0] for x in v])} | {q([x[1] for x in v])} | {q([x[2] for x in v])} | {sorted(x[3] for x in v)[len(v)//2]:.2f} | {sorted((x[0] - r[2]) / max(0.2, x[3]) for x, r in zip(v, w))[len(v)//2]:.2f}")

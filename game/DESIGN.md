@@ -8230,3 +8230,66 @@ completion when our men still ran onto every receiver): re-measure, completion 8
 marked picks 3 v 7%. (2) The final third's zone choice: a zone whose only mate is marked keeps its full
 share. (3) Long-pass completion (§8.183). (4) FIRST TOUCH / PRESSED TOUCH counting scrambles.
 (5) Aerial duels 35 v 44; take-ons 51 v 18.
+
+### 8.185 G5.84 — a loft's angle by carry: real long balls hang, ours were flat (no migration)
+
+§8.184's list had aerial duels 35 v 44 a match. HIGH OUTCOME (new) showed where: high passes from our
+own third and midfield came to our side 93% / 73% of the time (real 57 / 46), and the real ones lost
+in the air (27% in midfield) and on the ground (22%) barely happened (11 / 7). HIGH BALLS COMING DOWN:
+their nearest man was 3.7 m off a midfield drop (1.6).
+
+**Measured on the way.** (1) The race read's 3 s horizon (a flight beyond it sends the chaser to the
+ball's shadow): 5 s changed nothing useful (duels 35 → 29) — not it. (2) New AT THE LAUNCH line
+(`benchmarks_tracking_aerial.py`, DFL: the men nearest at the drop, where they stood at the launch):
+in midfield our defender starts 8.0 m off the drop (8.4) and closes 2.3 m/s (1.9) — he is not late
+or slow; the ball is quick: 1.9 s from the ground to the drop (3.0). (3) A harness trace of that
+defender through the flight (5 Hz): his target is 2 m off the drop from the first half-second, he
+chases 94% of drops; he just runs out of time. Throw-ins were polluting both lines (the launch never
+reset on a dead ball) — fixed.
+
+**Real** (`benchmarks_tracking_loft.py`, new LOFT FLIGHT; DFL 7 matches, TRACAB 25 Hz ball with
+height): lofts past 4 m, in play, launch (last frame under 0.5 m) → landing (next under 0.5 m) or a
+touch. By carry 10-20 / 20-30 / 30-40 / 40-50 / 50-70 m: a team-match 5.9 / 8.9 / 16.7 / 11.1 / 12.6;
+peak med 5.6 / 5.9 / 5.8 / 7.3 / 9.9 m; down through 2.4 m 2.52 / 2.24 / 2.20 / 2.64 / 3.28 s;
+landing 2.88 / 2.48 / 2.48 / 2.92 / 3.60 s; launch speed 13.0 / 19.4 / 23.8 / 26.3 / 30.1 m/s. (The
+launch angle column reads low — the first 0.12 s can hold the ball still — so it is not a target.)
+
+**Ours** (G5.83, same cut): every aimed loft at one 27° launch (`kLoftLaunchRatio` ½): 20-30 / 30-40 /
+40-50 m down through 2.4 m at 1.53 / 1.73 / 2.03 s, landing 1.73 / 1.93 / 2.23 — half a second to 0.7 s
+quick, a defender's last 3 m.
+
+**The change** [FH, fitted to DFL; the flight law stays Goff & Carré's drag, §G4.87]. `BallFlight`
+solves, per carry, the ratio (rise / ground speed) whose flight is back down through 0.5 m at the real
+landing time — `physics.ball.loft_time_<15|25|35|45|60>` (s ×1000 at each bin's middle, linear
+between) — the speed for the carry re-solved at each try. Under 15 m the 15 m angle; past 70 m the
+70 m one. `ratio()` / `launchRise()` serve the World's aimed loft, `loftSafe` and `descendDist`;
+throw-ins keep the flat law (`throwSpeed`). Solved once per process per param set (static cache).
+`physics.ball.loft_time_on` 0 = the flat law. Result: 25 / 35 / 45 / 60 m at 48 / 38 / 39 / 41°, 16 /
+22 / 26 / 33 m/s off the boot (real launch speeds 19 / 24 / 26 / 30). Test
+`ball_flight_loft_time_by_carry`; `ball_flight_drag_loft_lands_at_carry` reads each carry's angle;
+both goldens re-locked.
+
+**After** (flat → by carry; seed 1000, then seed 2000; real in brackets).
+- LOFT FLIGHT down through 2.4 m: 20-30 1.53 → 2.23 (2.24); 30-40 1.73 → 2.33 / 1.77 → 2.30 (2.20); 40-50
+  2.03 → 2.70 / 2.73 (2.64). Peaks now high: 30-40 5.2 → 8.0 (5.8), 40-50 6.6 → 10.2-10.5 (7.3).
+- Aerial duels 34.9 → 46.8, 35.6 → 50.2 a match (44.1); headed clearances 23.4 → 25.2 / 21.9 → 26.0 (16.1).
+- High passes completed, 0-35 / 35-70 / 70+: 92.7 / 72.6 / 29.9 → 75.4 / 60.4 / 42.0; 94.1 / 71.3 / 30.8 →
+  83.2 / 61.6 / 41.8 (57.0 / 46.0 / 36.0). Midfield lost in the air 11.4 → 18.7 / 12.6 → 20.1 (26.8);
+  aerial duel at it 35-38% (16.2).
+- AT THE LAUNCH, midfield: flight 1.93 → 2.37 / 1.87 → 2.33 s (3.04); defender off the attacker 8.7 →
+  9.1 / 8.4 → 9.1 m (7.1).
+- Passes 468 → 438 / 466 → 445 (434), completion 81.1 → 80.4 / 81.6 → 80.5% (79.1).
+- Goals 1.50 → 1.94 / 1.50 → 2.06 a team-match, scored 19-20 → 29% — from balls in behind: 2 → 8 / 1 → 6
+  goals over 8 matches by last kick.
+
+**What it says.** The ball now hangs as long as a real one and our defender gets under it: duels at
+the real rate, midfield completion two-thirds of the way to real. One angle per carry is a compromise
+— real lofts mix driven and hung balls (their median peak at a carry sits under the parabola their
+median landing implies), so ours peak 2-3 m high. Short lofts went over 4 m (10-20 m 0 → 11 a
+team-match, real 5.9) and 50-70 m lofts still never happen (0.1 v 12.6).
+
+**Next moles.** (1) The ball in behind: a hung ball over their line now drops for our runner and
+scores (6-8 goals in 8 matches v 1-2) — who meets a ball dropping in behind (keeper off his line, the
+covering CB). (2) Lofts a mix of driven and hung, not one angle (peaks 2-3 m high). (3) No 50-70 m
+lofts (kick range or the chooser). (4) The defender off the attacker at the launch 9 v 7 m — marking
+before the high ball. (5) `risk_weight` (§8.184).

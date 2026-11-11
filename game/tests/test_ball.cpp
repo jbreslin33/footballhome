@@ -11,7 +11,9 @@
 #include "core/World.hpp"
 #include "math/FixedMath.hpp"
 
+#include <cmath>
 #include <cstdio>
+#include <utility>
 
 using namespace fh::game::core;
 using fh::game::math::Fixed64;
@@ -262,9 +264,10 @@ FH_TEST(ball_flight_drag_loft_lands_at_carry) {
     FH_EXPECT_LT(f.k(), Fixed64::fromFraction(12, 1000));
     for (int c : {10, 30, 50}) {
         const Fixed64 v = f.launchSpeed(Fixed64::fromInt(c));
-        const Fixed64 vacuum = fx_sqrt(kGravity * Fixed64::fromInt(c));   // 2r = 1
+        const Fixed64 r = f.ratio(Fixed64::fromInt(c));   // G5.84: the angle by carry
+        const Fixed64 vacuum = fx_sqrt(kGravity * Fixed64::fromInt(c) / (r * 2));
         FH_EXPECT_GT(v, vacuum);
-        Vec3 vel{v, Fixed64::zero(), v * kLoftLaunchRatio}, pos{};
+        Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
         int ticks = 0;
         while (ticks < 600) {
             f.step(vel);
@@ -280,6 +283,37 @@ FH_TEST(ball_flight_drag_loft_lands_at_carry) {
         std::printf("loft %d m: strike %.1f m/s (vacuum %.1f), lands at %.1f m/s after %.2f s\n", c, v.toDouble(),
                     vacuum.toDouble(), vel.x.toDouble(), f.flightTime(Fixed64::fromInt(c)).toDouble());
     }
+}
+
+// G5.84 (§8.185): a loft is back down through 0.5 m at the real time for its
+// carry (DFL, benchmarks_tracking_loft.py: 2.48 s at 25-35 m, 3.60 at 60), the
+// angle steeper than the old flat 27° there; off, the flat law; a throw-in keeps
+// the flat law either way.
+FH_TEST(ball_flight_loft_time_by_carry) {
+    const BallFlight f;
+    for (auto [c, want] : {std::pair{25, 2.48}, std::pair{35, 2.48}, std::pair{45, 2.92}, std::pair{60, 3.60}}) {
+        const Fixed64 v = f.launchSpeed(Fixed64::fromInt(c)), r = f.ratio(Fixed64::fromInt(c));
+        Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
+        int ticks = 0, down = -1;
+        while (ticks < 600) {
+            f.step(vel);
+            vel.z -= kGravity * kTickDt;
+            pos += vel * kTickDt;
+            ++ticks;
+            if (down < 0 && vel.z.raw < 0 && pos.z < Fixed64::fromFraction(1, 2)) down = ticks;
+            if (pos.z.raw < 0) break;
+        }
+        FH_EXPECT_LT(std::abs(down / 30.0 - want), 0.05);
+        FH_EXPECT_GT(r, kLoftLaunchRatio);
+        std::printf("loft %d m: %.1f deg at %.1f m/s, down at %.2f s (real %.2f)\n", c, std::atan(r.toDouble()) * 57.29578,
+                    v.toDouble(), down / 30.0, want);
+    }
+    ModelParams off;
+    off.setMilli("physics.ball.loft_time_on", 0);
+    const BallFlight flat(off);
+    FH_EXPECT_EQ(flat.ratio(Fixed64::fromInt(35)), kLoftLaunchRatio);
+    FH_EXPECT_EQ(flat.launchSpeed(Fixed64::fromInt(35)), f.throwSpeed(Fixed64::fromInt(35)));
+    FH_EXPECT_EQ(flat.throwSpeed(Fixed64::fromInt(20)), f.throwSpeed(Fixed64::fromInt(20)));
 }
 
 FH_TEST_MAIN()

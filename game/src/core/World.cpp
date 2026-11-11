@@ -578,7 +578,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             if (held && kind == MatchEventType::ThrowIn) {
                 Fixed64 d = carry_m_[kicker] > 0 ? Fixed64::fromInt(carry_m_[kicker]) : Fixed64::fromInt(12);
                 if (d > officials_.throwMaxM()) d = officials_.throwMaxM();
-                const Fixed64 v = ball_flight_.launchSpeed(d) * power_scale;
+                const Fixed64 v = ball_flight_.throwSpeed(d) * power_scale;
                 if (dir.y * restart_spot_.y > Fixed64::zero()) dir.y = -dir.y;
                 ball_.pos = Vec3{restart_spot_.x, restart_spot_.y, kThrowHeight};
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
@@ -618,7 +618,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const Fixed64 d = Fixed64::fromInt(
                     cap > 0 && carry_m_[kicker] > cap ? cap : carry_m_[kicker]);
                 const Fixed64 v = ball_flight_.launchSpeed(d) * power_scale;
-                ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
+                ball_.vel = Vec3{dir.x * v, dir.y * v, v * ball_flight_.ratio(d)};   // G5.84: its angle by carry
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v,

@@ -19,6 +19,18 @@
 // launchSpeed()/flightTime() the aimed loft solved WITH drag — for each carry
 // 1-255 m, the launch speed (at kLoftLaunchRatio) whose first bounce lands
 // there, found by bisection on the same tick law, once, at construction.
+//
+// G5.84 (§8.185): the launch angle by carry. One 27° launch (kLoftLaunchRatio)
+// flew a 30-40 m loft to the ground in 1.9 s; real ones take 2.5 (DFL,
+// benchmarks_tracking_loft.py LOFT FLIGHT: lofts past 4 m, launch → back
+// under 0.5 m, median by carry 10-20 / 20-30 / 30-40 / 40-50 / 50-70 m:
+// 2.88 / 2.48 / 2.48 / 2.92 / 3.60 s). physics.ball.loft_time_<15|25|35|45|60>
+// (s x1000, at each bin's middle, linear between, held past the ends) is that
+// time; for each carry the ratio (rise / ground speed) is bisected so the ball
+// is back down to 0.5 m then, the speed solved for the carry at each try.
+// Under 15 m the 15 m angle holds (no hanging 5 m chips); past 70 m the 70 m
+// one. physics.ball.loft_time_on 0 = the flat 27° law. Throw-ins keep the flat
+// law (throwSpeed). [FH, fitted to DFL; the law is Goff & Carré's drag]
 #pragma once
 
 #include "core/Ball.hpp"
@@ -47,9 +59,23 @@ public:
         const Fixed64 cd = p.fixed("physics.ball.drag_coeff", 200);
         const Fixed64 area = math::FX_PI * d * d / 4;
         k_ = m.raw > 0 ? rho * area * cd / (m * 2) : Fixed64::zero();
+        static const int kAt[5] = {15, 25, 35, 45, 60};
+        static const int kT[5] = {2880, 2480, 2480, 2920, 3600};
+        static const char* const kName[5] = {"physics.ball.loft_time_15", "physics.ball.loft_time_25", "physics.ball.loft_time_35",
+                                             "physics.ball.loft_time_45", "physics.ball.loft_time_60"};
+        const bool on = p.integer("physics.ball.loft_time_on", 1) != 0;
+        std::array<std::int64_t, 6> key{k_.raw, on ? 1 : 0, 0, 0, 0, 0};
+        Fixed64 tt[5];
+        for (int i = 0; i < 5; ++i) { tt[i] = p.fixed(kName[i], kT[i]); key[1] = key[1] * 1000003 + tt[i].raw; }
+        // The tables depend only on these numbers: solved once per process for each set
+        // (every World and test builds a BallFlight; the solve is ~2M flight ticks).
+        static std::array<std::int64_t, 6> last_key{};
+        static std::shared_ptr<const Tables> last;
+        if (last && last_key == key) { tables_ = last; return; }
         auto t = std::make_shared<Tables>();
-        solve(*t);
+        solve(*t, on, kAt, tt);
         tables_ = std::move(t);
+        last = tables_; last_key = key;
     }
 
     // Drag coefficient per metre (k above).
@@ -64,15 +90,21 @@ public:
     }
 
     // Aimed loft: the speed to strike it (along the ground direction; it
-    // rises at kLoftLaunchRatio of that) so the first bounce is carry_m away.
+    // rises at ratio() of that) so the first bounce is carry_m away.
     math::Fixed64 launchSpeed(math::Fixed64 carry_m) const { return lookup(tables_->speed, carry_m); }
+    // G5.84: its rise / ground speed for that carry (kLoftLaunchRatio when off)...
+    math::Fixed64 ratio(math::Fixed64 carry_m) const { return lookup(tables_->ratio, carry_m); }
+    // ...and the rise itself (m/s).
+    math::Fixed64 launchRise(math::Fixed64 carry_m) const { return launchSpeed(carry_m) * ratio(carry_m); }
+    // A throw-in: the flat kLoftLaunchRatio law (G5.84 left throws alone).
+    math::Fixed64 throwSpeed(math::Fixed64 carry_m) const { return lookup(tables_->flat, carry_m); }
     // ...and how long it is in the air until that bounce (s).
     math::Fixed64 flightTime(math::Fixed64 carry_m) const { return lookup(tables_->time, carry_m); }
 
     // G5.11 (§8.108): a loft of carry_m, coming down, passes height h this far
     // along the ground (its bounce point if it never rises over h).
     math::Fixed64 descendDist(math::Fixed64 carry_m, math::Fixed64 h) const {
-        math::Vec3 vel{launchSpeed(carry_m), math::Fixed64::zero(), launchSpeed(carry_m) * kLoftLaunchRatio};
+        math::Vec3 vel{launchSpeed(carry_m), math::Fixed64::zero(), launchRise(carry_m)};
         math::Vec3 pos{};
         for (int ticks = 0; ticks < 600; ++ticks) {
             step(vel);
@@ -95,41 +127,80 @@ public:
 
 private:
     struct Tables {
-        std::array<math::Fixed64, kMaxCarry + 1> speed{}, time{};
+        std::array<math::Fixed64, kMaxCarry + 1> speed{}, time{}, ratio{}, flat{};
     };
 
     // The free-ball law (World::tickFreeBall) for one launch, to the first
     // bounce: metres along the ground and ticks.
-    void fly(math::Fixed64 v, math::Fixed64& dist, int& ticks) const {
-        math::Vec3 vel{v, math::Fixed64::zero(), v * kLoftLaunchRatio};
+    // ...and the tick it came back down through 0.5 m (benchmarks_tracking_loft.py's landing).
+    void fly(math::Fixed64 v, math::Fixed64 r, math::Fixed64& dist, int& ticks, int* down = nullptr) const {
+        math::Vec3 vel{v, math::Fixed64::zero(), v * r};
         math::Vec3 pos{};
+        const math::Fixed64 half = math::Fixed64::fromFraction(1, 2);
         ticks = 0;
+        if (down) *down = -1;
         while (ticks < 600) {
             step(vel);
             vel.z -= kGravity * kTickDt;
             pos += vel * kTickDt;
             ++ticks;
+            if (down && *down < 0 && vel.z.raw < 0 && pos.z < half) *down = ticks;
             if (pos.z.raw < 0) break;
         }
         dist = pos.x;
     }
-
-    void solve(Tables& t) const {
+    // The launch speed at ratio r whose first bounce is want away.
+    math::Fixed64 speedFor(math::Fixed64 want, math::Fixed64 r, int iters) const {
         using math::Fixed64;
-        for (int c = 0; c <= kMaxCarry; ++c) {
-            const Fixed64 want = Fixed64::fromInt(c < 1 ? 1 : c);
-            Fixed64 lo = Fixed64::zero(), hi = Fixed64::fromInt(80);
-            for (int it = 0; it < 28; ++it) {
-                const Fixed64 mid = (lo + hi) / 2;
-                Fixed64 dist{};
-                int ticks = 0;
-                fly(mid, dist, ticks);
-                if (dist < want) lo = mid; else hi = mid;
-            }
+        Fixed64 lo = Fixed64::zero(), hi = Fixed64::fromInt(80);
+        for (int it = 0; it < iters; ++it) {
+            const Fixed64 mid = (lo + hi) / 2;
             Fixed64 dist{};
             int ticks = 0;
-            fly(hi, dist, ticks);
-            t.speed[c] = hi;
+            fly(mid, r, dist, ticks);
+            if (dist < want) lo = mid; else hi = mid;
+        }
+        return hi;
+    }
+
+    void solve(Tables& t, bool on, const int* at, const math::Fixed64* tt) const {
+        using math::Fixed64;
+        auto target = [&](int c) {   // the real landing time at carry c: linear between bin middles, held past the ends
+            if (c <= at[0]) return tt[0];
+            for (int i = 1; i < 5; ++i)
+                if (c <= at[i]) return tt[i - 1] + (tt[i] - tt[i - 1]) * Fixed64::fromFraction(c - at[i - 1], at[i] - at[i - 1]);
+            return tt[4];
+        };
+        Fixed64 r_lo_end{}, r_hi_end{};
+        for (int c = 0; c <= kMaxCarry; ++c) {
+            const Fixed64 want = Fixed64::fromInt(c < 1 ? 1 : c);
+            t.flat[c] = speedFor(want, kLoftLaunchRatio, 28);
+            Fixed64 r = kLoftLaunchRatio;
+            if (on) {
+                if (c < at[0] && c > 0 && r_lo_end.raw) r = r_lo_end;
+                else if (c > 70 && r_hi_end.raw) r = r_hi_end;
+                else {
+                    const int cc = c < at[0] ? at[0] : c;   // c 0: the 15 m angle
+                    const Fixed64 w = Fixed64::fromInt(cc);
+                    const int goal = static_cast<int>((target(cc) / kTickDt).raw >> Fixed64::FRAC_BITS);
+                    Fixed64 lo = Fixed64::fromFraction(1, 5), hi = Fixed64::fromFraction(3, 2);   // ~11° .. ~56°
+                    for (int it = 0; it < 16; ++it) {
+                        const Fixed64 mid = (lo + hi) / 2;
+                        Fixed64 dist{};
+                        int ticks = 0, down = 0;
+                        fly(speedFor(w, mid, 22), mid, dist, ticks, &down);
+                        if (down < goal) lo = mid; else hi = mid;
+                    }
+                    r = hi;
+                    if (c == at[0] || c == 0) r_lo_end = r;
+                    if (c == 70) r_hi_end = r;
+                }
+            }
+            t.ratio[c] = r;
+            t.speed[c] = r == kLoftLaunchRatio ? t.flat[c] : speedFor(want, r, 28);
+            Fixed64 dist{};
+            int ticks = 0;
+            fly(t.speed[c], r, dist, ticks);
             t.time[c] = Fixed64::fromInt(ticks) * kTickDt;
         }
     }

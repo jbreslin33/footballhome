@@ -120,7 +120,7 @@ struct Stats {
     long sp_id = 0, sp_last_k = -100, sp_of[32] = {}; int sp_att = -1; double sp_s[32] = {}, sp_ss[32] = {}; long sp_k[32] = {};   // §8.146: each man's spell
     std::vector<double> sp_mean[ai::kRoleCount]; double sp_w[ai::kRoleCount] = {}; long sp_wn[ai::kRoleCount] = {};
     long rn_k[32] = {}, rn_last[32] = {}; double rn_s0[32] = {}, rn_sm[32] = {}; int rn_z[32] = {}, rn_b[32] = {}; long rn_nb[2] = {}; std::vector<double> rn_minb[2]; long run_why = 0, run_el[ai::kRoleCount] = {}, run_st[ai::kRoleCount] = {}, run_was[32] = {}, run_c[4] = {};
-    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0; std::vector<double> ft_r, ft_g5, ft_g10; long ft_n = 0, ft_kept = 0; long pt_n = 0, pt_rel[4] = {}, pt_near = 0; std::vector<double> pt_q5; long mp_av[2][3][5] = {}, mp_pk[2][3][5] = {}, mp_n[2][3] = {}; std::vector<double> rs_t[2], rs_r[2], rs_c[2], rs_dt[2]; long rs_in3[2] = {}, rs_far[2] = {}, rs_why[2][ai::kWhyCount] = {}, rs_kind[2][2] = {}, rs_kin3[2][2] = {}, rs_zn[3] = {}, rs_z3[3] = {}, rs_ln[2][4] = {}, rs_lt3[2][4] = {}, rs_lr3[2][4] = {}, rs_sn[2][4] = {}, rs_s3[2][4] = {}; std::vector<double> rs_sc[2][4];   // §8.184 MARKED PICK [all, completed]   // §8.183 RECEIVER SPACE   // §8.182 PRESSED TOUCH   // §8.181 FIRST TOUCH   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
+    double tn_as[25] = {}; long tn_an[25] = {}, tn_n[4] = {}, tn_z[4] = {}; std::vector<double> tn_L[4], tn_b[4], tn_f[4], tn_d[4]; std::vector<std::pair<int, double>> tn_g[4], tn_gk[4]; long tn_nk[4] = {}; std::vector<double> tn_dk[4]; long hb_n[3] = {}, hb_both[3] = {}, hb_o2[3] = {}, hb_none[3] = {}, hb_lost[3] = {}; std::vector<double> hb_a[3], hb_d[3], hb_cd[3], hb_ct[3], hb_rd[3], hb_cv[3]; long hb_c[3] = {}, hb_why[3][ai::kWhyCount + 1] = {}; std::vector<double> hb_from[3]; long aer_d = 0, aer_l = 0, aer_c = 0, aer_g = 0, wsp_n[4] = {}, wsp_l[4][3] = {}, lk_n[3][3] = {}, lk_k[3][3] = {}; std::vector<double> wsp_f[4][2]; long mk_n[2][3] = {}, mk_2[2][3] = {}, mk_35[2][3] = {}, mk_5[2][3] = {}; std::vector<double> mk_r[2][3], mk_pa[2][3], mk_len[2][3], mk_al[2][3]; std::vector<double> mf_d[2][4][2]; long mf_n[2][4][2] = {}, mf_2[2][4][2] = {}, mf_gs[2][4][2] = {}; std::vector<double> mf_cb[3][5]; long mf_cn[3][5] = {}, mf_c3[3][5] = {}, mf_mk[4] = {}, mf_mgs[4] = {}, mf_all[4] = {}; std::vector<double> mf_md[4]; long hn_why[3][ai::kWhyCount] = {}; long hp_n[3] = {}, hp_ok[3] = {}, hp_du[3] = {}, hp_duc[3] = {}; std::vector<double> hp_len[3]; long hl_n[3][6] = {}, hl_h[3][6] = {}, hl_hc[3][6] = {}, hl_gc[3][6] = {}; std::vector<double> hn_d[3][ai::kWhyCount]; long hm_n[3] = {}, hm_on[3] = {}; std::vector<double> hm_d[3]; long pk_n[3] = {}, pk_k[3] = {}, pk_near[3] = {}, pk_w2[3] = {}, pk_same[3] = {}; double pk_even[3] = {}, pk_drc[3] = {}, pk_dm[3] = {}; long hd_n[3][3][6] = {}, hd_h[3][3][6] = {}, gp_n[10] = {}, gp_k[10] = {}, gp_h[10] = {}, gp_ok[10] = {}; std::vector<double> gp_len[10]; std::vector<double> ev_acc[9], ev_brk[9], ev_lat[9], ev_rad[9]; long ev_n[9] = {}; std::vector<double> cr_ah[7], cr_sd[7], cr_iv[7], cr_pk[7]; long cr_t[7] = {}, cr_f[7] = {}; long cr_lost = 0, cr_steal = 0; long kf_n[2][3] = {}, kf_ok[2][3] = {}, kw_n[4] = {}, kw_ok[4] = {}, kf_wait = 0, kf_wt = 0, kf_cancel = 0; std::vector<double> ft_r, ft_g5, ft_g10; long ft_n = 0, ft_kept = 0; long pt_n = 0, pt_rel[4] = {}, pt_near = 0; std::vector<double> pt_q5; long hp_oc[3][7] = {}; std::vector<double> lf_ang[5], lf_pk[5], lf_dn[5], lf_ld[5], lf_v[5]; long lf_n[5] = {}; std::vector<double> hf_d[3][8], hf_t[3][8], hf_v[3][8]; long hf_n[3][8] = {}, hf_w[3][8][ai::kWhyCount + 1] = {}; std::vector<double> hf_cd[3][8], hf_cv[3][8], hf_c0[3]; long hf_never[3] = {}, hf_all[3] = {}; std::vector<double> hl_d[3], hl_a[3], hl_da[3], hl_t[3], hl_v[3]; long mp_av[2][3][5] = {}, mp_pk[2][3][5] = {}, mp_n[2][3] = {}; std::vector<double> rs_t[2], rs_r[2], rs_c[2], rs_dt[2]; long rs_in3[2] = {}, rs_far[2] = {}, rs_why[2][ai::kWhyCount] = {}, rs_kind[2][2] = {}, rs_kin3[2][2] = {}, rs_zn[3] = {}, rs_z3[3] = {}, rs_ln[2][4] = {}, rs_lt3[2][4] = {}, rs_lr3[2][4] = {}, rs_sn[2][4] = {}, rs_s3[2][4] = {}; std::vector<double> rs_sc[2][4];   // §8.184 MARKED PICK [all, completed]   // §8.183 RECEIVER SPACE   // §8.182 PRESSED TOUCH   // §8.181 FIRST TOUCH   // §8.180 KICK FOOT   // §8.179 CARRY   // §8.178 BODY ENVELOPE   // §8.177 TO OUR KEEPER   // §8.176 HIGH BY DIRECTION   // §8.175 PASS PICK   // §8.174 the nearest defender's job at the drop   // §8.173 MARKING, EVERY FRAME   // §8.173: the receiver's marker at the kick
     // §8.172: the side in possession's own line, all frames and as it loses the ball
     std::vector<double> fs_1[5], fs_2[5], ft_L[4], ft_A[4], bk_top[10];   // bk_top §8.171: the block's most advanced man   // §8.171: the front two by seconds since the spell began
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
@@ -211,6 +211,9 @@ int main(int argc, char** argv) {
         auto role = [&](std::uint8_t j) { return static_cast<int>(s.brain().roleOf(j)); };
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         bool hb_rose = false; double hb_pz = 0; struct HbP { long k; int po, z; }; std::vector<HbP> hb_p;   // §8.172: high balls coming down
+        long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
+        struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
+        struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
@@ -222,7 +225,7 @@ int main(int argc, char** argv) {
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
-        struct Hp { bool on = false; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
+        struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
@@ -473,12 +476,20 @@ int main(int argc, char** argv) {
                     const bool ok = toucher >= 0 && W.player(static_cast<std::uint8_t>(toucher)).team == hp.team;
                     if (hp.gk >= 0 && ok) ++S.gp_ok[hp.gk];
                     if (hp.high) {
+                        {   // §8.185 HIGH OUTCOME: completed / out / offside / lost in the air / on the ground / their keeper / no touch
+                            int oc = 6;
+                            if (ok) oc = 0;
+                            else if (toucher >= 0) oc = W.isKeeper(static_cast<std::uint8_t>(toucher)) ? 5 : hp.pz >= 1.0 ? 3 : 4;
+                            else if (dead) { const auto rk = W.restartKind(); oc = (rk == core::MatchEventType::ThrowIn || rk == core::MatchEventType::GoalKick || rk == core::MatchEventType::Corner || W.outStage() != 0) ? 1 : 2; }
+                            ++S.hp_oc[hp.z][oc];
+                        }
                         if (ok) { ++S.hp_ok[hp.z]; if (hp.duel) ++S.hp_duc[hp.z]; }
                         if (hp.duel) ++S.hp_du[hp.z];
                         if (ok) ++S.hl_hc[hp.oz][hp.lb];
                     } else if (ok) ++S.hl_gc[hp.oz][hp.lb];
                     hp.on = false;
                 }
+                hp.pz = b.pos.z.toDouble();
             }
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
                 last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
@@ -820,6 +831,46 @@ int main(int argc, char** argv) {
                     if (lost || kk - hb_p[i].k >= 90) { if (lost) ++S.hb_lost[hb_p[i].z]; hb_p.erase(hb_p.begin() + static_cast<long>(i)); } else ++i;
                 }
                 if (!live || bz < 0.5) hb_rose = false;
+                if (live && bz < 0.5) { hl_k = kk; for (std::uint8_t j = 0; j < N && j < 32; ++j) { hl_x[j] = W.player(j).pos.x.toDouble(); hl_y[j] = W.player(j).pos.y.toDouble(); } }   // §8.185 the launch
+                if (!live) { hl_k = -1; hl_f.clear(); }   // a dead ball: no launch (a throw-in is never launched from the ground)
+                {   // §8.185 LOFT FLIGHT v benchmarks_tracking_loft.py: off the ground, past 4 m, to its landing or a touch
+                    const double bx3 = b.pos.x.toDouble(), by3 = b.pos.y.toDouble();
+                    auto close = [&](bool touched) {
+                        if (lf.pk >= 4.0) {
+                            const double c = std::hypot(lf.lx - lf.x0, lf.ly - lf.y0);
+                            int bi = c < 10 ? -1 : c < 20 ? 0 : c < 30 ? 1 : c < 40 ? 2 : c < 50 ? 3 : c < 70 ? 4 : -1;
+                            if (bi >= 0) { ++S.lf_n[bi]; S.lf_ang[bi].push_back(lf.ang); S.lf_pk[bi].push_back(lf.pk); S.lf_v[bi].push_back(lf.v);
+                                if (lf.down >= 0) S.lf_dn[bi].push_back(lf.down); if (!touched) S.lf_ld[bi].push_back((kk - lf.k0) / 30.0); }
+                        }
+                        lf.on = false;
+                    };
+                    if (!live) lf.on = false;
+                    else if (!lf.on) {
+                        if (lf.lz < 0.5 && bz >= 0.5 && !b.owner && W.restartTeam() == 0xFF) {
+                            lf.on = true; lf.k0 = kk - 1; lf.x0 = lf.lx; lf.y0 = lf.ly; lf.pk = bz; lf.down = -1; lf.kicker = b.last_kicker;
+                            const double vx = b.vel.x.toDouble(), vy = b.vel.y.toDouble(), vz = b.vel.z.toDouble(), vh = std::hypot(vx, vy);
+                            lf.ang = std::atan2(vz, std::max(0.1, vh)) * 57.29578; lf.v = std::hypot(vh, vz);
+                        }
+                    } else if (b.owner || b.last_kicker != lf.kicker) close(true);
+                    else {
+                        lf.pk = std::max(lf.pk, bz);
+                        if (lf.down < 0 && b.vel.z.raw < 0 && bz <= 2.4) lf.down = (kk - lf.k0) / 30.0;
+                        if (bz < 0.5) { lf.lx = bx3; lf.ly = by3; close(false); }
+                    }
+                    if (lf.on) { lf.lx = bx3; lf.ly = by3; }
+                    lf.lz = bz; if (!lf.on) { lf.lx = bx3; lf.ly = by3; }
+                }
+                if (live && bz < 0.5) hl_f.clear();
+                else if (live && hl_k >= 0 && (kk - hl_k) % 6 == 0 && hl_f.size() < 40) {
+                    HlF f{}; f.k = kk;
+                    for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                        const auto& pj = W.player(j); f.x[j] = static_cast<float>(pj.pos.x.toDouble()); f.y[j] = static_cast<float>(pj.pos.y.toDouble());
+                        f.tx[j] = static_cast<float>(s.lastOrders()[j].target.x.toDouble()); f.ty[j] = static_cast<float>(s.lastOrders()[j].target.y.toDouble());
+                        f.v[j] = static_cast<float>(std::hypot(pj.vel.x.toDouble(), pj.vel.y.toDouble()));
+                        const int w = static_cast<int>(s.lastOrders()[j].why); f.why[j] = static_cast<std::uint8_t>(w < ai::kWhyCount ? w : ai::kWhyCount);
+                    }
+                    hl_f.push_back(f);
+                }
                 if (live && bz > 4.0) hb_rose = true;
                 if (live && hb_rose && hb_pz > 2.4 && bz <= 2.4 && W.lastTouchTeam() <= 1) {
                     hb_rose = false;
@@ -856,6 +907,23 @@ int main(int argc, char** argv) {
                             const double dd = std::hypot(W.player(j).pos.x.toDouble() - bx2, W.player(j).pos.y.toDouble() - by2);
                             if (W.player(j).team != po && dd < dn) { dn = dd; jn = j; }
                             if (W.player(j).team == po && dd < da) { da = dd; ja = j; }
+                        }
+                        if (jn >= 0 && ja >= 0 && hl_k >= 0 && jn < 32 && ja < 32) {   // §8.185 AT THE LAUNCH
+                            const double d0 = std::hypot(hl_x[jn] - bx2, hl_y[jn] - by2), t0 = (kk - hl_k) / 30.0;
+                            S.hl_d[z].push_back(d0); S.hl_a[z].push_back(std::hypot(hl_x[ja] - bx2, hl_y[ja] - by2));
+                            S.hl_da[z].push_back(std::hypot(hl_x[jn] - hl_x[ja], hl_y[jn] - hl_y[ja])); S.hl_t[z].push_back(t0);
+                            S.hl_v[z].push_back((d0 - dn) / std::max(0.2, t0));
+                            for (const auto& f : hl_f) {   // §8.185 the defender through the flight, 0.5 s bins since the launch
+                                const int bi = std::min(7, static_cast<int>((f.k - hl_k) / 15));
+                                ++S.hf_n[z][bi]; ++S.hf_w[z][bi][f.why[jn]];
+                                S.hf_d[z][bi].push_back(std::hypot(f.x[jn] - bx2, f.y[jn] - by2)); S.hf_t[z][bi].push_back(std::hypot(f.tx[jn] - bx2, f.ty[jn] - by2)); S.hf_v[z][bi].push_back(f.v[jn]);
+                                if (f.why[jn] == static_cast<int>(ai::Why::Chase)) { S.hf_cd[z][bi].push_back(std::hypot(f.x[jn] - bx2, f.y[jn] - by2)); S.hf_cv[z][bi].push_back(f.v[jn]); }
+                            }
+                            if (!hl_f.empty()) {
+                                ++S.hf_all[z]; double c0 = -1;
+                                for (const auto& f : hl_f) if (f.why[jn] == static_cast<int>(ai::Why::Chase)) { c0 = (f.k - hl_k) / 30.0; break; }
+                                if (c0 < 0) ++S.hf_never[z]; else S.hf_c0[z].push_back(c0);
+                            }
                         }
                         if (jn >= 0) { const int w = static_cast<int>(s.lastOrders()[jn].why); if (w < ai::kWhyCount) { ++S.hn_why[z][w]; S.hn_d[z][w].push_back(dn); } }
                         if (ja >= 0) {
@@ -1737,6 +1805,18 @@ int main(int argc, char** argv) {
                         static const char* zn3[3] = {"0-35", "35-70", "70+"}; static const double rn[3] = {3.3, 26.3, 29.3}, rc[3] = {57.0, 46.0, 36.0}, rl[3] = {22.7, 36.2, 37.8}, rd[3] = {4.2, 16.2, 11.7};
                         std::printf("\n        HIGH PASSES, open play, crosses out (benchmarks_statsbomb_highpass.py, real PL 15/16 in brackets), by the aim's m off the passer's own goal: a team-match | completed %% | length med | aerial duel at it within 5 s %% (on completed %%)");
                         for (int z = 0; z < 3; ++z) if (S.hp_n[z]) std::printf("\n          %-5s %5.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) (%4.1f)", zn3[z], S.hp_n[z] / tmn, rn[z], 100.0 * S.hp_ok[z] / S.hp_n[z], rc[z], mdh(S.hp_len[z]), rl[z], 100.0 * S.hp_du[z] / S.hp_n[z], rd[z], 100.0 * S.hp_duc[z] / std::max(1L, S.hp_ok[z]));
+                        {   // §8.185 LOFT FLIGHT v benchmarks_tracking_loft.py
+                            static const char* rf[5] = {"5.9 | 5.6 | 2.52 | 2.88", "8.9 | 5.9 | 2.24 | 2.48", "16.7 | 5.8 | 2.20 | 2.48", "11.1 | 7.3 | 2.64 | 2.92", "12.6 | 9.9 | 3.28 | 3.60"};
+                            static const char* bn[5] = {"10-20", "20-30", "30-40", "40-50", "50-70"};
+                            std::printf("\n        LOFT FLIGHT (rose past 4 m, in play; benchmarks_tracking_loft.py, real DFL in brackets), by carry m: a team-match | launch deg med | peak m med | down through 2.4 m s med | landing s med | launch m/s med  (real: a team-match | peak | down | landing)");
+                            for (int q = 0; q < 5; ++q) if (S.lf_n[q]) std::printf("\n          %s %5.1f | %4.1f | %4.1f | %4.2f | %4.2f | %4.1f  (%s)", bn[q], S.lf_n[q] / tmn, mdh(S.lf_ang[q]), mdh(S.lf_pk[q]), mdh(S.lf_dn[q]), mdh(S.lf_ld[q]), mdh(S.lf_v[q]), rf[q]);
+                        }
+                        {   // §8.185 HIGH OUTCOME v benchmarks_statsbomb_highpass.py
+                            static const char* ro[3] = {"57.0 / 17.6 / 0.0 / 6.4 / 19.0 / 0.0 / 0.0", "46.0 / 5.1 / 0.7 / 26.8 / 21.5 / 0.0 / 0.0", "36.0 / 7.3 / 2.0 / 26.5 / 26.8 / 1.4 / 0.0"};
+                            std::printf("\n        HIGH OUTCOME (%% of the zone's high passes; real StatsBomb PL 15/16 in brackets): completed / out / offside / lost: in the air / on the ground / their keeper / no touch in 5 s");
+                            for (int z = 0; z < 3; ++z) { long t = 0; for (int q = 0; q < 7; ++q) t += S.hp_oc[z][q]; const double n = static_cast<double>(std::max(1L, t));
+                                std::printf("\n          %-5s", zn3[z]); for (int q = 0; q < 7; ++q) std::printf(" %4.1f", 100 * S.hp_oc[z][q] / n); std::printf("  (%s)", ro[z]); }
+                        }
                         static const double rh[3][6] = {{5.5, 5.2, 14.3, 53.9, 90.2, 97.9}, {5.3, 5.4, 12.3, 41.9, 77.5, 92.7}, {5.5, 7.4, 21.4, 46.2, 74.4, 87.4}};
                         static const double rhc[3][6] = {{35, 49, 45, 42, 35, 28}, {50, 51, 46, 47, 49, 40}, {33, 38, 39, 55, 67, 64}};
                         std::printf("\n        PASS PICK (benchmarks_tracking_passpick.py, DFL): passer m off own goal | the man it is for, his zone at the kick holding 2+ mates: share of passes, he is the nearest %% (even), his m v the zone's mean, wide to wide with both flanks held own flank %%");
@@ -1906,6 +1986,18 @@ int main(int argc, char** argv) {
                             std::printf("\n                 §8.174 the other side's nearest at the drop, by job: ");
                             for (int w = 0; w < ai::kWhyCount; ++w) if (S.hn_why[z][w] * 100 >= 3 * n) std::printf(" %s %.0f%% (%.1f m)", ai::kWhyNames[w], 100 * S.hn_why[z][w] / n, md2(S.hn_d[z][w]));
                             if (S.hm_n[z]) std::printf(" || the kicker's side's nearest marked %.0f%%, marker off him %.1f m", 100.0 * S.hm_on[z] / S.hm_n[z], md2(S.hm_d[z]));
+                            {   // §8.185 AT THE LAUNCH v benchmarks_tracking_aerial.py
+                                static const char* rl[3] = {"9.4 | 8.8 | 6.9 | 2.76 | 2.21", "8.4 | 8.3 | 7.1 | 3.04 | 1.92", "9.7 | 10.9 | 5.1 | 2.52 | 2.72"};
+                                std::printf("\n                 §8.185 at the launch, the men nearest at the drop: defender off the drop med %.1f | attacker off it %.1f | defender off the attacker %.1f | flight %.2f s | defender closing %.2f m/s  (%s)",
+                                            md2(S.hl_d[z]), md2(S.hl_a[z]), md2(S.hl_da[z]), md2(S.hl_t[z]), md2(S.hl_v[z]), rl[z]);
+                                std::printf("\n                 §8.185 that defender through the flight, s since the launch: off the drop m / his target off it m / speed m/s / jobs");
+                                if (S.hf_all[z]) std::printf(" — never chased it %.0f%%, began chasing at med %.2f s", 100.0 * S.hf_never[z] / S.hf_all[z], md2(S.hf_c0[z]));
+                                for (int bi = 0; bi < 8; ++bi) if (S.hf_n[z][bi]) {
+                                    std::printf("\n                   %.1f-%s %5.1f / %5.1f / %4.1f |", bi * 0.5, bi == 7 ? "   " : (std::to_string(bi * 0.5 + 0.5).substr(0, 3)).c_str(), md2(S.hf_d[z][bi]), md2(S.hf_t[z][bi]), md2(S.hf_v[z][bi]));
+                                    for (int w = 0; w <= ai::kWhyCount; ++w) if (S.hf_w[z][bi][w] * 100 >= 5 * S.hf_n[z][bi]) std::printf(" %s %.0f%%", w < ai::kWhyCount ? ai::kWhyNames[w] : "-", 100.0 * S.hf_w[z][bi][w] / S.hf_n[z][bi]);
+                                    if (!S.hf_cv[z][bi].empty()) std::printf(" || chasing: off the drop %.1f, speed %.1f", md2(S.hf_cd[z][bi]), md2(S.hf_cv[z][bi]));
+                                }
+                            }
                         }
                     }
                     static const double rU[21] = {6.6, 9.6, 14.2, 16.8, 19.8, 22.9, 25.6, 28.9, 31.3, 34.0, 37.4, 40.4, 42.7, 45.1, 48.0, 49.9, 52.3, 54.2, 56.5, 57.8, 60.5};

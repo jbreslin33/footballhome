@@ -293,7 +293,7 @@ bool Reads::loftSafe(const World& world, SlotIndex passer, const Vec2& from, con
     if (len.raw == 0) return true;
     const Fixed64 v = world.ballFlight().launchSpeed(Fixed64::fromInt(carry_m));
     return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
-                    Vec3{ab.x / len * v, ab.y / len * v, v * core::kLoftLaunchRatio}, reach);
+                    Vec3{ab.x / len * v, ab.y / len * v, v * world.ballFlight().ratio(Fixed64::fromInt(carry_m))}, reach);
 }
 
 bool Reads::raceSafe(const World& world, SlotIndex passer, const Vec3& pos, const Vec3& vel,
