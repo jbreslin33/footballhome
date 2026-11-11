@@ -35,10 +35,10 @@ class PyramidFlowView {
       .fc-scroll { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
       .fc-scroll.dragging { cursor:grabbing; user-select:none; }
       .fc-scroll.dragging * { cursor:grabbing !important; }
-      .fc-chart { position:relative; display:grid; column-gap:22px; row-gap:46px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
+      .fc-chart { position:relative; display:grid; column-gap:64px; row-gap:56px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
       .fc-arrows { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
       .fc-tbl tr.fc-out td.tm { text-decoration:underline dotted #94a3b8; text-underline-offset:3px; }
-      .fc-cell { display:flex; gap:10px; justify-content:center; position:relative; z-index:1; }
+      .fc-cell { display:flex; gap:44px; justify-content:center; position:relative; z-index:1; }   /* room for the lines (owner: "spread the tables more to see line") */
       .fc-conf { border:2px solid #2563eb; border-radius:14px; padding:10px; background:rgba(37,99,235,0.08); position:relative; z-index:1; }
       .fc-conf h2 { margin:0; font-size:1.1rem; text-align:center; }
       .fc-meta { font-size:0.78rem; opacity:0.7; text-align:center; margin:2px 0 8px; }
@@ -202,11 +202,11 @@ class PyramidFlowView {
   // Branches from each outlier row out to the table's edge on the target's
   // side, a trunk up that edge, then the usual curve into the conference.
   // Promotion head at the conference; relegation heads into the rows.
-  _outlierPath(rows, a, b, box, k, e) {
+  _outlierPath(rows, a, b, box, k, e, side) {
     const L = (x) => (x - box.left) / k, T = (y) => (y - box.top) / k;
-    const right = (b.left + b.right) / 2 >= (a.left + a.right) / 2;
+    const right = side ? side === 'right' : (b.left + b.right) / 2 >= (a.left + a.right) / 2;
     const edge = right ? L(a.right) : L(a.left);
-    const jx = edge + (right ? 11 : -11);
+    const jx = edge + (right ? 20 : -20);   // mid-gap between tables (.fc-cell gap 44px)
     const ys = rows.map((r) => { const rr = r.getBoundingClientRect(); return T(rr.top + rr.height / 2); });
     const top = T(a.top) - 8;
     const bl = L(b.left), br = L(b.right);
@@ -225,14 +225,29 @@ class PyramidFlowView {
     const k = chart.offsetWidth ? box.width / chart.offsetWidth : 1;
     const paths = [];
     const outliers = opts.outliers !== false && (this.screen.feature ? this.screen.feature('outliers', true) : true);
-    for (const e of model.layout(confs).edges) {
+    const edges = model.layout(confs).edges;
+    // A split table (mig 1260): each conference's rows leave by the side
+    // facing it — the leftmost conference's out of the left edge, the
+    // others out of the right (owner: "right side for metro and left side
+    // for del").
+    const sideOf = new Map();
+    if (outliers) {
+      const byTable = new Map();
+      for (const e of edges) if (e.teams && e.teams.length && e.to[0] === 'c') (byTable.get(e.from) || byTable.set(e.from, []).get(e.from)).push(e);
+      for (const list of byTable.values()) {
+        if (list.length < 2) continue;
+        const cx = (e) => { const el = chart.querySelector(`[data-node="${e.to}"]`); const r = el && el.getBoundingClientRect(); return r ? r.left + r.width / 2 : 0; };
+        list.sort((p, q) => cx(p) - cx(q)).forEach((e, i) => sideOf.set(e, i === 0 ? 'left' : 'right'));
+      }
+    }
+    for (const e of edges) {
       const from = chart.querySelector(`.fc-cell.lv [data-node="d${e.from}"]`);
       const to = chart.querySelector(`[data-node="${e.to}"]`);
       if (!from || !to) continue;
       const a = from.getBoundingClientRect(), b = to.getBoundingClientRect();
       const rows = outliers && e.teams && e.teams.length
         ? e.teams.map((id) => from.querySelector(`tr[data-team="${id}"]`)).filter(Boolean) : [];
-      if (rows.length) { paths.push(this._outlierPath(rows, a, b, box, k, e)); continue; }
+      if (rows.length) { paths.push(this._outlierPath(rows, a, b, box, k, e, sideOf.get(e))); continue; }
       const x1 = (a.left + a.width / 2 - box.left) / k, y1 = (a.top - box.top) / k;
       // Into a conference: aim above the feeder (clamped into the
       // container) so the arrows fan in instead of meeting mid-box.
@@ -243,7 +258,8 @@ class PyramidFlowView {
       paths.push(`<path d="M${x1},${y1 - 2} C${x1},${my} ${x2},${my} ${x2},${y2}"${e.up ? ' marker-end="url(#fc-up)"' : ''}${e.down ? ' marker-start="url(#fc-down)"' : ''} />`);
     }
     chart.querySelectorAll('tr.fc-out').forEach((tr) => tr.classList.remove('fc-out'));
-    if (outliers) for (const e of model.layout(confs).edges)
+    // dotted underline: the smaller group's rows only
+    if (outliers) for (const e of edges.filter((x) => x.majority === false))
       for (const id of e.teams || []) chart.querySelectorAll(`.fc-cell.lv [data-node="d${e.from}"] tr[data-team="${id}"]`).forEach((tr) => tr.classList.add('fc-out'));
     svg.setAttribute('width', chart.offsetWidth);
     svg.setAttribute('height', chart.offsetHeight);

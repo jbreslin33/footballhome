@@ -86,7 +86,7 @@ constexpr const char* kZonesSql = R"SQL(
 // One row carries both directions (promotes up, relegates down).
 constexpr const char* kLinksSql = R"SQL(
     SELECT l.id, ld.id AS lower_division, ud.id AS upper_division, l.upper_competition_id,
-           l.promotes, l.relegates, array_to_string(o.team_ids, ',') AS outlier_teams
+           l.promotes, l.relegates, array_to_string(o.team_ids, ',') AS outlier_teams, o.majority
       FROM pyramid_links l
       JOIN td ld ON ld.source_id = l.lower_source_id AND ld.name = l.lower_division
       LEFT JOIN td ud ON ud.source_id = l.upper_source_id AND ud.name = l.upper_division
@@ -581,7 +581,9 @@ Response PyramidController::handleGet(const Request& request) {
             links.push_back({{"lower", num(r, "lower_division")}, {"upper_division", intOrNull(r, "upper_division")},
                              {"upper_competition", intOrNull(r, "upper_competition_id")},
                              {"promotes", r["promotes"].as<bool>()}, {"relegates", r["relegates"].as<bool>()},
-                             {"outlier_teams", outliers}});
+                             {"outlier_teams", outliers},
+                             // mig 1260: a split table's links all carry their teams; majority = the column it sits under
+                             {"majority", r["majority"].is_null() ? json(nullptr) : json(r["majority"].as<bool>())}});
         }
 
         json clubs = json::array();

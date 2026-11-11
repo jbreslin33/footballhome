@@ -199,7 +199,12 @@ class PyramidModel {
       || this.division(a).name.localeCompare(this.division(b).name);
     const columns = confs.map((conf) => {
       const levels = [];
-      let current = [...new Set(this.links.filter((l) => l.upper_competition === conf.id && this._div.has(l.lower)).map((l) => l.lower))]
+      // A table that feeds two conferences sits under the one most of its
+      // teams belong to: its outlier link (mig 1238, outlier_teams) never
+      // places it, unless that conference is the only one on show.
+      const majorityElsewhere = (l) => l.majority === false
+        && this.links.some((o) => o.lower === l.lower && o !== l && o.upper_competition && confIds.has(o.upper_competition) && o.majority !== false);
+      let current = [...new Set(this.links.filter((l) => l.upper_competition === conf.id && this._div.has(l.lower) && !majorityElsewhere(l)).map((l) => l.lower))]
         .filter((id) => !placed.has(id)).sort(byName);
       while (current.length) {
         current.forEach((id) => placed.add(id));
@@ -226,7 +231,7 @@ class PyramidModel {
     for (const l of this.links) {
       if (!placed.has(l.lower)) continue;
       // teams: the outlier rows a minority conference link starts from (mig 1238).
-      const e = { from: l.lower, up: l.promotes, down: l.relegates, teams: l.outlier_teams || [] };
+      const e = { from: l.lower, up: l.promotes, down: l.relegates, teams: l.outlier_teams || [], majority: l.majority };
       if (l.upper_competition && confIds.has(l.upper_competition)) edges.push({ ...e, to: `c${l.upper_competition}` });
       else if (l.upper_division && placed.has(l.upper_division)) edges.push({ ...e, to: `d${l.upper_division}` });
     }
