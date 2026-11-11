@@ -896,7 +896,7 @@ class PyramidMapView {
       const tip = r.far_a ? this._copy('pill_far', { a: r.far_a, b: r.far_b }) : '';
       const base = L.latLng(r.lat, r.lon);
       const ctr = r.center_lat != null ? L.latLng(r.center_lat, r.center_lon) : null;
-      // every measuring point (mig 1284: base metro + other big metros in it,
+      // every measuring point (mig 1285: base metro + other big metros in it,
       // weighted by people) — a line to each, the base dot the biggest
       const pts = (r.points && r.points.length) ? r.points : (ctr ? [{ lat: r.center_lat, lon: r.center_lon, base: true }] : []);
       const lines = pts.map((q) => {

@@ -203,7 +203,7 @@ def run(plan, adj):
     step = STEP[plan]
     reg = dict(l.split('|') for l in psql(
         f"SELECT fips || '|' || COALESCE('c' || conference_id, 'p' || proposed_id) FROM pyramid_proposal_counties WHERE plan = '{plan}'").split())
-    cen = defaultdict(list)          # region → [(point, traffic factor, weight)] (mig 1284)
+    cen = defaultdict(list)          # region → [(point, traffic factor, weight)] (mig 1285)
     for l in psql(f"SELECT COALESCE('c' || conference_id, 'p' || proposed_id) || '|' || round(lat::numeric, 4) || '|' || round(lon::numeric, 4)"
                   f" || '|' || factor || '|' || weight FROM pyramid_region_points WHERE plan = '{plan}'").split():
         k, la, lo, f, w = l.split('|')

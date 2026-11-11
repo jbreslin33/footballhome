@@ -218,7 +218,7 @@ Response PyramidController::handleProposal(const Request&) {
                                         ORDER BY rp.weight DESC)::text
                           FROM pyramid_region_points rp
                          WHERE rp.plan = pc.plan AND rp.conference_id IS NOT DISTINCT FROM pc.conference_id
-                           AND rp.proposed_id IS NOT DISTINCT FROM pc.proposed_id) AS points   -- every measuring point (mig 1284)
+                           AND rp.proposed_id IS NOT DISTINCT FROM pc.proposed_id) AS points   -- every measuring point (mig 1285)
                   FROM pyramid_proposal_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id

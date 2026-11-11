@@ -1,4 +1,4 @@
--- 1284 (2026-11-11) — #apsl-pyramid: a conference with two (or more) big
+-- 1285 (2026-11-11) — #apsl-pyramid: a conference with two (or more) big
 -- metro areas is measured from all of them, weighted by their people.
 --
 -- Owner 2026-11-11: "if there are 2 cities in a conference do we need to
@@ -25,7 +25,7 @@
 
 ALTER TABLE pyramid_territory_policy ADD COLUMN IF NOT EXISTS region_metro_min_population int NOT NULL DEFAULT 750000;
 COMMENT ON COLUMN pyramid_territory_policy.region_metro_min_population IS
-    'mig 1284: another metro area this big inside a conference (by drive) becomes one of its measuring points, weighted by people.';
+    'mig 1285: another metro area this big inside a conference (by drive) becomes one of its measuring points, weighted by people.';
 
 CREATE TABLE IF NOT EXISTS pyramid_region_points (
     plan          text NOT NULL,
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS pyramid_region_points (
     is_base       boolean NOT NULL
 );
 COMMENT ON TABLE pyramid_region_points IS
-    'mig 1284: each conference''s measuring points — base metro centre of population + other metros ≥ policy size inside it — with people as weights; refreshed by fh_pyramid_proposal_refresh().';
+    'mig 1285: each conference''s measuring points — base metro centre of population + other metros ≥ policy size inside it — with people as weights; refreshed by fh_pyramid_proposal_refresh().';
 
 CREATE OR REPLACE FUNCTION public.fh_pyramid_proposal_refresh()
  RETURNS void
@@ -85,7 +85,7 @@ BEGIN
       FROM cand WHERE plan = 'proposed' OR mins <= reach
      ORDER BY plan, fips, mins * factor;
 
-    -- The measuring points (mig 1284).
+    -- The measuring points (mig 1285).
     DELETE FROM pyramid_region_points;
     INSERT INTO pyramid_region_points (plan, conference_id, proposed_id, cbsa_code, label, lat, lon, factor, weight, is_base)
     SELECT c.plan, c.conference_id, c.proposed_id, pc.cbsa_code, split_part(a.title, ',', 1),
@@ -218,7 +218,7 @@ BEGIN
 END $function$;
 
 COMMENT ON FUNCTION fh_pyramid_proposal_refresh() IS
-    'mig 1284: measuring points per conference (base metro + other metros ≥ policy size, people-weighted), both plans by weighted drive × traffic, region stats, border lines. Pipeline: refresh → pyramid-county-drive.py → refresh → pyramid-fine-borders.py → pyramid-sea-borders.py → pyramid-drive-times.py.';
+    'mig 1285: measuring points per conference (base metro + other metros ≥ policy size, people-weighted), both plans by weighted drive × traffic, region stats, border lines. Pipeline: refresh → pyramid-county-drive.py → refresh → pyramid-fine-borders.py → pyramid-sea-borders.py → pyramid-drive-times.py.';
 
 -- Clubs: the same weighted drive over the live conferences' points.
 CREATE OR REPLACE VIEW pyramid_team_nearest_conference AS
@@ -241,7 +241,7 @@ SELECT t.id AS team_id, t.division_id, n.conference_id, n.km, n.minutes
          LIMIT 1) n
  WHERE t.removed_at IS NULL;
 COMMENT ON VIEW pyramid_team_nearest_conference IS
-    'mig 1284: each located feeder team → the live conference with the lowest people-weighted drive from its ground over that conference''s measuring points × traffic factor.';
+    'mig 1285: each located feeder team → the live conference with the lowest people-weighted drive from its ground over that conference''s measuring points × traffic factor.';
 
 UPDATE pyramid_conference_rules SET title = 'Measured from where its people are',
        body = 'Each conference is measured from its metro area''s centre of population, not a landmark. A conference that also holds another metro area of 750 000+ people (by drive) is measured from both, weighted by their people — never from an empty midpoint, and never by adding a city by choice.'
