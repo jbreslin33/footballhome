@@ -88,7 +88,7 @@ class PyramidMapView {
     const all = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || [])
       .sort((a, b) => b.core_population - a.core_population);
     return [{ tier: 'proposal_hud',
-      html: `<div class="mp-pz"><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
+      html: `<div class="mp-pz"><div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div>${all.map(row).join('')}</div>` }];
   }
   menuClick(e) {
     const r = e.target.closest('[data-pzrow]');
@@ -658,6 +658,10 @@ class PyramidMapView {
     if (!this.map || !(this.screen.feature && this.screen.feature('proposal', this.features()[0].def))) return;
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
+    // The neutral zone (mig 1255): counties the two borders disagree on.
+    if (this.proposal.neutral && (this.proposal.neutral.features || []).length)
+      L.geoJSON(this.proposal.neutral, { renderer: this.propRenderer, interactive: false,
+        style: { stroke: false, fillColor: '#f8fafc', fillOpacity: 0.22 } }).addTo(this.propLayer);
     this._drawBorders();
     for (const r of (this.proposal.regions || []).filter((x) => x.proposed_id))
       L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
@@ -685,6 +689,11 @@ class PyramidMapView {
       return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
     });
     for (const b of P.borders || []) {
+      // The straight-distance border (mig 1255): dashed white, on the line itself.
+      if (b.kind === 'plain') {
+        L.polyline(b.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 3, opacity: 0.95, dashArray: '7 6' }).addTo(this.propLines);
+        continue;
+      }
       const pts = b.line.map((ll) => this.map.latLngToLayerPoint(L.latLng(ll[0], ll[1])));
       if (pts.length < 2) continue;
       const aSide = b.a_left ? HALF : -HALF;

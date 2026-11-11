@@ -236,14 +236,31 @@ Response PyramidController::handleProposal(const Request&) {
         }
         // a_left (mig 1249): region a lies on the left of the line's direction.
         // + the borders carried out to sea (mig 1252, scripts/pyramid-sea-borders.py)
-        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left FROM pyramid_proposal_borders"
-                                        " UNION ALL SELECT region_a, region_b, line::text, a_left FROM pyramid_proposal_sea_borders"))
+        // kind (mig 1255): 'travel' = the coloured border (city centres × traffic
+        // factor), 'plain' = straight distance where it runs apart from it.
+        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left, kind FROM pyramid_proposal_borders"
+                                        " UNION ALL SELECT region_a, region_b, line::text, a_left, 'travel' FROM pyramid_proposal_sea_borders"))
             borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
-                               {"a_left", r["a_left"].as<bool>()}});
+                               {"a_left", r["a_left"].as<bool>()}, {"kind", str(r, "kind")}});
+        // The neutral zone (mig 1255): counties whose region by straight
+        // distance differs from the one with the traffic factor.
+        json neutral = json::array();
+        for (const auto& r : db->query(R"SQL(
+                SELECT k.fips, k.name, k.state, k.geometry::text AS g,
+                       COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS travel,
+                       COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id) AS plain
+                  FROM pyramid_proposal_counties pc JOIN pyramid_counties k ON k.fips = pc.fips
+                 WHERE pc.conference_id IS DISTINCT FROM pc.plain_conference_id
+                    OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id)SQL"))
+            neutral.push_back({{"type", "Feature"},
+                               {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")},
+                                               {"travel", str(r, "travel")}, {"plain", str(r, "plain")}}},
+                               {"geometry", json::parse(str(r, "g"), nullptr, false)}});
         auto bar = db->query(R"SQL(
             SELECT min(pop) AS bar FROM (SELECT sum(k.population) AS pop FROM pyramid_county_conference cc
               JOIN pyramid_counties k ON k.fips = cc.fips WHERE cc.conference_id IS NOT NULL GROUP BY cc.conference_id) s)SQL");
         return jsonOut(HttpStatus::OK, {{"regions", regions}, {"watch", watch}, {"borders", borders},
+                                        {"neutral", {{"type", "FeatureCollection"}, {"features", neutral}}},
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] proposal: " << e.what() << std::endl;

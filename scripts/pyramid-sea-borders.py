@@ -55,7 +55,7 @@ def psql(sql, stdin_sql=False):
 def load():
     borders = json.loads(psql(
         "SELECT COALESCE(json_agg(json_build_object('id', id, 'a', region_a, 'b', region_b, 'line', line, 'a_left', COALESCE(a_left, false))), '[]')"
-        " FROM pyramid_proposal_borders"))
+        " FROM pyramid_proposal_borders WHERE kind = 'travel'"))   # the coloured border (mig 1255)
     counties = json.loads(psql(
         "SELECT json_agg(json_build_object('f', k.fips, 'r', COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id),"
         " 'lat', k.lat, 'lon', k.lon, 'g', k.geometry))"
