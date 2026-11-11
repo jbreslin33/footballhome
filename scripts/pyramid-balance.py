@@ -14,7 +14,7 @@ counties between neighbouring conferences to shorten the longest trips:
     conference, never splits one into more pieces than it had;
   * a populated county deep inside a tail moves together with the sparse
     counties beyond it (the tail past it, cut off from A once it goes).
-Writes pyramid_proposal_county_pins, then runs the refresh.  Afterwards run
+The proposed plan only (mig 1274).  Writes pyramid_proposal_county_pins, then runs the refresh.  Afterwards run
 scripts/pyramid-sea-borders.py and scripts/pyramid-drive-times.py.
   python3 scripts/pyramid-balance.py          # recompute pins and refresh
   python3 scripts/pyramid-balance.py --dry    # report only
@@ -52,13 +52,13 @@ def load():
     rows = json.loads(psql(
         "SELECT json_agg(json_build_object('f', k.fips, 'lat', k.lat, 'lon', k.lon, 'pop', k.population,"
         " 'r', COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id),"
-        " 'home', EXISTS (SELECT 1 FROM pyramid_region_homes h WHERE h.fips = k.fips)))"
-        " FROM pyramid_proposal_counties pc JOIN pyramid_counties k ON k.fips = pc.fips"))
+        " 'home', EXISTS (SELECT 1 FROM pyramid_region_homes h WHERE h.plan = 'proposed' AND h.fips = k.fips)))"
+        " FROM pyramid_proposal_counties pc JOIN pyramid_counties k ON k.fips = pc.fips WHERE pc.plan = 'proposed'"))   # mig 1274
     # Neighbours: counties sharing an outline edge (as the border builder does).
     adj_rows = psql(r"""
         WITH polys AS (
             SELECT k.fips, p.ord AS pord, p.poly FROM pyramid_counties k
-              JOIN pyramid_proposal_counties pc ON pc.fips = k.fips
+              JOIN pyramid_proposal_counties pc ON pc.fips = k.fips AND pc.plan = 'proposed'
              CROSS JOIN LATERAL jsonb_array_elements(
                    CASE k.geometry->>'type' WHEN 'Polygon' THEN jsonb_build_array(k.geometry->'coordinates')
                                             WHEN 'MultiPolygon' THEN k.geometry->'coordinates' ELSE '[]'::jsonb END)

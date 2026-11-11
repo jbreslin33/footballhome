@@ -201,7 +201,7 @@ Response PyramidController::handleProposal(const Request&) {
         json regions = json::array(), watch = json::array(), borders = json::array();
         for (const auto& r : db->query(R"SQL(
                 SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
-                       pc.conference_id, pc.proposed_id,
+                       pc.conference_id, pc.proposed_id, pc.plan, p.from_conference_id,   -- mig 1274
                        COALESCE(c.short_name, c.name, p.name) AS name, p.note, p.tier,
                        COALESCE(p.core_population, cm.population) AS core_population,  -- live: its metro (mig 1269)
                        COALESCE(c.color, p.color) AS color,
@@ -221,11 +221,12 @@ Response PyramidController::handleProposal(const Request&) {
                   LEFT JOIN pyramid_drive_times dt ON dt.a_fips = st.a_fips AND dt.b_fips = st.b_fips
                   LEFT JOIN pyramid_counties ka ON ka.fips = st.a_fips
                   LEFT JOIN pyramid_counties kb ON kb.fips = st.b_fips
-                 GROUP BY pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
+                 GROUP BY pc.plan, p.from_conference_id, pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
                           st.span_km, st.area_km2, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state
                  ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
+                               {"plan", str(r, "plan")}, {"from_conference_id", intOrNull(r, "from_conference_id")},
                                {"note", strOrNull(r, "note")}, {"tier", strOrNull(r, "tier")},
                                {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
                                {"population", r["population"].as<long long>()}, {"counties", num(r, "counties")},
@@ -262,14 +263,14 @@ Response PyramidController::handleProposal(const Request&) {
         // distance differs from the one with the traffic factor.
         json neutral = json::array();
         for (const auto& r : db->query(R"SQL(
-                SELECT k.fips, k.name, k.state, k.geometry::text AS g,
+                SELECT k.fips, k.name, k.state, k.geometry::text AS g, pc.plan,
                        COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS travel,
                        COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id) AS plain
                   FROM pyramid_proposal_counties pc JOIN pyramid_counties k ON k.fips = pc.fips
                  WHERE pc.conference_id IS DISTINCT FROM pc.plain_conference_id
                     OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id)SQL"))
             neutral.push_back({{"type", "Feature"},
-                               {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")},
+                               {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")}, {"plan", str(r, "plan")},
                                                {"travel", str(r, "travel")}, {"plain", str(r, "plain")}}},
                                {"geometry", json::parse(str(r, "g"), nullptr, false)}});
         // The bar (mig 1265): the smallest metro area anchoring a live conference.

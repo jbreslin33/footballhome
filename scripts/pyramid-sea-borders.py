@@ -52,14 +52,16 @@ def psql(sql, stdin_sql=False):
     return subprocess.run(args + ['-c', sql], text=True, capture_output=True, check=True, stdin=subprocess.DEVNULL).stdout
 
 
-def load():
+def load(plan):
+    """One plan's borders and counties (mig 1274: 'current' = c-keys, 'proposed' = p-keys)."""
+    pre = 'c' if plan == 'current' else 'p'
     borders = json.loads(psql(
         "SELECT COALESCE(json_agg(json_build_object('id', id, 'a', region_a, 'b', region_b, 'line', line, 'a_left', COALESCE(a_left, false))), '[]')"
-        " FROM pyramid_proposal_borders WHERE kind = 'travel'"))   # the coloured border (mig 1255)
+        f" FROM pyramid_proposal_borders WHERE kind = 'travel' AND region_a LIKE '{pre}%'"))   # the coloured border (mig 1255)
     counties = json.loads(psql(
         "SELECT json_agg(json_build_object('f', k.fips, 'r', COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id),"
         " 'lat', k.lat, 'lon', k.lon, 'g', k.geometry))"
-        " FROM pyramid_proposal_counties pc JOIN pyramid_counties k USING (fips)"))
+        f" FROM pyramid_proposal_counties pc JOIN pyramid_counties k USING (fips) WHERE pc.plan = '{plan}'"))
     return borders, counties
 
 
@@ -246,9 +248,17 @@ def walk(patch, a, b, start, prev, others, walked=()):
 
 
 def main():
-    borders, counties = load()
-    ends = loose_ends(borders)
     rows = []
+    for plan in ('current', 'proposed'):   # mig 1274: both plans
+        plan_rows(plan, rows)
+    write(rows)
+
+
+def plan_rows(plan, rows):
+    borders, counties = load(plan)
+    if not borders or not counties:
+        return
+    ends = loose_ends(borders)
     walked = {}          # pair → the lines walked so far (for bay crossings)
     for e in ends:
         if e.get('joined'):
@@ -266,6 +276,9 @@ def main():
         line = pts if e['at_end'] else pts[::-1]
         rows.append((b['a'], b['b'], [list(x) for x in line], b['a_left']))
         print(f"{b['a']}|{b['b']} from {e['p']}: {len(pts)} points → {pts[-1]}", file=sys.stderr)
+
+
+def write(rows):
     sql = "BEGIN;\nDELETE FROM pyramid_proposal_sea_borders;\n" + "".join(
         "INSERT INTO pyramid_proposal_sea_borders (region_a, region_b, line, a_left) VALUES "
         f"('{a}', '{b}', '{json.dumps(line)}'::jsonb, {'true' if al else 'false'});\n"

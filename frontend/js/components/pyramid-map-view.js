@@ -108,9 +108,17 @@ class PyramidMapView {
     const esc = (t) => this._esc(t);
     const M = (n) => (n == null ? '—' : `${(n / 1e6).toFixed(1)} M`);
     const tierLabel = (t) => this._copy(`tier_${t}`) || t;
-    const live = (P.regions || []).filter((r) => r.conference_id);
-    const proposed = (P.regions || []).filter((r) => r.proposed_id).concat(P.watch || []);
-    const count = this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
+    // Two plans (mig 1274, owner: "pill toggle to show proposed and current
+    // because it gives you freedom to move borders or delete or re imagine
+    // current to fit new"): Current = today's conferences; Proposed = the
+    // re-imagined map (today's ones as proposals of their own, free to change).
+    const plan = this._plan();
+    const regs = (P.regions || []).filter((r) => r.plan === plan);
+    const live = regs.filter((r) => r.conference_id || r.from_conference_id);
+    const proposed = regs.filter((r) => r.proposed_id && !r.from_conference_id).concat(plan === 'proposed' ? (P.watch || []) : []);
+    const count = plan === 'current' ? this._copy('proposal_count_current', { live: live.length })
+      : this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
+    const planPills = ['current', 'proposed'].map((k) => `<button class="ap-pill${k === plan ? ' on' : ''}" data-pzplan="${k}">${esc(this._copy(`plan_${k}`))}</button>`).join('');
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
     // conference; a column header / sort pill sorts by it, tapped again flips.
@@ -132,7 +140,7 @@ class PyramidMapView {
     const arrow = (c) => (c.key === sort.key ? (sort.dir > 0 ? ' ↑' : ' ↓') : '');
     const head = cols.map((c) => `<th data-pzsort="${c.key}" class="${c.key === sort.key ? 'on' : ''}">${esc(c.label)}${arrow(c)}</th>`).join('');
     const body = all.map((r) => {
-      const isLive = !!r.conference_id;
+      const isLive = !!(r.conference_id || r.from_conference_id);
       const tip = isLive ? (r.anchors || '') : `${tierLabel(r.tier)} — ${r.note || ''}`;
       const far = r.far_a ? ` · ${this._copy('pill_far', { a: r.far_a, b: r.far_b })}` : '';
       return `<tr data-pzrow="${r.lat},${r.lon}" title="${esc(tip + far)}">
@@ -141,11 +149,19 @@ class PyramidMapView {
         ${cols.slice(1).map((c) => `<td>${esc(c.fmt(c.val(r)))}</td>`).join('')}</tr>`;
     }).join('');
     return [{ tier: 'proposal_hud',
-      html: `<div class="mp-pz"><div class="count">${esc(count)}</div>
+      html: `<div class="mp-pz"><div class="mp-sorts">${planPills}</div><div class="count">${esc(count)}</div>
         <div class="intro">${esc(this._copy('sort_label'))}</div>
         <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
         <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
-        <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }];
+        <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(plan === 'current' ? this._copy('plan_current_intro') : this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }];
+  }
+  _plan() {
+    if (!this.pzPlan) {
+      let v = null;
+      try { v = localStorage.getItem('fh.pyramid.plan'); } catch (_) { /* private mode */ }
+      this.pzPlan = v === 'current' ? 'current' : 'proposed';
+    }
+    return this.pzPlan;
   }
   _hm(min) {
     if (min == null) return '—';
@@ -153,6 +169,13 @@ class PyramidMapView {
     return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
   }
   menuClick(e) {
+    const pl = e.target.closest('[data-pzplan]');
+    if (pl) {   // switch plan (mig 1274): redraw borders, pills and the table
+      this.pzPlan = pl.dataset.pzplan;
+      try { localStorage.setItem('fh.pyramid.plan', this.pzPlan); } catch (_) { /* private mode */ }
+      this._showProposal(true);
+      return true;
+    }
     const srt = e.target.closest('[data-pzsort]');
     if (srt) {   // sort the table (mig 1272): a new column starts biggest-first (names A→Z), the same one flips
       const k = srt.dataset.pzsort, cur = this.pzSort || { key: 'pop', dir: -1 };
@@ -760,8 +783,10 @@ class PyramidMapView {
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
     // The neutral zone (mig 1255): counties the two borders disagree on.
-    if (this.proposal.neutral && (this.proposal.neutral.features || []).length)
-      L.geoJSON(this.proposal.neutral, { renderer: this.propRenderer, interactive: false,
+    const plan = this._plan();
+    const neutral = { type: 'FeatureCollection', features: ((this.proposal.neutral || {}).features || []).filter((f) => (f.properties.plan || 'proposed') === plan) };
+    if (neutral.features.length)
+      L.geoJSON(neutral, { renderer: this.propRenderer, interactive: false,
         style: { stroke: false, fillColor: '#f8fafc', fillOpacity: 0.22 } }).addTo(this.propLayer);
     this._drawBorders();
     // A pill on every conference, live or proposed (mig 1270, owner: "pill on
@@ -769,7 +794,7 @@ class PyramidMapView {
     // points and pop" / "dist and drive time"): name, people, the two county
     // centres furthest apart — straight km and the road drive.  A live
     // conference's pill hangs under its club bubble.
-    for (const r of (this.proposal.regions || [])) {
+    for (const r of (this.proposal.regions || []).filter((x) => x.plan === plan)) {
       const live = !!r.conference_id;
       const tip = r.far_a ? this._copy('pill_far', { a: r.far_a, b: r.far_b }) : '';
       L.marker([r.lat, r.lon], { interactive: false, keyboard: false, icon: L.divIcon({ className: 'mp-pin',
@@ -798,7 +823,8 @@ class PyramidMapView {
       // screen y points down: (dy, -dx) is the left of travel as seen on the map
       return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
     });
-    for (const b of P.borders || []) {
+    const pre = this._plan() === 'current' ? 'c' : 'p';   // a region key sorts before 'x', so b.a names the plan
+    for (const b of (P.borders || []).filter((x) => x.a[0] === pre)) {
       // The straight-distance border (mig 1255) is drawn exactly like the
       // traffic one — two-tone in the same conferences' colours (owner: "i
       // need them same colors" / "same colors as each other"); the traffic
