@@ -657,7 +657,7 @@ class GameCenterScreen extends EventScreen {
       </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="gc-title">🏟️ Game Center</h1>
+        <h1 id="gc-title">📋 Event Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
         <!-- HOME-7v7 / HOME-11v11 when the game is on the field we prep (mig 780). -->
         <div id="gc-home-setup"></div>
@@ -811,11 +811,11 @@ class GameCenterScreen extends EventScreen {
   _paintKinds() {
     const strip = this.find('#gc-kinds');
     const title = this.find('#gc-title');
+    if (title) title.textContent = this._headTitle();
     if (this.playerOnly || !window.EventKindSwitch) {
       if (strip) strip.innerHTML = '';
       return;
     }
-    if (title) title.textContent = EventKindSwitch.title();
     if (strip) strip.innerHTML = EventKindSwitch.html('match', (t) => this.escapeHtml(t));
   }
 
@@ -3452,7 +3452,8 @@ class GameCenterScreen extends EventScreen {
     this.games = this._feedGames;
     if (this.matchId != null) {
       this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
-      { const sub = this.find('#gl-subtitle'); if (sub && this.matchId) sub.textContent = this._headSub(); }
+      { const sub = this.find('#gl-subtitle'); if (sub && this.matchId) sub.textContent = this._headSub();
+        const ttl = this.find('#gc-title'); if (ttl && this.matchId) ttl.textContent = this._headTitle(); }
       // A matchId-only door (old #game-center/<id> links): the event is
       // known now, so the URL becomes #event/<fh_event_id>/<pill>.
       this._syncHash();
@@ -3510,8 +3511,14 @@ class GameCenterScreen extends EventScreen {
 
   // The header under the title: game · date · Arrival · Warmup · Kickoff
   // (owner 11/5: times on every event in Event Center — a game opens here).
+  // The same header as every Event Center event (EventScreen._render):
+  // title = what it is, sub = when · arrival/warmup/kickoff · where.
   _headSub() {
-    return [this.title, this.when, this.ev ? EventLabels.timesLine(this.ev) : ''].filter(Boolean).join(' · ') || 'Loading…';
+    if (!this.ev) return [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
+    return [EventLabels.when(this.ev), EventLabels.timesLine(this.ev), this.ev.location].filter(Boolean).join(' · ');
+  }
+  _headTitle() {
+    return this.ev ? `📋 ${EventLabels.title(this.ev)}` : (window.EventKindSwitch ? EventKindSwitch.title() : '📋 Event Center');
   }
 
   _gameLabel(ev) {
