@@ -174,6 +174,9 @@ public:
         // string.
         std::string upcomingDueAt;
         std::vector<RecentTxn> recentTxns; // last-2-calendar-months window
+        // Every payment since the current budget year began (budget_years,
+        // Aug 1) — #payments month pills (owner 2026-11-11).
+        std::vector<RecentTxn> yearTxns;
     };
     std::vector<MemberRow>
     loadMembersForProgram(long long programId);

@@ -500,6 +500,13 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
             txns.push_back(std::move(j));
         }
         row["recentTransactions"] = std::move(txns);
+        // Budget-year payments for the month pills (owner 2026-11-11).
+        json yearTxns = json::array();
+        for (const auto& t : m.yearTxns) {
+            yearTxns.push_back({{"transactionId", t.transactionId}, {"amount", t.amount}, {"txnType", t.txnType},
+                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}});
+        }
+        row["yearTransactions"] = std::move(yearTxns);
         members.push_back(std::move(row));
     }
 
@@ -559,6 +566,13 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
             txns.push_back(std::move(j));
         }
         row["recentTransactions"] = std::move(txns);
+        // Budget-year payments for the month pills (owner 2026-11-11).
+        json yearTxns = json::array();
+        for (const auto& t : m.yearTxns) {
+            yearTxns.push_back({{"transactionId", t.transactionId}, {"amount", t.amount}, {"txnType", t.txnType},
+                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}});
+        }
+        row["yearTransactions"] = std::move(yearTxns);
         members.push_back(std::move(row));
     }
 
@@ -730,6 +744,17 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     out["programName"]    = programName;
     out["total"]          = members.size();
     out["inactiveCount"]  = inactiveRows.size();
+    // First day of the current budget year (budget_years, Aug 1): where
+    // the #payments month pills start.
+    out["budgetYearStart"] = nullptr;
+    try {
+        auto by = Database::getInstance()->query(
+            "SELECT TO_CHAR(starts_on, 'YYYY-MM-DD') AS d FROM budget_years "
+            " WHERE starts_on <= CURRENT_DATE AND ends_on >= CURRENT_DATE ORDER BY starts_on DESC LIMIT 1");
+        if (!by.empty() && !by[0]["d"].is_null()) out["budgetYearStart"] = by[0]["d"].c_str();
+    } catch (const std::exception& e) {
+        std::cerr << "PaymentsController: budget year lookup failed: " << e.what() << std::endl;
+    }
     out["counts"]      = {
         {"current",     cCurrent},
         {"behind",      cBehind},

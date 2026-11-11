@@ -72,6 +72,8 @@ class PaymentsScreen extends Screen {
         <div id="pay-filters" style="margin-bottom: var(--space-3);"></div>
         <!-- 🔁 Pickup toggle (mig 1253): pickup-program members hidden by default -->
         <div id="pay-pickup" style="margin:-4px 0 var(--space-3);"></div>
+        <!-- 📅 Month pills (mig 1254): this month so far, then each earlier month of the budget year -->
+        <div id="pay-months" style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 var(--space-3);"></div>
 
         <!-- Views (MoneyBoard, same tabs style as #fines) -->
         <div id="pay-views" style="display:flex; gap:var(--space-2); margin-bottom: var(--space-3);">
@@ -281,6 +283,99 @@ class PaymentsScreen extends Screen {
       this.loadCurrent();
     });
     this._paintPickupToggle();
+    this._paintMonthPills();
+  }
+
+  // ── 📅 Month pills (owner 2026-11-11: "i want to see previous months
+  // pills or stats") ─────────────────────────────────────────────────
+  // [Nov so far] [Oct] [Sep] [Aug] — from the budget year's first month
+  // (budget_years, sent as budgetYearStart) to now, club time.  This month
+  // = the normal board.  A past month switches the 📊 stats box to that
+  // month's money and the list to ✅ Paid in <month> / ❌ Didn't pay, from
+  // each card's yearTransactions.  Nobody's past paid-up / overdue status
+  // is stored, so a past month never shows those sections.  Members are
+  // today's list (pickup pill and section pills still apply).
+  _monthKey(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return null;
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit' }).formatToParts(d);
+    const y = parts.find(p => p.type === 'year').value, m = parts.find(p => p.type === 'month').value;
+    return `${y}-${m}`;
+  }
+
+  _monthName(key, style = 'long') {
+    const [y, m] = key.split('-').map(Number);
+    return new Date(y, m - 1, 15).toLocaleString('en-US', { month: style });
+  }
+
+  _monthCopy(tier, fb, tokens = {}) {
+    return (window.MessageCopy && MessageCopy.has('payments_overview', tier))
+      ? MessageCopy.block('payments_overview', tier, tokens) : fb;
+  }
+
+  _monthKeys() {
+    const nowKey = this._monthKey(new Date().toISOString());
+    const start = PaymentsScreen.ALL_TABS.map(k => this.membersRawByTab[k] && this.membersRawByTab[k].budgetYearStart).find(Boolean);
+    if (!start) return [nowKey];
+    const keys = [];
+    let [y, m] = start.slice(0, 7).split('-').map(Number);
+    for (let i = 0; i < 24; i++) {
+      const k = `${y}-${String(m).padStart(2, '0')}`;
+      keys.push(k);
+      if (k >= nowKey) break;
+      m++; if (m > 12) { m = 1; y++; }
+    }
+    return keys.reverse();   // newest first
+  }
+
+  _paintMonthPills() {
+    const host = this.find('#pay-months');
+    if (!host) return;
+    const keys = this._monthKeys();
+    if (keys.length < 2) { host.innerHTML = ''; return; }
+    const nowKey = keys[0];
+    const sel = this.month || nowKey;
+    host.innerHTML = keys.map((k) => {
+      const on = k === sel;
+      const label = k === nowKey
+        ? this._monthCopy('month_pill_current', `${this._monthName(k, 'short')} so far`, { month: this._monthName(k, 'short') })
+        : this._monthName(k, 'short');
+      return `<button type="button" data-pay-month="${k}"
+          style="padding:3px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; cursor:pointer;
+                 border:1px solid #38bdf8; background:${on ? '#38bdf8' : 'transparent'}; color:${on ? '#0f172a' : '#7dd3fc'};">${this.escape(label)}</button>`;
+    }).join('');
+    host.querySelectorAll('[data-pay-month]').forEach((b) => b.addEventListener('click', () => {
+      const k = b.dataset.payMonth;
+      this.month = (k === nowKey) ? null : k;
+      this._paintMonthPills();
+      this.rerender();
+      this._renderStats();
+    }));
+  }
+
+  // One member's money in a month: { net, refunds, count }.
+  _memberMonth(m, key) {
+    let net = 0, refunds = 0, count = 0;
+    for (const t of (m.yearTransactions || [])) {
+      if (!t || !t.paidAt || this._monthKey(t.paidAt) !== key) continue;
+      const amt = Number(t.amount) || 0;
+      if (t.txnType && t.txnType.includes('Refund')) { net -= amt; refunds += amt; }
+      else { net += amt; count++; }
+    }
+    return { net, refunds, count };
+  }
+
+  _monthSummary(keys, key) {
+    const out = { collected: 0, refunds: 0, payments: 0, paid: 0, unpaid: 0 };
+    for (const k of keys) {
+      for (const m of ((this.membersByTab[k] && this.membersByTab[k].members) || [])) {
+        const mm = this._memberMonth(m, key);
+        out.collected += mm.net; out.refunds += mm.refunds; out.payments += mm.count;
+        if (mm.net > 0) out.paid++;
+        else if (m.variant !== 'inactive') out.unpaid++;
+      }
+    }
+    return out;
   }
 
   // 🔁 Pickup members (mig 1240 folded LA pickup registrations into
@@ -680,6 +775,21 @@ class PaymentsScreen extends Screen {
       volunteer: { icon:'', label:this._duesFreeCopy('volunteer', 'label').toUpperCase(), fg:'#1e3a8a', bg:'#dbeafe', border:'#2563eb' },
       injured:   { icon:'', label:this._duesFreeCopy('injured', 'label').toUpperCase(),   fg:'#78350f', bg:'#fef3c7', border:'#d97706' },
     };
+    if (this.month) {
+      const key = this.month, name = this._monthName(key).toUpperCase();
+      const all = rows.concat(inactiveMembers);
+      const paid = all.filter(mm => this._memberMonth(mm, key).net > 0);
+      const unpaid = rows.filter(mm => !(this._memberMonth(mm, key).net > 0));
+      const grid = (meta, list) => MoneyBoard.section(meta, list.length, list.map((mm) => this.renderMemberCard(mm)).join(''));
+      m.innerHTML =
+        (paid.length ? grid({ icon: '', label: this._monthCopy('month_paid_section', `✅ PAID IN ${name}`, { month: name }),
+                              fg:'#14532d', bg:'#dcfce7', border:'#16a34a' }, paid) : '')
+        + (unpaid.length ? grid({ icon: '', label: this._monthCopy('month_unpaid_section', `❌ DIDN'T PAY IN ${name}`, { month: name }),
+                                  fg:'#7f1d1d', bg:'#fee2e2', border:'#dc2626' }, unpaid) : '');
+      if (window.PlayerSheet) PlayerSheet.refresh();
+      if (window.PersonStanding && PersonStanding.fillRosters) PersonStanding.fillRosters(this.auth, m);
+      return;
+    }
     const byStatus = {};
     for (const st of statusOrder) byStatus[st] = [];
     const other = [];
@@ -2600,6 +2710,28 @@ class PaymentsScreen extends Screen {
     // programme that failed counts as in (its error shows on the list), so
     // the bar never sticks.
     const done = keys.filter(k => this.membersByTab[k] || this.membersErrorByTab[k]).length;
+    if (this.month) {
+      // 📅 A past month (mig 1254): that month's money and who paid it.
+      const ms = this._monthSummary(keys, this.month);
+      const name = this._monthName(this.month);
+      const L = (tier, fb) => this.escape(this._monthCopy(tier, fb));
+      el.innerHTML = MoneyBoard.statsHtml({
+        title: `📊 Stats · ${this._shardLabel(keys)} · ${name}`,
+        progress: { done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' },
+        rows: [
+          { title: L('month_row_money', 'MONEY IN'), cells: [
+            cell(L('month_collected', '💰 Collected'), this.fmtMoney(ms.collected), '#86efac', 'Payments that month, less refunds (club time)'),
+            cell(L('month_refunds', 'Refunds'), this.fmtMoney(ms.refunds), '#fca5a5'),
+            cell(L('month_payments', 'Payments'), ms.payments),
+          ] },
+          { title: L('month_row_players', 'PLAYERS'), cells: [
+            cell(L('month_paid', '✅ Paid'), ms.paid, '#86efac'),
+            cell(L('month_unpaid', "❌ Didn't pay"), ms.unpaid, '#fca5a5', "Today's members with no payment that month"),
+          ] },
+        ],
+      });
+      return;
+    }
     el.innerHTML = MoneyBoard.statsHtml({
       title: `📊 Stats · ${this._shardLabel(keys)}`,
       progress: { done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' },

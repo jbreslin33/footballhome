@@ -669,6 +669,28 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "     AND pp.paid_at >= LEAST(win2.prev_start,"
         "                             date_trunc('month', now()) - interval '1 month')"
         "   GROUP BY pp.la_registration_id"
+        "),"
+        // #payments month pills (owner 2026-11-11: "i want to see previous
+        // months"): every payment since the current budget year began
+        // (budget_years.starts_on, Aug 1), never less than the recent
+        // window above.
+        "year_txns AS ("
+        "  SELECT pp.la_registration_id,"
+        "         jsonb_agg(jsonb_build_object("
+        "             'transactionId', pp.la_transaction_id,"
+        "             'amount',        pp.amount,"
+        "             'txnType',       pp.txn_type,"
+        "             'paidAt',        TO_CHAR(pp.paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),"
+        "             'gateway',       pp.gateway"
+        "         ) ORDER BY pp.paid_at DESC) AS txns"
+        "    FROM person_payments pp"
+        "   WHERE pp.la_registration_id IS NOT NULL"
+        "     AND pp.paid_at >= LEAST(date_trunc('month', now()) - interval '1 month',"
+        "             COALESCE((SELECT byr.starts_on FROM budget_years byr"
+        "                        WHERE byr.starts_on <= CURRENT_DATE AND byr.ends_on >= CURRENT_DATE"
+        "                        ORDER BY byr.starts_on DESC LIMIT 1)::timestamptz,"
+        "                      date_trunc('month', now()) - interval '1 month'))"
+        "   GROUP BY pp.la_registration_id"
         ")"
         "SELECT p.id AS person_id, p.first_name, p.last_name,"
         "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS dob,"
@@ -697,6 +719,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       TO_CHAR(agg.last_paid_at  AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS last_paid_iso,"
         "       COALESCE(la.last_amount, 0) AS last_amount,"
         "       COALESCE(recent.txns, '[]'::jsonb) AS recent_txns,"
+        "       COALESCE(yt.txns, '[]'::jsonb) AS year_txns,"
         // Status: when next_due_at is populated (post-migration 117),
         // it's the authoritative anchor and beats the derived cycle
         // math — so operator dropdown overrides take effect the next
@@ -768,6 +791,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "  LEFT JOIN agg                ON agg.la_registration_id    = m.la_registration_id"
         "  LEFT JOIN last_amt la        ON la.la_registration_id     = m.la_registration_id"
         "  LEFT JOIN recent             ON recent.la_registration_id = m.la_registration_id"
+        "  LEFT JOIN year_txns yt       ON yt.la_registration_id = m.la_registration_id"
         "  LEFT JOIN covers_current  cc ON cc.la_registration_id     = m.la_registration_id"
         "  LEFT JOIN covers_previous cp ON cp.la_registration_id     = m.la_registration_id"
         "  LEFT JOIN last_covered_end lce ON lce.la_registration_id  = m.la_registration_id"
@@ -829,30 +853,34 @@ PersonPayments::loadMembersForProgram(long long programId) {
             m.finalNotice = false;
         }
 
-        if (!r["recent_txns"].is_null()) {
+        // recent_txns (card + billing badge) and year_txns (month pills)
+        // share one shape.
+        auto parseTxns = [](const pqxx::field& f, std::vector<RecentTxn>& into) {
+            if (f.is_null()) return;
             try {
-                auto arr = json::parse(r["recent_txns"].c_str());
-                if (arr.is_array()) {
-                    for (const auto& t : arr) {
-                        RecentTxn rt;
-                        if (t.contains("transactionId") && t["transactionId"].is_number())
-                            rt.transactionId = t["transactionId"].get<long long>();
-                        if (t.contains("amount") && t["amount"].is_number())
-                            rt.amount = t["amount"].get<double>();
-                        if (t.contains("txnType") && t["txnType"].is_string())
-                            rt.txnType = t["txnType"].get<std::string>();
-                        if (t.contains("paidAt") && t["paidAt"].is_string())
-                            rt.paidAt = t["paidAt"].get<std::string>();
-                        if (t.contains("gateway") && t["gateway"].is_string())
-                            rt.gateway = t["gateway"].get<std::string>();
-                        m.recentTxns.push_back(std::move(rt));
-                    }
+                auto arr = json::parse(f.c_str());
+                if (!arr.is_array()) return;
+                for (const auto& t : arr) {
+                    RecentTxn rt;
+                    if (t.contains("transactionId") && t["transactionId"].is_number())
+                        rt.transactionId = t["transactionId"].get<long long>();
+                    if (t.contains("amount") && t["amount"].is_number())
+                        rt.amount = t["amount"].get<double>();
+                    if (t.contains("txnType") && t["txnType"].is_string())
+                        rt.txnType = t["txnType"].get<std::string>();
+                    if (t.contains("paidAt") && t["paidAt"].is_string())
+                        rt.paidAt = t["paidAt"].get<std::string>();
+                    if (t.contains("gateway") && t["gateway"].is_string())
+                        rt.gateway = t["gateway"].get<std::string>();
+                    into.push_back(std::move(rt));
                 }
             } catch (const std::exception& e) {
-                std::cerr << "[PersonPayments::loadMembersForProgram] recent_txns parse failed: "
+                std::cerr << "[PersonPayments::loadMembersForProgram] txns parse failed: "
                           << e.what() << std::endl;
             }
-        }
+        };
+        parseTxns(r["recent_txns"], m.recentTxns);
+        parseTxns(r["year_txns"],   m.yearTxns);
         out.push_back(std::move(m));
     }
     return out;
