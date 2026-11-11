@@ -6,8 +6,9 @@
 // gait, the foot IK, every overlay — and becomes an invisible driver: each frame each rig joint's
 // rotation, as a change from the rest pose, is copied onto its bone (retargeting by delta rotation
 // in the figure's frame, so the two skeletons' different bone axes never matter), and the pelvis
-// bone follows the rig pelvis's bob / lean / slide drop. The body is scaled so thigh + shin = the
-// rig's 0.82 m: the IK's planted feet land where the body's feet are. Kit: the skin texture is
+// bone follows the rig pelvis's bob / lean / slide drop. The rig takes the body's own thigh and
+// shin (PlayerFigure.setProportions): the IK's planted feet land where the body's feet are, and
+// the body stands at its full 1.81 m. Kit: the skin texture is
 // overpainted by region (shirt / shorts / socks / boots), chosen per vertex from its dominant bone
 // and bind-pose height, in the figure's kit colours.
 //
@@ -31,7 +32,6 @@
     const w = new THREE.Color(want), m = new THREE.Color(mean);
     return new THREE.Color(Math.min(3, w.r / m.r), Math.min(3, w.g / m.g), Math.min(3, w.b / m.b));
   }
-  const RIG_LEG = 0.42 + 0.40;            // players.js: hip → knee → ankle
   const P = PlayerFigure.prototype;
   const figures = new Set();
   let proto = null;                       // { scene, scale, region attribute done }
@@ -102,6 +102,9 @@
     const SU = THREE_ADDONS.SkeletonUtils;
     const model = SU.clone(proto.scene);
     model.scale.setScalar(proto.scale);
+    // the rig takes the body's own leg (no shrinking the body to the rig): its thigh and shin, and
+    // the pelvis standing as high over the 0.085 m ankle plant as the capsule rig's did
+    fig.setProportions(proto.legA, proto.legB, proto.legA + proto.legB + 0.085 + 0.06 - 0.015);
     model.rotation.y = proto.yaw;
     fig.root.add(model);
     let skinned = null; const bones = {};
@@ -122,7 +125,14 @@
       h.castShadow = true; h.frustumCulled = false;
       bones.Head.add(h);
     }
-    // the rig at rest: the pairs, their rest rotations, sides matched by where they stand
+    // the rig at rest: the pairs, their rest rotations, sides matched by where they stand. The body
+    // often arrives mid-stride, so the rig's joints are zeroed while rest is read, then put back.
+    const joints = [fig.pelvis, fig.chest, fig.neck, ...fig.arms.flatMap((a) => [a.sh, a.elbow]),
+                    ...fig.legs.flatMap((l) => [l.hip, l.knee, l.ankle])].filter(Boolean);
+    const saved = joints.map((j) => j.quaternion.clone());
+    const pelvisAt = fig.pelvis.position.clone();
+    joints.forEach((j) => j.quaternion.identity());
+    fig.pelvis.position.set(0, fig.pelvisH, 0);
     fig.root.updateMatrixWorld(true);
     const side = (o) => Math.sign(relPos(fig.root, o, new THREE.Vector3()).x);
     const pick = (stem, o) => (side(bones[stem + '_l']) === side(o) ? bones[stem + '_l'] : bones[stem + '_r']);
@@ -155,6 +165,9 @@
       rigPelvisRest: relPos(fig.root, fig.pelvis, new THREE.Vector3()),
       bonePelvisRest: relPos(fig.root, bones.pelvis, new THREE.Vector3()),
     };
+    joints.forEach((j, i) => j.quaternion.copy(saved[i]));
+    fig.pelvis.position.copy(pelvisAt);
+    fig.root.updateMatrixWorld(true);
     // the capsule figure stays the animator, unseen (its name tag stays)
     fig.root.traverse((o) => { if (o.isMesh && !isIn(o, model)) o.visible = false; });
   }
@@ -199,7 +212,6 @@
     gltf.scene.updateMatrixWorld(true);
     const bones = {}; gltf.scene.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     const p = (n) => bones[n].getWorldPosition(new THREE.Vector3());
-    const leg = p('thigh_l').distanceTo(p('calf_l')) + p('calf_l').distanceTo(p('foot_l'));
     const headInv = bones.Head.matrixWorld.clone().invert();
     const loader = new THREE_ADDONS.GLTFLoader();
     Promise.all(URL_HAIR.map((u) => loader.loadAsync(u).then((h) => {
@@ -210,8 +222,9 @@
       const hair = {};
       for (const [u, v] of pairs) if (v) hair[u.replace(/^.*\/|\.gltf$/g, '')] = v;
       const any = Object.values(hair)[0];
-      proto = { scene: gltf.scene, scale: RIG_LEG / leg, yaw: 0, hair, hairMat: any ? any.material : new THREE.MeshStandardMaterial() };
-      console.log('bodies: loaded, leg', leg.toFixed(3), 'm → scale', proto.scale.toFixed(3), '· hair', pairs.filter((p) => p[1]).length);
+      proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
+                legA: p('thigh_l').distanceTo(p('calf_l')), legB: p('calf_l').distanceTo(p('foot_l')) };
+      console.log('bodies: loaded, thigh', proto.legA.toFixed(3), 'shin', proto.legB.toFixed(3), 'm, full size · hair', pairs.filter((x) => x[1]).length);
       for (const f of figures) attach(f);
     });
   }, undefined, (e) => console.warn('bodies: load failed', e));

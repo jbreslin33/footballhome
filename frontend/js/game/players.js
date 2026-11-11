@@ -97,6 +97,8 @@
       this.w = { slide: 0, stumble: 0, dribble: 0, cele: 0 };
       this.diveSide = 1;
       this.look = { yaw: 0, pitch: 0 };
+      // Proportions (bodies.js gives a skinned body its own): thigh, shin, standing pelvis height.
+      this.legA = 0.42; this.legB = 0.40; this.pelvisH = 0.95;
       this.build(home, keeper);
     }
 
@@ -116,7 +118,7 @@
 
       // pelvis: the rig's hub (lean, bob, slide drop all act here)
       const pelvis = new THREE.Group();
-      pelvis.position.y = 0.95;
+      pelvis.position.y = this.pelvisH;
       this.root.add(pelvis);
       this.pelvis = pelvis;
       const shorts = mesh(g('shorts', () => new THREE.CylinderGeometry(0.17, 0.19, 0.22, 12)),
@@ -204,12 +206,12 @@
         const leg = mesh(g('shortleg', () => new THREE.CylinderGeometry(0.09, 0.085, 0.14, 10)),
                          mat(kit.shorts), -0.06);
         const knee = new THREE.Group();
-        knee.position.y = -0.42;
+        knee.position.y = -this.legA;
         const shin = cap(0.06, 0.28, kit.socks, -0.2);
         const band = mesh(g('band', () => new THREE.CylinderGeometry(0.066, 0.066, 0.04, 10)),
                           mat(kit.trim), -0.06);
         const ankle = new THREE.Group();
-        ankle.position.y = -0.4;
+        ankle.position.y = -this.legB;
         const boot = mesh(g('boot', () => new THREE.CapsuleGeometry(0.05, 0.14, 3, 8)),
                           mat(kit.boots, 0.5), -0.03);
         boot.rotation.x = Math.PI / 2;
@@ -265,7 +267,7 @@
       const stepPh = (this.phase * 2) % 1;
       const osc = Math.cos(TAU * (stepPh - duty / 2));
       const ready = this.readyAmt || 0;
-      let py = 0.95 - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * osc - 0.035 * r * osc) - 0.05 * ready * (1 - m);
+      let py = this.pelvisH - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * osc - 0.035 * r * osc) - 0.05 * ready * (1 - m);
       // Lean along the horizontal acceleration (body frame), so the ground
       // force goes through the body: into turns, forward accelerating.
       const ax0 = (vx - (this.pvx ?? vx)) / Math.max(dt, 1e-3), ay0 = (vy - (this.pvy ?? vy)) / Math.max(dt, 1e-3);
@@ -362,7 +364,7 @@
         }
         // COM low at mid-stance running / high walking; in flight (no foot down) it rides high.
         const oscW = downU >= 0 ? downU * 2 - 1 : -0.8;
-        py = 0.95 - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * oscW - 0.035 * r * oscW) - 0.05 * ready * (1 - m);
+        py = this.pelvisH - 0.02 * m - 0.025 * r + m * (0.018 * (1 - r) * oscW - 0.035 * r * oscW) - 0.05 * ready * (1 - m);
       }
       // Pelvis yaw follows the forward foot of the right leg (side -1).
       const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
@@ -398,7 +400,7 @@
     // tilt the leg plane (hip z), flex in it (hip x), knee forward; the boot
     // set to pitchF (+ = toe down) against the chain above it.
     solveLeg(leg, t, pitchF, pelvisPitch, yaw) {
-      const a = 0.42, b = 0.40;
+      const a = this.legA, b = this.legB;
       const yw = yaw || 0;
       if (yw) {   // solve in the leg's own turned frame
         const c = Math.cos(yw), sn = Math.sin(yw), x = t.x, z = t.z;
@@ -416,6 +418,12 @@
       leg.ankle.rotation.x = clamp(pitchF - (pelvisPitch + hipX + knee), -0.6, 1.0);
     }
 
+    // A body with its own leg (bodies.js): thigh a, shin b, standing pelvis height h.
+    setProportions(a, b, h) {
+      this.legA = a; this.legB = b; this.pelvisH = h;
+      for (const l of this.legs) { l.knee.position.y = -a; l.ankle.position.y = -b; }
+      if (this.pelvis) this.pelvis.position.y = h;
+    }
     setKeeper(keeper) {
       if (keeper !== this.keeper) this.build(this.home, keeper);
     }
@@ -663,8 +671,8 @@
         if (t >= END) this.dv = null;
         else {
           let rollT, py, armUp, w = Math.min(1, (END - t) / 0.35);
-          if (t < 0.1) { const u = t / 0.1; rollT = 0.25 * u; py = 0.95 - 0.15 * u; armUp = 0.5 * u; }
-          else if (t < 0.45) { const u = (t - 0.1) / 0.35; rollT = 0.25 + 1.2 * smooth(u); py = 0.8 + (0.25 + 0.35 * D.high) * Math.sin(Math.PI * u * 0.8) - 0.3 * smooth((u - 0.6) / 0.4); armUp = 1; }
+          if (t < 0.1) { const u = t / 0.1; rollT = 0.25 * u; py = this.pelvisH - 0.15 * u; armUp = 0.5 * u; }
+          else if (t < 0.45) { const u = (t - 0.1) / 0.35; rollT = 0.25 + 1.2 * smooth(u); py = this.pelvisH - 0.15 + (0.25 + 0.35 * D.high) * Math.sin(Math.PI * u * 0.8) - 0.3 * smooth((u - 0.6) / 0.4); armUp = 1; }
           else { rollT = 1.45; py = 0.32; armUp = 1 - 0.6 * smooth((t - 0.45) / 0.5); }
           w = Math.min(1, t / 0.05) * w;
           this.pelvis.position.y += (py - this.pelvis.position.y) * w;
