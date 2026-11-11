@@ -52,6 +52,7 @@
 #include "controllers/PhoneRelayController.h"
 #include "controllers/GameRosterController.h"
 #include "controllers/LockupController.h"
+#include "controllers/AttendanceCallController.h"
 #include "controllers/ClubLogoController.h"
 #include "controllers/ClubFileController.h"
 #include "controllers/InvoiceController.h"
@@ -104,6 +105,7 @@
 #include "services/LineupNotificationHub.h"
 #include "services/LaSyncScheduler.h"
 #include "services/LockupScheduler.h"
+#include "services/AttendanceCallScheduler.h"
 #include "models/ClubLogo.h"
 #include "models/LeagueLogo.h"
 #include "services/ClubLogoSearchScheduler.h"
@@ -154,6 +156,7 @@ private:
     std::shared_ptr<PhoneRelayController> phone_relay_controller_;
     std::shared_ptr<GameRosterController> game_roster_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
+    std::shared_ptr<AttendanceCallController> attendance_call_controller_;
     std::shared_ptr<ClubLogoController> club_logo_controller_;
     std::shared_ptr<ClubFileController> club_file_controller_;
     std::shared_ptr<InvoiceController> invoice_controller_;
@@ -265,6 +268,7 @@ public:
         phone_relay_controller_ = std::make_shared<PhoneRelayController>();
         game_roster_controller_ = std::make_shared<GameRosterController>();
         lockup_controller_ = std::make_shared<LockupController>();
+        attendance_call_controller_ = std::make_shared<AttendanceCallController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
         club_file_controller_ = std::make_shared<ClubFileController>();
         invoice_controller_ = std::make_shared<InvoiceController>();
@@ -341,6 +345,9 @@ public:
         // the closers when the night's last event ends, chases the escalation
         // people by email / text / call past the deadline.  See LockupScheduler.h.
         LockupScheduler::getInstance().start();
+        // 📞 Practice attendance calls (mig 1277): Going coaches get rung from
+        // halfway until every Going player is marked.
+        AttendanceCallScheduler::getInstance().start();
         // Club crests (mig 428): pull the hand-placed /images files into
         // club_logos once, then rewrite any cached file missing on disk.
         try { ClubLogo logos; logos.importLegacy(); logos.materialize(); }
@@ -608,6 +615,7 @@ private:
         router_.useController("/api/game", game_roster_controller_);
         // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).
         router_.useController("/api/security", lockup_controller_);
+        router_.useController("/api/attendance-calls", attendance_call_controller_);
         // #logos (owner 2026-09-25): club crests stored in the DB, opponent text -> club (mig 428).
         router_.useController("/api/club-logos", club_logo_controller_);
         router_.useController("/api/files", club_file_controller_);

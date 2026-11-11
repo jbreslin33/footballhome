@@ -381,7 +381,12 @@ Response MagicLinkAuthController::handleVerify(const Request& request) {
         }
         // Every link lands on #my (owner 2026-09-23: "my page for all") —
         // the game a squad reminder is about is one tap away there.
-        const std::string hashTarget = "#my";
+        // landing "event/<id>/<pill>" (attendance-call texts, mig 1277) opens
+        // that event's page instead of #my.
+        const bool eventLanding = !landing.empty() && landing.find("..") == std::string::npos
+                               && landing.rfind("event/", 0) == 0
+                               && landing.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789/-") == std::string::npos;
+        const std::string hashTarget = eventLanding ? "#" + landing : "#my";
         std::string target = publicBaseUrl() + "/" + hashTarget;
         if (!userId.empty()) {
             std::string email;

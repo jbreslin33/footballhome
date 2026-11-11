@@ -27,7 +27,63 @@ class PracticeScreen extends EventScreen {
     if (key === 'sides') return this._sidesHtml();
     if (key === 'plan') return this._planHtml()
       + section((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones', this._conesHtml());
+    if (key === 'players') return this._callsHtml() + super.pillHtml(key);
     return super.pillHtml(key);
+  }
+
+  // ── 📞 Attendance calls (mig 1277; owner 2026-11-11: "call all coaches
+  // that set going to practice 1/2 way through to remind to take
+  // attendance … until all players who set going are markd off"). A strip
+  // over the Players pill for coaches/admins: when the calls start, who
+  // gets rung, who is still unmarked, the rounds so far.  The calls
+  // themselves: AttendanceCallScheduler.  Refreshes every minute here.
+  async _loadCalls() {
+    const id = this.ev && this.ev.fh_event_id;
+    if (!id || this.ev.kind !== 'practice') return;
+    try {
+      const body = await this._json(`/api/attendance-calls/event?id=${encodeURIComponent(id)}`);
+      if (!this.ev || this.ev.fh_event_id !== id) return;
+      this.calls = body;
+    } catch (err) {
+      this.calls = null;   // non-staff get a 403: no strip
+    }
+    if (this.pill === 'players') this._render();
+  }
+
+  _startCallsPoll() {
+    this._stopCallsPoll();
+    this._callsTimer = setInterval(() => this._loadCalls(), 60 * 1000);
+  }
+  _stopCallsPoll() { if (this._callsTimer) { clearInterval(this._callsTimer); this._callsTimer = null; } }
+
+  _callsHtml() {
+    const c = this.calls;
+    if (!c || c.kind !== 'practice') return '';
+    const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('attendance_call', tier, tokens)) || fb;
+    const line = (txt, style = '') => `<div style="font-size:0.8rem; ${style}">${esc(txt)}</div>`;
+    let body = '';
+    if (!c.on) {
+      body = line(cp('strip_off', {}, 'Attendance calls are off for this section'), 'opacity:0.7;');
+    } else {
+      const coaches = c.coaches || [];
+      const unmarked = c.unmarked || [];
+      body += line(cp('strip_when', { time: c.calls_from, every: c.repeat_minutes },
+        `From ${c.calls_from} the coaches who said Going get a call every ${c.repeat_minutes} min until every Going player is marked`), 'opacity:0.85;');
+      if (!c.live) body += line(cp('strip_test', { who: c.test_name || '' }, `🧪 Test mode: calls ring ${c.test_name || ''} only, not the coaches`), 'color:#fbbf24; font-weight:700;');
+      body += coaches.length
+        ? line(cp('strip_coaches', { names: coaches.map(x => x.name + (x.phone ? '' : ' (no phone)')).join(', ') },
+            `Calls: ${coaches.map(x => x.name).join(', ')}`))
+        : line(cp('strip_nocoach', {}, 'No coach said Going — nobody to call'), 'color:#f87171;');
+      body += unmarked.length
+        ? line(cp('strip_wait', { n: unmarked.length }, `${unmarked.length} going players not marked yet`) + ': ' + unmarked.join(', '), 'color:#fca5a5; font-weight:700;')
+        : (c.going_players ? line(cp('strip_done', {}, '✅ Every going player is marked — no calls'), 'color:#86efac; font-weight:700;') : '');
+      (c.rounds || []).slice(0, 3).forEach((r) => {
+        body += line(`${cp('strip_last', { round: r.round, time: r.at }, `Round ${r.round} at ${r.at}`)} · 📞 ${r.ok}/${r.tried}${r.live ? '' : ' 🧪'} · ${r.unmarked}`, 'opacity:0.7;');
+      });
+    }
+    return `<div style="border:1px solid #0ea5e9; background:rgba(14,165,233,0.08); border-radius:8px; padding:8px 10px; margin-bottom:var(--space-3);">
+      <div style="font-weight:800; margin-bottom:2px;">${esc(cp('strip_title', {}, '📞 Attendance calls'))}</div>${body}</div>`;
   }
 
   onPill(key) {
@@ -38,7 +94,9 @@ class PracticeScreen extends EventScreen {
   }
 
   // Groups / teams ride on the All Players cards, so they load with it.
-  onEventLoaded() { this._loadSides(); }
+  onEventLoaded() { this._loadSides(); this.calls = null; this._loadCalls(); this._startCallsPoll(); }
+
+  onExit() { this._stopCallsPoll(); if (super.onExit) super.onExit(); }
 
   resetKind() {
     this.sides = null;        // { canEdit, colors, players }

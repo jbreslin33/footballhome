@@ -101,6 +101,7 @@ set(SOURCES
     src/services/GoogleSheetRoster.cpp
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
+    src/services/AttendanceCallScheduler.cpp
     src/services/TwilioService.cpp
     src/services/SessionService.cpp
     src/services/MagicLinkService.cpp
@@ -149,6 +150,7 @@ set(SOURCES
     src/controllers/PhoneRelayController.cpp
     src/controllers/GameRosterController.cpp
     src/controllers/LockupController.cpp
+    src/controllers/AttendanceCallController.cpp
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp
