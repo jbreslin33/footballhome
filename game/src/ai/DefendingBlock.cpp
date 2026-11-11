@@ -79,13 +79,14 @@ public:
     const char* name() const override { return "press the ball"; }
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         const auto& ball = c.world.ball();
-        if (!ball.owner) return false;
+        const bool flight = !ball.owner && c.block.pressFlight(v.team);   // G5.82: their pass still travelling
+        if (!ball.owner && !flight) return false;
         const auto& me = c.world.player(v.slot);
-        const auto& cr = c.world.player(*ball.owner);
+        const Vec2 crp = flight ? c.block.pressAt(v.team) : Vec2{c.world.player(*ball.owner).pos.x, c.world.player(*ball.owner).pos.y};
         const Vec2 own_goal{-v.sg * c.world.pitchHalfX(), Fixed64::zero()};
-        const Vec2 to_goal{own_goal.x - cr.pos.x, own_goal.y - cr.pos.y};
+        const Vec2 to_goal{own_goal.x - crp.x, own_goal.y - crp.y};
         const Fixed64 len = math::length(to_goal);
-        const Fixed64 off_line = c.world.pitchHalfX() + ball.pos.x * v.sg;   // ball metres off our line
+        const Fixed64 off_line = c.world.pitchHalfX() + (flight ? crp.x : ball.pos.x) * v.sg;   // ball metres off our line
         const int band = off_line < Fixed64::fromInt(18) ? 0 : off_line < Fixed64::fromInt(35) ? 1
                        : off_line < Fixed64::fromInt(52) ? 2 : off_line < Fixed64::fromInt(70) ? 3 : 4;
         const auto& q = c.block.params().stand_off[band];
@@ -93,14 +94,14 @@ public:
                           Fixed64::fromFraction(1, 2);   // [0, 1): p25 … p75
         const Fixed64 off = u < Fixed64::fromFraction(1, 2) ? q[0] + (q[1] - q[0]) * u * 2
                                                             : q[1] + (q[2] - q[1]) * (u * 2 - Fixed64::one());
-        o.target = len.raw > 0 ? Vec2{cr.pos.x + to_goal.x * off / len, cr.pos.y + to_goal.y * off / len}
-                               : Vec2{cr.pos.x, cr.pos.y};
+        o.target = len.raw > 0 ? Vec2{crp.x + to_goal.x * off / len, crp.y + to_goal.y * off / len}
+                               : crp;
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
-        o.move.face = Vec2{cr.pos.x - me.pos.x, cr.pos.y - me.pos.y};
-        o.other = static_cast<std::int16_t>(*ball.owner);
+        o.move.face = flight ? Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y} : Vec2{crp.x - me.pos.x, crp.y - me.pos.y};
+        o.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
         o.why = Why::Press;
-        const bool goal_side = (me.pos.x - cr.pos.x) * v.sg < Fixed64::zero();
-        if (goal_side && distSq(me.pos, ball.pos) < core::kTackleReach * core::kTackleReach) {
+        const bool goal_side = (me.pos.x - crp.x) * v.sg < Fixed64::zero();
+        if (!flight && goal_side && distSq(me.pos, ball.pos) < core::kTackleReach * core::kTackleReach) {
             const Fixed64 per_tick = c.block.params().tackle_per_s * core::kTickDt;
             const Fixed64 n = core::detNoise(v.match_seed, c.tick, v.slot, 29);   // [-1, 1)
             if ((n + Fixed64::one()) * Fixed64::fromFraction(1, 2) < per_tick) o.action = core::Action::Tackle;
@@ -198,6 +199,11 @@ void BlockParams::configure(const core::ModelParams& p) {
     }
     switch_m = p.fixed("physics.press.switch_m", 2000);
     contest_min_z = p.fixed("physics.block.contest_min_z_m", 1500);
+    {   // G5.82 (§8.183): s -> ticks; negative = off
+        const Fixed64 m = p.fixed("physics.block.their_pass_margin_s", 0);
+        their_pass_margin = m.raw < 0 ? -1 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
+    }
+    press_on_pass = p.fixed("physics.press.on_pass", 1000).raw > 0;
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
 }
 
@@ -226,13 +232,24 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         return best;
     };
     int& ch = chaser_[team & 1];
+    int press_to = -1;   // G5.82: their receiver, when nobody of ours chases their pass
     if (live && !ball.owner && fr.live) {
         // Our pass (G4.81): the man it's for meets it; the rest let it run —
         // unless they get there first, when our first man goes too.
         const int to = ball.pass_to < world.playerCount() && team_of_slot[ball.pass_to] == team &&
                                world.lastTouchTeam() == team ? static_cast<int>(ball.pass_to) : -1;
         const int theirs = fr.first[team ^ 1];
+        const bool their_pass = world.lastTouchTeam() != team && ball.pass_to < world.playerCount() && team_of_slot[ball.pass_to] != team;
         if (to >= 0 && fr.tick[to] >= 0 && (theirs < 0 || fr.tick[to] <= fr.tick[theirs])) ch = to;
+        // G5.82 (§8.183): their pass, their man first to it by more than the margin — nobody of
+        // ours chases it; each keeps his job (mark, block spot) and the presser steps to the man
+        // once it is his. Real receivers of a 10-30 m pass have a man of ours inside 3 m at the
+        // touch 5-10% (DFL, benchmarks_tracking_firsttouch.py RECEIVER SPACE); our first man ran
+        // to where HE could first take it — down the line past their receiver, onto him — 22-28%.
+        else if (params_.their_pass_margin >= 0 && their_pass && theirs >= 0 && fr.tick[theirs] >= 0 &&
+                 (fr.first[team] < 0 || fr.tick[fr.first[team]] < 0 || fr.tick[fr.first[team]] > fr.tick[theirs] + params_.their_pass_margin)) {
+            ch = -1; press_to = theirs;
+        }
         else if (fr.first[team] >= 0) ch = fr.first[team];
         // Nobody of ours can get there inside the race read's horizon (a ball come
         // to rest far from everyone): our nearest goes — else it sat there for good.
@@ -268,7 +285,21 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
     } else ch = -1;
     if (!(live && !ball.owner && fr.live)) contest_[team & 1] = -1;
     int& pr = presser_[team & 1];
-    if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
+    press_flight_[team & 1] = false;
+    if (live && !ball.owner && press_to >= 0 && params_.press_on_pass && contest_[team & 1] < 0) {
+        // G5.82 (§8.183): our nearest to where their man meets it, held until another is switch_m nearer
+        const Vec2 at = fr.at[press_to];
+        const Vec3 at3{at.x, at.y, Fixed64::zero()};
+        int best = -1; Fixed64 bd{};
+        for (std::uint8_t j = 0; j < world.playerCount(); ++j) {
+            if (team_of_slot[j] != team || world.isKeeper(j)) continue;
+            const Fixed64 d = distSq(world.player(j).pos, at3);
+            if (best < 0 || d < bd) { best = j; bd = d; }
+        }
+        if (pr >= 0 && pr != best && team_of_slot[pr] == team && !world.isKeeper(static_cast<std::uint8_t>(pr)) &&
+            math::fx_sqrt(distSq(world.player(static_cast<std::uint8_t>(pr)).pos, at3)) < math::fx_sqrt(bd) + params_.switch_m) best = pr;
+        pr = best; press_at_[team & 1] = at; press_flight_[team & 1] = best >= 0;
+    } else if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
     else pr = nearest(pr);
     assignCover(team, world, team_of_slot, role_of_slot);
 }

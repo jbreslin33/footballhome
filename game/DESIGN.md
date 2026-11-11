@@ -8122,3 +8122,64 @@ more touch work.
 **Next moles.** (1) Defenders on the receiver at the receipt (5× real). (2) Then the first touch on,
 with what is left of the heavy touches (a man outrunning a ball rolling 1-2 m/s on his line; a touch
 running 6-8 m/s ahead). (3) Headers and aerial duels (§8.181). (4) Strong-foot short passes (§8.180).
+
+### 8.183 G5.82 — their pass: nobody chases what their man reaches first; the presser steps out as it travels (no migration)
+
+The §8.182 mole: our receivers had a man inside 3 m at a controlled first touch 50-56 times a team-match
+(10.0). That harness line counted every ball that became a man's, scrambles included; matched first.
+
+**Real** (`benchmarks_tracking_firsttouch.py`, new RECEIVER SPACE block; DFL 7 matches, the same
+receptions as FIRST TOUCH: a free ground ball 0.4 s+, 3 m/s+, reaching a man). Controlled, 146.8 a
+team-match: the receiver's nearest opponent at the touch 0-1.5 / 1.5-3 / 3-5 / 5-8 / 8+ m = 2 / 4 / 10
+/ 23 / 60% (med 9.25), at the release (the first free frame) 1 / 2 / 5 / 15 / 77% (med 11.94). From a
+mate's pass (134.2) inside 3 m 5.5%; by the ball's travel 0-10 / 10-20 / 20-30 m, 10 / 5 / 2% at the touch,
+4 / 1 / 1% at the release. The man nearest at the touch was 0-5 / 5-10 / 10-15 / 15+ m off at the
+release 5 / 25 / 36 / 33% of the time and closed 1.07 / 1.68 / 2.99 / 4.58 m while the ball travelled.
+
+**Ours, matched** (new harness RECEIVER SPACE, the same cuts; G5.81, seed 1000): 181 controlled a
+team-match; from a mate's pass inside 3 m 16.1% (5.5) — 3×, not 5×. By travel 12 / 18 / 22% at the
+touch (10 / 5 / 2) but 8 / 6 / 5% at the release: on a 10-30 m pass our man got to the receiver while
+the ball was on its way. The man inside 3 m was chasing the ball 43%, meeting it 23%. Our first man to
+their pass (`DefendingBlock::assign`, G4.81) ran to where HE could first take it — down its line,
+past their receiver, onto him — whoever the race read said got there first.
+
+**The change** [FH original on the DFL tables; coaching: "don't dive in — press as the ball travels"].
+- **No chaser for a pass they win** (`physics.block.their_pass_margin_s`, 0): their pass (they touched it
+  last, played to one of theirs), their first man to it by the race read ahead of ours by more than the
+  margin → nobody of ours chases it. Ours first (or within the margin), our first man goes as before.
+  High balls keep G5.71's contest. −1 = off.
+- **The presser steps out as it travels** (`physics.press.on_pass`, 1): in that case our nearest to
+  where their man meets it (held until another is `switch_m` nearer) is the presser now, not once the
+  ball is his: `PressBall` aims at its stand-off (§8.139's table) goal-side of the meet point, facing
+  the ball, no tackle until it is his.
+- Harness: RECEIVER SPACE (all / controlled; from a mate's pass or not; the inside-3 m man's job; by
+  the receiver's third; by the ball's travel; the man nearest at the touch by his metres at the release).
+  Test `their_pass_no_chaser_presser_steps_out`. AI goldens unchanged: their 2000 ticks hold no pass of
+  theirs their man wins the race to.
+
+**Measured on the way** (seed 1000). The chaser rule alone: inside 3 m from a mate's pass 16.1 → 5.8%
+(5.5), but our men no longer closed at all while it travelled (by release distance −0.74 / 0.03 / 0.52
+/ 0.69 m v 1.07 / 1.68 / 2.99 / 4.58). With the presser stepping out: −0.09 / 1.17 / 2.33 / 3.99.
+
+**After** (G5.81 → G5.82; seed 1000, then seed 2000; real in brackets).
+- From a mate's pass, inside 3 m at the touch 16.1 → 8.9%, 15.2 → 8.4% (5.5); by travel 10-20 m 18 → 8%,
+  16 → 9% (5); 20-30 m 22 → 8%, 22 → 6% (2).
+- Passes completed 74.1 → 81.0%, 75.0 → 80.9% (79.1); 30 m+ strong / weak 48.3 / 50.7 → 66.9 / 68.4,
+  49.6 / 52.1 → 63.7 / 62.6 (58.8 / 54.2); 0-15 m 82.5 → 85.7, 83.6 → 86.6 (87.6). In behind completed
+  41 → 49%, 42 → 49% (47.5).
+- Pressures (DFL cut) 404 → 364, 403 → 372 (375.2); StatsBomb cut 340 → 304, 341 → 308 (151.8);
+  counter-press 39.1 → 30.0%, 37.9 → 31.5% (21.0). Take-ons tried 82.7 → 56.7, 79.6 → 57.7 (18.1).
+- Stolen off his feet 8.19 → 6.75, 7.88 → 6.12 (8.0); heavy-touch losses 3.94 → 1.75, 3.06 → 3.06 (4.1).
+  Goals 1.38 → 1.94, 1.44 → 1.56.
+
+**What it says.** A pass their man reaches first is now left to him: the nearest of ours steps toward
+where he'll take it and the rest keep their jobs — the closing during the flight is near the real one
+from every distance. Completion rose past real (81 v 79): the pass chooser's `risk_weight` was fitted to
+79.1% while our men still ran onto every receiver, and long passes now arrive too often (64-68 v
+54-59). What is left of the tight receivers comes from the pass itself: the man nearest at the touch was
+within 5 m at the release 18% of the time (5) — we pass to men already marked.
+
+**Next moles.** (1) The pass chooser picks receivers with a man inside 5 m at the release 18% v 5% —
+real passers pick free men; then `risk_weight` re-measured. (2) Long-pass completion 64-68 v 54-59%.
+(3) FIRST TOUCH / PRESSED TOUCH still count scrambles (269 v 147 a team-match): match them to RECEIVER
+SPACE's cut. (4) Headers and aerial duels (35 v 44). (5) Take-ons 57 v 18.

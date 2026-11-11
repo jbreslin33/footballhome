@@ -48,6 +48,8 @@ struct BlockParams {
     // nearest outfielder goes to where he meets it, to contest it (0 = off). Real: the nearest of the
     // other side is 1.2-2.0 m off a high ball at head height (DFL benchmarks_tracking_aerial.py).
     math::Fixed64 contest_min_z{};
+    bool press_on_pass = true;                      // G5.82 (§8.183): the presser steps out as their pass travels
+    int their_pass_margin = 0;                      // G5.82 (§8.183): ticks our first may lose their pass's race by and still go; -1 = off (always go)
     // G5.72 (§8.173): marking. Each CB / FB / DM takes the attacker nearest his block spot within
     // mark_r of it (by that man's metres off our goal 0-18 / 18-35 / 35-52 / 52+; one marker a man)
     // and stands mark_d goal-side of him. Fitted to the real nearest-defender tables (DFL
@@ -69,7 +71,11 @@ public:
     int presser(std::uint8_t team) const { return presser_[team & 1]; }
     int contester(std::uint8_t team) const { return contest_[team & 1]; }       // G5.71: our man contesting their high ball
     math::Vec2 contestAt(std::uint8_t team) const { return contest_at_[team & 1]; }
-    void reset() { for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
+    // G5.82 (§8.183): their pass in flight, nobody of ours chasing it — the presser steps toward where
+    // their man meets it (pressFlight true, pressAt the meet point) so he is on him as it arrives.
+    bool pressFlight(std::uint8_t team) const { return press_flight_[team & 1]; }
+    math::Vec2 pressAt(std::uint8_t team) const { return press_at_[team & 1]; }
+    void reset() { for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
 
     // G5.72: after assign — each defender's block spot (by slot) and whether his role marks (CB/FB/DM).
     void assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
@@ -94,6 +100,8 @@ private:
     int mark_[2][32] = {};   // G5.72: the attacker each of ours marks (by our slot), -1 none
     math::Vec2 contest_at_[2]{};
     int presser_[2] = {-1, -1};
+    bool press_flight_[2] = {false, false};
+    math::Vec2 press_at_[2]{};
     int deep_cb_[2] = {-1, -1};    // G5.41: the pair's deeper man (held), and his partner
     int other_cb_[2] = {-1, -1};
     std::uint64_t their_won_[2] = {0, 0};   // G5.52: the tick their live spell began (by the defending team)

@@ -53,11 +53,22 @@ def one(pos_path):
                     dd = math.hypot(pos[n][0] - bx, pos[n][1] - by)
                     if dd < bd: best, bd = pid, dd
             return best, bd
-        free_since = None; last_touch = -999
+        free_since = None; last_touch = -999; last_tm = None
+        # which way each side attacks this half: the side whose men stand at lower x on average defends -x
+        mx = collections.defaultdict(list)
+        for pid, (pos, tm) in pl.items():
+            xs = [v[0] for v in list(pos.values())[:500]]
+            if xs: mx[tm].append(sum(xs) / len(xs))
+        sgn = {}
+        if len(mx) == 2:
+            (ta, va), (tb, vb) = list(mx.items())
+            a, b2 = sum(va) / len(va), sum(vb) / len(vb)
+            sgn = {ta: 1 if a < b2 else -1, tb: 1 if b2 < a else -1}
         for n in frames:
             if ball[n][2] >= 0.5:
                 free_since = None; continue
             who, dd = near(n, 1.5)
+            if who is not None and free_since is None: last_tm = pl[who][1]
             if who is None:
                 if free_since is None: free_since = n
                 continue
@@ -70,7 +81,7 @@ def one(pos_path):
                         if e < dm: m0, dm = k, e
                 if dm > 1.0:
                     free_since = None; continue
-                n = m0
+                n = m0; fs = free_since
                 ok = all(k in ball for k in (n - 6, n - 1, n + 3, n + 8, n + 12, n + 25))
                 pos = pl[who][0]
                 if ok and all(k in pos for k in (n - 3, n + 3, n + 12, n + 25)):
@@ -106,8 +117,17 @@ def one(pos_path):
                                 rel = "still"
                             q5 = math.hypot(ball[n + 12][0] - pq[n + 12][0], ball[n + 12][1] - pq[n + 12][1])
                             rel = (rel, q5 < g5, q5, prs)
+                        # G5.82 (§8.183) RECEIVER SPACE: his nearest opponent at the touch and at the release (the
+                        # first frame nobody was within 1.5 m of the ball: ~0.1 s after the kick)
+                        prs0 = 99
+                        if fs in pos:
+                            for qid, (qpos, qtm) in pl.items():
+                                if qtm != tm and fs in qpos:
+                                    prs0 = min(prs0, math.hypot(qpos[fs][0] - pos[fs][0], qpos[fs][1] - pos[fs][1]))
                         b = next(i for i, (lo, hi) in enumerate(SP) if lo <= vin < hi)
-                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel)
+                        rx = 52.5 + sgn.get(tm, 1) * pos[n][0]
+                        same0 = math.hypot(pq[fs][0] - pos[fs][0], pq[fs][1] - pos[fs][1]) if pq is not None and fs in pq and fs in pos else 99
+                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel, (prs, prs0, (n - fs) / 25, last_tm == tm, rx, math.hypot(ball[n][0] - ball[fs][0], ball[n][1] - ball[fs][1]), same0))
                         out[b].append(rec); out["P" if prs < 3 else "F"].append(rec); out["all"].append(rec)
                 last_touch = n
             free_since = None
@@ -154,6 +174,32 @@ def main():
         print(f"PRESSED TOUCH opp {lo}-{hi} m: n {len(v)} ({len(v) / (2 * len(files)):.1f} a team-match) | touch toward / across / away / still % "
               + " / ".join(f"{100 * c[k] / len(v):.0f}" for k in ("toward", "across", "away", "still"))
               + f" | 0.5 s on: ball nearer him than the receiver {100 * sum(1 for x in v if x[1]) / len(v):.0f}% | his gap to it p25 {q([x[2] for x in v], .25):.2f} med {q([x[2] for x in v], .5):.2f}")
+
+    # G5.82 (§8.183) RECEIVER SPACE: every reception (controlled or not) and the controlled ones — his nearest
+    # opponent at the release and at the touch, binned; how much the gap closed over the ball's travel
+    BN = [(0, 1.5), (1.5, 3), (3, 5), (5, 8), (8, 99)]
+    for name, v in (("all", [r[8] for r in tot["all"]]), ("controlled", [r[8] for r in tot["all"] if r[0] < 0.7])):
+        q = lambda xs, p: sorted(xs)[min(len(xs) - 1, int(len(xs) * p))]
+        v0 = [x for x in v if x[1] < 99]
+        fmt = lambda xs, i: " / ".join(f"{100 * sum(1 for x in xs if lo <= x[i] < hi) / len(xs):.0f}" for lo, hi in BN)
+        print(f"RECEIVER SPACE {name}: n {len(v)} ({len(v) / (2 * len(files)):.1f} a team-match) | nearest opp at the touch % 0-1.5/1.5-3/3-5/5-8/8+ {fmt(v, 0)}"
+              f" med {q([x[0] for x in v], .5):.2f} | at the release {fmt(v0, 1)} med {q([x[1] for x in v0], .5):.2f}"
+              f" | closed med {q([x[1] - x[0] for x in v0], .5):.2f} m over med {q([x[2] for x in v0], .5):.2f} s"
+              f" | of those inside 3 m at the touch, at the release 5 m+ {100 * sum(1 for x in v0 if x[0] < 3 and x[1] >= 5) / max(1, sum(1 for x in v0 if x[0] < 3)):.0f}%")
+        pm = [x for x in v if x[3]]; ot = [x for x in v if not x[3]]
+        i3 = lambda xs: 100 * sum(1 for x in xs if x[0] < 3) / max(1, len(xs))
+        zs = [[x for x in v if lo <= x[4] < hi] for lo, hi in ((-99, 35), (35, 70), (70, 999))]
+        print(f"   from a mate's pass {len(pm) / (2 * len(files)):.1f} a team-match, inside 3 m {i3(pm):.1f}% | other {len(ot) / (2 * len(files)):.1f}, inside 3 m {i3(ot):.1f}%"
+              f" | by the receiver's m off own goal 0-35/35-70/70+: n " + " / ".join(f"{len(z) / (2 * len(files)):.1f}" for z in zs) + ", inside 3 m " + " / ".join(f"{i3(z):.0f}" for z in zs) + "%")
+        RB = ((0, 5), (5, 10), (10, 15), (15, 99))
+        sb = [[x for x in pm if lo <= x[6] < hi] for lo, hi in RB]
+        print("   mate's pass, the man nearest at the touch by his m at the release 0-5/5-10/10-15/15+: share " + " / ".join(f"{100 * len(z) / max(1, len(pm)):.0f}" for z in sb)
+              + "% | closed med " + " / ".join(f"{q([x[6] - x[0] for x in z], .5):.2f}" if z else "-" for z in sb) + " m | inside 3 m at the touch " + " / ".join(f"{i3(z):.0f}" for z in sb) + "%")
+        LB = ((0, 10), (10, 20), (20, 30), (30, 999))
+        r3 = lambda xs: 100 * sum(1 for x in xs if x[1] < 3) / max(1, len(xs))
+        ls = [[x for x in pm if lo <= x[5] < hi] for lo, hi in LB]
+        print("   mate's pass by the ball's travel release->touch 0-10/10-20/20-30/30+ m: n " + " / ".join(f"{len(z) / (2 * len(files)):.1f}" for z in ls)
+              + " | inside 3 m at the touch " + " / ".join(f"{i3(z):.0f}" for z in ls) + "% | at the release " + " / ".join(f"{r3(z):.0f}" for z in ls) + "%")
 
 
 if __name__ == "__main__":

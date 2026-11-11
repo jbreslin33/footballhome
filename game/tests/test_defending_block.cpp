@@ -129,3 +129,50 @@ FH_TEST(marking_nearest_in_zone_goal_side) {
     b.assignMarks(0, w, team_of, spots, marks);
     FH_EXPECT_EQ(b.markOf(0, 4), -1);
 }
+
+// G5.82 (§8.183): their pass, their man first to it — nobody of ours chases it; the man of ours
+// nearest where he meets it presses toward that spot as it travels (stand-off goal-side of it).
+// Ours first by the read, or the margin off (−1): our first man chases it as before.
+FH_TEST(their_pass_no_chaser_presser_steps_out) {
+    core::World w = world22();
+    const auto team_of = ai::TeamSetup::splitHalves(22).team_of_slot;
+    const std::vector<ai::Role> roles(22, ai::Role::DM);
+    // Their 8 (slot 19) passes to their 9 (slot 16), who meets it at (-10, 0) in 20 ticks; our 5 at
+    // (-14, 0) could first take it at (-6, 0) in 30 ticks, our 6 further back.
+    w.placePlayer(19, Vec3{Fixed64::fromInt(10), Fixed64::zero(), Fixed64::zero()}, Vec2{-Fixed64::one(), Fixed64::zero()});
+    w.giveBall(19);   // lastTouchTeam = theirs, ball in play
+    w.placePlayer(16, Vec3{Fixed64::fromInt(-11), Fixed64::zero(), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(5, Vec3{Fixed64::fromInt(-14), Fixed64::fromInt(3), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
+    w.placePlayer(6, Vec3{Fixed64::fromInt(-25), Fixed64::fromInt(10), Fixed64::zero()}, Vec2{Fixed64::one(), Fixed64::zero()});
+    core::BallState bs = w.ball();
+    bs.owner.reset(); bs.pos = Vec3{Fixed64::fromInt(8), Fixed64::zero(), Fixed64::zero()};
+    bs.vel = Vec3{-Fixed64::fromInt(10), Fixed64::zero(), Fixed64::zero()}; bs.last_kicker = 19; bs.pass_to = 16;
+    w.placeBall(bs);
+    ai::Reads::FlightRead fr{};
+    fr.live = true; fr.tick.assign(22, -1); fr.at.assign(22, Vec2{});
+    fr.tick[16] = 20; fr.at[16] = Vec2{Fixed64::fromInt(-10), Fixed64::zero()};
+    fr.tick[5] = 30;  fr.at[5] = Vec2{Fixed64::fromInt(-6), Fixed64::zero()};
+    fr.first[0] = 5; fr.first[1] = 16;
+    ai::DefendingBlock b;
+    b.configure(core::ModelParams{});
+    b.assign(0, w, team_of, roles, fr, -1);
+    FH_EXPECT_EQ(b.chaser(0), -1);
+    FH_EXPECT_EQ(b.presser(0), 5);
+    FH_EXPECT(b.pressFlight(0));
+    FH_EXPECT_EQ(b.pressAt(0).x.raw, Fixed64::fromInt(-10).raw);
+    // Ours first by the read: our first man goes for it, no early press.
+    fr.tick[5] = 15;
+    b.assign(0, w, team_of, roles, fr, -1);
+    FH_EXPECT_EQ(b.chaser(0), 5);
+    FH_EXPECT(!b.pressFlight(0));
+    // Off (margin −1, on_pass 0): the G4.81 chase, whoever is first.
+    fr.tick[5] = 30;
+    core::ModelParams off;
+    off.setMilli("physics.block.their_pass_margin_s", -1000);
+    off.setMilli("physics.press.on_pass", 0);
+    ai::DefendingBlock b2;
+    b2.configure(off);
+    b2.assign(0, w, team_of, roles, fr, -1);
+    FH_EXPECT_EQ(b2.chaser(0), 5);
+    FH_EXPECT_EQ(b2.presser(0), -1);
+}
