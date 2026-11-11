@@ -235,7 +235,9 @@ Response PyramidController::handleProposal(const Request&) {
                              {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()}, {"anchors", strOrNull(r, "anchors")}});
         }
         // a_left (mig 1249): region a lies on the left of the line's direction.
-        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left FROM pyramid_proposal_borders ORDER BY id"))
+        // + the borders carried out to sea (mig 1252, scripts/pyramid-sea-borders.py)
+        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left FROM pyramid_proposal_borders"
+                                        " UNION ALL SELECT region_a, region_b, line::text, a_left FROM pyramid_proposal_sea_borders"))
             borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
                                {"a_left", r["a_left"].as<bool>()}});
         auto bar = db->query(R"SQL(
