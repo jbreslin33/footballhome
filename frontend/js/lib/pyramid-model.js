@@ -197,15 +197,34 @@ class PyramidModel {
     const edges = [];
     const byName = (a, b) => (this._compOrder.get(this.division(a).competition_id) - this._compOrder.get(this.division(b).competition_id))
       || this.division(a).name.localeCompare(this.division(b).name);
-    const columns = confs.map((conf) => {
+    const confIndex = new Map(confs.map((c, i) => [c.id, i]));
+    const columns = confs.map((conf, ci) => {
       const levels = [];
+      // A split table goes to the edge of its column facing its other
+      // conference (owner: "put casa central jersey in between del and
+      // cosmo" / "and below"): −1 = left edge, +1 = right edge, 0 = middle;
+      // the tables under it inherit its edge.
+      const edgeMemo = new Map();
+      const edge = (id, depth = 0) => {
+        if (edgeMemo.has(id)) return edgeMemo.get(id);
+        let v = 0;
+        const other = this.links.find((l) => l.lower === id && l.majority === false && l.upper_competition && confIndex.has(l.upper_competition));
+        if (other) v = Math.sign(confIndex.get(other.upper_competition) - ci);
+        else if (depth < 8) {
+          const up = this.links.find((l) => l.lower === id && l.upper_division && this._div.has(l.upper_division));
+          if (up) v = edge(up.upper_division, depth + 1);
+        }
+        edgeMemo.set(id, v);
+        return v;
+      };
+      const byEdge = (a, b) => (edge(a) - edge(b)) || byName(a, b);
       // A table that feeds two conferences sits under the one most of its
       // teams belong to: its outlier link (mig 1238, outlier_teams) never
       // places it, unless that conference is the only one on show.
       const majorityElsewhere = (l) => l.majority === false
         && this.links.some((o) => o.lower === l.lower && o !== l && o.upper_competition && confIds.has(o.upper_competition) && o.majority !== false);
       let current = [...new Set(this.links.filter((l) => l.upper_competition === conf.id && this._div.has(l.lower) && !majorityElsewhere(l)).map((l) => l.lower))]
-        .filter((id) => !placed.has(id)).sort(byName);
+        .filter((id) => !placed.has(id)).sort(byEdge);
       while (current.length) {
         current.forEach((id) => placed.add(id));
         levels.push(current);
@@ -213,7 +232,8 @@ class PyramidModel {
         for (const target of current)
           for (const l of this.links)
             if (l.upper_division === target && this._div.has(l.lower) && !placed.has(l.lower) && !next.includes(l.lower)) next.push(l.lower);
-        current = next;
+        // below too: a split table's lower tables keep to its edge
+        current = next.map((id, i) => [id, i]).sort((p, q) => (edge(p[0]) - edge(q[0])) || p[1] - q[1]).map((x) => x[0]);
       }
       const reach = new Set(this.links.filter((l) => l.upper_competition === conf.id).map((l) => l.lower));
       for (let grew = true; grew;) {
