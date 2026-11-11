@@ -48,6 +48,11 @@ def one(ev_path):
         if a.get("Recipient") and a.get("FromOpenPlay") == "true" and a.get("Team") in team_of:
             passes.append((ms(m.group(1)) // 40, a["Player"], a["Recipient"], team_of[a["Team"]],
                            a.get("Evaluation") == "successfullyCompleted", a.get("Height", "")))
+    shots = []                              # (grid, team, goal) — G5.85 IN BEHIND THEN
+    for m in re.finditer(r'<Event [^>]*EventTime="([^"]+)"[^>]*>\s*<ShotAtGoal ([^>]*)>(.*?)</ShotAtGoal>', txt, re.S):
+        a = dict(re.findall(r'(\w[\w-]*)="([^"]*)"', m.group(2)))
+        if a.get("Team") in team_of:
+            shots.append((ms(m.group(1)) // 40, team_of[a["Team"]], "<SuccessfulShot" in m.group(3)))
     kicks = {p[0] for p in passes} | {p[0] - 5 for p in passes}
     window = collections.defaultdict(set)   # person -> grid times wanted (beyond the kicks)
     for t, pa, re_, tm, ok, h in passes:
@@ -91,6 +96,7 @@ def one(ev_path):
     c = collections.Counter()
     lists = collections.defaultdict(list)
     c["matches"] = 1
+    c["shots"] = len(shots); c["goals"] = sum(x[2] for x in shots)
     for t, pa, re_, tm, ok, h in passes:
         fr = frames.get(t)
         sc = sec_of.get(t)
@@ -152,6 +158,15 @@ def one(ev_path):
         c[("behind_gap_hist", max(-2, min(9, int(math.floor(gap / 2)))))] += 1
         c[("behind_z", oz)] += 1
         c["behind_ok"] += ok
+        # G5.85 IN BEHIND THEN: a shot / goal by the passer's side within 10 s, by height
+        hk = "high" if h == "high" else "low"
+        sh = [x for x in shots if x[1] == tm and t < x[0] <= t + 250]
+        c[("then_n", hk)] += 1
+        c[("then_shot", hk)] += bool(sh)
+        c[("then_goal", hk)] += any(x[2] for x in sh)
+        c[("then_n_ok", ok)] += 1
+        c[("then_shot_ok", ok)] += bool(sh)
+        c[("then_goal_ok", ok)] += any(x[2] for x in sh)
         c[("behind_h", h)] += 1
         lists["gap"].append(gap)
         lists["speed"].append(rs)
@@ -200,6 +215,13 @@ if __name__ == "__main__":
         xs = L[k]
         if xs:
             print(f"  {lab:42s} median {statistics.median(xs):6.2f}  p25 {q(xs, .25):6.2f}  p75 {q(xs, .75):6.2f}  mean {statistics.mean(xs):6.2f}")
+    print(f"IN BEHIND THEN (a shot / goal by the passer's side within 10 s; all shots {tot['shots'] / tm:.1f}, goals {tot['goals'] / tm:.2f} a team-match):")
+    for k, lab in (("high", "high"), ("low", "flat/medium")):
+        n = max(1, tot[("then_n", k)])
+        print(f"  {lab:12s} {tot[('then_n', k)] / tm:5.1f} a team-match: shot {100 * tot[('then_shot', k)] / n:4.1f}%  goal {100 * tot[('then_goal', k)] / n:4.1f}%  ({tot[('then_goal', k)]} goals)")
+    for k, lab in ((True, "completed"), (False, "not completed")):
+        n = max(1, tot[("then_n_ok", k)])
+        print(f"  {lab:12s} {tot[('then_n_ok', k)] / tm:5.1f} a team-match: shot {100 * tot[('then_shot_ok', k)] / n:4.1f}%  goal {100 * tot[('then_goal_ok', k)] / n:4.1f}%")
     nf = max(1, tot["fwd"])
     print(f"FORWARD PASSES (5+ m on): {tot['fwd']} ({tot['fwd'] / tm:.1f} a team-match); runners at the line (within 3 m, 4+ m/s at goal) "
           f"mean {tot['fwd_runners'] / nf:.2f}; 0 / 1 / 2+ {100 * tot[('fwd_runners_k', 0)] / nf:.0f} / "

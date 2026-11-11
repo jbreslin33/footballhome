@@ -14,7 +14,9 @@
 // GAME_PARAMS="key=value,..." (game_model_params numbers for the run; the DB
 // is never written), GAME_DEAD_TRACE=1 (a stalled dead ball, every 10 s),
 // GAME_HOLD_TRACE=1 (full-backs and wide men holding shape at 5 Hz: spot, velocity, intent; §8.128;
-// =all: every role).
+// =all: every role), GAME_SHOT_TRACE=1 (every shot: the opponents where they stand; §8.186),
+// GAME_GS_TRACE=1 (the defending side at 5 Hz with the ball inside 12 m of its goal: each man
+// pos>target@speed/toward target/asked and his order; =all: out to 30 m; §8.186).
 
 #include "ai/Brain.hpp"
 #include "ai/Players.hpp"
@@ -76,6 +78,9 @@ struct Stats {
     long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0, area_rec = 0, area_ticks = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
+    long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
+    long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
+    long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
@@ -216,9 +221,10 @@ int main(int argc, char** argv) {
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
+        struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0; } shot;
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -440,11 +446,12 @@ int main(int argc, char** argv) {
             for (const auto& e : s.lastEvents())
                 if (e.type == core::MatchEventType::Goal) {
                     if (pen_on && pen_k >= 0) { ++S.pen_goals; pen_on = false; }
-                    ++S.goals[e.team];
+                    ++S.goals[e.team]; bt_goalk[e.team].push_back(static_cast<long>(k));
                     if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
                     ++S.goal_by[last_kick_why];
                     if (shot.on && shot.team == e.team) {
                         ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1];
+                        ++S.sx_gs_g[shot.gsk]; ++S.sx_tb_g[shot.tb];
                         if (shot.gap >= 0) ++S.sc_n[shot.band][shot.gap];
                         shot.on = false;
                     }
@@ -597,6 +604,7 @@ int main(int argc, char** argv) {
                     if (bh.behind) {
                         const bool ok = b.owner && W.player(*b.owner).team == bh.team;
                         ++S.bh_n; S.bh_ok += ok; S.bh_air += bh.air; ++S.bh_z[bh.z];
+                        bt_rec.push_back(Bt{bh.team, bh.k0, bh.air, ok});
                         S.bh_gap.push_back(bh.gap); S.bh_spd.push_back(bh.spd); S.bh_vx.push_back(bh.vx);
                         S.bh_lead.push_back(std::hypot(bh.mrx - bh.rx, bh.mry - bh.ry)); S.bh_t.push_back((bh.bk - bh.k0) / 30.0);
                         S.bh_len.push_back(std::hypot(bh.mrx - bh.bx, bh.mry - bh.by)); S.bh_past.push_back(bh.mrx * sg - bh.line);
@@ -610,6 +618,27 @@ int main(int argc, char** argv) {
                 const auto& p = W.player(*before);
                 const double gx = (p.team == 0 ? hx : -hx) - p.pos.x.toDouble(), gy = p.pos.y.toDouble();
                 shot = Shot{true, p.team, distBand(std::hypot(gx, gy)), k};
+                bt_shotk[p.team].push_back(static_cast<long>(k));
+                {   // §8.186 SHOT CONTEXT: outfield opponents nearer their goal centre than him; s since his side's possession began
+                    const double gx2 = p.team == 0 ? hx : -hx, ds = std::hypot(gx2 - p.pos.x.toDouble(), p.pos.y.toDouble());
+                    int g = 0;
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        if (!W.isKeeper(j) && W.player(j).team != p.team &&
+                            std::hypot(gx2 - W.player(j).pos.x.toDouble(), W.player(j).pos.y.toDouble()) < ds) ++g;
+                    const double t = rc_team == p.team ? (static_cast<long>(k) - rc_k) / 30.0 : 0.0;
+                    shot.gsk = std::min(g, 4); shot.tb = t < 5 ? 0 : t < 10 ? 1 : t < 20 ? 2 : 3;
+                    if (std::getenv("GAME_SHOT_TRACE")) {   // §8.186: every opponent at the strike (x = metres off their goal line)
+                        const double sg3 = p.team == 0 ? 1.0 : -1.0;
+                        std::fprintf(stderr, "shot m%d k%ld t%.0fs from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.player(j).team == p.team) continue;
+                            std::fprintf(stderr, " %s%d:%.1f,%.1f %s", W.isKeeper(j) ? "GK" : "", role(j), hx - W.player(j).pos.x.toDouble() * sg3, W.player(j).pos.y.toDouble(),
+                                         ai::kWhyNames[static_cast<int>(s.lastOrders()[j].why)]);
+                        }
+                        std::fprintf(stderr, "\n");
+                    }
+                    ++S.sx_gs[shot.gsk]; ++S.sx_tb[shot.tb]; S.sx_tb_gs[shot.tb].push_back(g); S.sx_bd_gs[shot.band].push_back(g);
+                }
                 {   // §8.135: the cell it was aimed at — on target 4 across x 3 up, else -1
                     const auto& lo = s.lastOrders()[*before];
                     const double lat = std::fabs(lo.target.y.toDouble()), z = lo.aim_z.toDouble();
@@ -945,6 +974,37 @@ int main(int argc, char** argv) {
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
+            {   // §8.186 GOAL-SIDE (benchmarks_tracking_goalside.py): ball under 7 m/s within 30 m of their goal centre
+                const double gx = dteam == 0 ? -hx : hx, bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                const double db = std::hypot(gx - bx, by);
+                if (db < 30 && std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()) < 7) {
+                    const int bb = db < 12 ? 0 : db < 18 ? 1 : db < 25 ? 2 : 3;
+                    int g = 0; double deep = 1e9;
+                    for (std::uint8_t j = 0; j < N; ++j) {
+                        if (W.player(j).team != dteam || W.isKeeper(j)) continue;
+                        const double px = W.player(j).pos.x.toDouble(), py = W.player(j).pos.y.toDouble();
+                        if (std::hypot(gx - px, py) < db) ++g;
+                        deep = std::min(deep, std::fabs(gx - px));
+                    }
+                    if (std::getenv("GAME_GS_TRACE") && (bb == 0 || std::getenv("GAME_GS_TRACE")[0] == 'a')) {   // §8.186: who is where (=all: every band)
+                        const double sg3 = dteam == 0 ? -1.0 : 1.0;   // + toward their (dteam's) goal line
+                        std::fprintf(stderr, "gs m%d k%ld ball %.1f,%.1f v %.1f owner %d since %.1fs g %d |", m, static_cast<long>(k), hx - bx * sg3, by,
+                                     std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()), b.owner ? static_cast<int>(*b.owner) : -1, (static_cast<long>(k) - rc_k) / 30.0, g);
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.player(j).team != dteam) continue;
+                            const auto& lo = s.lastOrders()[j];
+                            const double tx = lo.target.x.toDouble() - W.player(j).pos.x.toDouble(), ty = lo.target.y.toDouble() - W.player(j).pos.y.toDouble(), tl = std::max(1e-6, std::hypot(tx, ty));
+                            const double vx = W.player(j).vel.x.toDouble(), vy = W.player(j).vel.y.toDouble();
+                            std::fprintf(stderr, " %s%d:%.1f,%.1f>%.1f,%.1f@%.1f/%.1f/%.1f %s", W.isKeeper(j) ? "GK" : "", role(j), hx - W.player(j).pos.x.toDouble() * sg3, W.player(j).pos.y.toDouble(),
+                                         hx - lo.target.x.toDouble() * sg3, lo.target.y.toDouble(), std::hypot(vx, vy), (vx * tx + vy * ty) / tl,
+                                         std::hypot(lo.move.move.x.toDouble(), lo.move.move.y.toDouble()) * W.player(j).max_speed.toDouble(), ai::kWhyNames[static_cast<int>(lo.why)]);
+                        }
+                        std::fprintf(stderr, "\n");
+                    }
+                    ++S.gsd_n[bb]; S.gsd_g[bb].push_back(g); S.gsd_deep[bb].push_back(std::fabs(gx - bx) - deep);
+                    ++S.gsd_k[bb][g == 0 ? 0 : g <= 2 ? 1 : g <= 4 ? 2 : 3];
+                }
+            }
             {   // §8.173 MARKING, EVERY FRAME (benchmarks_tracking_markers.py): each attacker's nearest defender; each CB/FB/DM's nearest attacker
                 const int st = (static_cast<long>(k) - rc_k) >= 180 ? 1 : 0;
                 const double ds = dteam == 0 ? 1.0 : -1.0, gx = -ds * hx, bx3 = b.pos.x.toDouble(), by3 = b.pos.y.toDouble();
@@ -1555,6 +1615,12 @@ int main(int argc, char** argv) {
             rk[ri] = k; rbx[ri] = bx; rat[ri] = a;
             for (std::uint8_t j = 0; j < N && j < 32; ++j) { rpx[ri][j] = W.player(j).pos.x.toDouble(); rpy[ri][j] = W.player(j).pos.y.toDouble(); }
         }
+        for (const auto& r : bt_rec) {   // §8.186: a shot / goal by the passer's side within 10 s of the kick
+            bool sh = false, gl = false;
+            for (long t : bt_shotk[r.team]) if (t > r.k0 && t <= r.k0 + 300) sh = true;
+            for (long t : bt_goalk[r.team]) if (sh && t > r.k0 && t <= r.k0 + 330) gl = true;
+            ++S.bt_n[r.high][r.ok]; S.bt_shot[r.high][r.ok] += sh; S.bt_goal[r.high][r.ok] += gl;
+        }
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
@@ -1614,6 +1680,26 @@ int main(int argc, char** argv) {
                 std::vector<double> h = S.sh_held; std::sort(h.begin(), h.end());
                 std::printf("\n   nearest outfield opponent to the SHOOTER p25 / median / p75 %.2f / %.2f / %.2f m, goal-side %.0f%%; on the ball before the shot median %.2f s (p75 %.2f)",
                             w[w.size() / 4], w[w.size() / 2], w[w.size() * 3 / 4], 100.0 * S.sh_gs / w.size(), h[h.size() / 2], h[h.size() * 3 / 4]);
+                {   // §8.186 SHOT CONTEXT — benchmarks_statsbomb_shotcontext.py
+                    static const double rgs[5] = {4.8, 9.1, 10.6, 13.2, 62.3}, rgg[5] = {39.4, 21.5, 14.9, 9.3, 4.5};
+                    static const double rtb[4] = {19.6, 16.0, 26.7, 37.7}, rtg[4] = {8.7, 9.0, 10.4, 9.3}; static const int rtm[4] = {5, 4, 4, 5};
+                    static const char* tl[4] = {"0-5", "5-10", "10-20", "20+"};
+                    long ns = 0; for (long v : S.sx_gs) ns += v; ns = std::max(1L, ns);
+                    std::printf("\n   SHOT CONTEXT (real StatsBomb PL 15/16 in brackets): GOAL-SIDE outfield opponents 0/1/2/3/4+, share %% [goal %%]:");
+                    for (int g = 0; g < 5; ++g) std::printf(" %d%s %.1f (%.1f) [%.1f (%.1f)];", g, g == 4 ? "+" : "", 100.0 * S.sx_gs[g] / ns, rgs[g], 100.0 * S.sx_gs_g[g] / std::max(1L, S.sx_gs[g]), rgg[g]);
+                    std::printf("\n     since the possession began, s: share %% [goal %%] {goal-side median}:");
+                    for (int t = 0; t < 4; ++t) {
+                        auto v = S.sx_tb_gs[t]; std::sort(v.begin(), v.end());
+                        std::printf(" %s %.1f (%.1f) [%.1f (%.1f)] {%d (%d)};", tl[t], 100.0 * S.sx_tb[t] / ns, rtb[t], 100.0 * S.sx_tb_g[t] / std::max(1L, S.sx_tb[t]), rtg[t], v.empty() ? 0 : v[v.size() / 2], rtm[t]);
+                    }
+                    static const char* bl[4] = {"<12", "12-18", "18-25", "25+"}; static const int rb[4][3] = {{1, 2, 4}, {3, 4, 5}, {5, 6, 7}, {5, 7, 8}};
+                    std::printf("\n     goal-side by the shot's distance p25 / median / p75:");
+                    for (int d = 0; d < 4; ++d) {
+                        auto v = S.sx_bd_gs[d]; std::sort(v.begin(), v.end());
+                        if (v.empty()) continue;
+                        std::printf(" %s %d / %d / %d (%d / %d / %d);", bl[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rb[d][0], rb[d][1], rb[d][2]);
+                    }
+                }
             }
         }
         std::printf("\n   how they ended:");
@@ -2074,6 +2160,36 @@ int main(int argc, char** argv) {
         static const double real_z[10] = {2.00, 1.43, 4.79, 4.43, 6.14, 4.00, 4.79, 3.36, 4.57, 2.21};
         static const char* zz[10] = {"0-18c", "0-18w", "18-35c", "18-35w", "35-52c", "35-52w", "52-70c", "52-70w", "70+c", "70+w"};
         std::printf("     balls played in behind (the led pass): %.1f a team-match\n", S.led / tm);
+        {   // §8.186 GOAL-SIDE — benchmarks_tracking_goalside.py
+            static const char* bl[4] = {"<12", "12-18", "18-25", "25-30"};
+            static const double rs[4] = {3.6, 10.4, 24.4, 30.4}; static const int rq[4][3] = {{0, 2, 3}, {2, 3, 5}, {3, 5, 6}, {4, 6, 8}};
+            static const double rk[4][4] = {{25.3, 39.0, 26.1, 9.6}, {10.8, 25.6, 32.2, 31.4}, {6.7, 17.3, 24.8, 51.1}, {2.6, 9.8, 23.8, 63.8}};
+            static const double rd[4][3] = {{-0.7, 0.4, 2.2}, {-1.0, 1.4, 5.0}, {-0.6, 2.7, 6.3}, {1.2, 5.3, 8.8}};
+            std::printf("   GOAL-SIDE (5 Hz, ball under 7 m/s; their outfielders nearer their goal centre than the ball; real DFL in brackets):\n");
+            for (int d = 0; d < 4; ++d) {
+                auto v = S.gsd_g[d]; auto w = S.gsd_deep[d]; if (v.empty()) continue;
+                std::sort(v.begin(), v.end()); std::sort(w.begin(), w.end()); const double n = static_cast<double>(v.size());
+                std::printf("     ball %-5s m: %.1f s a team-match (%.1f) | goal-side p25/med/p75 %d / %d / %d (%d / %d / %d) | 0 %.1f%% (%.1f) 1-2 %.1f (%.1f) 3-4 %.1f (%.1f) 5+ %.1f (%.1f) | deepest above the ball %.1f / %.1f / %.1f (%.1f / %.1f / %.1f)\n",
+                            bl[d], n * 0.2 / tm, rs[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rq[d][0], rq[d][1], rq[d][2],
+                            100 * S.gsd_k[d][0] / n, rk[d][0], 100 * S.gsd_k[d][1] / n, rk[d][1], 100 * S.gsd_k[d][2] / n, rk[d][2], 100 * S.gsd_k[d][3] / n, rk[d][3],
+                            w[w.size() / 4], w[w.size() / 2], w[w.size() * 3 / 4], rd[d][0], rd[d][1], rd[d][2]);
+            }
+        }
+        {   // §8.186 IN BEHIND THEN — benchmarks_tracking_behind.py
+            static const double rs[2] = {18.6, 6.8}, rg[2] = {3.6, 1.3}, rn[2] = {15.7, 22.0};
+            std::printf("     IN BEHIND THEN (a shot / goal by the passer's side within 10 s; real DFL in brackets):");
+            for (int h = 1; h >= 0; --h) {
+                const long n = S.bt_n[h][0] + S.bt_n[h][1], sh = S.bt_shot[h][0] + S.bt_shot[h][1], gl = S.bt_goal[h][0] + S.bt_goal[h][1];
+                std::printf(" %s %.1f a team-match (%.1f): shot %.1f%% (%.1f) goal %.1f%% (%.1f) [%ld goals];", h ? "high" : "flat", n / tm, rn[h],
+                            100.0 * sh / std::max(1L, n), rs[h], 100.0 * gl / std::max(1L, n), rg[h], gl);
+            }
+            for (int o = 1; o >= 0; --o) {
+                const long n = S.bt_n[0][o] + S.bt_n[1][o], sh = S.bt_shot[0][o] + S.bt_shot[1][o], gl = S.bt_goal[0][o] + S.bt_goal[1][o];
+                std::printf(" %s shot %.1f%% (%s) goal %.1f%% (%s);", o ? "completed" : "not completed", 100.0 * sh / std::max(1L, n), o ? "21.5" : "2.9",
+                            100.0 * gl / std::max(1L, n), o ? "4.4" : "0.4");
+            }
+            std::printf("\n");
+        }
         static const double real_gh[10] = {8.0, 5.9, 5.0, 4.5, 4.9, 4.5, 4.6, 4.3, 3.9, 53.1};
         std::printf("     named passes by the man's gap short of their line (2 m bins, 0..18+; real DFL %%):");
         for (int g = 0; g < 10; ++g) std::printf(" %d: %.1f%% (%.1f);", 2 * g, 100.0 * S.gap_h[g] / std::max(1L, S.bh_pass), real_gh[g]);

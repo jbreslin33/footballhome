@@ -55,6 +55,12 @@ struct BlockParams {
     // and stands mark_d goal-side of him. Fitted to the real nearest-defender tables (DFL
     // benchmarks_tracking_markers.py); mark_r 0 = off in that band.
     math::Fixed64 mark_r[4]{}, mark_d[4]{};
+    // G5.85 (§8.186): the ball within gs_r of our goal centre — a holder whose spot is within gs_w of
+    // the ball and not gs_m nearer our goal centre than it slides straight toward the goal centre till
+    // he is (coaching: in our box, between ball and goal). Fitted to the real goal-side counts (DFL
+    // benchmarks_tracking_goalside.py). gs_r 0 = off — and OFF it ships: our targets already put as
+    // many men goal-side as real; the men don't reach them (§8.186). Moved nothing at 20 / 25 / 30 m.
+    math::Fixed64 gs_r{}, gs_w{}, gs_m{};
     void configure(const core::ModelParams& p);
 };
 

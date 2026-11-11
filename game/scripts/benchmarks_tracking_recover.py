@@ -50,6 +50,7 @@ class RecoverTally(bt.ShapeTally):
             k = bt.bucket(since * bt.DT, EDGES)
             s = side[d]
             z = "N" if s * a[0] + self.half < 40 else "F"   # the ball inside 40 m of their goal, or not
+            near = math.hypot(s * a[0] + self.half, a[1]) < 20   # G5.85 (§8.186): ball within 20 m of their goal centre
             for p, q in zip(oa, ob):
                 dx, dy = q[0] - p[0], q[1] - p[1]
                 v = math.hypot(dx, dy) / bt.DT
@@ -69,6 +70,14 @@ class RecoverTally(bt.ShapeTally):
                     c[f"{z}{k}fb"] += 1
                 if v >= 5:
                     c[z + ("b" if back >= 0.7 * v else "u" if back <= -0.7 * v else "a")] += 1
+                if near:   # G5.85: 5+ m/s by direction, and across (|dy| share) at 4+ / 5+ / 6+
+                    c["Gn"] += 1
+                    if v >= 5:
+                        c["G" + ("b" if back >= 0.7 * v else "u" if back <= -0.7 * v else "a")] += 1
+                    vy = abs(dy) / bt.DT
+                    for cut in (4, 5, 6):
+                        c[f"Gy{cut}"] += vy >= cut
+                    c["Gvy"] += vy
             self.c["turn"] += 1 if since == 0 else 0
 
     def result(self):
@@ -108,6 +117,10 @@ if __name__ == "__main__":
         n = c[z + "n"]
         if n:
             print(f"    {lab}: {100 * n / tot:.1f}% of steps; {100 * c[z + 'b'] / n:.2f} / {100 * c[z + 'u'] / n:.2f} / {100 * c[z + 'a'] / n:.2f}")
+    n = c["Gn"]
+    if n:   # G5.85 (§8.186)
+        print(f"    ball within 20 m of their goal centre: {100 * n / tot:.1f}% of steps; {100 * c['Gb'] / n:.2f} / {100 * c['Gu'] / n:.2f} / {100 * c['Ga'] / n:.2f}"
+              f"; across component 4+ / 5+ / 6+ m/s {100 * c['Gy4'] / n:.2f} / {100 * c['Gy5'] / n:.2f} / {100 * c['Gy6'] / n:.2f}%, mean {c['Gvy'] / n:.2f} m/s")
     print("  5+ m/s back by seconds since it lost it, % of the zone's steps then (share of the zone's steps):")
     for z, lab in (("N", "inside 40 m"), ("F", "further out")):
         print(f"    {lab}: " + "; ".join(f"{LABELS[k]} {100 * c[f'{z}{k}fb'] / c[f'{z}{k}n']:.1f} ({100 * c[f'{z}{k}n'] / c[z + 'n']:.0f}%)"

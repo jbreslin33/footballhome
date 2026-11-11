@@ -8293,3 +8293,59 @@ scores (6-8 goals in 8 matches v 1-2) — who meets a ball dropping in behind (k
 covering CB). (2) Lofts a mix of driven and hung, not one angle (peaks 2-3 m high). (3) No 50-70 m
 lofts (kick range or the chooser). (4) The defender off the attacker at the launch 9 v 7 m — marking
 before the high ball. (5) `risk_weight` (§8.184).
+
+### 8.186 G5.85 — goal-side near our goal: measured, the rule built and left OFF; the men trail right targets (no migration)
+
+§8.185's next (1): a hung ball in behind scoring for our runner, 6-8 goals in 8 matches v 1-2.
+
+**Measured first** (new harness lines, 8 × 90, seeds 1000 / 2000; real in brackets).
+- IN BEHIND THEN (`benchmarks_tracking_behind.py`, DFL [Bassek 2025]: a shot / goal by the passer's
+  side within 10 s of a ball played in behind). High: 19.5 / 19.3 a team-match (22.0), shot 7.4 / 6.5%
+  (6.8), goal 1.0 / 1.3% (1.3). Flat: 22.6 / 22.9 (15.7), shot 10.5 / 9.8% (18.6), goal 2.5 / 1.6%
+  (3.6). Counted per ball, the high ball in behind is at the real rate. §8.185's "6-8 goals" counted
+  the last kick before a goal, with nothing to compare it to. Mole (1) is not a mole.
+- SHOT CONTEXT (new `benchmarks_statsbomb_shotcontext.py`, StatsBomb PL 15/16 freeze frames: outfield
+  opponents nearer the goal centre than the shooter). Shots with 0 goal-side 18.5 / 19.5% (4.8),
+  4+ 38.9 / 36.3% (62.3). By the shot's distance, median goal-side <12 0 / 1 (2), 12-18 2 / 2 (4),
+  18-25 5 / 4 (6). This is the real gap: our shots are struck past a defence that isn't there.
+  It is not counters. 62 / 53% of our shots come 20 s+ into the possession (37.7); there the median is
+  3 goal-side (5).
+- GOAL-SIDE (new `benchmarks_tracking_goalside.py`, DFL, 5 Hz, ball under 7 m/s, by its distance to
+  the goal centre). Median <12 m 0 / 1 (2), 12-18 2 / 2 (3), 18-25 4 / 4 (5), 25-30 6 / 6 (6). 5+
+  goal-side at 12-18 m: 11.4 / 12.6% (31.4). So the gap opens inside 25 m.
+
+**Built** [FH coaching: in our box, between ball and goal]. `DefendingBlock::spot`: with the ball within
+`physics.block.gs_r` of our goal centre, a holder whose spot is within `gs_w` of the ball, and not
+`gs_m` nearer the goal centre than it, slides straight toward the goal centre until he is. gs_r / gs_w
+20 / 10, 20 / 15 and 25 / 10 m, and 30 / 40 m as a check (everyone told to drop): goal-side moved within
+noise at every band. With 30 / 40, 73% of frames with the ball inside 12 m still had nobody goal-side.
+
+**Why** (`GAME_GS_TRACE=all`, 2 × 90). Every defender's position against his order's target. Goal-side
+by TARGET v by POSITION, mean per frame: ball <12 m 2.69 v 0.80; 12-18 4.68 v 1.92; 18-25 5.13 v 3.48;
+25-30 6.43 v 5.61. Real medians are 2 / 3 / 5 / 6. **The targets already put as many men goal-side
+as real. The men don't get there.** Holders whose target is goal-side and position isn't: 1,397
+frames, 937 of them 7 m+ off, running back at 6.2-6.7 m/s, toward the target 6.0-6.4, asked for
+8.6-9.2. Not a cap: in danger they may sprint (`shape_danger_sprint` 1); `capAcross` holds across at
+4.5 m/s, and the real side barely goes faster. New real line in `benchmarks_tracking_recover.py`:
+with the ball within 20 m of the goal centre, 5+ m/s back / up / across 6.98 / 0.05 / 1.64% of
+steps; across component 4+ / 5+ / 6+ m/s 3.22 / 0.95 / 0.19%. Real men don't sprint into their box
+shape. They are already in it.
+
+The RECOVERY line shows where it goes wrong (seed 1000; real in brackets). 5+ m/s share by s since
+losing the ball: 0-2 6.2 (5.6), 2-4 31.8 (8.9), 4-6 32.8 (11.1), 6-10 18.7 (10.6), 10+ 15.0 (6.7).
+5+ back: 2.5 (1.9), 28.3 (5.2), 28.7 (7.4), 12.8 (7.2), 7.4 (3.7). Our side without the ball runs
+back hard 2-5× as often as real, even 10 s+ into their possession. Its spots keep moving behind it,
+and it chases. Also §8.172's standing gap: possessions twice too long (10 s+ since a loss 69% of
+steps, real 37%), losses half the real rate.
+
+**Shipped.** The three harness lines, the new real line in `benchmarks_tracking_recover.py`, and
+`GAME_SHOT_TRACE` / `GAME_GS_TRACE` (=all: out to 30 m). The rule stays in `DefendingBlock` behind
+`physics.block.gs_r`, fallback 0 = off, no row. Behaviour and both goldens are unchanged from G5.84
+(seed 1000 / 2000 outputs identical).
+
+**Next moles.** (1) **The holder trails a right target**: 4-5 m median lag even with the ball 25-30 m
+out (7 m inside 12 m). Likely cause: the spots jump when their ball moves (a pass re-aims `ball_to`;
+the lead covers only a carried ball). Measure each spot's speed against the holder's, and real men's
+distance off a role-mean spot, before building. (2) Possessions twice too long, losses half (§8.172).
+(3) Lofts a mix of driven and hung (§8.185 (2)). (4) No 50-70 m lofts. (5) The defender off the
+attacker at the launch, 9 v 7 m. (6) `risk_weight` (§8.184).

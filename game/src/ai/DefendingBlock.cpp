@@ -198,6 +198,9 @@ void BlockParams::configure(const core::ModelParams& p) {
         }
     }
     switch_m = p.fixed("physics.press.switch_m", 2000);
+    gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)
+    gs_w = p.fixed("physics.block.gs_w", 10000);
+    gs_m = p.fixed("physics.block.gs_m", 1000);
     contest_min_z = p.fixed("physics.block.contest_min_z_m", 1500);
     {   // G5.82 (§8.183): s -> ticks; negative = off
         const Fixed64 m = p.fixed("physics.block.their_pass_margin_s", 0);
@@ -430,7 +433,18 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         x += off_line <= n15 ? near : off_line >= n25 ? far : near + (far - near) * (off_line - n15) / (n25 - n15);
         if (x < Fixed64::one()) x = Fixed64::one();
     }
-    return Vec2{(x - hx) * v.sg, v.across_def};
+    Vec2 at{(x - hx) * v.sg, v.across_def};
+    if (params_.gs_r.raw > 0) {   // G5.85 (§8.186): ball near our goal — between it and the goal
+        const Vec2 g{-v.sg * hx, Fixed64::zero()};
+        const Fixed64 db = math::length(Vec2{v.ball_to.x - g.x, v.ball_to.y - g.y});
+        if (db < params_.gs_r && math::length(Vec2{at.x - v.ball_to.x, at.y - v.ball_to.y}) < params_.gs_w) {
+            Fixed64 t = db - params_.gs_m;
+            if (t < Fixed64::one()) t = Fixed64::one();
+            const Fixed64 dp = math::length(Vec2{at.x - g.x, at.y - g.y});
+            if (dp > t) at = Vec2{g.x + (at.x - g.x) * t / dp, g.y + (at.y - g.y) * t / dp};
+        }
+    }
+    return at;
 }
 
 }  // namespace fh::game::ai
