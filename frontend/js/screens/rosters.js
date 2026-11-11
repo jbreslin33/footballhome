@@ -254,6 +254,8 @@ class RostersScreen extends Screen {
           for (const child of this._mountedChildren) {
             if (child && typeof child.setBoardView === 'function') child.setBoardView(id);
           }
+          // 🌐 Official order is a Roster-pill sort: redraw the sort row.
+          this._buildTeamsPills();
         },
       },
       {
@@ -306,12 +308,16 @@ class RostersScreen extends Screen {
         // Card order inside every team column (owner 2026-09-17).  Last
         // name is the default; Rank is the coach's order and the only
         // mode where cards can be dragged / re-slotted.
+        // 💰 Paid status (owner 2026-11-11) on both pills; 🌐 Official order
+        // = the league website's list order, Roster pill only.
         name:     'teams-sort',
         chips: [
-          { id: 'alpha', label: 'A–Z last name' },
-          { id: 'rank',  label: 'Rank' },
+          { id: 'alpha', label: viewCopy('board_sort_alpha', 'A–Z last name') },
+          { id: 'rank',  label: viewCopy('board_sort_rank', 'Rank') },
+          { id: 'paid',  label: viewCopy('board_sort_paid', '💰 Paid status') },
+          ...(boardView === 'roster' ? [{ id: 'official', label: viewCopy('board_sort_official', '🌐 Official order') }] : []),
         ],
-        selected: this.teamsSort || this._defaultSort(),
+        selected: (this.teamsSort === 'official' && boardView !== 'roster') ? 'alpha' : (this.teamsSort || this._defaultSort()),
         onSelect: (id) => {
           if (id == null) return;
           this.teamsSort = id;

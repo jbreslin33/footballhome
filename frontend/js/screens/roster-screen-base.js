@@ -665,7 +665,46 @@ class RosterScreenBase extends Screen {
     return `<div style="font-size:0.68rem; font-weight:700; color:#f0abfc; padding:4px 6px 0;">${esc(reg)} · ${esc(sent)}</div>`;
   }
 
+  // 💰 Paid line atop every team column (owner 2026-11-11: "show stats of
+  // paid status for youth teams by age … do that for men etc too … same
+  // with roster pill"): paid / owe $ / no LA for the players the column
+  // shows, on both the Roster and Team pills.
   renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
+    const inner = this._renderColumnSectionsInner(col, shown, renderList, data, ridersHtml);
+    return (col && col.teamId ? this.paidStatsHtml(shown) : '') + inner;
+  }
+
+  // 'paid' (nothing owed) · 'owes' · 'none' (no LA registration / no billing data).
+  static paidState(p) {
+    if (!p || p.noActiveLaRegistration || p.outstandingBalance == null || p.outstandingBalance === '') return 'none';
+    return Number(p.outstandingBalance) > 0 ? 'owes' : 'paid';
+  }
+
+  paidStatsHtml(players) {
+    const list = players || [];
+    if (!list.length) return '';
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || fb;
+    let paid = 0, owes = 0, none = 0, usd = 0;
+    list.forEach((p) => {
+      const st = RosterScreenBase.paidState(p);
+      if (st === 'paid') paid++;
+      else if (st === 'owes') { owes++; usd += Number(p.outstandingBalance) || 0; }
+      else none++;
+    });
+    const money = `$${Math.round(usd).toLocaleString('en-US')}`;
+    const pct = Math.round((paid / list.length) * 100);
+    const bit = (txt, color) => `<span style="color:${color}; white-space:nowrap;">${esc(txt)}</span>`;
+    return `<div class="rs-paid-stats" title="${esc(copy('board_paid_tip', {}, 'Dues from LeagueApps for the players this column shows'))}"
+        style="display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; font-size:0.74rem; font-weight:800;
+               padding:4px 8px; margin:0 0 6px; border-radius:6px; background:rgba(148,163,184,0.10); border:1px solid #334155;">
+        ${bit(copy('board_paid_ok', { n: paid, pct }, `✅ ${paid} paid (${pct}%)`), '#86efac')}
+        ${owes ? bit(copy('board_paid_owe', { n: owes, usd: money }, `🔴 ${owes} owe ${money}`), '#fca5a5') : ''}
+        ${none ? bit(copy('board_paid_none', { n: none }, `⚪ ${none} no LA`), '#94a3b8') : ''}
+      </div>`;
+  }
+
+  _renderColumnSectionsInner(col, shown, renderList, data, ridersHtml = '') {
     if (!col || !col.teamId) return renderList(shown) + ridersHtml;
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
@@ -715,7 +754,7 @@ class RosterScreenBase extends Screen {
     };
     const ordered = (list) => {
       const keep = new Set(list);
-      return this.orderColumnPlayers(bucket).map(r => r.player).filter(p => keep.has(p));
+      return this.orderColumnPlayers(bucket, col).map(r => r.player).filter(p => keep.has(p));
     };
     // Section banner (owner 2026-10-27: "make the divider section more
     // clear") — a solid tinted bar with a left rule and a count badge, and
@@ -1951,17 +1990,28 @@ class RosterScreenBase extends Screen {
     return !terms || terms.includes(t.term);
   }
 
+  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official']; }
+
   setSortOrder(value) {
-    const next = value === 'rank' ? 'rank' : 'alpha';
+    const next = RosterScreenBase.SORT_ORDERS.includes(value) ? value : 'alpha';
     if (next === this.sortOrder) return Promise.resolve();
     this._sortOrder = next;
     return typeof this.load === 'function' ? this.load({ quiet: true }) : Promise.resolve();
   }
 
   // → [{ player, rank }] in display order; rank is the 1-based coach slot.
-  orderColumnPlayers(players) {
+  //   alpha    last name, then first
+  //   rank     the coach's order (as the server sends it)
+  //   paid     owes first (biggest balance first), then no LA, then paid;
+  //            A–Z inside each (owner 2026-11-11 "allow for sort by paid status")
+  //   official the league website's own order (official_roster_names.sort_order,
+  //            the 🌐 mirror — owner: "official order … right from website of
+  //            league"); players not on the list follow, A–Z.  Roster pill
+  //            only — on the Team pill it reads as A–Z.
+  orderColumnPlayers(players, col) {
     const ranked = (players || []).map((player, i) => ({ player, rank: i + 1 }));
-    if (this.sortOrder === 'rank') return ranked;
+    const order = this.sortOrder;
+    if (order === 'rank') return ranked;
     const key = (pl) => {
       const last  = (pl.lastName || '').trim();
       const first = (pl.firstName || '').trim();
@@ -1969,7 +2019,29 @@ class RosterScreenBase extends Screen {
       const fallback = (pl.fullName || '').trim().split(/\s+/).pop() || '';
       return `${last || fallback}\u0000${first}`.toLowerCase();
     };
-    return ranked.sort((a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank);
+    const alpha = (a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank;
+    if (order === 'paid') {
+      const w = { owes: 0, none: 1, paid: 2 };
+      return ranked.sort((a, b) => {
+        const sa = RosterScreenBase.paidState(a.player), sb = RosterScreenBase.paidState(b.player);
+        if (sa !== sb) return w[sa] - w[sb];
+        if (sa === 'owes') {
+          const d = Number(b.player.outstandingBalance || 0) - Number(a.player.outstandingBalance || 0);
+          if (d) return d;
+        }
+        return alpha(a, b);
+      });
+    }
+    if (order === 'official' && this.boardView === 'roster' && col && col.teamId) {
+      const list = this.leagueListFor(col.teamId);
+      if (list) {
+        const pos = new Map();
+        list.personIds.forEach((id, i) => { if (id != null && !pos.has(Number(id))) pos.set(Number(id), i); });
+        const at = (r) => { const v = pos.get(Number(r.player.personId)); return v == null ? 1e9 : v; };
+        return ranked.sort((a, b) => (at(a) - at(b)) || alpha(a, b));
+      }
+    }
+    return ranked.sort(alpha);
   }
 
   // The #N slot picker changed: the column's cards in coach-rank order

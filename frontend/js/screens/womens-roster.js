@@ -304,7 +304,7 @@ class WomensRosterScreen extends RosterScreenBase {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
-    const renderList = (list) => this.orderColumnPlayers(list)
+    const renderList = (list) => this.orderColumnPlayers(list, col)
       .map(({ player, rank }) => this.renderPlayer(player, data.columns, col, rank, list.length)).join('');
 
     // ✅/📄/🩹/⭐/🌐/👀 column pills — shared with the mens board
