@@ -332,7 +332,8 @@ class DashboardScreen extends Screen {
         ${pending}</div>`;
     }).join('');
     const tone = tones.includes('bad') ? 'bad' : tones.includes('warn') ? 'warn' : 'ok';
-    return this._cell(tone, 'game-center?pick=1', this._t('gc_title', '🏟️ Game Center'), this._t('gc_sub', "This week's games — who is going, who can start, is the lineup set"),
+    // The week's games in Event Center (owner 11/11: no Game Center).
+    return this._cell(tone, 'event-center?pick=1&kind=match', this._t('gc_title', '📋 Event Center · Games'), this._t('gc_sub', "This week's games — who is going, who can start, is the lineup set"),
       `<div class="db-big">${games.length}<small>${this.escapeHtml(this._t('gc_count', 'games in {days} days', { days }))}</small></div>
        <div class="db-rows" style="gap:6px;">${rows || `<div class="db-note">${this.escapeHtml(this._t('gc_none', 'No games in the next {days} days', { days }))}</div>`}</div>`);
   }

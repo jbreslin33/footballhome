@@ -1286,7 +1286,6 @@ class EventScreen extends Screen {
         this.syncHash();
         return;
       }
-      if ((el = t('[data-ec-game-center]'))) { EventKindSwitch.open(this.navigation, this.ev); return; }
       // Your answer box (every event) — Going / Not Going, 🙋 call-in.
       if ((el = t('[data-gc-avail]')) && !el.disabled) { this._setMyAvailability(el); return; }
       if ((el = t('[data-callin]')) && !el.disabled) { this._sendMyCallin(el); return; }
@@ -1418,8 +1417,6 @@ class EventScreen extends Screen {
       <div data-gc-my-avail>${this._myAvailabilityHtml()}</div>
       ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
-      ${ev.kind === 'match' && ev.match_id != null
-        ? `<div style="text-align:right; margin-bottom:var(--space-2);"><button type="button" class="btn btn-secondary" data-ec-game-center style="padding:4px 12px; font-size:0.85rem;">🏟️ Game Center</button></div>` : ''}
       ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
         Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
       ${this.pillHtml(this.pill)}

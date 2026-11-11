@@ -99,7 +99,7 @@ class ClubLogosScreen extends Screen {
       <div class="screen-header">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1>🛡️ Club Logos</h1>
-        <p class="subtitle">Upload a folder of opponent crests named after the club, or capture one from a URL — every club and league logo is stored in the database and shows on #my and Game Center. A new upload replaces the current crest; the old one stays as history.</p>
+        <p class="subtitle">Upload a folder of opponent crests named after the club, or capture one from a URL — every club and league logo is stored in the database and shows on Event Center. A new upload replaces the current crest; the old one stays as history.</p>
       </div>
       <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">

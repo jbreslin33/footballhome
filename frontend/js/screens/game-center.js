@@ -3703,13 +3703,18 @@ class GameCenterScreen extends EventScreen {
     // flip the one card, that post's tools and Post button sit right
     // under it, and the lineup editor follows.
     const paint = (bodyHtml) => {
+      // 🎞 Weekend slideshows are posts: only over the post pills, never
+      // over 👥 All Players or 🎯 Tactics (every event looks the same
+      // except where it must differ).
+      const wk = this.find('#gc-weekend');
+      if (wk) wk.style.display = (this.pill === PLAYERS_PILL || this.pill === TACTICS_PILL.key) ? 'none' : '';
       if (this.pill === PLAYERS_PILL) {
         // 👥 All Players: EventScreen's list (Going / No response / Not
         // going, P/A/L/E, ✓/✗, reminders, 📇, call-in requests, mark all
         // present) — the very list a practice opens on.
         this._stopCards();
         this._tacticsBigOff();
-        head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+        head.innerHTML = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
           + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
           + this._duesAlternateStripHtml();
         EventScreen.ensureCardStyles();

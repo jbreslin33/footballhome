@@ -163,7 +163,7 @@ class JobsScreen extends Screen {
   _jobHtml(j, pool) {
     const esc = (t) => this.escapeHtml(t);
     const chips = (j.assignments || []).map(a => `
-      <span class="jb-who ${a.not_done ? 'notdone' : ''}" title="${a.source === 'home' ? 'Home job' : a.source === 'manual' ? 'Assigned by hand' : a.source === 'pass' ? 'Passed on from a Game Center sub' : 'Gap fill'}">
+      <span class="jb-who ${a.not_done ? 'notdone' : ''}" title="${a.source === 'home' ? 'Home job' : a.source === 'manual' ? 'Assigned by hand' : a.source === 'pass' ? 'Passed on from a lineup sub' : 'Gap fill'}">
         ${esc(a.name)} <span class="jb-src">${a.source === 'home' ? '🏠' : a.source === 'manual' ? '✍️' : a.source === 'pass' ? '🔁' : '＋'}</span>
         <button data-mark="${a.id}" data-nd="${a.not_done ? 0 : 1}"
           title="${a.not_done ? 'Flagged — tap to count it done after all' : 'Counts as DONE — tap only if they didn’t do it'}">
