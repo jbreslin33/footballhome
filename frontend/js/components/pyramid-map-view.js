@@ -868,6 +868,12 @@ class PyramidMapView {
       } catch (e) { console.warn('proposal', e); return; }
     }
     if (!this.map) return;
+    // Draw only once the map has a view (11/11 owner: "proposed checked by
+    // default but it does not show … you have to check and uncheck"): on a
+    // second mount (data refresh, back from another view) the proposal is
+    // already loaded, so this ran before mount's fitBounds and Leaflet threw
+    // "Set map center and zoom first" — no borders, no pills.
+    if (!this.map._loaded) { const m = this.map; m.whenReady(() => { if (this.map === m) this._showProposal(on); }); return; }
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
     // The neutral zone (mig 1255): counties the two borders disagree on.
