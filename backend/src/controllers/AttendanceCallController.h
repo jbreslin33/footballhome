@@ -11,6 +11,14 @@
 //         started, over, coaches: [{name, phone}], unmarked: [names],
 //         going_players, rounds: [{round, at, unmarked, live, ok, tried}] }
 //
+//   GET /api/attendance-calls/log?days=<1-120, default 14>     (#attendance-calls)
+//     → { days, policies: [{category, is_on, live, test_name}],
+//         events: [{id, category, title, day, time, rounds_n, last_unmarked,
+//                   calls_tried, calls_ok, texts, live, unmarked_now,
+//                   rounds: [{round, at, unmarked, live,
+//                             people: [{name, channel, ok, error}]}]}] }
+//     Every practice that had a round, newest first.
+//
 // Admins and active coaches only.
 class AttendanceCallController : public Controller {
 public:
@@ -18,4 +26,6 @@ public:
 
 private:
     Response handleEvent(const Request& request);
+    Response handleLog(const Request& request);
+    bool isStaff(const Request& request);
 };
