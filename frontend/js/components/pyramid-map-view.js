@@ -462,11 +462,10 @@ class PyramidMapView {
     requestAnimationFrame(() => this.flow.drawArrows(body.querySelector('.fc-chart'), this.model, [col.conf]));
   }
 
-  // The overlay starts just under the screen's main HUD, whatever its
-  // height (its pills wrap with the window; collapsed it is one line).
+  // The overlay starts just under the screen's ☰ button (mig 1234).
   _fitOverlay() {
     const ov = this.root && this.root.querySelector('.mp-ov');
-    const main = this.screen.element && this.screen.element.querySelector('.ap-hud-main');
+    const main = this.screen.element && this.screen.element.querySelector('.ap-menu-btn');
     if (!ov || !main) return;
     const top = main.getBoundingClientRect().bottom - this.root.querySelector('.mp-stage').getBoundingClientRect().top + 8;
     ov.style.top = `${Math.max(12, Math.round(top))}px`;
@@ -527,8 +526,9 @@ class PyramidMapView {
     const s = stage.getBoundingClientRect();
     const stats = this.root.querySelector('[data-hud="map-stats"]');
     const key = this.root.querySelector('[data-hud="map-key"]');
-    const top = stats ? stats.getBoundingClientRect().bottom - s.top + 8 : 10;
-    const bottom = key ? s.bottom - key.getBoundingClientRect().top + 8 : 10;
+    // A panel switched off in ☰ (mig 1234) takes no room.
+    const top = stats && stats.offsetWidth ? stats.getBoundingClientRect().bottom - s.top + 8 : 62;
+    const bottom = key && key.offsetWidth ? s.bottom - key.getBoundingClientRect().top + 8 : 10;
     hud.style.top = `${Math.round(top)}px`;
     hud.style.maxHeight = `${Math.max(160, Math.round(s.height - top - bottom))}px`;
   }

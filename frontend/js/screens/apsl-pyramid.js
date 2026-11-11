@@ -13,6 +13,12 @@
 // club's routes up the pyramid), PyramidTablesView (every table, full
 // columns), PyramidGrowthView (the league's seasons).  A view pill not built
 // yet shows greyed.  Wording: message_templates kind 'apsl_pyramid'.
+//
+// One ☰ button (mig 1234, owner 2026-11-11: "like game … one button to open
+// interface so screen on load is not cluttered … organized sections"): the
+// page opens on the view alone.  ☰ (or M) opens one panel — View,
+// Conferences, Show on screen (the view's floating panels, off by default,
+// remembered per device), Actions.  Same idea as game/view-menu.js.
 class ApslPyramidScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -54,8 +60,7 @@ class ApslPyramidScreen extends Screen {
         .ap-readonly .fc-edit, .ap-readonly [data-cc="edit"], .ap-readonly #ap-refresh { display:none; }
         .ap-pill.on { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
         .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
-        .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:150px 16px 24px; }
-        .ap-stage.hud-min #ap-body { padding-top:56px; }
+        .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; }
         .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
         .ap-stage #ap-body.flush #ap-view { position:absolute; inset:0; }
         .ap-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.84); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3);
@@ -65,10 +70,26 @@ class ApslPyramidScreen extends Screen {
         .ap-hud-head button { min-height:0; min-width:0; padding:1px 8px; font-size:0.78rem; }
         .ap-hud-body { padding:2px 10px 8px; }
         .ap-hud.collapsed .ap-hud-body { display:none; }
-        .ap-hud-main { top:8px; left:50%; transform:translateX(-50%); width:max-content; max-width:min(1000px, calc(100% - 20px)); z-index:1250; }
-        .ap-hud-main .ap-hud-head img { height:26px; width:auto; }
-        .ap-hud-main .ap-totals { margin:2px 0 6px; font-size:0.95rem; }
-        .ap-hud-main .ap-pills { margin-bottom:6px; }
+        .ap-hud.off { display:none !important; }
+        .ap-menu-btn { position:absolute; top:10px; left:10px; z-index:1300; width:44px; height:44px; min-width:0; min-height:0; padding:0;
+                       border-radius:12px; border:1px solid rgba(148,163,184,0.35); background:rgba(11,18,32,0.84); color:#e5e7eb;
+                       font-size:1.35rem; line-height:1; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,0.4); }
+        .ap-menu-btn.open { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
+        .ap-menu { position:absolute; top:62px; left:10px; z-index:1300; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 72px); overflow:auto;
+                   background:rgba(11,18,32,0.94); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3); border-radius:12px;
+                   color:#e5e7eb; font-size:0.85rem; box-shadow:0 6px 24px rgba(0,0,0,0.5); padding:10px 12px; box-sizing:border-box; }
+        .ap-menu[hidden] { display:none; }
+        .ap-menu-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1rem; }
+        .ap-menu-head img { height:28px; width:auto; }
+        .ap-menu-head .t { flex:1; }
+        .ap-menu .ap-totals { text-align:left; font-size:0.85rem; font-weight:600; opacity:0.85; margin:4px 0 2px; }
+        .ap-sec { border-top:1px solid rgba(148,163,184,0.25); padding:9px 0 4px; margin-top:6px; }
+        .ap-sec h4 { margin:0 0 7px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
+        .ap-menu .ap-pills { justify-content:flex-start; margin-bottom:4px; }
+        .ap-show label { display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; }
+        .ap-show .none { opacity:0.6; font-size:0.8rem; }
+        .ap-acts { display:flex; flex-direction:column; gap:6px; }
+        .ap-acts button { width:100%; text-align:left; min-height:0; padding:7px 10px; }
         .hud-tl { top:10px; left:10px; }
         .hud-bl { bottom:10px; left:10px; }
         .hud-br { bottom:10px; right:10px; }
@@ -100,30 +121,23 @@ class ApslPyramidScreen extends Screen {
       </style>
       <div class="ap-stage">
         <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
-        <div class="ap-hud ap-hud-main${this._hudCollapsed('main') ? ' collapsed' : ''}" data-hud="main">
-          <div class="ap-hud-head">
-            <button class="btn btn-secondary" id="ap-back">←</button>
-            <img id="ap-crest" alt="" style="display:none;">
-            <span class="t" id="ap-title"></span>
-            <button class="btn btn-secondary" id="ap-refresh" title="↻">⟳</button>
-            <button class="btn btn-secondary" id="ap-full"></button>
-            <button class="btn btn-secondary" data-hud-toggle>${this._hudCollapsed('main') ? '▸' : '▾'}</button>
-          </div>
-          <div class="ap-hud-body" id="ap-hud-main"></div>
-        </div>
+        <button class="ap-menu-btn" data-menu aria-label="☰">☰</button>
+        <div class="ap-menu" hidden></div>
       </div>`;
     this.element = div;
-    div.querySelector('#ap-back').addEventListener('click', () => this.navigation.goBack());
-    div.querySelector('#ap-refresh').addEventListener('click', () => this.load(true));
-    // Full screen = the whole pyramid stage, every view (owner: "all screens
-    // should be full screen with all writing etc in a hud").
-    div.querySelector('#ap-full').addEventListener('click', () => {
-      const stage = div.querySelector('.ap-stage');
-      if (document.fullscreenElement) document.exitFullscreen(); else if (stage.requestFullscreen) stage.requestFullscreen();
-    });
-    this._onFullLabel = () => { const b = div.querySelector('#ap-full'); if (b) b.textContent = this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶'; };
+    this._onFullLabel = () => this._renderMenu();
     document.addEventListener('fullscreenchange', this._onFullLabel);
+    this._onKey = (e) => {
+      if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
+      if (e.key && e.key.toLowerCase() === 'm' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) this._menu();
+      else if (e.key === 'Escape' && this.menuOpen) this._menu(false);
+    };
     div.querySelector('.ap-stage').addEventListener('click', (e) => {
+      // ☰ (✕ while open) opens and closes the one menu.
+      if (e.target.closest('[data-menu]')) { this._menu(); return; }
+      const act = e.target.closest('[data-act]');
+      if (act) { this._menuAction(act.dataset.act); return; }
+      if (e.target.closest('[data-show]')) return;   // checkbox: handled on change
       // ▾ / ▸ on any HUD: collapse to its title, remembered (owner: "the
       // huds should be collapsable").
       const tg = e.target.closest('[data-hud-toggle]');
@@ -146,10 +160,12 @@ class ApslPyramidScreen extends Screen {
       if (pill) { this._toggle(pill.dataset.conf); return; }
       const edit = e.target.closest('[data-edit]');
       if (edit) { this._openEditor(Number(edit.dataset.edit)); return; }
-      const act = e.target.closest('[data-ed]');
-      if (act) this._editorAction(act);
+      const ed = e.target.closest('[data-ed]');
+      if (ed) this._editorAction(ed);
     });
     div.querySelector('.ap-stage').addEventListener('change', (e) => {
+      const show = e.target.closest('[data-show]');
+      if (show) { this._setShown(show.dataset.show, show.checked); return; }
       if (e.target.closest('.ap-editor')) this._editorRead();
     });
     return div;
@@ -160,25 +176,89 @@ class ApslPyramidScreen extends Screen {
     // screen to go back to.
     const user = this.auth.getUser();
     this.element.classList.toggle('ap-readonly', !(user && ['club', 'super'].includes(user.role)));
-    this.find('#ap-back').style.display = this.auth.isLoggedIn() ? '' : 'none';
     window.addEventListener('resize', this._onResize);
+    window.addEventListener('keydown', this._onKey);
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
     Promise.resolve(copyReady).then(() => {
-      const t = this.find('#ap-title'); if (t && this._copy('title')) t.textContent = this._copy('title');
-      this._onFullLabel();
-      if (this.data) this._renderBody();
+      const b = this.find('.ap-menu-btn'); if (b && this._copy('menu_button')) b.title = this._copy('menu_button');
+      if (this.data) this._renderBody(); else this._renderMenu();
     });
     this.load(false);
   }
 
   onExit() {
     window.removeEventListener('resize', this._onResize);
+    window.removeEventListener('keydown', this._onKey);
+    this._menu(false);
     this._viewCall('unmount');
     this.clubCard.close();
     if (document.fullscreenElement) document.exitFullscreen();
   }
 
-  // ── collapsible HUDs ─────────────────────────────────────────────────
+  // ── the ☰ menu (mig 1234) ────────────────────────────────────────────
+  _menu(open = !this.menuOpen) {
+    this.menuOpen = !!open;
+    const m = this.find('.ap-menu'), b = this.find('.ap-menu-btn');
+    if (m) m.hidden = !this.menuOpen;
+    if (b) { b.classList.toggle('open', this.menuOpen); b.textContent = this.menuOpen ? '✕' : '☰'; }
+    if (this.menuOpen) this._renderMenu();
+  }
+
+  _menuAction(act) {
+    if (act === 'full') {
+      const stage = this.find('.ap-stage');
+      if (document.fullscreenElement) document.exitFullscreen(); else if (stage && stage.requestFullscreen) stage.requestFullscreen();
+    } else if (act === 'refresh') this.load(true);
+    else if (act === 'back') this.navigation.goBack();
+  }
+
+  // Sections: title + totals, View, Conferences, Show on screen, Actions.
+  _renderMenu() {
+    const m = this.find('.ap-menu');
+    if (!m || !this.menuOpen) return;
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const root = this.model && this.model.root();
+    const sec = (tier, inner) => `<div class="ap-sec"><h4>${esc(this._copy(tier))}</h4>${inner}</div>`;
+    let body = '';
+    if (this.model) {
+      const views = this.views.map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}"${v.built ? '' : ` disabled title="${esc(this._copy('view_soon'))}"`}>${esc(this._copy(v.tier))}</button>`).join('');
+      const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`]
+        .concat(this._conferences().map((c) => `<button class="ap-pill ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}">${esc(c.short_name || c.name)}</button>`))
+        .join('');
+      // The view's floating panels; the map's Club HUD comes and goes with a pick.
+      const huds = [...this.findAll('#ap-view [data-hud]')].filter((h) => h.dataset.hud !== 'map-club');
+      const show = huds.length
+        ? huds.map((h) => `<label><input type="checkbox" data-show="${esc(h.dataset.hud)}" ${this._hudShown(h.dataset.hud) ? 'checked' : ''}> ${esc(h.querySelector('.ap-hud-head .t').textContent)}</label>`).join('')
+        : `<div class="none">${esc(this._copy('menu_show_none'))}</div>`;
+      body = `
+        <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
+        ${sec('menu_view', `<div class="ap-pills">${views}</div>`)}
+        ${sec('menu_conf', `<div class="ap-pills">${confs}</div>`)}
+        ${sec('menu_show', `<div class="ap-show">${show}</div>`)}`;
+    }
+    const acts = [
+      `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
+      `<button class="btn btn-secondary" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>`,
+      this.auth.isLoggedIn() ? `<button class="btn btn-secondary" data-act="back">${esc(this._copy('menu_back'))}</button>` : '',
+    ].join('');
+    m.innerHTML = `
+      <div class="ap-menu-head">
+        ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}
+        <span class="t">${esc(this._copy('title'))}</span>
+      </div>
+      ${body}
+      ${sec('menu_actions', `<div class="ap-acts">${acts}</div>`)}`;
+  }
+
+  findAll(sel) { return this.element ? this.element.querySelectorAll(sel) : []; }
+
+  // ── floating HUDs: shown only when ticked in ☰ Show on screen ────────
+  _hudShown(key) { try { return localStorage.getItem(`apsl-show-${key}`) === '1'; } catch (_) { return false; } }
+  _setShown(key, on) {
+    try { localStorage.setItem(`apsl-show-${key}`, on ? '1' : '0'); } catch (_) { /* private mode */ }
+    this.findAll(`#ap-view [data-hud="${key}"]`).forEach((el) => el.classList.toggle('off', !on));
+    this._viewCall('onResize');
+  }
   _hudCollapsed(key) { try { return localStorage.getItem(`apsl-hud-${key}`) === '1'; } catch (_) { return false; } }
   _toggleHud(el) {
     if (!el) return;
@@ -188,14 +268,15 @@ class ApslPyramidScreen extends Screen {
     const b = el.querySelector('[data-hud-toggle]');
     if (b) b.textContent = now ? '▸' : '▾';
     try { localStorage.setItem(`apsl-hud-${key}`, now ? '1' : '0'); } catch (_) { /* private mode */ }
-    if (key === 'main') this.find('.ap-stage').classList.toggle('hud-min', now);
     this._viewCall('onResize');
   }
   // A view's HUD panel: title + ▾/▸ + body; pos = hud-tl / hud-bl / hud-br / hud-bc.
+  // Off until ticked in ☰ (the map's Club HUD always rides its pick).
   hud(key, title, body, pos = 'hud-bl', extra = '') {
     const c = this._hudCollapsed(key);
+    const off = key !== 'map-club' && !this._hudShown(key);
     return `
-      <div class="ap-hud ${pos}${c ? ' collapsed' : ''} ${extra}" data-hud="${key}">
+      <div class="ap-hud ${pos}${c ? ' collapsed' : ''}${off ? ' off' : ''} ${extra}" data-hud="${key}">
         <div class="ap-hud-head"><span class="t">${this.escapeHtml(title || '')}</span><button class="btn btn-secondary" data-hud-toggle>${c ? '▸' : '▾'}</button></div>
         <div class="ap-hud-body">${body}</div>
       </div>`;
@@ -254,30 +335,16 @@ class ApslPyramidScreen extends Screen {
     const el = this.find('#ap-body');
     if (!el) return;
     if (this.loading && !this.data) { el.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    if (this.err) { el.innerHTML = `<div class="error">${this.escapeHtml(this.err)}</div>`; return; }
+    if (this.err) { el.innerHTML = `<div class="error">${this.escapeHtml(this.err)}</div>`; this._renderMenu(); return; }
     if (!this.model) return;
-    // The root league's crest at the top (organizations.logo_url).
-    const crest = this.find('#ap-crest');
-    const root = this.model.root();
-    if (crest && root && root.logo_url && crest.getAttribute('src') !== root.logo_url) { crest.src = root.logo_url; crest.style.display = ''; }
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
-    const confs = this._conferences();
-    const pills = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`]
-      .concat(confs.map((c) => `<button class="ap-pill ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}">${esc(c.short_name || c.name)}</button>`))
-      .join('');
     const shown = this._shown();
-    const views = this.views.map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}"${v.built ? '' : ` disabled title="${esc(this._copy('view_soon'))}"`}>${esc(this._copy(v.tier))}</button>`).join('');
-    const main = this.find('#ap-hud-main');
-    if (main) main.innerHTML = `
-      <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
-      <div class="ap-pills ap-views">${views}</div>
-      <div class="ap-pills" style="margin-bottom:0;">${pills}</div>`;
-    this.find('.ap-stage').classList.toggle('hud-min', this._hudCollapsed('main'));
     // A view that is a canvas (map, presentation) fills the stage edge to edge.
     el.classList.toggle('flush', !!this._impl().fill);
     el.innerHTML = `
       <div id="ap-view">${shown.length ? this._impl().html(this.model, shown) : `<div class="fc-none">${esc(this._copy('none_on'))}</div>`}</div>
       ${this.edit ? this._editorHtml() : ''}`;
+    this._renderMenu();
     if (shown.length) requestAnimationFrame(() => this._viewCall('mount'));
   }
 
