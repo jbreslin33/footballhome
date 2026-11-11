@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """scripts/pyramid-fine-borders.py — #apsl-pyramid borders traced from drive
-times at many points (mig 1281).
+times at many points (mig 1282).
 Owner 2026-11-11: "then your current border is off" (Bulldogs SC, Matawan
 edge of Monmouth County, is Metropolitan by drive from its ground but the
 whole county went by one point) / "you need to check the x,y of these

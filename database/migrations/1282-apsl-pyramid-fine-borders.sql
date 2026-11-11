@@ -1,4 +1,4 @@
--- 1281 (2026-11-11) — #apsl-pyramid map: borders traced from drive times at
+-- 1282 (2026-11-11) — #apsl-pyramid map: borders traced from drive times at
 -- many points, not county edges.
 --
 -- Owner 2026-11-11: Bulldogs SC (Geick Park, Matawan edge of Monmouth
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS pyramid_grid_drive_times (
     PRIMARY KEY (from_lat, from_lon, to_lat, to_lon)
 );
 COMMENT ON TABLE pyramid_grid_drive_times IS
-    'mig 1281: road minutes (OSRM, no traffic) from a border grid point to a conference city — scripts/pyramid-fine-borders.py.';
+    'mig 1282: road minutes (OSRM, no traffic) from a border grid point to a conference city — scripts/pyramid-fine-borders.py.';
 
 ALTER TABLE pyramid_proposal_borders ADD COLUMN IF NOT EXISTS fine boolean NOT NULL DEFAULT false;
 COMMENT ON COLUMN pyramid_proposal_borders.fine IS
-    'mig 1281: traced from grid drive times (scripts/pyramid-fine-borders.py) rather than county edges.';
+    'mig 1282: traced from grid drive times (scripts/pyramid-fine-borders.py) rather than county edges.';
