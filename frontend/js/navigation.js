@@ -333,6 +333,8 @@ NavigationStateMachine.RETIRED = {
   // sign-in links, RSVP texts, the RSVP tile and old bookmarks land there.
   "my": "event-center",
   "team-dashboard": "main-menu",
+  // #payments was renamed #tuition (mig 1293, 2026-11-12).
+  "payments": "tuition",
   "practice-options": "event-center", "practice-management": "event-center",
   "practice-form": "event-center", "practice-list": "event-center", "practice-detail": "event-center",
 };

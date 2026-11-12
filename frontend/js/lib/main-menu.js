@@ -135,7 +135,7 @@ class MainMenu {
     switch (code) {
       case 'admin':       return nav.goTo('admin-level-selection');
       case 'club-admin':  return nav.goTo('admin-club', { clubId: 134, clubName: 'Lighthouse 1893 SC' });
-      case 'financial':   return nav.goTo('payments');
+      case 'financial':   return nav.goTo('tuition');
       case 'player':      return nav.goTo('my');
       case 'game-center': return nav.goTo('event-center', { pick: true, kind: 'all' });
       case 'marketing':   return nav.goTo('marketing-home');

@@ -1364,7 +1364,7 @@ class PaymentsScreen extends Screen {
         const m = this._memberByKey(key);
         return m ? { personId: m.personId, laUserId: m.laUserId, firstName: m.firstName, lastName: m.lastName,
                      dob: m.dob ? this.fmtDob(m.dob) : '', email: m.email, phone: m.phone,
-                     phoneLabel: m.phone ? this.fmtPhone(m.phone) : '', returnTo: 'payments', _row: m } : null;
+                     phoneLabel: m.phone ? this.fmtPhone(m.phone) : '', returnTo: 'tuition', _row: m } : null;
       },
       extras: (p) => this._sheetExtras(p._row),
       onChange: () => this.renderMembers(),
@@ -2427,7 +2427,7 @@ class PaymentsScreen extends Screen {
                 firstName: f.firstName,
                 fullName: `${f.firstName || ''} ${f.lastName || ''}`.trim(),
               },
-              { returnTo: 'payments', size: 'sm' }
+              { returnTo: 'tuition', size: 'sm' }
             )
           : ''}
         <button data-open-la-user="${f.laUserId}"
@@ -2451,7 +2451,7 @@ class PaymentsScreen extends Screen {
                     firstName: f.firstName,
                     fullName: `${f.firstName || ''} ${f.lastName || ''}`.trim(),
                   },
-                  { returnTo: 'payments', size: 'sm' }
+                  { returnTo: 'tuition', size: 'sm' }
                 )
               : ''));
     return `
@@ -2850,10 +2850,10 @@ class PaymentsScreen extends Screen {
       };
       const merged = {
         ...cur,
-        screen: cur.screen || 'payments',
+        screen: cur.screen || 'tuition',
         params: { ...(cur.params || {}), ...snapshot },
       };
-      window.history.replaceState(merged, '', '#payments');
+      window.history.replaceState(merged, '', '#tuition');
     } catch (_) { /* no-op */ }
   }
 }

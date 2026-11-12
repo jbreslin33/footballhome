@@ -105,7 +105,7 @@ class ReportsScreen extends Screen {
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
         <div id="rpt-reports" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom: var(--space-3);">
           <button class="rpt-chip on" data-report="attendance">📋 Attendance &amp; RSVP</button>
-          <button class="rpt-chip" data-report="payments" title="Opens the Payments screen">💳 Payments →</button>
+          <button class="rpt-chip" data-report="payments" title="Opens the Tuition screen">💳 Tuition →</button>
         </div>
 
         <div id="rpt-range" style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom: var(--space-2);"></div>
@@ -147,7 +147,7 @@ class ReportsScreen extends Screen {
 
       const rep = e.target.closest('[data-report]');
       if (rep) {
-        if (rep.dataset.report === 'payments') this.navigation.goTo('payments');
+        if (rep.dataset.report === 'payments') this.navigation.goTo('tuition');
         return;
       }
       const range = e.target.closest('[data-range]');

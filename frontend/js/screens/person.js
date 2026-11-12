@@ -1089,7 +1089,7 @@ class PersonScreen extends Screen {
   }
 
   _openPayments() {
-    this.navigation.goTo('payments', {
+    this.navigation.goTo('tuition', {
       focusLaUserId: this.leagueAppsUserId,
       initialView: 'members',
       returnTo: 'person',

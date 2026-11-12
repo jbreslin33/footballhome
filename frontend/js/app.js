@@ -162,9 +162,12 @@ class App {
     // person (Members, Payments, Rosters, …).  See screens/person.js.
     this.screenManager.register('person', this.screens.person);
     this.screenManager.register('youth-roster', this.screens.youthRoster);
+    // #tuition (mig 1293) — the menu already said Tuition; 'payments' kept as
+    // an alias for old history entries (goTo maps it via RETIRED).
+    this.screenManager.register('tuition', this.screens.payments);
     this.screenManager.register('payments', this.screens.payments);
     // Reports hub (#reports) — Attendance & RSVP report; Payments chip
-    // hands off to #payments. See screens/reports.js.
+    // hands off to #tuition. See screens/reports.js.
     this.screenManager.register('reports', this.screens.reports);
     // RSVP follow-up board (#rsvps) — who owes an answer + tracked reminders.
     // See screens/rsvps.js.

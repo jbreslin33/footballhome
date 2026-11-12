@@ -377,7 +377,7 @@ class DashboardScreen extends Screen {
     const monthlyAll = Number((proj.all_members || {}).monthly) || 0, monthlyCur = Number((proj.current_dues || {}).monthly) || 0;
     const by = (c.by_section || []).filter(s => Number(s.collected) !== 0);
     const stat = (k, v, t) => `<div class="db-stat ${t || ''}"><div class="k">${this.escapeHtml(k)}</div><div class="v">${v}</div></div>`;
-    return this._cell(tone, 'payments', this._t('pay_title', '💰 Dues'), this._t('pay_sub', 'Paying members by standing, and what came in this month'),
+    return this._cell(tone, 'tuition', this._t('pay_title', '💰 Dues'), this._t('pay_sub', 'Paying members by standing, and what came in this month'),
       `<div class="db-big">${DashboardScreen.pct(paidUp, paying)}%<small>${paidUp} / ${paying} ${this.escapeHtml(this._t('pay_paid_up', 'Up to date').toLowerCase())}</small></div>
        <div class="db-stats">
          ${stat(this._t('pay_paid_up', 'Up to date'), paidUp, 'ok')}
