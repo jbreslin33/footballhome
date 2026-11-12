@@ -7074,7 +7074,11 @@ class GameCenterScreen extends EventScreen {
       const st = this._criteriaState(s);
       const tokens = { attended: String(st.attended), projected: String(st.projected), needed: String(st.needed) };
       const text = this._eligCopy('lineup_note_practice', tokens) || `A:${tokens.attended} P:${tokens.projected}`;
-      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}">${this.escapeHtml(text)}</span>`);
+      // Green = on course for the week (attended + projected ≥ needed;
+      // needed is 2 of 5 / 1 of 4 / 0 of 3 practice days), red = not
+      // (owner 2026-11-12).
+      const onCourse = st.attended + st.projected >= st.needed;
+      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${onCourse ? '#4ade80' : '#f87171'};">${this.escapeHtml(text)}</span>`);
     }
     const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
@@ -7082,7 +7086,12 @@ class GameCenterScreen extends EventScreen {
       const owed = d.free_reason || !d.member ? 0 : Math.max(0, Math.round(Number(d.balance) || 0));
       const amount = String(owed);
       const text = this._eligCopy('lineup_note_dues', { amount }) || `Dues:${amount}`;
-      bits.push(`<span style="color:${owed > 0 ? '#fca5a5' : '#86efac'};">${this.escapeHtml(text)}</span>`);
+      // Green under one month's dues, red at a month or more (owner
+      // 2026-11-12: "green if under 35 … red if 35 or more"); the rate is
+      // the dues_policies row (MessageCopy.duesPolicy), never a literal.
+      const rate = Number(window.MessageCopy && MessageCopy.duesPolicy && MessageCopy.duesPolicy.monthlyDuesUsd);
+      const behind = rate > 0 ? owed >= rate : owed > 0;
+      bits.push(`<span style="color:${behind ? '#f87171' : '#4ade80'};">${this.escapeHtml(text)}</span>`);
     }
     if (!bits.length) return '';
     return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;white-space:nowrap;display:inline-flex;gap:5px;justify-content:center;">${bits.join('')}</div>`;
