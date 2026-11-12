@@ -9,6 +9,8 @@
 //                   components/league-moves-mail.js).
 //   #apsl-pyramid   the pyramid flow chart (apsl-pyramid.js, migs 819/823).
 //   #opponents      opened on the APSL pill.
+//   Below the tiles: GroupMe feeds, read-only (mig 1295,
+//   components/groupme-feeds.js, chats slug 'apsl-hub').
 //
 // Wording: message_templates kind 'apsl' (tiles: subject = label, body =
 // description).  Club admins only.
@@ -21,7 +23,7 @@ class ApslHubScreen extends Screen {
         <button class="btn btn-secondary" id="ah-back">← Back</button>
         <div style="flex:1;"><h1 style="margin:0;" id="ah-title">🔺 APSL</h1><div id="ah-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
-      <div class="screen-content" id="ah-body" style="max-width:720px; margin:0 auto;"><div class="loading">Loading…</div></div>`;
+      <div class="screen-content" style="max-width:720px; margin:0 auto;"><div id="ah-body"><div class="loading">Loading…</div></div><div id="ah-gm"></div></div>`;
     this.element = div;
     div.querySelector('#ah-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
@@ -31,7 +33,11 @@ class ApslHubScreen extends Screen {
     return div;
   }
 
-  onEnter() { this.load(); }
+  onEnter() {
+    this.load();
+    // GroupMe feeds under the tiles (mig 1295): chats slug 'apsl-hub'.
+    if (window.GroupMeFeeds) { this._gm = this._gm || new GroupMeFeeds(this, this.find('#ah-gm'), 'apsl-hub'); this._gm.load(); }
+  }
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('apsl', tier, tokens) : ''; }
   _tile(tier) { const t = window.MessageCopy && MessageCopy.render('apsl', tier, {}); return t ? { label: t.subject, desc: t.body } : { label: tier, desc: '' }; }
 

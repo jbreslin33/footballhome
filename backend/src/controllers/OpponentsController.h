@@ -59,6 +59,7 @@ private:
     Response handleGroupToContacts(const Request& request, const std::vector<long long>& ids, long long matchId,
                                    const std::string& channel, const std::string& tier, const std::string& kind, const std::string& leagueLabel, const std::string& message);
     Response handleLeague(const Request& request);
+    Response handleGroupMe(const Request& request);
     Response handleGroupMessage(const Request& request);
     Response handleLeagueFixtures(const Request& request);
     Response handleLeagueScores(const Request& request);

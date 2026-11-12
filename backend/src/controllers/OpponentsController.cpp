@@ -8,6 +8,7 @@
 #include "../models/MessageCopy.h"
 #include "../models/WelcomeLog.h"
 #include "../services/LeagueFixtureSync.h"
+#include "../services/GroupMeService.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -234,6 +235,7 @@ void OpponentsController::registerRoutes(Router& router, const std::string& pref
     router.post  (prefix + "/score-request",      [this](const Request& r) { return handleScoreRequest(r); });
     router.post  (prefix + "/score-contact",      [this](const Request& r) { return handleScoreContact(r); });
     router.post  (prefix + "/club-social",        [this](const Request& r) { return handleClubSocial(r); });
+    router.get   (prefix + "/groupme",            [this](const Request& r) { return handleGroupMe(r); });
     router.get   (prefix + "/for-match/:matchId", [this](const Request& r) { return handleForMatch(r); });
 }
 
@@ -484,6 +486,50 @@ Response OpponentsController::handleMessage(const Request& request) {
 }
 
 // ─── the commissioner view of one league (mig 486) ──────────────────────────
+// GET /api/opponents/groupme?chat=<slug> (mig 1295) — read-only GroupMe
+// feeds on the league hubs (#casa = casa-hub, #apsl = apsl-hub): one entry
+// per chat_integrations row with sync_messages on, plus the chat's
+// chat_links.  Same GroupMeService (60 s cache) as the Men's feed on #my.
+// A group GroupMe refuses comes back with an error string, not a 502, so
+// the other feeds still show.
+Response OpponentsController::handleGroupMe(const Request& request) {
+    Response denied; if (!adminGate(request, &denied)) return denied;
+    const std::string slug = request.getQueryParam("chat");
+    if (slug.empty()) return jsonError(HttpStatus::BAD_REQUEST, "chat required");
+    try {
+        auto* db = Database::getInstance();
+        json feeds = json::array(), links = json::array();
+        for (const auto& r : db->query(
+                "SELECT ci.external_id, COALESCE(ci.external_name,'') AS external_name "
+                "  FROM chat_integrations ci "
+                "  JOIN chats c          ON c.id = ci.chat_id AND c.is_active IS NOT FALSE "
+                "  JOIN chat_providers p ON p.id = ci.provider_id "
+                " WHERE c.slug = $1 AND p.name = 'groupme' AND p.is_active AND ci.sync_messages "
+                " ORDER BY ci.is_primary DESC, ci.id", {slug})) {
+            json feed = {{"title", r["external_name"].as<std::string>()}, {"messages", json::array()}, {"error", ""}};
+            try {
+                for (const auto& m : GroupMeService::getInstance().recentMessages(r["external_id"].as<std::string>(), 20)) {
+                    if (m.isSystem) continue;
+                    feed["messages"].push_back({{"id", m.id}, {"name", m.name}, {"text", m.text},
+                                                {"image_url", m.imageUrl}, {"created_at", m.createdAt}});
+                }
+            } catch (const std::exception& e) {
+                std::cerr << "[GET /api/opponents/groupme] " << slug << ": " << e.what() << std::endl;
+                feed["error"] = "GroupMe feed unavailable";
+            }
+            feeds.push_back(feed);
+        }
+        for (const auto& r : db->query(
+                "SELECT l.label, l.url FROM chat_links l JOIN chats c ON c.id = l.chat_id "
+                " WHERE c.slug = $1 AND l.is_active ORDER BY l.sort_order, l.id", {slug}))
+            links.push_back({{"label", r["label"].as<std::string>()}, {"url", r["url"].as<std::string>()}});
+        return jsonOut(HttpStatus::OK, {{"feeds", feeds}, {"links", links}});
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/opponents/groupme] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load GroupMe");
+    }
+}
+
 Response OpponentsController::handleLeague(const Request& request) {
     Response denied; if (!adminGate(request, &denied)) return denied;
     std::string label = request.getQueryParam("label"); if (label.empty()) label = "CASA";

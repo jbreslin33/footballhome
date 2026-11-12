@@ -4,6 +4,8 @@
 //
 //   #casa           the hub: tiles (Clubs & contacts, Schedule & standings,
 //                   Scores to chase, Sent mail) — add a tile here for each new commissioner tool.
+//                   Below the tiles: the league's GroupMe feed(s), read-only
+//                   (mig 1295, components/groupme-feeds.js, chats slug 'casa-hub').
 //   #casa-contacts  Liga 1 / Liga 2 clubs with their managers; ✉️/💬 per
 //                   contact and one BCC email to a division or the league.
 //   #casa-schedule  every game of the season (mig 488): division + Upcoming /
@@ -40,7 +42,7 @@ class CasaHubScreen extends Screen {
         <button class="btn btn-secondary" id="ch-back">← Back</button>
         <div style="flex:1;"><h1 style="margin:0;" id="ch-title">⚽ CASA</h1><div id="ch-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
-      <div class="screen-content" id="ch-body"><div class="loading">Loading…</div></div>`;
+      <div class="screen-content"><div id="ch-body"><div class="loading">Loading…</div></div><div id="ch-gm"></div></div>`;
     this.element = div;
     div.querySelector('#ch-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
@@ -50,7 +52,11 @@ class CasaHubScreen extends Screen {
     return div;
   }
 
-  onEnter() { this.load(); }
+  onEnter() {
+    this.load();
+    // GroupMe feed(s) under the tiles (mig 1295): chats slug 'casa-hub'.
+    if (window.GroupMeFeeds) { this._gm = this._gm || new GroupMeFeeds(this, this.find('#ch-gm'), 'casa-hub'); this._gm.load(); }
+  }
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('casa', tier, tokens) : ''; }
   _tile(tier) { const t = window.MessageCopy && MessageCopy.render('casa', tier, {}); return t ? { label: t.subject, desc: t.body } : { label: tier, desc: '' }; }
 
