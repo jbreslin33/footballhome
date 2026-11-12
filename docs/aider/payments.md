@@ -23,7 +23,7 @@ Use for the Payments screen layout, filters, status chips, card display,
 person actions, and recent-payment badges.
 
 ```text
-/add frontend/js/screens/payments.js frontend/js/components/billing-badge.js frontend/js/components/FilterBar.js frontend/js/components/PersonActions.js
+/add frontend/js/screens/tuition.js frontend/js/components/billing-badge.js frontend/js/components/FilterBar.js frontend/js/components/PersonActions.js
 ```
 
 ## Payments API

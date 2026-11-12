@@ -559,7 +559,7 @@ class PersonScreen extends Screen {
   }
 
   // Matches Payments / MensRoster LA deep-link scheme.  Hardcoded site
-  // id mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // id mirrors TuitionScreen.laSiteId (41983) — UI-only value; backend
   // canonical is LEAGUEAPPS_SITE_ID in env.
   _laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;

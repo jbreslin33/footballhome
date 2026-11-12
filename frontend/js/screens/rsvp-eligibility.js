@@ -2,7 +2,7 @@
 // mens-selection teams each FH member can RSVP for.
 //
 // UX theme (2026-07-13 refactor): follows the exact same visual +
-// interaction language as MembersScreen / PaymentsScreen so operators
+// interaction language as MembersScreen / TuitionScreen so operators
 // don't have to switch mental models between screens.
 //   * Shared `FilterBar` component (categories row) — same chip
 //     styling / click semantics as members + payments.

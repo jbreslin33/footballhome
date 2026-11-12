@@ -1,4 +1,4 @@
-// PaymentsScreen — LeagueApps financial view per program.
+// TuitionScreen — LeagueApps financial view per program.
 //
 // Two views:
 //   • Members (default) — one card per current LA member on the program,
@@ -13,7 +13,7 @@
 //
 // Every load calls the backend which itself calls LaProgramSync +
 // PersonPayments::syncFromLa so we mirror LA on every page hit.
-class PaymentsScreen extends Screen {
+class TuitionScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.tab  = 'all';                      // program tab ('all' aggregates the 4 categories)
@@ -315,7 +315,7 @@ class PaymentsScreen extends Screen {
 
   _monthKeys() {
     const nowKey = this._monthKey(new Date().toISOString());
-    const start = PaymentsScreen.ALL_TABS.map(k => this.membersRawByTab[k] && this.membersRawByTab[k].budgetYearStart).find(Boolean);
+    const start = TuitionScreen.ALL_TABS.map(k => this.membersRawByTab[k] && this.membersRawByTab[k].budgetYearStart).find(Boolean);
     if (!start) return [nowKey];
     const keys = [];
     let [y, m] = start.slice(0, 7).split('-').map(Number);
@@ -422,7 +422,7 @@ class PaymentsScreen extends Screen {
     btn.addEventListener('click', () => {
       this.showPickup = !this._pickupShown();
       try { localStorage.setItem('fh.payments.showPickup', this.showPickup ? '1' : '0'); } catch (_e) {}
-      for (const k of PaymentsScreen.ALL_TABS) this._applyPickupFilter(k);
+      for (const k of TuitionScreen.ALL_TABS) this._applyPickupFilter(k);
       this.rerender ? this.rerender() : this.renderMembers();
       this._renderStats();
       this._paintPickupToggle();
@@ -442,12 +442,12 @@ class PaymentsScreen extends Screen {
   // Screen.sectionIncludes).  'all' is every programme.
   static get ALL_TABS() { return ['mens', 'womens', 'boys', 'girls']; }
   _shardKeys(tab = this.tab) {
-    if (tab === 'all') return PaymentsScreen.ALL_TABS;
-    return PaymentsScreen.ALL_TABS.filter(k => Screen.sectionIncludes(tab, k));
+    if (tab === 'all') return TuitionScreen.ALL_TABS;
+    return TuitionScreen.ALL_TABS.filter(k => Screen.sectionIncludes(tab, k));
   }
   _showsTab(key) { return this._shardKeys().includes(key); }
   _shardLabel(keys) {
-    return keys.length === PaymentsScreen.ALL_TABS.length ? 'All Programs' : keys.map(k => this._titleCase(k)).join(' + ');
+    return keys.length === TuitionScreen.ALL_TABS.length ? 'All Programs' : keys.map(k => this._titleCase(k)).join(' + ');
   }
   // The current tab's payload: a single programme's response as-is, or
   // the shards merged into the same shape.
@@ -486,7 +486,7 @@ class PaymentsScreen extends Screen {
   // landed yet, so the caller keeps showing the loader.  Concatenates
   // members/flags/payments lists and sums counts/totals.
 
-  _aggregatedMembers(keys = PaymentsScreen.ALL_TABS) {
+  _aggregatedMembers(keys = TuitionScreen.ALL_TABS) {
     const shards = keys.map((k) => this.membersByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
@@ -518,7 +518,7 @@ class PaymentsScreen extends Screen {
     return out;
   }
 
-  _aggregatedTxns(keys = PaymentsScreen.ALL_TABS) {
+  _aggregatedTxns(keys = TuitionScreen.ALL_TABS) {
     const shards = keys.map((k) => this.txnsByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
@@ -536,7 +536,7 @@ class PaymentsScreen extends Screen {
     }
     // Newest first by the full timestamp (same as each programme's own
     // ORDER BY paid_at DESC, la_transaction_id DESC).
-    out.payments.sort(PaymentsScreen.byPaidAtDesc);
+    out.payments.sort(TuitionScreen.byPaidAtDesc);
     return out;
   }
 
@@ -548,7 +548,7 @@ class PaymentsScreen extends Screen {
     return (bt - at) || ((Number(b.transactionId) || 0) - (Number(a.transactionId) || 0));
   }
 
-  _aggregatedFlags(keys = PaymentsScreen.ALL_TABS) {
+  _aggregatedFlags(keys = TuitionScreen.ALL_TABS) {
     const shards = keys.map((k) => this.flagsByTab[k]).filter(Boolean);
     if (!shards.length) return null;
     const out = {
@@ -567,7 +567,7 @@ class PaymentsScreen extends Screen {
   }
 
   // First non-null value from a { mens, womens, boys, girls } bag.
-  _firstError(bag, keys = PaymentsScreen.ALL_TABS) {
+  _firstError(bag, keys = TuitionScreen.ALL_TABS) {
     for (const k of keys) {
       if (bag[k]) return bag[k];
     }
@@ -1338,7 +1338,7 @@ class PaymentsScreen extends Screen {
 
   _sheetKey(m) { return m.laUserId ? `la${m.laUserId}` : `p${m.personId}`; }
   _memberByKey(key) {
-    for (const k of PaymentsScreen.ALL_TABS) {
+    for (const k of TuitionScreen.ALL_TABS) {
       const hit = ((this.membersByTab[k] && this.membersByTab[k].members) || []).find((m) => this._sheetKey(m) === key);
       if (hit) return hit;
     }
@@ -2160,7 +2160,7 @@ class PaymentsScreen extends Screen {
       const currentTabs = this.tab === 'all' ? [] : this._shardKeys().filter(k => this.membersByTab[k] !== null);
       await Promise.all(currentTabs.map(k => this.loadMembers(k)));
       // Fire-and-forget the other tabs.
-      for (const k of PaymentsScreen.ALL_TABS) {
+      for (const k of TuitionScreen.ALL_TABS) {
         if (currentTabs.includes(k)) continue;
         if (this.membersByTab[k] === null) continue;   // never loaded - leave for on-demand
         this.loadMembers(k).catch(() => {});
@@ -2240,7 +2240,7 @@ class PaymentsScreen extends Screen {
       ].filter(Boolean).join(' ').toLowerCase();
       return hay.includes(q);
     };
-    const rows = (data.payments || []).filter(filter).sort(PaymentsScreen.byPaidAtDesc);
+    const rows = (data.payments || []).filter(filter).sort(TuitionScreen.byPaidAtDesc);
     const tbody = this.find('#pay-tbody');
     if (rows.length === 0) {
       tbody.innerHTML = `
@@ -2663,7 +2663,7 @@ class PaymentsScreen extends Screen {
   // Sum the per-tab summaries into a cross-program roll-up.  Uses the
   // earliest firstPaidAt across programs for the avg-per-month
   // denominator so combined avg is calculated on a common timeline.
-  _combinedSummary(tabs = PaymentsScreen.ALL_TABS) {
+  _combinedSummary(tabs = TuitionScreen.ALL_TABS) {
     let netCollected     = 0;
     let thisMonth        = 0;
     let totalMembers     = 0;

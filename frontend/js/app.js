@@ -54,7 +54,7 @@ class App {
       rosters: new RostersScreen(this.navigation, this.auth),
       person: new PersonScreen(this.navigation, this.auth),
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
-      payments: new PaymentsScreen(this.navigation, this.auth),
+      tuition: new TuitionScreen(this.navigation, this.auth),
       reports: new ReportsScreen(this.navigation, this.auth),
       rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
@@ -164,8 +164,8 @@ class App {
     this.screenManager.register('youth-roster', this.screens.youthRoster);
     // #tuition (mig 1293) — the menu already said Tuition; 'payments' kept as
     // an alias for old history entries (goTo maps it via RETIRED).
-    this.screenManager.register('tuition', this.screens.payments);
-    this.screenManager.register('payments', this.screens.payments);
+    this.screenManager.register('tuition', this.screens.tuition);
+    this.screenManager.register('payments', this.screens.tuition);
     // Reports hub (#reports) — Attendance & RSVP report; Payments chip
     // hands off to #tuition. See screens/reports.js.
     this.screenManager.register('reports', this.screens.reports);

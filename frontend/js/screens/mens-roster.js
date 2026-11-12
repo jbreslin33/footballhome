@@ -19,7 +19,7 @@
 //   • A trailing "🚨 Dues Owed" column surfaces players the admin has
 //     parked as delinquent — the column strips them off every other
 //     roster (mens-selection mutex).  Two action buttons per card
-//     (lifted from PaymentsScreen):
+//     (lifted from TuitionScreen):
 //       LA  — opens LA Manager memberDetails for manual pause
 //       ⏸  — copies the canonical pause-warning message to clipboard
 //   • Backend used to block /assign for delinquent players (HTTP 409);
@@ -1239,8 +1239,8 @@ class MensRosterScreen extends RosterScreenBase {
   }
 
   // ── helpers ─────────────────────────────────────────────────────────
-  // Matches PaymentsScreen's LA deep-link scheme.  Hardcoded site id
-  // mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // Matches TuitionScreen's LA deep-link scheme.  Hardcoded site id
+  // mirrors TuitionScreen.laSiteId (41983) — UI-only value; backend
   // canonical is LEAGUEAPPS_SITE_ID in env.
   laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
@@ -1409,7 +1409,7 @@ class MensRosterScreen extends RosterScreenBase {
     return null;
   }
 
-  // Lifted verbatim from PaymentsScreen's [data-copy-pause] handler — the
+  // Lifted verbatim from TuitionScreen's [data-copy-pause] handler — the
   // canonical warning admin pastes into LA's Remind flow before flipping
   // a player to Paused Membership.
   async _copyPauseMessage(btn) {

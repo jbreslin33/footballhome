@@ -1195,8 +1195,8 @@ class BoysRosterScreen extends RosterScreenBase {
   }
 
   // ── helpers ─────────────────────────────────────────────────────────
-  // Matches PaymentsScreen's LA deep-link scheme.  Hardcoded site id
-  // mirrors PaymentsScreen.laSiteId (41983) — UI-only value; backend
+  // Matches TuitionScreen's LA deep-link scheme.  Hardcoded site id
+  // mirrors TuitionScreen.laSiteId (41983) — UI-only value; backend
   // canonical is LEAGUEAPPS_SITE_ID in env.
   laManagerUrl(uid) {
     return `https://manager.leagueapps.com/console/sites/41983/memberDetails?memberId=${uid}`;
@@ -1287,7 +1287,7 @@ class BoysRosterScreen extends RosterScreenBase {
     return null;
   }
 
-  // Lifted verbatim from PaymentsScreen's [data-copy-pause] handler — the
+  // Lifted verbatim from TuitionScreen's [data-copy-pause] handler — the
   // canonical warning admin pastes into LA's Remind flow before flipping
   // a player to Paused Membership.
   async _copyPauseMessage(btn) {
