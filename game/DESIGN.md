@@ -8883,3 +8883,23 @@ man's reach is still his (cut_share 1, G5.97). Goldens hold (no row in the rig);
 `raceSafe` doesn't know defenders now hold off, so it flags the wrong passes. Fit the read to what
 defenders do. (2) Completion and in behind above real. (3) The scrappy phase: loose balls after tackles
 and headers (what real's flag-flip spells are). (4) The front man early in a spell (§8.197).
+
+### 8.201 G5.99b — the passer's read against the defenders' margin, and risk_weight: tried, not shipped (no migration)
+
+§8.200's next (1): passers try passes their man wins by 0.4 s+ (CRUDE RACE) 2-3× real (59-61 v 26 a team-match).
+
+**Tried** (not shipped). `Reads::raceSafe` taught the block's `cut_margin_s`: a pass is lost only to a man
+it runs into (reached inside his reaction) or one who wins its race by the margin.
+- Completion 82.5-83.0 → 79.7-80.4% (79.1), crosses 4 → 7 (11.5).
+- But passes their man wins by 0.4 s+ 59-61 → 70-74 (26), settled losses 58-61 → 64-66 (58.1).
+Real passers are more cautious than real defenders are eager. The old read (any opponent first =
+unsafe) is the nearer model of a passer. Reverted.
+
+**Tried** (not shipped). `pass.risk_weight` 0.25 / 0.12 / 0.05 with the margin on (seed 1000 / 2000):
+- Passes their man wins by 0.4 s+: 58.9 / 56.8 → 51.1 / 50.3 → 46.5 / 46.9 (26).
+- Completion 83.0 / 82.9 → 83.7 / 83.5 → 82.9 / 83.3% (79.1); settled losses 56-61 throughout.
+The floor is the passer with no safe option. He passes anyway when the World's hold curve releases the
+ball at real time-on-ball. A weight between safe and unsafe options can't touch a spell with no safe one.
+
+**Next.** What a real man on the ball does with every lane shut: DFL, the passer's crude-race options at
+each moment of a carry, and whether he holds, turns, carries, or plays back. Then the same for ours.
