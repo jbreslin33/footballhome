@@ -341,7 +341,10 @@ class FinesScreen extends Screen {
              <span style="font-size:1.4rem; font-weight:800; color:${owes ? '#fca5a5' : '#86efac'}; line-height:1;">${FinesScreen.money(total)}</span>
              ${this._postPill(m)}
            </div>
-           ${(m.items || []).map(it => `<div style="font-size:0.78rem; margin-top:3px; opacity:0.85;">${this.escapeHtml(this._md(it.startAt))} ${this.escapeHtml(this._event(it))} — ${this.escapeHtml(it.label)} · <b>${FinesScreen.money(it.amount)}</b></div>`).join('')}
+           ${(m.items || []).map(it => `<div style="display:flex; align-items:center; gap:6px; font-size:0.78rem; margin-top:3px;">
+             <span style="flex:1; opacity:0.85;">${this.escapeHtml(this._md(it.startAt))} ${this.escapeHtml(this._event(it))} — ${this.escapeHtml(it.label)} · <b>${FinesScreen.money(it.amount)}</b></span>
+             ${owes ? `<button type="button" class="fi-btn" data-fi-absolve="${key}" data-items="${this._itemsAttr([it])}">${this.escapeHtml(this._w('absolve', '🕊 Absolve'))}</button>` : ''}
+           </div>`).join('')}
            ${owes ? `<div style="margin-top:8px;"><button type="button" class="fi-btn" data-fi-absolve="${key}" data-items="${this._itemsAttr(m.items)}">${this.escapeHtml(this._w('absolve_period', `🕊 Absolve all of ${name}`, { period: name }))}</button></div>` : ''}
          </div>`;
     }
