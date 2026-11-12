@@ -8935,3 +8935,37 @@ Ball in play 65.9% (55.2) explains 1.19×. Our own half passes at 1.6-1.8×, the
 **Next moles.** (1) Where the ball spends its time: DFL ball time by zone and by side, v ours. Our attacks
 circulate deep and seldom live in the last 35 m. (2) Midfield lateral / back passes and switches 2×:
 the pick inside a zone takes the nearest man 53.7% (61.8). (3) Ball in play 65.9% (55.2).
+
+### 8.203 G5.101 — where the ball lives: ours dwells in midfield, their deep men too free — measured; three tries, none shipped (no migration)
+
+§8.202's next (1): ball time by zone.
+
+**Real** (new `scripts/benchmarks_tracking_balltime.py`, DFL possession flag). WHERE THE BALL LIVES: in play,
+by the ball's metres off the line the side on it attacks, 0-18 / 18-35 / 35-52 / 52-70 / 70+:
+- Seconds a team-match 131 / 208 / 294 / 395 / 552 (of 1580). Visits 57 / 95 / 132 / 151 / 122, median
+  1.8 / 1.8 / 1.6 / 1.6 / 2.8 s.
+- Midfield visits (35-52 / 52-70) end forward 48 / 54%, back 18 / 21%, lost 27 / 21%.
+
+**Ours, the same cut** (new harness line; seed 1000 / 2000). 0-18 89-92 s (131); 35-52 485-494 (294); 52-70
+605-625 (395); 70+ 443 (552). Visits as many, but 2.6-3.0 s in midfield (1.6). They end lost 12-17%
+(21-27) and back 24-33% (18-21). We leave our own third quicker (forward 74-77%, 65) and live in midfield.
+
+**ON THE BALL by band** (shut.py + harness). The man on it has 3+ free options, by band: 0-18 11-14%
+(13.7) and 18-35 37-38% (31.9), near real; 35-52 58-61% (43.7), 52-70 69-71% (40.9), 70+ 69-70% (40.1). In
+their half our block leaves men free. MARKING, EVERY FRAME, attacker 52+ m out with the ball near: our
+nearest 6.9 m (5.2), within 2 m 6.3% (12.4).
+
+**Tried** (not shipped, seed 1000 / 2000):
+1. Forwards mark too (assignMarks for all roles). 3+ options 52-70 / 70+ → 74-75 / 76-78% (worse). A
+   marker 4 m goal-side of a deep man pulls our forward off him.
+2. The block's depth read from the ball now, not its meet point (spot_lead 0 / 0.5). Ball coming 5+ at
+   40-50: CB 30.8 → 32.1-32.5 (35.1), ST 56.1 → 56.7-57.6 (62.7). Options and ball time unchanged.
+3. The block reads a lagged ball (EMA 0.6 / 1.0 / 1.5 s). Coming 5+ at 40-50: CB → 32.8-33.3, DM 40.4 →
+   42.0-42.4 (45.7). Options, time, marking unchanged.
+SETTLED SHAPE BY THE BALL'S SPEED is near real with the ball still (within 1-2 m). With it coming 5+ m/s,
+real blocks stand 3-6 m higher than ours. That is real, but it isn't what frees their men. (A speed cap
+on CB / FB / DM backward runs, fwd_back_roles 60 / 63, moved it under 1 m.)
+
+**Next.** The pressing structure in their half. Real: with the ball 52+ m from the goal its side attacks,
+which of our roles is nearest each of their men, how far, and is he between him and the ball (the
+cover shadow) or on him? Then ours. Our forwards hold spots and do not screen the lanes.

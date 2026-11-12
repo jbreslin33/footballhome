@@ -42,6 +42,12 @@ def one(pos_path):
             isb = tid.upper() == "BALL"; skip = not isb and tid not in team_of
             if not skip and not isb: cur = pid; who[pid] = team_of[tid]
     keys = sorted(ball)
+    kx = collections.defaultdict(list)
+    for k, fr in pl.items():
+        if k[1] % 250: continue
+        for pid, (x, y) in fr.items():
+            if pid in keepers and pid in who: kx[(k[0], who[pid])].append(x)
+    own = {k: (-1 if sum(v) / len(v) < 0 else 1) for k, v in kx.items()}
     # per frame: the man on it (or None), None + dead marks
     seq = []   # (key, pid or None, live)
     for k in keys:
@@ -79,6 +85,10 @@ def one(pos_path):
                     end = "mate" if who[seq[jj][1]] == who[pid] else "theirs"; break
         dur = (k1[1] - k0[1]) / 25
         carry = math.hypot(ball[k1][0] - ball[k0][0], ball[k1][1] - ball[k0][1])
+        g = own.get((k0[0], who[pid]))
+        if g is not None:
+            dz = length / 2 + ball[k0][0] * g; z = 0 if dz < 18 else 1 if dz < 35 else 2 if dz < 52 else 3 if dz < 70 else 4
+            c[("z", z)] += 1; c[("zo", z, b)] += 1; c[("ze", z, end)] += 1
         c[("n", b)] += 1; c[("e", b, end)] += 1; H[("d", b)].append(dur); H[("c", b)].append(carry); H[("o1", b)].append(o1)
         c["n"] += 1
     return c, H
@@ -93,6 +103,10 @@ if __name__ == "__main__":
     tm = 2 * len(files); N = max(1, c["n"])
     print(f"{len(files)} DFL matches: ON THE BALL (outfielder nearest within 1.5 m, 2+ frames at 5 Hz), {N/tm:.1f} spells a team-match; by his crude-race options at the start (mates 5 m+ the race calls ours)")
     print("  options | share % | on the ball s p25/med/p75 | carry m med | next on it: mate / theirs / dead % | options at the end med")
+    print("  by the ball's m off the line he attacks: spells a team-match | options 0 / 1 / 2 / 3+ % | next on it mate / theirs / dead %")
+    for z, nm in enumerate(["0-18", "18-35", "35-52", "52-70", "70+"]):
+        n = max(1, c[("z", z)])
+        print(f"   {nm:5s} {c[('z', z)]/tm:6.1f} | " + " / ".join(f"{100*c[('zo', z, b)]/n:4.1f}" for b in range(4)) + " | " + " / ".join(f"{100*c[('ze', z, e)]/n:4.1f}" for e in ("mate", "theirs", "dead")))
     for b in range(4):
         n = c[("n", b)]
         if not n: continue
