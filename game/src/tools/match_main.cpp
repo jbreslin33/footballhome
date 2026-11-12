@@ -61,6 +61,9 @@ const char* const kOutName[5] = {"goal", "keeper", "blocked", "off target", "oth
 // Everything counted, across all matches.
 struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
+    // §8.198 REWIN: the win (side changes in play, the loser had it 1 s+) by the loser's nearest [5 bins] / the ball's kind [3]: n, given back by 3 s, dead by 3 s; the loser's nearest 1 s on
+    long ct_loss[3] = {}, ct_win = 0, ct_back = 0;   // §8.198 CONTROL SPELLS
+    long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
     long rel_n[5] = {}, rel_shot[5] = {};
@@ -228,8 +231,8 @@ int main(int argc, char** argv) {
         long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
-        long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
-        struct Mk { bool on = false; int p = -1, team = -1; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
+        long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1; long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
+        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
@@ -827,7 +830,7 @@ int main(int argc, char** argv) {
                                 }
                             }
                         }
-                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0;
+                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0; mk.to = s.lastOrders()[owner].pass_to == 0xFF ? -1 : s.lastOrders()[owner].pass_to; mk.k0 = static_cast<long>(k);
                         if (mk.on) for (std::uint8_t j = 0; j < N && j < 32; ++j) { mk.x[j] = W.player(j).pos.x.toDouble(); mk.y[j] = W.player(j).pos.y.toDouble(); }
                         if (ws_on && !own_set) {   // §8.155
                             const double sgw = owner_team == 0 ? 1.0 : -1.0;
@@ -856,6 +859,13 @@ int main(int argc, char** argv) {
                                 if ((o < 35 ? 0 : o < 70 ? 1 : 2) == z) S.mk_al[hi][z].push_back(near(i));
                             }
                             S.mk_2[hi][z] += r < 2; S.mk_35[hi][z] += r < 3.5; S.mk_5[hi][z] += r >= 5;
+                        }
+                        if (!mate && mk.on && mk.p == rel.p && mk.to >= 0 && q.team != mk.team && !W.isKeeper(static_cast<std::uint8_t>(own)) && std::getenv("GAME_CUT_TRACE")) {
+                            const double ax = mk.x[mk.p], ay = mk.y[mk.p], tx = mk.x[mk.to], ty = mk.y[mk.to], L = std::hypot(tx - ax, ty - ay);
+                            const double ux = (tx - ax) / std::max(0.1, L), uy = (ty - ay) / std::max(0.1, L);
+                            const double ix = mk.x[own] - ax, iy = mk.y[own] - ay, cx = q.pos.x.toDouble() - ax, cy = q.pos.y.toDouble() - ay;
+                            double rd = 99; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team != mk.team && !W.isKeeper(j)) rd = std::min(rd, std::hypot(mk.x[j] - tx, mk.y[j] - ty));
+                            std::fprintf(stderr, "CUT_TRACE L=%.1f at_kick_along=%.2f at_kick_off=%.1f cut_along=%.2f flight=%.2f recv_marker=%.1f z=%.2f\n", L, (ix * ux + iy * uy) / std::max(0.1, L), std::fabs(ix * uy - iy * ux), (cx * ux + cy * uy) / std::max(0.1, L), (static_cast<long>(k) - mk.k0) / 30.0, rd, mk.peak);
                         }
                         mk.on = false;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
@@ -1024,6 +1034,27 @@ int main(int argc, char** argv) {
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
+            {   // §8.198 CONTROL SPELLS (benchmarks_tracking_rewin.py): nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running
+                const long kk = static_cast<long>(k);
+                if (ct_prev != kk - 6) { ct_side = -1; ct_cand = -1; ct_won = -1; }
+                ct_prev = kk;
+                int best = -1; double bd = 1.5;
+                if (b.pos.z.toDouble() <= 1.5)
+                    for (std::uint8_t j = 0; j < N; ++j) { const double d = std::hypot(W.player(j).pos.x.toDouble() - b.pos.x.toDouble(), W.player(j).pos.y.toDouble() - b.pos.y.toDouble()); if (d <= bd) { bd = d; best = j; } }
+                if (best >= 0 && best == ct_cand) {
+                    const int tm = W.player(static_cast<std::uint8_t>(best)).team;
+                    if (ct_side < 0) { ct_side = tm; ct_since = ct_ck; }
+                    else if (tm != ct_side) {
+                        const double age = (ct_ck - ct_since) / 30.0;
+                        ++S.ct_loss[age < 3 ? 0 : age < 6 ? 1 : 2];
+                        if (std::getenv("GAME_CTRL_TRACE")) std::fprintf(stderr, "CTRL_TRACE lt=%d new=%d age=%.1f d=%.2f bv=%.1f why=%d owner=%d carrierd=%.2f z=%.2f\n", W.lastTouchTeam(), tm, age, bd, std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()), static_cast<int>(s.lastOrders()[best].why), static_cast<int>(W.lastTouchTeam() == tm), [&]{ double m = 99; for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != tm) m = std::min(m, std::hypot(W.player(j).pos.x.toDouble() - b.pos.x.toDouble(), W.player(j).pos.y.toDouble() - b.pos.y.toDouble())); return m; }(), b.pos.z.toDouble());
+                        if (ct_won >= 0 && (ct_ck - ct_won) / 30.0 < 3) ++S.ct_back;
+                        ct_won = age >= 1 ? ct_ck : -1; if (age >= 1) ++S.ct_win;
+                        ct_side = tm; ct_since = ct_ck;
+                    }
+                }
+                if (best < 0) ct_cand = -1; else if (best != ct_cand) { ct_cand = best; ct_ck = kk; }
+            }
             {   // §8.186 GOAL-SIDE (benchmarks_tracking_goalside.py): ball under 7 m/s within 30 m of their goal centre
                 const double gx = dteam == 0 ? -hx : hx, bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
                 const double db = std::hypot(gx - bx, by);
@@ -1200,6 +1231,31 @@ int main(int argc, char** argv) {
                     }
                     if (ws_k < 0 && tn_k == kk - 6 && tn_a == (a ^ 1)) { ws_k = kk; ws_a = a; ws_b = bb; ws_z = bb < 35 ? 0 : bb < 52 ? 1 : bb < 70 ? 2 : 3; ws_f3 = ws_f6 = 1e9; }
                     if (ws_k >= 0 && a == ws_a) { ws_last = kk; if (kk - ws_k == 90) ws_f3 = bb - ws_b; if (kk - ws_k == 180) ws_f6 = bb - ws_b; }
+                }
+                {   // §8.198 REWIN (benchmarks_tracking_rewin.py): the win and the next 3 s
+                    const long kk = static_cast<long>(k);
+                    auto nearOf = [&](int tm) { double m = 99; for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == tm && !W.isKeeper(j)) m = std::min(m, std::hypot(W.player(j).pos.x.toDouble() - bx, W.player(j).pos.y.toDouble() - by)); return m; };
+                    auto dbin = [](double d) { return d < 2 ? 0 : d < 4 ? 1 : d < 7 ? 2 : d < 12 ? 3 : 4; };
+                    if (rw_k >= 0) {
+                        const bool cont = rw_last == kk - 6;
+                        if (cont && a == rw_a) {
+                            rw_last = kk;
+                            if (kk - rw_k == 30) { const double d1 = nearOf(a ^ 1); rw_b1 = dbin(d1); S.rw_d1[rw_b].push_back(d1); }
+                            if (kk - rw_k >= 90) { if (rw_b1 >= 0) ++S.rw_n1[rw_b1]; rw_k = -1; }   // kept 3 s+
+                        } else {
+                            const bool back = cont && a != rw_a;
+                            if (back) { ++S.rw_back[rw_b]; ++S.rw_kb[rw_kd]; } else ++S.rw_dead[rw_b];
+                            if (rw_b1 >= 0) { ++S.rw_n1[rw_b1]; if (back) ++S.rw_b1[rw_b1]; }
+                            rw_k = -1;
+                        }
+                    }
+                    if (rw_k < 0 && tn_k == kk - 6 && tn_a == (a ^ 1) && tn_du >= 1) {
+                        const double dL = nearOf(a ^ 1), dW = nearOf(a);
+                        const double spd = pb_k == kk - 12 ? 5 * std::hypot(bx - pb_x[1], by - pb_y[1]) : 0.0;
+                        rw_kd = spd >= 8 ? (b.pos.z.toDouble() >= 1.5 ? 1 : 0) : 2;
+                        rw_k = rw_last = kk; rw_a = a; rw_b = dbin(dL); rw_b1 = -1;
+                        ++S.rw_n[rw_b]; ++S.rw_kn[rw_kd]; S.rw_dL.push_back(dL); S.rw_dW.push_back(dW); S.rw_kdL[rw_kd].push_back(dL); S.rw_kdW[rw_kd].push_back(dW);
+                    }
                 }
                 if (tn_k == static_cast<long>(k) - 6 && tn_a == (a ^ 1)) {   // it lost it, unbroken in play: the frame before
                     const int z = tn_bb < 35 ? 0 : tn_bb < 52 ? 1 : tn_bb < 70 ? 2 : 3;
@@ -2006,6 +2062,25 @@ int main(int argc, char** argv) {
                             std::printf("\n          %-4s %5.1f (%4.1f) | %4.1f / %4.1f / %4.1f (%4.1f / %4.1f / %4.1f) || %5.1f (%4.1f) | %4.1f / %4.1f / %4.1f (%4.1f / %4.1f / %4.1f)", an[ab], n / tmn, rK[ab],
                                         100 * S.lk_n[ab][0] / n, 100 * S.lk_n[ab][1] / n, 100 * S.lk_n[ab][2] / n, rKs[ab][0], rKs[ab][1], rKs[ab][2],
                                         nk / tmn, rKk[ab], 100 * S.lk_k[ab][0] / std::max(1.0, nk), 100 * S.lk_k[ab][1] / std::max(1.0, nk), 100 * S.lk_k[ab][2] / std::max(1.0, nk), rKks[ab][0], rKks[ab][1], rKks[ab][2]);
+                        }
+                    }
+                    {   // §8.198 REWIN: real DFL benchmarks_tracking_rewin.py
+                        long n = 0, bk = 0, dd = 0; for (int i = 0; i < 5; ++i) { n += S.rw_n[i]; bk += S.rw_back[i]; dd += S.rw_dead[i]; }
+                        if (n > 0) {
+                            static const double rS[5] = {46.0, 29.3, 15.3, 6.5, 2.9}, rBk[5] = {38.3, 32.5, 27.0, 11.1, 3.3}, rD1[5] = {3.3, 4.1, 4.4, 7.0, 16.0}, rKs[3] = {18.9, 13.4, 67.7}, rKb[3] = {27.5, 39.9, 31.8}, rKl[3] = {2.9, 2.2, 1.9}, rKw[3] = {1.7, 1.3, 0.8}, rS1[5] = {19.3, 29.3, 30.1, 16.5, 4.8}, rB1[5] = {49.6, 33.1, 21.9, 12.8, 0.0};
+                            static const char* bn[5] = {"0-2", "2-4", "4-7", "7-12", "12+"}; static const char* kn[3] = {"kicked", "air", "feet"};
+                            std::printf("\n        REWIN (the ball changes side in play, the loser had it 1 s+; real DFL benchmarks_tracking_rewin.py): %.1f a team-match (148.4); given straight back by 3 s %.1f%% (32.1), dead by 3 s %.1f%% (15.4); at the win nearest outfielder med loser %.1f (2.2) / winner %.1f (1.0) m",
+                                        n / tmn, 100.0 * bk / n, 100.0 * dd / n, md(S.rw_dL), md(S.rw_dW));
+                            std::printf("\n          by the loser's nearest at the win: share %% (real) | given back %% (real) | his nearest 1 s on med (real):");
+                            for (int i = 0; i < 5; ++i) if (S.rw_n[i]) std::printf(" %s %.1f (%.1f) | %.1f (%.1f) | %.1f (%.1f);", bn[i], 100.0 * S.rw_n[i] / n, rS[i], 100.0 * S.rw_back[i] / S.rw_n[i], rBk[i], md(S.rw_d1[i]), rD1[i]);
+                            std::printf("\n          by the ball at the win: share %% (real) | given back %% (real) | loser's / winner's nearest med (real):");
+                            for (int i = 0; i < 3; ++i) if (S.rw_kn[i]) std::printf(" %s %.1f (%.1f) | %.1f (%.1f) | %.1f / %.1f (%.1f / %.1f);", kn[i], 100.0 * S.rw_kn[i] / n, rKs[i], 100.0 * S.rw_kb[i] / S.rw_kn[i], rKb[i], md(S.rw_kdL[i]), md(S.rw_kdW[i]), rKl[i], rKw[i]);
+                            long n1 = 0; for (int i = 0; i < 5; ++i) n1 += S.rw_n1[i];
+                            const long cl = S.ct_loss[0] + S.ct_loss[1] + S.ct_loss[2];
+                            std::printf("\n          CONTROL SPELLS (a man nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running): changes %.1f a team-match (80.8), by the losing spell's age <3 / 3-6 / 6+ s %.1f / %.1f / %.1f (21.4 / 14.5 / 44.9); wins (loser 1 s+) %.1f (73.1), given back by 3 s %.1f%% (18.9)",
+                                        cl / tmn, S.ct_loss[0] / tmn, S.ct_loss[1] / tmn, S.ct_loss[2] / tmn, S.ct_win / tmn, 100.0 * S.ct_back / std::max(1L, S.ct_win));
+                            std::printf("\n          spells 1 s+, by the loser's nearest 1 s on: share %% (real) | given back %% (real):");
+                            for (int i = 0; i < 5; ++i) if (S.rw_n1[i]) std::printf(" %s %.1f (%.1f) | %.1f (%.1f);", bn[i], 100.0 * S.rw_n1[i] / std::max(1L, n1), rS1[i], 100.0 * S.rw_b1[i] / S.rw_n1[i], rB1[i]);
                         }
                     }
                     {   // §8.174

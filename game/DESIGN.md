@@ -8731,3 +8731,58 @@ him 5.1 / 5.3 / 5.2 / 8.3 / 9.1 (3.6) — ST alone leaves the second man behind;
 **Next moles.** (1) The front man still 5 m short in the first 3 s (2.1): their line at the turnover is
 4-6 m high (§8.171 (1)). (2) Runs end 4.5 m short (3.9), FB runs 26-28 (17.4). (3) Possessions twice too
 long. (4) Down the line and crosses (§8.191).
+
+### 8.198 G5.97 — a man with their pass in reach plays it; the scrappy turnovers come back (mig 1291)
+
+§8.197's (3) and §8.172's standing gap: possessions twice too long. Losses inside 3 s of a win 11-15 a
+team-match (68.4).
+
+**Real** (new `scripts/benchmarks_tracking_rewin.py`, DFL, the possession flag). A ball changes side
+in play, the loser on it 1 s+: 148.4 a team-match. Given straight back inside 3 s 32.1%, dead 15.4%,
+kept 3 s+ 52.6%. At the win the loser's nearest outfielder is 2.2 m (median) away, 46% within 2 m.
+Given back by the loser's nearest at the win, 0-2 / 2-4 / 4-7 / 7-12 / 12+ m: 38 / 33 / 27 / 11 / 3%.
+In DFL's events, 54% of the givebacks show no event by the winner at all: the flag flips on a
+loose ball and back.
+
+**Ours, the same cut** (new REWIN harness lines). The win looks real: the loser's nearest 1.9-2.0 m,
+the same spread by distance, the same spread 1 s on. But it comes back half as often at every
+distance: 13-18% (32.1); with their man 4-7 m off a second on, 4-5% (21.9). The pressure is real; the
+ball doesn't change.
+
+**Traced.** Because the flag needs no touch, there is a tracking-only cut too: a man is on the ball
+when he is nearest it within 1.5 m (ball under 1.5 m high) on two 5 Hz frames running (CONTROL
+SPELLS). Real: 80.8 changes a team-match, 18.9% of wins given back. Ours: 123-124, 39-40%. Of our
+changes, 41% are a man of the other side on the ball by that cut whose side never touched it
+(`GAME_CTRL_TRACE`): chasers 105 and pressers 66 in 2 matches, the ball rolling 2-10 m/s. The
+cause is `physics.tempo.cut_share` 0.1 (G5.4). An outfielder within reach (0.5 m) of their moving
+pass took it one roll in ten and watched the rest go by. That was fitted to 7.2 interceptions a team,
+long before the pass pick, the presser on the pass (G5.82) or the race read.
+
+**The change** [FH: a man plays the ball in his reach]. `physics.tempo.cut_share` 1 (mig 1291, both
+DBs): every ball in reach is played. The code is unchanged; the test rig has no row, so goldens hold.
+
+**Fit** (seed 1000). `cut_share` 0.1 / 0.4 / 1: changes 77 / 101 / 134 (148.4), given back 17.6 / 20.4 /
+28.0% (32.1), completion 80.2 / 79.8 / 75.7% (79.1). With 1, `pass.risk_weight` 0.25 / 0.15 / 0.08 gives
+completion 75.7 / 75.5 / 76.2%: the passes now cut out are ones the race read calls safe, so
+risk_weight is not the lever. Left at 0.25.
+
+**After** (seed 1000 / 2000 / 3000 v G5.96; real in brackets).
+- REWIN: changes 77 / 75 / 81 → 134 / 136 / 136 a team-match (148.4); given back 17.6 / 13.0 / 15.8 →
+  28.0 / 30.5 / 29.6% (32.1); dead by 3 s 13 → 7-8% (15.4).
+- Losses by the spell's age, <3 s: 15.0 / 10.8 / 13.8 → 43.6 / 47.4 / 45.9 (68.4). 6 s+: 61-63 → 86-88
+  (58.1), kicked on the ground 15 → 34-37% (19.1): settled-play passes cut out.
+- Completion 80.2-81.4 → 74.4-75.7% (79.1). In behind 39-41 → 31-32 (37.7), completed 52 → 41% (47.5).
+- Shots 6.7-7.3 → 5.2-5.4 a team-match, goals 1.75-1.88 → 1.31-1.75. Counter-press 29 → 41% (21).
+- Taken by their outfielders, passes cut 31.5 → 74 a team-match (`GAME_CUT_TRACE`): 60 of them 1 s+
+  into the flight (29), 16.5 by a man within 1.5 m of the line at the kick and 5 m+ along it (5.5).
+
+**What it says.** The scrappy phase is now the real one. Defenders get to the ball as often as real
+ones did before, and now they win it. What the 0.1 hid: our passes go into a defender's reach far
+more than real ones. The race read (Reads::raceSafe) calls them safe, and he steps in a second into
+the flight.
+
+**Next moles.** (1) Passes the race read calls safe, cut out 1 s+ into the flight. Trace one: the
+receiver's meet run v the read's runToward, and the defender's step in (G5.82's presser on the pass).
+(2) Settled losses 86-88 (58), completion 75 (79.1). (3) CONTROL SPELLS: still 135-143 changes (80.8).
+Our men stand within 1.5 m of a carried ball without taking it. (4) The front man 5 m short in the
+first 3 s (§8.197 (1)). (5) Runs end 4.5 m short, FB runs (§8.196).
