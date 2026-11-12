@@ -81,6 +81,7 @@ const EventKindSwitch = {
   // A cold start on #event/<id>/<pill> (a reload, a pasted link): fetch
   // the event, then open it by kind like a calendar tap.
   async openById(navigation, auth, fhEventId, pill) {
+    if (window.BootLog) BootLog.begin('event');   // the boot log shows from the first fetch
     const res = await auth.fetch(`/api/calendar/events/${fhEventId}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();

@@ -119,6 +119,8 @@ class NavigationStateMachine {
     // staff included (mig 1296).
     if (state === 'my') params = { ...params, view: 'mine' };
     if (NavigationStateMachine.RETIRED[state]) state = NavigationStateMachine.RETIRED[state];
+    // ⏳ The screen's loading shows like a boot log (components/boot-log.js, mig 1300).
+    if (window.BootLog) BootLog.begin(state);
     // Store current state in history — every time, same screen or not,
     // because the browser gets an entry every time (see constructor).
     if (this.currentState) {
