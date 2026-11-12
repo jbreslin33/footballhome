@@ -8786,3 +8786,55 @@ receiver's meet run v the read's runToward, and the defender's step in (G5.82's 
 (2) Settled losses 86-88 (58), completion 75 (79.1). (3) CONTROL SPELLS: still 135-143 changes (80.8).
 Our men stand within 1.5 m of a carried ball without taking it. (4) The front man 5 m short in the
 first 3 s (§8.197 (1)). (5) Runs end 4.5 m short, FB runs (§8.196).
+
+### 8.199 G5.98 — the receiver meets his pass: a spot in reach, on time when it is near (no migration)
+
+§8.198's next (1): passes the race read calls safe, cut out 1 s+ into the flight.
+
+**Measured first** (new harness lines and traces; real DFL in brackets).
+- PASS PACE (new in `benchmarks_tracking_firsttouch.py` and the harness): a ground ball's release → touch,
+  median by travel 0-10 / 10-20 / 20-30 / 30+ m. Mate's pass, ours 0.80 / 1.27 / 1.80 / 2.80 s (0.92 / 1.36 /
+  1.88 / 2.80). Our passes are not slow. What is off is the count: balls the other side reaches first after
+  10-20 / 20-30 m, 24.1 / 8.3 a team-match (10.7 / 1.6).
+- COMES TO IT (new, both): the receiver's metres nearer the release spot at the touch than at the release,
+  median. Ours −0.6 / −1.2 / −0.9 / −2.4 (−0.1 / −0.5 / −2.1 / −4.4). Real receivers also go away from the
+  passer (the ball into his path), so this is not the fault.
+- Not the fault either: kick error (angle and power 0 → completion 75.7 → 74.8%); a more cautious race read
+  (their man's reach 2 / 3 m → 73.9 / 69.5%); `pass.risk_weight` 0.01. At 0.01, unsafe-to-feet passes with a
+  safe one on 38.9 → 4.9 a team-match, but completion stays 75.3%: the passer goes to lofts and balls in
+  behind, which fail as often.
+- The race read replayed on the ball as kicked (`GAME_CUT_TRACE`, the harness's own `ai::Reads`). Of the
+  ground passes their outfielder cut: their man first 44%, he only 7%, ours first 37%, their man never 12%.
+  In the "ours first" cases the cut came 42 ticks (1.4 s) after our receiver's predicted take. The ball
+  rolled past him (cut at 1.34 × the pass's length), with him on Meet the pass.
+
+**Traced** (`GAME_MISS_TRACE`: the receiver, tick by tick around the read's tick). With the ball 3 m from him
+and coming at him, his meet spot jumped from 0.2 m to 13 m down the line. He jogged toward it while the ball
+reached him late or rolled by. `Reads::getInLine` had two faults:
+1. **No reach.** A spot counted only if his *run* covered the distance. `race()` adds the 0.5 m control
+   reach. A man 0.3 m off the line couldn't "get to" a ball passing through him.
+2. **Early without time.** Every spot asked him to arrive `early_s` (0.25 s) before the ball. A ball 0.2 s
+   from him failed every near spot, and the first that passed was where the ball had slowed to his running
+   pace, 13-14 m on.
+Also, the man a pass was for took Receive only if he was his team's chaser or it was a ball in behind
+(G5.27). A man the race read put second held shape: 30% of receivers at a cut were on hold shape.
+
+**The change** [FH: the man the pass is for goes to meet it].
+- `Players.cpp` Pick: a loose pass to him, in play → Receive, whoever the chaser is.
+- `Reads::getInLine`: his run plus `kBallControlRadius`, as `race()`; and within 0.5 s of the ball
+  (`kInLineSoonTicks` 15) he takes the spot on time, not 0.25 s early.
+Goldens hold; tests 22/22.
+
+**After** (seed 1000 / 2000 / 3000 v G5.97; real in brackets).
+- Meet spots 6 m+ off with the ball inside 4 m: 469 → 177 trace frames a match. Balls still loose 10 ticks
+  after the read's take: 406 → 293.
+- Completion 75.7 / 75.0 / 75.1 → 78.0 / 76.5 / 78.6% (79.1). 15-30 m, strong foot, 75.7 / 75.7 / 76.8 → 80.2 /
+  79.1 / 79.3 (86.3).
+- REWIN 132-136 → 134-139 (148.4), given back 28-29 → 29-31% (32.1). Shots 3.4-5.0 → 4.9-5.6 a team-match.
+- Unchanged: settled losses (6 s+) 86-89 (58.1), kicked on the ground 34-38% (19.1); in behind 30-32 (37.7).
+
+**Next moles.** (1) Settled losses 86-89 (58): still a ball their man reaches first 2-5× real after 10-30 m.
+The read says theirs first on half the cuts, so passers play to a man already beaten. Measure real
+passers' options: was there a free mate they didn't use? (2) The rest of the far meet spots: a ball
+coming from behind him, a bouncing pass (`getInLine` reads only a rolling ball). (3) CONTROL SPELLS, men
+in reach of a carried ball (§8.198 (3)). (4) The front man early in a spell (§8.197 (1)).

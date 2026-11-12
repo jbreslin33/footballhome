@@ -56,10 +56,12 @@ public:
         // the ball he's first to (else a pass to the keeper rolled into the net).
         else if (c.block.chaser(team) == a.slot)
             next = (ball.pass_to == a.slot && c.world.lastTouchTeam() == team) ? Possession::receive() : DefendingBlock::chaseBall();
-        // A ball in behind played for him (G5.27): he keeps his run while it is
-        // loose, first on the race read or not — the defender has to win it.
+        // The pass is his (G5.98, §8.199): while it is loose he goes to meet it, first on
+        // the race read or not — the defender has to win it. Before, only a ball in behind
+        // (G5.27) or the team's chaser did; a man the race read put second held shape and
+        // walked back to his spot as the ball rolled to where he had stood.
         else if (!ball.owner && ball.pass_to == a.slot && c.world.lastTouchTeam() == team &&
-                 c.poss.led(ball.last_kicker).to == a.slot && c.world.outStage() == 0 && c.world.restartTeam() == 0xFF)
+                 c.world.outStage() == 0 && c.world.restartTeam() == 0xFF)
             next = Possession::receive();
         else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
         else if (defendingPhase(c.team.phase()))

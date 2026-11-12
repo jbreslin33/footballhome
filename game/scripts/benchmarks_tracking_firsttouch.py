@@ -127,7 +127,7 @@ def one(pos_path):
                         b = next(i for i, (lo, hi) in enumerate(SP) if lo <= vin < hi)
                         rx = 52.5 + sgn.get(tm, 1) * pos[n][0]
                         same0 = math.hypot(pq[fs][0] - pos[fs][0], pq[fs][1] - pos[fs][1]) if pq is not None and fs in pq and fs in pos else 99
-                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel, (prs, prs0, (n - fs) / 25, last_tm == tm, rx, math.hypot(ball[n][0] - ball[fs][0], ball[n][1] - ball[fs][1]), same0))
+                        rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel, (prs, prs0, (n - fs) / 25, last_tm == tm, rx, math.hypot(ball[n][0] - ball[fs][0], ball[n][1] - ball[fs][1]), same0, (math.hypot(pos[fs][0] - ball[fs][0], pos[fs][1] - ball[fs][1]) - math.hypot(pos[n][0] - ball[fs][0], pos[n][1] - ball[fs][1])) if fs in pos else None))
                         out[b].append(rec); out["P" if prs < 3 else "F"].append(rec); out["all"].append(rec)
                 last_touch = n
             free_since = None
@@ -200,6 +200,13 @@ def main():
         ls = [[x for x in pm if lo <= x[5] < hi] for lo, hi in LB]
         print("   mate's pass by the ball's travel release->touch 0-10/10-20/20-30/30+ m: n " + " / ".join(f"{len(z) / (2 * len(files)):.1f}" for z in ls)
               + " | inside 3 m at the touch " + " / ".join(f"{i3(z):.0f}" for z in ls) + "% | at the release " + " / ".join(f"{r3(z):.0f}" for z in ls) + "%")
+        # G5.98 (§8.199) PASS PACE: the ball's travel time release->touch and its mean speed, by travel; to a mate / to an opponent
+        lo_ = [[x for x in ot if lo <= x[5] < hi] for lo, hi in LB]
+        tq = lambda z: f"{q([x[2] for x in z], .25):.2f}/{q([x[2] for x in z], .5):.2f}/{q([x[2] for x in z], .75):.2f}" if z else "-"
+        cm = lambda z: f"{q([x[7] for x in z if x[7] is not None], .25):.2f}/{q([x[7] for x in z if x[7] is not None], .5):.2f}/{q([x[7] for x in z if x[7] is not None], .75):.2f}" if z else "-"
+        print("   COMES TO IT (mate's pass: the receiver's metres nearer the release spot at the touch than at the release, p25/med/p75) by travel 0-10/10-20/20-30/30+: " + " | ".join(cm(z) for z in ls))
+        print("   PASS PACE by travel 0-10/10-20/20-30/30+ m, s p25/med/p75: mate's pass " + " | ".join(tq(z) for z in ls)
+              + " || to them " + " | ".join(tq(z) for z in lo_) + f" (n " + " / ".join(f"{len(z) / (2 * len(files)):.1f}" for z in lo_) + ")")
 
 
 if __name__ == "__main__":

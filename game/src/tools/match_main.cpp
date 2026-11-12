@@ -20,6 +20,7 @@
 
 #include "ai/Brain.hpp"
 #include "ai/Players.hpp"
+#include "ai/Reads.hpp"
 #include "core/Clock.hpp"
 #include "net/INetworkTransport.hpp"
 #include "persistence/FormationStore.hpp"
@@ -62,7 +63,8 @@ const char* const kOutName[5] = {"goal", "keeper", "blocked", "off target", "oth
 struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
     // §8.198 REWIN: the win (side changes in play, the loser had it 1 s+) by the loser's nearest [5 bins] / the ball's kind [3]: n, given back by 3 s, dead by 3 s; the loser's nearest 1 s on
-    long ct_loss[3] = {}, ct_win = 0, ct_back = 0;   // §8.198 CONTROL SPELLS
+    long ct_loss[3] = {}, ct_win = 0, ct_back = 0;
+    std::vector<double> pp_t[2][2][4], pp_c[2][4];   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
@@ -232,7 +234,7 @@ int main(int argc, char** argv) {
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1; long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
-        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
+        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
@@ -270,14 +272,39 @@ int main(int argc, char** argv) {
         // ground, in play) 0.4 s+, then a man within 1.5 m; his closest tick over the next 0.32 s within 1 m = the
         // touch; his nearest opponent there and at the release (the first free tick); controlled = the ball's
         // speed 0.13-0.33 s after the touch < 0.7 x the incoming (over the 0.2 s before it)
-        struct Rs { long k0, km; int who; double dm, vin, opp, opp0; long kf = 0; int oj = -1, ow = -1, pass = 0; double rx = 0, fx = 0, fy = 0, len = 0, same0 = 99; double px0[32], py0[32]; double bx[12], by[12]; int nb = 0; };
+        struct Rs { long k0, km; int who; double dm, vin, opp, opp0; long kf = 0; int oj = -1, ow = -1, pass = 0; double rx = 0, fx = 0, fy = 0, len = 0, same0 = 99, come = 0; double px0[32], py0[32]; double bx[12], by[12]; int nb = 0; };
         std::vector<Rs> rss; long rs_free = -1, rs_last = -1000; int rs_lt = -1; double rs_bx0 = 0, rs_by0 = 0; double rs_px[32] = {}, rs_py[32] = {}; double rs_hx[8] = {}, rs_hy[8] = {};
         auto rs_nearOpp = [&](int who) { double best = 99; const auto& rp = W.player(static_cast<std::uint8_t>(who));
             for (std::uint8_t j = 0; j < W.playerCount(); ++j) if (W.player(j).team != rp.team) best = std::min(best, std::hypot(W.player(j).pos.x.toDouble() - rp.pos.x.toDouble(), W.player(j).pos.y.toDouble() - rp.pos.y.toDouble()));
             return best; };
+        std::vector<std::uint8_t> rd_tos(N); for (std::uint8_t j = 0; j < N; ++j) rd_tos[j] = W.player(j).team;
+        ai::Reads rd(&rd_tos, W.pitchHalfX(), W.pitchHalfY()); rd.configure(cfg.model_params);   // §8.199 the race read, replayed on the ball as kicked
+        const bool cut_trace = std::getenv("GAME_CUT_TRACE") != nullptr;
         for (long k = 0; k < ticks; ++k) {
             const auto before = W.ball().owner;
             s.tickOnce();
+            if (cut_trace && mk.on && !mk.raced && mk.to >= 0 && !W.ball().owner && k > mk.k0) {
+                ai::Reads::RaceBall rb; rb.pos = W.ball().pos; rb.vel = W.ball().vel; rb.kicker = static_cast<core::SlotIndex>(mk.p);
+                rb.lockout = std::max(0, core::kKickerLockoutTicks - static_cast<int>(W.tickCount() - W.flightTick())); rb.ours = static_cast<std::uint8_t>(mk.team);
+                rb.since = static_cast<std::int64_t>(W.tickCount() - W.flightTick()); rb.offside = false; rb.opp_margin = math::Fixed64::fromFraction(1, 2); rb.first_only = false;
+                ai::Reads::FlightRead fr; rd.race(W, rb, fr);
+                for (std::uint8_t j = 0; j < N && j < 32; ++j) mk.pt[j] = fr.tick[j] < 0 ? -1 : fr.tick[j] + (k - mk.k0);
+                mk.raced = true;
+            }
+            if (cut_trace && mk.on && mk.raced && mk.to >= 0 && mk.pt[mk.to] >= 0 && !W.ball().owner && std::getenv("GAME_MISS_TRACE")) {   // §8.199 the receiver around the read's tick
+                const long rel = (k - mk.k0) - mk.pt[mk.to];
+                if (rel >= -8 && rel <= 12) {
+                    const auto& rq = W.player(static_cast<std::uint8_t>(mk.to)); const auto& bb = W.ball();
+                    std::fprintf(stderr, "MISS_TRACE m%d k%ld rel=%ld gil=%d gil_d=%.2f fr_t=%d fr_d=%.2f d=%.2f bv=%.2f bz=%.2f rv=%.2f why=%d ctl=%d tgt=%.2f\n", m, mk.k0, rel,
+                                 [&]{ math::Vec2 at{}; return rd.getInLine(static_cast<core::SlotIndex>(mk.to), W, at) ? 1 : 0; }(),
+                                 [&]{ math::Vec2 at{}; if (!rd.getInLine(static_cast<core::SlotIndex>(mk.to), W, at)) return -1.0; return std::hypot(at.x.toDouble() - rq.pos.x.toDouble(), at.y.toDouble() - rq.pos.y.toDouble()); }(),
+                                 static_cast<int>(rd.flightRead(W).tick[mk.to]),
+                                 [&]{ const auto& f = rd.flightRead(W); if (f.tick[mk.to] < 0) return -1.0; return std::hypot(f.at[mk.to].x.toDouble() - rq.pos.x.toDouble(), f.at[mk.to].y.toDouble() - rq.pos.y.toDouble()); }(),
+                                 std::hypot(rq.pos.x.toDouble() - bb.pos.x.toDouble(), rq.pos.y.toDouble() - bb.pos.y.toDouble()), std::hypot(bb.vel.x.toDouble(), bb.vel.y.toDouble()), bb.pos.z.toDouble(),
+                                 std::hypot(rq.vel.x.toDouble(), rq.vel.y.toDouble()), static_cast<int>(s.lastOrders()[mk.to].why), W.skillOf(static_cast<std::uint8_t>(mk.to)).control_speed_mps,
+                                 std::hypot(rq.pos.x.toDouble() - s.lastOrders()[mk.to].target.x.toDouble(), rq.pos.y.toDouble() - s.lastOrders()[mk.to].target.y.toDouble()));
+                }
+            }
             {   // §8.181 FIRST TOUCH, as benchmarks_tracking_firsttouch.py: a free ground ball 3 m/s+ becomes
                 // his (not a keeper's): off-touch speed / incoming 0.13-0.33 s on, his gap at 0.5 s and 1 s,
                 // kept 1 s (still his, within 1.5 m); controlled = off-touch < 0.7 x incoming
@@ -340,7 +367,7 @@ int main(int argc, char** argv) {
                             if (e < r.dm) { r.dm = e; r.km = k; r.opp = rs_nearOpp(r.who); r.nb = 0;
                                 r.oj = -1; for (std::uint8_t j = 0; j < W.playerCount(); ++j) if (W.player(j).team != pp.team && std::hypot(W.player(j).pos.x.toDouble() - pp.pos.x.toDouble(), W.player(j).pos.y.toDouble() - pp.pos.y.toDouble()) <= r.opp + 1e-9) r.oj = j;
                                 r.ow = r.oj >= 0 ? static_cast<int>(s.lastOrders()[r.oj].why) : -1;
-                                const double ox = pp.pos.x.toDouble(); r.rx = pp.team == 0 ? ox + hx : hx - ox; r.len = std::hypot(bx - r.fx, by - r.fy);
+                                const double ox = pp.pos.x.toDouble(); r.rx = pp.team == 0 ? ox + hx : hx - ox; r.len = std::hypot(bx - r.fx, by - r.fy); r.come = std::hypot(r.px0[r.who] - r.fx, r.py0[r.who] - r.fy) - std::hypot(pp.pos.x.toDouble() - r.fx, pp.pos.y.toDouble() - r.fy);
                                 if (r.oj >= 0) r.same0 = std::hypot(r.px0[r.oj] - r.px0[r.who], r.py0[r.oj] - r.py0[r.who]); }
                         }
                         if (k > r.km && r.nb < 12) { r.bx[r.nb] = bx; r.by[r.nb] = by; ++r.nb; }
@@ -352,6 +379,8 @@ int main(int argc, char** argv) {
                                     S.rs_t[g].push_back(r.opp); S.rs_r[g].push_back(r.opp0); S.rs_c[g].push_back(r.opp0 - r.opp); S.rs_dt[g].push_back((r.km - r.kf) / 30.0);
                                     ++S.rs_kind[g][r.pass];
                                     if (r.pass && r.oj >= 0) { const int sb = r.same0 < 5 ? 0 : r.same0 < 10 ? 1 : r.same0 < 15 ? 2 : 3; ++S.rs_sn[g][sb]; S.rs_sc[g][sb].push_back(r.same0 - r.opp); if (r.opp < 3) ++S.rs_s3[g][sb]; }
+                                    if (r.pass) S.pp_c[g][r.len < 10 ? 0 : r.len < 20 ? 1 : r.len < 30 ? 2 : 3].push_back(r.come);
+                                    S.pp_t[g][r.pass ? 1 : 0][r.len < 10 ? 0 : r.len < 20 ? 1 : r.len < 30 ? 2 : 3].push_back((r.km - r.kf) / 30.0);
                                     if (r.pass) { const int lb = r.len < 10 ? 0 : r.len < 20 ? 1 : r.len < 30 ? 2 : 3; ++S.rs_ln[g][lb]; if (r.opp < 3) ++S.rs_lt3[g][lb]; if (r.opp0 < 3) ++S.rs_lr3[g][lb]; }
                                     if (r.opp < 3) { ++S.rs_in3[g]; ++S.rs_kin3[g][r.pass]; if (r.opp0 >= 5) ++S.rs_far[g]; if (r.ow >= 0 && r.ow < ai::kWhyCount) ++S.rs_why[g][r.ow]; }
                                     if (g == 1) { const int z = r.rx < 35 ? 0 : r.rx < 70 ? 1 : 2; ++S.rs_zn[z]; if (r.opp < 3) ++S.rs_z3[z]; }
@@ -830,8 +859,19 @@ int main(int argc, char** argv) {
                                 }
                             }
                         }
-                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0; mk.to = s.lastOrders()[owner].pass_to == 0xFF ? -1 : s.lastOrders()[owner].pass_to; mk.k0 = static_cast<long>(k);
-                        if (mk.on) for (std::uint8_t j = 0; j < N && j < 32; ++j) { mk.x[j] = W.player(j).pos.x.toDouble(); mk.y[j] = W.player(j).pos.y.toDouble(); }
+                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0; mk.to = s.lastOrders()[owner].pass_to == 0xFF ? -1 : s.lastOrders()[owner].pass_to; mk.k0 = static_cast<long>(k); mk.raced = false; mk.nsafe = 0; mk.csafe = -1; mk.nmates = 0;
+                        if (cut_trace && mk.on && mk.to >= 0) {   // §8.199: the to-feet read for every mate, at the kick
+                            const math::Vec2 sp{W.player(owner).pos.x, W.player(owner).pos.y};
+                            for (std::uint8_t j = 0; j < N; ++j) {
+                                if (j == owner || W.player(j).team != owner_team || W.isKeeper(j)) continue;
+                                const math::Vec2 to{W.player(j).pos.x, W.player(j).pos.y};
+                                const math::Fixed64 d = math::length(math::Vec2{to.x - sp.x, to.y - sp.y});
+                                if (d < math::Fixed64::fromInt(5)) continue;
+                                const bool ok = rd.passSafe(W, owner, sp, to, core::weightedPassSpeed(d), math::Fixed64::one());
+                                ++mk.nmates; mk.nsafe += ok; if (j == mk.to) mk.csafe = ok;
+                            }
+                        }
+                        if (mk.on) for (std::uint8_t j = 0; j < N && j < 32; ++j) { mk.x[j] = W.player(j).pos.x.toDouble(); mk.y[j] = W.player(j).pos.y.toDouble(); mk.why[j] = static_cast<int>(s.lastOrders()[j].why); mk.vx[j] = W.player(j).vel.x.toDouble(); mk.vy[j] = W.player(j).vel.y.toDouble(); }
                         if (ws_on && !own_set) {   // §8.155
                             const double sgw = owner_team == 0 ? 1.0 : -1.0;
                             ++S.ws_from[wsz(hx - own_px * sgw, own_py)];
@@ -865,8 +905,16 @@ int main(int argc, char** argv) {
                             const double ux = (tx - ax) / std::max(0.1, L), uy = (ty - ay) / std::max(0.1, L);
                             const double ix = mk.x[own] - ax, iy = mk.y[own] - ay, cx = q.pos.x.toDouble() - ax, cy = q.pos.y.toDouble() - ay;
                             double rd = 99; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team != mk.team && !W.isKeeper(j)) rd = std::min(rd, std::hypot(mk.x[j] - tx, mk.y[j] - ty));
-                            std::fprintf(stderr, "CUT_TRACE L=%.1f at_kick_along=%.2f at_kick_off=%.1f cut_along=%.2f flight=%.2f recv_marker=%.1f z=%.2f\n", L, (ix * ux + iy * uy) / std::max(0.1, L), std::fabs(ix * uy - iy * ux), (cx * ux + cy * uy) / std::max(0.1, L), (static_cast<long>(k) - mk.k0) / 30.0, rd, mk.peak);
+                            std::fprintf(stderr, "CUT_TRACE L=%.1f at_kick_along=%.2f at_kick_off=%.1f cut_along=%.2f flight=%.2f recv_marker=%.1f z=%.2f why_kick=%d why_cut=%d recv_why=%d recv_to_ball=%.1f recv_moved=%.1f recv_toward=%.1f cutter_moved=%.1f bv=%.1f cutter_v0=%.1f recv_v0=%.1f pred_cut=%ld pred_recv=%ld pred_first_ours=%ld actual=%ld\n", L, (ix * ux + iy * uy) / std::max(0.1, L), std::fabs(ix * uy - iy * ux), (cx * ux + cy * uy) / std::max(0.1, L), (static_cast<long>(k) - mk.k0) / 30.0, rd, mk.peak,
+                                         mk.why[own], static_cast<int>(s.lastOrders()[own].why), static_cast<int>(s.lastOrders()[mk.to].why),
+                                         std::hypot(W.player(static_cast<std::uint8_t>(mk.to)).pos.x.toDouble() - q.pos.x.toDouble(), W.player(static_cast<std::uint8_t>(mk.to)).pos.y.toDouble() - q.pos.y.toDouble()),
+                                         std::hypot(W.player(static_cast<std::uint8_t>(mk.to)).pos.x.toDouble() - tx, W.player(static_cast<std::uint8_t>(mk.to)).pos.y.toDouble() - ty),
+                                         -((W.player(static_cast<std::uint8_t>(mk.to)).pos.x.toDouble() - tx) * ux + (W.player(static_cast<std::uint8_t>(mk.to)).pos.y.toDouble() - ty) * uy),
+                                         std::hypot(q.pos.x.toDouble() - mk.x[own], q.pos.y.toDouble() - mk.y[own]), std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()),
+                                         std::hypot(mk.vx[own], mk.vy[own]), std::hypot(mk.vx[mk.to], mk.vy[mk.to]), mk.pt[own], mk.pt[mk.to], [&]{ long b = -1; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team == mk.team && j != mk.p && mk.pt[j] >= 0 && (b < 0 || mk.pt[j] < b)) b = mk.pt[j]; return b; }(), static_cast<long>(k) - mk.k0);
                         }
+                        if (cut_trace && mk.on && mk.p == rel.p && mk.to >= 0 && mk.peak < 1.5)
+                            std::fprintf(stderr, "PASS_TRACE nsafe=%d nmates=%d csafe=%d why=%d out=%d\n", mk.nsafe, mk.nmates, mk.csafe, mk.why[mk.p], mate ? 1 : q.team != mk.team ? 0 : 2);
                         mk.on = false;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
                         endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot);
@@ -2173,6 +2221,18 @@ int main(int argc, char** argv) {
                                         100.0 * S.rs_lt3[g][0] / std::max(1L, S.rs_ln[g][0]), 100.0 * S.rs_lt3[g][1] / std::max(1L, S.rs_ln[g][1]), 100.0 * S.rs_lt3[g][2] / std::max(1L, S.rs_ln[g][2]), 100.0 * S.rs_lt3[g][3] / std::max(1L, S.rs_ln[g][3]),
                                         100.0 * S.rs_lr3[g][0] / std::max(1L, S.rs_ln[g][0]), 100.0 * S.rs_lr3[g][1] / std::max(1L, S.rs_ln[g][1]), 100.0 * S.rs_lr3[g][2] / std::max(1L, S.rs_ln[g][2]), 100.0 * S.rs_lr3[g][3] / std::max(1L, S.rs_ln[g][3]),
                                         g ? "32.9 / 70.6 / 28.4 / 2.2 | 10 / 5 / 2 / 0 | 4 / 1 / 1 / 0" : "69.9 / 103.0 / 41.1 / 4.9 | 24 / 10 / 5 / 1 | 12 / 4 / 2 / 3");
+                            {   // §8.199 PASS PACE: real DFL benchmarks_tracking_firsttouch.py
+                                static const char* rp[2][2] = {{"0.92 | 1.36 | 2.44 | 3.52 (n 19.6 / 10.7 / 1.6 / 0.4)", "0.92 | 1.36 | 1.88 | 2.80"}, {"0.76 | 1.24 | 2.28 | 2.88 (n 7.1 / 4.6 / 0.6 / 0.2)", "0.88 | 1.32 | 1.80 | 2.72"}};
+                                static const char* rc[2] = {"-0.11 | -0.51 | -2.10 | -4.44", "0.01 | -0.43 | -1.76 | -2.38"};
+                                std::printf("\n          COMES TO IT (mate's pass: receiver's m nearer the release spot at the touch than at the release) med by travel 0-10/10-20/20-30/30+:");
+                                for (int b = 0; b < 4; ++b) std::printf(" %.2f", qf(S.pp_c[g][b], .5));
+                                std::printf(" (%s)", rc[g]);
+                                std::printf("\n          PASS PACE by travel 0-10/10-20/20-30/30+ m, s release->touch med: mate's pass");
+                                for (int b = 0; b < 4; ++b) std::printf(" %.2f", qf(S.pp_t[g][1][b], .5));
+                                std::printf(" (%s) || other, theirs or loose:", rp[g][1]);
+                                for (int b = 0; b < 4; ++b) std::printf(" %.2f", qf(S.pp_t[g][0][b], .5));
+                                std::printf(" (n %.1f / %.1f / %.1f / %.1f) (%s)", S.pp_t[g][0][0].size() / tmn, S.pp_t[g][0][1].size() / tmn, S.pp_t[g][0][2].size() / tmn, S.pp_t[g][0][3].size() / tmn, rp[g][0]);
+                            }
                             {
                                 long tn = 0; for (int b = 0; b < 4; ++b) tn += S.rs_sn[g][b];
                                 std::printf("\n          mate's pass, the man nearest at the touch by his m at the release 0-5/5-10/10-15/15+: share");

@@ -233,6 +233,8 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     }
 }
 
+namespace { constexpr int kInLineSoonTicks = 15; }   // G5.98: 0.5 s — a ball this near he meets on time, not early
+
 bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
     const Fixed64 early = early_s_;
     if (early.raw <= 0) return false;
@@ -266,9 +268,17 @@ bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
         if (k % 3 != 0) continue;
         if (c > 0 && vel.x * vel.x + vel.y * vel.y > cs * cs) continue;   // not yet at a pace he can hold
         if (!on_line && math::dot(Vec2{pos.x - b.pos.x, pos.y - b.pos.y}, dir) < foot) continue;
-        const Fixed64 t = core::kTickDt * Fixed64::fromInt(k) - react - early;
+        // G5.98 (§8.199): early only where there is time for it. A ball under 0.5 s from the
+        // spot he takes on time — with the 0.25 s early every near spot failed, and the first
+        // that passed was 14 m on, where the ball had slowed to his running pace.
+        const bool soon = k <= kInLineSoonTicks;
+        const Fixed64 t = core::kTickDt * Fixed64::fromInt(k) - react - (soon ? Fixed64::zero() : early);
         if (t < Fixed64::zero()) continue;
-        const Fixed64 r = runToward(world, slot, pos, t);
+        // G5.98 (§8.199): his run plus his reach, as race() counts it. On the run alone a man
+        // 0.3 m off the line of a ball 3 m from him "couldn't get there" at any near point
+        // (0.25 s early leaves him 0.05 s), and the spot he took was 13 m down the line: he
+        // jogged off to it as the ball reached him late or rolled by to their man.
+        const Fixed64 r = runToward(world, slot, pos, t) + core::kBallControlRadius;
         if (distSq(p.pos, Vec3{pos.x, pos.y, Fixed64::zero()}) <= r * r) {
             at = pos;
             return true;
