@@ -115,6 +115,9 @@ class NavigationStateMachine {
     // Retired screens (2026-11-11, owner: "old code gunking this all up"):
     // the pre-calendar practice screens + the unlinked team dashboard.
     // Events live in Event Center now; an old link still lands somewhere.
+    // An old #my door (sign-in link, RSVP text) opens Event Center on 👤 Mine,
+    // staff included (mig 1296).
+    if (state === 'my') params = { ...params, view: 'mine' };
     if (NavigationStateMachine.RETIRED[state]) state = NavigationStateMachine.RETIRED[state];
     // Store current state in history — every time, same screen or not,
     // because the browser gets an entry every time (see constructor).

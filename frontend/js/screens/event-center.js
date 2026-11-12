@@ -57,6 +57,8 @@ class EventCenterScreen extends Screen {
         <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
         <div id="ec-kinds" style="display:contents;"></div>
       </div>
+      <!-- Staff: [👤 Mine] [📅 Club week], one at a time (mig 1296). -->
+      <div id="ec-views" style="display:none; gap:6px; flex-wrap:wrap; padding: var(--space-3) var(--space-4) 0; max-width: 1400px; margin: 0 auto;"></div>
       <!-- 👤 Mine: everything #my shows, as its own visible section (owner
            2026-11-11: "bring it all" / "put it in sep section but visible").
            #my redirects here last; until then both work. -->
@@ -75,6 +77,8 @@ class EventCenterScreen extends Screen {
     if (evAt && !isNaN(evAt)) { this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
     // A type pill (EventKindSwitch) lights that kind on the calendar.
     if (params.kind) this.kind = params.kind;
+    // An old #my door asks for 👤 Mine (navigation.js) — not saved to the device.
+    if (params.view === 'mine' || params.view === 'club') this._viewPick = params.view;
     this.error = null;
     this._render();
     // The DB copy (title, subtitle, not-posted, now line) — cached across screens.
@@ -197,6 +201,7 @@ class EventCenterScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);
       let el;
+      if ((el = t('[data-ec-view]'))) { this._setView(el.dataset.ecView); return; }
       if ((el = t('[data-event-kind]'))) {
         this.kind = el.dataset.eventKind;
         if (this.error) this._setWeek(this.weekStart);   // a failed load tries again
@@ -278,6 +283,37 @@ class EventCenterScreen extends Screen {
   _kindOf(ev) { return EventLabels.kindOf(ev); }
   _isPast(ev) { return EventLabels.isPast(ev); }
 
+  // Staff see ONE of 👤 Mine / 📅 Club week at a time (owner 2026-11-12:
+  // "it shows like both views at same time lol player and admin/coach" →
+  // two pills).  Club week by default; the last pick is kept per device.
+  // Players and parents have no pills — Mine is their page.
+  _view() {
+    if (!this._viewPick) {
+      try { this._viewPick = localStorage.getItem('fh.ec.view'); } catch (_e) { /* private mode */ }
+    }
+    return this._viewPick === 'mine' ? 'mine' : 'club';
+  }
+
+  _setView(v) {
+    this._viewPick = v === 'mine' ? 'mine' : 'club';
+    try { localStorage.setItem('fh.ec.view', this._viewPick); } catch (_e) { /* private mode */ }
+    this._render();
+  }
+
+  _paintViews(staff) {
+    const host = this.find('#ec-views');
+    const mine = this.find('#ec-mine');
+    const view = staff ? this._view() : 'mine';
+    if (mine) mine.style.display = view === 'mine' ? '' : 'none';
+    if (!host) return view;
+    host.style.display = staff ? 'flex' : 'none';
+    if (!staff) { host.innerHTML = ''; return view; }
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier) : fb;
+    const pill = (v, label) => `<button type="button" class="ec-chip ${view === v ? 'on' : ''}" data-ec-view="${v}">${this.escapeHtml(label)}</button>`;
+    host.innerHTML = pill('mine', cp('view_mine', '👤 Mine')) + pill('club', cp('view_club', '📅 Club week'));
+    return view;
+  }
+
   _render() {
     const body = this.find('#ec-body');
     const title = this.find('#ec-title');
@@ -288,8 +324,9 @@ class EventCenterScreen extends Screen {
     // kids) — the club calendar under it would list the same events again,
     // so it is for staff only (owner 11/11: #my → Event Center).
     const staff = this._staffView();
-    body.style.display = staff ? '' : 'none';
-    if (kinds) kinds.innerHTML = staff ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
+    const club = this._paintViews(staff) === 'club';
+    body.style.display = club ? '' : 'none';
+    if (kinds) kinds.innerHTML = club ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
