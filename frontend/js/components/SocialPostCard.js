@@ -1891,7 +1891,8 @@ class SocialPostCard {
       <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
-        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : ''}style="font-size:${nameSize - 3}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;max-width:100%;${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.8)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>`).join('')}
+        ${t.noteHtml || ''}
+        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : ''}style="font-size:${nameSize - 3}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;max-width:100%;${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.8)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>${sub.noteHtml || ''}`).join('')}
         ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -1976,8 +1977,10 @@ class SocialPostCard {
   benchName(p) {
     const name = this.escapeHtml(`${p.firstName} ${p.lastName}`.trim());
     const style = p.nameStyle || '';
-    if (!(this.rosterData && this.rosterData.editing)) return style ? `<span style="${style}">${name}</span>` : name;
-    return `<span data-lineup-remove-bench="${this.escapeHtml(String(p.playerId))}" title="Move ${name}" style="cursor:pointer;${style}">${name}</span>`;
+    // Game Center's live note (A:1 P:1 practices, Dues:52 for admins) — never on the post.
+    const note = p.noteHtml ? ` <span style="display:inline-block;vertical-align:middle;">${p.noteHtml}</span>` : '';
+    if (!(this.rosterData && this.rosterData.editing)) return (style ? `<span style="${style}">${name}</span>` : name) + note;
+    return `<span data-lineup-remove-bench="${this.escapeHtml(String(p.playerId))}" title="Move ${name}" style="cursor:pointer;${style}">${name}</span>${note}`;
   }
 
   buildImageStartersBench(crestSrc) {
@@ -2095,7 +2098,7 @@ class SocialPostCard {
   buildImagePlayerRow(p) {
     const jersey = p.jerseyNumber ? `<span style="color:#ffffff;font-weight:700;font-size:0.9em;min-width:24px;display:inline-block;">#${p.jerseyNumber}</span>` : '';
     const gk = p.isKeeper ? ' <span style="font-size:0.7em;background:rgba(255,255,255,0.15);color:#ffffff;padding:0 4px;border-radius:3px;font-weight:700;">GK</span>' : '';
-    return `<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;line-height:1.3;padding:1px 0;color:rgba(255,255,255,0.95);">${jersey}<span${p.nameStyle ? ` style="${p.nameStyle}"` : ''}>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}</div>`;
+    return `<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;line-height:1.3;padding:1px 0;color:rgba(255,255,255,0.95);">${jersey}<span${p.nameStyle ? ` style="${p.nameStyle}"` : ''}>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</span>${gk}${p.noteHtml || ''}</div>`;
   }
 
   buildImageRoster() {

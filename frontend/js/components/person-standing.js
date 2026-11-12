@@ -209,5 +209,12 @@
     els.forEach(e => { e.innerHTML = chip(e.dataset.standingChip, { inactive: e.dataset.standingInactive !== '0' }); });
   }
 
-  window.PersonStanding = { load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId };
+  // The dues figure alone — { balance, free_reason, member } or null (not
+  // loaded / not an admin).  Game Center's lineup note (mig 1299).
+  function dues(personId) {
+    const hit = cache.get(Number(personId));
+    return hit && hit.data && hit.data.dues ? hit.data.dues : null;
+  }
+
+  window.PersonStanding = { load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues };
 })();

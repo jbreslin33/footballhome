@@ -6722,6 +6722,7 @@ class GameCenterScreen extends EventScreen {
           lastName,
           jerseyNumber: p.jerseyNumber || '',
           nameStyle: live ? this._cardNameStyle(p.id) : '',
+          noteHtml: live ? this._lineupNote(p.id) : '',
           isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
@@ -6771,12 +6772,13 @@ class GameCenterScreen extends EventScreen {
           const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
           // The bench players sharing this spot, 2nd first (mig 763).
           const subs = this._sharersOf(pos.id).map(id => rosterById.get(id)).filter(Boolean);
-          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: live ? this._eligNameStyle(r.id) : '' }));
+          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: live ? this._eligNameStyle(r.id) : '', noteHtml: live ? this._lineupNote(r.id) : '' }));
           if (wideIds.has(pos.id)) token.wide = true;
           if (narrowIds.has(pos.id)) token.narrow = true;
           if (chipLifts[pos.id]) token.lift = chipLifts[pos.id];
           if (chipInsets[pos.id]) token.inset = chipInsets[pos.id];
           if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
+          if (live && occupant) token.noteHtml = this._lineupNote(occupant.id);
           if (editing && occupant) {
             token.removeId = occupant.id;
             if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);
@@ -7051,6 +7053,39 @@ class GameCenterScreen extends EventScreen {
       return { green: `color:#22c55e;${outline}`, yellow: 'color:#facc15;', red: `color:#b91c1c;${outline}` }[tone];
     }
     return `color:${{ green: '#4ade80', yellow: '#facc15', red: '#f87171' }[tone]};`;
+  }
+
+  // A:1 P:1 / Dues:52 under each name on the on-screen lineup graphic (owner
+  // 2026-11-12: "show on players number of practices made and projected …
+  // everyone can see in lineup graphic (not for insta though) also for me i
+  // need to know dues owed. dues:0, dues:52" / "only admin see dues").
+  //   A:1 P:1 — practices Attended + Projected (said Going to); the total
+  //             is read off them (owner: "A:1,P:1 its inferred 2") — everyone;
+  //             not in an everyone-plays game, which has no criterion
+  //   Dues:52 — dues owed (club admins only: PersonStanding is admin-gated
+  //              by /api/payments/standing, and the role check hides it from
+  //              view-as and the #my door too)
+  // The post never carries it — only the live card (live = true) asks.
+  // Words: eligibility tiers lineup_note_practice / lineup_note_dues (mig 1299).
+  _lineupNote(playerId) {
+    const bits = [];
+    const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
+    if (s) {
+      const st = this._criteriaState(s);
+      const tokens = { attended: String(st.attended), projected: String(st.projected), needed: String(st.needed) };
+      const text = this._eligCopy('lineup_note_practice', tokens) || `A:${tokens.attended} P:${tokens.projected}`;
+      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}">${this.escapeHtml(text)}</span>`);
+    }
+    const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
+      ? PersonStanding.dues(this._personIdFor(playerId)) : null;
+    if (d) {
+      const owed = d.free_reason || !d.member ? 0 : Math.max(0, Math.round(Number(d.balance) || 0));
+      const amount = String(owed);
+      const text = this._eligCopy('lineup_note_dues', { amount }) || `Dues:${amount}`;
+      bits.push(`<span style="color:${owed > 0 ? '#fca5a5' : '#86efac'};">${this.escapeHtml(text)}</span>`);
+    }
+    if (!bits.length) return '';
+    return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;white-space:nowrap;display:inline-flex;gap:5px;justify-content:center;">${bits.join('')}</div>`;
   }
 
   // The verdict in words, as the name's tooltip (copy tier overall_<state>).
