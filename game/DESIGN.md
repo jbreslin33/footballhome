@@ -8838,3 +8838,48 @@ The read says theirs first on half the cuts, so passers play to a man already be
 passers' options: was there a free mate they didn't use? (2) The rest of the far meet spots: a ball
 coming from behind him, a bouncing pass (`getInLine` reads only a rolling ball). (3) CONTROL SPELLS, men
 in reach of a carried ball (§8.198 (3)). (4) The front man early in a spell (§8.197 (1)).
+
+### 8.200 G5.99 — a defender goes for their pass only when he wins it clearly (mig 1292)
+
+§8.199's next (1): settled losses 86-89 a team-match (58.1). The read says their man is first on half the cuts.
+
+**Real** (new `scripts/benchmarks_tracking_passrace.py`, DFL events + tracking). One CRUDE RACE, run the
+same way by the harness on ours. The ball goes straight from the passer to where the receiver stood
+at the kick at 11 m/s. Every man reaches a point at 0.3 s + distance / 7 m/s, with 0.5 m of reach.
+"Theirs first" means an opponent beats both the ball and the receiver to some point of the line. On
+open-play flat passes naming a recipient (5 m+):
+- Theirs first by length 5-10 / 10-20 / 20-30 / 30+ m: 13 / 26 / 38 / 66%.
+- Theirs-first passes still complete 96 / 91 / 89 / 85%; the rest 87 / 94 / 99 / 96%.
+- By how much their man wins, 0-0.2 / 0.2-0.4 / 0.4-0.7 / 0.7+ s: completed 92.6 / 92.1 / 89.2 / 80.1%.
+Real defenders seldom break for a pass they could reach. The crude race is generous to defenders; it
+is the same yardstick on both sides.
+
+**Ours, the same race** (new CRUDE RACE harness lines; seed 1000 / 2000).
+- Theirs first 10-20 m 23-24% (26) — our passers pick no more of them; 20-30 m 62-63% (38) — more long
+  ones.
+- But theirs-first passes complete 70-72 / 71 / 68-69% (91 / 89 / 85); the rest at real rates.
+- By margin: 77 / 75 / 66 / 63% (93 / 92 / 89 / 80).
+Same picture, three times the interceptions. Our block sent its first man at their pass whenever the
+race read put him no later than their receiver (`their_pass_margin` 0, G5.82).
+
+**The change** [DFL table; coaching: "don't dive in — go when you'll win it; else delay"].
+`DefendingBlock::assign`: our first man chases their pass only if he wins its race by
+`physics.block.cut_margin_s` (1.0 s, mig 1292; no row = 0 = as before). Otherwise nobody chases: each man
+keeps his job and the presser steps to their receiver (G5.82's press on the pass). A ball played into a
+man's reach is still his (cut_share 1, G5.97). Goldens hold (no row in the rig); tests 22/22.
+
+**Fit** (seed 1000). 0 / 0.3 / 0.6 / 1.0 / 1.5 s:
+- Settled losses: 89 / 71 / 65 / 61 / 57 (58.1).
+- Completion: 78.0 / 81.0 / 81.5 / 83.0 / 83.3% (79.1).
+- Theirs-first by margin, at 1.0: 85 / 86 / 83 / 75%. 1.5 is no closer, and in behind completes 66%. 1.0 kept.
+
+**After** (1.0, seed 1000 / 2000 / 3000 v G5.98; real in brackets).
+- Settled losses (6 s+) 88-89 → 61 / 58 / 61 (58.1). Shots 4.9-5.6 → 9.3 / 8.5 / 9.0 a team-match; goals 1.69-1.88.
+- Completion 76.5-78.6 → 82.5-83.0% (79.1); in behind completed 36-44 → 61-65% (47.5), 35-38 a team-match (37.7).
+- Costs: REWIN 134-139 → 79-84 (148.4), losses <3 s 44-48 → 21-23 (68.4). Half of real's short spells are
+  the possession flag flipping on a loose ball (§8.198); the rest are now short too.
+
+**Next moles.** (1) Passers try passes their man wins by 0.4 s+ 2-3× real (59-61 v 26 a team-match).
+`raceSafe` doesn't know defenders now hold off, so it flags the wrong passes. Fit the read to what
+defenders do. (2) Completion and in behind above real. (3) The scrappy phase: loose balls after tackles
+and headers (what real's flag-flip spells are). (4) The front man early in a spell (§8.197).

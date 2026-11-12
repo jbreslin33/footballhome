@@ -206,6 +206,10 @@ void BlockParams::configure(const core::ModelParams& p) {
         const Fixed64 m = p.fixed("physics.block.their_pass_margin_s", 0);
         their_pass_margin = m.raw < 0 ? -1 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
     }
+    {   // G5.99 (§8.200): s -> ticks; 0 = go whenever first (as before)
+        const Fixed64 m = p.fixed("physics.block.cut_margin_s", 0);
+        cut_margin = m.raw <= 0 ? 0 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
+    }
     press_on_pass = p.fixed("physics.press.on_pass", 1000).raw > 0;
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
 }
@@ -250,7 +254,8 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         // touch 5-10% (DFL, benchmarks_tracking_firsttouch.py RECEIVER SPACE); our first man ran
         // to where HE could first take it — down the line past their receiver, onto him — 22-28%.
         else if (params_.their_pass_margin >= 0 && their_pass && theirs >= 0 && fr.tick[theirs] >= 0 &&
-                 (fr.first[team] < 0 || fr.tick[fr.first[team]] < 0 || fr.tick[fr.first[team]] > fr.tick[theirs] + params_.their_pass_margin)) {
+                 (fr.first[team] < 0 || fr.tick[fr.first[team]] < 0 || fr.tick[fr.first[team]] > fr.tick[theirs] + params_.their_pass_margin ||
+                  fr.tick[fr.first[team]] + params_.cut_margin > fr.tick[theirs])) {
             ch = -1; press_to = theirs;
         }
         else if (fr.first[team] >= 0) ch = fr.first[team];

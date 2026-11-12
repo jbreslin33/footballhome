@@ -49,6 +49,7 @@ struct BlockParams {
     // other side is 1.2-2.0 m off a high ball at head height (DFL benchmarks_tracking_aerial.py).
     math::Fixed64 contest_min_z{};
     bool press_on_pass = true;                      // G5.82 (§8.183): the presser steps out as their pass travels
+    int cut_margin = 0;                             // G5.99 (§8.200): ticks our first must WIN their pass's race by to go for it
     int their_pass_margin = 0;                      // G5.82 (§8.183): ticks our first may lose their pass's race by and still go; -1 = off (always go)
     // G5.72 (§8.173): marking. Each CB / FB / DM takes the attacker nearest his block spot within
     // mark_r of it (by that man's metres off our goal 0-18 / 18-35 / 35-52 / 52+; one marker a man)

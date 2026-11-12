@@ -64,7 +64,8 @@ struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
     // §8.198 REWIN: the win (side changes in play, the loser had it 1 s+) by the loser's nearest [5 bins] / the ball's kind [3]: n, given back by 3 s, dead by 3 s; the loser's nearest 1 s on
     long ct_loss[3] = {}, ct_win = 0, ct_back = 0;
-    std::vector<double> pp_t[2][2][4], pp_c[2][4];   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
+    std::vector<double> pp_t[2][2][4], pp_c[2][4];
+    long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
@@ -234,7 +235,7 @@ int main(int argc, char** argv) {
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1; long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
-        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
+        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
@@ -859,7 +860,40 @@ int main(int argc, char** argv) {
                                 }
                             }
                         }
-                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0; mk.to = s.lastOrders()[owner].pass_to == 0xFF ? -1 : s.lastOrders()[owner].pass_to; mk.k0 = static_cast<long>(k); mk.raced = false; mk.nsafe = 0; mk.csafe = -1; mk.nmates = 0;
+                        mk.on = !own_set && why != ai::Why::Cross && why != ai::Why::Shoot; mk.p = owner; mk.team = owner_team; mk.peak = 0; mk.to = s.lastOrders()[owner].pass_to == 0xFF ? -1 : s.lastOrders()[owner].pass_to; mk.k0 = static_cast<long>(k); mk.raced = false; mk.nsafe = 0; mk.csafe = -1; mk.nmates = 0; mk.tf = -1;
+                        if (mk.on && mk.to >= 0) {   // §8.200 CRUDE RACE (benchmarks_tracking_passrace.py): ball 11 m/s to where he stands, men 7 m/s after 0.3 s, reach 0.5 m
+                            auto theirsFirst = [&](double px, double py, double tx, double ty) {
+                                const double L = std::hypot(tx - px, ty - py); if (L < 2) return false;
+                                const double ux = (tx - px) / L, uy = (ty - py) / L;
+                                for (double sd = 2.0; sd <= L + 1e-9; sd += 0.5) {
+                                    const double qx = px + ux * sd, qy = py + uy * sd, tb = sd / 11.0;
+                                    const double tr = 0.3 + std::max(0.0, std::hypot(tx - qx, ty - qy) - 0.5) / 7.0;
+                                    for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != owner_team) {
+                                        const double to = 0.3 + std::max(0.0, std::hypot(W.player(j).pos.x.toDouble() - qx, W.player(j).pos.y.toDouble() - qy) - 0.5) / 7.0;
+                                        if (to < tb && to < tr) return true;
+                                    }
+                                }
+                                return false; };
+                            const double px = W.player(owner).pos.x.toDouble(), py = W.player(owner).pos.y.toDouble();
+                            const double tx = W.player(static_cast<std::uint8_t>(mk.to)).pos.x.toDouble(), ty = W.player(static_cast<std::uint8_t>(mk.to)).pos.y.toDouble(), L = std::hypot(tx - px, ty - py);
+                            if (L >= 5) {
+                                {   // how much their best man wins by (s), as passrace.py margin()
+                                    const double ux = (tx - px) / L, uy = (ty - py) / L; mk.mg = -9;
+                                    for (double sd = 2.0; sd <= L + 1e-9; sd += 0.5) {
+                                        const double qx = px + ux * sd, qy = py + uy * sd, tb = sd / 11.0, tr = 0.3 + std::max(0.0, std::hypot(tx - qx, ty - qy) - 0.5) / 7.0;
+                                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != owner_team)
+                                            mk.mg = std::max(mk.mg, std::min(tb, tr) - (0.3 + std::max(0.0, std::hypot(W.player(j).pos.x.toDouble() - qx, W.player(j).pos.y.toDouble() - qy) - 0.5) / 7.0));
+                                    }
+                                }
+                                mk.tf = theirsFirst(px, py, tx, ty) ? 1 : 0; mk.lb = L < 10 ? 0 : L < 20 ? 1 : L < 30 ? 2 : 3; mk.opt = 0;
+                                for (std::uint8_t j = 0; j < N; ++j) {
+                                    if (j == owner || static_cast<int>(j) == mk.to || W.player(j).team != owner_team || W.isKeeper(j)) continue;
+                                    const double mx = W.player(j).pos.x.toDouble(), my = W.player(j).pos.y.toDouble();
+                                    if (std::hypot(mx - px, my - py) < 5) continue;
+                                    mk.opt += theirsFirst(px, py, mx, my) ? 0 : 1;
+                                }
+                            }
+                        }
                         if (cut_trace && mk.on && mk.to >= 0) {   // §8.199: the to-feet read for every mate, at the kick
                             const math::Vec2 sp{W.player(owner).pos.x, W.player(owner).pos.y};
                             for (std::uint8_t j = 0; j < N; ++j) {
@@ -912,6 +946,10 @@ int main(int argc, char** argv) {
                                          -((W.player(static_cast<std::uint8_t>(mk.to)).pos.x.toDouble() - tx) * ux + (W.player(static_cast<std::uint8_t>(mk.to)).pos.y.toDouble() - ty) * uy),
                                          std::hypot(q.pos.x.toDouble() - mk.x[own], q.pos.y.toDouble() - mk.y[own]), std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()),
                                          std::hypot(mk.vx[own], mk.vy[own]), std::hypot(mk.vx[mk.to], mk.vy[mk.to]), mk.pt[own], mk.pt[mk.to], [&]{ long b = -1; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team == mk.team && j != mk.p && mk.pt[j] >= 0 && (b < 0 || mk.pt[j] < b)) b = mk.pt[j]; return b; }(), static_cast<long>(k) - mk.k0);
+                        }
+                        if (mk.on && mk.p == rel.p && mk.tf >= 0 && mk.peak < 1.5 && !rel.set) {
+                            ++S.cr2_n[mk.lb][mk.tf]; if (mate) ++S.cr2_ok[mk.lb][mk.tf]; ++S.cr2_opt[mk.tf][std::min(4, mk.opt)];
+                            if (mk.mg > 0) { const int mb = mk.mg < 0.2 ? 0 : mk.mg < 0.4 ? 1 : mk.mg < 0.7 ? 2 : 3; ++S.cr2_mn[mb]; if (mate) ++S.cr2_mok[mb]; }
                         }
                         if (cut_trace && mk.on && mk.p == rel.p && mk.to >= 0 && mk.peak < 1.5)
                             std::fprintf(stderr, "PASS_TRACE nsafe=%d nmates=%d csafe=%d why=%d out=%d\n", mk.nsafe, mk.nmates, mk.csafe, mk.why[mk.p], mate ? 1 : q.team != mk.team ? 0 : 2);
@@ -2125,6 +2163,20 @@ int main(int argc, char** argv) {
                             for (int i = 0; i < 3; ++i) if (S.rw_kn[i]) std::printf(" %s %.1f (%.1f) | %.1f (%.1f) | %.1f / %.1f (%.1f / %.1f);", kn[i], 100.0 * S.rw_kn[i] / n, rKs[i], 100.0 * S.rw_kb[i] / S.rw_kn[i], rKb[i], md(S.rw_kdL[i]), md(S.rw_kdW[i]), rKl[i], rKw[i]);
                             long n1 = 0; for (int i = 0; i < 5; ++i) n1 += S.rw_n1[i];
                             const long cl = S.ct_loss[0] + S.ct_loss[1] + S.ct_loss[2];
+                            {
+                                static const double rN[4] = {44.7, 132.4, 70.0, 16.1}, rT[4] = {13.3, 25.9, 38.2, 65.8}, rOk[4][2] = {{86.7, 96.4}, {93.7, 91.3}, {98.7, 89.3}, {96.1, 85.1}};
+                                static const char* bn2[4] = {"5-10", "10-20", "20-30", "30+"};
+                                std::printf("\n          CRUDE RACE (ground passes to a man 5 m+, ball 11 m/s to where he stands, men 7 m/s after 0.3 s, reach 0.5 m; real DFL benchmarks_tracking_passrace.py): passes a team-match (real) | theirs first %% (real) | completed theirs first / the rest %% (real):");
+                                for (int b = 0; b < 4; ++b) { const long nb = S.cr2_n[b][0] + S.cr2_n[b][1]; if (nb) std::printf(" %s %.1f (%.1f) | %.1f (%.1f) | %.1f / %.1f (%.1f / %.1f);", bn2[b], nb / tmn, rN[b], 100.0 * S.cr2_n[b][1] / nb, rT[b], 100.0 * S.cr2_ok[b][1] / std::max(1L, S.cr2_n[b][1]), 100.0 * S.cr2_ok[b][0] / std::max(1L, S.cr2_n[b][0]), rOk[b][1], rOk[b][0]); }
+                                static const double rMn[4] = {31.6, 20.0, 15.9, 10.1}, rMok[4] = {92.6, 92.1, 89.2, 80.1};
+                                std::printf("\n            theirs first, by how much their man wins it 0-0.2 / 0.2-0.4 / 0.4-0.7 / 0.7+ s: a team-match (real) | completed %% (real):");
+                                for (int b = 0; b < 4; ++b) std::printf(" %.1f (%.1f) | %.1f (%.1f);", S.cr2_mn[b] / tmn, rMn[b], 100.0 * S.cr2_mok[b] / std::max(1L, S.cr2_mn[b]), rMok[b]);
+                                static const char* r_opt[2] = {"2 / 16 / 35 / 27 / 20", "10 / 30 / 31 / 19 / 10"};
+                                for (int f = 1; f >= 0; --f) { long nn = 0; for (int q = 0; q < 5; ++q) nn += S.cr2_opt[f][q];
+                                    std::printf("\n            passes %s: his other mates 5 m+ the race calls ours 0/1/2/3/4+ %%:", f ? "theirs first" : "ours first");
+                                    for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100.0 * S.cr2_opt[f][q] / std::max(1L, nn));
+                                    std::printf(" (%s)", r_opt[f]); }
+                            }
                             std::printf("\n          CONTROL SPELLS (a man nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running): changes %.1f a team-match (80.8), by the losing spell's age <3 / 3-6 / 6+ s %.1f / %.1f / %.1f (21.4 / 14.5 / 44.9); wins (loser 1 s+) %.1f (73.1), given back by 3 s %.1f%% (18.9)",
                                         cl / tmn, S.ct_loss[0] / tmn, S.ct_loss[1] / tmn, S.ct_loss[2] / tmn, S.ct_win / tmn, 100.0 * S.ct_back / std::max(1L, S.ct_win));
                             std::printf("\n          spells 1 s+, by the loser's nearest 1 s on: share %% (real) | given back %% (real):");
