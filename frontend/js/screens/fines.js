@@ -116,7 +116,7 @@ class FinesScreen extends Screen {
   async load() {
     this.loading = true; this.err = ''; this._renderAll();
     try {
-      const [res, dres] = await Promise.all([this.auth.fetch('/api/fines?months=6'), this.auth.fetch('/api/fines/disputes')]);
+      const [res, dres] = await Promise.all([this.auth.fetch('/api/fines?months=24'), this.auth.fetch('/api/fines/disputes')]);
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
       this.data = body;
@@ -251,10 +251,26 @@ class FinesScreen extends Screen {
           cell(this._w('stat_so_far', 'This period so far'), FinesScreen.money(rows.reduce((a, r) => a + r.soFar, 0))),
           cell(this._w('stat_on_la', 'On LA'), `${onLa} / ${finished.length}`),
         ] },
+        this._collectedRow(cell),
         ...(Object.keys(byKind).length ? [{ title: this._w('stats_kinds', 'BY KIND'),
           cells: Object.values(byKind).map(k => cell(this.escapeHtml(k.label), `${FinesScreen.money(k.total)} <span style="opacity:0.5; font-size:0.72rem; font-weight:400;">(${k.n})</span>`)) }] : []),
       ],
     });
+  }
+
+  // 💰 Fines money that has come in (mig 1294, lib/fines-collected.js):
+  // on LA and the player's dues balance $0.  #tuition shows the same
+  // number as its Fines part of Tuition + Fines = Total.
+  _collectedRow(cell) {
+    const keys = this.tab === 'all' ? null
+      : (FinesScreen.TAB_CODES[this.tab] || []).map(c => FinesCollected.CODE_KEY[c]);
+    const t = FinesCollected.totals(FinesCollected.byMonth(this.data, keys));
+    const mo = String(t.months || 0);
+    return { title: this._w('stats_collected', 'MONEY IN'), cells: [
+      cell(this._w('stat_collected', '💰 Collected'), FinesScreen.money(t.collected), '#86efac'),
+      cell(this._w('stat_this_month', 'This month'), FinesScreen.money(t.thisMonth), '#86efac'),
+      cell(this._w('stat_avg', `Avg / month (${mo} mo)`, { months: mo }), FinesScreen.money(Math.round(t.avg * 100) / 100)),
+    ] };
   }
 
   _renderPeriodStats(el, rows, P) {

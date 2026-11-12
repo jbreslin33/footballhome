@@ -256,6 +256,24 @@ class TuitionScreen extends Screen {
     // four Mens / Womens / Boys / Girls without the operator having to
     // click each tab.  Silent = no spinner takeover on the current view.
     this._loadAllProgramsInBackground();
+    this._loadFines();
+  }
+
+  // 🧾 Fines part of the money (mig 1294, lib/fines-collected.js): the
+  // stats split LA money into Tuition + Fines = Total.
+  async _loadFines() {
+    try {
+      const res = await this.auth.fetch('/api/fines?months=24');
+      this.finesBoard = res.ok ? await res.json() : null;
+    } catch (_e) { this.finesBoard = null; }
+    this.finesLoaded = true;
+    if (this.isMounted) this._renderStats();
+  }
+
+  // { 'YYYY-MM': fines collected } for these programmes; null until loaded.
+  _finesByMonth(keys) {
+    if (!this.finesLoaded || !window.FinesCollected) return null;
+    return FinesCollected.byMonth(this.finesBoard, keys);
   }
 
   _loadAllProgramsInBackground() {
@@ -2716,11 +2734,16 @@ class TuitionScreen extends Screen {
       const ms = this._monthSummary(keys, this.month);
       const name = this._monthName(this.month);
       const L = (tier, fb) => this.escape(this._monthCopy(tier, fb));
+      const fm = this._finesByMonth(keys);
       el.innerHTML = MoneyBoard.statsHtml({
         title: `📊 Stats · ${this._shardLabel(keys)} · ${name}`,
         progress: { done, total: keys.length, what: this._duesFreeCopy('load', 'parts') || 'programs' },
         rows: [
           { title: L('month_row_money', 'MONEY IN'), cells: [
+            ...(fm ? [
+              cell(L('split_tuition', '🎓 Tuition'), this.fmtMoney(ms.collected - (fm[this.month] || 0)), '#86efac'),
+              cell(L('split_fines', '🧾 Fines'), this.fmtMoney(fm[this.month] || 0), '#fde68a'),
+            ] : []),
             cell(L('month_collected', '💰 Collected'), this.fmtMoney(ms.collected), '#86efac', 'Payments that month, less refunds (club time)'),
             cell(L('month_refunds', 'Refunds'), this.fmtMoney(ms.refunds), '#fca5a5'),
             cell(L('month_payments', 'Payments'), ms.payments),
@@ -2747,11 +2770,7 @@ class TuitionScreen extends Screen {
           cell(this.escape(this._duesFreeCopy('injured', 'label')), c.injured, '#fbbf24'),
           cell('🚫 Inactive', s.inactiveCount, '#c4b5fd'),
         ] },
-        { title: 'MONEY IN', cells: [
-          cell('💰 Collected', this.fmtMoney(s.netCollected), '#86efac'),
-          cell('This month', this.fmtMoney(s.thisMonth), '#86efac'),
-          cell('Avg / month', this.fmtMoney(s.avgPerMonth) + (s.monthsElapsed ? `<span style="opacity:0.5; font-size:0.72rem; font-weight:400;"> (${s.monthsElapsed} mo)</span>` : '')),
-        ] },
+        ...this._splitRows(s, keys, cell),
         { title: 'OWED', cells: [
           cell('🔴 Outstanding', `${s.outstandingCount} member${s.outstandingCount === 1 ? '' : 's'}`, '#fca5a5', 'Never paid + overdue'),
           cell('Est. owed', `~${this.fmtMoney(s.outstandingTotal)}`, '#fca5a5', 'Outstanding × est. fee (median of paid members, per programme)'),
@@ -2759,6 +2778,29 @@ class TuitionScreen extends Screen {
         ] },
       ],
     });
+  }
+
+  // 💰 Money in, laid out (mig 1294; owner 2026-11-12: "tuitions + fines =
+  // total. with all laid out"): Collected / This month / Avg per month, each
+  // Tuition + Fines = Total.  Total = every LA payment less refunds (as
+  // before); Fines = FinesCollected; Tuition = the rest.  One denominator
+  // for the three averages so they add up.
+  _splitRows(s, keys, cell) {
+    const L = (tier, fb, tokens) => this.escape(this._monthCopy(tier, fb, tokens));
+    const fm = this._finesByMonth(keys);
+    const f = fm ? FinesCollected.totals(fm, s.monthsElapsed) : null;
+    const wait = '…';
+    const row = (title, total, fines) => ({ title, cells: [
+      cell(L('split_tuition', '🎓 Tuition'), f ? this.fmtMoney(total - fines) : wait, '#86efac'),
+      cell(L('split_fines', '🧾 Fines'), f ? this.fmtMoney(fines) : wait, '#fde68a'),
+      cell(L('split_total', '💰 Total'), this.fmtMoney(total), '#86efac'),
+    ] });
+    const mo = String(s.monthsElapsed || 0);
+    return [
+      row(L('split_row_collected', 'MONEY IN · COLLECTED'), s.netCollected, f ? f.collected : 0),
+      row(L('split_row_month', 'MONEY IN · THIS MONTH'), s.thisMonth, f ? f.thisMonth : 0),
+      row(L('split_row_avg', `MONEY IN · AVG / MONTH (${mo} mo)`, { months: mo }), s.avgPerMonth, f ? f.avg : 0),
+    ];
   }
 
   // ── Formatters ──────────────────────────────────────────────────────
