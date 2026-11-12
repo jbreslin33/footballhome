@@ -74,11 +74,14 @@ class PyramidMapView {
     const ov = ((this.model && this.model.data && this.model.data.map_overlays) || [])
       .map((o) => ({ key: `ov_${o.code}`, tier: `feature_${o.code}`, def: !!o.def_on }));
     return [{ key: 'proposal', tier: 'feature_proposal', def: !!(u && ['club', 'super'].includes(u.role)) },
+            // the other centre models' borders, faint (mig 1298, owner: "ghost lines on")
+            { key: 'ghosts', tier: 'feature_ghosts', def: true },
             { key: 'states', tier: 'feature_states', def: true }].concat(ov);
   }
   onFeature(key, on) {
     if (key === 'proposal') this._showProposal(on);
     if (key === 'states') this._showStates(on);
+    if (key === 'ghosts') this._drawBorders();
     if (key.startsWith('ov_')) this._showOverlay(key.slice(3), on);
   }
 
@@ -158,6 +161,17 @@ class PyramidMapView {
       : this._copy('proposal_count', { live: live.length, proposed: proposed.length, total: live.length + proposed.length });
     const planOn = this.screen.feature && this.screen.feature('proposal', this.features()[0].def);
     const planPills = !planOn ? '' : ['current', 'proposed'].map((k) => `<button class="ap-pill${k === plan ? ' on' : ''}" data-pzplan="${k}">${esc(this._copy(`plan_${k}`))}</button>`).join('');
+    // What a conference is measured from (mig 1298, owner: "pills to select
+    // diff models. city(s) center, metro(s) center, pop center of mass"):
+    // one pill a pyramid_centre_models row, each a whole map of its own; the
+    // row's blurb is the tooltip, a dash sample shows its ghost line.
+    const want = this._model();
+    const models = P.models || [];
+    const modelPills = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('model_heading'))}</div><div class="mp-sorts">${models.map((m) =>
+      `<button class="ap-pill${m.code === P.model ? ' on' : ''}" data-pzmodel="${esc(m.code)}" title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}>`
+      + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}</button>`).join('')}</div>`
+      + (want !== P.model ? `<div class="intro">${esc(this._copy('model_pending'))}</div>` : '')
+      + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`;
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
     // conference; a column header / sort pill sorts by it, tapped again flips.
@@ -193,7 +207,7 @@ class PyramidMapView {
     const rules = (P.rules || []).length ? [{ tier: 'rules_hud',
       html: `<ol class="mp-rules">${P.rules.map((r) => `<li><b>${esc(r.title)}</b><span>${esc(r.body)}</span></li>`).join('')}</ol>` }] : [];
     return rules.concat([{ tier: 'proposal_hud',
-      html: `<div class="mp-pz"><div class="mp-sorts">${planPills}</div><div class="count">${esc(count)}</div>
+      html: `<div class="mp-pz"><div class="mp-sorts">${planPills}</div>${modelPills}<div class="count">${esc(count)}</div>
         <div class="intro">${esc(this._copy('sort_label'))}</div>
         <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
         <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
@@ -242,6 +256,15 @@ class PyramidMapView {
     }
     return this.pzPlan;
   }
+  // The centre model picked (mig 1298) — remembered per browser; the official one until picked.
+  _model() {
+    if (this.pzModel === undefined) {
+      let v = null;
+      try { v = localStorage.getItem('fh.pyramid.model'); } catch (_) { /* private mode */ }
+      this.pzModel = v || null;
+    }
+    return this.pzModel || (this.proposal && this.proposal.model) || null;
+  }
   _hm(min) {
     if (min == null) return '—';
     const m = Math.round(min);
@@ -252,6 +275,14 @@ class PyramidMapView {
     if (pl) {   // switch plan (mig 1274): redraw borders, pills and the table
       this.pzPlan = pl.dataset.pzplan;
       try { localStorage.setItem('fh.pyramid.plan', this.pzPlan); } catch (_) { /* private mode */ }
+      this._showProposal(true);
+      return true;
+    }
+    const md = e.target.closest('[data-pzmodel]');
+    if (md) {   // switch centre model (mig 1298): its own map, fetched once
+      this.pzModel = md.dataset.pzmodel;
+      try { localStorage.setItem('fh.pyramid.model', this.pzModel); } catch (_) { /* private mode */ }
+      this.proposal = (this.proposals && this.proposals.get(this.pzModel)) || null;
       this._showProposal(true);
       return true;
     }
@@ -862,9 +893,11 @@ class PyramidMapView {
     if (this.propLines) this.propLines.clearLayers();
     if (!this.proposal) {
       try {
-        const res = await this.screen.auth.fetch('/api/pyramid/proposal');
+        const m = this._model();
+        const res = await this.screen.auth.fetch(`/api/pyramid/proposal${m ? `?model=${encodeURIComponent(m)}` : ''}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         this.proposal = await res.json();
+        (this.proposals || (this.proposals = new Map())).set(m || this.proposal.model, this.proposal);
       } catch (e) { console.warn('proposal', e); return; }
     }
     if (!this.map) return;
@@ -940,6 +973,17 @@ class PyramidMapView {
       return this.map.layerPointToLatLng(L.point(p.x + (dy / len) * d, p.y + (-dx / len) * d));
     });
     const pre = this._effPlan() === 'current' ? 'c' : 'p';   // a region key sorts before 'x', so b.a names the plan
+    // Ghosts first, under the real borders (mig 1298, owner: "ghost lines
+    // on"): the other centre models' traffic borders, thin and faint, each in
+    // its model's dash — see how far a border moves without flipping pills.
+    if (this.screen.feature && this.screen.feature('ghosts', true)) {
+      const dash = new Map((P.models || []).map((m) => [m.code, m.ghost_dash]));
+      for (const g of (P.ghosts || []).filter((x) => x.a[0] === pre)) {
+        if (!g.line || g.line.length < 2) continue;
+        L.polyline(g.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 1.5, opacity: 0.6,
+          dashArray: dash.get(g.model) === '1 0' ? null : dash.get(g.model) }).addTo(this.propLines);
+      }
+    }
     for (const b of (P.borders || []).filter((x) => x.a[0] === pre)) {
       // The straight-distance border (mig 1255) is drawn exactly like the
       // traffic one — two-tone in the same conferences' colours (owner: "i

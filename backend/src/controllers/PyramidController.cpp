@@ -196,10 +196,29 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
 // counties), the watch list (developing proposals, no region), the bar
 // (smallest live conference's metro area, mig 1265) and the border lines.  All computed
 // by fh_pyramid_proposal_refresh(); this only reads.
-Response PyramidController::handleProposal(const Request&) {
+// ?model=<code> (mig 1298, owner: "pills to select diff models. city(s)
+// center, metro(s) center, pop center of mass"): which centre model's map —
+// each one's finished map is a snapshot in pyramid_model_*; unknown or not
+// computed yet → the official one.  + models (the pills) and ghosts (the
+// other models' traffic borders, drawn faint — owner: "ghost lines on").
+Response PyramidController::handleProposal(const Request& request) {
     try {
         auto* db = Database::getInstance();
         json regions = json::array(), watch = json::array(), borders = json::array();
+        json models = json::array(), ghosts = json::array();
+        std::string model, official;
+        const std::string want = request.getQueryParam("model");
+        for (const auto& r : db->query("SELECT code, label, blurb, ghost_dash, is_official, computed_at IS NOT NULL AS ready"
+                                        " FROM pyramid_centre_models ORDER BY sort_order")) {
+            const std::string code = str(r, "code");
+            const bool ready = r["ready"].as<bool>(), off = r["is_official"].as<bool>();
+            if (off) official = code;
+            if (ready && code == want) model = code;
+            models.push_back({{"code", code}, {"label", str(r, "label")}, {"blurb", str(r, "blurb")},
+                              {"ghost_dash", str(r, "ghost_dash")}, {"official", off}, {"ready", ready}});
+        }
+        if (model.empty()) model = official;
+        const std::vector<std::string> mp{model};
         for (const auto& r : db->query(R"SQL(
                 SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
                        pc.conference_id, pc.proposed_id, pc.plan, p.from_conference_id,   -- mig 1274
@@ -216,23 +235,24 @@ Response PyramidController::handleProposal(const Request&) {
                        rc.lat AS center_lat, rc.lon AS center_lon,  -- the point it is measured from (mig 1283)
                        (SELECT json_agg(json_build_object('lat', rp.lat, 'lon', rp.lon, 'label', rp.label, 'weight', rp.weight, 'base', rp.is_base)
                                         ORDER BY rp.weight DESC)::text
-                          FROM pyramid_region_points rp
-                         WHERE rp.plan = pc.plan AND rp.conference_id IS NOT DISTINCT FROM pc.conference_id
+                          FROM pyramid_model_region_points rp
+                         WHERE rp.model = $1 AND rp.plan = pc.plan AND rp.conference_id IS NOT DISTINCT FROM pc.conference_id
                            AND rp.proposed_id IS NOT DISTINCT FROM pc.proposed_id) AS points   -- every measuring point (mig 1285)
-                  FROM pyramid_proposal_counties pc
+                  FROM pyramid_model_counties pc
                   JOIN pyramid_counties k ON k.fips = pc.fips
                   LEFT JOIN pyramid_competitions c ON c.id = pc.conference_id
                   LEFT JOIN pyramid_proposed_conferences p ON p.id = pc.proposed_id
                   LEFT JOIN pyramid_conference_metro cm ON cm.conference_id = pc.conference_id
-                  LEFT JOIN pyramid_proposal_region_stats st ON st.region = COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)
+                  LEFT JOIN pyramid_model_region_stats st ON st.model = $1 AND st.region = COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)
                   LEFT JOIN pyramid_drive_times dt ON dt.a_fips = st.a_fips AND dt.b_fips = st.b_fips
                   LEFT JOIN pyramid_counties ka ON ka.fips = st.a_fips
                   LEFT JOIN pyramid_counties kb ON kb.fips = st.b_fips
-                  LEFT JOIN pyramid_region_centers rc ON rc.plan = pc.plan
+                  LEFT JOIN pyramid_model_region_centers rc ON rc.model = $1 AND rc.plan = pc.plan
                         AND rc.conference_id IS NOT DISTINCT FROM pc.conference_id AND rc.proposed_id IS NOT DISTINCT FROM pc.proposed_id
+                 WHERE pc.model = $1
                  GROUP BY pc.plan, p.from_conference_id, pc.conference_id, pc.proposed_id, c.id, c.short_name, c.name, c.color, p.name, p.note, p.tier, p.core_population, p.sort_order, p.color, cm.population, cm.city,
                           st.span_km, st.area_km2, st.tract_population, dt.km, dt.minutes, ka.name, ka.state, kb.name, kb.state, rc.lat, rc.lon
-                 ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL")) {
+                 ORDER BY pc.proposed_id IS NOT NULL, sort1, sort2)SQL", mp)) {
             regions.push_back({{"key", str(r, "key")}, {"conference_id", intOrNull(r, "conference_id")},
                                {"proposed_id", intOrNull(r, "proposed_id")}, {"name", str(r, "name")},
                                {"plan", str(r, "plan")}, {"from_conference_id", intOrNull(r, "from_conference_id")},
@@ -257,8 +277,8 @@ Response PyramidController::handleProposal(const Request&) {
                   JOIN pyramid_proposed_anchors a ON a.proposed_id = p.id
                   JOIN pyramid_counties k ON k.fips = a.fips
                  WHERE p.developing   -- a proposal with a region is in regions (mig 1270: all are)
-                   AND NOT EXISTS (SELECT 1 FROM pyramid_proposal_counties pc WHERE pc.proposed_id = p.id)
-                 GROUP BY p.id ORDER BY p.sort_order)SQL")) {
+                   AND NOT EXISTS (SELECT 1 FROM pyramid_model_counties pc WHERE pc.model = $1 AND pc.proposed_id = p.id)
+                 GROUP BY p.id ORDER BY p.sort_order)SQL", mp)) {
             watch.push_back({{"name", str(r, "name")}, {"note", strOrNull(r, "note")}, {"tier", strOrNull(r, "tier")},
                              {"core_population", r["core_population"].is_null() ? json(nullptr) : json(r["core_population"].as<long long>())},
                              {"lat", r["lat"].as<double>()}, {"lon", r["lon"].as<double>()}, {"anchors", strOrNull(r, "anchors")}});
@@ -268,10 +288,13 @@ Response PyramidController::handleProposal(const Request&) {
         //   both kinds since mig 1287)
         // kind (mig 1255): 'travel' = the coloured border (city centres × traffic
         // factor), 'plain' = straight distance where it runs apart from it.
-        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, COALESCE(a_left, false) AS a_left, kind FROM pyramid_proposal_borders"
-                                        " UNION ALL SELECT region_a, region_b, line::text, a_left, kind FROM pyramid_proposal_sea_borders"))
+        for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, a_left, kind FROM pyramid_model_borders WHERE model = $1", mp))
             borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
                                {"a_left", r["a_left"].as<bool>()}, {"kind", str(r, "kind")}});
+        // Ghosts (mig 1298): every other computed model's traffic borders, land + sea.
+        for (const auto& r : db->query("SELECT model, region_a, line::text AS line FROM pyramid_model_borders"
+                                        " WHERE model <> $1 AND kind = 'travel'", mp))
+            ghosts.push_back({{"model", str(r, "model")}, {"a", str(r, "region_a")}, {"line", json::parse(str(r, "line"), nullptr, false)}});
         // The neutral zone (mig 1255): counties whose region by straight
         // distance differs from the one with the traffic factor.
         json neutral = json::array();
@@ -279,9 +302,10 @@ Response PyramidController::handleProposal(const Request&) {
                 SELECT k.fips, k.name, k.state, k.geometry::text AS g, pc.plan,
                        COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS travel,
                        COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id) AS plain
-                  FROM pyramid_proposal_counties pc JOIN pyramid_counties k ON k.fips = pc.fips
-                 WHERE pc.conference_id IS DISTINCT FROM pc.plain_conference_id
-                    OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id)SQL"))
+                  FROM pyramid_model_counties pc JOIN pyramid_counties k ON k.fips = pc.fips
+                 WHERE pc.model = $1
+                   AND (pc.conference_id IS DISTINCT FROM pc.plain_conference_id
+                        OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id))SQL", mp))
             neutral.push_back({{"type", "Feature"},
                                {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")}, {"plan", str(r, "plan")},
                                                {"travel", str(r, "travel")}, {"plain", str(r, "plain")}}},
@@ -292,7 +316,8 @@ Response PyramidController::handleProposal(const Request&) {
         json rules = json::array();
         for (const auto& r : db->query("SELECT rank, title, body FROM pyramid_conference_rules ORDER BY rank"))
             rules.push_back({{"rank", num(r, "rank")}, {"title", str(r, "title")}, {"body", str(r, "body")}});
-        return jsonOut(HttpStatus::OK, {{"regions", regions}, {"watch", watch}, {"borders", borders},
+        return jsonOut(HttpStatus::OK, {{"model", model}, {"models", models}, {"ghosts", ghosts},
+                                        {"regions", regions}, {"watch", watch}, {"borders", borders},
                                         {"neutral", {{"type", "FeatureCollection"}, {"features", neutral}}},
                                         {"rules", rules},
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});

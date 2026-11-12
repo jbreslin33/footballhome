@@ -45,7 +45,7 @@ def main():
         with urllib.request.urlopen(req, timeout=300) as r, open(path, 'wb') as f:
             f.write(r.read())
         z = zipfile.ZipFile(path)
-        rows = list(csv.reader(io.TextIOWrapper(z.open(z.namelist()[0]), encoding='latin-1'), delimiter='\t'))
+        rows = list(csv.reader(io.TextIOWrapper(z.open(z.namelist()[0]), encoding='utf-8'), delimiter='\t'))
     hdr = [h.strip() for h in rows[0]]
     ui, ni, la, lo, ar = (hdr.index(k) for k in ('USPS', 'NAME', 'INTPTLAT', 'INTPTLONG', 'ALAND'))
     by_state = {}
@@ -56,20 +56,23 @@ def main():
     out, miss = [], []
     for code, title in metros:
         name, _, states = title.partition(', ')
-        city = re.split(r'--|-|/', name)[0].strip()
         state = states.split('-')[0].strip()
         best = None
-        for (pn, lat, lon, aland) in by_state.get(state, []):
-            if not (pn == city or pn.startswith(city + ' ') or pn.startswith(city + '-') or pn.startswith(city + '/')):
-                continue
-            rest = pn[len(city):].strip(' -/')
-            # "Nashville-Davidson metropolitan government (balance)" etc.: any lowercase descriptor
-            rk = RANK.index(rest) if rest in RANK else (len(RANK) if (not rest or rest[0].islower() or '(balance)' in rest) else None)
-            if rk is None:
-                continue
-            key = (rk, -aland)
-            if best is None or key < best[0]:
-                best = (key, lat, lon)
+        # the whole name first ("Winston-Salem"), then its first city ("Philadelphia")
+        for city in dict.fromkeys([name.split('--')[0].strip(), re.split(r'--|-|/', name)[0].strip()]):
+          if best:
+            break
+          for (pn, lat, lon, aland) in by_state.get(state, []):
+              if not (pn == city or pn.startswith(city + ' ') or pn.startswith(city + '-') or pn.startswith(city + '/')):
+                  continue
+              rest = pn[len(city):].strip(' -/')
+              # "Nashville-Davidson metropolitan government (balance)" etc.: any lowercase descriptor
+              rk = RANK.index(rest) if rest in RANK else (len(RANK) if (not rest or rest[0].islower() or '(balance)' in rest) else None)
+              if rk is None:
+                  continue
+              key = (rk, -aland)
+              if best is None or key < best[0]:
+                  best = (key, lat, lon)
         if best:
             out.append(f"('{code}',{best[1]},{best[2]})")
         else:
