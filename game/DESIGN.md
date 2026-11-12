@@ -8903,3 +8903,35 @@ ball at real time-on-ball. A weight between safe and unsafe options can't touch 
 
 **Next.** What a real man on the ball does with every lane shut: DFL, the passer's crude-race options at
 each moment of a carry, and whether he holds, turns, carries, or plays back. Then the same for ours.
+
+### 8.202 G5.100 — a man on the ball with his lanes shut plays as real; ours have more options and pass more sideways — measured (no migration)
+
+§8.201's next: what a real man on the ball does with every lane shut.
+
+**Real** (new `scripts/benchmarks_tracking_shut.py`, DFL). ON THE BALL: an outfielder nearest the ball within
+1.5 m on 2+ 5 Hz frames, 403.6 spells a team-match. His options at the start: mates 5 m+ that the crude race
+(§8.200) calls ours. For 0 / 1 / 2 / 3+ options:
+- Share of spells 7.9 / 23.6 / 30.4 / 38.1%; on the ball 1.2 / 1.2 / 1.0 / 0.8 s; carry 3.0 / 2.7 / 2.6 / 2.3 m.
+- Next on it a mate / theirs / dead: 49 / 30 / 21, 66 / 21 / 12, 70 / 20 / 10, 66 / 22 / 12%.
+
+**Ours, the same cut** (new harness line; seed 1000 / 2000). With 0 options, 50-53 / 29-30 / 18-21%: as real.
+§8.201's guess (a shut-in passer forced to pass) is wrong. But:
+- Ours have more options: 3+ at the start 61% (38.1), 0 only 4% (7.9). Spells 541-550 (403.6).
+- Their 3+ spells end with a mate 79% (65.6).
+- The passes their man wins by 0.4 s+ (CRUDE RACE, `GAME_CUT_TRACE` PASS_TRACE now carries margin /
+  options / length): 59 a team-match (26). Of those, 46 are to feet: 20-30 m 27, 30+ m 14. Played with
+  3+ other options 52-56% of the time (real 29%). They complete 84% (real 80-89% for that margin).
+  Volume, not outcome.
+
+**Where the passes go** (StatsBomb PL 15/16, `benchmarks_statsbomb_passes.py`, v PASS POLICY as played).
+Zone-to-zone shares are near real. The origin counts are not, a team-match by m off their line:
+- 0-18 centre / wide 5.9 / 11.4 (11.0 / 18.6); 18-35 29.9 / 25.5 (33.9 / 34.3).
+- 35-52 73.1 / 68.0 (54.7 / 44.1); 52-70 108.5 / 63.0 (60.5 / 38.9); 70+ 98.9 / 27.2 (57.0 / 24.8).
+- HIGH BY DIRECTION, midfield: lateral 10-20 / 20-30 m 52.8 / 35.4 (31.8 / 16.2), back 10-20 39.9 (20.6),
+  forward 20-30 27.5 (14.1); switches 21-28 (10.7). Final third short passes few: forward 0-10 2.2 (11.8),
+  lateral 0-10 3.9 (13.8).
+Ball in play 65.9% (55.2) explains 1.19×. Our own half passes at 1.6-1.8×, the last 18 m at half.
+
+**Next moles.** (1) Where the ball spends its time: DFL ball time by zone and by side, v ours. Our attacks
+circulate deep and seldom live in the last 35 m. (2) Midfield lateral / back passes and switches 2×:
+the pick inside a zone takes the nearest man 53.7% (61.8). (3) Ball in play 65.9% (55.2).

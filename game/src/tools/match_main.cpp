@@ -64,6 +64,7 @@ struct Stats {
     long goals[2] = {}, w = 0, d = 0, l = 0;
     // §8.198 REWIN: the win (side changes in play, the loser had it 1 s+) by the loser's nearest [5 bins] / the ball's kind [3]: n, given back by 3 s, dead by 3 s; the loser's nearest 1 s on
     long ct_loss[3] = {}, ct_win = 0, ct_back = 0;
+    long ob_n[4] = {}, ob_e[4][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
@@ -234,7 +235,8 @@ int main(int argc, char** argv) {
         long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
-        long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1; long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
+        long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
+        struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1;  /* §8.202 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
@@ -952,7 +954,7 @@ int main(int argc, char** argv) {
                             if (mk.mg > 0) { const int mb = mk.mg < 0.2 ? 0 : mk.mg < 0.4 ? 1 : mk.mg < 0.7 ? 2 : 3; ++S.cr2_mn[mb]; if (mate) ++S.cr2_mok[mb]; }
                         }
                         if (cut_trace && mk.on && mk.p == rel.p && mk.to >= 0 && mk.peak < 1.5)
-                            std::fprintf(stderr, "PASS_TRACE nsafe=%d nmates=%d csafe=%d why=%d out=%d\n", mk.nsafe, mk.nmates, mk.csafe, mk.why[mk.p], mate ? 1 : q.team != mk.team ? 0 : 2);
+                            std::fprintf(stderr, "PASS_TRACE nsafe=%d nmates=%d csafe=%d why=%d mg=%.2f opt=%d len=%d out=%d\n", mk.nsafe, mk.nmates, mk.csafe, mk.why[mk.p], mk.mg, mk.opt, mk.lb, mate ? 1 : q.team != mk.team ? 0 : 2);
                         mk.on = false;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
                         endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot);
@@ -1120,6 +1122,51 @@ int main(int argc, char** argv) {
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
+            {   // §8.202 ON THE BALL (benchmarks_tracking_shut.py): runs of the same man nearest within 1.5 m, 2+ frames; options = mates 5 m+ the crude race calls ours
+                const long kk = static_cast<long>(k);
+                auto optsOf = [&](int pid) {
+                    const int tm = W.player(static_cast<std::uint8_t>(pid)).team; const double px = W.player(static_cast<std::uint8_t>(pid)).pos.x.toDouble(), py = W.player(static_cast<std::uint8_t>(pid)).pos.y.toDouble();
+                    int n = 0;
+                    for (std::uint8_t q = 0; q < N; ++q) {
+                        if (static_cast<int>(q) == pid || W.player(q).team != tm || W.isKeeper(q)) continue;
+                        const double tx = W.player(q).pos.x.toDouble(), ty = W.player(q).pos.y.toDouble(), L = std::hypot(tx - px, ty - py);
+                        if (L < 5) continue;
+                        const double ux = (tx - px) / L, uy = (ty - py) / L; bool tf = false;
+                        for (double sd = 2.0; sd <= L + 1e-9 && !tf; sd += 0.5) {
+                            const double qx = px + ux * sd, qy = py + uy * sd, tb = sd / 11.0, tr = 0.3 + std::max(0.0, std::hypot(tx - qx, ty - qy) - 0.5) / 7.0;
+                            for (std::uint8_t j = 0; j < N && !tf; ++j) if (W.player(j).team != tm) {
+                                const double to = 0.3 + std::max(0.0, std::hypot(W.player(j).pos.x.toDouble() - qx, W.player(j).pos.y.toDouble() - qy) - 0.5) / 7.0;
+                                tf = to < tb && to < tr;
+                            }
+                        }
+                        n += tf ? 0 : 1;
+                    }
+                    return n; };
+                auto record = [&](const ShSp& r, int e) {
+                    const int bq = std::min(3, r.o0); ++S.ob_n[bq]; ++S.ob_e[bq][e];
+                    S.ob_d[bq].push_back((r.k1 - r.k0) / 30.0); S.ob_c[bq].push_back(std::hypot(r.x1 - r.x0, r.y1 - r.y0)); S.ob_o1[bq].push_back(r.o1); };
+                const bool cont = sh_prev == kk - 6; sh_prev = kk;
+                if (!cont) {   // dead ball or gap: what was open goes dead
+                    if (sh_pend.pid >= 0) record(sh_pend, 2);
+                    if (sh_run.pid >= 0 && sh_run.n >= 2 && !W.isKeeper(static_cast<std::uint8_t>(sh_run.pid))) record(sh_run, 2);
+                    sh_pend = ShSp{}; sh_run = ShSp{};
+                }
+                int best = -1; double bd = 1.5;
+                if (b.pos.z.toDouble() <= 1.5)
+                    for (std::uint8_t j = 0; j < N; ++j) { const double d = std::hypot(W.player(j).pos.x.toDouble() - b.pos.x.toDouble(), W.player(j).pos.y.toDouble() - b.pos.y.toDouble()); if (d <= bd) { bd = d; best = j; } }
+                if (best >= 0 && best == sh_run.pid) {
+                    ++sh_run.n; sh_run.k1 = kk; sh_run.x1 = b.pos.x.toDouble(); sh_run.y1 = b.pos.y.toDouble(); sh_run.o1 = optsOf(best);
+                    if (sh_run.n == 2 && sh_pend.pid >= 0) {   // a new man's run is real: it ends the pending one
+                        if (sh_pend.pid != best) record(sh_pend, W.player(static_cast<std::uint8_t>(best)).team == sh_pend.team ? 0 : 1);
+                        sh_pend = ShSp{};
+                    }
+                } else {
+                    if (sh_run.pid >= 0 && sh_run.n >= 2 && !W.isKeeper(static_cast<std::uint8_t>(sh_run.pid))) { if (sh_pend.pid >= 0) record(sh_pend, 2); sh_pend = sh_run; }
+                    sh_run = ShSp{};
+                    if (best >= 0) { sh_run.pid = best; sh_run.team = W.player(static_cast<std::uint8_t>(best)).team; sh_run.n = 1; sh_run.k0 = sh_run.k1 = kk;
+                        sh_run.x0 = sh_run.x1 = b.pos.x.toDouble(); sh_run.y0 = sh_run.y1 = b.pos.y.toDouble(); sh_run.o0 = sh_run.o1 = optsOf(best); }
+                }
+            }
             {   // §8.198 CONTROL SPELLS (benchmarks_tracking_rewin.py): nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running
                 const long kk = static_cast<long>(k);
                 if (ct_prev != kk - 6) { ct_side = -1; ct_cand = -1; ct_won = -1; }
@@ -2176,6 +2223,14 @@ int main(int argc, char** argv) {
                                     std::printf("\n            passes %s: his other mates 5 m+ the race calls ours 0/1/2/3/4+ %%:", f ? "theirs first" : "ours first");
                                     for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100.0 * S.cr2_opt[f][q] / std::max(1L, nn));
                                     std::printf(" (%s)", r_opt[f]); }
+                            }
+                            {   // §8.202 real DFL benchmarks_tracking_shut.py
+                                static const double rS[4] = {7.9, 23.6, 30.4, 38.1}, rD[4] = {1.2, 1.2, 1.0, 0.8}, rC[4] = {3.0, 2.7, 2.6, 2.3}, rE[4][3] = {{49.4, 29.7, 20.9}, {66.3, 21.2, 12.5}, {69.9, 19.9, 10.2}, {65.6, 22.1, 12.3}};
+                                long tn = 0; for (int q = 0; q < 4; ++q) tn += S.ob_n[q];
+                                std::printf("\n          ON THE BALL (outfielder nearest within 1.5 m, 2+ frames; real DFL benchmarks_tracking_shut.py) %.1f spells a team-match (403.6), by crude-race options at the start 0/1/2/3+: share %% (real) | on the ball s med (real) | carry m med (real) | next on it mate / theirs / dead %% (real) | options at the end med:", tn / tmn);
+                                for (int q = 0; q < 4; ++q) if (S.ob_n[q]) { const double n = S.ob_n[q];
+                                    std::printf("\n            %d%s %.1f (%.1f) | %.1f (%.1f) | %.1f (%.1f) | %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) | %.0f", q, q == 3 ? "+" : " ", 100.0 * n / std::max(1L, tn), rS[q], md(S.ob_d[q]), rD[q], md(S.ob_c[q]), rC[q],
+                                                100.0 * S.ob_e[q][0] / n, 100.0 * S.ob_e[q][1] / n, 100.0 * S.ob_e[q][2] / n, rE[q][0], rE[q][1], rE[q][2], md(S.ob_o1[q])); }
                             }
                             std::printf("\n          CONTROL SPELLS (a man nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running): changes %.1f a team-match (80.8), by the losing spell's age <3 / 3-6 / 6+ s %.1f / %.1f / %.1f (21.4 / 14.5 / 44.9); wins (loser 1 s+) %.1f (73.1), given back by 3 s %.1f%% (18.9)",
                                         cl / tmn, S.ct_loss[0] / tmn, S.ct_loss[1] / tmn, S.ct_loss[2] / tmn, S.ct_win / tmn, 100.0 * S.ct_back / std::max(1L, S.ct_win));
