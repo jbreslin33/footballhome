@@ -374,9 +374,12 @@ Three ways to measure the distance (`pyramid_measures`, mig 1308, ☰
 "Measure by" pills): Drive time (× the city's traffic factor, official),
 Drive, no traffic, Straight line (people-weighted km over the measuring
 points). The code is the border kind (`travel` / `plain` / `straight`):
-every snapshot holds all three whole borders, so a measure pill switches
-with no fetch; the faint ghosts are the other centres measured the same
-way, and the shaded counties are where the picked measure gives a
+every snapshot holds all three whole borders, so a measure switches with
+no fetch. Both groups are radio buttons (11/13: one coloured map at a
+time). "Also show" checkboxes (mig 1321, replacing the all-or-nothing
+ghosts switch) draw any other centre's border on top as a thin white line
+in its own dash, same measure — none ticked by default, ticks kept per
+browser (`fh.pyramid.overlay`); and the shaded counties are where the picked measure gives a
 different conference than Drive time. Before mig 1308 the no-traffic line
 was always drawn beside the traffic one, and only where they parted.
 `pyramid-fine-borders.py` traces all three (straight needs no OSRM),

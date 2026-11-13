@@ -74,14 +74,11 @@ class PyramidMapView {
     const ov = ((this.model && this.model.data && this.model.data.map_overlays) || [])
       .map((o) => ({ key: `ov_${o.code}`, tier: `feature_${o.code}`, def: !!o.def_on }));
     return [{ key: 'proposal', tier: 'feature_proposal', def: !!(u && ['club', 'super'].includes(u.role)) },
-            // the other centre models' borders, faint (mig 1298, owner: "ghost lines on")
-            { key: 'ghosts', tier: 'feature_ghosts', def: true },
             { key: 'states', tier: 'feature_states', def: true }].concat(ov);
   }
   onFeature(key, on) {
     if (key === 'proposal') this._showProposal(on);
     if (key === 'states') this._showStates(on);
-    if (key === 'ghosts') this._drawBorders();
     if (key.startsWith('ov_')) this._showOverlay(key.slice(3), on);
   }
 
@@ -178,12 +175,20 @@ class PyramidMapView {
     const measurePills = measures.length < 2 ? '' : `<div class="intro">${esc(this._copy('measure_heading'))}</div><div class="mp-radio">${measures.map((x) =>
       `<label title="${esc(x.blurb)}"><input type="radio" name="pz-measure" data-pzmeasure="${esc(x.code)}"${x.code === meas ? ' checked' : ''}> ${esc(x.label)}${x.official ? ' ★' : ''}</label>`).join('')}</div>`
       + `<div class="intro">${esc((mOn || {}).blurb || '')}</div>`;
+    // Also show (owner 11/13: "it could be check boxes and we could show them
+    // on top of each other" → "yes build it"): the radios pick the coloured
+    // map; each ticked centre adds its border on top as a thin white line in
+    // its own dash, same measure.  Off by default, remembered per browser.
+    const over = this._overlay();
+    const overlayBoxes = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('overlay_heading'))}</div><div class="mp-radio">${models.filter((m) => m.ready).map((m) =>
+      `<label title="${esc(m.blurb)}"${m.code === P.model ? ' style="opacity:.5"' : ''}><input type="checkbox" data-pzoverlay="${esc(m.code)}"${over.has(m.code) && m.code !== P.model ? ' checked' : ''}${m.code === P.model ? ' disabled' : ''}> `
+      + `<svg width="22" height="6" style="vertical-align:middle"><line x1="0" y1="3" x2="22" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg> ${esc(m.label)}</label>`).join('')}</div>`;
     const modelPills = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('model_heading'))}</div><div class="mp-radio">${models.map((m) =>
       `<label title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}><input type="radio" name="pz-model" data-pzmodel="${esc(m.code)}"${m.code === P.model ? ' checked' : ''}${m.ready ? '' : ' disabled'}> `
-      + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}${m.official ? ' ★' : ''}</label>`).join('')}</div>`
+      + `${esc(m.label)}${m.official ? ' ★' : ''}</label>`).join('')}</div>`
       + (want !== P.model ? `<div class="intro">${esc(this._copy('model_pending'))}</div>` : '')
       + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`
-      + measurePills
+      + measurePills + overlayBoxes
       + (models.length < 2 ? '' : this._modelDiffHtml(plan));
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
@@ -330,6 +335,15 @@ class PyramidMapView {
     if (this.pzMeasure && ms.some((m) => m.code === this.pzMeasure)) return this.pzMeasure;
     return (ms.find((m) => m.official) || { code: 'travel' }).code;
   }
+  // Centres drawn on top as thin lines (11/13) — a Set, remembered per browser; none until ticked.
+  _overlay() {
+    if (!this.pzOverlay) {
+      let v = [];
+      try { v = JSON.parse(localStorage.getItem('fh.pyramid.overlay') || '[]'); } catch (_) { /* private mode */ }
+      this.pzOverlay = new Set(Array.isArray(v) ? v : []);
+    }
+    return this.pzOverlay;
+  }
   _hm(min) {
     if (min == null) return '—';
     const m = Math.round(min);
@@ -349,6 +363,14 @@ class PyramidMapView {
       try { localStorage.setItem('fh.pyramid.model', this.pzModel); } catch (_) { /* private mode */ }
       this.proposal = (this.proposals && this.proposals.get(this.pzModel)) || null;
       this._showProposal(true);
+      return true;
+    }
+    const ov = e.target.closest('[data-pzoverlay]');
+    if (ov) {   // tick / untick a centre on top (11/13): lines only, the menu stays as it is
+      const set = this._overlay();
+      if (ov.checked) set.add(ov.dataset.pzoverlay); else set.delete(ov.dataset.pzoverlay);
+      try { localStorage.setItem('fh.pyramid.overlay', JSON.stringify([...set])); } catch (_) { /* private mode */ }
+      this._drawBorders();
       return true;
     }
     const ms = e.target.closest('[data-pzmeasure]');
@@ -1063,12 +1085,14 @@ class PyramidMapView {
     // Ghosts first, under the real borders (mig 1298, owner: "ghost lines
     // on"): the other centre models' traffic borders, thin and faint, each in
     // its model's dash — see how far a border moves without flipping pills.
-    if (this.screen.feature && this.screen.feature('ghosts', true)) {
+    // 11/13: only the centres ticked under "Also show" (was one all-or-nothing switch).
+    const over = this._overlay();
+    if (over.size) {
       const dash = new Map((P.models || []).map((m) => [m.code, m.ghost_dash]));
       const meas = this._measure();   // mig 1308: the other models measured the same way
-      for (const g of (P.ghosts || []).filter((x) => x.a[0] === pre && (x.kind || 'travel') === meas)) {
+      for (const g of (P.ghosts || []).filter((x) => x.a[0] === pre && (x.kind || 'travel') === meas && over.has(x.model))) {
         if (!g.line || g.line.length < 2) continue;
-        L.polyline(g.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 1.5, opacity: 0.6,
+        L.polyline(g.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 2, opacity: 0.85,
           dashArray: dash.get(g.model) === '1 0' ? null : dash.get(g.model) }).addTo(this.propLines);
       }
     }
