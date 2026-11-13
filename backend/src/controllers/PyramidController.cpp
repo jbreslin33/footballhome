@@ -185,6 +185,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/proposal", [this](const Request& r) { return handleProposal(r); });
     router.get(prefix + "/state-borders", [this](const Request& r) { return handleStateBorders(r); });
     router.get(prefix + "/county-lines", [this](const Request& r) { return handleCountyLines(r); });
+    router.get(prefix + "/model-diff", [this](const Request& r) { return handleModelDiff(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
@@ -323,6 +324,53 @@ Response PyramidController::handleProposal(const Request& request) {
                                         {"bar", bar.empty() || bar[0]["bar"].is_null() ? json(nullptr) : json(bar[0]["bar"].as<long long>())}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] proposal: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /api/pyramid/model-diff (mig 1304) — where the centre models
+// disagree, for the map's ☰: per plan the counties (and people) whose
+// conference changes between computed models (pyramid_model_county_diff),
+// and every feeder club whose conference depends on the model
+// (pyramid_model_team_scores): per model its conference and the margin
+// (minutes × traffic factor) over the runner-up.  One row a club — teams of
+// one club at one ground score the same.
+Response PyramidController::handleModelDiff(const Request&) {
+    try {
+        auto* db = Database::getInstance();
+        json counties = json::object();
+        for (const auto& r : db->query("SELECT plan, count(*) AS n, COALESCE(sum(population), 0) AS people FROM pyramid_model_county_diff GROUP BY plan"))
+            counties[str(r, "plan")] = {{"counties", r["n"].as<long long>()}, {"people", r["people"].as<long long>()}};
+        auto tot = db->query("SELECT count(DISTINCT club_id) AS n FROM pyramid_model_team_scores WHERE rank = 1");
+        json clubs = json::array();
+        std::map<int, size_t> at;
+        for (const auto& r : db->query(R"SQL(
+                WITH s AS (SELECT * FROM pyramid_model_team_scores WHERE rank <= 2),
+                     moved AS (SELECT team_id FROM s WHERE rank = 1 GROUP BY team_id HAVING count(DISTINCT conference_id) > 1),
+                     one AS (SELECT DISTINCT ON (s.club_id) s.team_id FROM s JOIN moved USING (team_id) ORDER BY s.club_id, s.team_id)
+                SELECT a.club_id, COALESCE(pc.name, a.team) AS name, a.lat, a.lon, a.model, a.conference_id,
+                       b.score - a.score AS margin
+                  FROM s a
+                  JOIN one ON one.team_id = a.team_id
+                  LEFT JOIN s b ON b.team_id = a.team_id AND b.model = a.model AND b.rank = 2
+                  LEFT JOIN pyramid_clubs pc ON pc.id = a.club_id
+                 WHERE a.rank = 1
+                 ORDER BY COALESCE(pc.name, a.team), a.model)SQL")) {
+            const int cid = num(r, "club_id");
+            auto it = at.find(cid);
+            if (it == at.end()) {
+                it = at.emplace(cid, clubs.size()).first;
+                clubs.push_back({{"club_id", cid}, {"name", str(r, "name")}, {"lat", r["lat"].as<double>()},
+                                 {"lon", r["lon"].as<double>()}, {"by_model", json::object()}});
+            }
+            clubs[it->second]["by_model"][str(r, "model")] = {
+                {"conference_id", num(r, "conference_id")},
+                {"margin", r["margin"].is_null() ? json(nullptr) : json(r["margin"].as<double>())}};
+        }
+        return jsonOut(HttpStatus::OK, {{"counties", counties}, {"clubs", clubs},
+                                        {"total_clubs", tot.empty() ? 0 : tot[0]["n"].as<long long>()}});
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] model-diff: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

@@ -171,7 +171,8 @@ class PyramidMapView {
       `<button class="ap-pill${m.code === P.model ? ' on' : ''}" data-pzmodel="${esc(m.code)}" title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}>`
       + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}</button>`).join('')}</div>`
       + (want !== P.model ? `<div class="intro">${esc(this._copy('model_pending'))}</div>` : '')
-      + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`;
+      + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`
+      + (models.length < 2 ? '' : this._modelDiffHtml(plan));
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
     // conference; a column header / sort pill sorts by it, tapped again flips.
@@ -212,6 +213,47 @@ class PyramidMapView {
         <div class="mp-sorts">${cols.map((c) => `<button class="ap-pill${c.key === sort.key ? ' on' : ''}" data-pzsort="${c.key}">${esc(c.label)}${arrow(c)}</button>`).join('')}</div>
         <div class="mp-tbl"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>
         <div class="intro">${esc(this._copy('proposal_lines'))}</div><div class="intro">${esc(plan === 'current' ? this._copy('plan_current_intro') : this._copy('proposal_intro', { bar: M(P.bar) }))}</div></div>` }]);
+  }
+  // Where the models disagree (mig 1304): fetched once, when ☰ first shows
+  // the model pills — counties + people that change conference on this plan,
+  // then each feeder club whose conference depends on the model: one line
+  // per model (colour dot, conference), the official model's margin over
+  // the runner-up on a line under it. Tap a club → fly to it.
+  _modelDiffHtml(plan) {
+    const esc = (t) => this._esc(t);
+    const D = this.modelDiff;
+    if (!D) {
+      if (!this.modelDiffLoading) {
+        this.modelDiffLoading = true;
+        this.screen.auth.fetch('/api/pyramid/model-diff')
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+          .then((d) => { this.modelDiff = d; if (this.screen._renderMenu) this.screen._renderMenu(); })
+          .catch((e) => { console.warn('model-diff', e); });
+      }
+      return `<div class="intro">${esc(this._copy('model_diff_loading'))}</div>`;
+    }
+    const P = this.proposal || {};
+    const models = P.models || [];
+    const conf = new Map((P.regions || []).filter((r) => r.plan === 'current' && r.conference_id)
+      .map((r) => [r.conference_id, { name: r.name.replace(/ Conference$/, ''), color: r.color || '#64748b' }]));
+    const cty = (D.counties || {})[plan];
+    let html = `<div class="intro"><b>${esc(this._copy('model_diff_heading'))}</b></div>`;
+    if (cty) html += `<div class="intro">${esc(this._copy('model_diff_counties', { counties: cty.counties, people: `${(cty.people / 1e6).toFixed(1)} M` }))}</div>`;
+    const clubs = D.clubs || [];
+    if (!clubs.length) return `${html}<div class="intro">${esc(this._copy('model_diff_none'))}</div>`;
+    html += `<div class="intro">${esc(this._copy('model_diff_clubs', { clubs: clubs.length, total: D.total_clubs }))}</div>`;
+    const off = models.find((m) => m.official);
+    const rows = clubs.map((c) => {
+      const lines = models.filter((m) => c.by_model[m.code]).map((m) => {
+        const k = conf.get(c.by_model[m.code].conference_id) || { name: '?', color: '#64748b' };
+        return `<span class="md-m"><i class="dot" style="background:${esc(k.color)}"></i>${esc(m.label)}: ${esc(k.name)}</span>`;
+      }).join('');
+      const o = off && c.by_model[off.code];
+      const margin = o && o.margin != null ? `<div class="md-why">${esc(this._copy('model_diff_margin', {
+        model: off.label, won: (conf.get(o.conference_id) || { name: '?' }).name, margin: o.margin.toFixed(1) }))}</div>` : '';
+      return `<div class="md-club" data-pzrow="${c.lat},${c.lon}"><b>${esc(c.name)}</b><div>${lines}</div>${margin}</div>`;
+    }).join('');
+    return `${html}<div class="md-list">${rows}</div>`;
   }
   // The plan on screen (11/11, owner: "if we uncheck proposed borders +
   // new conf we still need to show assumed current borders"): the proposal
@@ -376,6 +418,12 @@ class PyramidMapView {
       .mp-rules li { margin-bottom:6px; } .mp-rules li b { display:block; font-size:0.8rem; }
       .mp-rules li span { opacity:0.75; }
       .mp-pz .count { font-weight:800; font-size:0.85rem; margin-bottom:4px; }
+      .mp-pz .md-list { margin:2px 0 8px; }
+      .mp-pz .md-club { padding:4px 0; border-top:1px solid rgba(148,163,184,0.12); cursor:pointer; font-size:0.78rem; }
+      .mp-pz .md-club:hover b { text-decoration:underline; }
+      .mp-pz .md-m { display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:0.72rem; opacity:0.85; white-space:nowrap; }
+      .mp-pz .md-m .dot { width:8px; height:8px; }
+      .mp-pz .md-why { font-size:0.68rem; opacity:0.6; }
       .mp-pz .intro { font-size:0.72rem; opacity:0.65; margin-bottom:4px; white-space:normal; }
 `;
   }

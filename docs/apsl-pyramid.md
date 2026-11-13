@@ -359,3 +359,25 @@ exact, 50 town, 2 misses (typos in the feed), 81 with no published address
 The screen (`apsl-pyramid.js`) holds the model, the conference + view pills
 and the ✏️ editor; it never lays anything out itself.
 
+
+### Centre models and where they disagree (migs 1298, 1302, 1304)
+
+Three ways to measure a conference (`pyramid_centre_models`): City centre,
+Metro average, Most people (official). `scripts/pyramid-pipeline.sh` builds
+each model's whole map and `fh_pyramid_model_snapshot()` saves it in
+`pyramid_model_*`; the map's ☰ "Measured from" pills switch between them,
+other models' borders drawn faint. Club assignments, outlier lines, the
+county tint and feeder votes follow the official model only (migs 1302,
+1303).
+
+"Where the models disagree" (mig 1304, ☰ under the pills,
+`GET /api/pyramid/model-diff`, fetched once when ☰ first shows it): the
+counties and people that change conference between models on the plan on
+screen (`pyramid_model_county_diff`), then each feeder club whose
+conference depends on the model (`pyramid_model_team_scores`: weighted
+drive × traffic factor from its ground to each model's saved points),
+one line per model and the official model's margin over the runner-up.
+Tap a club → fly to it. 11/12: 6 of 201 feeder clubs, all central/shore
+New Jersey; Bulldogs SC is Delaware River on Most people by 0.3 min
+(Metropolitan on the other two: NY's densest spot is in Queens, further
+from New Jersey than Times Square).
