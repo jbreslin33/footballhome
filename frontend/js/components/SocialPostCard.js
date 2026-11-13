@@ -991,6 +991,11 @@ class SocialPostCard {
     // fits video to the overlay's own ffprobed size, so the wider card
     // flows through every path unchanged.
     const cardWidth = Math.max(540, Math.ceil(cardHeight * 0.8));
+    // Game Center's live card (live + rosterData.live) is never posted, so
+    // it grows to fit everything — the A:/P:/Dues notes under each name —
+    // instead of clipping at the post's height (owner 2026-11-12: "since
+    // its not insta we can make it longer").  The post keeps its size.
+    const grow = live && !overlayOnly && !!(this.rosterData && this.rosterData.live);
 
     // Background layer. Three cases, in priority order:
     //   overlayOnly → nothing (transparent, for the ffmpeg video burn)
@@ -1018,7 +1023,7 @@ class SocialPostCard {
 
     const html = `
       <div style="
-        width:${cardWidth}px; height:${cardHeight}px;
+        width:${cardWidth}px; ${grow ? `min-height:${cardHeight}px;` : `height:${cardHeight}px;`}
         ${cardBackground}
         color:#fff; text-align:center; position:relative; overflow:hidden;
         font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;

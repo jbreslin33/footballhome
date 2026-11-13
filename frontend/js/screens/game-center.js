@@ -531,7 +531,7 @@ class GameCenterScreen extends EventScreen {
   _renderCard(slot, pill) {
     const st = this._cardSlot(slot);
     const built = st.built && st.built.key === this._cardKey(pill) ? st.built : null;
-    const h = built ? built.height : 700;
+    const h = built ? (built.drawn || built.height) : 700;
     const w = (built && built.width) || 540;
     return `
       <div data-gc-card="${slot}" style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:${w} / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
@@ -581,7 +581,7 @@ class GameCenterScreen extends EventScreen {
     // Same canvas geometry and rotation period as SocialPostCard's
     // startAnimatedPreview, so the beam sits where the posted clip has it.
     beam.width = cardW * 2;
-    beam.height = st.built.height * 2;
+    beam.height = (st.built.drawn || st.built.height) * 2;
     if (!this._lighthouseStartTime) this._lighthouseStartTime = performance.now();
     st.stopBeam = window.LighthouseBeam.animate(beam, {
       startTime: this._lighthouseStartTime,
@@ -624,6 +624,11 @@ class GameCenterScreen extends EventScreen {
       const inner = host.querySelector('[data-gc-card-inner]');
       inner.style.width = `${built.width || 540}px`;
       inner.innerHTML = built.html;
+      // The live card grows to fit its notes (SocialPostCard live: height
+      // is a minimum, not a clip — it never goes to Instagram), so the
+      // host takes the height the card actually drew at.
+      const drawn = inner.firstElementChild ? inner.firstElementChild.offsetHeight : 0;
+      if (drawn > 0) { st.built.drawn = drawn; host.style.aspectRatio = `${built.width || 540} / ${drawn}`; }
       this._fitCard(slot);
     } catch (err) {
       console.warn('[game-center] card build failed:', err);
@@ -6772,7 +6777,7 @@ class GameCenterScreen extends EventScreen {
           const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
           // The bench players sharing this spot, 2nd first (mig 763).
           const subs = this._sharersOf(pos.id).map(id => rosterById.get(id)).filter(Boolean);
-          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: live ? this._eligNameStyle(r.id) : '', noteHtml: live ? this._lineupNote(r.id) : '' }));
+          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: '', noteHtml: live ? this._lineupNote(r.id) : '' }));
           if (wideIds.has(pos.id)) token.wide = true;
           if (narrowIds.has(pos.id)) token.narrow = true;
           if (chipLifts[pos.id]) token.lift = chipLifts[pos.id];
@@ -7019,10 +7024,11 @@ class GameCenterScreen extends EventScreen {
   // name in its eligibility colour (white when there is no verdict).  Only
   // the on-screen card — the html2canvas export draws plain names (live =
   // false), since background-clip:text doesn't survive the capture.
+  // Always white since 11/12: the A:/P: + Dues: notes under each name carry
+  // the colour now (owner: "now we don't need to color code names right?").
   _cardNameStyle(playerId, { onPitch = false } = {}) {
     GameCenterScreen._shimmerCss();
-    const v = this._eligVerdict(playerId);
-    const base = !v ? '#ffffff' : v === 'eligible' ? '#ffea00' : v === 'projected' ? '#facc15' : '#ef4444';
+    const base = '#ffffff';
     const glow = onPitch ? 'filter:drop-shadow(0 0 1px rgba(0,0,0,0.85));' : '';
     return `background-image:linear-gradient(100deg, ${base} 0%, ${base} 40%, #ffffff 50%, ${base} 60%, ${base} 100%);`
       + 'background-size:250% 100%;-webkit-background-clip:text;background-clip:text;'
@@ -7072,8 +7078,11 @@ class GameCenterScreen extends EventScreen {
     const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
     if (s) {
       const st = this._criteriaState(s);
-      const tokens = { attended: String(st.attended), projected: String(st.projected), needed: String(st.needed) };
-      const text = this._eligCopy('lineup_note_practice', tokens) || `A:${tokens.attended} P:${tokens.projected}`;
+      // P: = the week's total, attended + projected (owner 2026-11-12:
+      // "P: to be total of A + P … Luke … A:2,P:5"; copy mig 1301).
+      const tokens = { attended: String(st.attended), projected: String(st.projected),
+                       total: String(st.attended + st.projected), needed: String(st.needed) };
+      const text = this._eligCopy('lineup_note_practice', tokens) || `A:${tokens.attended} P:${tokens.total}`;
       // Green = on course for the week (attended + projected ≥ needed;
       // needed is 2 of 5 / 1 of 4 / 0 of 3 practice days), red = not
       // (owner 2026-11-12).
