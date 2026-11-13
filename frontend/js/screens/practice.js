@@ -26,8 +26,70 @@ class PracticeScreen extends EventScreen {
     if (key === 'sides') return this._sidesHtml();
     if (key === 'plan') return this._planHtml()
       + this.panelFoldHtml('cones', this.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), this._conesHtml());
-    if (key === 'players') return this._callsHtml() + super.pillHtml(key);
+    if (key === 'players') return this._teamCardHtml() + this._callsHtml() + super.pillHtml(key);
     return super.pillHtml(key);
+  }
+
+  // ── 🗂 The practice card (owner 2026-11-13: "practice needs a graphic
+  // like game but auto filled … separate in lineup by age. same with mens
+  // practice sep by 'team' apsl or liga 1" — columns of names; "if col is
+  // small then put another under").  Filled from the RSVPs: every Going
+  // player under his team among the event's tagged teams (rsvps.team_ids,
+  // teams.short_label / color).  A man on two of them (APSL + Liga 1) is
+  // listed once, under the first, with a +L1 tag.  Going players on none of
+  // them (invites) get their own block; coaches a line at the foot, never in
+  // a count.  Blocks drop into the shortest of up to two columns, so a small
+  // team sits under another.
+  _teamCardHtml() {
+    const ev = this.ev;
+    const rsvps = Array.isArray(ev && ev.rsvps) ? ev.rsvps : [];
+    const going = rsvps.filter(r => r && r.response === 'yes' && !r.suspension);
+    if (!going.length) return '';
+    const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
+      || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
+    const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
+    const teams = (Array.isArray(ev.teams) ? ev.teams : []);
+    const byId = new Map(teams.map(t => [Number(t.id), t]));
+    const short = (r) => {
+      const n = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
+      const parts = String(n).trim().split(/\s+/);
+      return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+    };
+    const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
+    const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b' }, rows: [] };
+    const players = going.filter(r => !r.is_coach);
+    for (const r of players) {
+      const mine = (Array.isArray(r.team_ids) ? r.team_ids : []).map(Number).filter(id => byId.has(id))
+        .sort((a, b) => teams.findIndex(t => Number(t.id) === a) - teams.findIndex(t => Number(t.id) === b));
+      const into = mine.length ? blocks.get(mine[0]) : other;
+      into.rows.push({ name: short(r), also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean) });
+    }
+    const list = [...blocks.values(), other].filter(b => b.rows.length);
+    for (const b of list) b.rows.sort((x, y) => x.name.localeCompare(y.name));
+    const ncols = Math.min(2, list.length);
+    const cols = Array.from({ length: ncols }, () => ({ h: 0, html: '' }));
+    for (const b of list) {
+      const col = cols.reduce((m, c) => (c.h < m.h ? c : m), cols[0]);   // shortest column takes the next team
+      const c = /^#[0-9a-f]{6}$/i.test(b.team.color || '') ? b.team.color : '#64748b';
+      col.html += `<div style="margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${c}; padding-bottom:3px; margin-bottom:4px;">
+            <span style="font-weight:900; letter-spacing:0.04em; color:#fff;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
+            <span style="font-weight:800; color:${c}; font-size:0.85rem;">${b.rows.length}</span></div>
+          ${b.rows.map(x => `<div style="font-size:0.85rem; line-height:1.45; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(x.name)}${x.also.length ? ` <span style="font-size:0.65rem; opacity:0.65;">+${esc(x.also.join(' +'))}</span>` : ''}</div>`).join('')}
+        </div>`;
+      col.h += b.rows.length + 2;   // the header counts as a couple of lines
+    }
+    const coaches = going.filter(r => r.is_coach);
+    const when = [this._when(ev), EventLabels.timesLine(ev)].filter(Boolean).join(' · ');
+    return `<div style="margin:0 0 var(--space-3); border:3px solid #d4af37; border-radius:14px; padding:14px 16px;
+                 background:linear-gradient(160deg, #0b1f3a, #132b52); box-shadow:0 4px 14px rgba(0,0,0,0.35);">
+        <div style="text-align:center; font-weight:900; letter-spacing:0.12em; color:#d4af37; font-size:0.95rem;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: ev.kind === 'pickup' ? 'PICKUP' : 'PRACTICE' }))}</div>
+        <div style="text-align:center; color:#cbd5e1; font-size:0.8rem; margin:2px 0 12px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''}</div>
+        <div style="display:grid; grid-template-columns:repeat(${ncols}, minmax(0, 1fr)); gap:14px; align-items:start;">
+          ${cols.map(c => `<div>${c.html}</div>`).join('')}</div>
+        <div style="text-align:center; color:#d4af37; font-weight:800; font-size:0.85rem; margin-top:2px;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
+        ${coaches.length ? `<div style="text-align:center; color:#94a3b8; font-size:0.75rem; margin-top:4px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
+      </div>`;
   }
 
   // ── 📞 Attendance calls (mig 1277; owner 2026-11-11: "call all coaches
