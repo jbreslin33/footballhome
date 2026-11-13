@@ -152,7 +152,11 @@ json Expenses::projection(int clubId) {
     // ── referee fees ──
     std::map<long long, std::vector<json>> gamesByPolicy;
     for (const auto& r : db->query(kGamesSql, {club, "false"})) gamesByPolicy[r["policy_id"].as<long long>()].push_back(gameJson(r));
-    for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, "
+    // Home games still ahead per team (referee policies' projected months,
+    // in games): per-game costs on a team's plan (physio, rentals, filming)
+    // fall in the same months (mig 1320).
+    std::map<long long, std::map<std::string, double>> homeGamesAhead;
+    for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, p.team_id, "
                                    "       cash_flow_policy_scope(p.id) AS scope, "
                                    "       ci.id AS coach_issuer_id, ci.payable_to AS coach "
                                    "  FROM ref_fee_policies p LEFT JOIN invoice_issuers ci ON ci.id = p.coach_issuer_id "
@@ -207,6 +211,8 @@ json Expenses::projection(int clubId) {
             if (g["invoiced"].is_null()) add(m, ym, rate, 0); else add(m, ym, 0, g["invoiced"]["amount"].get<double>());
         }
         roll(sectionId, m);
+        if (!coaching && !p["team_id"].is_null() && rate > 0)
+            for (const auto& [ym, c] : m) if (c.projected > 0) homeGamesAhead[p["team_id"].as<long long>()][ym] += c.projected / rate;
         out["ref_fees"].push_back({{"policy_id", pid}, {"scope", str(p, "scope")}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
                                    {"hours_per_game", p["hours_per_game"].is_null() ? json(nullptr) : json(num(p, "hours_per_game"))},
                                    {"rate_per_hour", p["rate_per_hour"].is_null() ? json(nullptr) : json(num(p, "rate_per_hour"))},
@@ -214,6 +220,118 @@ json Expenses::projection(int clubId) {
                                    {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""}, {"rate", rate}, {"home_only", p["home_only"].as<bool>()},
                                    {"coach_issuer_id", p["coach_issuer_id"].is_null() ? json(nullptr) : json(p["coach_issuer_id"].as<long long>())}, {"coach", str(p, "coach")},
                                    {"note", str(p, "note")}, {"seasons", seasons}, {"games", games.size()}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
+    }
+
+    // ── team fee plans (migs 1306, 1320) ──
+    // An entry cut over (team_season_entries.budget_from_plan) is budgeted
+    // ONLY from its plan.  out["plan"] = the year: one row per line, rate ×
+    // quantity (owner 2026-11-13: "focus the budget on what it really is
+    // year to year … so we can tell if our price for players is correct").
+    // out["plan_cash"] = the same money by month for the grid / #cash-flow:
+    //   league money (dues, registrations, bonds)  its installments — past
+    //       due counts as paid, the rest is still to come
+    //   a line its ref policy already draws (league_fee_id)  skipped here
+    //   other per-game costs (physio, rentals, filming)  rate × the games
+    //       still ahead (never more than the plan's quantity), in the months
+    //       the team's home games still fall in; no policy → spread evenly
+    //       to the season's end
+    out["plan"] = json::array(); out["plan_cash"] = json::array(); out["plan_dues"] = json::array();
+    {
+        const char* kPlanSql = R"SQL(
+            SELECT pl.plan_id, pl.entry_id, pl.team_id, pl.team, pl.league, pl.season, pl.category, c.label AS category_label,
+                   pl.fee_kind, pl.fee_label, pl.unit, u.label AS unit_label, pl.rate, pl.quantity, pl.proposed, pl.is_assumed, pl.note,
+                   COALESCE(e.budget_scope, cash_flow_team_scope(pl.team_id), 'club') AS scope, sc.label AS scope_label,
+                   t.club_section_id, s.end_date::text AS season_end,
+                   EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy
+              FROM team_fee_plan_lines pl
+              JOIN team_fee_plans p ON p.id = pl.plan_id
+              JOIN team_season_entries e ON e.id = pl.entry_id AND e.budget_from_plan
+              JOIN teams t ON t.id = pl.team_id
+              JOIN seasons s ON s.id = e.season_id
+              JOIN invoice_line_categories c ON c.code = pl.category
+              LEFT JOIN fee_units u ON u.code = pl.unit
+              LEFT JOIN cash_flow_scopes sc ON sc.code = COALESCE(e.budget_scope, cash_flow_team_scope(pl.team_id))
+              JOIN budget_years y ON y.club_id = $1::int AND (now() AT TIME ZONE 'America/New_York')::date BETWEEN y.starts_on AND y.ends_on
+             WHERE s.start_date BETWEEN y.starts_on AND y.ends_on
+             ORDER BY pl.entry_id, pl.category_order, pl.kind_order, pl.rate DESC)SQL";
+        auto usd = [](double v) { char b[32]; std::snprintf(b, sizeof b, "$%.2f", v); return std::string(b); };
+        auto qtyStr = [](double v) { char b[32]; std::snprintf(b, sizeof b, "%g", std::round(v * 10) / 10); return std::string(b); };
+        static const std::set<std::string> kLeagueMoney = {"league_dues", "registrations", "bonds"};
+        std::map<std::string, json> payRows;   // scope → its league payments row (one per pill)
+        std::set<long long> entries;
+        for (const auto& r : db->query(kPlanSql, {club})) {
+            const long long entry = r["entry_id"].as<long long>(), team = r["team_id"].as<long long>();
+            const long long sectionId = r["club_section_id"].is_null() ? 0 : r["club_section_id"].as<long long>();
+            const std::string category = str(r, "category"), scope = str(r, "scope");
+            entries.insert(entry);
+            out["plan"].push_back({{"plan_id", r["plan_id"].as<long long>()}, {"entry_id", entry}, {"team_id", team}, {"team", str(r, "team")},
+                                   {"league", str(r, "league")}, {"season", str(r, "season")}, {"scope", scope}, {"scope_label", str(r, "scope_label")},
+                                   {"section_id", sectionId ? json(sectionId) : json(nullptr)},
+                                   {"category", category}, {"category_label", str(r, "category_label")}, {"fee_kind", str(r, "fee_kind")},
+                                   {"label", str(r, "fee_label")}, {"unit", str(r, "unit")}, {"unit_label", str(r, "unit_label")},
+                                   {"rate", num(r, "rate")}, {"quantity", num(r, "quantity")}, {"amount", num(r, "proposed")},
+                                   {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
+            if (kLeagueMoney.count(category) || r["by_policy"].as<bool>()) continue;
+            // per-game costs over the home games still ahead
+            const double rate = num(r, "rate"), qty = num(r, "quantity");
+            Months m; const auto it = homeGamesAhead.find(team);
+            double ahead = 0; if (it != homeGamesAhead.end()) for (const auto& [ym, g] : it->second) ahead += g;
+            if (ahead > 0) {
+                const double games = std::min(qty, ahead);
+                const double total = round2(rate * games); double placed = 0; size_t k = 0;
+                for (const auto& [ym, g] : it->second) {   // last month takes the rounding
+                    const double v = ++k == it->second.size() ? round2(total - placed) : round2(total * g / ahead);
+                    placed += v; add(m, ym, v, 0); widen(ym);
+                }
+            } else {
+                const int endIdx = std::max(nowIdx, monthIndex(monthOf(str(r, "season_end"))));
+                const int n = endIdx - nowIdx + 1; const double total = rate * qty;
+                const double per = round2(total / n);
+                for (int i = nowIdx; i <= endIdx; i++) add(m, monthAt(i), i == endIdx ? round2(total - per * (n - 1)) : per, 0);
+            }
+            roll(sectionId, m);
+            out["plan_cash"].push_back({{"scope", scope}, {"category", category}, {"category_label", str(r, "category_label")},
+                                        {"label", str(r, "fee_label") + " — " + str(r, "scope_label")}, {"assumed", r["is_assumed"].as<bool>()},
+                                        {"hint", str(r, "fee_label") + ": " + usd(rate) + " × " + qtyStr(std::min(qty, ahead > 0 ? ahead : qty)) + " still ahead of " + qtyStr(qty) + " planned"},
+                                        {"by_month", monthsJson(m)}, {"totals", totals(m)}});
+        }
+        // league money by its installments, one row per Who pill
+        for (const long long entry : entries) {
+            for (const auto& r : db->query(
+                    "SELECT to_char(i.due_on, 'YYYY-MM') AS ym, i.due_on::text AS d, i.amount, i.note, t.club_section_id, "
+                    "       COALESCE(e.budget_scope, cash_flow_team_scope(e.team_id), 'club') AS scope, "
+                    "       COALESCE(sc.label, t.name) AS scope_label "
+                    "  FROM team_season_installments i JOIN team_season_entries e ON e.id = i.entry_id JOIN teams t ON t.id = e.team_id "
+                    "  LEFT JOIN cash_flow_scopes sc ON sc.code = COALESCE(e.budget_scope, cash_flow_team_scope(e.team_id)) "
+                    " WHERE i.entry_id = $1::int ORDER BY i.due_on", {std::to_string(entry)})) {
+                const std::string scope = str(r, "scope"), ym = str(r, "ym");
+                json& row = payRows[scope];
+                if (row.is_null()) row = {{"scope", scope}, {"scope_label", str(r, "scope_label")}, {"section_id", r["club_section_id"].is_null() ? json(nullptr) : json(r["club_section_id"].as<long long>())},
+                                          {"category", "league_dues"}, {"assumed", false}, {"hints", json::array()}, {"_m", json::object()}};
+                const double amt = num(r, "amount"); const bool paid = str(r, "d") < today;
+                json& c = row["_m"][ym]; if (c.is_null()) c = {{"projected", 0.0}, {"invoiced", 0.0}};
+                c[paid ? "invoiced" : "projected"] = c[paid ? "invoiced" : "projected"].get<double>() + amt;
+                row["hints"].push_back(str(r, "d") + " " + usd(amt) + (paid ? " ✓ " : " ") + str(r, "note"));
+            }
+        }
+        const std::string catLabel = db->query("SELECT label FROM invoice_line_categories WHERE code = 'league_dues'")[0]["label"].c_str();
+        std::string payTpl = "{scope}";
+        { auto t = db->query("SELECT body FROM message_templates WHERE kind = 'finances' AND tier = 'plan_payments' AND is_active LIMIT 1"); if (!t.empty()) payTpl = t[0]["body"].c_str(); }
+        auto payLabel = [&](const std::string& scope) { std::string l = payTpl; const auto at = l.find("{scope}"); if (at != std::string::npos) l.replace(at, 7, scope); return l; };
+        for (auto& [scope, row] : payRows) {
+            Months m; for (auto& [ym, c] : row["_m"].items()) { add(m, ym, c["projected"].get<double>(), c["invoiced"].get<double>()); widen(ym); }
+            roll(row["section_id"].is_null() ? 0 : row["section_id"].get<long long>(), m);
+            std::string hint; for (const auto& h : row["hints"]) hint += (hint.empty() ? "" : "\n") + h.get<std::string>();
+            out["plan_cash"].push_back({{"scope", scope}, {"category", "league_dues"}, {"category_label", catLabel}, {"payments_of", row["scope_label"]},
+                                        {"label", payLabel(row["scope_label"].get<std::string>())}, {"assumed", false}, {"hint", hint}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
+        }
+        // dues per year to set the cost per player against (latest policy, section first)
+        for (const auto& r : db->query(
+                "SELECT DISTINCT ON (s.id) s.id AS section_id, d.monthly_dues_usd FROM club_sections s "
+                "  JOIN dues_policies d ON d.club_id = $1::int AND (d.club_section_id = s.id OR d.club_section_id IS NULL) "
+                "   AND d.effective_from <= (now() AT TIME ZONE 'America/New_York')::date "
+                " ORDER BY s.id, (d.club_section_id IS NULL), d.effective_from DESC, d.id DESC", {club}))
+            out["plan_dues"].push_back({{"section_id", r["section_id"].as<long long>()}, {"monthly", num(r, "monthly_dues_usd")}});
     }
 
     // ── budget lines ──

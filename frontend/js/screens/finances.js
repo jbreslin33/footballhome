@@ -17,7 +17,7 @@
 // Wording: message_templates kind 'payments_overview' (summary / revenue)
 // and 'finances' (page, pills, cash flow).
 class FinancesScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'summary'; this.err = ''; this.expanded = new Set(); this.money = null; this.scope = 'all'; }
+  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'plan'; this.err = ''; this.expanded = new Set(); this.money = null; this.scope = 'all'; }
 
   render() {
     const div = document.createElement('div');
@@ -137,7 +137,7 @@ class FinancesScreen extends Screen {
     const who = this.find('#fn-who');
     if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    const pills = [['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
+    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
@@ -147,7 +147,7 @@ class FinancesScreen extends Screen {
     if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this._expensesHtml();
+    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this._expensesHtml();
   }
 
   // ── shared bits ──
@@ -239,7 +239,7 @@ class FinancesScreen extends Screen {
     // its items, where rows sharing a group_label are one line ("u8 fall
     // winter spring all one line").
     const addBy = (into, by) => { for (const [ym, c] of Object.entries(by || {})) { into[ym] = into[ym] || { projected: 0, invoiced: 0 }; into[ym].projected += Number(c.projected || 0); into[ym].invoiced += Number(c.invoiced || 0); } };
-    const catLabel = {}; for (const b of (x.budget || [])) catLabel[b.category] = (b.category_label || b.category).replace(/:\s*$/, '');
+    const catLabel = {}; for (const b of [...(x.budget || []), ...(x.plan_cash || [])]) catLabel[b.category] = (b.category_label || b.category).replace(/:\s*$/, '');
     catLabel.referees = catLabel.referees || 'Referees';
     catLabel.labor = this._copy('coaching_label') || 'Coaching';
     const raw = [
@@ -253,6 +253,8 @@ class FinancesScreen extends Screen {
       ...(x.ref_fees || []).filter(p => p.kind === 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'labor', key: `game:${p.label}`, keyLabel: `Game hours — ${p.label}${p.coach ? ` · ${p.coach}` : ''}`, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {},
         hints: [`${p.hours_per_game} h × ${FinancesScreen.money2(p.rate_per_hour)}/h = ${FinancesScreen.money2(p.rate)} per game, home and away${p.coach ? `, paid to ${p.coach}` : ''}`] })),
       ...(x.ref_fees || []).filter(p => p.kind !== 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
+      // Teams on their fee plan (mig 1320): league payments + per-game costs still ahead.
+      ...(x.plan_cash || []).filter(p => this._scopeOk(p.scope)).map(p => ({ cat: p.category, key: p.label, assumed: !!p.assumed, by: p.by_month || {}, hints: [p.hint || ''] })),
       ...(x.budget || []).filter(b => this._scopeOk(b.scope)).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
         hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
     ];
@@ -266,7 +268,7 @@ class FinancesScreen extends Screen {
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     const catRows = [...cats.values()].filter(c => sum(c.by, 'projected') > 0 || sum(c.by, 'invoiced') > 0)
       .sort((a, b) => (order.indexOf(a.code) + 1 || 99) - (order.indexOf(b.code) + 1 || 99));
-    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦' };
+    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦', media: '🎥', medical: '🩺' };
     const outRows = [];   // what the grid prints, in order
     for (const c of catRows) {
       const open = this.expanded.has(c.code);
@@ -311,6 +313,45 @@ class FinancesScreen extends Screen {
         <div class="fn-games">${list || '<div class="fn-dim">No games on the schedules yet.</div>'}</div>
       </div>
       ${this._budgetHtml()}`;
+  }
+
+  // ── Year plan (mig 1320): each team's fee plan, rate × quantity for the
+  // budget year — what the year really costs, and per player against dues.
+  _planHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
+    const lines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope));
+    const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
+    if (!lines.length) return `<div class="fn-card">${head}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
+    const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
+    const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
+    const entries = new Map();
+    for (const l of lines) { if (!entries.has(l.entry_id)) entries.set(l.entry_id, { title: `${l.team} · ${l.league} ${l.season}`, lines: [] }); entries.get(l.entry_id).lines.push(l); }
+    let rows = '', total = 0;
+    for (const e of entries.values()) {
+      const sub = e.lines.reduce((a, l) => a + Number(l.amount), 0); total += sub;
+      rows += `<tr class="group"><td colspan="2">${esc(e.title)}</td><td>${M0(sub)}</td></tr>`;
+      for (const l of e.lines) rows += `
+        <tr class="item"><td title="${esc(l.note || '')}" style="white-space:normal;">${esc(l.label)}${l.is_assumed ? '*' : ''}${l.note ? `<span class="fn-tick">${esc(l.note)}</span>` : ''}</td>
+          <td>${M2(l.rate)} × ${qty(l.quantity)}<span class="fn-tick">${esc(l.unit_label || '')}</span></td>
+          <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
+    }
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    // Per player: a team pill only — its own team's planned players (per-player lines).
+    let per = '';
+    const pill = ((this.flow || {}).scopes || []).find(sc => sc.code === this.scope);
+    if (pill && pill.team_id) {
+      const players = lines.filter(l => l.team_id === pill.team_id && l.unit === 'per_player').reduce((a, l) => a + Number(l.quantity), 0);
+      const sec = lines.find(l => l.team_id === pill.team_id)?.section_id;
+      const dues = 12 * Number(((this.expenses.plan_dues || []).find(d => d.section_id === sec) || {}).monthly || 0);
+      if (players > 0 && dues > 0) per = `<div class="fn-note" style="margin-top:8px; font-size:0.9rem; opacity:0.9;">${esc(this._copy('plan_per_player', { players: qty(players), cost: M0(total / players), pct: `${Math.round(100 * total / players / dues)}%`, dues: M0(dues) }))}</div>`;
+    }
+    return `
+      <div class="fn-card">${head}
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
+          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>${per}
+      </div>`;
   }
 
   // ── Budget lines: edit the estimate, ✓ when the bill is finished (mig 921) ──

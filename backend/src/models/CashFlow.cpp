@@ -248,6 +248,18 @@ json CashFlow::build(int clubId) {
                                         {"amount", amt}, {"ahead", true}});
             }
         }
+        // Teams budgeted from their fee plan (mig 1320): league payments and
+        // per-game costs still to come.
+        for (const auto& p : proj["plan_cash"]) {
+            const std::string name = p["label"].get<std::string>();
+            for (auto& [ym, c] : p["by_month"].items()) {
+                const double amt = c["projected"].get<double>();
+                if (ym < nowYm || amt == 0) continue;
+                out["items"].push_back({{"ym", ym}, {"dir", "out"}, {"scope", p["scope"]}, {"type", "plan"},
+                                        {"name", name}, {"category", p["category"]}, {"detail", ""},
+                                        {"amount", amt}, {"ahead", true}});
+            }
+        }
     }
 
     // What LeagueApps keeps, the last 12 months: projections are in net money too.
