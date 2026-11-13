@@ -194,11 +194,15 @@ class AdPreviewScreen extends Screen {
     // ● Live ads (owner 11/13 "i should always be able to view live ads
     // on fh … ad, graphic, text etc and stats"): every ad Meta is
     // delivering now, first, never hidden, never in the approval queue.
-    const live = this.allAds.filter(ad => this.classify(ad).bucket === 'ACTIVE');
+    // An ad switched on but back in Meta's review after an edit (creative
+    // swap → IN PROCESS) is still the live ad.
+    const isLive = ad => this.classify(ad).bucket === 'ACTIVE'
+      || (ad.status === 'ACTIVE' && ['PENDING', 'ISSUES'].includes(this.classify(ad).bucket));
+    const live = this.allAds.filter(isLive);
     const queue = this.allAds.filter(ad => !ad.hidden
-      && this.classify(ad).bucket !== 'ACTIVE'
+      && !isLive(ad)
       && (this.filter === 'all' || this.classify(ad).bucket === this.filter));
-    const rest = this.allAds.filter(ad => ad.hidden && this.classify(ad).bucket !== 'ACTIVE');
+    const rest = this.allAds.filter(ad => ad.hidden && !isLive(ad));
 
     const esc = t => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const restRows = rest.map(ad => {
@@ -224,7 +228,7 @@ class AdPreviewScreen extends Screen {
       <h2 style="margin:0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">● Live ads <span style="opacity:0.5; font-weight:500;">${live.length}</span></h2>
       ${live.length ? `<div style="max-width:400px; width:100%; margin:-8px auto 0; font-size:0.8rem; opacity:0.75;">$${liveTotals.budget.toFixed(2)}/day budget · last 30 days $${liveTotals.spend.toFixed(2)} spent · ${liveTotals.leads} leads</div>` : ''}
       ${live.length
-        ? live.map(ad => this.renderAdCard(ad, this.liveStats && this.liveStats[ad.id])).join('')
+        ? live.map(ad => this.renderAdCard(ad, (this.liveStats && this.liveStats[ad.id]) || null)).join('')
         : `<div style="text-align:center; padding: var(--space-4); opacity:0.6;">No ads are live right now.</div>`}
       <h2 style="margin:var(--space-4) 0 0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">📋 Pending approval <span style="opacity:0.5; font-weight:500;">${queue.length}</span></h2>
       ${queue.length
@@ -450,10 +454,10 @@ class AdPreviewScreen extends Screen {
             ${isNew ? '<span style="font-size:0.65rem; font-weight:700; color:#fff; background:#3b82f6; padding:1px 7px; border-radius:999px; letter-spacing:.03em;">NEW</span>' : ''}
             ${createdLabel ? `<span style="font-size:0.7rem; opacity:0.45; white-space:nowrap;">${createdLabel}</span>` : ''}
           </div>
-          ${bucket === 'ACTIVE' ? '' : `<button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">🗂 Archive</button>`}
+          ${liveStats !== undefined ? '' : `<button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">🗂 Archive</button>`}
         </div>
         <div style="font-weight:700; font-size:0.95rem; margin-bottom: var(--space-3);">${ad.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
-        ${bucket === 'ACTIVE' ? this.renderLiveStats(liveStats) : ''}
+        ${liveStats !== undefined ? this.renderLiveStats(liveStats) : ''}
         ${instagramMockup}
         <details style="margin-top: var(--space-3);">
           <summary style="cursor:pointer; font-size:0.8rem; opacity:0.7;">📘 Facebook view</summary>

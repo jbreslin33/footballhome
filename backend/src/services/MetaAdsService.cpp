@@ -187,14 +187,17 @@ json MetaAdsService::fetchLiveAds() {
 
     const std::string ins = "{spend,reach,impressions,frequency,clicks,inline_link_clicks,actions}";
     const std::string fields =
-        "id,name,created_time,"
+        "id,name,status,created_time,"
         "adset{id,name,daily_budget,start_time,targeting},"
         "insights.date_preset(last_7d).as(week)" + ins + ","
         "insights.date_preset(last_30d).as(month)" + ins + ","
         "insights.date_preset(maximum).as(life)" + ins;
 
     const std::string url = graphUrl(adAccountId_ + "/ads")
-        + "?effective_status=" + HttpClient::urlEncode("[\"ACTIVE\"]")
+        // Live = delivering, or switched on and in Meta's review after an
+        // edit (a creative swap re-reviews the ad; it is still our live ad).
+        + "?effective_status=" + HttpClient::urlEncode(
+              "[\"ACTIVE\",\"IN_PROCESS\",\"PENDING_REVIEW\",\"PREAPPROVED\",\"WITH_ISSUES\"]")
         + "&fields=" + HttpClient::urlEncode(fields)
         + "&limit=50"
         + "&access_token=" + token_;

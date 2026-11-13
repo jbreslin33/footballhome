@@ -49,11 +49,13 @@ h1{font-size:112px;font-weight:900;line-height:.95;margin-top:14px;text-shadow:0
 .yr{margin-top:20px;text-align:center;font-size:20px;font-weight:900;letter-spacing:6px;color:#f5d442}.seasons{display:flex;justify-content:center;gap:12px;margin-top:10px}.s{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 6px;text-align:center;display:flex;flex-direction:column;justify-content:center}.s .i{font-size:30px}.s .l{font-size:19px;font-weight:900;letter-spacing:2px;margin-top:4px}.s .d{font-size:15px;opacity:.85;margin-top:2px}.s.now{background:rgba(245,212,66,.2);border:2px solid #f5d442}.s.now .l{color:#f5d442}
 .acts{display:flex;justify-content:center;gap:12px;margin-top:12px}.act{flex:1;background:rgba(245,212,66,.14);border:2px solid rgba(245,212,66,.5);border-radius:14px;padding:12px 6px;text-align:center;font-size:22px;font-weight:900;letter-spacing:1px;color:#f5d442}.act .i{margin-right:8px}
 .venue{position:absolute;bottom:44px;left:60px;right:60px;background:rgba(255,255,255,.1);border:3px solid rgba(245,212,66,.65);border-radius:20px;padding:16px 20px;text-align:center}
+.card.leagues .header{margin-top:0}.card.leagues .hero{margin-top:20px}.card.leagues h1{font-size:108px;margin-top:10px}.card.leagues .sub{margin-top:18px;font-size:34px}.card.leagues .pills.tight .pill{font-size:20px;padding:11px 18px}.card.leagues .her{margin-top:8px}.card.leagues .pills{margin-top:10px}.card.leagues .yr{margin-top:12px}.card.leagues .seasons{margin-top:8px}.card.leagues .acts{margin-top:10px}
+.card.many .hero{margin-top:12px}.card.many h1{font-size:96px;margin-top:6px}.card.many .sub{margin-top:12px;font-size:32px}.card.many .her{margin-top:6px}.card.many .pills{margin-top:8px}.card.many .pills.tight{row-gap:8px}.card.many .pills.tight .pill{font-size:19px;padding:9px 16px}.card.many .yr{margin-top:10px}.card.many .s{padding:6px 6px}.card.many .act{padding:9px 6px}.card.leagues .venue{bottom:38px;padding:12px 20px}
 .venue .n{font-size:44px;font-weight:900;color:#f5d442}.venue .ad{font-size:30px;font-weight:700;margin-top:8px}`;
-const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="card${o.strip ? ' post' : ''}"><div class="pattern"></div><div class="gb t"></div>
+const card = (o) => `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="card${o.strip ? ' post' : ''}${o.pills.length && !o.strip ? ' leagues' : ''}${o.pills.length > 4 && !o.strip ? ' many' : ''}"><div class="pattern"></div><div class="gb t"></div>
 <div class="header"><img src="${crest}"><div><div class="club">LIGHTHOUSE 1893 SC</div><div class="since">EST. ${o.est} · PHILADELPHIA</div></div>${o.badge}</div>
-<div class="hero"><div class="kicker">${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
-<div class="pills${o.pills.length>2?' tight':''}">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}${o.pills.length>2?'<div class="brk"></div>':''}<div class="pill price">${PRICE}</div></div>
+<div class="hero"><div class="kicker"${o.kickerStyle ? ` style="${o.kickerStyle}"` : ''}>${o.kicker}</div><h1>${o.h1}</h1><div class="sub">${o.sub}</div><div class="her">${o.her}</div></div>
+<div class="pills${o.pills.length?' tight':''}">${o.pills.map(p=>`<div class="pill">${p}</div>`).join('')}${o.pills.length?'<div class="brk"></div>':''}<div class="pill price">${PRICE}</div></div>
 <div class="yr">FULL-YEAR PROGRAM</div><div class="seasons">${o.seasons.map(([i,l,d])=>`<div class="s"><div class="i">${i}</div><div class="l">${l}</div>${d?`<div class="d">${d}</div>`:""}</div>`).join("")}</div><div class="acts">${ACTS.map(l=>`<div class="act">${l}</div>`).join("")}</div>
 ${o.strip || ''}<div class="venue"><div class="n">LIGHTHOUSE SPORTS COMPLEX</div><div class="ad">199 East Erie Avenue · Philadelphia, PA</div></div>
 <div class="gb b"></div></div></body></html>`;
@@ -69,15 +71,22 @@ const ACTS = ['LEAGUE GAMES','TRAINING','TOURNAMENTS'];
 const PRICE = '$35/MONTH MEMBERSHIP · UNIFORM INCLUDED';
 const ball = '<div class="ballc">⚽</div>';
 const cards = {
- 'youth-year-round-ad': {est:'1897', badge:badges([[icsl, 1], [epysa], [ppr]]), kicker:'Boys & Girls · Grades K–9', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
+ 'youth-year-round-ad': {est:'1897', badge:badges([[icsl, 1], [epysa], [ppr]]), kicker:'Boys & Girls · Grades K–10 (Ages 6–15)', kickerStyle:'letter-spacing:5px', h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club",
+   // Owner 11/13: "for youth league. Philadelphia Parks & Recreation Soccer League".
+   pills:['PHILADELPHIA PARKS &amp; RECREATION SOCCER LEAGUE'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  // Free organic post (owner 2026-10-28): every program on one card,
  // "registration links in bio" — not an ad, posted from #promotional-posts.
- 'club-year-round-post': {est:'1893', badge:'', strip:`<div class="strip">${[[icsl, 1], [epysa], [ppr], [L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1], [L('tcwsl.png')], ...FED].map(([src, wide]) => `<div class="badge"><img${wide ? ' class="wide"' : ''} src="${src}"></div>`).join('')}</div>`, kicker:'👉 To register: tap the Linktree in our bio', h1:'<span class="ball">⚽</span> <span class="a">ALL YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–9'],
+ 'club-year-round-post': {est:'1893', badge:'', strip:`<div class="strip">${[[icsl, 1], [epysa], [ppr], [L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1], [L('tcwsl.png')], ...FED].map(([src, wide]) => `<div class="badge"><img${wide ? ' class="wide"' : ''} src="${src}"></div>`).join('')}</div>`, kicker:'👉 To register: tap the Linktree in our bio', h1:'<span class="ball">⚽</span> <span class="a">ALL YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:['MEN 16+','WOMEN 18+','BOYS &amp; GIRLS K–10'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
- 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club", pills:[],
+ 'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club",
+   // The leagues the men play in (owner 11/13: "for men APSL, CASA Select Liga 1, U23, Grass Roots Cup Puerto Rico").
+   // + cups (owner 11/13: "for men US OPEN CUP, US Amateur CUP, STATE CUP").
+   pills:['APSL','CASA SELECT LIGA 1','U23','GRASS ROOTS CUP PUERTO RICO','US OPEN CUP','US AMATEUR CUP','STATE CUP'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
- 'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club", pills:[],
+ 'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club",
+   // Owner 11/13: "for women it should say Tri County Womens League".
+   pills:["TRI COUNTY WOMEN'S LEAGUE"],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
 };
 (async()=>{const b=await puppeteer.launch({headless:'new',args:['--no-sandbox']});const pg=await b.newPage();await pg.setViewport({width:1080,height:1080});
