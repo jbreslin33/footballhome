@@ -328,7 +328,9 @@
       for (const [k, c] of Object.entries(proto.clips)) { act[k] = mixer.clipAction(c); act[k].play(); act[k].setEffectiveWeight(0); }
       anim = { mixer, act, ph: 0, lastPh: fig.phase || 0, idleT: (fig.slot * 0.37) % 2.5, yawOff: 0, ov: 0,
                twist: ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head'].map((n) => bones[n]).filter(Boolean),
-               pelvisPos: new THREE.Vector3(), saved: [] };
+               pelvisPos: new THREE.Vector3(), saved: [],
+               feet: ['l', 'r'].map((sd) => ({ thigh: bones['thigh_' + sd], calf: bones['calf_' + sd], foot: bones['foot_' + sd],
+                                              ball: bones['ball_' + sd], lock: null, tgt: null, w: 0 })).filter((f) => f.thigh && f.calf && f.foot && f.ball) };
     }
     fig.body = {
       model, map, restInv, pelvisBone: bones.pelvis, anim,
@@ -385,6 +387,51 @@
     const W = fig.w || {};
     return !!(fig.keeper || fig.kk || fig.rc || fig.hd || fig.dv || (W.slide || 0) > 0.05 || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
   }
+  // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
+  // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
+  // LOCK_OFF m) or it would stretch more than LOCK_MAX m, then eased off over ~0.1 s. [FH; the solve is the
+  // law of cosines in the leg's own plane]
+  const LOCK_ON = 0.04, LOCK_OFF = 0.075, LOCK_MAX = 0.45;
+  const FOOTLOCK = new URLSearchParams(location.search).get('footlock') !== '0';
+  const fv1 = new THREE.Vector3(), fv2 = new THREE.Vector3(), fv3 = new THREE.Vector3(), fv4 = new THREE.Vector3(), fv5 = new THREE.Vector3();
+  const fq1 = new THREE.Quaternion(), fq2 = new THREE.Quaternion(), fq3 = new THREE.Quaternion();
+  function setWorldQ(bone, qw) {                       // a bone's world rotation → its local one
+    bone.parent.getWorldQuaternion(fq3).invert();
+    bone.quaternion.copy(fq3.multiply(qw));
+    bone.updateMatrixWorld(true);
+  }
+  function legTo(F, T) {
+    F.foot.getWorldQuaternion(fq1);                    // the foot keeps its turn
+    const h = F.thigh.getWorldPosition(fv1), k = F.calf.getWorldPosition(fv2), a = F.foot.getWorldPosition(fv3);
+    const la = h.distanceTo(k), lb = k.distanceTo(a);
+    const dT = Math.min(la + lb - 1e-3, Math.max(Math.abs(la - lb) + 1e-3, h.distanceTo(T)));
+    const u = fv4.copy(h).sub(k), w = fv5.copy(a).sub(k);
+    const cur = u.angleTo(w);
+    const want = Math.acos(Math.min(1, Math.max(-1, (la * la + lb * lb - dT * dT) / (2 * la * lb))));
+    const n = u.clone().cross(w);
+    if (n.lengthSq() > 1e-10) {
+      n.normalize();
+      F.calf.getWorldQuaternion(fq2).premultiply(tw.setFromAxisAngle(n, want - cur));
+      setWorldQ(F.calf, fq2);
+    }
+    const a2 = F.foot.getWorldPosition(fv3);
+    tw.setFromUnitVectors(fv4.copy(a2).sub(h).normalize(), fv5.copy(T).sub(h).normalize());
+    F.thigh.getWorldQuaternion(fq2).premultiply(tw);
+    setWorldQ(F.thigh, fq2);
+    setWorldQ(F.foot, fq1);
+    F.ball.updateMatrixWorld(true);
+  }
+  function footLock(A, dt) {
+    for (const F of A.feet) {
+      const by = F.ball.getWorldPosition(fv1).y;
+      const at = F.foot.getWorldPosition(new THREE.Vector3());
+      if (!F.lock && by < LOCK_ON && A.ov < 0.3) { F.lock = at.clone(); F.tgt = F.lock; }
+      else if (F.lock && (by > LOCK_OFF || at.distanceTo(F.lock) > LOCK_MAX || A.ov >= 0.3)) F.lock = null;
+      F.w = F.lock ? Math.min(1, F.w + dt * 25) : Math.max(0, F.w - dt * 10);
+      if (F.w > 0 && F.tgt) legTo(F, at.lerp(F.tgt, F.w));
+      if (F.w <= 0) F.tgt = null;
+    }
+  }
   function animate(fig, dt, ctx) {
     const b = fig.body, A = b.anim;
     const s = fig.speed || 0, vx = (ctx && ctx.vx) || 0, vy = (ctx && ctx.vy) || 0;
@@ -430,6 +477,7 @@
         bone.updateMatrixWorld(true);
       }
     }
+    if (FOOTLOCK && A.feet.length) footLock(A, dt);
     // cross-fade to the rig for the overlays
     if (A.ov > 0.01) {
       const sv = A.saved;

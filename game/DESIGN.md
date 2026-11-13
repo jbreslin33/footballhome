@@ -9088,5 +9088,12 @@ These are artist-keyed, not motion capture. The clips' own speeds come from the 
 - Pure stride matching (`?jogfloor=0`, the default): 0.37 / 0.35 / 0.31.
 - Median frame 18.6 ms with 22 bodies; no console errors.
 
-**Not yet.** Foot-lock IK, so the planted foot pins and the residual ~0.3 slide goes. Side-steps and true
+**G5.105b, the foot lock** (`footLock` / `legTo`; `?footlock=0` turns it off). A foot the clip puts down
+(its ball joint under 4 cm) is pinned where it landed. A two-bone solve (the law of cosines in the leg's
+plane, then the thigh aimed) holds it, the foot's own turn kept. It lets go when the clip lifts it over
+7.5 cm, or when it would stretch 0.45 m+, eased off over 0.1 s. Measured: planted-foot slide 1-2 / 2-4 /
+4+ m/s 0.13 / 0.15 / 0.14 of body speed (0.40 / 0.62 / – without; few runners 4+ in that window). A foot
+is pinned 76% of frames. No knee bends backward; knee interior p10 / 50 / 90 98 / 148 / 165°.
+
+**Not yet.** Side-steps and true
 backpedals: the pack's Pro tier ($9.99) has 8-direction locomotion. Kicks, headers and dives from clips.
