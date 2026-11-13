@@ -82,7 +82,8 @@ const cards = {
  'mens-year-round-ad': {est:'1893', badge:badges([[L('apsl.png')], [L('casa.png')], [L('epsa.png'), 1]]), kicker:"Men's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"America's oldest active ⚽ club",
    // The leagues the men play in (owner 11/13: "for men APSL, CASA Select Liga 1, U23, Grass Roots Cup Puerto Rico").
    // + cups (owner 11/13: "for men US OPEN CUP, US Amateur CUP, STATE CUP").
-   pills:['APSL','CASA SELECT LIGA 1','U23','GRASS ROOTS CUP PUERTO RICO','US OPEN CUP','US AMATEUR CUP','STATE CUP'],
+   // + Liga 2 (owner 11/13 "liga 2 to leagues for men", mig 1356).
+   pills:['APSL','CASA SELECT LIGA 1','CASA SELECT LIGA 2','U23','GRASS ROOTS CUP PUERTO RICO','US OPEN CUP','US AMATEUR CUP','STATE CUP'],
    seasons:[['🍂','FALL',''],['❄️','WINTER','Indoor'],['🌸','SPRING',''],['☀️','SUMMER','']]},
  'womens-year-round-ad': {est:'1895', badge:badges([[L('epsa.png'), 1], [L('tcwsl.png')]]), kicker:"Women's Club", h1:'SOCCER <span class="a">ALL</span><br><span class="a">YEAR</span> ROUND', sub:'Join Anytime · <strong>All Skill Levels Welcome</strong>', her:"Philadelphia's oldest non-profit ⚽ club",
    // Owner 11/13: "for women it should say Tri County Womens League".

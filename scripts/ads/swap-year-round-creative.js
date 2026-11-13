@@ -51,7 +51,8 @@ function caption(tier) {
 
 (async () => {
   const live = await graph('GET', `${ACCT}/ads`, {
-    effective_status: '["ACTIVE"]',
+    // A switched-on ad back in review after an edit is still the live ad.
+    effective_status: '["ACTIVE","IN_PROCESS","PENDING_REVIEW","PREAPPROVED","WITH_ISSUES"]',
     fields: 'id,name,creative{id,object_story_spec,instagram_user_id,degrees_of_freedom_spec}',
     limit: 50,
   });
