@@ -53,7 +53,7 @@ class FinancesScreen extends Screen {
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="fn-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Finances</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Budget</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
       <div class="screen-content" style="max-width:1400px; margin:0 auto;">
         <div id="fn-who"></div>
@@ -88,7 +88,7 @@ class FinancesScreen extends Screen {
     this.err = '';
     try {
       if (window.MessageCopy) await MessageCopy.load(this.auth);
-      const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Finances';
+      const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Budget';
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
       const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
