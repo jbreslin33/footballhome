@@ -255,7 +255,7 @@ class FinancesScreen extends Screen {
       ...(x.ref_fees || []).filter(p => p.kind !== 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
       // Teams on their fee plan (mig 1320): league payments + per-game costs still ahead.
       ...(x.plan_cash || []).filter(p => this._scopeOk(p.scope)).map(p => ({ cat: p.category, key: p.label, assumed: !!p.assumed, by: p.by_month || {}, hints: [p.hint || ''] })),
-      ...(x.budget || []).filter(b => this._scopeOk(b.scope)).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
+      ...(x.budget || []).filter(b => this._scopeOk(b.scope) && b.category !== 'labor').map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
         hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
     ];
     const cats = new Map();
@@ -341,11 +341,19 @@ class FinancesScreen extends Screen {
     }
     const bySection = new Map();
     for (const b of general) { const k = b.section || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
+    // Game coaching (mig 1332): each coaching policy under the pill — its
+    // season game counts × pay per game (hours × rate).
+    for (const p of (this.expenses.ref_fees || []).filter(p => p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && sc.section_code))) {
+      const games = (p.seasons || []).reduce((a, x) => a + Number(x.expected || 0), 0); if (!games) continue;
+      const k = p.section || ''; if (!bySection.has(k)) bySection.set(k, []);
+      bySection.get(k).push({ label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, amount: p.rate, year_units: games, year_total: p.rate * games,
+        is_assumed: (p.seasons || []).some(x => x.is_assumed), note: p.note, unitText: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) });
+    }
     for (const [sec, bs] of bySection) {
       const sub = bs.reduce((a, b) => a + Number(b.year_total || 0), 0); total += sub;
       rows += `<tr class="group"><td colspan="2">${esc(this._copy('plan_general', { section: sec }) || sec)}</td><td>${M0(sub)}</td></tr>`;
       for (const b of bs) {
-        const unit = b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '';
+        const unit = b.unitText || (b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '');
         rows += `
         <tr class="item"><td title="${esc(b.note || '')}" style="white-space:normal;">${esc(b.label)}${b.is_assumed ? '*' : ''}${b.note ? `<span class="fn-tick">${esc(b.note)}</span>` : ''}</td>
           <td>${M2(b.amount)} × ${qty(b.year_units)}<span class="fn-tick">${esc(unit || '')}</span></td>

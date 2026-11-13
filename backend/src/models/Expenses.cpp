@@ -398,7 +398,8 @@ json Expenses::projection(int clubId) {
                     WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
                ELSE 1 END AS units,
                -- the whole period, for the Year plan (mig 1329): weeks in it, members today
-               CASE WHEN b.amount_per = 'week' THEN CEIL((b.period_end - b.period_start + 1) / 7.0)::int ELSE NULL END AS year_weeks
+               CASE WHEN b.amount_per = 'week' THEN GREATEST(0, ROUND((b.period_end - b.period_start + 1) / 7.0)::int - b.weeks_off) ELSE NULL END AS year_weeks,
+               b.weeks_off
           FROM budget_lines b JOIN invoice_line_categories c ON c.code = b.category
          WHERE b.club_id = $1::int AND b.is_active
          ORDER BY b.sort_order, b.id)SQL", {club})) {
@@ -422,7 +423,9 @@ json Expenses::projection(int clubId) {
         const bool settled = b["settled"].as<bool>();
         const double remaining = settled ? 0.0 : std::max(0.0, round2(total - paidBefore - invoiced));
         const std::string ps = str(b, "ps"), pe = str(b, "pe"); widen(monthOf(pe));
-        if (remaining > 0) {
+        // Coaching lines (category labor, mig 1332) are the Year plan's: their
+        // cash timing on the grid is the coach's usual week + game hours.
+        if (remaining > 0 && str(b, "category") != "labor") {
             const int startIdx = std::max(nowIdx, monthIndex(monthOf(ps))), endIdx = std::max(startIdx, monthIndex(monthOf(pe)));
             if (str(b, "spread") == "even") {
                 const int n = endIdx - startIdx + 1; const double per = round2(remaining / n);
