@@ -9422,3 +9422,35 @@ and half from the free rate. The 3+ cut turns +0.7 into ~30 points. Eleven trial
 many small per-mate gaps, not one mole. Behaviours keep being fixed on their own measures (§8.219 spacing).
 
 Shipped: the spacing rule (engine; goldens re-locked, tests 22/22), SPACING and the marker-distance split (harness).
+
+### 8.220 G5.119 — our ball lives 3-5 m too central: passes come inward, lone AM / ST stand dead centre — measured; a width lift on the pick tried, not shipped (harness only)
+
+From §8.217 (receivers too central). New in `benchmarks_tracking_flight.py` and the harness: the ball's |y| and each
+role's on spell frames, INWARD (the ball's |y| change on a carry and on a pass), WIDTH BY THE BALL; WIDTH PICK in
+`benchmarks_tracking_passpick.py`. Seed 1000 / 2000, 8 matches each; real in brackets.
+
+**The ball.** On our spell frames, |y| p25 / med with the ball 0-35 / 35-52 / 52+ m off their line: 9.0 / 18.4-18.6,
+7.7-8.6 / 16.8-17.6, 7.8-7.9 / 15.7-15.9 (14.6 / 23.6, 12.9 / 21.5, 10.3 / 18.7). Roles likewise: DM/CM 8.0-8.7
+(11.2-12.4), FB 52+ 22.7 (25.6), WIDE 0-35 9.6-10.7 (14.0), AM 52+ 7.7-7.9 (10.8).
+
+**INWARD.** Carries don't move it (±0.4 m, real ±0.6). Passes do, by the ball's |y| at the kick 0-10 / 10-20 /
+20+ m: 52+ +6.9-7.6 / −1.8-2.0 / −3.7-4.0 (+11.4 / +3.4 / −5.7); 0-35 +4.0-5.6 / −1.6-3.6 / −4.9-5.5 (+4.6 / +1.0
+/ −2.9). Real passes from the middle go wide; from 10-20 m they stay or go wider; ours come in.
+
+**WIDTH PICK** (DFL, within the receiver's zone of 2+ mates, × lift by his |y| 0-7 / 7-14 / 14-20.16 / 20.16+ with
+the marker lift alongside): receiver 0-35 m off his goal 1 / 1.67 / 1.68 / 1.34, 35-70 1 / 1.17 / 1.41 / 1.19, 70+
+1 / 1.44 / 1.58 / 1.29. **Tried** in OnBall's split (physics.pass.width_*, removed): ball |y| med ±0.5, INWARD
+±1, role widths unchanged. Few of ours stand wide to be picked.
+
+**WIDTH BY THE BALL** (each role's |y| med by the ball's |y| 0-8 / 8-16 / 16-24 / 24+): AM 4.7 / 6.6 / 9.8 / 12.8
+(8.2 / 9.6 / 10.8 / 12.3), ST 4.7 / 6.4 / 8.5 / 11.4 (6.9 / 8.2 / 7.7 / 9.1), DM/CM 6.3 / 7.6 / 8.7 / 11.4 (7.2 /
+10.4 / 11.8 / 14.6), WIDE 15.3 / 14.8 / 15.1 / 13.8 (14.5 / 15.4 / 17.1 / 18.2), FB 22.6 / 22.2 / 20.5 / 22.2
+(22.7 / 22.8 / 22.8 / 24.8); CB within 0.5. At the same ball the shape is narrow too: a lone AM / ST (G5.102's
+kRealWidthPm leaves them whole, formation y 0) stands on the centre line with the ball central, real ones 7-8 m
+off it; DMs 1-3 m narrow; WIDE / FB with the ball wide don't hold the far touchline (and ST / AM slide too far).
+
+**Next.** A real |y| by role and ball |y| for the side on the ball (this table as the target, like kRealWidthPm
+for the pairs): lone AM / ST stand off the centre line (a side per spell), DMs and the far WIDE / FB wider with
+the ball wide, ST / AM less far over. Then INWARD and the ball's width again.
+
+Shipped: the measurements (harness only; outputs and goldens unchanged; tests 22/22).

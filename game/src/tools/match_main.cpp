@@ -69,7 +69,7 @@ struct Stats {
     long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
     std::vector<double> fc_d[6][3][3], fc_cb[6]; std::vector<double> fc_bl[6]; long fc_cb3[6] = {}, fc_why[6][ai::kWhyCount] = {};   // §8.216 FORWARDS ON THEIR CBS [carrier role][ST/AM/WIDE][to CB / to ball / off our line]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
-    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; std::vector<double> spc[3], spc_r[3][6], spc_p[3][2]; /* §8.219 SPACING */ long nb_n[3][5] = {}, nb_f[3][5] = {}; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
+    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; std::vector<double> spc[3], spc_r[3][6], spc_p[3][2]; /* §8.219 SPACING */ long nb_n[3][5] = {}, nb_f[3][5] = {}; std::vector<double> ay_r[3][6], ay_b[3], ay_yb[4][6], in_c[3][3], in_p[3][3]; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
     long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
@@ -2066,13 +2066,22 @@ int main(int argc, char** argv) {
             for (const Sp& c : sp) { if (kp(c.pid)) continue; const int tm = teamOf(c.pid);   // §8.219 SPACING: each outfielder's nearest outfield mate; close pairs 1 s on
                 for (int t = c.i0; t <= c.i1; ++t) { const FlF& f = fl_f[t];
                     const double tlz = hx - f.bx * (tm == 0 ? 1.0 : -1.0); const int z = tlz < 35 ? 0 : tlz < 52 ? 1 : 2;
+                    S.ay_b[z].push_back(std::fabs(f.by));
                     int out[16]; int no = 0; for (int q = 0; q < N && q < 32 && no < 16; ++q) if (teamOf(q) == tm && !kp(q)) out[no++] = q;
                     for (int a1 = 0; a1 < no; ++a1) { double nd = 99; for (int b1 = 0; b1 < no; ++b1) if (b1 != a1) nd = std::min(nd, static_cast<double>(std::hypot(f.x[out[a1]] - f.x[out[b1]], f.y[out[a1]] - f.y[out[b1]])));
-                        S.spc[z].push_back(nd); const int r = role(static_cast<std::uint8_t>(out[a1])); if (r >= 0 && r < 6) S.spc_r[z][r].push_back(nd); }
+                        S.spc[z].push_back(nd); const int r = role(static_cast<std::uint8_t>(out[a1])); if (r >= 0 && r < 6) { S.spc_r[z][r].push_back(nd); S.ay_r[z][r].push_back(std::fabs(f.y[out[a1]])); S.ay_yb[std::min(3, static_cast<int>(std::fabs(f.by) / 8.0))][r].push_back(std::fabs(f.y[out[a1]])); } }
                     if ((t - c.i0) % 5 == 0 && t + 5 < F && fl_f[t + 5].k == f.k + 30) { const FlF& f2 = fl_f[t + 5];
                         for (int a1 = 0; a1 < no; ++a1) for (int b1 = a1 + 1; b1 < no; ++b1) { const int qa = out[a1], qb = out[b1]; if (qa == c.pid || qb == c.pid) continue;
                             const double d0 = std::hypot(f.x[qa] - f.x[qb], f.y[qa] - f.y[qb]); if (d0 >= 8) continue;
                             S.spc_p[z][d0 < 4 ? 0 : 1].push_back(std::hypot(f2.x[qa] - f2.x[qb], f2.y[qa] - f2.y[qb]) - d0); } } } }
+            for (std::size_t u = 0; u < sp.size(); ++u) {   // §8.220 INWARD: the ball's |y| change on a carry (spell first → last) and a pass (to the next mate's spell)
+                const Sp& c = sp[u]; if (kp(c.pid)) continue; const int tm = teamOf(c.pid);
+                auto zb = [&](const FlF& f) { const double tlz = hx - f.bx * (tm == 0 ? 1.0 : -1.0); return tlz < 35 ? 0 : tlz < 52 ? 1 : 2; };
+                { const FlF& f = fl_f[c.i0]; const double y0 = std::fabs(f.by); S.in_c[zb(f)][std::min(2, static_cast<int>(y0 / 10))].push_back(std::fabs(fl_f[c.i1].by) - y0); }
+                if (u + 1 < sp.size()) { const Sp& n = sp[u + 1]; const int fl = n.i0 - c.i1;
+                    if (!kp(n.pid) && n.pid != c.pid && teamOf(n.pid) == tm && fl >= 2 && fl <= 15 && fl_f[n.i0].k - fl_f[c.i1].k == 6L * fl) {
+                        const FlF& f = fl_f[c.i1]; const double y0 = std::fabs(f.by); S.in_p[zb(f)][std::min(2, static_cast<int>(y0 / 10))].push_back(std::fabs(fl_f[n.i0].by) - y0); } }
+            }
             static const int off[5] = {-4, -2, 0, 2, 4};
             for (std::size_t u = 1; u < sp.size(); ++u) {
                 const Sp& c = sp[u]; const Sp& p = sp[u - 1];
@@ -2528,7 +2537,18 @@ int main(int argc, char** argv) {
                                 for (int z = 0; z < 3; ++z) { const auto& v = S.spc[z]; long a5 = 0, a10 = 0; for (double x : v) { a5 += x < 5; a10 += x < 10; } const double n = std::max<std::size_t>(1, v.size());
                                     std::printf("\n            %-5s %.1f m (%.1f), %.0f / %.0f%% (%.0f / %.0f) |", zn[z], md(v), rS[z][0], 100.0 * a5 / n, 100.0 * a10 / n, rS[z][1], rS[z][2]);
                                     for (int r = 0; r < 6; ++r) std::printf(" %s %.1f (%.1f)", rn[r], md(S.spc_r[z][r]), rR[z][r]);
-                                    std::printf(" | pairs %+.2f (%+.2f) / %+.2f (%+.2f)", md(S.spc_p[z][0]), rP[z][0], md(S.spc_p[z][1]), rP[z][1]); }
+                                    std::printf(" | pairs %+.2f (%+.2f) / %+.2f (%+.2f)", md(S.spc_p[z][0]), rP[z][0], md(S.spc_p[z][1]), rP[z][1]);
+                                    std::printf("\n                  m off the centre line med, every spell frame:"); for (int r = 0; r < 6; ++r) std::printf(" %s %.1f", rn[r], md(S.ay_r[z][r]));
+                                    { auto v = S.ay_b[z]; std::sort(v.begin(), v.end()); auto q = [&](double f) { return v.empty() ? 0.0 : v[static_cast<std::size_t>(f * (v.size() - 1))]; }; std::printf(" | the ball p25 / med / p75 %.1f / %.1f / %.1f", q(.25), q(.5), q(.75)); }
+                                    { static const double rB[3][3] = {{14.6, 23.6, 29.5}, {12.9, 21.5, 28.2}, {10.3, 18.7, 26.3}}, rC[3][3] = {{0.2, -0.1, -0.1}, {0.6, 0.0, 0.0}, {0.3, 0.3, 0.2}}, rPa[3][3] = {{4.6, 1.0, -2.9}, {8.2, -2.0, -3.8}, {11.4, 3.4, -5.7}};
+                                      std::printf(" (%.1f / %.1f / %.1f)\n                  INWARD, the ball's |y| change med by its |y| at the start 0-10 / 10-20 / 20+ m: carry", rB[z][0], rB[z][1], rB[z][2]);
+                                      for (int w = 0; w < 3; ++w) std::printf(" %+.1f (%+.1f)", md(S.in_c[z][w]), rC[z][w]); std::printf(" | pass");
+                                      for (int w = 0; w < 3; ++w) std::printf(" %+.1f (%+.1f)", md(S.in_p[z][w]), rPa[z][w]); } }
+                            }
+                            {   // §8.220 WIDTH BY THE BALL
+                                static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                                std::printf("\n          WIDTH BY THE BALL (spell frames, the side on the ball): each role's m off the centre line med, by the ball's m off it 0-8 / 8-16 / 16-24 / 24+");
+                                for (int r = 0; r < 6; ++r) { std::printf("\n            %-5s", rn[r]); for (int b = 0; b < 4; ++b) std::printf(" %.1f", md(S.ay_yb[b][r])); }
                             }
                             {   // §8.217 THE SLIDE, real DFL benchmarks_tracking_flight.py
                                 static const double rS[4][6] = {{1.1, 1.1, 1.8, 1.4, 1.7, 1.1}, {3.6, 2.5, 5.6, 4.5, 4.2, 3.8}, {6.2, 4.6, 7.9, 7.5, 6.2, 6.2}, {9.3, 7.3, 11.6, 10.4, 9.2, 8.8}};

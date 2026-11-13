@@ -24,7 +24,9 @@ his |y|, his own mates within 10 m, length, metres forward; how often the picked
 loneliest / most forward of them. SPACING (G5.118, §8.219): every spell frame, each outfielder of the side on the
 ball, his nearest outfield mate (m, <5 / <10 m shares, by role); pairs within 0-4 / 4-8 m (carrier out), their
 distance change over 1 s. Mates 10-30 m by their nearest opponent's metres: share, free %.
-fh-game-match prints the same as THE PASS IN FLIGHT, THE SLIDE, THE PICK and SPACING.
+INWARD (G5.119, §8.220): the ball's |y| change on a carry and on a pass, by its |y| at the start; the ball's |y|
+p25 / med / p75 and each role's |y| on spell frames; WIDTH BY THE BALL: each role's |y| by the ball's |y|.
+fh-game-match prints the same as THE PASS IN FLIGHT, THE SLIDE, THE PICK, SPACING and WIDTH BY THE BALL.
 FH original.
 """
 import collections, glob, math, multiprocessing, os, re, sys
@@ -111,6 +113,12 @@ def one(pos_path):
                 if who.get(q) != tm or q in keepers: continue
                 r = ROLE.get(pos_of.get(q), -1)
                 if r >= 0: c[("sl", yb, r)] += 1; H[("sls", yb, r)].append(y * sg)
+    def okrun(a, b):   # frames a..b consecutive, same half, all live
+        if b >= len(seq) or a < 0: return False
+        for t in range(a, b + 1):
+            if not seq[t][1]: return False
+            if t > a and (seq[t][0][0] != seq[t - 1][0][0] or seq[t][0][1] != seq[t - 1][0][1] + 5): return False
+        return True
     # SPACING (G5.118, §8.219): every spell frame, the side on the ball's outfielders — each one's nearest outfield mate
     # (m), by role; pairs within 8 m (the carrier out): their distance 1 s on, by the ball's band
     for i0, i1, pid in spells:
@@ -121,10 +129,13 @@ def one(pos_path):
             if (k[0], tm) not in own: continue
             z = zg(length / 2 + ball[k][0] * own[(k[0], tm)])
             out = [(q, p) for q, p in fr.items() if who.get(q) == tm and q not in keepers]
+            H[("by", z)].append(abs(ball[k][1]))
             for q, (x, y) in out:
                 nd = min((math.hypot(x - x2, y - y2) for q2, (x2, y2) in out if q2 != q), default=99)
                 H[("sp", z)].append(nd); r = ROLE.get(pos_of.get(q), -1)
                 if r >= 0: H[("spr", z, r)].append(nd)
+                if r >= 0: H[("ay", z, r)].append(abs(y))
+                if r >= 0: H[("ayb", min(3, int(abs(ball[k][1]) // 8)), r)].append(abs(y))
             if t % 5 == 0 and t + 5 < len(seq) and seq[t + 5][0][0] == k[0] and seq[t + 5][0][1] == k[1] + 25 and seq[t + 5][1]:
                 f2 = pl[seq[t + 5][0]]
                 for a_ in range(len(out)):
@@ -135,12 +146,20 @@ def one(pos_path):
                         if d0 >= 8: continue
                         d1 = math.hypot(f2[qa][0] - f2[qb][0], f2[qa][1] - f2[qb][1])
                         H[("pr", z, 0 if d0 < 4 else 1)].append(d1 - d0)
-    def okrun(a, b):   # frames a..b consecutive, same half, all live
-        if b >= len(seq) or a < 0: return False
-        for t in range(a, b + 1):
-            if not seq[t][1]: return False
-            if t > a and (seq[t][0][0] != seq[t - 1][0][0] or seq[t][0][1] != seq[t - 1][0][1] + 5): return False
-        return True
+    # INWARD (G5.119, §8.220): the ball's |y| change on a carry (a spell's first → last frame) and on a pass (the
+    # passer's last frame → the receiver's first, receipts as above), by the band at the start and its |y| 0-10 / 10-20 / 20+
+    for (a0, a1, pa), (b0, b1, pb) in zip(spells, spells[1:]):
+        for (i0, i1, pid), kind in (((a0, a1, pa), "c"),):
+            if pid in keepers or (seq[i0][0][0], who[pid]) not in own: continue
+            k0 = seq[i0][0]; tm = who[pid]; z = zg(length / 2 + ball[k0][0] * own[(k0[0], tm)]); y0 = abs(ball[k0][1]); wb = min(2, int(y0 // 10))
+            H[("ic", z, wb)].append(abs(ball[seq[i1][0]][1]) - y0)
+        if pa in keepers or pb in keepers or pa == pb or who.get(pa) != who.get(pb): continue
+        fl = b0 - a1
+        if fl < 2 or fl > 15 or not okrun(a1, b0): continue
+        k0 = seq[a1][0]; tm = who[pa]
+        if (k0[0], tm) not in own: continue
+        z = zg(length / 2 + ball[k0][0] * own[(k0[0], tm)]); y0 = abs(ball[k0][1]); wb = min(2, int(y0 // 10))
+        H[("ip", z, wb)].append(abs(ball[seq[b0][0]][1]) - y0)
     for s_prev, s in zip(spells, spells[1:]):
         i0, i1, pid = s; p0, p1, ppid = s_prev
         if pid in keepers or ppid == pid or who.get(pid) != who.get(ppid): continue
@@ -231,6 +250,11 @@ if __name__ == "__main__":
         v = H[("sp", z)]
         print(f"    {ZG[z]:5s} {md(v):.1f} m, {100*sum(x < 5 for x in v)/max(1, len(v)):.0f} / {100*sum(x < 10 for x in v)/max(1, len(v)):.0f}% | " + " ".join(f"{NAMES[r]} {md(H[('spr', z, r)]):.1f}" for r in range(6))
               + f" | pairs {md(H[('pr', z, 0)]):+.2f} ({len(H[('pr', z, 0)])}) / {md(H[('pr', z, 1)]):+.2f} ({len(H[('pr', z, 1)])})")
+        print(f"          INWARD, the ball's |y| change med by its |y| at the start 0-10 / 10-20 / 20+ m: carry " + " / ".join(f"{md(H[('ic', z, w)]):+.1f}" for w in range(3)) + " | pass " + " / ".join(f"{md(H[('ip', z, w)]):+.1f} ({len(H[('ip', z, w)])})" for w in range(3)))
+        bv = sorted(H[("by", z)]); q_ = lambda f: bv[int(f * (len(bv) - 1))] if bv else float("nan")
+        print(f"          m off the centre line med, every spell frame: " + " ".join(f"{NAMES[r]} {md(H[('ay', z, r)]):.1f}" for r in range(6)) + f" | the ball p25 / med / p75 {q_(.25):.1f} / {q_(.5):.1f} / {q_(.75):.1f}")
+    print("  WIDTH BY THE BALL (spell frames, the side on the ball): each role's m off the centre line med, by the ball's m off it 0-8 / 8-16 / 16-24 / 24+")
+    for r in range(6): print(f"    {NAMES[r]:5s} " + " / ".join(f"{md(H[('ayb', b, r)]):.1f}" for b in range(4)))
     for z in range(3):
         row = "  ".join(f"{c[('os', z, oi)]/max(1, c[('o', z, oi)]):.2f} {100*c[('o3', z, oi)]/max(1, c[('o', z, oi)]):.0f}% {md(H[('nd', z, oi)]):.1f}" for oi in range(5))
         print(f"  {ZG[z]:5s} mates 10-30 m at the receipt: their nearest opponent med {md(H[('u', z)]):+.1f} m toward the ball, {md(H[('g', z)]):+.1f} m toward the goal he attacks; ball-side {100*c[('bs', z)]/max(1, c[('sn', z)]):.0f}%, beyond him {100*c[('gs', z)]/max(1, c[('sn', z)]):.0f}%; free when he is ball-side {100*c[('bf', z, True)]/max(1, c[('bn', z, True)]):.0f}% / not {100*c[('bf', z, False)]/max(1, c[('bn', z, False)]):.0f}%")
