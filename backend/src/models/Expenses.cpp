@@ -244,7 +244,8 @@ json Expenses::projection(int clubId) {
                    t.club_section_id, s.start_date::text AS season_start, s.end_date::text AS season_end, e.status AS entry_status, e.is_option, e.note AS entry_note, t.short_label,
                    EXISTS (SELECT 1 FROM team_season_installments ti WHERE ti.entry_id = e.id) AS has_installments,
                    EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy,
-                   lf.players_included
+                   lf.players_included, t.dues_rank, y.label AS budget_year,
+                   (now() AT TIME ZONE 'America/New_York')::date BETWEEN y.starts_on AND y.ends_on AS this_year
               FROM team_fee_plan_lines pl
               JOIN team_fee_plans p ON p.id = pl.plan_id
               JOIN league_fees lf ON lf.id = p.league_fee_id
@@ -254,9 +255,9 @@ json Expenses::projection(int clubId) {
               JOIN invoice_line_categories c ON c.code = pl.category
               LEFT JOIN fee_units u ON u.code = pl.unit
               LEFT JOIN cash_flow_scopes sc ON sc.code = COALESCE(e.budget_scope, cash_flow_team_scope(pl.team_id))
-              JOIN budget_years y ON y.club_id = $1::int AND (now() AT TIME ZONE 'America/New_York')::date BETWEEN y.starts_on AND y.ends_on
-             WHERE s.start_date BETWEEN y.starts_on AND y.ends_on
-             ORDER BY pl.entry_id, pl.category_order, pl.kind_order, pl.rate DESC)SQL";
+              -- every budget year (mig 1334: the next-year pill); the grid only reads this year's
+              JOIN budget_years y ON y.club_id = $1::int AND s.start_date BETWEEN y.starts_on AND y.ends_on
+             ORDER BY y.starts_on, pl.entry_id, pl.category_order, pl.kind_order, pl.rate DESC)SQL";
         auto usd = [](double v) { char b[32]; std::snprintf(b, sizeof b, "$%.2f", v); return std::string(b); };
         auto qtyStr = [](double v) { char b[32]; std::snprintf(b, sizeof b, "%g", std::round(v * 10) / 10); return std::string(b); };
         static const std::set<std::string> kLeagueMoney = {"league_dues", "registrations", "bonds"};
@@ -266,8 +267,9 @@ json Expenses::projection(int clubId) {
             const long long entry = r["entry_id"].as<long long>(), team = r["team_id"].as<long long>();
             const long long sectionId = r["club_section_id"].is_null() ? 0 : r["club_section_id"].as<long long>();
             const std::string category = str(r, "category"), scope = str(r, "scope");
-            entries.insert(entry);
-            out["plan"].push_back({{"plan_id", r["plan_id"].as<long long>()}, {"entry_id", entry}, {"team_id", team}, {"team", str(r, "team")},
+            const bool thisYear = r["this_year"].as<bool>();
+            if (thisYear) entries.insert(entry);
+            out["plan"].push_back({{"budget_year", str(r, "budget_year")}, {"dues_rank", r["dues_rank"].is_null() ? json(nullptr) : json(r["dues_rank"].as<int>())},{"plan_id", r["plan_id"].as<long long>()}, {"entry_id", entry}, {"team_id", team}, {"team", str(r, "team")},
                                    {"league", str(r, "league")}, {"season", str(r, "season")}, {"scope", scope}, {"scope_label", str(r, "scope_label")},
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"category", category}, {"category_label", str(r, "category_label")}, {"fee_kind", str(r, "fee_kind")},
@@ -276,7 +278,7 @@ json Expenses::projection(int clubId) {
                                    {"players_included", r["players_included"].is_null() ? 0 : r["players_included"].as<int>() * num(r, "quantity")},
                                    {"is_option", r["is_option"].as<bool>()}, {"entry_note", str(r, "entry_note")}, {"short_label", str(r, "short_label")},
                                    {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
-            if (r["by_policy"].as<bool>() || r["is_option"].as<bool>()) continue;   // an option stays off the grid (mig 1333)
+            if (!thisYear || r["by_policy"].as<bool>() || r["is_option"].as<bool>()) continue;   // an option / next year stays off the grid (migs 1333/1334)
             const double total = num(r, "proposed");
             // League money with no installments yet, and anything left on an
             // entry we are out of (mig 1322: "we lost … we still owe money"):
@@ -400,8 +402,10 @@ json Expenses::projection(int clubId) {
                ELSE 1 END AS units,
                -- the whole period, for the Year plan (mig 1329): weeks in it, members today
                CASE WHEN b.amount_per = 'week' THEN GREATEST(0, ROUND((b.period_end - b.period_start + 1) / 7.0)::int - b.weeks_off) ELSE NULL END AS year_weeks,
-               b.weeks_off
+               b.weeks_off, by_.label AS budget_year,
+               (now() AT TIME ZONE 'America/New_York')::date BETWEEN by_.starts_on AND by_.ends_on AS this_year
           FROM budget_lines b JOIN invoice_line_categories c ON c.code = b.category
+          JOIN budget_years by_ ON by_.id = b.budget_year_id
          WHERE b.club_id = $1::int AND b.is_active
          ORDER BY b.sort_order, b.id)SQL", {club})) {
         const long long bid = b["id"].as<long long>(); const long long units = b["units"].as<long long>();
@@ -426,7 +430,7 @@ json Expenses::projection(int clubId) {
         const std::string ps = str(b, "ps"), pe = str(b, "pe"); widen(monthOf(pe));
         // Coaching lines (category labor, mig 1332) are the Year plan's: their
         // cash timing on the grid is the coach's usual week + game hours.
-        if (remaining > 0 && str(b, "category") != "labor") {
+        if (remaining > 0 && str(b, "category") != "labor" && b["this_year"].as<bool>()) {
             const int startIdx = std::max(nowIdx, monthIndex(monthOf(ps))), endIdx = std::max(startIdx, monthIndex(monthOf(pe)));
             if (str(b, "spread") == "even") {
                 const int n = endIdx - startIdx + 1; const double per = round2(remaining / n);
@@ -437,6 +441,7 @@ json Expenses::projection(int clubId) {
         out["budget"].push_back({{"id", bid}, {"scope", str(b, "scope")}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
                                  {"section_id", sectionId ? json(sectionId) : json(nullptr)}, {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""},
                                  {"amount", num(b, "amount_usd")}, {"amount_per", str(b, "amount_per")}, {"units", units}, {"total", total},
+                                 {"budget_year", str(b, "budget_year")}, {"this_year", b["this_year"].as<bool>()},
                                  {"year_units", b["year_weeks"].is_null() ? units : b["year_weeks"].as<long long>()},
                                  {"year_total", round2(num(b, "amount_usd") * (b["year_weeks"].is_null() ? units : b["year_weeks"].as<long long>()))},
                                  {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"settled", settled}, {"period_start", ps}, {"period_end", pe},

@@ -65,6 +65,7 @@ class FinancesScreen extends Screen {
     div.addEventListener('click', (e) => {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; if (this.money) this.money.scope = this.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
+      const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
       const o = e.target.closest('[data-plan-option]'); if (o) { const id = Number(o.dataset.planOption); if (this.options.has(id)) this.options.delete(id); else this.options.add(id); try { localStorage.setItem('fn-plan-options', JSON.stringify([...this.options])); } catch (_) {} this._renderBody(); return; }
       if (this.view === 'money' && this.money && this.money.handleClick(e)) { this._renderBody(); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
@@ -256,7 +257,7 @@ class FinancesScreen extends Screen {
       ...(x.ref_fees || []).filter(p => p.kind !== 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
       // Teams on their fee plan (mig 1320): league payments + per-game costs still ahead.
       ...(x.plan_cash || []).filter(p => this._scopeOk(p.scope)).map(p => ({ cat: p.category, key: p.label, assumed: !!p.assumed, by: p.by_month || {}, hints: [p.hint || ''] })),
-      ...(x.budget || []).filter(b => this._scopeOk(b.scope) && b.category !== 'labor').map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
+      ...(x.budget || []).filter(b => this._scopeOk(b.scope) && b.category !== 'labor' && b.this_year !== false).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
         hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
     ];
     const cats = new Map();
@@ -322,16 +323,21 @@ class FinancesScreen extends Screen {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
     // Options (mig 1333, owner: "an option on finance page to add liga 2 in
     // spring"): an is_option entry counts only while its switch is on.
-    const allLines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope));
+    // Year pills (mig 1334, owner: "have a pill for next year budget too").
+    const thisYear = ((this.flow || {}).year || {}).label || '';
+    const years = [...new Set([...(this.expenses.plan || []).map(l => l.budget_year), ...(this.expenses.budget || []).map(b => b.budget_year)].filter(Boolean))].sort();
+    const year = this.planYear && years.includes(this.planYear) ? this.planYear : (years.includes(thisYear) ? thisYear : years[0]);
+    const yearBar = years.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
+    const allLines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope) && l.budget_year === year);
     const optionEntries = [...new Map(allLines.filter(l => l.is_option).map(l => [l.entry_id, l])).values()];
     const lines = allLines.filter(l => !l.is_option || this.options.has(l.entry_id));
     const optionBar = optionEntries.length ? `<div class="fn-pills" style="margin:4px 0 10px;">${optionEntries.map(l => { const on = this.options.has(l.entry_id); return `<button class="fn-pill ${on ? 'on' : ''}" data-plan-option="${l.entry_id}">${esc(this._copy(on ? 'plan_option_on' : 'plan_option_add', { team: l.short_label || l.team, when: l.entry_note || l.season }))}</button>`; }).join('')}</div>` : '';
     // Section-wide costs (budget_lines on a section's own pill — kits, coaching):
     // one "general" group per section, amount × units over the whole year (mig 1329).
     const scopes0 = (this.flow || {}).scopes || [];
-    const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && scopes0.some(sc => sc.code === b.scope && sc.section_code));
+    const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.budget_year === year && scopes0.some(sc => sc.code === b.scope && sc.section_code));
     const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
-    if (!lines.length && !general.length) return `<div class="fn-card">${head}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
+    if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const entries = new Map();
@@ -349,7 +355,7 @@ class FinancesScreen extends Screen {
     for (const b of general) { const k = b.section || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
     // Game coaching (mig 1332): each coaching policy under the pill — its
     // season game counts × pay per game (hours × rate).
-    for (const p of (this.expenses.ref_fees || []).filter(p => p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && sc.section_code))) {
+    for (const p of (this.expenses.ref_fees || []).filter(p => year === thisYear && p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && sc.section_code))) {
       const games = (p.seasons || []).reduce((a, x) => a + Number(x.expected || 0), 0); if (!games) continue;
       const k = p.section || ''; if (!bySection.has(k)) bySection.set(k, []);
       bySection.get(k).push({ label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, amount: p.rate, year_units: games, year_total: p.rate * games,
@@ -378,16 +384,16 @@ class FinancesScreen extends Screen {
     const duesM = heads ? Number(((this.expenses.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0) : 0;
     if (heads && duesM > 0) {
       const dues = 12 * duesM, sCols = (this._copy('plan_split_columns') || 'Shared by|Players|Each|Of a year of dues').split('|').map(c => c.trim());
-      // an option that's on adds its planned roster spots to full house
-      const optSpots = lines.filter(l => l.is_option).reduce((a, l) => a + (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
-      const splits = [['plan_split_full', Number(heads.full_house) + optSpots], ['plan_split_active', heads.active], ['plan_split_current', heads.current]].filter(([, n]) => Number(n) > 0);
+      // full house = roster spots of the year's dues-carrying teams (an option only while on)
+      const spots = lines.filter(l => l.dues_rank != null).reduce((a, l) => a + (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
+      const splits = [['plan_split_full', spots || Number(heads.full_house)], ['plan_split_active', heads.active], ['plan_split_current', heads.current]].filter(([, n]) => Number(n) > 0);
       per = `<table class="fn-table" style="margin-top:10px; min-width:420px;">
         <thead><tr>${sCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
         <tbody>${splits.map(([k, n]) => `<tr><td>${esc(this._copy(k))}</td><td>${n}</td><td class="fn-out">${M0(total / n)}</td><td>${Math.round(100 * total / n / dues)}% of ${M0(dues)}</td></tr>`).join('')}</tbody>
       </table>`;
     }
     return `
-      <div class="fn-card">${head}${optionBar}
+      <div class="fn-card">${head}${yearBar}${optionBar}
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
           <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody>
@@ -398,7 +404,7 @@ class FinancesScreen extends Screen {
   // ── Budget lines: edit the estimate, ✓ when the bill is finished (mig 921) ──
   _budgetHtml() {
     const esc = (t) => this.escapeHtml(t), M2 = FinancesScreen.money2;
-    const lines = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope));
+    const lines = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.this_year !== false);
     if (!lines.length) return '';
     const cols = (this._copy('budget_columns') || '').split('|').map(c => c.trim());
     const per = (b) => b.amount_per === 'member' ? this._copy('budget_per_member', { units: b.units }) : b.amount_per === 'week' ? this._copy('budget_per_week', { units: b.units }) : '';
