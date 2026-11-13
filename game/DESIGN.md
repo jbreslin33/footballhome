@@ -9097,3 +9097,50 @@ is pinned 76% of frames. No knee bends backward; knee interior p10 / 50 / 90 98 
 
 **Not yet.** Side-steps and true
 backpedals: the pack's Pro tier ($9.99) has 8-direction locomotion. Kicks, headers and dives from clips.
+
+### 8.207 G5.106 — side-steps, a defensive shuffle and a backward walk from CMU motion capture (viewer only, `?bodies=anim`)
+
+James 11/13: "do the free ones first". CMU Graphics Lab Motion Capture Database, read on mocap.cs.cmu.edu
+2026-11-13: "free for all uses … You may include this data in commercially-sold products, but you may not resell
+this data directly". Credit: "The data used in this project was obtained from mocap.cs.cmu.edu. The database
+was created with funding from NSF EIA-0196217." BVH: Bruce Hahne's conversion (github una-dinosauria/cmu-mocap,
+frame 0 a T-pose).
+
+**Retarget** (`game/scripts/cmu_bvh.py` reads the BVH and runs forward kinematics in plain Python;
+`retarget_cmu.py` writes the clips):
+- Each mapped joint's world turn from the CMU T-pose goes onto our bone's bind (T-pose) rotation:
+  W = G·Wc(t)·Wc(0)⁻¹·G0⁻¹·B. The two rigs' bone axes never matter.
+- G turns the loop's mean heading to our forward.
+- The loop is the frame pair 0.25-1.6 s apart with the least pose difference.
+- Pelvis: height scaled by leg length, sway about the straight line through the loop's ends, then grounded.
+  The loop's lowest toe sits at the bind toe height; the T-pose hip height isn't the standing one, so feet
+  floated 10-16 cm.
+- Mirror option: the turn's axis is a pseudovector, v → −(v − 2(v·N)N); left and right bones swap.
+
+**Clips** (`cmu_moves.glb`, 92 KB; loop, pose difference summed over 22 joints):
+
+| clip | source | loop | pose diff | speed |
+|---|---|---|---|---|
+| shuffle_r | 102_27 basketball defensive shuffle | 0.47 s | 3.35 rad | 3.10 m/s right |
+| shuffle_l | 102_27, mirrored | 0.47 s | 3.35 rad | 3.10 m/s left |
+| side_l | 69_42 walk sideways | 1.03 s | 1.25 rad | 0.58 m/s |
+| side_r | 69_48 walk sideways | 1.00 s | 1.00 rad | 0.48 m/s |
+| back | 113_01 walk backwards | 1.43 s | 1.11 rad | 0.82 m/s |
+
+The shuffles loop worst: every burst in 78_28 / 78_30 / 102_27 speeds up or slows down.
+
+**Blend** (`bodies.js`):
+- Above 3-4.5 m/s he turns and runs (the forward clips, as G5.105).
+- Slower, he keeps facing the play. Weights by his travel off his facing: forward → walk / jog, back → back,
+  left / right → side-step, turning to the shuffle as sideways speed goes 0.9 → 2.1 m/s.
+- Each CMU clip plays at his speed along its direction ÷ its recorded speed, 0.6-2×.
+- `?cmu=0` drops them; `?clip=<name>` forces one clip on everyone (a test).
+
+**Measured** (Chrome, live match, moving outfielders):
+- Weight shares: idle 7.5%, walk 41, jog 17, sprint 1, side-step 16, shuffle 10, back 8.
+- Planted-foot slide 0.15 of body speed (foot lock on).
+- Lowest toe p10 / 50 / 90: shuffle 3 / 7 / 9 cm (it hops), back 2 / 3 / 4 cm.
+- No console errors.
+
+**Next.** A faster backpedal (2-3 m/s: the back walk is played up to 2×). Kicks from clips (CMU 10_01-06,
+11_01 "soccer - kick ball"). Turns and cuts (CMU 78 / 102: tight turns, feints, drives).

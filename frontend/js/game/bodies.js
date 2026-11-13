@@ -40,6 +40,15 @@
   // G5.105: each clip's stride (one loop = two steps, m) and the UAL pelvis rest height (m), read off
   // the pack's root-motion file (walk 0.97 m/s, jog 5.36, sprint 8.25).
   const CLIP = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop' };
+  // G5.106: CMU motion capture retargeted onto this body (game/scripts/retarget_cmu.py; README in ual/):
+  // side-steps, a defensive shuffle (mirrored for the left) and a backward walk. ?cmu=0 leaves them out.
+  const URL_CMU = 'game-assets/ual/cmu_moves.glb?v=20261113g';   // bump with every rebuild
+  const CMU = ['side_l', 'side_r', 'shuffle_l', 'shuffle_r', 'back'];
+  const USE_CMU = new URLSearchParams(location.search).get('cmu') !== '0';
+  const FORCE = new URLSearchParams(location.search).get('clip');   // ?clip=<name>: every man plays that one clip (a test)
+  // each one's recorded speed along its direction (m/s, printed by retarget_cmu.py): its playback rate
+  // follows his speed that way, 0.6-2× (DESIGN §8.207)
+  const CMU_MPS = { side_l: 0.58, side_r: 0.48, shuffle_l: 3.10, shuffle_r: 3.10, back: 0.82 };
   const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
   const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
@@ -440,10 +449,15 @@
     // the overlays (kick, touch, header, dive, slide, stumble, celebrate, keeper): the rig
     A.ov += ((overlayOn(fig) ? 1 : 0) - A.ov) * Math.min(1, dt * 12);
     // where he goes against where he faces
+    // rel > 0: going to his left (the model faces +z, its left is +x)
     const rel = sp > 0.3 ? wrapA(Math.atan2(vx, vy) - fig.yaw) : 0;
-    const back = Math.abs(rel) > 1.9 && s < 5.5;
+    // G5.106: slow, he keeps facing the play and steps that way (CMU side-steps / shuffle / back walk);
+    // quick, he turns and runs (tm). Real men backpedal and shuffle up to ~3-4 m/s, then turn. [FH]
+    const dirOK = !!A.act.back;
+    const tm = dirOK ? smooth((s - 3.0) / 1.5) : 1;
+    const back = !dirOK && Math.abs(rel) > 1.9 && s < 5.5;   // no CMU clips: the old reversed forward clips
     const dirSign = back ? -1 : 1;
-    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov);
+    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? tm : 1);
     A.yawOff += wrapA(want - A.yawOff) * Math.min(1, dt * 8);
     b.model.rotation.y = proto.yaw + A.yawOff;
     // the stride: players.js's gait phase (real cadence by speed), forwards or back
@@ -455,15 +469,35 @@
     const run = smooth((s - 1.9) / 0.7);
     const wj = Math.max(Math.min(1, Math.max(0, (L - STRIDE_WALK) / (STRIDE_JOG - STRIDE_WALK))), JOG_FLOOR * run);
     const ws = smooth((s - 5.5) / 2.0) * (back ? 0 : 1);
-    const w = { idle: 1 - m, walk: m * (1 - wj), jog: m * wj * (1 - ws), sprint: m * wj * ws };
+    const fw = { walk: 1 - wj, jog: wj * (1 - ws), sprint: wj * ws };   // the forward set
+    const w = { idle: 1 - m };
+    if (dirOK) {
+      // the direction weights off his facing: forward / back / left / right, summing to 1
+      const c = Math.cos(rel), sn = Math.sin(rel);
+      let wF = Math.max(0, c), wB = Math.max(0, -c), wL = Math.max(0, sn), wR = Math.max(0, -sn);
+      const tot = wF + wB + wL + wR || 1; wF /= tot; wB /= tot; wL /= tot; wR /= tot;
+      const sh = smooth((Math.abs(s * sn) - 0.9) / 1.2);   // side-step → defensive shuffle by sideways speed
+      const d = m * (1 - tm), f = m * tm;
+      for (const k of ['walk', 'jog', 'sprint']) w[k] = f * fw[k] + d * wF * fw[k];
+      w.back = d * wB;
+      w.side_l = d * wL * (1 - sh); w.shuffle_l = d * wL * sh;
+      w.side_r = d * wR * (1 - sh); w.shuffle_r = d * wR * sh;
+    } else for (const k of ['walk', 'jog', 'sprint']) w[k] = m * fw[k];
+    if (FORCE && A.act[FORCE]) { for (const k of Object.keys(w)) w[k] = 0; w[FORCE] = 1; }
     A.idleT = (A.idleT + dt) % A.act.idle.getClip().duration;
+    const cph = A.cph || (A.cph = {});
+    const along = { side_l: s * Math.abs(Math.sin(rel)), side_r: s * Math.abs(Math.sin(rel)), shuffle_l: s * Math.abs(Math.sin(rel)),
+                    shuffle_r: s * Math.abs(Math.sin(rel)), back: s * Math.max(0, -Math.cos(rel)) };
     for (const [k, a] of Object.entries(A.act)) {
-      a.setEffectiveWeight(w[k]);
-      a.time = k === 'idle' ? A.idleT : A.ph * a.getClip().duration;
+      a.setEffectiveWeight(w[k] || 0);
+      if (k === 'idle') a.time = A.idleT;
+      else if (k in CMU_MPS) {
+        const rate = Math.min(2, Math.max(0.6, along[k] / CMU_MPS[k]));
+        cph[k] = ((cph[k] || 0) + dt * rate / a.getClip().duration) % 1;
+        a.time = cph[k] * a.getClip().duration;
+      } else a.time = A.ph * a.getClip().duration;
     }
     A.mixer.update(0);
-    // the pelvis sits as high as his leg (the clip's pelvis is the UAL mannequin's)
-    if (proto.pelvisScale) b.pelvisBone.position.z *= proto.pelvisScale;
     b.model.updateMatrixWorld(true);
     // the spine and head give the hips' turn back: chest and eyes on his facing
     const give = -A.yawOff * (1 - A.ov);
@@ -561,16 +595,27 @@
     const headInv = bones.Head.matrixWorld.clone().invert();
     const loader = new THREE_ADDONS.GLTFLoader();
     // G5.105: the clips — rotations only (the two rigs' bones differ in length), plus the pelvis's height
+    const pelvisScale = bones.pelvis.position.z / UAL_PELVIS;
     const clipsP = !ANIM ? Promise.resolve(null) : loader.loadAsync(URL_CLIPS).then((g) => {
       const out = {};
       for (const [k, n] of Object.entries(CLIP)) {
         const c = g.animations.find((x) => x.name === n);
         if (!c) { console.warn('bodies: clip missing', n); return null; }
         c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
+        // the pelvis sits as high as his leg (the clip's pelvis is the UAL mannequin's; z is up under root)
+        for (const t of c.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
         out[k] = c;
       }
       return out;
-    }).catch((e) => { console.warn('bodies: clips failed', e); return null; });
+    }).then((out) => (!out || !USE_CMU) ? out : loader.loadAsync(URL_CMU).then((g) => {
+      for (const k of CMU) {
+        const c = g.animations.find((x) => x.name === k);
+        if (!c) { console.warn('bodies: CMU clip missing', k); return out; }
+      }
+      for (const k of CMU) out[k] = g.animations.find((x) => x.name === k);
+      return out;
+    }).catch((e) => { console.warn('bodies: CMU clips failed', e); return out; }))
+      .catch((e) => { console.warn('bodies: clips failed', e); return null; });
     Promise.all(URL_HAIR.map((u) => loader.loadAsync(u).then((h) => {
       let m = null; h.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
       h.scene.updateMatrixWorld(true);
@@ -579,7 +624,7 @@
       const hair = {};
       for (const [u, v] of pairs) if (v) hair[u.replace(/^.*\/|\.gltf$/g, '')] = v;
       const any = Object.values(hair)[0];
-      proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, clips: null, pelvisScale: bones.pelvis.position.z / UAL_PELVIS, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
+      proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, clips: null, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
                 boots: extra.boots, back: extra.back,
                 legA: p('thigh_l').distanceTo(p('calf_l')), legB: p('calf_l').distanceTo(p('foot_l')) };
       console.log('bodies: loaded, thigh', proto.legA.toFixed(3), 'shin', proto.legB.toFixed(3), 'm, full size · hair', pairs.filter((x) => x[1]).length);
