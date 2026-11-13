@@ -42,7 +42,7 @@
   const CLIP = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop' };
   // G5.106: CMU motion capture retargeted onto this body (game/scripts/retarget_cmu.py; README in ual/):
   // side-steps, a defensive shuffle (mirrored for the left) and a backward walk. ?cmu=0 leaves them out.
-  const URL_CMU = 'game-assets/ual/cmu_moves.glb?v=20261113k';   // bump with every rebuild
+  const URL_CMU = 'game-assets/ual/cmu_moves.glb?v=20261113c';   // bump with every rebuild
   const CMU = ['side_l', 'side_r', 'shuffle_l', 'shuffle_r', 'back'];
   const USE_CMU = new URLSearchParams(location.search).get('cmu') !== '0';
   const FORCE = new URLSearchParams(location.search).get('clip');   // ?clip=<name>: every man plays that one clip (a test)
@@ -54,6 +54,12 @@
   const KICKS = ['kick_pass_r', 'kick_pass_l', 'kick_power_r', 'kick_power_l'];
   const KICK_CONTACT = 0.60, KICK_POWER = 0.45;
   const USE_KICKS = new URLSearchParams(location.search).get('kicks') !== '0';
+  // G5.108: cuts — CMU 78_04 "SuperTightLeft" (+64°) and 78_05 "SuperTightRight" (−80°), one shot each, the
+  // turn's peak CUT_AT s in, heading taken out (the engine turns him). Fired when his travel turns faster than
+  // CUT_RATE rad/s above CUT_SPEED m/s (live: ~1.2 a man a minute), at most one each CUT_COOL s. ?cuts=0 = off.
+  const CUTS = ['cut_l', 'cut_r'];
+  const CUT_AT = 0.4, CUT_RATE = 2.0, CUT_SPEED = 1.8, CUT_COOL = 0.8;
+  const USE_CUTS = new URLSearchParams(location.search).get('cuts') !== '0';
   const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
   const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
@@ -463,6 +469,18 @@
     }
     if (A.kick) { A.kick.t += dt; if (A.kick.t >= A.act[A.kick.name].getClip().duration) A.kick = null; }
     A.kw = (A.kw || 0) + ((A.kick ? 1 : 0) - (A.kw || 0)) * Math.min(1, dt * (A.kick ? 18 : 6));
+    // G5.108: a sharp turn at speed → a cut (his travel's turn rate, smoothed over ~0.1 s; rate > 0 = to his left)
+    if (A.act.cut_l) {
+      const va = Math.atan2(vx, vy);
+      if (sp > 0.5 && A.va !== undefined && dt > 1e-4) A.tr = (A.tr || 0) * 0.7 + 0.3 * wrapA(va - A.va) / dt;
+      if (sp > 0.5) A.va = va;
+      A.cool = Math.max(0, (A.cool || 0) - dt);
+      if (!A.cut && !A.kick && A.ov < 0.3 && s > CUT_SPEED && Math.abs(A.tr || 0) > CUT_RATE && A.cool <= 0) {
+        A.cut = { name: A.tr > 0 ? 'cut_l' : 'cut_r', t: CUT_AT - 0.12 }; A.cool = CUT_COOL + 0.8;
+      }
+      if (A.cut) { A.cut.t += dt; if (A.cut.t >= A.act[A.cut.name].getClip().duration || A.kick) A.cut = null; }
+      A.cw = (A.cw || 0) + ((A.cut ? 1 : 0) - (A.cw || 0)) * Math.min(1, dt * (A.cut ? 14 : 6));
+    }
     // where he goes against where he faces
     // rel > 0: going to his left (the model faces +z, its left is +x)
     const rel = sp > 0.3 ? wrapA(Math.atan2(vx, vy) - fig.yaw) : 0;
@@ -472,7 +490,7 @@
     const tm = dirOK ? smooth((s - 3.0) / 1.5) : 1;
     const back = !dirOK && Math.abs(rel) > 1.9 && s < 5.5;   // no CMU clips: the old reversed forward clips
     const dirSign = back ? -1 : 1;
-    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? tm : 1) * (1 - (A.kw || 0));
+    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? Math.max(tm, A.cw || 0) : 1) * (1 - (A.kw || 0));
     A.yawOff += wrapA(want - A.yawOff) * Math.min(1, dt * 8);
     b.model.rotation.y = proto.yaw + A.yawOff;
     // the stride: players.js's gait phase (real cadence by speed), forwards or back
@@ -498,6 +516,10 @@
       w.side_l = d * wL * (1 - sh); w.shuffle_l = d * wL * sh;
       w.side_r = d * wR * (1 - sh); w.shuffle_r = d * wR * sh;
     } else for (const k of ['walk', 'jog', 'sprint']) w[k] = m * fw[k];
+    if ((A.cw || 0) > 0.001) {                             // a cut over the locomotion
+      for (const k of Object.keys(w)) w[k] *= 1 - A.cw;
+      if (A.cut) w[A.cut.name] = A.cw;
+    }
     if (A.kw > 0.001) {                                    // the kick over everything else
       for (const k of Object.keys(w)) w[k] *= 1 - A.kw;
       if (A.kick) w[A.kick.name] = A.kw;
@@ -510,6 +532,8 @@
     for (const [k, a] of Object.entries(A.act)) {
       a.setEffectiveWeight(w[k] || 0);
       if (k === 'idle') a.time = A.idleT;
+      else if (CUTS.includes(k)) a.time = A.cut && A.cut.name === k ? Math.min(A.cut.t, a.getClip().duration - 1e-3)
+                                                                     : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (KICKS.includes(k)) a.time = A.kick && A.kick.name === k ? Math.min(A.kick.t, a.getClip().duration - 1e-3)
                                                                        : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (k in CMU_MPS) {
@@ -636,6 +660,8 @@
       for (const k of CMU) out[k] = g.animations.find((x) => x.name === k);
       if (USE_KICKS && KICKS.every((k) => g.animations.some((x) => x.name === k)))
         for (const k of KICKS) out[k] = g.animations.find((x) => x.name === k);
+      if (USE_CUTS && CUTS.every((k) => g.animations.some((x) => x.name === k)))
+        for (const k of CUTS) out[k] = g.animations.find((x) => x.name === k);
       return out;
     }).catch((e) => { console.warn('bodies: CMU clips failed', e); return out; }))
       .catch((e) => { console.warn('bodies: clips failed', e); return null; });

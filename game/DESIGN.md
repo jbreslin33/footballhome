@@ -9167,3 +9167,27 @@ Dribble touches (amp < 1) stay the rig's. `?kicks=0` = the rig's kick.
 
 Not yet: shots v passes by the engine's kick kind, not ball speed; the kick's approach steps (the clip's
 own run-up is cut at 0.6 s).
+
+### 8.209 G5.108 — cuts from CMU motion capture (viewer only, `?bodies=anim`)
+
+**Source.** CMU subject 78 (athletic moves). By the hips' travel, sampled at 10 Hz: the "super tight" turns are
+the only true cuts.
+- 78_04 SuperTightLeft: +64°, peak 2.0 rad/s at 2.3 m/s.
+- 78_05 SuperTightRight: −80°, peak 1.4 rad/s at 1.9 m/s.
+- The wide turns and feints change direction only 10-30° over a run.
+
+**Clips.**
+- `cut_l` (78_04 0.2-1.0 s) and `cut_r` (78_05 0.1-0.9 s), one shot, the turn's peak 0.4 s in. Both are real
+  takes, not mirrored.
+- New `retarget_cmu.py` stab option: the heading taken out frame by frame, smoothed over ±0.15 s. The clip keeps
+  the plant, lean and push-off, and the engine does the turning; the clip turning too would double it.
+
+**Trigger** (`bodies.js`).
+- His travel's turn rate (smoothed ~0.1 s) over 2 rad/s above 1.8 m/s fires the cut on that side.
+- Live before the clips: 6 such turns in 15 s across 20 outfielders, about 1.2 a man a minute.
+- The cut fades in at 14/s; the body faces his travel; one per 1.6 s; a kick ends it. `?cuts=0` = off.
+
+**Measured** (Chrome, live match, 15 s):
+- 5 cuts and 4 kicks played.
+- Lowest toe during cuts 2.6 cm med (grounded).
+- Player updates 3.3 ms a frame; no console errors.

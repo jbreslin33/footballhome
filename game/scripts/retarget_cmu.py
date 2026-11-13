@@ -6,6 +6,7 @@ animations only (G5.106, DESIGN §8.207).
     python3 -I game/scripts/retarget_cmu.py <out.glb> <bvh dir> name:file:t0:t1[:tmin:tmax[:mirror]] ...
 
 tmin < 0: a one-shot clip — the window t0-t1 as it is (a kick), not a loop; it does not close on frame 0.
+stab > 0: the heading taken out frame by frame, smoothed over ±stab s (a cut: the engine does the turning).
 
 For each clip: the window t0-t1 s of the file; inside it, the loop is the pair of frames 0.25-1.6 s apart
 whose poses differ least (joint rotations, plus the hips' velocity). Each mapped joint's world rotation
@@ -59,7 +60,7 @@ class Ours:
 def ang(q):  # rotation angle of a unit quaternion
     return 2 * math.acos(min(1.0, abs(q[0])))
 
-def retarget(ours, b, t0, t1, tmin=0.25, tmax=1.6, mirror=0):
+def retarget(ours, b, t0, t1, tmin=0.25, tmax=1.6, mirror=0, stab=0):
     n0 = max(1, int(t0 / b.dt)); n1 = min(len(b.frames) - 1, int(t1 / b.dt))
     step = max(1, int(round(1 / (FPS * b.dt))))
     frames = list(range(n0, n1 + 1, step))
@@ -111,8 +112,17 @@ def retarget(ours, b, t0, t1, tmin=0.25, tmax=1.6, mirror=0):
         dv = v[0] * N[0] + v[1] * N[1] + v[2] * N[2]; return (v[0] - 2 * dv * N[0], v[1] - 2 * dv * N[1], v[2] - 2 * dv * N[2])
     swap = lambda nm: nm[:-2] + ('_r' if nm.endswith('_l') else '_l') if nm[-2:] in ('_l', '_r') else nm
     if mirror: v_left = -v_left
+    # stab: the heading taken out frame by frame (smoothed over ±stab s) — a cut keeps its plant and lean, the
+    # engine turns him (the clip turning too would double it)
+    def G_at(k):
+        if not stab: return G
+        h = max(1, int(stab / (step * b.dt))); sx = sz = 0.0
+        for kk in range(max(0, k - h), min(len(loop), k + h + 1)):
+            lv = left(FK[loop[kk]][1]); n = math.hypot(lv[0], lv[2]) or 1; sx += lv[0] / n; sz += lv[2] / n
+        return yaw_between((sx, 0.0, sz), ol)
     for k, f in enumerate(loop[:-1]):
         Wc, Pc = FK[f]
+        G = G_at(k)
         Lq = list(ours.Lq)
         Wn = [None] * len(ours.nodes)
         for i in ours.order:
