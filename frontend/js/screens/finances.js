@@ -320,8 +320,12 @@ class FinancesScreen extends Screen {
   _planHtml() {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
     const lines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope));
+    // Section-wide costs (budget_lines on a section's own pill — kits, coaching):
+    // one "general" group per section, amount × units over the whole year (mig 1329).
+    const scopes0 = (this.flow || {}).scopes || [];
+    const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && scopes0.some(sc => sc.code === b.scope && sc.section_code));
     const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
-    if (!lines.length) return `<div class="fn-card">${head}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
+    if (!lines.length && !general.length) return `<div class="fn-card">${head}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const entries = new Map();
@@ -334,6 +338,19 @@ class FinancesScreen extends Screen {
         <tr class="item"><td title="${esc(l.note || '')}" style="white-space:normal;">${esc(l.label)}${l.is_assumed ? '*' : ''}${l.note ? `<span class="fn-tick">${esc(l.note)}</span>` : ''}</td>
           <td>${M2(l.rate)} × ${qty(l.quantity)}<span class="fn-tick">${esc(l.unit_label || '')}</span></td>
           <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
+    }
+    const bySection = new Map();
+    for (const b of general) { const k = b.section || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
+    for (const [sec, bs] of bySection) {
+      const sub = bs.reduce((a, b) => a + Number(b.year_total || 0), 0); total += sub;
+      rows += `<tr class="group"><td colspan="2">${esc(this._copy('plan_general', { section: sec }) || sec)}</td><td>${M0(sub)}</td></tr>`;
+      for (const b of bs) {
+        const unit = b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '';
+        rows += `
+        <tr class="item"><td title="${esc(b.note || '')}" style="white-space:normal;">${esc(b.label)}${b.is_assumed ? '*' : ''}${b.note ? `<span class="fn-tick">${esc(b.note)}</span>` : ''}</td>
+          <td>${M2(b.amount)} × ${qty(b.year_units)}<span class="fn-tick">${esc(unit || '')}</span></td>
+          <td class="fn-out">${M0(b.year_total)}</td></tr>`;
+      }
     }
     rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
     // Per paying member (owner 2026-11-13: "consider it all mens and thus

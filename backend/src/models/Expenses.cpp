@@ -369,7 +369,9 @@ json Expenses::projection(int clubId) {
                       AND lp.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END)
                     -- per week (mig 491): the weeks still ahead in the period, forward only
                     WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
-               ELSE 1 END AS units
+               ELSE 1 END AS units,
+               -- the whole period, for the Year plan (mig 1329): weeks in it, members today
+               CASE WHEN b.amount_per = 'week' THEN CEIL((b.period_end - b.period_start + 1) / 7.0)::int ELSE NULL END AS year_weeks
           FROM budget_lines b JOIN invoice_line_categories c ON c.code = b.category
          WHERE b.club_id = $1::int AND b.is_active
          ORDER BY b.sort_order, b.id)SQL", {club})) {
@@ -404,6 +406,8 @@ json Expenses::projection(int clubId) {
         out["budget"].push_back({{"id", bid}, {"scope", str(b, "scope")}, {"label", str(b, "label")}, {"group_label", str(b, "group_label")}, {"category", str(b, "category")}, {"category_label", str(b, "category_label")},
                                  {"section_id", sectionId ? json(sectionId) : json(nullptr)}, {"section", sectionName.count(sectionId) ? sectionName[sectionId] : ""},
                                  {"amount", num(b, "amount_usd")}, {"amount_per", str(b, "amount_per")}, {"units", units}, {"total", total},
+                                 {"year_units", b["year_weeks"].is_null() ? units : b["year_weeks"].as<long long>()},
+                                 {"year_total", round2(num(b, "amount_usd") * (b["year_weeks"].is_null() ? units : b["year_weeks"].as<long long>()))},
                                  {"paid_before", paidBefore}, {"invoiced", round2(invoiced)}, {"remaining", remaining}, {"settled", settled}, {"period_start", ps}, {"period_end", pe},
                                  {"spread", str(b, "spread")}, {"is_assumed", b["is_assumed"].as<bool>()}, {"note", str(b, "note")},
                                  {"lines", lines}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
