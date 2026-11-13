@@ -301,7 +301,7 @@ class FinancesScreen extends Screen {
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     const catRows = [...cats.values()].filter(c => sum(c.by, 'projected') > 0 || sum(c.by, 'invoiced') > 0)
       .sort((a, b) => (order.indexOf(a.code) + 1 || 99) - (order.indexOf(b.code) + 1 || 99));
-    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦', media: '🎥', medical: '🩺' };
+    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦', media: '🎥', medical: '🩺', advertising: '📣' };
     const outRows = [];   // what the grid prints, in order
     for (const c of catRows) {
       const open = this.expanded.has(c.code);
