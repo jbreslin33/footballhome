@@ -220,6 +220,11 @@ Response PyramidController::handleProposal(const Request& request) {
         }
         if (model.empty()) model = official;
         const std::vector<std::string> mp{model};
+        // Measure-by pills (mig 1308): code = the border kind each one draws.
+        json measures = json::array();
+        for (const auto& r : db->query("SELECT code, label, blurb, is_official FROM pyramid_measures ORDER BY sort_order"))
+            measures.push_back({{"code", str(r, "code")}, {"label", str(r, "label")}, {"blurb", str(r, "blurb")},
+                                {"official", r["is_official"].as<bool>()}});
         for (const auto& r : db->query(R"SQL(
                 SELECT COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS key,
                        pc.conference_id, pc.proposed_id, pc.plan, p.from_conference_id,   -- mig 1274
@@ -287,29 +292,37 @@ Response PyramidController::handleProposal(const Request& request) {
         // a_left (mig 1249): region a lies on the left of the line's direction.
         // + the borders carried out to sea (mig 1252, scripts/pyramid-sea-borders.py;
         //   both kinds since mig 1287)
-        // kind (mig 1255): 'travel' = the coloured border (city centres × traffic
-        // factor), 'plain' = straight distance where it runs apart from it.
+        // kind = the Measure-by pill (mig 1308): 'travel' drive × traffic,
+        // 'plain' drive alone, 'straight' km — each a whole border; the page
+        // draws the picked one.
         for (const auto& r : db->query("SELECT region_a, region_b, line::text AS line, a_left, kind FROM pyramid_model_borders WHERE model = $1", mp))
             borders.push_back({{"a", str(r, "region_a")}, {"b", str(r, "region_b")}, {"line", json::parse(str(r, "line"), nullptr, false)},
                                {"a_left", r["a_left"].as<bool>()}, {"kind", str(r, "kind")}});
-        // Ghosts (mig 1298): every other computed model's traffic borders, land + sea.
-        for (const auto& r : db->query("SELECT model, region_a, line::text AS line FROM pyramid_model_borders"
-                                        " WHERE model <> $1 AND kind = 'travel'", mp))
-            ghosts.push_back({{"model", str(r, "model")}, {"a", str(r, "region_a")}, {"line", json::parse(str(r, "line"), nullptr, false)}});
-        // The neutral zone (mig 1255): counties whose region by straight
-        // distance differs from the one with the traffic factor.
+        // Ghosts (mig 1298): every other computed model's borders, land + sea,
+        // every measure (mig 1308: the page shows the picked measure's).
+        for (const auto& r : db->query("SELECT model, region_a, kind, line::text AS line FROM pyramid_model_borders"
+                                        " WHERE model <> $1", mp))
+            ghosts.push_back({{"model", str(r, "model")}, {"a", str(r, "region_a")}, {"kind", str(r, "kind")},
+                              {"line", json::parse(str(r, "line"), nullptr, false)}});
+        // The neutral zone (mig 1255): counties the measures disagree on —
+        // each county's owner per measure (mig 1308 adds straight); the page
+        // tints the ones where the picked measure parts from the official.
         json neutral = json::array();
         for (const auto& r : db->query(R"SQL(
                 SELECT k.fips, k.name, k.state, k.geometry::text AS g, pc.plan,
                        COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id) AS travel,
-                       COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id) AS plain
+                       COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id) AS plain,
+                       COALESCE('c' || pc.straight_conference_id, 'p' || pc.straight_proposed_id) AS straight
                   FROM pyramid_model_counties pc JOIN pyramid_counties k ON k.fips = pc.fips
                  WHERE pc.model = $1
                    AND (pc.conference_id IS DISTINCT FROM pc.plain_conference_id
-                        OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id))SQL", mp))
+                        OR pc.proposed_id IS DISTINCT FROM pc.plain_proposed_id
+                        OR pc.conference_id IS DISTINCT FROM pc.straight_conference_id
+                        OR pc.proposed_id IS DISTINCT FROM pc.straight_proposed_id))SQL", mp))
             neutral.push_back({{"type", "Feature"},
                                {"properties", {{"fips", str(r, "fips")}, {"name", str(r, "name")}, {"state", str(r, "state")}, {"plan", str(r, "plan")},
-                                               {"travel", str(r, "travel")}, {"plain", str(r, "plain")}}},
+                                               {"travel", str(r, "travel")}, {"plain", str(r, "plain")},
+                                               {"straight", str(r, "straight")}}},
                                {"geometry", json::parse(str(r, "g"), nullptr, false)}});
         // The bar (mig 1265): the smallest metro area anchoring a live conference.
         auto bar = db->query("SELECT bar FROM pyramid_proposal_bar");
@@ -317,7 +330,7 @@ Response PyramidController::handleProposal(const Request& request) {
         json rules = json::array();
         for (const auto& r : db->query("SELECT rank, title, body FROM pyramid_conference_rules ORDER BY rank"))
             rules.push_back({{"rank", num(r, "rank")}, {"title", str(r, "title")}, {"body", str(r, "body")}});
-        return jsonOut(HttpStatus::OK, {{"model", model}, {"models", models}, {"ghosts", ghosts},
+        return jsonOut(HttpStatus::OK, {{"model", model}, {"models", models}, {"measures", measures}, {"ghosts", ghosts},
                                         {"regions", regions}, {"watch", watch}, {"borders", borders},
                                         {"neutral", {{"type", "FeatureCollection"}, {"features", neutral}}},
                                         {"rules", rules},

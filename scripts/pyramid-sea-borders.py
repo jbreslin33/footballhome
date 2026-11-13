@@ -59,8 +59,10 @@ def load(plan, kind):
     border, counties owned by drive x traffic; 'plain' = the dashed one,
     counties owned by straight drive (plain_* columns, mig 1255)."""
     pre = 'c' if plan == 'current' else 'p'
-    own = "COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)" if kind == 'travel' \
-        else "COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id)"
+    own = {'travel': "COALESCE('c' || pc.conference_id, 'p' || pc.proposed_id)",
+           'plain': "COALESCE('c' || pc.plain_conference_id, 'p' || pc.plain_proposed_id)",
+           # mig 1308: the Straight line pill's owner
+           'straight': "COALESCE('c' || pc.straight_conference_id, 'p' || pc.straight_proposed_id)"}[kind]
     borders = json.loads(psql(
         "SELECT COALESCE(json_agg(json_build_object('id', id, 'a', region_a, 'b', region_b, 'line', line, 'a_left', COALESCE(a_left, false))), '[]')"
         f" FROM pyramid_proposal_borders WHERE kind = '{kind}' AND region_a LIKE '{pre}%'"))
@@ -69,7 +71,7 @@ def load(plan, kind):
         # a coloured end only meets coloured lines (the dashed one often runs on
         # top of it out to the coast); a dashed end may rejoin either
         f" FROM pyramid_proposal_borders WHERE region_a LIKE '{pre}%'"
-        + (" AND kind = 'travel'" if kind == 'travel' else '')))
+        + (f" AND kind = '{kind}'" if kind in ('travel', 'straight') else '')))   # mig 1308: straight meets straight only
     counties = json.loads(psql(
         f"SELECT json_agg(json_build_object('f', k.fips, 'r', {own},"
         " 'lat', k.lat, 'lon', k.lon, 'g', k.geometry))"
@@ -355,7 +357,7 @@ def straight(patch, e):
 def main():
     rows, report = [], []
     for plan in ('current', 'proposed'):   # mig 1274: both plans
-        for kind in ('travel', 'plain'):   # mig 1287: the dashed border too
+        for kind in ('travel', 'plain', 'straight'):   # mig 1287: the dashed border too; mig 1308: straight line
             plan_rows(plan, kind, rows, report)
     write(rows)
     # mig 1287 check: every end that still stops short of the water

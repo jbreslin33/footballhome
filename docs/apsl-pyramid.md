@@ -360,13 +360,28 @@ The screen (`apsl-pyramid.js`) holds the model, the conference + view pills
 and the ✏️ editor; it never lays anything out itself.
 
 
-### Centre models and where they disagree (migs 1298, 1302, 1304)
+### Centre models, measures and where they disagree (migs 1298, 1302, 1304, 1308)
 
-Three ways to measure a conference (`pyramid_centre_models`): City centre,
-Metro average, Most people (official). `scripts/pyramid-pipeline.sh` builds
+Three places to measure a conference from (`pyramid_centre_models`): City
+centre (official since mig 1308 — owner 11/13: "current would be drive
+time … from center of city … that is standard prob but maybe not best"),
+Metro average, Most people (official 1297–1307). `scripts/pyramid-pipeline.sh` builds
 each model's whole map and `fh_pyramid_model_snapshot()` saves it in
 `pyramid_model_*`; the map's ☰ "Measured from" pills switch between them,
-other models' borders drawn faint. Club assignments, outlier lines, the
+other models' borders drawn faint.
+
+Three ways to measure the distance (`pyramid_measures`, mig 1308, ☰
+"Measure by" pills): Drive time (× the city's traffic factor, official),
+Drive, no traffic, Straight line (people-weighted km over the measuring
+points). The code is the border kind (`travel` / `plain` / `straight`):
+every snapshot holds all three whole borders, so a measure pill switches
+with no fetch; the faint ghosts are the other centres measured the same
+way, and the shaded counties are where the picked measure gives a
+different conference than Drive time. Before mig 1308 the no-traffic line
+was always drawn beside the traffic one, and only where they parted.
+`pyramid-fine-borders.py` traces all three (straight needs no OSRM),
+`pyramid-sea-borders.py` carries all three to the water (straight ends meet
+straight lines only). Club assignments, outlier lines, the
 county tint and feeder votes follow the official model only (migs 1302,
 1303).
 

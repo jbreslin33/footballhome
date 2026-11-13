@@ -167,11 +167,21 @@ class PyramidMapView {
     // row's blurb is the tooltip, a dash sample shows its ghost line.
     const want = this._model();
     const models = P.models || [];
+    // How distance is measured (mig 1308, owner: "current would be drive
+    // time … we want all these things clickable"): one pill a pyramid_measures
+    // row = one border kind; same snapshot, so switching needs no fetch.
+    const measures = P.measures || [];
+    const meas = this._measure();
+    const mOn = measures.find((x) => x.code === meas);
+    const measurePills = measures.length < 2 ? '' : `<div class="intro">${esc(this._copy('measure_heading'))}</div><div class="mp-sorts">${measures.map((x) =>
+      `<button class="ap-pill${x.code === meas ? ' on' : ''}" data-pzmeasure="${esc(x.code)}" title="${esc(x.blurb)}">${esc(x.label)}</button>`).join('')}</div>`
+      + `<div class="intro">${esc((mOn || {}).blurb || '')}</div>`;
     const modelPills = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('model_heading'))}</div><div class="mp-sorts">${models.map((m) =>
       `<button class="ap-pill${m.code === P.model ? ' on' : ''}" data-pzmodel="${esc(m.code)}" title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}>`
       + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}</button>`).join('')}</div>`
       + (want !== P.model ? `<div class="intro">${esc(this._copy('model_pending'))}</div>` : '')
       + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`
+      + measurePills
       + (models.length < 2 ? '' : this._modelDiffHtml(plan));
     // The table (mig 1272, owner: "show me data in the menu that i can sort
     // by longest trip asc,desc … longest dist … pop … land area"): one row a
@@ -307,6 +317,17 @@ class PyramidMapView {
     }
     return this.pzModel || (this.proposal && this.proposal.model) || null;
   }
+  // The measure picked (mig 1308) — remembered per browser; the official one until picked.
+  _measure() {
+    if (this.pzMeasure === undefined) {
+      let v = null;
+      try { v = localStorage.getItem('fh.pyramid.measure'); } catch (_) { /* private mode */ }
+      this.pzMeasure = v || null;
+    }
+    const ms = (this.proposal && this.proposal.measures) || [];
+    if (this.pzMeasure && ms.some((m) => m.code === this.pzMeasure)) return this.pzMeasure;
+    return (ms.find((m) => m.official) || { code: 'travel' }).code;
+  }
   _hm(min) {
     if (min == null) return '—';
     const m = Math.round(min);
@@ -325,6 +346,13 @@ class PyramidMapView {
       this.pzModel = md.dataset.pzmodel;
       try { localStorage.setItem('fh.pyramid.model', this.pzModel); } catch (_) { /* private mode */ }
       this.proposal = (this.proposals && this.proposals.get(this.pzModel)) || null;
+      this._showProposal(true);
+      return true;
+    }
+    const ms = e.target.closest('[data-pzmeasure]');
+    if (ms) {   // switch measure (mig 1308): same data, other border kind
+      this.pzMeasure = ms.dataset.pzmeasure;
+      try { localStorage.setItem('fh.pyramid.measure', this.pzMeasure); } catch (_) { /* private mode */ }
       this._showProposal(true);
       return true;
     }
@@ -957,9 +985,15 @@ class PyramidMapView {
     if (!this.map._loaded) { const m = this.map; m.whenReady(() => { if (this.map === m) this._showProposal(on); }); return; }
     // On the map: the border lines and each proposed conference's name —
     // nothing else (the watch list and the numbers are in ☰).
-    // The neutral zone (mig 1255): counties the two borders disagree on.
+    // The neutral zone (mig 1255): counties the measures disagree on — mig
+    // 1308: where the picked measure parts from the official one (on the
+    // official one itself: where drive with and without traffic part).
     const plan = this._effPlan();
-    const neutral = { type: 'FeatureCollection', features: ((this.proposal.neutral || {}).features || []).filter((f) => (f.properties.plan || 'proposed') === plan) };
+    const meas = this._measure();
+    const offM = ((this.proposal.measures || []).find((m) => m.official) || { code: 'travel' }).code;
+    const other = meas === offM ? (offM === 'plain' ? 'travel' : 'plain') : meas;
+    const neutral = { type: 'FeatureCollection', features: ((this.proposal.neutral || {}).features || []).filter((f) =>
+      (f.properties.plan || 'proposed') === plan && (f.properties[other] || f.properties.travel) !== (f.properties[offM] || f.properties.travel)) };
     if (neutral.features.length)
       L.geoJSON(neutral, { renderer: this.propRenderer, interactive: false,
         style: { stroke: false, fillColor: '#f8fafc', fillOpacity: 0.22 } }).addTo(this.propLayer);
@@ -1026,18 +1060,18 @@ class PyramidMapView {
     // its model's dash — see how far a border moves without flipping pills.
     if (this.screen.feature && this.screen.feature('ghosts', true)) {
       const dash = new Map((P.models || []).map((m) => [m.code, m.ghost_dash]));
-      for (const g of (P.ghosts || []).filter((x) => x.a[0] === pre)) {
+      const meas = this._measure();   // mig 1308: the other models measured the same way
+      for (const g of (P.ghosts || []).filter((x) => x.a[0] === pre && (x.kind || 'travel') === meas)) {
         if (!g.line || g.line.length < 2) continue;
         L.polyline(g.line, { renderer: this.propRenderer, interactive: false, color: '#f8fafc', weight: 1.5, opacity: 0.6,
           dashArray: dash.get(g.model) === '1 0' ? null : dash.get(g.model) }).addTo(this.propLines);
       }
     }
-    for (const b of (P.borders || []).filter((x) => x.a[0] === pre)) {
-      // The straight-distance border (mig 1255) is drawn exactly like the
-      // traffic one — two-tone in the same conferences' colours (owner: "i
-      // need them same colors" / "same colors as each other"); the traffic
-      // line is always the one nearer New York ("it will be obvious the one
-      // closer is the traffic one").
+    // One measure's border at a time (mig 1308: Measure-by pill), two-tone
+    // in the two conferences' colours.  Before, drive with and without
+    // traffic were both drawn (mig 1255) — now each is its own pill.
+    const meas = this._measure();
+    for (const b of (P.borders || []).filter((x) => x.a[0] === pre && (x.kind || 'travel') === meas)) {
       const dash = null;
       const pts = b.line.map((ll) => this.map.latLngToLayerPoint(L.latLng(ll[0], ll[1])));
       if (pts.length < 2) continue;

@@ -15,8 +15,9 @@ For each plan:
     neighbours; OSRM road minutes from the point to each candidate city
     (cached in pyramid_grid_drive_times — reruns fetch only new pairs);
   * the point goes to the shortest drive × the city's traffic factor
-    ('travel', the coloured border) and to the shortest drive without it
-    ('plain', the second line);
+    ('travel', the coloured border), to the shortest drive without it
+    ('plain') and to the shortest straight-line km ('straight', mig 1308 —
+    no OSRM; one Measure-by pill each on the map);
   * between grid neighbours of different conferences the cell edge is a
     border piece; pieces are joined (conference A kept on the left, as the
     map's two-tone offset needs) and smoothed (Chaikin ×2).
@@ -145,6 +146,13 @@ def fetch(points, have):
         time.sleep(1.05)
 
 
+def km_between(la1, lo1, la2, lo2):
+    """Great-circle km (as fh_km in the DB) — the Straight line measure (mig 1308)."""
+    p1, p2 = math.radians(la1), math.radians(la2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lo2 - lo1) / 2) ** 2
+    return 6371.0 * 2 * math.asin(math.sqrt(a))
+
+
 def chaikin(pts, it=2):
     for _ in range(it):
         if len(pts) < 3:
@@ -203,12 +211,13 @@ def trace(cells, step, dlon):
 
 def run(plan, adj):
     step = STEP[plan]
-    reg, reg_p = {}, {}               # county → conference: coloured border (travel) / dashed (plain)
+    reg, reg_p, reg_s = {}, {}, {}    # county → conference: drive × traffic / drive / straight km (mig 1308)
     for l in psql(f"SELECT fips || '|' || COALESCE('c' || conference_id, 'p' || proposed_id)"
                   f" || '|' || COALESCE('c' || plain_conference_id, 'p' || plain_proposed_id, '')"
+                  f" || '|' || COALESCE('c' || straight_conference_id, 'p' || straight_proposed_id, '')"
                   f" FROM pyramid_proposal_counties WHERE plan = '{plan}'").split():
-        f, t, pl = l.split('|')
-        reg[f], reg_p[f] = t, pl or t
+        f, t, pl, sl = l.split('|')
+        reg[f], reg_p[f], reg_s[f] = t, pl or t, sl or t
     cen = defaultdict(list)          # region → [(point, traffic factor, weight)] (mig 1285)
     for l in psql(f"SELECT COALESCE('c' || conference_id, 'p' || proposed_id) || '|' || round(lat::numeric, 4) || '|' || round(lon::numeric, 4)"
                   f" || '|' || factor || '|' || weight FROM pyramid_region_points WHERE plan = '{plan}'").split():
@@ -219,8 +228,8 @@ def run(plan, adj):
     # and one ring of neighbours around those — a line that leaves its county
     # (Monmouth's dashed line into Ocean, 11/11) must find grid there, or it
     # stops on land at the grid's edge instead of meeting a border or the sea
-    core = {f for f in reg if reg[f] != reg_p[f]
-            or any(n in reg and (reg[n] != reg[f] or reg_p[n] != reg_p[f]) for n in adj[f])}
+    core = {f for f in reg if reg[f] != reg_p[f] or reg[f] != reg_s[f]
+            or any(n in reg and (reg[n] != reg[f] or reg_p[n] != reg_p[f] or reg_s[n] != reg_s[f]) for n in adj[f])}
     border = core | {n for f in core for n in adj[f] if n in reg}
     geo = json.loads(psql("SELECT json_object_agg(fips, geometry) FROM pyramid_counties WHERE fips IN ("
                           + ','.join(f"'{f}'" for f in border) + ')'))
@@ -236,7 +245,7 @@ def run(plan, adj):
             for x, y in poly[0]:
                 xs.append(x)
                 ys.append(y)
-        cand = {reg[f], reg_p[f]} | {reg[n] for n in adj[f] if n in reg} | {reg_p[n] for n in adj[f] if n in reg}
+        cand = {reg[f], reg_p[f], reg_s[f]} | {x for n in adj[f] if n in reg for x in (reg[n], reg_p[n], reg_s[n])}
         for i in range(math.floor(min(ys) / step), math.ceil(max(ys) / step) + 1):
             for j in range(math.floor(min(xs) / dlon), math.ceil(max(xs) / dlon) + 1):
                 if (i, j) in cells_c:
@@ -263,7 +272,7 @@ def run(plan, adj):
     if need:
         fetch(need, have)
     reach = float(psql('SELECT proposal_reach_min FROM pyramid_territory_policy LIMIT 1'))
-    lab_t, lab_p = {}, {}
+    lab_t, lab_p, lab_s = {}, {}, {}
     for c, cs in cells_c.items():
         # (traffic score, plain score, nearest point minutes, region): people-weighted over its points
         sc = []
@@ -272,16 +281,19 @@ def run(plan, adj):
             if len(ps) != len(cen[r]):
                 continue
             W = sum(w for _, _, w in ps)
-            sc.append((sum(m * f * w for m, f, w in ps) / W, sum(m * w for m, _, w in ps) / W, min(m for m, _, _ in ps), r))
+            la, lo = float(pt[c][0]), float(pt[c][1])
+            km = sum(km_between(la, lo, float(q[0]), float(q[1])) * w for q, _, w in cen[r]) / W
+            sc.append((sum(m * f * w for m, f, w in ps) / W, sum(m * w for m, _, w in ps) / W, min(m for m, _, _ in ps), r, km))
         if plan == 'current':    # today's conferences reach 2 h (as the county fill, mig 1278)
             sc = [x for x in sc if x[2] <= reach]
             if not sc and c in cell_county:
-                lab_t[c], lab_p[c] = reg[cell_county[c]], reg_p[cell_county[c]]
+                lab_t[c], lab_p[c], lab_s[c] = reg[cell_county[c]], reg_p[cell_county[c]], reg_s[cell_county[c]]
                 continue
         if not sc:
             continue
         lab_t[c] = min(sc)[3]
         lab_p[c] = min(sc, key=lambda x: x[1])[3]
+        lab_s[c] = min(sc, key=lambda x: x[4])[3]
     # Carry a line's loose end on to the coast (11/11: the grid stops a few km
     # inland, so the sea-border script found no shore end to continue from):
     # step along the end's own direction in ½ km steps while still on land;
@@ -320,7 +332,7 @@ def run(plan, adj):
         return out
 
     rows = []
-    for kind, lab in (('travel', lab_t), ('plain', lab_p)):
+    for kind, lab in (('travel', lab_t), ('plain', lab_p), ('straight', lab_s)):
         for a, b, line in trace(lab, step, dlon):
             rows.append((a, b, kind, to_coast(line)))
     pairs = {(a, b) for a, b, _, _ in rows}
