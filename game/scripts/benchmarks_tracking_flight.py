@@ -19,7 +19,10 @@ and toward the goal the receiver attacks (ball-side / beyond shares, free % by s
 metres off the centre line (by role); options by his width 0-10 / 10-20 / 20+ m; his mates and their men within
 10 / 20 m; each mate role's metres from him and ahead of him. THE SLIDE: on every spell frame, each role of the
 side on the ball, its metres toward the ball's side (mean), by the ball's metres off the centre line.
-fh-game-match prints the same as THE PASS IN FLIGHT and THE SLIDE. FH original.
+THE PICK (G5.117, §8.218): at the passer's last frame, the receiver against his other free options (crude race):
+his |y|, his own mates within 10 m, length, metres forward; how often the picked man is the nearest / widest /
+loneliest / most forward of them. fh-game-match prints the same as THE PASS IN FLIGHT, THE SLIDE and THE PICK.
+FH original.
 """
 import collections, glob, math, multiprocessing, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -145,6 +148,29 @@ def one(pos_path):
             if r < 0: continue
             H[("rd", z, r)].append(math.hypot(x - rx, y - ry)); H[("rl", z, r)].append((x - rx) * -own[(k[0], tm)])
         fa, fb = pl[seq[p1][0]], pl[seq[i0][0]]; T = fl / 5
+        # THE PICK: at the passer's last frame, his options (mates 5 m+, keepers out) — the one picked v the other free ones
+        pxx, pyy = fa.get(ppid, (None, None)); asg = -own[(k[0], tm)]
+        if pxx is not None and pid in fa:
+            oppa_ = [p for q, p in fa.items() if who.get(q) == 1 - tm]; got = None; others = []
+            for q, (x, y) in fa.items():
+                if who.get(q) != tm or q == ppid or q in keepers: continue
+                L = math.hypot(x - pxx, y - pyy)
+                if L < 5: continue
+                f = margin(pxx, pyy, x, y, (x, y), oppa_) <= 0
+                nm = sum(1 for q2, (x2, y2) in fa.items() if who.get(q2) == tm and q2 not in (q, ppid) and q2 not in keepers and math.hypot(x2 - x, y2 - y) < 10)
+                at = (abs(y), nm, L, (x - pxx) * asg, f)
+                if q == pid: got = at
+                elif f: others.append(at)
+            if got is not None:
+                c[("pk", z)] += 1; c[("pkf", z)] += got[4]
+                if got[4] and others:
+                    c[("pkn", z)] += 1; c[("pko", z)] += len(others)
+                    for i_, nm_ in enumerate(("y", "nm", "L", "fw")):
+                        H[("pg" + nm_, z)].append(got[i_]); H[("po" + nm_, z)] += [o[i_] for o in others]
+                    c[("pnear", z)] += got[2] <= min(o[2] for o in others)
+                    c[("pwide", z)] += got[0] >= max(o[0] for o in others)
+                    c[("plone", z)] += got[1] <= min(o[1] for o in others)
+                    c[("pfwd", z)] += got[3] >= max(o[3] for o in others)
         for q, (x, y) in fb.items():
             if q not in fa or q in keepers or q not in who: continue
             v = math.hypot(x - fa[q][0], y - fa[q][1]) / T
@@ -179,4 +205,6 @@ if __name__ == "__main__":
         print(f"  {ZG[z]:5s} the receiver's role %: " + "  ".join(f"{NAMES[r]} {100*c[('rr', z, r)]/max(1, c[('n', z)]):.0f}" for r in range(6)) + f"; his m off the centre line med {md(H[('ry', z)]):.1f}, by role " + " ".join(f"{NAMES[r]} {md(H[('ryr', z, r)]):.1f}" for r in range(6)))
         print(f"  {ZG[z]:5s} by the receiver's m off the centre line 0-10 / 10-20 / 20+: share % | options mean | 3+ %: " + "  ".join(f"{100*c[('wy', z, w)]/max(1, c[('n', z)]):.0f}% {c[('wys', z, w)]/max(1, c[('wy', z, w)]):.2f} {100*c[('wy3', z, w)]/max(1, c[('wy', z, w)]):.0f}%" for w in range(3)))
         print(f"  {ZG[z]:5s} round the receiver, mean: his mates within 10 / 20 m {c[('ln', z, True, 0)]/max(1, c[('n', z)]):.2f} / {c[('ln', z, True, 1)]/max(1, c[('n', z)]):.2f}, their men {c[('ln', z, False, 0)]/max(1, c[('n', z)]):.2f} / {c[('ln', z, False, 1)]/max(1, c[('n', z)]):.2f}")
+        pn = max(1, c[('pkn', z)])
+        print(f"  {ZG[z]:5s} THE PICK: receiver free at the passer's last frame {100*c[('pkf', z)]/max(1, c[('pk', z)]):.0f}%; with other free options ({c[('pko', z)]/pn:.2f} of them): picked v others med |y| {md(H[('pgy', z)]):.1f} v {md(H[('poy', z)]):.1f}, mates within 10 m {md(H[('pgnm', z)]):.0f} v {md(H[('ponm', z)]):.0f} (mean {sum(H[('pgnm', z)])/pn:.2f} v {sum(H[('ponm', z)])/max(1, len(H[('ponm', z)])):.2f}), length {md(H[('pgL', z)]):.1f} v {md(H[('poL', z)]):.1f}, forward {md(H[('pgfw', z)]):+.1f} v {md(H[('pofw', z)]):+.1f}; picked the nearest {100*c[('pnear', z)]/pn:.0f}%, widest {100*c[('pwide', z)]/pn:.0f}%, loneliest {100*c[('plone', z)]/pn:.0f}%, most forward {100*c[('pfwd', z)]/pn:.0f}%")
         print(f"  {ZG[z]:5s} {c[('n', z)]/tm:.1f} {md(H[('fl', z)]):.1f}s | {row} | vd {md(H[('vd', z)]):.2f} va {md(H[('va', z)]):.2f} close {md(H[('cl', z)]):.2f}")

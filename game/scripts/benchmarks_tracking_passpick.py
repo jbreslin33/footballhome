@@ -78,7 +78,8 @@ def one(ev_path):
         opp = [F[q] for q in F if team.get(q) != tm and team.get(q) is not None]
         own_r = half + F[rc][0] * g
         rb = 0 if own_r < 35 else 1 if own_r < 70 else 2
-        mk.append((ob, rb, [(dist[p], min((math.hypot(F[p][0] - o[0], F[p][1] - o[1]) for o in opp), default=99), p == rc) for p in inz]))
+        crowd = lambda p: sum(1 for q in F if team.get(q) == tm and q not in (p, pa) and q not in keepers and math.hypot(F[q][0] - F[p][0], F[q][1] - F[p][1]) < 10)
+        mk.append((ob, rb, [(dist[p], min((math.hypot(F[p][0] - o[0], F[p][1] - o[1]) for o in opp), default=99), p == rc, crowd(p)) for p in inz]))
         c[(ob, "k")] += 1; c[(ob, "even")] += 1.0 / k
         if min(inz, key=lambda p: dist[p]) == rc: c[(ob, "nearest")] += 1
         c[(ob, "drc")] += dist[rc]; c[(ob, "dmean")] += sum(dist.values()) / k
@@ -124,20 +125,20 @@ if __name__ == "__main__":
         if not rows: continue
         av = [0] * 5; pk = [0] * 5
         for _, ms_ in rows:
-            for d, m, isr in ms_:
+            for d, m, isr, _cr in ms_:
                 av[mb(m)] += 1; pk[mb(m)] += isr
         lift = [1.0] * 5
         for _ in range(50):
             exp_ = [0.0] * 5
             for lam, ms_ in rows:
-                w = [math.exp(-d / lam if lam < 1e8 else 0) * lift[mb(m)] for d, m, _ in ms_]
+                w = [math.exp(-d / lam if lam < 1e8 else 0) * lift[mb(m)] for d, m, _, _cr in ms_]
                 sw = sum(w)
-                for (d, m, _), wi in zip(ms_, w): exp_[mb(m)] += wi / sw
+                for (d, m, _, _cr), wi in zip(ms_, w): exp_[mb(m)] += wi / sw
             lift = [lift[i] * pk[i] / exp_[i] if exp_[i] > 0 and pk[i] > 0 else lift[i] for i in range(5)]
             ref = lift[4]; lift = [x / ref for x in lift]
         ll0 = ll1 = 0.0
         for lam, ms_ in rows:
-            w0 = [math.exp(-d / lam if lam < 1e8 else 0) for d, m, _ in ms_]
+            w0 = [math.exp(-d / lam if lam < 1e8 else 0) for d, m, _, _cr in ms_]
             w1 = [w0[i] * lift[mb(ms_[i][1])] for i in range(len(ms_))]
             i = next(i for i, x in enumerate(ms_) if x[2])
             ll0 += math.log(w0[i] / sum(w0)); ll1 += math.log(w1[i] / sum(w1))
@@ -145,3 +146,36 @@ if __name__ == "__main__":
         print(f"   receiver {nm:5s}: passes {n:5d} | mates per bin % " + " / ".join(f"{100 * a / sum(av):.0f}" for a in av)
               + " | receivers % " + " / ".join(f"{100 * x / n:.0f}" for x in pk)
               + " | lift (8+ = 1) " + " / ".join(f"{x:.2f}" for x in lift) + f" | log-lik gain {ll1 - ll0:+.0f}")
+
+    # G5.117 (§8.218) CROWD PICK: the same split x lift(his own mates within 10 m, passer and keepers out: 0 / 1 / 2+),
+    # both lifts fitted together by iterative scaling (crowd 0 = 1, marker 8+ = 1). Real passers pick the
+    # loneliest free option 72-89% (benchmarks_tracking_flight.py THE PICK).
+    print("CROWD PICK (his zone holding 2+ mates; his own mates within 10 m 0 / 1 / 2+, with the marker lift refitted alongside), by the receiver's m off his own goal:")
+    cb = lambda k: min(2, k)
+    for rb, nm in enumerate(("0-35", "35-70", "70+")):
+        rows = [(best_l[ob], ms_) for ob, r, ms_ in MK if r == rb]
+        if not rows: continue
+        av = [0] * 3; pk = [0] * 3; avm = [0] * 5; pkm = [0] * 5
+        for _, ms_ in rows:
+            for d, m, isr, cr in ms_:
+                av[cb(cr)] += 1; pk[cb(cr)] += isr; pkm[mb(m)] += isr
+        lm = [1.0] * 5; lc = [1.0] * 3
+        def wts(lam, ms_): return [math.exp(-d / lam if lam < 1e8 else 0) * lm[mb(m)] * lc[cb(cr)] for d, m, _, cr in ms_]
+        for _ in range(80):
+            for which in (0, 1):
+                em = [0.0] * 5; ec = [0.0] * 3
+                for lam, ms_ in rows:
+                    w = wts(lam, ms_); sw = sum(w)
+                    for (d, m, _, cr), wi in zip(ms_, w): em[mb(m)] += wi / sw; ec[cb(cr)] += wi / sw
+                if which == 0:
+                    lm = [lm[i] * pkm[i] / em[i] if em[i] > 0 and pkm[i] > 0 else lm[i] for i in range(5)]; r0 = lm[4]; lm = [x / r0 for x in lm]
+                else:
+                    lc = [lc[i] * pk[i] / ec[i] if ec[i] > 0 and pk[i] > 0 else lc[i] for i in range(3)]; r0 = lc[0]; lc = [x / r0 for x in lc]
+        llc = 0.0
+        for lam, ms_ in rows:
+            w1 = wts(lam, ms_); i = next(i for i, x in enumerate(ms_) if x[2]); llc += math.log(w1[i] / sum(w1))
+        n = len(rows)
+        print(f"   receiver {nm:5s}: passes {n:5d} | mates per bin % " + " / ".join(f"{100 * a / sum(av):.0f}" for a in av)
+              + " | receivers % " + " / ".join(f"{100 * x / n:.0f}" for x in pk)
+              + " | crowd lift (0 = 1) " + " / ".join(f"{x:.2f}" for x in lc) + " | marker lift (8+ = 1) " + " / ".join(f"{x:.2f}" for x in lm) + f" | log-lik {llc:.0f}")
+

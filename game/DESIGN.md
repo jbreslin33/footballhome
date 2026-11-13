@@ -9358,3 +9358,37 @@ the receiver's width and mates within 10 m against the passer's other options (w
 real passer picks: the wide / isolated one or the near central one).
 
 Shipped: the benchmark and the two harness lines (harness only; outputs and goldens unchanged; tests 22/22).
+
+### 8.218 G5.117 — the pass pick by the receiver's surroundings: real passers pick the lonely man, ours pick among crowded ones; a crowd lift tried, not shipped (harness only, no engine code kept)
+
+§8.217's next. New THE PICK in `scripts/benchmarks_tracking_flight.py` and the harness: at the passer's last
+frame (crude race), the receiver against the passer's other free options. New CROWD PICK fit in
+`scripts/benchmarks_tracking_passpick.py`. Seed 1000 / 2000, 8 matches each; real in brackets.
+
+**Real.** The receiver was free at the passer's last frame 68 / 76 / 85% (0-35 / 35-52 / 52+ m), with ~2 other
+free options. He is the loneliest of them 72 / 79 / 89%: his own mates within 10 m mean 0.46 / 0.31 / 0.20 against
+0.60 / 0.50 / 0.46 for the others. Widest 60 / 49 / 40%, nearest 56 / 45 / 42%.
+
+**Ours.** Free at the last frame 49-54 / 69-72 / 79-80%, 2.7-2.9 other free options. The loneliest 61-63 / 59-60
+/ 71-72%; mates within 10 m picked 0.69-0.73 / 0.67-0.70 / 0.49-0.50, the others 0.80 / 0.74-0.77 / 0.66-0.67.
+Nearest and most forward shares are near real; the picked man is 6-7 m less wide in our third (|y| 15-16 v 23).
+
+**CROWD PICK** (DFL, within the receiver's zone of 2+ mates, the split e^(-d/λ) × marker lift × a lift by his own
+mates within 10 m 0 / 1 / 2+, both fitted by iterative scaling): receiver 0-35 m off his goal 1 / 0.83 / 0.68,
+35-70 1 / 0.92 / 0.78, 70+ 1 / 0.90 / 0.63; marker lift as G5.83's within 0.04. Modest: most of the loneliness
+is the marker (a lonely man is usually unmarked too).
+
+**Tried** (`physics.pass.crowd_lift_*` in OnBall's within-zone split, behind physics.pass.crowd_on, not shipped,
+removed): picked crowd 0.69 → 0.71 / 0.73 → 0.68 in our third, loneliest 63 → 62 / 61 → 64%; 3+ options 35-52
+64.8 / 66.1 → 63.3 / 62.1%, 52-70 66.6 / 67.6 → 68.5 / 67.2%. Nothing.
+
+**Read.** The pick isn't the lever: every one of our free options is crowded (others 0.66-0.85 mates within 10 m
+v 0.46-0.60), so a lonely one rarely exists to be picked. Across §8.203-8.218, ten trials on spots, marking,
+slide, lag, width and the pick have left 3+ options ~25 points high, while the per-role averages (spots by band,
+pair width, slide, marking distance) are near real. **Next:** the crowding at the moment, not on average — per
+5 Hz frame of our possession, the pairwise spacing of our outfielders (the nearest mate to each, the share
+within 10 m) by the ball's band, ours v real. Spots are averages; real men spread off each other frame by
+frame (a man moves away when a mate comes into his space), ours each run to their own spot regardless.
+
+Shipped: THE PICK (benchmark and harness line) and the CROWD PICK fit (harness only; outputs and goldens
+unchanged; tests 22/22).

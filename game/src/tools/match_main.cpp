@@ -28,6 +28,7 @@
 #include "server/MatchSetup.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -68,7 +69,7 @@ struct Stats {
     long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
     std::vector<double> fc_d[6][3][3], fc_cb[6]; std::vector<double> fc_bl[6]; long fc_cb3[6] = {}, fc_why[6][ai::kWhyCount] = {};   // §8.216 FORWARDS ON THEIR CBS [carrier role][ST/AM/WIDE][to CB / to ball / off our line]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
-    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
+    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
     long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
@@ -2080,6 +2081,30 @@ int main(int argc, char** argv) {
                 for (int q = 0; q < N && q < 32; ++q) { if (teamOf(q) != tm || q == c.pid || kp(q)) continue; const int r = role(static_cast<std::uint8_t>(q)); if (r < 0 || r > 5) continue;
                     S.fl_rd[z][r].push_back(std::hypot(f0.x[q] - f0.x[c.pid], f0.y[q] - f0.y[c.pid])); S.fl_rl[z][r].push_back((f0.x[q] - f0.x[c.pid]) * (tm == 0 ? 1.0 : -1.0)); }
                 const FlF& fa = fl_f[p.i1]; const FlF& fb = f0; const double T = fl / 5.0;
+                {   // §8.218 THE PICK: at the passer's last frame, the one picked v his other free options
+                    const int pp = p.pid; const double pxx = fa.x[pp], pyy = fa.y[pp], asg = tm == 0 ? 1.0 : -1.0;
+                    bool hg = false; double got[5] = {}; std::vector<std::array<double, 4>> oth;
+                    for (int q = 0; q < N && q < 32; ++q) {
+                        if (teamOf(q) != tm || q == pp || kp(q)) continue;
+                        const double x = fa.x[q], y = fa.y[q], L = std::hypot(x - pxx, y - pyy);
+                        if (L < 5) continue;
+                        const double ux = (x - pxx) / L, uy = (y - pyy) / L; bool tf = false;
+                        for (double sd = 2.0; sd <= L + 1e-9 && !tf; sd += 0.5) {
+                            const double qx = pxx + ux * sd, qy = pyy + uy * sd, tb = sd / 11.0, tr = 0.3 + std::max(0.0, std::hypot(x - qx, y - qy) - 0.5) / 7.0;
+                            for (int o = 0; o < N && o < 32 && !tf; ++o) if (teamOf(o) != tm) { const double to = 0.3 + std::max(0.0, std::hypot(fa.x[o] - qx, fa.y[o] - qy) - 0.5) / 7.0; tf = to < tb && to < tr; }
+                        }
+                        int nm = 0; for (int q2 = 0; q2 < N && q2 < 32; ++q2) if (teamOf(q2) == tm && q2 != q && q2 != pp && !kp(q2) && std::hypot(fa.x[q2] - x, fa.y[q2] - y) < 10) ++nm;
+                        const std::array<double, 4> at{std::fabs(y), static_cast<double>(nm), L, (x - pxx) * asg};
+                        if (q == c.pid) { hg = true; for (int i = 0; i < 4; ++i) got[i] = at[i]; got[4] = !tf; }
+                        else if (!tf) oth.push_back(at);
+                    }
+                    if (hg) { ++S.pi_n[z]; S.pi_f[z] += got[4] > 0;
+                        if (got[4] > 0 && !oth.empty()) { ++S.pi_m[z]; S.pi_o[z] += static_cast<long>(oth.size());
+                            double mnL = 1e9, mxY = -1, mnM = 1e9, mxF = -1e9;
+                            for (const auto& o : oth) { for (int i = 0; i < 4; ++i) S.pi_x[z][i].push_back(o[i]); mnL = std::min(mnL, o[2]); mxY = std::max(mxY, o[0]); mnM = std::min(mnM, o[1]); mxF = std::max(mxF, o[3]); }
+                            for (int i = 0; i < 4; ++i) S.pi_g[z][i].push_back(got[i]);
+                            S.pi_near[z] += got[2] <= mnL; S.pi_wide[z] += got[0] >= mxY; S.pi_lone[z] += got[1] <= mnM; S.pi_fwd[z] += got[3] >= mxF; } }
+                }
                 for (int q = 0; q < N && q < 32; ++q) { if (kp(q)) continue; const double v = std::hypot(fb.x[q] - fa.x[q], fb.y[q] - fa.y[q]) / T; (teamOf(q) != tm ? S.fl_vd[z] : S.fl_va[z]).push_back(v); }
                 for (int q = 0; q < N && q < 32; ++q) { if (teamOf(q) != tm || q == c.pid || kp(q)) continue;
                     double na = 1e9, nb2 = 1e9; for (int o = 0; o < N && o < 32; ++o) if (teamOf(o) != tm) { na = std::min(na, static_cast<double>(std::hypot(fa.x[o] - fa.x[q], fa.y[o] - fa.y[q]))); nb2 = std::min(nb2, static_cast<double>(std::hypot(fb.x[o] - fb.x[q], fb.y[o] - fb.y[q]))); }
@@ -2475,6 +2500,13 @@ int main(int argc, char** argv) {
                                       std::printf("\n              by the receiver's m off the centre line 0-10 / 10-20 / 20+: share %% | options mean | 3+ %%:"); for (int w = 0; w < 3; ++w) std::printf("  %.0f%% %.2f %.0f%%", 100.0 * S.fl_wy[z][w] / std::max(1L, S.fl_n[z]), static_cast<double>(S.fl_wys[z][w]) / std::max(1L, S.fl_wy[z][w]), 100.0 * S.fl_wy3[z][w] / std::max(1L, S.fl_wy[z][w]));
                                       { static const double rL[3][4] = {{0.91, 3.20, 2.39, 5.53}, {0.69, 3.46, 1.68, 4.83}, {0.46, 2.84, 0.98, 3.27}}; const double n = std::max(1L, S.fl_n[z]);
                                         std::printf("\n              round the receiver, mean: his mates within 10 / 20 m %.2f / %.2f (%.2f / %.2f), their men %.2f / %.2f (%.2f / %.2f)", S.fl_ln[z][1][0] / n, S.fl_ln[z][1][1] / n, rL[z][0], rL[z][1], S.fl_ln[z][0][0] / n, S.fl_ln[z][0][1] / n, rL[z][2], rL[z][3]); }
+                                      { static const double rP[3][13] = {{68, 2.12, 23.1, 11.6, 0.46, 0.60, 10.4, 14.1, 3.6, -6.8, 56, 60, 72}, {76, 2.15, 20.5, 14.3, 0.31, 0.50, 12.1, 14.7, 0.9, -1.6, 45, 49, 79}, {85, 1.94, 16.4, 14.3, 0.20, 0.46, 15.0, 15.7, 1.5, 5.8, 42, 40, 89}};
+                                        static const double rF[3] = {59, 34, 24};
+                                        auto mean = [](const std::vector<double>& v) { double t = 0; for (double x : v) t += x; return v.empty() ? 0.0 : t / v.size(); };
+                                        const double pn = std::max(1L, S.pi_m[z]);
+                                        std::printf("\n              THE PICK: receiver free at the passer's last frame %.0f%% (%.0f); with other free options (%.2f (%.2f) of them) picked v others: med |y| %.1f v %.1f (%.1f v %.1f), mates within 10 m mean %.2f v %.2f (%.2f v %.2f), length med %.1f v %.1f (%.1f v %.1f), forward med %+.1f v %+.1f (%+.1f v %+.1f); picked the nearest %.0f%% (%.0f), widest %.0f%% (%.0f), loneliest %.0f%% (%.0f), most forward %.0f%% (%.0f)",
+                                            100.0 * S.pi_f[z] / std::max(1L, S.pi_n[z]), rP[z][0], S.pi_o[z] / pn, rP[z][1], md(S.pi_g[z][0]), md(S.pi_x[z][0]), rP[z][2], rP[z][3], mean(S.pi_g[z][1]), mean(S.pi_x[z][1]), rP[z][4], rP[z][5],
+                                            md(S.pi_g[z][2]), md(S.pi_x[z][2]), rP[z][6], rP[z][7], md(S.pi_g[z][3]), md(S.pi_x[z][3]), rP[z][8], rP[z][9], 100.0 * S.pi_near[z] / pn, rP[z][10], 100.0 * S.pi_wide[z] / pn, rP[z][11], 100.0 * S.pi_lone[z] / pn, rP[z][12], 100.0 * S.pi_fwd[z] / pn, rF[z]); }
                                       std::printf("\n              mates by role at the receipt, m from the receiver med / m ahead of him med:"); for (int r = 0; r < 6; ++r) std::printf("  %s %.1f %+.1f (%.1f %+.1f)", rn[r], md(S.fl_rd[z][r]), md(S.fl_rl[z][r]), rR[z][r][0], rR[z][r][1]); } }
                             }
                             {   // §8.217 THE SLIDE, real DFL benchmarks_tracking_flight.py
