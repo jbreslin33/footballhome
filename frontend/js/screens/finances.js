@@ -340,7 +340,8 @@ class FinancesScreen extends Screen {
     let per = '';
     const pill = ((this.flow || {}).scopes || []).find(sc => sc.code === this.scope);
     if (pill && pill.team_id) {
-      const players = lines.filter(l => l.team_id === pill.team_id && l.unit === 'per_player').reduce((a, l) => a + Number(l.quantity), 0);
+      // planned players = per-player lines + players an entry fee already includes (CASA: 25, mig 1325)
+      const players = lines.filter(l => l.team_id === pill.team_id).reduce((a, l) => a + (l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
       const sec = lines.find(l => l.team_id === pill.team_id)?.section_id;
       const dues = 12 * Number(((this.expenses.plan_dues || []).find(d => d.section_id === sec) || {}).monthly || 0);
       if (players > 0 && dues > 0) per = `<div class="fn-note" style="margin-top:8px; font-size:0.9rem; opacity:0.9;">${esc(this._copy('plan_per_player', { players: qty(players), cost: M0(total / players), pct: `${Math.round(100 * total / players / dues)}%`, dues: M0(dues) }))}</div>`;

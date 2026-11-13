@@ -243,9 +243,11 @@ json Expenses::projection(int clubId) {
                    COALESCE(e.budget_scope, cash_flow_team_scope(pl.team_id), 'club') AS scope, sc.label AS scope_label,
                    t.club_section_id, s.start_date::text AS season_start, s.end_date::text AS season_end, e.status AS entry_status,
                    EXISTS (SELECT 1 FROM team_season_installments ti WHERE ti.entry_id = e.id) AS has_installments,
-                   EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy
+                   EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy,
+                   lf.players_included
               FROM team_fee_plan_lines pl
               JOIN team_fee_plans p ON p.id = pl.plan_id
+              JOIN league_fees lf ON lf.id = p.league_fee_id
               JOIN team_season_entries e ON e.id = pl.entry_id AND e.budget_from_plan
               JOIN teams t ON t.id = pl.team_id
               JOIN seasons s ON s.id = e.season_id
@@ -271,6 +273,7 @@ json Expenses::projection(int clubId) {
                                    {"category", category}, {"category_label", str(r, "category_label")}, {"fee_kind", str(r, "fee_kind")},
                                    {"label", str(r, "fee_label")}, {"unit", str(r, "unit")}, {"unit_label", str(r, "unit_label")},
                                    {"rate", num(r, "rate")}, {"quantity", num(r, "quantity")}, {"amount", num(r, "proposed")},
+                                   {"players_included", r["players_included"].is_null() ? 0 : r["players_included"].as<int>() * num(r, "quantity")},
                                    {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
             if (r["by_policy"].as<bool>()) continue;
             const double total = num(r, "proposed");
