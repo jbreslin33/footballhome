@@ -9292,3 +9292,29 @@ v 42.5, DM 48.0 v 54.1, ST 64.5 v 69.6 off our line, the ball 66.7 v 69.6); our 
 — real strikers stay high on their CBs while the ball is with a full-back or midfielder, ours drop toward it.
 G5.102's forwards +3 m and these trials don't change that. **Next:** measure it straight — real ST / AM
 distance to the nearest CB of theirs and to the ball, by who has it (their CB / FB / DM), ours the same.
+
+### 8.216 G5.115 — our forwards against their CBs in their build-up: measured; a per-carrier spot tried, not shipped
+
+§8.215's next. New `scripts/benchmarks_tracking_fwdcb.py` (DFL) and harness line FORWARDS ON THEIR CBS, on the
+PRESS SHAPE frames (their carrier within 2 m, ball 52 m+ off the line they attack), by the carrier's role.
+
+**Real.** Our ST against the ball (m off our line, per-frame median): their CB on it −6.3 (he presses in front),
+FB +1.0, DM +1.6 (he stands level with or above the ball, on their CBs, cutting the back pass), AM +10.1,
+WIDE +8.3, ST +13.7 (he stays up). AM: −10.8 / −3.1 / −4.1 / +3.5 / +3.3 / +4.5. Their CBs bar the carrier:
+our nearest 10.6 m (their CB on it) / 8.2 (FB) / 7.9 (DM); within 3 m 7-14%.
+
+**Ours** (seed 1000 / 2000). Our ST stands 63.1-64.1 m off our line whoever has it (real 66.0 / 71.2 / 68.8 for
+CB / FB / DM). Against the ball he is right with their CB on it (−7.5 v −7.7) and ~3 m low with anyone else
+(FB −1.5 v +2.2 medians). Holding 82% of those FB frames, pressing 16%: it is his spot, not a press. Their CBs:
+our nearest 9.9-10.4 m, within 3 m 5-7%. The ball itself sits 3-4 m deeper for each carrier.
+
+**Tried** (`physics.block.rel_on`, not shipped): holding, our ST / AM stand the real per-carrier median off the
+ball. ST rose 1.3-2 m (FB 63.4 → 65.4, target ~67), short by the hold's pace caps and lag (§8.205). Options, free
+shares, CB distance unchanged (35-52 3+ 64.8 → 64.8 / 66.1 → 64.8).
+
+**Read.** Eight positional trials (§8.203-8.216: marking, spots, depth reads, lag, width, forwards) leave 3+
+options at 35-70 m ~20 points high. Moving our men 1-3 m doesn't change who wins the crude race to a mate 10-20 m
+away. What hasn't been measured: their men's own movement into space against ours (real receivers move
+off a marker before the pass), and whether the race's 0.3 s reaction for our men is too slow for a pressed lane.
+
+Shipped: the benchmark and the harness line (harness only; outputs and goldens unchanged; tests 22/22).

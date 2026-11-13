@@ -66,6 +66,7 @@ struct Stats {
     long ct_loss[3] = {}, ct_win = 0, ct_back = 0;
     long bt_t[5] = {}, bt_e[5][4] = {}; std::vector<double> bt_len[5];   // §8.203 WHERE THE BALL LIVES
     long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
+    std::vector<double> fc_d[6][3][3], fc_cb[6]; std::vector<double> fc_bl[6]; long fc_cb3[6] = {}, fc_why[6][ai::kWhyCount] = {};   // §8.216 FORWARDS ON THEIR CBS [carrier role][ST/AM/WIDE][to CB / to ball / off our line]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
     long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
@@ -1162,6 +1163,20 @@ int main(int argc, char** argv) {
                             else ++S.ps_a[ra][2];
                         }
                         const double sgd = dteam == 0 ? 1.0 : -1.0;   // our own line at -sgd * hx
+                        {   // §8.216 FORWARDS ON THEIR CBS (benchmarks_tracking_fwdcb.py): by the carrier's role
+                            const int cr = role(static_cast<std::uint8_t>(ci));
+                            int cb[32]; int ncb = 0;
+                            for (std::uint8_t j = 0; j < N; ++j) { const auto& P = W.player(j); if (P.team == a && !W.isKeeper(j) && j != ci && role(j) == 0) cb[ncb++] = j; }
+                            if (ncb) {
+                                for (int u = 0; u < nd; ++u) { const int rd = role(static_cast<std::uint8_t>(dj[u])); if (rd < 3) continue;
+                                    double m = 1e9; for (int c = 0; c < ncb; ++c) m = std::min(m, std::hypot(px(dj[u]) - px(cb[c]), py(dj[u]) - py(cb[c])));
+                                    const int k3 = rd == 5 ? 0 : rd == 3 ? 1 : 2;
+                                    if (k3 == 0) ++S.fc_why[cr][static_cast<int>(s.lastOrders()[dj[u]].why)];   // what our ST is doing
+                                    S.fc_d[cr][k3][0].push_back(m); S.fc_d[cr][k3][1].push_back(std::hypot(px(dj[u]) - bx0, py(dj[u]) - by0)); S.fc_d[cr][k3][2].push_back(hx + px(dj[u]) * sgd); }
+                                for (int c = 0; c < ncb; ++c) { double m = 1e9; for (int u = 0; u < nd; ++u) m = std::min(m, std::hypot(px(dj[u]) - px(cb[c]), py(dj[u]) - py(cb[c])));
+                                    S.fc_cb[cr].push_back(m); if (m < 3.0) ++S.fc_cb3[cr]; S.fc_bl[cr].push_back(hx + bx0 * sgd); }
+                            }
+                        }
                         for (int u = 0; u < nd; ++u) {
                             if (dst[u]) for (std::uint8_t j = 0; j < N; ++j) { const auto& P = W.player(j);
                                 if (P.team == a && !W.isKeeper(j) && j != ci && std::hypot(P.pos.x.toDouble() - px(dj[u]), P.pos.y.toDouble() - py(dj[u])) < 3.0) { dst[u] = 0; break; } }
@@ -2343,6 +2358,21 @@ int main(int argc, char** argv) {
                                 for (int r = 0; r < 6; ++r) { const long n = S.ps_d[r][0] + S.ps_d[r][1] + S.ps_d[r][2];
                                     std::printf("\n            %-5s %.1f (%.1f) | %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) | %.1f (%.1f)", rn[r], md(S.ps_db[r]), rDb[r],
                                                 100.0 * S.ps_d[r][0] / std::max(1L, n), 100.0 * S.ps_d[r][1] / std::max(1L, n), 100.0 * S.ps_d[r][2] / std::max(1L, n), rDs[r][0], rDs[r][1], rDs[r][2], md(S.ps_dl[r]), rDl[r]); }
+                            }
+                            {   // §8.216 FORWARDS ON THEIR CBS, real DFL benchmarks_tracking_fwdcb.py
+                                static const double rF[6][3][3] = {{{14.6, 14.7, 66.0}, {18.7, 16.9, 60.8}, {23.8, 25.0, 56.6}}, {{9.4, 18.8, 71.2}, {13.2, 19.3, 65.3}, {16.6, 19.4, 63.5}},
+                                                                   {{8.8, 12.5, 68.8}, {14.4, 11.8, 62.6}, {16.0, 18.8, 61.1}}, {{6.8, 17.6, 74.5}, {11.7, 12.3, 69.3}, {14.3, 16.1, 65.8}},
+                                                                   {{5.7, 18.4, 77.4}, {12.8, 13.9, 70.1}, {14.3, 17.3, 69.7}}, {{5.1, 20.0, 79.7}, {12.3, 16.2, 68.6}, {14.4, 18.7, 70.6}}};
+                                static const double rCb[6][2] = {{10.6, 7.4}, {8.2, 13.6}, {7.9, 14.0}, {6.0, 21.9}, {5.3, 24.2}, {4.7, 28.2}};
+                                static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"}; static const char* fn[3] = {"ST", "AM", "WIDE"};
+                                std::printf("\n          FORWARDS ON THEIR CBS (PRESS SHAPE frames; real DFL benchmarks_tracking_fwdcb.py in brackets): by their carrier's role: our ST / AM / WIDE m to their nearest CB | to the ball | off our line, med; their CBs: our nearest med, within 3 m %%:");
+                                for (int c = 0; c < 6; ++c) { if (S.fc_cb[c].empty()) continue;
+                                    std::printf("\n            %-5s", rn[c]);
+                                    for (int f = 0; f < 3; ++f) std::printf(" %s %.1f %.1f %.1f (%.1f %.1f %.1f) |", fn[f], md(S.fc_d[c][f][0]), md(S.fc_d[c][f][1]), md(S.fc_d[c][f][2]), rF[c][f][0], rF[c][f][1], rF[c][f][2]);
+                                    std::printf(" CB %.1f %.1f%% (%.1f %.1f%%)", md(S.fc_cb[c]), 100.0 * S.fc_cb3[c] / S.fc_cb[c].size(), rCb[c][0], rCb[c][1]);
+                                    { static const double rBl[6] = {73.7, 69.0, 67.1, 62.0, 65.1, 63.1}; std::printf(" | ball %.1f (%.1f)", md(S.fc_bl[c]), rBl[c]); }
+                                    long nw = 0; for (int i = 0; i < ai::kWhyCount; ++i) nw += S.fc_why[c][i];
+                                    std::printf(" | our ST:"); for (int i = 0; i < ai::kWhyCount; ++i) if (100 * S.fc_why[c][i] >= 3 * nw && nw) std::printf(" %s %.0f%%", ai::kWhyNames[i], 100.0 * S.fc_why[c][i] / nw); }
                             }
                             {   // §8.205 RACE OPTIONS, real DFL benchmarks_tracking_raceopts.py
                                 static const double rSp[3] = {85.6, 85.2, 232.9}, rNd[3][2] = {{5.0, 5.5}, {5.1, 5.8}, {5.2, 6.2}};
