@@ -302,10 +302,11 @@ json Expenses::projection(int clubId) {
                     placed += v; add(m, ym, v, 0); widen(ym);
                 }
             } else {
-                const int endIdx = std::max(nowIdx, monthIndex(monthOf(str(r, "season_end"))));
-                const int n = endIdx - nowIdx + 1; const double total = rate * qty;
+                const int startIdx = std::max(nowIdx, monthIndex(monthOf(str(r, "season_start"))));   // not before the season starts
+                const int endIdx = std::max(startIdx, monthIndex(monthOf(str(r, "season_end"))));
+                const int n = endIdx - startIdx + 1; const double total = rate * qty;
                 const double per = round2(total / n);
-                for (int i = nowIdx; i <= endIdx; i++) add(m, monthAt(i), i == endIdx ? round2(total - per * (n - 1)) : per, 0);
+                for (int i = startIdx; i <= endIdx; i++) add(m, monthAt(i), i == endIdx ? round2(total - per * (n - 1)) : per, 0);
             }
             roll(sectionId, m);
             out["plan_cash"].push_back({{"scope", scope}, {"category", category}, {"category_label", str(r, "category_label")},
