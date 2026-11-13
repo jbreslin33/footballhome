@@ -216,5 +216,8 @@
     return hit && hit.data && hit.data.dues ? hit.data.dues : null;
   }
 
-  window.PersonStanding = { load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues };
+  // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
+  function forget(personId) { cache.delete(Number(personId)); }
+
+  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues };
 })();

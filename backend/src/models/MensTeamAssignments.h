@@ -119,6 +119,9 @@ public:
                                              int teamId,
                                              const std::string& mutexGroup);
     std::vector<int> removeAssignmentForPerson(long long personId, int teamId);
+    // Add to toTeamId + remove from fromTeamId in one transaction (the
+    // player sheet's "Move here", mig 1307). Any domain — team ids only.
+    void moveForPerson(long long personId, int fromTeamId, int toTeamId);
     std::optional<bool> setRosterStatusForPerson(long long personId,
                                                  int teamId,
                                                  bool onRoster);

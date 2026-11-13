@@ -57,6 +57,7 @@ set(SOURCES
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
     src/models/PersonHealth.cpp
+    src/models/PersonTeams.cpp
     src/models/KitBoard.cpp
     src/models/FieldPlan.cpp
     src/models/FormationTactics.cpp
@@ -140,6 +141,7 @@ set(SOURCES
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
+    src/controllers/PersonTeamsController.cpp
     src/controllers/JobsController.cpp
     src/controllers/CoachScheduleController.cpp
     src/controllers/AwardsController.cpp

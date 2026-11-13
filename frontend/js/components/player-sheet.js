@@ -84,6 +84,142 @@
     return st && st.isInjured ? { ...mine, status: st } : null;
   }
 
+  // ── ⚽ Teams pills (mig 1307) ──────────────────────────────────────
+  // Owner 2026-11-13: "a move section that has pills for all the teams.
+  // then if i click another team it asks do we want to move or add them"
+  // / "have consistency between screens".  Drawn by the sheet itself, so
+  // every screen that opens it (popup or #person page) gets the same
+  // pills.  A lit pill = on that team.  Tap an unlit one → Move here (off
+  // <team>) per team he is on / Add / Cancel; tap a lit one → Take off?
+  // 🔒 = on the league's own list for that team — only the league takes
+  // him off.  Greyed = a team this viewer doesn't coach.
+  // GET/POST /api/person-teams (PersonTeamsController).
+  const MOVES = { board: {}, asked: {}, ask: null, busy: false };
+  function loadMoves(auth, pid, force) {
+    if (!auth || !pid) return Promise.resolve(null);
+    if (!force && MOVES.asked[pid]) return MOVES.asked[pid];
+    MOVES.asked[pid] = (async () => {
+      try {
+        const res = await auth.fetch(`/api/person-teams?person_id=${encodeURIComponent(pid)}`);
+        if (!res.ok) { MOVES.board[pid] = null; return null; }
+        MOVES.board[pid] = await res.json();
+      } catch (_e) { MOVES.board[pid] = null; }
+      return MOVES.board[pid];
+    })();
+    return MOVES.asked[pid];
+  }
+
+  function movesHtml(p) {
+    const pid = p && p.personId;
+    const b = pid ? MOVES.board[pid] : null;
+    if (!b || !Array.isArray(b.teams) || !b.teams.length) return '';
+    const name = (p.firstName || '').trim() || t('teams_they', {}, 'them');
+    const domains = [...new Set(b.teams.map(x => x.domain))];
+    const pill = (x) => {
+      const ask = MOVES.ask && MOVES.ask.pid === pid && MOVES.ask.teamId === x.teamId;
+      const tip = !x.canManage ? t('teams_no_rights_tip', {}, "You don't run this team")
+        : (x.on && x.locked) ? t('teams_locked_tip', {}, "On the league's list — only the league takes them off")
+        : x.on ? t('teams_on_tip', { team: x.label }, `On ${x.label} — tap to take off`)
+        : t('teams_off_tip', { team: x.label }, `Tap to move or add to ${x.label}`);
+      const bg = x.on ? '#166534' : 'transparent';
+      const border = ask ? '#38bdf8' : (x.on ? '#22c55e' : '#475569');
+      return `<button type="button" data-ps-team="${x.teamId}" ${x.canManage && !MOVES.busy ? '' : 'disabled'} title="${esc(tip)}"
+        style="padding:5px 11px; border-radius:999px; font-weight:800; font-size:0.8rem; white-space:nowrap; cursor:${x.canManage ? 'pointer' : 'default'};
+               background:${bg}; color:${x.on ? '#fff' : '#cbd5e1'}; border:${ask ? 2 : 1}px ${x.on ? 'solid' : 'dashed'} ${border}; opacity:${x.canManage ? 1 : 0.45};">
+        ${x.on && x.locked ? '🔒 ' : (x.on ? '✓ ' : '')}${esc(x.short || x.label)}</button>`;
+    };
+    const groups = domains.map(d => {
+      const head = domains.length > 1
+        ? `<div style="font-size:0.72rem; font-weight:800; opacity:0.7; text-transform:uppercase; letter-spacing:0.04em;">${esc(t(`teams_domain_${d}`, {}, d))}</div>` : '';
+      return `${head}<div style="display:flex; flex-wrap:wrap; gap:6px;">${b.teams.filter(x => x.domain === d).map(pill).join('')}</div>`;
+    }).join('');
+
+    let askHtml = '';
+    const target = MOVES.ask && MOVES.ask.pid === pid ? b.teams.find(x => x.teamId === MOVES.ask.teamId) : null;
+    if (target) {
+      const btn = (act, label, from, kind) => `<button type="button" data-ps-move-act="${act}"${from ? ` data-ps-move-from="${from}"` : ''} ${MOVES.busy ? 'disabled' : ''}
+        style="padding:7px 12px; border-radius:6px; font-weight:800; font-size:0.82rem; cursor:pointer; text-align:left;
+               ${kind === 'go' ? 'background:#0ea5e9; color:#fff; border:1px solid #0ea5e9;'
+                 : kind === 'warn' ? 'background:#7f1d1d; color:#fff; border:1px solid #b91c1c;'
+                 : 'background:transparent; color:#e5e7eb; border:1px solid #475569;'}">${esc(label)}</button>`;
+      let q, btns;
+      if (target.on) {
+        q = t('teams_remove_ask', { name, team: target.label }, `Take ${name} off ${target.label}?`);
+        btns = [btn('remove', t('teams_remove_yes', { team: target.label }, `Take off ${target.label}`), 0, 'warn')];
+      } else {
+        const current = b.teams.filter(x => x.on);
+        const leavable = current.filter(x => x.canManage && !x.locked);
+        q = t('teams_ask', { name, team: target.label }, `${name} → ${target.label}`);
+        btns = leavable.map(x => btn('move', t('teams_move_from', { team: target.label, from: x.short || x.label }, `Move here (off ${x.short || x.label})`), x.teamId, 'go'));
+        btns.push(btn('add', current.length
+          ? t('teams_add_also', { team: target.label, teams: current.map(x => x.short || x.label).join(', ') }, `Add — stays on ${current.map(x => x.short || x.label).join(', ')} too`)
+          : t('teams_add', { team: target.label }, `Add to ${target.label}`), 0, leavable.length ? '' : 'go'));
+      }
+      btns.push(btn('cancel', t('teams_cancel', {}, 'Cancel'), 0, ''));
+      askHtml = `<div data-ps-move-ask style="margin-top:4px; padding:10px; border-radius:8px; border:1px solid #38bdf8; background:#0c1e3a; display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+          <div style="font-weight:800;">${esc(q)}</div>${btns.join('')}</div>`;
+    }
+    return `<div data-ps-moves style="display:flex; flex-direction:column; gap:8px;">
+        <div style="font-size:0.75rem; font-weight:800; opacity:0.75;">${esc(t('teams_heading', {}, 'Teams — tap to move, add or take off'))}</div>
+        ${groups}${askHtml}</div>`;
+  }
+
+  // Click inside the pills / ask panel.  ctx: { auth, person, redraw,
+  // say(msg, bad), onChange }.  Returns true when it was ours.
+  function handleMovesClick(e, ctx) {
+    const p = ctx.person;
+    const pid = p && p.personId;
+    if (!pid) return false;
+    const pillBtn = e.target.closest('[data-ps-team]');
+    if (pillBtn) {
+      const teamId = Number(pillBtn.getAttribute('data-ps-team'));
+      const same = MOVES.ask && MOVES.ask.pid === pid && MOVES.ask.teamId === teamId;
+      MOVES.ask = same ? null : { pid, teamId };
+      ctx.redraw();
+      return true;
+    }
+    const act = e.target.closest('[data-ps-move-act]');
+    if (!act) return false;
+    const what = act.getAttribute('data-ps-move-act');
+    const ask = MOVES.ask;
+    if (what === 'cancel' || !ask || ask.pid !== pid) { MOVES.ask = null; ctx.redraw(); return true; }
+    const b = MOVES.board[pid];
+    const target = b && b.teams.find(x => x.teamId === ask.teamId);
+    const fromId = Number(act.getAttribute('data-ps-move-from')) || 0;
+    const from = fromId && b ? b.teams.find(x => x.teamId === fromId) : null;
+    const body = { person_id: pid, team_id: ask.teamId, action: what };
+    if (what === 'move') body.from_team_id = fromId;
+    MOVES.busy = true;
+    ctx.redraw();
+    (async () => {
+      try {
+        const res = await ctx.auth.fetch('/api/person-teams', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        MOVES.board[pid] = data;
+        MOVES.asked[pid] = Promise.resolve(data);
+        MOVES.ask = null;
+        if (window.PersonStanding && PersonStanding.forget) {
+          PersonStanding.forget(pid);
+          PersonStanding.load(ctx.auth, [pid]).then(() => ctx.redraw());
+        }
+        const team = target ? target.label : '';
+        const name = (p.firstName || '').trim();
+        ctx.say(what === 'move' ? t('teams_moved', { name, team, from: from ? from.label : '' }, `Moved to ${team}.`)
+          : what === 'add' ? t('teams_added', { name, team }, `Added to ${team}.`)
+          : t('teams_removed', { name, team }, `Taken off ${team}.`));
+        if (ctx.onChange) ctx.onChange('teams');
+      } catch (err) {
+        ctx.say(`${t('teams_failed', {}, 'Could not save')}: ${err.message}`, true);
+      } finally {
+        MOVES.busy = false;
+        ctx.redraw();
+      }
+    })();
+    return true;
+  }
+
   let state = null;   // { opts, tab, el }
 
   function button(key, opts = {}) {
@@ -120,8 +256,11 @@
         if (p.phone) bits.push(`<div>📱 <a href="tel:${esc(p.phone)}" style="color:#93c5fd;">${esc(p.phoneLabel || p.phone)}</a></div>`);
         return bits.length ? `<div style="display:flex; flex-direction:column; gap:4px;">${bits.join('')}</div>` : '';
       }
-      case 'teams':
-        return pid && window.PersonStanding ? (PersonStanding.rosterHtml(pid) || '') : '';
+      case 'teams': {
+        const standing = pid && window.PersonStanding ? (PersonStanding.rosterHtml(pid) || '') : '';
+        const moves = movesHtml(p);
+        return `${standing}${standing && moves ? '<div style="height:10px;"></div>' : ''}${moves}`;
+      }
       case 'health':
         return healthHtml(p);
       case 'money':
@@ -271,6 +410,13 @@
     bodyEl.scrollTop = keepScroll;
     // Team pills / standing line arrive once PersonStanding has the person:
     // one load per person per opening, then one redraw.
+    if (p.personId && !state.movesAsked) {
+      state.movesAsked = true;
+      const mpid = p.personId;
+      loadMoves(state.opts.auth, mpid, true).then(() => {
+        if (state && state.person && state.person.personId === mpid) draw();
+      });
+    }
     if (p.personId && window.PersonStanding && !state.standingAsked) {
       state.standingAsked = true;
       const pid = p.personId;
@@ -302,7 +448,9 @@
       if (e.target === el || e.target.closest('[data-ps-close]')) { close(); return; }
       if (e.target.closest('[data-ps-full]')) { openFull(state.person, state.tab); return; }
       const tb = e.target.closest('[data-ps-tab]');
-      if (tb) { state.tab = tb.getAttribute('data-ps-tab'); draw(); }
+      if (tb) { state.tab = tb.getAttribute('data-ps-tab'); draw(); return; }
+      if (state && handleMovesClick(e, { auth: state.opts.auth, person: state.person, redraw: draw, say: toast,
+          onChange: state.opts.onChange })) e.stopPropagation();
     });
     el.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
@@ -310,6 +458,7 @@
     });
     host.appendChild(el);
     state = { opts, tab: TABS.includes(opts.tab) ? opts.tab : 'person', el, person: null };
+    MOVES.ask = null;
     document.addEventListener('keydown', onKey);
     if (opts.auth) loadHealth(opts.auth).then(() => { if (state && state.el === el) draw(); });
     draw();
@@ -379,8 +528,9 @@
     }
     c.addEventListener('click', (e) => {
       const tb = e.target.closest('[data-ps-tab]');
-      if (!tb || !c.contains(tb)) return;
-      ctl.setTab(tb.getAttribute('data-ps-tab'));
+      if (tb && c.contains(tb)) { ctl.setTab(tb.getAttribute('data-ps-tab')); return; }
+      handleMovesClick(e, { auth: opts.auth, person: ctl.person, redraw: () => paint(),
+        say: (m, bad) => toastIn(document.body, m, bad), onChange: opts.onChange });
     });
     c.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
@@ -395,6 +545,7 @@
     // Team pills / standing line arrive once PersonStanding has the person.
     function standing() {
       const pid = ctl.person && ctl.person.personId;
+      if (pid) loadMoves(opts.auth, pid, true).then(() => { if (ctl.person && ctl.person.personId === pid) paint(); });
       if (!pid || !window.PersonStanding) return;
       PersonStanding.load(opts.auth, [pid]).then(() => {
         if (ctl.person && ctl.person.personId === pid) paint();

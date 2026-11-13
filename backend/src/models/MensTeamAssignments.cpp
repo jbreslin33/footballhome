@@ -168,32 +168,13 @@ std::vector<int> MensTeamAssignments::addAssignment(long long userId,
     return addAssignmentForPerson(personId, teamId, mutexGroup);
 }
 
-std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
-                                                              int teamId,
-                                                              const std::string& mutexGroup) {
-    // Single transaction so the delinquent restore and the upsert land
-    // atomically.
-    auto tx = db_->beginTransaction();
+namespace {
 
-    // 2026-08-16 (user directive): a player can hold any number of
-    // active team_persons rows at once — same domain or different
-    // (e.g. a boy called up to a mens team, or two mens squads). This
-    // reverses the 2026-08-03 "always a move" directive that used to
-    // close every OTHER board column the person was active on in this
-    // domain before inserting the new one; that made every add
-    // destructive by default, which is exactly what multi-assign needs
-    // to not do. A caller that actually wants to move a player off
-    // their old team now does that as an explicit second action
-    // (removeAssignmentForPerson on the old team_id) — see
-    // RosterScreenBase.renderMoveDropdown / TeamCard.js on the
-    // frontend, which already sends "add" and "remove" as independent
-    // requests, one per specific team_persons row.
-    (void)mutexGroup;
-
-    // If the SAME (person, team) row exists but was soft-deleted for
-    // delinquency, restore it in place so audit history + joined_at
-    // are preserved.  Only touches 'delinquent' removals; other reasons
-    // (manual removal etc.) are left alone.
+// The add itself, inside the caller's transaction — shared by
+// addAssignmentForPerson and moveForPerson so a move adds exactly the
+// way an add does (delinquent restore, docs status carried over).
+void addRowInTx(pqxx::work& txRef, long long personId, int teamId) {
+    pqxx::work* tx = &txRef;
     pqxx::result restored = tx->exec_params(
         "UPDATE team_persons "
         "   SET removed_at = NULL, "
@@ -240,8 +221,58 @@ std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
         );
     }
 
+}
+
+}  // namespace
+
+std::vector<int> MensTeamAssignments::addAssignmentForPerson(long long personId,
+                                                              int teamId,
+                                                              const std::string& mutexGroup) {
+    // Single transaction so the delinquent restore and the upsert land
+    // atomically.
+    auto tx = db_->beginTransaction();
+
+    // 2026-08-16 (user directive): a player can hold any number of
+    // active team_persons rows at once — same domain or different
+    // (e.g. a boy called up to a mens team, or two mens squads). This
+    // reverses the 2026-08-03 "always a move" directive that used to
+    // close every OTHER board column the person was active on in this
+    // domain before inserting the new one; that made every add
+    // destructive by default, which is exactly what multi-assign needs
+    // to not do. A caller that actually wants to move a player off
+    // their old team now does that as an explicit second action
+    // (removeAssignmentForPerson on the old team_id) — see
+    // RosterScreenBase.renderMoveDropdown / TeamCard.js on the
+    // frontend, which already sends "add" and "remove" as independent
+    // requests, one per specific team_persons row.
+    (void)mutexGroup;
+
+    // If the SAME (person, team) row exists but was soft-deleted for
+    // delinquency, restore it in place so audit history + joined_at
+    // are preserved.  Only touches 'delinquent' removals; other reasons
+    // (manual removal etc.) are left alone.
+    addRowInTx(*tx, personId, teamId);
+
     db_->commit(tx);
     return teamIdsForPerson(personId);
+}
+
+// ⚽ Teams pills on the player sheet (mig 1307): "Move here" = on the
+// new team and off the old one in ONE transaction, so a failed half never
+// leaves him on both teams or on none.
+void MensTeamAssignments::moveForPerson(long long personId, int fromTeamId, int toTeamId) {
+    auto tx = db_->beginTransaction();
+    addRowInTx(*tx, personId, toTeamId);
+    tx->exec_params(
+        "UPDATE team_persons "
+        "   SET removed_at = now(), "
+        "       removed_reason = 'admin_remove' "
+        " WHERE person_id = $1 "
+        "   AND team_id = $2 "
+        "   AND removed_at IS NULL",
+        personId, fromTeamId
+    );
+    db_->commit(tx);
 }
 
 std::vector<int> MensTeamAssignments::removeAssignment(long long userId, int teamId) {

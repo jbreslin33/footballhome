@@ -2115,19 +2115,23 @@ class RosterScreenBase extends Screen {
 
   _openPlayerSheet(key, tab) {
     const entry = () => (this._sheetCards && this._sheetCards.get(key)) || null;
+    let last = null;
     PlayerSheet.open({
       host: this.element,
       auth: this.auth,
       tab,
       resolve: () => {
+        // After a ⚽ pill move the card he was opened from can be gone
+        // (moved off that column): stay on him rather than closing.
         const c = entry();
-        if (!c) return null;
+        if (!c) return last;
         const p = c.player;
-        return {
+        last = {
           personId: p.personId, laUserId: p.leagueAppsUserId,
           firstName: p.firstName || '', lastName: p.lastName || '',
           returnTo: 'teams',
         };
+        return last;
       },
       extras: () => {
         const c = entry();
@@ -2301,7 +2305,10 @@ class RosterScreenBase extends Screen {
       if (!this._sheetCards) this._sheetCards = new Map();
       this._sheetCards.set(sheetKey, {
         player, col,
-        teams: `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}`.trim(),
+        // No move list here (mig 1307): the sheet draws its own ⚽ team
+        // pills, the same on every screen.  rosterSelectHtml still
+        // decides the ⋯ shows on an Unassigned card (menuItems).
+        teams: `${statusSelectHtml}${roleSelectHtml}`.trim(),
         contact: contactHtml || '',
       });
       this._wirePlayerSheet();
