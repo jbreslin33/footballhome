@@ -72,6 +72,7 @@ class FinancesScreen extends Screen {
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
+      if (e.target.matches('[data-plan-teams]')) { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0 && n <= 20) this._savePlanTeams(Number(e.target.dataset.planTeams), n); else this._renderBody(); return; }
       if (e.target.matches('[data-plan-roster]')) { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0) this._savePlanRoster(Number(e.target.dataset.planRoster), n); else this._renderBody(); return; }
       const row = e.target.closest('[data-budget-line]'); if (!row) return;
       if (e.target.matches('[data-budget-settled]')) this._saveBudgetLine(row.dataset.budgetLine, { settled: e.target.checked });
@@ -111,6 +112,20 @@ class FinancesScreen extends Screen {
   async _saveBudgetLine(id, change) {
     try {
       const res = await this.auth.fetch(`/api/finances/budget-lines/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      const x = await this.auth.fetch('/api/finances/expenses');
+      const xj = await x.json().catch(() => ({}));
+      if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
+      this.expenses = xj; if (this.money) this.money.expenses = xj;
+    } catch (err) { this.err = err.message; }
+    this._renderBody();
+  }
+
+  // Year plan team count (mig 1348): save, then the plan again.
+  async _savePlanTeams(entryId, teams) {
+    try {
+      const res = await this.auth.fetch('/api/finances/plan-teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entry_id: entryId, teams }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
       const x = await this.auth.fetch('/api/finances/expenses');
@@ -364,14 +379,16 @@ class FinancesScreen extends Screen {
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const entries = new Map();
-    for (const l of lines) { if (!entries.has(l.entry_id)) entries.set(l.entry_id, { title: `${l.team} · ${l.league} ${l.season}${l.is_option ? ` · ${l.entry_note || ''} (${this._copy('plan_option_tag') || 'option'})` : ''}`, lines: [] }); entries.get(l.entry_id).lines.push(l); }
+    for (const l of lines) { if (!entries.has(l.entry_id)) entries.set(l.entry_id, { id: l.entry_id, teams: l.team_count, title: `${l.team} · ${l.league} ${l.season}${l.is_option ? ` · ${l.entry_note || ''} (${this._copy('plan_option_tag') || 'option'})` : ''}`, lines: [] }); entries.get(l.entry_id).lines.push(l); }
     let rows = '', total = 0;
     for (const e of entries.values()) {
       const sub = e.lines.reduce((a, l) => a + Number(l.amount), 0); total += sub;
-      rows += `<tr class="group"><td colspan="2">${esc(e.title)}</td><td>${M0(sub)}</td></tr>`;
+      // Team count (mig 1348): an entry that carries one gets a box; lines are per team × it.
+      const teamsBox = e.teams == null ? '' : ` <label style="font-weight:400; white-space:nowrap;"><input class="fn-amt" style="width:52px;" type="number" min="0" max="20" step="1" data-plan-teams="${e.id}" value="${e.teams}"> ${esc(this._copy('plan_team_count') || 'teams')}</label>`;
+      rows += `<tr class="group"><td colspan="2">${esc(e.title)}${teamsBox}</td><td>${M0(sub)}</td></tr>`;
       for (const l of e.lines) rows += `
         <tr class="item"><td title="${esc(l.note || '')}" style="white-space:normal;">${esc(l.label)}${l.is_assumed ? '*' : ''}${l.note ? `<span class="fn-tick">${esc(l.note)}</span>` : ''}</td>
-          <td>${M2(l.rate)} × ${qty(l.quantity)}<span class="fn-tick">${esc(l.unit_label || '')}</span></td>
+          <td>${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}<span class="fn-tick">${esc(l.unit_label || '')}${l.team_count == null ? '' : ` × ${esc(this._copy('plan_team_count') || 'teams')}`}</span></td>
           <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
     }
     const bySection = new Map();

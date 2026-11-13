@@ -244,7 +244,7 @@ json Expenses::projection(int clubId) {
                    t.club_section_id, s.start_date::text AS season_start, s.end_date::text AS season_end, e.status AS entry_status, e.is_option, e.note AS entry_note, t.short_label,
                    EXISTS (SELECT 1 FROM team_season_installments ti WHERE ti.entry_id = e.id) AS has_installments,
                    EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy,
-                   lf.players_included, t.dues_rank, t.max_roster, y.label AS budget_year,
+                   lf.players_included, t.dues_rank, t.max_roster, y.label AS budget_year, pl.team_count, COALESCE(pl.team_count, 1) AS teams,
                    (now() AT TIME ZONE 'America/New_York')::date BETWEEN y.starts_on AND y.ends_on AS this_year
               FROM team_fee_plan_lines pl
               JOIN team_fee_plans p ON p.id = pl.plan_id
@@ -278,6 +278,7 @@ json Expenses::projection(int clubId) {
                                    {"rate", num(r, "rate")}, {"quantity", num(r, "quantity")}, {"amount", num(r, "proposed")},
                                    {"players_included", r["players_included"].is_null() ? 0 : r["players_included"].as<int>() * num(r, "quantity")},
                                    {"is_option", r["is_option"].as<bool>()}, {"entry_note", str(r, "entry_note")}, {"short_label", str(r, "short_label")},
+                                   {"team_count", r["team_count"].is_null() ? json(nullptr) : json(r["team_count"].as<int>())},
                                    {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
             if (!thisYear || r["by_policy"].as<bool>() || r["is_option"].as<bool>()) continue;   // an option / next year stays off the grid (migs 1333/1334)
             const double total = num(r, "proposed");
@@ -298,7 +299,7 @@ json Expenses::projection(int clubId) {
             }
             if (kLeagueMoney.count(category)) continue;   // paid by its installments below
             // per-game costs over the home games still ahead
-            const double rate = num(r, "rate"), qty = num(r, "quantity");
+            const double rate = num(r, "rate"), qty = num(r, "quantity") * num(r, "teams");   // per team × sides entered (mig 1348)
             Months m; const auto it = homeGamesAhead.find(team);
             double ahead = 0; if (it != homeGamesAhead.end()) for (const auto& [ym, g] : it->second) ahead += g;
             if (ahead > 0) {
@@ -324,7 +325,7 @@ json Expenses::projection(int clubId) {
         // league money by its installments, one row per Who pill
         for (const long long entry : entries) {
             for (const auto& r : db->query(
-                    "SELECT to_char(i.due_on, 'YYYY-MM') AS ym, i.due_on::text AS d, i.amount, i.note, t.club_section_id, "
+                    "SELECT to_char(i.due_on, 'YYYY-MM') AS ym, i.due_on::text AS d, i.amount * COALESCE(e.team_count, 1) AS amount, i.note, t.club_section_id, "
                     "       COALESCE(e.budget_scope, cash_flow_team_scope(e.team_id), 'club') AS scope, "
                     "       COALESCE(sc.label, t.name) AS scope_label "
                     "  FROM team_season_installments i JOIN team_season_entries e ON e.id = i.entry_id JOIN teams t ON t.id = e.team_id "
@@ -585,6 +586,16 @@ bool Expenses::updateBudgetLine(int clubId, int lineId, const std::optional<doub
 // per-player registrations become that many players, an "extra player" line
 // becomes the players beyond what the entry fee includes, kits follow; a team
 // with no per-player fee (youth) keeps it as its roster size.
+// Year plan team count (mig 1348, owner: "allow for x amount of teams to
+// enter"): only an entry that carries a count (team_count NOT NULL) has the box.
+bool Expenses::setPlanTeams(int clubId, int entryId, int teams) {
+    (void)clubId;
+    auto r = Database::getInstance()->query(
+        "UPDATE team_season_entries SET team_count = $2::int WHERE id = $1::int AND team_count IS NOT NULL RETURNING id",
+        {std::to_string(entryId), std::to_string(teams)});
+    return !r.empty();
+}
+
 bool Expenses::setPlanRoster(int clubId, int entryId, int players) {
     auto* db = Database::getInstance();
     const std::string club = std::to_string(clubId), entry = std::to_string(entryId), n = std::to_string(players);

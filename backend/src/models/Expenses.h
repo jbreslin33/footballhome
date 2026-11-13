@@ -61,6 +61,7 @@ public:
     static bool updateBudgetLine(int clubId, int lineId, const std::optional<double>& amount, const std::optional<bool>& settled);
     // Year plan "Full rosters" (mig 1345): the entry's per-player lines follow, else teams.max_roster.
     static bool setPlanRoster(int clubId, int entryId, int players);
+    static bool setPlanTeams(int clubId, int entryId, int teams);   // mig 1348
 
     // The Referees line for a set of games ({source, ref_id} each):
     // { description, quantity, amount, items: [{policy_id, source, ref_id,

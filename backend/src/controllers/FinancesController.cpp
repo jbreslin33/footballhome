@@ -48,6 +48,7 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
         [this](const Request& r, const LaSyncMap&) { return handleCashFlow(r); });
     router.post(prefix + "/budget-lines/:id", [this](const Request& r) { return handleBudgetLine(r); });
     router.post(prefix + "/plan-roster", [this](const Request& r) { return handlePlanRoster(r); });
+    router.post(prefix + "/plan-teams", [this](const Request& r) { return handlePlanTeams(r); });
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {
@@ -90,6 +91,20 @@ Response FinancesController::handlePlanRoster(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "That team is not on the plan.");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { std::cerr << "[finances plan roster] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change that roster."); }
+}
+
+// Year plan team count (mig 1348): how many sides an entry puts in.
+Response FinancesController::handlePlanTeams(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        const json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        if (!body.contains("entry_id") || !body["entry_id"].is_number_integer()) return jsonError(HttpStatus::BAD_REQUEST, "Which entry?");
+        if (!body.contains("teams") || !body["teams"].is_number_integer() || body["teams"].get<int>() < 0 || body["teams"].get<int>() > 20)
+            return jsonError(HttpStatus::BAD_REQUEST, "Enter a number of teams (0–20).");
+        if (!Expenses::setPlanTeams(WelcomeLog::kLighthouseClubId, body["entry_id"].get<int>(), body["teams"].get<int>()))
+            return jsonError(HttpStatus::NOT_FOUND, "That entry has no team count.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { std::cerr << "[finances plan teams] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change the team count."); }
 }
 
 Response FinancesController::handleSummary(const Request& request) {
