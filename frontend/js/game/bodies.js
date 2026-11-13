@@ -16,6 +16,14 @@
 //                 mesh and lets just get the movement and kicking etc natural")
 //   ?bodies=all   every player, fallback ignored
 //   ?bodies=one   one home outfielder (slot 1) — a side-by-side test
+//   ?bodies=anim  every player, moved by animation clips (G5.105, James 11/13 "really don't like the
+//                 player movement … full realism?"): Quaternius "Universal Animation Library"
+//                 (CC0; game-assets/ual/README.md) idle / walk / jog / sprint, blended by the engine's
+//                 speed, the stride rate from players.js's gait, the walk/jog mix matching the stride
+//                 length so the feet don't slide; the hips turn to the run, the spine and head back to
+//                 his facing; past ~110° off it he backpedals (the clips played backwards). Kicks,
+//                 touches, headers, dives, slides, stumbles, celebrations and keepers: the rig, as before,
+//                 cross-faded in over ~0.1 s.
 // FH original (the retarget and the region paint); the body is Quaternius's.
 (function () {
   'use strict';
@@ -26,7 +34,14 @@
   const q = new URLSearchParams(location.search).get('bodies') || 'off';
   if (q === 'off' || !window.PlayerFigure || !window.THREE_ADDONS || !THREE_ADDONS.GLTFLoader) return;
   const forced = new URLSearchParams(location.search).get('bodies') === 'all';
-  const want = (fig) => !fig.official && (q === 'all' || (q === 'one' && fig.slot === 1));
+  const ANIM = q === 'anim';
+  const want = (fig) => !fig.official && (q === 'all' || ANIM || (q === 'one' && fig.slot === 1));
+  const URL_CLIPS = 'game-assets/ual/locomotion.glb';
+  // G5.105: each clip's stride (one loop = two steps, m) and the UAL pelvis rest height (m), read off
+  // the pack's root-motion file (walk 0.97 m/s, jog 5.36, sprint 8.25).
+  const CLIP = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop' };
+  const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
+  const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
   const URL_BODY = 'game-assets/ubc/body_male.gltf';
   // The pack's hair: modelled in the body's space; a grey texture made to be tinted. Bald = buzzed.
@@ -306,8 +321,17 @@
       add(ca, D(l.knee), l.knee, at(l.ankle, 0, 0, 0), fo);
       add(fo, D(l.ankle), l.ankle, at(l.ankle, 0, -0.04, 0.14), kid(fo));
     }
+    let anim = null;
+    if (ANIM && proto.clips) {
+      const mixer = new THREE.AnimationMixer(model);
+      const act = {};
+      for (const [k, c] of Object.entries(proto.clips)) { act[k] = mixer.clipAction(c); act[k].play(); act[k].setEffectiveWeight(0); }
+      anim = { mixer, act, ph: 0, lastPh: fig.phase || 0, idleT: (fig.slot * 0.37) % 2.5, yawOff: 0, ov: 0,
+               twist: ['spine_01', 'spine_02', 'spine_03', 'neck_01', 'Head'].map((n) => bones[n]).filter(Boolean),
+               pelvisPos: new THREE.Vector3(), saved: [] };
+    }
     fig.body = {
-      model, map, restInv, pelvisBone: bones.pelvis,
+      model, map, restInv, pelvisBone: bones.pelvis, anim,
       rigPelvisRest: relPos(fig.root, fig.pelvis, new THREE.Vector3()),
       bonePelvisRest: relPos(fig.root, bones.pelvis, new THREE.Vector3()),
     };
@@ -349,6 +373,72 @@
       rel(fig.root, m.bone.parent, tq2).invert();
       m.bone.quaternion.copy(tq2.multiply(tq));
       m.bone.updateMatrixWorld(true);
+    }
+  }
+
+  // ── G5.105: the clips ─────────────────────────────────────────────────
+  const smooth = (x) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+  const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const UP = new THREE.Vector3(0, 1, 0), tw = new THREE.Quaternion(), tw2 = new THREE.Quaternion();
+  const TWIST = [0.2, 0.2, 0.25, 0.2, 0.15];   // of the hips' turn given back, spine up to the head [FH]
+  function overlayOn(fig) {
+    const W = fig.w || {};
+    return !!(fig.keeper || fig.kk || fig.rc || fig.hd || fig.dv || (W.slide || 0) > 0.05 || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
+  }
+  function animate(fig, dt, ctx) {
+    const b = fig.body, A = b.anim;
+    const s = fig.speed || 0, vx = (ctx && ctx.vx) || 0, vy = (ctx && ctx.vy) || 0;
+    const sp = Math.hypot(vx, vy);
+    const m = smooth((s - 0.25) / 0.6);
+    // the overlays (kick, touch, header, dive, slide, stumble, celebrate, keeper): the rig
+    A.ov += ((overlayOn(fig) ? 1 : 0) - A.ov) * Math.min(1, dt * 12);
+    // where he goes against where he faces
+    const rel = sp > 0.3 ? wrapA(Math.atan2(vx, vy) - fig.yaw) : 0;
+    const back = Math.abs(rel) > 1.9 && s < 5.5;
+    const dirSign = back ? -1 : 1;
+    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov);
+    A.yawOff += wrapA(want - A.yawOff) * Math.min(1, dt * 8);
+    b.model.rotation.y = proto.yaw + A.yawOff;
+    // the stride: players.js's gait phase (real cadence by speed), forwards or back
+    const dPh = (((fig.phase || 0) - A.lastPh) % 1 + 1) % 1;
+    A.lastPh = fig.phase || 0;
+    A.ph = ((A.ph + dirSign * dPh) % 1 + 1) % 1;
+    const cad = dt > 1e-4 ? dPh / dt : 0;                 // loops a second
+    const L = cad > 0.05 ? s / cad : 0;                   // metres a loop at his speed
+    const run = smooth((s - 1.9) / 0.7);
+    const wj = Math.max(Math.min(1, Math.max(0, (L - STRIDE_WALK) / (STRIDE_JOG - STRIDE_WALK))), JOG_FLOOR * run);
+    const ws = smooth((s - 5.5) / 2.0) * (back ? 0 : 1);
+    const w = { idle: 1 - m, walk: m * (1 - wj), jog: m * wj * (1 - ws), sprint: m * wj * ws };
+    A.idleT = (A.idleT + dt) % A.act.idle.getClip().duration;
+    for (const [k, a] of Object.entries(A.act)) {
+      a.setEffectiveWeight(w[k]);
+      a.time = k === 'idle' ? A.idleT : A.ph * a.getClip().duration;
+    }
+    A.mixer.update(0);
+    // the pelvis sits as high as his leg (the clip's pelvis is the UAL mannequin's)
+    if (proto.pelvisScale) b.pelvisBone.position.z *= proto.pelvisScale;
+    b.model.updateMatrixWorld(true);
+    // the spine and head give the hips' turn back: chest and eyes on his facing
+    const give = -A.yawOff * (1 - A.ov);
+    if (Math.abs(give) > 1e-3) {
+      for (let i = 0; i < A.twist.length; i++) {
+        const bone = A.twist[i];
+        tw.setFromAxisAngle(UP, give * TWIST[i]);
+        bone.getWorldQuaternion(tw2).premultiply(tw);
+        bone.parent.getWorldQuaternion(tq).invert();
+        bone.quaternion.copy(tq.multiply(tw2));
+        bone.updateMatrixWorld(true);
+      }
+    }
+    // cross-fade to the rig for the overlays
+    if (A.ov > 0.01) {
+      const sv = A.saved;
+      b.map.forEach((mm, i) => { (sv[i] || (sv[i] = new THREE.Quaternion())).copy(mm.bone.quaternion); });
+      A.pelvisPos.copy(b.pelvisBone.position);
+      retarget(fig);
+      b.map.forEach((mm, i) => { mm.bone.quaternion.copy(sv[i].slerp(mm.bone.quaternion, A.ov)); });
+      b.pelvisBone.position.lerpVectors(A.pelvisPos, b.pelvisBone.position.clone(), A.ov);
+      b.model.updateMatrixWorld(true);
     }
   }
 
@@ -403,7 +493,8 @@
   };
   P.update = function (...a) {
     const r = update.apply(this, a);
-    if (this.body) retarget(this);
+    if (this.body && this.body.anim) animate(this, a[0] || 0, a[1]);
+    else if (this.body) retarget(this);
     return r;
   };
 
@@ -421,6 +512,17 @@
     const p = (n) => bones[n].getWorldPosition(new THREE.Vector3());
     const headInv = bones.Head.matrixWorld.clone().invert();
     const loader = new THREE_ADDONS.GLTFLoader();
+    // G5.105: the clips — rotations only (the two rigs' bones differ in length), plus the pelvis's height
+    const clipsP = !ANIM ? Promise.resolve(null) : loader.loadAsync(URL_CLIPS).then((g) => {
+      const out = {};
+      for (const [k, n] of Object.entries(CLIP)) {
+        const c = g.animations.find((x) => x.name === n);
+        if (!c) { console.warn('bodies: clip missing', n); return null; }
+        c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
+        out[k] = c;
+      }
+      return out;
+    }).catch((e) => { console.warn('bodies: clips failed', e); return null; });
     Promise.all(URL_HAIR.map((u) => loader.loadAsync(u).then((h) => {
       let m = null; h.scene.traverse((o) => { if (o.isMesh && !m) m = o; });
       h.scene.updateMatrixWorld(true);
@@ -429,11 +531,15 @@
       const hair = {};
       for (const [u, v] of pairs) if (v) hair[u.replace(/^.*\/|\.gltf$/g, '')] = v;
       const any = Object.values(hair)[0];
-      proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
+      proto = { scene: gltf.scene, scale: 1, yaw: 0, hair, clips: null, pelvisScale: bones.pelvis.position.z / UAL_PELVIS, hairMat: any ? any.material : new THREE.MeshStandardMaterial(),
                 boots: extra.boots, back: extra.back,
                 legA: p('thigh_l').distanceTo(p('calf_l')), legB: p('calf_l').distanceTo(p('foot_l')) };
       console.log('bodies: loaded, thigh', proto.legA.toFixed(3), 'shin', proto.legB.toFixed(3), 'm, full size · hair', pairs.filter((x) => x[1]).length);
-      for (const f of figures) attach(f);
+      clipsP.then((clips) => {
+        proto.clips = clips;
+        if (ANIM && !clips) console.warn('bodies: no clips — the rig drives the bodies');
+        for (const f of figures) attach(f);
+      });
     });
   }, undefined, (e) => console.warn('bodies: load failed', e));
 })();

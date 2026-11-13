@@ -9062,3 +9062,31 @@ rows from `benchmarks_tracking_lag.py` for 50-100. Two pacing trials, seed 1000,
   40-50 coming 5+ 1 m nearer real; 3+ options at 35-52 m 64.8 → 62.3% (43.7).
 - physics.body.shape_max_mps 4.5 → 6: no change.
 Running: looser marking of their deep men (mark_r_3 10, mark_d_3 5.5; and band 2).
+
+### 8.206 G5.105 — the viewer's bodies moved by animation clips, `?bodies=anim` (viewer only, branch game-mocap-locomotion)
+
+James 11/13, of the 11/11-11/12 procedural bodies: "really don't like the player movement … are we sure we can't
+do the full realism?" Two routes. Full physics humanoids (MuJoCo + RL from motion capture) were declined again:
+GPU training, no footballer mocap, and no limb data to check against. He chose option 2, animation clips driving
+the skinned body (the commercial-game route). The engine is untouched.
+
+**Clips.** Quaternius "Universal Animation Library" Standard (CC0), whose rig matches the `ubc/` body bone for
+bone (66 shared). `game/scripts/trim_ual_clips.py` keeps Idle / Walk / Jog_Fwd / Sprint (620 KB, no meshes).
+These are artist-keyed, not motion capture. The clips' own speeds come from the root-motion file: walk
+0.97 m/s (1.30 m a loop), jog 5.36 (5.0 m), sprint 8.25 (5.5 m).
+
+**Blend** (`bodies.js` animate):
+- Rotations only, plus the pelvis height scaled to our leg (0.949 / 0.917); bone lengths differ between the rigs.
+- The loop phase follows players.js's gait phase, the real cadence by speed [Weyand 2000, Novacheck 1998].
+- Walk / jog split by stride length: metres a loop = speed / cadence. Sprint fades in at 5.5-7.5 m/s.
+- The model turns toward the run; the spine and head give the turn back (20 / 20 / 25 / 20 / 15%), chest
+  and eyes on his facing. Past 1.9 rad off his facing (under 5.5 m/s) he backpedals, the clips run backward.
+- Kick, touch, header, dive, slide, stumble, celebrate and keepers cross-fade to the rig (0.1 s).
+
+**Measured** (Chrome, the live match, moving outfielders, planted foot under 6 cm: its ground speed ÷ body speed):
+- A jog floor of 0.75 (jog at least 75% once running): 1-2 / 2-4 / 4+ m/s 0.26 / 0.89 / 0.49.
+- Pure stride matching (`?jogfloor=0`, the default): 0.37 / 0.35 / 0.31.
+- Median frame 18.6 ms with 22 bodies; no console errors.
+
+**Not yet.** Foot-lock IK, so the planted foot pins and the residual ~0.3 slide goes. Side-steps and true
+backpedals: the pack's Pro tier ($9.99) has 8-direction locomotion. Kicks, headers and dives from clips.
