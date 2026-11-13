@@ -67,6 +67,7 @@ struct Stats {
     long bt_t[5] = {}, bt_e[5][4] = {}; std::vector<double> bt_len[5];   // §8.203 WHERE THE BALL LIVES
     long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
+    long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
@@ -238,7 +239,7 @@ int main(int argc, char** argv) {
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
-        struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0, z = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1;  /* §8.202 */ long bt_prev = -1; int bt_side = -1, bt_band = -1, bt_n = 0;  /* §8.203 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
+        struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0, z = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1; struct RoM { int r, b; bool fr; double m, nd; }; std::vector<RoM> ro_stage; int ro_z = 0;   /* §8.205 */  /* §8.202 */ long bt_prev = -1; int bt_side = -1, bt_band = -1, bt_n = 0;  /* §8.203 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
@@ -1216,6 +1217,12 @@ int main(int argc, char** argv) {
                     for (std::uint8_t j = 0; j < N; ++j) { const double d = std::hypot(W.player(j).pos.x.toDouble() - b.pos.x.toDouble(), W.player(j).pos.y.toDouble() - b.pos.y.toDouble()); if (d <= bd) { bd = d; best = j; } }
                 if (best >= 0 && best == sh_run.pid) {
                     ++sh_run.n; sh_run.k1 = kk; sh_run.x1 = b.pos.x.toDouble(); sh_run.y1 = b.pos.y.toDouble(); sh_run.o1 = optsOf(best);
+                    if (sh_run.n == 2 && !W.isKeeper(static_cast<std::uint8_t>(best))) {   // §8.205 the run is real: commit its RACE OPTIONS
+                        ++S.rx_sp[ro_z];
+                        for (const auto& m : ro_stage) { if (m.r < 0 || m.r > 5) continue; const int ix[2] = {m.r, m.b};
+                            for (int kd = 0; kd < 2; ++kd) { ++S.rx_n[ro_z][kd][ix[kd]]; S.rx_f[ro_z][kd][ix[kd]] += m.fr; if (!m.fr) S.rx_m[ro_z][kd][ix[kd]].push_back(m.m); }
+                            S.rx_nd[ro_z][m.fr].push_back(m.nd); }
+                    }
                     if (sh_run.n == 2 && sh_pend.pid >= 0) {   // a new man's run is real: it ends the pending one
                         if (sh_pend.pid != best) record(sh_pend, W.player(static_cast<std::uint8_t>(best)).team == sh_pend.team ? 0 : 1);
                         sh_pend = ShSp{};
@@ -1225,7 +1232,24 @@ int main(int argc, char** argv) {
                     sh_run = ShSp{};
                     if (best >= 0) { sh_run.pid = best; sh_run.team = W.player(static_cast<std::uint8_t>(best)).team; sh_run.n = 1; sh_run.k0 = sh_run.k1 = kk;
                         sh_run.x0 = sh_run.x1 = b.pos.x.toDouble(); sh_run.y0 = sh_run.y1 = b.pos.y.toDouble(); sh_run.o0 = sh_run.o1 = optsOf(best);
-                        { const double tlz = hx - b.pos.x.toDouble() * (sh_run.team == 0 ? 1.0 : -1.0); sh_run.z = tlz < 18 ? 0 : tlz < 35 ? 1 : tlz < 52 ? 2 : tlz < 70 ? 3 : 4; } }
+                        { const double tlz = hx - b.pos.x.toDouble() * (sh_run.team == 0 ? 1.0 : -1.0); sh_run.z = tlz < 18 ? 0 : tlz < 35 ? 1 : tlz < 52 ? 2 : tlz < 70 ? 3 : 4; }
+                        {   // §8.205 RACE OPTIONS (benchmarks_tracking_raceopts.py): every mate 5 m+, the crude race's margin, staged until the run is 2 frames
+                            ro_stage.clear(); ro_z = sh_run.z <= 1 ? 0 : sh_run.z == 2 ? 1 : 2;
+                            const int tm = sh_run.team; const double px = W.player(static_cast<std::uint8_t>(best)).pos.x.toDouble(), py = W.player(static_cast<std::uint8_t>(best)).pos.y.toDouble();
+                            for (std::uint8_t q = 0; q < N; ++q) {
+                                if (static_cast<int>(q) == best || W.player(q).team != tm || W.isKeeper(q)) continue;
+                                const double tx = W.player(q).pos.x.toDouble(), ty = W.player(q).pos.y.toDouble(), L = std::hypot(tx - px, ty - py);
+                                if (L < 5) continue;
+                                const double ux = (tx - px) / L, uy = (ty - py) / L; double mg = -9, nd = 1e9;
+                                for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != tm) nd = std::min(nd, std::hypot(W.player(j).pos.x.toDouble() - tx, W.player(j).pos.y.toDouble() - ty));
+                                for (double sd = 2.0; sd <= L + 1e-9; sd += 0.5) {
+                                    const double qx = px + ux * sd, qy = py + uy * sd, tb = sd / 11.0, tr = 0.3 + std::max(0.0, std::hypot(tx - qx, ty - qy) - 0.5) / 7.0;
+                                    for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != tm)
+                                        mg = std::max(mg, std::min(tb, tr) - (0.3 + std::max(0.0, std::hypot(W.player(j).pos.x.toDouble() - qx, W.player(j).pos.y.toDouble() - qy) - 0.5) / 7.0));
+                                }
+                                ro_stage.push_back(RoM{role(q), L < 10 ? 0 : L < 20 ? 1 : L < 30 ? 2 : 3, mg <= 0, mg, nd});
+                            }
+                        } }
                 }
             }
             {   // §8.198 CONTROL SPELLS (benchmarks_tracking_rewin.py): nearest within 1.5 m, ball under 1.5 m, two 5 Hz frames running
@@ -2319,6 +2343,21 @@ int main(int argc, char** argv) {
                                 for (int r = 0; r < 6; ++r) { const long n = S.ps_d[r][0] + S.ps_d[r][1] + S.ps_d[r][2];
                                     std::printf("\n            %-5s %.1f (%.1f) | %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) | %.1f (%.1f)", rn[r], md(S.ps_db[r]), rDb[r],
                                                 100.0 * S.ps_d[r][0] / std::max(1L, n), 100.0 * S.ps_d[r][1] / std::max(1L, n), 100.0 * S.ps_d[r][2] / std::max(1L, n), rDs[r][0], rDs[r][1], rDs[r][2], md(S.ps_dl[r]), rDl[r]); }
+                            }
+                            {   // §8.205 RACE OPTIONS, real DFL benchmarks_tracking_raceopts.py
+                                static const double rSp[3] = {85.6, 85.2, 232.9}, rNd[3][2] = {{5.0, 5.5}, {5.1, 5.8}, {5.2, 6.2}};
+                                static const double rR[3][6][3] = {{{2.16, 14, 0.77}, {1.43, 20, 0.84}, {1.82, 24, 0.55}, {0.59, 22, 0.48}, {1.58, 24, 0.61}, {1.17, 18, 0.63}},
+                                                                   {{2.06, 31, 0.56}, {1.37, 24, 0.74}, {1.75, 33, 0.44}, {0.56, 25, 0.54}, {1.69, 25, 0.65}, {1.31, 20, 0.64}},
+                                                                   {{1.75, 45, 0.46}, {1.34, 30, 0.86}, {1.80, 33, 0.48}, {0.66, 19, 0.75}, {1.84, 18, 0.89}, {1.34, 10, 1.01}}};
+                                static const double rDd[3][4][3] = {{{0.78, 71, 0.10}, {2.32, 36, 0.26}, {2.37, 12, 0.56}, {3.26, 2, 1.19}},
+                                                                    {{0.80, 77, 0.10}, {2.89, 46, 0.24}, {2.57, 15, 0.53}, {2.48, 2, 1.19}},
+                                                                    {{0.68, 80, 0.09}, {2.39, 53, 0.24}, {2.37, 22, 0.52}, {3.31, 2, 1.22}}};
+                                static const char* zn[3] = {"0-35", "35-52", "52+"}; static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"}; static const char* dn[4] = {"5-10", "10-20", "20-30", "30+"};
+                                std::printf("\n          RACE OPTIONS (the man on the ball's mates 5 m+ at a spell's start, crude race; real DFL benchmarks_tracking_raceopts.py in brackets): by the ball's m off the line he attacks, per mate role / distance: mates a spell | free %% | margin med s when theirs");
+                                for (int z = 0; z < 3; ++z) { const double sp = std::max(1L, S.rx_sp[z]);
+                                    std::printf("\n            %-5s spells a team-match %.1f (%.1f); nearest opponent to a mate med not / free %.1f / %.1f (%.1f / %.1f)", zn[z], S.rx_sp[z] / tmn, rSp[z], md(S.rx_nd[z][0]), md(S.rx_nd[z][1]), rNd[z][0], rNd[z][1]);
+                                    std::printf("\n              role"); for (int r = 0; r < 6; ++r) std::printf("  %s %.2f %.0f%% %.2f (%.2f %.0f%% %.2f)", rn[r], S.rx_n[z][0][r] / sp, 100.0 * S.rx_f[z][0][r] / std::max(1L, S.rx_n[z][0][r]), md(S.rx_m[z][0][r]), rR[z][r][0], rR[z][r][1], rR[z][r][2]);
+                                    std::printf("\n              dist"); for (int q = 0; q < 4; ++q) std::printf("  %s %.2f %.0f%% %.2f (%.2f %.0f%% %.2f)", dn[q], S.rx_n[z][1][q] / sp, 100.0 * S.rx_f[z][1][q] / std::max(1L, S.rx_n[z][1][q]), md(S.rx_m[z][1][q]), rDd[z][q][0], rDd[z][q][1], rDd[z][q][2]); }
                             }
                             {   // §8.203 ON THE BALL by band, real DFL benchmarks_tracking_shut.py
                                 static const double rZ[5] = {27.1, 58.4, 85.2, 112.9, 120.0}, rZo[5][4] = {{26.1, 38.7, 21.6, 13.7}, {12.6, 27.8, 27.8, 31.9}, {7.0, 19.9, 29.3, 43.7}, {5.0, 20.5, 33.5, 40.9}, {4.8, 23.6, 31.6, 40.1}}, rZe[5][3] = {{34.7, 35.5, 29.7}, {51.7, 30.3, 18.0}, {69.0, 20.2, 10.8}, {74.7, 17.4, 7.8}, {69.0, 19.8, 11.1}};

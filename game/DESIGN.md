@@ -9013,3 +9013,45 @@ a team-match. Width is real now; the options excess is the race itself.
 **Next.** The crude race: for a man's mates by distance and role, how often the nearest defender is first to
 the lane, ours v real — whether our defenders read and close lanes slower than real (reaction, closing speed,
 the shadow while the carrier still has it), or the race in the harness differs from passrace.py.
+
+### 8.205 G5.103 — the crude race by mate role and distance: ours are freer at the same distance; a lane screen tried and not shipped (no migration)
+
+§8.204's next: the crude race itself.
+
+**Same race.** The harness's ON THE BALL options and `benchmarks_tracking_shut.py` run the same race (ball
+11 m/s, men 7 m/s after 0.3 s, 0.5 m reach, every 0.5 m from 2 m out, keepers raced). So the gap is where
+the men stand, not in how the race is run.
+
+**Real** (new `scripts/benchmarks_tracking_raceopts.py`, DFL). At a spell's first frame, every mate 5 m+,
+by the ball's band off the line the carrier attacks. Mates a spell, share free:
+- by distance 5-10 / 10-20 / 20-30 / 30+ m: 0-35 0.78 71% / 2.32 36 / 2.37 12 / 3.26 2; 35-52 0.80 77 /
+  2.89 46 / 2.57 15 / 2.48 2; 52+ 0.68 80 / 2.39 53 / 2.37 22 / 3.31 2.
+- by role, 52+: CB 45%, FB 30, DM 33, AM 19, WIDE 18, ST 10.
+- the nearest opponent to a mate, med: not free 5.0-5.2 m, free 5.5-6.2.
+
+**Ours** (new RACE OPTIONS harness line; seed 1000 / 2000). The distances are near real: as many mates a
+spell at 5-30 m, fewer 30+ (1.8-2.7 v 2.5-3.3). But more of them are free at the same distance: 35-52
+5-10 88% (77), 10-20 57-58 (46); 52+ 89-91 (80), 61-63 (53). Not free, the margin is the same (0.23 at
+10-20). The excess is their CB +13-15 points, DM +11-12, FB +5-7. Our defenders are on a man or far off:
+not free 4.8 m (5.2), free 7.4-7.5 (6.2).
+
+**Tried** (not shipped). A lane screen in `HoldBlockSpot`: with their man on the ball 35 m+ off our line,
+a DM / AM / ST holding shades his spot toward the lane carrier → their man nearest the spot (within 10 m,
+foot 20-80% along), at most 4 m. It fired on 34% of eligible frames, with a mean shift of 2.6 m. Our DMs'
+lane cover (PRESS SHAPE shadowing) went 8.0 → 7.9% (real 15.0), options unchanged. At 15 m and 8 m it
+fired on 72% (4.3 m mean): lane cover 8.5%, options unchanged; removed.
+
+**Why** (temporary trace, our DMs in PRESS SHAPE frames). 51% hold, 46% mark, 4% press. Holding, his
+target is in a lane 41% of frames (screen on), but he stands in one only 23%. He is 7.9 m from it med
+(p75 11.8), 4.1 m across, moving 2.5 m/s. That is §8.187's trail, by design. A 2-3 s screen offset on a
+target he trails by 8 m never reaches the man. physics.body.shape_tau_s 4 → 2 / 1.5 (their ball): lag
+7.8 → 7.3 / 7.2 m, options and lane cover unchanged. The ease isn't the limit; the pace caps and the
+`ball_to` jumps are (HOLD SPOT).
+
+**Shipped.** The RACE OPTIONS line and `benchmarks_tracking_raceopts.py`, harness only. Outputs and
+goldens as G5.102; tests 22/22.
+
+**Next.** Where they stand against the ball, not their targets. In their build-up our DMs are 3.1 m deeper
+for the ball than real (48.0 m off our line v 54.1, ball 66.7 v 69.6), CBs 2.1 m. Our men who aren't
+marking stand off the free men (7.4 v 6.2 m). Measure real defenders' distance to the nearest free
+attacker by role and band, ours the same, then the block's depth by role for their ball in midfield.
