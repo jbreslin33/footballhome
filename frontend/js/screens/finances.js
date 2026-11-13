@@ -353,18 +353,22 @@ class FinancesScreen extends Screen {
       }
     }
     rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
-    // Per paying member (owner 2026-11-13: "consider it all mens and thus
-    // shared cost of all men … if we add a liga 2 team it smooths out"):
-    // what's under the pill ÷ the section's paying members, against a year
-    // of dues.  On a team pill it reads as what that team adds per member.
+    // Who shares it (owner 2026-11-13: "dont ever use pickup … use 70 as the
+    // maxed out perfect scenario then use active but also a cat for current
+    // dues payers"): the pill's total ÷ each count, against a year of dues.
     let per = '';
     const scopes = (this.flow || {}).scopes || [];
     let pill = scopes.find(sc => sc.code === this.scope);
     while (pill && !pill.section_code && pill.parent) pill = scopes.find(sc => sc.code === pill.parent);
-    const section = pill && pill.section_code ? ((this.summary || {}).sections || []).find(x => x.code === pill.section_code) : null;
-    if (section && Number(section.paying) > 0) {
-      const paying = Number(section.paying), dues = 12 * Number(section.rate || 0);
-      if (dues > 0) per = `<div class="fn-note" style="margin-top:8px; font-size:0.9rem; opacity:0.9;">${esc(this._copy('plan_per_player', { players: paying, section: section.name, cost: M0(total / paying), pct: `${Math.round(100 * total / paying / dues)}%`, dues: M0(dues) }))}</div>`;
+    const heads = pill && pill.section_code ? (this.expenses.plan_heads || []).find(h => h.code === pill.section_code) : null;
+    const duesM = heads ? Number(((this.expenses.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0) : 0;
+    if (heads && duesM > 0) {
+      const dues = 12 * duesM, sCols = (this._copy('plan_split_columns') || 'Shared by|Players|Each|Of a year of dues').split('|').map(c => c.trim());
+      const splits = [['plan_split_full', heads.full_house], ['plan_split_active', heads.active], ['plan_split_current', heads.current]].filter(([, n]) => Number(n) > 0);
+      per = `<table class="fn-table" style="margin-top:10px; min-width:420px;">
+        <thead><tr>${sCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+        <tbody>${splits.map(([k, n]) => `<tr><td>${esc(this._copy(k))}</td><td>${n}</td><td class="fn-out">${M0(total / n)}</td><td>${Math.round(100 * total / n / dues)}% of ${M0(dues)}</td></tr>`).join('')}</tbody>
+      </table>`;
     }
     return `
       <div class="fn-card">${head}

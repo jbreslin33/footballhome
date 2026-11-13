@@ -347,6 +347,33 @@ json Expenses::projection(int clubId) {
             out["plan_cash"].push_back({{"scope", scope}, {"category", "league_dues"}, {"category_label", catLabel}, {"payments_of", row["scope_label"]},
                                         {"label", payLabel(row["scope_label"].get<std::string>())}, {"assumed", false}, {"hint", hint}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
         }
+        // Who shares a section's costs (owner 2026-11-13: "dont ever use pickup
+        // … use 70 as the maxed out perfect scenario then use active but also a
+        // cat for current dues payers"): full house = roster spots of the
+        // section's dues-carrying teams; active = members on an active league
+        // program (never pickup); current = active, paying, owing nothing.
+        out["plan_heads"] = json::array();
+        for (const auto& r : db->query(R"SQL(
+            WITH sec AS (
+                SELECT s.id, s.code, CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END AS category
+                  FROM club_sections s
+            ), act AS (
+                SELECT DISTINCT ON (lp.category, m.person_id) lp.category, m.person_id, m.la_payment_status
+                  FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+                 WHERE m.ended_at IS NULL AND lp.variant = 'active'
+                 ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
+            )
+            SELECT sec.id, sec.code,
+                   (SELECT COALESCE(SUM(t.max_roster), 0) FROM teams t
+                     WHERE t.club_section_id = sec.id AND t.is_active AND t.dues_rank IS NOT NULL) AS full_house,
+                   COUNT(a.person_id) AS active,
+                   COUNT(a.person_id) FILTER (WHERE a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL
+                                                AND fh_dues_balance_usd(a.person_id) = 0) AS current
+              FROM sec LEFT JOIN act a ON a.category = sec.category
+             GROUP BY sec.id, sec.code)SQL"))
+            out["plan_heads"].push_back({{"section_id", r["id"].as<long long>()}, {"code", str(r, "code")},
+                                         {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}});
+
         // dues per year to set the cost per player against (latest policy, section first)
         for (const auto& r : db->query(
                 "SELECT DISTINCT ON (s.id) s.id AS section_id, d.monthly_dues_usd FROM club_sections s "
