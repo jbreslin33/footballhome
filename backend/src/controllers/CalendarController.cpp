@@ -838,6 +838,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             WITH base AS (
             SELECT
                 fe.id                  AS fh_event_id,
+                fh_event_job_setting(fe.id) AS setting,
                 ge.id                  AS gcal_event_id,
                 gc.role                AS calendar_role,
                 gc.time_zone           AS calendar_time_zone,
@@ -1251,6 +1252,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                             'short_label',     t.short_label,
                             -- The team's own colour — Event Center's tile badge (mig 778).
                             'color',           t.color,
+                            'field_size',      t.field_size,   -- practice card pitch (11/13)
                             'gender_category', t.gender_category,
                             'logo_url',        t.logo_url,
                             -- The RSVP group the team trains in
@@ -1334,7 +1336,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         -- Injured, not No response; an answer always wins.
                                                         'injury', fh_person_injury_label(roster.person_id),
                                                         -- ⛔ mig 1077: own section, out of No response
-                                                        'suspension', fh_event_suspension(fe.id, roster.person_id)
+                                                        'suspension', fh_event_suspension(fe.id, roster.person_id),
+                                                        -- Practice card pitch (owner 11/13 "i like it on pitch"):
+                                                        -- the spot (1–11) he has started at most in games.
+                                                        'usual_position', (SELECT ml.position_id FROM match_lineups ml JOIN players pl ON pl.id = ml.player_id
+                                                                            WHERE pl.person_id = roster.person_id AND ml.zone = 'starter' AND ml.position_id BETWEEN 1 AND 11
+                                                                            GROUP BY ml.position_id ORDER BY count(*) DESC, ml.position_id LIMIT 1)
                         )
                                                 ORDER BY CASE roster.response
                                    WHEN 'yes' THEN 1
@@ -1836,6 +1843,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 ev["tag_issues"] = std::move(issues);
             }
             ev["rsvps_open_at"]     = textOrNull(row, "rsvps_open_at");
+            // indoor / outdoor (mig 931 fh_event_job_setting: the facility's
+            // indoor_jobs_from) — the practice card draws that pitch (owner 11/13).
+            ev["setting"]           = textOrNull(row, "setting");
             ev["rsvps_open_now"]    = row["rsvps_open_now"].as<bool>();
             ev["my_rsvp"]           = textOrNull(row, "my_rsvp");
             ev["my_rsvp_created_via"]= textOrNull(row, "my_rsvp_created_via");

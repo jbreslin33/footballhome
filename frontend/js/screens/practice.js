@@ -32,14 +32,20 @@ class PracticeScreen extends EventScreen {
 
   // ── 🗂 The practice card (owner 2026-11-13: "practice needs a graphic
   // like game but auto filled … separate in lineup by age. same with mens
-  // practice sep by 'team' apsl or liga 1" — columns of names; "if col is
-  // small then put another under").  Filled from the RSVPs: every Going
-  // player under his team among the event's tagged teams (rsvps.team_ids,
-  // teams.short_label / color).  A man on two of them (APSL + Liga 1) is
-  // listed once, under the first, with a +L1 tag.  Going players on none of
-  // them (invites) get their own block; coaches a line at the foot, never in
-  // a count.  Blocks drop into the shortest of up to two columns, so a small
-  // team sits under another.
+  // practice sep by 'team' apsl or liga 1", then "i like it on pitch", "if
+  // col is small then put another under", "if indoor then indoor pitch. if
+  // outdoor then outdoor", "in order of highest age to lowest").
+  //   one pitch per tagged team, oldest first (U12 → U10 → U8; adult teams
+  //   keep the event's order), dropped into the shortest of two columns
+  //   format  indoor (ev.setting, mig 931) → the 5v5 indoor shape on boards;
+  //           outdoor → the team's field_size shape on striped grass
+  //   who     every Going player under his team among the event's tagged
+  //           teams (rsvps.team_ids); a man on two (APSL + L1) once, under
+  //           the first, +L1; Going on none of them (invites) → their own block
+  //   where   his usual spot (rsvps.usual_position = where he has started
+  //           most), else a neighbouring spot, else any open one; beyond the
+  //           shape → a bench line under the pitch.  Coaches a foot line,
+  //           never counted.
   _teamCardHtml() {
     const ev = this.ev;
     const rsvps = Array.isArray(ev && ev.rsvps) ? ev.rsvps : [];
@@ -48,45 +54,96 @@ class PracticeScreen extends EventScreen {
     const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
       || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
     const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
-    const teams = (Array.isArray(ev.teams) ? ev.teams : []);
+    const indoor = ev.setting === 'indoor';
+    const age = (t) => { const m = /U(\d+)/i.exec(t.short_label || t.label || t.name || ''); return m ? Number(m[1]) : 99; };
+    const teams = (Array.isArray(ev.teams) ? ev.teams : []).map((t, i) => ({ t, i }))
+      .sort((a, b) => age(b.t) - age(a.t) || a.i - b.i).map(x => x.t);   // oldest first
     const byId = new Map(teams.map(t => [Number(t.id), t]));
+    const first = (r) => String(r.name || r.first_name || '?').trim().split(/\s+/)[0];
     const short = (r) => {
-      const n = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
-      const parts = String(n).trim().split(/\s+/);
+      const parts = String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim().split(/\s+/);
       return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
     };
     const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
-    const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b' }, rows: [] };
+    const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
     const players = going.filter(r => !r.is_coach);
     for (const r of players) {
       const mine = (Array.isArray(r.team_ids) ? r.team_ids : []).map(Number).filter(id => byId.has(id))
-        .sort((a, b) => teams.findIndex(t => Number(t.id) === a) - teams.findIndex(t => Number(t.id) === b));
-      const into = mine.length ? blocks.get(mine[0]) : other;
-      into.rows.push({ name: short(r), also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean) });
+        .sort((a, b) => teams.indexOf(byId.get(a)) - teams.indexOf(byId.get(b)));
+      (mine.length ? blocks.get(mine[0]) : other).rows.push({ r, also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean) });
     }
     const list = [...blocks.values(), other].filter(b => b.rows.length);
-    for (const b of list) b.rows.sort((x, y) => x.name.localeCompare(y.name));
+    // The shapes: Game Center's FIELD_SIZES when loaded, else the same defaults.
+    const SHAPES = { 11: [[1], [3, 5, 4, 2], [11, 8, 6, 7], [10, 9]], 9: [[1], [3, 4, 2], [11, 6, 7], [10, 9]], 7: [[1], [5, 4], [8, 6], [10, 9]], 5: [[1], [4], [11, 7], [9]] };
+    const shape = (n) => {
+      try { if (typeof FIELD_SIZES !== 'undefined' && FIELD_SIZES[n]) { const f = FIELD_SIZES[n]; return f.formations[f.defaultFormation].rows; } } catch (_) {}
+      return SHAPES[n] || SHAPES[11];
+    };
+    const NEAR = { 2: [3, 7, 4, 5], 3: [2, 11, 5, 4], 4: [5, 6, 2, 3], 5: [4, 6, 3, 2], 6: [8, 4, 5, 10], 7: [11, 2, 9, 10], 8: [6, 10, 5, 4],
+                   9: [10, 7, 11, 8], 10: [9, 8, 11, 7], 11: [7, 3, 10, 9] };
+    const place = (rows, people) => {
+      const slots = rows.flat().filter(id => id > 0), free = new Set(slots), at = new Map(), left = [];
+      const pool = people.slice();
+      const take = (pick) => { for (let i = 0; i < pool.length; i++) { const id = pick(pool[i]); if (id != null) { at.set(id, pool[i]); free.delete(id); pool.splice(i--, 1); } } };
+      take(x => (free.has(Number(x.r.usual_position)) ? Number(x.r.usual_position) : null));                    // his spot
+      take(x => { const n = NEAR[Number(x.r.usual_position)] || []; return n.find(id => free.has(id)) ?? null; });   // next to it
+      take(x => (x.r.usual_position && Number(x.r.usual_position) !== 1 ? [...free].find(id => id !== 1) ?? null : null)); // an outfield player, any outfield spot
+      for (const x of pool) { const id = [...free].find(i => i !== 1) ?? (free.has(1) ? 1 : null); if (id != null) { at.set(id, x); free.delete(id); } else left.push(x); }
+      return { at, bench: left };
+    };
+    const pitchSvg = (rows, at, color) => {
+      const W = 100, H = 140, chip = (x, y, id, who) => `
+        <g><circle cx="${x}" cy="${y}" r="5.2" fill="${who ? color : 'rgba(255,255,255,0.18)'}" stroke="#fff" stroke-width="0.8"/>
+          <text x="${x}" y="${y + 1.9}" text-anchor="middle" font-size="5" font-weight="800" fill="#fff">${id}</text>
+          ${who ? `<text x="${x}" y="${y + 11}" text-anchor="middle" font-size="5.6" font-weight="700" fill="#fff" stroke="rgba(0,0,0,0.55)" stroke-width="1.6" paint-order="stroke">${esc(first(who.r))}</text>` : ''}</g>`;
+      const n = rows.length; let dots = '';
+      rows.forEach((row, ri) => {   // keeper at the bottom, attacking up
+        const y = H - 12 - ri * ((H - 30) / Math.max(1, n - 1));
+        row.forEach((id, ci) => { if (id > 0) dots += chip(W * (ci + 1) / (row.length + 1), y, id, at.get(id)); });
+      });
+      const ground = indoor
+        ? `<rect x="1.5" y="1.5" width="${W - 3}" height="${H - 3}" rx="9" fill="#1f6f43" stroke="#94a3b8" stroke-width="3"/>
+           <line x1="4" y1="${H / 2}" x2="${W - 4}" y2="${H / 2}" stroke="rgba(255,255,255,0.7)" stroke-width="0.7"/>
+           <circle cx="${W / 2}" cy="${H / 2}" r="9" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.7"/>
+           <path d="M30 ${H - 3} A20 20 0 0 1 70 ${H - 3} M30 3 A20 20 0 0 0 70 3" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="0.7"/>
+           <rect x="42" y="${H - 4}" width="16" height="3" fill="#e2e8f0"/><rect x="42" y="1" width="16" height="3" fill="#e2e8f0"/>`
+        : `<defs><pattern id="pc-grass" width="${W}" height="20" patternUnits="userSpaceOnUse"><rect width="${W}" height="10" fill="#2f7d32"/><rect y="10" width="${W}" height="10" fill="#388e3c"/></pattern></defs>
+           <rect x="0" y="0" width="${W}" height="${H}" fill="url(#pc-grass)"/>
+           <rect x="4" y="4" width="${W - 8}" height="${H - 8}" fill="none" stroke="#fff" stroke-width="0.8"/>
+           <line x1="4" y1="${H / 2}" x2="${W - 4}" y2="${H / 2}" stroke="#fff" stroke-width="0.8"/>
+           <circle cx="${W / 2}" cy="${H / 2}" r="10" fill="none" stroke="#fff" stroke-width="0.8"/>
+           <rect x="24" y="${H - 22}" width="52" height="18" fill="none" stroke="#fff" stroke-width="0.8"/><rect x="24" y="4" width="52" height="18" fill="none" stroke="#fff" stroke-width="0.8"/>
+           <rect x="38" y="${H - 10}" width="24" height="6" fill="none" stroke="#fff" stroke-width="0.8"/><rect x="38" y="4" width="24" height="6" fill="none" stroke="#fff" stroke-width="0.8"/>`;
+      return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; display:block; border-radius:${indoor ? 10 : 4}px;" role="img">${ground}${dots}</svg>`;
+    };
     const ncols = Math.min(2, list.length);
     const cols = Array.from({ length: ncols }, () => ({ h: 0, html: '' }));
     for (const b of list) {
-      const col = cols.reduce((m, c) => (c.h < m.h ? c : m), cols[0]);   // shortest column takes the next team
+      b.rows.sort((x, y) => short(x.r).localeCompare(short(y.r)));
+      const size = indoor ? 5 : (Number(b.team.field_size) || 11);
+      const rows = shape(size);
+      const { at, bench } = place(rows, b.rows);
       const c = /^#[0-9a-f]{6}$/i.test(b.team.color || '') ? b.team.color : '#64748b';
+      const also = b.rows.filter(x => x.also.length);
+      const col = cols.reduce((m, k) => (k.h < m.h ? k : m), cols[0]);   // shortest column takes the next team
       col.html += `<div style="margin-bottom:12px;">
-          <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${c}; padding-bottom:3px; margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid ${c}; padding-bottom:3px; margin-bottom:5px;">
             <span style="font-weight:900; letter-spacing:0.04em; color:#fff;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
             <span style="font-weight:800; color:${c}; font-size:0.85rem;">${b.rows.length}</span></div>
-          ${b.rows.map(x => `<div style="font-size:0.85rem; line-height:1.45; color:#e2e8f0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(x.name)}${x.also.length ? ` <span style="font-size:0.65rem; opacity:0.65;">+${esc(x.also.join(' +'))}</span>` : ''}</div>`).join('')}
+          ${pitchSvg(rows, at, c)}
+          ${bench.length ? `<div style="font-size:0.72rem; color:#cbd5e1; margin-top:4px; line-height:1.35;"><b style="color:${c};">${esc(cp('card_bench', 'Rotating in'))}:</b> ${bench.map(x => esc(short(x.r))).join(', ')}</div>` : ''}
+          ${also.length ? `<div style="font-size:0.65rem; color:#94a3b8; margin-top:2px;">${also.map(x => `${esc(first(x.r))} +${esc(x.also.join(' +'))}`).join(' · ')}</div>` : ''}
         </div>`;
-      col.h += b.rows.length + 2;   // the header counts as a couple of lines
+      col.h += 14 + (bench.length ? Math.ceil(bench.length / 3) : 0);   // a pitch ≈ 14 lines, bench by its lines
     }
     const coaches = going.filter(r => r.is_coach);
     const when = [this._when(ev), EventLabels.timesLine(ev)].filter(Boolean).join(' · ');
-    return `<div style="margin:0 0 var(--space-3); border:3px solid #d4af37; border-radius:14px; padding:14px 16px;
+    return `<div style="margin:0 0 var(--space-3); border:3px solid #d4af37; border-radius:14px; padding:14px 14px;
                  background:linear-gradient(160deg, #0b1f3a, #132b52); box-shadow:0 4px 14px rgba(0,0,0,0.35);">
         <div style="text-align:center; font-weight:900; letter-spacing:0.12em; color:#d4af37; font-size:0.95rem;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: ev.kind === 'pickup' ? 'PICKUP' : 'PRACTICE' }))}</div>
-        <div style="text-align:center; color:#cbd5e1; font-size:0.8rem; margin:2px 0 12px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''}</div>
-        <div style="display:grid; grid-template-columns:repeat(${ncols}, minmax(0, 1fr)); gap:14px; align-items:start;">
-          ${cols.map(c => `<div>${c.html}</div>`).join('')}</div>
+        <div style="text-align:center; color:#cbd5e1; font-size:0.8rem; margin:2px 0 12px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''} · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}</div>
+        <div style="display:grid; grid-template-columns:repeat(${ncols}, minmax(0, 1fr)); gap:12px; align-items:start;">
+          ${cols.map(k => `<div>${k.html}</div>`).join('')}</div>
         <div style="text-align:center; color:#d4af37; font-weight:800; font-size:0.85rem; margin-top:2px;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
         ${coaches.length ? `<div style="text-align:center; color:#94a3b8; font-size:0.75rem; margin-top:4px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
       </div>`;
