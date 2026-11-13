@@ -424,7 +424,7 @@
     const slideClip = A && A.act.slide_loop;                                        // the slide plays its clips
     const extra = A && A.act.jump_loop;                                             // headers / stumbles / celebrations too
     // G5.111: a keeper is on the clips too; the rig only for his dive and with the ball in his hands
-    return !!((fig.keeper && (fig.dv || fig.hadBall || !A || !A.act.jump_loop)) || (fig.kk && !kickClip) || fig.rc || (fig.hd && !extra) || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (!extra && (W.stumble || 0) > 0.05) || (!(A && A.act.cele) && (W.cele || 0) > 0.05));
+    return !!((fig.keeper && (fig.dv || fig.hadBall || !A || !A.act.jump_loop)) || (fig.kk && !kickClip && fig.kk.t >= 0) || (fig.rc && fig.rc.t >= 0) || (fig.hd && !extra) || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (!extra && (W.stumble || 0) > 0.05) || (!(A && A.act.cele) && (W.cele || 0) > 0.05));
   }
   // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
   // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
@@ -486,10 +486,10 @@
       // kick (a drive or a long pass) by its pace. No kind (an older server): by the ball's speed.
       const hard = K.kind === 3 || K.kind === 2 ? true : K.kind === 0 ? false : K.power > KICK_POWER;
       A.kick = { name: (hard ? 'kick_power_' : 'kick_pass_') + (K.leg === 1 ? 'l' : 'r'),
-                 t: Math.max(0, KICK_CONTACT - (K.contact - K.t)) };
+                 t: KICK_CONTACT - (K.contact - K.t) };   // G5.113: below 0 = armed early, the clip waits
     }
     if (A.kick) { A.kick.t += dt; if (A.kick.t >= A.act[A.kick.name].getClip().duration) A.kick = null; }
-    A.kw = (A.kw || 0) + ((A.kick ? 1 : 0) - (A.kw || 0)) * Math.min(1, dt * (A.kick ? 18 : 6));
+    A.kw = (A.kw || 0) + ((A.kick && A.kick.t >= 0 ? 1 : 0) - (A.kw || 0)) * Math.min(1, dt * (A.kick ? 18 : 6));
     // G5.109: the slide tackle — dive, hold, get up
     if (A.act.slide_loop) {
       const down = !!(((ctx && ctx.flags) || 0) & 4);
@@ -523,7 +523,7 @@
       if (!A.cut && !A.kick && A.ov < 0.3 && s > CUT_SPEED && Math.abs(A.tr || 0) > CUT_RATE && A.cool <= 0) {
         A.cut = { name: A.tr > 0 ? 'cut_l' : 'cut_r', t: CUT_AT - 0.12 }; A.cool = CUT_COOL + 0.8;
       }
-      if (A.cut) { A.cut.t += dt; if (A.cut.t >= A.act[A.cut.name].getClip().duration || A.kick) A.cut = null; }
+      if (A.cut) { A.cut.t += dt; if (A.cut.t >= A.act[A.cut.name].getClip().duration || (A.kick && A.kick.t >= 0)) A.cut = null; }
       A.cw = (A.cw || 0) + ((A.cut ? 1 : 0) - (A.cw || 0)) * Math.min(1, dt * (A.cut ? 14 : 6));
     }
     // where he goes against where he faces
@@ -604,7 +604,7 @@
                                                                        : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (CUTS.includes(k)) a.time = A.cut && A.cut.name === k ? Math.min(A.cut.t, a.getClip().duration - 1e-3)
                                                                      : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
-      else if (KICKS.includes(k)) a.time = A.kick && A.kick.name === k ? Math.min(A.kick.t, a.getClip().duration - 1e-3)
+      else if (KICKS.includes(k)) a.time = A.kick && A.kick.name === k ? Math.min(Math.max(0, A.kick.t), a.getClip().duration - 1e-3)
                                                                        : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (k in CMU_MPS) {
         const rate = Math.min(2, Math.max(0.6, along[k] / CMU_MPS[k]));

@@ -402,9 +402,10 @@
     }
 
     // How far behind live the picture runs, ticks. Watching (no player of ours under control) it runs
-    // 11 ticks (~370 ms) behind, so a kick is known early enough for a real back-swing (~0.3 s); with a
-    // man under control, the short delay (input feel first). 11/12.
-    leadTicks() { return this.activeSlot === null || this.activeSlot === undefined ? 11 : INTERP_DELAY_TICKS; }
+    // 20 ticks (~670 ms) behind, so a kick is known early enough for the kick clip's whole 0.6 s (plant
+    // step, back-swing; G5.113, was 11 = the rig's 0.3 s back-swing only); with a man under control, the
+    // short delay (input feel first). 11/12.
+    leadTicks() { return this.activeSlot === null || this.activeSlot === undefined ? 20 : INTERP_DELAY_TICKS; }
 
     setMySlots(slots, activeSlot) {
       this.mySlots = slots;

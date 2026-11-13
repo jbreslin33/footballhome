@@ -9253,3 +9253,25 @@ like a shot.
   pace as before. No kind (an older server) → by pace.
 - Checked live (Chrome, 65 s): kinds arrived for 19 kicks (6 short, 10 ground, 3 lofted, 0 shots — rare);
   every clip matched its kind; no console errors. Tests 22/22.
+
+### 8.214 G5.113 — the kick clip's whole approach (viewer only)
+
+Watching, the picture ran 11 ticks (0.37 s) behind live. A kick is known only when the ball leaves, so it armed
+~0.33 s before contact, and the kick clip (0.6 s before contact → 0.5 after) began ~0.27 s in: the plant step
+was cut.
+- `renderer.leadTicks()` watching: 11 → 20 ticks (0.67 s). With a man under control it stays 4 (input feel).
+- Armed earlier than an animation needs, it waits: players.js `kick()` starts `kk.t` below 0 when the lead is
+  over 0.4 s (the rig's back-swing begins 0.4 s out as before); `receive()` the same past its 0.2 s. Until
+  t ≥ 0 the rig doesn't take over (bodies.js `overlayOn`).
+- bodies.js: the kick clip's time may start below 0 (held at frame 0, weight 0) so the clip's contact lands on
+  the engine's; a cut in progress runs on until then.
+- client.js: match events (goal flash, whistle, toasts) wait the same lag, so they come with the picture, not
+  0.67 s before it.
+- A fix on the way: first touches were armed up to ~0.17 s early (lead 0.37 s against the touch's 0.2 s clamp).
+
+**Measured** (Chrome, live match, frames driven at 30 Hz: the automation's Chrome painted ~1 fps on its own,
+capsules too, so its own frames were not usable):
+- 7 kicks armed 0.52-0.63 s ahead; the clip started 0.00-0.12 s in (was 0.25-0.30) and stood at 0.62-0.71 s
+  as the engine's contact came (clip contact 0.60).
+- First touches armed 0.58-0.65 s ahead waited 0.38-0.45 s and then played onto the ball.
+- No console errors.

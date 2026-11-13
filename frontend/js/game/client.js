@@ -811,6 +811,9 @@
     onEvent(ev) {
       // Tackles (8/9) fire dozens of times a match — not toast-worthy.
       if (!EVENT_NAMES[ev.eventType]) return;
+      // G5.113: shown when the picture gets there — it runs leadTicks behind live (0.67 s watching).
+      const lag = renderer.leadTicks() * 1000 / ((renderer.tickRate || 30) * (renderer.speed || 1));
+      if (lag > 50 && !ev.__late) { setTimeout(() => this.onEvent({ ...ev, __late: true }), lag); return; }
       const name = EVENT_NAMES[ev.eventType];
       whistle(ev.eventType === 1 || ev.eventType === 6 || ev.eventType === 7 || ev.eventType === 13 ? 0.5 : 0.14);   // G5.2
       if (ev.eventType === 1) {

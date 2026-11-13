@@ -471,10 +471,12 @@
     // amp < 1: a dribble touch (G5.78) — the same strike, small and quick.
     // foot (G5.79): the engine's kicking foot, 0 right / 1 left; else the ball's side.
     // kind (G5.112): the engine's kick, 0 short pass / 1 ground kick / 2 lofted / 3 shot; undefined = unknown.
+    // G5.113: armed earlier than 0.4 s (the watching delay runs 0.67 s), it waits: t starts below 0 and
+    // the rig's back-swing begins 0.4 s out as before; a kick clip (bodies.js) reads the whole lead.
     kick(lead, power, amp, foot, kind) {
       const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.4);   // 11/12: up to 0.4 s — a real back-swing
       const A = amp === undefined ? 1 : clamp(amp, 0.1, 1);
-      this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1), amp: A,
+      this.kk = { t: Math.min(0, L - (lead || 0)), contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1), amp: A,
                   leg: foot === 0 || foot === 1 ? foot : (this.ballLocalX || 0) > 0.12 ? 1 : 0, kind };
       this.kk.end = this.kk.contact + (0.3 + 0.2 * this.kk.power) * (A < 1 ? 0.5 : 1);
     }
@@ -483,7 +485,8 @@
     // the foot, opened), thigh, or chest by height; the touch cushions back.
     receive(lead, z) {
       const zz = z || 0;
-      this.rc = { t: 0, contact: clamp(lead || 0, 0.05, 0.2), leg: (this.ballLocalX || 0) > 0.1 ? 1 : 0,
+      // G5.113: armed early, it waits (t below 0) so the touch lands on the ball, not up to 0.45 s before it.
+      this.rc = { t: Math.min(0, clamp(lead || 0, 0.05, 0.2) - (lead || 0)), contact: clamp(lead || 0, 0.05, 0.2), leg: (this.ballLocalX || 0) > 0.1 ? 1 : 0,
                   kind: zz > 1.05 ? 2 : zz > 0.35 ? 1 : 0 };
       this.rc.end = this.rc.contact + 0.32;
     }
@@ -615,7 +618,7 @@
         const K = this.kk;
         K.t += dt;
         if (K.t >= K.end) this.kk = null;
-        else {
+        else if (K.t >= 0) {
           const P = K.power, t = K.t, tc = K.contact, AM = K.amp || 1;
           const back = (0.45 + 0.45 * P) * AM, through = -(0.75 + 0.65 * P) * AM;
           const ws = Math.max(0.06, Math.min(0.1, tc * 0.6));   // the strike itself
@@ -685,7 +688,7 @@
         const R = this.rc;
         R.t += dt;
         if (R.t >= R.end) this.rc = null;
-        else {
+        else if (R.t >= 0) {
           const t = R.t, tc = R.contact;
           const reach = t < tc ? smooth(t / tc) : 1 - smooth((t - tc) / (R.end - tc));   // out, then gives
           const w = Math.min(1, t / 0.04) * Math.min(1, (R.end - t) / 0.1);

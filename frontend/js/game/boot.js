@@ -14,8 +14,8 @@ window.THREE_ADDONS = { GLTFLoader, SkeletonUtils, ConvexGeometry };
 const SCRIPTS = [
   'js/game/wire.js?v=20261110feet1',
   'js/game/net.js?v=20261109step',
-  'js/game/players.js?v=20261113kind',
-  'js/game/bodies.js?v=20261113kind',
+  'js/game/players.js?v=20261113runup',
+  'js/game/bodies.js?v=20261113runup',
   'js/game/lighthouse-site.js?v=20261022s',
   'js/game/lighthouse-trees.js?v=20261022zi',
   'js/game/lighthouse-contours.js?v=20261022zs',
@@ -23,12 +23,12 @@ const SCRIPTS = [
   'js/game/lighthouse-layout.js?v=20261025b',
   'js/game/field.js?v=20261107ground',
   'js/game/camera.js?v=20261030watch',
-  'js/game/renderer.js?v=20261113kind',
+  'js/game/renderer.js?v=20261113runup',
   'js/game/view-menu.js?v=20261110view',
   'js/game/input.js?v=20261022e',
   'js/game/lighthouse-planner-data.js?v=20261022d',
   'js/game/pitch-planner.js?v=20261029a',
-  'js/game/client.js?v=20261110view',
+  'js/game/client.js?v=20261113runup',
 ];
 for (const src of SCRIPTS) {
   await new Promise((ok, fail) => {
