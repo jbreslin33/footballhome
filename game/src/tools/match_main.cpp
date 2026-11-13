@@ -65,6 +65,7 @@ struct Stats {
     // §8.198 REWIN: the win (side changes in play, the loser had it 1 s+) by the loser's nearest [5 bins] / the ball's kind [3]: n, given back by 3 s, dead by 3 s; the loser's nearest 1 s on
     long ct_loss[3] = {}, ct_win = 0, ct_back = 0;
     long bt_t[5] = {}, bt_e[5][4] = {}; std::vector<double> bt_len[5];   // §8.203 WHERE THE BALL LIVES
+    long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
@@ -1123,6 +1124,52 @@ int main(int argc, char** argv) {
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
+            {   // §8.204 POSSESSION WIDTH (benchmarks_tracking_posswidth.py): the side on it, each role's pair across / deep
+                const double sgw = a == 0 ? 1.0 : -1.0; const int bw = std::clamp(static_cast<int>((hx - b.pos.x.toDouble() * sgw) / 10.0), 0, 9);
+                int pr[6][2], pn[6] = {};
+                for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == a && !W.isKeeper(j)) { const int r = role(j); if (pn[r] < 2) pr[r][pn[r]] = j; ++pn[r]; }
+                for (int r = 0; r < 6; ++r) if (pn[r] == 2) { const auto& P = W.player(static_cast<std::uint8_t>(pr[r][0])); const auto& Q = W.player(static_cast<std::uint8_t>(pr[r][1]));
+                    S.pw_y[r][bw] += std::fabs(P.pos.y.toDouble() - Q.pos.y.toDouble()); S.pw_x[r][bw] += std::fabs(P.pos.x.toDouble() - Q.pos.x.toDouble()); ++S.pw_n[r][bw]; }
+            }
+            {   // §8.204 PRESS SHAPE (benchmarks_tracking_pressshape.py): their carrier within 2 m, ball 52 m+ off the line they attack
+                const double sga = a == 0 ? 1.0 : -1.0, bx0 = b.pos.x.toDouble(), by0 = b.pos.y.toDouble();
+                if (hx - bx0 * sga >= 52) {
+                    int ci = -1; double cdm = 2.0;
+                    for (std::uint8_t j = 0; j < N; ++j) { const auto& P = W.player(j); if (P.team != a || W.isKeeper(j)) continue;
+                        const double dd = std::hypot(P.pos.x.toDouble() - bx0, P.pos.y.toDouble() - by0); if (dd < cdm) { cdm = dd; ci = j; } }
+                    if (ci >= 0) {
+                        S.ps_bl.push_back(hx - bx0 * sga);
+                        const double cx = W.player(static_cast<std::uint8_t>(ci)).pos.x.toDouble(), cy = W.player(static_cast<std::uint8_t>(ci)).pos.y.toDouble();
+                        int dj[32]; int nd = 0; int dst[32];
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team == dteam && !W.isKeeper(j)) { dst[nd] = 2; dj[nd++] = j; }
+                        auto px = [&](int j) { return W.player(static_cast<std::uint8_t>(j)).pos.x.toDouble(); };
+                        auto py = [&](int j) { return W.player(static_cast<std::uint8_t>(j)).pos.y.toDouble(); };
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            const auto& P = W.player(j); if (P.team != a || W.isKeeper(j) || j == ci) continue;
+                            const double ax = P.pos.x.toDouble(), ay = P.pos.y.toDouble(); const int ra = role(j);
+                            double dmin = 1e9; int q = -1;
+                            for (int u = 0; u < nd; ++u) { const double dd = std::hypot(px(dj[u]) - ax, py(dj[u]) - ay); if (dd < dmin) { dmin = dd; q = u; } }
+                            if (q < 0) continue;
+                            S.ps_nd[ra].push_back(dmin);
+                            S.ps_cd[ra].push_back(std::hypot(ax - cx, ay - cy));
+                            if (dmin < 3.0) { ++S.ps_a[ra][0]; ++S.ps_by[ra][role(static_cast<std::uint8_t>(dj[q]))]; dst[q] = 0; continue; }
+                            const double lx = ax - cx, ly = ay - cy, ln = lx * lx + ly * ly; double bt0 = 9; int bq = -1;
+                            for (int u = 0; u < nd && ln > 0; ++u) { const double t = ((px(dj[u]) - cx) * lx + (py(dj[u]) - cy) * ly) / ln;
+                                if (t < 0.15 || t > 0.85) continue;
+                                if (std::hypot(px(dj[u]) - cx - t * lx, py(dj[u]) - cy - t * ly) < 1.5 && t < bt0) { bt0 = t; bq = u; } }
+                            if (bq >= 0) { ++S.ps_a[ra][1]; ++S.ps_by[ra][role(static_cast<std::uint8_t>(dj[bq]))]; dst[bq] = std::min(dst[bq], 1); }
+                            else ++S.ps_a[ra][2];
+                        }
+                        const double sgd = dteam == 0 ? 1.0 : -1.0;   // our own line at -sgd * hx
+                        for (int u = 0; u < nd; ++u) {
+                            if (dst[u]) for (std::uint8_t j = 0; j < N; ++j) { const auto& P = W.player(j);
+                                if (P.team == a && !W.isKeeper(j) && j != ci && std::hypot(P.pos.x.toDouble() - px(dj[u]), P.pos.y.toDouble() - py(dj[u])) < 3.0) { dst[u] = 0; break; } }
+                            const int rd = role(static_cast<std::uint8_t>(dj[u]));
+                            ++S.ps_d[rd][dst[u]]; S.ps_db[rd].push_back(std::hypot(px(dj[u]) - bx0, py(dj[u]) - by0)); S.ps_dl[rd].push_back(hx + px(dj[u]) * sgd);
+                        }
+                    }
+                }
+            }
             {   // §8.203 WHERE THE BALL LIVES (benchmarks_tracking_balltime.py): last touch's side, ball m off the line it attacks
                 const long kk = static_cast<long>(k);
                 const double sgb = a == 0 ? 1.0 : -1.0, tlb = hx - b.pos.x.toDouble() * sgb;
@@ -2246,6 +2293,32 @@ int main(int argc, char** argv) {
                                 for (int q = 0; q < 5; ++q) { long nv = 0; for (int e = 0; e < 4; ++e) nv += S.bt_e[q][e];
                                     std::printf("\n            %-5s %.1f (%.1f) | %.1f | %.1f (%.1f) | %.1f (%.1f) | %.1f / %.1f / %.1f / %.1f (%.1f / %.1f / %.1f / %.1f)", bz[q], S.bt_t[q] / 5.0 / tmn, rT[q], 100.0 * S.bt_t[q] / std::max(1L, tt), nv / tmn, rV[q], md(S.bt_len[q]), rL[q],
                                                 100.0 * S.bt_e[q][0] / std::max(1L, nv), 100.0 * S.bt_e[q][1] / std::max(1L, nv), 100.0 * S.bt_e[q][2] / std::max(1L, nv), 100.0 * S.bt_e[q][3] / std::max(1L, nv), rE[q][0], rE[q][1], rE[q][2], rE[q][3]); }
+                            }
+                            {   // §8.204 POSSESSION WIDTH, real DFL benchmarks_tracking_posswidth.py
+                                static const double rY[6][10] = {{11.9, 13.3, 14.5, 15.3, 17.0, 19.1, 20.3, 20.8, 20.8, 18.0}, {30.3, 32.6, 36.0, 37.4, 40.0, 42.3, 44.6, 44.0, 43.1, 36.7}, {10.5, 10.7, 11.1, 10.6, 11.1, 10.6, 10.7, 10.7, 10.7, 10.2}, {}, {21.9, 24.7, 25.6, 26.5, 28.4, 30.7, 31.9, 31.9, 32.3, 31.6}, {}};
+                                static const double rX[6][10] = {{4.4, 5.2, 4.9, 4.7, 4.1, 4.1, 3.9, 4.1, 4.5, 4.2}, {13.8, 13.3, 10.9, 9.4, 8.3, 7.5, 7.5, 7.5, 7.7, 7.8}, {11.2, 10.8, 9.9, 9.1, 8.2, 8.2, 8.4, 8.5, 9.2, 8.0}, {}, {9.3, 7.5, 6.6, 6.6, 6.3, 6.3, 5.9, 5.9, 5.7, 7.0}, {}};
+                                static const char* rn2[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                                std::printf("\n          POSSESSION WIDTH (the side on it, in play; ball m off the line it attacks, 0-10 ... 90-100; real DFL benchmarks_tracking_posswidth.py in brackets): the pair's gap across mean m, then how deep apart:");
+                                for (int r : {0, 1, 2, 4}) { std::printf("\n            %-5s", rn2[r]); for (int q = 0; q < 10; ++q) std::printf(" %.1f (%.1f)", S.pw_y[r][q] / std::max(1L, S.pw_n[r][q]), rY[r][q]);
+                                    std::printf("\n             deep"); for (int q = 0; q < 10; ++q) std::printf(" %.1f (%.1f)", S.pw_x[r][q] / std::max(1L, S.pw_n[r][q]), rX[r][q]); }
+                            }
+                            {   // §8.204 PRESS SHAPE, real DFL benchmarks_tracking_pressshape.py
+                                static const double rN[6] = {3841, 2944, 3918, 1405, 4008, 2939}, rD[6] = {8.1, 9.4, 5.3, 4.8, 5.2, 3.6}, rS[6][3] = {{14.2, 15.3, 70.5}, {11.3, 22.0, 66.8}, {19.5, 20.4, 60.1}, {21.5, 25.3, 53.2}, {21.3, 24.0, 54.7}, {37.2, 22.3, 40.5}};
+                                static const int rB[6][6] = {{4, 2, 8, 12, 18, 56}, {2, 6, 9, 14, 35, 34}, {3, 2, 22, 22, 19, 31}, {11, 7, 43, 12, 15, 13}, {7, 23, 25, 11, 22, 13}, {53, 6, 21, 7, 7, 6}};
+                                static const double rDb[6] = {32.1, 32.1, 21.8, 15.4, 21.4, 15.3}, rDs[6][3] = {{23.4, 1.3, 75.2}, {17.3, 2.6, 80.1}, {17.8, 15.0, 67.2}, {18.6, 31.7, 49.7}, {12.0, 17.3, 70.7}, {19.8, 30.8, 49.4}}, rDl[6] = {42.5, 46.6, 54.1, 63.8, 61.0, 69.6};
+                                static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                                static const double rC[6] = {19.7, 27.6, 18.7, 26.2, 29.3, 32.0};
+                                std::printf("\n          PRESS SHAPE (their carrier within 2 m, ball 52 m+ off the line they attack; ON = ours within 3 m, SHADOW = ours within 1.5 m of the carrier->him lane at 15-85%%, real DFL benchmarks_tracking_pressshape.py in brackets): their man by role: frames a team-match (real) | nearest of ours med (real) | ON / SHADOW / FREE %% (real) | by whom CB/FB/DM/AM/WIDE/ST %% (real) | m from the carrier med (real):");
+                                { long n70 = 0; for (double v : S.ps_bl) n70 += v < 70; std::printf("\n            frames a team-match %.0f (2137); the ball m off our line med %.1f (69.6), 52-70 m %.1f%% (51.2)", S.ps_bl.size() / tmn, md(S.ps_bl), 100.0 * n70 / std::max<std::size_t>(1, S.ps_bl.size())); }
+                                for (int r = 0; r < 6; ++r) { const long n = S.ps_a[r][0] + S.ps_a[r][1] + S.ps_a[r][2]; long nc = 0; for (int q = 0; q < 6; ++q) nc += S.ps_by[r][q];
+                                    std::printf("\n            %-5s %.0f (%.0f) | %.1f (%.1f) | %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) |", rn[r], n / tmn, rN[r], md(S.ps_nd[r]), rD[r],
+                                                100.0 * S.ps_a[r][0] / std::max(1L, n), 100.0 * S.ps_a[r][1] / std::max(1L, n), 100.0 * S.ps_a[r][2] / std::max(1L, n), rS[r][0], rS[r][1], rS[r][2]);
+                                    for (int q = 0; q < 6; ++q) std::printf("%s%.0f", q ? "/" : " ", 100.0 * S.ps_by[r][q] / std::max(1L, nc));
+                                    std::printf(" ("); for (int q = 0; q < 6; ++q) std::printf("%s%d", q ? "/" : "", rB[r][q]); std::printf(") | %.1f (%.1f)", md(S.ps_cd[r]), rC[r]); }
+                                std::printf("\n            ours by role: m to the ball med (real) | on a man / shadowing / neither %% (real) | m off our line med (real):");
+                                for (int r = 0; r < 6; ++r) { const long n = S.ps_d[r][0] + S.ps_d[r][1] + S.ps_d[r][2];
+                                    std::printf("\n            %-5s %.1f (%.1f) | %.1f / %.1f / %.1f (%.1f / %.1f / %.1f) | %.1f (%.1f)", rn[r], md(S.ps_db[r]), rDb[r],
+                                                100.0 * S.ps_d[r][0] / std::max(1L, n), 100.0 * S.ps_d[r][1] / std::max(1L, n), 100.0 * S.ps_d[r][2] / std::max(1L, n), rDs[r][0], rDs[r][1], rDs[r][2], md(S.ps_dl[r]), rDl[r]); }
                             }
                             {   // §8.203 ON THE BALL by band, real DFL benchmarks_tracking_shut.py
                                 static const double rZ[5] = {27.1, 58.4, 85.2, 112.9, 120.0}, rZo[5][4] = {{26.1, 38.7, 21.6, 13.7}, {12.6, 27.8, 27.8, 31.9}, {7.0, 19.9, 29.3, 43.7}, {5.0, 20.5, 33.5, 40.9}, {4.8, 23.6, 31.6, 40.1}}, rZe[5][3] = {{34.7, 35.5, 29.7}, {51.7, 30.3, 18.0}, {69.0, 20.2, 10.8}, {74.7, 17.4, 7.8}, {69.0, 19.8, 11.1}};

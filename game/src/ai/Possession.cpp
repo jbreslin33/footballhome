@@ -32,6 +32,19 @@ constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
     {144, 180, 238, 303, 353, 416, 457, 507, 550, 641},   // WIDE
     { 96, 131, 195, 256, 304, 359, 400, 446, 488, 552},   // ST
 };
+// G5.102 (§8.204): the side ON the ball, its width — the real gap between a role's pair across by
+// the ball's band off THEIR line (benchmarks_tracking_posswidth.py: CB 11.9 → 20.8 m as the ball goes
+// back into their own half — the pair splits for the build-up; WIDE 21.9 → 32.3) over the game's
+// own gap before (formation width + slide, CB ~13 m at every band), permille — real / game-before,
+// two passes (the slide's clamp and men off their spot make it not quite linear), so ours measure the real gaps (fh-game-match POSSESSION WIDTH). AM and ST: no pair, kept whole.
+constexpr int kRealWidthPm[kRoleCount][kBandCount] = {
+    { 792,  923, 1025, 1078, 1263, 1552, 1772, 2034, 2066, 1646},   // CB
+    { 633,  684,  773,  809,  908,  985, 1099, 1093, 1146,  924},   // FB
+    { 730,  755,  850,  785,  879,  796,  814,  822,  850,  782},   // DM/CM
+    {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // AM
+    { 733,  801,  716,  670,  719,  773,  805,  795,  832,  832},   // WIDE
+    {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // ST
+};
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 const Fixed64 kGoalHalfW = Fixed64::fromFraction(366, 100);   // Law 1: 7.32 m
 
@@ -1007,6 +1020,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
         for (int b = 0; b < kBandCount; ++b) {
             const std::string key = std::string("physics.support.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
             spot[r][b] = p.fixed(key, std::int64_t{kRealSpotDm[r][b]} * 100);
+            width[r][b] = p.fixed(std::string("physics.support.w_") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5), kRealWidthPm[r][b]);
         }
     // The shot policy, StatsBomb PL 2015/16 open play (permille).
     static const int kShotP[4][3] = {{293, 778, 922}, {82, 610, 675}, {66, 358, 0}, {18, 183, 0}};

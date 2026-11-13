@@ -44,6 +44,7 @@ namespace fh::game::ai {
 
 struct PossessionParams {
     math::Fixed64 spot[kRoleCount][kBandCount]{};   // metres off THEIR line
+    math::Fixed64 width[kRoleCount][kBandCount]{};  // G5.102: formation width factor by the ball's band (permille)
     // The shot policy (G5.23): of the balls let go at a spot, the share that are
     // shots — by distance (<12, 12-18, 18-25, 25-35 m) × goal angle (<0.25,
     // 0.25-0.5, 0.5+ rad). StatsBomb PL 2015/16 open play

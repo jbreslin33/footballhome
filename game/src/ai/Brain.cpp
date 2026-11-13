@@ -230,7 +230,11 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     }
     v.across_def = acrossDef(mine.base, v);
     wingBack(mine, v);
-    v.across_ours = slideY(mine.base, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
+    {   // G5.102 (§8.204): his formation width scaled to the real in-possession gap for his role and the ball's band
+        const Fixed64 off_their = half_x_ - world.ball().pos.x * v.sg;
+        const Fixed64 f = bandLookup(poss_.params().width[static_cast<int>(v.role_ours)], off_their);
+        v.across_ours = slideY(Vec2{mine.base.x, mine.base.y * f}, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
+    }
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
                                                                          : Vec2{world.ball().pos.x, world.ball().pos.y};
     if (block_.contester(team) == static_cast<int>(slot)) v.chase_to = block_.contestAt(team);   // G5.71: contest their high ball

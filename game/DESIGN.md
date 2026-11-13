@@ -8969,3 +8969,47 @@ on CB / FB / DM backward runs, fwd_back_roles 60 / 63, moved it under 1 m.)
 **Next.** The pressing structure in their half. Real: with the ball 52+ m from the goal its side attacks,
 which of our roles is nearest each of their men, how far, and is he between him and the ball (the
 cover shadow) or on him? Then ours. Our forwards hold spots and do not screen the lanes.
+
+### 8.204 G5.102 — the press in their half is near real; their build-up is too easy because OUR men on the ball stand at the wrong width — in-possession width by band from DFL (no migration)
+
+§8.203's next: the pressing structure in their half.
+
+**Real** (new `scripts/benchmarks_tracking_pressshape.py`, DFL 7 matches). Their carrier within 2 m, ball 52 m+
+off the line they attack (their build-up, our press), keepers out; 2,137 frames a team-match, the ball 69.6 m
+off our line med. Each of their other men: ON (one of ours within 3 m) / SHADOW (one of ours within 1.5 m of
+the carrier→him lane, 15-85% along) / FREE — CB 14 / 15 / 71%, FB 11 / 22 / 67, DM 20 / 20 / 60, AM 22 / 25 /
+53, WIDE 21 / 24 / 55, ST 37 / 22 / 41 (all 59% free). Who covers: their CBs our ST 56%; their FBs our WIDE 35,
+ST 34; their ST our CB 53, DM 21. Metres from the carrier: CB 19.7, FB 27.6, DM 18.7, AM 26.2, WIDE 29.3, ST 32.0.
+
+**Ours** (PRESS SHAPE harness line, seed 1000 / 2000, 8 matches each). 3,244 frames (ball 66 m off our line,
+3.5 m nearer). Free per man 64% (59): their CB 83% (71), FB 75 (67), but their AM / ST over-covered (ON 36 /
+50%, real 22 / 37) — our DMs on their ST 37% (21), our CBs on their AM 22% (11). Our men per role: to the ball,
+on a man / shadowing within 1-4 points of real; every line 2-6 m deeper off our goal (ball 3.5 m nearer).
+
+**Tried** (not shipped):
+1. Forwards' block spots +3 m with the ball 50 m+ off our line (physics.block.am/wide/st_55-95). They rose
+   1.5 m (they trail the spot); their CBs free 83 → 81.5%, options unchanged.
+2. DMs don't mark with the ball 52 m+ off our line. Who covers their ST goes real (DM 37 → 22%, CB 40 → 50%),
+   their ST ON 50 → 44%, but our DMs then stand idle (neither 72 → 80%, real 67), options unchanged.
+
+**The finding.** Per man the press frees 5 points more than real, but ON THE BALL's 3+ options (the crude race)
+are 30 points over (70% v 41 at 52-70 m). Not the press: their men stand too NEAR the carrier — CB 14.2 m (19.7),
+DM 16.0 (18.7), AM 23.5 (26.2). New `scripts/benchmarks_tracking_posswidth.py`, POSSESSION WIDTH: the side on
+the ball, each role's pair across by the ball's 10 m band off the line it attacks. Real CB 11.9 → 20.8 m as the
+ball goes back into its own half (the pair splits to build up); FB 30.3 → 44.6; DM ~10.7 flat; WIDE 21.9 → 32.3.
+Ours were formation width + slide: CB ~13 m at every band (11.6 with the ball 70-80 m out, real 20.8); FB 41-44
+(30 near their goal); WIDE 6-10 m too wide; DM 2-3 m.
+
+**Built.** `Possession` kRealWidthPm (physics.support.w_<role>_<band>, permille): each man's formation width
+times real / game-before for his role and the ball's band off THEIR line (`Brain::viewOf`, across_ours, then the
+slide), two passes. AM / ST no pair, 1000. Now CB 12.1 / 13.4 / 14.6 / 15.9 / 17.4 / 19.2 / 20.5 / 20.8 / 19.5 /
+18.2 (11.9 / 13.3 / 14.5 / 15.3 / 17.0 / 19.1 / 20.3 / 20.8 / 20.8 / 18.0); FB, DM, WIDE within ~1.5 m at every
+band. Their CB from the carrier 14.2 → 17 m. Goldens re-locked; tests 22/22.
+
+**What it did not fix.** 3+ options 52-70 70 → 67% (40.9), 35-52 59 → 65 (43.7); near their goal it got worse —
+18-35 38 → 46% (31.9), 0-18 13 → 19 (13.7): the narrower front line puts mates nearer. Shots 9-11, goals 1.6-1.7
+a team-match. Width is real now; the options excess is the race itself.
+
+**Next.** The crude race: for a man's mates by distance and role, how often the nearest defender is first to
+the lane, ours v real — whether our defenders read and close lanes slower than real (reaction, closing speed,
+the shadow while the carrier still has it), or the race in the harness differs from passrace.py.
