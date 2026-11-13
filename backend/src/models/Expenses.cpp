@@ -372,11 +372,13 @@ json Expenses::projection(int clubId) {
                      WHERE t.club_section_id = sec.id AND t.is_active AND t.dues_rank IS NOT NULL) AS full_house,
                    COUNT(a.person_id) AS active,
                    COUNT(a.person_id) FILTER (WHERE a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL
-                                                AND fh_dues_balance_usd(a.person_id) = 0) AS current
+                                                AND fh_dues_balance_usd(a.person_id) = 0) AS current,
+                   -- paying = active, not free / volunteer / injured, whatever they owe (mig 1344: the club-wide split)
+                   COUNT(a.person_id) FILTER (WHERE a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL) AS paying
               FROM sec LEFT JOIN act a ON a.category = sec.category
              GROUP BY sec.id, sec.code)SQL"))
             out["plan_heads"].push_back({{"section_id", r["id"].as<long long>()}, {"code", str(r, "code")},
-                                         {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}});
+                                         {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
 
         // Grants per budget year (mig 1336) — club-wide, earmarked by purpose.
         out["plan_grants"] = json::array();

@@ -381,7 +381,34 @@ class FinancesScreen extends Screen {
           <td class="fn-out">${M0(b.year_total)}</td></tr>`;
       }
     }
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    // Split by paying members (owner 2026-11-13: "yes go ahead with that split" → "just split by paying members"):
+    // a section pill (Men's, Women's, Youth) carries its share of the club-wide
+    // lines, and — with the grants switch on — its share of the grants.
+    const scopesS = (this.flow || {}).scopes || [];
+    const pillS = scopesS.find(sc => sc.code === this.scope);
+    const underS = (code) => { const set = window.MoneyView ? MoneyView.inScopeOf(scopesS, code) : new Set([code]); return scopesS.filter(sc => set.has(sc.code) && sc.section_code).map(sc => sc.section_code); };
+    const shareCodes = pillS && !pillS.team_id && this.scope !== 'club' ? underS(pillS.code) : [];
+    const allHeads = this.expenses.plan_heads || [];
+    // by PAYING members (owner: "just split by paying members. so women don't bear it")
+    const allActive = allHeads.reduce((a, h) => a + Number(h.paying || 0), 0);
+    const myActive = allHeads.filter(h => shareCodes.includes(h.code)).reduce((a, h) => a + Number(h.paying || 0), 0);
+    if (shareCodes.length && allActive > 0 && myActive > 0) {
+      const frac = myActive / allActive, pct = `${Math.round(100 * frac)}%`;
+      const clubTotal = (this.expenses.budget || []).filter(b => b.scope === 'club' && b.budget_year === year).reduce((a, b) => a + Number(b.year_total || 0), 0)
+                      + (this.expenses.plan || []).filter(l => l.scope === 'club' && l.budget_year === year).reduce((a, l) => a + Number(l.amount || 0), 0);
+      if (clubTotal > 0) {
+        const share = clubTotal * frac; total += share;
+        rows += `<tr class="group"><td colspan="2">${esc(this._copy('plan_club_share', { pct, active: myActive, all: allActive }))}</td><td>${M0(share)}</td></tr>
+          <tr class="item"><td style="white-space:normal;">${esc(this._copy('plan_club_share_line', { total: M0(clubTotal) }))}</td><td>${M0(clubTotal)} × ${pct}</td><td class="fn-out">${M0(share)}</td></tr>`;
+      }
+      if (this.showGrants && grants.length) {
+        const gTotal = grants.reduce((a, g) => a + Number(g.amount), 0), gShare = gTotal * frac;
+        rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>
+          <tr class="item"><td style="white-space:normal;">${esc(this._copy('plan_grants_share', { pct }))}</td><td>${M0(gTotal)} × ${pct}</td><td class="fn-in">−${M0(gShare)}</td></tr>`;
+        total -= gShare;
+        rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total_after_grants') || 'After grants')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+      } else rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    } else rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
     // Who shares it (owner 2026-11-13: "dont ever use pickup … use 70 as the
     // maxed out perfect scenario then use active but also a cat for current
     // dues payers"): the pill's total ÷ each count, against a year of dues.
