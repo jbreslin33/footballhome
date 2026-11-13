@@ -336,15 +336,18 @@ class FinancesScreen extends Screen {
           <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
     }
     rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
-    // Per player: a team pill only — its own team's planned players (per-player lines).
+    // Per paying member (owner 2026-11-13: "consider it all mens and thus
+    // shared cost of all men … if we add a liga 2 team it smooths out"):
+    // what's under the pill ÷ the section's paying members, against a year
+    // of dues.  On a team pill it reads as what that team adds per member.
     let per = '';
-    const pill = ((this.flow || {}).scopes || []).find(sc => sc.code === this.scope);
-    if (pill && pill.team_id) {
-      // planned players = per-player lines + players an entry fee already includes (CASA: 25, mig 1325)
-      const players = lines.filter(l => l.team_id === pill.team_id).reduce((a, l) => a + (l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
-      const sec = lines.find(l => l.team_id === pill.team_id)?.section_id;
-      const dues = 12 * Number(((this.expenses.plan_dues || []).find(d => d.section_id === sec) || {}).monthly || 0);
-      if (players > 0 && dues > 0) per = `<div class="fn-note" style="margin-top:8px; font-size:0.9rem; opacity:0.9;">${esc(this._copy('plan_per_player', { players: qty(players), cost: M0(total / players), pct: `${Math.round(100 * total / players / dues)}%`, dues: M0(dues) }))}</div>`;
+    const scopes = (this.flow || {}).scopes || [];
+    let pill = scopes.find(sc => sc.code === this.scope);
+    while (pill && !pill.section_code && pill.parent) pill = scopes.find(sc => sc.code === pill.parent);
+    const section = pill && pill.section_code ? ((this.summary || {}).sections || []).find(x => x.code === pill.section_code) : null;
+    if (section && Number(section.paying) > 0) {
+      const paying = Number(section.paying), dues = 12 * Number(section.rate || 0);
+      if (dues > 0) per = `<div class="fn-note" style="margin-top:8px; font-size:0.9rem; opacity:0.9;">${esc(this._copy('plan_per_player', { players: paying, section: section.name, cost: M0(total / paying), pct: `${Math.round(100 * total / paying / dues)}%`, dues: M0(dues) }))}</div>`;
     }
     return `
       <div class="fn-card">${head}
