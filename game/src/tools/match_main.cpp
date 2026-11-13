@@ -69,7 +69,7 @@ struct Stats {
     long ps_a[6][3] = {}, ps_by[6][6] = {}, ps_d[6][3] = {}; std::vector<double> ps_nd[6], ps_db[6], ps_dl[6], ps_bl, ps_cd[6];   double pw_y[6][10] = {}, pw_x[6][10] = {}; long pw_n[6][10] = {};   // §8.204 POSSESSION WIDTH   // §8.204 PRESS SHAPE [their role][on/shadow/free], [their role][our coverer role]; [our role][on/shadow/neither]
     std::vector<double> fc_d[6][3][3], fc_cb[6]; std::vector<double> fc_bl[6]; long fc_cb3[6] = {}, fc_why[6][ai::kWhyCount] = {};   // §8.216 FORWARDS ON THEIR CBS [carrier role][ST/AM/WIDE][to CB / to ball / off our line]
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
-    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
+    long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; std::vector<double> spc[3], spc_r[3][6], spc_p[3][2]; /* §8.219 SPACING */ long nb_n[3][5] = {}, nb_f[3][5] = {}; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
     long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
@@ -2056,12 +2056,23 @@ int main(int argc, char** argv) {
                     n += tf ? 0 : 1;
                     if (z >= 0 && no >= 0 && L >= 10 && L < 30) {   // the nearest opponent's metres toward the ball (u) and toward the goal the receiver attacks (g)
                         const double u = -((f.x[no] - tx) * ux + (f.y[no] - ty) * uy), g = (f.x[no] - tx) * (tm == 0 ? 1.0 : -1.0);
+                        { const double ndm = std::hypot(f.x[no] - tx, f.y[no] - ty); const int nb = ndm < 2 ? 0 : ndm < 4 ? 1 : ndm < 6 ? 2 : ndm < 9 ? 3 : 4; ++S.nb_n[z][nb]; S.nb_f[z][nb] += !tf; }
                         S.fl_u[z].push_back(u); S.fl_g[z].push_back(g); ++S.fl_sn[z]; S.fl_bs[z] += u > 0; S.fl_gs[z] += g > 0; S.fl_bf[z][u > 0] += !tf; ++S.fl_bn[z][u > 0];
                     }
                 } };
             for (const Sp& c : sp) { if (kp(c.pid)) continue; const int tm = teamOf(c.pid);   // §8.217 THE SLIDE: each mate role's m toward the ball's side, by |ball y|
                 for (int t = c.i0; t <= c.i1; ++t) { const FlF& f = fl_f[t]; const double sg = f.by >= 0 ? 1.0 : -1.0; const int yb = std::min(3, static_cast<int>(std::fabs(f.by) / 8.0));
                     for (int q = 0; q < N && q < 32; ++q) { if (teamOf(q) != tm || kp(q)) continue; const int r = role(static_cast<std::uint8_t>(q)); if (r < 0 || r > 5) continue; ++S.sl_n2[yb][r]; S.sl_s2[yb][r] += f.y[q] * sg; } } }
+            for (const Sp& c : sp) { if (kp(c.pid)) continue; const int tm = teamOf(c.pid);   // §8.219 SPACING: each outfielder's nearest outfield mate; close pairs 1 s on
+                for (int t = c.i0; t <= c.i1; ++t) { const FlF& f = fl_f[t];
+                    const double tlz = hx - f.bx * (tm == 0 ? 1.0 : -1.0); const int z = tlz < 35 ? 0 : tlz < 52 ? 1 : 2;
+                    int out[16]; int no = 0; for (int q = 0; q < N && q < 32 && no < 16; ++q) if (teamOf(q) == tm && !kp(q)) out[no++] = q;
+                    for (int a1 = 0; a1 < no; ++a1) { double nd = 99; for (int b1 = 0; b1 < no; ++b1) if (b1 != a1) nd = std::min(nd, static_cast<double>(std::hypot(f.x[out[a1]] - f.x[out[b1]], f.y[out[a1]] - f.y[out[b1]])));
+                        S.spc[z].push_back(nd); const int r = role(static_cast<std::uint8_t>(out[a1])); if (r >= 0 && r < 6) S.spc_r[z][r].push_back(nd); }
+                    if ((t - c.i0) % 5 == 0 && t + 5 < F && fl_f[t + 5].k == f.k + 30) { const FlF& f2 = fl_f[t + 5];
+                        for (int a1 = 0; a1 < no; ++a1) for (int b1 = a1 + 1; b1 < no; ++b1) { const int qa = out[a1], qb = out[b1]; if (qa == c.pid || qb == c.pid) continue;
+                            const double d0 = std::hypot(f.x[qa] - f.x[qb], f.y[qa] - f.y[qb]); if (d0 >= 8) continue;
+                            S.spc_p[z][d0 < 4 ? 0 : 1].push_back(std::hypot(f2.x[qa] - f2.x[qb], f2.y[qa] - f2.y[qb]) - d0); } } } }
             static const int off[5] = {-4, -2, 0, 2, 4};
             for (std::size_t u = 1; u < sp.size(); ++u) {
                 const Sp& c = sp[u]; const Sp& p = sp[u - 1];
@@ -2507,7 +2518,17 @@ int main(int argc, char** argv) {
                                         std::printf("\n              THE PICK: receiver free at the passer's last frame %.0f%% (%.0f); with other free options (%.2f (%.2f) of them) picked v others: med |y| %.1f v %.1f (%.1f v %.1f), mates within 10 m mean %.2f v %.2f (%.2f v %.2f), length med %.1f v %.1f (%.1f v %.1f), forward med %+.1f v %+.1f (%+.1f v %+.1f); picked the nearest %.0f%% (%.0f), widest %.0f%% (%.0f), loneliest %.0f%% (%.0f), most forward %.0f%% (%.0f)",
                                             100.0 * S.pi_f[z] / std::max(1L, S.pi_n[z]), rP[z][0], S.pi_o[z] / pn, rP[z][1], md(S.pi_g[z][0]), md(S.pi_x[z][0]), rP[z][2], rP[z][3], mean(S.pi_g[z][1]), mean(S.pi_x[z][1]), rP[z][4], rP[z][5],
                                             md(S.pi_g[z][2]), md(S.pi_x[z][2]), rP[z][6], rP[z][7], md(S.pi_g[z][3]), md(S.pi_x[z][3]), rP[z][8], rP[z][9], 100.0 * S.pi_near[z] / pn, rP[z][10], 100.0 * S.pi_wide[z] / pn, rP[z][11], 100.0 * S.pi_lone[z] / pn, rP[z][12], 100.0 * S.pi_fwd[z] / pn, rF[z]); }
+                                      { static const double rNb[3][10] = {{0}}; (void)rNb; long tn = 0; for (int b = 0; b < 5; ++b) tn += S.nb_n[z][b]; std::printf("\n              mates 10-30 m by their nearest opponent 0-2 / 2-4 / 4-6 / 6-9 / 9+ m: share %% | free %%:"); for (int b = 0; b < 5; ++b) std::printf("  %.0f %.0f%%", 100.0 * S.nb_n[z][b] / std::max(1L, tn), 100.0 * S.nb_f[z][b] / std::max(1L, S.nb_n[z][b])); }
                                       std::printf("\n              mates by role at the receipt, m from the receiver med / m ahead of him med:"); for (int r = 0; r < 6; ++r) std::printf("  %s %.1f %+.1f (%.1f %+.1f)", rn[r], md(S.fl_rd[z][r]), md(S.fl_rl[z][r]), rR[z][r][0], rR[z][r][1]); } }
+                            }
+                            {   // §8.219 SPACING, real DFL benchmarks_tracking_flight.py
+                                static const double rS[3][3] = {{9.9, 11, 51}, {10.7, 8, 44}, {11.7, 7, 37}}, rR[3][6] = {{11.3, 12.5, 9.6, 8.2, 9.2, 7.5}, {11.8, 12.7, 9.8, 9.3, 10.4, 9.5}, {12.7, 14.1, 10.8, 10.0, 11.8, 11.1}}, rP[3][2] = {{0.61, 0.25}, {0.70, 0.55}, {0.78, 0.56}};
+                                static const char* zn[3] = {"0-35", "35-52", "52+"}; static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                                std::printf("\n          SPACING (spell frames, the side on the ball's outfielders; real DFL benchmarks_tracking_flight.py in brackets): nearest mate med m, <5 / <10 m %%, by role med | pairs within 0-4 / 4-8 m (carrier out): distance change over 1 s med");
+                                for (int z = 0; z < 3; ++z) { const auto& v = S.spc[z]; long a5 = 0, a10 = 0; for (double x : v) { a5 += x < 5; a10 += x < 10; } const double n = std::max<std::size_t>(1, v.size());
+                                    std::printf("\n            %-5s %.1f m (%.1f), %.0f / %.0f%% (%.0f / %.0f) |", zn[z], md(v), rS[z][0], 100.0 * a5 / n, 100.0 * a10 / n, rS[z][1], rS[z][2]);
+                                    for (int r = 0; r < 6; ++r) std::printf(" %s %.1f (%.1f)", rn[r], md(S.spc_r[z][r]), rR[z][r]);
+                                    std::printf(" | pairs %+.2f (%+.2f) / %+.2f (%+.2f)", md(S.spc_p[z][0]), rP[z][0], md(S.spc_p[z][1]), rP[z][1]); }
                             }
                             {   // §8.217 THE SLIDE, real DFL benchmarks_tracking_flight.py
                                 static const double rS[4][6] = {{1.1, 1.1, 1.8, 1.4, 1.7, 1.1}, {3.6, 2.5, 5.6, 4.5, 4.2, 3.8}, {6.2, 4.6, 7.9, 7.5, 6.2, 6.2}, {9.3, 7.3, 11.6, 10.4, 9.2, 8.8}};

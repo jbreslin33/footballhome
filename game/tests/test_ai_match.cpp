@@ -96,7 +96,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.84 (2026-11-10): a loft's angle by carry (real landing times).
 // Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
 // Re-locked G5.102 (2026-11-12): in-possession width by band.
-constexpr std::uint64_t kGolden3v3   = 0x79fb098fc33a1173ULL;
+// Re-locked G5.118 (2026-11-13): a supporting man's spot steps off a mate within 12 m (DFL SPACING).
+constexpr std::uint64_t kGolden3v3   = 0xa87a56c700202797ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -139,7 +140,8 @@ constexpr std::uint64_t kGolden3v3   = 0x79fb098fc33a1173ULL;
 // Re-locked G5.84 (2026-11-10): a loft's angle by carry (real landing times).
 // Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
 // Re-locked G5.102 (2026-11-12): in possession each pair stands the real width for the ball's band (DFL posswidth).
-constexpr std::uint64_t kGolden11v11 = 0x11008c9545caf0c6ULL;
+// Re-locked G5.118 (2026-11-13): a supporting man's spot steps off a mate within 12 m (DFL SPACING).
+constexpr std::uint64_t kGolden11v11 = 0x761ab5508762ed34ULL;
 
 struct Rig {
     World world;

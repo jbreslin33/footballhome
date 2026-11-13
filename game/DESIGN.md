@@ -9392,3 +9392,33 @@ frame (a man moves away when a mate comes into his space), ours each run to thei
 
 Shipped: THE PICK (benchmark and harness line) and the CROWD PICK fit (harness only; outputs and goldens
 unchanged; tests 22/22).
+
+### 8.219 G5.118 — spacing in possession: ours bunched; a supporting man now steps off a mate within 12 m (engine; goldens re-locked)
+
+§8.218's next. New SPACING in `scripts/benchmarks_tracking_flight.py` and the harness: on every spell frame, each
+outfielder of the side on the ball, his nearest outfield mate; close pairs (carrier out), their distance 1 s on.
+Seed 1000 / 2000, 8 matches each; real in brackets.
+
+**Before.** Nearest mate med 8.3-8.4 / 8.6-8.8 / 9.4-9.6 m with the ball 0-35 / 35-52 / 52+ m off their line
+(9.9 / 10.7 / 11.7); within 5 m 20-21 / 19 / 15-16% (11 / 8 / 7). DM 7.0-8.0 (9.6-10.8), AM 6.0-6.7 (8.2-10.0),
+CB in their build-up 9.0-9.3 (12.7). Pairs within 4 m spread +0.21-0.43 m/s over 1 s (+0.61-0.78), 4-8 m
++0.07-0.34 (+0.25-0.56). Every man ran to his own spot (`Possession::spot`), whoever else stood there.
+
+**Built.** `Support`: each outfield mate within physics.support.spread_r_m (12 m) of his spot pushes it away by
+spread_k (0.8) × the overlap, the sum capped at spread_max_m (6 m), held 2 m inside the touchline; before the
+front man's line rule and the onside limit. Trials: 8 m × 0.5 barely moved it (8.6-9.7 m), 10 m × 0.8 9.4-10.5;
+12 m × 0.8 is real.
+
+**After.** Nearest mate 9.9-10.0 / 10.4 / 11.0-11.1 m (9.9 / 10.7 / 11.7); within 10 m 50-52 / 46 / 40% (51 / 44
+/ 37); within 5 m 9-12% (7-11). Pairs within 4 m +0.46-0.85 (+0.61-0.78), 4-8 m +0.15-0.62 (+0.25-0.56). DM
+8.9-9.7 (9.6-10.8), AM 7.2-9.2 (8.2-10.0); CB in their build-up 10.9-11.0 (12.7) still short. Shots 10.6 / 12.3
+→ 10.2 / 8.5 a team-match, goals 1.56 / 1.69 → 1.38 / 1.12 (8 matches each: within noise, watch it). 3+ options
+unchanged (35-52 64.8 / 66.1 → 62.4 / 64.8%).
+
+**What 3+ options is.** Mates 10-30 m by their nearest opponent 0-2 / 2-4 / 4-6 / 6-9 / 9+ m, 52+: share 8 / 23 /
+20 / 23 / 26% (8 / 24 / 24 / 22 / 22), free 25 / 27 / 34 / 45 / 69% (23 / 22 / 25 / 35 / 68). Per mate ours are
+free 0-10 points more; RACE OPTIONS 52+ sums to +0.7 options a spell, about half from more mates 10-20 m away
+and half from the free rate. The 3+ cut turns +0.7 into ~30 points. Eleven trials have not moved it; it is
+many small per-mate gaps, not one mole. Behaviours keep being fixed on their own measures (§8.219 spacing).
+
+Shipped: the spacing rule (engine; goldens re-locked, tests 22/22), SPACING and the marker-distance split (harness).

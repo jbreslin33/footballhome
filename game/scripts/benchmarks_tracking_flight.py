@@ -21,7 +21,10 @@ metres off the centre line (by role); options by his width 0-10 / 10-20 / 20+ m;
 side on the ball, its metres toward the ball's side (mean), by the ball's metres off the centre line.
 THE PICK (G5.117, §8.218): at the passer's last frame, the receiver against his other free options (crude race):
 his |y|, his own mates within 10 m, length, metres forward; how often the picked man is the nearest / widest /
-loneliest / most forward of them. fh-game-match prints the same as THE PASS IN FLIGHT, THE SLIDE and THE PICK.
+loneliest / most forward of them. SPACING (G5.118, §8.219): every spell frame, each outfielder of the side on the
+ball, his nearest outfield mate (m, <5 / <10 m shares, by role); pairs within 0-4 / 4-8 m (carrier out), their
+distance change over 1 s. Mates 10-30 m by their nearest opponent's metres: share, free %.
+fh-game-match prints the same as THE PASS IN FLIGHT, THE SLIDE, THE PICK and SPACING.
 FH original.
 """
 import collections, glob, math, multiprocessing, os, re, sys
@@ -46,7 +49,7 @@ def opts(fr, who, keepers, pid, tm, gsx=0, side=None):
         f = margin(px, py, mx, my, (mx, my), opp) <= 0; n += f
         ox, oy = min(opp, key=lambda o: math.hypot(o[0] - mx, o[1] - my))
         nds.append(math.hypot(ox - mx, oy - my))
-        if side is not None: side.append((((ox - mx) * (px - mx) + (oy - my) * (py - my)) / L, (ox - mx) * gsx, f, L))
+        if side is not None: side.append((((ox - mx) * (px - mx) + (oy - my) * (py - my)) / L, (ox - mx) * gsx, f, L, math.hypot(ox - mx, oy - my)))
     return n, nds
 
 def one(pos_path):
@@ -108,6 +111,30 @@ def one(pos_path):
                 if who.get(q) != tm or q in keepers: continue
                 r = ROLE.get(pos_of.get(q), -1)
                 if r >= 0: c[("sl", yb, r)] += 1; H[("sls", yb, r)].append(y * sg)
+    # SPACING (G5.118, §8.219): every spell frame, the side on the ball's outfielders — each one's nearest outfield mate
+    # (m), by role; pairs within 8 m (the carrier out): their distance 1 s on, by the ball's band
+    for i0, i1, pid in spells:
+        if pid in keepers: continue
+        tm = who[pid]
+        for t in range(i0, i1 + 1):
+            k = seq[t][0]; fr = pl[k]
+            if (k[0], tm) not in own: continue
+            z = zg(length / 2 + ball[k][0] * own[(k[0], tm)])
+            out = [(q, p) for q, p in fr.items() if who.get(q) == tm and q not in keepers]
+            for q, (x, y) in out:
+                nd = min((math.hypot(x - x2, y - y2) for q2, (x2, y2) in out if q2 != q), default=99)
+                H[("sp", z)].append(nd); r = ROLE.get(pos_of.get(q), -1)
+                if r >= 0: H[("spr", z, r)].append(nd)
+            if t % 5 == 0 and t + 5 < len(seq) and seq[t + 5][0][0] == k[0] and seq[t + 5][0][1] == k[1] + 25 and seq[t + 5][1]:
+                f2 = pl[seq[t + 5][0]]
+                for a_ in range(len(out)):
+                    for b_ in range(a_ + 1, len(out)):
+                        (qa, (xa, ya)), (qb, (xb, yb)) = out[a_], out[b_]
+                        if pid in (qa, qb) or qa not in f2 or qb not in f2: continue
+                        d0 = math.hypot(xa - xb, ya - yb)
+                        if d0 >= 8: continue
+                        d1 = math.hypot(f2[qa][0] - f2[qb][0], f2[qa][1] - f2[qb][1])
+                        H[("pr", z, 0 if d0 < 4 else 1)].append(d1 - d0)
     def okrun(a, b):   # frames a..b consecutive, same half, all live
         if b >= len(seq) or a < 0: return False
         for t in range(a, b + 1):
@@ -129,8 +156,9 @@ def one(pos_path):
             if pid not in fr: continue
             sd = [] if o == 0 else None
             n, nds = opts(fr, who, keepers, pid, tm, own[(k[0], tm)] * -1, sd)
-            for u, g, f, L in sd or []:
+            for u, g, f, L, ndm in sd or []:
                 if L < 10 or L >= 30: continue
+                nb_ = 0 if ndm < 2 else 1 if ndm < 4 else 2 if ndm < 6 else 3 if ndm < 9 else 4; c[("nbn", z, nb_)] += 1; c[("nbf", z, nb_)] += f
                 H[("u", z)].append(u); H[("g", z)].append(g); c[("sn", z)] += 1; c[("bs", z)] += u > 0; c[("gs", z)] += g > 0
                 c[("bf", z, u > 0)] += f; c[("bn", z, u > 0)] += 1
             if o == 0: wy = min(2, int(abs(fr[pid][1]) // 10)); c[("wy", z, wy)] += 1; c[("wy3", z, wy)] += n >= 3; c[("wys", z, wy)] += n
@@ -198,6 +226,11 @@ if __name__ == "__main__":
     print("  THE SLIDE (spell frames, the side on the ball): each role's m toward the ball's side, mean, by the ball's m off the centre line")
     for yb in range(4):
         print(f"    ball {YB[yb]:5s} " + "  ".join(f"{NAMES[r]} {sum(H[('sls', yb, r)])/max(1, len(H[('sls', yb, r)])):+.1f}" for r in range(6)))
+    print("  SPACING (spell frames, the side on the ball's outfielders): nearest mate med m, <5 / <10 m %, by role med | pairs within 0-4 / 4-8 m (carrier out): distance change over 1 s med (n)")
+    for z in range(3):
+        v = H[("sp", z)]
+        print(f"    {ZG[z]:5s} {md(v):.1f} m, {100*sum(x < 5 for x in v)/max(1, len(v)):.0f} / {100*sum(x < 10 for x in v)/max(1, len(v)):.0f}% | " + " ".join(f"{NAMES[r]} {md(H[('spr', z, r)]):.1f}" for r in range(6))
+              + f" | pairs {md(H[('pr', z, 0)]):+.2f} ({len(H[('pr', z, 0)])}) / {md(H[('pr', z, 1)]):+.2f} ({len(H[('pr', z, 1)])})")
     for z in range(3):
         row = "  ".join(f"{c[('os', z, oi)]/max(1, c[('o', z, oi)]):.2f} {100*c[('o3', z, oi)]/max(1, c[('o', z, oi)]):.0f}% {md(H[('nd', z, oi)]):.1f}" for oi in range(5))
         print(f"  {ZG[z]:5s} mates 10-30 m at the receipt: their nearest opponent med {md(H[('u', z)]):+.1f} m toward the ball, {md(H[('g', z)]):+.1f} m toward the goal he attacks; ball-side {100*c[('bs', z)]/max(1, c[('sn', z)]):.0f}%, beyond him {100*c[('gs', z)]/max(1, c[('sn', z)]):.0f}%; free when he is ball-side {100*c[('bf', z, True)]/max(1, c[('bn', z, True)]):.0f}% / not {100*c[('bf', z, False)]/max(1, c[('bn', z, False)]):.0f}%")
@@ -207,4 +240,6 @@ if __name__ == "__main__":
         print(f"  {ZG[z]:5s} round the receiver, mean: his mates within 10 / 20 m {c[('ln', z, True, 0)]/max(1, c[('n', z)]):.2f} / {c[('ln', z, True, 1)]/max(1, c[('n', z)]):.2f}, their men {c[('ln', z, False, 0)]/max(1, c[('n', z)]):.2f} / {c[('ln', z, False, 1)]/max(1, c[('n', z)]):.2f}")
         pn = max(1, c[('pkn', z)])
         print(f"  {ZG[z]:5s} THE PICK: receiver free at the passer's last frame {100*c[('pkf', z)]/max(1, c[('pk', z)]):.0f}%; with other free options ({c[('pko', z)]/pn:.2f} of them): picked v others med |y| {md(H[('pgy', z)]):.1f} v {md(H[('poy', z)]):.1f}, mates within 10 m {md(H[('pgnm', z)]):.0f} v {md(H[('ponm', z)]):.0f} (mean {sum(H[('pgnm', z)])/pn:.2f} v {sum(H[('ponm', z)])/max(1, len(H[('ponm', z)])):.2f}), length {md(H[('pgL', z)]):.1f} v {md(H[('poL', z)]):.1f}, forward {md(H[('pgfw', z)]):+.1f} v {md(H[('pofw', z)]):+.1f}; picked the nearest {100*c[('pnear', z)]/pn:.0f}%, widest {100*c[('pwide', z)]/pn:.0f}%, loneliest {100*c[('plone', z)]/pn:.0f}%, most forward {100*c[('pfwd', z)]/pn:.0f}%")
+        tn_ = max(1, sum(c[('nbn', z, b)] for b in range(5)))
+        print(f"  {ZG[z]:5s} mates 10-30 m by their nearest opponent 0-2 / 2-4 / 4-6 / 6-9 / 9+ m: share % | free %: " + "  ".join(f"{100*c[('nbn', z, b)]/tn_:.0f} {100*c[('nbf', z, b)]/max(1, c[('nbn', z, b)]):.0f}%" for b in range(5)))
         print(f"  {ZG[z]:5s} {c[('n', z)]/tm:.1f} {md(H[('fl', z)]):.1f}s | {row} | vd {md(H[('vd', z)]):.2f} va {md(H[('va', z)]):.2f} close {md(H[('cl', z)]):.2f}")

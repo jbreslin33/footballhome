@@ -94,6 +94,7 @@ struct PossessionParams {
     bool press_on = true; math::Fixed64 press_toward{}, press_across{};
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
+    math::Fixed64 spread_r_m{}, spread_k{}, spread_max_m{};   // G5.118 (§8.219): a supporting man's spot steps off a mate within spread_r_m (0 = off); DFL SPACING fit: 12 m, 0.8
     math::Fixed64 keeper_depth_m{}, keeper_depth_k{}, keeper_depth_max_m{}, keeper_long_m{};
     // Runs into the box (G5.26), by the ball's zone (their line 0-18 / 18-35 /
     // 35-52 × centre or wide): the share of time with 0 / 1 / 2 / 3+ of ours in

@@ -523,6 +523,29 @@ public:
         if (bx > line) line = bx;
         if (line < Fixed64::zero()) line = Fixed64::zero();
         const Fixed64 lim = line - c.poss.params().onside_margin_m;
+        {   // G5.118 (§8.219): off his mates — real men in possession stand 10-12 m from the nearest mate (DFL),
+            // ours ran to their spots regardless (8-9.5 m, twice as many within 5 m). Each outfield mate within
+            // spread_r_m of his spot pushes it away by spread_k x the overlap, the sum capped at spread_max_m.
+            const auto& P = c.poss.params();
+            if (P.spread_r_m.raw > 0 && !v.keeper) {
+                Vec2 push{};
+                for (std::uint8_t j = 0; j < c.world.playerCount(); ++j) {
+                    if (j == v.slot || c.team_of_slot[j] != v.team || c.world.isKeeper(j)) continue;
+                    const Vec2 d{t.x - c.world.player(j).pos.x, t.y - c.world.player(j).pos.y};
+                    const Fixed64 L = math::length(d);
+                    if (L >= P.spread_r_m) continue;
+                    if (L.raw <= 0) continue;
+                    const Fixed64 m = (P.spread_r_m - L) * P.spread_k / L;
+                    push.x += d.x * m; push.y += d.y * m;
+                }
+                const Fixed64 pl = math::length(push);
+                if (pl > P.spread_max_m) { push.x = push.x * P.spread_max_m / pl; push.y = push.y * P.spread_max_m / pl; }
+                t.x += push.x; t.y += push.y;
+                const Fixed64 ylim = c.world.pitchHalfY() - Fixed64::fromInt(2);
+                if (t.y > ylim) t.y = ylim;
+                if (t.y < -ylim) t.y = -ylim;
+            }
+        }
         // G5.47: the front man stands on their line, his tenure's gap short of it.
         if (c.poss.onLine(v.team, v.slot)) t.x = (line - c.poss.frontGap(v)) * v.sg;
         if (t.x * v.sg > lim) t.x = lim * v.sg;
@@ -1096,6 +1119,9 @@ void PossessionParams::configure(const core::ModelParams& p) {
     press_across = p.fixed("physics.onball.press_across", 270);         // across 27%, away the rest
     pass_min_m = p.fixed("physics.onball.pass_min_m", 5000);
     onside_margin_m = p.fixed("physics.support.onside_margin_m", 500);
+    spread_r_m = p.fixed("physics.support.spread_r_m", 12000);
+    spread_k = p.fixed("physics.support.spread_k", 800);
+    spread_max_m = p.fixed("physics.support.spread_max_m", 6000);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
