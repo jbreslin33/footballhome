@@ -51,6 +51,11 @@ class AdPreviewScreen extends Screen {
     this.find('#ap-empty').style.display   = 'none';
 
     try {
+      // Live ads' numbers (GET /api/ads/live) load beside the creatives;
+      // a failure there still shows every ad, just without stats.
+      const livePromise = this.auth.fetch('/api/ads/live')
+        .then(r => r.ok ? r.json() : [])
+        .catch(() => []);
       const res = await this.auth.fetch('/api/ads/preview');
       if (!res.ok) {
         // The backend passes Meta's own message through (e.g. the ad
@@ -59,6 +64,8 @@ class AdPreviewScreen extends Screen {
         throw new Error(body.error || `HTTP ${res.status}`);
       }
       const ads = await res.json();
+      this.liveStats = {};
+      for (const row of (await livePromise) || []) this.liveStats[row.id] = row;
 
       this.find('#ap-loading').style.display = 'none';
 
@@ -184,9 +191,14 @@ class AdPreviewScreen extends Screen {
     const list = this.find('#ap-list');
     if (!list) return;
 
+    // ● Live ads (owner 11/13 "i should always be able to view live ads
+    // on fh … ad, graphic, text etc and stats"): every ad Meta is
+    // delivering now, first, never hidden, never in the approval queue.
+    const live = this.allAds.filter(ad => this.classify(ad).bucket === 'ACTIVE');
     const queue = this.allAds.filter(ad => !ad.hidden
+      && this.classify(ad).bucket !== 'ACTIVE'
       && (this.filter === 'all' || this.classify(ad).bucket === this.filter));
-    const rest = this.allAds.filter(ad => ad.hidden);
+    const rest = this.allAds.filter(ad => ad.hidden && this.classify(ad).bucket !== 'ACTIVE');
 
     const esc = t => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
     const restRows = rest.map(ad => {
@@ -203,8 +215,18 @@ class AdPreviewScreen extends Screen {
     }).join('');
 
     list.style.display = 'flex';
+    const liveTotals = live.reduce((t, ad) => {
+      const st = this.liveStats && this.liveStats[ad.id];
+      if (st) { t.budget += st.daily_budget_usd || 0; t.spend += st.month.spend || 0; t.leads += st.fh.month || 0; }
+      return t;
+    }, { budget: 0, spend: 0, leads: 0 });
     list.innerHTML = `
-      <h2 style="margin:0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">📋 Pending approval <span style="opacity:0.5; font-weight:500;">${queue.length}</span></h2>
+      <h2 style="margin:0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">● Live ads <span style="opacity:0.5; font-weight:500;">${live.length}</span></h2>
+      ${live.length ? `<div style="max-width:400px; width:100%; margin:-8px auto 0; font-size:0.8rem; opacity:0.75;">$${liveTotals.budget.toFixed(2)}/day budget · last 30 days $${liveTotals.spend.toFixed(2)} spent · ${liveTotals.leads} leads</div>` : ''}
+      ${live.length
+        ? live.map(ad => this.renderAdCard(ad, this.liveStats && this.liveStats[ad.id])).join('')
+        : `<div style="text-align:center; padding: var(--space-4); opacity:0.6;">No ads are live right now.</div>`}
+      <h2 style="margin:var(--space-4) 0 0; font-size:1.1rem; max-width:400px; width:100%; margin-inline:auto;">📋 Pending approval <span style="opacity:0.5; font-weight:500;">${queue.length}</span></h2>
       ${queue.length
         ? queue.map(ad => this.renderAdCard(ad)).join('')
         : `<div style="text-align:center; padding: var(--space-4); opacity:0.6;">Nothing pending approval.</div>`}
@@ -257,7 +279,42 @@ class AdPreviewScreen extends Screen {
     });
   }
 
-  renderAdCard(ad) {
+  // Who the ad is shown to + its budget, then Meta's numbers per window
+  // and our own leads/registrations (GET /api/ads/live).
+  renderLiveStats(st) {
+    if (!st) return `<div style="font-size:0.8rem; opacity:0.6; margin-bottom: var(--space-3);">Stats unavailable.</div>`;
+    const money = n => '$' + (n || 0).toFixed(2);
+    const int = n => Math.round(n || 0).toLocaleString('en-US');
+    const pct = (a, b) => b ? (100 * a / b).toFixed(1) + '%' : '—';
+    const per = (a, b) => b ? money(a / b) : '—';
+    const gender = (st.genders || []).length === 1 ? (st.genders[0] === 1 ? 'Men' : 'Women') : 'Everyone';
+    const esc = t => String(t || '').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    const started = st.started ? new Date(st.started).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const cols = [['7 days', st.week, st.fh.week], ['30 days', st.month, st.fh.month], [started ? 'Since ' + started : 'Since start', st.life, st.fh.life]];
+    const line = (label, f) => `<tr><td style="padding:3px 6px 3px 0; opacity:0.7;">${label}</td>${cols.map(c => `<td style="padding:3px 0 3px 8px; text-align:right; font-variant-numeric:tabular-nums;">${f(c[1], c[2])}</td>`).join('')}</tr>`;
+    return `
+      <div style="border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom: var(--space-3); font-size:0.82rem;">
+        <div style="display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:8px;">
+          <span><b>${money(st.daily_budget_usd)}</b>/day</span>
+          <span>${gender} ${st.age_min}–${st.age_max}${st.age_max >= 65 ? '+' : ''}</span>
+          <span style="opacity:0.8;">${esc(st.area)}</span>
+        </div>
+        <table style="width:100%; border-collapse:collapse;">
+          <tr style="opacity:0.6; font-size:0.75rem;"><td></td>${cols.map(c => `<td style="text-align:right; padding-left:8px;">${c[0]}</td>`).join('')}</tr>
+          ${line('Spent', s => money(s.spend))}
+          ${line('People reached', s => int(s.reach))}
+          ${line('Times shown', s => int(s.impressions))}
+          ${line('Avg. views each', s => s.frequency ? s.frequency.toFixed(1) : '—')}
+          ${line('Clicks', s => int(s.clicks))}
+          ${line('Click rate', s => pct(s.clicks, s.impressions))}
+          ${line('Leads', (s, l) => int(l))}
+          ${line('Cost per lead', (s, l) => per(s.spend, l))}
+        </table>
+        <div style="margin-top:6px; font-size:0.75rem; opacity:0.7;">Registered in LeagueApps (all time): <b>${int(st.fh.registered)}</b> of ${int(st.fh.life)} leads</div>
+      </div>`;
+  }
+
+  renderAdCard(ad, liveStats) {
     const { bucket, label: statusLabel, color: statusColor } = this.classify(ad);
 
     // "NEW" badge: created in the last 7 days and bucketed PAUSED — every
@@ -393,9 +450,10 @@ class AdPreviewScreen extends Screen {
             ${isNew ? '<span style="font-size:0.65rem; font-weight:700; color:#fff; background:#3b82f6; padding:1px 7px; border-radius:999px; letter-spacing:.03em;">NEW</span>' : ''}
             ${createdLabel ? `<span style="font-size:0.7rem; opacity:0.45; white-space:nowrap;">${createdLabel}</span>` : ''}
           </div>
-          <button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">🗂 Archive</button>
+          ${bucket === 'ACTIVE' ? '' : `<button type="button" class="ap-hide btn btn-secondary" data-id="${ad.id}" style="font-size:0.75rem; padding:4px 12px; white-space:nowrap;">🗂 Archive</button>`}
         </div>
         <div style="font-weight:700; font-size:0.95rem; margin-bottom: var(--space-3);">${ad.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>
+        ${bucket === 'ACTIVE' ? this.renderLiveStats(liveStats) : ''}
         ${instagramMockup}
         <details style="margin-top: var(--space-3);">
           <summary style="cursor:pointer; font-size:0.8rem; opacity:0.7;">📘 Facebook view</summary>

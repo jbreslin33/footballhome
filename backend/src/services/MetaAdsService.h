@@ -59,6 +59,11 @@ public:
     // adset+creative+insights subfields).  Throws on graph error.
     nlohmann::json fetchAdsForTargeting();
 
+    // GET /v21.0/<account>/ads?effective_status=["ACTIVE"] — live ads with
+    // adset{daily_budget,targeting} and insights aliased week / month /
+    // life (last_7d / last_30d / maximum).  Throws on graph error.
+    nlohmann::json fetchLiveAds();
+
     struct AdFormStatus {
         std::string formId;
         std::string effectiveStatus;

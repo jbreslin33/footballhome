@@ -139,6 +139,10 @@ class MainMenu {
       case 'player':      return nav.goTo('my');
       case 'game-center': return nav.goTo('event-center', { pick: true, kind: 'all' });
       case 'marketing':   return nav.goTo('marketing-home');
+      // 📣 Marketing's own pills (mig 1349) wear the marketing hat, as when
+      // they were tiles on marketing-home.
+      case 'ad-preview':
+      case 'leads':       ctx.role = 'marketing'; return nav.goTo(code);
       case 'teams':
       case 'tactical':
         // The Teams board scopes its cards by the viewer's hat.

@@ -38,6 +38,7 @@ public:
 
 private:
     Response handlePreviewList(const Request& request);
+    Response handleLive(const Request& request);
     Response handleTargeting(const Request& request);
     Response handleSpend(const Request& request);
     Response handleSpendBreakdown(const Request& request);

@@ -578,6 +578,8 @@ std::string serializeSpendSlot(const SpendSlot& s) {
 void AdsController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix + "/preview",
         [this](const Request& r) { return handlePreviewList(r); });
+    router.get(prefix + "/live",
+        [this](const Request& r) { return handleLive(r); });
     router.get(prefix + "/targeting",
         [this](const Request& r) { return handleTargeting(r); });
     router.get(prefix + "/spend",
@@ -593,6 +595,117 @@ void AdsController::registerRoutes(Router& router, const std::string& prefix) {
         [this](const Request& r) { return handleSetHidden(r); });
 }
 
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/ads/live — #ad-preview's Live ads section: every ad delivering
+// now with its budget, who it's shown to (ages / genders / area), Meta's
+// numbers for the last 7 days, 30 days and since it started, and our own
+// leads table (leads by ad_id, and how many became LeagueApps members).
+// ────────────────────────────────────────────────────────────────────────────
+namespace {
+
+double numOf(const json* j) {
+    if (!j) return 0;
+    if (j->is_number()) return j->get<double>();
+    if (j->is_string()) { try { return std::stod(j->get<std::string>()); } catch (...) { return 0; } }
+    return 0;
+}
+
+// One insights window → flat numbers.  Leads = Meta's `lead` action
+// (falls back to the grouped on-site lead action).
+json windowStats(const json& ad, const char* alias) {
+    json out = { {"spend", 0}, {"reach", 0}, {"impressions", 0}, {"frequency", 0},
+                 {"clicks", 0}, {"link_clicks", 0}, {"leads", 0} };
+    const json* data = dig(ad, {alias, "data"});
+    if (!data || !data->is_array() || data->empty()) return out;
+    const json& r = (*data)[0];
+    out["spend"]       = numOf(dig(r, {"spend"}));
+    out["reach"]       = numOf(dig(r, {"reach"}));
+    out["impressions"] = numOf(dig(r, {"impressions"}));
+    out["frequency"]   = numOf(dig(r, {"frequency"}));
+    out["clicks"]      = numOf(dig(r, {"clicks"}));
+    out["link_clicks"] = numOf(dig(r, {"inline_link_clicks"}));
+    double lead = 0, grouped = 0;
+    if (const json* acts = dig(r, {"actions"}); acts && acts->is_array()) {
+        for (const auto& a : *acts) {
+            const std::string t = strOrEmpty(dig(a, {"action_type"}));
+            if (t == "lead") lead = numOf(dig(a, {"value"}));
+            else if (t == "onsite_conversion.lead_grouped") grouped = numOf(dig(a, {"value"}));
+        }
+    }
+    out["leads"] = lead > 0 ? lead : grouped;
+    return out;
+}
+
+} // namespace
+
+Response AdsController::handleLive(const Request& request) {
+    if (!requireBearer(request)) return errJson(HttpStatus::UNAUTHORIZED, "Unauthorized");
+
+    try {
+        auto raw = MetaAdsService::getInstance().fetchLiveAds();
+
+        // Our side: leads that arrived on each ad, and conversions.
+        std::unordered_map<std::string, json> fh;
+        try {
+            for (const auto& row : Database::getInstance()->query(
+                     "SELECT ad_id, "
+                     "       count(*) FILTER (WHERE created_at > now() - interval '7 days')  AS week, "
+                     "       count(*) FILTER (WHERE created_at > now() - interval '30 days') AS month, "
+                     "       count(*) AS life, "
+                     "       count(converted_at) AS registered "
+                     "  FROM leads WHERE ad_id IS NOT NULL GROUP BY ad_id")) {
+                fh[row["ad_id"].c_str()] = {
+                    {"week",       row["week"].as<long>()},
+                    {"month",      row["month"].as<long>()},
+                    {"life",       row["life"].as<long>()},
+                    {"registered", row["registered"].as<long>()} };
+            }
+        } catch (const std::exception& e) {
+            std::cerr << "ads/live leads read failed: " << e.what() << std::endl;
+        }
+
+        json out = json::array();
+        for (const auto& ad : raw) {
+            const std::string id = strOrEmpty(dig(ad, {"id"}));
+            const json* adset = dig(ad, {"adset"});
+            const json* tg = adset ? dig(*adset, {"targeting"}) : nullptr;
+
+            json genders = json::array();
+            if (tg) if (const json* g = dig(*tg, {"genders"}); g && g->is_array()) genders = *g;
+            GeoSummary geo = summarizeGeo(tg ? dig(*tg, {"geo_locations"}) : nullptr);
+
+            json row = {
+                {"id", id},
+                {"name", strOrEmpty(dig(ad, {"name"}))},
+                {"adset_name", adset ? strOrEmpty(dig(*adset, {"name"})) : std::string{}},
+                {"started", adset ? strOrEmpty(dig(*adset, {"start_time"})) : std::string{}},
+                {"daily_budget_usd", adset ? numOf(dig(*adset, {"daily_budget"})) / 100.0 : 0.0},
+                {"age_min", tg ? numOf(dig(*tg, {"age_min"})) : 0},
+                {"age_max", tg ? numOf(dig(*tg, {"age_max"})) : 0},
+                {"genders", genders},
+                {"area", geo.label},
+                {"week",  windowStats(ad, "week")},
+                {"month", windowStats(ad, "month")},
+                {"life",  windowStats(ad, "life")},
+            };
+            auto it = fh.find(id);
+            row["fh"] = it != fh.end() ? it->second
+                : json{ {"week", 0}, {"month", 0}, {"life", 0}, {"registered", 0} };
+            out.push_back(row);
+        }
+
+        Response r(HttpStatus::OK, out.dump());
+        r.setHeader("Content-Type", "application/json");
+        return r;
+    } catch (const MetaApiError& e) {
+        std::cerr << "Error fetching live ads: " << e.what() << std::endl;
+        return errJson(HttpStatus::BAD_GATEWAY, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "Error fetching live ads: " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // GET /api/ads/preview

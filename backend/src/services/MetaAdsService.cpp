@@ -175,6 +175,49 @@ json MetaAdsService::fetchAdsForTargeting() {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// /api/ads/live backend — the ads delivering right now, with their ad set
+// (budget + targeting) and three insight windows aliased onto each ad
+// (Graph field aliases must be words: week / month / life).
+// ────────────────────────────────────────────────────────────────────────────
+json MetaAdsService::fetchLiveAds() {
+    ensureConfigured();
+    if (token_.empty()) {
+        throw std::runtime_error("Missing META_ADS_TOKEN");
+    }
+
+    const std::string ins = "{spend,reach,impressions,frequency,clicks,inline_link_clicks,actions}";
+    const std::string fields =
+        "id,name,created_time,"
+        "adset{id,name,daily_budget,start_time,targeting},"
+        "insights.date_preset(last_7d).as(week)" + ins + ","
+        "insights.date_preset(last_30d).as(month)" + ins + ","
+        "insights.date_preset(maximum).as(life)" + ins;
+
+    const std::string url = graphUrl(adAccountId_ + "/ads")
+        + "?effective_status=" + HttpClient::urlEncode("[\"ACTIVE\"]")
+        + "&fields=" + HttpClient::urlEncode(fields)
+        + "&limit=50"
+        + "&access_token=" + token_;
+
+    auto resp = http_->get(url);
+    if (!resp.error.empty()) {
+        throw std::runtime_error(resp.error);
+    }
+    json parsed;
+    try { parsed = json::parse(resp.body); }
+    catch (const std::exception& e) {
+        throw std::runtime_error(std::string{"Meta returned malformed JSON: "} + e.what());
+    }
+    if (parsed.contains("error") && parsed["error"].is_object()) {
+        throw MetaApiError(parsed["error"].value("message", "Meta API error"));
+    }
+    if (!parsed.contains("data") || !parsed["data"].is_array()) {
+        return json::array();
+    }
+    return parsed["data"];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Leads screen Active/Inactive pills backend
 // ────────────────────────────────────────────────────────────────────────────
 std::vector<MetaAdsService::AdFormStatus> MetaAdsService::fetchAdFormStatuses() {
