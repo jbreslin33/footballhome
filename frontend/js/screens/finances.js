@@ -65,6 +65,7 @@ class FinancesScreen extends Screen {
     div.addEventListener('click', (e) => {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; if (this.money) this.money.scope = this.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
+      if (e.target.closest('[data-plan-grants]')) { this.showGrants = !this.showGrants; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
       const o = e.target.closest('[data-plan-option]'); if (o) { const id = Number(o.dataset.planOption); if (this.options.has(id)) this.options.delete(id); else this.options.add(id); try { localStorage.setItem('fn-plan-options', JSON.stringify([...this.options])); } catch (_) {} this._renderBody(); return; }
       if (this.view === 'money' && this.money && this.money.handleClick(e)) { this._renderBody(); return; }
@@ -326,18 +327,24 @@ class FinancesScreen extends Screen {
     // Year pills (mig 1334, owner: "have a pill for next year budget too").
     const thisYear = ((this.flow || {}).year || {}).label || '';
     const years = [...new Set([...(this.expenses.plan || []).map(l => l.budget_year), ...(this.expenses.budget || []).map(b => b.budget_year)].filter(Boolean))].sort();
-    const year = this.planYear && years.includes(this.planYear) ? this.planYear : (years.includes(thisYear) ? thisYear : years[0]);
-    const yearBar = years.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
+    const year = this.planYear || (years.includes(thisYear) ? thisYear : years[0]);
+    const yearsAll = [...new Set([...years, ...(this.expenses.plan_grants || []).map(g => g.budget_year)])].sort();
+    const yearBar = yearsAll.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${yearsAll.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
+    const grants = (this.expenses.plan_grants || []).filter(g => g.budget_year === year);
+    const grantsBtn = grants.length ? `<button class="fn-pill ${this.showGrants ? 'on' : ''}" data-plan-grants>${esc(this._copy(this.showGrants ? 'plan_grants_on' : 'plan_grants_add'))}</button>` : '';
+    const grantsCard = this.showGrants && grants.length ? `<div style="margin-top:12px;"><div style="font-weight:800;">${esc(this._copy('plan_grants_title'))}</div><div class="fn-note">${esc(this._copy('plan_grants_note'))}</div>
+      <table class="fn-table" style="min-width:420px;"><tbody>${grants.map(g => `<tr><td title="${esc(g.note || '')}">${esc(g.label)}<span class="fn-tick">${esc(g.note || '')}</span></td><td>${esc((g.purpose_label || (g.purpose === 'labor' ? this._copy('coaching_label') : '') || '').replace(/:\s*$/, ''))}</td><td class="fn-in">${M0(g.amount)}</td></tr>`).join('')}
+      <tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-in">${M0(grants.reduce((a, g) => a + Number(g.amount), 0))}</td></tr></tbody></table></div>` : '';
     const allLines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope) && l.budget_year === year);
     const optionEntries = [...new Map(allLines.filter(l => l.is_option).map(l => [l.entry_id, l])).values()];
     const lines = allLines.filter(l => !l.is_option || this.options.has(l.entry_id));
-    const optionBar = optionEntries.length ? `<div class="fn-pills" style="margin:4px 0 10px;">${optionEntries.map(l => { const on = this.options.has(l.entry_id); return `<button class="fn-pill ${on ? 'on' : ''}" data-plan-option="${l.entry_id}">${esc(this._copy(on ? 'plan_option_on' : 'plan_option_add', { team: l.short_label || l.team, when: l.entry_note || l.season }))}</button>`; }).join('')}</div>` : '';
+    const optionBar = (optionEntries.length || grantsBtn) ? `<div class="fn-pills" style="margin:4px 0 10px;">${grantsBtn}${optionEntries.map(l => { const on = this.options.has(l.entry_id); return `<button class="fn-pill ${on ? 'on' : ''}" data-plan-option="${l.entry_id}">${esc(this._copy(on ? 'plan_option_on' : 'plan_option_add', { team: l.short_label || l.team, when: l.entry_note || l.season }))}</button>`; }).join('')}</div>` : '';
     // Section-wide costs (budget_lines on a section's own pill — kits, coaching):
     // one "general" group per section, amount × units over the whole year (mig 1329).
     const scopes0 = (this.flow || {}).scopes || [];
     const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.budget_year === year && scopes0.some(sc => sc.code === b.scope && sc.section_code));
     const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
-    if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
+    if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div>${grantsCard}</div>`;
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const entries = new Map();
@@ -397,7 +404,7 @@ class FinancesScreen extends Screen {
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
           <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody>
-        </table></div>${per}
+        </table></div>${per}${grantsCard}
       </div>`;
   }
 

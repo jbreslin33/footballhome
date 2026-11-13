@@ -377,6 +377,17 @@ json Expenses::projection(int clubId) {
             out["plan_heads"].push_back({{"section_id", r["id"].as<long long>()}, {"code", str(r, "code")},
                                          {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}});
 
+        // Grants per budget year (mig 1336) — club-wide, earmarked by purpose.
+        out["plan_grants"] = json::array();
+        for (const auto& r : db->query(
+                "SELECT y.label AS budget_year, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label "
+                "  FROM income_awards a JOIN budget_years y ON y.id = a.budget_year_id JOIN income_award_statuses st ON st.code = a.status "
+                "  LEFT JOIN invoice_line_categories c ON c.code = a.purpose "
+                " WHERE a.club_id = $1::int AND a.kind = 'grant' AND a.status IN ('awarded', 'received') ORDER BY y.starts_on, a.id", {club}))
+            out["plan_grants"].push_back({{"budget_year", str(r, "budget_year")}, {"label", str(r, "label")}, {"source", str(r, "source_name")},
+                                          {"amount", num(r, "amount_usd")}, {"status", str(r, "status")}, {"note", str(r, "note")},
+                                          {"purpose", str(r, "purpose")}, {"purpose_label", str(r, "purpose_label")}});
+
         // dues per year to set the cost per player against (latest policy, section first)
         for (const auto& r : db->query(
                 "SELECT DISTINCT ON (s.id) s.id AS section_id, d.monthly_dues_usd FROM club_sections s "
