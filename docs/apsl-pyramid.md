@@ -45,12 +45,15 @@ read off the affiliate's region (CASA PA/NJ → Delaware River, Cosmo + LISFL �
 Metropolitan, CASA MA → Mayflower, MMSL → Mid-Atlantic, MIPSL → Mitten,
 ADASL → Terminus). Since mig 864 it is read off where the teams play
 (owner: "use home field to infer what conference"): `pyramid_feeder_conference_votes`
-— each feeder team at a located ground votes for the conference of the
-nearest APSL team's ground; a feeder votes only when half its teams are
-located. Parent = the top vote (not the four CASA Select regions, which the
-owner named as Delaware River feeders); the top table also links into any
-conference a fifth of its teams are nearest (Central Jersey Liga 1 →
-Metropolitan, 4 of 19). Constitution, Trinity and Mid-Atlantic's Old
+— each feeder team at a located ground votes for its conference by drive
+time from its ground to the official centre model's points
+(`pyramid_team_nearest_conference`; since mig 1303 — it was the nearest APSL
+team's ground, which the owner banned 11/11: "never use the feels good
+measure again"); a feeder votes only when half its teams are located.
+Parent = the top vote (not the four CASA Select regions, which the owner
+named as Delaware River feeders); the top table also links into any
+conference a fifth of its teams vote for (Central Jersey Liga 1 →
+Metropolitan, 6 of 19 on 11/12). The 11/12 re-run changed no parent or link. Constitution, Trinity and Mid-Atlantic's Old
 Dominion side list no affiliate. States: `pyramid_competition_states`.
 
 ## Live tables
@@ -222,14 +225,13 @@ Views only draw it:
   or hidden (picked conference first, then APSL, then feeders). The picked
   conference's territory (mig 852, owner: "its really based on metro size
   … pretend your making the conferences from scratch based off population
-  and distance"): COUNTIES — a county belongs to the conference whose
-  nearest APSL team's ground (`pyramid_team_conference`: only the
-  conferences' own teams draw borders, so a feeder feeding two conferences
-  never moves one)
-  is within `pyramid_territory_policy.reach_km` (100, ~an hour's drive) of
-  the county's centre; nearer wins, so neighbours meet along county lines;
-  a county no club reaches is open ground. `pyramid_county_overrides` sets
-  one by hand. `GET /api/pyramid/territory?conf=` returns the counties as
+  and distance"): COUNTIES — since mig 1303 a county belongs to the
+  conference the official centre model's Current plan gives it
+  (`pyramid_county_conference` reads the `pyramid_model_counties` snapshot:
+  drive time from the conference centre, the same map the borders come
+  from); a county outside every conference is open ground.
+  `pyramid_county_overrides` sets one by hand. (Migs 852–1302 used the
+  nearest APSL team's ground within `reach_km` — retired.) `GET /api/pyramid/territory?conf=` returns the counties as
   GeoJSON (drawn tinted, only the OUTER border outlined — an edge two of its
   counties share is inside), the population inside, and Sunday drive times
   (OSRM table — free-flow, no traffic — among the conference's APSL teams'

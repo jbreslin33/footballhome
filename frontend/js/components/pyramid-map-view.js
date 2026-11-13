@@ -25,8 +25,8 @@
 //              then APSL clubs, then feeders.
 //   territory  counties (mig 852, owner: "its really based on metro size …
 //              pretend your making the conferences from scratch based off
-//              population and distance"): a county is the conference's whose
-//              nearest APSL club is closest, within ~an hour's drive — GET
+//              population and distance"): a county is the conference's the
+//              official centre model's drive-time map gives it (mig 1303) — GET
 //              /api/pyramid/territory draws the picked one's counties, tinted,
 //              with only its OUTER border outlined; the HUD gives the
 //              population inside, and Sunday (no traffic) drive times: the

@@ -352,8 +352,8 @@ Response PyramidController::handleStateBorders(const Request&) {
 }
 
 // GET /api/pyramid/territory?conf=<id> (mig 852) — a conference's ground:
-// its counties (pyramid_county_conference: nearest APSL club within reach,
-// or a county override) as GeoJSON, the population inside, and its Sunday
+// its counties (pyramid_county_conference: the official centre model's
+// drive-time map, mig 1303, or a county override) as GeoJSON, the population inside, and its Sunday
 // drive times (PyramidSync::conferenceTravel).
 Response PyramidController::handleTerritory(const Request& request) {
     const std::string conf = request.getQueryParam("conf");
