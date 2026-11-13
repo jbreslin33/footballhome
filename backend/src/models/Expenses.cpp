@@ -464,10 +464,12 @@ json Expenses::projection(int clubId) {
     }
 
     // ── coaching: usual hours (mig 494) ──
-    // Each active issuer's default week (invoice_default_shifts, day_index
-    // 0-13 over the Fri–Thu fortnight; both weeks are read mod 7) × their
-    // rate, day by day from today for twelve months.  Invoiced = that
-    // issuer's labor lines by invoice month.
+    // Each active issuer's usual 2 weeks (invoice_default_shifts, day_index
+    // 0-13 over the Fri–Thu fortnight) × their rate, day by day from today
+    // for twelve months.  Both weeks fold onto one weekday (mod 7) at HALF
+    // their hours — the fortnight averaged — so a day set in both weeks
+    // counts once a week, not twice (was double, ~$39.7k vs ~$19.8k).
+    // Invoiced = that issuer's labor lines by invoice month.
     out["coaching_usual"] = json::array();
     for (const auto& u : db->query(R"SQL(
         WITH days AS (
@@ -475,7 +477,7 @@ json Expenses::projection(int clubId) {
               FROM generate_series((now() AT TIME ZONE 'America/New_York')::date, (now() AT TIME ZONE 'America/New_York')::date + interval '12 months', interval '1 day') d
         ), shifts AS (
             SELECT issuer_id, (day_index % 7) AS fri0,
-                   COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0) AS h
+                   COALESCE(hours, EXTRACT(EPOCH FROM (end_at - start_at)) / 3600.0) / 2.0 AS h   -- per week of the fortnight
               FROM invoice_default_shifts
         ), weekly AS (
             SELECT issuer_id, SUM(h) AS weekly_hours FROM shifts GROUP BY issuer_id
