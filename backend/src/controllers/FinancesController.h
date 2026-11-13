@@ -30,4 +30,5 @@ private:
     Response handleExpenses(const Request& request);
     Response handleCashFlow(const Request& request);
     Response handleBudgetLine(const Request& request);
+    Response handlePlanRoster(const Request& request);
 };

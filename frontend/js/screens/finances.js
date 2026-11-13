@@ -72,6 +72,7 @@ class FinancesScreen extends Screen {
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
+      if (e.target.matches('[data-plan-roster]')) { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0) this._savePlanRoster(Number(e.target.dataset.planRoster), n); else this._renderBody(); return; }
       const row = e.target.closest('[data-budget-line]'); if (!row) return;
       if (e.target.matches('[data-budget-settled]')) this._saveBudgetLine(row.dataset.budgetLine, { settled: e.target.checked });
       if (e.target.matches('[data-budget-amount]')) {
@@ -110,6 +111,20 @@ class FinancesScreen extends Screen {
   async _saveBudgetLine(id, change) {
     try {
       const res = await this.auth.fetch(`/api/finances/budget-lines/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      const x = await this.auth.fetch('/api/finances/expenses');
+      const xj = await x.json().catch(() => ({}));
+      if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
+      this.expenses = xj; if (this.money) this.money.expenses = xj;
+    } catch (err) { this.err = err.message; }
+    this._renderBody();
+  }
+
+  // Year plan "Full rosters" (mig 1345): save, then the plan again.
+  async _savePlanRoster(entryId, players) {
+    try {
+      const res = await this.auth.fetch('/api/finances/plan-roster', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ entry_id: entryId, players }) });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
       const x = await this.auth.fetch('/api/finances/expenses');
@@ -431,7 +446,7 @@ class FinancesScreen extends Screen {
       // per dues-carrying team: its planned players, else its roster size (youth: no per-player fees)
       const byTeam = new Map();
       for (const l of lines.filter(l => l.dues_rank != null)) {
-        const t = byTeam.get(l.team_id) || { players: 0, roster: Number(l.max_roster || 0) };
+        const t = byTeam.get(l.team_id) || { players: 0, roster: Number(l.max_roster || 0), entry: l.entry_id, label: l.short_label || l.team };
         t.players += (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0);
         byTeam.set(l.team_id, t);
       }
@@ -441,6 +456,11 @@ class FinancesScreen extends Screen {
         <thead><tr>${sCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
         <tbody>${splits.map(([k, n]) => `<tr><td>${esc(this._copy(k))}</td><td>${n}</td><td class="fn-out">${M0(total / n)}</td><td>${noDues ? esc(this._copy('plan_split_club_covers')) : `${Math.round(100 * total / n / dues)}% of ${M0(dues)}`}</td></tr>`).join('')}</tbody>
       </table>`;
+      // Full rosters (mig 1345, owner: "allow for on budget page to put in full rosters")
+      if (byTeam.size) per += `<div style="margin-top:12px;"><div style="font-weight:800;">${esc(this._copy('plan_rosters_title') || 'Full rosters')}</div>
+        <div class="fn-note">${esc(this._copy('plan_rosters_note'))}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px;">${[...byTeam.values()].map(t => `<label style="display:flex; align-items:center; gap:6px;">${esc(t.label)}
+          <input class="fn-amt" style="width:64px;" type="number" min="0" max="200" step="1" data-plan-roster="${t.entry}" value="${t.players || t.roster}"></label>`).join('')}</div></div>`;
     }
     return `
       <div class="fn-card">${head}${yearBar}${optionBar}

@@ -47,6 +47,7 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     laGet(router, prefix + "/cash-flow", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { return handleCashFlow(r); });
     router.post(prefix + "/budget-lines/:id", [this](const Request& r) { return handleBudgetLine(r); });
+    router.post(prefix + "/plan-roster", [this](const Request& r) { return handlePlanRoster(r); });
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {
@@ -75,6 +76,20 @@ Response FinancesController::handleBudgetLine(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "Budget line not found.");
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) { std::cerr << "[finances budget line] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change that budget line."); }
+}
+
+// Year plan "Full rosters" (mig 1345): { entry_id, players }.
+Response FinancesController::handlePlanRoster(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        const json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        if (!body.contains("entry_id") || !body["entry_id"].is_number_integer()) return jsonError(HttpStatus::BAD_REQUEST, "Which team?");
+        if (!body.contains("players") || !body["players"].is_number_integer() || body["players"].get<int>() < 0 || body["players"].get<int>() > 200)
+            return jsonError(HttpStatus::BAD_REQUEST, "Enter a number of players.");
+        if (!Expenses::setPlanRoster(WelcomeLog::kLighthouseClubId, body["entry_id"].get<int>(), body["players"].get<int>()))
+            return jsonError(HttpStatus::NOT_FOUND, "That team is not on the plan.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) { std::cerr << "[finances plan roster] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change that roster."); }
 }
 
 Response FinancesController::handleSummary(const Request& request) {

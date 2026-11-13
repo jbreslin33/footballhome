@@ -578,6 +578,33 @@ bool Expenses::updateBudgetLine(int clubId, int lineId, const std::optional<doub
     return found;
 }
 
+// A team's full roster typed on the Year plan (mig 1345, owner: "allow for on
+// budget page to put in full rosters"): the plan behind it follows — the
+// per-player registrations become that many players, an "extra player" line
+// becomes the players beyond what the entry fee includes, kits follow; a team
+// with no per-player fee (youth) keeps it as its roster size.
+bool Expenses::setPlanRoster(int clubId, int entryId, int players) {
+    auto* db = Database::getInstance();
+    const std::string club = std::to_string(clubId), entry = std::to_string(entryId), n = std::to_string(players);
+    auto e = db->query("SELECT e.team_id FROM team_season_entries e JOIN teams t ON t.id = e.team_id "
+                       " WHERE e.id = $1::int AND e.budget_from_plan AND t.club_id = $2::int", {entry, club});
+    if (e.empty()) return false;
+    const std::string team = e[0]["team_id"].c_str();
+    const char* kNote = "Full roster set on Budget";
+    bool perPlayer = false;
+    // registrations paid per player
+    if (!db->query("UPDATE team_fee_plans p SET quantity = $2::numeric, is_assumed = false, note = $3 FROM league_fees f "
+                   " WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'player_fee' RETURNING p.id", {entry, n, kNote}).empty()) perPlayer = true;
+    // players beyond those the entry fee includes
+    if (!db->query("UPDATE team_fee_plans p SET quantity = GREATEST(0, $2::numeric - COALESCE((SELECT SUM(f2.players_included * p2.quantity) FROM team_fee_plans p2 "
+                   "        JOIN league_fees f2 ON f2.id = p2.league_fee_id WHERE p2.entry_id = p.entry_id), 0)), is_assumed = false, note = $3 "
+                   "  FROM league_fees f WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'extra_player' RETURNING p.id", {entry, n, kNote}).empty()) perPlayer = true;
+    // kits on the team's own plan (an option team)
+    db->query("UPDATE team_fee_plans p SET quantity = $2::numeric FROM league_fees f WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'kit'", {entry, n});
+    if (!perPlayer) db->query("UPDATE teams SET max_roster = $2::int WHERE id = $1::int", {team, n});
+    return true;
+}
+
 json Expenses::refLineFor(int clubId, const json& picks) {
     json items = json::array(); double amount = 0; std::string desc;
     std::set<std::string> wanted;
