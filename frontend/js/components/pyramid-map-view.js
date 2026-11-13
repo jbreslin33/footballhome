@@ -173,12 +173,14 @@ class PyramidMapView {
     const measures = P.measures || [];
     const meas = this._measure();
     const mOn = measures.find((x) => x.code === meas);
-    const measurePills = measures.length < 2 ? '' : `<div class="intro">${esc(this._copy('measure_heading'))}</div><div class="mp-sorts">${measures.map((x) =>
-      `<button class="ap-pill${x.code === meas ? ' on' : ''}" data-pzmeasure="${esc(x.code)}" title="${esc(x.blurb)}">${esc(x.label)}</button>`).join('')}</div>`
+    // Radio buttons, not pills (owner 11/13: "i wanted a radio buttons to do
+    // diff models"): one choice per group; the input carries the data-*.
+    const measurePills = measures.length < 2 ? '' : `<div class="intro">${esc(this._copy('measure_heading'))}</div><div class="mp-radio">${measures.map((x) =>
+      `<label title="${esc(x.blurb)}"><input type="radio" name="pz-measure" data-pzmeasure="${esc(x.code)}"${x.code === meas ? ' checked' : ''}> ${esc(x.label)}${x.official ? ' ★' : ''}</label>`).join('')}</div>`
       + `<div class="intro">${esc((mOn || {}).blurb || '')}</div>`;
-    const modelPills = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('model_heading'))}</div><div class="mp-sorts">${models.map((m) =>
-      `<button class="ap-pill${m.code === P.model ? ' on' : ''}" data-pzmodel="${esc(m.code)}" title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}>`
-      + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}</button>`).join('')}</div>`
+    const modelPills = models.length < 2 ? '' : `<div class="intro">${esc(this._copy('model_heading'))}</div><div class="mp-radio">${models.map((m) =>
+      `<label title="${esc(m.blurb)}"${m.ready ? '' : ' style="opacity:.5"'}><input type="radio" name="pz-model" data-pzmodel="${esc(m.code)}"${m.code === P.model ? ' checked' : ''}${m.ready ? '' : ' disabled'}> `
+      + `<svg width="18" height="6" style="vertical-align:middle;margin-right:4px"><line x1="0" y1="3" x2="18" y2="3" stroke="currentColor" stroke-width="2" stroke-dasharray="${esc(m.ghost_dash)}"/></svg>${esc(m.label)}${m.official ? ' ★' : ''}</label>`).join('')}</div>`
       + (want !== P.model ? `<div class="intro">${esc(this._copy('model_pending'))}</div>` : '')
       + `<div class="intro">${esc((models.find((m) => m.code === P.model) || {}).blurb || '')}</div>`
       + measurePills
@@ -431,6 +433,9 @@ class PyramidMapView {
       .mp-pz .tag.live { color:#e2e8f0; background:rgba(226,232,240,0.14); }
       .mp-pz .tag.ready { color:#22c55e; } .mp-pz .tag.borderline { color:#eab308; } .mp-pz .tag.developing { color:#94a3b8; }
       .mp-sorts { display:flex; flex-wrap:wrap; gap:4px; margin:2px 0 6px; }
+      .mp-radio { display:flex; flex-direction:column; gap:2px; margin:2px 0 6px; font-size:0.78rem; }
+      .mp-radio label { display:flex; align-items:center; gap:4px; cursor:pointer; }
+      .mp-radio input { margin:0; accent-color:#3b82f6; }
       .mp-sorts .ap-pill { font-size:0.7rem; padding:2px 8px; }
       .mp-tbl { overflow-x:auto; margin-bottom:6px; }
       .mp-tbl table { border-collapse:collapse; width:100%; font-size:0.7rem; }
