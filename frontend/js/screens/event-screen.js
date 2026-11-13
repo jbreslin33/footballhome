@@ -1687,6 +1687,19 @@ class EventScreen extends Screen {
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(text)}</span>`;
     };
+    // Team chip (owner 11/13: "on going i need to see the u10 label etc for
+    // players i can't [tell] what age they belong too"): when the event is
+    // tagged with more than one team, each player card names his team(s)
+    // among them — teams.short_label in the team's colour (rsvps.team_ids).
+    const evTeams = new Map((Array.isArray(this.ev.teams) ? this.ev.teams : []).map(t => [Number(t.id), t]));
+    const teamChip = (r) => {
+      if (evTeams.size < 2 || r.is_coach || !Array.isArray(r.team_ids)) return '';
+      return r.team_ids.map(id => evTeams.get(Number(id))).filter(Boolean).map(t => {
+        const c = /^#[0-9a-f]{6}$/i.test(t.color || '') ? t.color : '#64748b';
+        return `<span style="margin-left:6px; padding:0 6px; border-radius:999px; background:${c}33; border:1px solid ${c};
+                 font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(t.short_label || t.label || t.name)}</span>`;
+      }).join('');
+    };
     if (!rsvps.length && !inactive.length) {
       if (unplacedOnly) return '';
       return `<div class="ec-box" style="opacity:0.7;">Nobody is on this event's list — tag a team on the calendar event.</div>`;
@@ -1754,7 +1767,7 @@ class EventScreen extends Screen {
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
         sheet: canContact ? r.person_id : null,
-        name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${meChip(r)}${chipHtml(r)}`,
+        name: `<span style="min-width:0; overflow:hidden; text-overflow:ellipsis;">${this.escapeHtml(nameOf(r))}</span>${teamChip(r)}${meChip(r)}${chipHtml(r)}`,
         right: r.suspension ? '' : rsvpBtns(r),   // ⛔ mig 1077: no answer to set
         body: `<div style="display:flex; justify-content:space-between; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap;">
             ${sides ? this._cardSideHtml(r) : '<span></span>'}
