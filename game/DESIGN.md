@@ -9229,3 +9229,13 @@ and UAL 2 `Yes` (added to `ual2.glb`). CC0, same rig. `?extra=0` = the rig for a
 - Stumble: hit 0-0.44 s.
 - Celebration: full weight by 1.5 s.
 - No console errors.
+
+### 8.212 G5.111 — keepers on the clips (viewer only, `?bodies=anim`)
+
+Until now a keeper was the rig's whole time (overlayOn's `fig.keeper`). Now he moves on the clips like an
+outfielder: idle, walk, side-steps, the shuffle across his goal, kicks.
+- The rig only takes him over for his dive (`fig.dv`) and with the ball in his hands (`fig.hadBall`).
+- Standing (under 1.5 m/s), the rig's set-position arms (players.js: shoulders −0.55, elbows −0.7) go over the
+  clip. Only clavicle / upper arm / forearm / hand take the rig's turn; everything else and the pelvis stay
+  the clip's. Eased at 6/s.
+- Checked live: both keepers' rig weight 0.00 over 4 s, set-position arms 1.00; seen from behind the goal.

@@ -423,7 +423,8 @@
     const kickClip = fig.kk && A && A.act.kick_pass_r && (fig.kk.amp || 1) >= 0.99;   // a full kick plays its clip
     const slideClip = A && A.act.slide_loop;                                        // the slide plays its clips
     const extra = A && A.act.jump_loop;                                             // headers / stumbles / celebrations too
-    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || (fig.hd && !extra) || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (!extra && (W.stumble || 0) > 0.05) || (!(A && A.act.cele) && (W.cele || 0) > 0.05));
+    // G5.111: a keeper is on the clips too; the rig only for his dive and with the ball in his hands
+    return !!((fig.keeper && (fig.dv || fig.hadBall || !A || !A.act.jump_loop)) || (fig.kk && !kickClip) || fig.rc || (fig.hd && !extra) || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (!extra && (W.stumble || 0) > 0.05) || (!(A && A.act.cele) && (W.cele || 0) > 0.05));
   }
   // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
   // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
@@ -641,6 +642,20 @@
         bone.quaternion.copy(tq.multiply(tw2));
         bone.updateMatrixWorld(true);
       }
+    }
+    // G5.111: the keeper's set position — the rig's arms (forward, elbows bent) over the clip, standing
+    A.ka = (A.ka || 0) + (((fig.keeper && s < 1.5) ? 1 : 0) - (A.ka || 0)) * Math.min(1, dt * 6);
+    if (A.ka > 0.01 && A.ov < 0.99) {
+      const sv = A.savedK || (A.savedK = []);
+      b.map.forEach((mm, i) => { (sv[i] || (sv[i] = new THREE.Quaternion())).copy(mm.bone.quaternion); });
+      const pp = b.pelvisBone.position.clone();
+      retarget(fig);
+      b.map.forEach((mm, i) => {
+        if (/^(clavicle|upperarm|lowerarm|hand)_/.test(mm.bone.name)) mm.bone.quaternion.copy(sv[i].slerp(mm.bone.quaternion, A.ka));
+        else mm.bone.quaternion.copy(sv[i]);
+      });
+      b.pelvisBone.position.copy(pp);
+      b.model.updateMatrixWorld(true);
     }
     if (FOOTLOCK && A.feet.length) footLock(A, dt);
     // cross-fade to the rig for the overlays
