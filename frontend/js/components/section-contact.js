@@ -107,6 +107,11 @@
       if (reg) list.push({ key: 'register', label: cp('msg_register', '📝 Register'), subject: reg.subject, body: reg.body });
     }
 
+    // 🏃 Practice criteria (mig 1342): men's starter criterion — written
+    // when sent from his next game he is Going to, his attendance and his
+    // Going answers to the practices left (short / projected / met).
+    if (section === 'mens' && ctx.playerId && ctx.screen && ctx.screen.auth) list.push(practiceCriteriaMessage(ctx.screen, ctx.playerId));
+
     // Sign-in and welcome are minted for a person — none for a contact
     // FH has no person row for (the youth-roster parent from LA).
     if (ctx.playerId) list.push(ContactPopup.signInMessage());
@@ -115,6 +120,33 @@
 
     const seen = new Set();
     return list.filter(m => m && !seen.has(m.key) && seen.add(m.key));
+  }
+
+  // 🏃 Practice criteria (mig 1342, owner 2026-11-13: "a special message
+  // for those that set going but are not projected to meet criteria and
+  // who are projected … a reminder for them to follow through").  The
+  // server (POST /api/practice-criteria/message) picks the words by where
+  // he stands and lists every practice day; his sign-in link lands on the
+  // game's Game Center.  An error (not Going to a game) shows in the popup.
+  function practiceCriteriaMessage(screen, playerId) {
+    return {
+      key: 'practice_criteria',
+      label: cp('msg_practice_criteria', '🏃 Practice criteria'),
+      purpose: `practice_criteria:${playerId}`,
+      copyOk: true,
+      resolve: async (r, channel) => {
+        const res = await screen.auth.fetch('/api/practice-criteria/message', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person_id: playerId, channel,
+            contact: channel === 'email' ? (r.email || '') : channel === 'sms' ? (r.phone || '') : '' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        const href = channel === 'email' ? (data.gmail_href || data.mailto_href) : channel === 'sms' ? data.sms_href : '';
+        if (channel !== 'copy' && !href) throw new Error('No message came back');
+        return { ...data, href };
+      },
+    };
   }
 
   // 🎟 Call-up (mig 1068, owner 2026-11-05: "why is the call up not just
@@ -179,5 +211,5 @@
     });
   }
 
-  window.SectionContact = { load, messages, sectionOf, isYouth, welcomeMessage, callupMessage, callupButton };
+  window.SectionContact = { load, messages, sectionOf, isYouth, welcomeMessage, callupMessage, callupButton, practiceCriteriaMessage };
 })();

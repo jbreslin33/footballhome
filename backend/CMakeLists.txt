@@ -58,6 +58,7 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/PersonHealth.cpp
     src/models/PersonTeams.cpp
+    src/models/StarterCriteria.cpp
     src/models/KitBoard.cpp
     src/models/FieldPlan.cpp
     src/models/FormationTactics.cpp
@@ -142,6 +143,7 @@ set(SOURCES
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
     src/controllers/PersonTeamsController.cpp
+    src/controllers/PracticeCriteriaController.cpp
     src/controllers/JobsController.cpp
     src/controllers/CoachScheduleController.cpp
     src/controllers/AwardsController.cpp
