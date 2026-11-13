@@ -60,6 +60,14 @@
   const CUTS = ['cut_l', 'cut_r'];
   const CUT_AT = 0.4, CUT_RATE = 2.0, CUT_SPEED = 1.8, CUT_COOL = 0.8;
   const USE_CUTS = new URLSearchParams(location.search).get('cuts') !== '0';
+  // G5.109: the slide tackle — Quaternius UAL 2 Slide_Start / Slide_Loop / Slide_Exit (CC0, same rig). The
+  // engine's "down in a tackle" flag (bit 2) lasts 0.17 s (won) or 0.5 s (missed) after the lunge: on it the
+  // dive plays from SLIDE_FROM at SLIDE_RATE×, the loop holds while it lasts, then the exit (0.5 s) gets him
+  // up. ?slides=0 = the rig's slide.
+  const URL_SLIDE = 'game-assets/ual/slide.glb?v=20261113s';
+  const SLIDES = { slide_start: 'Slide_Start', slide_loop: 'Slide_Loop', slide_exit: 'Slide_Exit' };
+  const SLIDE_FROM = 0.35, SLIDE_RATE = 1.8;
+  const USE_SLIDES = new URLSearchParams(location.search).get('slides') !== '0';
   const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
   const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
@@ -406,7 +414,8 @@
   function overlayOn(fig, A) {
     const W = fig.w || {};
     const kickClip = fig.kk && A && A.act.kick_pass_r && (fig.kk.amp || 1) >= 0.99;   // a full kick plays its clip
-    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || fig.hd || fig.dv || (W.slide || 0) > 0.05 || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
+    const slideClip = A && A.act.slide_loop;                                        // the slide plays its clips
+    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || fig.hd || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
   }
   // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
   // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
@@ -469,6 +478,19 @@
     }
     if (A.kick) { A.kick.t += dt; if (A.kick.t >= A.act[A.kick.name].getClip().duration) A.kick = null; }
     A.kw = (A.kw || 0) + ((A.kick ? 1 : 0) - (A.kw || 0)) * Math.min(1, dt * (A.kick ? 18 : 6));
+    // G5.109: the slide tackle — dive, hold, get up
+    if (A.act.slide_loop) {
+      const down = !!(((ctx && ctx.flags) || 0) & 4);
+      if (down && (!A.sl || A.sl.ph === 'exit')) A.sl = { ph: 'start', t: SLIDE_FROM * A.act.slide_start.getClip().duration };
+      if (A.sl) {
+        const d = (k) => A.act[k].getClip().duration;
+        if (A.sl.ph === 'start') { A.sl.t += dt * SLIDE_RATE; if (A.sl.t >= d('slide_start')) A.sl = { ph: 'loop', t: 0 }; }
+        else if (A.sl.ph === 'loop') { A.sl.t = (A.sl.t + dt) % d('slide_loop'); }
+        if (!down && A.sl.ph !== 'exit' && !(A.sl.ph === 'start')) A.sl = { ph: 'exit', t: 0 };
+        else if (A.sl.ph === 'exit') { A.sl.t += dt; if (A.sl.t >= d('slide_exit')) A.sl = null; }
+      }
+      A.slw = (A.slw || 0) + ((A.sl ? 1 : 0) - (A.slw || 0)) * Math.min(1, dt * (A.sl ? 20 : 8));
+    }
     // G5.108: a sharp turn at speed → a cut (his travel's turn rate, smoothed over ~0.1 s; rate > 0 = to his left)
     if (A.act.cut_l) {
       const va = Math.atan2(vx, vy);
@@ -490,7 +512,7 @@
     const tm = dirOK ? smooth((s - 3.0) / 1.5) : 1;
     const back = !dirOK && Math.abs(rel) > 1.9 && s < 5.5;   // no CMU clips: the old reversed forward clips
     const dirSign = back ? -1 : 1;
-    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? Math.max(tm, A.cw || 0) : 1) * (1 - (A.kw || 0));
+    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? Math.max(tm, A.cw || 0) : 1) * (1 - (A.kw || 0)) * (1 - (A.slw || 0));
     A.yawOff += wrapA(want - A.yawOff) * Math.min(1, dt * 8);
     b.model.rotation.y = proto.yaw + A.yawOff;
     // the stride: players.js's gait phase (real cadence by speed), forwards or back
@@ -524,6 +546,10 @@
       for (const k of Object.keys(w)) w[k] *= 1 - A.kw;
       if (A.kick) w[A.kick.name] = A.kw;
     }
+    if ((A.slw || 0) > 0.001) {                            // the slide over everything
+      for (const k of Object.keys(w)) w[k] *= 1 - A.slw;
+      if (A.sl) w['slide_' + A.sl.ph] = A.slw;
+    }
     if (FORCE && A.act[FORCE]) { for (const k of Object.keys(w)) w[k] = 0; w[FORCE] = 1; }
     A.idleT = (A.idleT + dt) % A.act.idle.getClip().duration;
     const cph = A.cph || (A.cph = {});
@@ -532,6 +558,8 @@
     for (const [k, a] of Object.entries(A.act)) {
       a.setEffectiveWeight(w[k] || 0);
       if (k === 'idle') a.time = A.idleT;
+      else if (k in SLIDES) a.time = A.sl && 'slide_' + A.sl.ph === k ? Math.min(A.sl.t, a.getClip().duration - 1e-3)
+                                                                       : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (CUTS.includes(k)) a.time = A.cut && A.cut.name === k ? Math.min(A.cut.t, a.getClip().duration - 1e-3)
                                                                      : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (KICKS.includes(k)) a.time = A.kick && A.kick.name === k ? Math.min(A.kick.t, a.getClip().duration - 1e-3)
@@ -664,6 +692,19 @@
         for (const k of CUTS) out[k] = g.animations.find((x) => x.name === k);
       return out;
     }).catch((e) => { console.warn('bodies: CMU clips failed', e); return out; }))
+      .then((out) => (!out || !USE_SLIDES) ? out : loader.loadAsync(URL_SLIDE).then((g) => {
+        for (const [k, n] of Object.entries(SLIDES)) {
+          const c = g.animations.find((x) => x.name === n);
+          if (!c) { console.warn('bodies: slide clip missing', n); return out; }
+        }
+        for (const [k, n] of Object.entries(SLIDES)) {
+          const c = g.animations.find((x) => x.name === n);
+          c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
+          for (const t of c.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
+          out[k] = c;
+        }
+        return out;
+      }).catch((e) => { console.warn('bodies: slide clips failed', e); return out; }))
       .catch((e) => { console.warn('bodies: clips failed', e); return null; });
     Promise.all(URL_HAIR.map((u) => loader.loadAsync(u).then((h) => {
       let m = null; h.scene.traverse((o) => { if (o.isMesh && !m) m = o; });

@@ -9191,3 +9191,19 @@ the only true cuts.
 - 5 cuts and 4 kicks played.
 - Lowest toe during cuts 2.6 cm med (grounded).
 - Player updates 3.3 ms a frame; no console errors.
+
+### 8.210 G5.109 — the slide tackle from a clip (viewer only, `?bodies=anim`)
+
+**Source.** Quaternius UAL 2 Standard (CC0, same rig): `Slide_Start` 0.83 s (pelvis 0.83 → 0.05 m),
+`Slide_Loop` 2.0 s (on the turf), `Slide_Exit` 0.5 s (back up). In `ual/slide.glb`, 412 KB.
+
+**Timing.** The engine's "down in a tackle" flag (snapshot bit 2) lasts kTackleWinRecovery 5 ticks (0.17 s) or
+kTackleMissRecovery 15 (0.5 s), after the lunge.
+- On the flag the dive plays from 35% at 1.8× (~0.3 s).
+- The loop holds while the flag stays.
+- When it clears, the exit gets him up.
+- Weight in at 20/s; the rig's slide overlay no longer fires. `?slides=0` = the rig.
+
+**Measured.** The flag injected for 0.5 s on one live player: dive 0-0.29 s, loop to 0.54 s, exit to 1.08 s,
+faded out by ~1.6 s. Real tackles are rare (13 a team-match in the harness, one every 3-4 min of a live match):
+none came in a 30 s live watch.

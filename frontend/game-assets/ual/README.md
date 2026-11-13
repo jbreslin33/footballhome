@@ -23,3 +23,9 @@ The data used in this project was obtained from mocap.cs.cmu.edu. The database w
 NSF EIA-0196217. CMU: "This dataset of motions is free for all uses … You may include this data in
 commercially-sold products, but you may not resell this data directly, even in converted form"
 (mocap.cs.cmu.edu, read 2026-11-13).
+
+## `slide.glb` — Quaternius "Universal Animation Library 2" Standard (CC0, G5.109)
+
+`Slide_Start`, `Slide_Loop` and `Slide_Exit` from the pack's `Unreal-Godot/UAL2_Standard.glb`, trimmed by
+`game/scripts/trim_ual_clips.py`. Same rig as the body. https://quaternius.itch.io/universal-animation-library-2,
+CC0 1.0 (public domain dedication).
