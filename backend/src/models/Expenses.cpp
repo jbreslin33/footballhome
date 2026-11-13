@@ -241,7 +241,8 @@ json Expenses::projection(int clubId) {
             SELECT pl.plan_id, pl.entry_id, pl.team_id, pl.team, pl.league, pl.season, pl.category, c.label AS category_label,
                    pl.fee_kind, pl.fee_label, pl.unit, u.label AS unit_label, pl.rate, pl.quantity, pl.proposed, pl.is_assumed, pl.note,
                    COALESCE(e.budget_scope, cash_flow_team_scope(pl.team_id), 'club') AS scope, sc.label AS scope_label,
-                   t.club_section_id, s.end_date::text AS season_end,
+                   t.club_section_id, s.start_date::text AS season_start, s.end_date::text AS season_end, e.status AS entry_status,
+                   EXISTS (SELECT 1 FROM team_season_installments ti WHERE ti.entry_id = e.id) AS has_installments,
                    EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy
               FROM team_fee_plan_lines pl
               JOIN team_fee_plans p ON p.id = pl.plan_id
@@ -271,7 +272,24 @@ json Expenses::projection(int clubId) {
                                    {"label", str(r, "fee_label")}, {"unit", str(r, "unit")}, {"unit_label", str(r, "unit_label")},
                                    {"rate", num(r, "rate")}, {"quantity", num(r, "quantity")}, {"amount", num(r, "proposed")},
                                    {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
-            if (kLeagueMoney.count(category) || r["by_policy"].as<bool>()) continue;
+            if (r["by_policy"].as<bool>()) continue;
+            const double total = num(r, "proposed");
+            // League money with no installments yet, and anything left on an
+            // entry we are out of (mig 1322: "we lost … we still owe money"):
+            // owed now, or when the season starts if that is later.
+            const bool out_ = str(r, "entry_status") == "eliminated";
+            if ((kLeagueMoney.count(category) && !r["has_installments"].as<bool>()) || (out_ && !kLeagueMoney.count(category))) {
+                if (total == 0) continue;
+                Months m; const std::string ym = monthAt(std::max(nowIdx, monthIndex(monthOf(str(r, "season_start"))))); add(m, ym, total, 0); widen(ym);
+                if (yearEndIdx >= 0 && monthIndex(ym) > yearEndIdx) continue;
+                roll(sectionId, m);
+                out["plan_cash"].push_back({{"scope", scope}, {"category", category}, {"category_label", str(r, "category_label")},
+                                            {"label", str(r, "fee_label") + " — " + str(r, "league")}, {"assumed", r["is_assumed"].as<bool>()},
+                                            {"hint", str(r, "fee_label") + ": " + usd(total) + (out_ ? " owed (out of the competition)" : " owed, not scheduled")},
+                                            {"by_month", monthsJson(m)}, {"totals", totals(m)}});
+                continue;
+            }
+            if (kLeagueMoney.count(category)) continue;   // paid by its installments below
             // per-game costs over the home games still ahead
             const double rate = num(r, "rate"), qty = num(r, "quantity");
             Months m; const auto it = homeGamesAhead.find(team);
