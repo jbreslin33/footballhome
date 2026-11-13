@@ -9275,3 +9275,20 @@ capsules too, so its own frames were not usable):
   as the engine's contact came (clip contact 0.60).
 - First touches armed 0.58-0.65 s ahead waited 0.38-0.45 s and then played onto the ball.
 - No console errors.
+
+### 8.215 G5.114 — two marking trials in their build-up, neither shipped (harness only, no code kept)
+
+Seed 1000 / 2000, 8 matches each, against a fresh baseline (3+ options 35-52 64.8 / 66.1%, real 43.7; 52-70
+66.6 / 67.6, real 40.9; their CB free from the man on the ball 52+ 58 / 60%, real 45).
+1. §8.205 addendum's open run, looser marking of their deep men (mark_r_3 6 → 10, mark_d_3 4 → 5.5): nothing
+   moved (options ±1, free shares ±2). Shots 10.6 / 12.3 → 9.6 / 10.3.
+2. Forwards (AM / WIDE / ST) mark too, only their men 52 m+ off our goal, within 8 m of the forward's spot,
+   1.5 or 2.5 m goal-side (temporary physics.block.mark_fwd_r / _d). Options 35-52 down 4-6 points (58.2-61.7)
+   but 70+ up 2-5 (64-67) and 0-18 up; their CB freer (61-63%), our nearest to him 10.4 → 10.9 m (real 8.1):
+   the forwards took their midfielders, not their CBs. Our ST on a man 17 → 26-29% (real 20).
+
+Read off PRESS SHAPE (their carrier pressed, ball 52+): our whole block stands 3-6 m deeper than real (CB 37.5
+v 42.5, DM 48.0 v 54.1, ST 64.5 v 69.6 off our line, the ball 66.7 v 69.6); our ST 11.6 m from the ball (15.3)
+— real strikers stay high on their CBs while the ball is with a full-back or midfielder, ours drop toward it.
+G5.102's forwards +3 m and these trials don't change that. **Next:** measure it straight — real ST / AM
+distance to the nearest CB of theirs and to the ball, by who has it (their CB / FB / DM), ours the same.
