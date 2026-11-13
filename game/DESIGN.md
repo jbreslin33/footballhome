@@ -9055,3 +9055,10 @@ goldens as G5.102; tests 22/22.
 for the ball than real (48.0 m off our line v 54.1, ball 66.7 v 69.6), CBs 2.1 m. Our men who aren't
 marking stand off the free men (7.4 v 6.2 m). Measure real defenders' distance to the nearest free
 attacker by role and band, ours the same, then the block's depth by role for their ball in midfield.
+
+**Addendum (G5.104, harness only).** SETTLED SHAPE BY THE BALL'S SPEED now prints every band to 100 m, with real
+rows from `benchmarks_tracking_lag.py` for 50-100. Two pacing trials, seed 1000, neither shipped:
+- physics.body.shape_tau_back_s 2.5 → 4 (the same ease back as forward): CB / DM about 0.8 m higher,
+  40-50 coming 5+ 1 m nearer real; 3+ options at 35-52 m 64.8 → 62.3% (43.7).
+- physics.body.shape_max_mps 4.5 → 6: no change.
+Running: looser marking of their deep men (mark_r_3 10, mark_d_3 5.5; and band 2).

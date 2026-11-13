@@ -150,7 +150,7 @@ struct Stats {
     long fj_t = 0, fj_why[5] = {}, fe_why[6] = {}; std::vector<double> fj_ten, fj_end, fj_new, fj_old, fj_mv, fe_ten, fe_new, fe_mv;   // §8.164: the front man's tenure (benchmarks_tracking_frontjob.py)
     long fm_n[10] = {}, fm_w1[10] = {}, fm_w2[10] = {}, fm_w4[10] = {}, fm_past[10] = {}, fm_r[10][ai::kRoleCount] = {}; double fm_gap[10] = {}, fm_gap2[10] = {}, fm_dy[10] = {};   // §8.144: the front man v their line
     long pl_n[5][4] = {}; long pl_k[5][4][ai::kRoleCount] = {}; double pl_s[5][4][ai::kRoleCount] = {}, pl_line[5][4] = {}, pl_front[5][4] = {};   // §8.143: the side in possession, the same split
-    long dl_n[5][4] = {}; long dl_k[5][4][ai::kRoleCount] = {}; double dl_s[5][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
+    long dl_n[10][4] = {}; long dl_k[10][4][ai::kRoleCount] = {}; double dl_s[10][4][ai::kRoleCount] = {};   // §8.142: settled shape by band x the ball's speed at them over 1 s
     long dp_n[2][10][ai::kRoleCount] = {}; double dp_s[2][10][ai::kRoleCount] = {};   // §8.131: shape settled (6 s+ since lost) / transition   // holders in danger by metres off their spot: steps, 5+ back   // the ball inside 40 m of their goal / further: steps, 5+ back / up / across   // 5+ m/s: by why × back / up / across, by role
 };
 
@@ -1502,7 +1502,7 @@ int main(int argc, char** argv) {
                 double dm = 0, pm = 0, back = -1e9, front = 1e9; int dn = 0, pn = 0;
                 // §8.142: the ball's speed at the defenders' line over the last second (5 ring entries back)
                 const int r1 = static_cast<int>(((k / 6) + 11) % 16);
-                const bool lag_ok = bd < 5 && rk[r1] == static_cast<long>(k) - 30 && (static_cast<long>(k) - rc_k) >= 180;
+                const bool lag_ok = bd < 10 && rk[r1] == static_cast<long>(k) - 30 && (static_cast<long>(k) - rc_k) >= 180;
                 const double vcome = lag_ok ? (hx - rbx[r1] * sg) - tl : 0.0;
                 const int lvb = vcome < -2 ? 0 : vcome < 2 ? 1 : vcome < 5 ? 2 : 3;
                 if (lag_ok) ++S.dl_n[bd][lvb];
@@ -2885,15 +2885,20 @@ int main(int argc, char** argv) {
         }
     }
     {   // §8.142: real DFL, benchmarks_tracking_lag.py (CB FB DM/CM AM WIDE ST)
-        static const double kReal[5][4][6] = {
+        static const double kReal[10][4][6] = {
             {{6.3, 8.7, 12.0, 26.2, 17.1, 38.0}, {7.7, 10.4, 13.8, 27.4, 19.3, 39.0}, {9.9, 13.7, 18.2, 32.5, 24.7, 40.6}, {11.8, 14.9, 20.4, 32.6, 26.1, 43.7}},
             {{9.3, 12.1, 15.1, 23.9, 19.0, 35.5}, {11.6, 14.5, 17.6, 28.5, 23.8, 37.4}, {14.7, 18.5, 22.0, 35.8, 28.3, 43.1}, {17.2, 20.8, 25.8, 37.2, 31.9, 46.7}},
             {{14.0, 16.1, 19.5, 26.1, 23.3, 37.3}, {17.0, 18.9, 23.0, 30.7, 26.6, 40.2}, {19.8, 22.3, 27.3, 37.7, 32.1, 47.4}, {23.5, 26.5, 33.0, 43.8, 38.3, 52.4}},
             {{19.3, 21.5, 26.0, 33.6, 30.0, 41.3}, {22.8, 25.3, 30.8, 39.1, 35.2, 47.1}, {25.4, 28.6, 34.7, 42.9, 38.6, 51.5}, {29.8, 32.7, 40.0, 49.8, 45.2, 57.8}},
-            {{25.7, 26.9, 32.5, 41.1, 36.4, 47.8}, {27.5, 29.0, 35.8, 44.4, 39.2, 50.2}, {30.8, 32.8, 39.0, 48.2, 43.9, 55.1}, {35.1, 38.5, 45.7, 56.0, 51.0, 62.7}}};
+            {{25.7, 26.9, 32.5, 41.1, 36.4, 47.8}, {27.5, 29.0, 35.8, 44.4, 39.2, 50.2}, {30.8, 32.8, 39.0, 48.2, 43.9, 55.1}, {35.1, 38.5, 45.7, 56.0, 51.0, 62.7}},
+            {{30.9, 33.2, 39.2, 48.6, 42.9, 53.7}, {32.7, 34.9, 41.4, 51.0, 45.6, 56.6}, {35.3, 38.4, 45.0, 53.7, 49.1, 59.8}, {39.8, 42.9, 51.1, 61.9, 56.7, 67.8}},   // G5.104: 50-100 m
+            {{35.9, 38.4, 44.9, 54.8, 49.4, 59.2}, {36.8, 39.1, 46.1, 56.2, 50.7, 61.1}, {39.6, 42.3, 50.0, 59.5, 54.5, 64.7}, {43.4, 46.8, 55.5, 66.9, 61.6, 72.8}},
+            {{40.0, 42.5, 50.3, 61.1, 55.3, 65.4}, {41.6, 44.6, 52.7, 62.7, 57.4, 67.6}, {43.8, 46.7, 55.4, 65.2, 60.2, 70.5}, {46.4, 49.5, 59.0, 72.3, 65.8, 77.8}},
+            {{43.2, 46.0, 54.9, 67.6, 60.9, 72.4}, {44.9, 47.5, 56.5, 70.3, 62.1, 73.7}, {46.6, 49.7, 59.6, 71.5, 65.4, 77.3}, {49.5, 52.1, 62.8, 77.4, 71.5, 84.1}},
+            {{47.6, 50.5, 61.3, 77.4, 68.8, 82.0}, {49.7, 53.2, 61.9, 77.2, 71.3, 82.9}, {50.8, 53.4, 63.8, 80.5, 72.3, 86.1}, {52.1, 54.9, 65.0, 81.5, 74.5, 89.6}}};
         static const char* kVb[4] = {"away", "still", "coming 2-5", "coming 5+"};
         std::printf("SETTLED SHAPE BY THE BALL'S SPEED AT THEM over 1 s (benchmarks_tracking_lag.py; real DFL in brackets): band, ball, frames | CB FB DM/CM AM WIDE ST\n");
-        for (int bd = 0; bd < 5; ++bd)
+        for (int bd = 0; bd < 10; ++bd)
             for (int vb = 0; vb < 4; ++vb) {
                 if (S.dl_n[bd][vb] < 20) continue;
                 std::printf("  %3d-%-3d %-11s %6ld |", bd * 10, bd * 10 + 10, kVb[vb], S.dl_n[bd][vb]);
