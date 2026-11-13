@@ -9239,3 +9239,17 @@ outfielder: idle, walk, side-steps, the shuffle across his goal, kicks.
   clip. Only clavicle / upper arm / forearm / hand take the rig's turn; everything else and the pelvis stay
   the clip's. Eased at 6/s.
 - Checked live: both keepers' rig weight 0.00 over 4 s, set-position arms 1.00; seen from behind the goal.
+
+### 8.213 G5.112 — kick clips by the engine's kick kind (wire + viewer, `?bodies=anim`)
+
+Until now the viewer picked a kick clip by the ball's speed in the 3 ticks after the strike (power > 0.45 =
+16 m/s+). That reading is noisy: short passes measured 0.74-0.76 (≈22 m/s) live, so a feet-to-feet ball swung
+like a shot.
+- Engine: `World::lastKickKind(slot)` keeps what his last kick was (0 none / short pass, 1 ground kick,
+  2 lofted, 3 shot), set at the strike next to the foot (G5.79). Snapshot player `flags` bits 6-7
+  (PROTOCOL.md, additive; older clients ignore them).
+- Viewer: renderer.js reads it from the first snapshot after the strike → `kick(…, kind)`.
+  bodies.js: shot or lofted → `kick_power`, short pass → `kick_pass`, ground kick (drive or long pass) by
+  pace as before. No kind (an older server) → by pace.
+- Checked live (Chrome, 65 s): kinds arrived for 19 kicks (6 short, 10 ground, 3 lofted, 0 shots — rare);
+  every clip matched its kind; no console errors. Tests 22/22.

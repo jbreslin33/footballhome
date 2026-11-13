@@ -393,7 +393,8 @@ net::Bytes GameServer::buildSnapshotFrame() const {
             (slot_owner_.count(i) ? 1 : 0) | (world_.isKeeper(i) ? 2 : 0) |
             (p.recovery_kind == 1 ? 4 : 0) | (p.recovery_kind == 2 ? 8 : 0) |
             (world_.takingThrow(i) ? 16 : 0) |   // bit4 (G5.2): ball in both hands, overhead
-            (world_.lastKickFoot(i) ? 32 : 0));  // bit5 (G5.79): his last kick was off foot 1 (his left)
+            (world_.lastKickFoot(i) ? 32 : 0) |  // bit5 (G5.79): his last kick was off foot 1 (his left)
+            ((world_.lastKickKind(i) & 3) << 6)); // bits6-7 (G5.112): his last kick's kind
         {   // 2.3 (G5.77): his feet
             const core::FootState& ft = world_.feet(i);
             snap.feet_down = static_cast<std::uint8_t>((ft.down[0] ? 1 : 0) | (ft.down[1] ? 2 : 0));

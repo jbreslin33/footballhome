@@ -500,7 +500,8 @@
           // snapshot after the strike.
           const post = buf.find((e) => e.tick > k.tick);
           const pf = post && post.snap.players && post.snap.players[k.slot];
-          f.kick(lead, power, undefined, pf ? ((pf.flags & 32) ? 1 : 0) : undefined);
+          // G5.112: his kick's kind (bits 6-7: 0 short pass, 1 ground kick, 2 lofted, 3 shot).
+          f.kick(lead, power, undefined, pf ? ((pf.flags & 32) ? 1 : 0) : undefined, pf ? (pf.flags >> 6) & 3 : undefined);
         }
         // Ball first: every figure looks at it.
         if (this.ballMesh && a.snap.ball && b.snap.ball) {

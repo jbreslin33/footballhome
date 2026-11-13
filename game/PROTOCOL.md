@@ -174,7 +174,9 @@ feet (appended in 2.3, G5.77), per player in slot order:
 - `flags`: bit0 = human-controlled; bit1 = goalkeeper; bit2 = down in
   a tackle (sliding / recovering); bit3 = dispossessed, off balance
   (all 1.4 additive, 2026-10-22 — older clients ignore them); bit4 = taking
-  a throw-in, ball in both hands overhead (G5.2, additive); the rest reserved.
+  a throw-in, ball in both hands overhead (G5.2, additive); bit5 = his last
+  kick was off his left foot (G5.79); bits6-7 = his last kick's kind, 0 none /
+  short pass, 1 ground kick, 2 lofted, 3 shot (G5.112, additive).
 - 22 players ≈ 730 B/frame ≈ 22 KB/s at 30 Hz — comfortably inside the u16
   envelope and the phone budget. Delta-encoding is a later optimization,
   never a v1 requirement.

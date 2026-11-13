@@ -54,7 +54,7 @@ World::World(SlotIndex player_count, Fixed64 max_speed,
 // seed until the roster carries real feet.
 void World::assignFeet() {
     const std::size_t n = players_.size();
-    strong_.assign(n, 0); kick_foot_.assign(n, 0); weakp_.assign(n, Fixed64::fromFraction(127, 1000));
+    strong_.assign(n, 0); kick_foot_.assign(n, 0); kick_kind_.assign(n, 0); weakp_.assign(n, Fixed64::fromFraction(127, 1000));
     static const int kQ[7][2] = {{0, 20}, {100, 51}, {250, 89}, {500, 127}, {750, 173}, {900, 242}, {1000, 400}};   // (quantile, share) permille
     for (SlotIndex i = 0; i < n; ++i) {
         const Fixed64 u1 = (detNoise(match_seed_, 0, i, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
@@ -493,6 +493,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             }
             if (kicks_on_ && !heldRestart() && !isKeeper(kicker) && kicker < kick_foot_.size()) {
                 kick_foot_[kicker] = kfoot;
+                kick_kind_[kicker] = act == Action::Shot ? 3 : act == Action::LoftedKick ? 2 : act == Action::GroundKick ? 1 : 0;
                 last_kick_weak_ = kfoot != strong_[kicker];
             }
             // Direction: live desire when pushing a direction, else facing.

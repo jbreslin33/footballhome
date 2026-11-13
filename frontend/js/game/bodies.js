@@ -482,7 +482,10 @@
     const K = fig.kk;
     if (A.act.kick_pass_r && K && (K.amp || 1) >= 0.99 && K !== A.kickSrc) {
       A.kickSrc = K;
-      A.kick = { name: (K.power > KICK_POWER ? 'kick_power_' : 'kick_pass_') + (K.leg === 1 ? 'l' : 'r'),
+      // G5.112: by the engine's kick — a shot or a lofted ball swings hard, a short pass doesn't; a ground
+      // kick (a drive or a long pass) by its pace. No kind (an older server): by the ball's speed.
+      const hard = K.kind === 3 || K.kind === 2 ? true : K.kind === 0 ? false : K.power > KICK_POWER;
+      A.kick = { name: (hard ? 'kick_power_' : 'kick_pass_') + (K.leg === 1 ? 'l' : 'r'),
                  t: Math.max(0, KICK_CONTACT - (K.contact - K.t)) };
     }
     if (A.kick) { A.kick.t += dt; if (A.kick.t >= A.act[A.kick.name].getClip().duration) A.kick = null; }

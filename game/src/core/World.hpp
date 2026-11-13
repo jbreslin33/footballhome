@@ -157,6 +157,8 @@ public:
     void configureKicks(const ModelParams& p);
     std::uint8_t strongFoot(SlotIndex s) const { return s < strong_.size() ? strong_[s] : 0; }
     std::uint8_t lastKickFoot(SlotIndex s) const { return s < kick_foot_.size() ? kick_foot_[s] : 0; }
+    // G5.112: what his last kick was — 0 none / short pass, 1 ground kick, 2 lofted, 3 shot (viewer's clip pick).
+    std::uint8_t lastKickKind(SlotIndex s) const { return s < kick_kind_.size() ? kick_kind_[s] : 0; }
     bool lastKickWeak() const noexcept { return last_kick_weak_; }
     std::uint32_t lastKickWait() const noexcept { return last_kick_wait_; }   // ticks his last kick waited for reach + plant
     std::uint32_t kicksWaited() const noexcept { return kicks_waited_; }
@@ -399,7 +401,7 @@ private:
     std::uint64_t touch_due_owned_ = 0;
     math::Fixed64 kick_reach_ = math::Fixed64::one(), weak_deg_ = math::Fixed64::fromInt(3);
     std::int32_t kick_wait_max_ = 15;
-    std::vector<std::uint8_t> strong_, kick_foot_;
+    std::vector<std::uint8_t> strong_, kick_foot_, kick_kind_;
     std::vector<math::Fixed64> weakp_;
     std::uint32_t kicks_waited_ = 0, kick_wait_ticks_ = 0, kicks_cancelled_ = 0, last_kick_wait_ = 0;
     void assignFeet();

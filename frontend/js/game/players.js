@@ -470,11 +470,12 @@
     // default); the other leg plants.
     // amp < 1: a dribble touch (G5.78) — the same strike, small and quick.
     // foot (G5.79): the engine's kicking foot, 0 right / 1 left; else the ball's side.
-    kick(lead, power, amp, foot) {
+    // kind (G5.112): the engine's kick, 0 short pass / 1 ground kick / 2 lofted / 3 shot; undefined = unknown.
+    kick(lead, power, amp, foot, kind) {
       const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.4);   // 11/12: up to 0.4 s — a real back-swing
       const A = amp === undefined ? 1 : clamp(amp, 0.1, 1);
       this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1), amp: A,
-                  leg: foot === 0 || foot === 1 ? foot : (this.ballLocalX || 0) > 0.12 ? 1 : 0 };
+                  leg: foot === 0 || foot === 1 ? foot : (this.ballLocalX || 0) > 0.12 ? 1 : 0, kind };
       this.kk.end = this.kk.contact + (0.3 + 0.2 * this.kk.power) * (A < 1 ? 0.5 : 1);
     }
     // A first touch (renderer.js arms it as the ball reaches him): lead =
