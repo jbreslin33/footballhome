@@ -42,13 +42,18 @@
   const CLIP = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop' };
   // G5.106: CMU motion capture retargeted onto this body (game/scripts/retarget_cmu.py; README in ual/):
   // side-steps, a defensive shuffle (mirrored for the left) and a backward walk. ?cmu=0 leaves them out.
-  const URL_CMU = 'game-assets/ual/cmu_moves.glb?v=20261113g';   // bump with every rebuild
+  const URL_CMU = 'game-assets/ual/cmu_moves.glb?v=20261113k';   // bump with every rebuild
   const CMU = ['side_l', 'side_r', 'shuffle_l', 'shuffle_r', 'back'];
   const USE_CMU = new URLSearchParams(location.search).get('cmu') !== '0';
   const FORCE = new URLSearchParams(location.search).get('clip');   // ?clip=<name>: every man plays that one clip (a test)
   // each one's recorded speed along its direction (m/s, printed by retarget_cmu.py): its playback rate
   // follows his speed that way, 0.6-2× (DESIGN §8.207)
   const CMU_MPS = { side_l: 0.58, side_r: 0.48, shuffle_l: 3.10, shuffle_r: 3.10, back: 0.82 };
+  // G5.107: kicks — CMU 10_01 (a pass, toe 11.4 m/s) and 10_05 (a hit, 15.6 m/s), right foot, mirrored for the
+  // left; one shot each, the toe's peak speed (contact) KICK_CONTACT s in. ?kicks=0 = the rig's kick.
+  const KICKS = ['kick_pass_r', 'kick_pass_l', 'kick_power_r', 'kick_power_l'];
+  const KICK_CONTACT = 0.60, KICK_POWER = 0.45;
+  const USE_KICKS = new URLSearchParams(location.search).get('kicks') !== '0';
   const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
   const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
@@ -392,9 +397,10 @@
   const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   const UP = new THREE.Vector3(0, 1, 0), tw = new THREE.Quaternion(), tw2 = new THREE.Quaternion();
   const TWIST = [0.2, 0.2, 0.25, 0.2, 0.15];   // of the hips' turn given back, spine up to the head [FH]
-  function overlayOn(fig) {
+  function overlayOn(fig, A) {
     const W = fig.w || {};
-    return !!(fig.keeper || fig.kk || fig.rc || fig.hd || fig.dv || (W.slide || 0) > 0.05 || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
+    const kickClip = fig.kk && A && A.act.kick_pass_r && (fig.kk.amp || 1) >= 0.99;   // a full kick plays its clip
+    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || fig.hd || fig.dv || (W.slide || 0) > 0.05 || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
   }
   // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
   // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
@@ -447,7 +453,16 @@
     const sp = Math.hypot(vx, vy);
     const m = smooth((s - 0.25) / 0.6);
     // the overlays (kick, touch, header, dive, slide, stumble, celebrate, keeper): the rig
-    A.ov += ((overlayOn(fig) ? 1 : 0) - A.ov) * Math.min(1, dt * 12);
+    A.ov += ((overlayOn(fig, A) ? 1 : 0) - A.ov) * Math.min(1, dt * 12);
+    // G5.107: a full kick → its clip, timed so the clip's contact lands on the engine's
+    const K = fig.kk;
+    if (A.act.kick_pass_r && K && (K.amp || 1) >= 0.99 && K !== A.kickSrc) {
+      A.kickSrc = K;
+      A.kick = { name: (K.power > KICK_POWER ? 'kick_power_' : 'kick_pass_') + (K.leg === 1 ? 'l' : 'r'),
+                 t: Math.max(0, KICK_CONTACT - (K.contact - K.t)) };
+    }
+    if (A.kick) { A.kick.t += dt; if (A.kick.t >= A.act[A.kick.name].getClip().duration) A.kick = null; }
+    A.kw = (A.kw || 0) + ((A.kick ? 1 : 0) - (A.kw || 0)) * Math.min(1, dt * (A.kick ? 18 : 6));
     // where he goes against where he faces
     // rel > 0: going to his left (the model faces +z, its left is +x)
     const rel = sp > 0.3 ? wrapA(Math.atan2(vx, vy) - fig.yaw) : 0;
@@ -457,7 +472,7 @@
     const tm = dirOK ? smooth((s - 3.0) / 1.5) : 1;
     const back = !dirOK && Math.abs(rel) > 1.9 && s < 5.5;   // no CMU clips: the old reversed forward clips
     const dirSign = back ? -1 : 1;
-    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? tm : 1);
+    const want = (back ? wrapA(rel - Math.PI) : rel) * m * (1 - A.ov) * (dirOK ? tm : 1) * (1 - (A.kw || 0));
     A.yawOff += wrapA(want - A.yawOff) * Math.min(1, dt * 8);
     b.model.rotation.y = proto.yaw + A.yawOff;
     // the stride: players.js's gait phase (real cadence by speed), forwards or back
@@ -483,6 +498,10 @@
       w.side_l = d * wL * (1 - sh); w.shuffle_l = d * wL * sh;
       w.side_r = d * wR * (1 - sh); w.shuffle_r = d * wR * sh;
     } else for (const k of ['walk', 'jog', 'sprint']) w[k] = m * fw[k];
+    if (A.kw > 0.001) {                                    // the kick over everything else
+      for (const k of Object.keys(w)) w[k] *= 1 - A.kw;
+      if (A.kick) w[A.kick.name] = A.kw;
+    }
     if (FORCE && A.act[FORCE]) { for (const k of Object.keys(w)) w[k] = 0; w[FORCE] = 1; }
     A.idleT = (A.idleT + dt) % A.act.idle.getClip().duration;
     const cph = A.cph || (A.cph = {});
@@ -491,6 +510,8 @@
     for (const [k, a] of Object.entries(A.act)) {
       a.setEffectiveWeight(w[k] || 0);
       if (k === 'idle') a.time = A.idleT;
+      else if (KICKS.includes(k)) a.time = A.kick && A.kick.name === k ? Math.min(A.kick.t, a.getClip().duration - 1e-3)
+                                                                       : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (k in CMU_MPS) {
         const rate = Math.min(2, Math.max(0.6, along[k] / CMU_MPS[k]));
         cph[k] = ((cph[k] || 0) + dt * rate / a.getClip().duration) % 1;
@@ -613,6 +634,8 @@
         if (!c) { console.warn('bodies: CMU clip missing', k); return out; }
       }
       for (const k of CMU) out[k] = g.animations.find((x) => x.name === k);
+      if (USE_KICKS && KICKS.every((k) => g.animations.some((x) => x.name === k)))
+        for (const k of KICKS) out[k] = g.animations.find((x) => x.name === k);
       return out;
     }).catch((e) => { console.warn('bodies: CMU clips failed', e); return out; }))
       .catch((e) => { console.warn('bodies: clips failed', e); return null; });

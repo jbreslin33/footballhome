@@ -9144,3 +9144,26 @@ The shuffles loop worst: every burst in 78_28 / 78_30 / 102_27 speeds up or slow
 
 **Next.** A faster backpedal (2-3 m/s: the back walk is played up to 2×). Kicks from clips (CMU 10_01-06,
 11_01 "soccer - kick ball"). Turns and cuts (CMU 78 / 102: tight turns, feints, drives).
+
+### 8.208 G5.107 — kicks from CMU motion capture (viewer only, `?bodies=anim`)
+
+**Source.** CMU "soccer - kick ball" 10_01-10_06 and 11_01: all right-footed, toe peak 11.4-15.6 m/s (a pro's
+driven shot is ~20).
+
+**Clips.** Two, each cut 0.6 s before the toe's peak to 0.5 s after, one shot (`retarget_cmu.py`
+tmin < 0), mirrored for the left foot:
+- `kick_pass_r/l` from 10_01 (toe peak 11.4 m/s).
+- `kick_power_r/l` from 10_05 (15.6 m/s).
+
+**Timing** (`bodies.js`). The engine's kick (players.js `kick()`: contact, power, foot 0 right / 1 left) starts
+its clip at KICK_CONTACT − (time to contact), so the clip's contact lands on the engine's. It fades in at
+18/s and over everything else (the hips' turn-to-run off). Power > 0.45 (ball 16 m/s+) takes the hit.
+Dribble touches (amp < 1) stay the rig's. `?kicks=0` = the rig's kick.
+
+**Measured** (Chrome, live match):
+- 3 kicks in 15 s each played its clip, from 0.29-0.30 s in (the engine arms a kick ~0.3 s ahead).
+- Player-update time 4.8 ms a frame, frame 20.6 ms med (rig bodies: 4.7 / 19.9).
+- The frame safety net fired once at 66.6 ms under browser automation, a false alarm.
+
+Not yet: shots v passes by the engine's kick kind, not ball speed; the kick's approach steps (the clip's
+own run-up is cut at 0.6 s).

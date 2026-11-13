@@ -3,7 +3,9 @@
 skeleton (frontend/game-assets/ubc/body_male.gltf, bound in a T-pose), written as a glTF binary of
 animations only (G5.106, DESIGN §8.207).
 
-    python3 -I game/scripts/retarget_cmu.py <out.glb> <bvh dir> name:file:t0:t1[:tmin:tmax] ...
+    python3 -I game/scripts/retarget_cmu.py <out.glb> <bvh dir> name:file:t0:t1[:tmin:tmax[:mirror]] ...
+
+tmin < 0: a one-shot clip — the window t0-t1 as it is (a kick), not a loop; it does not close on frame 0.
 
 For each clip: the window t0-t1 s of the file; inside it, the loop is the pair of frames 0.25-1.6 s apart
 whose poses differ least (joint rotations, plus the hips' velocity). Each mapped joint's world rotation
@@ -75,7 +77,8 @@ def retarget(ours, b, t0, t1, tmin=0.25, tmax=1.6, mirror=0):
         d = sum(ang(qmul(qmul(qinv(Wa[H]), Wa[j]), qinv(qmul(qinv(Wb[H]), Wb[j])))) for j in J)
         return d
     best = None
-    for ia, fa in enumerate(frames):
+    if tmin < 0: best = (0.0, 0, len(frames) - 1)     # one shot (a kick): the window as it is, no loop
+    for ia, fa in (enumerate(frames) if tmin >= 0 else []):
         for ib in range(ia + 1, len(frames)):
             T = (frames[ib] - fa) * b.dt
             if T < tmin: continue
@@ -142,7 +145,7 @@ def retarget(ours, b, t0, t1, tmin=0.25, tmax=1.6, mirror=0):
     dl = qrot(qinv(ours.Bq[root]), (0.0, off, 0.0))
     out_p = [(p[0] + dl[0], p[1] + dl[1], p[2] + dl[2]) for p in out_p]
     return {'q': out_q, 'p': out_p, 'dur': T, 'n': len(loop) - 1, 'fwd': v_fwd, 'left': v_left, 'diff': d,
-            'span': ((loop[0]) * b.dt, loop[-1] * b.dt), 'ground': off}
+            'span': ((loop[0]) * b.dt, loop[-1] * b.dt), 'ground': off, 'loop': tmin >= 0}
 
 def write(path, ours, clips):
     buf = bytearray(); views = []; accs = []
@@ -159,12 +162,12 @@ def write(path, ours, clips):
         n = c['n']; times = [k * c['dur'] / n for k in range(n + 1)]
         ti = add(times, 'SCALAR'); ch = []; sm = []
         for nm, qs in c['q'].items():
-            qs = qs + [qs[0]]                                    # the loop closes on its first frame
+            qs = qs + [qs[0] if c.get('loop', True) else qs[-1]]   # a loop closes on its first frame
             for k in range(1, len(qs)):                          # keep the hemisphere continuous
                 if sum(a * b for a, b in zip(qs[k], qs[k - 1])) < 0: qs[k] = tuple(-x for x in qs[k])
             sm.append({'input': ti, 'output': add([(q[1], q[2], q[3], q[0]) for q in qs], 'VEC4'), 'interpolation': 'LINEAR'})
             ch.append({'sampler': len(sm) - 1, 'target': {'node': ours.idx[nm], 'path': 'rotation'}})
-        ps = c['p'] + [c['p'][0]]
+        ps = c['p'] + [c['p'][0] if c.get('loop', True) else c['p'][-1]]
         sm.append({'input': ti, 'output': add(ps, 'VEC3'), 'interpolation': 'LINEAR'})
         ch.append({'sampler': len(sm) - 1, 'target': {'node': ours.idx['pelvis'], 'path': 'translation'}})
         anims.append({'name': name, 'channels': ch, 'samplers': sm,
