@@ -244,7 +244,7 @@ json Expenses::projection(int clubId) {
                    t.club_section_id, s.start_date::text AS season_start, s.end_date::text AS season_end, e.status AS entry_status, e.is_option, e.note AS entry_note, t.short_label,
                    EXISTS (SELECT 1 FROM team_season_installments ti WHERE ti.entry_id = e.id) AS has_installments,
                    EXISTS (SELECT 1 FROM ref_fee_policies rp WHERE rp.league_fee_id = p.league_fee_id AND rp.is_active) AS by_policy,
-                   lf.players_included, t.dues_rank, y.label AS budget_year,
+                   lf.players_included, t.dues_rank, t.max_roster, y.label AS budget_year,
                    (now() AT TIME ZONE 'America/New_York')::date BETWEEN y.starts_on AND y.ends_on AS this_year
               FROM team_fee_plan_lines pl
               JOIN team_fee_plans p ON p.id = pl.plan_id
@@ -269,7 +269,8 @@ json Expenses::projection(int clubId) {
             const std::string category = str(r, "category"), scope = str(r, "scope");
             const bool thisYear = r["this_year"].as<bool>();
             if (thisYear) entries.insert(entry);
-            out["plan"].push_back({{"budget_year", str(r, "budget_year")}, {"dues_rank", r["dues_rank"].is_null() ? json(nullptr) : json(r["dues_rank"].as<int>())},{"plan_id", r["plan_id"].as<long long>()}, {"entry_id", entry}, {"team_id", team}, {"team", str(r, "team")},
+            out["plan"].push_back({{"budget_year", str(r, "budget_year")}, {"dues_rank", r["dues_rank"].is_null() ? json(nullptr) : json(r["dues_rank"].as<int>())},
+                                   {"max_roster", r["max_roster"].is_null() ? json(nullptr) : json(r["max_roster"].as<int>())},{"plan_id", r["plan_id"].as<long long>()}, {"entry_id", entry}, {"team_id", team}, {"team", str(r, "team")},
                                    {"league", str(r, "league")}, {"season", str(r, "season")}, {"scope", scope}, {"scope_label", str(r, "scope_label")},
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"category", category}, {"category_label", str(r, "category_label")}, {"fee_kind", str(r, "fee_kind")},

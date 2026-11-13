@@ -362,7 +362,8 @@ class FinancesScreen extends Screen {
     for (const b of general) { const k = b.section || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
     // Game coaching (mig 1332): each coaching policy under the pill — its
     // season game counts × pay per game (hours × rate).
-    for (const p of (this.expenses.ref_fees || []).filter(p => year === thisYear && p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && sc.section_code))) {
+    // a coaching policy on a section pill or a section-level group (Men's, Youth) — not a team's
+    for (const p of (this.expenses.ref_fees || []).filter(p => year === thisYear && p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && (sc.section_code || !sc.team_id)))) {
       const games = (p.seasons || []).reduce((a, x) => a + Number(x.expected || 0), 0); if (!games) continue;
       const k = p.section || ''; if (!bySection.has(k)) bySection.set(k, []);
       bySection.get(k).push({ label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, amount: p.rate, year_units: games, year_total: p.rate * games,
@@ -385,16 +386,28 @@ class FinancesScreen extends Screen {
     // dues payers"): the pill's total ÷ each count, against a year of dues.
     let per = '';
     const scopes = (this.flow || {}).scopes || [];
+    // the sections under a pill (Youth = Boys + Girls, mig 1341); a team pill climbs to its parent
+    const sectionsUnder = (code) => { const set = window.MoneyView ? MoneyView.inScopeOf(scopes, code) : new Set([code]); return scopes.filter(sc => set.has(sc.code) && sc.section_code).map(sc => sc.section_code); };
     let pill = scopes.find(sc => sc.code === this.scope);
-    while (pill && !pill.section_code && pill.parent) pill = scopes.find(sc => sc.code === pill.parent);
-    const heads = pill && pill.section_code ? (this.expenses.plan_heads || []).find(h => h.code === pill.section_code) : null;
+    while (pill && !sectionsUnder(pill.code).length && pill.parent) pill = scopes.find(sc => sc.code === pill.parent);
+    const codes = pill ? sectionsUnder(pill.code) : [];
+    const hs = (this.expenses.plan_heads || []).filter(h => codes.includes(h.code));
+    const heads = hs.length ? { code: codes.join('+'), codes, section_id: hs[0].section_id, active: hs.reduce((a, h) => a + Number(h.active), 0),
+                                current: hs.reduce((a, h) => a + Number(h.current), 0), full_house: hs.reduce((a, h) => a + Number(h.full_house), 0) } : null;
     const duesM = heads ? Number(((this.expenses.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0) : 0;
     if (heads && duesM > 0) {
       // a section nobody pays dues in (Women's, owner: "we are eating the cost while we build it")
-      const noDues = Number(heads.active) > 0 && Number(heads.current) === 0 && !((this.summary || {}).sections || []).some(x => x.code === heads.code && Number(x.paying) > 0);
+      const noDues = Number(heads.active) > 0 && Number(heads.current) === 0 && !((this.summary || {}).sections || []).some(x => heads.codes.includes(x.code) && Number(x.paying) > 0);
       const dues = 12 * duesM, sCols = (this._copy('plan_split_columns') || 'Shared by|Players|Each|Of a year of dues').split('|').map(c => c.trim());
       // full house = roster spots of the year's dues-carrying teams (an option only while on)
-      const spots = lines.filter(l => l.dues_rank != null).reduce((a, l) => a + (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
+      // per dues-carrying team: its planned players, else its roster size (youth: no per-player fees)
+      const byTeam = new Map();
+      for (const l of lines.filter(l => l.dues_rank != null)) {
+        const t = byTeam.get(l.team_id) || { players: 0, roster: Number(l.max_roster || 0) };
+        t.players += (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0);
+        byTeam.set(l.team_id, t);
+      }
+      const spots = [...byTeam.values()].reduce((a, t) => a + (t.players || t.roster), 0);
       const splits = [['plan_split_full', spots || Number(heads.full_house)], ['plan_split_active', heads.active], ['plan_split_current', heads.current]].filter(([, n]) => Number(n) > 0);
       per = `<table class="fn-table" style="margin-top:10px; min-width:420px;">
         <thead><tr>${sCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
