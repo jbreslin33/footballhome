@@ -36,7 +36,7 @@
   const forced = new URLSearchParams(location.search).get('bodies') === 'all';
   const ANIM = q === 'anim';
   const want = (fig) => !fig.official && (q === 'all' || ANIM || (q === 'one' && fig.slot === 1));
-  const URL_CLIPS = 'game-assets/ual/locomotion.glb';
+  const URL_CLIPS = 'game-assets/ual/locomotion.glb?v=20261113h';
   // G5.105: each clip's stride (one loop = two steps, m) and the UAL pelvis rest height (m), read off
   // the pack's root-motion file (walk 0.97 m/s, jog 5.36, sprint 8.25).
   const CLIP = { idle: 'Idle_Loop', walk: 'Walk_Loop', jog: 'Jog_Fwd_Loop', sprint: 'Sprint_Loop' };
@@ -64,10 +64,17 @@
   // engine's "down in a tackle" flag (bit 2) lasts 0.17 s (won) or 0.5 s (missed) after the lunge: on it the
   // dive plays from SLIDE_FROM at SLIDE_RATE×, the loop holds while it lasts, then the exit (0.5 s) gets him
   // up. ?slides=0 = the rig's slide.
-  const URL_SLIDE = 'game-assets/ual/slide.glb?v=20261113s';
+  const URL_SLIDE = 'game-assets/ual/ual2.glb?v=20261113h';
   const SLIDES = { slide_start: 'Slide_Start', slide_loop: 'Slide_Loop', slide_exit: 'Slide_Exit' };
   const SLIDE_FROM = 0.35, SLIDE_RATE = 1.8;
   const USE_SLIDES = new URLSearchParams(location.search).get('slides') !== '0';
+  // G5.110: headers, stumbles, celebrations from clips (UAL 1 Jump_Start / Jump_Loop / Jump_Land / Hit_Chest,
+  // UAL 2 Yes; CC0, same rig). players.js's header timeline (0.75 s: crouch 0-0.12, air 0.12-0.56 with the
+  // ball met at the top, land) maps onto the jump; his lift (hd.up) is added (the clips' jump height is in
+  // their root motion, not here); the head snaps through the ball at the top. The dispossessed flag (bit 3,
+  // 10 ticks = 0.33 s) plays Hit_Chest (0.33 s). celebrate() (3.5 s) plays Yes, less of it as he runs.
+  const EXTRA1 = { jump_start: 'Jump_Start', jump_loop: 'Jump_Loop', jump_land: 'Jump_Land', hit: 'Hit_Chest' };
+  const USE_EXTRA = new URLSearchParams(location.search).get('extra') !== '0';
   const STRIDE_WALK = 1.30, STRIDE_JOG = 5.0, UAL_PELVIS = 0.9167;
   const JOG_FLOOR = +(new URLSearchParams(location.search).get('jogfloor') ?? 0);   // the jog's least share once running (?jogfloor= to try)
 
@@ -415,7 +422,8 @@
     const W = fig.w || {};
     const kickClip = fig.kk && A && A.act.kick_pass_r && (fig.kk.amp || 1) >= 0.99;   // a full kick plays its clip
     const slideClip = A && A.act.slide_loop;                                        // the slide plays its clips
-    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || fig.hd || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (W.stumble || 0) > 0.05 || (W.cele || 0) > 0.05);
+    const extra = A && A.act.jump_loop;                                             // headers / stumbles / celebrations too
+    return !!(fig.keeper || (fig.kk && !kickClip) || fig.rc || (fig.hd && !extra) || fig.dv || (!slideClip && (W.slide || 0) > 0.05) || (!extra && (W.stumble || 0) > 0.05) || (!(A && A.act.cele) && (W.cele || 0) > 0.05));
   }
   // G5.105b: foot lock. A foot the clip puts down (its ball joint under LOCK_ON m) is pinned where it landed;
   // a two-bone solve (thigh, calf) holds it there, the foot's own turn kept, until the clip lifts it (over
@@ -491,6 +499,17 @@
       }
       A.slw = (A.slw || 0) + ((A.sl ? 1 : 0) - (A.slw || 0)) * Math.min(1, dt * (A.sl ? 20 : 8));
     }
+    // G5.110: header / stumble / celebration
+    const hd = A.act.jump_loop ? fig.hd : null;
+    A.hw = (A.hw || 0) + ((hd ? 1 : 0) - (A.hw || 0)) * Math.min(1, dt * (hd ? 25 : 10));
+    if (hd) A.hdLast = { t: hd.t, up: hd.up };
+    const stumble = A.act.hit && !!(((ctx && ctx.flags) || 0) & 8);
+    if (stumble && !A.stum) A.stum = { t: 0 };
+    if (A.stum) { A.stum.t += dt; if (A.stum.t >= A.act.hit.getClip().duration + 0.1) A.stum = null; }
+    A.stw = (A.stw || 0) + ((A.stum ? 1 : 0) - (A.stw || 0)) * Math.min(1, dt * (A.stum ? 20 : 8));
+    const cele = A.act.cele && (fig.celebrateT || 0) > 0;
+    A.cel = (A.cel || 0) + ((cele ? 1 : 0) - (A.cel || 0)) * Math.min(1, dt * 5);
+    A.celT = cele ? (A.celT || 0) + dt : 0;
     // G5.108: a sharp turn at speed → a cut (his travel's turn rate, smoothed over ~0.1 s; rate > 0 = to his left)
     if (A.act.cut_l) {
       const va = Math.atan2(vx, vy);
@@ -546,6 +565,22 @@
       for (const k of Object.keys(w)) w[k] *= 1 - A.kw;
       if (A.kick) w[A.kick.name] = A.kw;
     }
+    if ((A.cel || 0) > 0.001) {                            // celebrating: less of it the faster he runs
+      const c = A.cel * (1 - 0.7 * m);
+      for (const k of Object.keys(w)) w[k] *= 1 - c;
+      w.cele = c;
+    }
+    if ((A.stw || 0) > 0.001) {                            // knocked off the ball
+      for (const k of Object.keys(w)) w[k] *= 1 - A.stw;
+      w.hit = A.stw;
+    }
+    if ((A.hw || 0) > 0.001 && A.hdLast) {                 // the header's jump, by players.js's timeline
+      const t = A.hdLast.t, hw = A.hw;
+      for (const k of Object.keys(w)) w[k] *= 1 - hw;
+      const ph = t < 0.2 ? 'jump_start' : t < 0.56 ? 'jump_loop' : 'jump_land';
+      w[ph] = hw;
+      A.hdPh = ph; A.hdClipT = ph === 'jump_start' ? (t / 0.2) * 0.43 : ph === 'jump_loop' ? (t - 0.2) : Math.min(0.5, (t - 0.56) * 1.2);
+    }
     if ((A.slw || 0) > 0.001) {                            // the slide over everything
       for (const k of Object.keys(w)) w[k] *= 1 - A.slw;
       if (A.sl) w['slide_' + A.sl.ph] = A.slw;
@@ -558,6 +593,9 @@
     for (const [k, a] of Object.entries(A.act)) {
       a.setEffectiveWeight(w[k] || 0);
       if (k === 'idle') a.time = A.idleT;
+      else if (k === 'jump_start' || k === 'jump_loop' || k === 'jump_land') a.time = A.hdPh === k ? Math.min(A.hdClipT, a.getClip().duration - 1e-3) : 0;
+      else if (k === 'hit') a.time = A.stum ? Math.min(A.stum.t, a.getClip().duration - 1e-3) : 0;
+      else if (k === 'cele') a.time = FORCE === k ? (performance.now() / 1000) % a.getClip().duration : (A.celT || 0) % a.getClip().duration;
       else if (k in SLIDES) a.time = A.sl && 'slide_' + A.sl.ph === k ? Math.min(A.sl.t, a.getClip().duration - 1e-3)
                                                                        : (FORCE === k ? (performance.now() / 1000) % a.getClip().duration : 0);
       else if (CUTS.includes(k)) a.time = A.cut && A.cut.name === k ? Math.min(A.cut.t, a.getClip().duration - 1e-3)
@@ -571,7 +609,27 @@
       } else a.time = A.ph * a.getClip().duration;
     }
     A.mixer.update(0);
+    // the header's lift (and the head through the ball at the top)
+    let lift = 0, snap = 0;
+    if ((A.hw || 0) > 0.001 && A.hdLast) {
+      const t = A.hdLast.t;
+      if (t >= 0.12 && t < 0.56) lift = A.hdLast.up * Math.sin(Math.PI * (t - 0.12) / 0.44);
+      snap = t < 0.26 ? -0.3 * smooth((t - 0.1) / 0.16) : t < 0.42 ? -0.3 + 0.8 * smooth((t - 0.26) / 0.1) : 0.5 * (1 - smooth((t - 0.42) / 0.2));
+      lift *= A.hw; snap *= A.hw;
+    }
+    b.model.position.y = lift;
     b.model.updateMatrixWorld(true);
+    if (Math.abs(snap) > 1e-3 && A.twist.length >= 5) {
+      const right = fv1.set(1, 0, 0).applyQuaternion(b.model.getWorldQuaternion(fq1));    // his +x: a + turn tips the head forward
+      for (const [i, f] of [[3, 0.45], [4, 0.55]]) {                                      // neck, head
+        const bone = A.twist[i];
+        tw.setFromAxisAngle(right, snap * f);
+        bone.getWorldQuaternion(tw2).premultiply(tw);
+        bone.parent.getWorldQuaternion(tq).invert();
+        bone.quaternion.copy(tq.multiply(tw2));
+        bone.updateMatrixWorld(true);
+      }
+    }
     // the spine and head give the hips' turn back: chest and eyes on his facing
     const give = -A.yawOff * (1 - A.ov);
     if (Math.abs(give) > 1e-3) {
@@ -679,6 +737,13 @@
         for (const t of c.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
         out[k] = c;
       }
+      if (USE_EXTRA && Object.values(EXTRA1).every((n) => g.animations.some((x) => x.name === n)))
+        for (const [k, n] of Object.entries(EXTRA1)) {
+          const c = g.animations.find((x) => x.name === n);
+          c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
+          for (const t of c.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
+          out[k] = c;
+        }
       return out;
     }).then((out) => (!out || !USE_CMU) ? out : loader.loadAsync(URL_CMU).then((g) => {
       for (const k of CMU) {
@@ -702,6 +767,12 @@
           c.tracks = c.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
           for (const t of c.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
           out[k] = c;
+        }
+        const yes = g.animations.find((x) => x.name === 'Yes');
+        if (USE_EXTRA && yes) {
+          yes.tracks = yes.tracks.filter((t) => t.name.endsWith('.quaternion') || t.name === 'pelvis.position');
+          for (const t of yes.tracks) if (t.name === 'pelvis.position') for (let i = 2; i < t.values.length; i += 3) t.values[i] *= pelvisScale;
+          out.cele = yes;
         }
         return out;
       }).catch((e) => { console.warn('bodies: slide clips failed', e); return out; }))

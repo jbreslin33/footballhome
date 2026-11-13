@@ -1,7 +1,8 @@
 # Player locomotion clips — Quaternius "Universal Animation Library" (Standard, v3.0, Jun 2026)
 
-`locomotion.glb` holds four clips from the pack's `Unreal-Godot/UAL1_Standard.glb` (no root motion):
-`Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop`, `Sprint_Loop`. Only the node tree and those animations are kept,
+`locomotion.glb` holds clips from the pack's `Unreal-Godot/UAL1_Standard.glb` (no root motion):
+`Idle_Loop`, `Walk_Loop`, `Jog_Fwd_Loop`, `Sprint_Loop`, and since G5.110 `Jump_Start`, `Jump_Loop`, `Jump_Land`
+(headers) and `Hit_Chest` (knocked off the ball). Only the node tree and those animations are kept,
 with no meshes (`game/scripts/trim_ual_clips.py`). The rig matches the body in `../ubc/` bone for bone.
 Read off the pack's root-motion file: walk 0.97 m/s (1.30 m a loop), jog 5.36 m/s (5.0 m), sprint
 8.25 m/s (5.5 m).
@@ -24,8 +25,8 @@ NSF EIA-0196217. CMU: "This dataset of motions is free for all uses … You may 
 commercially-sold products, but you may not resell this data directly, even in converted form"
 (mocap.cs.cmu.edu, read 2026-11-13).
 
-## `slide.glb` — Quaternius "Universal Animation Library 2" Standard (CC0, G5.109)
+## `ual2.glb` — Quaternius "Universal Animation Library 2" Standard (CC0, G5.109-110)
 
-`Slide_Start`, `Slide_Loop` and `Slide_Exit` from the pack's `Unreal-Godot/UAL2_Standard.glb`, trimmed by
+`Slide_Start`, `Slide_Loop`, `Slide_Exit` (the slide tackle) and `Yes` (celebration) from the pack's `Unreal-Godot/UAL2_Standard.glb`, trimmed by
 `game/scripts/trim_ual_clips.py`. Same rig as the body. https://quaternius.itch.io/universal-animation-library-2,
 CC0 1.0 (public domain dedication).

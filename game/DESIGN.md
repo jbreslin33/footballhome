@@ -9195,7 +9195,7 @@ the only true cuts.
 ### 8.210 G5.109 — the slide tackle from a clip (viewer only, `?bodies=anim`)
 
 **Source.** Quaternius UAL 2 Standard (CC0, same rig): `Slide_Start` 0.83 s (pelvis 0.83 → 0.05 m),
-`Slide_Loop` 2.0 s (on the turf), `Slide_Exit` 0.5 s (back up). In `ual/slide.glb`, 412 KB.
+`Slide_Loop` 2.0 s (on the turf), `Slide_Exit` 0.5 s (back up). In `ual/ual2.glb` (renamed from slide.glb in G5.110).
 
 **Timing.** The engine's "down in a tackle" flag (snapshot bit 2) lasts kTackleWinRecovery 5 ticks (0.17 s) or
 kTackleMissRecovery 15 (0.5 s), after the lunge.
@@ -9207,3 +9207,25 @@ kTackleMissRecovery 15 (0.5 s), after the lunge.
 **Measured.** The flag injected for 0.5 s on one live player: dive 0-0.29 s, loop to 0.54 s, exit to 1.08 s,
 faded out by ~1.6 s. Real tackles are rare (13 a team-match in the harness, one every 3-4 min of a live match):
 none came in a 30 s live watch.
+
+### 8.211 G5.110 — headers, stumbles and celebrations from clips (viewer only, `?bodies=anim`)
+
+**Source.** Quaternius UAL 1 `Jump_Start` / `Jump_Loop` / `Jump_Land` / `Hit_Chest` (added to `locomotion.glb`)
+and UAL 2 `Yes` (added to `ual2.glb`). CC0, same rig. `?extra=0` = the rig for all three.
+
+**Header.** players.js's timeline (0.75 s: crouch 0-0.12, air 0.12-0.56 meeting the ball at the top, land).
+- Jump_Start's push-off (0-0.43 s of the clip) over 0-0.2 s; Jump_Loop through the air; Jump_Land's first
+  half-second for the landing.
+- The clips' jump height is in their root motion, not ours, so the model rises by players.js's own
+  hd.up × sin.
+- The neck and head go back 0.3 rad as he rises, through +0.5 at the top (contact), then settle.
+
+**Stumble.** The dispossessed flag (bit 3, kDispossessedRecovery 10 ticks = 0.33 s) plays Hit_Chest (0.33 s).
+
+**Celebration.** celebrate() (3.5 s) plays Yes, at weight × (1 − 0.7 × moving).
+
+**Checked** (triggered on live players):
+- Header: jump_start 0-0.19 s, air to 0.54, land; lift 0.35 m (hd.up).
+- Stumble: hit 0-0.44 s.
+- Celebration: full weight by 1.5 s.
+- No console errors.
