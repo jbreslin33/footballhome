@@ -37,6 +37,11 @@
   const SKIN = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524, 0x5c3a1e, 0xffdbac, 0xa1665e];
   const HAIR = [0x2b1b10, 0x111111, 0x6b4423, 0xb8860b, 0x3d2817, 0x8a8a8a];
   const TAU = Math.PI * 2;
+  // 11/12 (James: "legs are twisting … get the movement and kicking natural"): the legs run the
+  // procedural gait by default. The engine's own footsteps (2.3 wire) land where the BODY engine put
+  // them, often across the man's line when he faces the ball and moves another way — the legs crossed
+  // and twisted. ?feet=wire draws them again.
+  const WIRE_FEET = new URLSearchParams(location.search).get('feet') === 'wire';
 
   const geo = {};  // shared geometries — 22 figures, one set of buffers
   function g(name, make) { return geo[name] || (geo[name] = make()); }
@@ -257,8 +262,16 @@
       this.halfStride = Ls / 2;
       // Travel direction in the body frame (backpedal / side-step step that way).
       const rel = speed > 0.3 ? wrap(Math.atan2(vx, vy) - this.yaw) : 0;
-      this.fwd = ease(this.fwd ?? 1, Math.cos(rel), 10, dt);   // eased as
-      this.lat = ease(this.lat ?? 0, Math.sin(rel), 10, dt);   // components: no wrap
+      // 11/12: the hips run where he goes, the shoulders and head stay on the ball. Moving up to ~100°
+      // off his facing, the pelvis turns up to 60° toward the run (the chest turns back, update());
+      // further round (backpedalling) the hips stay square and he steps back. The legs then run
+      // straight under the hips instead of reaching across the body. [FH, coaching: "hips open,
+      // eyes on the ball"]
+      const hipW = smooth((2.2 - Math.abs(rel)) / 0.5) * m;
+      this.hipTurn = ease(this.hipTurn || 0, clamp(rel, -1.05, 1.05) * hipW, 6, dt);
+      const hT = this.hipTurn, relH = wrap(rel - hT);
+      this.fwd = ease(this.fwd ?? 1, Math.cos(relH), 10, dt);   // eased as
+      this.lat = ease(this.lat ?? 0, Math.sin(relH), 10, dt);   // components: no wrap
       const dz = this.fwd, dx = this.lat;
       // Swing height: walking toe clearance; running the heel comes up
       // behind toward the buttock, more the faster [Novacheck 1998].
@@ -330,17 +343,20 @@
           const left = (1 - (ps - duty) / (1 - duty)) * (1 - duty) * T;
           leg.tw = (leg.tw || 0) * (1 - Math.min(1, dt / Math.max(left, dt)));
         }
-        leg.tw = clamp(leg.tw, -0.9, 0.9);
+        leg.tw = clamp(leg.tw, -0.35, 0.35);   // 11/12: was ±0.9 — a knee screwed round under him
         const base = side * (0.11 - 0.04 * r + 0.06 * Math.abs(dx) * m);
         leg.along = along - centre;
-        const fx = base + dx * along, fz = dz * along, ct = Math.cos(leg.tw), st = Math.sin(leg.tw);
+        // Never across the other foot: a side-step closes the feet, it doesn't cross them.
+        let fx = base + dx * along;
+        if (side * fx < 0.05) fx = side * 0.05;
+        const fz = dz * along, ang = leg.tw + hT, ct = Math.cos(ang), st = Math.sin(ang);
         return { x: fx * ct + fz * st, z: -fx * st + fz * ct, y: h + 0.085, pitchF };
       });
       // The engine's feet (2.3 wire, G5.77): when the snapshot carries them, each leg goes where
       // the engine put that foot — a planted foot stays on its spot in the world, a foot in the
       // air travels from where it left the ground to where the engine says it lands. The
       // procedural gait above stays as the fallback (officials, older servers).
-      const WF = this.wireFeet;
+      const WF = WIRE_FEET ? this.wireFeet : null;
       if (WF && this.me) {
         const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
         const toLocal = (wx, wy) => { const ex = wx - this.me.x, ez = wy - this.me.y; return { x: ex * cy - ez * sy, z: ex * sy + ez * cy }; };
@@ -376,8 +392,9 @@
       }
       // Pelvis yaw follows the forward foot of the right leg (side -1).
       const yawP = 0.1 * m * clamp(L[0].along / Math.max(0.12, Ls / 2 + 1e-3), -1, 1) * Math.abs(dz);
+      this.yawP = yawP;
       this.pelvis.position.set(0, py, 0);
-      this.pelvis.rotation.set(pitch, yawP, roll);
+      this.pelvis.rotation.set(pitch, yawP + (WF ? 0 : hT), roll);
       this.pelvis.updateMatrix();
       const qi = this._qi || (this._qi = new THREE.Quaternion());
       const v = this._v || (this._v = new THREE.Vector3());
@@ -388,6 +405,9 @@
         // over a ~0.18 m foot (the skinned body's ankle → toe tip). 11/11: 1% of toe-offs dipped 4 cm.
         f.pitchF = Math.min(f.pitchF, Math.asin(clamp((f.y - 0.01) / 0.18, -1, 1)));
         v.set(f.x, f.y, f.z).sub(this.pelvis.position).applyQuaternion(qi).sub(leg.hip.position);
+        // 11/12: each foot stays on its own side of the pelvis's centre line — no crossed legs.
+        const sd = i === 0 ? -1 : 1, minX = sd * 0.04 - leg.hip.position.x;
+        if (sd * v.x < sd * minX) v.x = minX;
         this.solveLeg(leg, v, f.pitchF, pitch, leg.tw);
       }
       this.moveAmt = m; this.runAmt = r;
@@ -417,7 +437,11 @@
         const c = Math.cos(yw), sn = Math.sin(yw), x = t.x, z = t.z;
         t.x = x * c - z * sn; t.z = x * sn + z * c;
       }
-      const phi = Math.atan2(t.x, -t.y);
+      // The leg plane's tilt out to the side, read as if the foot were at least 0.6 m under the hip:
+      // with the heel tucked up behind (the run's recovery) the foot is near hip height and a few cm
+      // across swung the whole leg out sideways (11/12: p90 1.1-1.9 rad summed, legs splayed and
+      // twisting). Capped ±0.35; a planted foot is ~0.8 m down, unchanged.
+      const phi = clamp(Math.atan2(t.x, Math.max(-t.y, 0.6)), -0.35, 0.35);
       const dy = -Math.hypot(t.x, t.y), dz = t.z;
       const D = clamp(Math.hypot(dy, dz), 0.25, a + b - 0.002);
       const beta = Math.atan2(dz, -dy);
@@ -447,7 +471,7 @@
     // amp < 1: a dribble touch (G5.78) — the same strike, small and quick.
     // foot (G5.79): the engine's kicking foot, 0 right / 1 left; else the ball's side.
     kick(lead, power, amp, foot) {
-      const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.2);
+      const L = lead === undefined ? 0.04 : clamp(lead, 0, 0.4);   // 11/12: up to 0.4 s — a real back-swing
       const A = amp === undefined ? 1 : clamp(amp, 0.1, 1);
       this.kk = { t: 0, contact: L + 0.03, power: power === undefined ? 0.5 : clamp(power, 0, 1), amp: A,
                   leg: foot === 0 || foot === 1 ? foot : (this.ballLocalX || 0) > 0.12 ? 1 : 0 };
@@ -568,7 +592,7 @@
       // Shoulders counter the hips: running, the thorax turns opposite the pelvis by a little more
       // than the pelvis turns (out of phase; thorax ~1.2× the pelvis's transverse range in the world
       // [Schache, Bennell, Blanch & Wrigley 1999]). Was 0.8 of it cancelled — square, stiff shoulders.
-      this.chest.rotation.y = this.look.yaw * 0.25 - this.pelvis.rotation.y * (0.8 + 1.4 * r);
+      this.chest.rotation.y = this.look.yaw * 0.25 - (this.yawP || 0) * (0.8 + 1.4 * r) - (WIRE_FEET ? 0 : (this.hipTurn || 0) * 0.85);
       // Standing he is never still (11/11, James "players look stiff"): a slow sway of the upper body
       // side to side, breathing in the chest, the head drifting a touch — each man on his own phase, gone
       // as he moves. [FH]
@@ -607,7 +631,8 @@
             hipX = -0.3 + (through + 0.3) * Math.min(1, u * 2.2); kneeX = 0.25 + 0.4 * u; twist = -0.3 * (1 - u);
           }
           if (AM < 1) { kneeX = 0.3 + (kneeX - 0.3) * AM; twist *= AM; }
-          const w = Math.min(1, t / 0.035) * Math.min(1, (K.end - t) / 0.12) * (AM < 1 ? 0.8 : 1);
+          // Blend in over most of the back-swing (was 35 ms: the leg jumped out of its stride).
+          const w = smooth(t / Math.max(0.035, Math.min(0.14, (tc - ws) * 0.7))) * Math.min(1, (K.end - t) / 0.15) * (AM < 1 ? 0.8 : 1);
           const kl = L[K.leg], pl = L[1 - K.leg], ka = A[1 - K.leg], sd = K.leg === 0 ? 1 : -1;
           kl.hip.rotation.x += (hipX - kl.hip.rotation.x) * w;
           kl.hip.rotation.z += (sd * 0.08 - kl.hip.rotation.z) * w;
@@ -618,6 +643,7 @@
           // The standing foot planted beside the ball (IK against the moved pelvis).
           this.plantLeg(1 - K.leg, sd * 0.13, 0.02, w);
           this.chest.rotation.y += sd * twist * w;
+          this.pelvis.rotation.y += sd * twist * 0.7 * w * AM;   // the hips open on the back-swing and drive through
           ka.sh.rotation.z += (sd * (0.9 + 0.3 * P) * AM - ka.sh.rotation.z) * w;   // out to the side
           ka.sh.rotation.x += (-0.35 - ka.sh.rotation.x) * w;
           ka.elbow.rotation.x += (-0.4 - ka.elbow.rotation.x) * w;

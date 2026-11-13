@@ -12,19 +12,18 @@
 // overpainted by region (shirt / shorts / socks / boots), chosen per vertex from its dominant bone
 // and bind-pose height, in the figure's kit colours.
 //
-//   default       every player (11/11), unless this device fell back (too slow) — then capsules
-//   ?bodies=off   the capsule men      ?bodies=all   every player, fallback ignored
+//   default       the capsule men (11/12, James: "the animation is really bad … go back to simpler
+//                 mesh and lets just get the movement and kicking etc natural")
+//   ?bodies=all   every player, fallback ignored
 //   ?bodies=one   one home outfielder (slot 1) — a side-by-side test
 // FH original (the retarget and the region paint); the body is Quaternius's.
 (function () {
   'use strict';
-  // On by default (11/11). ?bodies=off = the capsule men; ?bodies=all forces bodies even where this
+  // OFF by default since 11/12 (capsules); on 11/11-11/12. ?bodies=all forces bodies even where this
   // device fell back; ?bodies=one = slot 1 only. A device whose frames ran too slow with bodies
   // remembers it (localStorage fh.game.bodies = 'off') and gets capsules until ?bodies=all.
   const AUTO_KEY = 'fh.game.bodies';
-  let fellBack = false;
-  try { fellBack = localStorage.getItem(AUTO_KEY) === 'off'; } catch (_) { /* no storage */ }
-  const q = new URLSearchParams(location.search).get('bodies') || (fellBack ? 'off' : 'all');
+  const q = new URLSearchParams(location.search).get('bodies') || 'off';
   if (q === 'off' || !window.PlayerFigure || !window.THREE_ADDONS || !THREE_ADDONS.GLTFLoader) return;
   const forced = new URLSearchParams(location.search).get('bodies') === 'all';
   const want = (fig) => !fig.official && (q === 'all' || (q === 'one' && fig.slot === 1));

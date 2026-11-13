@@ -401,6 +401,11 @@
       if (this.rig) this.rig.watchYaw = undefined;
     }
 
+    // How far behind live the picture runs, ticks. Watching (no player of ours under control) it runs
+    // 11 ticks (~370 ms) behind, so a kick is known early enough for a real back-swing (~0.3 s); with a
+    // man under control, the short delay (input feel first). 11/12.
+    leadTicks() { return this.activeSlot === null || this.activeSlot === undefined ? 11 : INTERP_DELAY_TICKS; }
+
     setMySlots(slots, activeSlot) {
       this.mySlots = slots;
       this.activeSlot = activeSlot;
@@ -455,7 +460,7 @@
           simDt = rp.playing ? dt * rp.rate : 0;
         } else {
           const tdt = 1000 / (this.tickRate * (this.speed || 1));
-          const delay = Math.max(1.5, INTERP_DELAY_TICKS * this.speed);
+          const delay = Math.max(1.5, this.leadTicks() * this.speed);
           renderTick = (now - this.timeOffset) / tdt - delay;
           // Paused: hold the last rendered tick (it would otherwise run on).
           if (this.speed === 0 && this.heldTick !== null) renderTick = this.heldTick;
@@ -476,7 +481,7 @@
         // Kicks are armed as soon as they are known (up to the interpolation
         // delay ahead), so the back-swing plays BEFORE the ball leaves and
         // the contact lands on it. Power = the ball's speed off the foot.
-        while (!rp && this.kicks.length && this.kicks[0].tick <= renderTick + INTERP_DELAY_TICKS) {
+        while (!rp && this.kicks.length && this.kicks[0].tick <= renderTick + this.leadTicks()) {
           const k = this.kicks.shift();
           const f = this.figures[k.slot];
           if (!f) continue;
