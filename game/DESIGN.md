@@ -9318,3 +9318,43 @@ away. What hasn't been measured: their men's own movement into space against our
 off a marker before the pass), and whether the race's 0.3 s reaction for our men is too slow for a pressed lane.
 
 Shipped: the benchmark and the harness line (harness only; outputs and goldens unchanged; tests 22/22).
+
+### 8.217 G5.116 — the pass in flight: no slow reaction; the receiver is crowded by his own men; a smaller slide tried, not shipped (harness only)
+
+§8.216's next: their receivers' own movement and our race reaction. New `scripts/benchmarks_tracking_flight.py`
+(DFL) and harness lines THE PASS IN FLIGHT and THE SLIDE. A RECEIPT: a spell (as ON THE BALL) whose previous
+spell was a mate's, 0.4-3 s before, ball live between. Seed 1000 / 2000, 8 matches each; real in brackets.
+
+**Reaction: not it.** The receiver's crude-race options from 0.8 s before he has it to 0.8 s after are flat, ours
+and real: 52+ m 3+ 65 / 64 / 62 / 64 / 65% (31 / 30 / 29 / 30 / 33). Over the flight our defenders close on his
+mates −0.01-0.11 m (−0.07-0.17); defenders' speed near real. The excess is there before the ball is kicked.
+
+**Marking around each mate: near real.** His mates 10-30 m, their nearest opponent med: 52+ +0.4 m toward the
+ball (+1.1), +2.6 toward the goal he attacks (+2.2); ball-side 53% (59). Nearest opponent to a mate med 5.5-5.6 m
+(5.6-5.8). Free given the side is 5-10 points high (ball-side 38 v 34%, not 49 v 39).
+
+**Who receives: real. Where: too central.** Role mix within 1-5 points (52+: CB 46% (47), FB 22 (17), DM 22
+(23)). His metres off the centre line med 14.3-17.6 (18.3-22.8); by role, 52+, CB 12 (16.6), DM 8 (13.5), AM
+7-9 (20.5), ST 6-9 (18.7); 35-52, DM 9 (19.8), ST 7-9 (20.0). Options by his width (52+, 0-10 / 10-20 / 20+ m):
+share 37 / 29 / 35% (24 / 34 / 42); 3+ 72-76 / 68 / 48% (39 / 33 / 21). Wider is fewer options in both, but
+ours are ~30 points over at every width: the central lean explains a few points, not the gap.
+
+**His own men crowd him.** Within 10 / 20 m of the receiver: 52+ mates 0.86 / 3.5 (0.46 / 2.84), their men 0.87 /
+3.1 (0.98 / 3.27); 35-52 mates 1.08 / 4.3 (0.69 / 3.46). Every mate role stands 2-5 m nearer him than real (52+
+FB 28.5 (31.1), DM 17.5 (21.6), AM 25.5 (28.8), ST 32 (34.3)); FB / DM 3-4 m less far ahead (+6.4 v +10.9,
++7.5 v +10.7). Receipts a team-match 52+ 211 (115), 35-52 93-96 (45): twice real, the short-option game.
+
+**THE SLIDE** (the side on the ball, each role's metres toward the ball's side, mean): ours 2-3 m over at every
+width, ball 24+ CB +12.2 (+9.3), FB +9.7 (+7.3), AM +13.0 (+10.4), ST +11.2 (+8.8). **Tried**
+(physics.shape.ours_shift_y 0.47 → 0.35 / 0.30, not shipped): slide real at 0.35 (CB +9.6, ST +9.3), but
+options unchanged (35-52 3+ 64.8 / 66.1 → 64.9 / 62.9%, 0.30: 62.6 / 62.8), mates as near, and receivers more
+central still (52+ AM 7.0 → 5.1 m off the line). The ninth positional trial that doesn't move options.
+
+**Read.** `Support` sends every man to `Possession::spot` (role depth by band + spell roll, real pair width,
+the slide); nothing steps him toward the ball. Yet at a receipt his mates are 2-5 m nearer and twice as many
+within 10 m. The receipts themselves select it: the ball goes to the central man with mates round him, twice as
+often as real. **Next:** the pass pick by the receiver's surroundings — real v ours, for the passes played,
+the receiver's width and mates within 10 m against the passer's other options (which of his free options a
+real passer picks: the wide / isolated one or the near central one).
+
+Shipped: the benchmark and the two harness lines (harness only; outputs and goldens unchanged; tests 22/22).
