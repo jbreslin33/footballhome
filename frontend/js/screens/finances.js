@@ -390,13 +390,15 @@ class FinancesScreen extends Screen {
     const heads = pill && pill.section_code ? (this.expenses.plan_heads || []).find(h => h.code === pill.section_code) : null;
     const duesM = heads ? Number(((this.expenses.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0) : 0;
     if (heads && duesM > 0) {
+      // a section nobody pays dues in (Women's, owner: "we are eating the cost while we build it")
+      const noDues = Number(heads.active) > 0 && Number(heads.current) === 0 && !((this.summary || {}).sections || []).some(x => x.code === heads.code && Number(x.paying) > 0);
       const dues = 12 * duesM, sCols = (this._copy('plan_split_columns') || 'Shared by|Players|Each|Of a year of dues').split('|').map(c => c.trim());
       // full house = roster spots of the year's dues-carrying teams (an option only while on)
       const spots = lines.filter(l => l.dues_rank != null).reduce((a, l) => a + (l.category === 'registrations' && l.unit === 'per_player' ? Number(l.quantity) : 0) + Number(l.players_included || 0), 0);
       const splits = [['plan_split_full', spots || Number(heads.full_house)], ['plan_split_active', heads.active], ['plan_split_current', heads.current]].filter(([, n]) => Number(n) > 0);
       per = `<table class="fn-table" style="margin-top:10px; min-width:420px;">
         <thead><tr>${sCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-        <tbody>${splits.map(([k, n]) => `<tr><td>${esc(this._copy(k))}</td><td>${n}</td><td class="fn-out">${M0(total / n)}</td><td>${Math.round(100 * total / n / dues)}% of ${M0(dues)}</td></tr>`).join('')}</tbody>
+        <tbody>${splits.map(([k, n]) => `<tr><td>${esc(this._copy(k))}</td><td>${n}</td><td class="fn-out">${M0(total / n)}</td><td>${noDues ? esc(this._copy('plan_split_club_covers')) : `${Math.round(100 * total / n / dues)}% of ${M0(dues)}`}</td></tr>`).join('')}</tbody>
       </table>`;
     }
     return `
