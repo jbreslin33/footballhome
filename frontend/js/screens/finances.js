@@ -342,7 +342,8 @@ class FinancesScreen extends Screen {
     // Section-wide costs (budget_lines on a section's own pill — kits, coaching):
     // one "general" group per section, amount × units over the whole year (mig 1329).
     const scopes0 = (this.flow || {}).scopes || [];
-    const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.budget_year === year && scopes0.some(sc => sc.code === b.scope && sc.section_code));
+    // section-wide and club-wide lines (not a team's)
+    const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.budget_year === year && scopes0.some(sc => sc.code === b.scope && (sc.section_code || !sc.team_id)));
     const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
     if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div>${grantsCard}</div>`;
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
@@ -359,7 +360,7 @@ class FinancesScreen extends Screen {
           <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
     }
     const bySection = new Map();
-    for (const b of general) { const k = b.section || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
+    for (const b of general) { const k = b.section || (scopes0.find(sc => sc.code === b.scope) || {}).label || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
     // Game coaching (mig 1332): each coaching policy under the pill — its
     // season game counts × pay per game (hours × rate).
     // a coaching policy on a section pill or a section-level group (Men's, Youth) — not a team's
