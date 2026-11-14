@@ -37,12 +37,13 @@ constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
 // back into their own half — the pair splits for the build-up; WIDE 21.9 → 32.3) over the game's
 // own gap before (formation width + slide, CB ~13 m at every band), permille — real / game-before,
 // two passes (the slide's clamp and men off their spot make it not quite linear), so ours measure the real gaps (fh-game-match POSSESSION WIDTH). AM and ST: no pair, kept whole.
+// G5.121 (§8.222): refit (two more passes) after G5.118's spread and G5.120's slide had pushed the pairs 1-5 m wide.
 constexpr int kRealWidthPm[kRoleCount][kBandCount] = {
-    { 792,  923, 1025, 1078, 1263, 1552, 1772, 2034, 2066, 1646},   // CB
-    { 633,  684,  773,  809,  908,  985, 1099, 1093, 1146,  924},   // FB
-    { 730,  755,  850,  785,  879,  796,  814,  822,  850,  782},   // DM/CM
+    { 719,  865,  962,  979, 1157, 1453, 1677, 1936, 2098, 1572},   // CB
+    { 498,  556,  699,  705,  824,  902, 1062, 1032, 1160,  837},   // FB
+    { 661,  690,  820,  724,  848,  740,  771,  765,  805,  745},   // DM/CM
     {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // AM
-    { 733,  801,  716,  670,  719,  773,  805,  795,  832,  832},   // WIDE
+    { 636,  837,  679,  602,  669,  732,  772,  758,  803,  802},   // WIDE
     {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // ST
 };
 // G5.120 (§8.221): the side ON the ball, by the ball's metres off the centre line in 4 m bins (0-4 … 24-28, 28+)

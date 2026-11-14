@@ -9492,3 +9492,27 @@ G5.102's width was fitted before G5.118's spread pushed pairs apart; refit on sp
 ball 28+ (gap 44 v 36). **Next:** the pair gaps, then INWARD (the pass from 10-20 m off the centre line).
 
 Shipped: slide table + lone side (engine); goldens re-locked; tests 22/22.
+
+### 8.222 G5.121 — in-possession width refit; goals by the lone side measured (A/B); conversion is the next mole
+
+From §8.221 (pair gaps). **Width.** POSSESSION WIDTH (§8.204's measure, by the ball's band off their line) had
+drifted wide since G5.118's spread and G5.120's slide: FB 35.6-37.5 m in the two deepest bands (30.3-32.6), WIDE
++1-2, CB +1-2, DM/CM +0.5-1. `kRealWidthPm` refit two more passes (real / ours, cells off by more than 0.5 m):
+now CB, DM/CM, WIDE within ~0.5 m at every band, FB within ~1 m (band 0-10 +1-1.7). The spell-frame CB gap of
+ROLE WIDTH stays 17-18 m (13-15) with the ball central — not by depth: our spells sit at 35-70 m off their line
+1.5x as often as real (ON THE BALL: 130-136 / 186-189 a team-match v 85 / 113), where real CB pairs stand 19-20 m
+apart, so the |y|-only table mixes depths differently. Left as is.
+
+**Goals, A/B** (seeds 3000 / 4000, 8 matches each, G5.120's switches by `GAME_PARAMS`; goals a team-match, %
+scored): all on 2.50 / 2.50, 21.2 / 21.9%; slide only 2.00 / 2.06; lone only 2.50 / 2.62, 24.1 / 23.0%; both off
+2.00 / 2.00, 18.5 / 19.0%; G5.119 exactly (both off, old widths) 2.44 / 1.56, 21.9 / 18.7%. With seeds 1000 / 2000
+(G5.119 1.38 / 1.12; G5.120 1.38 / 2.12): the lone side adds ~0.5 goals a team-match (~2σ over ten runs; the
+slide nothing). Shot context (goal-side men, lane, nearest to the shooter) is unchanged by it. Kept: real
+behaviour (§8.221), and the larger gap is elsewhere.
+
+**Conversion.** Every configuration converts 18-24% (seeds 1000 / 2000 under G5.119 read 13%: the low draw;
+real ~10%), at < 12 m 25-40%. By goal-side outfield opponents our goal % runs over real where most real shots
+are: 4+ goal-side 3-15% (4.5), 1 goal-side 15-42% (21.5). **Next:** the finish given the context — keeper position
+and save curve against the shot from a crowded box (SAVE CURVE, BY AIMED CELL lines), not more shots.
+
+Shipped: the width refit (engine); goldens re-locked; tests 22/22.
