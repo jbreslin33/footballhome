@@ -569,11 +569,22 @@ class GameCenterScreen extends EventScreen {
     if (!host) return;
     const inner = host.querySelector('[data-gc-card-inner]');
     const cardW = (st.built && st.built.width) || 540;
-    const fit = () => { if (inner && host.clientWidth) inner.style.transform = `scale(${host.clientWidth / cardW})`; };
+    // The host always takes the height the card actually draws at — late
+    // crests/photos or a longer bench grow it after the first measure.
+    const fit = () => {
+      if (!inner) return;
+      const drawn = inner.firstElementChild ? inner.firstElementChild.offsetHeight : 0;
+      if (drawn > 0 && st.built && st.built.drawn !== drawn) {
+        st.built.drawn = drawn;
+        host.style.aspectRatio = `${cardW} / ${drawn}`;
+      }
+      if (host.clientWidth) inner.style.transform = `scale(${host.clientWidth / cardW})`;
+    };
     fit();
     if (typeof ResizeObserver !== 'undefined') {
       st.resizeObs = new ResizeObserver(fit);
       st.resizeObs.observe(host);
+      if (inner && inner.firstElementChild) st.resizeObs.observe(inner.firstElementChild);
     }
 
     const beam = host.querySelector('[data-gc-card-beam]');
@@ -616,7 +627,11 @@ class GameCenterScreen extends EventScreen {
       if (seq !== st.seq) return;
       const changed = !st.built || st.built.key !== key
         || st.built.html !== built.html || st.built.height !== built.height;
-      st.built = { key, html: built.html, width: built.width, height: built.height };
+      // Keep the measured height when nothing changed — dropping it made
+      // the next lineup tap repaint at the minimum height and clip the
+      // bottom of the card (owner 2026-11-13 "it needs to always show all").
+      const keepDrawn = !changed && st.built ? st.built.drawn : undefined;
+      st.built = { key, html: built.html, width: built.width, height: built.height, drawn: keepDrawn };
       if (!changed) return;
       const host = this.element && this.element.querySelector(`[data-gc-card="${slot}"]`);
       if (!host) return;
@@ -3062,6 +3077,22 @@ class GameCenterScreen extends EventScreen {
       if (un) rows.unshift({ label: un, run: () => { this.shares.delete(playerId); } });
     }
     rows.unshift(...swaps.filter(Boolean));
+    // 📇 Contact him from here (owner 2026-11-13: "i see a starter or bench
+    // guy with a certain P: and A: and then i can hit contact from there …
+    // along with switch pos").  The note = his criteria row; short or only
+    // projected → 🏃 Practice criteria preselected (mig 1342).
+    const personId = this._personIdFor(playerId);
+    const contactLabel = personId && window.ContactPopup ? copy('contact') : '';
+    if (contactLabel) {
+      const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
+      const st = s ? this._criteriaState(s) : null;
+      const remind = st && (st.state === 'projected' || st.state === 'needs' || st.state === 'not_met');
+      rows.unshift({
+        label: contactLabel,
+        note: st ? (this._eligCopy('row_' + st.state, st.tokens) || '') : '',
+        run: () => { this._gcContactOpen(Number(personId), remind ? 'practice_criteria' : null); return false; },
+      });
+    }
     this._openSwapSheet({ title, sub: copy('sub'), gridLabel: copy('grid'), grid, rows });
     return true;
   }
@@ -4376,15 +4407,19 @@ class GameCenterScreen extends EventScreen {
     });
 
     const parentRow = recipients.find(x => x.rid && x.rid !== personId);
+    const messages = SectionContact.messages(this.ev && this.ev.category, {
+      screen: this, playerId: personId, first: pl.firstName || '',
+      parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0]
+                 : (gr && gr.viaParent ? String(gr.name || '').split(' ')[0] : ''),
+      context: ctx,
+    });
+    // A asked-for message this section doesn't offer (🏃 is men's only)
+    // falls back to the screen's own first one.
+    const wanted = defaultKey && messages.some(m => m.key === defaultKey) ? defaultKey : null;
     return {
       key: `gc-player:${personId}`, screen: this, recipients,
-      messages: SectionContact.messages(this.ev && this.ev.category, {
-        screen: this, playerId: personId, first: pl.firstName || '',
-        parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0]
-                   : (gr && gr.viaParent ? String(gr.name || '').split(' ')[0] : ''),
-        context: ctx,
-      }),
-      defaultKey: defaultKey || ctx[0].key,
+      messages,
+      defaultKey: wanted || ctx[0].key,
       flagged: regOn || duesAlt || noResp,
       title: `Contact ${pl.name || [pl.firstName, pl.lastName].filter(Boolean).join(' ')}`,
     };

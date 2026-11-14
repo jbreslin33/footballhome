@@ -142,12 +142,21 @@ const std::string& StarterCriteria::statsSql() {
                                   END
                                 ) ORDER BY pw.starts_at)
                           FROM win pw) AS practice_pills
-                FROM team_persons tp
-                JOIN persons pe ON pe.id = tp.person_id
+                -- Rostered players, plus everyone invited to THIS game — a
+                -- ⭐ standing call-up / 🎟 call-up / ↔ call-in (James
+                -- 11/13: "why is sheldon missing his A: and P:" — Sheldon
+                -- is APSL, a standing call-up on Liga 1).  A bare 📄 paper
+                -- spot without an invite still gets no row (mig 619).
+                FROM (SELECT tp.person_id FROM team_persons tp
+                       WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
+                         AND NOT tp.invite_only
+                      UNION
+                      SELECT i.person_id FROM fh_event_invites i
+                        JOIN match_event me ON me.fh_event_id = i.fh_event_id
+                       WHERE i.revoked_at IS NULL) who
+                JOIN persons pe ON pe.id = who.person_id
                 JOIN players pl ON pl.person_id = pe.id
-                WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
-                  AND NOT tp.invite_only   -- 📄 paper spot (mig 619): no criteria rows
-                  AND ($3 = '' OR pe.id = NULLIF($3, '')::int)
+                WHERE ($3 = '' OR pe.id = NULLIF($3, '')::int)
                 ORDER BY pl.id
             )SQL";
     return sql;
@@ -173,7 +182,7 @@ std::optional<StarterCriteria::Result> StarterCriteria::forPerson(long long pers
         if (g["team_ids"].is_null()) continue;
         const std::string matchId = g["match_id"].c_str();
         const auto rows = db->query(statsSql(), {matchId, std::string(g["team_ids"].c_str()), pid});
-        if (rows.empty()) continue;   // Going but not rostered (a call-up): no criterion
+        if (rows.empty()) continue;   // Going but neither rostered nor invited: no criterion
         const auto& row = rows[0];
         Result out;
         out.matchId   = g["match_id"].as<long long>();
