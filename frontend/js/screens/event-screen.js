@@ -74,12 +74,22 @@ class EventScreen extends Screen {
     return [{ key: 'players', icon: '👥', title: cp('pill_players', 'All Players'), accent: '#3b82f6' }];
   }
 
-  // The body under a lit pill.  🎟 Invites ride inside All Players.
-  pillHtml(key) {
-    if (key !== 'players') return '';
-    return this._comingHtml() + this._jobsHtml() + (this._canInvite() ? this.panelFoldHtml('invites', '🎟 Invites', this._invitesHtml()) : '')
-      + (this.hasCarpool() ? this.carpoolPanel.html() : '');
+  // The panels on a lit pill (lib/panel.js, slice 4): each names the lowest
+  // viewer tier that gets it, so a coach's page is the player's page plus
+  // the coach panels and nothing moves.  Children add theirs around super.
+  panels(key) {
+    if (key !== 'players') return [];
+    return [
+      new Panel({ key: 'coming',  html: (s) => s._comingHtml() }),
+      new Panel({ key: 'jobs',    minTier: 'coach', html: (s) => s._jobsHtml() }),
+      new Panel({ key: 'invites', minTier: 'coach', applies: (s) => !s._isPast(s.ev),
+                  html: (s) => s.panelFoldHtml('invites', '🎟 Invites', s._invitesHtml()) }),
+      new Panel({ key: 'carpool', applies: (s) => s.hasCarpool(), html: (s) => s.carpoolPanel.html() }),
+    ];
   }
+
+  // The body under a lit pill = its panels this viewer reaches, in order.
+  pillHtml(key) { return Panel.render(this.panels(key), this); }
 
   // A pill was tapped — fetch what it shows the first time.
   onPill(key) {
@@ -253,6 +263,7 @@ class EventScreen extends Screen {
     this.loadingId = (!this.ev && params.fhEventId) ? Number(params.fhEventId) : null;
     this.pill = params.pill || 'players';   // render() falls back when the kind has no such pill
     this.att = null;
+    this.seeAs = null;        // 👀 See as: 'player' | 'coach' | null — per open event
     this.invites = null;
     this.callins = null;      // 🙋 call-in requests (mig 1265) — staff, games only
     this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
@@ -1318,6 +1329,7 @@ class EventScreen extends Screen {
       const t = (sel) => e.target.closest(sel);
       let el;
       if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
+      if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
       if ((el = t('[data-ec-pill]'))) {
         this.pill = el.dataset.ecPill;
         this.onPill(this.pill);
@@ -1452,14 +1464,48 @@ class EventScreen extends Screen {
   // landed (Game Center fills att itself with the flags), the feed's
   // viewer_tier before that.  Every gate on this screen asks it.
   get viewer() {
+    const real = this.realViewer;
+    // 👀 See as (slice 4): a coach / admin dropped to a lower tier on this
+    // event gets that tier's Viewer — the same panels, filtered lower.
+    if (this.seeAs && Viewer.RANK[this.seeAs] < real.rank) return Viewer.for(this.seeAs);
+    return real;
+  }
+
+  // Who they really are on this event, ignoring 👀 See as.
+  get realViewer() {
     const a = this.att;
     if (a && a.viewer) return a.viewer;
     if (a) return Viewer.fromAttendance({ can_mark: a.canMark, can_set_rsvp: a.canSetRsvp });
     return Viewer.for(this.ev && this.ev.viewer_tier);
   }
 
-  // Invites are for an event still to come.
-  _canInvite() { return this.viewer.canInvite() && !this._isPast(this.ev); }
+  // The 👀 See as bar: coach → See as player; admin → See as coach / player;
+  // while viewing lower, a banner + back.  Words: event_center see_as_*
+  // (mig 1368).
+  _seeAsHtml() {
+    const real = this.realViewer;
+    if (!this.att || real.rank < 1) return '';
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier))
+      ? MessageCopy.block('event_center', tier, tokens) : fb;
+    const esc = (t) => this.escapeHtml(t);
+    const btn = (attr, label) => `<button type="button" class="ec-chip" ${attr}>${esc(label)}</button>`;
+    if (this.seeAs && Viewer.RANK[this.seeAs] < real.rank) {
+      const word = cp(`tier_${this.seeAs}`, {}, `a ${this.seeAs}`);
+      return `<div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+                         margin:0 0 10px; padding:6px 10px; border-radius:8px; background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.5);">
+          <span style="font-size:0.8rem; font-weight:700;">${esc(cp('see_as_on', { tier: word }, `👀 Viewing as ${word} — this is what they see`))}</span>
+          ${btn('data-ec-see-as=""', cp('see_as_back', {}, '↩ Back to my view'))}
+        </div>`;
+    }
+    const lower = [];
+    if (real.rank >= 2) lower.push(btn('data-ec-see-as="coach"', cp('see_as_coach', {}, '👀 See as coach')));
+    lower.push(btn('data-ec-see-as="player"', cp('see_as_player', {}, '👀 See as player')));
+    return `<div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; margin:0 0 8px;">${lower.join('')}</div>`;
+  }
+
+  // Invites are for an event still to come.  Loads ask the REAL viewer, so
+  // they are in hand when a coach comes back from 👀 See as player.
+  _canInvite() { return this.realViewer.canInvite() && !this._isPast(this.ev); }
 
   _render() {
     const body = this.find('#ec-body');
@@ -1486,6 +1532,7 @@ class EventScreen extends Screen {
     const pills = this.pills(ev);
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
+      ${this._seeAsHtml()}
       ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
       <div data-gc-my-avail>${this._myAvailabilityHtml()}</div>
       ${this._panelDraftButtons('data-ec-draft-open')}

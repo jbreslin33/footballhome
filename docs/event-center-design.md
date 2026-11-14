@@ -111,34 +111,36 @@ just swap the viewer object; the screen stays the same.
    keyed on roster teams rather than `fh_event_teams`) moves to
    `EventAccess`; its separate player-view layout goes.
 
-## Resume here (paused 2026-11-14)
+## Resume here (updated 2026-11-14)
 
-Live on prod and pushed: slices 1–3 (04c69cf3, a832b432, be7b4554; fix
-7b4fae69). Migrations 1362, 1363, 1366 applied. Backend deployed with
-EventAccess + NoticeBoard.
+Live on prod and pushed: slices 1–4 (04c69cf3, a832b432, be7b4554; fix
+7b4fae69; slice 4 below). Migrations 1362, 1363, 1366, 1368 applied.
+Backend deployed with EventAccess + NoticeBoard (slice 4 was frontend only).
 
-**Before starting:** `git status` — another session had uncommitted edits in
-`frontend/js/screens/practice.js` and `game-center.js` (and an untracked
-`1346-lineup-move-contact.sql`). Ask over SendMessage before touching
-those files, and check `git diff --cached --name-status` before every
-commit (a peer's staged `git rm` got swept into be7b4554 once).
+**Before starting:** check `git diff --cached --name-status` before every
+commit (a peer's staged `git rm` got swept into be7b4554 once).  The
+orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
 
-**Slice 4 — `Panel` base (EventScreen + PracticeScreen)**
-- New `lib/panel.js`: `class Panel { key, minTier ('player'|'coach'|'admin'),
-  applies(screen) → bool (does this exist for the event/team?), html(screen),
-  mount(el, screen) }`. A screen keeps `panels(pill)` → Panel list, filters by
-  `this.viewer.atLeast(p.minTier) && p.applies(this)`, wraps each in the
-  existing `panelFoldHtml` (every panel is a closed fold — STANDING_OPEN
-  list for the ones the owner names).
-- Today's gates to convert are the `this.viewer.canX()` checks in
-  `event-screen.js` (`_attendanceCell`, the card grid's canRemind /
-  canContact / canSet, markAllBar, `_canInvite`) and `practice.js`'s
-  `this.att.canMark` / `this.sides.canEdit` (groups, practice plan, cones).
-  `att.canMark` / `att.canSetRsvp` are kept only for those not-yet-moved
-  screens; drop them when nothing reads them.
-- Add "👀 See as player" (coach + admin) / "See as coach" (admin) on every
-  kind: swap `this.att.viewer` for a lower Viewer and re-render. No server
-  change.
+**Slice 4 — DONE: `Panel` base (EventScreen + PracticeScreen)**
+- `lib/panel.js`: `new Panel({ key, minTier, applies(screen), html(screen) })`;
+  `Panel.render(list, screen)` keeps those the viewer reaches, in order.
+  `EventScreen.panels(pill)` → coming (player), jobs (coach), invites
+  (coach, still to come), carpool (player, practice/pickup).
+  `PracticeScreen.panels` adds team card (player) + 📞 calls (coach) on
+  All Players, sides, plan + cones.  `pillHtml(key)` = `Panel.render`.
+- Edit rights inside panels = server answer AND viewer:
+  `_mayEditSides()` / `_mayEditCones()`; the 📋 Practice Plans button =
+  `viewer.canEdit()`.
+- 👀 See as: `this.seeAs` ('player' | 'coach' | null, reset per event);
+  `get viewer()` returns the lower Viewer, `get realViewer()` the real one
+  (data loads such as invites use the real one so nothing is missing on the
+  way back).  Bar = `_seeAsHtml()`, words event_center see_as_* / tier_*
+  (mig 1368).  Verified on prod as admin: as player the calls / jobs folds,
+  P/A/L/E, ⋯ sheets, group editor, cone picker and plan button all go.
+- Still open from slice 4: `att.canMark` / `att.canSetRsvp` remain because
+  game-center.js:4800 and my.js read them — drop with slice 5 / my.js.
+  Coach vs admin differ only by ✓/✗ answer-for on an open event; not yet
+  eyeballed on a future event.
 
 **Slice 5 — Game Center onto panels**
 - Replace `isCoach` / `realIsCoach` (from `/api/lineup` →

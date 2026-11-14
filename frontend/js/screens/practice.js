@@ -22,13 +22,27 @@ class PracticeScreen extends EventScreen {
     ];
   }
 
-  pillHtml(key) {
-    if (key === 'sides') return this._sidesHtml();
-    if (key === 'plan') return this._planHtml()
-      + this.panelFoldHtml('cones', this.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), this._conesHtml());
-    if (key === 'players') return this._teamCardHtml() + this._callsHtml() + super.pillHtml(key);
-    return super.pillHtml(key);
+  // Panels per pill (lib/panel.js): the practice card and 📞 calls over
+  // All Players; 🎽 groups; 📝 plan + 🔶 cones.  Editing inside them asks
+  // the viewer AND the server's own can_edit (_mayEditSides / _mayEditCones).
+  panels(key) {
+    if (key === 'players') return [
+      new Panel({ key: 'team_card', html: (s) => s._teamCardHtml() }),
+      new Panel({ key: 'calls', minTier: 'coach', html: (s) => s._callsHtml() }),
+      ...super.panels(key),
+    ];
+    if (key === 'sides') return [new Panel({ key: 'sides', html: (s) => s._sidesHtml() })];
+    if (key === 'plan') return [
+      new Panel({ key: 'plan', html: (s) => s._planHtml() }),
+      new Panel({ key: 'cones', html: (s) => s.panelFoldHtml('cones',
+        s.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), s._conesHtml()) }),
+    ];
+    return super.panels(key);
   }
+
+  // Edit rights = the server's per-event answer, lowered by 👀 See as.
+  _mayEditSides() { return !!(this.sides && this.sides.canEdit) && this.viewer.canEdit(); }
+  _mayEditCones() { return !!(this.cones && this.cones.can_edit) && this.viewer.canEdit(); }
 
   // ── 🗂 The practice card (owner 2026-11-13: "practice needs a graphic
   // like game but auto filled … separate in lineup by age. same with mens
@@ -224,7 +238,7 @@ class PracticeScreen extends EventScreen {
   _cardSideHtml(r) {
     if (!this.sides || this.sides.failed) return '<span></span>';
     const mine = this._sideOf(r.person_id);
-    if (!this.sides.canEdit) {
+    if (!this._mayEditSides()) {
       const c = mine && this._colorOf(mine);
       return c ? `<span title="${this.escapeHtml(c.label)}">${this._swatch(c)}</span>` : '<span></span>';
     }
@@ -245,7 +259,7 @@ class PracticeScreen extends EventScreen {
     const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
     if (this.sides && !this.sides.failed) {
       const onSide = this.sides.colors.map(c => [c, going.filter(r => sideOf(r.person_id) === c.code)]).filter(([, l]) => l.length);
-      const chooser = this.sides.canEdit ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:6px;">
+      const chooser = this._mayEditSides() ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:6px;">
           <span style="font-size:0.72rem; font-weight:800; opacity:0.75;">${this.escapeHtml(cp(this.ev.kind === 'pickup' ? 'teams_in_play' : 'groups_in_play') || (this.ev.kind === 'pickup' ? 'Teams' : 'Groups'))}</span>
           ${this.sides.colors.map(c => `<button type="button" class="ec-chip ${this.sideColors && this.sideColors.has(c.code) ? 'on' : ''}"
               data-ec-side-color="${c.code}">${swatch(c, 10)} ${this.escapeHtml(c.label)}</button>`).join('')}
@@ -335,7 +349,7 @@ class PracticeScreen extends EventScreen {
     if (!c || !c.setup) return `<div class="ec-box" style="opacity:0.7;">No cone setups are defined yet.</div>`;
     const s = c.setup, dots = PracticeScreen.coneDots(s);
     const areaWord = copy(`area_${s.area_anchor}`, { length: s.area_length_yd, width: s.area_width_yd }) || `${s.area_anchor} ${s.area_length_yd} × ${s.area_width_yd} yd`;
-    const picker = c.can_edit ? `
+    const picker = this._mayEditCones() ? `
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
         <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml(copy('choose') || 'Cone setup for this practice')}</span>
         <select data-ec-cones style="font-size:0.85rem; padding:4px 8px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
@@ -402,8 +416,7 @@ class PracticeScreen extends EventScreen {
   // each with its exercises.  Editing stays on #practice-plan.
   _planHtml() {
     if (this.plan === undefined) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
-    const canMark = !!(this.att && this.att.canMark);
-    const editBtn = canMark
+    const editBtn = this.viewer.canEdit()
       ? `<button type="button" class="btn btn-secondary" data-ec-practice-plan style="padding:4px 12px; font-size:0.85rem;">📋 Practice Plans</button>` : '';
     if (!this.plan) {
       return `<div class="ec-box" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -432,7 +445,8 @@ class PracticeScreen extends EventScreen {
   _sidesHtml() {
     if (!this.sides) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
     if (this.sides.failed) return `<div class="ec-box" style="opacity:0.7;">Could not load.</div>`;
-    const { canEdit, colors, players } = this.sides;
+    const { colors, players } = this.sides;
+    const canEdit = this._mayEditSides();
     const word = this.ev.kind === 'pickup' ? 'team' : 'group';
     const nameOf = (p) => [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Unknown';
     const swatch = (c, size = 14) => `<span style="display:inline-block; width:${size}px; height:${size}px; border-radius:50%;
