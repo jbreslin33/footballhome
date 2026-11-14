@@ -43,7 +43,7 @@ class EventScreen extends Screen {
     super(navigation, auth);
     this.ev       = null;      // the open event
     this.pill     = 'players'; // the lit big pill — players (+ invites), and whatever the kind adds
-    this.att      = null;      // {canMark, roster: Map(person_id -> {status})}
+    this.att      = null;      // {viewer, canMark, canSetRsvp, me, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
     this.error    = null;
@@ -737,15 +737,17 @@ class EventScreen extends Screen {
     try {
       const body = await this._json(`/api/calendar/events/${id}/attendance`);
       if (!this.ev || this.ev.fh_event_id !== id) return;
-      this.att = { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp,
+      const viewer = Viewer.fromAttendance(body);
+      // canMark / canSetRsvp mirror the viewer for screens not yet on it.
+      this.att = { viewer, canMark: viewer.canMark(), canSetRsvp: viewer.canAnswerFor(),
                    me: Number(body.me_person_id) || 0,
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
       // 🎟 Invites sit under All Players — load them with it.
       if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
-      if (this.att.canMark && this.ev.kind === 'match') this._loadCallins();
+      if (viewer.canInvite() && this.ev.kind === 'match') this._loadCallins();
     } catch (err) {
       console.error('[event] attendance load failed:', err);
-      this.att = { canMark: false, canSetRsvp: false, roster: new Map() };
+      this.att = { viewer: new PlayerViewer(), canMark: false, canSetRsvp: false, roster: new Map() };
     }
     this._render();
   }
@@ -1445,8 +1447,19 @@ class EventScreen extends Screen {
   _kindOf(ev) { return EventLabels.kindOf(ev); }
   _isPast(ev) { return EventLabels.isPast(ev); }
 
-  // Invites are for an event still to come, by whoever may mark it.
-  _canInvite() { return !!(this.att && this.att.canMark) && !this._isPast(this.ev); }
+  // Who is looking, for THIS event (lib/viewer.js): PlayerViewer →
+  // CoachViewer → AdminViewer.  The attendance GET's viewer_tier once it has
+  // landed (Game Center fills att itself with the flags), the feed's
+  // viewer_tier before that.  Every gate on this screen asks it.
+  get viewer() {
+    const a = this.att;
+    if (a && a.viewer) return a.viewer;
+    if (a) return Viewer.fromAttendance({ can_mark: a.canMark, can_set_rsvp: a.canSetRsvp });
+    return Viewer.for(this.ev && this.ev.viewer_tier);
+  }
+
+  // Invites are for an event still to come.
+  _canInvite() { return this.viewer.canInvite() && !this._isPast(this.ev); }
 
   _render() {
     const body = this.find('#ec-body');
@@ -1470,7 +1483,6 @@ class EventScreen extends Screen {
   // lit pill's body.
   _eventHtml() {
     const ev = this.ev;
-    const canMark = !!(this.att && this.att.canMark);
     const pills = this.pills(ev);
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
@@ -1478,8 +1490,6 @@ class EventScreen extends Screen {
       <div data-gc-my-avail>${this._myAvailabilityHtml()}</div>
       ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
-      ${this.att && !canMark ? `<div style="font-size:0.8rem; opacity:0.7; margin-bottom:var(--space-2);">
-        Read-only — attendance and invites are for this event's coaches and club admins.</div>` : ''}
       ${this.pillHtml(this.pill)}
       ${this.cpError ? `<div style="font-size:0.75rem; color:#f59e0b; margin-top:6px;">${this.escapeHtml(this.cpError)}</div>` : ''}`;
   }
@@ -1629,7 +1639,7 @@ class EventScreen extends Screen {
     if (!this.att) return '<span style="opacity:0.35;">…</span>';
     const entry = this.att.roster.get(personId);
     const status = entry && entry.status;
-    if (!this.att.canMark) {
+    if (!this.viewer.canMark()) {
       const meta = EventScreen.ATTENDANCE.find(s => s.id === status);
       return meta
         ? `<span class="ec-badge" style="background:${meta.color};" title="${meta.label}">${meta.letter}</span>`
@@ -1708,10 +1718,10 @@ class EventScreen extends Screen {
     // remind: No Response cards carry the reminder buttons for whoever may
     // mark the event (the send itself is club admins only, server-side),
     // and only while it can still be answered.
-    const canRemind = !!(this.att && this.att.canMark) && open;
+    const canRemind = this.viewer.canRemind() && open;
     // ✉ CONTACT on every card for whoever may mark the event (Game Center's).
-    const canContact = !!(this.att && this.att.canMark);
-    const canSet = !!(this.att && this.att.canSetRsvp) && open;
+    const canContact = this.viewer.canContact();
+    const canSet = this.viewer.canAnswerFor() && open;
     // Your own card (owner 2026-11-06: "you should be able to set going or
     // not going for yourself from event center … on the card … and it
     // should show your status"): ✓/✗ for anyone while it's open, a YOU
@@ -1815,7 +1825,7 @@ class EventScreen extends Screen {
     // absent"): from the event's day on, every Going player with no mark
     // yet → Present in one tap; the coach then taps A on whoever didn't show.
     const unmarked = going.filter(r => !(this.att && this.att.roster.get(r.person_id) || {}).status);
-    const markAllBar = this.att && this.att.canMark && this._eventDayReached() && unmarked.length
+    const markAllBar = this.att && this.viewer.canMark() && this._eventDayReached() && unmarked.length
       ? `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
           <button type="button" class="ec-send" data-ec-mark-all="${unmarked.map(r => r.person_id).join(',')}"
                   ${this.saving.has('att:all') ? 'disabled' : ''} style="background:#22c55e;">${this.escapeHtml(cp('mark_all_present', { n: unmarked.length }) || `✓ Mark all ${unmarked.length} present`)}</button>

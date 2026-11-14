@@ -44,6 +44,7 @@ set(SOURCES
     src/models/PersonMerge.cpp
     src/models/PaymentsOverview.cpp
     src/models/BudgetPlayground.cpp
+    src/models/EventAccess.cpp
     src/models/Expenses.cpp
     src/models/CashFlow.cpp
     src/models/LaPool.cpp

@@ -29,8 +29,8 @@
 //        Body: {fh_event_id:int, person_id:int}
 //        Sends one Web Push RSVP nudge to person_id for fh_event_id.
 //        Caller must be a coach of one of the event's teams or a club
-//        admin (same gate as CalendarController::isEventCoachOrAdmin,
-//        duplicated here rather than shared across controllers).
+//        admin (EventAccess::canCoach,
+//        shared with every Calendar gate).
 //        person_id must be on the event's roster with no RSVP response
 //        on file yet — a stale UI can't re-ping someone who already
 //        answered. Returns {sent:N} — N is 0 when the target has no

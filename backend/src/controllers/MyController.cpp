@@ -5,6 +5,7 @@
 
 #include "../core/Crypto.h"
 #include "../database/Database.h"
+#include "../models/EventAccess.h"
 #include "../models/MessageCopy.h"
 #include "../services/GroupMeService.h"
 #include "../services/SessionService.h"
@@ -859,22 +860,8 @@ Response MyController::handlePushRemind(const Request& request) {
     try {
         auto* db = Database::getInstance();
 
-        // Same gate as CalendarController::isEventCoachOrAdmin (club
-        // admin, or a coach of one of the event's teams) — duplicated
-        // here rather than shared across controllers, same call as
-        // that function's own doc comment on why.
-        auto canRemindRows = db->query(
-            "SELECT ("
-            "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.person_id = $2::int)"
-            "  OR EXISTS ("
-            "    SELECT 1 FROM fh_event_teams fet "
-            "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
-            "    JOIN coaches co ON co.id = tc.coach_id "
-            "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
-            "  )"
-            ") AS can_remind",
-            {std::to_string(fhEventId), std::to_string(callerPersonId)});
-        if (canRemindRows.empty() || !canRemindRows[0]["can_remind"].as<bool>()) {
+        // Coach of this event or admin — EventAccess (mig 1362).
+        if (!EventAccess::canCoach(db, callerPersonId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN,
                              "Only a coach or admin can send an RSVP reminder for this event");
         }

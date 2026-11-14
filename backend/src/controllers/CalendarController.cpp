@@ -5,6 +5,7 @@
 #include "../core/Crypto.h"
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
+#include "../models/EventAccess.h"
 #include "../models/MessageCopy.h"
 #include "../models/WelcomeLog.h"
 #include "../services/MagicLinkService.h"
@@ -393,27 +394,8 @@ std::string resolveUserId(Database* db, long long personId) {
     return std::to_string(row[0]["id"].as<long long>());
 }
 
-// True when personId may mark attendance for fhEventId — a club admin,
-// or a coach of one of the teams attached to the event. Same shape as
-// the eligibility EXISTS block in handlePostRsvp; factored out here
-// because both attendance handlers need the identical check.
-bool isEventCoachOrAdmin(Database* db, long long personId, long long fhEventId) {
-    auto rows = db->query(
-        "SELECT ("
-        "  EXISTS ("
-        "    SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
-        "    WHERE u.person_id = $2::int"
-        "  )"
-        "  OR EXISTS ("
-        "    SELECT 1 FROM fh_event_teams fet "
-        "    JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
-        "    JOIN coaches co ON co.id = tc.coach_id "
-        "    WHERE fet.fh_event_id = $1::bigint AND co.person_id = $2::int"
-        "  )"
-        ") AS can_mark",
-        {std::to_string(fhEventId), std::to_string(personId)});
-    return !rows.empty() && rows[0]["can_mark"].as<bool>();
-}
+// "Coach of this event or admin" lives in EventAccess (models/EventAccess.h,
+// mig 1362 fh_event_viewer_tier) — the one permission answer for every gate.
 
 // Shared by handlePostRsvp and handleDeleteRsvp: does the underlying
 // gcal event still exist/isn't cancelled, and is the RSVP window open?
@@ -690,7 +672,7 @@ Response CalendarController::handlePostAutoInvite(const Request& request) {
     if (teamId <= 0 || personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "team_id and person_id required");
     auto* db = Database::getInstance();
     try {
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId))
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can set standing call-downs");
         if (db->query("SELECT 1 FROM fh_event_teams WHERE fh_event_id = $1::bigint AND team_id = $2::int",
                       {std::to_string(fhEventId), std::to_string(teamId)}).empty())
@@ -1117,6 +1099,10 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     WHEN fh_event_invited(fe.id, $1::int) THEN 'invited'
                     WHEN fh_event_staff(fe.id, $1::int) THEN 'staff'
                 END AS my_role,
+                -- How much the viewer gets on THIS event (mig 1362, Event
+                -- Center slice 1): player | coach | admin.  A permission, not
+                -- the hat label above — the frontend picks its Viewer class.
+                fh_event_viewer_tier(fe.id, $1::int) AS viewer_tier,
                 -- 🎟 Asked in from another squad (mig 1069): which way and
                 -- from where ({dir: up|down|null, from}), so #my can say
                 -- CALL-UP · APSL and why the game is on their week.
@@ -1356,7 +1342,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                         FROM (
                                                 -- Players (team_persons) unioned with coaches (team_coaches, §5.3
                                                 -- roster-membership-adjacent but a separate role/table entirely) —
-                                                -- coaches are RSVP-eligible (see EXISTS block below / isEventCoachOrAdmin)
+                                                -- coaches are RSVP-eligible (see EXISTS block below / EventAccess)
                                                 -- but were invisible in this player-facing "who's going" list since it
                                                 -- only ever walked team_persons. DISTINCT ON (person_id) picks the
                                                 -- player row over the coach row on the rare overlap (ORDER BY is_coach
@@ -1869,6 +1855,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 catch (...) { ev["my_callin"] = nullptr; }
             }
             ev["my_role"]           = textOrNull(row, "my_role");
+            ev["viewer_tier"]       = textOrNull(row, "viewer_tier");
             // 🙋 A call-in game sits under his player hat on #my (mig 1265).
             if (ev["my_role"].is_null() && ev.contains("my_callin") && !ev["my_callin"].is_null()) ev["my_role"] = "player";
             ev["my_suspension"]       = textOrNull(row, "my_suspension");
@@ -2652,7 +2639,8 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
         }
 
-        const bool canMark = isEventCoachOrAdmin(db, personId, fhEventId);
+        const EventAccess::Tier tier = EventAccess::tierFor(db, personId, fhEventId);
+        const bool canMark = tier >= EventAccess::Tier::Coach;
 
         // Roster for every team attached to this event, players (team_persons)
         // unioned with coaches (team_coaches) — same pattern as the rsvps_json
@@ -2714,15 +2702,14 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
                 {"marked_at",  textOrNull(row, "marked_at")},
             });
         }
-        // can_set_rsvp: a club admin may answer for anyone (POST /rsvp with
-        // person_id, resolveRsvpTarget) — Event Center's ✓/✗ override on
-        // a practice row shows only then.  Follows view-as like can_mark.
-        const bool canSetRsvp = !db->query(
-            "SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.person_id = $1::int LIMIT 1",
-            {std::to_string(personId)}).empty();
+        // can_set_rsvp: an admin may answer for anyone (POST /rsvp with
+        // person_id, resolveRsvpTarget).  Both flags derive from viewer_tier
+        // (EventAccess) and stay for screens not yet on the viewer classes.
+        const bool canSetRsvp = tier == EventAccess::Tier::Admin;
         // me_person_id: whose card is the caller's own (after view-as) — Event
         // Center puts ✓/✗ + "your answer" on it for anyone (owner 2026-11-06).
-        return jsonOk({{"fh_event_id", fhEventId}, {"can_mark", canMark}, {"can_set_rsvp", canSetRsvp},
+        return jsonOk({{"fh_event_id", fhEventId}, {"viewer_tier", EventAccess::name(tier)},
+                       {"can_mark", canMark}, {"can_set_rsvp", canSetRsvp},
                        {"me_person_id", personId}, {"roster", roster}});
     } catch (const std::exception& e) {
         std::cerr << "CalendarController::handleGetEventAttendance: "
@@ -2773,7 +2760,7 @@ Response CalendarController::handlePostEventAttendance(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
         }
 
-        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN,
                              "Only a coach of this event's team(s) or a club admin "
                              "can mark attendance.");
@@ -2874,7 +2861,7 @@ Response CalendarController::handleDeleteEventAttendance(const Request& request)
             return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
         }
 
-        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN,
                              "Only a coach of this event's team(s) or a club admin "
                              "can mark attendance.");
@@ -2978,7 +2965,7 @@ Response CalendarController::handleGetEventSides(const Request& request) {
             return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
         }
 
-        const bool canEdit = isEventCoachOrAdmin(db, personId, fhEventId);
+        const bool canEdit = EventAccess::canCoach(db, personId, fhEventId);
 
         json colors = json::array();
         for (const auto& row : db->query(
@@ -3091,7 +3078,7 @@ Response CalendarController::handleGetEventConeSetup(const Request& request) {
             if ((chosen && r["id"].as<long long>() == ev[0]["cone_setup_id"].as<long long>()) || (!chosen && r["is_default"].as<bool>())) setup = j;
             setups.push_back(j);
         }
-        return jsonOk({{"fh_event_id", fhEventId}, {"can_edit", isEventCoachOrAdmin(db, gate.personId, fhEventId)},
+        return jsonOk({{"fh_event_id", fhEventId}, {"can_edit", EventAccess::canCoach(db, gate.personId, fhEventId)},
                        {"chosen_id", chosen ? json(ev[0]["cone_setup_id"].as<long long>()) : json(nullptr)}, {"setup", setup}, {"setups", setups}});
     } catch (const std::exception& e) { std::cerr << "[cone-setup get] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what()); }
 }
@@ -3109,7 +3096,7 @@ Response CalendarController::handlePostEventConeSetup(const Request& request) {
     auto* db = Database::getInstance();
     try {
         if (db->query("SELECT 1 FROM fh_events WHERE id = $1::bigint", {std::to_string(fhEventId)}).empty()) return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId)) return jsonError(HttpStatus::FORBIDDEN, "Only a coach of this event's team(s) or a club admin can pick the cone setup.");
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId)) return jsonError(HttpStatus::FORBIDDEN, "Only a coach of this event's team(s) or a club admin can pick the cone setup.");
         auto idOpt = jsonInt(body, "cone_setup_id");
         if (idOpt && *idOpt > 0) {
             if (db->query("SELECT 1 FROM cone_setups WHERE id = $1::int AND is_active", {std::to_string(*idOpt)}).empty()) return jsonError(HttpStatus::BAD_REQUEST, "no such cone setup");
@@ -3159,7 +3146,7 @@ Response CalendarController::handlePostEventSide(const Request& request) {
         if (evRows.empty()) {
             return jsonError(HttpStatus::NOT_FOUND, "fh_event not found");
         }
-        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN,
                              "Only a coach of this event's team(s) or a club admin "
                              "can set sides.");
@@ -3313,7 +3300,7 @@ Response CalendarController::handleGetRegistrationGaps(const Request& request) {
     if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can see registration gaps");
         }
         json rows = json::array();
@@ -3381,7 +3368,7 @@ Response CalendarController::handlePostRegistrationGapText(const Request& reques
     if (!target || *target <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId))
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can text registration links");
         auto g = db->query(
             "SELECT g.phone, g.body, g.player_done, fh_sms_consented_at(g.person_id) IS NOT NULL AS consented "
@@ -3438,7 +3425,7 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
 
     try {
         auto* db = Database::getInstance();
-        const bool canInvite = isEventCoachOrAdmin(db, personId, fhEventId);
+        const bool canInvite = EventAccess::canCoach(db, personId, fhEventId);
         if (!canInvite) {
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can invite players");
         }
@@ -3630,7 +3617,7 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
 
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can invite players");
         }
 
@@ -3793,7 +3780,7 @@ Response CalendarController::handleDeleteEventInvite(const Request& request) {
     }
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, personId, fhEventId)) {
+        if (!EventAccess::canCoach(db, personId, fhEventId)) {
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can revoke invites");
         }
         const std::string userId = resolveUserId(db, personId);
@@ -3967,7 +3954,7 @@ Response CalendarController::handleGetCallins(const Request& request) {
     if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId))
             return jsonOk({{"fh_event_id", fhEventId}, {"can_decide", false}, {"requests", json::array()}});
         json out = json::array();
         for (const auto& r : db->query(R"SQL(
@@ -4023,7 +4010,7 @@ Response CalendarController::handlePostCallinDecision(const Request& request) {
     if (!rid || *rid <= 0) return jsonError(HttpStatus::BAD_REQUEST, "request_id required");
     try {
         auto* db = Database::getInstance();
-        if (!isEventCoachOrAdmin(db, gate.personId, fhEventId))
+        if (!EventAccess::canCoach(db, gate.personId, fhEventId))
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can decide call-ins");
         auto req = db->query("SELECT person_id, from_team_id FROM fh_event_callin_requests "
                              " WHERE id = $1::bigint AND fh_event_id = $2::bigint AND withdrawn_at IS NULL",
