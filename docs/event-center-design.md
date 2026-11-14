@@ -93,7 +93,19 @@ just swap the viewer object; the screen stays the same.
    a scope rule next changes, not as a no-op refactor. Until slice 3, Mine
    (MyScreen) rides inside the page by CSS order: dues + volunteer-shift
    banners above the calendar, the rest below, its own week hidden.
-3. **Notices + section panels** — Mine retires.
+3. **Notices + section panels** — Mine retires. *(2026-11-14)* C++
+   `NoticeBoard` (`models/NoticeBoard.{h,cpp}`: `Notice` → `DuesNotice`,
+   `VolunteerShiftNotice`; `DuesStanding` also feeds the calendar feed's
+   `dues` map) behind `GET /api/my/notices`; page side `lib/notices.js`
+   (`NoticeView` → `DuesNoticeView`, `VolunteerShiftNoticeView`,
+   `NoticeStrip`). 👤 Mine below the calendar = page links (words
+   event_center link_*, mig 1366), `PushOptIn`, `SectionChat`
+   (`components/section-chat.js` — in-app chat or the GroupMe feed, by the
+   section's DB rows) and `FinesPanel` (`components/fines-panel.js`).
+   MyScreen is no longer mounted anywhere (#my already redirects); its file
+   stays only because `public-teams-list.js` borrows `_eventTitle` — delete
+   it once that moves to `EventLabels`. The #my "Admin tools" toggle went
+   with it (it only changed #my's own event list).
 4. **`Panel` base**; EventScreen + PracticeScreen onto it.
 5. **Game Center onto panels** — its `isCoach` (EligibilityController,
    keyed on roster teams rather than `fh_event_teams`) moves to

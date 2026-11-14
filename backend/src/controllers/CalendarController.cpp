@@ -6,6 +6,7 @@
 #include "../core/HttpClient.h"
 #include "../database/Database.h"
 #include "../models/EventAccess.h"
+#include "../models/NoticeBoard.h"
 #include "../models/MessageCopy.h"
 #include "../models/WelcomeLog.h"
 #include "../services/MagicLinkService.h"
@@ -2042,38 +2043,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
         // for games and practices, the balance, the least payment that
         // gets them back under the line, and where to pay.
         json dues = json::object();
-        if (personId > 0) {
-            try {
-                pqxx::result dr = db->query(R"SQL(
-                    SELECT p.id, COALESCE(p.first_name, '') AS first_name,
-                           fh_dues_balance_usd(p.id)               AS balance,
-                           fh_dues_line_usd($2::int)               AS line,
-                           fh_dues_eligible(p.id, $2::int)         AS eligible,
-                           fh_dues_min_payment_usd(p.id, $2::int)  AS min_payment,
-                           fh_dues_blocks_eligibility(p.id, $2::int) AS blocks,
-                           fh_dues_over_line(p.id, $2::int)         AS over_line,
-                           fh_dues_alternate(p.id, $2::int)          AS alternate,
-                           fh_fill_form_links('{form:la_dashboard}', $2::int) AS pay_url
-                      FROM persons p
-                     WHERE p.id = $1::int OR fh_is_guardian($1::int, p.id)
-                )SQL", {std::to_string(personId), std::to_string(WelcomeLog::kLighthouseClubId)});
-                for (const auto& r : dr) {
-                    dues[std::string(r["id"].c_str())] = {
-                        {"is_self",     r["id"].as<long long>() == personId},
-                        {"first_name",  r["first_name"].c_str()},
-                        {"balance",     r["balance"].is_null()     ? 0.0 : r["balance"].as<double>()},
-                        {"line",        r["line"].is_null()        ? json(nullptr) : json(r["line"].as<double>())},
-                        {"eligible",    r["eligible"].is_null()    ? true : r["eligible"].as<bool>()},
-                        {"min_payment", r["min_payment"].is_null() ? 0.0 : r["min_payment"].as<double>()},
-                        {"blocks",      !r["blocks"].is_null()    && r["blocks"].as<bool>()},     // mig 513: the line is a block for this person (Men)
-                        {"over_line",   !r["over_line"].is_null() && r["over_line"].as<bool>()},  // mig 513: at/over the line (warning when not blocked)
-                        {"alternate",   !r["alternate"].is_null() && r["alternate"].as<bool>()},  // mig 614: any balance + the alternate policy (Men) — #my banner
-                        {"pay_url",     r["pay_url"].is_null()     ? "" : r["pay_url"].c_str()},
-                    };
-                }
-            } catch (const std::exception& e) {
-                std::cerr << "[calendar/upcoming] dues lookup failed: " << e.what() << std::endl;
-            }
+        try {
+            // Same standing the Event Center notices strip reads (NoticeBoard).
+            for (const auto& d : DuesStanding::forPersonAndKids(db, personId))
+                dues[std::to_string(d.personId)] = d.toJson();
+        } catch (const std::exception& e) {
+            std::cerr << "[calendar/upcoming] dues lookup failed: " << e.what() << std::endl;
         }
 
         json ageBands = json::array();

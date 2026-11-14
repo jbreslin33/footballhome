@@ -6,6 +6,7 @@
 #include "../core/Crypto.h"
 #include "../database/Database.h"
 #include "../models/EventAccess.h"
+#include "../models/NoticeBoard.h"
 #include "../models/MessageCopy.h"
 #include "../services/GroupMeService.h"
 #include "../services/SessionService.h"
@@ -368,6 +369,7 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.post(prefix + "/chat/messages",  [this](const Request& r) { return handlePostChatMessage(r); });
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
     router.get (prefix + "/fines",          [this](const Request& r) { return handleGetFines(r); });
+    router.get (prefix + "/notices",        [this](const Request& r) { return handleGetNotices(r); });
     router.post(prefix + "/fines/dispute",  [this](const Request& r) { return handlePostFineDispute(r); });
     router.get (prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
     router.post(prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
@@ -472,6 +474,24 @@ Response MyController::handleGetChatMessages(const Request& request) {
 // sync_messages on (migration 392).  Same membership gate as the chat
 // itself; a chat with no integration answers with an empty feed, not an
 // error, so the screen just shows nothing.
+// GET /api/my/notices — the Event Center notices strip (NoticeBoard,
+// docs/event-center-design.md slice 3): [{kind: dues|volunteer_shift, …}]
+// for the viewer and their kids.  Follows view-as like every #my read.
+Response MyController::handleGetNotices(const Request& request) {
+    auto gate = requireSession(request);
+    if (gate.error) return *gate.error;
+    long long personId = gate.session->personId;
+    if (auto err = applyImpersonation(request, personId, /*allowImpersonation=*/true, &personId))
+        return *err;
+    try {
+        auto* db = Database::getInstance();
+        return jsonOk({{"notices", NoticeBoard::toJson(NoticeBoard::collect(db, personId))}});
+    } catch (const std::exception& e) {
+        std::cerr << "[MyController::notices] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load notices");
+    }
+}
+
 // GET /api/my/fines — the viewer's own fines by month (PersonFines, mig
 // 460/461) and the rules in force for their section (fine_kinds labels +
 // fine_policies rates), for the panel at the top of #my.  Owner

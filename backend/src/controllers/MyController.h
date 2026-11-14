@@ -56,6 +56,7 @@ private:
     Response handlePostChatMessage(const Request& request);
     Response handleGetGroupMeFeed(const Request& request);
     Response handleGetFines(const Request& request);
+    Response handleGetNotices(const Request& request);   // Event Center notices strip (NoticeBoard)
     Response handlePostFineDispute(const Request& request);
     Response handleVolunteer(const Request& request);   // 🙋 mig 1222: GET / POST / DELETE
     Response handlePostGroupMeMessage(const Request& request);

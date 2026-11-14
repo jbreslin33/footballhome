@@ -22,10 +22,15 @@
 // standard with the red line"): the calendar for everyone, person chips
 // (Everyone · Me · each kid) when the week holds more than your own events,
 // earlier days greyed, and on a phone the first open of this week scrolls to
-// the red NOW line.  👤 Mine (MyScreen) still rides along until its notices
-// strip lands (slice 3): dues + volunteer-shift banners above the calendar,
-// the rest (reminders toggle, fines, chat, GroupMe) below,
-// its own event list hidden — the calendar is the week now.
+// the red NOW line.
+//
+// Slice 3 (MyScreen no longer mounted here): the page is three pieces, the
+// same for every tier —
+//   NoticeStrip  (lib/notices.js)          dues, volunteer shift — above the calendar
+//   the week calendar                       this screen
+//   👤 Mine                                 page links, PushOptIn, SectionChat
+//                                           (components/section-chat.js), FinesPanel
+//                                           (components/fines-panel.js) — below it
 class EventCenterScreen extends Screen {
   static get CATEGORY_LABELS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls', staff: 'Staff' }; }
 
@@ -59,15 +64,14 @@ class EventCenterScreen extends Screen {
         .ec-none { font-size:0.8rem; opacity:0.35; }
         .ec-day.past { opacity:0.5; }
         .ec-day.past .ec-past { opacity:1; }
-        /* 👤 Mine rides inside the stack until slice 3: its banners above the
-           calendar, its sections below, its own week hidden. */
-        #ec-stack { display:flex; flex-direction:column; gap:6px; padding: var(--space-3) var(--space-4) var(--space-4); max-width:1400px; margin:0 auto; }
-        #ec-mine, #ec-mine > .screen-my, #ec-mine > .screen-my > .my-body { display:contents; }
-        #ec-mine #my-dues-banner, #ec-mine #my-volunteer { order:1; }
-        #ec-body { order:2; }
-        #ec-mine .screen-header { order:3; margin-top:var(--space-4); }
-        #ec-mine #my-push-banner, #ec-mine #my-admin-tools, #ec-mine #my-chat, #ec-mine #my-groupme, #ec-mine #my-fines { order:4; }
-        #ec-mine #my-events, #ec-mine #my-subtitle { display:none; }
+        #ec-stack { display:flex; flex-direction:column; gap:8px; padding: var(--space-3) var(--space-4) var(--space-4); max-width:1400px; margin:0 auto; }
+        #ec-notices { display:flex; flex-direction:column; gap:6px; }
+        #ec-mine { display:flex; flex-direction:column; gap:8px; margin-top:var(--space-4); }
+        .ec-mine-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+                        border-bottom:1px solid var(--border-color); padding-bottom:4px; }
+        .ec-mine-head h2 { margin:0; font-size:1rem; }
+        .ec-link { padding:3px 9px; border-radius:999px; border:1px solid var(--border-color); background:transparent;
+                   color:var(--text-primary); font-size:0.7rem; font-weight:600; cursor:pointer; }
         .ec-now { display:flex; align-items:center; gap:6px; color:#ef4444; font-size:0.66rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; white-space:nowrap; }
         .ec-now::before, .ec-now::after { content:''; flex:1; height:2px; background:#ef4444; }
         @media (min-width: 900px) { .ec-week { grid-template-columns:repeat(7, minmax(0, 1fr)); } }
@@ -80,10 +84,14 @@ class EventCenterScreen extends Screen {
         <div id="ec-kinds" style="display:contents;"></div>
       </div>
       <div id="ec-stack">
-        <!-- 👤 Mine (MyScreen) — banners above the calendar, the rest below
-             (CSS order above); its own week list is hidden. -->
-        <section id="ec-mine"></section>
+        <div id="ec-notices" style="display:none;"></div>
         <div id="ec-body"></div>
+        <section id="ec-mine">
+          <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
+          <div id="ec-push"></div>
+          <div id="ec-chat"></div>
+          <div id="ec-fines" hidden></div>
+        </section>
       </div>
     `;
     this.element = div;
@@ -113,40 +121,48 @@ class EventCenterScreen extends Screen {
     if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._loadEvents());
   }
 
-  onExit() { this._unmountMine(); }
+  onExit() { if (this.chat) this.chat.stop(); }
 
-  // 👤 Mine — the whole #my page (MyScreen: banners, dues, volunteer
-  // shifts, GroupMe, your week with Go / No, call-in, kids' pills …)
-  // drawn in its own section above the club calendar.  The same MyScreen
-  // instance #my uses, mounted here: its own click / change wiring rides
-  // on its element.  Words: event_center mine_title.
-  _mountMine() {
-    const host = this.find('#ec-mine');
-    const my = window.app && window.app.screens && window.app.screens.my;
-    if (!host || !my || typeof my.render !== 'function') return;
-    this._unmountMine();
-    let el;
-    try { el = my.render(); } catch (err) { console.error('[event-center] mine render failed:', err); return; }
-    el.classList.remove('screen');
-    const inner = el.querySelector('.screen-header + div'); if (inner) inner.classList.add('my-body');
-    // Event Center has its own ← Back; #my's own "My Schedule" title is the
-    // section heading's job.
-    const back = el.querySelector('.back-btn'); if (back) back.remove();
-    const title = (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', 'mine_title'))
-      ? MessageCopy.block('event_center', 'mine_title') : '👤 Mine';
-    const h = el.querySelector('.screen-header h1'); if (h) h.textContent = title;
-    host.innerHTML = '';
-    host.appendChild(el);
-    this._mine = my;
-    my.isMounted = true;
-    try { my.onEnter({}); } catch (err) { console.error('[event-center] mine enter failed:', err); }
+  // Reads follow view-as (auth.fetch adds ?asPersonId); writes go as the
+  // real caller and the server refuses them under view-as — the contract
+  // every #my component was built on (MyScreen._fetch).
+  async _memberFetch(url, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    let res;
+    if (method === 'GET') res = await this.auth.fetch(url, options);
+    else {
+      const headers = { ...(options.headers || {}) };
+      if (this.auth && this.auth.token) headers.Authorization = `Bearer ${this.auth.token}`;
+      res = await fetch(url, { ...options, headers, credentials: 'include' });
+    }
+    let body = null;
+    try { body = await res.json(); } catch {}
+    if (!res.ok) throw new Error((body && (body.message || body.error)) || `HTTP ${res.status}`);
+    return body || {};
   }
 
-  _unmountMine() {
-    if (!this._mine) return;
-    try { this._mine.onExit(); } catch (_) {}
-    this._mine.isMounted = false;
-    this._mine = null;
+  // The notices strip above the calendar and 👤 Mine below it — every tier
+  // gets the same pieces; what shows is what the DB has for you (a dues
+  // balance, a volunteer offer, a section chat, fine rates).
+  _mountMine() {
+    const ctx = { fetchJson: (u, o) => this._memberFetch(u, o), escapeHtml: (t) => this.escapeHtml(t),
+                  auth: this.auth, navigation: this.navigation };
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier) : fb;
+    this.notices = new NoticeStrip(this.find('#ec-notices'), ctx);
+    this.notices.load().then(() => { if (this._autoScrollWaiting) this._placeScroll(); });
+    const title = this.find('#ec-mine-title');
+    if (title) title.textContent = cp('mine_title', '👤 Mine');
+    // Read-only club pages (were #my's header links).  Words: event_center
+    // link_* (mig 1366).
+    const links = this.find('#ec-mine-links');
+    if (links) links.innerHTML = [['player-team-rules', 'link_team_rules', 'Team Rules'], ['player-roster', 'link_rosters', 'Rosters'],
+      ['player-calendar', 'link_players', 'Players'], ['schedules', 'link_schedules', 'Schedules']]
+      .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('');
+    if (window.PushOptIn) window.PushOptIn.mount(this.find('#ec-push'), this.auth, {}).catch(() => {});
+    if (this.chat) this.chat.stop();
+    this.chat = new SectionChat(this.find('#ec-chat'), ctx);
+    this.chat.start().catch((err) => console.error('[event-center] chat failed:', err));
+    new FinesPanel(this.find('#ec-fines'), ctx).load();
   }
 
   // ── data ────────────────────────────────────────────────────────────
@@ -227,6 +243,7 @@ class EventCenterScreen extends Screen {
       }
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
       if ((el = t('[data-ec-person]'))) { this.person = el.dataset.ecPerson; this._render(); return; }
+      if ((el = t('[data-ec-nav]'))) { this.navigation.goTo(el.dataset.ecNav); return; }
       if ((el = t('[data-ec-week]'))) {
         const step = Number(el.dataset.ecWeek);
         const d = step ? new Date(this.weekStart) : new Date();
@@ -345,12 +362,15 @@ class EventCenterScreen extends Screen {
       return;
     }
     if (!this._autoScroll) return;
-    this._autoScroll = false;
-    if (!window.matchMedia || !window.matchMedia('(max-width: 899px)').matches) return;
+    if (!window.matchMedia || !window.matchMedia('(max-width: 899px)').matches) { this._autoScroll = false; return; }
     const now = this.find('.ec-now');
-    if (!now) return;   // not this week, or nothing to place
-    const banner = [...this.element.querySelectorAll('#ec-mine #my-dues-banner, #ec-mine #my-volunteer')]
-      .find(b => !b.hidden && b.offsetHeight > 0);
+    if (!now) { this._autoScroll = false; return; }   // not this week, or nothing to place
+    // The notices decide where the page stops — wait for them.
+    if (this.notices && !this.notices.loaded) { this._autoScrollWaiting = true; return; }
+    this._autoScrollWaiting = false;
+    this._autoScroll = false;
+    const strip = this.find('#ec-notices');
+    const banner = this.notices && this.notices.hasNotices && strip && strip.offsetHeight > 0 ? strip : null;
     const prev = now.previousElementSibling;
     // The event just before the line, else the top of today's column.
     const target = banner || (prev && prev.classList.contains('ec-pick') ? prev : now.closest('.ec-day'));
