@@ -381,6 +381,41 @@ json Expenses::projection(int clubId) {
             out["plan_heads"].push_back({{"section_id", r["id"].as<long long>()}, {"code", str(r, "code")},
                                          {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
 
+        // 🎯 At capacity (mig 1360, owner: "we need to hit capicity for all
+        // teams"): adult sections against their dues-carrying teams' roster
+        // spots, youth per US Club Soccer age against youth_age_capacities
+        // (boys + girls together).  Members = active league program, never
+        // pickup; paying = not free / volunteer / injured (the plan_heads rule).
+        out["capacity"] = json::array();
+        for (const auto& r : db->query(R"SQL(
+            WITH act AS (
+                SELECT DISTINCT ON (lp.category, m.person_id) lp.category, m.person_id, m.la_payment_status
+                  FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+                 WHERE m.ended_at IS NULL AND lp.variant = 'active'
+                 ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
+            ), pay AS (
+                SELECT a.*, (a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL) AS paying FROM act a
+            )
+            SELECT 'section' AS kind, s.code, NULL::int AS us_age,
+                   (SELECT COALESCE(SUM(t.max_roster), 0) FROM teams t
+                     WHERE t.club_section_id = s.id AND t.is_active AND t.dues_rank IS NOT NULL) AS capacity,
+                   COUNT(p.person_id) AS members, COUNT(p.person_id) FILTER (WHERE p.paying) AS paying
+              FROM club_sections s
+              LEFT JOIN pay p ON p.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' END
+             WHERE s.code IN ('M', 'W')
+             GROUP BY s.id, s.code
+            UNION ALL
+            SELECT 'age', 'B', c.us_age, c.capacity, COUNT(DISTINCT p.person_id), COUNT(DISTINCT p.person_id) FILTER (WHERE p.paying)
+              FROM youth_age_capacities c
+              LEFT JOIN (pay p JOIN persons pe ON pe.id = p.person_id)
+                     ON p.category IN ('boys', 'girls') AND fh_youth_us_age(pe.birth_date) = c.us_age
+             WHERE c.club_id = $1::int
+             GROUP BY c.us_age, c.capacity
+             ORDER BY 1 DESC, 2, 3)SQL", {club}))
+            out["capacity"].push_back({{"kind", str(r, "kind")}, {"code", str(r, "code")},
+                                       {"us_age", r["us_age"].is_null() ? json(nullptr) : json(r["us_age"].as<int>())},
+                                       {"capacity", r["capacity"].as<long long>()}, {"members", r["members"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
+
         // Grants per budget year (mig 1336) — club-wide, earmarked by purpose.
         out["plan_grants"] = json::array();
         for (const auto& r : db->query(

@@ -9,6 +9,8 @@
 //              × Money pills (All / In / Out) over the budget year
 //   Revenue    dues × members per month and year, two reports: every paying
 //              member, and only members current in dues
+//   At capacity (mig 1360) members now vs the members each team wants (men /
+//              women roster spots, youth per age), × dues, vs the Year plan ÷ 12
 //   Expenses   the cash-flow grid from this month forward: money in (dues
 //              from members current in dues), money out (referee fees per
 //              home game, league dues, kits), net — GET /api/finances/expenses
@@ -170,7 +172,7 @@ class FinancesScreen extends Screen {
     const who = this.find('#fn-who');
     if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
+    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['capacity', this._copy('pill_capacity') || 'At capacity'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
@@ -180,7 +182,7 @@ class FinancesScreen extends Screen {
     if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this._expensesHtml();
+    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this.view === 'capacity' ? this._capacityHtml() : this._expensesHtml();
   }
 
   // ── shared bits ──
@@ -486,6 +488,67 @@ class FinancesScreen extends Screen {
           <tbody>${rows}</tbody>
         </table></div>${per}${grantsCard}
       </div>`;
+  }
+
+  // What the Year plan costs for a budget year, whole club (the Year plan
+  // pill's total on All): team plans (options only while switched on),
+  // section + club-wide lines, and this year's game coaching.
+  _yearCost(year) {
+    const thisYear = ((this.flow || {}).year || {}).label || '';
+    const scopes = (this.flow || {}).scopes || [];
+    const notTeam = (code) => scopes.some(sc => sc.code === code && (sc.section_code || !sc.team_id));
+    const plan = (this.expenses.plan || []).filter(l => l.budget_year === year && (!l.is_option || this.options.has(l.entry_id))).reduce((a, l) => a + Number(l.amount || 0), 0);
+    const general = (this.expenses.budget || []).filter(b => b.budget_year === year && notTeam(b.scope)).reduce((a, b) => a + Number(b.year_total || 0), 0);
+    const coaching = year !== thisYear ? 0 : (this.expenses.ref_fees || []).filter(p => p.kind === 'coaching' && notTeam(p.scope))
+      .reduce((a, p) => a + Number(p.rate || 0) * (p.seasons || []).reduce((g, x) => g + Number(x.expected || 0), 0), 0);
+    return plan + general + coaching;
+  }
+
+  // ── 🎯 At capacity (mig 1360, owner: "we need to hit capicity for all
+  // teams … how much per month and show each cat of age team") ──
+  _capacityHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
+    const rows = this.expenses.capacity || [];
+    const heads = this.expenses.plan_heads || [];
+    const duesOf = (code) => { const h = heads.find(x => x.code === code); return h ? Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0) : 0; };
+    // a section nobody pays dues in (Women's: "we are eating the cost while we build it")
+    const covered = (code) => !((this.summary || {}).sections || []).some(x => x.code === code && Number(x.paying) > 0);
+    const cols = (this._copy('capacity_columns') || 'Team|Members|Capacity|Open|$/mo now|$/mo at capacity').split('|').map(c => c.trim());
+    const tot = { members: 0, capacity: 0, now: 0, full: 0 };
+    const line = (label, r, code, cls = '') => {
+      const dues = duesOf(code), free = covered(code), open = Math.max(0, r.capacity - r.members);
+      const now = free ? 0 : r.paying * dues, full = free ? 0 : r.capacity * dues;
+      if (cls !== 'group') { tot.members += r.members; tot.capacity += r.capacity; tot.now += now; tot.full += full; }
+      const money = (v) => free ? `<span class="fn-dim">${esc(this._copy('capacity_club_covers'))}</span>` : M0(v);
+      return `<tr class="${cls}"><td>${esc(label)}</td><td>${r.members}</td><td>${r.capacity}</td><td class="${open ? 'fn-warn' : 'fn-dim'}">${open || '✓'}</td><td>${money(now)}</td><td class="fn-in">${money(full)}</td></tr>`;
+    };
+    const name = (code) => `${this._emoji(code)} ${(((this.summary || {}).sections || []).find(x => x.code === code) || {}).name || code}`;
+    let body = rows.filter(r => r.kind === 'section').map(r => line(name(r.code), r, r.code)).join('');
+    // youth: consecutive ages with the same capacity make one group
+    const ages = rows.filter(r => r.kind === 'age');
+    const groups = [];
+    for (const r of ages) { const g = groups[groups.length - 1]; if (g && g.cap === r.capacity && g.to === r.us_age - 1) { g.to = r.us_age; g.rows.push(r); } else groups.push({ cap: r.capacity, from: r.us_age, to: r.us_age, rows: [r] }); }
+    const yt = { members: 0, capacity: 0, paying: 0 };
+    for (const g of groups) {
+      const sub = g.rows.reduce((a, r) => ({ members: a.members + r.members, capacity: a.capacity + r.capacity, paying: a.paying + r.paying }), { members: 0, capacity: 0, paying: 0 });
+      yt.members += sub.members; yt.capacity += sub.capacity; yt.paying += sub.paying;
+      body += line('👦👧 ' + this._copy('capacity_youth_group', { from: g.from, to: g.to, cap: g.cap }), sub, 'B', 'group');
+      body += g.rows.map(r => line(this._copy('capacity_age', { age: r.us_age }) || `U${r.us_age}`, r, 'B', 'item')).join('');
+    }
+    if (groups.length) body += line(this._copy('capacity_youth_total') || 'Youth total', yt, 'B', 'group');
+    // against the Year plan (same year pills)
+    const thisYear = ((this.flow || {}).year || {}).label || '';
+    const years = [...new Set([...(this.expenses.plan || []).map(l => l.budget_year), ...(this.expenses.budget || []).map(b => b.budget_year)].filter(Boolean))].sort();
+    const year = this.planYear || (years.includes(thisYear) ? thisYear : years[0]);
+    const yearBar = years.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
+    const cost = this._yearCost(year), need = cost / 12;
+    const spare = tot.full - need;
+    body += `<tr class="sum"><td>${esc(this._copy('capacity_total') || 'Whole club')}</td><td>${tot.members}</td><td>${tot.capacity}</td><td class="fn-warn">${Math.max(0, tot.capacity - tot.members)}</td><td>${M0(tot.now)}</td><td class="fn-in">${M0(tot.full)}</td></tr>
+      <tr><td colspan="4">${esc(this._copy('capacity_need', { year, total: M0(cost) }))}</td><td class="fn-out">${M0(need)}</td><td class="fn-out">${M0(need)}</td></tr>
+      <tr class="sum"><td colspan="4">${esc(this._copy('capacity_gap_now') || 'Short now')} · ${esc(this._copy(spare >= 0 ? 'capacity_spare' : 'capacity_short'))}</td>
+        <td class="${tot.now >= need ? 'fn-in' : 'fn-out'}">${M0(tot.now - need)}</td><td class="${spare >= 0 ? 'fn-in' : 'fn-out'}">${M0(spare)}</td></tr>`;
+    return `<div class="fn-card"><div class="fn-title">${esc(this._copy('capacity_title'))}</div><div class="fn-note">${esc(this._copy('capacity_note'))}</div>${yearBar}
+      <div style="overflow-x:auto;"><table class="fn-table" style="min-width:560px;"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div></div>`;
   }
 
   // ── Budget lines: edit the estimate, ✓ when the bill is finished (mig 921) ──
