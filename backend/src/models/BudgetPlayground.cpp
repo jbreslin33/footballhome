@@ -85,7 +85,10 @@ int BudgetPlayground::yearId(int clubId, const std::string& yearLabel) { return 
 bool BudgetPlayground::reset(int clubId, int yearId) {
     auto r = Database::getInstance()->query("SELECT fh_budget_playground_reset($1::int, id) AS ok FROM budget_years WHERE id = $2::int AND club_id = $1::int",
                                             {std::to_string(clubId), std::to_string(yearId)});
-    return !r.empty() && !r[0]["ok"].is_null() && r[0]["ok"].as<bool>();
+    const bool ok = !r.empty() && !r[0]["ok"].is_null() && r[0]["ok"].as<bool>();
+    // kits for new players only (mig 1364): the reset's new-player base + each team's seed
+    if (ok) Database::getInstance()->query("SELECT fh_budget_playground_kits($1::int, $2::int)", {std::to_string(clubId), std::to_string(yearId)});
+    return ok;
 }
 
 json BudgetPlayground::state(int clubId, const std::string& yearLabel) {
@@ -115,17 +118,17 @@ json BudgetPlayground::state(int clubId, const std::string& yearLabel) {
         if (r["id"].as<int>() == yearId) out["year"] = y;
     }
     for (const auto& r : db->query(
-            "SELECT g.code, g.label, g.emoji, s.dues_monthly, s.kit_per_player, s.note FROM budget_playground_groups g "
+            "SELECT g.code, g.label, g.emoji, s.dues_monthly, s.kit_per_player, s.kits_base, s.note FROM budget_playground_groups g "
             "  LEFT JOIN budget_playground_settings s ON s.group_code = g.code AND s.club_id = $1::int AND s.budget_year_id = $2::int "
             " ORDER BY g.sort_order", {club, year}))
         out["groups"].push_back({{"code", str(r, "code")}, {"label", str(r, "label")}, {"emoji", str(r, "emoji")},
-                                 {"dues_monthly", num(r, "dues_monthly")}, {"kit_per_player", num(r, "kit_per_player")}, {"note", str(r, "note")}});
+                                 {"dues_monthly", num(r, "dues_monthly")}, {"kit_per_player", num(r, "kit_per_player")}, {"kits_base", num(r, "kits_base")}, {"note", str(r, "note")}});
     for (const auto& r : db->query(
-            "SELECT id, group_code, label, us_age, cost_per_team, team_count, players, roster, is_assumed, note FROM budget_playground_teams "
+            "SELECT id, group_code, label, us_age, cost_per_team, team_count, players, roster, seed_total, is_assumed, note FROM budget_playground_teams "
             " WHERE club_id = $1::int AND budget_year_id = $2::int ORDER BY group_code, sort_order, id", {club, year}))
         out["teams"].push_back({{"id", r["id"].as<long long>()}, {"group", str(r, "group_code")}, {"label", str(r, "label")}, {"us_age", optInt(r, "us_age")},
                                 {"cost_per_team", num(r, "cost_per_team")}, {"team_count", r["team_count"].as<int>()}, {"players", r["players"].as<int>()},
-                                {"roster", optInt(r, "roster")}, {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
+                                {"roster", optInt(r, "roster")}, {"seed_total", r["seed_total"].as<int>()}, {"is_assumed", r["is_assumed"].as<bool>()}, {"note", str(r, "note")}});
     for (const auto& r : db->query(
             "SELECT id, group_code, team_id, label, rate_per_hour, hours, times, per, note FROM budget_playground_coaches "
             " WHERE club_id = $1::int AND budget_year_id = $2::int ORDER BY group_code, team_id NULLS FIRST, sort_order, id", {club, year}))

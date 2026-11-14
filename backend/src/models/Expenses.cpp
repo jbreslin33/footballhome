@@ -449,6 +449,8 @@ json Expenses::projection(int clubId) {
                       AND lp.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END)
                     -- per week (mig 491): the weeks still ahead in the period, forward only
                     WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
+                    -- kits for new players only (mig 1364)
+                    WHEN b.amount_per = 'new_member' THEN fh_budget_new_players(b.club_section_id, b.budget_year_id)
                ELSE 1 END AS units,
                -- the whole period, for the Year plan (mig 1329): weeks in it, members today
                CASE WHEN b.amount_per = 'week' THEN GREATEST(0, ROUND((b.period_end - b.period_start + 1) / 7.0)::int - b.weeks_off) ELSE NULL END AS year_weeks,
@@ -588,6 +590,7 @@ json Expenses::openBudgetLines(int clubId) {
                     WHERE m.ended_at IS NULL AND lp.variant = 'active'
                       AND lp.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' WHEN 'B' THEN 'boys' WHEN 'G' THEN 'girls' END)
                     WHEN b.amount_per = 'week' THEN GREATEST(0, CEIL((b.period_end - GREATEST(b.period_start, (now() AT TIME ZONE 'America/New_York')::date) + 1) / 7.0))::int
+                    WHEN b.amount_per = 'new_member' THEN fh_budget_new_players(b.club_section_id, b.budget_year_id)
                ELSE 1 END AS units,
                COALESCE((SELECT SUM(l.amount) FROM invoice_lines l LEFT JOIN invoice_installment_plans p ON p.id = l.plan_id
                           WHERE COALESCE(l.budget_line_id, p.budget_line_id) = b.id), 0) AS invoiced

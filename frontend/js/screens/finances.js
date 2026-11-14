@@ -1,22 +1,18 @@
 // finances.js — #finances: where the club stands and where it is heading
-// (migration 489/490).  Billing stays on #payments (owner 2026-09-29:
-// "should this all be on separate page(s) including the summary to keep the
-// billing part cleaner?").
+// (migration 489/490).  Billing stays on #payments.
 //
-//   Summary    per section + All: members, free, paid up, behind, blocked,
-//              owed — GET /api/finances/summary (LeagueApps synced first)
-//   Money in & out  (mig 977) MoneyView: Who pills (All › section › team)
-//              × Money pills (All / In / Out) over the budget year
-//   Revenue    dues × members per month and year, two reports: every paying
-//              member, and only members current in dues
-//   At capacity (mig 1360) members now vs the members each team wants (men /
-//              women roster spots, youth per age), × dues, vs the Year plan ÷ 12
-//   Playground (mig 1361) 🧪 a what-if copy of a budget year: teams, players,
-//              coaches — never the real plan; ↺ rebuilds it from the real plan
-//   Expenses   the cash-flow grid from this month forward: money in (dues
-//              from members current in dues), money out (referee fees per
-//              home game, league dues, kits), net — GET /api/finances/expenses
-//              pulls the league feeds first; ✓ marks what is on an invoice
+// The standard set (owner 2026-11-14 "lets be standard", mig 1365):
+//   Budget        the operating budget for a budget year (Aug 1 – Jul 31):
+//                 Revenue (dues = paying members × dues × 12, grants while
+//                 switched on), Expenses by category from each team's fee
+//                 plan + section / club-wide lines + game coaching, Net
+//                 surplus / (deficit) for the year and per month
+//   Actuals       (mig 977) MoneyView: money that really came in and went out
+//   Cash forecast the month-by-month grid of what is still to go out (when
+//                 each bill lands) — GET /api/finances/expenses; ✓ = invoiced
+//   Members       per section: members, free, paid up, behind, owed
+//   Break-even    (mig 1360) members now vs roster capacity, × dues, vs the budget ÷ 12
+//   Scenarios     (mig 1361) 🧪 a what-if copy of a budget year — never the real plan
 //
 // Wording: message_templates kind 'payments_overview' (summary / revenue)
 // and 'finances' (page, pills, cash flow).
@@ -176,7 +172,9 @@ class FinancesScreen extends Screen {
     const who = this.find('#fn-who');
     if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['capacity', this._copy('pill_capacity') || 'At capacity'], ['playground', this._copy('pill_playground') || 'Playground'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
+    // Standard set (owner 2026-11-14 "lets be standard"): Budget · Actuals ·
+    // Cash forecast · Members · Break-even · Scenarios.  Revenue now sits in the Budget.
+    const pills = [['plan', this._copy('pill_plan') || 'Budget'], ['money', this._copy('pill_money') || 'Actuals'], ['expenses', this._copy('pill_expenses') || 'Cash forecast'], ['summary', this._copy('pill_summary') || 'Members'], ['capacity', this._copy('pill_capacity') || 'Break-even'], ['playground', this._copy('pill_playground') || 'Scenarios']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
@@ -186,7 +184,7 @@ class FinancesScreen extends Screen {
     if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'playground' ? this._pgHtml() : this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this.view === 'capacity' ? this._capacityHtml() : this._expensesHtml();
+    body.innerHTML = this.view === 'playground' ? this._pgHtml() : this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'capacity' ? this._capacityHtml() : this._expensesHtml();
   }
 
   // ── shared bits ──
@@ -219,31 +217,6 @@ class FinancesScreen extends Screen {
       </div>`;
   }
 
-  // ── Revenue: dues × members, two reports, per month and per year ──
-  _revenueHtml() {
-    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2, ov = this.summary;
-    const { rows: units, total: all } = this._units();
-    const pCols = this._cols('projections_columns');
-    const reports = [['all_members', this._ov('row_all_members') || 'All current members'], ['current_dues', this._ov('row_current_dues') || 'Members current in dues']];
-    const row = (s, isAll) => `
-      <tr class="${isAll ? 'sum' : ''}">
-        <td style="font-weight:700;">${isAll ? esc(this._ov('all_label') || 'All') : esc(s.title)}</td>
-        <td style="opacity:0.7;">${isAll ? '' : M2(s.rate)}</td>
-        ${reports.map(([k]) => { const p = (s.projections || {})[k] || {}; return `<td class="fn-dim">${p.count ?? 0}</td><td class="fn-in" style="font-weight:700;">${M0(p.monthly)}</td><td class="fn-in">${M0(p.yearly)}</td>`; }).join('')}
-      </tr>`;
-    return `
-      <div class="fn-card">
-        <div class="fn-title">${esc(this._ov('projections_title') || 'Projections')}</div>
-        <div class="fn-note">${esc(this._ov('projections_note'))}</div>
-        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:640px;">
-          <thead>
-            <tr><th></th><th></th>${reports.map(([, l]) => `<th colspan="3" style="text-align:center; border-bottom:1px solid var(--border-color, #374151);">${esc(l)}</th>`).join('')}</tr>
-            <tr><th></th><th>${esc(pCols[0] || 'Rate')}</th>${reports.map(() => `<th>#</th><th>${esc(pCols[1] || 'Per month')}</th><th>${esc(pCols[2] || 'Per year')}</th>`).join('')}</tr>
-          </thead>
-          <tbody>${units.map(s => row(s, false)).join('')}${row(all, true)}</tbody>
-        </table></div>
-      </div>`;
-  }
 
   // ── Expenses: the cash-flow grid, then the referee game list ──
   _expensesHtml() {
@@ -368,9 +341,7 @@ class FinancesScreen extends Screen {
     const yearBar = yearsAll.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${yearsAll.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
     const grants = (this.expenses.plan_grants || []).filter(g => g.budget_year === year);
     const grantsBtn = grants.length ? `<button class="fn-pill ${this.showGrants ? 'on' : ''}" data-plan-grants>${esc(this._copy(this.showGrants ? 'plan_grants_on' : 'plan_grants_add'))}</button>` : '';
-    const grantsCard = this.showGrants && grants.length ? `<div style="margin-top:12px;"><div style="font-weight:800;">${esc(this._copy('plan_grants_title'))}</div><div class="fn-note">${esc(this._copy('plan_grants_note'))}</div>
-      <table class="fn-table" style="min-width:420px;"><tbody>${grants.map(g => `<tr><td title="${esc(g.note || '')}">${esc(g.label)}<span class="fn-tick">${esc(g.note || '')}</span></td><td>${esc((g.purpose_label || (g.purpose === 'labor' ? this._copy('coaching_label') : '') || '').replace(/:\s*$/, ''))}</td><td class="fn-in">${M0(g.amount)}</td></tr>`).join('')}
-      <tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-in">${M0(grants.reduce((a, g) => a + Number(g.amount), 0))}</td></tr></tbody></table></div>` : '';
+    // grants are revenue lines in the statement below (switch on)
     const allLines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope) && l.budget_year === year);
     const optionEntries = [...new Map(allLines.filter(l => l.is_option).map(l => [l.entry_id, l])).values()];
     const lines = allLines.filter(l => !l.is_option || this.options.has(l.entry_id));
@@ -381,72 +352,87 @@ class FinancesScreen extends Screen {
     // section-wide and club-wide lines (not a team's)
     const general = (this.expenses.budget || []).filter(b => this._scopeOk(b.scope) && b.budget_year === year && scopes0.some(sc => sc.code === b.scope && (sc.section_code || !sc.team_id)));
     const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
-    if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div>${grantsCard}</div>`;
+    if (!lines.length && !general.length) return `<div class="fn-card">${head}${yearBar}${optionBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
+    // ── Standard budget (owner 2026-11-14 "lets be standard"): Revenue,
+    // Expenses by category (natural classification, each category opens to
+    // its lines), Net surplus / (deficit) for the year and per month.
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
-    const entries = new Map();
-    for (const l of lines) { if (!entries.has(l.entry_id)) entries.set(l.entry_id, { id: l.entry_id, teams: l.team_count, title: `${l.team} · ${l.league} ${l.season}${l.is_option ? ` · ${l.entry_note || ''} (${this._copy('plan_option_tag') || 'option'})` : ''}`, lines: [] }); entries.get(l.entry_id).lines.push(l); }
-    let rows = '', total = 0;
-    for (const e of entries.values()) {
-      const sub = e.lines.reduce((a, l) => a + Number(l.amount), 0); total += sub;
-      // Team count (mig 1348): an entry that carries one gets a box; lines are per team × it.
-      const teamsBox = e.teams == null ? '' : ` <label style="font-weight:400; white-space:nowrap;"><input class="fn-amt" style="width:52px;" type="number" min="0" max="20" step="1" data-plan-teams="${e.id}" value="${e.teams}"> ${esc(this._copy('plan_team_count') || 'teams')}</label>`;
-      rows += `<tr class="group"><td colspan="2">${esc(e.title)}${teamsBox}</td><td>${M0(sub)}</td></tr>`;
-      for (const l of e.lines) rows += `
-        <tr class="item"><td title="${esc(l.note || '')}" style="white-space:normal;">${esc(l.label)}${l.is_assumed ? '*' : ''}${l.note ? `<span class="fn-tick">${esc(l.note)}</span>` : ''}</td>
-          <td>${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}<span class="fn-tick">${esc(l.unit_label || '')}${l.team_count == null ? '' : ` × ${esc(this._copy('plan_team_count') || 'teams')}`}</span></td>
-          <td class="${Number(l.amount) < 0 ? 'fn-in' : 'fn-out'}">${M0(l.amount)}</td></tr>`;
-    }
-    const bySection = new Map();
-    for (const b of general) { const k = b.section || (scopes0.find(sc => sc.code === b.scope) || {}).label || ''; if (!bySection.has(k)) bySection.set(k, []); bySection.get(k).push(b); }
-    // Game coaching (mig 1332): each coaching policy under the pill — its
-    // season game counts × pay per game (hours × rate).
-    // a coaching policy on a section pill or a section-level group (Men's, Youth) — not a team's
+    const coachingLabel = this._copy('coaching_label') || 'Coaching';
+    const items = [];   // { category, category_label, label, detail, unit, amount, assumed, note }
+    for (const l of lines) items.push({ category: l.category, category_label: l.category_label, label: `${l.short_label || l.team} — ${l.label}`,
+      detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, unit: `${l.unit_label || ''}${l.team_count == null ? '' : ` × ${this._copy('plan_team_count') || 'teams'}`}`,
+      amount: Number(l.amount), assumed: l.is_assumed, note: l.note });
+    for (const b of general) items.push({ category: b.category, category_label: b.category_label, label: b.section ? `${b.section} — ${b.label}` : b.label,
+      detail: `${M2(b.amount)} × ${qty(b.year_units)}`, unit: b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'new_member' ? (this._copy('plan_unit_new_member') || 'new players') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '',
+      amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note });
+    // Game coaching (mig 1332): each coaching policy under the pill — games × pay per game
     for (const p of (this.expenses.ref_fees || []).filter(p => year === thisYear && p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && (sc.section_code || !sc.team_id)))) {
       const games = (p.seasons || []).reduce((a, x) => a + Number(x.expected || 0), 0); if (!games) continue;
-      const k = p.section || ''; if (!bySection.has(k)) bySection.set(k, []);
-      bySection.get(k).push({ label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, amount: p.rate, year_units: games, year_total: p.rate * games,
-        is_assumed: (p.seasons || []).some(x => x.is_assumed), note: p.note, unitText: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) });
+      items.push({ category: 'labor', category_label: coachingLabel, label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`,
+        detail: `${M2(p.rate)} × ${games}`, unit: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }),
+        amount: Number(p.rate) * games, assumed: (p.seasons || []).some(x => x.is_assumed), note: p.note });
     }
-    for (const [sec, bs] of bySection) {
-      const sub = bs.reduce((a, b) => a + Number(b.year_total || 0), 0); total += sub;
-      rows += `<tr class="group"><td colspan="2">${esc(this._copy('plan_general', { section: sec }) || sec)}</td><td>${M0(sub)}</td></tr>`;
-      for (const b of bs) {
-        const unit = b.unitText || (b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '');
-        rows += `
-        <tr class="item"><td title="${esc(b.note || '')}" style="white-space:normal;">${esc(b.label)}${b.is_assumed ? '*' : ''}${b.note ? `<span class="fn-tick">${esc(b.note)}</span>` : ''}</td>
-          <td>${M2(b.amount)} × ${qty(b.year_units)}<span class="fn-tick">${esc(unit || '')}</span></td>
-          <td class="fn-out">${M0(b.year_total)}</td></tr>`;
-      }
-    }
-    // Split by paying members (owner 2026-11-13: "yes go ahead with that split" → "just split by paying members"):
-    // a section pill (Men's, Women's, Youth) carries its share of the club-wide
-    // lines, and — with the grants switch on — its share of the grants.
+    // A section pill carries its share of the club-wide costs (allocated
+    // overhead), split by PAYING members (owner 2026-11-13: "so women don't bear it").
     const scopesS = (this.flow || {}).scopes || [];
     const pillS = scopesS.find(sc => sc.code === this.scope);
     const underS = (code) => { const set = window.MoneyView ? MoneyView.inScopeOf(scopesS, code) : new Set([code]); return scopesS.filter(sc => set.has(sc.code) && sc.section_code).map(sc => sc.section_code); };
     const shareCodes = pillS && !pillS.team_id && this.scope !== 'club' ? underS(pillS.code) : [];
     const allHeads = this.expenses.plan_heads || [];
-    // by PAYING members (owner: "just split by paying members. so women don't bear it")
-    const allActive = allHeads.reduce((a, h) => a + Number(h.paying || 0), 0);
-    const myActive = allHeads.filter(h => shareCodes.includes(h.code)).reduce((a, h) => a + Number(h.paying || 0), 0);
-    if (shareCodes.length && allActive > 0 && myActive > 0) {
-      const frac = myActive / allActive, pct = `${Math.round(100 * frac)}%`;
+    const allPaying = allHeads.reduce((a, h) => a + Number(h.paying || 0), 0);
+    const myPaying = allHeads.filter(h => shareCodes.includes(h.code)).reduce((a, h) => a + Number(h.paying || 0), 0);
+    const frac = shareCodes.length && allPaying > 0 ? myPaying / allPaying : 0, pct = `${Math.round(100 * frac)}%`;
+    if (frac > 0) {
       const clubTotal = (this.expenses.budget || []).filter(b => b.scope === 'club' && b.budget_year === year).reduce((a, b) => a + Number(b.year_total || 0), 0)
                       + (this.expenses.plan || []).filter(l => l.scope === 'club' && l.budget_year === year).reduce((a, l) => a + Number(l.amount || 0), 0);
-      if (clubTotal > 0) {
-        const share = clubTotal * frac; total += share;
-        rows += `<tr class="group"><td colspan="2">${esc(this._copy('plan_club_share', { pct, active: myActive, all: allActive }))}</td><td>${M0(share)}</td></tr>
-          <tr class="item"><td style="white-space:normal;">${esc(this._copy('plan_club_share_line', { total: M0(clubTotal) }))}</td><td>${M0(clubTotal)} × ${pct}</td><td class="fn-out">${M0(share)}</td></tr>`;
+      if (clubTotal > 0) items.push({ category: 'allocated', category_label: this._copy('plan_club_share', { pct, active: myPaying, all: allPaying }) || 'Share of club-wide costs',
+        label: this._copy('plan_club_share_line', { total: M0(clubTotal) }), detail: `${M0(clubTotal)} × ${pct}`, unit: '', amount: clubTotal * frac });
+    }
+    // Revenue: dues = paying members (active, not free / volunteer / injured,
+    // never pickup) × monthly dues × 12, per section under the pill; a team
+    // pill has none (dues are pooled per section).  Grants while switched on.
+    const revCodes = !pillS ? allHeads.map(h => h.code) : shareCodes;
+    const secName = (code) => ((this.summary || {}).sections || []).find(s => s.code === code)?.name || code;
+    const revenue = [];
+    for (const h of allHeads.filter(h => revCodes.includes(h.code))) {
+      const monthly = Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0);
+      const paying = Number(h.paying || 0), covered = paying === 0 && Number(h.active || 0) > 0;
+      revenue.push({ label: this._copy('plan_rev_dues', { section: secName(h.code) }) || `Dues — ${secName(h.code)}`,
+        detail: covered ? (this._copy('plan_split_club_covers') || 'club covers') : `${paying} × ${M0(monthly)} × 12`,
+        unit: covered ? '' : (this._copy('plan_rev_dues_unit') || 'paying members × dues a month × 12 months'), amount: covered ? 0 : paying * monthly * 12, assumed: year !== thisYear });
+    }
+    if (this.showGrants && grants.length && (revCodes.length || !pillS)) {
+      for (const g of grants) {
+        const share = pillS ? frac : 1; if (!share) continue;
+        revenue.push({ label: `${this._copy('plan_rev_grant') || 'Grant'} — ${g.label}`, detail: pillS ? `${M0(g.amount)} × ${pct}` : '', unit: g.note || '', amount: Number(g.amount) * share, assumed: g.status !== 'received' });
       }
-      if (this.showGrants && grants.length) {
-        const gTotal = grants.reduce((a, g) => a + Number(g.amount), 0), gShare = gTotal * frac;
-        rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>
-          <tr class="item"><td style="white-space:normal;">${esc(this._copy('plan_grants_share', { pct }))}</td><td>${M0(gTotal)} × ${pct}</td><td class="fn-in">−${M0(gShare)}</td></tr>`;
-        total -= gShare;
-        rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total_after_grants') || 'After grants')}</td><td class="fn-out">${M0(total)}</td></tr>`;
-      } else rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
-    } else rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_total') || 'Total')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    }
+    const revTotal = revenue.reduce((a, r) => a + r.amount, 0);
+    // expenses by category, in the club's category order
+    const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
+    const cats = new Map();
+    for (const it of items) { if (!cats.has(it.category)) cats.set(it.category, { label: it.category === 'labor' ? coachingLabel : String(it.category_label || it.category).replace(/:\s*$/, ''), items: [] }); cats.get(it.category).items.push(it); }
+    const rank = (c) => c === 'allocated' ? 999 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
+    const line = (it, cls) => `<tr class="${cls}"><td title="${esc(it.note || '')}" style="white-space:normal;">${esc(it.label)}${it.assumed ? '*' : ''}${it.note ? `<span class="fn-tick">${esc(it.note)}</span>` : ''}</td>
+        <td>${esc(it.detail || '')}<span class="fn-tick">${esc(it.unit || '')}</span></td><td class="${cls.includes('rev') ? 'fn-in' : (it.amount < 0 ? 'fn-in' : 'fn-out')}">${M0(it.amount)}</td></tr>`;
+    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
+    rows += revenue.length ? revenue.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total revenue')}</td><td class="fn-in">${M0(revTotal)}</td></tr>`;
+    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
+    let total = 0;
+    for (const [code, c] of [...cats.entries()].sort((a, b) => rank(a[0]) - rank(b[0]))) {
+      const sub = c.items.reduce((a, it) => a + it.amount, 0); total += sub;
+      const key = `plan:${code}`, open = this.expanded.has(key);
+      rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(sub)}</td></tr>`;
+      if (open) rows += c.items.sort((a, b) => b.amount - a.amount).map(it => line(it, 'item')).join('');
+    }
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total expenses')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    const net = revTotal - total;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)}</td></tr>
+      <tr class="item"><td colspan="2">${esc(this._copy('plan_net_month') || 'Per month')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net / 12)}</td></tr>`;
+    // Team counts (mig 1348) for entries that carry one
+    const countBoxes = [...new Map(lines.filter(l => l.team_count != null).map(l => [l.entry_id, l])).values()].map(l => `<label style="white-space:nowrap;">${esc(l.short_label || l.team)} <input class="fn-amt" style="width:52px;" type="number" min="0" max="20" step="1" data-plan-teams="${l.entry_id}" value="${l.team_count}"> ${esc(this._copy('plan_team_count') || 'teams')}</label>`).join(' ');
     // Who shares it (owner 2026-11-13: "dont ever use pickup … use 70 as the
     // maxed out perfect scenario then use active but also a cat for current
     // dues payers"): the pill's total ÷ each count, against a year of dues.
@@ -486,11 +472,11 @@ class FinancesScreen extends Screen {
           <input class="fn-amt" style="width:64px;" type="number" min="0" max="200" step="1" data-plan-roster="${t.entry}" value="${t.players || t.roster}"></label>`).join('')}</div></div>`;
     }
     return `
-      <div class="fn-card">${head}${yearBar}${optionBar}
+      <div class="fn-card">${head}${yearBar}${optionBar}${countBoxes ? `<div style="margin:0 0 10px;">${countBoxes}</div>` : ''}
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
           <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody>
-        </table></div>${per}${grantsCard}
+        </table></div>${per}
       </div>`;
   }
 
@@ -646,18 +632,20 @@ class FinancesScreen extends Screen {
       const rows = teams.map(t => {
         const n = Number(t.team_count), coaches = pg.coaches.filter(c => c.team_id === t.id);
         const coaching = n * coaches.reduce((a, c) => a + coachCost(c), 0);
-        const kits = n * Number(t.players) * Number(g.kit_per_player);
+        // kits for new players only (mig 1364): players added above the reset
+        const kits = Math.max(0, n * Number(t.players) - Number(t.seed_total || 0)) * Number(g.kit_per_player);
         const cost = n * Number(t.cost_per_team) + coaching + kits;
         const income = n * Number(t.players) * Number(g.dues_monthly) * 12;
         return { t, coaches, coaching, kits, cost, income };
       });
       const sectionCoaches = pg.coaches.filter(c => c.group === g.code && c.team_id == null);
       const sectionCoaching = sectionCoaches.reduce((a, c) => a + coachCost(c), 0);
+      const baseKits = Number(g.kits_base || 0) * Number(g.kit_per_player);   // this year's new players (mig 1364)
       out[g.code] = { g, rows, sectionCoaches, sectionCoaching,
         teams: g.code === 'C' ? 0 : rows.reduce((a, r) => a + Number(r.t.team_count), 0),
         players: g.code === 'C' ? 0 : rows.reduce((a, r) => a + Number(r.t.team_count) * Number(r.t.players), 0),
         income: rows.reduce((a, r) => a + r.income, 0),
-        cost: rows.reduce((a, r) => a + r.cost, 0) + sectionCoaching };
+        baseKits, cost: rows.reduce((a, r) => a + r.cost, 0) + sectionCoaching + baseKits };
     }
     return { out, coachCost };
   }
@@ -729,6 +717,7 @@ class FinancesScreen extends Screen {
         <div style="display:flex; flex-wrap:wrap; gap:14px; margin:6px 0 8px;">
           <label>${esc(this._copy('pg_dues') || 'Dues / month')} ${inp('group', '', 'dues_monthly', g.dues_monthly, 70, ` type="number" min="0" step="any" data-group="${code}"`)}</label>
           <label>${esc(this._copy('pg_kit') || 'Kit per player')} ${inp('group', '', 'kit_per_player', g.kit_per_player, 70, ` type="number" min="0" step="any" data-group="${code}"`)}</label>
+          ${s.baseKits ? `<span class="fn-note">${esc(this._copy('pg_kits_base', { n: g.kits_base, total: M0(s.baseKits) }))}</span>` : ''}
           ${g.note ? `<span class="fn-note">${esc(g.note)}</span>` : ''}</div>
         <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols('pg_team_columns', 'Team|Teams|Players per team|Roster|Cost per team|Coaching|Kits|Cost / yr|Income / yr')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>
         <div style="margin:6px 0;">${btn('add-team', this._copy('pg_add_team') || '＋ Team', `data-group="${code}"`)}</div>
