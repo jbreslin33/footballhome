@@ -43,6 +43,7 @@ set(SOURCES
     src/models/PersonOverride.cpp
     src/models/PersonMerge.cpp
     src/models/PaymentsOverview.cpp
+    src/models/BudgetPlayground.cpp
     src/models/EventAccess.cpp
     src/models/NoticeBoard.cpp
     src/models/Expenses.cpp
