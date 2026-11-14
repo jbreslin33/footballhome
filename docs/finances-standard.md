@@ -17,6 +17,7 @@ owner asks for it after seeing the standard reports.
 | Pill | Standard name | Code |
 |---|---|---|
 | 📋 Budget | Operating budget | `finances.js` `_planHtml` ← `GET /api/finances/expenses` (`plan`, `budget`, `ref_fees`, `plan_heads`, `plan_dues`, `plan_grants`) |
+| ⚖️ Budget vs Actual | Variance report (mig 1369) | `finances.js` `_varianceHtml` ← `_budgetModel` (same numbers as Budget) + `/cash-flow` items |
 | 💵 Actuals | Statement of activities, cash basis | `components/money-view.js` ← `/cash-flow`, `/summary`, `/expenses` |
 | 🗓 Cash forecast | Cash-flow forecast | `finances.js` `_expensesHtml` ← `/expenses` |
 
@@ -63,6 +64,19 @@ by paying members.
 | Field rentals | $500 |
 | Filming | $225 |
 
+**Budget vs Actual** (added 2026-11-14, mig 1369): this budget year only. Each
+Budget revenue line and expense category beside actual money through the last
+closed month (cash-flow items with `!ahead`, `ym < this month`; prepaid
+installments count). Budget to date = year budget × closed months / 12. Variance
++ = favourable. Money with no budget line shows as "(not in the budget)" (field
+rentals). A section pill's club-wide share = club-scope money out × the same
+paying-member fraction the Budget uses. Grants count as actual only once
+`received`. Dues actual is net of LeagueApps fees; the budget is gross (the page
+says so). Tap a row to see the lines behind its actual.
+
+Also fixed the same day: 4289d849 had deleted `FinancesScreen.load()`, so the
+page never loaded its data. Restored.
+
 ## Removed on 2026-11-14 (root and stem — in git history if wanted back)
 
 - Members pill (Summary)
@@ -84,11 +98,9 @@ by paying members.
 
 ## Next, in order
 
-1. **Budget vs Actual** (variance report). For each expense category: budget
-   for the year, budget to date (pro-rated, or by Cash forecast timing), actual
-   to date, and the difference. Actuals come from invoice lines by
-   `invoice_line_categories`, the same tagging Actuals uses. Revenue gets the
-   same treatment: dues budget vs LA money in.
+1. ~~Budget vs Actual~~ — done (mig 1369). Possible follow-up: budget to
+   date by Cash forecast timing instead of straight pro-rata, if seasonal
+   costs make the variance noisy.
 2. **Fix Actuals' money-in overcount (~12%).** 26 ACH rows ($1,050) that LA
    dropped are still in `person_payments`. Fix with a periodic full re-pull that
    deletes missing rows and refreshes payout ids. See memory
