@@ -6,6 +6,7 @@
 
 #include "../database/Database.h"
 #include "../models/CashFlow.h"
+#include "../models/BudgetPlayground.h"
 #include "../models/Expenses.h"
 #include "../models/PaymentsOverview.h"
 #include "../models/WelcomeLog.h"
@@ -49,6 +50,44 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     router.post(prefix + "/budget-lines/:id", [this](const Request& r) { return handleBudgetLine(r); });
     router.post(prefix + "/plan-roster", [this](const Request& r) { return handlePlanRoster(r); });
     router.post(prefix + "/plan-teams", [this](const Request& r) { return handlePlanTeams(r); });
+    // 🧪 Playground (mig 1361): a what-if copy of a budget year, never the real plan
+    router.get(prefix + "/playground", [this](const Request& r) { return handlePlayground(r); });
+    router.post(prefix + "/playground", [this](const Request& r) { return handlePlaygroundEdit(r); });
+}
+
+Response FinancesController::handlePlayground(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try { return jsonOut(HttpStatus::OK, BudgetPlayground::state(WelcomeLog::kLighthouseClubId, request.getQueryParam("year"))); }
+    catch (const std::exception& e) { std::cerr << "[finances playground] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the playground."); }
+}
+
+// { year, action: save|add|delete|reset, kind: team|coach|group, id?, group?,
+//   copy_of?, team_id?, label?, fields? } → the year's playground again.
+Response FinancesController::handlePlaygroundEdit(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const int club = WelcomeLog::kLighthouseClubId;
+    try {
+        const json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        const std::string yearLabel = body.value("year", std::string()), action = body.value("action", std::string()), kind = body.value("kind", std::string());
+        const int yearId = BudgetPlayground::yearId(club, yearLabel);
+        if (!yearId) return jsonError(HttpStatus::BAD_REQUEST, "Which year?");
+        auto intOf = [&](const char* k) -> std::optional<int> { if (body.contains(k) && body[k].is_number_integer()) return body[k].get<int>(); return std::nullopt; };
+        const std::string group = body.value("group", std::string());
+        std::string label = body.value("label", std::string()); if (label.size() > 80) label.resize(80);
+        const json fields = body.contains("fields") && body["fields"].is_object() ? body["fields"] : json::object();
+        bool ok = false;
+        if (action == "reset") ok = BudgetPlayground::reset(club, yearId);
+        else if (action == "save" && kind == "team" && intOf("id")) ok = BudgetPlayground::saveTeam(club, *intOf("id"), fields);
+        else if (action == "save" && kind == "coach" && intOf("id")) ok = BudgetPlayground::saveCoach(club, *intOf("id"), fields);
+        else if (action == "save" && kind == "group" && !group.empty()) ok = BudgetPlayground::saveGroup(club, yearId, group, fields);
+        else if (action == "add" && kind == "team" && !group.empty()) ok = BudgetPlayground::addTeam(club, yearId, group, intOf("copy_of"), label.empty() ? "New team" : label) > 0;
+        else if (action == "add" && kind == "coach" && !group.empty()) ok = BudgetPlayground::addCoach(club, yearId, group, intOf("team_id"), label.empty() ? "New coach" : label) > 0;
+        else if (action == "delete" && intOf("id")) ok = BudgetPlayground::remove(club, kind, *intOf("id"));
+        else return jsonError(HttpStatus::BAD_REQUEST, "Unknown playground change.");
+        if (!ok) return jsonError(HttpStatus::NOT_FOUND, "Not found in the playground.");
+        return jsonOut(HttpStatus::OK, BudgetPlayground::state(club, yearLabel));
+    } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
+    catch (const std::exception& e) { std::cerr << "[finances playground edit] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not change the playground."); }
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {

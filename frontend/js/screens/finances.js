@@ -11,6 +11,8 @@
 //              member, and only members current in dues
 //   At capacity (mig 1360) members now vs the members each team wants (men /
 //              women roster spots, youth per age), × dues, vs the Year plan ÷ 12
+//   Playground (mig 1361) 🧪 a what-if copy of a budget year: teams, players,
+//              coaches — never the real plan; ↺ rebuilds it from the real plan
 //   Expenses   the cash-flow grid from this month forward: money in (dues
 //              from members current in dues), money out (referee fees per
 //              home game, league dues, kits), net — GET /api/finances/expenses
@@ -66,6 +68,7 @@ class FinancesScreen extends Screen {
     div.querySelector('#fn-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; if (this.money) this.money.scope = this.scope; this._renderBody(); return; }
+      if (this.view === 'playground' && this._pgClick(e)) return;
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       if (e.target.closest('[data-plan-grants]')) { this.showGrants = !this.showGrants; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
@@ -74,6 +77,7 @@ class FinancesScreen extends Screen {
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
+      if (e.target.matches('[data-pg-field]')) { this._pgChange(e.target); return; }
       if (e.target.matches('[data-plan-teams]')) { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0 && n <= 20) this._savePlanTeams(Number(e.target.dataset.planTeams), n); else this._renderBody(); return; }
       if (e.target.matches('[data-plan-roster]')) { const n = Number(e.target.value); if (Number.isInteger(n) && n >= 0) this._savePlanRoster(Number(e.target.dataset.planRoster), n); else this._renderBody(); return; }
       const row = e.target.closest('[data-budget-line]'); if (!row) return;
@@ -172,7 +176,7 @@ class FinancesScreen extends Screen {
     const who = this.find('#fn-who');
     if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['capacity', this._copy('pill_capacity') || 'At capacity'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
+    const pills = [['plan', this._copy('pill_plan') || 'Year plan'], ['summary', this._copy('pill_summary') || 'Summary'], ['money', this._copy('pill_money') || 'Money in & out'], ['revenue', this._copy('pill_revenue') || 'Revenue'], ['capacity', this._copy('pill_capacity') || 'At capacity'], ['playground', this._copy('pill_playground') || 'Playground'], ['expenses', this._copy('pill_expenses') || 'Expenses']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
@@ -182,7 +186,7 @@ class FinancesScreen extends Screen {
     if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this.view === 'capacity' ? this._capacityHtml() : this._expensesHtml();
+    body.innerHTML = this.view === 'playground' ? this._pgHtml() : this.view === 'plan' ? this._planHtml() : this.view === 'summary' ? this._summaryHtml() : this.view === 'revenue' ? this._revenueHtml() : this.view === 'capacity' ? this._capacityHtml() : this._expensesHtml();
   }
 
   // ── shared bits ──
@@ -575,6 +579,168 @@ class FinancesScreen extends Screen {
           <tbody>${rows}</tbody>
         </table></div>
       </div>`;
+  }
+
+  // ── 🧪 Playground (mig 1361, owner 2026-11-14: "a playground where i can do
+  // this and not touch current live ones and real projected"): a what-if copy
+  // of a budget year in its own tables. Teams × players × dues in, teams ×
+  // (cost + kits + their coaches) out; ↺ rebuilds the year from the real plan.
+  async _pgLoad(year) {
+    if (this.pgLoading) return; this.pgLoading = true;
+    try {
+      const res = await this.auth.fetch(`/api/finances/playground${year ? `?year=${encodeURIComponent(year)}` : ''}`);
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      this.pg = j; this.pgErr = '';
+    } catch (err) { this.pgErr = err.message; this.pg = this.pg || { failed: true }; }
+    this.pgLoading = false; this._renderBody();
+  }
+
+  async _pgPost(change) {
+    try {
+      const res = await this.auth.fetch('/api/finances/playground', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year: this.pg.year.label, ...change }) });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`);
+      this.pg = j; this.pgErr = '';
+    } catch (err) { this.pgErr = err.message; }
+    this._renderBody();
+  }
+
+  _pgClick(e) {
+    const y = e.target.closest('[data-pg-year]'); if (y) { this.pgResetArm = false; this._pgLoad(y.dataset.pgYear); return true; }
+    if (e.target.closest('[data-pg-reset]')) {
+      if (!this.pgResetArm) { this.pgResetArm = true; this._renderBody(); return true; }
+      this.pgResetArm = false; this._pgPost({ action: 'reset' }); return true;
+    }
+    const a = e.target.closest('[data-pg-act]'); if (!a) return false;
+    const id = a.dataset.id ? Number(a.dataset.id) : undefined, group = a.dataset.group;
+    switch (a.dataset.pgAct) {
+      case 'add-team': this._pgPost({ action: 'add', kind: 'team', group, label: this._copy(group === 'C' ? 'pg_new_line' : 'pg_new_team') || 'New team' }); break;
+      case 'copy-team': this._pgPost({ action: 'add', kind: 'team', group, copy_of: id, label: this._copy('pg_b_suffix') || ' B' }); break;
+      case 'add-coach': this._pgPost({ action: 'add', kind: 'coach', group, ...(id ? { team_id: id } : {}), label: this._copy('pg_new_coach') || 'New coach' }); break;
+      case 'del-team': this._pgPost({ action: 'delete', kind: 'team', id }); break;
+      case 'del-coach': this._pgPost({ action: 'delete', kind: 'coach', id }); break;
+      default: return false;
+    }
+    return true;
+  }
+
+  _pgChange(el) {
+    const kind = el.dataset.pgKind, field = el.dataset.pgField;
+    const text = field === 'label' || field === 'per';
+    const raw = el.value.trim();
+    let value = text ? raw : Number(raw);
+    if (!text && (field === 'roster' || field === 'us_age') && raw === '') value = null;
+    if ((text && !raw) || (!text && value !== null && (raw === '' || !Number.isFinite(value)))) { this._renderBody(); return; }
+    const change = { action: 'save', kind, fields: { [field]: value } };
+    if (kind === 'group') change.group = el.dataset.group; else change.id = Number(el.dataset.id);
+    this._pgPost(change);
+  }
+
+  // The sums, per group: { teams, players, income, cost, rows }.
+  _pgSums() {
+    const pg = this.pg, coachCost = (c) => Number(c.rate_per_hour) * Number(c.hours) * Number(c.times);
+    const out = {};
+    for (const g of pg.groups) {
+      const teams = pg.teams.filter(t => t.group === g.code);
+      const rows = teams.map(t => {
+        const n = Number(t.team_count), coaches = pg.coaches.filter(c => c.team_id === t.id);
+        const coaching = n * coaches.reduce((a, c) => a + coachCost(c), 0);
+        const kits = n * Number(t.players) * Number(g.kit_per_player);
+        const cost = n * Number(t.cost_per_team) + coaching + kits;
+        const income = n * Number(t.players) * Number(g.dues_monthly) * 12;
+        return { t, coaches, coaching, kits, cost, income };
+      });
+      const sectionCoaches = pg.coaches.filter(c => c.group === g.code && c.team_id == null);
+      const sectionCoaching = sectionCoaches.reduce((a, c) => a + coachCost(c), 0);
+      out[g.code] = { g, rows, sectionCoaches, sectionCoaching,
+        teams: g.code === 'C' ? 0 : rows.reduce((a, r) => a + Number(r.t.team_count), 0),
+        players: g.code === 'C' ? 0 : rows.reduce((a, r) => a + Number(r.t.team_count) * Number(r.t.players), 0),
+        income: rows.reduce((a, r) => a + r.income, 0),
+        cost: rows.reduce((a, r) => a + r.cost, 0) + sectionCoaching };
+    }
+    return { out, coachCost };
+  }
+
+  _pgHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
+    if (!this.pg) { this._pgLoad(); return '<div class="loading">Loading…</div>'; }
+    const pg = this.pg;
+    const err = this.pgErr ? `<div class="error-message">${esc(this.pgErr)}</div>` : '';
+    if (pg.failed || !pg.year) return `<div class="fn-card">${err}</div>`;
+    const cols = (tier, d) => (this._copy(tier) || d).split('|').map(c => `<th>${esc(c.trim())}</th>`).join('');
+    const year = pg.year.label;
+    const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${pg.years.map(y => `<button class="fn-pill ${y.label === year ? 'on' : ''}" data-pg-year="${esc(y.label)}">${esc(y.label)}</button>`).join('')}
+      <button class="fn-pill" style="margin-left:auto; ${this.pgResetArm ? 'background:#b91c1c; color:#fff; border-color:#b91c1c;' : ''}" data-pg-reset>${esc(this.pgResetArm ? this._copy('pg_reset_confirm', { year }) : this._copy('pg_reset') || '↺ Reset')}</button></div>`;
+    const copied = pg.year.copied_from ? `<div class="fn-note fn-warn">${esc(this._copy('pg_copied', { from: pg.year.copied_from }))}</div>` : '';
+    const { out, coachCost } = this._pgSums();
+    const inp = (kind, id, field, value, w = 64, extra = '') => `<input class="fn-amt" style="width:${w}px;${field === 'label' ? ' text-align:left;' : ''}" data-pg-kind="${kind}" data-id="${id}" data-pg-field="${field}" value="${esc(value == null ? '' : String(value))}"${extra}>`;
+    const num = (kind, id, field, value, w = 64, step = 'any') => inp(kind, id, field, value, w, ` type="number" min="0" step="${step}"`);
+    const txt = (kind, id, field, value, w = 170) => inp(kind, id, field, value, w, ' type="text" maxlength="80"');
+    const btn = (act, label, attrs) => `<button class="fn-pill" style="padding:3px 9px; font-size:0.78rem;" data-pg-act="${act}" ${attrs}>${esc(label)}</button>`;
+    const coachRow = (c, perTeam) => `<tr class="item"><td>${txt('coach', c.id, 'label', c.label, 220)}</td>
+        <td>${num('coach', c.id, 'rate_per_hour', c.rate_per_hour, 64)}</td><td>${num('coach', c.id, 'hours', c.hours, 60)}</td>
+        <td>${num('coach', c.id, 'times', c.times, 60)} <select class="fn-amt" style="width:auto;" data-pg-kind="coach" data-id="${c.id}" data-pg-field="per">
+          <option value="week" ${c.per === 'week' ? 'selected' : ''}>${esc(this._copy('pg_per_week') || 'weeks')}</option>
+          <option value="game" ${c.per === 'game' ? 'selected' : ''}>${esc(this._copy('pg_per_game') || 'games')}</option></select></td>
+        <td class="fn-out">${M0(coachCost(c))}${perTeam ? ` <span class="fn-dim">× ${perTeam}</span>` : ''}</td><td>${btn('del-coach', '✕', `data-id="${c.id}"`)}</td></tr>`;
+    const coachTable = (list, perTeam) => list.length ? `<table class="fn-table" style="margin:2px 0 8px 18px;"><thead><tr>${cols('pg_coach_columns', 'Coach|$ / hour|Hours|Times a year|Cost / yr')}<th></th></tr></thead><tbody>${list.map(c => coachRow(c, perTeam)).join('')}</tbody></table>` : '';
+
+    // summary
+    let sum = '', tIn = 0, tCost = 0, payers = 0;
+    for (const code of Object.keys(out)) {
+      const s = out[code], net = s.income - s.cost; tIn += s.income; tCost += s.cost;
+      if (Number(s.g.dues_monthly) > 0) payers += s.players;
+      sum += `<tr><td>${esc(`${s.g.emoji || ''} ${s.g.label}`)}</td><td>${code === 'C' ? '' : s.teams}</td><td>${code === 'C' ? '' : s.players}</td>
+        <td class="fn-in">${s.income ? M0(s.income) : '<span class="fn-dim">—</span>'}</td><td class="fn-out">${M0(s.cost)}</td>
+        <td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net / 12)}</td></tr>`;
+    }
+    const tNet = tIn - tCost;
+    sum += `<tr class="sum"><td>${esc(this._copy('pg_total') || 'Whole club')}</td><td></td><td>${payers}</td><td class="fn-in">${M0(tIn)}</td><td class="fn-out">${M0(tCost)}</td>
+      <td class="${tNet >= 0 ? 'fn-in' : 'fn-out'}">${M0(tNet)}</td><td class="${tNet >= 0 ? 'fn-in' : 'fn-out'}">${M0(tNet / 12)}</td></tr>`;
+    const breakEven = payers > 0 ? `<div class="fn-note" style="margin-top:6px; font-weight:700; opacity:0.9;">${esc(this._copy('pg_break_even', { dues: M2(tCost / payers / 12), players: payers }))}</div>` : '';
+
+    // one card per group
+    let cards = '';
+    for (const code of Object.keys(out)) {
+      const s = out[code], g = s.g;
+      if (code === 'C') {
+        cards += `<div class="fn-card"><div class="fn-title">${esc(`${g.emoji || ''} ${g.label}`)} · <span class="fn-out">${M0(s.cost)}</span></div>
+          <table class="fn-table" style="margin-top:6px;"><thead><tr>${cols('pg_club_columns', 'Line|Cost / yr')}<th></th></tr></thead><tbody>
+          ${s.rows.map(r => `<tr><td title="${esc(r.t.note || '')}">${txt('team', r.t.id, 'label', r.t.label, 240)}${r.t.is_assumed ? '*' : ''}</td><td>${num('team', r.t.id, 'cost_per_team', r.t.cost_per_team, 90)}</td><td>${btn('del-team', '✕', `data-id="${r.t.id}"`)}</td></tr>`).join('')}
+          </tbody></table><div style="margin-top:6px;">${btn('add-team', this._copy('pg_add_line') || '＋ Line', `data-group="C"`)}</div></div>`;
+        continue;
+      }
+      const net = s.income - s.cost;
+      let rows = '';
+      for (const r of s.rows) {
+        const t = r.t, over = t.roster != null && Number(t.players) > Number(t.roster);
+        rows += `<tr class="${Number(t.team_count) ? '' : 'fn-dim'}"><td title="${esc(t.note || '')}">${txt('team', t.id, 'label', t.label, 150)}${t.is_assumed ? '*' : ''}${t.note ? `<span class="fn-tick">${esc(t.note)}</span>` : ''}</td>
+          <td>${num('team', t.id, 'team_count', t.team_count, 52, '1')}</td>
+          <td class="${over ? 'fn-warn' : ''}" title="${over ? esc(this._copy('pg_over_roster')) : ''}">${num('team', t.id, 'players', t.players, 56, '1')}${over ? ' ⚠' : ''}</td>
+          <td>${num('team', t.id, 'roster', t.roster, 56, '1')}</td>
+          <td>${num('team', t.id, 'cost_per_team', t.cost_per_team, 84)}</td>
+          <td class="fn-out">${M0(r.coaching)}</td><td class="fn-out">${M0(r.kits)}</td><td class="fn-out">${M0(r.cost)}</td><td class="fn-in">${r.income ? M0(r.income) : '<span class="fn-dim">—</span>'}</td>
+          <td style="white-space:nowrap;">${btn('copy-team', this._copy('pg_copy_team') || '⧉ B team', `data-id="${t.id}" data-group="${code}"`)} ${btn('add-coach', this._copy('pg_add_coach') || '＋ Coach', `data-id="${t.id}" data-group="${code}"`)} ${btn('del-team', '✕', `data-id="${t.id}"`)}</td></tr>`;
+        if (r.coaches.length) rows += `<tr><td colspan="10" style="padding:0;">${coachTable(r.coaches, Number(t.team_count) !== 1 ? t.team_count : 0)}</td></tr>`;
+      }
+      cards += `<div class="fn-card">
+        <div class="fn-title">${esc(`${g.emoji || ''} ${g.label}`)} · <span class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)} / yr</span></div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px; margin:6px 0 8px;">
+          <label>${esc(this._copy('pg_dues') || 'Dues / month')} ${inp('group', '', 'dues_monthly', g.dues_monthly, 70, ` type="number" min="0" step="any" data-group="${code}"`)}</label>
+          <label>${esc(this._copy('pg_kit') || 'Kit per player')} ${inp('group', '', 'kit_per_player', g.kit_per_player, 70, ` type="number" min="0" step="any" data-group="${code}"`)}</label>
+          ${g.note ? `<span class="fn-note">${esc(g.note)}</span>` : ''}</div>
+        <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols('pg_team_columns', 'Team|Teams|Players per team|Roster|Cost per team|Coaching|Kits|Cost / yr|Income / yr')}<th></th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div style="margin:6px 0;">${btn('add-team', this._copy('pg_add_team') || '＋ Team', `data-group="${code}"`)}</div>
+        <div style="font-weight:800; margin-top:8px;">${esc(this._copy('pg_section_coaches') || 'Coaches for the whole section')} · <span class="fn-out">${M0(s.sectionCoaching)}</span></div>
+        ${coachTable(s.sectionCoaches, 0)}
+        <div>${btn('add-coach', this._copy('pg_add_coach') || '＋ Coach', `data-group="${code}"`)}</div>
+      </div>`;
+    }
+    return `<div class="fn-card"><div class="fn-title">${esc(this._copy('pg_title') || 'Playground')}</div><div class="fn-note">${esc(this._copy('pg_note'))}</div>
+      ${yearBar}${copied}${err}
+      <div style="overflow-x:auto;"><table class="fn-table" style="min-width:520px;"><thead><tr>${cols('pg_summary_columns', 'Section|Teams|Players|Income / yr|Cost / yr|Net / yr|Net / mo')}</tr></thead><tbody>${sum}</tbody></table></div>
+      ${breakEven}<div class="fn-note">${esc(this._copy('assumed_note') || '* assumed')}</div></div>${cards}`;
   }
 }
 window.FinancesScreen = FinancesScreen;

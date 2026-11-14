@@ -32,4 +32,6 @@ private:
     Response handleBudgetLine(const Request& request);
     Response handlePlanRoster(const Request& request);
     Response handlePlanTeams(const Request& request);
+    Response handlePlayground(const Request& request);       // mig 1361
+    Response handlePlaygroundEdit(const Request& request);
 };
