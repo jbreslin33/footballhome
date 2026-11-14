@@ -111,4 +111,59 @@ just swap the viewer object; the screen stays the same.
    keyed on roster teams rather than `fh_event_teams`) moves to
    `EventAccess`; its separate player-view layout goes.
 
+## Resume here (paused 2026-11-14)
+
+Live on prod and pushed: slices 1–3 (04c69cf3, a832b432, be7b4554; fix
+7b4fae69). Migrations 1362, 1363, 1366 applied. Backend deployed with
+EventAccess + NoticeBoard.
+
+**Before starting:** `git status` — another session had uncommitted edits in
+`frontend/js/screens/practice.js` and `game-center.js` (and an untracked
+`1346-lineup-move-contact.sql`). Ask over SendMessage before touching
+those files, and check `git diff --cached --name-status` before every
+commit (a peer's staged `git rm` got swept into be7b4554 once).
+
+**Slice 4 — `Panel` base (EventScreen + PracticeScreen)**
+- New `lib/panel.js`: `class Panel { key, minTier ('player'|'coach'|'admin'),
+  applies(screen) → bool (does this exist for the event/team?), html(screen),
+  mount(el, screen) }`. A screen keeps `panels(pill)` → Panel list, filters by
+  `this.viewer.atLeast(p.minTier) && p.applies(this)`, wraps each in the
+  existing `panelFoldHtml` (every panel is a closed fold — STANDING_OPEN
+  list for the ones the owner names).
+- Today's gates to convert are the `this.viewer.canX()` checks in
+  `event-screen.js` (`_attendanceCell`, the card grid's canRemind /
+  canContact / canSet, markAllBar, `_canInvite`) and `practice.js`'s
+  `this.att.canMark` / `this.sides.canEdit` (groups, practice plan, cones).
+  `att.canMark` / `att.canSetRsvp` are kept only for those not-yet-moved
+  screens; drop them when nothing reads them.
+- Add "👀 See as player" (coach + admin) / "See as coach" (admin) on every
+  kind: swap `this.att.viewer` for a lower Viewer and re-render. No server
+  change.
+
+**Slice 5 — Game Center onto panels**
+- Replace `isCoach` / `realIsCoach` (from `/api/lineup` →
+  EligibilityController, keyed on the game's ROSTER teams) with
+  `EventAccess` / `viewer_tier` — check the two team sets agree for every
+  live game first (roster teams vs `fh_event_teams`); if not, decide which
+  is right before switching.
+- Its `viewMode` coach/player toggle and the separate player layout go:
+  player view = the same panels with the coach ones filtered out.
+- Lineup drafts flip `isCoach` per view (a drafter edits only their own
+  draft) — that is an edit right on a draft, not a tier; keep it as its own
+  check.
+- ~7,400 lines; do it pill by pill.
+
+**Loose ends**
+- Delete `screens/my.js` once `public-teams-list.js` stops borrowing
+  `MyScreen._eventTitle` (move it to `EventLabels`); then drop the `my`
+  registration in `app.js` (navigation already redirects #my).
+- `EventScope` classes (Player/Coach/AdminScope) not extracted — the feed
+  SQL already scopes correctly; extract when a scope rule changes.
+- Not yet verified: phone auto-scroll on a real phone (only simulated), a
+  coach who is not an admin, a volunteer pick from the strip end to end.
+- SectionChat shows GroupMe only for sections whose in-app chat is off
+  (`messaging_enabled = false`, like the Men). If a section ever keeps its
+  in-app chat AND gets a GroupMe, show both (the old #my had a separate
+  box for that).
+
 Related: `docs/calendar-design.md`.
