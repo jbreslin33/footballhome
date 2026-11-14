@@ -56,6 +56,7 @@ struct PlayerView {
     bool keeper = false;
     math::Fixed64 across_def{};  // his lateral spot without the ball (slideY)
     math::Fixed64 across_ours{}; // ...with it
+    bool lone_ours = false;      // G5.120: the only man of his role_ours in his side (a lone DM / AM / ST picks a side a spell)
     math::Vec2 chase_to{};       // where he takes the loose ball (the race read)
     math::Vec2 ball_to{};        // where the ball is going: a free ball's first taker's point, else the ball
     std::uint64_t match_seed = 0;

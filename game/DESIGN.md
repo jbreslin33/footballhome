@@ -9454,3 +9454,41 @@ for the pairs): lone AM / ST stand off the centre line (a side per spell), DMs a
 the ball wide, ST / AM less far over. Then INWARD and the ball's width again.
 
 Shipped: the measurements (harness only; outputs and goldens unchanged; tests 22/22).
+
+### 8.221 G5.120 — the slide by role and the ball's |y|; a lone DM / AM / ST picks a side a spell (DFL ROLE WIDTH)
+
+From §8.220 (the shape on the ball narrow at the same ball, ST / AM over-sliding). New `benchmarks_tracking_rolewidth.py`
+(DFL, spell frames, the side on the ball, carrier out; s = metres toward the ball's side) and the harness's ROLE
+WIDTH, by the ball's metres off the centre line in 4 m bins 0-4 … 24-28 / 28+. Seed 1000 / 2000, 8 matches; real
+in brackets.
+
+**Before.** Every man in possession slid a flat 0.47 × the ball's y (`physics.shape.ours_shift_y`, G5.14).
+Pairs over-slid with the ball wide: CB centre +12.5 at 28+ (+9.1), FB +10.3 (+8.2), WIDE +11.0 (+7.9), 1-3.5 m
+over from 12 m out. The lone AM stood 5 m off the centre line either side (ball side +5.2-5.6, far −4.4-4.6 with
+the ball central; real +10.2 / −9.6), on the ball's side 73-96% from 8 m out (55-77); the lone ST likewise milder
+(ball side 72-94%, real 62-78). Real lone men keep one side through a spell with the ball central 95-97%.
+
+**Change.** (1) SLIDE: `PossessionParams::slide[role][bin]` (physics.support.slide_<role>_<bin centre>, m) replaces
+the flat slide (`physics.support.slide_on`, 0 = the old 0.47) — the real pair centre, real × our input / our
+measured, two passes. AM has no real pair: kept at 0.47 × the bin centre. (2) LONE: `Brain` marks the only
+outfielder of his in-possession role in his side (`PlayerView::lone_ours`); a lone DM / AM / ST's spot y is the
+real s on the ball's side or the far side (median, between bin centres), the side from one roll a man a spell
+against the bin's real ball-side share (bin 0 held at a half and the roll mirrored with the ball's side, so his
+side holds as the ball crosses the middle). `physics.support.lone_on`, lone_p_ / lone_near_ / lone_far_ rows.
+G5.89's wide-channel drift still wins when it rolls.
+
+**After.** Pair centres within ~1 m at every bin: CB +9.0 (+9.1) at 28+, FB +8.0-8.2 (+8.2), DM/CM +11.3-11.6
+(+12.0); THE SLIDE line likewise (CB 24+ +9.0-9.1 v +9.3). Lone AM ball side 55-75% (48-77), +9.0-13.9 (+10.2-14.6),
+far −9.0 → −5.2 (−9.6 → −5.1), one side the whole spell 94% (95), |y| 8.8 (9.8). Lone ST ball side 52-81% (47-78),
++6.2-9.6 (+6.3-10.3), one side 92-93% (95), |y| 5.6-5.9 (6.0).
+
+**Knock-on.** The ball's own |y| med went 0.5-1 m more central (0-35 17.9 / 16.9 v 18.4 / 18.6; real 23.6) —
+men no longer pile toward its side, and INWARD is unchanged (passes from 10-20 m still come in, −0.7 to −2.5 v
++1.0 to +3.4 real): the ball's width is the pass, not the shape. Options 0/1/2/3+ unchanged. Shots / goals
+7.7 / 1.38 and 11.2 / 2.12 (before 10.2 / 1.38, 8.5 / 1.12) — both ways, 8-match noise.
+
+**Still off.** Pair GAPS on spell frames: CB 18-20 m (13-17), DM/CM 11.5-12 with the ball central (9.7) —
+G5.102's width was fitted before G5.118's spread pushed pairs apart; refit on spell frames. FB far man with the
+ball 28+ (gap 44 v 36). **Next:** the pair gaps, then INWARD (the pass from 10-20 m off the centre line).
+
+Shipped: slide table + lone side (engine); goldens re-locked; tests 22/22.

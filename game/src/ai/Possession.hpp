@@ -45,6 +45,14 @@ namespace fh::game::ai {
 struct PossessionParams {
     math::Fixed64 spot[kRoleCount][kBandCount]{};   // metres off THEIR line
     math::Fixed64 width[kRoleCount][kBandCount]{};  // G5.102: formation width factor by the ball's band (permille)
+    // G5.120 (§8.221): the side on the ball by the ball's |y| in 4 m bins (0-4 … 24-28, 28+): each role's slide
+    // toward the ball's side (m, between bin centres 2, 6 … 26, 30), and a lone DM / AM / ST's side a spell —
+    // the share of frames on the ball's side and his m toward it on the ball's side / the far side.
+    static constexpr int kYBins = 8;
+    bool slide_on = true, lone_on = true;
+    math::Fixed64 slide[kRoleCount][kYBins]{};
+    math::Fixed64 lone_p[kRoleCount][kYBins]{}, lone_near[kRoleCount][kYBins]{}, lone_far[kRoleCount][kYBins]{};
+    math::Fixed64 slideAt(int role, math::Fixed64 ball_y) const;   // signed: toward the ball's side
     // The shot policy (G5.23): of the balls let go at a spot, the share that are
     // shots — by distance (<12, 12-18, 18-25, 25-35 m) × goal angle (<0.25,
     // 0.25-0.5, 0.5+ rad). StatsBomb PL 2015/16 open play

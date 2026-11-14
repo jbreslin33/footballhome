@@ -54,11 +54,26 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y, Format
         const auto& pos = spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]];
         role_of_slot_[i] = roleOfSlot(pos.role, pos.number);
     }
+    // G5.120: lone by role with the ball (a wing-back is wide); keepers aren't anyone's mate here.
+    lone_of_slot_.assign(n, 0);
+    for (std::size_t i = 0; i < n; ++i) {
+        const auto& pi = spec_[setup_.team_of_slot[i]].positions[index_in_team_[i]];
+        if (pi.keeper) continue;
+        const Role ri = pi.role == "wing-back" ? Role::Wide : role_of_slot_[i];
+        int same = 0;
+        for (std::size_t j = 0; j < n; ++j) {
+            if (setup_.team_of_slot[j] != setup_.team_of_slot[i]) continue;
+            const auto& pj = spec_[setup_.team_of_slot[j]].positions[index_in_team_[j]];
+            if (pj.keeper) continue;
+            same += (pj.role == "wing-back" ? Role::Wide : role_of_slot_[j]) == ri;
+        }
+        lone_of_slot_[i] = same == 1;
+    }
 }
 
 Brain::Brain(const Brain& o)
     : setup_(o.setup_), half_x_(o.half_x_), half_y_(o.half_y_), index_in_team_(o.index_in_team_),
-      match_seed_(o.match_seed_), reads_(o.reads_), block_(o.block_), poss_(o.poss_), role_of_slot_(o.role_of_slot_), phase_params_(o.phase_params_),
+      match_seed_(o.match_seed_), reads_(o.reads_), block_(o.block_), poss_(o.poss_), role_of_slot_(o.role_of_slot_), lone_of_slot_(o.lone_of_slot_), phase_params_(o.phase_params_),
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
@@ -234,7 +249,15 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
         const Fixed64 off_their = half_x_ - world.ball().pos.x * v.sg;
         const Fixed64 f = bandLookup(poss_.params().width[static_cast<int>(v.role_ours)], off_their);
         v.across_ours = slideY(Vec2{mine.base.x, mine.base.y * f}, world.ball().pos.y, ours_shift_y_, ours_cap_y_);
+        if (poss_.params().slide_on) {   // G5.120 (§8.221): the slide by role and the ball's |y| (DFL ROLE WIDTH)
+            Fixed64 y = mine.base.y * f * half_y_ + poss_.params().slideAt(static_cast<int>(v.role_ours), world.ball().pos.y);
+            const Fixed64 lim = half_y_ - Fixed64::fromInt(2);
+            if (y > lim) y = lim;
+            if (y < -lim) y = -lim;
+            v.across_ours = y;
+        }
     }
+    v.lone_ours = slot < lone_of_slot_.size() && lone_of_slot_[slot];
     v.chase_to = (fr.live && slot < fr.at.size() && fr.tick[slot] >= 0) ? fr.at[slot]
                                                                          : Vec2{world.ball().pos.x, world.ball().pos.y};
     if (block_.contester(team) == static_cast<int>(slot)) v.chase_to = block_.contestAt(team);   // G5.71: contest their high ball

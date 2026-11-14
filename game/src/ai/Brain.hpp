@@ -118,6 +118,7 @@ private:
     mutable DefendingBlock block_{};
     mutable Possession poss_{};
     std::vector<Role> role_of_slot_;
+    std::vector<std::uint8_t> lone_of_slot_;   // G5.120: the only outfielder of his in-possession role in his side
     PhaseParams phase_params_{};
     mutable TeamAgent teams_[2];
     mutable PlayerAgent players_[32];

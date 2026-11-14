@@ -45,6 +45,28 @@ constexpr int kRealWidthPm[kRoleCount][kBandCount] = {
     { 733,  801,  716,  670,  719,  773,  805,  795,  832,  832},   // WIDE
     {1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000},   // ST
 };
+// G5.120 (§8.221): the side ON the ball, by the ball's metres off the centre line in 4 m bins (0-4 … 24-28, 28+)
+// — benchmarks_tracking_rolewidth.py (DFL, spell frames, the carrier out). SLIDE: the real centre of each role's
+// pair toward the ball's side (CB +1.0 → +9.1 m, DM/CM 0 → +12.0), over ours before (every man 0.47 × the
+// ball's y: CB +12.5 with the ball 28+) — decimetres, real × our input / our measured, two passes, so ours measure real (fh-game-match
+// ROLE WIDTH). AM: no real pair, the old 0.47. LONE (the only DM / AM / ST in his side): the share of frames on
+// the ball's side (permille; bin 0 held at a half so the side holds as the ball crosses the middle) and his
+// metres toward it on the ball's side / the far side, medians (real AM +10.2 / −9.6 with the ball central:
+// ours stood 5 m off the line either side).
+constexpr int kRealSlideDm[kRoleCount][PossessionParams::kYBins] = {
+    { 12,  16,  29,  46,  61,  67,  82, 102},   // CB
+    {  7,  22,  23,  33,  46,  48,  70, 114},   // FB
+    {  5,  18,  68,  61,  61,  86, 113, 152},   // DM/CM
+    {  9,  28,  47,  66,  85, 103, 122, 146},   // AM (0.47 × the bin centre)
+    { 11,  48,  52,  49,  51,  64,  96,  96},   // WIDE
+    {  6,  17,  21,  38,  51,  73,  79,  84},   // ST
+};
+constexpr int kLoneP[3][PossessionParams::kYBins] = {   // DM/CM, AM, ST
+    {500, 610, 630, 650, 670, 820, 890, 910}, {500, 580, 550, 640, 680, 720, 730, 770}, {500, 570, 620, 640, 620, 670, 760, 780}};
+constexpr int kLoneNearDm[3][PossessionParams::kYBins] = {
+    { 80, 121, 108, 109,  98, 140, 139, 152}, {102, 104, 105, 106, 117, 117, 132, 146}, { 63,  71,  82,  90,  85,  87,  98, 103}};
+constexpr int kLoneFarDm[3][PossessionParams::kYBins] = {
+    {-67, -50, -52, -71, -48, -37, -48, -47}, {-96, -86, -80, -53, -63, -54, -62, -51}, {-59, -57, -43, -44, -35, -31, -40, -31}};
 const char* const kRoleKey[kRoleCount] = {"cb", "fb", "dm", "am", "wide", "st"};
 const Fixed64 kGoalHalfW = Fixed64::fromFraction(366, 100);   // Law 1: 7.32 m
 
@@ -1025,6 +1047,21 @@ Fixed64 Possession::frontGap(const PlayerView& v) const {
 }
 
 
+// G5.120: a 4 m-bin row by |y|, between the bin centres 2, 6 … 26, 30, held past the ends.
+static Fixed64 yLookup(const Fixed64 (&row)[PossessionParams::kYBins], Fixed64 ay) {
+    const Fixed64 u = (ay - Fixed64::fromInt(2)) / Fixed64::fromInt(4);
+    if (u <= Fixed64::zero()) return row[0];
+    if (u >= Fixed64::fromInt(PossessionParams::kYBins - 1)) return row[PossessionParams::kYBins - 1];
+    const int i = static_cast<int>(u.raw >> Fixed64::FRAC_BITS);
+    const Fixed64 f = u - Fixed64::fromInt(i);
+    return row[i] + (row[i + 1] - row[i]) * f;
+}
+
+Fixed64 PossessionParams::slideAt(int role, Fixed64 by) const {
+    const Fixed64 s = yLookup(slide[role], math::fx_abs(by));
+    return by.raw < 0 ? -s : s;
+}
+
 // G5.73 (§8.174): the real high share for a pass this long from this far off our goal, linear
 // between the length bands' middles (5, 15, … 55 m), held past the ends.
 Fixed64 PossessionParams::highShare(Fixed64 own_m, Fixed64 len, int dir) const {
@@ -1044,6 +1081,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
             const std::string key = std::string("physics.support.") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5);
             spot[r][b] = p.fixed(key, std::int64_t{kRealSpotDm[r][b]} * 100);
             width[r][b] = p.fixed(std::string("physics.support.w_") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5), kRealWidthPm[r][b]);
+        }
+    slide_on = p.fixed("physics.support.slide_on", 1000).raw > 0;
+    lone_on = p.fixed("physics.support.lone_on", 1000).raw > 0;
+    for (int r = 0; r < kRoleCount; ++r)
+        for (int b = 0; b < kYBins; ++b) {
+            const std::string yk = std::to_string(b * 4 + 2);
+            slide[r][b] = p.fixed(std::string("physics.support.slide_") + kRoleKey[r] + "_" + yk, std::int64_t{kRealSlideDm[r][b]} * 100);
+            const int li = r == static_cast<int>(Role::DM) ? 0 : r == static_cast<int>(Role::AM) ? 1 : r == static_cast<int>(Role::ST) ? 2 : -1;
+            if (li < 0) continue;
+            lone_p[r][b] = p.fixed(std::string("physics.support.lone_p_") + kRoleKey[r] + "_" + yk, kLoneP[li][b]);
+            lone_near[r][b] = p.fixed(std::string("physics.support.lone_near_") + kRoleKey[r] + "_" + yk, std::int64_t{kLoneNearDm[li][b]} * 100);
+            lone_far[r][b] = p.fixed(std::string("physics.support.lone_far_") + kRoleKey[r] + "_" + yk, std::int64_t{kLoneFarDm[li][b]} * 100);
         }
     // The shot policy, StatsBomb PL 2015/16 open play (permille).
     static const int kShotP[4][3] = {{293, 778, 922}, {82, 610, 675}, {66, 358, 0}, {18, 183, 0}};
@@ -1299,6 +1348,20 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
                 return Vec2{(hx - params_.drift_tl[z][r][t]) * v.sg, side * params_.drift_y[z][r][t]};
             }
         }
+    }
+    if (params_.lone_on && v.lone_ours && (v.role_ours == Role::DM || v.role_ours == Role::AM || v.role_ours == Role::ST)) {
+        // G5.120 (§8.221): a lone DM / AM / ST stands off the centre line, a side a spell — real ones keep one
+        // side through a spell with the ball central 95-97%, on the ball's side more as it goes wide. One roll a
+        // man a spell; mirrored with the ball's side, so with the ball central (p a half) his side holds.
+        const int r = static_cast<int>(v.role_ours);
+        const Fixed64 by = world.ball().pos.y, ay = math::fx_abs(by);
+        int b = static_cast<int>(ay.raw >> Fixed64::FRAC_BITS) / 4;
+        if (b >= PossessionParams::kYBins) b = PossessionParams::kYBins - 1;
+        const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 90) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const bool pos = by.raw >= 0;
+        const bool near = (pos ? u : Fixed64::one() - u) < params_.lone_p[r][b];
+        const Fixed64 s = yLookup(near ? params_.lone_near[r] : params_.lone_far[r], ay);
+        return Vec2{(hx - x) * v.sg, pos ? s : -s};
     }
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }

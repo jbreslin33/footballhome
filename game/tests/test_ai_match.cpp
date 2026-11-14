@@ -97,7 +97,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
 // Re-locked G5.102 (2026-11-12): in-possession width by band.
 // Re-locked G5.118 (2026-11-13): a supporting man's spot steps off a mate within 12 m (DFL SPACING).
-constexpr std::uint64_t kGolden3v3   = 0xa87a56c700202797ULL;
+// Re-locked G5.120 (2026-11-14): the slide by role and the ball's |y| (DFL ROLE WIDTH).
+constexpr std::uint64_t kGolden3v3   = 0x7fef5f7aa865350dULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -141,7 +142,8 @@ constexpr std::uint64_t kGolden3v3   = 0xa87a56c700202797ULL;
 // Re-locked G5.91 (2026-11-11): the ball in behind to the man already running (DFL lift by his speed).
 // Re-locked G5.102 (2026-11-12): in possession each pair stands the real width for the ball's band (DFL posswidth).
 // Re-locked G5.118 (2026-11-13): a supporting man's spot steps off a mate within 12 m (DFL SPACING).
-constexpr std::uint64_t kGolden11v11 = 0x761ab5508762ed34ULL;
+// Re-locked G5.120 (2026-11-14): the slide by role and the ball's |y|, a lone DM / AM / ST a side a spell (DFL ROLE WIDTH).
+constexpr std::uint64_t kGolden11v11 = 0x32149e9e03b6ba1fULL;
 
 struct Rig {
     World world;
