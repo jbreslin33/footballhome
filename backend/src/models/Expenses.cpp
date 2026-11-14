@@ -352,11 +352,8 @@ json Expenses::projection(int clubId) {
             out["plan_cash"].push_back({{"scope", scope}, {"category", "league_dues"}, {"category_label", catLabel}, {"payments_of", row["scope_label"]},
                                         {"label", payLabel(row["scope_label"].get<std::string>())}, {"assumed", false}, {"hint", hint}, {"by_month", monthsJson(m)}, {"totals", totals(m)}});
         }
-        // Who shares a section's costs (owner 2026-11-13: "dont ever use pickup
-        // … use 70 as the maxed out perfect scenario then use active but also a
-        // cat for current dues payers"): full house = roster spots of the
-        // section's dues-carrying teams; active = members on an active league
-        // program (never pickup); current = active, paying, owing nothing.
+        // Paying members per section (Budget revenue + the club-wide share):
+        // active league program (never pickup), not free / volunteer / injured.
         out["plan_heads"] = json::array();
         for (const auto& r : db->query(R"SQL(
             WITH sec AS (
@@ -369,52 +366,13 @@ json Expenses::projection(int clubId) {
                  ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
             )
             SELECT sec.id, sec.code,
-                   (SELECT COALESCE(SUM(t.max_roster), 0) FROM teams t
-                     WHERE t.club_section_id = sec.id AND t.is_active AND t.dues_rank IS NOT NULL) AS full_house,
                    COUNT(a.person_id) AS active,
-                   COUNT(a.person_id) FILTER (WHERE a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL
-                                                AND fh_dues_balance_usd(a.person_id) = 0) AS current,
                    -- paying = active, not free / volunteer / injured, whatever they owe (mig 1344: the club-wide split)
                    COUNT(a.person_id) FILTER (WHERE a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL) AS paying
               FROM sec LEFT JOIN act a ON a.category = sec.category
              GROUP BY sec.id, sec.code)SQL"))
             out["plan_heads"].push_back({{"section_id", r["id"].as<long long>()}, {"code", str(r, "code")},
-                                         {"full_house", r["full_house"].as<long long>()}, {"active", r["active"].as<long long>()}, {"current", r["current"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
-
-        // 🎯 At capacity (mig 1360, owner: "we need to hit capicity for all
-        // teams"): adult sections against their dues-carrying teams' roster
-        // spots, youth per US Club Soccer age against youth_age_capacities
-        // (boys + girls together).  Members = active league program, never
-        // pickup; paying = not free / volunteer / injured (the plan_heads rule).
-        out["capacity"] = json::array();
-        for (const auto& r : db->query(R"SQL(
-            WITH act AS (
-                SELECT DISTINCT ON (lp.category, m.person_id) lp.category, m.person_id, m.la_payment_status
-                  FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
-                 WHERE m.ended_at IS NULL AND lp.variant = 'active'
-                 ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST
-            ), pay AS (
-                SELECT a.*, (a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL) AS paying FROM act a
-            )
-            SELECT 'section' AS kind, s.code, NULL::int AS us_age,
-                   (SELECT COALESCE(SUM(t.max_roster), 0) FROM teams t
-                     WHERE t.club_section_id = s.id AND t.is_active AND t.dues_rank IS NOT NULL) AS capacity,
-                   COUNT(p.person_id) AS members, COUNT(p.person_id) FILTER (WHERE p.paying) AS paying
-              FROM club_sections s
-              LEFT JOIN pay p ON p.category = CASE s.code WHEN 'M' THEN 'men' WHEN 'W' THEN 'women' END
-             WHERE s.code IN ('M', 'W')
-             GROUP BY s.id, s.code
-            UNION ALL
-            SELECT 'age', 'B', c.us_age, c.capacity, COUNT(DISTINCT p.person_id), COUNT(DISTINCT p.person_id) FILTER (WHERE p.paying)
-              FROM youth_age_capacities c
-              LEFT JOIN (pay p JOIN persons pe ON pe.id = p.person_id)
-                     ON p.category IN ('boys', 'girls') AND fh_youth_us_age(pe.birth_date) = c.us_age
-             WHERE c.club_id = $1::int
-             GROUP BY c.us_age, c.capacity
-             ORDER BY 1 DESC, 2, 3)SQL", {club}))
-            out["capacity"].push_back({{"kind", str(r, "kind")}, {"code", str(r, "code")},
-                                       {"us_age", r["us_age"].is_null() ? json(nullptr) : json(r["us_age"].as<int>())},
-                                       {"capacity", r["capacity"].as<long long>()}, {"members", r["members"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
+                                         {"active", r["active"].as<long long>()}, {"paying", r["paying"].as<long long>()}});
 
         // Grants per budget year (mig 1336) — club-wide, earmarked by purpose.
         out["plan_grants"] = json::array();
@@ -605,55 +563,6 @@ json Expenses::openBudgetLines(int clubId) {
                        {"remaining", settled ? 0.0 : std::max(0.0, round2(total - num(b, "paid_before_usd") - num(b, "invoiced")))}});
     }
     return out;
-}
-
-bool Expenses::updateBudgetLine(int clubId, int lineId, const std::optional<double>& amount, const std::optional<bool>& settled) {
-    auto* db = Database::getInstance();
-    const std::string club = std::to_string(clubId), id = std::to_string(lineId);
-    bool found = false;
-    // A person setting the amount replaces the assumption, so the * goes.
-    if (amount) found = !db->query("UPDATE budget_lines SET amount_usd = $1::numeric, is_assumed = false WHERE id = $2::int AND club_id = $3::int RETURNING id",
-                                   {std::to_string(*amount), id, club}).empty();
-    if (settled) found = !db->query("UPDATE budget_lines SET settled_at = CASE WHEN $1::boolean THEN COALESCE(settled_at, now()) END WHERE id = $2::int AND club_id = $3::int RETURNING id",
-                                    {*settled ? "true" : "false", id, club}).empty();
-    return found;
-}
-
-// A team's full roster typed on the Year plan (mig 1345, owner: "allow for on
-// budget page to put in full rosters"): the plan behind it follows — the
-// per-player registrations become that many players, an "extra player" line
-// becomes the players beyond what the entry fee includes, kits follow; a team
-// with no per-player fee (youth) keeps it as its roster size.
-// Year plan team count (mig 1348, owner: "allow for x amount of teams to
-// enter"): only an entry that carries a count (team_count NOT NULL) has the box.
-bool Expenses::setPlanTeams(int clubId, int entryId, int teams) {
-    (void)clubId;
-    auto r = Database::getInstance()->query(
-        "UPDATE team_season_entries SET team_count = $2::int WHERE id = $1::int AND team_count IS NOT NULL RETURNING id",
-        {std::to_string(entryId), std::to_string(teams)});
-    return !r.empty();
-}
-
-bool Expenses::setPlanRoster(int clubId, int entryId, int players) {
-    auto* db = Database::getInstance();
-    const std::string club = std::to_string(clubId), entry = std::to_string(entryId), n = std::to_string(players);
-    auto e = db->query("SELECT e.team_id FROM team_season_entries e JOIN teams t ON t.id = e.team_id "
-                       " WHERE e.id = $1::int AND e.budget_from_plan AND t.club_id = $2::int", {entry, club});
-    if (e.empty()) return false;
-    const std::string team = e[0]["team_id"].c_str();
-    const char* kNote = "Full roster set on Budget";
-    bool perPlayer = false;
-    // registrations paid per player
-    if (!db->query("UPDATE team_fee_plans p SET quantity = $2::numeric, is_assumed = false, note = $3 FROM league_fees f "
-                   " WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'player_fee' RETURNING p.id", {entry, n, kNote}).empty()) perPlayer = true;
-    // players beyond those the entry fee includes
-    if (!db->query("UPDATE team_fee_plans p SET quantity = GREATEST(0, $2::numeric - COALESCE((SELECT SUM(f2.players_included * p2.quantity) FROM team_fee_plans p2 "
-                   "        JOIN league_fees f2 ON f2.id = p2.league_fee_id WHERE p2.entry_id = p.entry_id), 0)), is_assumed = false, note = $3 "
-                   "  FROM league_fees f WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'extra_player' RETURNING p.id", {entry, n, kNote}).empty()) perPlayer = true;
-    // kits on the team's own plan (an option team)
-    db->query("UPDATE team_fee_plans p SET quantity = $2::numeric FROM league_fees f WHERE f.id = p.league_fee_id AND p.entry_id = $1::int AND f.fee_kind = 'kit'", {entry, n});
-    if (!perPlayer) db->query("UPDATE teams SET max_roster = $2::int WHERE id = $1::int", {team, n});
-    return true;
 }
 
 json Expenses::refLineFor(int clubId, const json& picks) {

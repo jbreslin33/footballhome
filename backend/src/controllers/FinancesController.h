@@ -17,8 +17,6 @@
 //                                before computing
 //   GET /api/finances/cash-flow  CashFlow: soccer money in from LeagueApps
 //                                against invoices out (#cash-flow, mig 882)
-//   POST /api/finances/budget-lines/:id  { amount?, settled? }: change a
-//                                budget line's estimate or ✓ Settled (mig 921)
 class FinancesController : public Controller {
 public:
     FinancesController();
@@ -29,9 +27,4 @@ private:
     Response handleSummary(const Request& request);
     Response handleExpenses(const Request& request);
     Response handleCashFlow(const Request& request);
-    Response handleBudgetLine(const Request& request);
-    Response handlePlanRoster(const Request& request);
-    Response handlePlanTeams(const Request& request);
-    Response handlePlayground(const Request& request);       // mig 1361
-    Response handlePlaygroundEdit(const Request& request);
 };
