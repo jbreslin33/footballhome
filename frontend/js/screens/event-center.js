@@ -14,8 +14,18 @@
 // ✓/✗ on a tile: POST|DELETE /api/calendar/rsvp as yourself (my_rsvp) and,
 // with person_id, for each of your kids on it (guardian_targets).
 //
-// Feed: GET /api/calendar/upcoming?start=<Monday>&days=7 (admins get every
-// club event, coaches their teams').
+// Feed: GET /api/calendar/upcoming?start=<Monday>&days=7 — already scoped
+// per viewer: admins every club event, coaches their teams', players and
+// parents their own + their kids' (docs/event-center-design.md, slice 2).
+//
+// ONE page for every tier (owner 2026-11-14: "for me cal grid should be
+// standard with the red line"): the calendar for everyone, person chips
+// (Everyone · Me · each kid) when the week holds more than your own events,
+// earlier days greyed, and on a phone the first open of this week scrolls to
+// the red NOW line.  👤 Mine (MyScreen) still rides along until its notices
+// strip lands (slice 3): dues + volunteer-shift banners above the calendar,
+// the rest (reminders toggle, fines, chat, GroupMe) below,
+// its own event list hidden — the calendar is the week now.
 class EventCenterScreen extends Screen {
   static get CATEGORY_LABELS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls', staff: 'Staff' }; }
 
@@ -24,6 +34,7 @@ class EventCenterScreen extends Screen {
     this.events   = null;      // the week's feed
     this.kind     = 'all';
     this.category = 'all';
+    this.person   = 'all';       // person chip: 'all' | 'me' | a kid's person_id
     this.weekStart = EventCenterScreen.monday(new Date());   // the calendar's Monday, kept across visits
     this.error    = null;
     this.saving   = new Set();   // fh_event_id of a self-RSVP in flight
@@ -46,6 +57,17 @@ class EventCenterScreen extends Screen {
                    border-bottom:1px solid var(--border-color); padding-bottom:3px; }
         .ec-day.today .ec-dayh { color:var(--primary-color); opacity:1; border-bottom-color:var(--primary-color); }
         .ec-none { font-size:0.8rem; opacity:0.35; }
+        .ec-day.past { opacity:0.5; }
+        .ec-day.past .ec-past { opacity:1; }
+        /* 👤 Mine rides inside the stack until slice 3: its banners above the
+           calendar, its sections below, its own week hidden. */
+        #ec-stack { display:flex; flex-direction:column; gap:6px; padding: var(--space-3) var(--space-4) var(--space-4); max-width:1400px; margin:0 auto; }
+        #ec-mine, #ec-mine > .screen-my, #ec-mine > .screen-my > .my-body { display:contents; }
+        #ec-mine #my-dues-banner, #ec-mine #my-volunteer { order:1; }
+        #ec-body { order:2; }
+        #ec-mine .screen-header { order:3; margin-top:var(--space-4); }
+        #ec-mine #my-push-banner, #ec-mine #my-admin-tools, #ec-mine #my-chat, #ec-mine #my-groupme, #ec-mine #my-fines { order:4; }
+        #ec-mine #my-events, #ec-mine #my-subtitle { display:none; }
         .ec-now { display:flex; align-items:center; gap:6px; color:#ef4444; font-size:0.66rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; white-space:nowrap; }
         .ec-now::before, .ec-now::after { content:''; flex:1; height:2px; background:#ef4444; }
         @media (min-width: 900px) { .ec-week { grid-template-columns:repeat(7, minmax(0, 1fr)); } }
@@ -57,13 +79,12 @@ class EventCenterScreen extends Screen {
         <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
         <div id="ec-kinds" style="display:contents;"></div>
       </div>
-      <!-- Staff: [👤 Mine] [📅 Club week], one at a time (mig 1296). -->
-      <div id="ec-views" style="display:none; gap:6px; flex-wrap:wrap; padding: var(--space-3) var(--space-4) 0; max-width: 1400px; margin: 0 auto;"></div>
-      <!-- 👤 Mine: everything #my shows, as its own visible section (owner
-           2026-11-11: "bring it all" / "put it in sep section but visible").
-           #my redirects here last; until then both work. -->
-      <section id="ec-mine" style="padding: var(--space-3) var(--space-4) 0; max-width: 1400px; margin: 0 auto;"></section>
-      <div id="ec-body" style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;"></div>
+      <div id="ec-stack">
+        <!-- 👤 Mine (MyScreen) — banners above the calendar, the rest below
+             (CSS order above); its own week list is hidden. -->
+        <section id="ec-mine"></section>
+        <div id="ec-body"></div>
+      </div>
     `;
     this.element = div;
     this._wire();
@@ -77,8 +98,11 @@ class EventCenterScreen extends Screen {
     if (evAt && !isNaN(evAt)) { this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
     // A type pill (EventKindSwitch) lights that kind on the calendar.
     if (params.kind) this.kind = params.kind;
-    // An old #my door asks for 👤 Mine (navigation.js) — not saved to the device.
-    if (params.view === 'mine' || params.view === 'club') this._viewPick = params.view;
+    // Back from an event this screen opened → where you were; otherwise the
+    // first paint of this week scrolls to the NOW line (phone only).
+    this._restoreScroll = this._openedEvent ? this._savedScroll : null;
+    this._openedEvent = false;
+    this._autoScroll = this._restoreScroll == null;
     this.error = null;
     this._render();
     // The DB copy (title, subtitle, not-posted, now line) — cached across screens.
@@ -90,15 +114,6 @@ class EventCenterScreen extends Screen {
   }
 
   onExit() { this._unmountMine(); }
-
-  // Club admins, coaches and club staff get the week calendar under Mine;
-  // a player or parent (or an admin viewing as one) does not.
-  _staffView() {
-    if (this.auth && this.auth.viewAsPersonId) return false;
-    const role = ((this.navigation.context && this.navigation.context.user) || {}).role;
-    if (['club', 'sport_division', 'team', 'super', 'system', 'league', 'marketing'].includes(role)) return true;
-    return (this.events || []).some(e => e && (e.my_role === 'coach' || e.my_role === 'staff'));
-  }
 
   // 👤 Mine — the whole #my page (MyScreen: banners, dues, volunteer
   // shifts, GroupMe, your week with Go / No, call-in, kids' pills …)
@@ -113,6 +128,7 @@ class EventCenterScreen extends Screen {
     let el;
     try { el = my.render(); } catch (err) { console.error('[event-center] mine render failed:', err); return; }
     el.classList.remove('screen');
+    const inner = el.querySelector('.screen-header + div'); if (inner) inner.classList.add('my-body');
     // Event Center has its own ← Back; #my's own "My Schedule" title is the
     // section heading's job.
     const back = el.querySelector('.back-btn'); if (back) back.remove();
@@ -167,6 +183,8 @@ class EventCenterScreen extends Screen {
   // Another week (‹ › / This week / the date box): drop the old feed so
   // the calendar shows Loading…, then fetch.
   _setWeek(date) {
+    this._autoScroll = false;     // stepping weeks starts at Monday
+    this._restoreScroll = null;
     this.weekStart = EventCenterScreen.monday(date);
     this.events = null;
     this.error = null;
@@ -201,7 +219,6 @@ class EventCenterScreen extends Screen {
       if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);
       let el;
-      if ((el = t('[data-ec-view]'))) { this._setView(el.dataset.ecView); return; }
       if ((el = t('[data-event-kind]'))) {
         this.kind = el.dataset.eventKind;
         if (this.error) this._setWeek(this.weekStart);   // a failed load tries again
@@ -209,6 +226,7 @@ class EventCenterScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
+      if ((el = t('[data-ec-person]'))) { this.person = el.dataset.ecPerson; this._render(); return; }
       if ((el = t('[data-ec-week]'))) {
         const step = Number(el.dataset.ecWeek);
         const d = step ? new Date(this.weekStart) : new Date();
@@ -227,7 +245,11 @@ class EventCenterScreen extends Screen {
       if ((el = t('[data-ec-open]'))) {
         // A goTo, so Back returns to the week.
         const ev = (this.events || []).find(x => x.fh_event_id === Number(el.dataset.ecOpen));
-        if (ev) EventKindSwitch.open(this.navigation, ev);
+        if (ev) {
+          this._openedEvent = true;
+          this._savedScroll = window.scrollY || 0;
+          EventKindSwitch.open(this.navigation, ev);
+        }
       }
     });
   }
@@ -283,56 +305,56 @@ class EventCenterScreen extends Screen {
   _kindOf(ev) { return EventLabels.kindOf(ev); }
   _isPast(ev) { return EventLabels.isPast(ev); }
 
-  // Staff see ONE of 👤 Mine / 📅 Club week at a time (owner 2026-11-12:
-  // "it shows like both views at same time lol player and admin/coach" →
-  // two pills).  Club week by default; the last pick is kept per device.
-  // Players and parents have no pills — Mine is their page.
-  _view() {
-    if (!this._viewPick) {
-      try { this._viewPick = localStorage.getItem('fh.ec.view'); } catch (_e) { /* private mode */ }
-    }
-    return this._viewPick === 'mine' ? 'mine' : 'club';
-  }
-
-  _setView(v) {
-    this._viewPick = v === 'mine' ? 'mine' : 'club';
-    try { localStorage.setItem('fh.ec.view', this._viewPick); } catch (_e) { /* private mode */ }
-    this._render();
-  }
-
-  _paintViews(staff) {
-    const host = this.find('#ec-views');
-    const mine = this.find('#ec-mine');
-    const view = staff ? this._view() : 'mine';
-    if (mine) mine.style.display = view === 'mine' ? '' : 'none';
-    if (!host) return view;
-    host.style.display = staff ? 'flex' : 'none';
-    if (!staff) { host.innerHTML = ''; return view; }
-    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier) : fb;
-    const pill = (v, label) => `<button type="button" class="ec-chip ${view === v ? 'on' : ''}" data-ec-view="${v}">${this.escapeHtml(label)}</button>`;
-    host.innerHTML = pill('mine', cp('view_mine', '👤 Mine')) + pill('club', cp('view_club', '📅 Club week'));
-    return view;
-  }
-
   _render() {
     const body = this.find('#ec-body');
     const title = this.find('#ec-title');
     const sub = this.find('#ec-sub');
     if (!body) return;
     const kinds = this.find('#ec-kinds');
-    // Players and parents: 👤 Mine IS their week (Go / No, call-in, times,
-    // kids) — the club calendar under it would list the same events again,
-    // so it is for staff only (owner 11/11: #my → Event Center).
-    const staff = this._staffView();
-    const club = this._paintViews(staff) === 'club';
-    body.style.display = club ? '' : 'none';
-    if (kinds) kinds.innerHTML = club ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
+    if (kinds) kinds.innerHTML = EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t));
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.events) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._pickerHtml();
+    this._placeScroll();
+  }
+
+  // Phone, first paint of THIS week: the NOW line near the top with the
+  // event before it still in sight (owner 11/14: "default the view to the red
+  // line like screll down if phone to that spot").  A banner above the
+  // calendar (dues, shifts …) wins — the page stops at it instead, so it is
+  // never scrolled out of sight.  Back from an event: where you were.
+  _placeScroll() {
+    if (this._restoreScroll != null) {
+      const y = this._restoreScroll;
+      this._restoreScroll = null;
+      this._autoScroll = false;
+      // Mine fills in after the first paint, so the page may still be too
+      // short to reach y: set it again as it grows, until reached or the
+      // reader scrolls themselves.
+      let last = null;
+      const put = (tries) => {
+        if (last !== null && Math.abs(window.scrollY - last) > 2) return;   // they scrolled
+        window.scrollTo(0, y);
+        last = window.scrollY;
+        if (Math.abs(last - y) > 2 && tries > 0) setTimeout(() => put(tries - 1), 250);
+      };
+      requestAnimationFrame(() => put(12));
+      return;
+    }
+    if (!this._autoScroll) return;
+    this._autoScroll = false;
+    if (!window.matchMedia || !window.matchMedia('(max-width: 899px)').matches) return;
+    const now = this.find('.ec-now');
+    if (!now) return;   // not this week, or nothing to place
+    const banner = [...this.element.querySelectorAll('#ec-mine #my-dues-banner, #ec-mine #my-volunteer')]
+      .find(b => !b.hidden && b.offsetHeight > 0);
+    const prev = now.previousElementSibling;
+    // The event just before the line, else the top of today's column.
+    const target = banner || (prev && prev.classList.contains('ec-pick') ? prev : now.closest('.ec-day'));
+    requestAnimationFrame(() => target.scrollIntoView({ block: 'start' }));
   }
 
   // The week calendar: Monday–Sunday, the lit type pill and section chip
@@ -347,9 +369,24 @@ class EventCenterScreen extends Screen {
       `<button type="button" class="ec-chip ${on ? 'on' : ''}" ${attr}="${this.escapeHtml(value)}">${this.escapeHtml(label)}</button>`;
     const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
 
+    // Person chips: Everyone · Me · each kid — only when the week holds more
+    // than your own events (a parent's kids, a coach's or admin's whole
+    // scope).  Words: event_center person_all / person_me (mig 1363).
+    const kids = new Map();
+    for (const ev of this.events)
+      for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
+        if (c && c.person_id && !kids.has(Number(c.person_id))) kids.set(Number(c.person_id), String(c.name || '').split(' ')[0] || 'Your player');
+    const hasMine = this.events.some(ev => ev.is_mine === true);
+    const hasOthers = this.events.some(ev => ev.is_mine !== true && !(Array.isArray(ev.guardian_targets) && ev.guardian_targets.length));
+    const personChips = kids.size || (hasMine && hasOthers);
+    if (!personChips || (this.person !== 'all' && this.person !== 'me' && !kids.has(Number(this.person)))) this.person = 'all';
+    const forPerson = (ev) => this.person === 'all' ? true
+      : this.person === 'me' ? ev.is_mine === true
+      : (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).some(c => c && Number(c.person_id) === Number(this.person));
+
     const shown = this.events.filter(ev =>
       (this.kind === 'all' || this._kindOf(ev) === this.kind) &&
-      (this.category === 'all' || ev.category === this.category))
+      (this.category === 'all' || ev.category === this.category) && forPerson(ev))
       .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
     // "4:30 – 6:00 PM" (both halves' AM/PM when they differ); start alone
     // when the calendar gives no end.
@@ -430,7 +467,18 @@ class EventCenterScreen extends Screen {
       const mine = () => {
         if (this._isPast(ev)) return '';
         let out = '';
-        if (ev.my_rsvp_eligible === true) {
+        if (ev.my_suspension) {
+          out += `<span style="font-size:0.72rem; font-weight:800; color:#fca5a5;">${this.escapeHtml(
+            (window.MessageCopy && MessageCopy.block('suspended', 'chip')) || '⛔ SUSPENDED')}</span>`;
+        } else if (ev.my_callin && window.CallIn) {
+          // 🙋 Call-in (mig 1265): no Go / No — the chip and where it stands;
+          // the request itself is on the event page.
+          const c = ev.my_callin;
+          const say = c.state === 'requested' ? CallIn.copy('requested', '🙋 Call-in requested — the coach will let you know.', { from: c.from || '' })
+            : c.state === 'declined' ? CallIn.copy('declined', 'Not this week — thanks for putting your hand up.', { from: c.from || '' })
+            : CallIn.copy('note', 'Want in for this one? Put your hand up and the coach will let you know.', { from: c.from || '' });
+          out += `<span style="font-size:0.72rem; font-weight:700; white-space:normal; text-align:left;">${CallIn.chipHtml(c)}${this.escapeHtml(say)}</span>`;
+        } else if (ev.my_rsvp_eligible === true) {
           const r = ev.my_rsvp;
           out += answerRow(0, r, r === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
             : r === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
@@ -484,7 +532,7 @@ class EventCenterScreen extends Screen {
         cells.splice(cut === -1 ? cells.length : cut, 0, nowLine());
       }
       const head = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-      return `<div class="ec-day ${ymd === today ? 'today' : ''}">
+      return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
         <div class="ec-dayh">${this.escapeHtml(head)}</div>
         ${cells.length ? cells.join('') : '<div class="ec-none">—</div>'}
       </div>`;
@@ -492,6 +540,11 @@ class EventCenterScreen extends Screen {
     const thisWeek = this.weekStart.getTime() === EventCenterScreen.monday(new Date()).getTime();
 
     return `
+      ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
+        ${chip('data-ec-person', 'all', cp('person_all', {}, 'Everyone'), this.person === 'all')}
+        ${hasMine ? chip('data-ec-person', 'me', cp('person_me', {}, 'Me'), this.person === 'me') : ''}
+        ${[...kids].map(([id, name]) => chip('data-ec-person', String(id), name, String(this.person) === String(id))).join('')}
+      </div>` : ''}
       ${cats.length > 1 ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
         ${chip('data-ec-category', 'all', 'All', this.category === 'all')}
         ${cats.map(c => chip('data-ec-category', c, catLabel(c), this.category === c)).join('')}

@@ -85,8 +85,14 @@ just swap the viewer object; the screen stays the same.
    GET and attendance GET carry `viewer_tier`; every "coach of this event
    or admin" gate in CalendarController asks `EventAccess`; `EventScreen`
    asks its viewer. No visible change. *(2026-11-14)*
-2. **Calendar for every tier** — scopes, Go / No on tiles, person chips,
-   auto-scroll, greyed earlier days. Removes `EventCenterScreen._staffView`.
+2. **Calendar for every tier** — Go / No on tiles, person chips,
+   auto-scroll, greyed earlier days; removed `EventCenterScreen._staffView`
+   and the staff-only Mine / Club week pills (mig 1363). *(2026-11-14)*
+   The feed's WHERE (`eligible` OR guardian OR call-in) already scopes per
+   viewer, so the `EventScope` classes were NOT extracted yet — do it when
+   a scope rule next changes, not as a no-op refactor. Until slice 3, Mine
+   (MyScreen) rides inside the page by CSS order: dues + volunteer-shift
+   banners above the calendar, the rest below, its own week hidden.
 3. **Notices + section panels** — Mine retires.
 4. **`Panel` base**; EventScreen + PracticeScreen onto it.
 5. **Game Center onto panels** — its `isCoach` (EligibilityController,
