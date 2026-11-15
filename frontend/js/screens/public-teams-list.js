@@ -144,13 +144,11 @@ class PublicTeamsListScreen extends Screen {
   }
 
   _renderAheadRow(e, start) {
-    // Same player-facing title #my uses (kind label + opponent, never
-    // the raw gcal summary — that one is admin-only).
-    const my = window.app && window.app.screens && window.app.screens.my;
+    // The player-facing title every event screen uses (kind label +
+    // opponent, never the raw gcal summary — that one is admin-only).
     const title = e.fixture ? `Game vs ${e.opponent}`
-      : (my && typeof my._eventTitle === 'function')
-      ? my._eventTitle(e)
-      : ((e.kind || '').toLowerCase() === 'match' ? `Game${e.opponent ? ` vs ${e.opponent}` : ''}` : 'Practice');
+      : (window.EventLabels ? EventLabels.title(e)
+      : ((e.kind || '').toLowerCase() === 'match' ? `Game${e.opponent ? ` vs ${e.opponent}` : ''}` : 'Practice'));
     const isGame = (e.kind || '').toLowerCase() === 'match';
     const homeAway = isGame && e.is_home != null ? (e.is_home ? 'Home' : 'Away') : '';
     const fmtTime = (x) => x.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });

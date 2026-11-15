@@ -98,7 +98,6 @@ class App {
       publicTeamsList: new PublicTeamsListScreen(this.navigation, this.auth),
       publicOrg: new PublicOrgScreen(this.navigation, this.auth),
       publicProgramInfo: new PublicProgramInfoScreen(this.navigation, this.auth),
-      my: new MyScreen(this.navigation, this.auth),
       calendar: new CalendarScreen(this.navigation, this.auth),
       playerCalendar: new PlayerCalendarScreen(this.navigation, this.auth),
       playerRoster: new PlayerRosterScreen(this.navigation, this.auth),
@@ -246,7 +245,6 @@ class App {
     this.screenManager.register('public-program-info', this.screens.publicProgramInfo);
     this.screenManager.register('teams-directory', this.screens.publicTeamsList);
     this.screenManager.register('public-org', this.screens.publicOrg);
-    this.screenManager.register('my', this.screens.my);
     // Google Calendar mirror view — CalendarScreen renders the
     // agenda list backed by GET /api/calendar/upcoming (Slice 4).
     // Reached from the Schedule section of admin-club (§10.1).

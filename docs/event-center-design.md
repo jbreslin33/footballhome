@@ -189,9 +189,10 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
 - Then drop `att.canMark` / `att.canSetRsvp` (my.js is the last reader).
 
 **Loose ends**
-- Delete `screens/my.js` once `public-teams-list.js` stops borrowing
-  `MyScreen._eventTitle` (move it to `EventLabels`); then drop the `my`
-  registration in `app.js` (navigation already redirects #my).
+- DONE 11/14: `screens/my.js` deleted (3,239 lines) — public-teams-list
+  uses `EventLabels.title`; the `my` screen is gone from app.js / index.html
+  (navigation already sends #my → Event Center 👤 Mine).  That retires the
+  last `att.canMark` reader outside Game Center.
 - `EventScope` classes (Player/Coach/AdminScope) not extracted — the feed
   SQL already scopes correctly; extract when a scope rule changes.
 - Not yet verified: phone auto-scroll on a real phone (only simulated), a
