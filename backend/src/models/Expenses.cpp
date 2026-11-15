@@ -1,5 +1,7 @@
 #include "Expenses.h"
 
+#include <sstream>
+
 #include <algorithm>
 #include <cmath>
 #include <ctime>
@@ -380,6 +382,7 @@ json Expenses::projection(int clubId) {
                 // grants AND sponsorships (mig 1372: a sponsor pays Lighthouse,
                 // soccer takes the budget credit); receipts = dated money in
                 "SELECT y.label AS budget_year, a.kind, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label, "
+                "       COALESCE(a.purposes, CASE WHEN a.purpose IS NULL THEN '{}'::text[] ELSE ARRAY[a.purpose] END)::text AS purposes, "
                 "       COALESCE((SELECT json_agg(json_build_object('on', r.received_on::text, 'amount', r.amount_usd::float8) ORDER BY r.received_on) "
                 "                   FROM income_receipts r WHERE r.award_id = a.id), '[]'::json)::text AS receipts "
                 "  FROM income_awards a JOIN budget_years y ON y.id = a.budget_year_id JOIN income_award_statuses st ON st.code = a.status "
@@ -388,7 +391,9 @@ json Expenses::projection(int clubId) {
             out["plan_grants"].push_back({{"budget_year", str(r, "budget_year")}, {"kind", str(r, "kind")}, {"label", str(r, "label")}, {"source", str(r, "source_name")},
                                           {"amount", num(r, "amount_usd")}, {"status", str(r, "status")}, {"note", str(r, "note")},
                                           {"purpose", str(r, "purpose")}, {"purpose_label", str(r, "purpose_label")},
-                                          {"receipts", json::parse(str(r, "receipts"))}});
+                                          {"receipts", json::parse(str(r, "receipts"))},
+                                          // categories the award may pay for (mig 1379) — what releases it from restriction
+                                          {"purposes", [&] { json a = json::array(); std::string t = str(r, "purposes"); if (t.size() > 2) { std::stringstream ss(t.substr(1, t.size() - 2)); std::string x; while (std::getline(ss, x, ',')) a.push_back(x); } return a; }()}});
 
         // dues per year to set the cost per player against (latest policy, section first)
         for (const auto& r : db->query(

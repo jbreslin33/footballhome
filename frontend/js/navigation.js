@@ -340,6 +340,9 @@ NavigationStateMachine.RETIRED = {
   "team-dashboard": "main-menu",
   // #payments was renamed #tuition (mig 1293, 2026-11-12).
   "payments": "tuition",
+  // #cash-flow ("Money In & Out") retired 2026-11-14 (mig 1379): #finances is
+  // the standard nonprofit reports only.
+  "cash-flow": "finances",
   "practice-options": "event-center", "practice-management": "event-center",
   "practice-form": "event-center", "practice-list": "event-center", "practice-detail": "event-center",
 };

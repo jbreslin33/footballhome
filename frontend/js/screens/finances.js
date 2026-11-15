@@ -1,27 +1,29 @@
-// finances.js — #finances: where the club stands and where it is heading
-// (migration 489/490).  Billing stays on #payments.
+// finances.js — #finances: the standard nonprofit financial reports, and only
+// those (owner 2026-11-14 "it needs to be standard and standard only … we can
+// always add custom later", mig 1379). Billing stays on #payments.
 //
-// The standard nonprofit set only (owner 2026-11-14 "just the standard … take
-// out everything else root and stem … we will start clean", mig 1367):
-//   Budget        the operating budget for a budget year (Aug 1 – Jul 31):
-//                 Revenue (dues = paying members × dues × 12; grants awarded
-//                 or received = revenue with donor restrictions), Expenses by
-//                 category, Net surplus / (deficit) for the year and per month
-//   Budget vs Actual (mig 1369) the variance report: this budget year's
-//                 Budget beside the money that really moved, through the last
-//                 closed month
-//   Soccer fund   (mig 1372) statement of financial position, club-wide:
-//                 soccer has no bank account of its own — Lighthouse holds its
-//                 money — so cash = everything earned since the budget year
-//                 began − invoices paid (paid = final), plus what is owed each way
-//   Actuals       (mig 977) MoneyView: money that really came in and went out
-//   Cash forecast the month-by-month grid of money still to come and go
-//                 — GET /api/finances/expenses; ✓ = invoiced
+// Soccer is a Lighthouse program: Lighthouse receives all the money
+// (LeagueApps dues, CASA rental, grants, sponsors) and pays soccer's invoices
+// (paid once final). Soccer's books start at zero on Aug 1 of the budget year.
 //
-// Wording: message_templates kind 'payments_overview' (summary / revenue)
-// and 'finances' (page, pills, cash flow).
+//   Statement of Financial Position  as of today, club-wide: assets (cash held
+//       by Lighthouse, dues + grants receivable, deposits), liabilities
+//       (accounts payable = invoices not final), net assets without / with
+//       donor restrictions
+//   Statement of Activities  Aug 1 → today, club-wide: revenue and support,
+//       net assets released from restrictions, expenses by category, change
+//       in net assets, beginning / ending net assets — the same ledger
+//       (_ledger) as the Financial Position, so the two always tie
+//   Operating Budget  the year (Aug 1 – Jul 31): revenue (earned, contributed),
+//       expenses by category, net surplus / (deficit) — Who pills apply
+//   Budget vs Actual  (mig 1369) the Budget beside actuals through the last
+//       closed month — Who pills apply
+//   Cash Flow Forecast  month by month, club-wide: beginning cash, receipts,
+//       payments, net cash flow, ending cash
+//
+// Wording: message_templates kind 'finances'.
 class FinancesScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.view = 'plan'; this.err = ''; this.expanded = new Set(); this.money = null; this.scope = 'all'; }
+  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.flow = null; this.view = 'plan'; this.err = ''; this.expanded = new Set(); this.scope = 'all'; }
 
   render() {
     const div = document.createElement('div');
@@ -29,6 +31,7 @@ class FinancesScreen extends Screen {
     div.innerHTML = `
       <style>
         .fn-pills { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+        .fn-pills.sub { margin-top:-4px; padding-left:12px; border-left:3px solid var(--border-color, #374151); }
         .fn-pill { padding:8px 14px; border-radius:999px; border:1px solid var(--border-color); background:transparent; color:var(--text-primary); cursor:pointer; font-weight:700; font-size:0.9rem; }
         .fn-pill.on { background:var(--primary-color); color:#fff; border-color:var(--primary-color); }
         .fn-card { border:1px solid var(--border-color, #374151); border-radius:6px; background:var(--bg-tertiary, #1f2937); padding:var(--space-3); margin-bottom:var(--space-3); }
@@ -48,42 +51,35 @@ class FinancesScreen extends Screen {
         .fn-table td.now { background:rgba(14,165,233,0.10); }
         .fn-in { color:#86efac; } .fn-out { color:#fca5a5; } .fn-dim { opacity:0.5; }
         .fn-tick { font-size:0.7rem; opacity:0.75; display:block; }
-        .fn-games { font-size:0.85rem; }
-        .fn-game { display:flex; gap:10px; align-items:center; padding:3px 0; border-bottom:1px solid var(--border-color, #374151); }
-        .fn-game .d { width:90px; font-weight:700; } .fn-game .o { flex:1; }
         .fn-warn { color:#fbbf24; font-weight:700; }
-        ${window.MoneyView ? MoneyView.css() : ''}
-        .fn-amt { width:90px; text-align:right; padding:3px 6px; border:1px solid var(--border-color, #374151); border-radius:4px; background:transparent; color:var(--text-primary); font:inherit; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <button class="btn btn-secondary" id="fn-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Budget</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Finances</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
       <div class="screen-content" style="max-width:1400px; margin:0 auto;">
-        <div id="fn-who"></div>
         <div class="fn-pills" id="fn-pills"></div>
+        <div id="fn-who"></div>
         <div id="fn-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
     div.querySelector('#fn-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
-      const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; if (this.money) this.money.scope = this.scope; this._renderBody(); return; }
+      const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
-      if (this.view === 'money' && this.money && this.money.handleClick(e)) { this._renderBody(); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     return div;
   }
 
   onEnter() { this.load(); }
-  // The three loads every pill reads (restored 11/14 — 4289d849 took load()
-  // out with the budget-line editor, and the page never got its data).
+  // The three loads every report reads.
   async load() {
     this.err = '';
     try {
       if (window.MessageCopy) await MessageCopy.load(this.auth);
-      const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Budget';
+      const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Finances';
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
       const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
@@ -92,139 +88,129 @@ class FinancesScreen extends Screen {
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
       if (!f.ok) throw new Error(fj.error || `HTTP ${f.status}`);
       this.summary = sj; this.expenses = xj; this.flow = fj;
-      // Actuals (MoneyView, mig 977) shares the three loads.
-      if (window.MoneyView) { this.money = this.money || new MoneyView(this); Object.assign(this.money, { flow: fj, summary: sj, expenses: xj, scope: this.scope }); }
     } catch (err) { this.err = err.message; }
     this._renderBody();
   }
   _copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('finances', tier, tokens) : ''; }
-  _ov(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('payments_overview', tier, tokens) : ''; }
-  // The Who pills (mig 986): every view below follows them — owner: "could we
-  // just do pills and not diff pages … more control with pills".
-  _inScope() { return window.MoneyView && this.flow ? MoneyView.inScopeOf(this.flow.scopes, this.scope) : null; }
+
+  // A scope and everything under it (cash_flow_scopes parents); null = all.
+  static inScopeOf(scopes, code) {
+    if (!code || code === 'all') return null;
+    const set = new Set([code]);
+    let grew = true;
+    while (grew) { grew = false; for (const sc of (scopes || [])) if (sc.parent && set.has(sc.parent) && !set.has(sc.code)) { set.add(sc.code); grew = true; } }
+    return set;
+  }
+  // The Who pills (mig 986) split the Budget and Budget vs Actual by section
+  // and team (program budgets); the statements and the cash forecast are
+  // club-wide, as a statement is.
+  _byWho() { return this.view === 'plan' || this.view === 'variance'; }
+  _inScope() { return this.flow && this._byWho() ? FinancesScreen.inScopeOf(this.flow.scopes, this.scope) : null; }
   _scopeOk(code) { const set = this._inScope(); return !set || set.has(code || 'club'); }
-  // Summary / Revenue rows: the sections when All, else the teams under the pill and their total.
-  _units() {
-    const ov = this.summary || {};
-    if (!this._inScope()) return { rows: (ov.sections || []).map(s => ({ ...s, title: `${this._emoji(s.code)} ${s.name}` })), total: ov.all || {} };
-    const rows = (ov.teams || []).filter(t => this._scopeOk(t.scope)).map(t => ({ ...t, title: `${this._emoji(t.code)} ${t.label}` }));
-    const keys = ['members', 'free', 'volunteers', 'injured', 'paying', 'paid_up', 'behind', 'blocked', 'owed'];
-    const total = {}; for (const k of keys) total[k] = rows.reduce((a, r) => a + Number(r[k] || 0), 0);
-    total.projections = {};
-    for (const p of ['all_members', 'current_dues']) total.projections[p] = ['count', 'monthly', 'yearly'].reduce((o, k) => (o[k] = rows.reduce((a, r) => a + Number(((r.projections || {})[p] || {})[k] || 0), 0), o), {});
-    return { rows, total };
+  _whoPillsHtml() {
+    const esc = (t) => this.escapeHtml(t), scopes = (this.flow || {}).scopes || [], scope = this.scope;
+    const picked = scopes.find(sc => sc.code === scope), top = picked ? (picked.parent || picked.code) : null;
+    const kids = top ? scopes.filter(sc => sc.parent === top) : [];
+    const pill = (code, label, on) => `<button class="fn-pill ${on ? 'on' : ''}" data-scope="${esc(code)}">${esc(label)}</button>`;
+    return `<div class="fn-pills">${pill('all', this._copy('pill_all') || 'All', scope === 'all')}${scopes.filter(sc => !sc.parent).map(sc => pill(sc.code, sc.label, sc.code === top)).join('')}</div>
+      ${kids.length ? `<div class="fn-pills sub">${kids.map(sc => pill(sc.code, sc.label, sc.code === scope)).join('')}</div>` : ''}`;
   }
 
   _renderPills() {
-    const who = this.find('#fn-who');
-    if (who) who.innerHTML = window.MoneyView && this.flow ? MoneyView.whoPillsHtml(this.flow.scopes || [], this.scope, (t) => this.escapeHtml(t), (window.MessageCopy && MessageCopy.block('cash_flow', 'pill_all')) || 'All') : '';
     const el = this.find('#fn-pills'); if (!el) return;
-    // The standard nonprofit set only (owner 2026-11-14 "just the standard … take out
-    // everything else root and stem … we will start clean"): operating budget,
-    // actuals, cash-flow forecast.
-    const pills = [['plan', this._copy('pill_plan') || 'Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['fund', this._copy('pill_fund') || 'Soccer fund'], ['money', this._copy('pill_money') || 'Actuals'], ['expenses', this._copy('pill_expenses') || 'Cash forecast']];
+    const pills = [['position', this._copy('pill_position') || 'Statement of Financial Position'], ['activities', this._copy('pill_activities') || 'Statement of Activities'],
+                   ['plan', this._copy('pill_plan') || 'Operating Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['forecast', this._copy('pill_forecast') || 'Cash Flow Forecast']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
+    const who = this.find('#fn-who'); if (who) who.innerHTML = this.flow && this._byWho() ? this._whoPillsHtml() : '';
   }
 
   _renderBody() {
     this._renderPills();
     const body = this.find('#fn-body'); if (!body) return;
-    if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
-    if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'variance' ? this._varianceHtml() : this.view === 'fund' ? this._fundHtml() : this._expensesHtml();
+    if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
+    const v = this.view;
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : this._planHtml();
   }
 
   // ── shared bits ──
   static money0(v) { const n = Math.round(Number(v) || 0); return (n < 0 ? '−' : '') + '$' + Math.abs(n).toLocaleString(); }
   static money2(v) { const n = Number(v) || 0; return (n < 0 ? '−' : '') + '$' + Math.abs(n).toFixed(2); }
-  _emoji(code) { return { M: '👨', W: '👩', B: '👦', G: '👧' }[code] || ''; }
-  _cols(tier) { return this._ov(tier).split('|').map(c => c.trim()).filter(Boolean); }
-  // ── Cash forecast: the month-by-month grid of money still to come and go ──
-  _expensesHtml() {
-    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, x = this.expenses, ov = this.summary;
+  // ── Cash Flow Forecast: beginning cash, receipts, payments, net cash flow,
+  // ending cash, month by month through the budget year, club-wide. Past
+  // months = what really moved; this month on = the projection (dues from
+  // members current in dues, CASA bookings on the calendar, grant/sponsor
+  // receipts on their date, and the cost model: coaches' usual hours, game
+  // coaching and referees, team fee plans, budget lines). Cash starts at zero
+  // on Aug 1, when soccer's books begin.
+  _forecastHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, x = this.expenses, flow = this.flow;
     const months = x.months || [];
     const nowYm = (x.today || '').slice(0, 7);
     const mLabel = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' }).replace(' ', ' ’');
-    const cell = (ym, proj, inv, cls) => `<td class="${ym === nowYm ? 'now' : ''}">${proj ? `<span class="${cls}">${M0(proj)}</span>` : '<span class="fn-dim">–</span>'}${inv ? `<span class="fn-tick">✓ ${M0(inv)}</span>` : ''}</td>`;
-    const head = `<tr><th></th>${months.map(ym => `<th class="${ym === nowYm ? 'now' : ''}">${esc(mLabel(ym))}</th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
-    const sum = (byMonth, key) => months.reduce((a, ym) => a + Number((byMonth[ym] || {})[key] || 0), 0);
+    const sumBy = (by) => months.reduce((a, ym) => a + Number(by[ym] || 0), 0);
+    const items = flow.items || [];
 
-    // Money in: dues from members current in dues, flat per month, per section.
-    // Money in: past months = the dues LeagueApps actually paid for the row
-    // (flow items, mig 977); this month on = members current in dues × rate.
-    const scopes = (this.flow || {}).scopes || [];
-    const actualDues = (set, ym) => ((this.flow || {}).items || []).filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.ym === ym && set.has(i.scope)).reduce((a, i) => a + Number(i.amount), 0);
-    const inRows = this._units().rows.map(s => {
-      const m = Number(((s.projections || {}).current_dues || {}).monthly || 0), name = s.label || s.name;
-      const sec = s.scope ? null : (scopes.find(x => x.section_code === s.code) || {}).code;
-      const set = s.scope ? new Set([s.scope]) : (window.MoneyView && sec ? MoneyView.inScopeOf(scopes, sec) : new Set());
-      const by = {}; for (const ym of months) by[ym] = ym < nowYm ? actualDues(set, ym) : m;
-      return { label: this._copy('row_dues', { section: name }) || `Dues — ${name}`, emoji: this._emoji(s.code), by };
-    }).filter(r => Object.values(r.by).some(v => v));
-    const inBy = {}; for (const ym of months) inBy[ym] = inRows.reduce((a, r) => a + r.by[ym], 0);
-    const inTotal = months.reduce((a, ym) => a + inBy[ym], 0);
-    let html = `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_in') || 'Money in')}</td></tr>`;
-    for (const r of inRows) html += `<tr><td>${r.emoji} ${esc(r.label)}</td>${months.map(ym => cell(ym, r.by[ym], 0, 'fn-in')).join('')}<td class="fn-in">${M0(months.reduce((a, ym) => a + r.by[ym], 0))}</td></tr>`;
-    html += `<tr class="sum"><td>${esc(this._copy('row_in') || 'Money in')}</td>${months.map(ym => cell(ym, inBy[ym], 0, 'fn-in')).join('')}<td class="fn-in">${M0(inTotal)}</td></tr>`;
-
-    // Money out, rolled up by major category (invoice_line_categories, mig
-    // 493): one row per category with monthly totals; tap to expand into
-    // its items, where rows sharing a group_label are one line ("u8 fall
-    // winter spring all one line").
-    const addBy = (into, by) => { for (const [ym, c] of Object.entries(by || {})) { into[ym] = into[ym] || { projected: 0, invoiced: 0 }; into[ym].projected += Number(c.projected || 0); into[ym].invoiced += Number(c.invoiced || 0); } };
-    const catLabel = {}; for (const b of [...(x.budget || []), ...(x.plan_cash || [])]) catLabel[b.category] = (b.category_label || b.category).replace(/:\s*$/, '');
-    catLabel.referees = catLabel.referees || 'Referees';
-    catLabel.labor = this._copy('coaching_label') || 'Coaching';
-    const raw = [
-      // Coaching (mig 494): each coach's usual week, then hours per game by league.
-      // A per-game coach (pay_basis games, mig 497) projects under Game hours; their row is what they invoiced.
-      ...(x.coaching_usual || []).filter(u => this._scopeOk(u.scope || 'club')).map(u => u.pay_basis === 'games'
-        ? ({ cat: 'labor', key: `usual:${u.issuer_id}`, keyLabel: this._copy('games_invoiced', { name: u.name }) || `Games invoiced — ${u.name}`, assumed: false, by: u.by_month || {},
-             hints: [`paid per game at ${FinancesScreen.money2(u.rate)}/h — projected under Game hours`] })
-        : ({ cat: 'labor', key: `usual:${u.issuer_id}`, keyLabel: this._copy('usual_hours', { name: u.name }) || `Usual hours — ${u.name}`, assumed: false, by: u.by_month || {},
-             hints: [`${u.weekly_hours} h a week × ${FinancesScreen.money2(u.rate)}/h`] })),
-      ...(x.ref_fees || []).filter(p => p.kind === 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'labor', key: `game:${p.label}`, keyLabel: `Game hours — ${p.label}${p.coach ? ` · ${p.coach}` : ''}`, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {},
-        hints: [`${p.hours_per_game} h × ${FinancesScreen.money2(p.rate_per_hour)}/h = ${FinancesScreen.money2(p.rate)} per game, home and away${p.coach ? `, paid to ${p.coach}` : ''}`] })),
-      ...(x.ref_fees || []).filter(p => p.kind !== 'coaching' && this._scopeOk(p.scope)).map(p => ({ cat: 'referees', key: p.group_label || p.label, assumed: !!p.seasons?.some(s => s.is_assumed), by: p.by_month || {}, hints: [`${p.label}: ${FinancesScreen.money2(p.rate)} per home game`] })),
-      // Teams on their fee plan (mig 1320): league payments + per-game costs still ahead.
-      ...(x.plan_cash || []).filter(p => this._scopeOk(p.scope)).map(p => ({ cat: p.category, key: p.label, assumed: !!p.assumed, by: p.by_month || {}, hints: [p.hint || ''] })),
-      ...(x.budget || []).filter(b => this._scopeOk(b.scope) && b.category !== 'labor' && b.this_year !== false).map(b => ({ cat: b.category, key: b.group_label || b.label, assumed: !!b.is_assumed, by: b.by_month || {},
-        hints: [`${b.label}: ${b.amount_per === 'member' ? `${FinancesScreen.money2(b.amount)} × ${b.units} members = ` : b.amount_per === 'week' ? `${FinancesScreen.money2(b.amount)} × ${b.units} weeks ahead = ` : ''}${FinancesScreen.money2(b.total)}${b.paid_before ? ` − ${FinancesScreen.money2(b.paid_before)} paid before` : ''}${b.invoiced ? ` − ${FinancesScreen.money2(b.invoiced)} invoiced` : ''}${b.settled ? ` · ${this._copy('budget_settled_hint', { amount: FinancesScreen.money2(b.invoiced + b.paid_before) })}` : ''}`] })),
-    ];
-    const cats = new Map();
-    for (const r of raw) {
-      if (!cats.has(r.cat)) cats.set(r.cat, { code: r.cat, label: catLabel[r.cat] || r.cat, by: {}, items: new Map() });
-      const c = cats.get(r.cat); addBy(c.by, r.by);
-      if (!c.items.has(r.key)) c.items.set(r.key, { label: r.keyLabel || r.key, assumed: false, by: {}, hints: [] });
-      const it = c.items.get(r.key); it.assumed = it.assumed || r.assumed; it.hints.push(...r.hints); addBy(it.by, r.by);
+    // Receipts. Dues per section: past months = what LeagueApps paid; this
+    // month on = members current in dues × dues.
+    const scopes = flow.scopes || [];
+    const receipts = [];
+    for (const sec of (this.summary.sections || [])) {
+      const monthly = Number(((sec.projections || {}).current_dues || {}).monthly || 0);
+      const scode = (scopes.find(sc => sc.section_code === sec.code && !sc.team_id) || {}).code;
+      const set = (scode && FinancesScreen.inScopeOf(scopes, scode)) || new Set();
+      const by = {};
+      for (const ym of months) by[ym] = ym < nowYm ? items.filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.ym === ym && set.has(i.scope)).reduce((a, i) => a + Number(i.amount), 0) : monthly;
+      if (sumBy(by)) receipts.push({ label: this._copy('cf_dues', { section: sec.name }) || `Dues — ${sec.name}`, by });
     }
+    const rentBy = {}; for (const ym of months) rentBy[ym] = items.filter(i => i.dir === 'in' && i.category === 'rental' && i.ym === ym).reduce((a, i) => a + Number(i.amount), 0);
+    if (sumBy(rentBy)) receipts.push({ label: this._copy('cf_rental') || 'CASA field rental', by: rentBy });
+    const awardBy = {};
+    for (const g of (x.plan_grants || [])) for (const r of (g.receipts || [])) { const ym = String(r.on || '').slice(0, 7); if (months.includes(ym)) awardBy[ym] = (awardBy[ym] || 0) + Number(r.amount || 0); }
+    if (sumBy(awardBy)) receipts.push({ label: this._copy('cf_awards') || 'Grants and sponsorships', by: awardBy });
+    const inBy = {}; for (const ym of months) inBy[ym] = receipts.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
+
+    // Payments by expense category: past months = invoiced; this month on = projected.
+    const catLabel = {}; for (const c of (flow.categories || [])) catLabel[c.code] = c.label;
+    catLabel.labor = this._copy('coaching_label') || 'Coaching'; catLabel.referees = catLabel.referees || 'Referees';
+    const pay = new Map();
+    const add = (cat, byMonth) => {
+      if (!pay.has(cat)) pay.set(cat, {});
+      const into = pay.get(cat);
+      for (const [ym, c] of Object.entries(byMonth || {})) into[ym] = (into[ym] || 0) + Number(c.projected || 0) + (ym < nowYm ? Number(c.invoiced || 0) : 0);
+    };
+    for (const u of (x.coaching_usual || [])) add('labor', u.by_month);
+    for (const p of (x.ref_fees || [])) add(p.kind === 'coaching' ? 'labor' : 'referees', p.by_month);
+    for (const p of (x.plan_cash || [])) add(p.category, p.by_month);
+    for (const b of (x.budget || []).filter(b => b.category !== 'labor' && b.this_year !== false)) add(b.category, b.by_month);
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
-    const catRows = [...cats.values()].filter(c => sum(c.by, 'projected') > 0 || sum(c.by, 'invoiced') > 0)
-      .sort((a, b) => (order.indexOf(a.code) + 1 || 99) - (order.indexOf(b.code) + 1 || 99));
-    const emoji = { labor: '🧢', league_dues: '🏆', registrations: '📝', referees: '🧑‍⚖️', field_rentals: '🏟️', facilities: '🎨', equipment: '⚽', uniforms: '👕', other: '📦', media: '🎥', medical: '🩺', advertising: '📣' };
-    const outRows = [];   // what the grid prints, in order
-    for (const c of catRows) {
-      const open = this.expanded.has(c.code);
-      const items = [...c.items.values()].filter(i => sum(i.by, 'projected') > 0 || sum(i.by, 'invoiced') > 0);
-      outRows.push({ kind: 'cat', code: c.code, open, label: `${c.label}${items.some(i => i.assumed) ? '*' : ''}`, emoji: emoji[c.code] || '', by: c.by, hint: `${items.length} item${items.length === 1 ? '' : 's'}` });
-      if (open) for (const i of items) outRows.push({ kind: 'item', label: `${i.label}${i.assumed ? '*' : ''}`, emoji: '', by: i.by, hint: i.hints.join('\n') });
-    }
-    const outBy = {}; for (const c of catRows) addBy(outBy, c.by);
-    html += `<tr class="group"><td colspan="${months.length + 2}">${esc(this._copy('row_out') || 'Money out')} <span style="font-weight:400; opacity:0.6; font-size:0.78rem;">${esc(this._copy('expand_hint'))}</span></td></tr>`;
-    for (const r of outRows) html += `<tr class="${r.kind} ${r.open ? 'open' : ''}" ${r.kind === 'cat' ? `data-cat="${esc(r.code)}"` : ''}><td title="${esc(r.hint)}">${r.emoji ? r.emoji + ' ' : ''}${esc(r.label)}</td>${months.map(ym => cell(ym, (r.by[ym] || {}).projected, (r.by[ym] || {}).invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(sum(r.by, 'projected'))}</td></tr>`;
-    const outTotal = sum(outBy, 'projected');
-    html += `<tr class="sum"><td>${esc(this._copy('row_out') || 'Money out')}</td>${months.map(ym => cell(ym, outBy[ym]?.projected, outBy[ym]?.invoiced, 'fn-out')).join('')}<td class="fn-out">${M0(outTotal)}</td></tr>`;
-    const net = (ym) => inBy[ym] - Number(outBy[ym]?.projected || 0) - (ym < nowYm ? Number(outBy[ym]?.invoiced || 0) : 0);
-    html += `<tr class="sum"><td>${esc(this._copy('row_net') || 'Net')}</td>${months.map(ym => `<td class="${ym === nowYm ? 'now' : ''}" style="font-weight:800; color:${net(ym) < 0 ? '#fca5a5' : '#86efac'};">${M0(net(ym))}</td>`).join('')}<td style="font-weight:800; color:${months.reduce((a, ym) => a + net(ym), 0) < 0 ? '#fca5a5' : '#86efac'};">${M0(months.reduce((a, ym) => a + net(ym), 0))}</td></tr>`;
+    const payRows = [...pay.entries()].filter(([, by]) => sumBy(by)).sort((p1, p2) => (order.indexOf(p1[0]) + 1 || 99) - (order.indexOf(p2[0]) + 1 || 99))
+      .map(([cat, by]) => ({ label: catLabel[cat] || cat, by }));
+    const outBy = {}; for (const ym of months) outBy[ym] = payRows.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
 
-    const seasons = (x.ref_fees || []).flatMap(p => (p.seasons || []).map(s => `${p.kind === 'coaching' ? 'Coaching ' : 'Refs '}${p.label} ${s.label}: ${s.known} on the schedule of ${s.expected}${s.is_assumed ? '*' : ''}`));
+    // Beginning → ending cash.
+    const begin = {}, end = {}; let run = 0;
+    for (const ym of months) { begin[ym] = run; run += inBy[ym] - outBy[ym]; end[ym] = run; }
+    const td = (ym, v, cls) => `<td class="${ym === nowYm ? 'now' : ''} ${cls || ''}">${v ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
+    const signedTd = (ym, v) => `<td class="${ym === nowYm ? 'now' : ''}" style="font-weight:700; color:${v < 0 ? '#fca5a5' : '#86efac'};">${M0(v)}</td>`;
+    const line = (label, by, cls, rowCls) => `<tr class="${rowCls || ''}"><td style="white-space:normal;">${esc(label)}</td>${months.map(ym => td(ym, by[ym], cls)).join('')}<td class="${cls || ''}">${M0(sumBy(by))}</td></tr>`;
+    const n = months.length + 2;
+    let rows = `<tr class="sum"><td>${esc(this._copy('cf_begin') || 'Beginning cash')}</td>${months.map(ym => signedTd(ym, begin[ym])).join('')}<td>${M0(0)}</td></tr>`;
+    rows += `<tr class="group"><td colspan="${n}">${esc(this._copy('cf_receipts') || 'Cash receipts')}</td></tr>`;
+    rows += receipts.map(r => line(r.label, r.by, 'fn-in', 'item')).join('');
+    rows += line(this._copy('cf_receipts_total') || 'Total cash receipts', inBy, 'fn-in', 'sum');
+    rows += `<tr class="group"><td colspan="${n}">${esc(this._copy('cf_payments') || 'Cash payments')}</td></tr>`;
+    rows += payRows.map(r => line(r.label, r.by, 'fn-out', 'item')).join('');
+    rows += line(this._copy('cf_payments_total') || 'Total cash payments', outBy, 'fn-out', 'sum');
+    const netBy = {}; for (const ym of months) netBy[ym] = inBy[ym] - outBy[ym];
+    rows += `<tr class="sum"><td>${esc(this._copy('cf_net') || 'Net cash flow')}</td>${months.map(ym => signedTd(ym, netBy[ym])).join('')}<td>${M0(sumBy(netBy))}</td></tr>`;
+    rows += `<tr class="sum"><td>${esc(this._copy('cf_end') || 'Ending cash')}</td>${months.map(ym => signedTd(ym, end[ym])).join('')}<td>${M0(run)}</td></tr>`;
+    const head = `<tr><th></th>${months.map(ym => `<th class="${ym === nowYm ? 'now' : ''}">${esc(mLabel(ym))}</th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `
       <div class="fn-card">
-        <div class="fn-title">${esc(this._copy('cash_title') || 'Cash flow')}</div>
-        <div class="fn-note">${esc(this._copy('cash_note'))}</div>
-        <div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${html}</tbody></table></div>
-        <div class="fn-note" style="margin-top:8px;">${esc(this._copy('assumed_note') || '* assumed')} · ${esc(seasons.join(' · '))}</div>
+        <div class="fn-title">${esc(this._copy('cf_title') || 'Cash Flow Forecast')}</div>
+        <div class="fn-note">${esc(this._copy('cf_note'))}</div>
+        <div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>
       </div>`;
   }
 
@@ -271,7 +257,7 @@ class FinancesScreen extends Screen {
     // overhead), split by PAYING members (owner 2026-11-13: "so women don't bear it").
     const scopesS = (this.flow || {}).scopes || [];
     const pillS = scopesS.find(sc => sc.code === this.scope);
-    const underS = (code) => { const set = window.MoneyView ? MoneyView.inScopeOf(scopesS, code) : new Set([code]); return scopesS.filter(sc => set.has(sc.code) && sc.section_code).map(sc => sc.section_code); };
+    const underS = (code) => { const set = FinancesScreen.inScopeOf(scopesS, code) || new Set(scopesS.map(sc => sc.code)); return scopesS.filter(sc => set.has(sc.code) && sc.section_code).map(sc => sc.section_code); };
     const shareCodes = pillS && !pillS.team_id && this.scope !== 'club' ? underS(pillS.code) : [];
     const allHeads = this.expenses.plan_heads || [];
     const allPaying = allHeads.reduce((a, h) => a + Number(h.paying || 0), 0);
@@ -347,29 +333,26 @@ class FinancesScreen extends Screen {
     const revTotal = m.revTotal;
     const line = (it, cls) => `<tr class="${cls}"><td title="${esc(it.note || '')}" style="white-space:normal;">${esc(it.label)}${it.assumed ? '*' : ''}${it.note ? `<span class="fn-tick">${esc(it.note)}</span>` : ''}</td>
         <td>${esc(it.detail || '')}<span class="fn-tick">${esc(it.unit || '')}</span></td><td class="${cls.includes('rev') ? 'fn-in' : (it.amount < 0 ? 'fn-in' : 'fn-out')}">${M0(it.amount)}</td></tr>`;
-    // Two layers (owner 2026-11-14 "yes do the two layers. la goes to lh too"):
-    // soccer is a Lighthouse program — Lighthouse holds ALL the money (LA dues,
-    // grants, CASA rental, sponsors) and pays soccer's invoices. Layer 1: soccer's
-    // own dues against its costs ("over budget" on dues alone is fine). Layer 2:
-    // the credits Lighthouse adds for soccer, and what is left after them.
-    const dues = revenue.filter(r => r.kind === 'dues'), credits = revenue.filter(r => r.kind !== 'dues');
-    const duesT = dues.reduce((a, r) => a + r.amount, 0), credT = credits.reduce((a, r) => a + r.amount, 0);
+    // Standard nonprofit order (owner 2026-11-14 "is that normal" → standard):
+    // Revenue first — earned (dues, CASA rental) then contributed (grants,
+    // sponsors) — then Expenses, then one Net surplus / (deficit). Lighthouse
+    // holds all the money; soccer gets the credit (page note).
+    const earned = revenue.filter(r => r.kind === 'dues' || r.kind === 'rental'), given = revenue.filter(r => r.kind === 'award');
     const signed = (v) => `<td class="${v >= 0 ? 'fn-in' : 'fn-out'}">${M0(v)}</td>`;
-    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Dues')}</td></tr>`;
-    rows += dues.length ? dues.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total dues')}</td><td class="fn-in">${M0(duesT)}</td></tr>`;
-    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Costs')}</td></tr>`;
+    const sub = (label) => `<tr class="item"><td colspan="3" style="font-weight:700; opacity:0.8; padding-left:14px;">${esc(label)}</td></tr>`;
+    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
+    if (!revenue.length) rows += `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
+    if (earned.length) rows += sub(this._copy('plan_rev_earned') || 'Earned') + earned.map(r => line(r, 'item rev')).join('');
+    if (given.length) rows += sub(this._copy('plan_rev_contributed') || 'Contributed') + given.map(r => line(r, 'item rev')).join('');
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total revenue')}</td><td class="fn-in">${M0(revTotal)}</td></tr>`;
+    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
     const total = m.expTotal;
     for (const c of m.cats) {
-      const sub = c.sub, key = `plan:${c.code}`, open = this.expanded.has(key);
-      rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(sub)}</td></tr>`;
+      const cs = c.sub, key = `plan:${c.code}`, open = this.expanded.has(key);
+      rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(cs)}</td></tr>`;
       if (open) rows += c.items.sort((a, b) => b.amount - a.amount).map(it => line(it, 'item')).join('');
     }
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total costs')}</td><td class="fn-out">${M0(total)}</td></tr>`;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_dues_net') || 'Dues minus costs')}</td>${signed(duesT - total)}</tr>`;
-    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_credits') || 'Lighthouse credits')}</td></tr>`;
-    rows += credits.length ? credits.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_credits_none') || 'No credits this year')}</td></tr>`;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_credits_total') || 'Total credits')}</td><td class="fn-in">${M0(credT)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total expenses')}</td><td class="fn-out">${M0(total)}</td></tr>`;
     const net = revTotal - total;
     rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td>${signed(net)}</tr>
       <tr class="item"><td colspan="2">${esc(this._copy('plan_net_month') || 'Per month')}</td>${signed(net / 12)}</tr>`;
@@ -407,7 +390,7 @@ class FinancesScreen extends Screen {
     const all = (flow.items || []).filter(i => !i.ahead && i.ym >= startYm && i.ym < nowYm && (!endYm || i.ym <= endYm));
     const mine = all.filter(i => !inScope || inScope.has(i.scope));
     const sum = (list) => list.reduce((a, i) => a + Number(i.amount || 0), 0);
-    const catLabel = (code) => code === 'labor' ? m.coachingLabel : ((window.MessageCopy && MessageCopy.block('cash_flow', `cat_${code}`)) || ((flow.categories || []).find(c => c.code === code) || {}).label || code);
+    const catLabel = (code) => code === 'labor' ? m.coachingLabel : code === 'rental' ? (this._copy('cf_rental') || 'CASA field rental') : code === 'dues' ? (this._copy('soa_dues_paid') || 'Dues') : (((flow.categories || []).find(c => c.code === code) || {}).label || code);
 
     // Revenue: dues per section (pooled per section, as in the Budget); grants
     // count once received; any other money in is shown as not budgeted.
@@ -416,7 +399,7 @@ class FinancesScreen extends Screen {
       let actual = 0, lines = [];
       if (r.kind === 'dues') {
         const sec = (scopes.find(sc => sc.section_code === r.code && !sc.team_id) || scopes.find(sc => sc.section_code === r.code) || {}).code;
-        const set = sec && window.MoneyView ? MoneyView.inScopeOf(scopes, sec) : new Set();
+        const set = sec ? FinancesScreen.inScopeOf(scopes, sec) : new Set();
         lines = mine.filter(i => i.dir === 'in' && i.category === 'dues' && set.has(i.scope));
         lines.forEach(i => usedIn.add(i)); actual = sum(lines);
       } else if (r.kind === 'award') actual = r.receipts.filter(x => !x.on || x.on.slice(0, 7) < nowYm).reduce((a, x) => a + Number(x.amount || 0), 0) * r.share;
@@ -424,14 +407,14 @@ class FinancesScreen extends Screen {
         lines = all.filter(i => i.dir === 'in' && i.category === 'rental');
         lines.forEach(i => usedIn.add(i)); actual = sum(lines) * r.share;
       }
-      rev.push({ label: r.label, budget: r.amount, actual, lines, credit: r.kind !== 'dues' });
+      rev.push({ label: r.label, budget: r.amount, actual, lines, given: r.kind === 'award' });
     }
     const teamPill = m.pillS && m.pillS.team_id;
     const otherIn = new Map();
     for (const i of mine.filter(i => i.dir === 'in' && !usedIn.has(i) && !(teamPill && i.category === 'dues'))) {
       if (!otherIn.has(i.category)) otherIn.set(i.category, []); otherIn.get(i.category).push(i);
     }
-    for (const [code, lines] of otherIn) rev.push({ label: this._copy('var_unbudgeted', { label: catLabel(code) }) || `${catLabel(code)} (not in the budget)`, budget: 0, actual: sum(lines), lines, credit: code !== 'dues' });
+    for (const [code, lines] of otherIn) rev.push({ label: this._copy('var_unbudgeted', { label: catLabel(code) }) || `${catLabel(code)} (not in the budget)`, budget: 0, actual: sum(lines), lines, given: false });
 
     // Expenses: each Budget category beside the money out under the pill; a
     // section pill carries its share of the club-wide money out, as it does
@@ -461,25 +444,22 @@ class FinancesScreen extends Screen {
       return [...merged.entries()].sort((a, b) => b[1] - a[1]).map(([n, a]) => `<tr class="item"><td colspan="3" style="white-space:normal;">${esc(n)} <span class="fn-dim">${esc(scopeOf.get(n) || '')}</span></td><td>${M0(a)}</td><td colspan="2"></td></tr>`).join('');
     };
     const cols = (this._copy('var_columns') || 'Line|Year budget|Budget to date|Actual to date|Variance|Used').split('|').map(c => c.trim());
-    // Same two layers as the Budget: dues against costs, then Lighthouse credits.
+    // Standard order, as on the Budget: Revenue (earned, contributed) → Expenses → Net.
     const tot = (list, label) => ({ label, budget: list.reduce((a, r) => a + r.budget, 0), actual: list.reduce((a, r) => a + r.actual, 0) });
-    const revRows = (list, empty) => list.length ? list.map(r => { const key = `var:in:${rev.indexOf(r)}`, open = this.expanded.has(key); return row(r, true, `cat ${open ? 'open' : ''}`, key) + (open ? linesHtml(r) : ''); }).join('')
-      : `<tr class="item"><td colspan="6" class="fn-dim">${esc(empty)}</td></tr>`;
-    const duesRows = rev.filter(r => !r.credit), credRows = rev.filter(r => r.credit);
-    let rows = `<tr class="group"><td colspan="6">${esc(this._copy('plan_revenue') || 'Dues')}</td></tr>`;
-    rows += revRows(duesRows, this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section');
-    const duesT = tot(duesRows, this._copy('plan_rev_total') || 'Total dues');
-    rows += row(duesT, true, 'sum');
-    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_expenses') || 'Costs')}</td></tr>`;
+    const revRows = (list) => list.map(r => { const key = `var:in:${rev.indexOf(r)}`, open = this.expanded.has(key); return row(r, true, `cat ${open ? 'open' : ''}`, key) + (open ? linesHtml(r) : ''); }).join('');
+    const sub = (label) => `<tr class="item"><td colspan="6" style="font-weight:700; opacity:0.8; padding-left:14px;">${esc(label)}</td></tr>`;
+    const earnedRows = rev.filter(r => !r.given), givenRows = rev.filter(r => r.given);
+    let rows = `<tr class="group"><td colspan="6">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
+    if (!rev.length) rows += `<tr class="item"><td colspan="6" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
+    if (earnedRows.length) rows += sub(this._copy('plan_rev_earned') || 'Earned') + revRows(earnedRows);
+    if (givenRows.length) rows += sub(this._copy('plan_rev_contributed') || 'Contributed') + revRows(givenRows);
+    const revT = tot(rev, this._copy('plan_rev_total') || 'Total revenue');
+    rows += row(revT, true, 'sum');
+    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
     for (const e of exp) { const key = `var:out:${e.code}`, open = this.expanded.has(key) && !e.scaled; rows += row(e, false, e.scaled ? 'item' : `cat ${open ? 'open' : ''}`, e.scaled ? '' : key) + (open ? linesHtml(e) : ''); }
-    const expT = tot(exp, this._copy('plan_exp_total') || 'Total costs');
+    const expT = tot(exp, this._copy('plan_exp_total') || 'Total expenses');
     rows += row(expT, false, 'sum');
-    rows += row({ label: this._copy('plan_dues_net') || 'Dues minus costs', budget: duesT.budget - expT.budget, actual: duesT.actual - expT.actual, noUsed: true }, true, 'sum');
-    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_credits') || 'Lighthouse credits')}</td></tr>`;
-    rows += revRows(credRows, this._copy('plan_credits_none') || 'No credits this year');
-    const credT = tot(credRows, this._copy('plan_credits_total') || 'Total credits');
-    rows += row(credT, true, 'sum');
-    rows += row({ label: this._copy('var_net') || 'Left after credits', budget: duesT.budget + credT.budget - expT.budget, actual: duesT.actual + credT.actual - expT.actual, noUsed: true }, true, 'sum');
+    rows += row({ label: this._copy('var_net') || 'Net surplus / (deficit)', budget: revT.budget - expT.budget, actual: revT.actual - expT.actual, noUsed: true }, true, 'sum');
     const ratio = Number(flow.net_ratio) || 1;
     return `
       <div class="fn-card">${head}
@@ -491,66 +471,118 @@ class FinancesScreen extends Screen {
       </div>`;
   }
 
-  // ── Soccer fund (mig 1372): the statement of financial position. Owner
-  // 2026-11-14: all money in comes via LeagueApps, a grant, CASA rental or a
-  // sponsor (sponsors pay Lighthouse, soccer takes the credit); all money out
-  // is on invoices, paid when final; CASA always pays. Soccer has no bank
-  // account of its own, so its cash is what Lighthouse holds for it: earned
-  // since the budget year began − invoices paid. Club-wide (the Who pills do
-  // not split a balance sheet).
-  _fundHtml() {
-    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
-    const flow = this.flow || {}, x = this.expenses || {}, ov = this.summary || {};
+  // ── The ledger both statements read (mig 1379): this budget year, Aug 1 →
+  // today, club-wide, starting from zero on Aug 1 (only deposits paid before
+  // then are carried in). Accrual basis: an expense is recorded when invoiced
+  // (a draft invoice is a payable; paid once final); a grant or sponsorship is
+  // revenue when awarded (with donor restrictions when it names what it may
+  // pay for); dues are revenue when paid through LeagueApps (after its fees)
+  // plus what members owe now (dues receivable).
+  _ledger() {
+    const flow = this.flow, x = this.expenses, ov = this.summary;
     const startYm = String(flow.start || '').slice(0, 7), nowYm = String(x.today || '').slice(0, 7), thisYear = (flow.year || {}).label || '';
     const sum = (list) => list.reduce((a, i) => a + Number(i.amount || 0), 0);
     const items = (flow.items || []).filter(i => !i.ahead && i.ym >= startYm && i.ym <= nowYm);
-    const dues = sum(items.filter(i => i.dir === 'in' && i.category === 'dues'));
-    const rentals = sum(items.filter(i => i.dir === 'in' && i.category === 'rental'));
-    const otherIn = sum(items.filter(i => i.dir === 'in' && i.category !== 'dues' && i.category !== 'rental'));
-    // grants + sponsors of this budget year: received = dated receipts to date,
-    // or the whole award once marked received; the rest is still owed to soccer
-    let awardsIn = 0, awardsOwed = 0;
+    const L = { thisYear };
+    L.duesPaid = sum(items.filter(i => i.dir === 'in' && i.category === 'dues'));
+    L.duesOwed = Number((ov.all || {}).owed || 0);
+    L.rental = sum(items.filter(i => i.dir === 'in' && i.category === 'rental'));
+    L.otherIn = sum(items.filter(i => i.dir === 'in' && i.category !== 'dues' && i.category !== 'rental'));
+    // expenses by category (this year's invoices, every line; bonds are deposits)
+    const out = items.filter(i => i.dir === 'out' && !i.prepaid);
+    L.expenses = new Map();
+    for (const i of out.filter(i => i.category !== 'bonds')) L.expenses.set(i.category, (L.expenses.get(i.category) || 0) + Number(i.amount || 0));
+    L.expTotal = [...L.expenses.values()].reduce((a, v) => a + v, 0);
+    L.payable = (flow.invoices || []).reduce((a, c) => a + Number(c.draft || 0), 0);
+    L.bondsNow = sum(out.filter(i => i.category === 'bonds'));
+    L.bondsBefore = sum((flow.items || []).filter(i => i.dir === 'out' && i.category === 'bonds' && i.prepaid));
+    // grants and sponsorships awarded for this year
+    L.grantsR = 0; L.grantsU = 0; L.sponsorsR = 0; L.sponsorsU = 0; L.awardsIn = 0; L.awardsOwed = 0; L.released = 0;
     for (const g of (x.plan_grants || []).filter(g => g.budget_year === thisYear)) {
-      const got = (g.receipts || []).length ? sum(g.receipts.filter(r => !r.on || r.on.slice(0, 7) <= nowYm)) : (g.status === 'received' ? Number(g.amount) : 0);
-      awardsIn += got; awardsOwed += Math.max(0, Number(g.amount || 0) - got);
+      const amount = Number(g.amount || 0), restricted = (g.purposes || []).length > 0;
+      const got = (g.receipts || []).length ? sum(g.receipts.filter(r => !r.on || r.on.slice(0, 7) <= nowYm)) : (g.status === 'received' ? amount : 0);
+      L.awardsIn += got; L.awardsOwed += Math.max(0, amount - got);
+      if (g.kind === 'sponsorship') { if (restricted) L.sponsorsR += amount; else L.sponsorsU += amount; }
+      else if (restricted) L.grantsR += amount; else L.grantsU += amount;
+      // released from restriction = this year's spending on what it may pay for, up to the award
+      if (restricted) {
+        const spent = (g.purposes || []).reduce((a, c) => a + Number(L.expenses.get(c) || 0), 0);
+        L.released += Math.min(amount, spent);
+      }
     }
-    // invoices to date (cash-flow items, every line) less the ones still draft
-    const drafts = (flow.invoices || []).reduce((a, c) => a + Number(c.draft || 0), 0);
-    const invoiced = sum(items.filter(i => i.dir === 'out' && !i.prepaid));
-    const paid = invoiced - drafts;
-    // refundable bonds paid (this year or before it began) are still soccer's
-    const deposits = sum((flow.items || []).filter(i => i.dir === 'out' && i.category === 'bonds' && !i.ahead));
-    const cash = dues + rentals + otherIn + awardsIn - paid;
-    const duesOwed = Number((ov.all || {}).owed || 0);
-    const assets = cash + duesOwed + awardsOwed + deposits, liabilities = drafts, net = assets - liabilities;
+    L.restrictedIn = L.grantsR + L.sponsorsR;
+    // the two statements
+    L.revU = L.duesPaid + L.duesOwed + L.rental + L.otherIn + L.grantsU + L.sponsorsU;
+    L.changeU = L.revU + L.released - L.expTotal;
+    L.changeR = L.restrictedIn - L.released;
+    L.beginU = L.bondsBefore; L.beginR = 0;
+    L.endU = L.beginU + L.changeU; L.endR = L.beginR + L.changeR;
+    L.cash = L.duesPaid + L.rental + L.otherIn + L.awardsIn - (L.expTotal - L.payable) - L.bondsNow;
+    L.deposits = L.bondsNow + L.bondsBefore;
+    L.assets = L.cash + L.duesOwed + L.awardsOwed + L.deposits;
+    L.liabilities = L.payable;
+    return L;
+  }
+  _asOf() { const t = String(this.expenses.today || '').slice(0, 10); return t ? new Date(`${t}T12:00:00`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : ''; }
+  _catName(code) { return code === 'labor' ? (this._copy('coaching_label') || 'Coaching') : (((this.flow.categories || []).find(c => c.code === code) || {}).label || code); }
 
-    const open = this.expanded.has('fund:cash');
-    const amt = (v, cls) => `<td class="${cls || (v < 0 ? 'fn-out' : '')}">${M0(v)}</td>`;
-    const r = (label, v, cls, rowCls, attrs) => `<tr class="${rowCls || ''}" ${attrs || ''}><td style="white-space:normal;">${esc(label)}</td>${amt(v, cls)}</tr>`;
-    let rows = `<tr class="group"><td colspan="2">${esc(this._copy('fund_has') || 'What soccer has')}</td></tr>`;
-    rows += r(this._copy('fund_cash') || 'Money Lighthouse holds for soccer', cash, '', `cat ${open ? 'open' : ''}`, 'data-cat="fund:cash"');
-    if (open) {
-      rows += r(this._copy('fund_cash_dues') || 'Dues in (LeagueApps, after its fees)', dues, 'fn-in', 'item');
-      if (rentals) rows += r(this._copy('fund_cash_rental') || 'Field rentals', rentals, 'fn-in', 'item');
-      if (otherIn) rows += r(this._copy('fund_cash_other') || 'Other money in', otherIn, 'fn-in', 'item');
-      rows += r(this._copy('fund_cash_awards') || 'Grants and sponsors received', awardsIn, 'fn-in', 'item');
-      rows += r(this._copy('fund_cash_paid') || 'Invoices paid (final)', -paid, 'fn-out', 'item');
-    }
-    if (cash < 0) rows += `<tr class="item"><td colspan="2" class="fn-warn" style="white-space:normal;">${esc(this._copy('fund_cash_neg', { amount: M0(-cash) }) || '')}</td></tr>`;
-    rows += r(this._copy('fund_dues_owed') || 'Dues members owe', duesOwed);
-    rows += r(this._copy('fund_awards_owed') || 'Grants and sponsors awarded, not paid yet', awardsOwed);
-    rows += r(this._copy('fund_deposits') || 'Refundable deposits (bonds)', deposits);
-    rows += r(this._copy('fund_assets_total') || 'Total', assets, '', 'sum');
-    rows += `<tr class="group"><td colspan="2">${esc(this._copy('fund_owes') || 'What soccer owes')}</td></tr>`;
-    rows += r(this._copy('fund_drafts') || 'Invoices not final yet', drafts);
-    rows += r(this._copy('fund_liab_total') || 'Total', liabilities, '', 'sum');
-    rows += `<tr class="sum"><td>${esc(this._copy('fund_net') || 'Net assets')}</td><td class="${net < 0 ? 'fn-out' : 'fn-in'}">${M0(net)}</td></tr>`;
-    const asOf = x.today ? new Date(`${String(x.today).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  // ── Statement of Financial Position (mig 1379), as of today, club-wide.
+  _positionHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, L = this._ledger();
+    const r = (label, v, rowCls) => `<tr class="${rowCls || ''}"><td style="white-space:normal;">${esc(label)}</td><td class="${v < 0 ? 'fn-out' : ''}">${M0(v)}</td></tr>`;
+    const g = (label) => `<tr class="group"><td colspan="2">${esc(label)}</td></tr>`;
+    let rows = g(this._copy('sfp_assets') || 'Assets');
+    rows += r(this._copy('sfp_cash') || 'Cash held by Lighthouse for soccer', L.cash, 'item');
+    rows += r(this._copy('sfp_dues_recv') || 'Dues receivable', L.duesOwed, 'item');
+    rows += r(this._copy('sfp_grants_recv') || 'Grants and sponsorships receivable', L.awardsOwed, 'item');
+    rows += r(this._copy('sfp_deposits') || 'Deposits (refundable bonds)', L.deposits, 'item');
+    rows += r(this._copy('sfp_assets_total') || 'Total assets', L.assets, 'sum');
+    rows += g(this._copy('sfp_liabilities') || 'Liabilities');
+    rows += r(this._copy('sfp_payable') || 'Accounts payable (invoices not final)', L.payable, 'item');
+    rows += r(this._copy('sfp_liab_total') || 'Total liabilities', L.liabilities, 'sum');
+    rows += g(this._copy('sfp_net_assets') || 'Net assets');
+    rows += r(this._copy('sfp_net_u') || 'Without donor restrictions', L.endU, 'item');
+    rows += r(this._copy('sfp_net_r') || 'With donor restrictions', L.endR, 'item');
+    rows += r(this._copy('sfp_net_total') || 'Total net assets', L.endU + L.endR, 'sum');
+    rows += r(this._copy('sfp_total') || 'Total liabilities and net assets', L.liabilities + L.endU + L.endR, 'sum');
     return `
       <div class="fn-card">
-        <div class="fn-title">${esc(this._copy('fund_title') || 'Soccer fund')} · ${esc(this._copy('fund_asof', { date: asOf }) || asOf)}</div>
-        <div class="fn-note">${esc(this._copy('fund_note'))}</div>
+        <div class="fn-title">${esc(this._copy('sfp_title') || 'Statement of Financial Position')} · ${esc(this._copy('sfp_asof', { date: this._asOf() }) || this._asOf())}</div>
+        <div class="fn-note">${esc(this._copy('sfp_note'))}</div>
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:360px;"><tbody>${rows}</tbody></table></div>
+      </div>`;
+  }
+
+  // ── Statement of Activities (mig 1379), Aug 1 → today, club-wide; columns
+  // without / with donor restrictions / total.
+  _activitiesHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, L = this._ledger();
+    const c = (v) => `<td class="${v < 0 ? 'fn-out' : ''}">${v ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
+    const r = (label, u, rr, rowCls) => `<tr class="${rowCls || ''}"><td style="white-space:normal;">${esc(label)}</td>${c(u)}${c(rr)}${c(u + rr)}</tr>`;
+    const g = (label) => `<tr class="group"><td colspan="4">${esc(label)}</td></tr>`;
+    let rows = g(this._copy('soa_revenue') || 'Revenue and support');
+    rows += r(this._copy('soa_dues_paid') || 'Dues (paid through LeagueApps, after its fees)', L.duesPaid, 0, 'item');
+    if (L.duesOwed) rows += r(this._copy('soa_dues_owed') || 'Dues billed, not yet paid', L.duesOwed, 0, 'item');
+    if (L.rental) rows += r(this._copy('soa_rental') || 'CASA field rental', L.rental, 0, 'item');
+    if (L.otherIn) rows += r(this._copy('soa_other') || 'Other revenue', L.otherIn, 0, 'item');
+    if (L.grantsU || L.grantsR) rows += r(this._copy('soa_grants') || 'Grants', L.grantsU, L.grantsR, 'item');
+    if (L.sponsorsU || L.sponsorsR) rows += r(this._copy('soa_sponsors') || 'Sponsorships', L.sponsorsU, L.sponsorsR, 'item');
+    if (L.released) rows += r(this._copy('soa_released') || 'Net assets released from restrictions', L.released, -L.released, 'item');
+    rows += r(this._copy('soa_rev_total') || 'Total revenue and support', L.revU + L.released, L.restrictedIn - L.released, 'sum');
+    rows += g(this._copy('soa_expenses') || 'Expenses');
+    const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
+    for (const [code, v] of [...L.expenses.entries()].sort((a, b) => (order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99))) rows += r(this._catName(code), v, 0, 'item');
+    rows += r(this._copy('soa_exp_total') || 'Total expenses', L.expTotal, 0, 'sum');
+    rows += r(this._copy('soa_change') || 'Change in net assets', L.changeU, L.changeR, 'sum');
+    rows += r(this._copy('soa_begin') || 'Net assets, beginning of year', L.beginU, L.beginR, 'item');
+    rows += r(this._copy('soa_end') || 'Net assets, end of period', L.endU, L.endR, 'sum');
+    const cols = (this._copy('soa_columns') || '|Without donor restrictions|With donor restrictions|Total').split('|');
+    const start = String(this.flow.start || '').slice(0, 10), startLbl = start ? new Date(`${start}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    return `
+      <div class="fn-card">
+        <div class="fn-title">${esc(this._copy('soa_title') || 'Statement of Activities')} · ${esc(this._copy('soa_period', { from: startLbl, to: this._asOf() }) || '')}</div>
+        <div class="fn-note">${esc(this._copy('soa_note'))}</div>
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:560px;"><thead><tr>${cols.map(t => `<th style="white-space:normal;">${esc(t)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
       </div>`;
   }
 
