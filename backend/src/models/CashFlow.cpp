@@ -143,20 +143,25 @@ json CashFlow::build(int clubId) {
 
     // Every line of money on the page: the month table and each scope add these up.
     auto addItems = [&](const pqxx::result& rows, const char* dir, const char* type, bool ahead) {
+        int sectionCol = -1;   // dues rows carry their section (M/W/B/G) from the LA program, not the team tree
+        for (pqxx::row::size_type c = 0; c < rows.columns(); ++c) if (std::string(rows.column_name(c)) == "section") sectionCol = (int)c;
         for (const auto& r : rows) {
             if (num(r, "amount") == 0) continue;
-            out["items"].push_back({{"ym", r["ym"].c_str()}, {"dir", dir}, {"scope", r["scope"].c_str()},
-                                    {"type", type ? type : r["type"].c_str()}, {"name", r["name"].c_str()},
-                                    {"category", r["category"].c_str()}, {"detail", r["detail"].is_null() ? "" : r["detail"].c_str()},
-                                    {"amount", num(r, "amount")}, {"ahead", ahead}});
+            json item = {{"ym", r["ym"].c_str()}, {"dir", dir}, {"scope", r["scope"].c_str()},
+                         {"type", type ? type : r["type"].c_str()}, {"name", r["name"].c_str()},
+                         {"category", r["category"].c_str()}, {"detail", r["detail"].is_null() ? "" : r["detail"].c_str()},
+                         {"amount", num(r, "amount")}, {"ahead", ahead}};
+            if (sectionCol >= 0 && !r[sectionCol].is_null()) item["section"] = r[sectionCol].c_str();
+            out["items"].push_back(item);
         }
     };
 
     addItems(db->query(std::string("SELECT ") + kYm + " AS ym, s.group_label AS name, 'dues' AS category, '' AS detail, "
             "       cash_flow_dues_scope(fh_payment_person(pp.la_registration_id, pp.la_user_id), lp.category, pp.paid_at) AS scope, "
-            "       SUM(" + kNet + ")::float8 AS amount "
+            "       SUM(" + kNet + ")::float8 AS amount, "
+            "       CASE lp.category WHEN 'men' THEN 'M' WHEN 'women' THEN 'W' WHEN 'boys' THEN 'B' WHEN 'girls' THEN 'G' END AS section "
             "  FROM person_payments pp JOIN leagueapps_programs lp ON lp.program_id = pp.la_program_id " + kCounted + " AND " + paidSince +
-            " GROUP BY 1, 2, 5"), "in", "dues", false);
+            " GROUP BY 1, 2, 5, 7"), "in", "dues", false);
     addItems(db->query(kOutSql, {start}), "out", nullptr, false);
 
     // Field rentals we are paid for (mig 971): every booking on the calendar

@@ -158,11 +158,10 @@ class FinancesScreen extends Screen {
     const scopes = flow.scopes || [];
     const receipts = [];
     for (const sec of (this.summary.sections || [])) {
-      const monthly = Number(((sec.projections || {}).current_dues || {}).monthly || 0);
-      const scode = (scopes.find(sc => sc.section_code === sec.code && !sc.team_id) || {}).code;
-      const set = (scode && FinancesScreen.inScopeOf(scopes, scode)) || new Set();
-      const by = {};
-      for (const ym of months) by[ym] = ym < nowYm ? items.filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.ym === ym && set.has(i.scope)).reduce((a, i) => a + Number(i.amount), 0) : monthly;
+      // reality (mig 1385): past months = what LeagueApps paid out for the
+      // section; this month on = the last three months' average
+      const a = this._duesActual(sec.code), by = {};
+      for (const ym of months) by[ym] = ym < nowYm ? Number(a.by[ym] || 0) : a.rate;
       if (sumBy(by)) receipts.push({ label: this._copy('cf_dues', { section: sec.name }) || `Dues — ${sec.name}`, by, dues: true });
     }
     const rentBy = {}; for (const ym of months) rentBy[ym] = items.filter(i => i.dir === 'in' && i.category === 'rental' && i.ym === ym).reduce((a, i) => a + Number(i.amount), 0);
@@ -295,14 +294,18 @@ class FinancesScreen extends Screen {
     const revCodes = !pillS ? allHeads.map(h => h.code) : shareCodes;
     const secName = (code) => ((this.summary || {}).sections || []).find(s => s.code === code)?.name || code;
     const revenue = [];
-    // expected collection rate (mig 1381) = 1 − allowance ÷ dues billed since Aug 1 (collected, before LA fees, + still owed)
-    const collect = this._collectionRate(), collectPct = `${Math.round(100 * collect)}%`;
     for (const h of allHeads.filter(h => revCodes.includes(h.code))) {
       const monthly = Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0);
       const paying = Number(h.paying || 0), covered = paying === 0 && Number(h.active || 0) > 0;
+      // reality (mig 1385): collected so far (after LA fees) + the last three
+      // months' average × the months left; next year = that average × 12
+      const a = this._duesActual(h.code), left = Math.max(0, 12 - a.closed.length);
+      const real = a.closed.length > 0, amount = covered ? 0 : !real ? paying * monthly * 12 : year === thisYear ? a.toDate + a.rate * left : a.rate * 12;
+      const detail = covered ? (this._copy('plan_split_club_covers') || 'club covers') : !real ? `${paying} × ${M0(monthly)} × 12`
+        : year === thisYear ? (this._copy('plan_dues_real', { so_far: M0(a.toDate), rate: M0(a.rate), left }) || `${M0(a.toDate)} so far + ${M0(a.rate)}/mo × ${left}`)
+        : (this._copy('plan_dues_real_next', { rate: M0(a.rate) }) || `${M0(a.rate)}/mo × 12`);
       revenue.push({ kind: 'dues', code: h.code, label: this._copy('plan_rev_dues', { section: secName(h.code) }) || `Dues — ${secName(h.code)}`,
-        detail: covered ? (this._copy('plan_split_club_covers') || 'club covers') : `${paying} × ${M0(monthly)} × 12${collect < 1 ? ` × ${collectPct}` : ''}`,
-        unit: covered ? '' : (this._copy('plan_rev_dues_unit') || 'paying members × dues a month × 12 months'), amount: covered ? 0 : paying * monthly * 12 * collect, assumed: year !== thisYear });
+        detail, unit: covered ? '' : (this._copy(real ? 'plan_rev_dues_unit' : 'plan_rev_dues_unit_heads') || ''), amount, assumed: year !== thisYear });
     }
     // Grants awarded or received = revenue with donor restrictions (restricted to
     // their purpose, or to what the label names when it has no single purpose);
@@ -436,9 +439,7 @@ class FinancesScreen extends Screen {
     for (const r of m.revenue) {
       let actual = 0, lines = [];
       if (r.kind === 'dues') {
-        const sec = (scopes.find(sc => sc.section_code === r.code && !sc.team_id) || scopes.find(sc => sc.section_code === r.code) || {}).code;
-        const set = sec ? FinancesScreen.inScopeOf(scopes, sec) : new Set();
-        lines = mine.filter(i => i.dir === 'in' && i.category === 'dues' && set.has(i.scope));
+        lines = all.filter(i => i.dir === 'in' && i.category === 'dues' && i.section === r.code);   // by the LA program's section (mig 1385)
         lines.forEach(i => usedIn.add(i)); actual = sum(lines);
       } else if (r.kind === 'award' && (r.purposes || []).length) {
         // restricted (mig 1382, standard): counts as it is spent on what it may pay for — released from restriction
@@ -514,14 +515,18 @@ class FinancesScreen extends Screen {
       </div>`;
   }
 
-  // Share of dues expected to be collected (mig 1381): 1 − the allowance for
-  // uncollectible dues ÷ dues billed since Aug 1 (paid through LeagueApps,
-  // grossed up for its fees, plus what members owe now).
-  _collectionRate() {
-    if (!this.flow || !this.expenses || !this.summary) return 1;
-    const L = this._ledger(), ratio = Number(this.flow.net_ratio) || 1;
-    const billed = L.duesPaid / ratio + L.duesOwed;
-    return billed > 0 ? Math.max(0, 1 - L.allowance / billed) : 1;
+  // Dues as they really came in (owner 11/14 "i thought your were gonna deal
+  // with reality?", mig 1385): what LeagueApps paid out (after its fees) per
+  // month for one section — by the section of the LA program, never the team
+  // tree (youth teams sit under Youth, not Boys/Girls). closed = Aug 1 → the
+  // last finished month; rate = the average of the last three finished months.
+  _duesActual(code) {
+    const flow = this.flow || {}, nowYm = String((this.expenses || {}).today || '').slice(0, 7), startYm = String(flow.start || '').slice(0, 7);
+    const by = {};
+    for (const i of (flow.items || []).filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.section === code)) by[i.ym] = (by[i.ym] || 0) + Number(i.amount || 0);
+    const closed = []; if (startYm && nowYm) { let [y, mo] = startYm.split('-').map(Number); for (;;) { const ym = `${y}-${String(mo).padStart(2, '0')}`; if (ym >= nowYm) break; closed.push(ym); mo++; if (mo > 12) { mo = 1; y++; } } }
+    const last = closed.slice(-3);
+    return { by, closed, toDate: closed.reduce((a, ym) => a + Number(by[ym] || 0), 0), rate: last.length ? last.reduce((a, ym) => a + Number(by[ym] || 0), 0) / last.length : 0 };
   }
 
   // ── The ledger both statements read (mig 1379): this budget year, Aug 1 →

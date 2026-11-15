@@ -101,3 +101,11 @@ the grant into per-purpose rows; budget to date by forecast timing.
 
 The owner's admin login can't be used from a Claude session, so the page is
 not browser-verified; logic is tested in node with stub data.
+
+**Dues from reality (mig 1385):** Budget dues per section = collected so far
+(LA payouts after fees) + the last 3 finished months' average × months left
+(next year: average × 12); the Cash Flow Forecast uses the same average ahead.
+Dues items carry `section` (from the LA program's category) — never map dues
+to sections through the scope tree (youth teams sit under Youth, so Boys lost
+its team-tagged dues; Oct showed $1,898 instead of $3,080). The collection-rate
+guess is out of the budget; the allowance stays on the statements.
