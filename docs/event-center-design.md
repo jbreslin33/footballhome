@@ -186,7 +186,14 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
   is EventScreen's list.  So Game Center has no separate player layout left.
   Lineup drafts keep their own per-draft edit right (isCoach flips per
   view) — not a tier.
-- Then drop `att.canMark` / `att.canSetRsvp` (my.js is the last reader).
+- DONE: `att.canMark` / `att.canSetRsvp` dropped — `att` = { viewer, me,
+  roster } on every screen; every gate asks the viewer.
+
+**Event Center redo: slices 1–5 complete (11/14).**  What is left is
+optional / when a rule changes: `EventScope` classes (feed SQL already
+scopes), real-phone check of the auto-scroll, a non-admin coach walk-through,
+a volunteer pick from the strip end to end, coach-vs-admin ✓/✗ on a future
+event, SectionChat both-chats case.
 
 **Loose ends**
 - DONE 11/14: `screens/my.js` deleted (3,239 lines) — public-teams-list

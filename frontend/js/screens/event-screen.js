@@ -43,7 +43,7 @@ class EventScreen extends Screen {
     super(navigation, auth);
     this.ev       = null;      // the open event
     this.pill     = 'players'; // the lit big pill — players (+ invites), and whatever the kind adds
-    this.att      = null;      // {viewer, canMark, canSetRsvp, me, roster: Map(person_id -> {status})}
+    this.att      = null;      // {viewer, me, roster: Map(person_id -> {status})}
     this.invites  = null;      // {invites, candidates} | {error}
     this.saving   = new Set(); // "att:<pid>" / "inv:<pid>" in flight
     this.error    = null;
@@ -749,8 +749,7 @@ class EventScreen extends Screen {
       const body = await this._json(`/api/calendar/events/${id}/attendance`);
       if (!this.ev || this.ev.fh_event_id !== id) return;
       const viewer = Viewer.fromAttendance(body);
-      // canMark / canSetRsvp mirror the viewer for screens not yet on it.
-      this.att = { viewer, canMark: viewer.canMark(), canSetRsvp: viewer.canAnswerFor(),
+      this.att = { viewer,
                    me: Number(body.me_person_id) || 0,
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
       // 🎟 Invites sit under All Players — load them with it.
@@ -758,7 +757,7 @@ class EventScreen extends Screen {
       if (viewer.canInvite() && this.ev.kind === 'match') this._loadCallins();
     } catch (err) {
       console.error('[event] attendance load failed:', err);
-      this.att = { viewer: new PlayerViewer(), canMark: false, canSetRsvp: false, roster: new Map() };
+      this.att = { viewer: new PlayerViewer(), roster: new Map() };
     }
     this._render();
   }
@@ -1461,7 +1460,7 @@ class EventScreen extends Screen {
 
   // Who is looking, for THIS event (lib/viewer.js): PlayerViewer →
   // CoachViewer → AdminViewer.  The attendance GET's viewer_tier once it has
-  // landed (Game Center fills att itself with the flags), the feed's
+  // landed (Game Center fills its own att with a viewer too), the feed's
   // viewer_tier before that.  Every gate on this screen asks it.
   get viewer() {
     const real = this.realViewer;
@@ -1475,7 +1474,6 @@ class EventScreen extends Screen {
   get realViewer() {
     const a = this.att;
     if (a && a.viewer) return a.viewer;
-    if (a) return Viewer.fromAttendance({ can_mark: a.canMark, can_set_rsvp: a.canSetRsvp });
     return Viewer.for(this.ev && this.ev.viewer_tier);
   }
 

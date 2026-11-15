@@ -4828,7 +4828,7 @@ class GameCenterScreen extends EventScreen {
       const body = res.ok ? await res.json() : null;
       if (this._fhEventId() !== id) return;
       const viewer = body ? Viewer.fromAttendance(body) : null;
-      this.att = body ? { viewer, canMark: viewer.canMark(), canSetRsvp: viewer.canAnswerFor(), me: Number(body.me_person_id) || 0,
+      this.att = body ? { viewer, me: Number(body.me_person_id) || 0,
                           roster: new Map((body.roster || []).map(r => [Number(r.person_id), r])) } : null;
     } catch (err) {
       console.warn('[game-center] attendance unavailable:', err);
