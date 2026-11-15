@@ -377,13 +377,18 @@ json Expenses::projection(int clubId) {
         // Grants per budget year (mig 1336) — club-wide, earmarked by purpose.
         out["plan_grants"] = json::array();
         for (const auto& r : db->query(
-                "SELECT y.label AS budget_year, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label "
+                // grants AND sponsorships (mig 1372: a sponsor pays Lighthouse,
+                // soccer takes the budget credit); receipts = dated money in
+                "SELECT y.label AS budget_year, a.kind, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label, "
+                "       COALESCE((SELECT json_agg(json_build_object('on', r.received_on::text, 'amount', r.amount_usd::float8) ORDER BY r.received_on) "
+                "                   FROM income_receipts r WHERE r.award_id = a.id), '[]'::json)::text AS receipts "
                 "  FROM income_awards a JOIN budget_years y ON y.id = a.budget_year_id JOIN income_award_statuses st ON st.code = a.status "
                 "  LEFT JOIN invoice_line_categories c ON c.code = a.purpose "
-                " WHERE a.club_id = $1::int AND a.kind = 'grant' AND a.status IN ('awarded', 'received') ORDER BY y.starts_on, a.id", {club}))
-            out["plan_grants"].push_back({{"budget_year", str(r, "budget_year")}, {"label", str(r, "label")}, {"source", str(r, "source_name")},
+                " WHERE a.club_id = $1::int AND a.kind IN ('grant', 'sponsorship') AND a.status IN ('awarded', 'received') ORDER BY y.starts_on, a.kind, a.id", {club}))
+            out["plan_grants"].push_back({{"budget_year", str(r, "budget_year")}, {"kind", str(r, "kind")}, {"label", str(r, "label")}, {"source", str(r, "source_name")},
                                           {"amount", num(r, "amount_usd")}, {"status", str(r, "status")}, {"note", str(r, "note")},
-                                          {"purpose", str(r, "purpose")}, {"purpose_label", str(r, "purpose_label")}});
+                                          {"purpose", str(r, "purpose")}, {"purpose_label", str(r, "purpose_label")},
+                                          {"receipts", json::parse(str(r, "receipts"))}});
 
         // dues per year to set the cost per player against (latest policy, section first)
         for (const auto& r : db->query(

@@ -88,12 +88,33 @@ page never loaded its data. Restored.
   team-count boxes (`/plan-roster`, `/plan-teams`)
 - The home-games list and the budget-line editor (`/budget-lines/:id`)
 
-## Grants
+## Where the money comes from (owner 2026-11-14)
 
-Owner 2026-11-14: "grants can be added later. just leave functionality". The
-nine soccer-grant rows are now `prospect` (mig 1370), so the Budget counts no
-grants (2026-27: −$17,858). The code stays: set a row to `awarded` or
-`received` and it is revenue again (restricted to its purpose).
+"all money that goes in comes in via league apps OR is a grant OR is CASA
+Rental … same with sponsor it would go to lighthouse but not directly to soccer
+but we need to budget credit for it. all expenses should be listed in
+invoices." + "invoices paid when final, casa always pays".
+
+- **Grants**: $50k a year for 2026-27, 2027-28 and 2028-29, `awarded`,
+  restricted to coaches, referees and equipment (one row a year, purpose NULL —
+  no split given; mig 1372 replaced the nine 11/13 prospect rows).
+- **Sponsors**: `income_awards` kind `sponsorship` (none yet) — Budget revenue
+  once awarded/received.
+- **Received** grant/sponsor money = `income_receipts` (dated), or the whole
+  award once its status is `received`.
+- **CASA rentals**: calendar bookings × $75/h (`field_rental_policies`) — Budget
+  revenue for the current year = bookings on the calendar in the year (only
+  fall is booked so far: 5 × $300 = $1,500).
+- **Bonds** are deposits: never an expense (Budget, Budget vs Actual), an asset
+  on Soccer fund. None are recorded yet.
+
+## 🏦 Soccer fund (mig 1372) — statement of financial position
+
+Club-wide. Soccer has no bank account; Lighthouse holds its money. Cash =
+LA dues net + rentals + grants/sponsors received since Aug 1 − invoices paid
+(cash-flow out items to date − `invoices` draft totals). Plus dues owed
+(`summary.all.owed`), awards not yet paid, bonds; less draft invoices = net
+assets.
 
 ## Next, in order
 
@@ -108,11 +129,10 @@ grants (2026-27: −$17,858). The code stays: set a row to `awarded` or
    comment). Guards: nothing dropped if the pull hit the page cap, or if more
    than max(10, 5%) of judged rows are missing. First run dropped 36 ACH
    "Bank" rows, $2,197 net, 7/13 – 11/11 (all programs, not just soccer).
-3. **Statement of Financial Position** (balance sheet): cash in the bank (needs
-   a source: LA payouts / bank deposits), dues receivable (`fh_dues_balance_usd`),
-   payables (unpaid invoices), and refundable bonds (APSL $1,000) as assets.
-   Bonds are currently a fee category (`bonds`, `is_refundable`), but a
-   balance sheet treats them as assets.
+3. ~~Statement of Financial Position~~ — done as 🏦 Soccer fund (mig 1372).
+   Possible follow-ups: split net assets into with / without donor
+   restrictions (unspent grant money); a sponsor/grant entry form instead of
+   migrations.
 4. Only after that: the owner's special requests (scenarios, break-even, team
    counts, etc.) if the standard reports don't already answer them.
 

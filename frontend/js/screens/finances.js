@@ -10,6 +10,10 @@
 //   Budget vs Actual (mig 1369) the variance report: this budget year's
 //                 Budget beside the money that really moved, through the last
 //                 closed month
+//   Soccer fund   (mig 1372) statement of financial position, club-wide:
+//                 soccer has no bank account of its own — Lighthouse holds its
+//                 money — so cash = everything earned since the budget year
+//                 began − invoices paid (paid = final), plus what is owed each way
 //   Actuals       (mig 977) MoneyView: money that really came in and went out
 //   Cash forecast the month-by-month grid of money still to come and go
 //                 — GET /api/finances/expenses; ✓ = invoiced
@@ -118,7 +122,7 @@ class FinancesScreen extends Screen {
     // The standard nonprofit set only (owner 2026-11-14 "just the standard … take out
     // everything else root and stem … we will start clean"): operating budget,
     // actuals, cash-flow forecast.
-    const pills = [['plan', this._copy('pill_plan') || 'Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['money', this._copy('pill_money') || 'Actuals'], ['expenses', this._copy('pill_expenses') || 'Cash forecast']];
+    const pills = [['plan', this._copy('pill_plan') || 'Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['fund', this._copy('pill_fund') || 'Soccer fund'], ['money', this._copy('pill_money') || 'Actuals'], ['expenses', this._copy('pill_expenses') || 'Cash forecast']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
   }
 
@@ -128,7 +132,7 @@ class FinancesScreen extends Screen {
     if (this.view === 'money' && !this.err) { body.innerHTML = this.money && this.money.ready() ? this.money.html({ who: false }) : '<div class="loading">Loading…</div>'; return; }
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'variance' ? this._varianceHtml() : this._expensesHtml();
+    body.innerHTML = this.view === 'plan' ? this._planHtml() : this.view === 'variance' ? this._varianceHtml() : this.view === 'fund' ? this._fundHtml() : this._expensesHtml();
   }
 
   // ── shared bits ──
@@ -293,16 +297,36 @@ class FinancesScreen extends Screen {
         unit: covered ? '' : (this._copy('plan_rev_dues_unit') || 'paying members × dues a month × 12 months'), amount: covered ? 0 : paying * monthly * 12, assumed: year !== thisYear });
     }
     // Grants awarded or received = revenue with donor restrictions (restricted to
-    // their purpose); a section pill carries its paying-member share.
-    for (const g of grants) {
-      const share = pillS ? frac : 1; if (!share) continue;
-      revenue.push({ kind: 'grant', received: g.status === 'received', label: this._copy('plan_rev_grant', { label: g.label, purpose: String(g.purpose_label || (g.purpose === 'labor' ? coachingLabel : g.purpose || '')).replace(/:\s*$/, '') }) || `Grant — ${g.label}`,
+    // their purpose, or to what the label names when it has no single purpose);
+    // sponsorships (mig 1372) pay Lighthouse, soccer takes the credit. A section
+    // pill carries its paying-member share.
+    const share = pillS ? frac : 1;
+    for (const g of share ? grants : []) {
+      const purpose = String(g.purpose_label || (g.purpose === 'labor' ? coachingLabel : g.purpose || '')).replace(/:\s*$/, '');
+      const label = g.kind === 'sponsorship' ? (this._copy('plan_rev_sponsor', { label: g.label }) || `Sponsor — ${g.label}`)
+        : purpose ? (this._copy('plan_rev_grant', { label: g.label, purpose }) || `Grant — ${g.label}`)
+        : (this._copy('plan_rev_grant_multi', { label: g.label }) || `Grant (restricted) — ${g.label}`);
+      // received = the dated receipts, or the whole award once marked received
+      const receipts = (g.receipts || []).length ? g.receipts : (g.status === 'received' ? [{ on: '', amount: Number(g.amount) }] : []);
+      revenue.push({ kind: 'award', share, receipts, label,
         detail: pillS ? `${M0(g.amount)} × ${pct}` : '', unit: g.note || '', amount: Number(g.amount) * share, assumed: g.status !== 'received' });
+    }
+    // Field rental income (mig 1372; owner: "CASA Rental that soccer club
+    // handles so we count that as money soccer earned", "casa always pays"):
+    // every booking on the calendar in the year, club-wide, shared like grants.
+    if (year === thisYear && share) {
+      const fy = (this.flow || {}).year || {}, s0 = String(fy.starts_on || '').slice(0, 7), e0 = String(fy.ends_on || '').slice(0, 7);
+      const bookings = ((this.flow || {}).items || []).filter(i => i.dir === 'in' && i.category === 'rental' && i.ym >= s0 && (!e0 || i.ym <= e0));
+      const total = bookings.reduce((a, i) => a + Number(i.amount || 0), 0);
+      if (total) revenue.push({ kind: 'rental', share, label: this._copy('plan_rev_rental') || 'Field rental income',
+        detail: pillS ? `${M0(total)} × ${pct}` : `${bookings.length}`, unit: this._copy('plan_rev_rental_unit') || 'bookings on the calendar',
+        amount: total * share, assumed: bookings.some(i => i.ahead) });
     }
     // expenses by category, in the club's category order
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     const byCat = new Map();
-    for (const it of items) { if (!byCat.has(it.category)) byCat.set(it.category, { code: it.category, label: it.category === 'labor' ? coachingLabel : String(it.category_label || it.category).replace(/:\s*$/, ''), items: [] }); byCat.get(it.category).items.push(it); }
+    // refundable bonds are a deposit soccer gets back (an asset on Soccer fund), never an expense
+    for (const it of items.filter(it => it.category !== 'bonds')) { if (!byCat.has(it.category)) byCat.set(it.category, { code: it.category, label: it.category === 'labor' ? coachingLabel : String(it.category_label || it.category).replace(/:\s*$/, ''), items: [] }); byCat.get(it.category).items.push(it); }
     const rank = (c) => c === 'allocated' ? 999 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
     const cats = [...byCat.values()].sort((a, b) => rank(a.code) - rank(b.code));
     for (const c of cats) c.sub = c.items.reduce((a, it) => a + it.amount, 0);
@@ -383,7 +407,11 @@ class FinancesScreen extends Screen {
         const set = sec && window.MoneyView ? MoneyView.inScopeOf(scopes, sec) : new Set();
         lines = mine.filter(i => i.dir === 'in' && i.category === 'dues' && set.has(i.scope));
         lines.forEach(i => usedIn.add(i)); actual = sum(lines);
-      } else if (r.kind === 'grant') actual = r.received ? r.amount : 0;
+      } else if (r.kind === 'award') actual = r.receipts.filter(x => !x.on || x.on.slice(0, 7) < nowYm).reduce((a, x) => a + Number(x.amount || 0), 0) * r.share;
+      else if (r.kind === 'rental') {
+        lines = all.filter(i => i.dir === 'in' && i.category === 'rental');
+        lines.forEach(i => usedIn.add(i)); actual = sum(lines) * r.share;
+      }
       rev.push({ label: r.label, budget: r.amount, actual, lines });
     }
     const teamPill = m.pillS && m.pillS.team_id;
@@ -396,14 +424,14 @@ class FinancesScreen extends Screen {
     // Expenses: each Budget category beside the money out under the pill; a
     // section pill carries its share of the club-wide money out, as it does
     // its share of the club-wide budget.
-    const out = mine.filter(i => i.dir === 'out');
+    const out = mine.filter(i => i.dir === 'out' && i.category !== 'bonds');   // bonds = deposits, not expenses
     const exp = m.cats.filter(c => c.code !== 'allocated').map(c => ({ code: c.code, label: c.label, budget: c.sub, lines: out.filter(i => i.category === c.code) }));
     for (const code of [...new Set(out.map(i => i.category))].filter(code => !exp.some(e => e.code === code)))
       exp.push({ code, label: catLabel(code), budget: 0, lines: out.filter(i => i.category === code) });
     for (const e of exp) e.actual = sum(e.lines);
     exp.sort((a, b) => m.rank(a.code) - m.rank(b.code));
     const alloc = m.cats.find(c => c.code === 'allocated');
-    if (alloc) { const club = all.filter(i => i.dir === 'out' && i.scope === 'club'); exp.push({ code: 'allocated', label: alloc.label, budget: alloc.sub, actual: sum(club) * m.frac, lines: [], scaled: m.frac }); }
+    if (alloc) { const club = all.filter(i => i.dir === 'out' && i.scope === 'club' && i.category !== 'bonds'); exp.push({ code: 'allocated', label: alloc.label, budget: alloc.sub, actual: sum(club) * m.frac, lines: [], scaled: m.frac }); }
 
     // One row: year budget, budget to date, actual, variance, share of the year used.
     const row = (r, isRev, cls, key) => {
@@ -439,6 +467,69 @@ class FinancesScreen extends Screen {
           <tbody>${rows}</tbody>
         </table></div>
         <div class="fn-note" style="margin-top:8px;">${esc(this._copy('var_dues_net', { pct: `${Math.round(100 * (1 - ratio))}%` }))}</div>
+      </div>`;
+  }
+
+  // ── Soccer fund (mig 1372): the statement of financial position. Owner
+  // 2026-11-14: all money in comes via LeagueApps, a grant, CASA rental or a
+  // sponsor (sponsors pay Lighthouse, soccer takes the credit); all money out
+  // is on invoices, paid when final; CASA always pays. Soccer has no bank
+  // account of its own, so its cash is what Lighthouse holds for it: earned
+  // since the budget year began − invoices paid. Club-wide (the Who pills do
+  // not split a balance sheet).
+  _fundHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
+    const flow = this.flow || {}, x = this.expenses || {}, ov = this.summary || {};
+    const startYm = String(flow.start || '').slice(0, 7), nowYm = String(x.today || '').slice(0, 7), thisYear = (flow.year || {}).label || '';
+    const sum = (list) => list.reduce((a, i) => a + Number(i.amount || 0), 0);
+    const items = (flow.items || []).filter(i => !i.ahead && i.ym >= startYm && i.ym <= nowYm);
+    const dues = sum(items.filter(i => i.dir === 'in' && i.category === 'dues'));
+    const rentals = sum(items.filter(i => i.dir === 'in' && i.category === 'rental'));
+    const otherIn = sum(items.filter(i => i.dir === 'in' && i.category !== 'dues' && i.category !== 'rental'));
+    // grants + sponsors of this budget year: received = dated receipts to date,
+    // or the whole award once marked received; the rest is still owed to soccer
+    let awardsIn = 0, awardsOwed = 0;
+    for (const g of (x.plan_grants || []).filter(g => g.budget_year === thisYear)) {
+      const got = (g.receipts || []).length ? sum(g.receipts.filter(r => !r.on || r.on.slice(0, 7) <= nowYm)) : (g.status === 'received' ? Number(g.amount) : 0);
+      awardsIn += got; awardsOwed += Math.max(0, Number(g.amount || 0) - got);
+    }
+    // invoices to date (cash-flow items, every line) less the ones still draft
+    const drafts = (flow.invoices || []).reduce((a, c) => a + Number(c.draft || 0), 0);
+    const invoiced = sum(items.filter(i => i.dir === 'out' && !i.prepaid));
+    const paid = invoiced - drafts;
+    // refundable bonds paid (this year or before it began) are still soccer's
+    const deposits = sum((flow.items || []).filter(i => i.dir === 'out' && i.category === 'bonds' && !i.ahead));
+    const cash = dues + rentals + otherIn + awardsIn - paid;
+    const duesOwed = Number((ov.all || {}).owed || 0);
+    const assets = cash + duesOwed + awardsOwed + deposits, liabilities = drafts, net = assets - liabilities;
+
+    const open = this.expanded.has('fund:cash');
+    const amt = (v, cls) => `<td class="${cls || (v < 0 ? 'fn-out' : '')}">${M0(v)}</td>`;
+    const r = (label, v, cls, rowCls, attrs) => `<tr class="${rowCls || ''}" ${attrs || ''}><td style="white-space:normal;">${esc(label)}</td>${amt(v, cls)}</tr>`;
+    let rows = `<tr class="group"><td colspan="2">${esc(this._copy('fund_has') || 'What soccer has')}</td></tr>`;
+    rows += r(this._copy('fund_cash') || 'Money Lighthouse holds for soccer', cash, '', `cat ${open ? 'open' : ''}`, 'data-cat="fund:cash"');
+    if (open) {
+      rows += r(this._copy('fund_cash_dues') || 'Dues in (LeagueApps, after its fees)', dues, 'fn-in', 'item');
+      if (rentals) rows += r(this._copy('fund_cash_rental') || 'Field rentals', rentals, 'fn-in', 'item');
+      if (otherIn) rows += r(this._copy('fund_cash_other') || 'Other money in', otherIn, 'fn-in', 'item');
+      rows += r(this._copy('fund_cash_awards') || 'Grants and sponsors received', awardsIn, 'fn-in', 'item');
+      rows += r(this._copy('fund_cash_paid') || 'Invoices paid (final)', -paid, 'fn-out', 'item');
+    }
+    if (cash < 0) rows += `<tr class="item"><td colspan="2" class="fn-warn" style="white-space:normal;">${esc(this._copy('fund_cash_neg', { amount: M0(-cash) }) || '')}</td></tr>`;
+    rows += r(this._copy('fund_dues_owed') || 'Dues members owe', duesOwed);
+    rows += r(this._copy('fund_awards_owed') || 'Grants and sponsors awarded, not paid yet', awardsOwed);
+    rows += r(this._copy('fund_deposits') || 'Refundable deposits (bonds)', deposits);
+    rows += r(this._copy('fund_assets_total') || 'Total', assets, '', 'sum');
+    rows += `<tr class="group"><td colspan="2">${esc(this._copy('fund_owes') || 'What soccer owes')}</td></tr>`;
+    rows += r(this._copy('fund_drafts') || 'Invoices not final yet', drafts);
+    rows += r(this._copy('fund_liab_total') || 'Total', liabilities, '', 'sum');
+    rows += `<tr class="sum"><td>${esc(this._copy('fund_net') || 'Net assets')}</td><td class="${net < 0 ? 'fn-out' : 'fn-in'}">${M0(net)}</td></tr>`;
+    const asOf = x.today ? new Date(`${String(x.today).slice(0, 10)}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    return `
+      <div class="fn-card">
+        <div class="fn-title">${esc(this._copy('fund_title') || 'Soccer fund')} · ${esc(this._copy('fund_asof', { date: asOf }) || asOf)}</div>
+        <div class="fn-note">${esc(this._copy('fund_note'))}</div>
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:360px;"><tbody>${rows}</tbody></table></div>
       </div>`;
   }
 
