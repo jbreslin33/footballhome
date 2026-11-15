@@ -43,7 +43,9 @@ public:
     // (deleted / returned ACH) into person_payments_la_dropped. Runs from
     // LaSyncScheduler at most every kReconcileHours; returns rows dropped,
     // or -1 when it did not run (not due, or the guard held).
-    int reconcileFromLa(bool force = false);
+    // minMinutes > 0 overrides the throttle (the #finances page load passes 1:
+    // every load re-checks LA, the two parallel requests share one pass).
+    int reconcileFromLa(bool force = false, int minMinutes = 0);
 
     struct LastPayment {
         double      amount = 0.0;    // dollars

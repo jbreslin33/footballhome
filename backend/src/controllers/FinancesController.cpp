@@ -1,6 +1,8 @@
 #include "FinancesController.h"
 
+#include <chrono>
 #include <cstdlib>
+#include <mutex>
 #include <iostream>
 #include <optional>
 
@@ -8,6 +10,7 @@
 #include "../models/CashFlow.h"
 #include "../models/Expenses.h"
 #include "../models/PaymentsOverview.h"
+#include "../models/PersonPayments.h"
 #include "../models/WelcomeLog.h"
 #include "../services/LeagueFixtureSync.h"
 #include "../third_party/json.hpp"
@@ -22,6 +25,26 @@ int envIntOr(const char* name, int fallback) {
 }
 Response jsonOut(HttpStatus s, const json& body) { Response r(s, body.dump()); r.setHeader("Content-Type", "application/json"); return r; }
 Response jsonError(HttpStatus s, const std::string& message) { return jsonOut(s, {{"error", message}}); }
+// Every #finances load checks LeagueApps payments and updates the DB first
+// (owner 11/14 "how are you not checking on every fiances page load lol you
+// should be checking la … and updating db"): new transactions, then the
+// reconcile (refresh every row, drop what LA deleted). The page's parallel
+// requests share one pass (mutex + 1-minute throttle). A failed LA call is
+// logged and the page renders from the DB.
+void refreshPaymentsFromLa() {
+    static std::mutex m;
+    std::lock_guard<std::mutex> lock(m);
+    const auto t0 = std::chrono::steady_clock::now();
+    try {
+        PersonPayments p;
+        const int fresh = p.syncFromLa();
+        const int dropped = p.reconcileFromLa(false, 1);
+        std::cout << "[finances] LA payments: " << fresh << " new/updated, reconcile " << (dropped < 0 ? std::string("skipped") : std::to_string(dropped) + " dropped")
+                  << " in " << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t0).count() << " ms" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[finances] LA payments refresh failed: " << e.what() << std::endl;
+    }
+}
 } // namespace
 
 FinancesController::FinancesController()
@@ -40,12 +63,12 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     // Membership numbers must come from a fresh LeagueApps sync (LA → DB →
     // render), hence laGet with the four membership programs.
     laGet(router, prefix + "/summary", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
-        [this](const Request& r, const LaSyncMap&) { return handleSummary(r); });
+        [this](const Request& r, const LaSyncMap&) { Response d; if (!gate(r, &d)) return d; refreshPaymentsFromLa(); return handleSummary(r); });
     router.get(prefix + "/expenses", [this](const Request& r) { return handleExpenses(r); });
     // Cash flow splits dues ahead by team from today's members (mig 977), so
     // it syncs the same four programs first.
     laGet(router, prefix + "/cash-flow", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
-        [this](const Request& r, const LaSyncMap&) { return handleCashFlow(r); });
+        [this](const Request& r, const LaSyncMap&) { Response d; if (!gate(r, &d)) return d; refreshPaymentsFromLa(); return handleCashFlow(r); });
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {

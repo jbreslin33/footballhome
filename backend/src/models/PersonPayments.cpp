@@ -172,13 +172,13 @@ int PersonPayments::upsertRecords(const std::vector<json>& records) {
 // rows LA no longer returns into person_payments_la_dropped.
 namespace { constexpr int kReconcileHours = 6; }
 
-int PersonPayments::reconcileFromLa(bool force) {
+int PersonPayments::reconcileFromLa(bool force, int minMinutes) {
     auto cur = db_->query(
         "SELECT reconcile_from_ms, "
-        "       (last_reconciled_at IS NULL OR last_reconciled_at < now() - make_interval(hours => $1::int)) AS due, "
+        "       (last_reconciled_at IS NULL OR last_reconciled_at < now() - make_interval(mins => $1::int)) AS due, "
         "       now()::text AS started "
         "  FROM leagueapps_transaction_cursor WHERE scope = 'global'",
-        {std::to_string(kReconcileHours)});
+        {std::to_string(minMinutes > 0 ? minMinutes : kReconcileHours * 60)});
     if (cur.empty()) return -1;
     if (!force && !cur[0]["due"].as<bool>()) return -1;
     const long long fromMs = cur[0]["reconcile_from_ms"].as<long long>();

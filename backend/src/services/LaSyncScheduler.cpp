@@ -35,6 +35,12 @@ void LaSyncScheduler::loop() {
         } catch (const std::exception& e) {
             std::cerr << "[LaSyncScheduler] pass failed: " << e.what() << std::endl;
         }
+        // New LA payments every pass (11/14: they only arrived on roster loads)
+        try {
+            PersonPayments().syncFromLa();
+        } catch (const std::exception& e) {
+            std::cerr << "[LaSyncScheduler] payments sync failed: " << e.what() << std::endl;
+        }
         // Payments reconcile (mig 1370): drops rows LeagueApps deleted;
         // self-throttled to every few hours by last_reconciled_at.
         try {
