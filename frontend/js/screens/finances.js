@@ -309,6 +309,12 @@ class FinancesScreen extends Screen {
     // sponsorships (mig 1372) pay Lighthouse, soccer takes the credit. A section
     // pill carries its paying-member share.
     const share = pillS ? frac : 1;
+    // this year's budgeted costs in the given categories under the pill (a
+    // section pill adds its share of the club-wide ones)
+    const purposeSpend = (codes) => items.filter(it => codes.includes(it.category)).reduce((a, it) => a + it.amount, 0)
+      + (frac > 0 ? ((this.expenses.budget || []).filter(b => b.scope === 'club' && b.budget_year === year && codes.includes(b.category)).reduce((a, b) => a + Number(b.year_total || 0), 0)
+                    + (this.expenses.plan || []).filter(l => l.scope === 'club' && l.budget_year === year && codes.includes(l.category)).reduce((a, l) => a + Number(l.amount || 0), 0)) * frac : 0);
+    const claimed = new Map();
     for (const g of share ? grants : []) {
       const purpose = String(g.purpose_label || (g.purpose === 'labor' ? coachingLabel : g.purpose || '')).replace(/:\s*$/, '');
       const label = g.kind === 'sponsorship' ? (this._copy('plan_rev_sponsor', { label: g.label }) || `Sponsor — ${g.label}`)
@@ -316,8 +322,18 @@ class FinancesScreen extends Screen {
         : (this._copy('plan_rev_grant_multi', { label: g.label }) || `Grant (restricted) — ${g.label}`);
       // received = the dated receipts, or the whole award once marked received
       const receipts = (g.receipts || []).length ? g.receipts : (g.status === 'received' ? [{ on: '', amount: Number(g.amount) }] : []);
-      revenue.push({ kind: 'award', share, receipts, purposes: g.purposes || [], label,
-        detail: pillS ? `${M0(g.amount)} × ${pct}` : '', unit: g.note || '', amount: Number(g.amount) * share, assumed: g.status !== 'received' });
+      // Restricted (owner 11/14 "just use grant money for all refs, coach pay and
+      // equipment … any excess grant money don't use it at all", mig 1384):
+      // budgeted = this year's costs it may pay for, up to the award; the rest unused.
+      const purposes = g.purposes || [], award = Number(g.amount) * share;
+      let amount = award, detail = pillS ? `${M0(g.amount)} × ${pct}` : '', unit = g.note || '';
+      if (purposes.length) {
+        const spend = Math.max(0, purposeSpend(purposes) - (claimed.get(purposes.join()) || 0));
+        amount = Math.min(award, spend); claimed.set(purposes.join(), (claimed.get(purposes.join()) || 0) + amount);
+        detail = this._copy('plan_grant_used', { used: M0(amount), award: M0(award) }) || `${M0(amount)} of ${M0(award)}`;
+        unit = award - amount > 0.5 ? (this._copy('plan_grant_left', { left: M0(award - amount) }) || `${M0(award - amount)} not used`) : '';
+      }
+      revenue.push({ kind: 'award', share, receipts, purposes, award, label, detail, unit, amount, assumed: g.status !== 'received' });
     }
     // Field rental income (mig 1372; owner: "CASA Rental that soccer club
     // handles so we count that as money soccer earned", "casa always pays"):
@@ -427,7 +443,7 @@ class FinancesScreen extends Screen {
       } else if (r.kind === 'award' && (r.purposes || []).length) {
         // restricted (mig 1382, standard): counts as it is spent on what it may pay for — released from restriction
         const spent = all.filter(i => i.dir === 'out' && r.purposes.includes(i.category)).reduce((a, i) => a + Number(i.amount || 0), 0);
-        actual = Math.min(r.amount, spent * r.share);
+        actual = Math.min(r.award, spent * r.share);
       } else if (r.kind === 'award') actual = r.receipts.filter(x => !x.on || x.on.slice(0, 7) < nowYm).reduce((a, x) => a + Number(x.amount || 0), 0) * r.share;
       else if (r.kind === 'rental') {
         lines = all.filter(i => i.dir === 'in' && i.category === 'rental');
