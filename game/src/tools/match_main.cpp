@@ -92,6 +92,7 @@ struct Stats {
     long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0, area_rec = 0, area_ticks = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
+    struct ArR { double gs, dl, deep, db, drop, fast; bool ok = false; double bl = 0, ay = 0; }; std::vector<ArR> ar[5];   // §8.225 ARRIVE
     long fn_gs[5][4] = {}, fn_bg[4][3][4] = {}; std::vector<double> fn_gk[4][3];   // §8.223 FINISH: goal / saved / blocked / off by goal-side
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
@@ -244,7 +245,7 @@ int main(int argc, char** argv) {
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
-        struct FlF { long k; float x[32], y[32], bx, by, bz; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
+        struct FlF { long k; float x[32], y[32], bx, by, bz; int a = 0; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
         struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0, z = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1; struct RoM { int r, b; bool fr; double m, nd; }; std::vector<RoM> ro_stage; int ro_z = 0;   /* §8.205 */  /* §8.202 */ long bt_prev = -1; int bt_side = -1, bt_band = -1, bt_n = 0;  /* §8.203 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
@@ -1138,7 +1139,7 @@ int main(int argc, char** argv) {
             if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
             {   // §8.217 THE PASS IN FLIGHT: keep the frame; read at the match's end (benchmarks_tracking_flight.py)
-                FlF f; f.k = static_cast<long>(k); f.bx = static_cast<float>(b.pos.x.toDouble()); f.by = static_cast<float>(b.pos.y.toDouble()); f.bz = static_cast<float>(b.pos.z.toDouble());
+                FlF f; f.k = static_cast<long>(k); f.bx = static_cast<float>(b.pos.x.toDouble()); f.by = static_cast<float>(b.pos.y.toDouble()); f.bz = static_cast<float>(b.pos.z.toDouble()); f.a = a;
                 for (std::uint8_t j = 0; j < N && j < 32; ++j) { f.x[j] = static_cast<float>(W.player(j).pos.x.toDouble()); f.y[j] = static_cast<float>(W.player(j).pos.y.toDouble()); }
                 fl_f.push_back(f);
             }
@@ -2037,6 +2038,39 @@ int main(int argc, char** argv) {
             rk[ri] = k; rbx[ri] = bx; rat[ri] = a;
             for (std::uint8_t j = 0; j < N && j < 32; ++j) { rpx[ri][j] = W.player(j).pos.x.toDouble(); rpy[ri][j] = W.player(j).pos.y.toDouble(); }
         }
+        {   // §8.225 ARRIVE (benchmarks_tracking_arrive.py): the ball inside 12 m of a goal centre, 16 m+ out within the 2 s
+            // before; the defending side at -1 / 0 / +0.5 / +1 / +2 s (5 Hz frames, contiguous only)
+            const int F = static_cast<int>(fl_f.size());
+            long last_far[2] = {-1000000, -1000000};
+            for (int i = 0; i < F; ++i) {
+                const auto& f = fl_f[i]; const int dt = f.a ^ 1; const double gx = dt == 0 ? -hx : hx;
+                const double db = std::hypot(gx - f.bx, f.by);
+                if (db >= 16) { last_far[dt] = f.k; continue; }
+                if (db >= 12 || f.k - last_far[dt] > 60) continue;
+                last_far[dt] = -1000000;
+                static const int kOff[5] = {-30, 0, 18, 30, 60};   // ticks (30 Hz): -1 / 0 / +0.6 / +1 / +2 s on the 5 Hz grid
+                for (int t = 0; t < 5; ++t) {
+                    const long kt = f.k + kOff[t]; int q = i + kOff[t] / 6;
+                    Stats::ArR r;
+                    if (q >= 1 && q < F && fl_f[q].k == kt && fl_f[q - 1].k == kt - 6) {
+                        const auto& g = fl_f[q]; const auto& g1 = fl_f[q - 1];
+                        const double dbb = std::hypot(gx - g.bx, g.by);
+                        std::vector<double> dep, drop; int gs = 0, dl = 0, fast = 0;
+                        for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                            if (W.player(j).team != dt || W.isKeeper(j)) continue;
+                            if (std::hypot(gx - g.x[j], g.y[j]) < dbb) ++gs;
+                            if (std::fabs(gx - g.x[j]) < std::fabs(gx - g.bx)) ++dl;
+                            dep.push_back(std::fabs(gx - g.x[j]));
+                            const double dr = (std::fabs(gx - g1.x[j]) - std::fabs(gx - g.x[j])) / 0.2;
+                            drop.push_back(dr); fast += dr > 4;
+                        }
+                        std::sort(dep.begin(), dep.end()); std::sort(drop.begin(), drop.end());
+                        r = Stats::ArR{static_cast<double>(gs), static_cast<double>(dl), dep.size() > 1 ? (dep[0] + dep[1]) / 2 : 0, dbb, drop.empty() ? 0 : drop[drop.size() / 2], static_cast<double>(fast), true, std::fabs(gx - g.bx), std::fabs(g.by)};
+                    }
+                    S.ar[t].push_back(r);
+                }
+            }
+        }
         {   // §8.217 THE PASS IN FLIGHT (benchmarks_tracking_flight.py): receipts = a spell after a mate's spell 0.4-3 s before, ball live between
             const int F = static_cast<int>(fl_f.size());
             std::vector<int> nb(F, -1);
@@ -2264,6 +2298,22 @@ int main(int argc, char** argv) {
                     auto v = S.fn_gk[d][g]; std::sort(v.begin(), v.end());
                     std::printf(" | GK %.1f (%.1f)", v.empty() ? 0.0 : v[v.size() / 2], rgk[d][g]);
                 }
+        }
+        {   // §8.225 ARRIVE — benchmarks_tracking_arrive.py (real DFL in brackets)
+            static const char* tl[5] = {"  -1", "   0", "+0.6", "  +1", "  +2"};
+            static const double rb[5] = {24.3, 11.0, 7.4, 8.6, 10.1}, rg[5] = {6, 2, 1, 2, 3}, rg3[5] = {80.6, 41.4, 27.2, 41.7, 51.5}, rdl[5] = {2, 1, 1, 1, 1},
+                                rdp[5] = {9.8, 7.7, 6.6, 5.6, 5.4}, rdr[5] = {2.2, 1.7, 1.2, 0.7, -0.2}, rf[5] = {1.90, 1.32, 0.91, 0.34, 0.07};
+            std::printf("\n   ARRIVE (the ball inside 12 m of their goal centre from 16 m+ within 2 s; %.1f a team-match (22.1)) — median at t s:", S.ar[1].size() / tm);
+            for (int t = 0; t < 5; ++t) {
+                std::vector<double> b, g, dl, dp, dr, bl, ay; double g3 = 0, fs = 0, wd = 0;
+                for (const auto& r : S.ar[t]) if (r.ok) { b.push_back(r.db); g.push_back(r.gs); dl.push_back(r.dl); dp.push_back(r.deep); dr.push_back(r.drop); g3 += r.gs >= 3; fs += r.fast; bl.push_back(r.bl); ay.push_back(r.ay); wd += r.ay >= 14; }
+                if (b.empty()) continue;
+                auto md = [](std::vector<double> v) { std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+                const double n = b.size();
+                std::printf("\n     t %s: ball %4.1f (%4.1f) m | goal-side %.0f (%.0f), 3+ %4.1f%% (%4.1f) | deeper than it %.0f (%.0f) | deepest two %4.1f (%4.1f) m off | dropping %+4.1f (%+4.1f) m/s, men 4+ m/s back %.2f (%.2f)",
+                            tl[t], md(b), rb[t], md(g), rg[t], 100 * g3 / n, rg3[t], md(dl), rdl[t], md(dp), rdp[t], md(dr), rdr[t], fs / n, rf[t]);
+                if (t <= 1) std::printf(" | ball off the line %4.1f (%4.1f) |y| %4.1f (%4.1f), wide %3.0f%% (%.0f)", md(bl), t ? 7.5 : 12.5, md(ay), t ? 7.3 : 17.1, 100 * wd / n, t ? 0.0 : 65.0);
+            }
         }
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);

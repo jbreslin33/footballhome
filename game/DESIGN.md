@@ -9579,3 +9579,22 @@ the ball takes to arrive. **Next:** the defending line's movement as the ball co
 `ball_to`'s arrival time) — RECOVERY's near-goal rows, not more spot tables.
 
 Shipped: `benchmarks_tracking_nearspot.py` (real data); engine unchanged.
+
+### 8.225 G5.124 — how the ball comes into the six: ARRIVE — ours through the middle, real from wide (harness only)
+
+From §8.224 (the line doesn't drop in time). **Measured** (new `scripts/benchmarks_tracking_arrive.py`, DFL, and an
+ARRIVE line in fh-game-match: the ball inside 12 m of a goal centre having been 16 m+ out within the 2 s before; the
+defending side at -1 / 0 / +0.6 / +1 / +2 s). Real: 22.1 arrivals a team-match; 1 s before, the deepest two stand
+9.8 m off the line, goal-side 6; at arrival goal-side 2 (3+ 41%), deepest two 7.7, falling to 5.4 by +2 s at a
+median +1.7 → -0.2 m/s. Ours (4 seeds x 8): 15-17 a team-match; 1 s before, deepest two 12.6-13.0 m, goal-side 3; at
+arrival goal-side 0 (3+ 1-3%), deepest two 10.4-11.2; we drop FASTER (+2.8 m/s, 4+ m/s men 1.8-2.1 v 1.32).
+
+**Where it comes from** (1 s before): real ball 12.5 m off the line, |y| 17.1, wide (|y| 14+) 65% — crosses and
+cut-backs into a line already deep and facing it. Ours 17.7 m off, |y| 9.7, wide 27% — passes through the middle
+from 18-20 m beat a line standing, rightly, at the box's edge for a central ball there. The line isn't slow (§8.224's
+spot tables didn't move it); our attack gets into the six through the middle at ~2.5x the real rate. Same mole as
+§8.220 (our ball lives 3-5 m too central; GOAL-SIDE's ball |y| 7.2 v 10.1 at 12-18 m, 11.6 v 15.4 at 18-25).
+**Next:** the final third's routes — the pass into the box from central 18-25 m (how often it's on, who's free to
+take it in behind the line) against the real share; and the wide delivery the real game uses instead.
+
+Shipped: `benchmarks_tracking_arrive.py` (real), ARRIVE (harness); engine unchanged; tests 22/22.
