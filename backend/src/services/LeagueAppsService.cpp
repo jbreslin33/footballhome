@@ -322,7 +322,7 @@ LeagueAppsService::fetchTransactionsSince(long long cursorLastUpdatedMs,
         } catch (const std::exception& e) {
             throw std::runtime_error(std::string("LeagueApps transactions-2 JSON parse failed: ") + e.what());
         }
-        if (!batch.is_array() || batch.empty()) break;
+        if (!batch.is_array() || batch.empty()) { out.complete = true; break; }
 
         for (auto& rec : batch) out.records.push_back(rec);
 
@@ -334,7 +334,7 @@ LeagueAppsService::fetchTransactionsSince(long long cursorLastUpdatedMs,
 
         // Stop if the tail didn't advance — protects against runaway loops
         // if LA ever returns a fixed page.
-        if (newLu == lastUpdated && newId == lastId) break;
+        if (newLu == lastUpdated && newId == lastId) { out.complete = true; break; }
 
         lastUpdated = newLu;
         lastId      = newId;

@@ -1,5 +1,6 @@
 #include "LaSyncScheduler.h"
 #include "LaProgramSync.h"
+#include "../models/PersonPayments.h"
 #include "../database/Database.h"
 
 #include <chrono>
@@ -33,6 +34,13 @@ void LaSyncScheduler::loop() {
             syncAllPrograms();
         } catch (const std::exception& e) {
             std::cerr << "[LaSyncScheduler] pass failed: " << e.what() << std::endl;
+        }
+        // Payments reconcile (mig 1370): drops rows LeagueApps deleted;
+        // self-throttled to every few hours by last_reconciled_at.
+        try {
+            PersonPayments().reconcileFromLa();
+        } catch (const std::exception& e) {
+            std::cerr << "[LaSyncScheduler] payments reconcile failed: " << e.what() << std::endl;
         }
         for (int i = 0; i < kIntervalSeconds && running_; ++i) {
             std::this_thread::sleep_for(std::chrono::seconds(1));

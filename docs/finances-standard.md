@@ -88,23 +88,26 @@ page never loaded its data. Restored.
   team-count boxes (`/plan-roster`, `/plan-teams`)
 - The home-games list and the budget-line editor (`/budget-lines/:id`)
 
-## Open question for the owner
+## Grants
 
-1. **Are the grants really awarded?** Coaches $15k, refs $5k and equipment $10k
-   are each marked `awarded` for 2026-27, 2027-28 and 2028-29, so the Budget
-   counts all $30k a year. If they are only expected, set the status to
-   `applied` (by migration) and they drop out of revenue. This flips the year
-   between +$12k and −$18k.
+Owner 2026-11-14: "grants can be added later. just leave functionality". The
+nine soccer-grant rows are now `prospect` (mig 1370), so the Budget counts no
+grants (2026-27: −$17,858). The code stays: set a row to `awarded` or
+`received` and it is revenue again (restricted to its purpose).
 
 ## Next, in order
 
 1. ~~Budget vs Actual~~ — done (mig 1369). Possible follow-up: budget to
    date by Cash forecast timing instead of straight pro-rata, if seasonal
    costs make the variance noisy.
-2. **Fix Actuals' money-in overcount (~12%).** 26 ACH rows ($1,050) that LA
-   dropped are still in `person_payments`. Fix with a periodic full re-pull that
-   deletes missing rows and refreshes payout ids. See memory
-   `project_la_ach_deleted_rows`.
+2. ~~Fix Actuals' money-in overcount~~ — done 2026-11-14 (mig 1370).
+   `PersonPayments::reconcileFromLa` runs from `LaSyncScheduler` at most every
+   6 h: re-pulls transactions-2 from `reconcile_from_ms` (2026-01-01), upserts
+   every row (refreshes payout ids), and moves rows LA no longer returns into
+   `person_payments_la_dropped` (whole row as jsonb; restore SQL in the table
+   comment). Guards: nothing dropped if the pull hit the page cap, or if more
+   than max(10, 5%) of judged rows are missing. First run dropped 36 ACH
+   "Bank" rows, $2,197 net, 7/13 – 11/11 (all programs, not just soccer).
 3. **Statement of Financial Position** (balance sheet): cash in the bank (needs
    a source: LA payouts / bank deposits), dues receivable (`fh_dues_balance_usd`),
    payables (unpaid invoices), and refundable bonds (APSL $1,000) as assets.

@@ -1,6 +1,7 @@
 #include "PersonPayments.h"
 #include "WelcomeLog.h"
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -58,6 +59,193 @@ PersonPayments::PersonPayments()
 
 PersonPayments::~PersonPayments() = default;
 
+// Batched inside a single pqxx::work so a fresh backfill of ~50k rows doesn't
+// spin up 50k separate round-trips.
+//
+// IMPORTANT: LA's transactions-2 feed returns one row per invoice line item,
+// and a single Stripe charge covering N children shows up as N rows that all
+// share the same top-level `id` but have distinct `transactionItemId` /
+// `invoiceId` / `registrationId`.  The uniqueness key is therefore
+// `transactionItemId` (the per-line-item identifier), NOT `id`.  Keying on
+// `id` alone caused every-but-the-last line item to be overwritten on ON
+// CONFLICT and dropped from the DB.
+int PersonPayments::upsertRecords(const std::vector<json>& records) {
+    int written = 0;
+    {
+        auto tx = db_->beginTransaction();
+        static constexpr const char* kUpsertSql =
+            "INSERT INTO person_payments "
+            "  (la_transaction_item_id, la_transaction_id, la_user_id, "
+            "   la_registration_id, la_program_id, la_invoice_id, txn_type, "
+            "   amount, net_amount, gateway, paid_at, last_updated, "
+            "   first_name, last_name, program_name, raw, "
+            "   inserted_at, updated_at) "
+            "VALUES ($1::bigint, $2::bigint, $3::bigint, "
+            "        NULLIF($4,'')::bigint, "
+            "        $5::bigint, "
+            "        NULLIF($6,'')::bigint, "
+            "        $7, $8::numeric, $9::numeric, $10, "
+            "        $11::timestamptz, $12::timestamptz, "
+            "        NULLIF($13,''), NULLIF($14,''), NULLIF($15,''), "
+            "        $16::jsonb, NOW(), NOW()) "
+            "ON CONFLICT (la_transaction_item_id) DO UPDATE SET "
+            "  la_transaction_id  = EXCLUDED.la_transaction_id, "
+            "  la_user_id         = EXCLUDED.la_user_id, "
+            "  la_registration_id = EXCLUDED.la_registration_id, "
+            "  la_program_id      = EXCLUDED.la_program_id, "
+            "  la_invoice_id      = EXCLUDED.la_invoice_id, "
+            "  txn_type           = EXCLUDED.txn_type, "
+            "  amount             = EXCLUDED.amount, "
+            "  net_amount         = EXCLUDED.net_amount, "
+            "  gateway            = EXCLUDED.gateway, "
+            "  paid_at            = EXCLUDED.paid_at, "
+            "  last_updated       = EXCLUDED.last_updated, "
+            "  first_name         = EXCLUDED.first_name, "
+            "  last_name          = EXCLUDED.last_name, "
+            "  program_name       = EXCLUDED.program_name, "
+            "  raw                = EXCLUDED.raw, "
+            "  updated_at         = NOW()";
+        for (const auto& rec : records) {
+            const long long txnId  = optLong(rec, "id");
+            if (txnId == 0) continue;
+            const long long itemId = optLong(rec, "transactionItemId");
+            if (itemId == 0) {
+                // Every real LA transaction carries a transactionItemId.
+                // Skipping the row is safer than blowing up the whole
+                // batch on a malformed record.
+                std::cerr << "[PersonPayments] skipping txnId=" << txnId
+                          << " (no transactionItemId in record)" << std::endl;
+                continue;
+            }
+            const long long userId = optLong(rec, "userId");
+            const long long regId  = optLong(rec, "registrationId");
+            const long long progId = optLong(rec, "programId");
+            const long long invId  = optLong(rec, "invoiceId");
+            const std::string type = optStr(rec, "type");
+            const double amount    = optNum(rec, "amount");
+            const double netAmt    = optNum(rec, "netAmount");
+            const std::string gw   = optStr(rec, "gateway");
+            const long long paidMs = optLong(rec, "created_on");
+            const long long luMs   = optLong(rec, "lastUpdated");
+            const std::string fn   = optStr(rec, "firstName");
+            const std::string ln   = optStr(rec, "lastName");
+            const std::string pn   = optStr(rec, "programName");
+            try {
+                tx->exec_params(kUpsertSql,
+                    itemId,
+                    txnId,
+                    userId,
+                    regId  == 0 ? std::string{} : std::to_string(regId),
+                    progId,
+                    invId  == 0 ? std::string{} : std::to_string(invId),
+                    type,
+                    amount,
+                    netAmt,
+                    gw,
+                    epochMsToIso(paidMs),
+                    epochMsToIso(luMs),
+                    fn, ln, pn,
+                    rec.dump());
+                ++written;
+            } catch (const std::exception& e) {
+                std::cerr << "[PersonPayments] upsert failed itemId=" << itemId
+                          << " txnId=" << txnId
+                          << " userId=" << userId
+                          << " program=" << progId
+                          << ": " << e.what() << std::endl;
+                // In pqxx a single failed statement aborts the transaction —
+                // rethrow so the outer sync surfaces the error rather than
+                // silently committing a partial batch.
+                throw;
+            }
+        }
+        db_->commit(tx);
+    }
+    return written;
+}
+
+// ── Reconcile (mig 1370) ───────────────────────────────────────────────────
+// The cursor sync above only upserts, so a transaction LeagueApps deletes
+// (a returned / failed ACH "Bank" row) stayed in person_payments for good and
+// every money-in total counted it (11/10: 26 rows, $1,050, ~12% high). This
+// re-pulls the feed from reconcile_from_ms, refreshes every row, and moves the
+// rows LA no longer returns into person_payments_la_dropped.
+namespace { constexpr int kReconcileHours = 6; }
+
+int PersonPayments::reconcileFromLa(bool force) {
+    auto cur = db_->query(
+        "SELECT reconcile_from_ms, "
+        "       (last_reconciled_at IS NULL OR last_reconciled_at < now() - make_interval(hours => $1::int)) AS due, "
+        "       now()::text AS started "
+        "  FROM leagueapps_transaction_cursor WHERE scope = 'global'",
+        {std::to_string(kReconcileHours)});
+    if (cur.empty()) return -1;
+    if (!force && !cur[0]["due"].as<bool>()) return -1;
+    const long long fromMs = cur[0]["reconcile_from_ms"].as<long long>();
+    const std::string started = cur[0]["started"].c_str();
+    const auto markDone = [&] {
+        db_->query("UPDATE leagueapps_transaction_cursor SET last_reconciled_at = now() WHERE scope = 'global'");
+    };
+
+    auto result = LeagueAppsService::getInstance().fetchTransactionsSince(fromMs, 0);
+    const int refreshed = upsertRecords(result.records);
+    if (!result.complete) {
+        // Stopped at the page cap: what we have is not the whole feed, so
+        // nothing can be judged missing. Try again next pass.
+        std::cerr << "[PersonPayments::reconcile] pull stopped at the page cap after "
+                  << result.records.size() << " records — refreshed " << refreshed
+                  << ", dropped nothing" << std::endl;
+        return -1;
+    }
+
+    std::string ids = "{";
+    bool first = true;
+    for (const auto& rec : result.records) {
+        const long long itemId = optLong(rec, "transactionItemId");
+        if (itemId == 0) continue;
+        if (!first) ids += ',';
+        ids += std::to_string(itemId);
+        first = false;
+    }
+    ids += "}";
+
+    // Judged = rows the pull should have returned: updated since the start,
+    // and already here before the pull began (a row the cursor sync adds
+    // mid-pull is not missing).
+    static const std::string kMissing =
+        " FROM person_payments p "
+        "WHERE p.last_updated >= to_timestamp($1::bigint / 1000.0) "
+        "  AND p.inserted_at < $2::timestamptz "
+        "  AND NOT (p.la_transaction_item_id = ANY($3::bigint[]))";
+    const std::vector<std::string> args = {std::to_string(fromMs), started, ids};
+    auto counts = db_->query(
+        "SELECT (SELECT COUNT(*) FROM person_payments p WHERE p.last_updated >= to_timestamp($1::bigint / 1000.0) "
+        "          AND p.inserted_at < $2::timestamptz) AS judged, "
+        "       (SELECT COUNT(*)" + kMissing + ") AS missing", args);
+    const long long judged = counts[0]["judged"].as<long long>(), missing = counts[0]["missing"].as<long long>();
+
+    // Guard: LA deletes a handful of rows, never a big share — a large gap
+    // means a bad pull, and dropping on it would wipe real payments.
+    const long long cap = std::max<long long>(10, judged / 20);
+    if (missing > cap) {
+        std::cerr << "[PersonPayments::reconcile] " << missing << " of " << judged
+                  << " rows missing from LA (cap " << cap << ") — guard held, dropped nothing" << std::endl;
+        markDone();
+        return -1;
+    }
+    if (missing > 0) {
+        auto tx = db_->beginTransaction();
+        tx->exec_params("INSERT INTO person_payments_la_dropped (la_transaction_item_id, row_data) "
+                        "SELECT p.la_transaction_item_id, to_jsonb(p)" + kMissing, args[0], args[1], args[2]);
+        tx->exec_params("DELETE" + kMissing, args[0], args[1], args[2]);
+        db_->commit(tx);
+    }
+    markDone();
+    std::cerr << "[PersonPayments::reconcile] " << result.records.size() << " LA rows, refreshed "
+              << refreshed << ", dropped " << missing << " of " << judged << std::endl;
+    return static_cast<int>(missing);
+}
+
 int PersonPayments::syncFromLa() {
     // 1. Read the global cursor.
     long long cursorLu = 0, cursorId = 0;
@@ -114,109 +302,8 @@ int PersonPayments::syncFromLa() {
         return 0;
     }
 
-    // 3. UPSERT each transaction.  Batched inside a single pqxx::work so
-    //    a fresh backfill of ~50k rows doesn't spin up 50k separate
-    //    round-trips.  Prepared once per invocation.
-    //
-    //    IMPORTANT: LA's transactions-2 feed returns one row per invoice
-    //    line item, and a single Stripe charge covering N children shows
-    //    up as N rows that all share the same top-level `id` but have
-    //    distinct `transactionItemId` / `invoiceId` / `registrationId`.
-    //    The uniqueness key is therefore `transactionItemId` (the per-
-    //    line-item identifier), NOT `id`.  Keying on `id` alone caused
-    //    every-but-the-last line item to be overwritten on ON CONFLICT
-    //    and dropped from the DB.
-    int written = 0;
-    {
-        auto tx = db_->beginTransaction();
-        static constexpr const char* kUpsertSql =
-            "INSERT INTO person_payments "
-            "  (la_transaction_item_id, la_transaction_id, la_user_id, "
-            "   la_registration_id, la_program_id, la_invoice_id, txn_type, "
-            "   amount, net_amount, gateway, paid_at, last_updated, "
-            "   first_name, last_name, program_name, raw, "
-            "   inserted_at, updated_at) "
-            "VALUES ($1::bigint, $2::bigint, $3::bigint, "
-            "        NULLIF($4,'')::bigint, "
-            "        $5::bigint, "
-            "        NULLIF($6,'')::bigint, "
-            "        $7, $8::numeric, $9::numeric, $10, "
-            "        $11::timestamptz, $12::timestamptz, "
-            "        NULLIF($13,''), NULLIF($14,''), NULLIF($15,''), "
-            "        $16::jsonb, NOW(), NOW()) "
-            "ON CONFLICT (la_transaction_item_id) DO UPDATE SET "
-            "  la_transaction_id  = EXCLUDED.la_transaction_id, "
-            "  la_user_id         = EXCLUDED.la_user_id, "
-            "  la_registration_id = EXCLUDED.la_registration_id, "
-            "  la_program_id      = EXCLUDED.la_program_id, "
-            "  la_invoice_id      = EXCLUDED.la_invoice_id, "
-            "  txn_type           = EXCLUDED.txn_type, "
-            "  amount             = EXCLUDED.amount, "
-            "  net_amount         = EXCLUDED.net_amount, "
-            "  gateway            = EXCLUDED.gateway, "
-            "  paid_at            = EXCLUDED.paid_at, "
-            "  last_updated       = EXCLUDED.last_updated, "
-            "  first_name         = EXCLUDED.first_name, "
-            "  last_name          = EXCLUDED.last_name, "
-            "  program_name       = EXCLUDED.program_name, "
-            "  raw                = EXCLUDED.raw, "
-            "  updated_at         = NOW()";
-        for (const auto& rec : result.records) {
-            const long long txnId  = optLong(rec, "id");
-            if (txnId == 0) continue;
-            const long long itemId = optLong(rec, "transactionItemId");
-            if (itemId == 0) {
-                // Every real LA transaction carries a transactionItemId.
-                // Skipping the row is safer than blowing up the whole
-                // batch on a malformed record.
-                std::cerr << "[PersonPayments] skipping txnId=" << txnId
-                          << " (no transactionItemId in record)" << std::endl;
-                continue;
-            }
-            const long long userId = optLong(rec, "userId");
-            const long long regId  = optLong(rec, "registrationId");
-            const long long progId = optLong(rec, "programId");
-            const long long invId  = optLong(rec, "invoiceId");
-            const std::string type = optStr(rec, "type");
-            const double amount    = optNum(rec, "amount");
-            const double netAmt    = optNum(rec, "netAmount");
-            const std::string gw   = optStr(rec, "gateway");
-            const long long paidMs = optLong(rec, "created_on");
-            const long long luMs   = optLong(rec, "lastUpdated");
-            const std::string fn   = optStr(rec, "firstName");
-            const std::string ln   = optStr(rec, "lastName");
-            const std::string pn   = optStr(rec, "programName");
-            try {
-                tx->exec_params(kUpsertSql,
-                    itemId,
-                    txnId,
-                    userId,
-                    regId  == 0 ? std::string{} : std::to_string(regId),
-                    progId,
-                    invId  == 0 ? std::string{} : std::to_string(invId),
-                    type,
-                    amount,
-                    netAmt,
-                    gw,
-                    epochMsToIso(paidMs),
-                    epochMsToIso(luMs),
-                    fn, ln, pn,
-                    rec.dump());
-                ++written;
-            } catch (const std::exception& e) {
-                std::cerr << "[PersonPayments] upsert failed itemId=" << itemId
-                          << " txnId=" << txnId
-                          << " userId=" << userId
-                          << " program=" << progId
-                          << ": " << e.what() << std::endl;
-                // In pqxx a single failed statement aborts the transaction —
-                // rethrow so the outer sync surfaces the error rather than
-                // silently committing a partial batch.
-                throw;
-            }
-        }
-        db_->commit(tx);
-    }
+    // 3. UPSERT each transaction.
+    const int written = upsertRecords(result.records);
     std::cerr << "[PersonPayments] synced " << written << " transactions "
               << "(cursor → " << result.newLastUpdatedMs << "/"
               << result.newLastId << ")" << std::endl;

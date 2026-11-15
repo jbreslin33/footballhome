@@ -4,6 +4,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../third_party/json.hpp"
+
 class Database;
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -33,6 +35,15 @@ public:
     // rows inserted or updated.  Safe to call on every roster load;
     // no-ops (0 rows) once caught up.  Throws on LA / DB error.
     int syncFromLa();
+
+    // Reconcile (mig 1370): re-pull every transaction LA has updated since
+    // the reconcile start (leagueapps_transaction_cursor.reconcile_from_ms),
+    // UPSERT them all (refreshes raw — payout ids LA adds after the first
+    // sync without bumping lastUpdated), and move rows LA no longer has
+    // (deleted / returned ACH) into person_payments_la_dropped. Runs from
+    // LaSyncScheduler at most every kReconcileHours; returns rows dropped,
+    // or -1 when it did not run (not due, or the guard held).
+    int reconcileFromLa(bool force = false);
 
     struct LastPayment {
         double      amount = 0.0;    // dollars
@@ -198,5 +209,8 @@ public:
                                           const std::string& note);
 
 private:
+    // INSERT … ON CONFLICT every record into person_payments in one
+    // transaction; returns rows written.
+    int upsertRecords(const std::vector<nlohmann::json>& records);
     Database* db_;
 };

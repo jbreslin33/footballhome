@@ -64,6 +64,10 @@ public:
         std::vector<nlohmann::json> records;
         long long newLastUpdatedMs = 0;
         long long newLastId        = 0;
+        // true when the pull reached the end of the feed (an empty page or a
+        // tail that did not advance), false when it stopped at kMaxPages —
+        // a reconcile must not treat a cut-off pull as the whole feed.
+        bool complete = false;
     };
     TransactionFetchResult fetchTransactionsSince(long long cursorLastUpdatedMs,
                                                   long long cursorLastId);
