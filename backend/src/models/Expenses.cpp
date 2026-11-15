@@ -381,7 +381,7 @@ json Expenses::projection(int clubId) {
         for (const auto& r : db->query(
                 // grants AND sponsorships (mig 1372: a sponsor pays Lighthouse,
                 // soccer takes the budget credit); receipts = dated money in
-                "SELECT y.label AS budget_year, a.kind, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label, "
+                "SELECT y.label AS budget_year, y.starts_on::text AS year_starts, COALESCE(a.promised_on, (a.created_at AT TIME ZONE 'America/New_York')::date)::text AS promised_on, a.kind, a.label, a.source_name, a.amount_usd, a.status, a.note, a.purpose, c.label AS purpose_label, "
                 "       COALESCE(a.purposes, CASE WHEN a.purpose IS NULL THEN '{}'::text[] ELSE ARRAY[a.purpose] END)::text AS purposes, "
                 "       COALESCE((SELECT json_agg(json_build_object('on', r.received_on::text, 'amount', r.amount_usd::float8) ORDER BY r.received_on) "
                 "                   FROM income_receipts r WHERE r.award_id = a.id), '[]'::json)::text AS receipts "
@@ -392,6 +392,7 @@ json Expenses::projection(int clubId) {
                                           {"amount", num(r, "amount_usd")}, {"status", str(r, "status")}, {"note", str(r, "note")},
                                           {"purpose", str(r, "purpose")}, {"purpose_label", str(r, "purpose_label")},
                                           {"receipts", json::parse(str(r, "receipts"))},
+                                          {"promised_on", str(r, "promised_on")}, {"year_starts", str(r, "year_starts")},
                                           // categories the award may pay for (mig 1379) — what releases it from restriction
                                           {"purposes", [&] { json a = json::array(); std::string t = str(r, "purposes"); if (t.size() > 2) { std::stringstream ss(t.substr(1, t.size() - 2)); std::string x; while (std::getline(ss, x, ',')) a.push_back(x); } return a; }()}});
 

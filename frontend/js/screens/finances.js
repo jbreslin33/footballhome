@@ -496,18 +496,33 @@ class FinancesScreen extends Screen {
     L.payable = (flow.invoices || []).reduce((a, c) => a + Number(c.draft || 0), 0);
     L.bondsNow = sum(out.filter(i => i.category === 'bonds'));
     L.bondsBefore = sum((flow.items || []).filter(i => i.dir === 'out' && i.category === 'bonds' && i.prepaid));
-    // grants and sponsorships awarded for this year
-    L.grantsR = 0; L.grantsU = 0; L.sponsorsR = 0; L.sponsorsU = 0; L.awardsIn = 0; L.awardsOwed = 0; L.released = 0;
-    for (const g of (x.plan_grants || []).filter(g => g.budget_year === thisYear)) {
-      const amount = Number(g.amount || 0), restricted = (g.purposes || []).length > 0;
-      const got = (g.receipts || []).length ? sum(g.receipts.filter(r => !r.on || r.on.slice(0, 7) <= nowYm)) : (g.status === 'received' ? amount : 0);
-      L.awardsIn += got; L.awardsOwed += Math.max(0, amount - got);
-      if (g.kind === 'sponsorship') { if (restricted) L.sponsorsR += amount; else L.sponsorsU += amount; }
-      else if (restricted) L.grantsR += amount; else L.grantsU += amount;
-      // released from restriction = this year's spending on what it may pay for, up to the award
-      if (restricted) {
-        const spent = (g.purposes || []).reduce((a, c) => a + Number(L.expenses.get(c) || 0), 0);
-        L.released += Math.min(amount, spent);
+    // grants and sponsorships (mig 1380): a guaranteed promise is revenue in
+    // full in the year it was promised — every year of a multi-year promise.
+    // Restricted when it names purposes or is for a later year (time); its own
+    // year's spending on its purposes releases it (a purpose-free one is
+    // released when its year begins). Unpaid installments are receivable.
+    const yStart = String((flow.year || {}).starts_on || flow.start || '').slice(0, 10), today = String(x.today || '').slice(0, 10);
+    const yearAhead = today ? new Date(new Date(`${today}T12:00:00`).getTime() + 365 * 864e5).toISOString().slice(0, 10) : '';
+    L.grantsR = 0; L.grantsU = 0; L.sponsorsR = 0; L.sponsorsU = 0; L.awardsIn = 0; L.awardsOwed = 0; L.awardsOwedLater = 0; L.released = 0; L.beginR = 0;
+    for (const g of (x.plan_grants || [])) {
+      const amount = Number(g.amount || 0), purposes = g.purposes || [], due = String(g.year_starts || '').slice(0, 10);
+      const promised = String(g.promised_on || g.year_starts || '').slice(0, 10);
+      const current = g.budget_year === thisYear, later = !!due && due > yStart && !current;
+      if (!current && !later) continue;            // an earlier year's award
+      if (!promised || promised > today) continue; // not promised yet
+      const receipts = (g.receipts || []).length ? g.receipts : (g.status === 'received' ? [{ on: '', amount }] : []);
+      const gotAll = sum(receipts.filter(r => !r.on || r.on.slice(0, 10) <= today));
+      L.awardsIn += sum(receipts.filter(r => !r.on || (r.on.slice(0, 10) >= yStart && r.on.slice(0, 10) <= today)));
+      const owed = Math.max(0, amount - gotAll);
+      if (later && due > yearAhead) L.awardsOwedLater += owed; else L.awardsOwed += owed;
+      const restricted = purposes.length > 0 || later;
+      if (promised >= yStart) {                     // promised this year → revenue now
+        if (g.kind === 'sponsorship') { if (restricted) L.sponsorsR += amount; else L.sponsorsU += amount; }
+        else if (restricted) L.grantsR += amount; else L.grantsU += amount;
+      } else L.beginR += amount;                    // promised earlier for this or a later year: restricted at the start
+      if (current) {
+        if (purposes.length) L.released += Math.min(amount, purposes.reduce((a, c) => a + Number(L.expenses.get(c) || 0), 0));
+        else if (promised < yStart) L.released += amount;
       }
     }
     L.restrictedIn = L.grantsR + L.sponsorsR;
@@ -515,11 +530,11 @@ class FinancesScreen extends Screen {
     L.revU = L.duesPaid + L.duesOwed + L.rental + L.otherIn + L.grantsU + L.sponsorsU;
     L.changeU = L.revU + L.released - L.expTotal;
     L.changeR = L.restrictedIn - L.released;
-    L.beginU = L.bondsBefore; L.beginR = 0;
+    L.beginU = L.bondsBefore;
     L.endU = L.beginU + L.changeU; L.endR = L.beginR + L.changeR;
     L.cash = L.duesPaid + L.rental + L.otherIn + L.awardsIn - (L.expTotal - L.payable) - L.bondsNow;
     L.deposits = L.bondsNow + L.bondsBefore;
-    L.assets = L.cash + L.duesOwed + L.awardsOwed + L.deposits;
+    L.assets = L.cash + L.duesOwed + L.awardsOwed + L.awardsOwedLater + L.deposits;
     L.liabilities = L.payable;
     return L;
   }
@@ -534,7 +549,8 @@ class FinancesScreen extends Screen {
     let rows = g(this._copy('sfp_assets') || 'Assets');
     rows += r(this._copy('sfp_cash') || 'Cash held by Lighthouse for soccer', L.cash, 'item');
     rows += r(this._copy('sfp_dues_recv') || 'Dues receivable', L.duesOwed, 'item');
-    rows += r(this._copy('sfp_grants_recv') || 'Grants and sponsorships receivable', L.awardsOwed, 'item');
+    rows += r(this._copy('sfp_grants_recv') || 'Grants and sponsorships receivable, due within one year', L.awardsOwed, 'item');
+    if (L.awardsOwedLater) rows += r(this._copy('sfp_grants_recv_later') || 'Grants and sponsorships receivable, due in later years', L.awardsOwedLater, 'item');
     rows += r(this._copy('sfp_deposits') || 'Deposits (refundable bonds)', L.deposits, 'item');
     rows += r(this._copy('sfp_assets_total') || 'Total assets', L.assets, 'sum');
     rows += g(this._copy('sfp_liabilities') || 'Liabilities');

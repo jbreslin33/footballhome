@@ -34,9 +34,14 @@ goes to lh too"* + *"invoices paid when final, casa always pays"*.
 Data: `/api/finances/summary`, `/expenses`, `/cash-flow`.
 
 **Ledger (accrual):** expenses when invoiced (every line, bonds excluded);
-grants/sponsorships revenue when awarded — with donor restrictions when
-`income_awards.purposes` (or `purpose`) names categories; spending on those
-categories releases it (capped at the award). Dues = paid through LA (net of
+a guaranteed (unconditional) grant/sponsorship is revenue in full in the year
+it was promised (`income_awards.promised_on`, mig 1380, ASC 958-605) — every
+year of a multi-year promise — with donor restrictions when `purposes` names
+categories or the installment is for a later year (time). Its own year's
+spending on those categories releases it (capped at the award); a purpose-free
+one promised earlier is released when its year begins. Unpaid installments are
+grants receivable, split due within one year / later (full amount, not
+discounted). Statements cover the current budget year only. Dues = paid through LA (net of
 fees) + dues owed now (receivable). Cash = received − (invoiced − drafts) −
 bonds paid. The two statements tie by construction (tested).
 
@@ -55,8 +60,11 @@ refs, fee plans, budget lines). Beginning cash 0 on Aug 1.
 
 ## Data right now
 
-- Grant: $50k/yr 2026-27 → 2028-29, restricted to coaching / referees /
-  equipment (`purposes`); 2026-27 received 11/14 (mig 1375).
+- Grant: $50k/yr 2026-27 → 2028-29, guaranteed ("its gauranteed" 11/14),
+  promised 11/14 → all $150k recognised in 2026-27 as restricted; restricted
+  to coaching / referees / equipment (`purposes`); 2026-27 received 11/14
+  (mig 1375). The Operating Budget / BvA still show this year's $50k
+  installment (operating view).
 - 2026-27 Budget: dues ~$48.3k + CASA $1.5k (fall bookings) + grant $50k −
   expenses $65.7k ≈ +$34k.
 - No sponsors, no bonds recorded yet.
