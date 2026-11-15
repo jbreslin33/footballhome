@@ -322,8 +322,36 @@ class EventScreen extends Screen {
   syncHash() { EventKindSwitch.syncHash(this.navigation, this.ev, this.pill); }
 
   // ── data ────────────────────────────────────────────────────────────
+  // Admin "View as" (auth.viewAsPersonId): the event loads as that person,
+  // but writes would run as the admin — so every write here is refused
+  // with this line (event_center view_as_read_only, mig 1373).  '' = free.
+  _viewAsReadOnly() {
+    const va = this.auth && this.auth.getViewAs && this.auth.getViewAs();
+    if (!va) return '';
+    const name = va.personName || 'them';
+    return (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', 'view_as_read_only'))
+      ? MessageCopy.block('event_center', 'view_as_read_only', { name })
+      : `👀 View as is read-only — stop viewing as ${name} to change anything here.`;
+  }
+
+  // A failed save: the View-as refusal as a short note on the page (never
+  // a browser alert — it blocks the page), anything else as before.
+  _saveFailed(err, text) {
+    if (err && err.viewAs) { this._flash(err.message); return; }
+    alert(text);
+  }
+
+  _flash(text) {
+    this.cpError = text;
+    this._render();
+    clearTimeout(this._flashTimer);
+    this._flashTimer = setTimeout(() => { this.cpError = null; this._render(); }, 4000);
+  }
+
   async _json(url, options = {}) {
     const method = (options.method || 'GET').toUpperCase();
+    const ro = method !== 'GET' && this._viewAsReadOnly();
+    if (ro) { const e = new Error(ro); e.viewAs = true; throw e; }
     const headers = { ...(options.headers || {}) };
     if (method !== 'GET') headers['Content-Type'] = 'application/json';
     const res = await this.auth.fetch(url, { ...options, headers });
@@ -792,7 +820,7 @@ class EventScreen extends Screen {
       });
       await Promise.all([this._loadCallins(), decision === 'accept' ? this._afterCallinAccept(id) : null]);
     } catch (err) {
-      alert(`Could not save: ${err.message}`);
+      this._saveFailed(err, `Could not save: ${err.message}`);
     } finally {
       this.saving.delete(key);
       this._render();
@@ -866,7 +894,7 @@ class EventScreen extends Screen {
     } catch (err) {
       console.error('[event] attendance save failed:', err);
       if (prev) this.att.roster.set(personId, prev); else this.att.roster.delete(personId);
-      alert(`Could not save attendance: ${err.message}`);
+      this._saveFailed(err, `Could not save attendance: ${err.message}`);
     } finally {
       this.saving.delete(key);
       this._render();
@@ -886,6 +914,7 @@ class EventScreen extends Screen {
   // time; a failed one goes back to unmarked and is named in the alert.
   async _markAllPresent(personIds) {
     if (!this.att || !personIds.length || this.saving.has('att:all')) return;
+    if (this._viewAsReadOnly()) { this._flash(this._viewAsReadOnly()); return; }
     const id = this.ev.fh_event_id;
     this.saving.add('att:all');
     personIds.forEach(p => { this.saving.add(`att:${p}`); this.att.roster.set(p, { person_id: p, status: 'present' }); });
@@ -923,7 +952,7 @@ class EventScreen extends Screen {
       await this._json(`/api/calendar/events/${this.ev.fh_event_id}/invites/${personId}`, { method: 'DELETE' });
     } catch (err) {
       console.error('[event] revoke failed:', err);
-      alert(`Could not withdraw invite: ${err.message}`);
+      this._saveFailed(err, `Could not withdraw invite: ${err.message}`);
     } finally {
       this.saving.delete(key);
     }
@@ -1626,6 +1655,7 @@ class EventScreen extends Screen {
   async _sendMyCallin(btn) {
     const ev = this._myAvailEvent();
     if (!ev || this._callinSaving) return;
+    if (this._viewAsReadOnly()) { this._availMsg(this._viewAsReadOnly()); return; }
     this._callinSaving = true;
     this._paintMyAvailability();
     try {
@@ -1638,6 +1668,12 @@ class EventScreen extends Screen {
     }
   }
 
+  // A line under Your availability (the same slot a failed save uses).
+  _availMsg(text) {
+    const msg = this.element && this.element.querySelector('[data-gc-avail-msg]');
+    if (msg) msg.innerHTML = `<span style="color:#fbbf24;">${this.escapeHtml(text)}</span>`;
+  }
+
   _paintMyAvailability() {
     const slot = this.element && this.element.querySelector('[data-gc-my-avail]');
     if (slot) slot.innerHTML = this._myAvailabilityHtml();
@@ -1647,6 +1683,7 @@ class EventScreen extends Screen {
   async _setMyAvailability(btn) {
     const mine = this._myAvailabilityRows();
     if (!mine) return;
+    if (this._viewAsReadOnly()) { this._availMsg(this._viewAsReadOnly()); return; }
     const { ev } = mine;
     const response = btn.dataset.gcAvail === 'no' ? 'no' : 'yes';
     const personId = btn.dataset.personId ? Number(btn.dataset.personId) : null;

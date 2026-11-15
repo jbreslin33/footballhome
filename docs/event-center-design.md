@@ -189,11 +189,22 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
 - DONE: `att.canMark` / `att.canSetRsvp` dropped — `att` = { viewer, me,
   roster } on every screen; every gate asks the viewer.
 
-**Event Center redo: slices 1–5 complete (11/14).**  What is left is
-optional / when a rule changes: `EventScope` classes (feed SQL already
-scopes), real-phone check of the auto-scroll, a non-admin coach walk-through,
-a volunteer pick from the strip end to end, coach-vs-admin ✓/✗ on a future
-event, SectionChat both-chats case.
+**Event Center redo: slices 1–5 complete (11/14).**
+
+Checked after (11/14): coach-vs-admin ✓/✗ on a future event (admin 64
+cards, See as coach only their own); a non-admin coach via admin View as
+(Ali Salah Alshami: coach on his youth practice — See as player only,
+P/A/L/E, calls; player on the men's).  For that, auth.js now sends
+?asPersonId on GET /api/calendar/events/:id and …/attendance (both
+handlers already honoured it), and Event Center refuses every write under
+View as (`_viewAsReadOnly()` in `_json`, the availability box and call-in;
+`_saveFailed` shows it as a page note, never an alert — mig 1373).  A coach
+whose coach-schedule days skip an event gets "not found" on it, as on their
+phone — correct.
+
+Left, optional: `EventScope` classes (feed SQL already scopes), real-phone
+check of the auto-scroll, a volunteer pick from the strip end to end
+(writes — do it by hand), SectionChat both-chats case.
 
 **Loose ends**
 - DONE 11/14: `screens/my.js` deleted (3,239 lines) — public-teams-list

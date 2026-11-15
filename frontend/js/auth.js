@@ -155,6 +155,11 @@ class Auth {
     // Honouring endpoints (all read-only):
     //   /api/my/*               — MyController
     //   /api/calendar/upcoming  — CalendarController
+    //   /api/calendar/events/:id and …/:id/attendance (GET) — the open
+    //                             event and its viewer_tier, so Event
+    //                             Center shows the viewed-as person's tier
+    //                             (2026-11-14; both handlers already honour
+    //                             asPersonId; the attendance POST does not)
     //   /api/carpool/* (GET)    — CarpoolController (2026-10-20: the 🚗
     //                             panel renders what the viewed-as person
     //                             would see; its POSTs still run as you)
@@ -163,6 +168,7 @@ class Auth {
     const wantsImpersonation = this.viewAsPersonId && (
       path.startsWith('/api/my/') ||
       (method === 'GET' && path.startsWith('/api/calendar/upcoming')) ||
+      (method === 'GET' && /^\/api\/calendar\/events\/\d+(\/attendance)?(\?|$)/.test(path)) ||
       (method === 'GET' && path.startsWith('/api/carpool/'))
     );
     if (wantsImpersonation) {

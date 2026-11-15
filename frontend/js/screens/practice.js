@@ -302,7 +302,7 @@ class PracticeScreen extends EventScreen {
     const id = this.ev.fh_event_id;
     try {
       this.cones = await this._json(`/api/calendar/events/${id}/cone-setup`, { method: 'POST', body: JSON.stringify({ cone_setup_id: value ? Number(value) : null }) });
-    } catch (err) { alert(`Could not save: ${err.message}`); }
+    } catch (err) { this._saveFailed(err, `Could not save: ${err.message}`); }
     this._render();
   }
 
@@ -405,7 +405,7 @@ class PracticeScreen extends EventScreen {
       player.squad_color = next;
     } catch (err) {
       console.error('[practice] side save failed:', err);
-      alert(`Could not save: ${err.message}`);
+      this._saveFailed(err, `Could not save: ${err.message}`);
     } finally {
       this.saving.delete(key);
     }
