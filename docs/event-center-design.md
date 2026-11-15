@@ -176,10 +176,16 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
   = coach-or-up while isCoach (drafter on own draft included), else player.
   Coaches now also see the player panels (own starter eligibility, the
   closed EVERYONE criteria fold, carpool on draft views).
-- NEXT: the head (`_renderCard` + `_pillToolsHtml` per pill: match plan,
-  message panel, carpool, contacts, roster prints) → panels the same way;
-  then game_day / post_game / tactics.  Lineup drafts keep their own
-  per-draft edit right (isCoach flips per view) — not a tier.
+- PART B, pill tools DONE: `pillToolPanels(pill, byZone)` — game_day: 🎯
+  plan, game details (coach), 🚗, 📇 (coach); post_game: score (coach);
+  lineup: squad count + RSVP & Details (coach); lineup/starters_bench: 🎯,
+  ✉️ message everyone (coach), 🚗, 📇 (coach), 🖨 official roster, 🖨
+  roster sheet.  Verified per pill admin ↔ player on prod.  game_day /
+  post_game have no body beyond their tools; 🎯 Tactics edits via
+  `_tacticsCanEdit()` (isCoach getter, so See as covers it); 👥 All Players
+  is EventScreen's list.  So Game Center has no separate player layout left.
+  Lineup drafts keep their own per-draft edit right (isCoach flips per
+  view) — not a tier.
 - Then drop `att.canMark` / `att.canSetRsvp` (my.js is the last reader).
 
 **Loose ends**

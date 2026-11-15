@@ -6598,27 +6598,45 @@ class GameCenterScreen extends EventScreen {
 
   // The coach tools behind each post. Each renderer gates itself on
   // isCoach, so a player gets nothing here.
-  _pillToolsHtml(pill, byZone) {
-    let html = '';
-    // 🎯 Match plan (mig 966) leads the Game day and squad pills.
-    if (pill === 'game_day') html = this.matchPlanPanel.html() + this._renderGameDetailsPanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel();
-    else if (pill === 'post_game') html = this._renderScorePanel();
-    else if (pill === 'lineup' && this.isCoach) {
-      const squadCount = byZone.starter.length + byZone.bench.length;
-      html = `
+  // The tools under a pill's card = panels (lib/panel.js, slice 5B), each
+  // with the lowest tier that gets it — the same list for everyone, cut by
+  // panelViewer.  Each render fn keeps its own data / view guards.
+  //   game_day        🎯 match plan · game details (coach) · 🚗 carpool ·
+  //                   📇 opponent contacts (coach)
+  //   post_game       score entry (coach)
+  //   lineup          the game-day roster count + 👥 RSVP & Player Details (coach)
+  //   lineup / starters_bench   🎯 match plan · ✉️ message everyone (coach,
+  //                   official view) · 🚗 carpool · 📇 contacts (coach) ·
+  //                   🖨 official league roster (server: rosters/coaches) ·
+  //                   🖨 roster sheet.  The league sheet sits with the squad
+  //                   pills, the landing pill included; contacts on the
+  //                   lineup views too (owner 2026-10-16).
+  pillToolPanels(pill, byZone) {
+    const P = (key, minTier, html) => new Panel({ key, minTier, html });
+    const plan     = P('match_plan', 'player', (s) => s.matchPlanPanel.html());
+    const carpool  = P('carpool', 'player', (s) => s._renderCarpoolPanel());
+    const contacts = P('opp_contacts', 'coach', (s) => s._renderOpponentContactsPanel());
+    if (pill === 'game_day') return [plan, P('game_details', 'coach', (s) => s._renderGameDetailsPanel()), carpool, contacts];
+    if (pill === 'post_game') return [P('score', 'coach', (s) => s._renderScorePanel())];
+    if (pill !== 'lineup' && pill !== 'starters_bench') return [];
+    return [
+      ...(pill === 'lineup' ? [P('squad_count', 'coach', () => `
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span style="font-size:0.72rem; opacity:0.75;">${squadCount} on the game-day roster</span>
+          <span style="font-size:0.72rem; opacity:0.75;">${byZone.starter.length + byZone.bench.length} on the game-day roster</span>
           <button type="button" id="gc-details-open" class="btn btn-primary"
                   style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
-        </div>`;
-    }
-    // The league's roster sheet sits with the two squad pills — the
-    // landing pill included, so it is there when a coach opens the game.
-    // 📇 opponent contacts on the lineup views too, not only the Game day
-    // pill — that's where a coach actually is on match day (owner
-    // 2026-10-16: "need contacts on game center of opponents with email
-    // and text buttons!!!!").
-    if (pill === 'lineup' || pill === 'starters_bench') html += this.matchPlanPanel.html() + this._renderGameMessagePanel() + this._renderCarpoolPanel() + this._renderOpponentContactsPanel() + this._renderOfficialRosterPanel() + this._renderRosterSheetPanel();
+        </div>`)] : []),
+      plan,
+      P('game_message', 'coach', (s) => s._renderGameMessagePanel()),
+      carpool,
+      contacts,
+      P('official_roster', 'player', (s) => s._renderOfficialRosterPanel()),
+      P('roster_sheet', 'player', (s) => s._renderRosterSheetPanel()),
+    ];
+  }
+
+  _pillToolsHtml(pill, byZone) {
+    const html = Panel.render(this.pillToolPanels(pill, byZone), this);
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 
