@@ -48,6 +48,8 @@ class FinancesScreen extends Screen {
         .fn-table tr.cat.open td:first-child::before { content:'▾ '; }
         .fn-table tr.item td { opacity:0.85; font-size:0.82rem; }
         .fn-table tr.item td:first-child { padding-left:26px; }
+        .fn-table tr.subtotal td { font-weight:700; font-size:0.82rem; border-top:1px solid var(--border-color, #374151); }
+        .fn-table tr.subtotal td:first-child { padding-left:26px; }
         .fn-table td.now { background:rgba(14,165,233,0.10); }
         .fn-in { color:#86efac; } .fn-out { color:#fca5a5; } .fn-dim { opacity:0.5; }
         .fn-tick { font-size:0.7rem; opacity:0.75; display:block; }
@@ -161,7 +163,7 @@ class FinancesScreen extends Screen {
       const set = (scode && FinancesScreen.inScopeOf(scopes, scode)) || new Set();
       const by = {};
       for (const ym of months) by[ym] = ym < nowYm ? items.filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.ym === ym && set.has(i.scope)).reduce((a, i) => a + Number(i.amount), 0) : monthly;
-      if (sumBy(by)) receipts.push({ label: this._copy('cf_dues', { section: sec.name }) || `Dues — ${sec.name}`, by });
+      if (sumBy(by)) receipts.push({ label: this._copy('cf_dues', { section: sec.name }) || `Dues — ${sec.name}`, by, dues: true });
     }
     const rentBy = {}; for (const ym of months) rentBy[ym] = items.filter(i => i.dir === 'in' && i.category === 'rental' && i.ym === ym).reduce((a, i) => a + Number(i.amount), 0);
     if (sumBy(rentBy)) receipts.push({ label: this._copy('cf_rental') || 'CASA field rental', by: rentBy });
@@ -211,7 +213,11 @@ class FinancesScreen extends Screen {
     const n = months.length + 2;
     let rows = `<tr class="sum"><td>${esc(this._copy('cf_begin') || 'Beginning cash')}</td>${months.map(ym => signedTd(ym, begin[ym])).join('')}<td>${M0(0)}</td></tr>`;
     rows += `<tr class="group"><td colspan="${n}">${esc(this._copy('cf_receipts') || 'Cash receipts')}</td></tr>`;
-    rows += receipts.map(r => line(r.label, r.by, 'fn-in', 'item')).join('');
+    // dues per section, then their subtotal (owner 11/14 "show total dues … under the clubs")
+    const duesRows = receipts.filter(r => r.dues), duesBy = {}; for (const ym of months) duesBy[ym] = duesRows.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
+    rows += duesRows.map(r => line(r.label, r.by, 'fn-in', 'item')).join('');
+    if (duesRows.length > 1) rows += line(this._copy('cf_dues_total') || 'Total dues', duesBy, 'fn-in', 'subtotal');
+    rows += receipts.filter(r => !r.dues).map(r => line(r.label, r.by, 'fn-in', 'item')).join('');
     rows += line(this._copy('cf_receipts_total') || 'Total cash receipts', inBy, 'fn-in', 'sum');
     rows += `<tr class="group"><td colspan="${n}">${esc(this._copy('cf_payments') || 'Cash payments')}</td></tr>`;
     rows += payRows.map(r => line(r.label, r.by, 'fn-out', 'item')).join('');
