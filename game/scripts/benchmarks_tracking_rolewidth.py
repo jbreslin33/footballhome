@@ -2,7 +2,9 @@
 """benchmarks_tracking_rolewidth.py — the side on the ball, each role's width by the ball's width (G5.120,
 game/DESIGN.md §8.221): the target for the in-possession slide by role.
 
-    python3 -I game/scripts/benchmarks_tracking_rolewidth.py <dfl dir>
+    python3 -I game/scripts/benchmarks_tracking_rolewidth.py <dfl dir> [lo-hi]
+
+lo-hi (G5.125, §8.226): only frames with the ball lo-hi m off the line the side on it attacks (e.g. 0-35).
 
 Source: Bassek, Rein, Weber & Memmert (2025), doi 10.6084/m9.figshare.28196177, CC BY, data owner DFL
 (7 matches, TRACAB 5 Hz). Spells as benchmarks_tracking_flight.py (an outfielder nearest the ball within 1.5 m,
@@ -24,6 +26,7 @@ import benchmarks_tracking as bt
 from benchmarks_tracking_runs import ROLE, NAMES
 
 NB = 8
+DEPTH = tuple(float(v) for v in sys.argv[2].split("-")) if len(sys.argv) > 2 else None
 def yb(by): return min(NB - 1, int(abs(by) // 4))
 
 def one(pos_path):
@@ -49,6 +52,11 @@ def one(pos_path):
             sec, tid, pid = set_re.search(s).groups()
             isb = tid.upper() == "BALL"; skip = not isb and tid not in team_of
             if not skip and not isb: cur = pid; who[pid] = team_of[tid]
+    kx = collections.defaultdict(list)   # G5.125: each side's own keeper's mean x a half = the end it defends
+    for k, fr in pl.items():
+        for pid, (x, y) in fr.items():
+            if pid in keepers and pid in who: kx[(k[0], who[pid])].append(x)
+    own = {k: (-1 if sum(v) / len(v) < 0 else 1) for k, v in kx.items()}
     seq = []
     for k in sorted(ball):
         bx, by, bz, live = ball[k]; fr = pl.get(k)
@@ -74,6 +82,11 @@ def one(pos_path):
         tm = who[pid]; lone_sides = collections.defaultdict(set)
         for t in range(i0, i1 + 1):
             k = seq[t][0]; fr = pl[k]; by = ball[k][1]; sg = 1 if by >= 0 else -1; b = yb(by)
+            if DEPTH:
+                o = own.get((k[0], tm))
+                if o is None: continue
+                off = 52.5 + ball[k][0] * o   # m off the line they attack
+                if not DEPTH[0] <= off < DEPTH[1]: continue
             byr = collections.defaultdict(list)
             for q, (x, y) in fr.items():
                 if who.get(q) != tm or q in keepers: continue
@@ -105,7 +118,7 @@ if __name__ == "__main__":
     def md(v): v = sorted(v); return v[len(v) // 2] if v else float("nan")
     def mn(v): return sum(v) / len(v) if v else float("nan")
     BN = [f"{4*b}-{4*b+4}" if b < NB - 1 else f"{4*b}+" for b in range(NB)]
-    print(f"{len(files)} DFL matches: ROLE WIDTH — the side on the ball, carrier out, s = m toward the ball's side; by the ball's m off the centre line " + " / ".join(BN))
+    print(f"{len(files)} DFL matches{f' (ball {sys.argv[2]} m off their line)' if DEPTH else ''}: ROLE WIDTH — the side on the ball, carrier out, s = m toward the ball's side; by the ball's m off the centre line " + " / ".join(BN))
     for r in range(6):
         if sum(len(H[("pc", b, r)]) for b in range(NB)) > 500:
             print(f"  {NAMES[r]:5s} PAIR centre s mean: " + " / ".join(f"{mn(H[('pc', b, r)]):+.1f}" for b in range(NB)))

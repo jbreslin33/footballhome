@@ -9598,3 +9598,42 @@ spot tables didn't move it); our attack gets into the six through the middle at 
 take it in behind the line) against the real share; and the wide delivery the real game uses instead.
 
 Shipped: `benchmarks_tracking_arrive.py` (real), ARRIVE (harness); engine unchanged; tests 22/22.
+
+### 8.226 G5.125 — the ball wide in their half: the near men go to it (WING MATES)
+
+From §8.225 (our attack enters the six through the middle ~2.5x real). **Where the wide ball goes.** PASS POLICY as
+played against `benchmarks_statsbomb_passes.py` (real a team-match in brackets): from 18-35 wide 19-21 (34.3), from
+0-18 wide 9-10 (18.6); from 18-35 wide, to 18-35 wide 19-23% (33.4), to 0-18 wide 7.5-12 (13.7), into the box centre
+19-22 (14.1). SPELLS STARTING WIDE 18-35 m: 32-34 (57.8); to 0-18 centre 10-14% of them (5.9), back 23-29 (16.9). The
+policy rows are real; a zone with nobody of ours in it passes its share on to the rest — inside and back.
+
+**Measured.** `benchmarks_tracking_zonemates.py` against MATES BY ZONE: with the ball 18-35 wide, the ball's own zone
+holds 0.37-0.43 of ours (0.84); 35-52 centre 3.1 (2.1). Not the slide — `benchmarks_tracking_rolewidth.py` now takes a
+depth band (`… <dir> 0-35`): real pair centres are the same at every depth (CB +9.2 / +9.4 / +8.9 at 28+ with the
+ball 0-35 / 35-52 / 52+), so G5.120's |y| table is not mixing depths. It is who: real sides send a DM/CM, the
+winger, the striker out to the man on it. New `scripts/benchmarks_tracking_wingmates.py` (DFL) and a WING MATES
+line in fh-game-match: the ball wide (|y| 20.16+) 0-18 / 18-35 / 35-52 m off their line, the side on it's men in
+its own zone — 0/1/2/3+ %, by role, where from the ball (ahead / in / distance). Real 18-35: 38 / 43 / 15 / 4, mean
+0.84 (DM/CM 0.18, FB 0.18, WIDE 0.29, ST 0.10, AM 0.06, CB 0.04), each a median ~8 m from the ball; 35-52 0.88
+(DM/CM 0.21). Ours: DM/CM 0.04-0.06 / 0.08-0.10, WIDE 0.12-0.14, ST 0.01-0.03.
+
+**Change.** `Possession::spot`: the ball wide 18-35 / 35-52 m out, the one DM/CM, AM, WIDE or ST on its side (his
+support spot's y on the ball's side) rolls once a spell a zone (`physics.wing.<18w|35w>_<role>_p`) and stands at his
+role's real spot from the ball — the median direction (ahead / in) at the median distance (`_ahead`, `_in`; 18-35:
+DM/CM 2.1 m behind, 7.6 in; WIDE 7.6 ahead, 3.5 out; ST 6.5 ahead, 4.1 in; AM 4.0 ahead, 8.0 in), moving with the
+ball; 35-52's ST / AM stay G5.89's drift. The roll was set first at the deficit x 2.2 (G5.89's rule): the zone moved
+0.39 → 0.41-0.48 — a wide spell is short and he spends it getting there; at every near man going (4 matches)
+DM/CM read 0.16 / 0.21, so the rolls are 1000 [FH fit]. `physics.wing.on` 0 = off.
+
+**After** (seeds 1000-4000, 8 matches each; before → after, real). WING MATES 18-35: mean 0.37-0.43 → 0.67-0.73
+(0.85), DM/CM 0.14-0.18 (0.18), ST 0.08-0.11 (0.10), WIDE 0.18-0.24 (0.29), 3+ 5-7% (4); 35-52 0.60-0.63 →
+0.73-0.79 (0.87), DM/CM 0.20-0.21. From 18-35 wide: passes 19-21 → 21.6-23.3 (34.3), into the box centre 19-22% →
+16-19 (14.1), to 0-18 wide 7.5-12 → 11.5-15.8 (13.7), wing to wing 19-23 → 23-26 (33.4); spells starting wide 32-34
+→ 34.5-38 (57.8). Goals 1.38-2.06 → 1.19-1.81 a team-match (8-match noise). Crosses unchanged, 3.1-4.1 (11.5).
+
+**Still off.** Wing-to-wing passes complete ~55% (82%). And the wide man doesn't drive: ARRIVE in their crossing
+zone (0-18 m, |y| 14+) carried in 2.3 a team-match (8.8), carries 10 m+ 15 (35) — real crosses come off the carry
+down the line. **Next:** the wide carry.
+
+Shipped: wing support (engine); `benchmarks_tracking_wingmates.py`, rolewidth's depth band (real); WING MATES
+(harness); goldens re-locked; tests 22/22.

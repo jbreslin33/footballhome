@@ -1246,6 +1246,28 @@ void PossessionParams::configure(const core::ModelParams& p) {
             drift_y[z][r][t] = p.fixed(k + "_y", kY[z][r][t]);
         }
         drift_on = p.fixed("physics.drift.on", 1000).raw > 0;
+    }
+    {   // G5.125 (§8.226): DFL benchmarks_tracking_wingmates.py, the ball wide (|y| 20.16+) 18-35 / 35-52 m off their
+        // line, the side on it's men in the ball's own zone. SPOT: each role's median direction from the ball (ahead /
+        // in) at his median distance from it (18-35: DM/CM -0.7 / +2.6 at 7.9 m, AM +2.5 / +5.0 at 8.9, WIDE +3.5 /
+        // -1.6 at 8.4, ST +4.2 / +2.6 at 7.7; 35-52: DM/CM -0.8 / +3.9 at 8.7, AM +2.8 / +2.6 at 7.9, WIDE +4.4 / -2.3
+        // at 8.4, ST +4.4 / +3.2 at 8.8) — the medians of each axis alone sit 3-5 m from the ball, nobody's spot.
+        // P: the roll for the one man of the role on the ball's side, fitted to the real men there by role (18-35:
+        // DM/CM 0.18, AM 0.06, WIDE 0.29, ST 0.10; 35-52: DM/CM 0.21; ours before 0.05, 0.02, 0.15, 0.03; 0.09). At
+        // the deficit x 2.2 (as G5.89) they hardly moved — a wide spell is short and he spends it getting there — and
+        // every near man going reads DM/CM 0.16 / 0.21, AM 0.05, WIDE 0.21, ST 0.07: all go. 35-52's ST / AM are
+        // G5.89's drift. [FH fit]  Permille / decimetres.
+        static const int kP[2][kRoleCount]  = {{0, 0, 1000, 1000, 1000, 1000}, {0, 0, 1000, 0, 0, 0}};
+        static const int kAh[2][kRoleCount] = {{0, 0, -21, 40, 76, 65}, {0, 0, -17, 58, 74, 71}};
+        static const int kIn[2][kRoleCount] = {{0, 0, 76, 80, -35, 41}, {0, 0, 85, 54, -39, 52}};
+        static const char* zk[2] = {"18w", "35w"};
+        for (int z = 0; z < 2; ++z) for (int r = 0; r < kRoleCount; ++r) {
+            const std::string k = std::string("physics.wing.") + zk[z] + "_" + kRoleKey[r];
+            wing_p[z][r] = p.fixed(k + "_p", kP[z][r]);
+            wing_ah[z][r] = p.fixed(k + "_ahead", std::int64_t{kAh[z][r]} * 100);
+            wing_in[z][r] = p.fixed(k + "_in", std::int64_t{kIn[z][r]} * 100);
+        }
+        wing_on = p.fixed("physics.wing.on", 1000).raw > 0;
     }   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
@@ -1367,6 +1389,27 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             if (t >= 0) {
                 const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
                 return Vec2{(hx - params_.drift_tl[z][r][t]) * v.sg, side * params_.drift_y[z][r][t]};
+            }
+        }
+    }
+    if (params_.wing_on) {
+        // G5.125 (§8.226): the ball wide 18-35 / 35-52 m out — the one man of his role on its side may go to support
+        // the man on it, at his role's real spot from the ball (it moves with the ball). One roll a man a spell a zone.
+        const auto& bp = world.ball().pos;
+        const bool wide = math::fx_abs(bp.y) >= Fixed64::fromFraction(2016, 100);
+        const int z = !wide ? -1 : off_their < Fixed64::fromInt(18) ? -1 : off_their < Fixed64::fromInt(35) ? 0 : off_their < Fixed64::fromInt(52) ? 1 : -1;
+        const int r = static_cast<int>(v.role_ours);
+        if (z >= 0 && params_.wing_p[z][r].raw > 0) {
+            const Fixed64 side = bp.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+            if ((v.across_ours * side).raw >= 0) {
+                const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 100 + z) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                if (u < params_.wing_p[z][r]) {
+                    Fixed64 y = bp.y - side * params_.wing_in[z][r];
+                    const Fixed64 ylim = world.pitchHalfY() - Fixed64::one();
+                    if (y > ylim) y = ylim;
+                    if (y < -ylim) y = -ylim;
+                    return Vec2{bp.x + v.sg * params_.wing_ah[z][r], y};
+                }
             }
         }
     }

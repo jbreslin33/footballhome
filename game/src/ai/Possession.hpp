@@ -123,6 +123,12 @@ struct PossessionParams {
     // wide]: the real share of his frames there (DFL benchmarks_tracking_zonemates.py), and where
     // (m off their line, |y|). One roll a man a spell a zone. drift_on 0 = off.
     math::Fixed64 drift_p[3][2][2]{}, drift_tl[3][2][2]{}, drift_y[3][2][2]{};
+    // G5.125 (§8.226): the ball wide 18-35 / 35-52 m off their line — a DM/CM, AM, WIDE or ST on its side goes to
+    // support the man on it (DFL benchmarks_tracking_wingmates.py: real sides have 0.84-0.88 mates in the ball's own
+    // wide zone, ours 0.43-0.65). [zone 18-35 / 35-52][role]: the roll a man a spell (FH fit to the real role
+    // counts), and the spot from the ball, m ahead (toward their line) / in (toward the centre line). wing_on 0 = off.
+    math::Fixed64 wing_p[2][kRoleCount]{}, wing_ah[2][kRoleCount]{}, wing_in[2][kRoleCount]{};
+    bool wing_on = true;
     bool drift_on = true;   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
     bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)
     bool box_stay = true;   // G5.61: a box runner in the box stays one when a redraw rolls fewer (physics.box.stay)

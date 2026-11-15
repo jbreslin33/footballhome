@@ -71,6 +71,7 @@ struct Stats {
     long ob_n[4] = {}, ob_e[4][3] = {}, ob_z[5] = {}, ob_zo[5][4] = {}, ob_ze[5][3] = {}; std::vector<double> ob_d[4], ob_c[4], ob_o1[4];   // §8.202 ON THE BALL by options at the start; end mate / theirs / dead
     long fl_n[3] = {}, fl_o[3][5] = {}, fl_os[3][5] = {}, fl_o3[3][5] = {}; std::vector<double> fl_fl[3], fl_nd[3][5], fl_vd[3], fl_va[3], fl_cl[3], fl_u[3], fl_g[3], fl_rd[3][6], fl_rl[3][6], fl_ry[3], fl_ryr[3][6]; long fl_rr[3][6] = {}, sl_n2[4][6] = {}, fl_wy[3][3] = {}, fl_wy3[3][3] = {}, fl_wys[3][3] = {}, fl_ln[3][2][2] = {}, pi_n[3] = {}, pi_f[3] = {}, pi_m[3] = {}, pi_o[3] = {}, pi_near[3] = {}, pi_wide[3] = {}, pi_lone[3] = {}, pi_fwd[3] = {}; std::vector<double> pi_g[3][4], pi_x[3][4]; std::vector<double> spc[3], spc_r[3][6], spc_p[3][2]; /* §8.219 SPACING */ long nb_n[3][5] = {}, nb_f[3][5] = {}; std::vector<double> ay_r[3][6], ay_b[3], ay_yb[4][6], in_c[3][3], in_p[3][3]; double sl_s2[4][6] = {}; long fl_sn[3] = {}, fl_bs[3] = {}, fl_gs[3] = {}, fl_bf[3][2] = {}, fl_bn[3][2] = {};   // §8.217 THE PASS IN FLIGHT [band][offset −0.8…+0.8 s]
     std::vector<double> rw_pc[8][6], rw_pg[8][6], rw_ly[8][6], rw_lnr[8][6], rw_lfr[8][6], rw_lcy[6]; long rw_ln[8][6] = {}, rw_lb[8][6] = {}, rw_lsp[6] = {}, rw_lsk[6] = {};   // §8.221 ROLE WIDTH [ball |y| 4 m bin][role]
+    long wm_f[3] = {}, wm_k[3][4] = {}, wm_r[3][6] = {}, wm_car[3][6] = {}; std::vector<double> wm_ah[3], wm_in[3], wm_rah[3][6], wm_rin[3][6];   // §8.226 WING MATES [ball 0-18 / 18-35 / 35-52 wide]
     long rx_n[3][2][6] = {}, rx_f[3][2][6] = {}, rx_sp[3] = {}; std::vector<double> rx_m[3][2][6], rx_nd[3][2];   // §8.205 RACE OPTIONS [ball band 0-35/35-52/52+][by role / by distance][idx]: mates, free; margin when theirs; nearest opponent [free]
     std::vector<double> pp_t[2][2][4], pp_c[2][4];
     long cr2_n[4][2] = {}, cr2_ok[4][2] = {}, cr2_opt[2][5] = {}, cr2_mn[4] = {}, cr2_mok[4] = {};   // §8.200 CRUDE RACE [length band][theirs first]; options the passer had   // §8.199 PASS PACE [all, controlled][other, mate's pass][travel band]: s release->touch   // §8.198 CONTROL SPELLS
@@ -2115,6 +2116,16 @@ int main(int argc, char** argv) {
                         else if (nm[r] == 1) { const int q = men[r][0]; const double s2 = f.y[q] * sg; S.rw_ly[b][r].push_back(std::fabs(f.y[q])); ++S.rw_ln[b][r]; S.rw_lb[b][r] += s2 > 0; (s2 > 0 ? S.rw_lnr : S.rw_lfr)[b][r].push_back(s2);
                             if (std::fabs(f.by) < 8) { sides[q] |= f.y[q] >= 0 ? 1 : 2; srole[q] = r; S.rw_lcy[r].push_back(std::fabs(f.y[q])); } } } }
                 for (int q = 0; q < 32; ++q) if (srole[q] >= 0) { ++S.rw_lsp[srole[q]]; S.rw_lsk[srole[q]] += sides[q] != 3; } }
+            for (const Sp& c : sp) { if (kp(c.pid)) continue; const int tm = teamOf(c.pid); const double g = tm == 0 ? 1.0 : -1.0;   // §8.226 WING MATES: the ball wide, his mates in its zone
+                const int cr = role(static_cast<std::uint8_t>(c.pid));
+                for (int t = c.i0; t <= c.i1; ++t) { const FlF& f = fl_f[t]; if (std::fabs(f.by) < 20.16) continue;
+                    const double tl = hx - f.bx * g; if (tl >= 52) continue; const int b = tl < 18 ? 0 : tl < 35 ? 1 : 2; const double sg = f.by > 0 ? 1.0 : -1.0;
+                    ++S.wm_f[b]; if (cr >= 0 && cr < 6) ++S.wm_car[b][cr]; int k = 0;
+                    for (int q = 0; q < N && q < 32; ++q) { if (q == c.pid || teamOf(q) != tm || kp(q) || f.y[q] * sg < 20.16) continue;
+                        const double t2 = hx - f.x[q] * g; if ((t2 < 18 ? 0 : t2 < 35 ? 1 : t2 < 52 ? 2 : 3) != b) continue;
+                        ++k; const double ah = (f.x[q] - f.bx) * g, in = (f.by - f.y[q]) * sg; S.wm_ah[b].push_back(ah); S.wm_in[b].push_back(in);
+                        const int r = role(static_cast<std::uint8_t>(q)); if (r >= 0 && r < 6) { ++S.wm_r[b][r]; S.wm_rah[b][r].push_back(ah); S.wm_rin[b][r].push_back(in); } }
+                    ++S.wm_k[b][std::min(k, 3)]; } }
             for (const Sp& c : sp) { if (kp(c.pid)) continue; const int tm = teamOf(c.pid);   // §8.219 SPACING: each outfielder's nearest outfield mate; close pairs 1 s on
                 for (int t = c.i0; t <= c.i1; ++t) { const FlF& f = fl_f[t];
                     const double tlz = hx - f.bx * (tm == 0 ? 1.0 : -1.0); const int z = tlz < 35 ? 0 : tlz < 52 ? 1 : 2;
@@ -2659,6 +2670,23 @@ int main(int argc, char** argv) {
                                         std::printf("\n                  ball side s med  "); for (int b = 0; b < 8; ++b) std::printf(" %+.1f (%+.1f)", md(S.rw_lnr[b][r]), rLn[r][b]);
                                         std::printf("\n                  far side s med   "); for (int b = 0; b < 8; ++b) std::printf(" %+.1f (%+.1f)", md(S.rw_lfr[b][r]), rLf[r][b]);
                                         std::printf("\n                  ball within 8 m: one side the whole spell %.0f%% (%.0f) of %ld, |y| med %.1f (%.1f)", 100.0 * S.rw_lsk[r] / std::max(1L, S.rw_lsp[r]), rLk[r][0], S.rw_lsp[r], md(S.rw_lcy[r]), rLk[r][1]); } }
+                            }
+                            {   // §8.226 WING MATES, real DFL benchmarks_tracking_wingmates.py
+                                static const char* rn[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"}; static const char* bn[3] = {"0-18", "18-35", "35-52"};
+                                static const double rK[3][4] = {{61, 28, 9, 1}, {38, 43, 15, 4}, {38, 41, 16, 4}};
+                                static const double rR[3][6] = {{0.01, 0.12, 0.08, 0.05, 0.18, 0.06}, {0.04, 0.18, 0.18, 0.06, 0.29, 0.10}, {0.08, 0.19, 0.21, 0.06, 0.23, 0.10}};
+                                static const double rC[3][6] = {{2, 25, 10, 7, 42, 14}, {4, 25, 16, 8, 34, 13}, {10, 29, 22, 6, 22, 9}};
+                                static const double rA[3][2] = {{-0.5, 0.3}, {1.5, 0.5}, {0.9, 0.5}};
+                                static const double rRA[3][6][2] = {{{0, 0}, {-2.2, -3.5}, {-1.3, 5.3}, {1.0, 3.4}, {-0.2, -0.1}, {0.2, 2.2}},
+                                                                    {{-6.5, 3.3}, {-0.2, -2.1}, {-0.7, 2.6}, {2.5, 5.0}, {3.5, -1.6}, {4.2, 2.6}},
+                                                                    {{-6.6, 3.6}, {-1.7, -3.6}, {-0.8, 3.9}, {2.8, 2.6}, {4.4, -2.3}, {4.4, 3.2}}};
+                                std::printf("\n          WING MATES (spell frames, the ball wide |y| 20.16+; the side on it's men in the ball's own zone; real DFL benchmarks_tracking_wingmates.py in brackets):");
+                                for (int b = 0; b < 3; ++b) { const double f = std::max(1L, S.wm_f[b]); double tot = 0; for (int r = 0; r < 6; ++r) tot += S.wm_r[b][r];
+                                    std::printf("\n            ball %-5s wide %.1f spell frames a team-match | there 0/1/2/3+ %%", bn[b], S.wm_f[b] / tmn); for (int k = 0; k < 4; ++k) std::printf(" %.0f (%.0f)", 100 * S.wm_k[b][k] / f, rK[b][k]);
+                                    std::printf(" | mean %.2f (%.2f):", tot / f, rR[b][0] + rR[b][1] + rR[b][2] + rR[b][3] + rR[b][4] + rR[b][5]); for (int r = 0; r < 6; ++r) std::printf(" %s %.2f (%.2f)", rn[r], S.wm_r[b][r] / f, rR[b][r]);
+                                    std::printf("\n              on the ball:"); for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100 * S.wm_car[b][r] / f, rC[b][r]);
+                                    std::printf(" | from the ball AHEAD / IN med %+.1f (%+.1f) / %+.1f (%+.1f) m;", md(S.wm_ah[b]), rA[b][0], md(S.wm_in[b]), rA[b][1]);
+                                    for (int r = 0; r < 6; ++r) if (S.wm_rah[b][r].size() >= 30) std::printf(" %s %+.1f %+.1f (%+.1f %+.1f)", rn[r], md(S.wm_rah[b][r]), md(S.wm_rin[b][r]), rRA[b][r][0], rRA[b][r][1]); }
                             }
                             {   // §8.217 THE SLIDE, real DFL benchmarks_tracking_flight.py
                                 static const double rS[4][6] = {{1.1, 1.1, 1.8, 1.4, 1.7, 1.1}, {3.6, 2.5, 5.6, 4.5, 4.2, 3.8}, {6.2, 4.6, 7.9, 7.5, 6.2, 6.2}, {9.3, 7.3, 11.6, 10.4, 9.2, 8.8}};
