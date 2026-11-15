@@ -275,12 +275,14 @@ class FinancesScreen extends Screen {
     const revCodes = !pillS ? allHeads.map(h => h.code) : shareCodes;
     const secName = (code) => ((this.summary || {}).sections || []).find(s => s.code === code)?.name || code;
     const revenue = [];
+    // expected collection rate (mig 1381) = 1 − allowance ÷ dues billed since Aug 1 (collected, before LA fees, + still owed)
+    const collect = this._collectionRate(), collectPct = `${Math.round(100 * collect)}%`;
     for (const h of allHeads.filter(h => revCodes.includes(h.code))) {
       const monthly = Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0);
       const paying = Number(h.paying || 0), covered = paying === 0 && Number(h.active || 0) > 0;
       revenue.push({ kind: 'dues', code: h.code, label: this._copy('plan_rev_dues', { section: secName(h.code) }) || `Dues — ${secName(h.code)}`,
-        detail: covered ? (this._copy('plan_split_club_covers') || 'club covers') : `${paying} × ${M0(monthly)} × 12`,
-        unit: covered ? '' : (this._copy('plan_rev_dues_unit') || 'paying members × dues a month × 12 months'), amount: covered ? 0 : paying * monthly * 12, assumed: year !== thisYear });
+        detail: covered ? (this._copy('plan_split_club_covers') || 'club covers') : `${paying} × ${M0(monthly)} × 12${collect < 1 ? ` × ${collectPct}` : ''}`,
+        unit: covered ? '' : (this._copy('plan_rev_dues_unit') || 'paying members × dues a month × 12 months'), amount: covered ? 0 : paying * monthly * 12 * collect, assumed: year !== thisYear });
     }
     // Grants awarded or received = revenue with donor restrictions (restricted to
     // their purpose, or to what the label names when it has no single purpose);
@@ -471,6 +473,16 @@ class FinancesScreen extends Screen {
       </div>`;
   }
 
+  // Share of dues expected to be collected (mig 1381): 1 − the allowance for
+  // uncollectible dues ÷ dues billed since Aug 1 (paid through LeagueApps,
+  // grossed up for its fees, plus what members owe now).
+  _collectionRate() {
+    if (!this.flow || !this.expenses || !this.summary) return 1;
+    const L = this._ledger(), ratio = Number(this.flow.net_ratio) || 1;
+    const billed = L.duesPaid / ratio + L.duesOwed;
+    return billed > 0 ? Math.max(0, 1 - L.allowance / billed) : 1;
+  }
+
   // ── The ledger both statements read (mig 1379): this budget year, Aug 1 →
   // today, club-wide, starting from zero on Aug 1 (only deposits paid before
   // then are carried in). Accrual basis: an expense is recorded when invoiced
@@ -486,6 +498,8 @@ class FinancesScreen extends Screen {
     const L = { thisYear };
     L.duesPaid = sum(items.filter(i => i.dir === 'in' && i.category === 'dues'));
     L.duesOwed = Number((ov.all || {}).owed || 0);
+    // allowance for uncollectible dues (mig 1381): aging tiers on what is owed now
+    L.allowance = Math.min(L.duesOwed, Number((ov.all || {}).allowance || 0));
     L.rental = sum(items.filter(i => i.dir === 'in' && i.category === 'rental'));
     L.otherIn = sum(items.filter(i => i.dir === 'in' && i.category !== 'dues' && i.category !== 'rental'));
     // expenses by category (this year's invoices, every line; bonds are deposits)
@@ -528,13 +542,13 @@ class FinancesScreen extends Screen {
     L.restrictedIn = L.grantsR + L.sponsorsR;
     // the two statements
     L.revU = L.duesPaid + L.duesOwed + L.rental + L.otherIn + L.grantsU + L.sponsorsU;
-    L.changeU = L.revU + L.released - L.expTotal;
+    L.changeU = L.revU + L.released - L.expTotal - L.allowance;
     L.changeR = L.restrictedIn - L.released;
     L.beginU = L.bondsBefore;
     L.endU = L.beginU + L.changeU; L.endR = L.beginR + L.changeR;
     L.cash = L.duesPaid + L.rental + L.otherIn + L.awardsIn - (L.expTotal - L.payable) - L.bondsNow;
     L.deposits = L.bondsNow + L.bondsBefore;
-    L.assets = L.cash + L.duesOwed + L.awardsOwed + L.awardsOwedLater + L.deposits;
+    L.assets = L.cash + L.duesOwed - L.allowance + L.awardsOwed + L.awardsOwedLater + L.deposits;
     L.liabilities = L.payable;
     return L;
   }
@@ -549,6 +563,7 @@ class FinancesScreen extends Screen {
     let rows = g(this._copy('sfp_assets') || 'Assets');
     rows += r(this._copy('sfp_cash') || 'Cash held by Lighthouse for soccer', L.cash, 'item');
     rows += r(this._copy('sfp_dues_recv') || 'Dues receivable', L.duesOwed, 'item');
+    if (L.allowance) rows += r(this._copy('sfp_dues_allowance') || 'Less allowance for uncollectible dues', -L.allowance, 'item');
     rows += r(this._copy('sfp_grants_recv') || 'Grants and sponsorships receivable, due within one year', L.awardsOwed, 'item');
     if (L.awardsOwedLater) rows += r(this._copy('sfp_grants_recv_later') || 'Grants and sponsorships receivable, due in later years', L.awardsOwedLater, 'item');
     rows += r(this._copy('sfp_deposits') || 'Deposits (refundable bonds)', L.deposits, 'item');
@@ -588,7 +603,8 @@ class FinancesScreen extends Screen {
     rows += g(this._copy('soa_expenses') || 'Expenses');
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     for (const [code, v] of [...L.expenses.entries()].sort((a, b) => (order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99))) rows += r(this._catName(code), v, 0, 'item');
-    rows += r(this._copy('soa_exp_total') || 'Total expenses', L.expTotal, 0, 'sum');
+    if (L.allowance) rows += r(this._copy('soa_bad_debt') || 'Uncollectible dues (allowance)', L.allowance, 0, 'item');
+    rows += r(this._copy('soa_exp_total') || 'Total expenses', L.expTotal + L.allowance, 0, 'sum');
     rows += r(this._copy('soa_change') || 'Change in net assets', L.changeU, L.changeR, 'sum');
     rows += r(this._copy('soa_begin') || 'Net assets, beginning of year', L.beginU, L.beginR, 'item');
     rows += r(this._copy('soa_end') || 'Net assets, end of period', L.endU, L.endR, 'sum');

@@ -45,6 +45,14 @@ discounted). Statements cover the current budget year only. Dues = paid through 
 fees) + dues owed now (receivable). Cash = received − (invoiced − drafts) −
 bonds paid. The two statements tie by construction (tested).
 
+**Uncollectible dues (mig 1381):** `dues_allowance_tiers` (club, months behind
+from, % uncollectible; seeded 1 → 10%, 2 → 50%, 4+ → 100%) ages each member's
+balance (`fh_dues_doubtful_usd`: CEIL(owed ÷ monthly rate) months). The total
+is `summary.all.allowance`. Financial Position: dues receivable less the
+allowance; Activities: the allowance is an expense. Budget dues × the
+expected collection rate = 1 − allowance ÷ (dues paid since Aug 1 grossed up
+for LA fees + owed now), so BvA uses it too.
+
 **Budget:** Revenue — earned (dues = paying × dues × 12; CASA bookings in the
 year) and contributed (grants, sponsors awarded/received) — then expenses by
 category (team fee plans, section + club-wide budget lines, game coaching;
