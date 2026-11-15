@@ -143,7 +143,8 @@ struct Stats {
     std::vector<float> lg_g[2][5][ai::kRoleCount + 1], lg_f[2][5];
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
     long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
-    long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
+    long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
+    std::vector<double> hz_t[10][2], hz_d[10][2], hz_in[10][2], hz_fw[10][2];   // §8.227 HOLD BY ZONE [receipt zone][pressed]: s on the ball, m let go from the receipt; of 5 m+ in / forward   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
     int rn_wh[32] = {}; long rn_whn[ai::kWhyCount + 2] = {}; std::vector<double> rn_wm[ai::kWhyCount + 2], rn_wt[ai::kWhyCount + 2]; double rn_tg[32] = {}; std::string rn_tr[32];   // §8.193 GAME_RUN_TRACE: the run's frames
@@ -264,6 +265,7 @@ int main(int argc, char** argv) {
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
         bool own_set = false;
+        bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
@@ -811,6 +813,12 @@ int main(int argc, char** argv) {
             };
             if (own != owner) {
                 if (owner >= 0) {
+                    if (hz_on && !own_set) {   // §8.227 HOLD BY ZONE: his spell from a mate's pass, to his release or its loss
+                        const double sgh = owner_team == 0 ? 1.0 : -1.0, dd = std::hypot(own_px - hz_x0, own_py - hz_y0);
+                        S.hz_t[hz_z][hz_pr].push_back((k - owner_got) / static_cast<double>(core::kTickRate)); S.hz_d[hz_z][hz_pr].push_back(dd);
+                        if (dd >= 5) { S.hz_in[hz_z][hz_pr].push_back(std::fabs(hz_y0) - std::fabs(own_py)); S.hz_fw[hz_z][hz_pr].push_back((own_px - hz_x0) * sgh); }
+                    }
+                    hz_on = false;
                     const double sg = owner_team == 0 ? 1.0 : -1.0;
                     if (!own_set && (own_px - own_sx) * sg >= 10) ++S.carry10;
                     if (facing[owner] > 0) { ++S.takeon; facing[owner] = 0; }
@@ -937,10 +945,12 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
+                bool hz_rec = false;   // §8.227
                 if (own >= 0) {
                     const auto& q = W.player(static_cast<std::uint8_t>(own));
                     if (rel.p >= 0) {
                         const bool mate = rel.team == q.team && rel.p != own;
+                        hz_rec = mate && !rel.set && !rel.shot;
                         if (mate && !rel.set && !rel.shot) ++S.pass_ok;
                         if (mate && mk.on && mk.p == rel.p) {   // §8.173: completed — the receiver's and the passer's nearest opponent outfielder where they stood at the kick
                             auto near = [&](int i) { double m = 99; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team != mk.team && !W.isKeeper(j)) m = std::min(m, std::hypot(mk.x[j] - mk.x[i], mk.y[j] - mk.y[i])); return m; };
@@ -984,6 +994,12 @@ int main(int argc, char** argv) {
                         ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
                         if (ws_on) ++S.ws_n; }
                     owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble();
+                    hz_on = hz_rec && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(static_cast<std::uint8_t>(own));
+                    if (hz_on) {   // §8.227: where, and pressed (theirs within 2.5 m, StatsBomb's under_pressure ~ 10% of receipts)
+                        const double sgh = q.team == 0 ? 1.0 : -1.0; hz_x0 = q.pos.x.toDouble(); hz_y0 = q.pos.y.toDouble();
+                        const double tl = hx - hz_x0 * sgh; hz_z = (tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4) * 2 + (std::fabs(hz_y0) < 20.16 ? 0 : 1); hz_pr = 0;
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != q.team && std::hypot(W.player(j).pos.x.toDouble() - hz_x0, W.player(j).pos.y.toDouble() - hz_y0) < 2.5) hz_pr = 1;
+                    }
                     for (int j = 0; j < 32; ++j) { pressed_in[j] = -1; facing[j] = 0; }
                 } else owner = -1;
             }
@@ -2980,6 +2996,17 @@ int main(int argc, char** argv) {
             static const double kA[9] = {30.2, 16.9, 14.5, 13.3, 9.7, 7.0, 5.9, 2.2, 0}, kAo[9] = {24.7, 16.3, 10.2, 0, 8.0, 0, 2.4, 0, 0};
             static const char* kAn[9] = {"pass to 18-35 wide", "pass to 35+", "pass to 0-18 wide", "lost", "pass to 18-35 centre", "cross", "pass to 0-18 centre", "shot", "other"};
             long t = 0; for (long v : S.ws_from) t += v;
+            {   // §8.227 HOLD BY ZONE, real StatsBomb PL 15/16 benchmarks_statsbomb_holdzone.py (free receipts)
+                static const double rN[10] = {13.3, 14.6, 27.3, 33.0, 45.4, 41.7, 53.6, 34.9, 46.4, 18.7}, rT[10] = {0.1, 1.2, 0.9, 1.4, 1.0, 1.2, 1.2, 1.1, 1.3, 1.1}, rT9[10] = {2.2, 4.1, 3.1, 4.2, 3.3, 3.8, 3.6, 3.6, 4.3, 3.7};
+                static const double r1[10] = {61.3, 27.5, 32.9, 21.0, 29.5, 25.4, 24.9, 25.3, 24.5, 26.5}, rD9[10] = {6.6, 10.4, 10.1, 13.9, 11.8, 13.2, 12.9, 12.0, 13.7, 12.6}, r10[10] = {4.2, 11.0, 10.3, 16.9, 13.2, 14.5, 15.0, 12.7, 15.9, 13.8};
+                static const double rIn[10] = {-0.1, 4.2, 0.0, 4.4, -1.5, 2.8, -2.0, 1.4, -2.5, 0.2}, rFw[10] = {3.5, 3.2, 4.7, 5.9, 5.3, 6.4, 6.0, 6.6, 6.8, 7.2};
+                static const char* zn[10] = {"0-18 centre", "0-18 wide", "18-35 centre", "18-35 wide", "35-52 centre", "35-52 wide", "52-70 centre", "52-70 wide", "70+ centre", "70+ wide"};
+                auto q = [](std::vector<double> v, double p) { if (v.empty()) return 0.0; std::sort(v.begin(), v.end()); return v[std::min(v.size() - 1, static_cast<std::size_t>(p * v.size()))]; };
+                std::printf("\n   HOLD BY ZONE (a mate's pass to his release, free = none of theirs within 2.5 m; real StatsBomb PL 15/16 free receipts, benchmarks_statsbomb_holdzone.py): receipts a team-match | on the ball s med / p90, one-touch %% | let go m from the receipt p90, 10 m+ %% | of 5 m+ in / forward m med; pressed %%");
+                for (int z = 0; z < 10; ++z) { const auto& t = S.hz_t[z][0]; const auto& d = S.hz_d[z][0]; if (t.empty()) continue; long one = 0, ten = 0; for (double x : t) one += x < 0.3; for (double x : d) ten += x >= 10;
+                    std::printf("\n     %-12s %5.1f (%4.1f) | %.1f (%.1f) / %.1f (%.1f), %4.1f (%4.1f) | %4.1f (%4.1f), %4.1f (%4.1f) | %+.1f (%+.1f) / %+.1f (%+.1f); %.0f%%", zn[z], t.size() / tm, rN[z], q(t, .5), rT[z], q(t, .9), rT9[z], 100.0 * one / t.size(), r1[z],
+                                q(d, .9), rD9[z], 100.0 * ten / d.size(), r10[z], q(S.hz_in[z][0], .5), rIn[z], q(S.hz_fw[z][0], .5), rFw[z], 100.0 * S.hz_t[z][1].size() / (t.size() + S.hz_t[z][1].size())); }
+            }
             std::printf("\n   SPELLS STARTING WIDE (|y| 14+) 18-35 m out: %.1f a team-match (57.8 real StatsBomb); let go from:", S.ws_n / tm);
             for (int i = 0; i < 6; ++i) std::printf(" %s %.0f%% (%.0f);", kFn[i], 100.0 * S.ws_from[i] / std::max(1L, t), kF[i]);
             std::printf("\n     let go as, %% of spells (real) [completed]:");

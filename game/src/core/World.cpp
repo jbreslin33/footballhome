@@ -436,7 +436,9 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
         const Action act = actions_[kicker];
         // G4.92: controlled first — unless he hits it first time (G4.95).
-        const bool first_time = first_time_[kicker] != 0 && clock_.tick() < control_until_tick_;
+        // G5.126 (§8.227): or the hold he drew on receipt was its one-touch slice.
+        const bool ft_kick = first_time_[kicker] != 0 || (one_touch_first_ && one_touch_slot_ == kicker && one_touch_at_ == owned_at_tick_);
+        const bool first_time = ft_kick && clock_.tick() < control_until_tick_;
         // G5.4: a man with time keeps it for the hold he drew on receipt. A
         // shot, a first-time hit, a keeper or a presser nearby ends that.
         bool hold_it = hold_on_ && clock_.tick() < hold_until_tick_ && act != Action::Shot &&
@@ -457,7 +459,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         bool wait = false, cancel = false;
         std::uint8_t kfoot = kick_foot_.empty() ? 0 : kick_foot_[kicker];
         if (act != Action::None && players_[kicker].recovery_ticks == 0 && !hold_it &&
-            (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0) && kicks_on_ && !heldRestart() && !isKeeper(kicker)) {
+            (clock_.tick() >= control_until_tick_ || ft_kick) && kicks_on_ && !heldRestart() && !isKeeper(kicker)) {
             if (pend_.act == Action::None) {
                 pend_ = PendingKick{kicker, act, carry_m_[kicker], pass_to_[kicker], first_time_[kicker], die_[kicker], has_aim_[kicker],
                                     chooseFoot(kicker), aim_[kicker], aim_z_[kicker], clock_.tick(), clock_.tick() + static_cast<std::uint64_t>(kick_wait_max_)};
@@ -468,7 +470,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             const bool reach = math::lengthSquared(db) <= kick_reach_ * kick_reach_;
             const FootState& ft = feet_[kicker];
             // A first-time ball: he set his feet before it arrived — the plant is already made.
-            const bool planted = !steps_.on() || ft.down[1 - kfoot] || first_time_[kicker] != 0;
+            const bool planted = !steps_.on() || ft.down[1 - kfoot] || ft_kick;
             if (!(reach && planted)) {
                 if (clock_.tick() < pend_.until) wait = true;
                 else if (!reach) cancel = true;   // never got to it in time: the wish is gone
@@ -477,7 +479,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             if (cancel) { actions_[kicker] = Action::None; pend_.act = Action::None; ++kicks_cancelled_; }
         }
         if (act != Action::None && !wait && !cancel && players_[kicker].recovery_ticks == 0 && !hold_it &&
-            (clock_.tick() >= control_until_tick_ || first_time_[kicker] != 0)) {
+            (clock_.tick() >= control_until_tick_ || ft_kick)) {
             actions_[kicker] = Action::None;
             // G5.79: struck — with which foot, and how long he set it up
             last_kick_weak_ = false; last_kick_wait_ = 0;
@@ -1261,6 +1263,7 @@ void World::configureTempo(const ModelParams& p) {
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
+    one_touch_first_ = p.fixed("physics.tempo.one_touch_first", 1000).raw > 0;   // G5.126 (§8.227)
     hold_one_ = p.fixed("physics.tempo.hold_one_touch", 0);        // G5.18 (§8.115)
     hold_p_one_ = p.fixed("physics.tempo.hold_pressed_one_touch", 0);
     hold_p_under1_ = p.fixed("physics.tempo.hold_pressed_under1", 0);
@@ -1420,7 +1423,7 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
             if (pressed) { one = hold_p_one_; u1 = hold_p_under1_; u2 = hold_p_under2_; u4 = hold_p_under4_; }
         }
         Fixed64 s;
-        if (one.raw > 0 && u < one) s = Fixed64::zero();
+        if (one.raw > 0 && u < one) { s = Fixed64::zero(); one_touch_slot_ = slot; one_touch_at_ = owned_at_tick_; }   // G5.126: first time
         else if (u < u1) s = one.raw > 0 ? Fixed64::fromFraction(3, 10) + Fixed64::fromFraction(7, 10) * (u - one) / (u1 - one) : u / u1;
         else if (u < u2) s = Fixed64::one() + (u - u1) / (u2 - u1);
         else if (u < u4) s = Fixed64::fromInt(2) + Fixed64::fromInt(2) * (u - u2) / (u4 - u2);

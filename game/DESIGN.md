@@ -9637,3 +9637,35 @@ down the line. **Next:** the wide carry.
 
 Shipped: wing support (engine); `benchmarks_tracking_wingmates.py`, rolewidth's depth band (real); WING MATES
 (harness); goldens re-locked; tests 22/22.
+
+### 8.227 G5.126 — the one-touch ball is played first time (HOLD BY ZONE)
+
+From §8.226 (the wide man doesn't drive). **Measured.** New `scripts/benchmarks_statsbomb_holdzone.py` (StatsBomb PL
+15/16: completed open-play receipts to the same man's release, by the receipt's policy zone and under_pressure) and a
+HOLD BY ZONE line in fh-game-match (a mate's pass to his release or its loss; free = none of theirs within 2.5 m).
+Real free receipts: time on the ball median 0.9-1.4 s by zone (0.1 inside 18 m centrally), one-touch (under 0.3 s)
+21-61% (61 in 0-18 centre, 21 in 18-35 wide); 10 m+ from the receipt to the release 11-17% (18-35 wide 16.9, of 5 m+
+in +4.4 / forward +5.9 m — real wide carries come inside, not straight down the line). Ours (4 seeds x 8): medians
+right (1.0-1.3), one-touch 0.2-4.6% in every zone. And receipts: 18-35 wide 11-12 free a team-match (33.0), 0-18
+3-4 (13-15), 52-70 / 70+ centre 70-84 (46-54).
+
+**Why.** The hold's one-touch slice (`physics.tempo.hold_one_touch` 27.7%, pressed 43.6%) drew no hold, but the
+kick still waited out his control touch (`control_settle_ms` 350 + 25 ms per m/s the ball came in at, ~0.6 s on a
+10 m/s pass) and then his plant foot (up to `physics.kick.wait_ms`). Only a pressed man's ground pass went first time
+(G4.95b, Brain::namePass). In the viewer: "they delay a lot before a kick".
+
+**Change.** `World::settleControl`: a hold drawn in the one-touch slice marks the receipt; his kick off it is first
+time (no control touch, the plant already made, G4.95's first-time error) — `World` `ft_kick`.
+`physics.tempo.one_touch_first` 0 = off.
+
+**After** (seeds 1000-4000, before → after, real). One-touch 0.2-4.6% → 25-35% by zone (21-61; 0-18 wide 29.0 v
+27.5, 0-18 centre 35 v 61); spell 1.47 → 1.38 s (1.21); crosses 3.1-4.1 → 4.1-5.0 (11.5); goals 1.19-1.81 →
+0.81-1.62 a team-match on the same shots (conversion 7-14%, real ~9.4). Worse: passes 511-520 → 530-554 (434),
+return passes 62-65 → 68-71 (42) — we over-pass already, and quicker releases add to it.
+
+**Still off.** Final-third receipts half the real (above); 5 m+ carries go forward +1-5 m (+5-7). The goal kick's
+dead time is real (median 22.1 s v 23.2) but every one is the median; the real spread is not measured yet.
+**Next:** the final-third receipts — where our attack loses the ball between 35 m and 18 m.
+
+Shipped: one-touch first time (engine, World); `benchmarks_statsbomb_holdzone.py` (real); HOLD BY ZONE (harness);
+goldens unchanged (the tests run without the tempo rows); tests 22/22.

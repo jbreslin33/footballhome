@@ -374,6 +374,12 @@ private:
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool hold_on_ = false;
+    // G5.126 (§8.227): the hold's one-touch slice is played first time — no control touch, the plant
+    // already made (real one-touch releases 21-61% of receipts by zone; ours, waiting out a 0.35 s +
+    // 25 ms per m/s control touch, under 5%). The slot and the owned tick it was drawn for.
+    bool one_touch_first_ = true;
+    SlotIndex one_touch_slot_ = 0xFF;
+    std::uint64_t one_touch_at_ = 0;
     // G5.78 (§8.179): dribble touches. By the carrier's speed band 0-1 … 7+ m/s: the ball's gap
     // ahead of him when he touches it (DFL carries' p25) and how far it runs out before he reaches
     // it again (median farthest-ahead between touches), m — benchmarks_tracking_carry.py.
