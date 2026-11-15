@@ -9552,3 +9552,30 @@ on its next game-deploy). **Next:** the mix — §8.186's men who don't get goal
 goal-side shots twice real), and the keeper still 1.5 m short of the real depth when the man is through.
 
 Shipped: keeper depth table (engine), FINISH (harness + real script), mig 1371; 11v11 golden re-locked; tests 22/22.
+
+### 8.224 G5.123 — the chance mix near our goal: two trials, neither shipped — the men lag, the spots don't (harness only)
+
+From §8.223 (0-1 goal-side shots twice real). **Measured** (G5.122 build, 4 seeds x 8). Frame by frame GOAL-SIDE is
+now near real from 12 m out (median 3 (3) at 12-18, 4-5 (5) at 18-25), but with the ball inside 12 m of the goal
+centre 3-4 goal-side 8-13% of frames (26.1), 5+ 0.3% (9.6), deeper than the ball p75 1 (3). Our shots from < 12 m
+are 74% 0-1 goal-side (33); 4+ goal-side < 12 m shots ~0 (31% of real < 12 m shots). Short at every possession
+length: 20 s+ in, goal-side median 3 (5).
+
+**Trial 1** — §8.186's goal-side slide on (`physics.block.gs_r` 14, gs_w 12, gs_m 1): 0-1 goal-side shots 231 → 179
+(32 → 25%; real 14), < 12 m 0-1 134 → 91; frames inside 12 m 3-4 goal-side 9.5-15% (26); goals unchanged (1.67 a
+team-match both). Small, left off.
+
+**Trial 2** — new `scripts/benchmarks_tracking_nearspot.py` (DFL, ball on a foot within 25 m of their line, each
+role's median depth by the ball's depth 0-6 / 6-12 / 12-18 / 18-25 x |y| 0-8 / 8-16 / 16+). The settled spot table's
+first band is wide balls 8:1: central and close, real CB 5.5 m off the line (table 7.7), FB 7.4 (10.4), DM 11.5
+(13.8); forwards drop to 19-20 m (ST table 39). Built as a bilinear near table blended into `spot` from 21.5 to 25 m:
+goal-side inside 12 m unchanged (3-4 7-10%), shot mix unchanged (0-1 31%), goals within noise. Not shipped
+(removed).
+
+**Why** (`GAME_SHOT_TRACE`): at a close 0-1 goal-side shot the CBs stand 10-11 m off the line on "hold shape" with
+the ball 2.5 m out, 1-4 s after a pass or carry took it into the box; in long settled spells the shape is near the
+table. The spots aren't the gap; the drop is — the line doesn't get from the box's edge to the six in the second
+the ball takes to arrive. **Next:** the defending line's movement as the ball comes in (who drops, how fast, on
+`ball_to`'s arrival time) — RECOVERY's near-goal rows, not more spot tables.
+
+Shipped: `benchmarks_tracking_nearspot.py` (real data); engine unchanged.
