@@ -2,6 +2,7 @@
 #include "JobsController.h"
 #include "../core/Crypto.h"
 #include "../models/StarterCriteria.h"
+#include "../models/EventAccess.h"
 #include <sstream>
 #include <regex>
 #include <algorithm>  // std::find — squad colour validation
@@ -69,6 +70,31 @@ void EligibilityController::registerRoutes(Router& router, const std::string& pr
         return this->handleGetPositions(request);
     });
 
+}
+
+// Coach-or-admin on a MATCH (Event Center slice 5): the one rule —
+// EventAccess / fh_event_viewer_tier on the game's fh_event (mig 1362),
+// the same answer Event Center and the calendar feed give.  A match with
+// no calendar event yet falls back to admin or a coach of its home/away
+// team.  userId = the REAL logged-in account (Game Center turns edit off
+// itself under view-as).
+static bool isMatchCoach(Database* db, const std::string& userId, const std::string& matchId) {
+    if (userId.empty() || matchId.empty()) return false;
+    pqxx::result who = db->query("SELECT person_id FROM users WHERE id = $1::int LIMIT 1", {userId});
+    pqxx::result ev = db->query("SELECT id FROM fh_events WHERE match_id = $1::int ORDER BY id LIMIT 1", {matchId});
+    if (!ev.empty() && !who.empty() && !who[0]["person_id"].is_null())
+        return EventAccess::canCoach(db, who[0]["person_id"].as<long long>(), ev[0]["id"].as<long long>());
+    pqxx::result rows = db->query(
+        "SELECT ("
+        "  EXISTS (SELECT 1 FROM admins a WHERE a.user_id = $1::int)"
+        "  OR EXISTS (SELECT 1 FROM matches m "
+        "             JOIN team_coaches tc ON tc.team_id IN (m.home_team_id, m.away_team_id) AND tc.ended_at IS NULL "
+        "             JOIN coaches co ON co.id = tc.coach_id "
+        "             JOIN users u ON u.person_id = co.person_id "
+        "             WHERE m.id = $2::int AND u.id = $1::int)"
+        ") AS is_coach",
+        {userId, matchId});
+    return !rows.empty() && rows[0]["is_coach"].as<bool>();
 }
 
 // ============================================================================
@@ -181,20 +207,8 @@ Response EligibilityController::handleGetMatchLineup(const Request& request) {
 
         bool isCoach = false;
         std::string userId = extractUserIdFromToken(request);
-        if (!userId.empty() && !teamRow.empty()) {
-            pqxx::result authRows = db_->query(
-                "SELECT ("
-                "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
-                "          WHERE u.id = $1::int)"
-                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
-                "             JOIN coaches co ON co.id = tc.coach_id "
-                "             JOIN users u ON u.person_id = co.person_id "
-                "             WHERE tc.team_id = ANY($2::int[]) AND tc.ended_at IS NULL "
-                "             AND u.id = $1::int)"
-                ") AS is_coach",
-                {userId, rosterTeamIdsArray});
-            isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
-        }
+        if (!userId.empty() && !teamRow.empty())
+            isCoach = isMatchCoach(db_, userId, matchId);
 
         // Starter eligibility (migration 456): the sessions that count for
         // this game come from fh_starter_window() — the last
@@ -474,23 +488,10 @@ Response EligibilityController::handleSaveMatchLineup(const Request& request) {
 
         // Coach/admin authorization — this was previously unchecked (any
         // authenticated user, including a player, could overwrite any
-        // match's lineup). Same admins-OR-coach-of-this-team EXISTS
-        // pattern used for handleGetMatchLineup's isCoach flag above.
+        // match's lineup). Same rule as handleGetMatchLineup's isCoach:
+        // isMatchCoach → EventAccess (Event Center slice 5).
         {
-            std::string homeTeamId = matchResult[0]["home_team_id"].is_null() ? "0" : matchResult[0]["home_team_id"].c_str();
-            std::string awayTeamId = matchResult[0]["away_team_id"].is_null() ? "0" : matchResult[0]["away_team_id"].c_str();
-            pqxx::result authRows = db_->query(
-                "SELECT ("
-                "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id "
-                "          WHERE u.id = $1::int)"
-                "  OR EXISTS (SELECT 1 FROM team_coaches tc "
-                "             JOIN coaches co ON co.id = tc.coach_id "
-                "             JOIN users u ON u.person_id = co.person_id "
-                "             WHERE tc.team_id IN ($2::int, $3::int) AND tc.ended_at IS NULL "
-                "             AND u.id = $1::int)"
-                ") AS is_coach",
-                {userId, homeTeamId, awayTeamId});
-            bool isCoach = !authRows.empty() && authRows[0]["is_coach"].as<bool>();
+            bool isCoach = isMatchCoach(db_, userId, matchId);
             if (!isCoach) {
                 return Response(HttpStatus::FORBIDDEN, createJsonResponse(false, "Not authorized to edit this match's lineup"));
             }
@@ -894,23 +895,13 @@ static std::string eventRosterTeamIds(Database* db, const std::string& fhEventId
     return "{}";
 }
 
-// Admin, or a coach of any team this event is tagged to. Mirrors the
-// match lineup's authorization, scoped to fh_event_teams rather than the
-// match's home/away pair.
+// Admin, or a coach of any team this event is tagged to — EventAccess
+// (fh_event_viewer_tier, mig 1362), the one rule (Event Center slice 5).
 static bool isEventCoach(Database* db, const std::string& userId, const std::string& fhEventId) {
-    if (userId.empty()) return false;
-    pqxx::result rows = db->query(
-        "SELECT ("
-        "  EXISTS (SELECT 1 FROM admins a JOIN users u ON u.id = a.user_id WHERE u.id = $1::int)"
-        "  OR EXISTS (SELECT 1 FROM team_coaches tc "
-        "             JOIN coaches co ON co.id = tc.coach_id "
-        "             JOIN users u ON u.person_id = co.person_id "
-        "             JOIN fh_event_teams fet ON fet.team_id = tc.team_id "
-        "             WHERE fet.fh_event_id = $2::bigint AND tc.ended_at IS NULL "
-        "             AND u.id = $1::int)"
-        ") AS is_coach",
-        {userId, fhEventId});
-    return !rows.empty() && rows[0]["is_coach"].as<bool>();
+    if (userId.empty() || fhEventId.empty()) return false;
+    pqxx::result who = db->query("SELECT person_id FROM users WHERE id = $1::int LIMIT 1", {userId});
+    if (who.empty() || who[0]["person_id"].is_null()) return false;
+    return EventAccess::canCoach(db, who[0]["person_id"].as<long long>(), std::stoll(fhEventId));
 }
 
 Response EligibilityController::handleGetEventSquads(const Request& request) {

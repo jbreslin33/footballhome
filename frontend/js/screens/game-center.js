@@ -925,7 +925,7 @@ class GameCenterScreen extends EventScreen {
     this._pollBusy = true;
     const matchId = this.matchId;
     try {
-      const fhEventId = this.isCoach ? this._fhEventId() : null;
+      const fhEventId = this._isCoach ? this._fhEventId() : null;
       const [lineupRes, invitesRes] = await Promise.all([
         this.auth.fetch(`/api/eligibility/lineup/${matchId}`),
         fhEventId
@@ -1035,7 +1035,7 @@ class GameCenterScreen extends EventScreen {
     // An RSVP change can open or close a registration gap (mig 638).
     if (this.realIsCoach) this._loadRegGaps().then(() => this._render()).catch(() => {});
     // Delivery reports land within seconds of a club text (mig 647).
-    if (this.isCoach) this._loadTextMarks().then(() => this._render()).catch(() => {});
+    if (this._isCoach) this._loadTextMarks().then(() => this._render()).catch(() => {});
   }
 
   // Same admin-only gate my.js uses for the "Post to Instagram" button on
@@ -1044,7 +1044,12 @@ class GameCenterScreen extends EventScreen {
   // the same "view as <player>" suppression — this screen is reachable
   // by players directly, and impersonation only rewrites data fetches,
   // never navigation.context.user.role.
-  _canPostSocial() {
+  // Posting tools on show: may post AND not 👀 seeing as a player.
+  _canPostSocial() { return this._mayPostSocial() && this.viewMode !== 'player'; }
+
+  // May this account post (role)?  Loads ask this so the data is there
+  // when a coach comes back from 👀 See as player.
+  _mayPostSocial() {
     if (this.auth && this.auth.viewAsPersonId) return false;
     if (this.playerOnly) return false;   // the #my door is look-only
     const role = (this.navigation?.context?.user?.role || '').toString().toLowerCase();
@@ -1090,12 +1095,10 @@ class GameCenterScreen extends EventScreen {
         }
         return;
       }
-      const viewToggle = e.target.closest('#gl-view-toggle');
-      if (viewToggle && this.isCoach) {
-        this.viewMode = this.viewMode === 'coach' ? 'player' : 'coach';
-        this._render();
-        return;
-      }
+      // 👀 See as (EventScreen._seeAsHtml, slice 5): one bar on every pill
+      // in place of Game Center's own Player View toggle.
+      const seeAsBtn = e.target.closest('[data-ec-see-as]');
+      if (seeAsBtn) { this.seeAs = seeAsBtn.dataset.ecSeeAs || null; this._render(); return; }
       const remindOne = e.target.closest('[data-gc-remind]');
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
       const callinBtn = e.target.closest('[data-callin]');
@@ -1543,7 +1546,7 @@ class GameCenterScreen extends EventScreen {
           this.shares.set(Number(row.playerId), { pos: Number(row.sharesPositionId), order: Number(row.shareOrder) });
         }
       }
-      this.realIsCoach = this.isCoach;
+      this.realIsCoach = this._isCoach;
       this.official = this._snapshot();
       this._loadDrafts();   // non-fatal; re-applies the open draft when it lands
       this.stats = new Map();
@@ -1574,7 +1577,7 @@ class GameCenterScreen extends EventScreen {
       // 2026-10-02: "why josue david not having email or text for rsvp
       // reminder").
       const detailTeamIds = [...new Set([this.teamId, ...rosterTeamIds].filter(Boolean).map(Number))];
-      const detailsPromise = this.isCoach && detailTeamIds.length
+      const detailsPromise = this._isCoach && detailTeamIds.length
         ? Promise.all(detailTeamIds.map(id =>
             this.auth.fetch(`/api/matches/${this.matchId}/roster-players?teamId=${id}`)
               .then(r => r.json())
@@ -1583,7 +1586,7 @@ class GameCenterScreen extends EventScreen {
 
       // Reminders already sent about this game — dims a No Response
       // card's button.  Admin-only endpoint; a 403 just means no dimming.
-      const remindersPromise = this.isCoach
+      const remindersPromise = this._isCoach
         ? Promise.all([this._loadReminders(), this._loadSquadNotice(), this._loadOpponentContacts(), this._loadGameRecipients(), this._loadHealth(), this._loadInvites(), this._loadRegGaps(), this._loadTextMarks(), this._loadGameAttendance()]) : Promise.resolve();
       // The league's roster sheet is for the players too (owner 2026-09-30:
       // "all players to see it so we can ask one to print it if we forget").
@@ -1644,10 +1647,10 @@ class GameCenterScreen extends EventScreen {
       this._syncHash();
       this._render();
       // 👻 Last RSVP + dues standing on every card (PersonStanding, 11/3).
-      if (window.PersonStanding && this.isCoach) {
+      if (window.PersonStanding && this._isCoach) {
         PersonStanding.load(this.auth, (this.players || []).map(x => x.personId)).then(() => this._render()).catch(() => {});
       }
-      if (this.isCoach) this._pullLeagueList();
+      if (this._isCoach) this._pullLeagueList();
     } catch (err) {
       console.error('[game-lineup] load failed:', err);
       this.error = err.message || 'Failed to load lineup.';
@@ -1975,6 +1978,29 @@ class GameCenterScreen extends EventScreen {
   _copyTactics(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('tactics', tier, tokens) : ''; }
 
   _tacticsCanEdit() { return this.isCoach && this.viewMode !== 'player'; }
+
+  // Coach/player view = EventScreen's 👀 See as (slice 5): 'player' only
+  // while a coach / admin is looking as a player.  Setting 'coach' clears it.
+  get viewMode() { return this.seeAs === 'player' ? 'player' : 'coach'; }
+
+  // isCoach = may edit what is on screen now: the raw flag (_isCoach — the
+  // lineup GET's isCoach, or a drafter on their own draft) unless 👀 See as
+  // player is on, so every coach tool hides exactly as for a player.
+  // Loads read _isCoach so the data is there on the way back.
+  get isCoach() { return !!this._isCoach && this.seeAs !== 'player'; }
+  set isCoach(v) { this._isCoach = !!v; }
+  set viewMode(v) { this.seeAs = v === 'player' ? 'player' : null; }
+
+  // Staff tools on show: really a coach here (EventAccess via the lineup
+  // GET's isCoach) and not looking as a player.
+  _staffView() { return !!this.realIsCoach && this.viewMode !== 'player'; }
+
+  // The 👀 See as bar for this game — staff only, never on the #my
+  // look-only door or under view-as (isCoach is forced off there).
+  _gcSeeAsHtml() {
+    if (!this.realIsCoach || this.playerOnly) return '';
+    return this._seeAsHtml();
+  }
 
   _tacticsAvailable() { return !this.everyonePlays && this.fieldSize === 11; }
 
@@ -3503,7 +3529,7 @@ class GameCenterScreen extends EventScreen {
   _paintWeekend() {
     const host = this.find('#gc-weekend');
     if (!host) return;
-    if (!this._canPostSocial() || typeof WeekendSlides === 'undefined') { host.innerHTML = ''; return; }
+    if (!this._mayPostSocial() || typeof WeekendSlides === 'undefined') { host.innerHTML = ''; return; }
     this.weekendSlides = this.weekendSlides || new WeekendSlides(this.auth, {
       navigation: this.navigation,
       games: () => this._feedGames || [],
@@ -3721,13 +3747,9 @@ class GameCenterScreen extends EventScreen {
     // see via a link on this same page instead of a separate screen/
     // route). Players always get the player view.
     const effectiveIsPlayerView = !this.isCoach || this.viewMode === 'player';
-    const viewToggleHtml = this.isCoach
-      ? `<div style="text-align:right; margin-bottom:8px;">
-           <button id="gl-view-toggle" type="button" class="btn btn-secondary" style="font-size:0.8rem; padding:4px 10px;">
-             ${this.viewMode === 'coach' ? '👀 Player View' : '✏️ Coach View'}
-           </button>
-         </div>`
-      : '';
+    // The toggle is now the shared 👀 See as bar atop every pill (seeAs,
+    // slice 5) — the head in paint() below.
+    const seeAsBar = this._gcSeeAsHtml();
 
     // One assignment point for every pill, so the card mount and the
     // publish panel are wired in exactly one place. Everything is up top
@@ -3740,14 +3762,14 @@ class GameCenterScreen extends EventScreen {
       // over 👥 All Players or 🎯 Tactics (every event looks the same
       // except where it must differ).
       const wk = this.find('#gc-weekend');
-      if (wk) wk.style.display = (this.pill === PLAYERS_PILL || this.pill === TACTICS_PILL.key) ? 'none' : '';
+      if (wk) wk.style.display = (this.pill === PLAYERS_PILL || this.pill === TACTICS_PILL.key || this.viewMode === 'player') ? 'none' : '';
       if (this.pill === PLAYERS_PILL) {
         // 👥 All Players: EventScreen's list (Going / No response / Not
         // going, P/A/L/E, ✓/✗, reminders, 📇, call-in requests, mark all
         // present) — the very list a practice opens on.
         this._stopCards();
         this._tacticsBigOff();
-        head.innerHTML = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+        head.innerHTML = seeAsBar + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
           + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
           + this._duesAlternateStripHtml();
         EventScreen.ensureCardStyles();
@@ -3757,14 +3779,14 @@ class GameCenterScreen extends EventScreen {
       if (this.pill === TACTICS_PILL.key) {
         // The tactics pitch in place of the graphic; nothing under it.
         this._stopCards();
-        head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+        head.innerHTML = seeAsBar + this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
           + this._tacticsSectionHtml();
         box.innerHTML = '';
         this._mountTactics();
         return;
       }
       this._tacticsBigOff();
-      head.innerHTML = this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+      head.innerHTML = seeAsBar + this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
         + this._unplacedTopHtml()
         + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
         + `<div data-gc-callins>${this._callinsHtml()}</div>`
@@ -3789,7 +3811,7 @@ class GameCenterScreen extends EventScreen {
       // 🚗 Carpool: the head's _pillToolsHtml already carries it on the
       // official lineup view — render it here only on the other views, or
       // the panel shows twice (2026-10-20, found once the 500 was fixed).
-      paint(viewToggleHtml + this._dbStripHtml()
+      paint(this._dbStripHtml()
             + (this.lineupView === 'official' ? '' : this._renderCarpoolPanel())
             + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
             + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
@@ -4206,7 +4228,7 @@ class GameCenterScreen extends EventScreen {
     }, remindBtn);
     const bothCards = canMessage ? squadCard : null;
     if (everyone) {
-      paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + this._everyoneNoteHtml() + [
+      paint(lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + this._everyoneNoteHtml() + [
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
@@ -4219,7 +4241,7 @@ class GameCenterScreen extends EventScreen {
       ].join(''));
       return;
     }
-    paint(viewToggleHtml + lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + [
+    paint(lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -4760,7 +4782,7 @@ class GameCenterScreen extends EventScreen {
   _callinEventId() { return this._fhEventId(); }
   _callinsHtml() {
     const id = this._callinEventId();
-    if (!id || !(this.realIsCoach || this.isCoach)) return '';
+    if (!id || !this._staffView()) return '';
     if (this._callinsFor !== id) { this._callinsFor = id; this.callins = null; this._loadCallins(); }
     return super._callinsHtml();
   }
@@ -4779,7 +4801,8 @@ class GameCenterScreen extends EventScreen {
       const res = await this.auth.fetch(`/api/calendar/events/${id}/attendance`);
       const body = res.ok ? await res.json() : null;
       if (this._fhEventId() !== id) return;
-      this.att = body ? { canMark: !!body.can_mark, canSetRsvp: !!body.can_set_rsvp, me: Number(body.me_person_id) || 0,
+      const viewer = body ? Viewer.fromAttendance(body) : null;
+      this.att = body ? { viewer, canMark: viewer.canMark(), canSetRsvp: viewer.canAnswerFor(), me: Number(body.me_person_id) || 0,
                           roster: new Map((body.roster || []).map(r => [Number(r.person_id), r])) } : null;
     } catch (err) {
       console.warn('[game-center] attendance unavailable:', err);
@@ -4797,7 +4820,7 @@ class GameCenterScreen extends EventScreen {
   }
 
   _gameAttendanceHtml(playerId) {
-    if (!this.att || !this.att.canMark || !this._gameDayReached()) return '';
+    if (!this.att || !this.viewer.canMark() || !this._gameDayReached()) return '';
     const personId = this._personIdFor(playerId);
     if (!personId || !this.att.roster.has(personId)) return '';
     const label = (window.MessageCopy && MessageCopy.block('event_center', 'attendance_label')) || 'Attendance';
@@ -4963,7 +4986,7 @@ class GameCenterScreen extends EventScreen {
     const personId = this._personIdFor(p.id);
     const g = this.isCoach && personId ? this._regGapFor(personId) : null;
     const id = personId ? `gc-card-${personId}` : '';
-    const sheet = this.realIsCoach && personId ? personId : null;
+    const sheet = this._staffView() && personId ? personId : null;
     if (!g) return this.cardHtml({ id, sheet, ...parts });
     this._ensureWarnStyles();
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
@@ -5223,7 +5246,7 @@ class GameCenterScreen extends EventScreen {
     const line = this._leagueListLine();
     // The strip also stands alone to say the list check failed — an
     // empty list from a stale pull must not read as "all registered".
-    if (!this.realIsCoach || this.lineupView !== 'official' || !gaps) return '';
+    if (!this._staffView() || this.lineupView !== 'official' || !gaps) return '';
     if (!gaps.length && !(line && (line.bad || this._leagueListState === 'pulling'))) return '';
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('reg_gap', tier, tokens) : '';
@@ -5308,7 +5331,7 @@ class GameCenterScreen extends EventScreen {
   // who could be invited, grouped by the squad they come from.
   _renderCallupSection() {
     const data = this.invites;
-    if (!this.realIsCoach || this.lineupView !== 'official' || !data) return '';
+    if (!this._staffView() || this.lineupView !== 'official' || !data) return '';
     if (!data.invites.length && !data.candidates.length) return '';
     const esc = (t) => this.escapeHtml(t);
     const copy = (tier, tokens = {}) => window.MessageCopy ? MessageCopy.block('callup_panel', tier, tokens) : '';
@@ -5473,7 +5496,7 @@ class GameCenterScreen extends EventScreen {
   }
 
   _renderGameMessagePanel() {
-    if (!this.realIsCoach || this.lineupView !== 'official' || !this.gameRecipients || !window.RosterMessaging) return '';
+    if (!this._staffView() || this.lineupView !== 'official' || !this.gameRecipients || !window.RosterMessaging) return '';
     const esc = (t) => this.escapeHtml(t);
     const contact = (p) => ({ phone: p.phone, email: p.email, extra: p.parents });   // every parent (mig 682)
     const rows = this._gameRecipientGroups().map(g => {
@@ -5556,7 +5579,7 @@ class GameCenterScreen extends EventScreen {
       formation: this.everyonePlays ? '' : (this.formation || ''),
       matchup: m ? this._copyMatchup('option', { opponent: m.opponentCode, ours: m.code }) : '',
       viewerPersonId: this.viewerPersonId != null ? Number(this.viewerPersonId) : (this.myPlayerId != null ? Number(this.myPlayerId) : null),
-      coachView: !!this.realIsCoach && this.viewMode !== 'player',
+      coachView: this._staffView(),
     };
   }
 
@@ -6659,7 +6682,7 @@ class GameCenterScreen extends EventScreen {
   // who are not assigned yet … at top"); everything under it is a fold.
   // Same cards and buttons as 👥 All Players, so the same click wiring.
   _unplacedTopHtml() {
-    if (this.pill !== 'starters_bench' || !this.isCoach || this.lineupView !== 'official') return '';
+    if (this.pill !== 'starters_bench' || !this.isCoach || this.viewMode === 'player' || this.lineupView !== 'official') return '';
     if (!this.ev || !Array.isArray(this.ev.rsvps)) return '';
     try {
       const html = this._comingHtml({ unplacedOnly: true });
@@ -6711,7 +6734,7 @@ class GameCenterScreen extends EventScreen {
   // leaves them off.
   async _loadPostStates() {
     this.postStates = {};
-    if (!this._canPostSocial() || !this.matchId || !this.teamId) return;
+    if (!this._mayPostSocial() || !this.matchId || !this.teamId) return;
     const matchId = this.matchId;
     try {
       const res = await this.auth.fetch(`/api/social/match/${matchId}/team/${this.teamId}`);

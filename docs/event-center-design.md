@@ -142,18 +142,34 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
   Coach vs admin differ only by ✓/✗ answer-for on an open event; not yet
   eyeballed on a future event.
 
-**Slice 5 — Game Center onto panels**
-- Replace `isCoach` / `realIsCoach` (from `/api/lineup` →
-  EligibilityController, keyed on the game's ROSTER teams) with
-  `EventAccess` / `viewer_tier` — check the two team sets agree for every
-  live game first (roster teams vs `fh_event_teams`); if not, decide which
-  is right before switching.
-- Its `viewMode` coach/player toggle and the separate player layout go:
-  player view = the same panels with the coach ones filtered out.
-- Lineup drafts flip `isCoach` per view (a drafter edits only their own
-  draft) — that is an edit right on a draft, not a tier; keep it as its own
-  check.
-- ~7,400 lines; do it pill by pill.
+**Slice 5 — Game Center onto panels (part A DONE 11/14, panels pill by pill next)**
+- DONE: one rule on the server — `EligibilityController::isMatchCoach` /
+  `isEventCoach` = `EventAccess::canCoach` on the game's fh_event (fallback
+  for an unbridged match: admin or home/away coach).  Lineup GET isCoach,
+  lineup PUT gate and sides GET/PUT all use it.  Checked first: roster
+  teams (fh_event_list_team_ids) vs fh_event_teams gave the same coaches on
+  all 13 recent/upcoming games.  Side fix: a Liga 1 coach on a combined
+  APSL/L1 game can now SAVE the lineup (the PUT used home/away only → 403).
+- DONE: Game Center's own "👀 Player View / ✏️ Coach View" toggle is gone;
+  the shared `_seeAsHtml()` bar sits atop every pill's head
+  (`_gcSeeAsHtml()`, staff only, never on the #my door or under view-as).
+  `viewMode` is a getter/setter over `seeAs`.  `isCoach` is a getter:
+  raw `_isCoach` (lineup GET / drafter on own draft) AND not seeing as a
+  player — so every coach tool hides; loads read `_isCoach`.
+  `_staffView()` = realIsCoach && not player view (callins, ⋯ sheets, reg
+  gaps, call-up section, message panel, card coachView).
+  `_canPostSocial()` = `_mayPostSocial()` && not player view (🎞 weekend
+  slideshows, post tools); loads use `_mayPostSocial()`.
+  Attendance carries `viewer` (Viewer.fromAttendance) — the 🗓 P/A/L/E row
+  asks `this.viewer.canMark()`.
+- Verified on prod (game 75692422, after the 18:58 deploy): admin → player
+  per pill: starters_bench 905→37 buttons, lineup 843→38, players 647→30
+  (P/A/L/E 200→0), no console errors; back restores everything.
+- NEXT (part B): the separate player layout (`effectiveIsPlayerView` branch
+  in `_render`) → `panels(pill)` lists like EventScreen, one pill at a time
+  (starters_bench / lineup first — the biggest).  Lineup drafts keep their
+  own per-draft edit right (isCoach flips per view) — not a tier.
+- Then drop `att.canMark` / `att.canSetRsvp` (my.js is the last reader).
 
 **Loose ends**
 - Delete `screens/my.js` once `public-teams-list.js` stops borrowing

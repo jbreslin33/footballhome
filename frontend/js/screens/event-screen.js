@@ -1488,7 +1488,10 @@ class EventScreen extends Screen {
     const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier))
       ? MessageCopy.block('event_center', tier, tokens) : fb;
     const esc = (t) => this.escapeHtml(t);
-    const btn = (attr, label) => `<button type="button" class="ec-chip" ${attr}>${esc(label)}</button>`;
+    // Inline-styled so it looks the same on Game Center (no .ec-chip there).
+    const btn = (attr, label) => `<button type="button" ${attr}
+        style="padding:5px 12px; border-radius:999px; cursor:pointer; font-weight:600; font-size:0.8rem;
+               border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">${esc(label)}</button>`;
     if (this.seeAs && Viewer.RANK[this.seeAs] < real.rank) {
       const word = cp(`tier_${this.seeAs}`, {}, `a ${this.seeAs}`);
       return `<div style="display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;
