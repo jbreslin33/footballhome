@@ -504,7 +504,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         json yearTxns = json::array();
         for (const auto& t : m.yearTxns) {
             yearTxns.push_back({{"transactionId", t.transactionId}, {"amount", t.amount}, {"txnType", t.txnType},
-                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}});
+                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}, {"cleared", t.cleared}});
         }
         row["yearTransactions"] = std::move(yearTxns);
         members.push_back(std::move(row));
@@ -570,7 +570,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         json yearTxns = json::array();
         for (const auto& t : m.yearTxns) {
             yearTxns.push_back({{"transactionId", t.transactionId}, {"amount", t.amount}, {"txnType", t.txnType},
-                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}});
+                                {"paidAt", t.paidAt.empty() ? json(nullptr) : json(t.paidAt)}, {"gateway", t.gateway}, {"cleared", t.cleared}});
         }
         row["yearTransactions"] = std::move(yearTxns);
         members.push_back(std::move(row));

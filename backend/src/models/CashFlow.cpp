@@ -143,25 +143,38 @@ json CashFlow::build(int clubId) {
 
     // Every line of money on the page: the month table and each scope add these up.
     auto addItems = [&](const pqxx::result& rows, const char* dir, const char* type, bool ahead) {
-        int sectionCol = -1;   // dues rows carry their section (M/W/B/G) from the LA program, not the team tree
-        for (pqxx::row::size_type c = 0; c < rows.columns(); ++c) if (std::string(rows.column_name(c)) == "section") sectionCol = (int)c;
+        // dues rows carry their section (M/W/B/G) from the LA program, not the
+        // team tree, plus LA's fee and the bank payments not yet paid out
+        int sectionCol = -1, feeCol = -1, pendingCol = -1;
+        for (pqxx::row::size_type c = 0; c < rows.columns(); ++c) {
+            const std::string n = rows.column_name(c);
+            if (n == "section") sectionCol = (int)c; else if (n == "fee") feeCol = (int)c; else if (n == "pending") pendingCol = (int)c;
+        }
         for (const auto& r : rows) {
-            if (num(r, "amount") == 0) continue;
+            const double pending = pendingCol >= 0 && !r[pendingCol].is_null() ? r[pendingCol].as<double>() : 0.0;
+            if (num(r, "amount") == 0 && pending == 0) continue;
             json item = {{"ym", r["ym"].c_str()}, {"dir", dir}, {"scope", r["scope"].c_str()},
                          {"type", type ? type : r["type"].c_str()}, {"name", r["name"].c_str()},
                          {"category", r["category"].c_str()}, {"detail", r["detail"].is_null() ? "" : r["detail"].c_str()},
                          {"amount", num(r, "amount")}, {"ahead", ahead}};
             if (sectionCol >= 0 && !r[sectionCol].is_null()) item["section"] = r[sectionCol].c_str();
+            if (feeCol >= 0) item["fee"] = r[feeCol].is_null() ? 0.0 : r[feeCol].as<double>();
+            if (pendingCol >= 0) item["pending"] = pending;
             out["items"].push_back(item);
         }
     };
 
     addItems(db->query(std::string("SELECT ") + kYm + " AS ym, s.group_label AS name, 'dues' AS category, '' AS detail, "
             "       cash_flow_dues_scope(fh_payment_person(pp.la_registration_id, pp.la_user_id), lp.category, pp.paid_at) AS scope, "
-            "       SUM(" + kNet + ")::float8 AS amount, "
+            // approved money (owner 11/14 "make sure it matches what we actually got approved via bank" / "cc goes
+            // through right away"): card charges at once, bank (ACH) payments once LA paid them out (bankTransferId).
+            // amount = before LA's fees (as #tuition), fee = what LA kept, pending = bank payments not paid out yet.
+            "       COALESCE(SUM(" + kGross + ") FILTER (WHERE pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId'), 0)::float8 AS amount, "
+            "       COALESCE(SUM(" + kGross + " - " + kNet + ") FILTER (WHERE pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId'), 0)::float8 AS fee, "
+            "       COALESCE(SUM(" + kGross + ") FILTER (WHERE pp.txn_type = 'Bank' AND NOT (pp.raw ? 'bankTransferId')), 0)::float8 AS pending, "
             "       CASE lp.category WHEN 'men' THEN 'M' WHEN 'women' THEN 'W' WHEN 'boys' THEN 'B' WHEN 'girls' THEN 'G' END AS section "
             "  FROM person_payments pp JOIN leagueapps_programs lp ON lp.program_id = pp.la_program_id " + kCounted + " AND " + paidSince +
-            " GROUP BY 1, 2, 5, 7"), "in", "dues", false);
+            " GROUP BY 1, 2, 5, 9"), "in", "dues", false);
     addItems(db->query(kOutSql, {start}), "out", nullptr, false);
 
     // Field rentals we are paid for (mig 971): every booking on the calendar

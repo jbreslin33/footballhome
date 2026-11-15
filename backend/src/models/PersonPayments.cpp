@@ -768,7 +768,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "             'amount',        pp.amount,"
         "             'txnType',       pp.txn_type,"
         "             'paidAt',        TO_CHAR(pp.paid_at AT TIME ZONE 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'),"
-        "             'gateway',       pp.gateway"
+        "             'gateway',       pp.gateway,"
+        "             'cleared',       (pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId')"
         "         ) ORDER BY pp.paid_at DESC) AS txns"
         "    FROM person_payments pp"
         "   WHERE pp.la_registration_id IS NOT NULL"
@@ -959,6 +960,8 @@ PersonPayments::loadMembersForProgram(long long programId) {
                         rt.paidAt = t["paidAt"].get<std::string>();
                     if (t.contains("gateway") && t["gateway"].is_string())
                         rt.gateway = t["gateway"].get<std::string>();
+                    if (t.contains("cleared") && t["cleared"].is_boolean())
+                        rt.cleared = t["cleared"].get<bool>();
                     into.push_back(std::move(rt));
                 }
             } catch (const std::exception& e) {

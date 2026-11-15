@@ -84,7 +84,10 @@ class FinancesScreen extends Screen {
       const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Finances';
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
+      // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
+      const finesP = this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
+      this.finesBoard = await finesP;
       const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({})), fj = await f.json().catch(() => ({}));
       if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
@@ -164,6 +167,9 @@ class FinancesScreen extends Screen {
       for (const ym of months) by[ym] = ym < nowYm ? Number(a.by[ym] || 0) : a.rate;
       if (sumBy(by)) receipts.push({ label: this._copy('cf_dues', { section: sec.name }) || `Dues — ${sec.name}`, by, dues: true });
     }
+    // fines (mig 1386): as #tuition counts them; none projected
+    const finesT = this._finesTotalBy(), finesRow = {}; for (const ym of months) finesRow[ym] = ym < nowYm || ym === nowYm ? Number(finesT[ym] || 0) : 0;
+    if (sumBy(finesRow)) receipts.push({ label: this._copy('soa_fines') || 'Fines', by: finesRow });
     const rentBy = {}; for (const ym of months) rentBy[ym] = items.filter(i => i.dir === 'in' && i.category === 'rental' && i.ym === ym).reduce((a, i) => a + Number(i.amount), 0);
     if (sumBy(rentBy)) receipts.push({ label: this._copy('cf_rental') || 'CASA field rental', by: rentBy });
 
@@ -180,6 +186,10 @@ class FinancesScreen extends Screen {
     for (const p of (x.ref_fees || [])) add(p.kind === 'coaching' ? 'labor' : 'referees', p.by_month);
     for (const p of (x.plan_cash || [])) add(p.category, p.by_month);
     for (const b of (x.budget || []).filter(b => b.category !== 'labor' && b.this_year !== false)) add(b.category, b.by_month);
+    // LeagueApps fees (mig 1386): past = what it kept; ahead = its rate on the projected dues
+    { const fr = this._laFeeRatio(), feeBy = {}, dueAhead = receipts.filter(r => r.dues);
+      for (const ym of months) feeBy[ym] = ym < nowYm ? items.filter(i => i.dir === 'in' && i.category === 'dues' && i.ym === ym).reduce((a, i) => a + Number(i.fee || 0), 0) : dueAhead.reduce((a, r) => a + Number(r.by[ym] || 0), 0) * fr;
+      pay.set('la_fees', feeBy); catLabel.la_fees = this._copy('soa_la_fees') || 'LeagueApps fees'; }
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     const payRows = [...pay.entries()].filter(([, by]) => sumBy(by)).sort((p1, p2) => (order.indexOf(p1[0]) + 1 || 99) - (order.indexOf(p2[0]) + 1 || 99))
       .map(([cat, by]) => ({ label: catLabel[cat] || cat, by }));
@@ -307,6 +317,10 @@ class FinancesScreen extends Screen {
       revenue.push({ kind: 'dues', code: h.code, label: this._copy('plan_rev_dues', { section: secName(h.code) }) || `Dues — ${secName(h.code)}`,
         detail, unit: covered ? '' : (this._copy(real ? 'plan_rev_dues_unit' : 'plan_rev_dues_unit_heads') || ''), amount, assumed: year !== thisYear });
     }
+    // LeagueApps fees on the dues (mig 1386): what LA keeps, at its actual rate
+    const duesBudget = revenue.filter(r => r.kind === 'dues').reduce((a, r) => a + r.amount, 0), feeRatio = this._laFeeRatio();
+    if (duesBudget > 0 && feeRatio > 0) items.push({ category: 'la_fees', category_label: this._copy('soa_la_fees') || 'LeagueApps fees', label: this._copy('soa_la_fees') || 'LeagueApps fees',
+      detail: `${M0(duesBudget)} × ${(100 * feeRatio).toFixed(1)}%`, unit: this._copy('plan_la_fees_unit') || '', amount: duesBudget * feeRatio, assumed: false });
     // Grants awarded or received = revenue with donor restrictions (restricted to
     // their purpose, or to what the label names when it has no single purpose);
     // sponsorships (mig 1372) pay Lighthouse, soccer takes the credit. A section
@@ -440,7 +454,9 @@ class FinancesScreen extends Screen {
       let actual = 0, lines = [];
       if (r.kind === 'dues') {
         lines = all.filter(i => i.dir === 'in' && i.category === 'dues' && i.section === r.code);   // by the LA program's section (mig 1385)
-        lines.forEach(i => usedIn.add(i)); actual = sum(lines);
+        lines.forEach(i => usedIn.add(i));
+        const fb = this._finesBy(r.code);
+        actual = sum(lines) - Object.entries(fb).filter(([ym]) => ym >= startYm && ym < nowYm).reduce((a, [, v]) => a + v, 0);
       } else if (r.kind === 'award' && (r.purposes || []).length) {
         // restricted (mig 1382, standard): counts as it is spent on what it may pay for — released from restriction
         const spent = all.filter(i => i.dir === 'out' && r.purposes.includes(i.category)).reduce((a, i) => a + Number(i.amount || 0), 0);
@@ -452,6 +468,9 @@ class FinancesScreen extends Screen {
       }
       rev.push({ label: r.label, budget: r.amount, actual, lines, given: r.kind === 'award' });
     }
+    // fines (mig 1386): not in the budget; the sections' fines through last month
+    const finesClosed = m.revenue.filter(r => r.kind === 'dues').reduce((a, r) => a + Object.entries(this._finesBy(r.code)).filter(([ym]) => ym >= startYm && ym < nowYm).reduce((b, [, v]) => b + v, 0), 0);
+    if (finesClosed) rev.push({ label: this._copy('var_unbudgeted', { label: this._copy('soa_fines') || 'Fines' }) || 'Fines (not in the budget)', budget: 0, actual: finesClosed, lines: [], given: false });
     const teamPill = m.pillS && m.pillS.team_id;
     const otherIn = new Map();
     for (const i of mine.filter(i => i.dir === 'in' && !usedIn.has(i) && !(teamPill && i.category === 'dues'))) {
@@ -467,6 +486,9 @@ class FinancesScreen extends Screen {
     for (const code of [...new Set(out.map(i => i.category))].filter(code => !exp.some(e => e.code === code)))
       exp.push({ code, label: catLabel(code), budget: 0, lines: out.filter(i => i.category === code) });
     for (const e of exp) e.actual = sum(e.lines);
+    // LeagueApps fees (mig 1386): what LA kept on this budget's dues, through last month
+    const feeE = exp.find(e => e.code === 'la_fees');
+    if (feeE) { const codes = m.revenue.filter(r => r.kind === 'dues').map(r => r.code); feeE.actual = all.filter(i => i.dir === 'in' && i.category === 'dues' && codes.includes(i.section)).reduce((a, i) => a + Number(i.fee || 0), 0); }
     exp.sort((a, b) => m.rank(a.code) - m.rank(b.code));
     const alloc = m.cats.find(c => c.code === 'allocated');
     if (alloc) { const club = all.filter(i => i.dir === 'out' && i.scope === 'club' && i.category !== 'bonds'); exp.push({ code: 'allocated', label: alloc.label, budget: alloc.sub, actual: sum(club) * m.frac, lines: [], scaled: m.frac }); }
@@ -520,10 +542,28 @@ class FinancesScreen extends Screen {
   // month for one section — by the section of the LA program, never the team
   // tree (youth teams sit under Youth, not Boys/Girls). closed = Aug 1 → the
   // last finished month; rate = the average of the last three finished months.
+  // Matches #tuition (owner 11/14 "make finances match tuition", mig 1386):
+  // LA money before its fees, approved only (cards at once, bank payments once
+  // paid out), the fines part split off by #tuition's rule (FinesCollected).
+  _finesBy(code) {
+    if (!window.FinesCollected || !this.finesBoard) return {};
+    return FinesCollected.byMonth(this.finesBoard, [FinesCollected.CODE_KEY[code]]);
+  }
+  _finesTotalBy() {
+    const out = {}; for (const c of ['M', 'W', 'B', 'G']) for (const [ym, v] of Object.entries(this._finesBy(c))) out[ym] = (out[ym] || 0) + v;
+    return out;
+  }
+  // LA's fee as a share of approved money (what it keeps)
+  _laFeeRatio() {
+    const d = ((this.flow || {}).items || []).filter(i => i.dir === 'in' && i.category === 'dues');
+    const gross = d.reduce((a, i) => a + Number(i.amount || 0), 0), fee = d.reduce((a, i) => a + Number(i.fee || 0), 0);
+    return gross > 0 ? fee / gross : 0;
+  }
   _duesActual(code) {
     const flow = this.flow || {}, nowYm = String((this.expenses || {}).today || '').slice(0, 7), startYm = String(flow.start || '').slice(0, 7);
     const by = {};
     for (const i of (flow.items || []).filter(i => i.dir === 'in' && i.category === 'dues' && !i.ahead && i.section === code)) by[i.ym] = (by[i.ym] || 0) + Number(i.amount || 0);
+    for (const [ym, v] of Object.entries(this._finesBy(code))) if (by[ym] != null) by[ym] -= v;   // dues = LA money less its fines part
     const closed = []; if (startYm && nowYm) { let [y, mo] = startYm.split('-').map(Number); for (;;) { const ym = `${y}-${String(mo).padStart(2, '0')}`; if (ym >= nowYm) break; closed.push(ym); mo++; if (mo > 12) { mo = 1; y++; } } }
     const last = closed.slice(-3);
     return { by, closed, toDate: closed.reduce((a, ym) => a + Number(by[ym] || 0), 0), rate: last.length ? last.reduce((a, ym) => a + Number(by[ym] || 0), 0) / last.length : 0 };
@@ -542,7 +582,13 @@ class FinancesScreen extends Screen {
     const sum = (list) => list.reduce((a, i) => a + Number(i.amount || 0), 0);
     const items = (flow.items || []).filter(i => !i.ahead && i.ym >= startYm && i.ym <= nowYm);
     const L = { thisYear };
-    L.duesPaid = sum(items.filter(i => i.dir === 'in' && i.category === 'dues'));
+    // dues = approved LA money before its fees (as #tuition), less the fines part; LA's fees an expense (mig 1386)
+    const duesItems = items.filter(i => i.dir === 'in' && i.category === 'dues');
+    const finesBy = this._finesTotalBy();
+    L.fines = Object.entries(finesBy).filter(([ym]) => ym >= startYm && ym <= nowYm).reduce((a, [, v]) => a + v, 0);
+    L.duesPaid = sum(duesItems) - L.fines;
+    L.laFees = duesItems.reduce((a, i) => a + Number(i.fee || 0), 0);
+    L.pending = duesItems.reduce((a, i) => a + Number(i.pending || 0), 0);
     L.duesOwed = Number((ov.all || {}).owed || 0);
     // allowance for uncollectible dues (mig 1381): aging tiers on what is owed now
     L.allowance = Math.min(L.duesOwed, Number((ov.all || {}).allowance || 0));
@@ -587,12 +633,12 @@ class FinancesScreen extends Screen {
     }
     L.restrictedIn = L.grantsR + L.sponsorsR;
     // the two statements
-    L.revU = L.duesPaid + L.duesOwed + L.rental + L.otherIn + L.grantsU + L.sponsorsU;
-    L.changeU = L.revU + L.released - L.expTotal - L.allowance;
+    L.revU = L.duesPaid + L.fines + L.duesOwed + L.rental + L.otherIn + L.grantsU + L.sponsorsU;
+    L.changeU = L.revU + L.released - L.expTotal - L.allowance - L.laFees;
     L.changeR = L.restrictedIn - L.released;
     L.beginU = L.bondsBefore;
     L.endU = L.beginU + L.changeU; L.endR = L.beginR + L.changeR;
-    L.cash = L.duesPaid + L.rental + L.otherIn + L.awardsIn - (L.expTotal - L.payable) - L.bondsNow;
+    L.cash = L.duesPaid + L.fines - L.laFees + L.rental + L.otherIn + L.awardsIn - (L.expTotal - L.payable) - L.bondsNow;
     L.deposits = L.bondsNow + L.bondsBefore;
     L.assets = L.cash + L.duesOwed - L.allowance + L.awardsOwed + L.awardsOwedLater + L.deposits;
     L.liabilities = L.payable;
@@ -638,7 +684,8 @@ class FinancesScreen extends Screen {
     const r = (label, u, rr, rowCls) => `<tr class="${rowCls || ''}"><td style="white-space:normal;">${esc(label)}</td>${c(u)}${c(rr)}${c(u + rr)}</tr>`;
     const g = (label) => `<tr class="group"><td colspan="4">${esc(label)}</td></tr>`;
     let rows = g(this._copy('soa_revenue') || 'Revenue and support');
-    rows += r(this._copy('soa_dues_paid') || 'Dues (paid through LeagueApps, after its fees)', L.duesPaid, 0, 'item');
+    rows += r(this._copy('soa_dues_paid') || 'Dues (paid through LeagueApps)', L.duesPaid, 0, 'item');
+    if (L.fines) rows += r(this._copy('soa_fines') || 'Fines', L.fines, 0, 'item');
     if (L.duesOwed) rows += r(this._copy('soa_dues_owed') || 'Dues billed, not yet paid', L.duesOwed, 0, 'item');
     if (L.rental) rows += r(this._copy('soa_rental') || 'CASA field rental', L.rental, 0, 'item');
     if (L.otherIn) rows += r(this._copy('soa_other') || 'Other revenue', L.otherIn, 0, 'item');
@@ -649,8 +696,9 @@ class FinancesScreen extends Screen {
     rows += g(this._copy('soa_expenses') || 'Expenses');
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
     for (const [code, v] of [...L.expenses.entries()].sort((a, b) => (order.indexOf(a[0]) + 1 || 99) - (order.indexOf(b[0]) + 1 || 99))) rows += r(this._catName(code), v, 0, 'item');
+    if (L.laFees) rows += r(this._copy('soa_la_fees') || 'LeagueApps fees', L.laFees, 0, 'item');
     if (L.allowance) rows += r(this._copy('soa_bad_debt') || 'Uncollectible dues (allowance)', L.allowance, 0, 'item');
-    rows += r(this._copy('soa_exp_total') || 'Total expenses', L.expTotal + L.allowance, 0, 'sum');
+    rows += r(this._copy('soa_exp_total') || 'Total expenses', L.expTotal + L.allowance + L.laFees, 0, 'sum');
     rows += r(this._copy('soa_change') || 'Change in net assets', L.changeU, L.changeR, 'sum');
     rows += r(this._copy('soa_begin') || 'Net assets, beginning of year', L.beginU, L.beginR, 'item');
     rows += r(this._copy('soa_end') || 'Net assets, end of period', L.endU, L.endR, 'sum');
@@ -660,6 +708,7 @@ class FinancesScreen extends Screen {
       <div class="fn-card">
         <div class="fn-title">${esc(this._copy('soa_title') || 'Statement of Activities')} · ${esc(this._copy('soa_period', { from: startLbl, to: this._asOf() }) || '')}</div>
         <div class="fn-note">${esc(this._copy('soa_note'))}</div>
+        ${L.pending ? `<div class="fn-note">${esc(this._copy('soa_pending', { amount: M0(L.pending) }) || '')}</div>` : ''}
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:560px;"><thead><tr>${cols.map(t => `<th style="white-space:normal;">${esc(t)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
       </div>`;
   }

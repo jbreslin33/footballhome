@@ -376,6 +376,7 @@ class TuitionScreen extends Screen {
     let net = 0, refunds = 0, count = 0;
     for (const t of (m.yearTransactions || [])) {
       if (!t || !t.paidAt || this._monthKey(t.paidAt) !== key) continue;
+      if (t.cleared === false) continue;   // bank payment not deposited yet (mig 1386)
       const amt = Number(t.amount) || 0;
       if (t.txnType && t.txnType.includes('Refund')) { net -= amt; refunds += amt; }
       else { net += amt; count++; }
@@ -2610,8 +2611,15 @@ class TuitionScreen extends Screen {
     // explicit price stored anywhere, so this is the best signal we
     // have from the data itself.
     const paidAmounts = [];
+    // Approved money only (owner 11/14 "make sure it matches what we actually
+    // got approved via bank", mig 1386): a bank payment counts once LeagueApps
+    // has deposited it; until then it is ⏳ pending. Cards count at once.
+    let pendingBank = 0;
     for (const m of members) {
-      const p = Number(m.totalPaid)     || 0;
+      const pend = (m.yearTransactions || []).filter(t => t && t.cleared === false && !(t.txnType || '').includes('Refund'));
+      const pendIds = new Set(pend.map(t => t.transactionId)), pendAmt = pend.reduce((a, t) => a + (Number(t.amount) || 0), 0);
+      pendingBank += pendAmt;
+      const p = (Number(m.totalPaid) || 0) - pendAmt;
       const r = Number(m.totalRefunded) || 0;
       totalPaid     += p;
       totalRefunded += r;
@@ -2627,7 +2635,7 @@ class TuitionScreen extends Screen {
       // older ones too, so filter by [cycleStart, cycleEnd) here.
       // Refunds subtract; other types (Charge / Bank / Offline) add.
       for (const t of (m.recentTransactions || [])) {
-        if (!t || !t.paidAt) continue;
+        if (!t || !t.paidAt || pendIds.has(t.transactionId)) continue;
         const d = new Date(t.paidAt);
         if (isNaN(d.getTime())) continue;
         if (d < cycleStart || d >= cycleEnd) continue;
@@ -2670,7 +2678,7 @@ class TuitionScreen extends Screen {
 
     return {
       totalMembers: (data && data.total) || 0,
-      totalPaid, totalRefunded, netCollected,
+      totalPaid, totalRefunded, netCollected, pendingBank,
       thisMonth, monthsElapsed, avgPerMonth,
       outstandingCount, outstandingTotal, outstandingPerMonth,
       estFeePerMember,
@@ -2683,6 +2691,7 @@ class TuitionScreen extends Screen {
   // denominator so combined avg is calculated on a common timeline.
   _combinedSummary(tabs = TuitionScreen.ALL_TABS) {
     let netCollected     = 0;
+    let pendingBank      = 0;
     let thisMonth        = 0;
     let totalMembers     = 0;
     let outstandingCount = 0;
@@ -2696,6 +2705,7 @@ class TuitionScreen extends Screen {
       if (!d) continue;
       const s = this._summarize(d);
       netCollected     += s.netCollected;
+      pendingBank      += s.pendingBank || 0;
       thisMonth        += s.thisMonth;
       totalMembers     += s.totalMembers;
       outstandingCount += s.outstandingCount;
@@ -2709,7 +2719,7 @@ class TuitionScreen extends Screen {
     const outstandingPerMonth = earliestMonthsElapsed > 0 ? outstandingTotal / earliestMonthsElapsed : 0;
     return {
       loaded, loadedCount: loaded.length, wanted: tabs.length,
-      totalMembers, inactiveCount, counts, netCollected, thisMonth,
+      totalMembers, inactiveCount, counts, netCollected, pendingBank, thisMonth,
       monthsElapsed: earliestMonthsElapsed, avgPerMonth,
       outstandingCount, outstandingTotal, outstandingPerMonth,
     };
@@ -2800,6 +2810,8 @@ class TuitionScreen extends Screen {
       row(L('split_row_collected', 'MONEY IN · COLLECTED'), s.netCollected, f ? f.collected : 0),
       row(L('split_row_month', 'MONEY IN · THIS MONTH'), s.thisMonth, f ? f.thisMonth : 0),
       row(L('split_row_avg', `MONEY IN · AVG / MONTH (${mo} mo)`, { months: mo }), s.avgPerMonth, f ? f.avg : 0),
+      ...(s.pendingBank > 0.005 ? [{ title: L('split_row_pending', 'BANK PAYMENTS NOT DEPOSITED YET'),
+        cells: [cell(L('split_pending', '⏳ Pending'), this.fmtMoney(s.pendingBank), '#fde68a')] }] : []),
     ];
   }
 

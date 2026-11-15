@@ -138,6 +138,9 @@ public:
         std::string txnType;      // Charge / Refund / etc.
         std::string paidAt;       // ISO8601
         std::string gateway;
+        // approved money (11/14): a card charge at once; a bank (ACH) payment
+        // only once LeagueApps has paid it out (raw.bankTransferId)
+        bool        cleared = true;
     };
     struct MemberRow {
         int         personId = 0;
