@@ -209,7 +209,10 @@ std::vector<PlanOption> computePlans(Database* db, long long requestId,
     }
     // 3. Meet at a neutral spot (carpool_spots rows; Lighthouse seeded).
     if (will.spot) try {
-        auto spots = db->query("SELECT id, name, latitude, longitude FROM carpool_spots WHERE is_active ORDER BY id");
+        // Only spots with a point (mig 1377: an address-only spot is a
+        // driver's "Leaving from" choice, never a rider meeting plan).
+        auto spots = db->query("SELECT id, name, latitude, longitude FROM carpool_spots "
+                               " WHERE is_active AND latitude IS NOT NULL AND longitude IS NOT NULL ORDER BY id");
         for (const auto& s : spots) {
             LatLon sp{s["latitude"].as<double>(), s["longitude"].as<double>()};
             auto ds = CarpoolRouting::minutes(*driver, sp);
@@ -494,7 +497,13 @@ Response CarpoolController::handleList(const Request& request) {
         }
         // Anyone on the game (or its staff) may offer their car.
         const bool canCreate = staff || allowedOnEvent(db, fhEventId, me);
-        return jsonOut(HttpStatus::OK, {{"success", true}, {"viewerPersonId", me.personId},
+        // The driver's "Leaving from" dropdown (mig 1377): club spots with
+        // a street address, in the club's order.
+        json spots = json::array();
+        for (const auto& s : db->query("SELECT id, name, address FROM carpool_spots "
+                                       " WHERE is_active AND address IS NOT NULL ORDER BY sort_order, id"))
+            spots.push_back({{"id", s["id"].as<long long>()}, {"name", str(s, "name")}, {"address", str(s, "address")}});
+        return jsonOut(HttpStatus::OK, {{"success", true}, {"viewerPersonId", me.personId}, {"spots", spots},
                                         {"requests", requests}, {"riders", riders},
                                         {"carpools", departures}, {"staff", staff}, {"canCreate", canCreate}});
     } catch (const std::exception& e) {

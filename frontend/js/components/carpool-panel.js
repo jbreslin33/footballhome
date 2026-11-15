@@ -129,6 +129,11 @@ class CarpoolPanel {
     const seatsSel = (v) => `<select data-f="seats" style="font-size:0.74rem; padding:6px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary);">
         ${[2,3,4,5,6,7,8,9,10,11,12].map(n => `<option value="${n}" ${Number(v || 5) === n ? 'selected' : ''}>${n}</option>`).join('')}</select>`;
     const lbl = (text, field) => `<label style="display:flex; flex-direction:column; gap:2px; font-size:0.66rem; opacity:0.9;">${esc(text)}${field}</label>`;
+    // 📍 Leaving from (mig 1377; owner: "that is the address. Lighthouse and
+    // my house … should be in drop down"): the club's spots (carpool_spots
+    // with an address) + Other address…, which opens a box to type one.
+    // One field — the place IS the address.
+    const fromField = (place, address) => lbl(this._copy('car_from_label') || 'Leaving from', this._fromFieldHtml(place, address));
 
     const cards = cars.map(c => {
       const driverFirst = c.driver.firstName || c.driver.name || '';
@@ -162,16 +167,15 @@ class CarpoolPanel {
         const staffX = c.canEdit ? (st.passengers || []).map(p => `<button data-gc-cp="dep-leave" data-dep="${st.id}" data-cp-person="${p.personId}" title="Take ${esc(p.name)} out" style="border:1px solid var(--border-color); border-radius:999px; background:none; color:inherit; cursor:pointer; font-size:0.66rem; padding:1px 7px;">✕ ${esc(p.name)}</button>`).join(' ') : '';
         return `
           <div style="margin-top:6px; padding:6px 8px; border-left:3px solid #3b82f6; background:rgba(15,23,42,0.35); border-radius:6px;">
-            <div style="font-size:0.8rem; font-weight:800; color:#93c5fd;">${stops.length > 1 ? `${i + 1}. ` : ''}📍 ${esc(this._copy('car_meet', { place: st.place, time: st.departLabel }) || `Meet at ${st.place} · leaves ${st.departLabel}`)}</div>
-            ${st.address ? `<div style="font-size:0.7rem; opacity:0.85;"><a href="${esc(EventLabels.mapsUrl(st.address))}" target="_blank" rel="noopener" style="color:inherit;">${esc(st.address)} ↗</a></div>` : ''}
+            <div style="font-size:0.8rem; font-weight:800; color:#93c5fd;">${stops.length > 1 ? `${i + 1}. ` : ''}📍 ${esc(this._copy('car_meet', { place: st.place, time: st.departLabel }) || `Leaving from ${st.place} · ${st.departLabel}`)}</div>
+            ${st.address || st.place ? `<div style="font-size:0.7rem; opacity:0.85;"><a href="${esc(EventLabels.mapsUrl(st.address || st.place))}" target="_blank" rel="noopener" style="color:inherit;">${esc(st.address && st.address !== st.place ? st.address : (this._copy('car_map') || 'Map'))} ↗</a></div>` : ''}
             <div style="font-size:0.72rem; margin-top:2px;">👥 ${esc(names ? (this._copy('car_passengers_open', { n: st.passengers.length, names }) || `Passengers (${st.passengers.length}): ${names}`) : (this._copy('car_empty_v2') || 'No passengers yet'))}</div>
             ${btns.trim() ? `<div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:4px;">${btns}</div>` : ''}
             ${c.canEdit ? `<div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center; margin-top:4px;">${staffX}
                 ${btn(`data-gc-cp="dep-edit-open" data-dep="${st.id}"`, esc(this._copy('car_edit') || 'Edit'))}
                 ${i > 0 ? btn(`data-gc-cp="dep-remove" data-dep="${st.id}"`, esc(this._copy('car_remove_stop') || 'Remove stop')) : ''}</div>` : ''}
             ${c.canEdit && this.editCar === st.id ? `<div data-gc-cp-dep-form="${st.id}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:5px; margin-top:6px;">
-                ${lbl(this._copy('car_place_ph') || 'Meet at', inp('place', st.place, ''))}
-                ${lbl(this._copy('car_address_ph') || 'Address (optional)', inp('address', st.address, ''))}
+                ${fromField(st.place, st.address)}
                 ${lbl(this._copy('car_time_label') || 'Leaves at', inp('time', st.departHhmm, '', 'time'))}
                 ${i === 0 ? lbl(this._copy('car_seats_label') || 'Seats in the car (count the driver)', seatsSel(c.seats)) : ''}
                 ${btn(`data-gc-cp="dep-update" data-dep="${st.id}"`, esc(this._copy('car_update') || 'Save changes'), 'btn-primary')}
@@ -201,8 +205,7 @@ class CarpoolPanel {
           ${btn(`data-gc-cp="dep-remove" data-dep="${c.id}"`, esc(this._copy('car_delete') || 'Delete carpool'))}
         </div>
         ${this.stopFor === c.id ? `<div data-gc-cp-dep-form="stop-${c.id}" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:5px; margin-top:6px;">
-            ${lbl(this._copy('car_place_ph') || 'Meet at', inp('place', '', ''))}
-            ${lbl(this._copy('car_address_ph') || 'Address (optional)', inp('address', '', ''))}
+            ${fromField('', '')}
             ${lbl(this._copy('car_time_label') || 'Leaves at', inp('time', '', '', 'time'))}
             ${btn(`data-gc-cp="dep-stop-save" data-dep="${c.id}"`, esc(this._copy('car_save_stop') || 'Add stop'), 'btn-primary')}
           </div>` : ''}` : '';
@@ -220,8 +223,7 @@ class CarpoolPanel {
 
     const createForm = cp.canCreate ? (this.depAddOpen ? `
       <div data-gc-cp-dep-form="new" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:5px; margin-top:6px; padding:8px; border:1px dashed var(--border-color); border-radius:10px;">
-        ${lbl(this._copy('car_place_ph') || 'Meet at', inp('place', '', 'Lighthouse Sports Complex'))}
-        ${lbl(this._copy('car_address_ph') || 'Address (optional)', inp('address', '', ''))}
+        ${fromField('', '')}
         ${lbl(this._copy('car_time_label') || 'Leaves at', inp('time', '', '', 'time'))}
         ${lbl(this._copy('car_seats_label') || 'Seats in the car (count the driver)', seatsSel(5))}
         ${btn('data-gc-cp="dep-save"', esc(this._copy('car_save') || 'Create carpool'), 'btn-primary')}
@@ -234,6 +236,50 @@ class CarpoolPanel {
         </div>
         ${createForm}${cards}
       </div>`;
+  }
+
+  // The 📍 Leaving from control: a dropdown of the club spots + Other
+  // address…; the typed box shows only while Other is picked (CSS :has —
+  // no wiring).  An existing stop preselects its spot, else Other + its text.
+  _fromFieldHtml(place, address) {
+    const esc = (t) => this._esc(t);
+    const spots = (this.data && Array.isArray(this.data.spots)) ? this.data.spots : [];
+    const hit = spots.find(sp => (address && sp.address === address) || (place && sp.name === place));
+    const typed = hit ? '' : (address || place || '');
+    const otherOn = !hit && !!typed;
+    const style = 'font-size:0.74rem; padding:6px 7px; border-radius:6px; border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); min-width:0;';
+    CarpoolPanel.ensureStyles();
+    return `<span class="cp-from" style="display:flex; flex-direction:column; gap:4px;">
+        <select data-f="from" style="${style}">
+          <option value="" ${!hit && !otherOn ? 'selected' : ''}>${esc(this._copy('car_from_pick') || 'Pick where you leave from…')}</option>
+          ${spots.map(sp => `<option value="${sp.id}" ${hit && hit.id === sp.id ? 'selected' : ''}>${esc(sp.name)} — ${esc(sp.address)}</option>`).join('')}
+          <option value="other" ${otherOn ? 'selected' : ''}>${esc(this._copy('car_from_other') || 'Other address…')}</option>
+        </select>
+        <input data-f="from_other" class="cp-from-other" type="text" value="${esc(typed)}"
+               placeholder="${esc(this._copy('car_from_other_ph') || 'Type the address')}" style="${style}">
+      </span>`;
+  }
+
+  // { place, address } from a form's Leaving from: a spot → its name + its
+  // street address; Other → the typed address as both.
+  _fromValue(form) {
+    const sel = form && form.querySelector('[data-f="from"]');
+    const other = form && form.querySelector('[data-f="from_other"]');
+    const v = sel ? sel.value : '';
+    if (v && v !== 'other') {
+      const sp = ((this.data && this.data.spots) || []).find(x => String(x.id) === v);
+      if (sp) return { place: sp.name, address: sp.address };
+    }
+    const typed = other ? other.value.trim() : '';
+    return v === 'other' ? { place: typed, address: typed } : { place: '', address: '' };
+  }
+
+  static ensureStyles() {
+    if (document.getElementById('cp-from-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'cp-from-styles';
+    st.textContent = '.cp-from .cp-from-other { display:none; } .cp-from:has(select[data-f="from"] option[value="other"]:checked) .cp-from-other { display:block; }';
+    document.head.appendChild(st);
   }
 
   // The driver picked someone in a carpool's "Add a passenger…" dropdown.
@@ -402,7 +448,7 @@ class CarpoolPanel {
     if (action === 'dep-stop-save') {
       const form = rootEl.querySelector(`[data-gc-cp-dep-form="stop-${btn.dataset.dep}"]`);
       const val = (f) => { const el = form && form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
-      const ok = await this._post(`/api/carpool/${this.host.fhEventId()}/departures`, { place: val('place'), address: val('address'), time: val('time'), stop_of: Number(btn.dataset.dep) });
+      const ok = await this._post(`/api/carpool/${this.host.fhEventId()}/departures`, { ...this._fromValue(form), time: val('time'), stop_of: Number(btn.dataset.dep) });
       if (ok) { this.stopFor = null; this.host.rerender(); }
       return;
     }
@@ -420,7 +466,7 @@ class CarpoolPanel {
       const key = action === 'dep-save' ? 'new' : btn.dataset.dep;
       const form = rootEl.querySelector(`[data-gc-cp-dep-form="${key}"]`);
       const val = (f) => { const el = form && form.querySelector(`[data-f="${f}"]`); return el ? el.value.trim() : ''; };
-      const body = { place: val('place'), address: val('address'), time: val('time'), seats: Number(val('seats')) || 0 };
+      const body = { ...this._fromValue(form), time: val('time'), seats: Number(val('seats')) || 0 };
       const ok = action === 'dep-save'
         ? await this._post(`/api/carpool/${this.host.fhEventId()}/departures`, body)
         : await this._post(`/api/carpool/departures/${btn.dataset.dep}/edit`, body);
