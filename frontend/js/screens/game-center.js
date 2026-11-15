@@ -1995,6 +1995,16 @@ class GameCenterScreen extends EventScreen {
   // GET's isCoach) and not looking as a player.
   _staffView() { return !!this.realIsCoach && this.viewMode !== 'player'; }
 
+  // The tier Game Center's lineup panels ask (lib/panel.js): coach-or-up
+  // while isCoach (the lineup GET, or a drafter on their own draft) — the
+  // real viewer when it already ranks that high, so an admin stays admin;
+  // otherwise a player.  👀 See as player turns isCoach off.
+  get panelViewer() {
+    if (!this.isCoach) return new PlayerViewer();
+    const v = this.viewer;
+    return v.atLeast('coach') ? v : new CoachViewer();
+  }
+
   // The 👀 See as bar for this game — staff only, never on the #my
   // look-only door or under view-as (isCoach is forced off there).
   _gcSeeAsHtml() {
@@ -3746,7 +3756,6 @@ class GameCenterScreen extends EventScreen {
     // 1 Lineup button on screen" — coach previews exactly what players
     // see via a link on this same page instead of a separate screen/
     // route). Players always get the player view.
-    const effectiveIsPlayerView = !this.isCoach || this.viewMode === 'player';
     // The toggle is now the shared 👀 See as bar atop every pill (seeAs,
     // slice 5) — the head in paint() below.
     const seeAsBar = this._gcSeeAsHtml();
@@ -3806,17 +3815,29 @@ class GameCenterScreen extends EventScreen {
 
     if (this.lineupView === 'compare') { paint(this._renderCompare()); return; }
 
-    if (effectiveIsPlayerView) {
-      // Starter criteria mean nothing where everyone plays (mig 515).
-      // 🚗 Carpool: the head's _pillToolsHtml already carries it on the
-      // official lineup view — render it here only on the other views, or
-      // the panel shows twice (2026-10-20, found once the 500 was fixed).
-      paint(this._dbStripHtml()
-            + (this.lineupView === 'official' ? '' : this._renderCarpoolPanel())
-            + (this.everyonePlays ? '' : this._renderMyEligibility() + this._renderRosterCriteria())
-            + (this.pill === 'starters_bench' ? this._renderPlayerNotes(byZone) : ''));
-      return;
-    }
+    // The lineup pills' body = panels (lib/panel.js, Event Center slice 5B):
+    // a coach gets every player panel plus the coach ones, in one list —
+    // no separate player layout.  Tier = panelViewer (isCoach: a drafter
+    // on their own draft edits like a coach; 👀 See as player turns it off).
+    //   player  db strip (coach: inside the toolbar), 🚗 carpool off the
+    //           official view (the head carries it there), my eligibility +
+    //           everyone's criteria (not where everyone plays, mig 515), the
+    //           published-lineup note (coach: the editor instead)
+    //   coach   toolbar, reg gaps, 📣 group bar, the card sections
+    const coach = {};   // the coach panels' parts, filled below only when drawn
+    const panels = [
+      new Panel({ key: 'lineup_controls', minTier: 'coach', html: () => coach.controls }),
+      new Panel({ key: 'db_strip', maxTier: 'player', html: (s) => s._dbStripHtml() }),
+      new Panel({ key: 'carpool', applies: (s) => s.lineupView !== 'official', html: (s) => s._renderCarpoolPanel() }),
+      new Panel({ key: 'my_eligibility', applies: (s) => !s.everyonePlays, html: (s) => s._renderMyEligibility() }),
+      new Panel({ key: 'roster_criteria', applies: (s) => !s.everyonePlays, html: (s) => s._renderRosterCriteria() }),
+      new Panel({ key: 'player_notes', maxTier: 'player', applies: (s) => s.pill === 'starters_bench', html: (s) => s._renderPlayerNotes(byZone) }),
+      new Panel({ key: 'reg_gaps', minTier: 'coach', html: (s) => s._renderRegGapSection() }),
+      new Panel({ key: 'group_bar', minTier: 'coach', applies: () => coach.canMessage, html: () => coach.groupBar }),
+      new Panel({ key: 'everyone_note', minTier: 'coach', applies: (s) => s.everyonePlays, html: (s) => s._everyoneNoteHtml() }),
+      new Panel({ key: 'sections', minTier: 'coach', html: () => coach.sections }),
+    ];
+    if (!this.panelViewer.atLeast('coach')) { paint(Panel.render(panels, this)); return; }
 
     // Coach's own Bench section reflects the bench order they set
     // (owner directive) — unlike the Player Lineup View, which always
@@ -4227,8 +4248,11 @@ class GameCenterScreen extends EventScreen {
       noResp: unassignedNoResponse.length, squadSent: this.squadNotice,
     }, remindBtn);
     const bothCards = canMessage ? squadCard : null;
+    coach.controls = lineupControlsHtml;
+    coach.canMessage = canMessage;
+    coach.groupBar = groupBar;
     if (everyone) {
-      paint(lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + this._everyoneNoteHtml() + [
+      coach.sections = [
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
@@ -4238,10 +4262,11 @@ class GameCenterScreen extends EventScreen {
         collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
         collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
         this._renderCallupSection(),
-      ].join(''));
+      ].join('');
+      paint(Panel.render(panels, this));
       return;
     }
-    paint(lineupControlsHtml + this._renderRegGapSection() + (canMessage ? groupBar : '') + [
+    coach.sections = [
       this.isCoach ? gridSection('Starting', [...byZone.starter].sort((a, b) => {
         // In formation order (1 = keeper …), same numbers as the pills.
         const order = (pl) => startingPositions.find(pos => slotToPlayerId.get(pos.id) === pl.id)?.sortOrder ?? Infinity;
@@ -4259,7 +4284,8 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
-    ].join(''));
+    ].join('');
+    paint(Panel.render(panels, this));
   }
 
   // ---- Your availability ----

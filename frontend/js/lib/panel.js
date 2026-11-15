@@ -12,24 +12,32 @@
 //   new Panel({ key, minTier, applies, html })
 //     key      stable id (fold memory, tests)
 //     minTier  'player' | 'coach' | 'admin'  (default player)
+//     maxTier  optional — the highest tier that still gets it, for the rare
+//              read-only block a richer coach panel replaces (Game Center's
+//              published-lineup note vs the coach's editor)
 //     applies  (screen) → bool — does this panel exist for this event / team?
 //              (a carpool on a practice, invites while it is still to come …)
 //     html     (screen) → string — the panel's markup; '' = nothing to show
 //
+// The tier asked is screen.panelViewer when a screen defines it (Game
+// Center: a drafter edits their own draft like a coach), else screen.viewer.
+//
 // Inside a panel, what a tier may DO on a row (mark P/A/L/E, answer for
 // someone) still asks the viewer — Panel only decides what is on the page.
 class Panel {
-  constructor({ key, minTier = 'player', applies = null, html }) {
+  constructor({ key, minTier = 'player', maxTier = null, applies = null, html }) {
     this.key = key;
     this.minTier = minTier;
+    this.maxTier = maxTier;
     this._applies = applies;
     this._html = html;
   }
 
   // Shown to this screen's viewer, for this event?
   shownTo(screen) {
-    const v = screen.viewer;
+    const v = screen.panelViewer || screen.viewer;
     if (!v || !v.atLeast(this.minTier)) return false;
+    if (this.maxTier && v.rank > (Viewer.RANK[this.maxTier] ?? 99)) return false;
     return this._applies ? !!this._applies(screen) : true;
   }
 

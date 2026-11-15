@@ -165,10 +165,21 @@ orphaned 11/13 practice/game-center edits were committed as-is in 86a86a3c.
 - Verified on prod (game 75692422, after the 18:58 deploy): admin → player
   per pill: starters_bench 905→37 buttons, lineup 843→38, players 647→30
   (P/A/L/E 200→0), no console errors; back restores everything.
-- NEXT (part B): the separate player layout (`effectiveIsPlayerView` branch
-  in `_render`) → `panels(pill)` lists like EventScreen, one pill at a time
-  (starters_bench / lineup first — the biggest).  Lineup drafts keep their
-  own per-draft edit right (isCoach flips per view) — not a tier.
+- PART B, lineup pills DONE: starters_bench / lineup body is one Panel
+  list in `_render` (no `effectiveIsPlayerView` branch): player = db strip
+  (maxTier player — the coach's sits in the toolbar), carpool off the
+  official view, my eligibility, everyone's criteria, published-lineup note
+  (maxTier player); coach = toolbar, reg gaps, 📣 group bar, everyone-plays
+  note, card sections.  Coach-only locals are computed only past the
+  `panelViewer.atLeast('coach')` early return.  `Panel` grew `maxTier` and
+  asks `screen.panelViewer || screen.viewer`; Game Center's `panelViewer`
+  = coach-or-up while isCoach (drafter on own draft included), else player.
+  Coaches now also see the player panels (own starter eligibility, the
+  closed EVERYONE criteria fold, carpool on draft views).
+- NEXT: the head (`_renderCard` + `_pillToolsHtml` per pill: match plan,
+  message panel, carpool, contacts, roster prints) → panels the same way;
+  then game_day / post_game / tactics.  Lineup drafts keep their own
+  per-draft edit right (isCoach flips per view) — not a tier.
 - Then drop `att.canMark` / `att.canSetRsvp` (my.js is the last reader).
 
 **Loose ends**
