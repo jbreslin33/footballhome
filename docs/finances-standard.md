@@ -88,6 +88,15 @@ page never loaded its data. Restored.
   team-count boxes (`/plan-roster`, `/plan-teams`)
 - The home-games list and the budget-line editor (`/budget-lines/:id`)
 
+## Soccer is a Lighthouse program (owner 2026-11-14)
+
+"soccer is part of lighthouse. they have other programs. lh sends me money that
+i invoice to lh … we will never physically see the casa or grant money" + "la
+goes to lh too". Lighthouse holds ALL the money and pays soccer's invoices.
+So Budget and Budget vs Actual run in **two layers** (mig 1376): soccer's own
+dues against its costs ("over budget" on dues alone is expected), then the
+**Lighthouse credits** (grants, sponsors, CASA rental) and what is left after.
+
 ## Where the money comes from (owner 2026-11-14)
 
 "all money that goes in comes in via league apps OR is a grant OR is CASA
@@ -95,7 +104,7 @@ Rental … same with sponsor it would go to lighthouse but not directly to socce
 but we need to budget credit for it. all expenses should be listed in
 invoices." + "invoices paid when final, casa always pays".
 
-- **Grants**: $50k a year for 2026-27, 2027-28 and 2028-29, `awarded`,
+- **Grants**: $50k a year for 2026-27, 2027-28 and 2028-29 (2026-27 `received` 11/14, mig 1375; later years `awarded`),
   restricted to coaches, referees and equipment (one row a year, purpose NULL —
   no split given; mig 1372 replaced the nine 11/13 prospect rows).
 - **Sponsors**: `income_awards` kind `sponsorship` (none yet) — Budget revenue

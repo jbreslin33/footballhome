@@ -347,20 +347,32 @@ class FinancesScreen extends Screen {
     const revTotal = m.revTotal;
     const line = (it, cls) => `<tr class="${cls}"><td title="${esc(it.note || '')}" style="white-space:normal;">${esc(it.label)}${it.assumed ? '*' : ''}${it.note ? `<span class="fn-tick">${esc(it.note)}</span>` : ''}</td>
         <td>${esc(it.detail || '')}<span class="fn-tick">${esc(it.unit || '')}</span></td><td class="${cls.includes('rev') ? 'fn-in' : (it.amount < 0 ? 'fn-in' : 'fn-out')}">${M0(it.amount)}</td></tr>`;
-    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
-    rows += revenue.length ? revenue.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total revenue')}</td><td class="fn-in">${M0(revTotal)}</td></tr>`;
-    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
+    // Two layers (owner 2026-11-14 "yes do the two layers. la goes to lh too"):
+    // soccer is a Lighthouse program — Lighthouse holds ALL the money (LA dues,
+    // grants, CASA rental, sponsors) and pays soccer's invoices. Layer 1: soccer's
+    // own dues against its costs ("over budget" on dues alone is fine). Layer 2:
+    // the credits Lighthouse adds for soccer, and what is left after them.
+    const dues = revenue.filter(r => r.kind === 'dues'), credits = revenue.filter(r => r.kind !== 'dues');
+    const duesT = dues.reduce((a, r) => a + r.amount, 0), credT = credits.reduce((a, r) => a + r.amount, 0);
+    const signed = (v) => `<td class="${v >= 0 ? 'fn-in' : 'fn-out'}">${M0(v)}</td>`;
+    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Dues')}</td></tr>`;
+    rows += dues.length ? dues.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total dues')}</td><td class="fn-in">${M0(duesT)}</td></tr>`;
+    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Costs')}</td></tr>`;
     const total = m.expTotal;
     for (const c of m.cats) {
       const sub = c.sub, key = `plan:${c.code}`, open = this.expanded.has(key);
       rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(sub)}</td></tr>`;
       if (open) rows += c.items.sort((a, b) => b.amount - a.amount).map(it => line(it, 'item')).join('');
     }
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total expenses')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total costs')}</td><td class="fn-out">${M0(total)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_dues_net') || 'Dues minus costs')}</td>${signed(duesT - total)}</tr>`;
+    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_credits') || 'Lighthouse credits')}</td></tr>`;
+    rows += credits.length ? credits.map(r => line(r, 'item rev')).join('') : `<tr class="item"><td colspan="3" class="fn-dim">${esc(this._copy('plan_credits_none') || 'No credits this year')}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_credits_total') || 'Total credits')}</td><td class="fn-in">${M0(credT)}</td></tr>`;
     const net = revTotal - total;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)}</td></tr>
-      <tr class="item"><td colspan="2">${esc(this._copy('plan_net_month') || 'Per month')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net / 12)}</td></tr>`;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td>${signed(net)}</tr>
+      <tr class="item"><td colspan="2">${esc(this._copy('plan_net_month') || 'Per month')}</td>${signed(net / 12)}</tr>`;
     return `
       <div class="fn-card">${head}${yearBar}
         <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
@@ -412,14 +424,14 @@ class FinancesScreen extends Screen {
         lines = all.filter(i => i.dir === 'in' && i.category === 'rental');
         lines.forEach(i => usedIn.add(i)); actual = sum(lines) * r.share;
       }
-      rev.push({ label: r.label, budget: r.amount, actual, lines });
+      rev.push({ label: r.label, budget: r.amount, actual, lines, credit: r.kind !== 'dues' });
     }
     const teamPill = m.pillS && m.pillS.team_id;
     const otherIn = new Map();
     for (const i of mine.filter(i => i.dir === 'in' && !usedIn.has(i) && !(teamPill && i.category === 'dues'))) {
       if (!otherIn.has(i.category)) otherIn.set(i.category, []); otherIn.get(i.category).push(i);
     }
-    for (const [code, lines] of otherIn) rev.push({ label: this._copy('var_unbudgeted', { label: catLabel(code) }) || `${catLabel(code)} (not in the budget)`, budget: 0, actual: sum(lines), lines });
+    for (const [code, lines] of otherIn) rev.push({ label: this._copy('var_unbudgeted', { label: catLabel(code) }) || `${catLabel(code)} (not in the budget)`, budget: 0, actual: sum(lines), lines, credit: code !== 'dues' });
 
     // Expenses: each Budget category beside the money out under the pill; a
     // section pill carries its share of the club-wide money out, as it does
@@ -449,16 +461,25 @@ class FinancesScreen extends Screen {
       return [...merged.entries()].sort((a, b) => b[1] - a[1]).map(([n, a]) => `<tr class="item"><td colspan="3" style="white-space:normal;">${esc(n)} <span class="fn-dim">${esc(scopeOf.get(n) || '')}</span></td><td>${M0(a)}</td><td colspan="2"></td></tr>`).join('');
     };
     const cols = (this._copy('var_columns') || 'Line|Year budget|Budget to date|Actual to date|Variance|Used').split('|').map(c => c.trim());
-    let rows = `<tr class="group"><td colspan="6">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
-    rows += rev.length ? rev.map((r, n) => { const key = `var:in:${n}`, open = this.expanded.has(key); return row(r, true, `cat ${open ? 'open' : ''}`, key) + (open ? linesHtml(r) : ''); }).join('')
-      : `<tr class="item"><td colspan="6" class="fn-dim">${esc(this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section')}</td></tr>`;
-    const revT = { label: this._copy('plan_rev_total') || 'Total revenue', budget: rev.reduce((a, r) => a + r.budget, 0), actual: rev.reduce((a, r) => a + r.actual, 0) };
-    rows += row(revT, true, 'sum');
-    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
+    // Same two layers as the Budget: dues against costs, then Lighthouse credits.
+    const tot = (list, label) => ({ label, budget: list.reduce((a, r) => a + r.budget, 0), actual: list.reduce((a, r) => a + r.actual, 0) });
+    const revRows = (list, empty) => list.length ? list.map(r => { const key = `var:in:${rev.indexOf(r)}`, open = this.expanded.has(key); return row(r, true, `cat ${open ? 'open' : ''}`, key) + (open ? linesHtml(r) : ''); }).join('')
+      : `<tr class="item"><td colspan="6" class="fn-dim">${esc(empty)}</td></tr>`;
+    const duesRows = rev.filter(r => !r.credit), credRows = rev.filter(r => r.credit);
+    let rows = `<tr class="group"><td colspan="6">${esc(this._copy('plan_revenue') || 'Dues')}</td></tr>`;
+    rows += revRows(duesRows, this._copy('plan_rev_none') || 'No dues on this pill — dues are pooled per section');
+    const duesT = tot(duesRows, this._copy('plan_rev_total') || 'Total dues');
+    rows += row(duesT, true, 'sum');
+    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_expenses') || 'Costs')}</td></tr>`;
     for (const e of exp) { const key = `var:out:${e.code}`, open = this.expanded.has(key) && !e.scaled; rows += row(e, false, e.scaled ? 'item' : `cat ${open ? 'open' : ''}`, e.scaled ? '' : key) + (open ? linesHtml(e) : ''); }
-    const expT = { label: this._copy('plan_exp_total') || 'Total expenses', budget: exp.reduce((a, r) => a + r.budget, 0), actual: exp.reduce((a, r) => a + r.actual, 0) };
+    const expT = tot(exp, this._copy('plan_exp_total') || 'Total costs');
     rows += row(expT, false, 'sum');
-    rows += row({ label: this._copy('var_net') || 'Net surplus / (deficit)', budget: revT.budget - expT.budget, actual: revT.actual - expT.actual, noUsed: true }, true, 'sum');
+    rows += row({ label: this._copy('plan_dues_net') || 'Dues minus costs', budget: duesT.budget - expT.budget, actual: duesT.actual - expT.actual, noUsed: true }, true, 'sum');
+    rows += `<tr class="group"><td colspan="6">${esc(this._copy('plan_credits') || 'Lighthouse credits')}</td></tr>`;
+    rows += revRows(credRows, this._copy('plan_credits_none') || 'No credits this year');
+    const credT = tot(credRows, this._copy('plan_credits_total') || 'Total credits');
+    rows += row(credT, true, 'sum');
+    rows += row({ label: this._copy('var_net') || 'Left after credits', budget: duesT.budget + credT.budget - expT.budget, actual: duesT.actual + credT.actual - expT.actual, noUsed: true }, true, 'sum');
     const ratio = Number(flow.net_ratio) || 1;
     return `
       <div class="fn-card">${head}
