@@ -165,10 +165,6 @@ class FinancesScreen extends Screen {
     }
     const rentBy = {}; for (const ym of months) rentBy[ym] = items.filter(i => i.dir === 'in' && i.category === 'rental' && i.ym === ym).reduce((a, i) => a + Number(i.amount), 0);
     if (sumBy(rentBy)) receipts.push({ label: this._copy('cf_rental') || 'CASA field rental', by: rentBy });
-    const awardBy = {};
-    for (const g of (x.plan_grants || [])) for (const r of (g.receipts || [])) { const ym = String(r.on || '').slice(0, 7); if (months.includes(ym)) awardBy[ym] = (awardBy[ym] || 0) + Number(r.amount || 0); }
-    if (sumBy(awardBy)) receipts.push({ label: this._copy('cf_awards') || 'Grants and sponsorships', by: awardBy });
-    const inBy = {}; for (const ym of months) inBy[ym] = receipts.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
 
     // Payments by expense category: past months = invoiced; this month on = projected.
     const catLabel = {}; for (const c of (flow.categories || [])) catLabel[c.code] = c.label;
@@ -187,6 +183,24 @@ class FinancesScreen extends Screen {
     const payRows = [...pay.entries()].filter(([, by]) => sumBy(by)).sort((p1, p2) => (order.indexOf(p1[0]) + 1 || 99) - (order.indexOf(p2[0]) + 1 || 99))
       .map(([cat, by]) => ({ label: catLabel[cat] || cat, by }));
     const outBy = {}; for (const ym of months) outBy[ym] = payRows.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
+
+    // Grants (mig 1382, standard): this year's restricted grant is drawn as it
+    // is spent on what it may pay for (released from restriction), month by
+    // month up to the award; other awards count when their money arrives.
+    const thisYear = ((flow.year || {}).label) || '';
+    const usedBy = {}, awardBy = {};
+    for (const g of (x.plan_grants || [])) {
+      if (g.budget_year === thisYear && (g.purposes || []).length) {
+        let left = Number(g.amount || 0);
+        for (const ym of months) {
+          const spent = (g.purposes || []).reduce((a, c) => a + Number((pay.get(c) || {})[ym] || 0), 0), take = Math.max(0, Math.min(left, spent));
+          usedBy[ym] = (usedBy[ym] || 0) + take; left -= take;
+        }
+      } else if (!(g.purposes || []).length) for (const r of (g.receipts || [])) { const ym = String(r.on || '').slice(0, 7); if (months.includes(ym)) awardBy[ym] = (awardBy[ym] || 0) + Number(r.amount || 0); }
+    }
+    if (sumBy(usedBy)) receipts.push({ label: this._copy('cf_grant_used') || 'Grant — drawn as it is spent on its purposes', by: usedBy });
+    if (sumBy(awardBy)) receipts.push({ label: this._copy('cf_awards') || 'Grants and sponsorships', by: awardBy });
+    const inBy = {}; for (const ym of months) inBy[ym] = receipts.reduce((a, r) => a + Number(r.by[ym] || 0), 0);
 
     // Beginning → ending cash.
     const begin = {}, end = {}; let run = 0;
@@ -296,7 +310,7 @@ class FinancesScreen extends Screen {
         : (this._copy('plan_rev_grant_multi', { label: g.label }) || `Grant (restricted) — ${g.label}`);
       // received = the dated receipts, or the whole award once marked received
       const receipts = (g.receipts || []).length ? g.receipts : (g.status === 'received' ? [{ on: '', amount: Number(g.amount) }] : []);
-      revenue.push({ kind: 'award', share, receipts, label,
+      revenue.push({ kind: 'award', share, receipts, purposes: g.purposes || [], label,
         detail: pillS ? `${M0(g.amount)} × ${pct}` : '', unit: g.note || '', amount: Number(g.amount) * share, assumed: g.status !== 'received' });
     }
     // Field rental income (mig 1372; owner: "CASA Rental that soccer club
@@ -404,6 +418,10 @@ class FinancesScreen extends Screen {
         const set = sec ? FinancesScreen.inScopeOf(scopes, sec) : new Set();
         lines = mine.filter(i => i.dir === 'in' && i.category === 'dues' && set.has(i.scope));
         lines.forEach(i => usedIn.add(i)); actual = sum(lines);
+      } else if (r.kind === 'award' && (r.purposes || []).length) {
+        // restricted (mig 1382, standard): counts as it is spent on what it may pay for — released from restriction
+        const spent = all.filter(i => i.dir === 'out' && r.purposes.includes(i.category)).reduce((a, i) => a + Number(i.amount || 0), 0);
+        actual = Math.min(r.amount, spent * r.share);
       } else if (r.kind === 'award') actual = r.receipts.filter(x => !x.on || x.on.slice(0, 7) < nowYm).reduce((a, x) => a + Number(x.amount || 0), 0) * r.share;
       else if (r.kind === 'rental') {
         lines = all.filter(i => i.dir === 'in' && i.category === 'rental');
@@ -470,6 +488,7 @@ class FinancesScreen extends Screen {
           <tbody>${rows}</tbody>
         </table></div>
         <div class="fn-note" style="margin-top:8px;">${esc(this._copy('var_dues_net', { pct: `${Math.round(100 * (1 - ratio))}%` }))}</div>
+        <div class="fn-note">${esc(this._copy('var_grant_used'))}</div>
       </div>`;
   }
 

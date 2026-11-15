@@ -53,6 +53,11 @@ allowance; Activities: the allowance is an expense. Budget dues × the
 expected collection rate = 1 − allowance ÷ (dues paid since Aug 1 grossed up
 for LA fees + owed now), so BvA uses it too.
 
+**Restricted grant on the internal reports (mig 1382):** Budget vs Actual's
+grant actual and the Cash Flow Forecast's grant receipts = spending on its
+purposes, month by month, capped at the award (= released from restrictions
+on the Statement of Activities). Unrestricted awards still count on receipt.
+
 **Budget:** Revenue — earned (dues = paying × dues × 12; CASA bookings in the
 year) and contributed (grants, sponsors awarded/received) — then expenses by
 category (team fee plans, section + club-wide budget lines, game coaching;
