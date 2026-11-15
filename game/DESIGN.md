@@ -9516,3 +9516,39 @@ are: 4+ goal-side 3-15% (4.5), 1 goal-side 15-42% (21.5). **Next:** the finish g
 and save curve against the shot from a crowded box (SAVE CURVE, BY AIMED CELL lines), not more shots.
 
 Shipped: the width refit (engine); goldens re-locked; tests 22/22.
+
+### 8.223 G5.122 — the keeper's depth by the defence in front of him; his shot reach refit (FINISH; mig 1371)
+
+From §8.222 (conversion 18-24% v real ~10%). **Measured** (new `scripts/benchmarks_statsbomb_finish.py`,
+StatsBomb PL 15/16 open-play freeze frames, and a FINISH line in fh-game-match: goal / saved incl. parries /
+blocked / off target by GOAL-SIDE count, by distance x goal-side, and the keeper's metres off his line at the
+strike). Real keepers save more the more men are goal-side of the shooter, at every distance: 0 / 1 / 2 / 3 / 4+
+goal-side 39 / 56 / 65 / 72 / 82% of on-target shots; < 12 m 42 / 61 / 67 by 0-1 / 2-3 / 4+. And they stand by
+it: 12-18 m 4.8 / 2.6 / 2.0 m off the line, 18-25 m 5.3 / 3.1 / 2.2, < 12 m 1.9 / 1.5 / 1.1.
+
+Ours (4 seeds x 8, 1,010 shots): on target 33% (32), blocked 24 (29), off 43 (39) — the aim and the bodies are
+near real — but saves 47.9% (70.4); G5.37's fit of 71% had drifted as the shots moved. Flat by context: 29 / 34 /
+60 / 56 / 68% by goal-side. 12-18 m with 0-1 goal-side: saves 17% (66), the keeper 2.0 m off his line (4.8) —
+`keeper_depth_m + k·d` put him ~2 m out whatever the box held. Separately, the chance mix stays §8.186's mole:
+0-1 goal-side 26-35% of our shots (14), 4+ 34-40% (62).
+
+**Built** [real data; FH coaching: come off your line to narrow the angle when the man is through]. `Keeper`:
+their ball (on it, or their kick still free) within 25 m of our goal centre, his depth is the real median at the
+strike for its distance (< 12 / 12-18 / 18-25) x our outfielders nearer the goal centre than the ball (0-1 / 2-3 /
+4+) — `physics.keeper.gs_depth_<b>_<g>`, off with `physics.keeper.gs_on=0`. Then `shot_reach_m` refit.
+
+| (on-target saved %; goals = share of shots) | saves | shots → goal | by goal-side 0/1/2/3/4+ |
+|---|---|---|---|
+| before (0.7, no table, 4 seeds) | 47.9 | 17.4 | 29 / 34 / 60 / 56 / 68 |
+| reach 1.1, no table (4) | 72.7 | 9.6 | 58 / – / – / 81 / 87 |
+| table, 0.7 (4) | 59.5 | 13.4 | 43 / 67 / 42 / 61 / 76 |
+| **table, 0.9 (8 seeds, 1,915 shots)** | **68.1** | **11.4** | **56 / 58 / 65 / 68 / 86** |
+| real | 70.4 | 9.4 | 39 / 56 / 65 / 72 / 82 |
+
+With the table his depth at 12-18 m / 0-1 goal-side reaches 3.3 m (4.8: the man through gets there first), saves
+there 57% (66). Goals 2.48 → 1.60 a team-match. A bigger reach alone fits the total but not the shape; the depth
+gives the shape. Mig 1371: `shot_reach_m` 0.9 (fh_game_scratch and the live DB; the live daemon takes the table
+on its next game-deploy). **Next:** the mix — §8.186's men who don't get goal-side in time near our goal (0-1
+goal-side shots twice real), and the keeper still 1.5 m short of the real depth when the man is through.
+
+Shipped: keeper depth table (engine), FINISH (harness + real script), mig 1371; 11v11 golden re-locked; tests 22/22.

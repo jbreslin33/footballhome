@@ -633,6 +633,19 @@ public:
         const Fixed64 d = math::length(bg);
         Fixed64 depth = P.keeper_depth_m + P.keeper_depth_k * d;
         if (depth > P.keeper_depth_max_m) depth = P.keeper_depth_max_m;
+        // G5.122 (§8.223): their ball near our goal — he stands where real keepers stood at the strike for
+        // its distance and how many of ours are between it and the goal: off his line to narrow the angle
+        // when the man is through (12-18 m, 0-1 goal-side: 4.8 m), on it behind a crowd (2.0). Without it
+        // he stood ~2 m out whatever the box held, and saved 17% from there (real 66).
+        const int their = ball.owner ? *ball.owner : ball.last_kicker;   // on the ball, or their kick still free (the shot in flight)
+        if (P.keeper_gs_on && d < Fixed64::fromInt(25) && their >= 0 && their < static_cast<int>(c.team_of_slot.size()) && c.team_of_slot[their] != v.team) {
+            int gs = 0;
+            for (std::uint8_t j = 0; j < w.playerCount(); ++j)
+                if (j != v.slot && c.team_of_slot[j] == v.team && !w.isKeeper(j) &&
+                    math::length(Vec2{w.player(j).pos.x - g.x, w.player(j).pos.y - g.y}) < d) ++gs;
+            const int db = d < Fixed64::fromInt(12) ? 0 : d < Fixed64::fromInt(18) ? 1 : 2;
+            depth = P.keeper_gs_depth[db][gs <= 1 ? 0 : gs <= 3 ? 1 : 2];
+        }
         o.target = d.raw > 0 ? Vec2{g.x + bg.x * depth / d, g.y + bg.y * depth / d} : Vec2{g.x + v.sg * depth, g.y};
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
@@ -1191,6 +1204,13 @@ void PossessionParams::configure(const core::ModelParams& p) {
     keeper_depth_m = p.fixed("physics.keeper.depth_m", 1000);
     keeper_depth_k = p.fixed("physics.keeper.depth_k", 80);
     keeper_depth_max_m = p.fixed("physics.keeper.depth_max_m", 12000);
+    {   // G5.122 (§8.223)
+        static const int kD[3][3] = {{1900, 1500, 1100}, {4800, 2600, 2000}, {5300, 3100, 2200}};
+        for (int b = 0; b < 3; ++b)
+            for (int g = 0; g < 3; ++g)
+                keeper_gs_depth[b][g] = p.fixed("physics.keeper.gs_depth_" + std::to_string(b) + "_" + std::to_string(g), kD[b][g]);
+        keeper_gs_on = p.fixed("physics.keeper.gs_on", 1000).raw > 0;
+    }
     keeper_long_m = p.fixed("physics.restart.keeper_long_m", 55000);
     // Runs into the box: DFL (benchmarks_tracking_box.py), the ball's zone 0-18 / 18-35 / 35-52 × centre / wide.
     static const int kK[6][4] = {{60, 110, 140, 690}, {180, 160, 240, 420}, {600, 120, 100, 180},

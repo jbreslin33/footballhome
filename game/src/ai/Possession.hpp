@@ -104,6 +104,10 @@ struct PossessionParams {
     math::Fixed64 onside_margin_m{};
     math::Fixed64 spread_r_m{}, spread_k{}, spread_max_m{};   // G5.118 (§8.219): a supporting man's spot steps off a mate within spread_r_m (0 = off); DFL SPACING fit: 12 m, 0.8
     math::Fixed64 keeper_depth_m{}, keeper_depth_k{}, keeper_depth_max_m{}, keeper_long_m{};
+    // G5.122 (§8.223): their ball within 25 m of our goal centre, his metres off the line by its distance
+    // (<12 / 12-18 / 18-25) x our outfielders goal-side of it (0-1 / 2-3 / 4+) — StatsBomb PL 15/16 freeze
+    // frames at the strike, medians (benchmarks_statsbomb_finish.py). keeper_gs_on false = the old formula.
+    bool keeper_gs_on = true; math::Fixed64 keeper_gs_depth[3][3]{};
     // Runs into the box (G5.26), by the ball's zone (their line 0-18 / 18-35 /
     // 35-52 × centre or wide): the share of time with 0 / 1 / 2 / 3+ of ours in
     // the box zone (0-18 m, |y| < 20.16), the mean count by role, where they stand

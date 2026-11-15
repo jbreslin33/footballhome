@@ -92,6 +92,7 @@ struct Stats {
     long tick_n = 0, tick_live = 0, dead_n[14] = {}, out_by[2][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[14]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0, area_rec = 0, area_ticks = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
+    long fn_gs[5][4] = {}, fn_bg[4][3][4] = {}; std::vector<double> fn_gk[4][3];   // §8.223 FINISH: goal / saved / blocked / off by goal-side
     long sx_gs[5] = {}, sx_gs_g[5] = {}, sx_tb[4] = {}, sx_tb_g[4] = {}; std::vector<int> sx_tb_gs[4], sx_bd_gs[4];   // §8.186 SHOT CONTEXT
     long gsd_n[4] = {}, gsd_k[4][4] = {}; std::vector<int> gsd_g[4]; std::vector<double> gsd_deep[4];   // §8.186 GOAL-SIDE
     double sl_xy[ai::kRoleCount] = {}, sl_xx[ai::kRoleCount] = {}; long sl_n[ai::kRoleCount] = {}; std::vector<double> sl_w[ai::kRoleCount][2];   // §8.189 SLIDE BY ROLE
@@ -253,7 +254,8 @@ int main(int argc, char** argv) {
         int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0; } shot;
+        auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -507,7 +509,7 @@ int main(int argc, char** argv) {
                     ++S.goal_by[last_kick_why];
                     if (shot.on && shot.team == e.team) {
                         ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1];
-                        ++S.sx_gs_g[shot.gsk]; ++S.sx_tb_g[shot.tb];
+                        ++S.sx_gs_g[shot.gsk]; ++S.sx_tb_g[shot.tb]; fin(0);
                         if (shot.gap >= 0) ++S.sc_n[shot.band][shot.gap];
                         shot.on = false;
                     }
@@ -683,6 +685,9 @@ int main(int argc, char** argv) {
                             std::hypot(gx2 - W.player(j).pos.x.toDouble(), W.player(j).pos.y.toDouble()) < ds) ++g;
                     const double t = rc_team == p.team ? (static_cast<long>(k) - rc_k) / 30.0 : 0.0;
                     shot.gsk = std::min(g, 4); shot.tb = t < 5 ? 0 : t < 10 ? 1 : t < 20 ? 2 : 3;
+                    shot.gg = g <= 1 ? 0 : g <= 3 ? 1 : 2;
+                    for (std::uint8_t j = 0; j < N; ++j)   // §8.223: his keeper's metres off his line at the strike
+                        if (W.isKeeper(j) && W.player(j).team != p.team) S.fn_gk[shot.band][shot.gg].push_back(hx - std::fabs(W.player(j).pos.x.toDouble()));
                     if (std::getenv("GAME_SHOT_TRACE")) {   // §8.186: every opponent at the strike (x = metres off their goal line)
                         const double sg3 = p.team == 0 ? 1.0 : -1.0;
                         std::fprintf(stderr, "shot m%d k%ld t%.0fs from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
@@ -736,6 +741,7 @@ int main(int argc, char** argv) {
                 if (b.owner) {
                     const auto o = *b.owner;
                     ++S.shot_out[W.isKeeper(o) && W.player(o).team == def ? 1 : W.player(o).team == def ? 2 : 4];
+                    fin(W.isKeeper(o) && W.player(o).team == def ? 1 : W.player(o).team == def ? 2 : 3);
                     if (W.isKeeper(o) && W.player(o).team == def) {
                         ++S.pc_k[shot.cell + 1];
                         if (shot.gap >= 0) { ++S.sc_n[shot.band][shot.gap]; ++S.sc_s[shot.band][shot.gap]; }
@@ -743,15 +749,16 @@ int main(int argc, char** argv) {
                     shot.on = false;
                 } else if (W.lastTouchTeam() == def) {
                     ++S.shot_out[2]; shot.on = false;   // a defender's touch (a keeper's parry counts here too)
+                    fin(b.last_kicker < N && W.isKeeper(b.last_kicker) ? 1 : 2);
                     if (!(b.last_kicker < N && W.isKeeper(b.last_kicker))) ++S.ln_b[shot.lane];
                     if (b.last_kicker < N && W.isKeeper(b.last_kicker)) {
                         ++S.pc_p[shot.cell + 1];
                         if (shot.gap >= 0) { ++S.sc_n[shot.band][shot.gap]; ++S.sc_s[shot.band][shot.gap]; }
                     }
                 } else if (W.outStage() != 0 || W.restartTeam() != 0xFF) {
-                    ++S.shot_out[3]; shot.on = false;
+                    ++S.shot_out[3]; shot.on = false; fin(3);
                 } else if (k - shot.tick > 150) {
-                    ++S.shot_out[4]; shot.on = false;
+                    ++S.shot_out[4]; shot.on = false; fin(3);
                 }
             }
 
@@ -2233,6 +2240,30 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+        }
+        {   // §8.223 FINISH — benchmarks_statsbomb_finish.py (real StatsBomb PL 15/16 in brackets)
+            static const double rgs[5][4] = {{39.4, 25.2, 0.0, 35.4}, {21.5, 27.3, 11.6, 39.6}, {14.9, 27.5, 18.7, 38.9}, {9.3, 24.4, 26.3, 40.0}, {4.5, 20.6, 36.4, 38.5}};
+            static const double rbg[4][3][4] = {{{30.5, 22.2, 7.4, 39.8}, {15.0, 23.0, 19.4, 42.7}, {8.6, 17.2, 26.5, 47.7}},
+                                                {{19.5, 38.7, 8.4, 33.4}, {10.4, 28.0, 26.1, 35.5}, {6.7, 20.9, 42.0, 30.5}},
+                                                {{15.4, 46.2, 7.7, 30.8}, {5.2, 29.4, 28.7, 36.7}, {3.0, 22.1, 39.6, 35.3}},
+                                                {{25.0, 25.0, 0.0, 50.0}, {3.9, 29.4, 13.7, 52.9}, {1.1, 20.2, 29.9, 48.9}}};
+            static const double rgk[4][3] = {{1.9, 1.5, 1.1}, {4.8, 2.6, 2.0}, {5.3, 3.1, 2.2}, {6.6, 2.8, 2.0}};
+            auto row = [](const long* v, const double* r) {
+                const long n = std::max(1L, v[0] + v[1] + v[2] + v[3]);
+                std::printf(" n%-4ld", v[0] + v[1] + v[2] + v[3]);
+                for (int i = 0; i < 4; ++i) std::printf(" %4.1f (%4.1f)", 100.0 * v[i] / n, r[i]);
+                std::printf(" | saves %4.1f%% (%4.1f)", 100.0 * v[1] / std::max(1L, v[0] + v[1]), 100.0 * r[1] / std::max(0.1, r[0] + r[1]));
+            };
+            std::printf("\n   FINISH (goal / saved incl. parries / blocked / off target %%, real in brackets) by GOAL-SIDE:");
+            for (int g = 0; g < 5; ++g) { std::printf("\n     %d%s", g, g == 4 ? "+" : " "); row(S.fn_gs[g], rgs[g]); }
+            static const char* bl[4] = {"  <12", "12-18", "18-25", "  25+"}; static const char* gl[3] = {"0-1", "2-3", " 4+"};
+            std::printf("\n     by distance x goal-side, + keeper off his line median m:");
+            for (int d = 0; d < 4; ++d)
+                for (int g = 0; g < 3; ++g) {
+                    std::printf("\n     %s %s", bl[d], gl[g]); row(S.fn_bg[d][g], rbg[d][g]);
+                    auto v = S.fn_gk[d][g]; std::sort(v.begin(), v.end());
+                    std::printf(" | GK %.1f (%.1f)", v.empty() ? 0.0 : v[v.size() / 2], rgk[d][g]);
+                }
         }
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
