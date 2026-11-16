@@ -570,9 +570,10 @@ class EventScreen extends Screen {
   // Who was already reminded this week, per channel (GET /api/rsvp-board/
   // reminders, admins only — anyone else just gets no sent notes).
   async _loadReminders() {
-    if (!this.ev) return;
+    const id = this.eventId();
+    if (!id) return;
     try {
-      const data = await this._json(`/api/rsvp-board/reminders?fh_event_id=${this.ev.fh_event_id}`);
+      const data = await this._json(`/api/rsvp-board/reminders?fh_event_id=${id}`);
       this.reminders = data.reminders || {};
     } catch (_err) {
       this.reminders = null;
@@ -864,11 +865,12 @@ class EventScreen extends Screen {
   }
 
   async _loadInvites() {
-    const id = this.ev.fh_event_id;
+    const id = this.eventId();
+    if (!id) { this.invites = null; return; }
     try {
       const body = await this._json(`/api/calendar/events/${id}/invites`);
-      if (!this.ev || this.ev.fh_event_id !== id) return;
-      this.invites = { invites: body.invites || [], candidates: body.candidates || [] };
+      if (this.eventId() !== id) return;
+      this.invites = { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [], suspended: body.suspended || [] };
     } catch (err) {
       console.error('[event] invites load failed:', err);
       this.invites = { error: err.message || 'Could not load invites' };
@@ -879,12 +881,13 @@ class EventScreen extends Screen {
   // Tap a status to set it; tap the active one to clear it.
   async _markAttendance(personId, status, active) {
     const key = `att:${personId}`;
-    if (!this.att || this.saving.has(key)) return;
-    const id = this.ev.fh_event_id;
+    const id = this.eventId();
+    if (!this.att || !id || this.saving.has(key)) return;
     const prev = this.att.roster.get(personId) || null;
     this.saving.add(key);
-    if (active) this.att.roster.delete(personId);
-    else this.att.roster.set(personId, { person_id: personId, status });
+    // Cleared = the row stays with no status (a game card shows P/A/L/E only
+    // for people on the attendance roster — Game Center, same rule since 11/16).
+    this.att.roster.set(personId, { ...(prev || { person_id: personId }), status: active ? null : status });
     this._render();
     try {
       await this._json(`/api/calendar/events/${id}/attendance`, {
@@ -949,14 +952,14 @@ class EventScreen extends Screen {
     this.saving.add(key);
     this._render();
     try {
-      await this._json(`/api/calendar/events/${this.ev.fh_event_id}/invites/${personId}`, { method: 'DELETE' });
+      await this._json(`/api/calendar/events/${this.eventId()}/invites/${personId}`, { method: 'DELETE' });
     } catch (err) {
       console.error('[event] revoke failed:', err);
       this._saveFailed(err, `Could not withdraw invite: ${err.message}`);
     } finally {
       this.saving.delete(key);
     }
-    await Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]);
+    await Promise.all([this._loadInvites(), this._loadEvent(this.eventId())]);
   }
 
   // ---- Contact sheet hooks (children override) ----

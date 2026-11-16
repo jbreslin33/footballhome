@@ -1384,7 +1384,9 @@ class GameCenterScreen extends EventScreen {
       // bare pitch diagram with no opponent identity.
       const matchData = await matchRes.json().catch(() => null);
       this.matchDetails = (matchData && matchData.success) ? matchData.data : null;
-      if (!this.ev) this._refreshEvent().then(() => this._render());   // matchId-only door
+      if (!this.ev) this._refreshEvent().then(() => {   // matchId-only door: the event-keyed loads again
+        if (this._isCoach) return Promise.all([this._loadReminders(), this._loadTextMarks(), this._loadInvites()]);
+      }).then(() => this._render());
 
       this.teamId  = lineupData.data.teamId || null;
       this._loadPostStates();
@@ -2838,17 +2840,6 @@ class GameCenterScreen extends EventScreen {
                   style="display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; white-space:nowrap; background:${st.colorBg || '#f59e0b'}; color:${st.colorFg || '#422006'};">${this.escapeHtml(mine.label)}</span>`;
   }
 
-  // { person_id: { sms: {sent_at, count}, email: {…} } } for this game.
-  async _loadReminders() {
-    try {
-      const res = await this.auth.fetch(`/api/rsvp-board/reminders?match_id=${this.matchId}`);
-      const data = await res.json();
-      this.reminders = (res.ok && data.reminders) || {};
-    } catch (err) {
-      this.reminders = {};
-    }
-  }
-
   // 📇 Opponent contacts → screens/game-center/opponent-contacts.js (GameCenterOpponent, mixed in).
 
   // 🎟 Call-ups — the same club-pass invites the Event Center's Invites
@@ -2912,50 +2903,13 @@ class GameCenterScreen extends EventScreen {
       <span style="font-size:0.68rem; opacity:0.7;">${this.escapeHtml(label)}</span>${this._attendanceCell(personId)}</div>`;
   }
 
-  // EventScreen's save, keyed by the game's fh_event (Game Center may not
-  // hold an event object on a cold #game-center door).
-  async _markAttendance(personId, status, active) {
-    const key = `att:${personId}`;
-    const id = this._fhEventId();
-    if (!this.att || !id || this.saving.has(key)) return;
-    const prev = this.att.roster.get(personId) || null;
-    this.saving.add(key);
-    this.att.roster.set(personId, { ...(prev || { person_id: personId }), status: active ? null : status });
-    this._render();
-    try {
-      const res = await this.auth.fetch(`/api/calendar/events/${id}/attendance`, {
-        method: active ? 'DELETE' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(active ? { person_id: personId } : { person_id: personId, status }),
-      });
-      if (!res.ok) {
-        let msg = `HTTP ${res.status}`;
-        try { const b = await res.json(); msg = b.message || b.error || msg; } catch {}
-        throw new Error(msg);
-      }
-    } catch (err) {
-      console.error('[game-center] attendance save failed:', err);
-      if (prev) this.att.roster.set(personId, prev); else this.att.roster.delete(personId);
-      alert(`Could not save attendance: ${err.message}`);
-    } finally {
-      this.saving.delete(key);
-      this._render();
-    }
-  }
-
+  // EventScreen's load (caps + suspended ride along); a send or a withdraw
+  // reloads it and the card joins or leaves the squad's lists straight away
+  // (mig 1069), not on the next poll.  A failed load reads as none here.
   async _loadInvites() {
-    const id = this._fhEventId();
-    if (!id) { this.invites = null; return; }
-    try {
-      const res = await this.auth.fetch(`/api/calendar/events/${id}/invites`);
-      const body = await res.json().catch(() => null);
-      this.invites = res.ok && body ? { invites: body.invites || [], candidates: body.candidates || [], caps: body.caps || [], suspended: body.suspended || [] } : null;
-      // A send or a withdraw reloads this — the card joins or leaves the
-      // squad's lists straight away (mig 1069), not on the next poll.
-      if (this.invites && this.loaded) this._foldInCallups();
-    } catch (err) {
-      this.invites = null;
-    }
+    await super._loadInvites();
+    if (this.invites && this.invites.error) this.invites = null;
+    if (this.invites && this.loaded) this._foldInCallups();
   }
 
   // ⚠ Going but not on the official roster (mig 638; owner 2026-10-22:
@@ -3208,28 +3162,10 @@ class GameCenterScreen extends EventScreen {
       </div>`;
   }
 
-  // 📲 Club-number texts (mig 647; owner 2026-10-23: "we don't want
-  // messages going into the void. does it show if delivered? if
-  // opened?").  The club number sends, Twilio reports delivery, and the
-  // magic link's real taps (previews excluded) are the "opened" mark.
+  // 📲 Club-number texts (mig 647): EventScreen's marks for this game's
+  // event, plus FH Texter's status for 📲 Text's fallback (mig 667/673).
   async _loadTextMarks() {
-    if (!this.matchId) { this.textMarks = null; return; }
-    try {
-      const res = await this.auth.fetch(`/api/rsvp-board/text-marks?match_id=${encodeURIComponent(this.matchId)}`);
-      const body = await res.json().catch(() => null);
-      this.textMarks = res.ok && body ? { marks: body.marks || {}, optedIn: new Set(body.opted_in || []), people: body.people || {} } : null;
-    } catch (err) {
-      this.textMarks = null;
-    }
-    // FH Texter (mig 667/673) — admins only; a 403 just means 📲 Text
-    // falls back to copy & paste.
-    try {
-      const res = await this.auth.fetch('/api/phone-relay/status');
-      const st = res.ok ? await res.json().catch(() => null) : null;
-      this.relay = st ? { device: (st.devices || [])[0] || null, today: st.today || 0, cap: st.cap || 0 } : null;
-    } catch (err) {
-      this.relay = null;
-    }
+    await Promise.all([super._loadTextMarks(), this._loadRelay()]);
   }
 
   // sent → delivered ✓ / FAILED — reason, then opened ✓ once the link
@@ -3389,25 +3325,15 @@ class GameCenterScreen extends EventScreen {
     }
   }
 
-  async _revokeInvite(btn) {
-    const personId = Number(btn.dataset.gcInvRevoke);
-    if (this._invBusy.has(personId)) return;
+  // Withdraw: EventScreen's DELETE (and its reloads).  Game Center's 🎟
+  // section hands over its button, the 👥 pane (EventScreen) a person id.
+  async _revokeInvite(arg) {
+    const personId = typeof arg === 'object' && arg ? Number(arg.dataset.gcInvRevoke) : Number(arg);
+    if (!personId || this._invBusy.has(personId)) return;
     this._invBusy.add(personId);
     this._render();
-    try {
-      const res = await this.auth.fetch(`/api/calendar/events/${this._fhEventId()}/invites/${personId}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.message || data.error || `HTTP ${res.status}`);
-      }
-    } catch (err) {
-      console.error('[game-center] revoke failed:', err);
-      alert(`Could not withdraw invite: ${err.message}`);
-    } finally {
-      this._invBusy.delete(personId);
-    }
-    await this._loadInvites();
-    this._render();
+    try { await super._revokeInvite(personId); }
+    finally { this._invBusy.delete(personId); this._render(); }
   }
 
   // The section itself — rolled up like Not Going / No Response, invited

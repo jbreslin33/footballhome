@@ -113,6 +113,16 @@ class EventCenterScreen extends Screen {
                     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .ec-mchip.ec-past { opacity:0.55; }
         .ec-mmore { font-size:0.66rem; opacity:0.7; border:none; background:transparent; color:var(--text-primary); text-align:left; padding:0 4px; cursor:pointer; }
+        /* Phone (11/16): all seven days fit — no sideways scroll; a chip is
+           its time in the team's colour (tap opens it), the day opens its week. */
+        @media (max-width: 640px) {
+          .ec-month { min-width:0; grid-template-columns:repeat(7, minmax(0, 1fr)); }
+          .ec-mhead { padding:4px 2px; font-size:0.6rem; text-align:center; }
+          .ec-mcell { min-height:64px; padding:2px; gap:2px; }
+          .ec-mday { align-self:center; font-size:0.7rem; padding:1px 4px; }
+          .ec-mchip { font-size:0.6rem; padding:2px 2px; border-left-width:0; border-top:3px solid var(--primary-color); text-align:center; }
+          .ec-mchip .ec-ml, .ec-mchip .ec-mw { display:none; }
+        }
       </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
@@ -786,13 +796,14 @@ class EventCenterScreen extends Screen {
         const team = primaries(ev)[0];
         const color = (team && team.color) || 'var(--primary-color)';
         const a = new Date(ev.starts_at);
-        const hm = isNaN(a) ? '' : a.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '').replace(' ', '').toLowerCase();
+        // "4:30p" / "7p" — short enough for a phone cell.
+        const hm = isNaN(a) ? '' : a.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '').replace(' ', '').toLowerCase().replace(/m$/, '');
         const me = ev.my_rsvp === 'yes' ? '✓ ' : ev.my_rsvp === 'no' ? '✗ ' : '';
         const door = ev.fh_event_id == null ? `data-ec-gcal="${this.escapeHtml(ev.gcal_event_id)}"` : `data-ec-open="${ev.fh_event_id}"`;
         const label = ev.fh_event_id == null ? (ev.summary || '') : line(ev);
         const warn = (admin && Array.isArray(ev.tag_issues) && ev.tag_issues.length) || ev.fh_event_id == null ? '⚠ ' : '';
         return `<div role="button" tabindex="0" class="ec-mchip ${this._isPast(ev) ? 'ec-past' : ''}" ${door}
-                     style="border-left-color:${this.escapeHtml(color)};" title="${this.escapeHtml(`${time(ev)} ${label}`)}">${this.escapeHtml(`${warn}${me}${hm} ${label}`)}</div>`;
+                     style="border-left-color:${this.escapeHtml(color)}; border-top-color:${this.escapeHtml(color)};" title="${this.escapeHtml(`${time(ev)} ${label}`)}"><span class="ec-mw">${this.escapeHtml(warn)}</span><span class="ec-mt">${this.escapeHtml(`${me}${hm}`)}</span><span class="ec-ml"> ${this.escapeHtml(label)}</span></div>`;
       };
       const heads = dates.slice(0, 7).map(d => `<div class="ec-mhead">${this.escapeHtml(d.toLocaleDateString('en-US', { weekday: 'short' }))}</div>`).join('');
       const cells = dates.map(d => {

@@ -144,9 +144,15 @@ and keeps its own RSVP cards, attendance, invites, reminders, call-ins, poll.
    `screens/game-center/*.js` (tactics-plan, lineup-edit, opponent-contacts,
    roster-print, squad-notice, details-score, eligibility), mixed into
    GameCenterScreen by `lib/mixin.js` (parts never use `super`).
-   Still open inside 2: Game Center keeps thin hooks over EventScreen
-   (_markAttendance keyed by _fhEventId, its own invite/remind/text-mark
-   loads with extra fields) — fold when touched.
+   Follow-up 11/16: Game Center's own _markAttendance / _loadReminders
+   deleted, _loadTextMarks / _loadInvites / _revokeInvite now thin hooks
+   over EventScreen's (keyed by eventId(); invites carry caps + suspended;
+   a cleared attendance mark keeps the row, every kind).  Fixed: the 👥
+   pane's withdraw-invite button threw on a game (GC's version wanted a
+   button, got a person id).  Left on purpose: contact/relay hooks
+   (contactWhats, _composeSends, _relayMessage …) — real game differences.
+   Month view: ?lite=1 feed (no player lists, ~4× faster) and a phone layout
+   (seven columns, time chips); release/clash strip words in DB (mig 1394).
    Was: **fold Game Center into the base.**  Delete GC's own RSVP cards,
    attendance marking, invites, reminders, call-ins and poll so games run
    EventScreen's (practice's) code; split the rest (lineup, posts, tactics)
