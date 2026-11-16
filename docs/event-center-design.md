@@ -111,6 +111,43 @@ just swap the viewer object; the screen stays the same.
    keyed on roster teams rather than `fh_event_teams`) moves to
    `EventAccess`; its separate player-view layout goes.
 
+## One Calendar — the 2026-11-16 evaluation and plan
+
+Owner 2026-11-16: "#calendar is still confusing. rsvp, calendar and event
+center should be one page. when you click an event it should take you to the
+event with more details and lineups etc. practice and games should be
+consistent interface and extend from same base class. we need total
+evaluation."  Decisions: the page is called **Calendar**; games keep opening
+on ⚔️ Starters & Bench; #rsvps folds in.
+
+Found: three This Week doors (☑️ RSVP → #my → Event Center, 📋 Event Center —
+the same page, 🗓️ Calendar — a second calendar, calendar.js, where a tap
+opened a post/flyer menu or nothing for players).  GameCenterScreen (7.5k
+lines) extends EventScreen in name only — it replaces render/_wire/onEnter
+and keeps its own RSVP cards, attendance, invites, reminders, call-ins, poll.
+
+1. **DONE (mig 1388)** — one 📅 Calendar page (EventCenterScreen, URL
+   `#calendar`, screen key still `event-center`) for everyone: Week · Month ·
+   Agenda (4 weeks); admins get ReleaseStrip + ClashStrip
+   (`lib/calendar-ops.js`), ⚠ tag audit on tiles, unclassified Google events
+   (tap → Google).  A tap always opens the event; 📷 post / 🖨️ flyer moved to
+   the event's 👀 bar (`lib/event-posts.js`; games flyer only — their posts
+   are Game Center pills).  calendar.js deleted; menu rows `player` and
+   `game-center` off; `#calendar`/`#my`/`#event-center` land here.
+2. **Next — fold Game Center into the base.**  Delete GC's own RSVP cards,
+   attendance marking, invites, reminders, call-ins and poll so games run
+   EventScreen's (practice's) code; split the rest (lineup, posts, tactics)
+   into modules under a slim game child.  Same shell for every kind: header,
+   your availability, pills (👥 Players · details · carpool · jobs · chat;
+   games + ⚔️ Lineup · 🎯 Tactics · 📇 Opponent · 📣 Posts; practices + Groups ·
+   Plan).  Games still open on Starters & Bench.  RSVP screen is
+   uptime-sensitive: test on a test event first.
+3. **Fold #rsvps** — admin "By event / By person" switch on the Calendar.
+4. Rename or delete `player-calendar` (a roster list, not a calendar).
+
+Known: a month view loads in ~6.5 s (the upcoming feed is heavy per event;
+a week ~1.4 s).
+
 ## Resume here (updated 2026-11-14)
 
 Live on prod and pushed: slices 1–4 (04c69cf3, a832b432, be7b4554; fix

@@ -86,7 +86,7 @@ class MarketingHomeScreen extends Screen {
       {
         label: 'Socials',
         tiles: [
-          { id: 'event-calendar', target: 'calendar', params: {}, icon: '📅', label: 'Event Calendar', description: 'Google Calendar events — make an Instagram post or a flyer straight from any event' },
+          { id: 'event-calendar', target: 'calendar', params: {}, icon: '📅', label: 'Event Calendar', description: 'The club calendar — open any event for its Instagram post or flyer' },
           { id: 'match-posts', icon: '🗓️', label: 'Match-Day Posts', description: 'Pre-match, lineup & result posts per team — pick a team to open its match social calendar' },
           { id: 'holiday-posts', target: 'holiday-posts', params: {}, icon: '🎉', label: 'Holiday Posts', description: 'Instagram holiday posts' },
           { id: 'promo-posts', target: 'promo-posts', params: {}, icon: '📢', label: 'Promo Posts', description: 'Instagram promotional posts' },

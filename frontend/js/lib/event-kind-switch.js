@@ -16,7 +16,7 @@ const EventKindSwitch = {
   },
 
   title() {
-    return (window.MessageCopy && MessageCopy.block('event_center', 'title')) || '📋 Event Center';
+    return (window.MessageCopy && MessageCopy.block('event_center', 'title')) || '📅 Calendar';
   },
 
   // active: 'match' on Game Center, the list's kind on the event screen.

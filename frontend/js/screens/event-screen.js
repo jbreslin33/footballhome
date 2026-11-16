@@ -1358,6 +1358,7 @@ class EventScreen extends Screen {
       let el;
       if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
       if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
+      if ((el = t('[data-ec-post]'))) { this._onPostAction(el); return; }
       if ((el = t('[data-ec-pill]'))) {
         this.pill = el.dataset.ecPill;
         this.onPill(this.pill);
@@ -1528,9 +1529,23 @@ class EventScreen extends Screen {
         </div>`;
     }
     const lower = [];
+    // 📷 / 🖨️ from this event (lib/event-posts.js — the old #calendar tap
+    // menu, owner 11/16).  Admins; a game's posts are Game Center's pills,
+    // so a game gets the flyer only.
+    if (real.rank >= 2 && window.EventPosts && this.ev) {
+      if (this.ev.kind !== 'match') lower.push(btn('data-ec-post="post"', cp('post_btn', {}, '📷 Instagram post')));
+      lower.push(btn('data-ec-post="flyer"', cp('flyer_btn', {}, '🖨️ Flyer')));
+    }
     if (real.rank >= 2) lower.push(btn('data-ec-see-as="coach"', cp('see_as_coach', {}, '👀 See as coach')));
     lower.push(btn('data-ec-see-as="player"', cp('see_as_player', {}, '👀 See as player')));
     return `<div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; margin:0 0 8px;">${lower.join('')}</div>`;
+  }
+
+  // 📷 / 🖨️ on the 👀 bar (EventScreen and Game Center both wire it here).
+  _onPostAction(el) {
+    if (!this.ev || !window.EventPosts || this.realViewer.rank < 2) return;
+    if (el.dataset.ecPost === 'flyer') EventPosts.flyer(this.navigation, this.ev);
+    else EventPosts.post(this.navigation, this.ev);
   }
 
   // Invites are for an event still to come.  Loads ask the REAL viewer, so

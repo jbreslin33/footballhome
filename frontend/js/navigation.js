@@ -105,6 +105,9 @@ class NavigationStateMachine {
       const h = EventKindSwitch.hash(params.event, params.pill || params.postType);
       if (h) return h;
     }
+    // The one 📅 Calendar (owner 11/16) reads #calendar; its screen key is
+    // still 'event-center'.
+    if (state === 'event-center') return '#calendar';
     return params && params.entity ? `#${state}/${params.entity}` : `#${state}`;
   }
 
@@ -337,6 +340,10 @@ NavigationStateMachine.RETIRED = {
   // #my lives inside Event Center now (its 👤 Mine section, owner 11/11):
   // sign-in links, RSVP texts, the RSVP tile and old bookmarks land there.
   "my": "event-center",
+  // The old #calendar (calendar.js, the Google-mirror ops view) folded into
+  // the one 📅 Calendar 2026-11-16 (owner: "rsvp, calendar and event center
+  // should be one page").
+  "calendar": "event-center",
   "team-dashboard": "main-menu",
   // #payments was renamed #tuition (mig 1293, 2026-11-12).
   "payments": "tuition",

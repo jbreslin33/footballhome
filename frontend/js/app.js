@@ -97,7 +97,6 @@ class App {
       publicTeamsList: new PublicTeamsListScreen(this.navigation, this.auth),
       publicOrg: new PublicOrgScreen(this.navigation, this.auth),
       publicProgramInfo: new PublicProgramInfoScreen(this.navigation, this.auth),
-      calendar: new CalendarScreen(this.navigation, this.auth),
       playerCalendar: new PlayerCalendarScreen(this.navigation, this.auth),
       playerRoster: new PlayerRosterScreen(this.navigation, this.auth),
       playerTeamRules: new PlayerTeamRulesScreen(this.navigation, this.auth)
@@ -243,10 +242,6 @@ class App {
     this.screenManager.register('public-program-info', this.screens.publicProgramInfo);
     this.screenManager.register('teams-directory', this.screens.publicTeamsList);
     this.screenManager.register('public-org', this.screens.publicOrg);
-    // Google Calendar mirror view — CalendarScreen renders the
-    // agenda list backed by GET /api/calendar/upcoming (Slice 4).
-    // Reached from the Schedule section of admin-club (§10.1).
-    this.screenManager.register('calendar', this.screens.calendar);
     this.screenManager.register('player-calendar', this.screens.playerCalendar);
     this.screenManager.register('player-roster', this.screens.playerRoster);
     this.screenManager.register('player-team-rules', this.screens.playerTeamRules);
@@ -368,6 +363,12 @@ class App {
       }
       if (window.location.hash === '#apsl-pyramid') {
         this.navigation.goTo('apsl-pyramid');
+        return;
+      }
+      // The one 📅 Calendar — #calendar (magic-link verify lands here) or an
+      // old #event-center / #my bookmark.
+      if (['#calendar', '#event-center', '#my'].includes(window.location.hash)) {
+        this.navigation.goTo('event-center', { pick: true, kind: 'all' });
         return;
       }
       // Back within minutes of leaving (a REMIND text, an email) — the

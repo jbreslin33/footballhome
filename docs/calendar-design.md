@@ -1,3 +1,5 @@
+> **2026-11-16:** the `#calendar` screen (`calendar.js`, `CalendarScreen`) is gone — folded into the one 📅 Calendar (`screens/event-center.js`, URL `#calendar`, mig 1388). See docs/event-center-design.md "One Calendar". Sections below describing CalendarScreen are history.
+
 # Football Home ↔ Google Calendar — design doc
 
 **Status:** IN PROGRESS. Slices 0–7 landed on `main`; MyScreen unified

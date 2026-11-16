@@ -1,4 +1,13 @@
-// EventCenterScreen — #event-center: the week calendar, Monday–Sunday
+// EventCenterScreen — THE 📅 Calendar (URL #calendar; screen key still
+// 'event-center').  Owner 2026-11-16: "rsvp, calendar and event center should
+// be one page. when you click an event it should take you to the event" — the
+// old #calendar screen (calendar.js) and the RSVP menu door folded in here:
+// 🗓 Week · Month · Agenda views, and for admins the schedule-release and
+// field-clash strips (lib/calendar-ops.js), ⚠ tag audit on tiles and Google
+// soccer events not classified yet (a tap opens Google).  Post / flyer moved
+// onto the event itself (lib/event-posts.js).
+//
+// Was: #event-center: the week calendar, Monday–Sunday
 // (owner 2026-10-27: "a calendar is best … one source of data … cal with
 // pills to populate cal"; "clicking a card opens that event to view and
 // edit").  The type pills (lib/event-kind-switch.js) and section chips
@@ -32,6 +41,8 @@
 //                                           (components/section-chat.js), FinesPanel
 //                                           (components/fines-panel.js) — below it
 class EventCenterScreen extends Screen {
+  static get VIEWS() { return ['week', 'month', 'agenda']; }
+  static get AGENDA_DAYS() { return 28; }
   static get CATEGORY_LABELS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls', staff: 'Staff' }; }
 
   constructor(navigation, auth) {
@@ -41,6 +52,12 @@ class EventCenterScreen extends Screen {
     this.category = 'all';
     this.person   = 'all';       // person chip: 'all' | 'me' | a kid's person_id
     this.weekStart = EventCenterScreen.monday(new Date());   // the calendar's Monday, kept across visits
+    this.anchor   = new Date();    // the day the page is on (month view: its month)
+    // 🗓 Week · Month · Agenda (the old #calendar's three views, owner 11/16:
+    // "rsvp, calendar and event center should be one page") — remembered per
+    // browser, a convenience only.
+    this.view = 'week';
+    try { const v = localStorage.getItem('fh.cal.view'); if (EventCenterScreen.VIEWS.includes(v)) this.view = v; } catch {}
     this.error    = null;
     this.saving   = new Set();   // fh_event_id of a self-RSVP in flight
     this.rsvpNote = {};          // fh_event_id → last self-RSVP error, on its tile
@@ -75,6 +92,22 @@ class EventCenterScreen extends Screen {
         .ec-now { display:flex; align-items:center; gap:6px; color:#ef4444; font-size:0.66rem; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; white-space:nowrap; }
         .ec-now::before, .ec-now::after { content:''; flex:1; height:2px; background:#ef4444; }
         @media (min-width: 900px) { .ec-week { grid-template-columns:repeat(7, minmax(0, 1fr)); } }
+        .ec-views { display:inline-flex; gap:4px; margin-left:auto; }
+        .ec-agenda { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; }
+        .ec-month-wrap { overflow-x:auto; }
+        .ec-month { display:grid; grid-template-columns:repeat(7, minmax(84px, 1fr)); gap:1px; min-width:600px;
+                    background:var(--border-color); border:1px solid var(--border-color); border-radius:8px; overflow:hidden; }
+        .ec-mhead { background:var(--bg-secondary); font-size:0.68rem; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; padding:5px 6px; opacity:0.75; }
+        .ec-mcell { background:var(--bg-primary, var(--bg-secondary)); min-height:92px; padding:4px; display:flex; flex-direction:column; gap:3px; min-width:0; }
+        .ec-mcell.out { opacity:0.4; }
+        .ec-mcell.today .ec-mday { background:var(--primary-color); color:#fff; }
+        .ec-mday { align-self:flex-start; min-width:22px; text-align:center; border-radius:999px; font-size:0.75rem; font-weight:800; padding:1px 5px;
+                   border:none; background:transparent; color:var(--text-primary); cursor:pointer; }
+        .ec-mchip { font-size:0.68rem; font-weight:700; line-height:1.25; padding:2px 4px; border-radius:4px; cursor:pointer;
+                    border-left:3px solid var(--primary-color); background:var(--bg-secondary);
+                    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .ec-mchip.ec-past { opacity:0.55; }
+        .ec-mmore { font-size:0.66rem; opacity:0.7; border:none; background:transparent; color:var(--text-primary); text-align:left; padding:0 4px; cursor:pointer; }
       </style>
       <div class="screen-header" style="flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn">← Back</button>
@@ -85,6 +118,11 @@ class EventCenterScreen extends Screen {
       </div>
       <div id="ec-stack">
         <div id="ec-notices" style="display:none;"></div>
+        <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
+        <div id="ec-ops" style="display:none; flex-direction:column; gap:6px;">
+          <div id="ec-release"></div>
+          <div id="ec-clash"></div>
+        </div>
         <div id="ec-body"></div>
         <section id="ec-mine">
           <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
@@ -101,9 +139,10 @@ class EventCenterScreen extends Screen {
 
   onEnter(params = {}) {
     this._mountMine();
+    this._mountOps();
     // An old door with one event (saved history) shows that event's week.
     const evAt = params.event && new Date(params.event.starts_at);
-    if (evAt && !isNaN(evAt)) { this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
+    if (evAt && !isNaN(evAt)) { this.anchor = evAt; this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
     // A type pill (EventKindSwitch) lights that kind on the calendar.
     if (params.kind) this.kind = params.kind;
     // Back from an event this screen opened → where you were; otherwise the
@@ -185,12 +224,6 @@ class EventCenterScreen extends Screen {
     return d;
   }
 
-  _weekLabel() {
-    const end = new Date(this.weekStart); end.setDate(end.getDate() + 6);
-    const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${fmt(this.weekStart)} – ${fmt(end)}`;
-  }
-
   _ymd(d) {
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -201,6 +234,7 @@ class EventCenterScreen extends Screen {
   _setWeek(date) {
     this._autoScroll = false;     // stepping weeks starts at Monday
     this._restoreScroll = null;
+    this.anchor = new Date(date);
     this.weekStart = EventCenterScreen.monday(date);
     this.events = null;
     this.error = null;
@@ -208,13 +242,65 @@ class EventCenterScreen extends Screen {
     this._loadEvents();
   }
 
+  // ‹ › — a week, a month or four weeks, by view.
+  _step(n) {
+    const d = new Date(this.view === 'week' ? this.weekStart : this.anchor);
+    if (this.view === 'month') { d.setDate(1); d.setMonth(d.getMonth() + n); }
+    else d.setDate(d.getDate() + n * (this.view === 'agenda' ? EventCenterScreen.AGENDA_DAYS : 7));
+    this._setWeek(d);
+  }
+
+  _setView(view) {
+    if (!EventCenterScreen.VIEWS.includes(view) || view === this.view) return;
+    this.view = view;
+    try { localStorage.setItem('fh.cal.view', view); } catch {}
+    this._setWeek(this.anchor);
+  }
+
+  // What the view shows: { start, days }.  Month = whole Mon–Sun weeks
+  // covering the month; agenda = four weeks from the anchor's Monday.
+  _range() {
+    if (this.view === 'month') {
+      const first = new Date(this.anchor.getFullYear(), this.anchor.getMonth(), 1);
+      const start = EventCenterScreen.monday(first);
+      const last = new Date(this.anchor.getFullYear(), this.anchor.getMonth() + 1, 0);
+      const days = Math.round((EventCenterScreen.monday(last) - start) / 86400000) + 7;
+      return { start, days };
+    }
+    return { start: this.weekStart, days: this.view === 'agenda' ? EventCenterScreen.AGENDA_DAYS : 7 };
+  }
+
+  _isAdmin() { return window.CalendarOps ? CalendarOps.isAdmin(this.auth) : false; }
+
+  // Admin strips above the calendar — the week's schedule release (week
+  // view only: it is about one Monday) and field clashes.
+  _mountOps() {
+    const box = this.find('#ec-ops');
+    if (!box || !window.ReleaseStrip || !this._isAdmin()) { if (box) box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    const ctx = { auth: this.auth, escapeHtml: (t) => this.escapeHtml(t) };
+    this.release = new ReleaseStrip(this.find('#ec-release'), ctx);
+    this.release.onChange = () => this._loadEvents();
+    new ClashStrip(this.find('#ec-clash'), ctx).load();
+  }
+
+  _loadOps() {
+    if (this.release) this.release.load(this.view === 'week' ? this._ymd(this.weekStart) : null);
+  }
+
   // The week's events — the whole calendar, released or not (staff see
   // what is coming; a not-yet-posted event says so on its tile).
   async _loadEvents() {
-    const start = this.weekStart;
+    const { start, days } = this._range();
+    const key = `${this.view}:${start.getTime()}`;
+    this._loadKey = key;
+    this._loadOps();
+    // Admins also see Google soccer events not classified yet (the old
+    // #calendar's include_unclassified) — the server shows them to admins only.
+    const extra = this._isAdmin() ? '&include_unclassified=1' : '';
     try {
-      const body = await this._json(`/api/calendar/upcoming?start=${encodeURIComponent(start.toISOString())}&days=7`);
-      if (start !== this.weekStart) return;   // a newer week was asked for meanwhile
+      const body = await this._json(`/api/calendar/upcoming?start=${encodeURIComponent(this._ymd(start))}&days=${days}${extra}`);
+      if (this._loadKey !== key) return;   // a newer range was asked for meanwhile
       this.events = Array.isArray(body.events) ? body.events : [];
       this.error = null;
     } catch (err) {
@@ -246,9 +332,21 @@ class EventCenterScreen extends Screen {
       if ((el = t('[data-ec-nav]'))) { this.navigation.goTo(el.dataset.ecNav); return; }
       if ((el = t('[data-ec-week]'))) {
         const step = Number(el.dataset.ecWeek);
-        const d = step ? new Date(this.weekStart) : new Date();
-        if (step) d.setDate(d.getDate() + 7 * step);
-        this._setWeek(d);
+        if (step) this._step(step); else this._setWeek(new Date());
+        return;
+      }
+      if ((el = t('[data-ec-view]'))) { this._setView(el.dataset.ecView); return; }
+      // Month: a day's number (or +N) opens that week.
+      if ((el = t('[data-ec-goday]'))) {
+        const [y, m, d] = el.dataset.ecGoday.split('-').map(Number);
+        this.anchor = new Date(y, m - 1, d);
+        this._setView('week');
+        return;
+      }
+      // Not in Football Home yet (admins): no event to open — Google's own page.
+      if ((el = t('[data-ec-gcal]'))) {
+        const ev = (this.events || []).find(x => String(x.gcal_event_id) === el.dataset.ecGcal);
+        if (ev && ev.html_link) window.open(ev.html_link, '_blank', 'noopener');
         return;
       }
       // ✓ / ✗ on a tile answers for YOU without opening it (owner
@@ -333,7 +431,6 @@ class EventCenterScreen extends Screen {
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
-    if (!this.events) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._pickerHtml();
     this._placeScroll();
   }
@@ -383,7 +480,10 @@ class EventCenterScreen extends Screen {
   // NOW line (mig 748) crosses today where the clock falls, the events
   // already over dimmed above it.
   _pickerHtml() {
-    const cats = [...new Set(this.events.map(ev => ev.category).filter(Boolean))];
+    // Still loading: the filters, ‹ › and view chips stay, the grid says so.
+    const loading = !this.events;
+    const evAll = this.events || [];
+    const cats = [...new Set(evAll.map(ev => ev.category).filter(Boolean))];
     const catLabel = (c) => EventCenterScreen.CATEGORY_LABELS[c] || c;
     const chip = (attr, value, label, on) =>
       `<button type="button" class="ec-chip ${on ? 'on' : ''}" ${attr}="${this.escapeHtml(value)}">${this.escapeHtml(label)}</button>`;
@@ -393,18 +493,18 @@ class EventCenterScreen extends Screen {
     // than your own events (a parent's kids, a coach's or admin's whole
     // scope).  Words: event_center person_all / person_me (mig 1363).
     const kids = new Map();
-    for (const ev of this.events)
+    for (const ev of evAll)
       for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
         if (c && c.person_id && !kids.has(Number(c.person_id))) kids.set(Number(c.person_id), String(c.name || '').split(' ')[0] || 'Your player');
-    const hasMine = this.events.some(ev => ev.is_mine === true);
-    const hasOthers = this.events.some(ev => ev.is_mine !== true && !(Array.isArray(ev.guardian_targets) && ev.guardian_targets.length));
+    const hasMine = evAll.some(ev => ev.is_mine === true);
+    const hasOthers = evAll.some(ev => ev.is_mine !== true && !(Array.isArray(ev.guardian_targets) && ev.guardian_targets.length));
     const personChips = kids.size || (hasMine && hasOthers);
-    if (!personChips || (this.person !== 'all' && this.person !== 'me' && !kids.has(Number(this.person)))) this.person = 'all';
+    if (!loading && (!personChips || (this.person !== 'all' && this.person !== 'me' && !kids.has(Number(this.person))))) this.person = 'all';
     const forPerson = (ev) => this.person === 'all' ? true
       : this.person === 'me' ? ev.is_mine === true
       : (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).some(c => c && Number(c.person_id) === Number(this.person));
 
-    const shown = this.events.filter(ev =>
+    const shown = evAll.filter(ev =>
       (this.kind === 'all' || this._kindOf(ev) === this.kind) &&
       (this.category === 'all' || ev.category === this.category) && forPerson(ev))
       .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
@@ -444,7 +544,23 @@ class EventCenterScreen extends Screen {
       return EventLabels.title(ev);
     };
 
+    const admin = this._isAdmin();
+    // ⚠ What the Google description is missing (admins; the old #calendar's
+    // tag audit — each line names the tag to add).
+    const tagIssues = (ev) => admin && Array.isArray(ev.tag_issues) && ev.tag_issues.length
+      ? `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; text-align:left;">⚠ ${this.escapeHtml(ev.tag_issues.join(' · '))}</span>` : '';
+    // A Google soccer event Football Home has not classified (admins only —
+    // include_unclassified): nothing to open, so the tap goes to Google.
+    const rawTile = (ev) => `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}"
+          data-ec-gcal="${this.escapeHtml(ev.gcal_event_id)}" style="border-style:dashed;">
+        <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
+        <span style="font-weight:700;">${this.escapeHtml(ev.summary || '(untitled)')}</span>
+        <span style="font-size:0.72rem; font-weight:700; color:#f59e0b; white-space:normal; text-align:left;">${this.escapeHtml(cp('unclassified', {}, '⚠ Not in Football Home yet — tag it in Google Calendar'))}</span>
+        ${tagIssues(ev)}
+      </div>`;
+
     const tile = (ev) => {
+      if (ev.fh_event_id == null) return rawTile(ev);
       // Players only — coaches never in a player total (owner 2026-10-06).
       // The feed's roster already honours call-up gates and paper spots;
       // a yes from over the dues line (migration 416) is counted apart.
@@ -531,6 +647,7 @@ class EventCenterScreen extends Screen {
           ${inactive ? count('tile_inactive', inactive, `💤 ${inactive} inactive`, '#94a3b8') : ''}
         </span>
         ${posted(ev) ? '' : `<span style="font-size:0.7rem; color:#f59e0b;">${this.escapeHtml(cp('not_posted', {}, 'not posted yet'))}</span>`}
+        ${tagIssues(ev)}
         ${mine()}
       </div>`;
     };
@@ -540,24 +657,85 @@ class EventCenterScreen extends Screen {
     };
 
     const today = this._ymd(new Date());
-    const days = [...Array(7)].map((_, i) => { const d = new Date(this.weekStart); d.setDate(d.getDate() + i); return d; });
-    const day = (d) => {
-      const ymd = this._ymd(d);
-      const evs = shown.filter(ev => { const t = new Date(ev.starts_at); return !isNaN(t) && this._ymd(t) === ymd; });
-      // Today's NOW line: above the first event not over yet (one under
-      // way sits below it), or under the last when the day is done.
-      let cells = evs.map(tile);
+    const { start, days: span } = this._range();
+    const dates = [...Array(span)].map((_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return d; });
+    const onDay = (ymd) => shown.filter(ev => { const t = new Date(ev.starts_at); return !isNaN(t) && this._ymd(t) === ymd; });
+    // Today's NOW line: above the first event not over yet (one under way
+    // sits below it), or under the last when the day is done.
+    const cellsFor = (ymd, evs) => {
+      const cells = evs.map(tile);
       if (ymd === today) {
         const cut = evs.findIndex(ev => !this._isPast(ev));
         cells.splice(cut === -1 ? cells.length : cut, 0, nowLine());
       }
-      const head = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-      return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
-        <div class="ec-dayh">${this.escapeHtml(head)}</div>
-        ${cells.length ? cells.join('') : '<div class="ec-none">—</div>'}
-      </div>`;
+      return cells;
     };
-    const thisWeek = this.weekStart.getTime() === EventCenterScreen.monday(new Date()).getTime();
+    const dayHead = (d, long) => d.toLocaleDateString('en-US', long ? { weekday: 'short', month: 'short', day: 'numeric' } : { weekday: 'short', day: 'numeric' });
+
+    let grid;
+    if (loading) {
+      grid = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
+    } else if (this.view === 'month') {
+      // Mon–Sun weeks over the month; a chip per event (tap opens it), a
+      // day's number opens that week.
+      const month = this.anchor.getMonth();
+      const chipEv = (ev) => {
+        const team = primaries(ev)[0];
+        const color = (team && team.color) || 'var(--primary-color)';
+        const a = new Date(ev.starts_at);
+        const hm = isNaN(a) ? '' : a.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '').replace(' ', '').toLowerCase();
+        const me = ev.my_rsvp === 'yes' ? '✓ ' : ev.my_rsvp === 'no' ? '✗ ' : '';
+        const door = ev.fh_event_id == null ? `data-ec-gcal="${this.escapeHtml(ev.gcal_event_id)}"` : `data-ec-open="${ev.fh_event_id}"`;
+        const label = ev.fh_event_id == null ? (ev.summary || '') : line(ev);
+        const warn = (admin && Array.isArray(ev.tag_issues) && ev.tag_issues.length) || ev.fh_event_id == null ? '⚠ ' : '';
+        return `<div role="button" tabindex="0" class="ec-mchip ${this._isPast(ev) ? 'ec-past' : ''}" ${door}
+                     style="border-left-color:${this.escapeHtml(color)};" title="${this.escapeHtml(`${time(ev)} ${label}`)}">${this.escapeHtml(`${warn}${me}${hm} ${label}`)}</div>`;
+      };
+      const heads = dates.slice(0, 7).map(d => `<div class="ec-mhead">${this.escapeHtml(d.toLocaleDateString('en-US', { weekday: 'short' }))}</div>`).join('');
+      const cells = dates.map(d => {
+        const ymd = this._ymd(d);
+        const evs = onDay(ymd);
+        const more = evs.length > 4 ? `<button type="button" class="ec-mmore" data-ec-goday="${ymd}">+${evs.length - 4}</button>` : '';
+        return `<div class="ec-mcell ${d.getMonth() !== month ? 'out' : ''} ${ymd === today ? 'today' : ''}">
+          <button type="button" class="ec-mday" data-ec-goday="${ymd}" aria-label="Open the week of ${this.escapeHtml(dayHead(d, true))}">${d.getDate()}</button>
+          ${evs.slice(0, 4).map(chipEv).join('')}${more}
+        </div>`;
+      }).join('');
+      grid = `<div class="ec-month-wrap"><div class="ec-month">${heads}${cells}</div></div>`;
+    } else if (this.view === 'agenda') {
+      // Four weeks as a list — only days with something on, past days dimmed.
+      const blocks = dates.map(d => {
+        const ymd = this._ymd(d);
+        const evs = onDay(ymd);
+        if (!evs.length) return '';
+        return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
+          <div class="ec-dayh">${this.escapeHtml(dayHead(d, true))}</div>
+          <div class="ec-agenda">${cellsFor(ymd, evs).join('')}</div>
+        </div>`;
+      }).filter(Boolean);
+      grid = blocks.length ? `<div style="display:flex; flex-direction:column; gap:12px;">${blocks.join('')}</div>`
+        : `<div class="ec-none" style="padding:var(--space-4); text-align:center;">${this.escapeHtml(cp('agenda_empty', {}, 'Nothing on in these four weeks'))}</div>`;
+    } else {
+      grid = `<div class="ec-week">${dates.map(d => {
+        const ymd = this._ymd(d);
+        const cells = cellsFor(ymd, onDay(ymd));
+        return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
+          <div class="ec-dayh">${this.escapeHtml(dayHead(d))}</div>
+          ${cells.length ? cells.join('') : '<div class="ec-none">—</div>'}
+        </div>`;
+      }).join('')}</div>`;
+    }
+
+    // The range label, and the jump back to now when it is out of sight.
+    const end = new Date(start); end.setDate(end.getDate() + span - 1);
+    const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const label = this.view === 'month' ? this.anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : `${fmt(start)} – ${fmt(end)}`;
+    const now = new Date();
+    const hasNow = this.view === 'month'
+      ? now.getMonth() === this.anchor.getMonth() && now.getFullYear() === this.anchor.getFullYear()
+      : now >= start && now < new Date(end.getTime() + 86400000);
+    const nowWord = this.view === 'month' ? cp('this_month', {}, 'This month') : cp('this_week', {}, 'This week');
+    const viewChip = (v, fb) => chip('data-ec-view', v, cp(`view_${v}`, {}, fb), this.view === v);
 
     return `
       ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
@@ -570,13 +748,16 @@ class EventCenterScreen extends Screen {
         ${cats.map(c => chip('data-ec-category', c, catLabel(c), this.category === c)).join('')}
       </div>` : ''}
       <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);">
-        <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous week">‹</button>
-        <span style="font-weight:800; min-width:9em; text-align:center;">${this.escapeHtml(this._weekLabel())}</span>
-        <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next week">›</button>
-        ${thisWeek ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${this.escapeHtml(cp('this_week', {}, 'This week'))}</button>`}
-        <input type="date" class="ec-chip" data-ec-date value="${this._ymd(this.weekStart)}"
-               aria-label="Go to a week" style="font-family:inherit;">
+        <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous">‹</button>
+        <span style="font-weight:800; min-width:9em; text-align:center;">${this.escapeHtml(label)}</span>
+        <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next">›</button>
+        ${hasNow ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${this.escapeHtml(nowWord)}</button>`}
+        <input type="date" class="ec-chip" data-ec-date value="${this._ymd(this.view === 'week' ? this.weekStart : this.anchor)}"
+               aria-label="Go to a date" style="font-family:inherit;">
+        <span class="ec-views" role="tablist" aria-label="Calendar view">
+          ${viewChip('week', 'Week')}${viewChip('month', 'Month')}${viewChip('agenda', 'Agenda')}
+        </span>
       </div>
-      <div class="ec-week">${days.map(day).join('')}</div>`;
+      ${grid}`;
   }
 }

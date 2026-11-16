@@ -663,11 +663,10 @@ class AdminClubScreen extends Screen {
     }
 
     if (section === 'admin-calendar') {
-      // Google Calendar mirror view (agenda list).  See
-      // screens/calendar.js + docs/calendar-design.md §10.1.
-      // clubId/clubName aren't consumed today — calendar is site-
-      // wide — but we pass them so the back button lands here.
-      this.navigation.goTo('calendar', {
+      // The one 📅 Calendar (screens/event-center.js; the old Google-
+      // mirror screen folded in 2026-11-16).  clubId/clubName aren't
+      // consumed — the calendar is site-wide.
+      this.navigation.goTo('event-center', {
         clubId:   this.clubId,
         clubName: this.clubName,
       });

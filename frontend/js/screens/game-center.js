@@ -1099,6 +1099,8 @@ class GameCenterScreen extends EventScreen {
       // in place of Game Center's own Player View toggle.
       const seeAsBtn = e.target.closest('[data-ec-see-as]');
       if (seeAsBtn) { this.seeAs = seeAsBtn.dataset.ecSeeAs || null; this._render(); return; }
+      const postBtn = e.target.closest('[data-ec-post]');
+      if (postBtn) { this._onPostAction(postBtn); return; }
       const remindOne = e.target.closest('[data-gc-remind]');
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
       const callinBtn = e.target.closest('[data-callin]');
