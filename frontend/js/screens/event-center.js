@@ -2,7 +2,7 @@
 // 'event-center').  Owner 2026-11-16: "rsvp, calendar and event center should
 // be one page. when you click an event it should take you to the event" — the
 // old #calendar screen (calendar.js) and the RSVP menu door folded in here:
-// 🗓 Week · Month · Agenda views, and for admins the schedule-release and
+// 🗓 Week · Month views, and for admins the schedule-release and
 // field-clash strips (lib/calendar-ops.js), ⚠ tag audit on tiles and Google
 // soccer events not classified yet (a tap opens Google).  Post / flyer moved
 // onto the event itself (lib/event-posts.js).
@@ -41,8 +41,9 @@
 //                                           (components/section-chat.js), FinesPanel
 //                                           (components/fines-panel.js) — below it
 class EventCenterScreen extends Screen {
-  static get VIEWS() { return ['week', 'month', 'agenda']; }
-  static get AGENDA_DAYS() { return 28; }
+  // 🗓 Week · Month (Agenda — four weeks of Week's tiles — dropped 11/16,
+  // owner: "what is point of it?"; Week's ‹ › steps ahead already).
+  static get VIEWS() { return ['week', 'month']; }
   static get CATEGORY_LABELS() { return { mens: 'Men', womens: 'Women', boys: 'Boys', girls: 'Girls', staff: 'Staff' }; }
 
   constructor(navigation, auth) {
@@ -53,7 +54,7 @@ class EventCenterScreen extends Screen {
     this.person   = 'all';       // person chip: 'all' | 'me' | a kid's person_id
     this.weekStart = EventCenterScreen.monday(new Date());   // the calendar's Monday, kept across visits
     this.anchor   = new Date();    // the day the page is on (month view: its month)
-    // 🗓 Week · Month · Agenda (the old #calendar's three views, owner 11/16:
+    // 🗓 Week · Month (from the old #calendar, owner 11/16:
     // "rsvp, calendar and event center should be one page") — remembered per
     // browser, a convenience only.
     // 📅 By event (the calendar) · 👥 By person (the RSVP Reminders board,
@@ -98,7 +99,6 @@ class EventCenterScreen extends Screen {
         .ec-now::before, .ec-now::after { content:''; flex:1; height:2px; background:#ef4444; }
         @media (min-width: 900px) { .ec-week { grid-template-columns:repeat(7, minmax(0, 1fr)); } }
         .ec-views { display:inline-flex; gap:4px; margin-left:auto; }
-        .ec-agenda { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; }
         .ec-month-wrap { overflow-x:auto; }
         .ec-month { display:grid; grid-template-columns:repeat(7, minmax(84px, 1fr)); gap:1px; min-width:600px;
                     background:var(--border-color); border:1px solid var(--border-color); border-radius:8px; overflow:hidden; }
@@ -335,7 +335,7 @@ class EventCenterScreen extends Screen {
   _step(n) {
     const d = new Date(this.view === 'week' ? this.weekStart : this.anchor);
     if (this.view === 'month') { d.setDate(1); d.setMonth(d.getMonth() + n); }
-    else d.setDate(d.getDate() + n * (this.view === 'agenda' ? EventCenterScreen.AGENDA_DAYS : 7));
+    else d.setDate(d.getDate() + n * 7);
     this._setWeek(d);
   }
 
@@ -347,7 +347,7 @@ class EventCenterScreen extends Screen {
   }
 
   // What the view shows: { start, days }.  Month = whole Mon–Sun weeks
-  // covering the month; agenda = four weeks from the anchor's Monday.
+  // covering the month; week = the anchor's Mon–Sun.
   _range() {
     if (this.view === 'month') {
       const first = new Date(this.anchor.getFullYear(), this.anchor.getMonth(), 1);
@@ -356,7 +356,7 @@ class EventCenterScreen extends Screen {
       const days = Math.round((EventCenterScreen.monday(last) - start) / 86400000) + 7;
       return { start, days };
     }
-    return { start: this.weekStart, days: this.view === 'agenda' ? EventCenterScreen.AGENDA_DAYS : 7 };
+    return { start: this.weekStart, days: 7 };
   }
 
   _isAdmin() { return window.CalendarOps ? CalendarOps.isAdmin(this.auth) : false; }
@@ -816,19 +816,6 @@ class EventCenterScreen extends Screen {
         </div>`;
       }).join('');
       grid = `<div class="ec-month-wrap"><div class="ec-month">${heads}${cells}</div></div>`;
-    } else if (this.view === 'agenda') {
-      // Four weeks as a list — only days with something on, past days dimmed.
-      const blocks = dates.map(d => {
-        const ymd = this._ymd(d);
-        const evs = onDay(ymd);
-        if (!evs.length) return '';
-        return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
-          <div class="ec-dayh">${this.escapeHtml(dayHead(d, true))}</div>
-          <div class="ec-agenda">${cellsFor(ymd, evs).join('')}</div>
-        </div>`;
-      }).filter(Boolean);
-      grid = blocks.length ? `<div style="display:flex; flex-direction:column; gap:12px;">${blocks.join('')}</div>`
-        : `<div class="ec-none" style="padding:var(--space-4); text-align:center;">${this.escapeHtml(cp('agenda_empty', {}, 'Nothing on in these four weeks'))}</div>`;
     } else {
       grid = `<div class="ec-week">${dates.map(d => {
         const ymd = this._ymd(d);
@@ -869,7 +856,7 @@ class EventCenterScreen extends Screen {
         <input type="date" class="ec-chip" data-ec-date value="${this._ymd(this.view === 'week' ? this.weekStart : this.anchor)}"
                aria-label="Go to a date" style="font-family:inherit;">
         <span class="ec-views" role="tablist" aria-label="Calendar view">
-          ${viewChip('week', 'Week')}${viewChip('month', 'Month')}${viewChip('agenda', 'Agenda')}
+          ${viewChip('week', 'Week')}${viewChip('month', 'Month')}
         </span>
       </div>
       ${grid}`;
