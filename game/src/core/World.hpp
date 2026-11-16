@@ -162,6 +162,7 @@ public:
     std::uint8_t lastKickFoot(SlotIndex s) const { return s < kick_foot_.size() ? kick_foot_[s] : 0; }
     // G5.112: what his last kick was — 0 none / short pass, 1 ground kick, 2 lofted, 3 shot (viewer's clip pick).
     std::uint8_t lastKickKind(SlotIndex s) const { return s < kick_kind_.size() ? kick_kind_[s] : 0; }
+    bool lastKickDie(SlotIndex s) const { return s < die_.size() && die_[s]; }   // §8.236: his last ground kick weighted to die (G5.57)
     bool lastKickWeak() const noexcept { return last_kick_weak_; }
     std::uint32_t lastKickWait() const noexcept { return last_kick_wait_; }   // ticks his last kick waited for reach + plant
     std::uint32_t kicksWaited() const noexcept { return kicks_waited_; }

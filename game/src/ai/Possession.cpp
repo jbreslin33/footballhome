@@ -340,8 +340,13 @@ public:
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg);
-            const Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
+            Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
                              : zsum[ez].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * pick[j] / zsum[ez] : Fixed64{};
+            if (w0.raw <= 0) continue;
+            // §8.236: real passers play near mates more than the zone table's split gives (StatsBomb PL
+            // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
+            // 64-68 / 177-193 / 105-111 / 46-50) — a lift by the pass's length band.
+            w0 = w0 * P.len_lift[std::min(5, static_cast<int>(d.raw >> Fixed64::FRAC_BITS) / 10)];
             if (w0.raw <= 0) continue;
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
@@ -1233,6 +1238,10 @@ void PossessionParams::configure(const core::ModelParams& p) {
     {   // G5.74 (§8.175): DFL 7 matches, benchmarks_tracking_passpick.py — lambda by maximum likelihood, m
         static const int kPick[3] = {15000, 10000, 8000};
         for (int o = 0; o < 3; ++o) pick_lambda[o] = p.fixed(("physics.pass.pick_lambda_" + std::to_string(o)).c_str(), kPick[o]);
+        // §8.236: fitted in three passes so the open-play passes played match StatsBomb PL 15/16 by
+        // length share (27.1 / 41.8 / 17.2 / 6.8 / 3.8 %); 50+ m is short for other reasons (range, air) [FH fit]
+        static const int kLenLift[6] = {2080, 755, 440, 340, 850, 1000};
+        for (int l = 0; l < 6; ++l) len_lift[l] = p.fixed(("physics.pass.len_lift_" + std::to_string(l)).c_str(), kLenLift[l]);
     }
     {   // G5.83 (§8.184): DFL 7 matches, benchmarks_tracking_passpick.py MARKED PICK — within his zone the split
         // ~ e^(-d/lambda) x lift by his nearest opponent's metres, iterative scaling (8+ m = 1), x1000

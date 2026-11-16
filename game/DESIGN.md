@@ -9933,3 +9933,36 @@ body / animation track pauses; the brain work goes on. Checked live on footballh
 running match (2D ball and full views, forced portrait, 3D still loads, the toggle both ways, no console
 errors); claiming a man not tried on the live match — James's phone test.
 
+
+### 8.236 G5.133 — the receipt was a cut mismatch and a length mix; a mate's weight by the pass's length
+
+From §8.234's "next: why our received passes are long and slow". New in RECEIPT PACE (harness only): each
+received pass by its kick (short / to feet / die-at / lofted) with its length, strike and arrival speed,
+and a 5 m length histogram; `benchmarks_tracking_spellpace.py` prints the real histogram on the same cut.
+
+1. **Not the die-at ball.** Standing receivers got die-at balls 1-2% of the time; 61% were passes to feet,
+   ~23 m, struck 17 and arriving 8 m/s. PASS PACE by travel was already on the real (0.80 / 1.27 / 1.87 /
+   2.87 s v 0.92 / 1.36 / 1.88 / 2.80). The ball isn't slow.
+2. **A cut mismatch.** The real script counts a pass received only when the mate's spell ended within 3 s
+   (else won / loose). Ours had no cap: 12% of standing receipts and ~48% of 4+ m/s ones took over 3 s. On
+   the real cut: pass received 178-191 a team-match (222), won / loose 105-112 (91); standing 28% (17),
+   pass 18.4-19.3 m, 1.49-1.55 s (14.1 m, 1.07 s). The harness now uses the real cut.
+3. **The length mix.** Open-play passes by length 0-10 / 10-20 / 20-30 / 30-40 / 40-50 / 50+ m (the HIGH BY
+   DIRECTION table summed, StatsBomb PL 15/16): ours 64-68 / 177-193 / 105-111 / 46-50 / 15-18 / 3-4, real
+   99 / 153 / 63 / 25 / 14 / 13 — as shares 15 / 43 / 25 / 11 / 4 / 1% v 27.1 / 41.8 / 17.2 / 6.8 / 3.8 / 3.6.
+   Spacing is near real (nearest mate 9.4 m v 9.9), so the near men are there; the zone-to-zone share
+   (§8.175's e^(-d/lambda) splits only within a zone) doesn't hold the length.
+
+**Change:** `physics.pass.len_lift_0..5` — a mate's weight times a lift by the pass's length band, fitted
+in three passes to the real shares (1.5 / 0.83 / 0.58 / 0.52 / 0.85 → 1.88 / 0.80 / 0.47 / 0.40 / 0.85 →
+2.08 / 0.755 / 0.44 / 0.34 / 0.85, 50+ left at 1) [FH fit]. Seeds 1000-4000 x 8, before → after:
+- length shares 15 / 43 / 25 / 11 / 4 / 1 → 26.3 / 44 / 17.7 / 7.6 / 3.6 / 0.9% (27.1 / 41.8 / 17.2 / 6.8 / 3.8 / 3.6)
+- pass received 178-191 → 200-207 (222); won / loose 105-112 → 100-109 (91)
+- standing receivers 28 → 25-26% (17); their pass 18.4-19.3 → 15.8-16.8 m, 1.49-1.55 → 1.30-1.38 s (14.1 m, 1.07 s)
+- completed 78.8-80.1 → 79.4-80.7% (79.1); shots 12.8-16.2 → 14.2-16.1, goals 1.81-2.69 → 2.00-2.62
+
+Still off: the standing share. COMES TO IT says why — real receivers end 0.5 / 2.1 / 4.4 m further from the
+passer at the touch on 10-20 / 20-30 / 30+ m passes (running onto it); ours ~0 / 0 / 0. The led pass
+(G4.81) leads a moving man; ours are stood still when it's played — off-ball movement before the pass.
+50+ m passes 4 a team-match v 13. Next: the receiver's movement before the pass, then the won ball.
+Goldens re-locked; tests 22/22.

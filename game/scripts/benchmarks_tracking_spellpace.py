@@ -85,7 +85,7 @@ def one(pos_path):
             c[("got", got)] += 1; c[("got_v", got)] += e; c[("got_slow", got)] += e < 2
             vin = math.hypot(ap[0][0] - ap[1][0], ap[0][1] - ap[1][1]) / 0.2; ib = 0 if vin < 1 else 1 if vin < 4 else 2
             c[("ib", got, ib)] += 1
-            if got: c[("iblen", ib)] += plen; c[("ibft", ib)] += ft
+            if got: c[("iblen", ib)] += plen; c[("ibft", ib)] += ft; c[("lh", ib, min(7, int(plen / 5)))] += 1   # §8.236 received pass length, 5 m bands
             c[("hin", got, min(6, int(math.hypot(ap[0][0] - ap[1][0], ap[0][1] - ap[1][1]) / 0.2)))] += 1; c[("hf0", got, min(6, int(e)))] += 1
         dur = (p[-1][0] - p[0][0]) / 25.0
         sv = [math.hypot(p[i][1][0] - p[i - 1][1][0], p[i][1][1] - p[i - 1][1][1]) / ((p[i][0] - p[i - 1][0]) / 25.0) for i in range(1, len(p))]
@@ -125,6 +125,10 @@ if __name__ == "__main__":
         n = max(1, c[("got", g)])
         print(f"  how it came, {lab}: {c[('got', g)]/tm:.1f} a team-match; his speed before (s -1.0 .. -0.2 .. 0): " + " ".join(f"{-0.2*k:.1f} {c[('pre', g, k)]/max(1,c[('pre_n', g, k)]):.2f}" for k in reversed(range(5))) + f" | first 0.2 s {c[('got_v', g)]/n:.2f}, under 2 m/s {100*c[('got_slow', g)]/n:.0f}%")
         print("    " + " ".join(f"in {lab2} {100*c[('ib', g, ib)]/n:.0f}%" + (f" pass {c[('iblen', ib)]/max(1,c[('ib', g, ib)]):.1f} m flight {c[('ibft', ib)]/max(1,c[('ib', g, ib)]):.2f} s;" if g else ";") for ib, lab2 in enumerate(["<1", "1-4", "4+"])))
+        if g:
+            for ib, lab2 in enumerate(["<1", "1-4", "4+"]):
+                nb = max(1, c[("ib", g, ib)])
+                print(f"    in {lab2}: pass length % by 5 m band 0-5..35+: " + " ".join(f"{100*c[('lh', ib, q)]/nb:.1f}" for q in range(8)))
         print(f"    % by m/s 0-1..6+, into it (window ending 0): " + " ".join(f"{100*c[('hin', g, q)]/n:.1f}" for q in range(7)) + " | first 0.2 s: " + " ".join(f"{100*c[('hf0', g, q)]/n:.1f}" for q in range(7)))
     for b, lab in enumerate(["0.6-1.2", "1.2-2", "2-3", "3-5"]):
         n = max(1, c[("n", b)])
