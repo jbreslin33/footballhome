@@ -128,6 +128,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     run_tau_ = p.fixed("physics.run.line_tau_s", 400);
     shift_fwd_max_ = p.fixed("physics.body.shift_fwd_max_mps", 3800);   // G5.95 (§8.196): our ball, forward, not a line run — the build-up jog (0 = shape_max)
     fwd_back_max_ = p.fixed("physics.body.fwd_back_max_mps", 3500);   // G5.96 (§8.197): forwards back toward our goal, holding, in danger too (0 = defend_max)
+    carry_keep_ = p.fixed("physics.onball.carry_keep", 1000).raw > 0;   // G5.127 (§8.228): 0 = he walks at the man he'll pass to, as before
     fwd_back_roles_ = p.integer("physics.body.fwd_back_roles", 56);   // bit per Role CB FB DM AM WIDE ST; 56 = AM WIDE ST
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
@@ -660,7 +661,11 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
                 if (reads_.passSafe(world, slot, from, at,
                              core::weightedPassSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
                     o.target = at;
-                    o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
+                    // G5.127 (§8.228): on the ball, his feet stay on OnBall's carry until the release —
+                    // walking at the man he'll pass to took 39% of a free middle-third carrier's ticks
+                    // backward (carries there +0.1 m forward v StatsBomb +2.4). The kick reads target.
+                    if (!(carry_keep_ && world.ball().owner && *world.ball().owner == slot))
+                        o.move.move = seek(p, at, Fixed64::fromFraction(1, 10));
                 }
             }
             const Fixed64 d = math::length(Vec2{o.target.x - p.x, o.target.y - p.y});

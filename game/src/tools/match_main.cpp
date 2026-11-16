@@ -144,6 +144,8 @@ struct Stats {
     long ro_n[ai::kRoleCount] = {}, ro_sides = 0;
     long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
+    long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
+    long ct_n[2][3] = {}, ct_n10[2][3] = {}; double ct_len[2][3] = {}, ct_fw[2][3] = {}, ct_s[2][3] = {}, ct_mlen[2][3] = {}, ct_ms[2][3] = {};   // §8.228 CARRY BY THIRD [pressed][own/middle/final third]
     std::vector<double> hz_t[10][2], hz_d[10][2], hz_in[10][2], hz_fw[10][2];   // §8.227 HOLD BY ZONE [receipt zone][pressed]: s on the ball, m let go from the receipt; of 5 m+ in / forward   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
     long ft_c[9] = {}; double ft_g[9] = {}; double ft_tg = 0, ft_v = 0, ft_lv = 0, ft_cmd = 0; std::vector<float> ft_age;   // §8.151: the front man 4+ m short (ball 20-50 out): what he is
@@ -263,12 +265,13 @@ int main(int argc, char** argv) {
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
-        int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0;
+        int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false;
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
+        int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32];
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
@@ -521,6 +524,39 @@ int main(int argc, char** argv) {
             if (std::getenv("GAME_PLAY_TRACE") && k % 300 == 0)
                 std::fprintf(stderr, "play m%d %lds ball %.1f,%.1f,%.1f v %.1f,%.1f owner %d last %d restart %d out %d lastTouch %d pass_to %d\n", m, k / 30, b.pos.x.toDouble(), b.pos.y.toDouble(), b.pos.z.toDouble(),
                              b.vel.x.toDouble(), b.vel.y.toDouble(), b.owner ? *b.owner : -1, b.last_kicker, W.restartTeam(), W.outStage(), W.lastTouchTeam(), b.pass_to);
+            {   // §8.228 FUNNEL, as benchmarks_statsbomb_funnel.py: a side's spell (one of its men has the ball, in play) by the deepest
+                // band its men had the ball in, and how it ended — a shot by the side, lost in play (last off a kick of
+                // ours = pass, knocked off our man's feet = on the ball), or dead
+                const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0;
+                auto fin2 = [&](int how) {
+                    if (fn_team >= 0 && fn_deep >= 0) {
+                        const bool sh = !bt_shotk[fn_team].empty() && bt_shotk[fn_team].back() >= fn_k0;
+                        for (int q = 0; q <= fn_deep; ++q) ++S.fn_reach[q];
+                        ++S.fn_end[fn_deep][sh ? 0 : how];
+                    }
+                    fn_team = -1; fn_deep = -1; fn_owned = false;
+                };
+                const int own_now = W.ball().owner ? int(*W.ball().owner) : -1;
+                if (dead) { if (fn_team >= 0) fin2(3); }
+                else if (const auto& fb = W.ball(); fb.owner) {
+                    // as StatsBomb's possession: a spell changes hands only when one of theirs has the ball under
+                    // control — a block or deflection that comes back to us is still our spell
+                    const int ot = W.player(*fb.owner).team;
+                    if (fn_team >= 0 && ot != fn_team) fin2(fn_owned ? 2 : 1);
+                    if (fn_team < 0) { fn_team = ot; fn_k0 = k; fn_deep = -1; }
+                    fn_owned = true; fn_holder = *fb.owner;
+                    {
+                        const double off = fn_team == 0 ? hx - fb.pos.x.toDouble() : fb.pos.x.toDouble() + hx;
+                        const int b1 = off < 18 ? 3 : off < 35 ? 2 : off < 52 ? 1 : 0;
+                        // ENTRY: into a deeper band on his own feet (owned by him last tick) = carried, else passed
+                        if (fn_deep >= 0) for (int q = fn_deep + 1; q <= b1; ++q) ++S.fn_entry[q][fn_last == fn_holder ? 0 : 1];
+                        fn_deep = std::max(fn_deep, b1);
+                    }
+                } else if (fn_owned) {   // off our man's feet: kicked by him (a pass / shot) or knocked loose
+                    fn_owned = !(W.ball().last_kicker == fn_holder && W.ball().kicker_lockout > 0);   // the first free tick: his kick has its lockout
+                }
+                fn_last = dead ? -1 : own_now;
+            }
             {   // in play, and each dead spell by the restart that ends it (benchmarks_tracking_dead.py)
                 const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0;
                 ++S.tick_n; if (!dead) ++S.tick_live;
@@ -821,6 +857,12 @@ int main(int argc, char** argv) {
                     hz_on = false;
                     const double sg = owner_team == 0 ? 1.0 : -1.0;
                     if (!own_set && (own_px - own_sx) * sg >= 10) ++S.carry10;
+                    if (!own_set && own_live0 && !W.isKeeper(static_cast<std::uint8_t>(owner)) && k - owner_got >= 9) {   // §8.228 CARRY BY THIRD (benchmarks_statsbomb_carry.py); one-touch (under 0.3 s) has no Carry event
+                        const double ln = std::hypot(own_px - own_sx, own_py - own_sy), fw = (own_px - own_sx) * sg, du = (k - owner_got) / static_cast<double>(core::kTickRate);
+                        const double tl0 = hx - own_sx * sg; const int th = tl0 >= 70 ? 0 : tl0 >= 35 ? 1 : 2, pr = own_pr ? 1 : 0;
+                        ++S.ct_n[pr][th]; S.ct_len[pr][th] += ln; S.ct_fw[pr][th] += fw; S.ct_s[pr][th] += du; if (fw >= 10) ++S.ct_n10[pr][th];
+                        if (ln >= 1 && du > 0) { S.ct_mlen[pr][th] += ln; S.ct_ms[pr][th] += du; }
+                    }
                     if (facing[owner] > 0) { ++S.takeon; facing[owner] = 0; }
                     if (own < 0) {
                         const auto why = s.lastOrders()[owner].why;
@@ -993,7 +1035,7 @@ int main(int argc, char** argv) {
                     {   const double sgw = q.team == 0 ? 1.0 : -1.0;
                         ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
                         if (ws_on) ++S.ws_n; }
-                    owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble();
+                    owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble(); own_sy = q.pos.y.toDouble(); own_pr = false; own_live0 = W.restartTeam() == 0xFF && W.outStage() == 0;
                     hz_on = hz_rec && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(static_cast<std::uint8_t>(own));
                     if (hz_on) {   // §8.227: where, and pressed (theirs within 2.5 m, StatsBomb's under_pressure ~ 10% of receipts)
                         const double sgh = q.team == 0 ? 1.0 : -1.0; hz_x0 = q.pos.x.toDouble(); hz_y0 = q.pos.y.toDouble();
@@ -1008,6 +1050,20 @@ int main(int argc, char** argv) {
                 const auto& c = W.player(static_cast<std::uint8_t>(own));
                 const double sg = c.team == 0 ? 1.0 : -1.0;
                 own_px = c.pos.x.toDouble(); own_py = c.pos.y.toDouble(); own_set = W.restartTeam() != 0xFF;
+                if (std::getenv("GAME_CARRY_TRACE") && !own_set && own_live0 && (k - owner_got) % 3 == 0 && k - owner_got < 90) {
+                    const double tl0 = hx - own_sx * sg;
+                    if (tl0 >= 35 && tl0 < 70 && !own_pr) {
+                        const auto& oo = s.lastOrders()[own]; const auto& bb = W.ball();
+                        double nd = 99, ndx = 0;
+                        for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != c.team) { const double e = std::hypot(W.player(j).pos.x.toDouble() - own_px, W.player(j).pos.y.toDouble() - own_py); if (e < nd) { nd = e; ndx = (W.player(j).pos.x.toDouble() - own_px) * sg; } }
+                        std::fprintf(stderr, "near %.2f ahead %+.2f ", nd, ndx);
+                        std::fprintf(stderr, "carry m%d slot %d t+%ld x %.1f fwd %.1f | wish %.2f,%.2f why %d act %d | v %.2f,%.2f | ball %+.2f,%+.2f owner %d\n", m, own, k - owner_got, own_px, (own_px - own_sx) * sg,
+                                     oo.move.move.x.toDouble() * sg, oo.move.move.y.toDouble(), static_cast<int>(oo.why), static_cast<int>(oo.action), c.vel.x.toDouble() * sg, c.vel.y.toDouble(),
+                                     (bb.pos.x.toDouble() - own_px) * sg, bb.pos.y.toDouble() - own_py, bb.owner ? int(*bb.owner) : -1);
+                    }
+                }
+                if (!own_pr) for (std::uint8_t j = 0; j < N; ++j)   // §8.228: pressed during the carry (theirs within 2.5 m)
+                    if (W.player(j).team != c.team && std::hypot(W.player(j).pos.x.toDouble() - own_px, W.player(j).pos.y.toDouble() - own_py) < 2.5) { own_pr = true; break; }
                 if (!own_set) for (std::uint8_t j = 0; j < N && j < 32; ++j) {
                     const auto& d = W.player(j);
                     if (d.team == c.team) continue;
@@ -3170,6 +3226,28 @@ int main(int argc, char** argv) {
                 std::printf(" | their nearest:"); for (int r = 0; r < ai::kRoleCount; ++r) std::printf(" %s %ld", rn2[r], S.rce_role[r]);
                 std::printf(" | lost to:"); for (int r = 0; r <= ai::kRoleCount; ++r) std::printf(" %s %ld", rn2[r], S.rce_won_by[r]);
                 std::printf("\n");
+            }
+            {   // §8.228 FUNNEL — benchmarks_statsbomb_funnel.py (StatsBomb PL 15/16)
+                static const double rr[4] = {90.1, 69.7, 50.7, 30.7}, re[4][4] = {{0, 33, 8, 59}, {0, 30, 18, 51}, {10, 24, 18, 47}, {31, 15, 10, 44}};
+                static const char* bn[4] = {"52+", "35-52", "18-35", "0-18"};
+                std::printf("   FUNNEL (spells by the deepest band our man had the ball in, m off their line; real StatsBomb PL 15/16 possessions in brackets): reaching");
+                for (int q = 0; q < 4; ++q) std::printf(" %s %.1f (%.1f);", bn[q], S.fn_reach[q] / tm, rr[q]);
+                std::printf(" on 35-52 → 18-35 %.0f%% (73), 18-35 → 0-18 %.0f%% (61)\n     ending there, shot / lost pass / lost on the ball / dead %%:", 100.0 * S.fn_reach[2] / std::max(1L, S.fn_reach[1]), 100.0 * S.fn_reach[3] / std::max(1L, S.fn_reach[2]));
+                for (int q = 0; q < 4; ++q) { long n = 0; for (long v : S.fn_end[q]) n += v; n = std::max(1L, n);
+                    std::printf(" %s %.1f:", bn[q], n / tm); for (int h = 0; h < 4; ++h) std::printf(" %.0f (%.0f)", 100.0 * S.fn_end[q][h] / n, re[q][h]); std::printf(";"); }
+                std::printf("\n     ENTRY into a band (first time in the spell, from a shallower band): carried / passed a team-match (real):");
+                static const double rc[4][2] = {{0, 0}, {9.6, 19.8}, {10.7, 18.1}, {8.1, 12.0}};
+                for (int q = 1; q < 4; ++q) std::printf(" %s %.1f / %.1f (%.1f / %.1f);", bn[q], S.fn_entry[q][0] / tm, S.fn_entry[q][1] / tm, rc[q][0], rc[q][1]);
+                std::printf("\n");
+            }
+            {   // §8.228 CARRY BY THIRD — benchmarks_statsbomb_carry.py (StatsBomb PL 15/16 Carry events)
+                static const double rn[2][3] = {{54.1, 122.7, 56.2}, {22.8, 56.7, 40.7}}, rl[2][3] = {{5.5, 4.8, 3.8}, {7.0, 6.6, 5.8}}, rf[2][3] = {{3.3, 2.4, 1.3}, {3.1, 2.8, 1.9}},
+                                    rs[2][3] = {{2.29, 1.62, 1.48}, {1.99, 1.85, 1.93}}, rv[2][3] = {{2.63, 3.42, 3.03}, {3.67, 3.76, 3.14}}, r10[2][3] = {{11.6, 9.1, 4.6}, {12.8, 12.8, 9.3}};
+                static const char* thn[3] = {"own third", "middle", "final third"};
+                std::printf("   CARRY BY THIRD (outfielders' spells in play, receipt to release; pressed = theirs within 2.5 m on it; real StatsBomb carries in brackets): a team-match | length m | forward m | s | m/s (1 m+) | forward 10 m+ %%\n");
+                for (int pr = 0; pr < 2; ++pr) for (int th = 0; th < 3; ++th) { const double n = std::max(1L, S.ct_n[pr][th]);
+                    std::printf("     %s %-11s %6.1f (%5.1f) | %4.1f (%4.1f) | %+4.1f (%+4.1f) | %4.2f (%4.2f) | %4.2f (%4.2f) | %4.1f (%4.1f)\n", pr ? "pressed" : "free   ", thn[th], S.ct_n[pr][th] / tm, rn[pr][th],
+                                S.ct_len[pr][th] / n, rl[pr][th], S.ct_fw[pr][th] / n, rf[pr][th], S.ct_s[pr][th] / n, rs[pr][th], S.ct_mlen[pr][th] / std::max(1e-9, S.ct_ms[pr][th]), rv[pr][th], 100.0 * S.ct_n10[pr][th] / n, r10[pr][th]); }
             }
             std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
                         S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);

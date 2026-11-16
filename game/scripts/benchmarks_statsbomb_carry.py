@@ -17,7 +17,7 @@ c = collections.defaultdict(list)
 tob = collections.defaultdict(list)
 REL = ("Pass", "Shot", "Clearance", "Dispossessed", "Miscontrol")
 ts = lambda e: e["minute"] * 60 + e["second"] + float("0." + e["timestamp"].split(".")[1]) if "." in e["timestamp"] else e["minute"] * 60 + e["second"]
-files = sorted(glob.glob(os.path.join(sys.argv[1], "*.json")))
+files = sorted(f for f in glob.glob(os.path.join(sys.argv[1], "*.json")) if os.path.basename(f)[0].isdigit())   # match files only
 for f in files:
     ev = json.load(open(f, encoding="utf8"))
     for i, e in enumerate(ev):

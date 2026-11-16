@@ -9669,3 +9669,39 @@ dead time is real (median 22.1 s v 23.2) but every one is the median; the real s
 
 Shipped: one-touch first time (engine, World); `benchmarks_statsbomb_holdzone.py` (real); HOLD BY ZONE (harness);
 goldens unchanged (the tests run without the tempo rows); tests 22/22.
+
+### 8.228 G5.127 — the man on the ball keeps his carry when he leads a pass (FUNNEL, CARRY BY THIRD)
+
+From §8.227 (final-third receipts half the real). **Measured.** New `scripts/benchmarks_statsbomb_funnel.py`
+(StatsBomb PL 15/16: each possession by the deepest band its side had the ball in, m off their line, and how it
+ended; ENTRY = the first time it gets into each deeper band, by a carry or a completed pass) and a FUNNEL line in
+fh-game-match. Our spell changes hands only when one of theirs has the ball under control, as StatsBomb's possession
+(a first cut on the last touch counted every block and deflection that came back to us as a loss). Real: 30.7 spells
+a team-match reach 0-18, 61% of those reaching 18-35 go on; ours 19-20 and 40-43%. From 18-35 ours end on a lost pass
+46-49% (24) and dead 28-31% (47). ENTRY gave the why: into 0-18 carried 2.7-3.9 / passed 13.5-14.6 (8.1 / 12.0),
+into 18-35 carried 5.5-6.6 (10.7) — we pass in, real sides carry in. Then a CARRY BY THIRD line beside
+`benchmarks_statsbomb_carry.py` (which now skips the non-match files in the events dir): outfielders' spells in play
+from receipt to release, one-touch out (no Carry event), pressed = theirs within 2.5 m on it. Free in the middle
+third our carries went +0.5 m forward (+2.4), final third +0.7 (+1.3).
+
+**Why.** A trace (`GAME_CARRY_TRACE`) of free middle-third carriers: his wish pointed back 39% of ticks, 44-46% with
+nobody within 4-6 m, where `carryDir` can only point at goal. `Brain::namePass` leads a ground pass into the mate's
+path and set the passer's move to `seek` the led spot — through his whole hold he walked at the man he was about to
+pass to, and most passes go square or back. OnBall's "he carries it until the release" never reached his feet.
+
+**Change.** `Brain::namePass`: on the ball, the led pass re-aims the kick's target only; his move stays OnBall's
+carry (the kick waits on reach and the plant foot, not his facing). `physics.onball.carry_keep` 0 = as before.
+
+**After** (seeds 1000-4000 x 8; seed 4000 before / after by GAME_PARAMS; real). Carries 10 m+ 17.1 → 35-38 a
+team-match (34.6); passes 554 → 462-486 (434); return passes 71 → 47-59 (42); completed 84.0 → 80.3-81.3% (79.1);
+take-ons completed 3.4 → 4.2-5.7 (10.6); reaching 0-18 19.7 → 22.6-25.1 (30.7), carried in 3.8 → 5.9-6.5 (8.1);
+carried into their crossing zone 2.5 → 3.6-4.6 (8.8); shots 11.8 → 13.1-15.6; goals 1.12 → 1.69-2.25 a team-match,
+conversion 11.8-14.4% (~9.4) — the finish was already over (§8.222), now on more shots. Worse: carries now gain too
+much — free middle +3.5-3.7 m (+2.4), pressed middle +4.3-4.7 (+2.8), into 35-52 carried 18-20 (9.6): straight at
+goal, not real lines; speed still low (2.6-2.7 m/s v 3.4). From 18-35 still lost on a pass 43-47% (24).
+
+**Still off.** The carry's line (too direct; real wide carries come inside, §8.227), its pace, and the 18-35 lost
+pass. **Next:** the carry's direction from real carries (StatsBomb angle by zone and pressure).
+
+Shipped: carry kept on a led pass (Brain); `benchmarks_statsbomb_funnel.py` (real); FUNNEL + ENTRY + CARRY BY THIRD
++ `GAME_CARRY_TRACE` (harness); goldens re-locked; tests 22/22.
