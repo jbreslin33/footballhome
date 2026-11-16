@@ -9705,3 +9705,38 @@ pass. **Next:** the carry's direction from real carries (StatsBomb angle by zone
 
 Shipped: carry kept on a led pass (Brain); `benchmarks_statsbomb_funnel.py` (real); FUNNEL + ENTRY + CARRY BY THIRD
 + `GAME_CARRY_TRACE` (harness); goldens re-locked; tests 22/22.
+
+### 8.229 G5.128 — a free carry's line from real carries (CARRY LINE)
+
+From §8.228 (carries too direct). **Measured.** New `scripts/benchmarks_statsbomb_carryline.py` (StatsBomb PL 15/16
+open-play Carry events 2 m+, by the pass policy's zone at the start and under_pressure): the line off straight
+forward in 30 deg sectors, inward (toward the centre line) or outward, and the share within 15 deg of the goal's
+centre. Real free carries go at goal 11-19% by zone, within 30 deg of forward 28-45%, 90 deg+ (across or back)
+18-41%, inward 46-72% (wide 52-72: real wide carries come inside, §8.227). A CARRY LINE line in fh-game-match
+(spells 2 m+, as CARRY BY THIRD; pressed = theirs within 2.5 m during it) and CARRY LINE HIST (free, per zone x
+sector). Ours: free 52-70 / 70+ centre at goal 43-53 / 57-60% (13.5 / 18.6), 90 deg+ 4.6-10.3 / 4.4-8.6 (24.0 /
+17.8) — `carryDir` aimed every free carry at the goal centre and only bent off a man within 4 m.
+
+**Change.** `carryDir`: nobody of theirs within 3 m, his line is drawn once a spell from `kCarryLine` by his zone —
+a sector, a uniform angle in it, inward or outward; off the touchline (3 m) or their goal line (3 m) it turns back
+in. Within 3 m G5.81's pressed cone takes over as before. With the real rows as the wish, the carries made
+overshot (90 deg+ 24-48%, free middle forward +0.8 m v +2.4): a forward line is closed down sooner (it turns
+pressed, or ends early), a back line runs on. So the rows are fitted in two passes (row x (real / ours)^0.8,
+seeds 1000-4000 x 8) to make the CARRY LINE HIST match [FH fit]; 0-18 rows stay real (too few of ours).
+`physics.onball.carry_line` 0 = at goal, as before; `physics.onball.line_<zone>_<sector>` (permille) per cell.
+
+**After** (seeds 1000-4000 x 8; before → after, real). Free at goal: 35-52 c 28-36 → 7.7-10.1% (13.3), 52-70 c
+43-52 → 10-12 (13.5), 70+ c 57-60 → 14.4-17.3 (18.6); 90 deg+ 52-70 c 4.6-10.3 → 22.6-27.7 (24.0), 70+ c 4.4-8.6
+→ 19.5-21.8 (17.8); within 30 deg of forward 70+ c 77-82 → 35-40 (39.6). CARRY BY THIRD: free middle forward
++3.5-3.7 → +1.8-2.0 m (+2.4), pressed middle +4.3-4.7 → +3.4-3.8 (+2.8); free middle carries 84-92 → 110-113 a
+team-match (122.7), pressed middle 101-109 → 87-91 (56.7). Worse: passes 462-486 → 493-507 (434), reaching 0-18
+22.6-25.1 → 20.5-22.4 (30.7), carried into the crossing zone 3.6-4.6 → 3.7-4.4 (8.8); shots 13.1-15.6 →
+12.2-13.0, goals 1.69-2.25 → 1.31-2.00 a team-match (conversion 10-16%, ~9.4).
+
+**Still off.** Wide free carries inward 44-53% (60-65) — they still drift outward. Pressed carries at goal 25-40%
+(9-14), 90 deg+ 7-17 (30-40): the 2.5-3 m pressed cone is DFL's first touch, StatsBomb's under_pressure reaches
+further. The test rig's flow check now accepts a dead ball waiting on its taker (a corner flag is 20 m+ from
+everyone while he walks over). **Next:** the pressed carry's line (StatsBomb under_pressure by zone).
+
+Shipped: drawn free carry line (engine, Possession); `benchmarks_statsbomb_carryline.py` (real); CARRY LINE + HIST
+(harness); goldens re-locked; tests 22/22.

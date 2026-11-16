@@ -103,6 +103,26 @@ int theirKeeper(const PlayerCtx& c, std::uint8_t team) {
     return -1;
 }
 
+// G5.128 (§8.229): the line a free carry takes (nobody of theirs within 3 m), by the pass policy's zone at
+// his feet: permille in 30 deg sectors off straight forward, 0-30 .. 150-180 inward (toward the centre
+// line), then the same outward. Target: StatsBomb PL 15/16 open-play Carry events 2 m+, not under
+// pressure (benchmarks_statsbomb_carryline.py; real carries go at goal 11-19%, across or back 18-41%).
+// The rows are his WISH, fitted in two passes so the carries he actually makes (CARRY LINE HIST,
+// seeds 1000-4000 x 8) match the real ones: a forward line is closed down sooner, so it needs more
+// weight than its real share [FH fit]. physics.onball.line_<zone>_<sector> overrides a cell.
+constexpr int kCarryLine[PossessionParams::kLineZones][12] = {
+    {159, 108,  88,  87,  58,  40, 135,  86,  71,  77,  40,  51},   // 0-18 c (real, too few of ours to fit)
+    {173, 128, 112, 104,  74,  93, 124,  34,  23,  30,  25,  80},   // 0-18 w (real, too few of ours to fit)
+    {247, 207, 118,  34,  12,  20, 250,  36,  16,  23,  22,  15},   // 18-35 c
+    {354, 407, 131,  38,   4,  15,  25,   3,   3,   3,   3,  14},   // 18-35 w
+    {303,  98,  66,  53,  16,  17, 296,  59,  44,  23,   8,  17},   // 35-52 c
+    {531, 151,  65,  38,  18,  46, 116,   4,   4,   4,   4,  19},   // 35-52 w
+    {161, 115, 117,  59,  20,  18, 300,  92,  55,  35,   9,  19},   // 52-70 c
+    {394,  78,  63,  63,  36,  66, 237,  17,   8,   9,   5,  24},   // 52-70 w
+    {179, 130,  96,  51,  10,   8, 343,  85,  56,  27,   8,   7},   // 70+ c
+    {228,  69,  88,  84,  32,  54, 307,  50,  29,  17,   9,  33},   // 70+ w
+};
+
 // The carry (G5.29): at goal, off the nearest of theirs within 4 m — what he
 // does with the ball at his feet until the World lets his release go.
 Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec2& goal) {
@@ -113,6 +133,28 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         if (c.team_of_slot[j] == v.team) continue;
         const Fixed64 d2 = distSq(w.player(j).pos, w.player(v.slot).pos);
         if (d2 < nd) { nd = d2; near = j; }
+    }
+    const auto& P = c.poss.params();
+    if (P.line_on && (near < 0 || nd >= Fixed64::fromInt(9))) {
+        // G5.128 (§8.229): nobody of theirs within 3 m — his line is drawn from the real free carries
+        // from his zone (kCarryLine), one draw a spell, so his wish holds while he has it. Off the
+        // touchline / their goal line it turns back in rather than walk the ball out.
+        auto roll = [&](int ch) { return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2); };
+        const Fixed64 hx = w.pitchHalfX(), hy = w.pitchHalfY();
+        const int z = zoneOf(hx, sp, v.sg);
+        const int pick = static_cast<int>((roll(59) * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS);
+        int sec = 11, acc = 0;
+        const int* row = P.line_w[z][0] + P.line_w[z][1] > 0 ? P.line_w[z] : kCarryLine[z];   // not configured (tests): the real table
+        for (int q = 0; q < 12; ++q) { acc += row[q]; if (pick < acc) { sec = q; break; } }
+        const bool in = sec < 6;
+        const Fixed64 deg = Fixed64::fromInt(30 * (sec % 6)) + Fixed64::fromInt(30) * roll(60);
+        const Fixed64 a = deg * math::FX_PI / Fixed64::fromInt(180);   // radians
+        Fixed64 side = sp.y.raw > 0 ? -Fixed64::one() : sp.y.raw < 0 ? Fixed64::one() : (roll(61) < Fixed64::fromFraction(1, 2) ? -Fixed64::one() : Fixed64::one());
+        if (!in) side = -side;                       // side: +1 = toward +y, in his attack's frame below
+        Fixed64 fx = math::fx_cos(a) * v.sg, fy = math::fx_sin(a) * side;
+        if (math::fx_abs(sp.y) > hy - Fixed64::fromInt(3) && (fy * sp.y).raw > 0) fy = -fy;
+        if (hx - sp.x * v.sg < Fixed64::fromInt(3) && (fx * v.sg).raw > 0) fx = -fx;
+        dir = Vec2{fx, fy};
     }
     if (near >= 0) {
         const auto& d = w.player(static_cast<std::uint8_t>(near));
@@ -125,7 +167,6 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         // already in the drawn cone stays; else it turns, on its own side of the man, into it. The
         // first touch plays the ball his way (World::playFirstTouch): "at goal" with the marker
         // behind him had it stolen inside half a second.
-        const auto& P = c.poss.params();
         if (P.press_on && nd < Fixed64::fromInt(9)) {
             const Vec2 q = Vec2{-away.x, -away.y};
             auto roll = [&](int ch) { return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2); };
@@ -1177,6 +1218,13 @@ void PossessionParams::configure(const core::ModelParams& p) {
         mark_on = p.fixed("physics.pass.mark_on", 1000).raw > 0;
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
+    line_on = p.fixed("physics.onball.carry_line", 1000).raw > 0;
+    for (int z = 0; z < kLineZones; ++z) {   // G5.128: physics.onball.line_<zone>_<sector> permille (kCarryLine), renormalized to 1000
+        int t = 0;
+        for (int q = 0; q < 12; ++q) { line_w[z][q] = static_cast<int>(p.fixed(("physics.onball.line_" + std::to_string(z) + "_" + std::to_string(q)).c_str(), std::int64_t{kCarryLine[z][q]} * 1000).raw >> math::Fixed64::FRAC_BITS); t += line_w[z][q]; }
+        int acc = 0; for (int q = 0; q < 12; ++q) { line_w[z][q] = t > 0 ? line_w[z][q] * 1000 / t : 0; acc += line_w[z][q]; }
+        line_w[z][0] += 1000 - acc;
+    }      // G5.128 (§8.229): a free carry's line from the real (kCarryLine); 0 = at goal, as before
     press_on = p.fixed("physics.onball.press_on", 1000).raw > 0;        // G5.81 (§8.182), DFL PRESSED TOUCH
     press_toward = p.fixed("physics.onball.press_toward", 140);         // toward the man 14%
     press_across = p.fixed("physics.onball.press_across", 270);         // across 27%, away the rest

@@ -145,6 +145,7 @@ struct Stats {
     long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
+    long cl_h[10][2][12] = {}, cl_atg[10][2] = {}; double cl_len[10][2] = {};   // §8.229 CARRY LINE [zone][pressed][sector in 0-5 / out 6-11]
     long ct_n[2][3] = {}, ct_n10[2][3] = {}; double ct_len[2][3] = {}, ct_fw[2][3] = {}, ct_s[2][3] = {}, ct_mlen[2][3] = {}, ct_ms[2][3] = {};   // §8.228 CARRY BY THIRD [pressed][own/middle/final third]
     std::vector<double> hz_t[10][2], hz_d[10][2], hz_in[10][2], hz_fw[10][2];   // §8.227 HOLD BY ZONE [receipt zone][pressed]: s on the ball, m let go from the receipt; of 5 m+ in / forward   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
     long lq_h[6][61] = {};   // §8.152b: their line (min with the ball) by whole metres, by the ball's zone
@@ -862,6 +863,14 @@ int main(int argc, char** argv) {
                         const double tl0 = hx - own_sx * sg; const int th = tl0 >= 70 ? 0 : tl0 >= 35 ? 1 : 2, pr = own_pr ? 1 : 0;
                         ++S.ct_n[pr][th]; S.ct_len[pr][th] += ln; S.ct_fw[pr][th] += fw; S.ct_s[pr][th] += du; if (fw >= 10) ++S.ct_n10[pr][th];
                         if (ln >= 1 && du > 0) { S.ct_mlen[pr][th] += ln; S.ct_ms[pr][th] += du; }
+                        if (ln >= 2) {   // §8.229 CARRY LINE (benchmarks_statsbomb_carryline.py)
+                            const double ddx = (own_px - own_sx) * sg, ddy = (own_py - own_sy) * sg, y0 = own_sy * sg;
+                            const int zb = tl0 < 18 ? 0 : tl0 < 35 ? 1 : tl0 < 52 ? 2 : tl0 < 70 ? 3 : 4, z = zb * 2 + (std::fabs(own_sy) < 20.16 ? 0 : 1);
+                            const double ang = std::atan2(std::fabs(ddy), ddx) * 180 / M_PI; const bool in = ddy * y0 < 0 || y0 == 0;
+                            ++S.cl_h[z][pr][std::min(5, static_cast<int>(ang / 30)) + (in ? 0 : 6)]; S.cl_len[z][pr] += ln;
+                            const double g = std::atan2(-y0, tl0), cc = std::atan2(ddy, ddx); double df = std::fmod(std::fabs(cc - g) * 180 / M_PI, 360.0); if (df > 180) df = 360 - df;
+                            if (df < 15) ++S.cl_atg[z][pr];
+                        }
                     }
                     if (facing[owner] > 0) { ++S.takeon; facing[owner] = 0; }
                     if (own < 0) {
@@ -3248,6 +3257,21 @@ int main(int argc, char** argv) {
                 for (int pr = 0; pr < 2; ++pr) for (int th = 0; th < 3; ++th) { const double n = std::max(1L, S.ct_n[pr][th]);
                     std::printf("     %s %-11s %6.1f (%5.1f) | %4.1f (%4.1f) | %+4.1f (%+4.1f) | %4.2f (%4.2f) | %4.2f (%4.2f) | %4.1f (%4.1f)\n", pr ? "pressed" : "free   ", thn[th], S.ct_n[pr][th] / tm, rn[pr][th],
                                 S.ct_len[pr][th] / n, rl[pr][th], S.ct_fw[pr][th] / n, rf[pr][th], S.ct_s[pr][th] / n, rs[pr][th], S.ct_mlen[pr][th] / std::max(1e-9, S.ct_ms[pr][th]), rv[pr][th], 100.0 * S.ct_n10[pr][th] / n, r10[pr][th]); }
+            }
+            {   // §8.229 CARRY LINE — benchmarks_statsbomb_carryline.py (StatsBomb PL 15/16 Carry events 2 m+)
+                static const double ra[2][10] = {{10.8, 12.9, 11.3, 14.4, 13.3, 15.1, 13.5, 15.6, 18.6, 16.5}, {9.4, 12.4, 11.6, 11.5, 13.1, 12.4, 13.0, 12.5, 13.8, 11.7}};
+                static const double rfw[2][10] = {{29.4, 29.8, 27.9, 38.3, 29.7, 42.6, 32.4, 45.4, 39.6, 41.5}, {28.5, 26.6, 27.3, 33.4, 26.1, 33.8, 27.5, 35.9, 28.9, 32.8}};   // within 30 deg of forward
+                static const double rbk[2][10] = {{35.3, 40.6, 32.1, 31.2, 27.7, 29.7, 24.0, 29.8, 17.8, 28.2}, {33.8, 39.0, 34.8, 38.1, 36.5, 39.4, 34.6, 38.8, 30.3, 40.2}};   // 90 deg+ off forward
+                static const double rin[2][10] = {{54.0, 68.5, 54.2, 71.9, 49.3, 65.3, 47.9, 60.0, 46.4, 52.1}, {51.4, 58.2, 52.5, 64.8, 50.5, 60.1, 46.2, 52.2, 37.1, 39.3}};   // inward
+                static const char* zn[10] = {"0-18 c", "0-18 w", "18-35 c", "18-35 w", "35-52 c", "35-52 w", "52-70 c", "52-70 w", "70+ c", "70+ w"};
+                std::printf("   CARRY LINE (§8.229; spells 2 m+, line off forward; real StatsBomb carries in brackets): a team-match | length m | at goal +-15 deg %% | within 30 deg of forward %% | 90 deg+ %% | inward %%\n");
+                for (int pr = 0; pr < 2; ++pr) for (int z = 0; z < 10; ++z) { long t = 0, fw = 0, bk = 0, in = 0; for (int q = 0; q < 12; ++q) { t += S.cl_h[z][pr][q]; if (q % 6 == 0) fw += S.cl_h[z][pr][q]; if (q % 6 >= 3) bk += S.cl_h[z][pr][q]; if (q < 6) in += S.cl_h[z][pr][q]; }
+                    const double n = std::max(1L, t);
+                    std::printf("     %s %-8s %5.1f | %4.1f | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f)\n", pr ? "pressed" : "free   ", zn[z], t / tm, S.cl_len[z][pr] / n, 100.0 * S.cl_atg[z][pr] / n, ra[pr][z],
+                                100.0 * fw / n, rfw[pr][z], 100.0 * bk / n, rbk[pr][z], 100.0 * in / n, rin[pr][z]); }
+                std::printf("   CARRY LINE HIST free, per zone: count then %% in 0-30..150-180 | out 0-30..150-180\n");
+                for (int z = 0; z < 10; ++z) { long t = 0; for (int q = 0; q < 12; ++q) t += S.cl_h[z][0][q]; const double n = std::max(1L, t);
+                    std::printf("     CLH %d %ld", z, t); for (int q = 0; q < 12; ++q) std::printf(" %.1f", 100.0 * S.cl_h[z][0][q] / n); std::printf("\n"); }
             }
             std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
                         S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);

@@ -100,6 +100,8 @@ struct PossessionParams {
     // G5.81 (§8.182): pressed (a man inside 3 m), his carry's line to that man — toward / across / the
     // rest away — DFL controlled first touches (benchmarks_tracking_firsttouch.py PRESSED TOUCH).
     bool press_on = true; math::Fixed64 press_toward{}, press_across{};
+    static constexpr int kLineZones = 10; int line_w[kLineZones][12]{};   // permille by zone x sector (configure())
+    bool line_on = true;   // G5.128 (§8.229): a free carry's line drawn from the real free carries by zone
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
     math::Fixed64 spread_r_m{}, spread_k{}, spread_max_m{};   // G5.118 (§8.219): a supporting man's spot steps off a mate within spread_r_m (0 = off); DFL SPACING fit: 12 m, 0.8

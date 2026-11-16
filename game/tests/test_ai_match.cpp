@@ -101,7 +101,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.121 (2026-11-14): in-possession width refit (DFL POSSESSION WIDTH).
 // Re-locked G5.125 (2026-11-14): the ball wide 18-52 m out, the near DM/CM / AM / WIDE / ST supports the man on it (DFL WING MATES).
 // Re-locked G5.127 (2026-11-15): leading a pass, the man on the ball keeps his carry (StatsBomb CARRY BY THIRD).
-constexpr std::uint64_t kGolden3v3   = 0x91cbe2e598350c2aULL;
+// Re-locked G5.128 (2026-11-16): a free carry's line drawn from real carries by zone (StatsBomb CARRY LINE).
+constexpr std::uint64_t kGolden3v3   = 0x26a4af0e215340baULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -149,7 +150,8 @@ constexpr std::uint64_t kGolden3v3   = 0x91cbe2e598350c2aULL;
 // Re-locked G5.121 (2026-11-14): in-possession width refit (DFL POSSESSION WIDTH).
 // Re-locked G5.125 (2026-11-14): the ball wide 18-52 m out, the near DM/CM / AM / WIDE / ST supports the man on it (DFL WING MATES).
 // Re-locked G5.127 (2026-11-15): leading a pass, the man on the ball keeps his carry (StatsBomb CARRY BY THIRD).
-constexpr std::uint64_t kGolden11v11 = 0xab115df730710a9aULL;
+// Re-locked G5.128 (2026-11-16): a free carry's line drawn from real carries by zone (StatsBomb CARRY LINE).
+constexpr std::uint64_t kGolden11v11 = 0x8adc01f30f544f6bULL;
 
 struct Rig {
     World world;
@@ -255,6 +257,9 @@ FH_TEST(ai_match_flows_possession_and_stays_on_pitch) {
             if (math::lengthSquared(d) < Fixed64::fromInt(100))
                 someone_near_ball = true;
         }
+        // G5.128: a dead ball waiting on its taker (a corner's flag is 20 m+ from everyone
+        // while he walks over) is the game going on too.
+        if (r.world.restartTeam() != 0xFF) someone_near_ball = true;
     }
     FH_EXPECT(someone_near_ball);
 }
