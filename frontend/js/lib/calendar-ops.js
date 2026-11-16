@@ -14,7 +14,10 @@
 // paints, the strip wires its own clicks once per host element.
 
 const CalendarOps = {
+  // Admin = the real account's role, and not while 👀 viewing as someone
+  // (owner 11/16: player view showed the admin strips under the notices).
   isAdmin(auth) {
+    if (auth && auth.viewAsPersonId) return false;
     const role = auth && auth.user && auth.user.role;
     return role === 'club' || role === 'super' || role === 'system';
   },
