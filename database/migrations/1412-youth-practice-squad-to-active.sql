@@ -6,7 +6,9 @@
 --   "Plays" choice.  Needs onboard = never answered an RSVP himself
 --   (fh_event_rsvps.created_via = 'manual', the PersonStanding rule) — those
 --   rows stay 🔵 Practice Squad.  No youth row was 🩹 / 💤, so nothing else
---   is touched.  Applied: 72 rows moved, 8 needs-onboard rows kept.
+--   is touched.  Applied: 72 rows moved, 8 needs-onboard rows kept — then
+--   PUT BACK by the games_need_roster trigger on the next roster save;
+--   superseded by mig 1413 (rule off for the winter teams).
 
 UPDATE team_persons tp
    SET squad_status_id = NULL, invite_only = false, call_in = false
