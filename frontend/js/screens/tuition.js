@@ -1375,6 +1375,7 @@ class TuitionScreen extends Screen {
           <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${c.prorateCell}${c.finesCells}${c.badge}${window.PlayerSheet ? PlayerSheet.button(key, { tab: 'money' }) : ''}</div>
         </div>
         ${m.personId ? `<div data-roster-standing="${m.personId}"></div>` : ''}
+        ${this._lastPaymentsLine(m)}
         ${pickupChip}
         ${injuryChip}
         ${banner}
@@ -1382,6 +1383,26 @@ class TuitionScreen extends Screen {
         ${c.activityLine}
       </div>
     `;
+  }
+
+  // 💳 The last 2 payments on the card (owner 11/16 "at least last 2 amount
+  // and date"): this budget year's + the recent window, newest first,
+  // refunds out; ⏳ = a bank payment LeagueApps hasn't deposited yet. Nothing
+  // this year → the all-time last payment.
+  _lastPaymentsLine(m) {
+    const C = (tier, fb) => this.escape(this._monthCopy(tier, fb));
+    const seen = new Set(), all = [];
+    for (const t of [...(m.yearTransactions || []), ...(m.recentTransactions || [])]) {
+      if (!t || !t.paidAt || seen.has(t.transactionId) || String(t.txnType || '').includes('Refund')) continue;
+      seen.add(t.transactionId); all.push(t);
+    }
+    all.sort((a, b) => String(b.paidAt).localeCompare(String(a.paidAt)));
+    const last = all.slice(0, 2);
+    if (!last.length && m.lastPaidAt) last.push({ amount: m.lastAmount, paidAt: m.lastPaidAt });
+    if (!last.length) return `<div style="font-size:0.78rem; color:#fca5a5;">${C('card_no_payments', 'No payments on record')}</div>`;
+    const pend = C('card_pending_title', 'Bank payment — not deposited yet');
+    const one = (t) => `<span style="white-space:nowrap;"><b style="color:${t.cleared === false ? '#fde68a' : '#86efac'};">${this.fmtMoney(t.amount)}</b> · ${this.fmtDate(t.paidAt)}${t.cleared === false ? ` <span title="${pend}">⏳</span>` : ''}</span>`;
+    return `<div style="font-size:0.78rem; opacity:0.9; display:flex; flex-wrap:wrap; gap:4px 10px;"><span style="opacity:0.7;">${C('card_last_payments', 'Last paid:')}</span>${last.map(one).join('')}</div>`;
   }
 
   _sheetKey(m) { return m.laUserId ? `la${m.laUserId}` : `p${m.personId}`; }
