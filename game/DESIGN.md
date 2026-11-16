@@ -9740,3 +9740,23 @@ everyone while he walks over). **Next:** the pressed carry's line (StatsBomb und
 
 Shipped: drawn free carry line (engine, Possession); `benchmarks_statsbomb_carryline.py` (real); CARRY LINE + HIST
 (harness); goldens re-locked; tests 22/22.
+
+### 8.230 G5.129 — the pressed carry's line: trial, not shipped
+
+From §8.229 (pressed carries at goal 25-40%, real 9-14). **Trial.** A second table, `kCarryLinePressed` from
+`benchmarks_statsbomb_carryline.py`'s under_pressure rows, drawn as §8.229's when one of theirs is within 5 m
+(G5.81's 3 m DFL cone still on top), and a CARRY LINE HIST pressed (CLHP) line in fh-game-match. Real rows as
+the wish, then two joint fit passes (free + pressed, seeds 1000-4000 x 8). The lines came right: pressed at goal
+25-40 → 10-20% (11.5-13.8), within 30 deg of forward 37-62 → 27-38 (26-36), 90 deg+ 7-17 → 23-41 (30-40).
+
+**Why not shipped.** The outcomes went the other way. Pressed middle-third carries forward +3.4-3.8 m → +1.6-1.9
+fitted / +2.1-2.3 real rows (+2.8); speed 2.5 → 2.1 m/s (3.76); take-ons completed 3.2-4.1 → 1.9-3.0 a team-match
+(10.6) of 55-61 tried (18.1); passes 493-507 → 509-525 (434); reaching 0-18 20.5-22.4 → 18.8-21.6 (30.7). The
+fit matches the histogram by making forward wishes rarer, because a forward line under pressure is stopped,
+not because real players turn away more. The gap is the duel: real men beat the presser (59% of tried take-ons),
+ours 5%. Engine left at §8.229; the CLHP line stays in the harness.
+
+**Next:** the take-on — why ours try 3x and complete a tenth (StatsBomb Dribble events by zone, pressure, and
+what happens next).
+
+Shipped: CLHP (harness) only; engine unchanged; tests 22/22.

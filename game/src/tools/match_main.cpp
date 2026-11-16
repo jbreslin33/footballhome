@@ -3272,6 +3272,8 @@ int main(int argc, char** argv) {
                 std::printf("   CARRY LINE HIST free, per zone: count then %% in 0-30..150-180 | out 0-30..150-180\n");
                 for (int z = 0; z < 10; ++z) { long t = 0; for (int q = 0; q < 12; ++q) t += S.cl_h[z][0][q]; const double n = std::max(1L, t);
                     std::printf("     CLH %d %ld", z, t); for (int q = 0; q < 12; ++q) std::printf(" %.1f", 100.0 * S.cl_h[z][0][q] / n); std::printf("\n"); }
+                for (int z = 0; z < 10; ++z) { long t = 0; for (int q = 0; q < 12; ++q) t += S.cl_h[z][1][q]; const double n = std::max(1L, t);   // G5.129 pressed
+                    std::printf("     CLHP %d %ld", z, t); for (int q = 0; q < 12; ++q) std::printf(" %.1f", 100.0 * S.cl_h[z][1][q] / n); std::printf("\n"); }
             }
             std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
                         S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);
