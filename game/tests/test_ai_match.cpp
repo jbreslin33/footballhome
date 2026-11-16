@@ -102,7 +102,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.125 (2026-11-14): the ball wide 18-52 m out, the near DM/CM / AM / WIDE / ST supports the man on it (DFL WING MATES).
 // Re-locked G5.127 (2026-11-15): leading a pass, the man on the ball keeps his carry (StatsBomb CARRY BY THIRD).
 // Re-locked G5.128 (2026-11-16): a free carry's line drawn from real carries by zone (StatsBomb CARRY LINE).
-constexpr std::uint64_t kGolden3v3   = 0x26a4af0e215340baULL;
+// Re-locked G5.130 (2026-11-16): a pressed carry's line from real pressed carries (StatsBomb CARRY LINE).
+constexpr std::uint64_t kGolden3v3   = 0x997ae9a547ec5acbULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -151,7 +152,8 @@ constexpr std::uint64_t kGolden3v3   = 0x26a4af0e215340baULL;
 // Re-locked G5.125 (2026-11-14): the ball wide 18-52 m out, the near DM/CM / AM / WIDE / ST supports the man on it (DFL WING MATES).
 // Re-locked G5.127 (2026-11-15): leading a pass, the man on the ball keeps his carry (StatsBomb CARRY BY THIRD).
 // Re-locked G5.128 (2026-11-16): a free carry's line drawn from real carries by zone (StatsBomb CARRY LINE).
-constexpr std::uint64_t kGolden11v11 = 0x8adc01f30f544f6bULL;
+// Re-locked G5.130 (2026-11-16): a pressed carry's line from real pressed carries (StatsBomb CARRY LINE).
+constexpr std::uint64_t kGolden11v11 = 0xa37886536a29f4ebULL;
 
 struct Rig {
     World world;

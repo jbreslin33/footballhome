@@ -145,6 +145,7 @@ struct Stats {
     long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
+    long fo_n[5] = {}, fo_past[5] = {}, fo_lost[5] = {}, fo_kept[5] = {};   // §8.231 FACED outcomes by zone (benchmarks_tracking_takeon.py)
     long cl_h[10][2][12] = {}, cl_atg[10][2] = {}; double cl_len[10][2] = {};   // §8.229 CARRY LINE [zone][pressed][sector in 0-5 / out 6-11]
     long ct_n[2][3] = {}, ct_n10[2][3] = {}; double ct_len[2][3] = {}, ct_fw[2][3] = {}, ct_s[2][3] = {}, ct_mlen[2][3] = {}, ct_ms[2][3] = {};   // §8.228 CARRY BY THIRD [pressed][own/middle/final third]
     std::vector<double> hz_t[10][2], hz_d[10][2], hz_in[10][2], hz_fw[10][2];   // §8.227 HOLD BY ZONE [receipt zone][pressed]: s on the ball, m let go from the receipt; of 5 m+ in / forward   // §8.155: spells starting wide (|y| 14+) 18-35 m out: let go from / as
@@ -273,7 +274,7 @@ int main(int argc, char** argv) {
         struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
-        int from[32]; long from_t[32], pressed_in[32]; int facing[32];
+        int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
         // 5 Hz ring for "3 s before" (ball x, every man's x).
@@ -872,7 +873,11 @@ int main(int argc, char** argv) {
                             if (df < 15) ++S.cl_atg[z][pr];
                         }
                     }
-                    if (facing[owner] > 0) { ++S.takeon; facing[owner] = 0; }
+                    if (facing[owner] > 0) {   // §8.231: faced, not past — lost / kept by who has it next
+                        const int fz = facing_z[owner];
+                        if (own < 0) { fo_pend_team = owner_team; fo_pend_z = fz; }
+                        else if (W.player(static_cast<std::uint8_t>(own)).team != owner_team) ++S.fo_lost[fz]; else ++S.fo_kept[fz];
+                        ++S.takeon; facing[owner] = 0; }
                     if (own < 0) {
                         const auto why = s.lastOrders()[owner].why;
                         if (!own_set && why != ai::Why::KeeperPunt) {
@@ -1044,6 +1049,7 @@ int main(int argc, char** argv) {
                     {   const double sgw = q.team == 0 ? 1.0 : -1.0;
                         ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
                         if (ws_on) ++S.ws_n; }
+                    if (fo_pend_team >= 0) { if (q.team != fo_pend_team) ++S.fo_lost[fo_pend_z]; else ++S.fo_kept[fo_pend_z]; fo_pend_team = -1; }
                     owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble(); own_sy = q.pos.y.toDouble(); own_pr = false; own_live0 = W.restartTeam() == 0xFF && W.outStage() == 0;
                     hz_on = hz_rec && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(static_cast<std::uint8_t>(own));
                     if (hz_on) {   // §8.227: where, and pressed (theirs within 2.5 m, StatsBomb's under_pressure ~ 10% of receipts)
@@ -1084,11 +1090,12 @@ int main(int argc, char** argv) {
                     }
                     // take-on: a man goal-side within 1.5 m in his 45° cone; done 1 m past him with it
                     const double ahead = -dx * sg;
-                    if (!facing[own] && dd < 1.5 && ahead > 0 && std::fabs(dy) <= ahead) facing[own] = j + 1;
+                    if (!facing[own] && dd < 1.5 && ahead > 0 && std::fabs(dy) <= ahead) {
+                        facing[own] = j + 1; const double ftl = hx - c.pos.x.toDouble() * sg; facing_z[own] = ftl < 18 ? 0 : ftl < 35 ? 1 : ftl < 52 ? 2 : ftl < 70 ? 3 : 4; ++S.fo_n[facing_z[own]]; }
                 }
                 if (facing[own] > 0) {
                     const auto& d = W.player(static_cast<std::uint8_t>(facing[own] - 1));
-                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.takeon; ++S.takeon_ok; facing[own] = 0; }
+                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.takeon; ++S.takeon_ok; ++S.fo_past[facing_z[own]]; facing[own] = 0; }
                 }
             }
 
@@ -2448,7 +2455,7 @@ int main(int argc, char** argv) {
     std::printf("   THE DFL CUT (5 Hz, man on the ball = nearest within 2 m; real DFL benchmarks_tracking_pressure.py): spells %.1f (640.4), %.2f s each (1.21); pressures %.1f (375.2) = %.2f a spell (0.59), by the carrier's metres off their line",
                 S.tk_spells / tm, 0.2 * S.tk_frames / std::max(1L, S.tk_spells), S.tk_press / tm, static_cast<double>(S.tk_press) / std::max(1L, S.tk_spells));
     { static const double rz[5] = {40.8, 80.1, 89.0, 91.1, 74.2}; for (int i = 0; i < 5; ++i) std::printf(" %.1f (%.1f)", S.tk_press_z[i] / tm, rz[i]); }
-    std::printf("; take-ons %.1f (44.2)\n", S.tk_takeon / tm);
+    std::printf("; take-ons %.1f (109.3, §8.231)\n", S.tk_takeon / tm);
     std::printf("   pressures by the presser's why:");
     for (int i = 0; i < ai::kWhyCount; ++i) if (S.press_why[i]) std::printf(" %s %.1f;", ai::kWhyNames[i], S.press_why[i] / tm);
     std::printf("\n   pressures by the ball's metres from the pressers' own line... (carrier off THEIR line 0-18/18-35/35-52/52-70/70+):");
@@ -3274,6 +3281,13 @@ int main(int argc, char** argv) {
                     std::printf("     CLH %d %ld", z, t); for (int q = 0; q < 12; ++q) std::printf(" %.1f", 100.0 * S.cl_h[z][0][q] / n); std::printf("\n"); }
                 for (int z = 0; z < 10; ++z) { long t = 0; for (int q = 0; q < 12; ++q) t += S.cl_h[z][1][q]; const double n = std::max(1L, t);   // G5.129 pressed
                     std::printf("     CLHP %d %ld", z, t); for (int q = 0; q < 12; ++q) std::printf(" %.1f", 100.0 * S.cl_h[z][1][q] / n); std::printf("\n"); }
+            }
+            {   // §8.231 FACED — benchmarks_tracking_takeon.py (DFL 7 matches, the same cut)
+                static const double rn[5] = {15.3, 21.5, 25.8, 23.5, 23.2}, rp[5] = {4.7, 3.3, 1.7, 4.0, 2.2}, rl[5] = {37.9, 38.5, 29.4, 28.3, 22.8};
+                static const char* zn[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+                std::printf("   FACED (§8.231; theirs goal-side within 1.5 m in his 45 deg cone; real DFL in brackets): a team-match | past %% | lost %% | kept %%\n");
+                for (int z = 0; z < 5; ++z) { const double n = std::max(1L, S.fo_n[z]);
+                    std::printf("     %-6s %5.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f)\n", zn[z], S.fo_n[z] / tm, rn[z], 100.0 * S.fo_past[z] / n, rp[z], 100.0 * S.fo_lost[z] / n, rl[z], 100.0 * S.fo_kept[z] / n, 100 - rp[z] - rl[z]); }
             }
             std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
                         S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);

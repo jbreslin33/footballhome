@@ -66,7 +66,9 @@ def one(pos_path):
             dd = math.hypot(x - bx, y - by)
             if dd < 2 and (best is None or dd < best[0]): best = (dd, pid)
         if best is None:
-            if spell and n - spell[1] > 5: spell = None
+            if spell and n - spell[1] > 5:
+                if spell[3]: c["takeon"] += 1   # G5.130 (§8.231): a spell ended by a pass counts too (was dropped: 44.2 → ~109)
+                spell = None
             continue
         car = best[1]
         if not spell or spell[0] != car or n - spell[1] > 10 or sc != spell[4]:

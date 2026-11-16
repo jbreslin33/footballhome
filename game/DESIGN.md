@@ -9760,3 +9760,40 @@ ours 5%. Engine left at §8.229; the CLHP line stays in the harness.
 what happens next).
 
 Shipped: CLHP (harness) only; engine unchanged; tests 22/22.
+
+### 8.231 G5.130 — the take-on was a cut mismatch; the carrier runs at his pace, the pressed line from real
+
+From §8.230 ("real men beat the presser 59%, ours 5%"). **That comparison was wrong.** The harness's take-on
+(a man goal-side within 1.5 m in his 45 deg cone; "completed" = 1 m past him with it) was bracketed by
+StatsBomb's hand-tagged Dribble events (18.1 tried, 10.6 completed) — a deliberate try to beat a man, not the
+geometry. New `scripts/benchmarks_tracking_takeon.py` (DFL 7 matches, the harness's own cut) and a FACED line in
+fh-game-match: real men are faced 109 times a team-match and get past only 3.0% (1.7-4.7 by zone), lose it 31%
+(23-38), keep it 66% (mostly the pass). Ours 60 faced (the harness's man on the ball is the World's controller,
+DFL's the nearest within 2 m — counts not comparable), past 3-8%, lost 19-40% in 18-70+ (23-39) — the duel is
+near real. Inside 0-18 ours lose 60-66% (38): partly the cut (a real shot out has no frame 1 s on and reads
+kept). `benchmarks_tracking_pressure.py` also dropped every faced spell that ended in a pass (44.2 → 109.3);
+fixed, and the DFL CUT line's bracket with it.
+
+**What §8.230's trial did show:** our carries were slow — 2.5 m/s in the middle third (free 3.42, pressed 3.76)
+— so a real pressed line ended short. `physics.tempo.carry_share` held every carrier's wish at 0.6 through his
+spell, a fit from G5.4 when his feet still walked at the man he'd pass to (G5.127). Sweep (seeds 1000-4000 x 8):
+0.8 → middle 3.13 m/s; 1.0 → free 3.55-3.60 / pressed 3.55-3.71, but pressed middle +5.7-6.3 m forward (+2.8).
+
+**Change.** `physics.tempo.carry_share` 0.6 → 1.0 (mig 1400, scratch + live DB): the carrier at his body's
+dribble share of top speed. And §8.230's `kCarryLinePressed` back in — the REAL under_pressure rows, not fitted
+(within `physics.onball.line_press_m` 5 m; G5.81's 3 m cone on top; 0 = off).
+
+**After** (seeds 1000-4000 x 8; G5.128 → G5.130, real). Carry speed by third free 2.6-2.9 → 3.3-3.9 m/s (2.6 /
+3.4 / 3.0), pressed 2.5-2.7 → 3.1-3.7 (3.7 / 3.8 / 3.1); pressed middle forward +3.4-3.8 → +4.1-4.3 (+2.8), final
++2.3-2.5 (+1.9); pressed at goal 52-70 c 35-40% → 15.5-22 (13.0). Passes 493-507 → 474-483 (434); reaching 0-18
+20.5-22.4 → 23.2-24.8 (30.7); carried into the crossing zone 3.7-4.4 → 4.8-6.1 (8.8); crosses 3.9-4.8 → 4.8-5.8
+(11.5); completed 81.4-82.3 → 80.3-81.3% (79.1). Worse: carries long (free middle 6.4-6.6 m v 4.8, pressed 7.9-8.2
+v 6.6) — they last 1.9-2.0 s (1.62), the hold's time; shots 12.2-14.1, goals 1.69-2.62 a team-match (conversion
+11.9-19.9%, ~9.4 — §8.222's finish over-converts on more shots).
+
+**Still off.** Carry duration (the hold) and length; pressed lines too direct in 52-70 (within 30 deg of forward
+36-48 v 28-36); conversion. **Next:** time on the ball when carrying — the hold's curves by zone against
+StatsBomb receipt-to-release, now that the carrier moves.
+
+Shipped: carry_share 1.0 (mig 1400); kCarryLinePressed real rows (Possession); `benchmarks_tracking_takeon.py`,
+pressure script fix (real); FACED (harness); goldens re-locked; tests 22/22.

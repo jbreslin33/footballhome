@@ -123,6 +123,22 @@ constexpr int kCarryLine[PossessionParams::kLineZones][12] = {
     {228,  69,  88,  84,  32,  54, 307,  50,  29,  17,   9,  33},   // 70+ w
 };
 
+// G5.130 (§8.231): the line a pressed carry takes (one of theirs within physics.onball.line_press_m, 5 m),
+// as kCarryLine — StatsBomb PL 15/16 Carry events 2 m+ under_pressure, the real rows (at goal 9-14%, across
+// or back 30-40%); inside 3 m G5.81's DFL cone still turns it off the man.
+constexpr int kCarryLinePressed[PossessionParams::kLineZones][12] = {
+    {133, 103,  87,  93,  53,  45, 152,  95,  92,  72,  38,  37},   // 0-18 c (2982)
+    {137, 126, 107,  85,  58,  68, 128,  59,  53,  56,  47,  76},   // 0-18 w (4355)
+    {127, 107, 106,  86,  52,  45, 144,  97,  71,  65,  47,  53},   // 18-35 c (7108)
+    {192, 117,  96,  88,  64,  89, 140,  42,  32,  33,  33,  74},   // 18-35 w (7317)
+    {126, 106,  92,  79,  57,  44, 134,  98,  79,  77,  49,  59},   // 35-52 c (8051)
+    {192, 100,  80,  75,  59,  95, 146,  54,  34,  37,  37,  91},   // 35-52 w (7867)
+    {117,  96,  78,  78,  47,  44, 156, 117,  90,  85,  50,  42},   // 52-70 c (7529)
+    {168,  78,  62,  66,  58,  89, 190,  67,  47,  51,  42,  82},   // 52-70 w (6373)
+    {112,  82,  73,  50,  27,  27, 177, 133, 120, 104,  53,  42},   // 70+ c (7489)
+    {135,  58,  49,  42,  38,  71, 193,  88,  75,  84,  61, 106},   // 70+ w (4915)
+};
+
 // The carry (G5.29): at goal, off the nearest of theirs within 4 m — what he
 // does with the ball at his feet until the World lets his release go.
 Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec2& goal) {
@@ -135,7 +151,8 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         if (d2 < nd) { nd = d2; near = j; }
     }
     const auto& P = c.poss.params();
-    if (P.line_on && (near < 0 || nd >= Fixed64::fromInt(9))) {
+    const bool pressed_line = P.line_press_m.raw > 0 && near >= 0 && nd < P.line_press_m * P.line_press_m;
+    if (P.line_on && (near < 0 || nd >= Fixed64::fromInt(9) || pressed_line)) {
         // G5.128 (§8.229): nobody of theirs within 3 m — his line is drawn from the real free carries
         // from his zone (kCarryLine), one draw a spell, so his wish holds while he has it. Off the
         // touchline / their goal line it turns back in rather than walk the ball out.
@@ -144,7 +161,8 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         const int z = zoneOf(hx, sp, v.sg);
         const int pick = static_cast<int>((roll(59) * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS);
         int sec = 11, acc = 0;
-        const int* row = P.line_w[z][0] + P.line_w[z][1] > 0 ? P.line_w[z] : kCarryLine[z];   // not configured (tests): the real table
+        const int* row = pressed_line ? (P.line_pw[z][0] + P.line_pw[z][1] > 0 ? P.line_pw[z] : kCarryLinePressed[z])
+                                      : (P.line_w[z][0] + P.line_w[z][1] > 0 ? P.line_w[z] : kCarryLine[z]);   // not configured (tests): the code table
         for (int q = 0; q < 12; ++q) { acc += row[q]; if (pick < acc) { sec = q; break; } }
         const bool in = sec < 6;
         const Fixed64 deg = Fixed64::fromInt(30 * (sec % 6)) + Fixed64::fromInt(30) * roll(60);
@@ -1224,7 +1242,12 @@ void PossessionParams::configure(const core::ModelParams& p) {
         for (int q = 0; q < 12; ++q) { line_w[z][q] = static_cast<int>(p.fixed(("physics.onball.line_" + std::to_string(z) + "_" + std::to_string(q)).c_str(), std::int64_t{kCarryLine[z][q]} * 1000).raw >> math::Fixed64::FRAC_BITS); t += line_w[z][q]; }
         int acc = 0; for (int q = 0; q < 12; ++q) { line_w[z][q] = t > 0 ? line_w[z][q] * 1000 / t : 0; acc += line_w[z][q]; }
         line_w[z][0] += 1000 - acc;
-    }      // G5.128 (§8.229): a free carry's line from the real (kCarryLine); 0 = at goal, as before
+        t = 0;   // G5.130: physics.onball.line_p_<zone>_<sector> (kCarryLinePressed)
+        for (int q = 0; q < 12; ++q) { line_pw[z][q] = static_cast<int>(p.fixed(("physics.onball.line_p_" + std::to_string(z) + "_" + std::to_string(q)).c_str(), std::int64_t{kCarryLinePressed[z][q]} * 1000).raw >> math::Fixed64::FRAC_BITS); t += line_pw[z][q]; }
+        acc = 0; for (int q = 0; q < 12; ++q) { line_pw[z][q] = t > 0 ? line_pw[z][q] * 1000 / t : 0; acc += line_pw[z][q]; }
+        line_pw[z][0] += 1000 - acc;
+    }
+    line_press_m = p.fixed("physics.onball.line_press_m", 5000);   // G5.130: inside it the pressed line table (0 = off)      // G5.128 (§8.229): a free carry's line from the real (kCarryLine); 0 = at goal, as before
     press_on = p.fixed("physics.onball.press_on", 1000).raw > 0;        // G5.81 (§8.182), DFL PRESSED TOUCH
     press_toward = p.fixed("physics.onball.press_toward", 140);         // toward the man 14%
     press_across = p.fixed("physics.onball.press_across", 270);         // across 27%, away the rest
