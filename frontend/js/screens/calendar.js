@@ -1116,8 +1116,9 @@ class CalendarScreen extends Screen {
   }
 
   _wireReleaseStrip() {
-    if (this._releaseWired) return;
-    this._releaseWired = true;
+    // render() builds a fresh element on every visit; wire each one once.
+    if (this._releaseWiredEl === this.element) return;
+    this._releaseWiredEl = this.element;
     this.element.addEventListener('click', async (e) => {
       const openBtn  = e.target.closest('[data-release-open]');
       const closeBtn = e.target.closest('[data-release-close]');
