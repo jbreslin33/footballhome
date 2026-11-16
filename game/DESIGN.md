@@ -9899,8 +9899,14 @@ Trial: `physics.receive.early_s` 0.25 → 0.001 (seeds 1000/2000 x 8) puts the p
 real (2.66-2.74 into it, first 0.2 s 2.50-2.56) with completion unchanged (78.9-79.1%, 79.1), but the
 standing share stays 25-27%: the men standing aren't the early arrivals. Not shipped.
 
-Next: who the standing receivers are (RECEIPT PACE now prints their order at the receipt, pass length and
-flight by how fast they came in); then the won ball.
+Who they are (seeds 1000/2000 x 8): the standing receivers are on "meet the pass" 97-98% — waiting on a
+long, slow ball: pass 20.4-21.4 m, flight 2.19-2.39 s (real standing: 14.1 m, 1.07 s); 1-4 m/s 17.3 m,
+1.63 s; 4+ 24.1 m, 2.76 s (real 14.4 / 15.0 m, 1.09 / 1.29 s; real flight starts when the ball is 2 m off
+him, ours at his touch, so ours read ~0.2 s long — still twice the real). The won-ball standers are chase
+ball 35-38% / meet the pass 59%.
+
+Next: why our received passes are long and slow (weight, the receipt's pace cap control_speed, the lead
+into space), then the won ball.
 
 ### 8.235 Client — the 2D view (both views, one match)
 
