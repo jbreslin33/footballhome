@@ -3008,34 +3008,17 @@ class RosterScreenBase extends Screen {
   // and the 👀 Sees games filter. The backend ships one payload shape
   // for all boards (RosterBoardExtras.cpp).
 
-  // ONE localStorage key for every board: the stored keys are
-  // `${teamId}:${cat}` and team ids are club-unique, so boards can't
-  // collide — and mens' pills keep their pre-lift saved prefs.
-  static get CAT_OFF_STORAGE_KEY() { return 'mensRoster.catOff'; }
-
   // Boys + Girls boards override: the Roster pill lists every player.
   rosterPillShowsEveryone() { return false; }
 
   // The shared delegated-click hooks. Each board's click listener calls
   // this first; true = handled, stop there.
   handleRosterPillClicks(e) {
-    const catPill = e.target.closest('.mr-cat-pill');
-    if (catPill) { this.onCatPillClick(catPill); return true; }
     const officialPill = e.target.closest('.mr-official-pill');
     if (officialPill) { this.onOfficialPillClick(officialPill); return true; }
     const officialRefresh = e.target.closest('.mr-official-refresh');
     if (officialRefresh) { this.onOfficialRefreshClick(officialRefresh); return true; }
     return false;
-  }
-
-  // Category pill: toggles that group's visibility for that one column;
-  // remembered per browser.
-  onCatPillClick(btn) {
-    const key = `${btn.dataset.catTeam}:${btn.dataset.cat}`;
-    this.catOff = this.catOff || {};
-    if (this.catOff[key]) delete this.catOff[key]; else this.catOff[key] = true;
-    try { localStorage.setItem(RosterScreenBase.CAT_OFF_STORAGE_KEY, JSON.stringify(this.catOff)); } catch (e) { /* private window */ }
-    if (this._data) this.renderRoster(this._data);
   }
 
   // 🌐 Roster pill: show/hide the league site's own roster for a column.
@@ -3144,9 +3127,8 @@ class RosterScreenBase extends Screen {
   // Is a category's group on screen for this column?  Hidden only when
   // its category pill is switched off (the 👀 Sees games filter went
   // 11/4 — the card's 👀⚽ chip says it per player).
-  columnCategoryShown(col, cat, data) {
-    return !(this.catOff && this.catOff[`${col.teamId}:${cat}`]);
-  }
+  // Every section always shows (show/hide pills retired 11/16).
+  columnCategoryShown() { return true; }
 
   renderColumnPills(col, players, data) {
     if (col.isUnassigned) return { pillsHtml: '', shown: players, ridersHtml: '' };
@@ -3155,10 +3137,11 @@ class RosterScreenBase extends Screen {
     // ↔ Call In (mig 637) is an invite-only row too, but its own
     // category — a same-level player, not a 📄 roster-filler.
     const catOf = (p) => this.columnCategoryOf(p);
-    const cats = { active: [], injured: [], practice_squad: [], inactive: [] };
-    for (const p of players) cats[catOf(p)].push(p);
-    this.catOff = this.catOff || (() => { try { return JSON.parse(localStorage.getItem(RosterScreenBase.CAT_OFF_STORAGE_KEY) || '{}'); } catch (e) { return {}; } })();
-    const off = (cat) => !!this.catOff[`${col.teamId}:${cat}`];
+    // Show/hide category pills RETIRED (owner 11/16: "we don't need the
+    // pills to turn stuff on and off like active, practice etc right?
+    // seems like clutter") — every section always shows; old saved
+    // hides in localStorage are ignored.
+    const off = () => false;
     // 🌐 The league's OWN roster (official_roster_names, mig 620) —
     // TeamPass for APSL, the CASA sheet for Liga 1.  The league's
     // spelling drifts from ours ("Benzig", "Baidel", a dropped "II"),
@@ -3225,20 +3208,11 @@ class RosterScreenBase extends Screen {
           </div>` : ''}
         </div>`;
     }
-    // Every category pill shows, (0) included (owner 11/4).
-    const catPill = (cat, icon, label, n, color) => `
-        <button type="button" class="mr-cat-pill" data-cat-team="${col.teamId}" data-cat="${cat}"
-          title="${off(cat) ? `Show ${label.toLowerCase()} (${n})` : `Hide ${label.toLowerCase()}`}"
-          style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
-                 border:1px solid ${color}; background:${off(cat) ? 'transparent' : color + '26'};
-                 color:${off(cat) ? '#64748b' : color};">${icon} ${label} (${n})</button>`;
-    const pillsHtml = `
+    // Only the 🌐 league-roster pill is left in this row (category
+    // show/hide pills retired 11/16).
+    const pillsHtml = !official ? '' : `
       <div style="display:flex; gap:4px; flex-wrap:wrap; margin:2px 0 6px;">
-        ${catPill('active', '✅', 'Active', cats.active.length + riders.length, '#4ade80')}
-        ${catPill('practice_squad', '', MessageCopy.block('roster_sheet', 'team_status_practice_squad') || 'Practice Squad', cats.practice_squad.length, '#60a5fa')}
-        ${catPill('injured', '🩹', 'Injured', cats.injured.length, '#f87171')}
-        ${catPill('inactive', '', MessageCopy.block('roster_sheet', 'team_status_inactive') || '💤 Inactive', cats.inactive.length, '#94a3b8')}
-        ${official ? (() => {
+        ${(() => {
           // Pull state on the pill itself (owner 2026-10-21): 🟡 amber
           // while this load's pull runs, green ✓ + stamp once fresh names
           // landed, red ⚠ + the stamp of the list we're STILL showing
@@ -3258,7 +3232,7 @@ class RosterScreenBase extends Screen {
             style="font-size:0.66rem; font-weight:700; padding:1px 8px; border-radius:999px; cursor:pointer; white-space:nowrap;
                    border:1px solid ${color}; background:${officialOpen ? color + '26' : 'transparent'};
                    color:${officialOpen || st ? color : '#64748b'};">🌐 Roster (${(official.names || []).length})${this.escape(suffix)}</button>`;
-        })() : ''}
+        })()}
       </div>
       ${officialPanel}`;
 
