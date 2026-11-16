@@ -70,7 +70,14 @@ class FinancesScreen extends Screen {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
+      const cy = e.target.closest('[data-cap-year]'); if (cy) { this.capYear = cy.dataset.capYear; this._renderBody(); return; }
+      const cp = e.target.closest('[data-cap-paid]'); if (cp) { const t = this._capTeam(Number(cp.dataset.capPaid)); if (t) this._saveCapCoach(t, { is_paid: !this._capCoach(t).is_paid }); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
+    });
+    div.addEventListener('change', (e) => {
+      const r = e.target.closest('[data-cap-rate]'); if (!r) return;
+      const t = this._capTeam(Number(r.dataset.capRate)), v = Number(r.value);
+      if (t && r.value !== '' && Number.isFinite(v) && v >= 0) this._saveCapCoach(t, { rate_per_hour: v }); else this._renderBody();
     });
     return div;
   }
@@ -85,9 +92,11 @@ class FinancesScreen extends Screen {
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
+      const capP = this.auth.fetch('/api/finances/capacity').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const finesP = this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
       this.finesBoard = await finesP;
+      this.capacity = await capP;
       const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({})), fj = await f.json().catch(() => ({}));
       if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
@@ -124,7 +133,8 @@ class FinancesScreen extends Screen {
   _renderPills() {
     const el = this.find('#fn-pills'); if (!el) return;
     const pills = [['position', this._copy('pill_position') || 'Statement of Financial Position'], ['activities', this._copy('pill_activities') || 'Statement of Activities'],
-                   ['plan', this._copy('pill_plan') || 'Operating Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['forecast', this._copy('pill_forecast') || 'Cash Flow Forecast']];
+                   ['plan', this._copy('pill_plan') || 'Operating Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['forecast', this._copy('pill_forecast') || 'Cash Flow Forecast'],
+                   ['capacity', this._copy('pill_capacity') || '👥 Full capacity']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
     const who = this.find('#fn-who'); if (who) who.innerHTML = this.flow && this._byWho() ? this._whoPillsHtml() : '';
   }
@@ -135,7 +145,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'capacity' ? this._capacityHtml() : this._planHtml();
   }
 
   // ── shared bits ──
@@ -418,6 +428,149 @@ class FinancesScreen extends Screen {
           <tbody>${rows}</tbody>
         </table></div>
         <div class="fn-note" style="margin-top:8px;">${esc(this._copy('assumed_note') || '* assumed')}</div>
+      </div>`;
+  }
+
+  // ── 👥 Full capacity (mig 1387; owner 11/15 "can we have a projection if we
+  // fill all teams to capicity with paid players … have option to also make
+  // the coach for each "team" paid or voluneter … allow it for finish of this
+  // year and for next"). A what-if beside the Operating Budget: every
+  // capacity_plan_teams team at teams.max_roster paying dues (women none), a
+  // coach per team = practice hours a week on the calendar × weeks + games ×
+  // hours a game, at that coach's rate (paid) or $0 (volunteer). It replaces
+  // the budget's coaching; every other line is the Operating Budget's. This
+  // year = what is real so far (dues, coaching paid) + full teams for the
+  // months left; next year = a full year. The real budget never reads it.
+  _capTeam(id) { return ((this.capacity || {}).teams || []).find(t => t.team_id === id); }
+  _capCoach(t, year = this._capYear()) {
+    const c = (t.coaches || {})[year] || {}, rate = c.rate_per_hour != null ? Number(c.rate_per_hour) : Number(((this.capacity || {}).settings || {}).coach_rate_per_hour || 0);
+    return { is_paid: c.is_paid !== false, rate };
+  }
+  _capYear() {
+    const m = this._budgetModel(), years = m.yearsAll.filter(y => y >= m.thisYear);
+    return years.includes(this.capYear) ? this.capYear : m.thisYear;
+  }
+  async _saveCapCoach(t, change) {
+    const year = this._capYear(), cur = this._capCoach(t, year);
+    const body = { team_id: t.team_id, budget_year: year, is_paid: change.is_paid != null ? change.is_paid : cur.is_paid, rate_per_hour: change.rate_per_hour != null ? change.rate_per_hour : cur.rate };
+    try {
+      const r = await this.auth.fetch('/api/finances/capacity-coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      this.capacity = j;
+    } catch (err) { this.capErr = `${this._copy('cap_save_failed') || 'Could not save the coach change.'} ${err.message}`; }
+    this._renderBody();
+  }
+  _capacityModel(year) {
+    const cap = this.capacity || {}, st = cap.settings || {}, teams = cap.teams || [];
+    // The Operating Budget for the year, club-wide (no Who pill)
+    const keepScope = this.scope; this.scope = 'all';
+    let m; try { m = this._budgetModel(year); } finally { this.scope = keepScope; }
+    const isThis = year === m.thisYear, fy = (this.flow || {}).year || {};
+    const heads = this.expenses.plan_heads || [];
+    // months / weeks / games left: this year counts from this month, as the Budget's dues do
+    const closed = heads.length ? this._duesActual(heads[0].code).closed : [];
+    const months = isThis ? Math.max(0, 12 - closed.length) : 12;
+    const weeksYear = Number(st.weeks_per_year || 50);
+    let weeks = weeksYear;
+    if (isThis) {
+      const nowYm = String(this.expenses.today || '').slice(0, 7), end = new Date(String(fy.ends_on || '') + 'T12:00:00'), from = new Date(nowYm + '-01T12:00:00');
+      weeks = Math.max(0, Math.round(((end - from) / 86400000 + 1) / 7 * weeksYear / 52 * 10) / 10);
+    }
+    const share = months / 12;
+    const monthlyOf = (sectionId) => Number(((this.expenses.plan_dues || []).find(d => d.section_id === sectionId) || {}).monthly || 0);
+    const rows = teams.map(t => {
+      const c = this._capCoach(t, year), games = Number(t.games || 0) * share;
+      const hours = Number(t.practice_hours_week || 0) * weeks + games * Number(t.hours_per_game || 0);
+      const monthly = t.pays_dues ? monthlyOf(t.section_id) : 0;
+      return { ...t, coach: c, games_counted: games, hours, coachCost: c.is_paid ? hours * c.rate : 0, monthly, dues: t.pays_dues ? Number(t.max_roster || 0) * monthly * months : 0 };
+    });
+    const players = rows.filter(r => r.pays_dues).reduce((a, r) => a + Number(r.max_roster || 0), 0);
+    const duesNew = rows.reduce((a, r) => a + r.dues, 0);
+    const soFar = isThis ? heads.reduce((a, h) => a + this._duesActual(h.code).toDate, 0) : 0;
+    const duesTotal = soFar + duesNew;
+    // coaching paid so far this year (real money out, finished months)
+    const nowYm = String(this.expenses.today || '').slice(0, 7), startYm = String((this.flow || {}).start || fy.starts_on || '').slice(0, 7);
+    const coachSoFar = isThis ? ((this.flow || {}).items || []).filter(i => i.dir === 'out' && i.category === 'labor' && !i.ahead && i.ym >= startYm && i.ym < nowYm).reduce((a, i) => a + Number(i.amount || 0), 0) : 0;
+    const coachTeams = rows.reduce((a, r) => a + r.coachCost, 0);
+    const budgetCoaching = (m.cats.find(c => c.code === 'labor') || {}).sub || 0;
+    // other expenses = the Operating Budget's, coaching and LA fees out (both recomputed here)
+    const otherCats = m.cats.filter(c => c.code !== 'labor' && c.code !== 'la_fees');
+    const feeRatio = this._laFeeRatio(), laFees = duesTotal * feeRatio;
+    const otherTotal = otherCats.reduce((a, c) => a + c.sub, 0);
+    const expTotal = otherTotal + coachSoFar + coachTeams + laFees;
+    // grants: restricted ones pay their purposes up to the award (as on the Budget), with the new coaching
+    const spendOn = (codes) => otherCats.filter(c => codes.includes(c.code)).reduce((a, c) => a + c.sub, 0) + (codes.includes('labor') ? coachSoFar + coachTeams : 0);
+    const awards = [], used = new Map();
+    for (const r of m.revenue.filter(r => r.kind === 'award')) {
+      let amount = r.award;
+      if ((r.purposes || []).length) { const k = r.purposes.join(); amount = Math.min(r.award, Math.max(0, spendOn(r.purposes) - (used.get(k) || 0))); used.set(k, (used.get(k) || 0) + amount); }
+      awards.push({ label: r.label, amount, award: r.award });
+    }
+    const rental = m.revenue.filter(r => r.kind === 'rental');
+    const revTotal = duesTotal + awards.reduce((a, g) => a + g.amount, 0) + rental.reduce((a, r) => a + r.amount, 0);
+    return { m, year, isThis, months, weeks, share, rows, players, duesNew, soFar, duesTotal, coachSoFar, coachTeams, budgetCoaching, otherCats, otherTotal, feeRatio, laFees, expTotal, awards, rental, revTotal, monthly: monthlyOf(1) };
+  }
+  _capacityHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
+    const head = `<div class="fn-title">${esc(this._copy('cap_title') || 'Full capacity')}</div><div class="fn-note">${esc(this._copy('cap_note'))}</div>`;
+    if (!this.capacity || !(this.capacity.teams || []).length) return `<div class="fn-card">${head}<div class="fn-dim">${esc(this._copy('plan_empty') || 'Nothing to show yet.')}</div></div>`;
+    const year = this._capYear(), x = this._capacityModel(year), m = x.m;
+    const years = m.yearsAll.filter(y => y >= m.thisYear);
+    const yearBar = years.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-cap-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
+    const games0 = x.rows.find(r => r.games > 0);
+    const yearNote = x.isThis ? this._copy('cap_note_this_year', { year, months: x.months, weeks: x.weeks, games: games0 ? Math.round(x.share * 100) + '%' : '0' })
+                              : this._copy('cap_note_next_year', { year, weeks: x.weeks });
+    const err = this.capErr ? `<div class="error-message">${esc(this.capErr)}</div>` : ''; this.capErr = '';
+    // teams table
+    const cols = (this._copy('cap_columns') || 'Team|Players|Dues|Coach|$/h|Practice h/wk|Games|Coach cost').split('|').map(c => c.trim());
+    const num1 = (v) => (Math.round(Number(v) * 10) / 10).toString();
+    const teamRows = x.rows.map(r => `<tr class="item">
+        <td style="white-space:normal;" title="${esc(r.note || '')}">${esc(r.name)}${r.note ? `<span class="fn-tick">${esc(r.note)}</span>` : ''}</td>
+        <td>${r.max_roster}</td>
+        <td class="${r.pays_dues ? 'fn-in' : ''}">${r.pays_dues ? M0(r.dues) : esc(this._copy('cap_no_dues') || 'no dues')}</td>
+        <td><button class="fn-pill ${r.coach.is_paid ? 'on' : ''}" style="padding:4px 10px; font-size:0.8rem;" data-cap-paid="${r.team_id}">${esc(r.coach.is_paid ? (this._copy('cap_paid') || 'Paid') : (this._copy('cap_volunteer') || 'Volunteer'))}</button></td>
+        <td><input type="number" min="0" step="0.5" value="${r.coach.rate}" data-cap-rate="${r.team_id}" ${r.coach.is_paid ? '' : 'disabled'} style="width:64px; padding:3px 6px; background:transparent; color:inherit; border:1px solid var(--border-color); border-radius:6px;"></td>
+        <td>${num1(r.practice_hours_week)}</td>
+        <td>${num1(r.games_counted)}${r.games ? ` <span class="fn-dim">× ${num1(r.hours_per_game)} h</span>` : ''}</td>
+        <td class="fn-out">${M0(r.coachCost)}</td></tr>`).join('');
+    const teamTotal = `<tr class="sum"><td>${esc(this._copy('cap_teams_total') || 'All teams')}</td><td>${x.players}</td><td class="fn-in">${M0(x.duesNew)}</td><td colspan="4"></td><td class="fn-out">${M0(x.coachTeams)}</td></tr>`;
+    // the year summary, standard order: revenue → expenses → net
+    const line = (label, detail, amount, cls) => `<tr class="item"><td style="white-space:normal;">${esc(label)}</td><td>${esc(detail || '')}</td><td class="${cls}">${M0(amount)}</td></tr>`;
+    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
+    const duesDetail = x.isThis ? (this._copy('cap_rev_dues_this', { so_far: M0(x.soFar), players: x.players, rate: M0(x.monthly), months: x.months }) || '')
+                                : (this._copy('cap_rev_dues_next', { players: x.players, rate: M0(x.monthly) }) || '');
+    rows += line(this._copy('cap_rev_dues') || 'Dues — every team full', duesDetail, x.duesTotal, 'fn-in');
+    for (const r of x.rental) rows += line(r.label, r.detail, r.amount, 'fn-in');
+    for (const g of x.awards) rows += line(g.label, this._copy('plan_grant_used', { used: M0(g.amount), award: M0(g.award) }) || '', g.amount, 'fn-in');
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total revenue')}</td><td class="fn-in">${M0(x.revTotal)}</td></tr>`;
+    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
+    const coachDetail = this._copy('cap_replaces', { amount: M0(x.budgetCoaching) }) || '';
+    rows += `<tr class="cat ${this.expanded.has('cap:coach') ? 'open' : ''}" data-cat="cap:coach"><td>${esc(this._copy('cap_coaching') || 'Coaching — a coach per team')}<span class="fn-tick">${esc(coachDetail)}</span></td><td></td><td class="fn-out">${M0(x.coachSoFar + x.coachTeams)}</td></tr>`;
+    if (this.expanded.has('cap:coach')) {
+      if (x.coachSoFar) rows += line(this._copy('cap_coaching_so_far') || 'Coaching paid so far', '', x.coachSoFar, 'fn-out');
+      for (const r of x.rows.filter(r => r.coachCost > 0)) rows += line(this._copy('cap_coach_line', { team: r.name }) || `${r.name} coach`, `${num1(r.hours)} h × ${M2(r.coach.rate)}`, r.coachCost, 'fn-out');
+    }
+    for (const c of x.otherCats) {
+      const key = `cap:${c.code}`, open = this.expanded.has(key);
+      rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(c.sub)}</td></tr>`;
+      if (open) rows += c.items.slice().sort((a, b) => b.amount - a.amount).map(it => line(it.label, it.detail, it.amount, 'fn-out')).join('');
+    }
+    if (x.laFees > 0) rows += line(this._copy('soa_la_fees') || 'LeagueApps fees', `${M0(x.duesTotal)} × ${(100 * x.feeRatio).toFixed(1)}%`, x.laFees, 'fn-out');
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total expenses')}</td><td class="fn-out">${M0(x.expTotal)}</td></tr>`;
+    const net = x.revTotal - x.expTotal;
+    rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)}</td></tr>`;
+    return `
+      <div class="fn-card">${head}${yearBar}${err}
+        <div class="fn-note">${esc(yearNote)}</div>
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:640px;">
+          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+          <tbody>${teamRows}${teamTotal}</tbody>
+        </table></div>
+        <div class="fn-title" style="margin-top:14px;">${esc(this._copy('cap_summary') || 'The year at full capacity')} · ${esc(year)}</div>
+        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
+          <tbody>${rows}</tbody>
+        </table></div>
       </div>`;
   }
 

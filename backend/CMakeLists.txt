@@ -46,6 +46,7 @@ set(SOURCES
     src/models/EventAccess.cpp
     src/models/NoticeBoard.cpp
     src/models/Expenses.cpp
+    src/models/CapacityPlan.cpp
     src/models/CashFlow.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp
