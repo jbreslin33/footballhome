@@ -140,8 +140,10 @@ void World::tickPlayers() {
         Vec2 desire = intents_[i].move;
         // G5.4: holding it he takes it along, he doesn't run at goal. A real
         // carry is ~5 m and gains 2-3 m (PL 2015/16). Off without carry_share.
-        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_)
-            desire = Vec2{desire.x * carry_share_, desire.y * carry_share_};
+        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_) {
+            const Fixed64 cs = carryShare(i);
+            desire = Vec2{desire.x * cs, desire.y * cs};
+        }
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
@@ -286,8 +288,10 @@ void World::tickDives() {
         if (!keeper_[i] || p.recovery_ticks > 0 || p.dive_ticks > 0) continue;
         if (ball_.owner && *ball_.owner == i) continue;
         Vec2 desire = intents_[i].move;
-        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_)
-            desire = Vec2{desire.x * carry_share_, desire.y * carry_share_};
+        if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_) {
+            const Fixed64 cs = carryShare(i);
+            desire = Vec2{desire.x * cs, desire.y * cs};
+        }
         if (desire.x.raw == 0 && desire.y.raw == 0) continue;
         const Vec2 dir = math::normalized(desire);
         const Fixed64 dive = bodies_[i].diveSpeed();
@@ -745,7 +749,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const Fixed64 along = o.vel.x * dir.x + o.vel.y * dir.y;
                 Fixed64 base = along.raw > 0 ? along : Fixed64::zero();
                 Fixed64 wanted = math::length(intents_[c].move) * o.max_speed * bodies_[c].dribble();
-                if (carry_share_.raw > 0 && clock_.tick() < hold_until_tick_) wanted = wanted * carry_share_;   // the hold: as tickPlayers
+                if (carry_share_.raw > 0 && clock_.tick() < hold_until_tick_) wanted = wanted * carryShare(c);   // the hold: as tickPlayers
                 // ...but not slower than his body can be half a second on (footstep braking)
                 const Fixed64 floor = base - steps_.brkCap(base) * Fixed64::fromFraction(1, 2);
                 if (wanted < floor) wanted = floor;
@@ -1262,6 +1266,8 @@ void World::configureTempo(const ModelParams& p) {
     box_reach_m_ = p.fixed("physics.tempo.box_reach_m", 0);       // G5.11
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
+    carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
+    carry_pace_gain_ = p.fixed("physics.tempo.carry_pace_gain", 4000);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
     one_touch_first_ = p.fixed("physics.tempo.one_touch_first", 1000).raw > 0;   // G5.126 (§8.227)
     hold_one_ = p.fixed("physics.tempo.hold_one_touch", 0);        // G5.18 (§8.115)
@@ -1430,6 +1436,29 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
         else s = Fixed64::fromInt(4) + Fixed64::fromInt(4) * (u - u4) / (Fixed64::one() - u4);
         hold_until_tick_ = clock_.tick() + static_cast<std::uint64_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
     }
+    carry_pace_ = Fixed64::zero();
+    if (carry_pace_on_ && !keeper_[slot]) {
+        // G5.131 (§8.232): his pace for the spell. Real men on the ball mostly keep the pace they got it
+        // at — settled (1 s+ in) 2.79 / 3.72 / 4.62 m/s for 0-2 / 2-4 / 4+ — and spread wide around it;
+        // ours all ran at the full dribble share (45% of settled frames 5+ m/s v 26%). One draw from the
+        // real spread for his band (DFL 7 matches 2022/23, benchmarks_tracking_spellpace.py, spells 1.6 s+,
+        // 2234; permille by 0.5 m/s band, 7+ = 7-8; flat inside a band [FH]). Real bands by the first
+        // 0.4 s, ours by his speed at the receipt [FH].
+        static constexpr int kPace[3][15] = {
+            {18, 56, 126, 126, 135, 118, 115, 100, 85, 61, 37, 15, 7, 1, 1},
+            {1, 27, 60, 67, 81, 98, 105, 105, 131, 120, 82, 67, 29, 10, 17},
+            {2, 7, 20, 49, 49, 68, 83, 65, 115, 105, 114, 101, 70, 77, 76}};
+        const auto& me = players_[slot];
+        const Fixed64 v = math::length(Vec2{me.vel.x, me.vel.y});
+        const int eb = v < Fixed64::fromInt(2) ? 0 : v < Fixed64::fromInt(4) ? 1 : 2;
+        int tot = 0; for (int q = 0; q < 15; ++q) tot += kPace[eb][q];
+        const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 77) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        Fixed64 acc{}; int q = 0;
+        for (; q < 14; ++q) { const Fixed64 w = Fixed64::fromFraction(kPace[eb][q], tot); if (u < acc + w) break; acc += w; }
+        const Fixed64 w = Fixed64::fromFraction(kPace[eb][q], tot);
+        const Fixed64 in = w.raw > 0 ? (u - acc) / w : Fixed64::fromFraction(1, 2);
+        carry_pace_ = (Fixed64::fromInt(q) + (in < Fixed64::one() ? in : Fixed64::one())) * Fixed64::fromFraction(1, 2);
+    }
     const PlayerSkill& cl = skillOf(slot);
     if (cl.control_settle_ms <= 0) { control_until_tick_ = 0; return; }
     const std::int64_t sp_mps = speed.raw >> Fixed64::FRAC_BITS;
@@ -1478,7 +1507,7 @@ void World::playFirstTouch(SlotIndex slot) {
         // his speed along the line half a second on: easing up, he can't shed more than his footstep
         // braking allows in that time
         Fixed64 wanted = math::length(intents_[slot].move) * r.max_speed * bodies_[slot].dribble();
-        if (carry_share_.raw > 0) wanted = wanted * carry_share_;
+        if (carry_share_.raw > 0) wanted = wanted * carryShare(slot);
         const Fixed64 shed = steps_.brkCap(along) * Fixed64::fromFraction(1, 2);
         Fixed64 fut = along - shed;
         if (fut < wanted) fut = wanted < along ? wanted : along;
@@ -1532,6 +1561,21 @@ void World::playFirstTouch(SlotIndex slot) {
         last_touch_tick_ = clock_.tick();   // the first touch IS his touch
         ++first_touches_;
     }
+}
+
+// G5.131 (§8.232): the carrier's share of his dribble pace — his drawn pace for the spell, else carry_share.
+math::Fixed64 World::carryShare(SlotIndex slot) const {
+    if (!carry_pace_on_ || carry_pace_.raw <= 0) return carry_share_;
+    const Fixed64 top = players_[slot].max_speed * bodies_[slot].dribble();
+    if (top.raw <= 0) return carry_share_;
+    // a target speed, not a cap on his wish: a carrier makes ~2/3 of his wish (turns, touches, going
+    // back to the ball — full wish settled 4.5 m/s), so he pushes while under his pace and eases over it
+    // (gain carry_pace_gain, 4 [FH]; 10 settled no faster — the cap is elsewhere, §8.232).
+    const auto& p = players_[slot];
+    const Fixed64 v = math::length(Vec2{p.vel.x, p.vel.y});
+    Fixed64 s = (carry_pace_ + carry_pace_gain_ * (carry_pace_ - v)) / top;
+    if (s.raw < 0) s = Fixed64::zero();
+    return s < carry_share_ ? s : carry_share_;
 }
 
 void World::giveBall(SlotIndex slot) {

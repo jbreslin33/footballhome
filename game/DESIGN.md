@@ -9797,3 +9797,37 @@ StatsBomb receipt-to-release, now that the carrier moves.
 
 Shipped: carry_share 1.0 (mig 1400); kCarryLinePressed real rows (Possession); `benchmarks_tracking_takeon.py`,
 pressure script fix (real); FACED (harness); goldens re-locked; tests 22/22.
+
+### 8.232 G5.131 — the man on the ball's pace: measured, a per-spell pace trial, not shipped
+
+From §8.231's "next: time on the ball when carrying". New `scripts/benchmarks_tracking_spellpace.py` (DFL 7
+matches; the man on the ball = the in-possession side's nearest outfielder within 2 m, 5 Hz, in play, spells
+0.6 s+) and SPELL PACE + HOLD OVERRUN lines in fh-game-match, the same cut.
+
+**The hold is not the problem.** Our spells run 0.18-0.20 s past the drawn hold on average (52-53% within
+0.1 s; the overrun is mostly a pass already ordered), and spell counts by length are near real (0.6-1.2 s 81-82
+a team-match v 89, 1.2-2 s 90-94 v 109, 2-3 s 54-57 v 60, 3-5 s 51-57 v 43).
+
+**His pace is.** Real men keep the pace they got it at: settled (1 s+ in, per spell 1.6 s+, 2234 spells)
+2.79 / 3.72 / 4.62 m/s for 0-2 / 2-4 / 4+ m/s at the receipt (41 / 34 / 25% of spells), spread wide (0.5 m/s
+bands 0..7+: 0.8 3.4 7.7 8.6 9.5 9.9 10.3 9.3 10.8 9.2 7.2 5.4 3.0 2.3 2.5%). Ours (G5.130, seeds 1000-3000 x 8)
+settle at 4.4-4.6 whatever they got it at; 45% of settled frames 5+ m/s (26), 13% under 2 (22); speed 2 s in
+4.6-4.7 (3.75), at the release 4.1-4.2 (3.20); net metres by length 2.3 / 4.8 / 8.0-8.4 / 13.6-14.0 (2.2 / 4.0 /
+6.8 / 11.6). And 51-56% of ours get it under 2 m/s (41) — 0.2 s in 2.4 (2.8): the receipt is slow too.
+
+**Trial** (World, `physics.tempo.carry_pace`, off): one draw per spell at the receipt from the real spread
+for his receipt band (the table above by band, in `World::settleControl`), then `carryShare` scales his wish.
+(a) As a cap on the wish (pace / top dribble): settled 1.8 / 2.6 / 2.9 — a carrier makes ~2/3 of his wish
+(turns, touches, back to the ball). (b) As a target speed (`carry_pace_gain` 4: push under it, ease over it):
+2.4 / 3.3 / 3.1; gain 10 the same 2.5 / 3.3 / 3.2. The slow draws slow him; the fast ones never arrive — at
+full wish something else holds him near 3.2 in the 4+ band. Net slower, and it undid G5.130 (seeds 1000-4000
+x 8): passes 474-483 → 513-528 (434), take-ons completed 5.7-6.3 → 2.3-3.4 (10.6), carried into the crossing
+zone 4.8-5.8 → 2.8-4.1 (8.8), free middle carry 3.38 → 2.22 m/s (3.42). Not shipped; code default off, goldens
+unchanged.
+
+**Next:** why a full wish settles at 4.5 on average and the fast draws can't reach theirs — the dribble touch
+(`wanted` vs the floor), going back to the ball (the 0.6 jog floor and 3:1 ball-first blend in tickPlayers),
+gait off the line; then the slow receipt (0.2 s in 2.4 v 2.8). Only then the pace draw again.
+
+Shipped: `benchmarks_tracking_spellpace.py` (real); SPELL PACE, per-spell pace, HOLD OVERRUN (harness); the
+pace draw + governor behind `physics.tempo.carry_pace` (0, off). Tests 22/22, goldens unchanged.

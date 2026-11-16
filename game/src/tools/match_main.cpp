@@ -145,6 +145,8 @@ struct Stats {
     long is_n = 0, is_bn = 0, is_got[5] = {}; double is_best = 0, is_t = 0, is_spot = 0, is_rd0 = 0, is_od0 = 0;   // §8.156: balls into space: got by him / a mate / them / out / nobody
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
+    long sp_vb[8] = {}, ps_h[15] = {}, pe_n[3] = {}; double pe_v[3] = {}; double sp_since[10] = {}, sp_before[5] = {}, sp_net[4] = {}, sp_path[4] = {}, sp_dur[4] = {}; long sp_since_n[10] = {}, sp_before_n[5] = {}, sp_n[4] = {};   // §8.232 SPELL PACE
+    long ov_n[5] = {}, ov_why[ai::kWhyCount] = {}, ov_ticks = 0, ov_spells = 0; double ov_sum = 0, ov_drawn = 0, ov_act = 0;   // §8.232 HOLD OVERRUN: spell time past the drawn hold
     long fo_n[5] = {}, fo_past[5] = {}, fo_lost[5] = {}, fo_kept[5] = {};   // §8.231 FACED outcomes by zone (benchmarks_tracking_takeon.py)
     long cl_h[10][2][12] = {}, cl_atg[10][2] = {}; double cl_len[10][2] = {};   // §8.229 CARRY LINE [zone][pressed][sector in 0-5 / out 6-11]
     long ct_n[2][3] = {}, ct_n10[2][3] = {}; double ct_len[2][3] = {}, ct_fw[2][3] = {}, ct_s[2][3] = {}, ct_mlen[2][3] = {}, ct_ms[2][3] = {};   // §8.228 CARRY BY THIRD [pressed][own/middle/final third]
@@ -267,7 +269,7 @@ int main(int argc, char** argv) {
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
-        int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false;
+        int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false; long own_hu = 0; double own_lx = 0, own_ly = 0, own_path = 0, own_v[5] = {}, own_ss = 0, own_e = 0; int own_nv = 0, own_sn = 0;
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
@@ -864,6 +866,20 @@ int main(int argc, char** argv) {
                         const double tl0 = hx - own_sx * sg; const int th = tl0 >= 70 ? 0 : tl0 >= 35 ? 1 : 2, pr = own_pr ? 1 : 0;
                         ++S.ct_n[pr][th]; S.ct_len[pr][th] += ln; S.ct_fw[pr][th] += fw; S.ct_s[pr][th] += du; if (fw >= 10) ++S.ct_n10[pr][th];
                         if (ln >= 1 && du > 0) { S.ct_mlen[pr][th] += ln; S.ct_ms[pr][th] += du; }
+                        if (own_sn >= 3) {   // §8.232 per spell 1.6 s+: settled pace, by the pace he got it at
+                            const double sv = own_ss / own_sn; const int eb = own_e < 2 ? 0 : own_e < 4 ? 1 : 2;
+                            ++S.ps_h[std::min(14, static_cast<int>(sv * 2))]; ++S.pe_n[eb]; S.pe_v[eb] += sv;
+                        }
+                        if (du >= 0.6) {   // §8.232 SPELL PACE (benchmarks_tracking_spellpace.py)
+                            for (int q = 0; q < 5 && q < own_nv; ++q) { S.sp_before[q] += own_v[(own_nv - 1 - q) % 5]; ++S.sp_before_n[q]; }
+                            const int b = du < 1.2 ? 0 : du < 2 ? 1 : du < 3 ? 2 : du < 5 ? 3 : -1;
+                            if (b >= 0) { ++S.sp_n[b]; S.sp_net[b] += ln; S.sp_path[b] += own_path; S.sp_dur[b] += du; }
+                        }
+                        {   // §8.232 HOLD OVERRUN
+                            const double ov = std::max(0.0, (k - std::max(own_hu, owner_got)) / static_cast<double>(core::kTickRate));
+                            ++S.ov_spells; S.ov_sum += ov; S.ov_drawn += std::max(0L, own_hu - owner_got) / static_cast<double>(core::kTickRate); S.ov_act += du;
+                            ++S.ov_n[ov <= 0.1 ? 0 : ov < 0.5 ? 1 : ov < 1 ? 2 : ov < 2 ? 3 : 4];
+                        }
                         if (ln >= 2) {   // §8.229 CARRY LINE (benchmarks_statsbomb_carryline.py)
                             const double ddx = (own_px - own_sx) * sg, ddy = (own_py - own_sy) * sg, y0 = own_sy * sg;
                             const int zb = tl0 < 18 ? 0 : tl0 < 35 ? 1 : tl0 < 52 ? 2 : tl0 < 70 ? 3 : 4, z = zb * 2 + (std::fabs(own_sy) < 20.16 ? 0 : 1);
@@ -1050,6 +1066,7 @@ int main(int argc, char** argv) {
                         ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
                         if (ws_on) ++S.ws_n; }
                     if (fo_pend_team >= 0) { if (q.team != fo_pend_team) ++S.fo_lost[fo_pend_z]; else ++S.fo_kept[fo_pend_z]; fo_pend_team = -1; }
+                    own_lx = q.pos.x.toDouble(); own_ly = q.pos.y.toDouble(); own_path = 0; own_nv = 0; own_ss = 0; own_sn = 0; own_e = 0;
                     owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble(); own_sy = q.pos.y.toDouble(); own_pr = false; own_live0 = W.restartTeam() == 0xFF && W.outStage() == 0;
                     hz_on = hz_rec && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(static_cast<std::uint8_t>(own));
                     if (hz_on) {   // §8.227: where, and pressed (theirs within 2.5 m, StatsBomb's under_pressure ~ 10% of receipts)
@@ -1079,6 +1096,16 @@ int main(int argc, char** argv) {
                 }
                 if (!own_pr) for (std::uint8_t j = 0; j < N; ++j)   // §8.228: pressed during the carry (theirs within 2.5 m)
                     if (W.player(j).team != c.team && std::hypot(W.player(j).pos.x.toDouble() - own_px, W.player(j).pos.y.toDouble() - own_py) < 2.5) { own_pr = true; break; }
+                own_hu = static_cast<long>(W.holdUntilTick());
+                if ((k - owner_got) % 6 == 0 && k > owner_got) {   // §8.232: 5 Hz, as DFL
+                    const double vv = std::hypot(c.pos.x.toDouble() - own_lx, c.pos.y.toDouble() - own_ly) / 0.2; own_path += vv * 0.2;
+                    own_lx = c.pos.x.toDouble(); own_ly = c.pos.y.toDouble();
+                    const int si = static_cast<int>((k - owner_got) / 6) - 1; if (!own_set && own_live0 && si >= 0 && si < 10) { S.sp_since[si] += vv; ++S.sp_since_n[si]; }
+                    if (!own_set && own_live0 && si >= 5) { ++S.sp_vb[std::min(7, static_cast<int>(vv))]; own_ss += vv; ++own_sn; }
+                    if (si == 0 || si == 1) own_e += vv / 2;
+                    own_v[own_nv % 5] = vv; ++own_nv;
+                }
+                if (!own_set && own_live0 && k > own_hu) { ++S.ov_ticks; ++S.ov_why[static_cast<int>(s.lastOrders()[own].why)]; }
                 if (!own_set) for (std::uint8_t j = 0; j < N && j < 32; ++j) {
                     const auto& d = W.player(j);
                     if (d.team == c.team) continue;
@@ -3288,6 +3315,29 @@ int main(int argc, char** argv) {
                 std::printf("   FACED (§8.231; theirs goal-side within 1.5 m in his 45 deg cone; real DFL in brackets): a team-match | past %% | lost %% | kept %%\n");
                 for (int z = 0; z < 5; ++z) { const double n = std::max(1L, S.fo_n[z]);
                     std::printf("     %-6s %5.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f) | %4.1f (%4.1f)\n", zn[z], S.fo_n[z] / tm, rn[z], 100.0 * S.fo_past[z] / n, rp[z], 100.0 * S.fo_lost[z] / n, rl[z], 100.0 * S.fo_kept[z] / n, 100 - rp[z] - rl[z]); }
+            }
+            {   // §8.232 SPELL PACE — benchmarks_tracking_spellpace.py (DFL; their man on the ball = nearest within 2 m)
+                static const double rs[10] = {2.79, 2.77, 2.84, 2.98, 3.17, 3.36, 3.49, 3.59, 3.68, 3.75}, rb[5] = {3.20, 3.35, 3.29, 3.14, 3.08};
+                static const double rn[4] = {2.2, 4.0, 6.8, 11.6}, rv[4] = {2.84, 2.90, 3.22, 3.66};
+                std::printf("   SPELL PACE (§8.232; outfield spells 0.6 s+ in play, 5 Hz; real DFL in brackets): m/s by s since he got it:");
+                for (int q = 0; q < 10; ++q) std::printf(" %.1f %.2f (%.2f)", 0.2 * (q + 1), S.sp_since[q] / std::max(1L, S.sp_since_n[q]), rs[q]);
+                std::printf("; before the release:"); for (int q = 0; q < 5; ++q) std::printf(" -%.1f %.2f (%.2f)", 0.2 * q, S.sp_before[q] / std::max(1L, S.sp_before_n[q]), rb[q]);
+                static const char* bl[4] = {"0.6-1.2", "1.2-2", "2-3", "3-5"};
+                { long vt = 0; for (int q = 0; q < 8; ++q) vt += S.sp_vb[q]; std::printf("\n     settled pace (1 s+ in), %% of 5 Hz frames by m/s 0-1..7+:"); for (int q = 0; q < 8; ++q) std::printf(" %d %.1f", q, 100.0 * S.sp_vb[q] / std::max(1L, vt)); }
+                { static const double rp[15] = {0.8, 3.4, 7.7, 8.6, 9.5, 9.9, 10.3, 9.3, 10.8, 9.2, 7.2, 5.4, 3.0, 2.3, 2.5}, re[3] = {2.79, 3.72, 4.62}, rq[3] = {41, 34, 25};
+                  long pt = 0; for (int q = 0; q < 15; ++q) pt += S.ps_h[q]; pt = std::max(1L, pt);
+                  std::printf("\n     per spell 1.6 s+, settled pace %% by 0.5 m/s 0..7+:"); for (int q = 0; q < 15; ++q) std::printf(" %.1f %.1f (%.1f)", q / 2.0, 100.0 * S.ps_h[q] / pt, rp[q]);
+                  std::printf("\n     per spell, settled pace by pace he got it at 0-2 / 2-4 / 4+ m/s:"); for (int b = 0; b < 3; ++b) std::printf(" %.2f (%.2f) %.0f%% (%.0f%%)", S.pe_v[b] / std::max(1L, S.pe_n[b]), re[b], 100.0 * S.pe_n[b] / pt, rq[b]); }
+                std::printf("\n     by spell length: "); for (int b = 0; b < 4; ++b) { const double n = std::max(1L, S.sp_n[b]);
+                    std::printf("%s s %.1f a team-match, net %.1f (%.1f) m, %.2f (%.2f) m/s; ", bl[b], S.sp_n[b] / tm, S.sp_net[b] / n, rn[b], S.sp_path[b] / std::max(1e-9, S.sp_dur[b]), rv[b]); }
+                std::printf("\n");
+            }
+            {   // §8.232 HOLD OVERRUN
+                const double n = std::max(1L, S.ov_spells);
+                std::printf("   HOLD OVERRUN (§8.232; outfield spells 0.3 s+ in play): drawn hold mean %.2f s, spell %.2f s, past the hold %.2f s; past by <=0.1 / 0.1-0.5 / 0.5-1 / 1-2 / 2+ s %%: %.1f / %.1f / %.1f / %.1f / %.1f; overrun ticks by his why:",
+                            S.ov_drawn / n, S.ov_act / n, S.ov_sum / n, 100 * S.ov_n[0] / n, 100 * S.ov_n[1] / n, 100 * S.ov_n[2] / n, 100 * S.ov_n[3] / n, 100 * S.ov_n[4] / n);
+                for (int q = 0; q < ai::kWhyCount; ++q) if (S.ov_why[q] * 50 > S.ov_ticks) std::printf(" %s %.0f%%", ai::kWhyNames[q], 100.0 * S.ov_why[q] / std::max(1L, S.ov_ticks));
+                std::printf("\n");
             }
             std::printf("   ARRIVE in their crossing zone (0-18 m, |y| 14+), a team-match (real StatsBomb PL 15/16, benchmarks_statsbomb_cross.py arrive): carried in %.2f (8.76); completed passes in %.2f (12.89), from wide %.2f (8.53); within it %.2f (5.79)\n",
                         S.ar_carry / tm, S.ar_pass / tm, S.ar_pass_wide / tm, S.ar_within / tm);
