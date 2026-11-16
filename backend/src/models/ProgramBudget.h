@@ -35,7 +35,10 @@
 // plan season (program_season_entries).
 class ProgramBudget {
 public:
-    static nlohmann::json build(int clubId);
+    // scenario "expected" (the plan) or "capacity": every program fields at
+    // least one team in each plan season and players = teams × capacity
+    // (👥 Full capacity, owner 11/15) — the rest of the plan is shared.
+    static nlohmann::json build(int clubId, const std::string& scenario = "expected");
     static void savePlan(int clubId, const std::string& program, const std::string& year, const std::string& season,
                          const nlohmann::json& fields, long long userId);
     static void saveEntry(int clubId, const std::string& program, const std::string& year, const std::string& season,

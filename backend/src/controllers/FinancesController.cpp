@@ -7,7 +7,6 @@
 #include <optional>
 
 #include "../database/Database.h"
-#include "../models/CapacityPlan.h"
 #include "../models/ProgramBudget.h"
 #include "../models/CashFlow.h"
 #include "../models/Expenses.h"
@@ -71,9 +70,6 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     // it syncs the same four programs first.
     laGet(router, prefix + "/cash-flow", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { Response d; if (!gate(r, &d)) return d; refreshPaymentsFromLa(); return handleCashFlow(r); });
-    // 👥 Full capacity (mig 1387): every team full, a coach per team
-    router.get(prefix + "/capacity", [this](const Request& r) { return handleCapacity(r); });
-    router.post(prefix + "/capacity-coach", [this](const Request& r) { return handleCapacityCoach(r); });
     // 🧩 Programs (mig 1390): a budget per program per season — players per
     // program come from today's members, so it syncs the four programs first.
     laGet(router, prefix + "/programs", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
@@ -87,7 +83,7 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
 
 Response FinancesController::handlePrograms(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
-    try { return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId)); }
+    try { return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId, request.getQueryParam("scenario") == "capacity" ? "capacity" : "expected")); }
     catch (const std::exception& e) { std::cerr << "[finances programs] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the programs."); }
 }
 
@@ -106,33 +102,9 @@ Response FinancesController::handleProgramSave(const Request& request, bool entr
             if (!b.contains("fields") || !b["fields"].is_object()) return jsonError(HttpStatus::BAD_REQUEST, "What changes?");
             ProgramBudget::savePlan(WelcomeLog::kLighthouseClubId, program, year, season, b["fields"], bearerUserId(request));
         }
-        return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId));
+        return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId, b.value("scenario", "") == "capacity" ? "capacity" : "expected"));
     } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
     catch (const std::exception& e) { std::cerr << "[finances program save] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the change."); }
-}
-
-Response FinancesController::handleCapacity(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    try { return jsonOut(HttpStatus::OK, CapacityPlan::state(WelcomeLog::kLighthouseClubId)); }
-    catch (const std::exception& e) { std::cerr << "[finances capacity] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load full capacity."); }
-}
-
-// { team_id, budget_year, is_paid, rate_per_hour (number or null) } → the state again.
-Response FinancesController::handleCapacityCoach(const Request& request) {
-    Response denied; if (!gate(request, &denied)) return denied;
-    try {
-        const json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
-        if (!body.contains("team_id") || !body["team_id"].is_number_integer() || !body.contains("budget_year") || !body["budget_year"].is_string())
-            return jsonError(HttpStatus::BAD_REQUEST, "Which team and year?");
-        std::optional<double> rate;
-        if (body.contains("rate_per_hour") && body["rate_per_hour"].is_number()) rate = body["rate_per_hour"].get<double>();
-        const long long uid = bearerUserId(request);
-        if (!CapacityPlan::saveCoach(WelcomeLog::kLighthouseClubId, body["team_id"].get<int>(), body["budget_year"].get<std::string>(),
-                                     body.value("is_paid", true), rate, uid > 0 ? std::optional<int>((int)uid) : std::nullopt))
-            return jsonError(HttpStatus::NOT_FOUND, "That team or year is not in full capacity.");
-        return jsonOut(HttpStatus::OK, CapacityPlan::state(WelcomeLog::kLighthouseClubId));
-    } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
-    catch (const std::exception& e) { std::cerr << "[finances capacity coach] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the coach change."); }
 }
 
 Response FinancesController::handleCashFlow(const Request& request) {

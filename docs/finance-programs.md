@@ -80,5 +80,17 @@ own net − shared + support.
    `/program-entry` {program, year, season, league_season_id, age_band,
    teams, remove} answer the whole programs again. The books (CashFlow,
    Expenses) are cached 60 s in ProgramBudget so an edit takes ~2.5 s.
-3. Full capacity = the same model with players at capacity; Operating Budget
-   for later years reads the programs.
+3. ✅ (11/16, mig 1397) 👥 Full capacity = `GET /programs?scenario=capacity`:
+   every program fields at least one team per plan season, players = teams ×
+   capacity (capacity = the program's own teams' `max_roster`; a team shared
+   with another program only when it has none). Coach / practice / games /
+   leagues are the same plan rows, so the two scenarios can't disagree; a
+   real season stays real. mig 1387's CapacityPlan model, `/capacity` routes
+   and `capacity_plan_teams` / `_coaches` tables are gone;
+   `capacity_plan_settings` stays (coach rate, weeks a year, calendar weeks).
+   The **Operating Budget of a later year** (2027-28 on) adds up from the
+   programs, expected scenario (`_budgetFromPrograms`): dues per section,
+   CASA + grant from the support lines, expenses = own + shared lines by
+   category, one line per program; Who pills pick programs by section,
+   Club-wide = the shared lines. This year's Operating Budget, Budget vs
+   Actual, the statements and the forecast are unchanged.

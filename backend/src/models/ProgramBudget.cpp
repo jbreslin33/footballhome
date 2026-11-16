@@ -71,7 +71,8 @@ std::vector<std::string> seasonMonths(const Season& s, int startYear, int startM
 }
 }
 
-json ProgramBudget::build(int clubId) {
+json ProgramBudget::build(int clubId, const std::string& scenario) {
+    const bool full = scenario == "capacity";
     auto* db = Database::getInstance();
     const std::string club = std::to_string(clubId);
     const std::string nowYm = db->query("SELECT to_char(now() AT TIME ZONE 'America/New_York', 'YYYY-MM') AS m")[0]["m"].c_str();
@@ -80,7 +81,12 @@ json ProgramBudget::build(int clubId) {
     std::vector<Program> programs;
     for (const auto& r : db->query(
             "SELECT p.id, p.code, p.label, p.kind, p.age_from, p.age_to, p.pays_dues, "
+            // capacity = its own teams' roster size (a team shared with another
+            // program — fall's two-year teams — only when it has no own team)
             "       COALESCE((SELECT MAX(t.max_roster) FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id "
+            "                  WHERE pt.program_id = p.id AND t.is_active "
+            "                    AND NOT EXISTS (SELECT 1 FROM finance_program_teams o WHERE o.team_id = pt.team_id AND o.program_id <> p.id)), "
+            "                (SELECT MAX(t.max_roster) FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id "
             "                  WHERE pt.program_id = p.id AND t.is_active), 0) AS capacity, "
             "       COALESCE((SELECT array_agg(team_id ORDER BY team_id) FROM finance_program_teams WHERE program_id = p.id), '{}')::text AS teams "
             "  FROM finance_programs p WHERE p.club_id = $1::int AND p.is_active ORDER BY p.sort_order", {club})) {
@@ -146,7 +152,7 @@ json ProgramBudget::build(int clubId) {
             heads[(int)k][r["pid"].as<int>()] = {r["active"].as<int>(), r["paying"].as<int>()};
         }
     // Practice hours a week per program: the calendar's next whole weeks, the
-    // busiest of its teams (as CapacityPlan: a session that also carries a
+    // busiest of its teams (as the old Full capacity did: a session that also carries a
     // men's team counts for the men only)
     std::map<int, double> calHours;
     {
@@ -289,7 +295,7 @@ json ProgramBudget::build(int clubId) {
     }
 
     // ── build ──
-    json out = {{"this_year", ""}, {"now_ym", nowYm}, {"years", json::array()}, {"seasons", json::array()}, {"programs", json::array()},
+    json out = {{"scenario", full ? "capacity" : "expected"}, {"this_year", ""}, {"now_ym", nowYm}, {"years", json::array()}, {"seasons", json::array()}, {"programs", json::array()},
                 {"settings", {{"coach_rate", coachRate}, {"weeks_per_year", weeksPerYear}, {"fee_ratio", feeRatio}, {"monthly", monthly}, {"collect_rate", collectRate}}}, {"budgets", json::object()}};
     // leagues a youth program can enter: league seasons with a rate card, by
     // budget year and the budget season their start falls in
@@ -345,9 +351,10 @@ json ProgramBudget::build(int clubId) {
                 const double rate0 = p.paysDues && collectRate.count(p.kind) ? collectRate[p.kind] : 1.0;
                 const int heads0 = p.paysDues ? h.second : h.first;
                 const int defPlayers = isReal ? heads0 : (int)std::lround(heads0 * rate0);
-                const int players = isReal ? defPlayers : (pl.players >= 0 ? pl.players : defPlayers);
                 const int cap = std::max(1, p.capacity);
-                const int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : (players > 0 ? (players + cap - 1) / cap : 0));
+                int players = isReal ? defPlayers : (pl.players >= 0 ? pl.players : defPlayers);
+                int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : (players > 0 ? (players + cap - 1) / cap : 0));
+                if (full && !isReal) { teams = std::max(1, pl.teams >= 0 ? pl.teams : teams); players = teams * cap; }
                 payW[(int)si][p.id] = p.paysDues ? players : 0;
                 const double ph = pl.ph >= 0 ? pl.ph : calHours[p.id];
                 const double weeks = pl.weeks >= 0 ? pl.weeks : weeksPerYear * months.size() / 12.0;

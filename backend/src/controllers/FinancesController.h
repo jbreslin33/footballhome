@@ -17,8 +17,9 @@
 //                                before computing
 //   GET /api/finances/cash-flow  CashFlow: soccer money in from LeagueApps
 //                                against invoices out (#cash-flow, mig 882)
-//   GET  /api/finances/capacity        CapacityPlan: 👥 Full capacity (mig 1387)
-//   POST /api/finances/capacity-coach  one team coach paid/volunteer + rate
+//   GET  /api/finances/programs[?scenario=capacity]  ProgramBudget: 🧩 Programs
+//                                (mig 1390) — and 👥 Full capacity (step 3)
+//   POST /api/finances/program-plan | program-entry  edit a plan season
 class FinancesController : public Controller {
 public:
     FinancesController();
@@ -29,8 +30,6 @@ private:
     Response handleSummary(const Request& request);
     Response handleExpenses(const Request& request);
     Response handleCashFlow(const Request& request);
-    Response handleCapacity(const Request& request);
-    Response handleCapacityCoach(const Request& request);
     Response handlePrograms(const Request& request);
     Response handleProgramSave(const Request& request, bool entry);
 };

@@ -70,13 +70,11 @@ class FinancesScreen extends Screen {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
-      const cy = e.target.closest('[data-cap-year]'); if (cy) { this.capYear = cy.dataset.capYear; this._renderBody(); return; }
       const gy = e.target.closest('[data-pg-year]'); if (gy) { this.pgYear = gy.dataset.pgYear; this._renderBody(); return; }
       const gpaid = e.target.closest('[data-pg-paid]'); if (gpaid) { this._pgSave('program-plan', { season: gpaid.dataset.pgPaid, fields: { coach_paid: gpaid.dataset.on !== '1' } }); return; }
       const grm = e.target.closest('[data-pg-entry-rm]'); if (grm) { this._pgSave('program-entry', { season: grm.dataset.season, league_season_id: Number(grm.dataset.pgEntryRm), remove: true }); return; }
       if (e.target.closest('.pg-in, [data-pg-entry-add]')) return;
       const gp = e.target.closest('[data-pg-prog]'); if (gp) { this.pgProg = this.pgProg === gp.dataset.pgProg ? null : gp.dataset.pgProg; this._renderBody(); return; }
-      const cp = e.target.closest('[data-cap-paid]'); if (cp) { const t = this._capTeam(Number(cp.dataset.capPaid)); if (t) this._saveCapCoach(t, { is_paid: !this._capCoach(t).is_paid }); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
@@ -92,9 +90,6 @@ class FinancesScreen extends Screen {
         const opt = ((((this.programs || {}).league_options || {})[this._pgYearNow()] || {})[ga.dataset.season] || []).find(o => o.id === id) || {};
         this._pgSave('program-entry', { season: ga.dataset.season, league_season_id: id, age_band: this._pgBand(opt.bands || []) }); return;
       }
-      const r = e.target.closest('[data-cap-rate]'); if (!r) return;
-      const t = this._capTeam(Number(r.dataset.capRate)), v = Number(r.value);
-      if (t && r.value !== '' && Number.isFinite(v) && v >= 0) this._saveCapCoach(t, { rate_per_hour: v }); else this._renderBody();
     });
     return div;
   }
@@ -109,11 +104,9 @@ class FinancesScreen extends Screen {
       const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
-      const capP = this.auth.fetch('/api/finances/capacity').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const finesP = this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
       this.finesBoard = await finesP;
-      this.capacity = await capP;
       const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({})), fj = await f.json().catch(() => ({}));
       if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
       if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
@@ -162,7 +155,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'capacity' ? this._capacityHtml() : v === 'programs' ? this._programsHtml() : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
   }
 
   // ── shared bits ──
@@ -282,6 +275,8 @@ class FinancesScreen extends Screen {
     const years = [...new Set([...(this.expenses.plan || []).map(l => l.budget_year), ...(this.expenses.budget || []).map(b => b.budget_year)].filter(Boolean))].sort();
     const year = pick || (years.includes(thisYear) ? thisYear : years[0]);
     const yearsAll = [...new Set([...years, ...(this.expenses.plan_grants || []).map(g => g.budget_year)])].sort();
+    // a later year is a plan: it adds up from the programs (step 3, mig 1390)
+    if (thisYear && year !== thisYear) return this._budgetFromPrograms(year, yearsAll, thisYear);
     const grants = (this.expenses.plan_grants || []).filter(g => g.budget_year === year);
     // options (is_option entries — Liga 2, Temple 7s) are not in the budget
     const lines = (this.expenses.plan || []).filter(l => this._scopeOk(l.scope) && l.budget_year === year && !l.is_option);
@@ -412,12 +407,81 @@ class FinancesScreen extends Screen {
 
   // ── Budget (mig 1320 → 1367): the operating budget for a budget year —
   // Revenue, Expenses by category, Net surplus / (deficit).
+  // The Operating Budget of a later year from the programs ("expected"):
+  // dues per section from each program's dues, CASA and the grant from their
+  // support lines, expenses = own + shared lines by category, one line per
+  // program. The Who pills pick programs by section; Club-wide = the shared
+  // lines alone.
+  _budgetFromPrograms(year, yearsAll, thisYear) {
+    const M0 = FinancesScreen.money0, coachingLabel = this._copy('coaching_label') || 'Coaching';
+    const pg = (this.programsBy || {}).expected;
+    if (!pg) { this._loadPrograms('expected'); return { loading: true, year, yearsAll, thisYear }; }
+    const b = pg.budgets[year];
+    const base = { thisYear, year, yearsAll, revenue: [], cats: [], rank: () => 0, revTotal: 0, expTotal: 0, frac: 0, pct: '', pillS: null, coachingLabel, fromPrograms: true };
+    if (!b) return { ...base, empty: true };
+    // the pill → programs (by the top of its scope tree)
+    const scopes = (this.flow || {}).scopes || [];
+    let top = this.scope; for (let i = 0; i < 10; i++) { const sc = scopes.find(x => x.code === top); if (!sc || !sc.parent) break; top = sc.parent; }
+    const kindOf = { mens: 'men', womens: 'women', youth: 'youth' }[top];
+    const clubOnly = this.scope === 'club';
+    const picked = pg.programs.filter(p => this.scope === 'all' || clubOnly || p.kind === kindOf);
+    const monthsOf = {}; for (const se of b.seasons) monthsOf[se.code] = (se.months || []).length;
+    const secName = (k) => k === 'men' ? (((this.summary || {}).sections || []).find(s => s.code === 'M') || {}).name || "Men's"
+      : k === 'women' ? (((this.summary || {}).sections || []).find(s => s.code === 'W') || {}).name || "Women's" : (this._copy('pg_youth_total') || 'Youth');
+    const revenue = [], byCat = new Map(), dues = {}, playerMonths = {};
+    let casa = 0, grant = 0, awards = 0;
+    for (const p of picked) {
+      for (const se of b.seasons) {
+        const x = (b.programs[p.code] || {})[se.code]; if (!x) continue;
+        if (!clubOnly && p.pays_dues) playerMonths[p.kind] = (playerMonths[p.kind] || 0) + Number(x.players || 0) * monthsOf[se.code];
+        for (const l of x.lines || []) {
+          const amt = Number(l.amount || 0);
+          if (clubOnly && l.group !== 'shared') continue;
+          if (l.group === 'dues') dues[p.kind] = (dues[p.kind] || 0) + amt;
+          else if (l.group === 'support') { if (l.key === 'casa') casa += amt; else if (l.key === 'grant') grant += amt; else awards += amt; }
+          else {
+            if (!byCat.has(l.category)) byCat.set(l.category, { code: l.category, label: l.category === 'labor' ? coachingLabel : l.category === 'la_fees' ? (this._copy('soa_la_fees') || 'LeagueApps fees') : this._catName(l.category), items: new Map() });
+            const key = `${p.code}:${l.group}`, items = byCat.get(l.category).items;
+            if (!items.has(key)) items.set(key, { label: l.group === 'shared' ? (this._copy('plan_prog_shared', { program: p.label }) || `${p.label} — share of club-wide`) : p.label, detail: '', unit: '', amount: 0, assumed: true });
+            items.get(key).amount += amt;
+          }
+        }
+      }
+    }
+    const monthly = (pg.settings || {}).monthly || {};
+    for (const k of ['men', 'women', 'youth']) {
+      if (clubOnly || !picked.some(p => p.kind === k)) continue;
+      const covers = !picked.some(p => p.kind === k && p.pays_dues);
+      const players = Math.round((playerMonths[k] || 0) / 12);
+      revenue.push({ kind: 'dues', code: k, label: this._copy('plan_rev_dues', { section: secName(k) }) || `Dues — ${secName(k)}`,
+        detail: covers ? (this._copy('plan_split_club_covers') || 'club covers') : `${players} × ${M0(monthly[k] || 0)} × 12`,
+        unit: covers ? '' : (this._copy('plan_prog_dues_unit') || 'players averaged over the seasons, from the programs'), amount: dues[k] || 0, assumed: true });
+    }
+    if (casa) revenue.push({ kind: 'rental', label: this._copy('plan_rev_rental') || 'Field rental income', detail: '', unit: this._copy('plan_rental_unit_assumed') || '', amount: casa, assumed: true });
+    if (grant) {
+      const g = (this.expenses.plan_grants || []).find(x => x.budget_year === year && (x.purposes || []).length) || {};
+      const purpose = String(g.purpose_label || '').replace(/:\s*$/, '');
+      revenue.push({ kind: 'award', label: purpose ? (this._copy('plan_rev_grant', { label: g.label, purpose }) || `Grant — ${g.label}`)
+          : g.label ? (this._copy('plan_rev_grant_multi', { label: g.label }) || `Grant (restricted) — ${g.label}`) : (this._copy('pg_line_grant') || 'Grant'),
+        detail: b.grant ? (this._copy('plan_grant_used', { used: M0(grant), award: M0(b.grant.award) }) || `${M0(grant)} of ${M0(b.grant.award)}`) : '', unit: '', amount: grant, assumed: true, purposes: g.purposes || [], award: Number(g.amount || 0), share: 1, receipts: [] });
+    }
+    if (awards) revenue.push({ kind: 'award', label: this._copy('cf_awards') || 'Grants and sponsorships', detail: '', unit: '', amount: awards, assumed: true, purposes: [], share: 1, receipts: [] });
+    const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
+    const rank = (c) => (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
+    const cats = [...byCat.values()].map(c => ({ code: c.code, label: c.label, items: [...c.items.values()].filter(it => Math.abs(it.amount) >= 0.5) }))
+      .map(c => ({ ...c, sub: c.items.reduce((a, it) => a + it.amount, 0) })).filter(c => c.items.length).sort((a, b2) => rank(a.code) - rank(b2.code));
+    return { ...base, empty: !revenue.length && !cats.length, revenue, cats, rank,
+             revTotal: revenue.reduce((a, r) => a + r.amount, 0), expTotal: cats.reduce((a, c) => a + c.sub, 0) };
+  }
+
   _planHtml() {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
     const m = this._budgetModel(this.planYear), year = m.year, revenue = m.revenue;
+    if (m.loading) return `<div class="fn-card"><div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="loading">Loading…</div></div>`;
     // Year pills (mig 1334, owner: "have a pill for next year budget too").
     const yearBar = m.yearsAll.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${m.yearsAll.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-plan-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
-    const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`;
+    const head = `<div class="fn-title">${esc(this._copy('plan_title') || 'Year plan')}</div><div class="fn-note">${esc(this._copy('plan_note'))}</div>`
+      + (m.fromPrograms ? `<div class="fn-note fn-warn" style="font-weight:600;">${esc(this._copy('plan_from_programs', { year }) || `${year} adds up from the programs (🧩 Programs) — change it there.`)}</div>` : '');
     if (m.empty) return `<div class="fn-card">${head}${yearBar}<div class="fn-dim">${esc(this._copy('plan_empty'))}</div></div>`;
     const cols = (this._copy('plan_columns') || 'Line|Rate × qty|Year').split('|').map(c => c.trim());
     const revTotal = m.revTotal;
@@ -456,25 +520,21 @@ class FinancesScreen extends Screen {
       </div>`;
   }
 
-  // ── 👥 Full capacity (mig 1387; owner 11/15 "can we have a projection if we
-  // fill all teams to capicity with paid players … have option to also make
-  // the coach for each "team" paid or voluneter … allow it for finish of this
-  // year and for next"). A what-if beside the Operating Budget: every
-  // capacity_plan_teams team at teams.max_roster paying dues (women none), a
-  // coach per team = practice hours a week on the calendar × weeks + games ×
-  // hours a game, at that coach's rate (paid) or $0 (volunteer). It replaces
-  // the budget's coaching; every other line is the Operating Budget's. This
-  // year = what is real so far (dues, coaching paid) + full teams for the
-  // months left; next year = a full year. The real budget never reads it.
   // ── 🧩 Programs (mig 1390): each program's own budget, season by season —
   // Men's, Women's, each youth age — rolled up to Youth and the club. The
   // money is worked out on the server (ProgramBudget); this only lays it out.
   // Loads when the pill opens (it reads the whole books, a few seconds).
-  _loadPrograms() {
-    if (this._pgLoading) return;
-    this._pgLoading = true; this.pgErr = '';
-    this.auth.fetch('/api/finances/programs').then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); this.programs = j; })
-      .catch(e => { this.pgErr = e.message; }).finally(() => { this._pgLoading = false; if (this.view === 'programs') this._renderBody(); });
+  // 👥 Full capacity (step 3, replaces mig 1387's own maths) is the same model
+  // in the "capacity" scenario: every program fields at least one team in
+  // each plan season, players = teams × capacity; the rest of the plan is
+  // shared, so the two can't disagree. The Operating Budget for later years
+  // reads the "expected" scenario.
+  _loadPrograms(scenario = 'expected') {
+    this.programsBy = this.programsBy || {}; this._pgLoadingBy = this._pgLoadingBy || {};
+    if (this._pgLoadingBy[scenario]) return;
+    this._pgLoadingBy[scenario] = true; this.pgErr = '';
+    this.auth.fetch(`/api/finances/programs${scenario === 'capacity' ? '?scenario=capacity' : ''}`).then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); this.programsBy[scenario] = j; })
+      .catch(e => { this.pgErr = e.message; }).finally(() => { this._pgLoadingBy[scenario] = false; this._renderBody(); });
   }
   _pgYearNow() { const pg = this.programs || {}, years = pg.years || []; return years.includes(this.pgYear) ? this.pgYear : (pg.this_year || years[0]); }
   // the rate-card band for the open program: the smallest band at or above its age
@@ -489,10 +549,10 @@ class FinancesScreen extends Screen {
     this._pgBusy = true; this.pgMsg = this._copy('pg_saving') || 'Saving…'; this._renderBody();
     try {
       const r = await this.auth.fetch(`/api/finances/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ program: this.pgProg, year: this._pgYearNow(), ...body }) });
+        body: JSON.stringify({ program: this.pgProg, year: this._pgYearNow(), scenario: this.pgScenario, ...body }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      this.programs = j; this.pgMsg = '';
+      this.programsBy = { [this.pgScenario]: j }; this.programs = j; this.pgMsg = '';   // the other scenario re-reads when opened
     } catch (e) { this.pgMsg = e.message; }
     this._pgBusy = false; this._renderBody();
   }
@@ -501,19 +561,22 @@ class FinancesScreen extends Screen {
   _pgRoll(year, code) {
     const b = this.programs.budgets[year], P = b.programs[code], S = FinancesScreen.pgSum;
     const t = { dues: 0, own: 0, shared: 0, support: 0, players: 0, teams: 0, assumed: false };
+    const anyPlan = b.seasons.some(se => !se.real);   // players / teams: the plan seasons' when there are any
     for (const se of b.seasons) {
       const x = P[se.code]; if (!x) continue;
       t.dues += S(x.lines, 'dues'); t.own += S(x.lines, 'own'); t.shared += S(x.lines, 'shared'); t.support += S(x.lines, 'support');
-      t.players = Math.max(t.players, Number(x.players || 0)); t.teams = Math.max(t.teams, Number(x.teams || 0));
+      if (!anyPlan || !se.real) { t.players = Math.max(t.players, Number(x.players || 0)); t.teams = Math.max(t.teams, Number(x.teams || 0)); }
       if (!se.real) t.assumed = true;
     }
     t.ownNet = t.dues - t.own; t.net = t.ownNet - t.shared + t.support;
     return t;
   }
-  _programsHtml() {
+  _programsHtml(scenario = 'expected') {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
     if (this.pgErr) return `<div class="error-message">${esc(this.pgErr)}</div>`;
-    if (!this.programs) { this._loadPrograms(); return '<div class="loading">Loading…</div>'; }
+    this.pgScenario = scenario; this.programs = (this.programsBy || {})[scenario] || null;
+    if (!this.programs) { this._loadPrograms(scenario); return '<div class="loading">Loading…</div>'; }
+    const full = scenario === 'capacity';
     const pg = this.programs, years = pg.years || [];
     const year = years.includes(this.pgYear) ? this.pgYear : (pg.this_year || years[0]);
     const b = pg.budgets[year]; if (!b) return '';
@@ -542,8 +605,8 @@ class FinancesScreen extends Screen {
     }
     rows += row('', this._copy('pg_club_total') || 'Club', club, 'sum');
     const g = b.grant ? `<div class="fn-note">${esc(this._copy('plan_grant_used', { used: M0(b.grant.used), award: M0(b.grant.award) }) || `Grant ${M0(b.grant.used)} of ${M0(b.grant.award)}`)}</div>` : '';
-    return `<div class="fn-card"><div class="fn-title">${esc(this._copy('pg_title') || 'Programs')} · ${esc(year)}</div>
-      <div class="fn-note">${esc(this._copy('pg_note'))}</div>${yearBar}
+    return `<div class="fn-card"><div class="fn-title">${esc(full ? (this._copy('cap_title') || 'Full capacity') : (this._copy('pg_title') || 'Programs'))} · ${esc(year)}</div>
+      <div class="fn-note">${esc(full ? this._copy('pg_cap_note') : this._copy('pg_note'))}</div>${yearBar}
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
@@ -579,8 +642,9 @@ class FinancesScreen extends Screen {
     const plan = ss.filter(se => !se.real);
     const editRow = (label, fn, allFn) => `<tr class="item"><td>${esc(label)}</td>${ss.map(se => `<td>${fn(P[se.code] || {}, se)}</td>`).join('')}<td>${plan.length && allFn ? allFn() : ''}</td></tr>`;
     const allTip = this._copy('pg_all_seasons') || 'all';
-    let rows = editRow(this._copy('pg_col_players') || 'Players', (x, se) => se.real ? String(x.players ?? '') : inp(se.code, 'players', x.players_set ? x.players : '', x.players_default),
-                       () => inp('all', 'players', '', allTip))
+    const full = this.pgScenario === 'capacity';   // players = teams × capacity there
+    let rows = editRow(this._copy('pg_col_players') || 'Players', (x, se) => se.real || full ? String(x.players ?? '') : inp(se.code, 'players', x.players_set ? x.players : '', x.players_default),
+                       full ? null : () => inp('all', 'players', '', allTip))
       + editRow(this._copy('pg_col_teams') || 'Teams', (x, se) => se.real ? String(x.teams ?? '') : inp(se.code, 'teams', x.teams_set ? x.teams : '', x.teams), () => inp('all', 'teams', '', allTip))
       + editRow(this._copy('pg_row_practice_h') || 'Practice h/wk', (x, se) => se.real ? '' : inp(se.code, 'practice_hours_week', x.practice_hours_set ? x.practice_hours_week : '', x.calendar_hours, 0.25), () => inp('all', 'practice_hours_week', '', allTip, 0.25))
       + editRow(this._copy('pg_row_practice_w') || 'Practice weeks', (x, se) => se.real ? '' : inp(se.code, 'practice_weeks', x.practice_weeks_set ? x.practice_weeks : '', x.practice_weeks, 0.5), null)
@@ -606,139 +670,6 @@ class FinancesScreen extends Screen {
     rows += sumRow(this._copy('pg_line_net') || 'Net with shared', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
-  }
-
-  _capTeam(id) { return ((this.capacity || {}).teams || []).find(t => t.team_id === id); }
-  _capCoach(t, year = this._capYear()) {
-    const c = (t.coaches || {})[year] || {}, rate = c.rate_per_hour != null ? Number(c.rate_per_hour) : Number(((this.capacity || {}).settings || {}).coach_rate_per_hour || 0);
-    return { is_paid: c.is_paid !== false, rate };
-  }
-  _capYear() {
-    const m = this._budgetModel(), years = m.yearsAll.filter(y => y >= m.thisYear);
-    return years.includes(this.capYear) ? this.capYear : m.thisYear;
-  }
-  async _saveCapCoach(t, change) {
-    const year = this._capYear(), cur = this._capCoach(t, year);
-    const body = { team_id: t.team_id, budget_year: year, is_paid: change.is_paid != null ? change.is_paid : cur.is_paid, rate_per_hour: change.rate_per_hour != null ? change.rate_per_hour : cur.rate };
-    try {
-      const r = await this.auth.fetch('/api/finances/capacity-coach', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
-      this.capacity = j;
-    } catch (err) { this.capErr = `${this._copy('cap_save_failed') || 'Could not save the coach change.'} ${err.message}`; }
-    this._renderBody();
-  }
-  _capacityModel(year) {
-    const cap = this.capacity || {}, st = cap.settings || {}, teams = cap.teams || [];
-    // The Operating Budget for the year, club-wide (no Who pill)
-    const keepScope = this.scope; this.scope = 'all';
-    let m; try { m = this._budgetModel(year); } finally { this.scope = keepScope; }
-    const isThis = year === m.thisYear, fy = (this.flow || {}).year || {};
-    const heads = this.expenses.plan_heads || [];
-    // months / weeks / games left: this year counts from this month, as the Budget's dues do
-    const closed = heads.length ? this._duesActual(heads[0].code).closed : [];
-    const months = isThis ? Math.max(0, 12 - closed.length) : 12;
-    const weeksYear = Number(st.weeks_per_year || 50);
-    let weeks = weeksYear;
-    if (isThis) {
-      const nowYm = String(this.expenses.today || '').slice(0, 7), end = new Date(String(fy.ends_on || '') + 'T12:00:00'), from = new Date(nowYm + '-01T12:00:00');
-      weeks = Math.max(0, Math.round(((end - from) / 86400000 + 1) / 7 * weeksYear / 52 * 10) / 10);
-    }
-    const share = months / 12;
-    const monthlyOf = (sectionId) => Number(((this.expenses.plan_dues || []).find(d => d.section_id === sectionId) || {}).monthly || 0);
-    const rows = teams.map(t => {
-      const c = this._capCoach(t, year), games = Number(t.games || 0) * share;
-      const hours = Number(t.practice_hours_week || 0) * weeks + games * Number(t.hours_per_game || 0);
-      const monthly = t.pays_dues ? monthlyOf(t.section_id) : 0;
-      return { ...t, coach: c, games_counted: games, hours, coachCost: c.is_paid ? hours * c.rate : 0, monthly, dues: t.pays_dues ? Number(t.max_roster || 0) * monthly * months : 0 };
-    });
-    const players = rows.filter(r => r.pays_dues).reduce((a, r) => a + Number(r.max_roster || 0), 0);
-    const duesNew = rows.reduce((a, r) => a + r.dues, 0);
-    const soFar = isThis ? heads.reduce((a, h) => a + this._duesActual(h.code).toDate, 0) : 0;
-    const duesTotal = soFar + duesNew;
-    // coaching paid so far this year (real money out, finished months)
-    const nowYm = String(this.expenses.today || '').slice(0, 7), startYm = String((this.flow || {}).start || fy.starts_on || '').slice(0, 7);
-    const coachSoFar = isThis ? ((this.flow || {}).items || []).filter(i => i.dir === 'out' && i.category === 'labor' && !i.ahead && i.ym >= startYm && i.ym < nowYm).reduce((a, i) => a + Number(i.amount || 0), 0) : 0;
-    const coachTeams = rows.reduce((a, r) => a + r.coachCost, 0);
-    const budgetCoaching = (m.cats.find(c => c.code === 'labor') || {}).sub || 0;
-    // other expenses = the Operating Budget's, coaching and LA fees out (both recomputed here)
-    const otherCats = m.cats.filter(c => c.code !== 'labor' && c.code !== 'la_fees');
-    const feeRatio = this._laFeeRatio(), laFees = duesTotal * feeRatio;
-    const otherTotal = otherCats.reduce((a, c) => a + c.sub, 0);
-    const expTotal = otherTotal + coachSoFar + coachTeams + laFees;
-    // grants: restricted ones pay their purposes up to the award (as on the Budget), with the new coaching
-    const spendOn = (codes) => otherCats.filter(c => codes.includes(c.code)).reduce((a, c) => a + c.sub, 0) + (codes.includes('labor') ? coachSoFar + coachTeams : 0);
-    const awards = [], used = new Map();
-    for (const r of m.revenue.filter(r => r.kind === 'award')) {
-      let amount = r.award;
-      if ((r.purposes || []).length) { const k = r.purposes.join(); amount = Math.min(r.award, Math.max(0, spendOn(r.purposes) - (used.get(k) || 0))); used.set(k, (used.get(k) || 0) + amount); }
-      awards.push({ label: r.label, amount, award: r.award });
-    }
-    const rental = m.revenue.filter(r => r.kind === 'rental');
-    const revTotal = duesTotal + awards.reduce((a, g) => a + g.amount, 0) + rental.reduce((a, r) => a + r.amount, 0);
-    return { m, year, isThis, months, weeks, share, rows, players, duesNew, soFar, duesTotal, coachSoFar, coachTeams, budgetCoaching, otherCats, otherTotal, feeRatio, laFees, expTotal, awards, rental, revTotal, monthly: monthlyOf(1) };
-  }
-  _capacityHtml() {
-    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2;
-    const head = `<div class="fn-title">${esc(this._copy('cap_title') || 'Full capacity')}</div><div class="fn-note">${esc(this._copy('cap_note'))}</div>`;
-    if (!this.capacity || !(this.capacity.teams || []).length) return `<div class="fn-card">${head}<div class="fn-dim">${esc(this._copy('plan_empty') || 'Nothing to show yet.')}</div></div>`;
-    const year = this._capYear(), x = this._capacityModel(year), m = x.m;
-    const years = m.yearsAll.filter(y => y >= m.thisYear);
-    const yearBar = years.length > 1 ? `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-cap-year="${esc(y)}">${esc(this._copy('plan_year_pill', { year: y }) || y)}</button>`).join('')}</div>` : '';
-    const games0 = x.rows.find(r => r.games > 0);
-    const yearNote = x.isThis ? this._copy('cap_note_this_year', { year, months: x.months, weeks: x.weeks, games: games0 ? Math.round(x.share * 100) + '%' : '0' })
-                              : this._copy('cap_note_next_year', { year, weeks: x.weeks });
-    const err = this.capErr ? `<div class="error-message">${esc(this.capErr)}</div>` : ''; this.capErr = '';
-    // teams table
-    const cols = (this._copy('cap_columns') || 'Team|Players|Dues|Coach|$/h|Practice h/wk|Games|Coach cost').split('|').map(c => c.trim());
-    const num1 = (v) => (Math.round(Number(v) * 10) / 10).toString();
-    const teamRows = x.rows.map(r => `<tr class="item">
-        <td style="white-space:normal;" title="${esc(r.note || '')}">${esc(r.name)}${r.note ? `<span class="fn-tick">${esc(r.note)}</span>` : ''}</td>
-        <td>${r.max_roster}</td>
-        <td class="${r.pays_dues ? 'fn-in' : ''}">${r.pays_dues ? M0(r.dues) : esc(this._copy('cap_no_dues') || 'no dues')}</td>
-        <td><button class="fn-pill ${r.coach.is_paid ? 'on' : ''}" style="padding:4px 10px; font-size:0.8rem;" data-cap-paid="${r.team_id}">${esc(r.coach.is_paid ? (this._copy('cap_paid') || 'Paid') : (this._copy('cap_volunteer') || 'Volunteer'))}</button></td>
-        <td><input type="number" min="0" step="0.5" value="${r.coach.rate}" data-cap-rate="${r.team_id}" ${r.coach.is_paid ? '' : 'disabled'} style="width:64px; padding:3px 6px; background:transparent; color:inherit; border:1px solid var(--border-color); border-radius:6px;"></td>
-        <td>${num1(r.practice_hours_week)}</td>
-        <td>${num1(r.games_counted)}${r.games ? ` <span class="fn-dim">× ${num1(r.hours_per_game)} h</span>` : ''}</td>
-        <td class="fn-out">${M0(r.coachCost)}</td></tr>`).join('');
-    const teamTotal = `<tr class="sum"><td>${esc(this._copy('cap_teams_total') || 'All teams')}</td><td>${x.players}</td><td class="fn-in">${M0(x.duesNew)}</td><td colspan="4"></td><td class="fn-out">${M0(x.coachTeams)}</td></tr>`;
-    // the year summary, standard order: revenue → expenses → net
-    const line = (label, detail, amount, cls) => `<tr class="item"><td style="white-space:normal;">${esc(label)}</td><td>${esc(detail || '')}</td><td class="${cls}">${M0(amount)}</td></tr>`;
-    let rows = `<tr class="group"><td colspan="3">${esc(this._copy('plan_revenue') || 'Revenue')}</td></tr>`;
-    const duesDetail = x.isThis ? (this._copy('cap_rev_dues_this', { so_far: M0(x.soFar), players: x.players, rate: M0(x.monthly), months: x.months }) || '')
-                                : (this._copy('cap_rev_dues_next', { players: x.players, rate: M0(x.monthly) }) || '');
-    rows += line(this._copy('cap_rev_dues') || 'Dues — every team full', duesDetail, x.duesTotal, 'fn-in');
-    for (const r of x.rental) rows += line(r.label, r.detail, r.amount, 'fn-in');
-    for (const g of x.awards) rows += line(g.label, this._copy('plan_grant_used', { used: M0(g.amount), award: M0(g.award) }) || '', g.amount, 'fn-in');
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_rev_total') || 'Total revenue')}</td><td class="fn-in">${M0(x.revTotal)}</td></tr>`;
-    rows += `<tr class="group"><td colspan="3">${esc(this._copy('plan_expenses') || 'Expenses')}</td></tr>`;
-    const coachDetail = this._copy('cap_replaces', { amount: M0(x.budgetCoaching) }) || '';
-    rows += `<tr class="cat ${this.expanded.has('cap:coach') ? 'open' : ''}" data-cat="cap:coach"><td>${esc(this._copy('cap_coaching') || 'Coaching — a coach per team')}<span class="fn-tick">${esc(coachDetail)}</span></td><td></td><td class="fn-out">${M0(x.coachSoFar + x.coachTeams)}</td></tr>`;
-    if (this.expanded.has('cap:coach')) {
-      if (x.coachSoFar) rows += line(this._copy('cap_coaching_so_far') || 'Coaching paid so far', '', x.coachSoFar, 'fn-out');
-      for (const r of x.rows.filter(r => r.coachCost > 0)) rows += line(this._copy('cap_coach_line', { team: r.name }) || `${r.name} coach`, `${num1(r.hours)} h × ${M2(r.coach.rate)}`, r.coachCost, 'fn-out');
-    }
-    for (const c of x.otherCats) {
-      const key = `cap:${c.code}`, open = this.expanded.has(key);
-      rows += `<tr class="cat ${open ? 'open' : ''}" data-cat="${esc(key)}"><td colspan="2">${esc(c.label)}</td><td class="fn-out">${M0(c.sub)}</td></tr>`;
-      if (open) rows += c.items.slice().sort((a, b) => b.amount - a.amount).map(it => line(it.label, it.detail, it.amount, 'fn-out')).join('');
-    }
-    if (x.laFees > 0) rows += line(this._copy('soa_la_fees') || 'LeagueApps fees', `${M0(x.duesTotal)} × ${(100 * x.feeRatio).toFixed(1)}%`, x.laFees, 'fn-out');
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy('plan_exp_total') || 'Total expenses')}</td><td class="fn-out">${M0(x.expTotal)}</td></tr>`;
-    const net = x.revTotal - x.expTotal;
-    rows += `<tr class="sum"><td colspan="2">${esc(this._copy(net >= 0 ? 'plan_net_surplus' : 'plan_net_deficit') || 'Net')}</td><td class="${net >= 0 ? 'fn-in' : 'fn-out'}">${M0(net)}</td></tr>`;
-    return `
-      <div class="fn-card">${head}${yearBar}${err}
-        <div class="fn-note">${esc(yearNote)}</div>
-        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:640px;">
-          <thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
-          <tbody>${teamRows}${teamTotal}</tbody>
-        </table></div>
-        <div class="fn-title" style="margin-top:14px;">${esc(this._copy('cap_summary') || 'The year at full capacity')} · ${esc(year)}</div>
-        <div style="overflow-x:auto;"><table class="fn-table" style="min-width:480px;">
-          <tbody>${rows}</tbody>
-        </table></div>
-      </div>`;
   }
 
   // ── Budget vs Actual (mig 1369): the variance report. Each Budget line
