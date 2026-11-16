@@ -214,6 +214,8 @@ public:
                                           const std::string& note);
 
 private:
+    // The actual pull behind syncFromLa() (which shares a running one).
+    int syncFromLaOnce();
     // INSERT … ON CONFLICT every record into person_payments in one
     // transaction; returns rows written.
     int upsertRecords(const std::vector<nlohmann::json>& records);

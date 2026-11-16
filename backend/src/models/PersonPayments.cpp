@@ -2,6 +2,10 @@
 #include "WelcomeLog.h"
 
 #include <algorithm>
+#include <chrono>
+#include <exception>
+#include <future>
+#include <mutex>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -246,7 +250,38 @@ int PersonPayments::reconcileFromLa(bool force, int minMinutes) {
     return static_cast<int>(missing);
 }
 
+// One LA transactions pull at a time, shared (11/16 #tuition load): the
+// cursor is club-wide, so the four tabs opening together pulled the same
+// page four times and raced each other's cursor writes.  A caller that
+// arrives while a pull is running waits for it and gets its result.
 int PersonPayments::syncFromLa() {
+    static std::mutex mu;
+    static std::shared_future<int> inflight;
+    std::promise<int> mine;
+    std::shared_future<int> shared;
+    bool leader = false;
+    {
+        std::lock_guard<std::mutex> g(mu);
+        if (inflight.valid() &&
+            inflight.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            shared = inflight;
+        } else {
+            inflight = mine.get_future().share();
+            leader = true;
+        }
+    }
+    if (!leader) return shared.get();   // rethrows the leader's failure
+    try {
+        const int n = syncFromLaOnce();
+        mine.set_value(n);
+        return n;
+    } catch (...) {
+        mine.set_exception(std::current_exception());
+        throw;
+    }
+}
+
+int PersonPayments::syncFromLaOnce() {
     // 1. Read the global cursor.
     long long cursorLu = 0, cursorId = 0;
     {
@@ -582,6 +617,16 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "    END + interval '14 days'"
         "  ) AS cur_start"
         "),"
+        // Only this program's open registrations are rendered (the final
+        // join), so every payments roll-up below is limited to them, and
+        // the monthly dues rate is read once (11/16 #tuition load: the
+        // roll-ups covered the whole club, fh_monthly_dues_usd ran twice
+        // per payment cycle — ~3,700 calls a tab).
+        "regs AS MATERIALIZED ("
+        "  SELECT DISTINCT la_registration_id FROM person_la_memberships"
+        "   WHERE la_program_id = $1::bigint AND ended_at IS NULL AND la_registration_id IS NOT NULL"
+        "),"
+        "dues_rate AS MATERIALIZED (SELECT fh_monthly_dues_usd($2::int) AS usd),"
         "win2 AS ("
         "  SELECT cur_start,"
         "         cur_start + interval '1 month' AS cur_end,"
@@ -669,7 +714,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "         MIN(pp.paid_at) FILTER (WHERE pp.txn_type NOT IN ('Refund','Partial Refund')) AS first_paid_at,"
         "         MAX(pp.paid_at) FILTER (WHERE pp.txn_type NOT IN ('Refund','Partial Refund')) AS last_paid_at"
         "    FROM person_payments pp"
-        "   WHERE pp.la_registration_id IS NOT NULL"
+        "   WHERE pp.la_registration_id IN (SELECT la_registration_id FROM regs)"
         "   GROUP BY pp.la_registration_id"
         "),"
         // Per-cycle coverage window.  Payments are summed by
@@ -691,18 +736,18 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "payment_coverage AS ("
         "  SELECT la_registration_id, pay_cycle_start,"
         "         pay_cycle_start"
-        "           + (GREATEST(1, ROUND(cycle_paid / fh_monthly_dues_usd($2::int))::int) * interval '1 month') AS pay_cycle_end"
+        "           + (GREATEST(1, ROUND(cycle_paid / (SELECT usd FROM dues_rate))::int) * interval '1 month') AS pay_cycle_end"
         "    FROM ("
         "      SELECT pp.la_registration_id,"
         "             (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days') AS pay_cycle_start,"
         "             SUM(pp.amount) AS cycle_paid"
         "        FROM person_payments pp"
-        "       WHERE pp.la_registration_id IS NOT NULL"
+        "       WHERE pp.la_registration_id IN (SELECT la_registration_id FROM regs)"
         "         AND pp.txn_type NOT IN ('Refund','Partial Refund')"
         "       GROUP BY pp.la_registration_id,"
         "                (date_trunc('month', pp.paid_at - interval '14 days') + interval '14 days')"
         "    ) per_cycle"
-        "   WHERE cycle_paid >= 0.8 * fh_monthly_dues_usd($2::int)"
+        "   WHERE cycle_paid >= 0.8 * (SELECT usd FROM dues_rate)"
         "),"
         "covers_current AS ("
         "  SELECT DISTINCT pc.la_registration_id"
@@ -731,7 +776,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "  SELECT DISTINCT ON (pp.la_registration_id)"
         "         pp.la_registration_id, pp.amount AS last_amount"
         "    FROM person_payments pp"
-        "   WHERE pp.la_registration_id IS NOT NULL"
+        "   WHERE pp.la_registration_id IN (SELECT la_registration_id FROM regs)"
         "     AND pp.txn_type NOT IN ('Refund','Partial Refund')"
         "   ORDER BY pp.la_registration_id, pp.paid_at DESC"
         "),"
@@ -748,7 +793,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "             'gateway',       pp.gateway"
         "         ) ORDER BY pp.paid_at DESC) AS txns"
         "    FROM person_payments pp, win2"
-        "   WHERE pp.la_registration_id IS NOT NULL"
+        "   WHERE pp.la_registration_id IN (SELECT la_registration_id FROM regs)"
         //  Wide enough for both the dues cycle (prev_start) and the
         //  calendar-month "This Month" total on #payments, which needs
         //  the whole current month even on the 15th+ when prev_start
@@ -772,7 +817,7 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "             'cleared',       (pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId')"
         "         ) ORDER BY pp.paid_at DESC) AS txns"
         "    FROM person_payments pp"
-        "   WHERE pp.la_registration_id IS NOT NULL"
+        "   WHERE pp.la_registration_id IN (SELECT la_registration_id FROM regs)"
         "     AND pp.paid_at >= LEAST(date_trunc('month', now()) - interval '1 month',"
         "             COALESCE((SELECT byr.starts_on FROM budget_years byr"
         "                        WHERE byr.starts_on <= CURRENT_DATE AND byr.ends_on >= CURRENT_DATE"
