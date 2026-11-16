@@ -94,3 +94,18 @@ own net − shared + support.
    category, one line per program; Who pills pick programs by section,
    Club-wide = the shared lines. This year's Operating Budget, Budget vs
    Actual, the statements and the forecast are unchanged.
+
+## 💵 Men's money (mig 1407, 11/16)
+
+Opening Men's on 🧩 Programs shows a card above the season table (page
+only, `_menCompetitions` / `_menMoneyHtml`): money in (dues, CASA share),
+money out in one coloured band per competition — APSL (+ Reserves), Liga 1,
+U23, Cups with each cup its own block (by the entry's league) — then what
+every men's team shares (Men's budget lines, LeagueApps fees) and the
+club-wide share; balance BEFORE the grant (grant-proof or short), the grant,
+balance after; dues per man a month that fund it (without / with the grant,
+at paying-now and full-house heads, grossed up for LeagueApps' cut);
+options (Liga 2, Temple 7s) beside it, never in the total. Out = the team
+fee plans (rate × qty) + game coaching per team (`ref_fees.team_scope`).
+This year matches the Year plan's Men's pill to the dollar; a later year's
+dues / grant / CASA / club share come from the programs.

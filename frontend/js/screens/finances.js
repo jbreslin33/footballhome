@@ -599,7 +599,7 @@ class FinancesScreen extends Screen {
       const t = this._pgRoll(year, p.code); add(club, t);
       if (p.kind === 'youth') add(youth, t);
       rows += row(p.code, p.label, t, '');
-      if (p.code === this.pgProg) rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${this._programDetailHtml(year, p)}</td></tr>`;
+      if (p.code === this.pgProg) rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${p.kind === 'men' && !full ? this._menMoneyHtml(year) : ''}${this._programDetailHtml(year, p)}</td></tr>`;
       const next = pg.programs[pg.programs.indexOf(p) + 1];
       if (p.kind === 'youth' && (!next || next.kind !== 'youth')) rows += row('', this._copy('pg_youth_total') || 'Youth', youth, 'subtotal');
     }
@@ -670,6 +670,142 @@ class FinancesScreen extends Screen {
     rows += sumRow(this._copy('pg_line_net') || 'Net with shared', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
+  }
+
+  // ── 💵 Men's: where the money goes (mig 1407, owner 11/16 "apsl only. liga 1
+  // only. u23 only. cups individual only. then we can get a total and a total
+  // for dues for men to fund it" + "clear separation … lines … colors" + "where
+  // all monies go for a program and what dues coming in" + "a pre grant balance
+  // so i know if we are grant proof"). The Year plan's money for the year (rate ×
+  // qty per competition from the team fee plans, game coaching per team, Men's
+  // general budget lines, LeagueApps fees, the club-wide share), one coloured
+  // band per competition, each cup its own block. Balance before the grant, then
+  // after it, then the monthly dues per man that fund it. Options (Liga 2,
+  // Temple 7s) beside it, never in the total. This year = the Year plan's
+  // numbers (same totals); a later year's dues / grant / CASA / club share come
+  // from the programs (as its Operating Budget does).
+  _menCompetitions(year) {
+    const x = this.expenses || {}, scopes = (this.flow || {}).scopes || [], thisYear = ((this.flow || {}).year || {}).label || '';
+    const mens = FinancesScreen.inScopeOf(scopes, 'mens') || new Set();
+    const scopeLabel = (c) => (scopes.find(s => s.code === c) || {}).label || c;
+    const M2 = FinancesScreen.money2, qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
+    const bands = new Map(), options = new Map();   // scope → { code, label, blocks: Map(key → { label, lines }) }
+    const put = (map, scope, blockKey, blockLabel, line) => {
+      if (!map.has(scope)) map.set(scope, { code: scope, label: scope === 'mens' ? (this._copy('pm_general') || "Men's — general (every team)") : scopeLabel(scope), blocks: new Map() });
+      const b = map.get(scope); if (!b.blocks.has(blockKey)) b.blocks.set(blockKey, { label: blockLabel, lines: [] });
+      b.blocks.get(blockKey).lines.push(line);
+    };
+    // team fee plans: one block per entry's league for Cups, else one per team
+    for (const l of (x.plan || []).filter(l => l.budget_year === year && mens.has(l.scope) && l.category !== 'bonds')) {
+      const line = { label: l.scope === 'apsl' && l.short_label && l.short_label !== 'APSL' ? `${l.short_label} — ${l.label}` : l.label, detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, amount: Number(l.amount || 0), assumed: l.is_assumed, note: l.note };
+      const block = l.scope === 'cups' ? `cup:${l.league}` : l.scope;
+      const label = l.scope === 'cups' ? l.league : scopeLabel(l.scope);
+      put(l.is_option ? options : bands, l.scope, block, label, line);
+    }
+    // budget lines under Men's (kits, practice coaching …): their own scope's band
+    for (const b of (x.budget || []).filter(b => b.budget_year === year && mens.has(b.scope)))
+      put(bands, b.scope, `bl:${b.scope}`, scopeLabel(b.scope), { label: b.label, detail: `${M2(b.amount)} × ${qty(b.year_units)}`, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note });
+    // game coaching this year (coaching policies; a later year has it on the plans)
+    if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && mens.has(p.scope))) {
+      const games = (p.seasons || []).reduce((a, s) => a + Number(s.expected || 0), 0); if (!games) continue;
+      const scope = mens.has(p.team_scope) ? p.team_scope : p.scope;
+      const label = scope === 'cups' ? (this._copy('pm_cups_coaching') || 'Game coaching — every cup') : scopeLabel(scope);
+      put(bands, scope, scope === 'cups' ? 'cups:coaching' : scope, label,
+        { label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, detail: `${M2(p.rate)} × ${games}`, amount: Number(p.rate) * games, assumed: (p.seasons || []).some(s => s.is_assumed), note: p.note });
+    }
+    const order = ['apsl', 'liga1', 'u23', 'cups', 'liga2', 'temple7s'];
+    const rank = (c) => c === 'mens' ? 900 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
+    const list = (map) => [...map.values()].map(b => ({ ...b, blocks: [...b.blocks.values()].map(k => ({ ...k, total: k.lines.reduce((a, l) => a + l.amount, 0) })) }))
+      .map(b => ({ ...b, total: b.blocks.reduce((a, k) => a + k.total, 0) })).filter(b => Math.abs(b.total) >= 0.5).sort((a, b2) => rank(a.code) - rank(b2.code));
+    // paying men now; full house = roster spots of the dues teams this year
+    const heads = (x.plan_heads || []).find(h => h.code === 'M') || {};
+    const spots = new Map(); for (const l of (x.plan || []).filter(l => l.budget_year === year && mens.has(l.scope) && !l.is_option && l.dues_rank != null && l.max_roster)) spots.set(l.team_id, Number(l.max_roster));
+    const monthly = Number(((x.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0);
+    return { bands: list(bands), options: list(options), paying: Number(heads.paying || 0), active: Number(heads.active || 0), fullHouse: [...spots.values()].reduce((a, n) => a + n, 0), monthly };
+  }
+  _menMoneyHtml(year) {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
+    const thisYear = ((this.flow || {}).year || {}).label || '';
+    const C = this._menCompetitions(year), feeRatio = this._laFeeRatio();
+    // money in + the club-wide share: this year the Year plan's Men's pill; a later year the programs
+    let dues = 0, duesDetail = '', casa = 0, grant = 0, award = 0, share = 0, shareDetail = '';
+    if (year === thisYear) {
+      const keep = this.scope; this.scope = 'mens';
+      let m; try { m = this._budgetModel(year); } finally { this.scope = keep; }
+      for (const r of m.revenue) {
+        if (r.kind === 'dues') { dues += r.amount; duesDetail = r.detail; }
+        else if (r.kind === 'rental') casa += r.amount;
+        else if (r.kind === 'award' && (r.purposes || []).length) { grant += r.amount; award += Number(r.award || 0); }
+        else if (r.kind === 'award') grant += r.amount;
+      }
+      const alloc = m.cats.find(c => c.code === 'allocated'); if (alloc) { share = alloc.sub; shareDetail = `${M0(alloc.sub / (m.frac || 1))} × ${m.pct}`; }
+    } else {
+      const b = ((this.programs || {}).budgets || {})[year], P = b && b.programs.mens;
+      if (P) for (const se of b.seasons) for (const l of ((P[se.code] || {}).lines || [])) {
+        const a = Number(l.amount || 0);
+        if (l.group === 'dues') dues += a; else if (l.group === 'shared') share += a;
+        else if (l.group === 'support') { if (l.key === 'casa') casa += a; else grant += a; }
+      }
+      duesDetail = this._copy('plan_prog_dues_unit') || 'from the programs';
+    }
+    const laFees = dues * feeRatio;
+    const general = C.bands.find(b => b.code === 'mens');
+    const comps = C.bands.filter(b => b.code !== 'mens');
+    const outTotal = C.bands.reduce((a, b) => a + b.total, 0) + laFees + share;
+    const inPre = dues + casa, pre = inPre - outTotal, post = pre + grant;
+    const N = C.paying, F = C.fullHouse, perMan = (v, n) => n > 0 ? v / 12 / n : 0;
+    // dues that fund it: costs less CASA (and the grant), grossed up for LeagueApps' cut
+    const costsNoFee = outTotal - laFees, gross = (v) => feeRatio < 1 ? Math.max(0, v) / (1 - feeRatio) : v;
+    const needPre = gross(costsNoFee - casa), needPost = gross(costsNoFee - casa - grant);
+    const colors = { apsl: '#3b82f6', liga1: '#22c55e', u23: '#a855f7', cups: '#f59e0b', liga2: '#14b8a6', temple7s: '#ec4899', mens: '#94a3b8', share: '#64748b', in: '#22c55e' };
+    const col = (code) => colors[code] || '#94a3b8';
+    const pm = (v) => N > 0 && Math.abs(v) >= 0.5 ? `${M0(perMan(v, N))}` : '';
+    const td = (v, cls) => `<td class="${cls || ''}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
+    const bandHead = (code, label, total, cls) => `<tr><td colspan="4" style="height:6px; padding:0; border:0;"></td></tr>
+      <tr style="background:${col(code)}22; border-left:5px solid ${col(code)}; border-top:2px solid ${col(code)};"><td colspan="2" style="font-weight:800; text-align:left;">${esc(label)}</td><td class="${cls}" style="font-weight:800;">${M0(total)}</td><td style="font-weight:700;">${pm(total)}</td></tr>`;
+    const lineRow = (code, l, cls, indent) => `<tr class="item" style="border-left:5px solid ${col(code)};"><td title="${esc(l.note || '')}" style="white-space:normal; text-align:left; padding-left:${indent || 14}px;">${esc(l.label)}${l.assumed ? '*' : ''}</td><td class="fn-dim">${esc(l.detail || '')}</td><td class="${cls}">${M0(l.amount)}</td><td class="fn-dim">${pm(l.amount)}</td></tr>`;
+    const blockHead = (code, k) => `<tr style="border-left:5px solid ${col(code)}; border-top:1px dashed ${col(code)}88;"><td colspan="2" style="text-align:left; padding-left:14px; font-weight:700; color:${col(code)};">${esc(k.label)}</td><td class="fn-out" style="font-weight:700;">${M0(k.total)}</td><td class="fn-dim">${pm(k.total)}</td></tr>`;
+    const band = (b, cls = 'fn-out') => bandHead(b.code, b.label, b.total, cls) + b.blocks.map(k => (b.blocks.length > 1 ? blockHead(b.code, k) : '') + k.lines.sort((a, c) => c.amount - a.amount).map(l => lineRow(b.code, l, cls, b.blocks.length > 1 ? 28 : 14)).join('')).join('');
+    const big = (label, v, note) => `<tr><td colspan="4" style="height:6px; padding:0; border:0;"></td></tr><tr class="sum" style="border-top:3px double currentColor;"><td colspan="2" style="text-align:left; font-weight:800;">${esc(label)}${note ? ` <span style="font-weight:700; margin-left:6px;">${note}</span>` : ''}</td><td style="font-weight:800; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td><td style="font-weight:700; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${pm(v)}</td></tr>`;
+    const head = (label, color) => `<tr><td colspan="4" style="padding:10px 6px 4px; text-align:left; font-size:0.8rem; letter-spacing:0.08em; font-weight:800; color:${color}; border-bottom:2px solid ${color};">${esc(label)}</td></tr>`;
+
+    let rows = head(this._copy('pm_in') || 'MONEY IN', '#22c55e');
+    rows += lineRow('in', { label: this._copy('pm_dues', { n: N, monthly: M0(C.monthly) }) || `Dues — ${N} paying men × ${M0(C.monthly)}/mo`, detail: duesDetail, amount: dues }, 'fn-in');
+    if (casa) rows += lineRow('in', { label: this._copy('pm_casa') || "CASA field rental — Men's share", detail: '', amount: casa, assumed: true }, 'fn-in');
+    rows += `<tr class="subtotal"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_in_total') || 'Money in (before any grant)')}</td><td class="fn-in">${M0(inPre)}</td><td>${pm(inPre)}</td></tr>`;
+    rows += head(this._copy('pm_out') || 'MONEY OUT — BY COMPETITION', '#fca5a5');
+    for (const b of comps) rows += band(b);
+    rows += head(this._copy('pm_out_rest') || "MONEY OUT — WHAT EVERY MEN'S TEAM SHARES", '#94a3b8');
+    const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k })) } : { code: 'mens', label: this._copy('pm_general') || "Men's — general (every team)", blocks: [{ label: '', lines: [], total: 0 }], total: 0 };
+    if (laFees >= 0.5) { gen.blocks[0].lines.push({ label: this._copy('soa_la_fees') || 'LeagueApps fees', detail: `${M0(dues)} × ${(100 * feeRatio).toFixed(1)}%`, amount: laFees }); gen.blocks[0].total += laFees; gen.total += laFees; }
+    rows += band(gen);
+    if (share >= 0.5) rows += bandHead('share', this._copy('pm_share') || 'Share of club-wide costs (field, balls, seed …)', share, 'fn-out')
+      + lineRow('share', { label: this._copy('pm_share_line') || 'Split by paying members', detail: shareDetail, amount: share }, 'fn-out');
+    rows += `<tr><td colspan="4" style="height:6px; padding:0; border:0;"></td></tr><tr class="subtotal" style="border-top:2px solid #fca5a5;"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_out_total') || 'Money out — total')}</td><td class="fn-out" style="font-weight:800;">${M0(outTotal)}</td><td>${pm(outTotal)}</td></tr>`;
+    const proof = pre >= -0.5 ? `<span class="fn-in">${esc(this._copy('pm_proof_ok') || '✓ grant-proof')}</span>` : `<span class="fn-out">${esc(this._copy('pm_proof_short', { amount: M0(-pre) }) || `✗ needs the grant — ${M0(-pre)} short without it`)}</span>`;
+    rows += big(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', pre, proof);
+    if (grant >= 0.5) {
+      rows += lineRow('in', { label: this._copy('pm_grant') || "Grant — Men's share (coaching, refs, equipment)", detail: award ? `${M0(grant)} of ${M0(award)}` : '', amount: grant, assumed: true }, 'fn-in');
+      rows += big(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', post, '');
+    }
+    // dues that fund it
+    const fund = (label, need) => `<tr class="item"><td colspan="2" style="text-align:left; white-space:normal;">${esc(label)}<span class="fn-tick">${esc(this._copy('pm_fund_need', { need: M0(need) }) || `${M0(need)} a year from dues`)}</span></td>
+      <td style="font-weight:800;">${N > 0 ? M0(perMan(need, N)) : '–'}<span class="fn-tick">${esc(this._copy('pm_at', { n: N }) || `${N} paying now`)}</span></td>
+      <td style="font-weight:800;">${F > 0 ? M0(perMan(need, F)) : '–'}<span class="fn-tick">${esc(this._copy('pm_at_full', { n: F }) || `${F} full house`)}</span></td></tr>`;
+    rows += head(this._copy('pm_fund') || 'DUES PER MAN A MONTH THAT FUND IT', '#fbbf24');
+    rows += fund(this._copy('pm_fund_pre') || 'Without the grant (grant-proof)', needPre);
+    if (grant >= 0.5) rows += fund(this._copy('pm_fund_post') || 'With the grant', needPost);
+    rows += `<tr class="item"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_now') || 'Dues today')}</td><td>${M0(C.monthly)}</td><td></td></tr>`;
+    // options: what each would add
+    if (C.options.length) {
+      rows += head(this._copy('pm_options') || 'OPTIONS — NOT IN THE TOTAL', '#94a3b8');
+      for (const b of C.options) rows += `<tr class="item" style="border-left:5px dashed ${col(b.code)}; opacity:0.8;"><td colspan="2" style="text-align:left;">${esc(b.label)}<span class="fn-tick">${esc(this._copy('pm_option_adds') || 'would add, per man a month')}</span></td><td class="fn-out">${M0(b.total)}</td><td>+${M0(perMan(gross(b.total), N))}</td></tr>`;
+    }
+    const cols = (this._copy('pm_columns') || 'Line|Rate × qty|Year|Per man / mo').split('|').map(c => c.trim());
+    return `<div class="fn-card" style="margin:4px 0 8px 0;"><div class="fn-title">${esc(this._copy('pm_title', { year }) || `💵 Men's money · ${year}`)}</div>
+      <div class="fn-note">${esc(this._copy('pm_note', { n: N }) || '')}</div>
+      <div style="overflow-x:auto;"><table class="fn-table" style="min-width:520px;"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="fn-note" style="margin-top:6px;">${esc(this._copy('assumed_note') || '* assumed')}</div></div>`;
   }
 
   // ── Budget vs Actual (mig 1369): the variance report. Each Budget line

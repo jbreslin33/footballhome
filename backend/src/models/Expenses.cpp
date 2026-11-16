@@ -160,6 +160,7 @@ json Expenses::projection(int clubId) {
     std::map<long long, std::map<std::string, double>> homeGamesAhead;
     for (const auto& p : db->query("SELECT p.id, p.label, p.group_label, p.kind, p.hours_per_game, p.rate_per_hour, p.club_section_id, p.per_game_usd, p.home_only, p.note, p.team_id, "
                                    "       cash_flow_policy_scope(p.id) AS scope, "
+                                   "       COALESCE(cash_flow_team_scope(p.team_id), '') AS team_scope, "
                                    "       ci.id AS coach_issuer_id, ci.payable_to AS coach "
                                    "  FROM ref_fee_policies p LEFT JOIN invoice_issuers ci ON ci.id = p.coach_issuer_id "
                                    " WHERE p.club_id = $1::int AND p.is_active ORDER BY p.kind, p.sort_order, p.id", {club})) {
@@ -215,7 +216,7 @@ json Expenses::projection(int clubId) {
         roll(sectionId, m);
         if (!coaching && !p["team_id"].is_null() && rate > 0)
             for (const auto& [ym, c] : m) if (c.projected > 0) homeGamesAhead[p["team_id"].as<long long>()][ym] += c.projected / rate;
-        out["ref_fees"].push_back({{"policy_id", pid}, {"scope", str(p, "scope")}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
+        out["ref_fees"].push_back({{"policy_id", pid}, {"scope", str(p, "scope")}, {"team_scope", str(p, "team_scope")}, {"label", str(p, "label")}, {"group_label", str(p, "group_label")}, {"kind", str(p, "kind")},
                                    {"hours_per_game", p["hours_per_game"].is_null() ? json(nullptr) : json(num(p, "hours_per_game"))},
                                    {"rate_per_hour", p["rate_per_hour"].is_null() ? json(nullptr) : json(num(p, "rate_per_hour"))},
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
