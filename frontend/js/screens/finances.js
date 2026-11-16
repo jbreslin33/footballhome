@@ -775,12 +775,26 @@ class FinancesScreen extends Screen {
     rows += `<tr class="subtotal"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_in_total') || 'Money in (before any grant)')}</td><td class="fn-in">${M0(inPre)}</td><td>${pm(inPre)}</td></tr>`;
     rows += head(this._copy('pm_out') || 'MONEY OUT — BY COMPETITION', '#fca5a5');
     for (const b of comps) rows += band(b);
+    const compTotal = comps.reduce((a, b) => a + b.total, 0);
+    rows += `<tr><td colspan="4" style="height:6px; padding:0; border:0;"></td></tr><tr class="subtotal" style="border-top:2px solid #fca5a5;"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_out_comps') || 'Money out — competitions')}</td><td class="fn-out" style="font-weight:800;">${M0(compTotal)}</td><td>${pm(compTotal)}</td></tr>`;
     rows += head(this._copy('pm_out_rest') || "MONEY OUT — WHAT EVERY MEN'S TEAM SHARES", '#94a3b8');
     const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k })) } : { code: 'mens', label: this._copy('pm_general') || "Men's — general (every team)", blocks: [{ label: '', lines: [], total: 0 }], total: 0 };
     if (laFees >= 0.5) { gen.blocks[0].lines.push({ label: this._copy('soa_la_fees') || 'LeagueApps fees', detail: `${M0(dues)} × ${(100 * feeRatio).toFixed(1)}%`, amount: laFees }); gen.blocks[0].total += laFees; gen.total += laFees; }
     rows += band(gen);
-    if (share >= 0.5) rows += bandHead('share', this._copy('pm_share') || 'Share of club-wide costs (field, balls, seed …)', share, 'fn-out')
-      + lineRow('share', { label: this._copy('pm_share_line') || 'Split by paying members', detail: shareDetail, amount: share }, 'fn-out');
+    // club-wide share (owner 11/16 "the general total like in parens for whole
+    // club then the mens share"): the whole club's total in the band, each
+    // club-wide line as (whole club) × Men's % = Men's share
+    if (share >= 0.5) {
+      const x = this.expenses || {};
+      const clubLines = [
+        ...(x.budget || []).filter(b => b.scope === 'club' && b.budget_year === year).map(b => ({ label: b.label, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note })),
+        ...(x.plan || []).filter(l => l.scope === 'club' && l.budget_year === year && l.category !== 'bonds').map(l => ({ label: l.label, amount: Number(l.amount || 0), assumed: l.is_assumed, note: l.note }))
+      ].filter(l => Math.abs(l.amount) >= 0.5);
+      const clubTotal = clubLines.reduce((a, l) => a + l.amount, 0), frac = clubTotal > 0 ? share / clubTotal : 0, pct = `${Math.round(100 * frac)}%`;
+      rows += bandHead('share', clubTotal > 0 ? (this._copy('pm_share_club', { total: M0(clubTotal), pct }) || `Share of club-wide costs (whole club ${M0(clubTotal)}) — Men's ${pct}`) : (this._copy('pm_share') || 'Share of club-wide costs'), share, 'fn-out');
+      if (clubTotal > 0) rows += clubLines.sort((a, c) => c.amount - a.amount).map(l => lineRow('share', { ...l, detail: `(${M0(l.amount)}) × ${pct}`, amount: l.amount * frac }, 'fn-out')).join('');
+      else rows += lineRow('share', { label: this._copy('pm_share_line') || 'Split by paying members', detail: shareDetail, amount: share }, 'fn-out');
+    }
     rows += `<tr><td colspan="4" style="height:6px; padding:0; border:0;"></td></tr><tr class="subtotal" style="border-top:2px solid #fca5a5;"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_out_total') || 'Money out — total')}</td><td class="fn-out" style="font-weight:800;">${M0(outTotal)}</td><td>${pm(outTotal)}</td></tr>`;
     const proof = pre >= -0.5 ? `<span class="fn-in">${esc(this._copy('pm_proof_ok') || '✓ grant-proof')}</span>` : `<span class="fn-out">${esc(this._copy('pm_proof_short', { amount: M0(-pre) }) || `✗ needs the grant — ${M0(-pre)} short without it`)}</span>`;
     rows += big(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', pre, proof);
