@@ -453,14 +453,9 @@ class GameCenterScreen extends EventScreen {
     // { post type name → {status, scheduled_at} } for this match's posts,
     // behind the ✅/📅 marks on the Instagram pills (_loadPostStates).
     this.postStates = {};
-    // Enriched per-player admin data behind the 20-Man Squad pill's
-    // "RSVP & Player Details" overlay — jersey numbers, match RSVP,
-    // practice attendance, roster memberships. Coach-only, and a
-    // separate fetch from the roster this.roster holds, because it
-    // comes from a different endpoint with a different shape
-    // (GET /api/matches/:matchId/roster-players — see _bootstrap).
-    this.players = [];        // [{playerId, personId, firstName, lastName, isKeeper, jerseyNumber, rsvpStatus, rsvpSource, practice: [...], onRoster*}]
-    this.trainingEvents = []; // [{id, date, title}] — the practice columns
+    // Per-player rows from GET /api/matches/:matchId/roster-players (see
+    // _bootstrap) — the player id ↔ person id map the lineup cards use.
+    this.players = [];        // [{playerId, personId, firstName, lastName, …}]
     this.reminders = {};      // person_id → {sms, email: {sent_at, count}} already sent about this game
     this.squadNotice = null;  // {squad, untold, sms: {sent_at}, email: {sent_at}} — the squad game reminder
     this.oppContacts = null;  // {club:{contacts}, tiers, date…} — the opponent of this game (mig 483)
@@ -492,11 +487,6 @@ class GameCenterScreen extends EventScreen {
     });
     this._rosterPull = null;     // {busy} | {error} while / after a pull
     this._oppAddOpen = false;
-    this.overlayOpen = false;
-    this.filterText = '';
-    this.filterRsvp = 'all';
-    this.listFilter = 'all';
-    this._jerseyDebounce = null;
     this.stats     = new Map(); // playerId:Number -> {practicesAttended, practicesRecentTotal, practicesProjected, practicesUpcomingTotal, gameRsvp}
     this.loaded    = false;
     this.error     = null;
@@ -701,37 +691,6 @@ class GameCenterScreen extends EventScreen {
       <div id="gc-social" style="padding: 0 var(--space-4);"></div>
       <div id="gl-body" style="padding: 0 var(--space-4) var(--space-6);"></div>
 
-      <!-- RSVP & Player Details, moved here from #game-day-roster.
-           Also outside #gl-body: it's a modal, and _render() must not
-           tear it down (or reset its search box) while a coach has it
-           open and is working through the squad. Keeps the gdr-* class
-           names so css/game-day-roster.css carries over untouched. -->
-      <div id="gc-details-overlay" class="gdr-overlay" style="display:none;">
-        <div class="gdr-overlay-content">
-          <div class="gdr-overlay-header">
-            <h2>RSVP &amp; Player Details</h2>
-            <button id="gc-details-close" class="btn btn-secondary btn-sm">✕ Close</button>
-          </div>
-          <div class="gdr-overlay-filters">
-            <input type="text" id="gc-player-search" class="gdr-search-input" placeholder="Search players...">
-            <select id="gc-rsvp-filter" class="gdr-filter-select">
-              <option value="all">All RSVP</option>
-              <option value="yes">Attending</option>
-              <option value="none">No Response</option>
-              <option value="no">Not Attending</option>
-            </select>
-            <select id="gc-list-filter" class="gdr-filter-select">
-              <option value="all">All Players</option>
-              <optgroup label="Official Rosters">
-                <option value="roster_lighthouse">APSL Lighthouse 1893</option>
-                <option value="roster_casa">Lighthouse Mens Club Liga 1</option>
-                <option value="roster_u23">Lighthouse Boys Club U23</option>
-              </optgroup>
-            </select>
-          </div>
-          <div id="gc-details-list" class="gdr-overlay-list"></div>
-        </div>
-      </div>
     `;
     this.element = el;
     // Screen instances are reused across navigations (e.g. my.js's
@@ -806,10 +765,7 @@ class GameCenterScreen extends EventScreen {
     // Game Center is where staff set it.
     this.playerOnly = params.view === 'player';
     this.view = params.view || null;
-    // The last feed is kept across visits (this instance is reused), so
-    // the switcher and the picker are there on enter; _loadGames then
-    // refreshes them in the background.
-    this._applyFeed();
+    this._paintWeekend();
     this.error = null;
     this.loaded = false;
     this.viewMode = 'coach';
@@ -875,11 +831,9 @@ class GameCenterScreen extends EventScreen {
     this._stopCards();
     this.socialCard = null;
     this._socialMountedFor = null;
-    if (this._jerseyDebounce) { clearTimeout(this._jerseyDebounce); this._jerseyDebounce = null; }
     if (this._planRaf) { cancelAnimationFrame(this._planRaf); this._planRaf = null; }
     this._plan.playing = false;
     this._tacticsBigOff();
-    this.overlayOpen = false;
     this._closeSwapSheet();
   }
 
@@ -914,7 +868,7 @@ class GameCenterScreen extends EventScreen {
     if (document.hidden || !this.matchId || !this.loaded || this.error || this._pollBusy) return;
     if (this._liveFpLast == null) return;   // no baseline yet — bootstrap sets it
     // Never refresh into an edit — catch up on a later tick instead.
-    if (this._saveTimer || this._jerseyDebounce || this.overlayOpen || this.announceEditing || this._draftEdit || this._tactics.editing || this._plan.editing || this._plan.playing) return;
+    if (this._saveTimer || this.announceEditing || this._draftEdit || this._tactics.editing || this._plan.editing || this._plan.playing) return;
     if (document.activeElement && document.activeElement.matches && document.activeElement.matches('[data-gc-opp-msg]')) return;
     if (this._isDraftView()) return;
     if (document.getElementById('gc-swap-sheet')) return;
@@ -926,12 +880,16 @@ class GameCenterScreen extends EventScreen {
     const matchId = this.matchId;
     try {
       const fhEventId = this._isCoach ? this._fhEventId() : null;
-      const [lineupRes, invitesRes] = await Promise.all([
+      // The game's event row too (RSVPs, late/leaving chips) — the same
+      // beat EventScreen keeps on a practice, so 👥 All Players moves live.
+      const [lineupRes, invitesRes, evChanged] = await Promise.all([
         this.auth.fetch(`/api/eligibility/lineup/${matchId}`),
         fhEventId
           ? this.auth.fetch(`/api/calendar/events/${fhEventId}/invites`).catch(() => null)
           : Promise.resolve(null),
+        this._refreshEvent(),
       ]);
+      if (evChanged && matchId === this.matchId) this._render();
       const lineupData = await lineupRes.json().catch(() => null);
       if (!lineupData || !lineupData.success) {
         this._dbState = 'syncfail';
@@ -1085,16 +1043,6 @@ class GameCenterScreen extends EventScreen {
       const viewBtn = e.target.closest('[data-lineup-view]');
       if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
       if (e.target.closest('#gl-make-official')) { this._makeOfficial(); return; }
-      const pick = e.target.closest('[data-pick-game]');
-      if (pick && this.pickerGames) {
-        const ev = this.pickerGames[Number(pick.getAttribute('data-pick-game'))];
-        if (ev && ev.match_id != null) {
-          this.navigation.goTo('game-center', {
-            matchId: ev.match_id, title: this._gameLabel(ev), when: this._gameWhen(ev),
-          });
-        }
-        return;
-      }
       // 👀 See as (EventScreen._seeAsHtml, slice 5): one bar on every pill
       // in place of Game Center's own Player View toggle.
       const seeAsBtn = e.target.closest('[data-ec-see-as]');
@@ -1198,8 +1146,10 @@ class GameCenterScreen extends EventScreen {
         }
         return;
       }
-      if (e.target.closest('#gc-details-open')) { this._openDetails(); return; }
-      if (e.target.closest('#gc-details-close')) { this._closeDetails(); return; }
+      // 👥 on the 20-Man Squad pill: the game's 👥 All Players (the one RSVP
+      // list every event has — the old RSVP & Player Details sheet wrote to
+      // an endpoint retired in July and was deleted 11/16).
+      if (e.target.closest('#gc-details-open')) { this.pill = PLAYERS_PILL; this._syncHash(); this._render(); return; }
 
       // Slice C: score entry (Match Result pill) and game details (Game
       // Announcement pill). Both gate on isCoach here AND on the backend
@@ -1215,37 +1165,6 @@ class GameCenterScreen extends EventScreen {
       }
       if (e.target.closest('#gc-announce-save') && this.isCoach) { this._saveGameDetails(); return; }
 
-      // Coach RSVP override, tri-state. Re-renders only the overlay
-      // table — the body underneath catches up on close (_closeDetails),
-      // so a coach working down the list isn't watching the page reflow
-      // behind the modal on every tap.
-      const rsvpBtn = e.target.closest('.gdr-rsvp-btn');
-      if (rsvpBtn && this.isCoach) {
-        this._setPlayerRSVP(rsvpBtn.dataset.playerId, rsvpBtn.dataset.rsvp);
-        this._renderDetailsList();
-        return;
-      }
-
-      // Practice attendance cell. An override cycles yes → no → release
-      // (back to whatever the sync says); a synced cell cycles
-      // empty → yes → no → yes, each tap setting an override.
-      const pracCell = e.target.closest('.gdr-prac-cell');
-      if (pracCell && this.isCoach) {
-        e.stopPropagation();
-        const personId = pracCell.dataset.personId;
-        const eventId = pracCell.dataset.eventId;
-        const eventIdx = parseInt(pracCell.dataset.eventIdx, 10);
-        const current = pracCell.dataset.current;
-        if (pracCell.classList.contains('gdr-prac-override')) {
-          const next = current === 'yes' ? 'no' : current === 'no' ? null : 'no';
-          if (next === null) this._releasePracticeRSVP(personId, eventId, eventIdx);
-          else this._setPracticeRSVP(personId, eventId, eventIdx, next);
-        } else {
-          this._setPracticeRSVP(personId, eventId, eventIdx, current === 'yes' ? 'no' : 'yes');
-        }
-        this._renderDetailsList();
-        return;
-      }
       const zoneBtn = e.target.closest('[data-lineup-zone-btn]');
       if (zoneBtn && this.isCoach) {
         const playerId = Number(zoneBtn.getAttribute('data-player-id'));
@@ -1398,17 +1317,8 @@ class GameCenterScreen extends EventScreen {
         this._saveLineup();
         return;
       }
-      if (e.target.id === 'gc-rsvp-filter') {
-        this.filterRsvp = e.target.value;
-        this._renderDetailsList();
-        return;
-      }
       // The opponent Message dropdown: ✍️ Write your own opens its box.
       if (e.target.matches('[data-gc-opp-tier]')) { this._oppTier = e.target.value; this._render(); return; }
-      if (e.target.id === 'gc-list-filter') {
-        this.listFilter = e.target.value;
-        this._renderDetailsList();
-      }
     });
 
     this.element.addEventListener('input', (e) => {
@@ -1418,21 +1328,6 @@ class GameCenterScreen extends EventScreen {
       if (e.target.matches('[data-gc-draft-subject], [data-gc-draft-body]')) { this._draftReadForm(); return; }
       // ✍️ Write your own (mig 803): keep the typed text across re-renders.
       if (e.target.matches('[data-gc-opp-msg]')) { this._oppMsg = e.target.value; return; }
-      if (e.target.id === 'gc-player-search') {
-        this.filterText = e.target.value.toLowerCase();
-        this._renderDetailsList();
-        return;
-      }
-      // Jersey number, debounced — the PUT is per-keystroke otherwise,
-      // and a two-digit number is two writes.
-      if (e.target.classList.contains('gdr-jersey-input')) {
-        const playerId = e.target.dataset.playerId;
-        const val = e.target.value;
-        const player = this.players.find(p => String(p.playerId) === String(playerId));
-        if (player) player.jerseyNumber = val;
-        clearTimeout(this._jerseyDebounce);
-        this._jerseyDebounce = setTimeout(() => this._saveJerseyNumber(playerId, val), 600);
-      }
     });
   }
 
@@ -1448,17 +1343,14 @@ class GameCenterScreen extends EventScreen {
 
   async _bootstrap() {
     const sub = this.find('#gl-subtitle');
+    // No game named (an old 🏟️ Game Center tile door, a saved return with
+    // no match): the 📅 Calendar is the picker now (owner 11/16).
     if (!this.matchId) {
-      if (this._enterNextGame()) return;
-      if (sub) sub.textContent = 'Pick a game';
-      const social = this.find('#gc-social');
-      if (social) social.innerHTML = '';
-      this._render();
-      await this._loadGames();
+      setTimeout(() => EventKindSwitch.go(this.navigation, 'match'), 0);
       return;
     }
     if (sub) sub.textContent = this._headSub();
-    this._loadGames();
+    this._refreshEvent();
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
     if (window.SectionContact) SectionContact.load(this.auth).catch(() => {});
@@ -1496,6 +1388,7 @@ class GameCenterScreen extends EventScreen {
       // bare pitch diagram with no opponent identity.
       const matchData = await matchRes.json().catch(() => null);
       this.matchDetails = (matchData && matchData.success) ? matchData.data : null;
+      if (!this.ev) this._refreshEvent().then(() => this._render());   // matchId-only door
 
       this.teamId  = lineupData.data.teamId || null;
       this._loadPostStates();
@@ -1618,7 +1511,6 @@ class GameCenterScreen extends EventScreen {
           seen.add(key);
           return true;
         });
-        this.trainingEvents = detailSets[0].trainingEvents || [];
       }
       const byId = new Map();
       // Call-up-only teams on this game (APSL Reserves, mig 605): a player
@@ -3464,74 +3356,29 @@ class GameCenterScreen extends EventScreen {
     }
   }
 
-  // ── Game picker (no match yet) ──────────────────────────────────────
-  // The top-level entry: every upcoming game on the club calendar, soonest
-  // first.  Same feed as #calendar (GET /api/calendar/upcoming), so a game
-  // shows here exactly when it shows there.  Opening one is a goTo, so
-  // Back returns to this list.  Who may EDIT a game is still decided per
-  // game by the backend (isCoach on the lineup load).
-  async _loadGames() {
-    // Flipping pills re-enters the screen each time; a feed this fresh is
-    // not worth fetching again.
-    if (this._feedGames && Date.now() - this._feedAt < 60000) return;
+  // The game's own event row — GET /api/calendar/events/:id, the call every
+  // EventScreen makes (was the club's whole 35-day game feed on every open,
+  // only to find this one row — owner 11/16: games and practices one base).
+  // A matchId-only door (old #game-center/<id> link) learns the id from the
+  // match row (matchDetails.fh_event_id) and asks again after the lineup load.
+  async _refreshEvent() {
+    const id = (this.ev && this.ev.fh_event_id) || this._fhEventId();
+    if (!id) return false;
+    const matchId = this.matchId;
     try {
-      // From this week's Monday, so the switcher keeps the games already
-      // played this week; the picker itself only lists what is still to come.
-      const d = this._weekStart(new Date());
-      const start = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-      const res = await this.auth.fetch(`/api/calendar/upcoming?start=${start}&days=35`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      const events = Array.isArray(body.events) ? body.events : [];
-      this._feedGames = events
-        .filter(ev => ev.kind === 'match')
-        .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
-      this._feedAt = Date.now();
-      this._applyFeed();
-    } catch (err) {
-      console.error('[game-center] games load failed:', err);
-      // A failed refresh keeps the last list; only the picker with nothing
-      // to show reports it.
-      if (!this.games && !this.matchId) this.error = 'Could not load the upcoming games.';
-    }
-    if (!this.matchId && this._enterNextGame()) return;
-    if (!this.matchId) this._render();
-    this._paintMyAvailability();
-  }
-
-  // The top-level tile lands on a game, not a list — owner 2026-09-18: "it
-  // takes you right to first game chronologically as selected pill but all
-  // games are there on pills".  The next posted game still to finish, else
-  // the week's last one; the picker stays for a week with nothing posted.
-  _enterNextGame() {
-    const games = (this.games || []).filter(ev => ev.match_id != null && this._isPosted(ev));
-    if (!games.length) return false;
-    const now = Date.now();
-    const over = (ev) => {
-      const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
-      return end < now;
-    };
-    this._switchGame((games.find(ev => !over(ev)) || games[games.length - 1]).match_id);
-    return true;
-  }
-
-  // this.games / this.pickerGames from the kept feed.  The club's games, from
-  // every door — owner 2026-09-18: "its not team dependant the drop down
-  // its the club games this week".
-  _applyFeed() {
-    if (!this._feedGames) { this.games = null; this.pickerGames = null; return; }
-    this.games = this._feedGames;
-    if (this.matchId != null) {
-      this.ev = this.games.find(g => g.match_id === this.matchId) || this.ev;
-      { const sub = this.find('#gl-subtitle'); if (sub && this.matchId) sub.textContent = this._headSub();
-        const ttl = this.find('#gc-title'); if (ttl && this.matchId) ttl.textContent = this._headTitle(); }
-      // A matchId-only door (old #game-center/<id> links): the event is
-      // known now, so the URL becomes #event/<fh_event_id>/<pill>.
+      const body = await this._json(`/api/calendar/events/${id}`);
+      if (!body || !body.event || matchId !== this.matchId) return false;
+      const before = this.ev ? JSON.stringify((this.ev.rsvps || []).map(r => [r.person_id, r.response, r.arrive_label, r.leave_label])) : null;
+      this.ev = body.event;
+      const sub = this.find('#gl-subtitle'); if (sub) sub.textContent = this._headSub();
+      const ttl = this.find('#gc-title'); if (ttl) ttl.textContent = this._headTitle();
       this._syncHash();
+      this._paintMyAvailability();
+      return before !== JSON.stringify((this.ev.rsvps || []).map(r => [r.person_id, r.response, r.arrive_label, r.leave_label]));
+    } catch (err) {
+      console.error('[game-center] event load failed:', err);
+      return false;
     }
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    this.pickerGames = this.games.filter(ev => new Date(ev.starts_at) >= today);
-    this._paintWeekend();
   }
 
   // 🎞 Weekend slideshows (mig 1179, owner 11/7): one Instagram carousel of
@@ -3544,40 +3391,9 @@ class GameCenterScreen extends EventScreen {
     if (!this._mayPostSocial() || typeof WeekendSlides === 'undefined') { host.innerHTML = ''; return; }
     this.weekendSlides = this.weekendSlides || new WeekendSlides(this.auth, {
       navigation: this.navigation,
-      games: () => this._feedGames || [],
       escapeHtml: (t) => this.escapeHtml(t),
     });
     this.weekendSlides.mount(host);
-  }
-
-  // Monday 00:00 of the week holding this date.
-  _weekStart(date) {
-    const d = new Date(date); d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-    return d;
-  }
-
-  // Posted = inside the schedule release window My Schedule shows
-  // (schedule_window_end, mig 334); an event without one falls back to the
-  // end of this week.  Owner 2026-09-18: "only show this weeks games. not
-  // future unposted for rsvp ones".
-  _isPosted(ev) {
-    const t = new Date(ev.starts_at);
-    const fallback = this._weekStart(new Date()); fallback.setDate(fallback.getDate() + 7);
-    const winEnd = ev.schedule_window_end ? new Date(ev.schedule_window_end) : fallback;
-    return !isNaN(t) && t <= winEnd;
-  }
-
-  // Same page, another game: keep the pill and the door we came in by, and
-  // no history entry — Back still leaves Game Center in one step.
-  _switchGame(matchId) {
-    const ev = (this.games || []).find(g => g.match_id === matchId);
-    if (!ev || matchId === this.matchId) return;
-    this.onExit();   // timers, beam animation, social card — as if we had left
-    const social = this.find('#gc-social');
-    if (social) social.innerHTML = '';
-    this.onEnter({ event: ev, matchId, title: this._gameLabel(ev), when: this._gameWhen(ev),
-                   view: this.view || undefined, postType: this.pill });
   }
 
   // The header under the title: game · date · Arrival · Warmup · Kickoff
@@ -3592,37 +3408,6 @@ class GameCenterScreen extends EventScreen {
     return this.ev ? `📋 ${EventLabels.title(this.ev)}` : (window.EventKindSwitch ? EventKindSwitch.title() : '📋 Event Center');
   }
 
-  _gameLabel(ev) {
-    const teams = (Array.isArray(ev.teams) ? ev.teams : []).map(t => t.name).filter(Boolean).join(' + ');
-    const vs = ev.opponent ? `${ev.is_home === false ? '@' : 'vs'} ${ev.opponent}` : '';
-    return [teams, vs].filter(Boolean).join(' ') || 'Game';
-  }
-
-  _gameWhen(ev) {
-    const d = new Date(ev.starts_at);
-    if (isNaN(d.getTime())) return '';
-    const day  = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    return `${day} · ${time}`;
-  }
-
-  _renderGamePicker() {
-    if (!this.pickerGames.length) {
-      return `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">No games on the calendar yet.</div>`;
-    }
-    return `<div style="display:flex; flex-direction:column; gap:8px; max-width:640px; margin:0 auto; padding-bottom: var(--space-6);">
-      ${this.pickerGames.map((ev, i) => {
-        const linked = ev.match_id != null;
-        return `<button type="button" class="btn btn-secondary" data-pick-game="${i}" ${linked ? '' : 'disabled'}
-                        style="display:flex; flex-direction:column; align-items:flex-start; gap:2px; text-align:left; padding:10px 12px;">
-          <span style="font-weight:700;">${this.escapeHtml(this._gameLabel(ev))}</span>
-          <span style="font-size:0.8rem; opacity:0.8;">${this.escapeHtml([this._gameWhen(ev), EventLabels.homeSetup(ev) || ev.location].filter(Boolean).join(' · '))}</span>
-          ${linked ? '' : '<span style="font-size:0.72rem; color:#f59e0b;">Not linked to a team yet</span>'}
-        </button>`;
-      }).join('')}
-    </div>`;
-  }
-
   _render() {
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
@@ -3630,7 +3415,7 @@ class GameCenterScreen extends EventScreen {
     const setup = this.find('#gc-home-setup');
     if (setup) setup.innerHTML = this.matchId ? EventLabels.homeSetupBadge(this.ev, (t) => this.escapeHtml(t)) : '';
 
-    if (this.error || (!this.matchId && this.games) || !this.loaded) {
+    if (this.error || !this.loaded) {
       head.innerHTML = '';
       const social = this.find('#gc-social');
       if (social) social.innerHTML = '';
@@ -3639,10 +3424,6 @@ class GameCenterScreen extends EventScreen {
     }
     if (this.error) {
       box.innerHTML = `<div class="empty-state" style="padding: var(--space-4); text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`;
-      return;
-    }
-    if (!this.matchId && this.games) {
-      box.innerHTML = this._renderGamePicker();
       return;
     }
     if (!this.loaded) {
@@ -4302,9 +4083,9 @@ class GameCenterScreen extends EventScreen {
   // game does not expect (a coach who does not play, an admin).
   // Late / leaving early (migration 436): the yellow "arrives 7:20" /
   // "leaves 8:30" chips a player set on #my, beside the game RSVP badge.
-  // Read from the same feed row #my writes (this.games → ev.rsvps).
+  // Read from the game's event row (this.ev.rsvps).
   _rsvpTimeChips(playerId) {
-    const ev = (this.games || []).find(g => g.match_id === this.matchId);
+    const ev = this.ev;
     const personId = this._personIdFor(playerId);
     if (!ev || !personId) return '';
     const r = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(x => x && x.person_id === personId);
@@ -4317,10 +4098,6 @@ class GameCenterScreen extends EventScreen {
          + (r.leave_label  ? chip(t('chip_leave',  { time: r.leave_label },  `leaves ${r.leave_label}`))  : '');
   }
 
-  // Your answer box (EventScreen._myAvailabilityHtml) — this game is the
-  // feed's row for the open match.
-  _myAvailEvent() { return (this.games || []).find(g => g.match_id === this.matchId) || null; }
-  _myAvailEvents() { return this.games || []; }
   // Not Going from standby took the player off the alternates (the save
   // did it): drop the card here too and say so, in the DB's words.
   _onMyAvailabilitySaved(data) {
@@ -4333,10 +4110,9 @@ class GameCenterScreen extends EventScreen {
     return true;
   }
 
-  // Coach: accepted = invited → refresh the feed + invites the squad draws from.
+  // Coach: accepted = invited → refresh the event + invites the squad draws from.
   async _afterCallinAccept() {
-    this._feedAt = 0;
-    await Promise.all([this._loadGames(), this._loadInvites()]);
+    await Promise.all([this._refreshEvent(), this._loadInvites()]);
     this._render();
   }
 
@@ -4804,7 +4580,7 @@ class GameCenterScreen extends EventScreen {
   // game's age — all U8/U9s for a U10 game, all U10/U11s for U12 — and
   // for adults the section's other squads.  An invite row is the ONLY way
   // a call-up sees the game on their page (never tag the younger team).
-  _fhEventId() { return (this.matchDetails && this.matchDetails.fh_event_id) || null; }
+  _fhEventId() { return (this.ev && this.ev.match_id === this.matchId && this.ev.fh_event_id) || (this.matchDetails && this.matchDetails.fh_event_id) || null; }
   // 🙋 The EventScreen call-in box (mig 1265), for this game: loads once
   // per game for its coaches / admins (the API says can_decide).
   _callinEventId() { return this._fhEventId(); }
@@ -6033,257 +5809,6 @@ class GameCenterScreen extends EventScreen {
     btn.disabled = false;
   }
 
-  // ---- RSVP & Player Details overlay (moved from #game-day-roster) ----
-  //
-  // The one thing that screen owned outright: per-player jersey numbers,
-  // a match RSVP the coach can override, tri-state practice attendance,
-  // and which official rosters each player sits on. It hangs off the
-  // 20-Man Squad pill because that's the question it answers — who is
-  // actually available for this game.
-  //
-  // "On lineup" here stays READ-ONLY (a ✓, not a checkbox). Who's on the
-  // game-day roster is decided by the starter/bench zones on the
-  // Starters & Bench pill — owner, 2026-08-22: "it does not need set
-  // lineup for 20 man and starters and bench. just one unified set
-  // lineup then you glean the post from that... the 20 man is a view."
-  // The old screen's own zone-less checkbox is exactly what used to put
-  // stray players on the post.
-
-  _openDetails() {
-    this.overlayOpen = true;
-    const overlay = this.find('#gc-details-overlay');
-    if (!overlay) return;
-    overlay.style.display = 'flex';
-    this._renderDetailsList();
-    setTimeout(() => this.find('#gc-player-search')?.focus(), 100);
-  }
-
-  _closeDetails() {
-    this.overlayOpen = false;
-    const overlay = this.find('#gc-details-overlay');
-    if (overlay) overlay.style.display = 'none';
-    // An RSVP flipped in here changes who's in Going / Not Going /
-    // No Response upstairs, so the body has to catch up on close.
-    this._render();
-  }
-
-  // Which player ids are on the game-day roster, from THIS screen's
-  // zones rather than the old screen's separate onGameRoster flag.
-  _lineupPlayerIds() {
-    const ids = new Set();
-    for (const [playerId, zone] of this.zones.entries()) {
-      if (zone === 'starter' || zone === 'bench') ids.add(String(playerId));
-    }
-    return ids;
-  }
-
-  _getFilteredPlayers() {
-    return this.players.filter(p => {
-      if (this.filterText) {
-        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-        if (!name.includes(this.filterText)) return false;
-      }
-      if (this.filterRsvp !== 'all') {
-        if (this.filterRsvp === 'none') {
-          if (p.rsvpStatus) return false;
-        } else if (p.rsvpStatus !== this.filterRsvp) {
-          return false;
-        }
-      }
-      if (this.listFilter !== 'all') {
-        // These three roster flags are named columns on the
-        // roster-players response (EventController.cpp), not something
-        // derivable from rosterTeamIds — generalising them is a backend
-        // change, so the filter stays keyed to them for now.
-        const map = { roster_lighthouse: 'onRosterLighthouse', roster_casa: 'onRosterCasa', roster_u23: 'onRosterU23' };
-        const key = map[this.listFilter];
-        if (key && !p[key]) return false;
-      }
-      return true;
-    });
-  }
-
-  _renderDetailsList() {
-    const container = this.find('#gc-details-list');
-    if (!container) return;
-
-    if (!this.players.length) {
-      container.innerHTML = '<div class="gdr-empty">No player details available for this match.</div>';
-      return;
-    }
-
-    const filtered = this._getFilteredPlayers();
-    if (filtered.length === 0) {
-      container.innerHTML = '<div class="gdr-empty">No players match filters</div>';
-      return;
-    }
-
-    const practiceHeaders = (this.trainingEvents || []).map(te => {
-      const d = new Date(te.date + 'T12:00:00');
-      const day = d.toLocaleDateString('en-US', { weekday: 'short' });
-      const dateStr = d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' });
-      return `<th class="gdr-th-practice" title="${this.escapeHtml(te.title || '')} - ${day} ${dateStr}">${day}<br><span class="gdr-th-date">${dateStr}</span></th>`;
-    }).join('');
-
-    const lineupIds = this._lineupPlayerIds();
-    container.innerHTML = `
-      <table class="gdr-overlay-table">
-        <thead>
-          <tr>
-            <th class="gdr-th-cb" title="On the game-day roster (starter or bench) — set on the Starters &amp; Bench pill">Lineup</th>
-            <th>Player</th>
-            <th>#</th>
-            <th>Pos</th>
-            <th>RSVP</th>
-            <th>GK</th>
-            <th>Fam</th>
-            <th class="gdr-section-divider" colspan="${(this.trainingEvents || []).length || 1}">Practice</th>
-            <th class="gdr-section-divider" colspan="3">Roster</th>
-          </tr>
-          <tr class="gdr-subheader">
-            <th></th><th></th><th></th><th></th><th></th><th></th><th></th>
-            ${practiceHeaders}
-            <th class="gdr-th-roster" title="APSL Lighthouse 1893 SC">APSL</th>
-            <th class="gdr-th-roster" title="Lighthouse Mens Club Liga 1">Casa</th>
-            <th class="gdr-th-roster" title="Lighthouse Boys Club U23">U23</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filtered.map(p => this._renderDetailsRow(p, lineupIds)).join('')}
-        </tbody>
-      </table>`;
-  }
-
-  _renderDetailsRow(p, lineupIds) {
-    const selected = lineupIds.has(String(p.playerId));
-    const rsvpValue = p.rsvpStatus || '';
-    const practice = p.practice || [];
-
-    const practiceCells = (this.trainingEvents || []).map((te, i) => {
-      const entry = practice[i];
-      const v = entry ? (typeof entry === 'object' ? entry.v : entry) : null;
-      const isOverride = entry && typeof entry === 'object' ? entry.o : false;
-      const cls = v === 'yes' ? 'gdr-prac-yes' : v === 'no' ? 'gdr-prac-no' : 'gdr-prac-none';
-      const sym = v === 'yes' ? '&check;' : v === 'no' ? '&cross;' : '&mdash;';
-      return `<td class="gdr-cell-center gdr-prac-cell ${cls}${isOverride ? ' gdr-prac-override' : ''}"
-                  data-person-id="${p.personId}" data-event-id="${te.id}" data-event-idx="${i}"
-                  data-current="${v || ''}" title="${isOverride ? 'Admin override' : 'Synced'}">${sym}</td>`;
-    }).join('');
-
-    const rosterCell = (val) => val ? '<td class="gdr-cell-center gdr-in">&check;</td>' : '<td class="gdr-cell-center gdr-out"></td>';
-
-    return `
-      <tr class="gdr-overlay-row ${selected ? 'gdr-row-selected' : ''}" data-player-id="${p.playerId}">
-        <td class="gdr-cell-center" title="Set on the Starters &amp; Bench pill">${selected ? '&check;' : ''}</td>
-        <td class="gdr-cell-name"><strong>${this.escapeHtml(p.firstName)} ${this.escapeHtml(p.lastName)}</strong></td>
-        <td class="gdr-cell-jersey">
-          <input type="text" class="gdr-jersey-input" data-player-id="${p.playerId}" value="${this.escapeHtml(String(p.jerseyNumber || ''))}" maxlength="4" placeholder="#">
-        </td>
-        <td>${this.escapeHtml(p.position || '—')}</td>
-        <td class="gdr-rsvp-cell">
-          <div class="gdr-rsvp-group">
-            <button class="gdr-rsvp-btn ${rsvpValue === 'yes' ? 'gdr-rsvp-active-yes' : ''}" data-player-id="${p.playerId}" data-rsvp="yes" title="Going">Y</button>
-            <button class="gdr-rsvp-btn ${rsvpValue === 'no' ? 'gdr-rsvp-active-no' : ''}" data-player-id="${p.playerId}" data-rsvp="no" title="Not going">N</button>
-          </div>
-          ${p.rsvpSource === 'admin' ? '<span class="gdr-rsvp-src gdr-src-admin" title="Admin override">✎</span>' : ''}
-        </td>
-        <td class="gdr-cell-center">${p.isKeeper ? '🧤' : ''}</td>
-        <td class="gdr-cell-center">${p.hasFamilyDiscount ? '👪' : ''}</td>
-        ${practiceCells}
-        ${rosterCell(p.onRosterLighthouse)}
-        ${rosterCell(p.onRosterCasa)}
-        ${rosterCell(p.onRosterU23)}
-      </tr>`;
-  }
-
-  // A match RSVP the coach sets on a player's behalf. Also written into
-  // this.stats so the Going / Not Going / No Response buckets and the
-  // RSVP pills on the Starters & Bench pill agree with the overlay
-  // without waiting for a reload — those read this.stats, the overlay
-  // reads this.players, and both describe the same fact.
-  async _setPlayerRSVP(playerId, newStatus) {
-    if (!this.matchId) return;
-    const player = this.players.find(p => String(p.playerId) === String(playerId));
-    let effective = newStatus;
-    if (player) {
-      // Tapping the active button again clears the override.
-      if (player.rsvpStatus === newStatus) effective = null;
-      player.rsvpStatus = effective;
-      player.rsvpSource = effective ? 'admin' : null;
-    }
-    const stat = this.stats.get(Number(playerId));
-    if (stat) stat.gameRsvp = effective;
-
-    try {
-      await this.auth.fetch(`/api/matches/${this.matchId}/player-rsvp`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ player_id: String(playerId), rsvp_status: effective }),
-      });
-    } catch (err) {
-      console.error('[game-center] failed to save RSVP:', err);
-    }
-  }
-
-  async _setPracticeRSVP(personId, chatEventId, eventIdx, newStatus) {
-    const player = this.players.find(p => String(p.personId) === String(personId));
-    if (player && player.practice) {
-      player.practice[eventIdx] = newStatus ? { v: newStatus, o: true } : null;
-    }
-    try {
-      const body = newStatus
-        ? { person_id: String(personId), rsvp_status: newStatus }
-        : { person_id: String(personId), clear: 'true' };
-      await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-    } catch (err) {
-      console.error('[game-center] failed to save practice RSVP:', err);
-    }
-  }
-
-  // Dropping an admin override reveals whatever the synced value under
-  // it was, which only the server knows — hence the re-render off the
-  // response rather than an optimistic guess.
-  async _releasePracticeRSVP(personId, chatEventId, eventIdx) {
-    const player = this.players.find(p => String(p.personId) === String(personId));
-    if (player && player.practice) player.practice[eventIdx] = null;
-    try {
-      const resp = await this.auth.fetch(`/api/events/chat-events/${chatEventId}/person-rsvp`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ person_id: String(personId), clear: 'true' }),
-      });
-      const data = await resp.json();
-      if (player && player.practice && data.rsvpStatus) {
-        player.practice[eventIdx] = { v: data.rsvpStatus, o: false };
-      }
-      this._renderDetailsList();
-    } catch (err) {
-      console.error('[game-center] failed to release practice RSVP:', err);
-    }
-  }
-
-  async _saveJerseyNumber(playerId, number) {
-    const player = this.players.find(p => String(p.playerId) === String(playerId));
-    // this.roster is what the post's player rows are built from
-    // (_buildRosterData), so a jersey edited here has to land there too
-    // or the graphic keeps printing the old number until a reload.
-    const rosterRow = this.roster.find(r => String(r.id) === String(playerId));
-    if (rosterRow) rosterRow.jerseyNumber = number || null;
-    if (!player || !player.rosterTeamId) return;
-    try {
-      await this.auth.fetch(`/api/teams/${player.rosterTeamId}/roster/${playerId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jerseyNumber: number ? parseInt(number, 10) : null }),
-      });
-    } catch (err) {
-      console.error('[game-center] failed to save jersey number:', err);
-    }
-  }
 
   // Date/time line for the frame. `when` arrives from the My page card
   // (gcal-derived, already formatted) when we got here from there; any
@@ -6606,7 +6131,7 @@ class GameCenterScreen extends EventScreen {
   //   game_day        🎯 match plan · game details (coach) · 🚗 carpool ·
   //                   📇 opponent contacts (coach)
   //   post_game       score entry (coach)
-  //   lineup          the game-day roster count + 👥 RSVP & Player Details (coach)
+  //   lineup          the game-day roster count + 👥 All Players (coach)
   //   lineup / starters_bench   🎯 match plan · ✉️ message everyone (coach,
   //                   official view) · 🚗 carpool · 📇 contacts (coach) ·
   //                   🖨 official league roster (server: rosters/coaches) ·
@@ -6626,7 +6151,7 @@ class GameCenterScreen extends EventScreen {
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="font-size:0.72rem; opacity:0.75;">${byZone.starter.length + byZone.bench.length} on the game-day roster</span>
           <button type="button" id="gc-details-open" class="btn btn-primary"
-                  style="font-size:0.75rem; padding:4px 10px;">👥 RSVP &amp; Player Details</button>
+                  style="font-size:0.75rem; padding:4px 10px;">👥 ${this.escapeHtml(this._ecCopy('pill_players', 'All Players'))}</button>
         </div>`)] : []),
       plan,
       P('game_message', 'coach', (s) => s._renderGameMessagePanel()),

@@ -24,7 +24,9 @@ class WeekendSlides {
   static get OUT_W() { return 1080; }
   static get OUT_H() { return 1350; }
 
-  // opts: { navigation, games: () => [feed events], escapeHtml }
+  // opts: { navigation, escapeHtml[, games: () => [feed events]] } — without
+  // games() it loads this week's and next week's games itself (Game Center
+  // stopped holding the club feed 11/16).
   constructor(auth, opts) {
     this.auth = auth;
     this.opts = opts;
@@ -47,7 +49,29 @@ class WeekendSlides {
   esc(t) { return this.opts.escapeHtml ? this.opts.escapeHtml(t) : String(t ?? ''); }
   copy(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('weekend_slides', tier, tokens) : ''; }
 
+  _feed() { return this.opts.games ? (this.opts.games() || []) : (this._games || []); }
+
+  async _loadGames() {
+    if (this.opts.games || this._gamesBusy || (this._gamesAt && Date.now() - this._gamesAt < 60000)) return;
+    this._gamesBusy = true;
+    try {
+      const res = await this.auth.fetch(`/api/calendar/upcoming?start=${this._iso(this._monday(0))}&days=14`);
+      if (res.ok) {
+        const body = await res.json();
+        this._games = (Array.isArray(body.events) ? body.events : []).filter(ev => ev.kind === 'match')
+          .sort((a, b) => String(a.starts_at).localeCompare(String(b.starts_at)));
+        this._gamesAt = Date.now();
+      }
+    } catch (err) {
+      console.warn('[weekend-slides] games load failed:', err);
+    } finally {
+      this._gamesBusy = false;
+    }
+    if (this.el) this._paintKeepingCaption();
+  }
+
   mount(el) {
+    this._loadGames();
     if (this.el === el) { this._paintKeepingCaption(); return; }
     this.el = el;
     el.addEventListener('click', (e) => this._onClick(e));
@@ -70,7 +94,7 @@ class WeekendSlides {
 
   _weekGames() {
     const from = this._monday(), to = this._monday(this.weekOffset + 1);
-    return (this.opts.games() || []).filter(ev => {
+    return this._feed().filter(ev => {
       const t = new Date(ev.starts_at);
       return !isNaN(t) && t >= from && t < to;
     });
@@ -79,6 +103,9 @@ class WeekendSlides {
   // Ticked by default: linked games Fri–Sun not yet over.
   _tickedSet() {
     const key = this._key();
+    // Games not loaded yet: tick nothing and remember nothing, so the
+    // default ticks land once they arrive.
+    if (!this.opts.games && !this._gamesAt) return new Set();
     if (!this.ticked.has(key)) {
       const now = Date.now();
       this.ticked.set(key, new Set(this._weekGames().filter(ev => {
