@@ -43,6 +43,7 @@ class ReleaseStrip {
     if (!this.el) return;
     if (!weekStart) { this.el.innerHTML = ''; return; }
     try {
+      if (window.MessageCopy) await MessageCopy.load(this.auth).catch(() => {});   // the strip's words
       const res = await this.auth.fetch(`/api/schedule/window?week_start=${weekStart}`);
       if (!res.ok || this.weekStart !== weekStart) { if (!res.ok) this.el.innerHTML = ''; return; }
       this.window = await res.json();
@@ -53,12 +54,24 @@ class ReleaseStrip {
     }
   }
 
+  // Words: message_templates kind='calendar' release_* (mig 1394 — were
+  // literals on the old #calendar).  A row missing reads as nothing.
+  copy(tier, tokens = {}) {
+    const mc = window.MessageCopy;
+    return (mc && mc.block && mc.block('calendar', tier, tokens)) || '';
+  }
+
+  _weekWord(weekStart) {
+    const mon = new Date(weekStart + 'T00:00:00');
+    return this.copy('release_week', { date: mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) });
+  }
+
   html(w) {
     const esc = this.esc;
     const admin = CalendarOps.isAdmin(this.auth);
     const fmt = CalendarOps.fmtWhen;
-    const mon = new Date(w.week_start + 'T00:00:00');
-    const weekLabel = `Week of ${mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    const week = this._weekWord(w.week_start);
+    const rule = w.policy ? w.policy.label : '';
     const policyOpens = w.policy_opens_at ? new Date(w.policy_opens_at).getTime() : null;
     const earlyOpen = !!(w.release && !w.release.revoked_at && policyOpens && policyOpens > Date.now());
     const postedNormally = w.open_now && !earlyOpen;
@@ -66,20 +79,21 @@ class ReleaseStrip {
     const base = 'display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 12px; border-radius:8px; font-size:0.85rem;';
     const btn  = 'padding:5px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:#2563eb; color:#fff; font-weight:700; font-size:0.8rem; cursor:pointer;';
     const link = 'background:none; border:none; color:#bfdbfe; text-decoration:underline; cursor:pointer; font-size:0.78rem; padding:2px 4px;';
+    // The sentence, escaped, with the week's name in bold.
+    const line = (tier, tokens) => {
+      const text = esc(this.copy(tier, { week, rule, ...tokens }));
+      return `<span>${week ? text.replace(esc(week), `<strong>${esc(week)}</strong>`) : text}</span>`;
+    };
 
     let body;
     if (postedNormally) {
-      body = `<span>✅ <strong>${esc(weekLabel)}</strong> is posted. It opened
-          ${esc(fmt(w.opens_at))}${w.policy ? ` (rule: ${esc(w.policy.label)})` : ''}.</span>`;
+      body = line('release_posted', { opened: fmt(w.opens_at) });
     } else if (earlyOpen) {
-      body = `<span>✅ <strong>${esc(weekLabel)}</strong> is posted early
-          ${w.release.released_by ? `by ${esc(w.release.released_by)}` : ''}, ${esc(fmt(w.release.released_at))}.
-          Normal post time was ${esc(fmt(w.policy_opens_at))}.</span>
-        ${admin ? `<button type="button" data-release-close="${w.release.id}" style="${btn} background:#7f1d1d;">Close it again</button>` : ''}`;
+      body = line('release_early', { by: w.release.released_by || '', at: fmt(w.release.released_at), normal: fmt(w.policy_opens_at) })
+        + (admin ? `<button type="button" data-release-close="${w.release.id}" style="${btn} background:#7f1d1d;">${esc(this.copy('release_close_btn'))}</button>` : '');
     } else {
-      body = `<span>🕗 <strong>${esc(weekLabel)}</strong> posts to players and parents
-          <strong>${esc(fmt(w.opens_at))}</strong>${w.policy ? ` (rule: ${esc(w.policy.label)})` : ''}.</span>
-        ${admin ? `<button type="button" data-release-open="${esc(w.week_start)}" style="${btn}">Open now</button>` : ''}`;
+      body = line('release_pending', { opens: fmt(w.opens_at) })
+        + (admin ? `<button type="button" data-release-open="${esc(w.week_start)}" style="${btn}">${esc(this.copy('release_open_btn'))}</button>` : '');
     }
 
     let policyHtml = '';
@@ -87,19 +101,20 @@ class ReleaseStrip {
       if (this.editing) {
         const wd = w.policy ? w.policy.weekday : 0;
         const tm = w.policy ? w.policy.time : '20:00';
-        const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        // Weekday names from the browser's locale (Sunday = 0, as the policy).
+        const dayName = (i) => new Date(2024, 0, 7 + i).toLocaleDateString(undefined, { weekday: 'long' });
         policyHtml = `
           <span style="display:inline-flex; align-items:center; gap:6px; margin-left:auto;">
-            <span style="opacity:0.8;">Standing rule:</span>
+            <span style="opacity:0.8;">${esc(this.copy('release_rule_label'))}</span>
             <select data-policy-weekday style="font-size:0.8rem; padding:3px 6px;">
-              ${names.map((n, i) => `<option value="${i}" ${i === wd ? 'selected' : ''}>${n}</option>`).join('')}
+              ${[0, 1, 2, 3, 4, 5, 6].map(i => `<option value="${i}" ${i === wd ? 'selected' : ''}>${esc(dayName(i))}</option>`).join('')}
             </select>
             <input type="time" data-policy-time value="${esc(tm)}" style="font-size:0.8rem; padding:3px 6px;">
-            <button type="button" data-policy-save style="${btn}">Save</button>
-            <button type="button" data-policy-cancel style="${link}">Cancel</button>
+            <button type="button" data-policy-save style="${btn}">${esc(this.copy('release_save'))}</button>
+            <button type="button" data-policy-cancel style="${link}">${esc(this.copy('release_cancel'))}</button>
           </span>`;
       } else {
-        policyHtml = `<button type="button" data-policy-edit style="${link} margin-left:auto;">Change the rule</button>`;
+        policyHtml = `<button type="button" data-policy-edit style="${link} margin-left:auto;">${esc(this.copy('release_rule_link'))}</button>`;
       }
     }
     const on = earlyOpen || postedNormally;
@@ -122,14 +137,13 @@ class ReleaseStrip {
       const fail = async (res) => { throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`); };
       try {
         if (openBtn) {
-          const mon = new Date(openBtn.dataset.releaseOpen + 'T00:00:00');
-          if (!confirm(`Post the week of ${mon.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} to players and parents now?`)) return;
-          openBtn.disabled = true; openBtn.textContent = 'Opening…';
+          if (!confirm(this.copy('release_confirm_open', { week: this._weekWord(openBtn.dataset.releaseOpen) }))) return;
+          openBtn.disabled = true; openBtn.textContent = this.copy('release_opening');
           const res = await this.auth.fetch('/api/schedule/releases', { method: 'POST', headers: json, body: JSON.stringify({ week_start: openBtn.dataset.releaseOpen }) });
           if (!res.ok) await fail(res);
         } else if (closeBtn) {
-          if (!confirm('Close this week again? Players and parents will stop seeing it until the normal post time.')) return;
-          closeBtn.disabled = true; closeBtn.textContent = 'Closing…';
+          if (!confirm(this.copy('release_confirm_close'))) return;
+          closeBtn.disabled = true; closeBtn.textContent = this.copy('release_closing');
           const res = await this.auth.fetch(`/api/schedule/releases/${closeBtn.dataset.releaseClose}/revoke`, { method: 'POST' });
           if (!res.ok) await fail(res);
         } else if (editBtn) {
@@ -139,7 +153,7 @@ class ReleaseStrip {
         } else if (saveBtn) {
           const wd = this.el.querySelector('[data-policy-weekday]').value;
           const tm = this.el.querySelector('[data-policy-time]').value;
-          saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+          saveBtn.disabled = true; saveBtn.textContent = this.copy('release_saving');
           const res = await this.auth.fetch('/api/schedule/policy', { method: 'PUT', headers: json, body: JSON.stringify({ cutover_weekday: String(wd), cutover_time: tm }) });
           if (!res.ok) await fail(res);
           this.editing = false;
@@ -148,7 +162,7 @@ class ReleaseStrip {
         if (this.onChange && (openBtn || closeBtn || saveBtn)) this.onChange();
       } catch (err) {
         console.error('[calendar] release action failed:', err);
-        alert(`Could not update the schedule window: ${err.message}`);
+        alert(this.copy('release_failed', { error: err.message }));
         await this.load(this.weekStart);
       }
     });
@@ -172,6 +186,7 @@ class ClashStrip {
   async load() {
     if (!this.el) return;
     try {
+      if (window.MessageCopy) await MessageCopy.load(this.auth).catch(() => {});
       const res = await this.auth.fetch(`/api/calendar/field-clashes?days=${ClashStrip.DAYS}`);
       if (!res.ok) { this.el.innerHTML = ''; return; }
       this.el.innerHTML = this.html(await res.json());
@@ -204,7 +219,7 @@ class ClashStrip {
     return `<div style="${base} background:rgba(245,158,11,0.14); border:1px solid rgba(251,191,36,0.5);">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <strong>${esc(this.copy('clash_title') || '⚠ Field clash')}</strong>
-        <span style="opacity:0.8;">${clashes.length} in the next ${body.days || ClashStrip.DAYS} days</span>
+        <span style="opacity:0.8;">${esc(this.copy('clash_count', { n: clashes.length, days: body.days || ClashStrip.DAYS }))}</span>
         <span style="opacity:0.65; font-size:0.78rem; flex-basis:100%;">${esc(this.copy('clash_hint'))}</span>
       </div>
       ${rows}

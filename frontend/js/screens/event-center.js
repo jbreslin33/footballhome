@@ -391,7 +391,9 @@ class EventCenterScreen extends Screen {
     this._loadOps();
     // Admins also see Google soccer events not classified yet (the old
     // #calendar's include_unclassified) — the server shows them to admins only.
-    const extra = this._isAdmin() ? '&include_unclassified=1' : '';
+    // Month cells never show player lists: ?lite=1 leaves them out (~4×
+    // faster on a month — backend 11/16).
+    const extra = (this._isAdmin() ? '&include_unclassified=1' : '') + (this.view === 'month' ? '&lite=1' : '');
     try {
       const body = await this._json(`/api/calendar/upcoming?start=${encodeURIComponent(this._ymd(start))}&days=${days}${extra}`);
       if (this._loadKey !== key) return;   // a newer range was asked for meanwhile

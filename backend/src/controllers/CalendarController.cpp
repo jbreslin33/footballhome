@@ -752,6 +752,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
         request.getQueryParam("include_unclassified") == "1" ||
         request.getQueryParam("include_unclassified") == "true";
     const std::string startParam = urlDecode(request.getQueryParam("start"));
+    // ?lite=1 — every field but the per-event player lists (rsvps, inactive
+    // come back empty): the Calendar's month grid, ~4× faster on a month.
+    const bool lite = request.getQueryParam("lite") == "1";
 
     // Optional session — enriches each event with the caller's RSVP.
     // Anonymous callers see `my_rsvp: null` on every event; no auth
@@ -1280,7 +1283,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     JOIN teams t ON t.id = fet.team_id
                     WHERE fet.fh_event_id = fe.id
                 ), '[]'::jsonb) AS teams_json,
-                COALESCE((
+                -- ?lite=1 (the 📅 Calendar's month grid, 11/16): no player lists —
+                -- they are most of the cost and a month cell never shows them.
+                CASE WHEN $6::bool THEN '[]'::jsonb ELSE COALESCE((
                     SELECT jsonb_agg(
                         jsonb_build_object(
                                                         'person_id',      roster.person_id,
@@ -1587,7 +1592,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                         ) roster
                                         WHERE roster.is_pickup_only = false
                                              OR roster.response = 'yes'
-                ), '[]'::jsonb) AS rsvps_json,
+                ), '[]'::jsonb) END AS rsvps_json,
                 -- 💤 Inactive (mig 945 squad status; owner 2026-11-03: "show in
                 -- sep section on all screens including event center so i
                 -- don't bother with them").  Everyone 💤 on every team this
@@ -1596,7 +1601,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- (fh_inactive_back_on_yes).  Kept out of rsvps_json so no
                 -- count or reminder ever sees them; screens list them in
                 -- their own fold and drop them from their other groups.
-                COALESCE((
+                -- ?lite=1 (the 📅 Calendar's month grid, 11/16): no player lists —
+                -- they are most of the cost and a month cell never shows them.
+                CASE WHEN $6::bool THEN '[]'::jsonb ELSE COALESCE((
                     SELECT jsonb_agg(jsonb_build_object(
                                'person_id',  p.id,
                                'first_name', p.first_name,
@@ -1621,7 +1628,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                        AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
                                         WHERE i.fh_event_id = fe.id AND i.person_id = p.id AND i.revoked_at IS NULL)
                        AND er.response IS DISTINCT FROM 'yes'
-                ), '[]'::jsonb) AS inactive_json,
+                ), '[]'::jsonb) END AS inactive_json,
                 CASE
                     WHEN $1::int = 0 OR fe.id IS NULL THEN NULL
                     ELSE (
@@ -1740,6 +1747,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         includeUnclassified ? "true" : "false",
             startParam,
             std::to_string(onlyFhEventId),
+            lite ? "true" : "false",
         });
 
         // Whole alias table, once per request — it is a handful of rows
