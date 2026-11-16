@@ -2199,11 +2199,17 @@ class TuitionScreen extends Screen {
     `;
   }
 
-  // POST the operator's chosen next_due_at, then re-fetch the current
-  // tab's members payload so the badge reflects the new anchor.
+  // POST the operator's chosen next_due_at. Owner 11/16 "chagning due date is
+  // slow to finish so it holds me up": the save is one UPDATE (~2 ms) but the
+  // spinner used to wait for the tab's full reload — LeagueApps syncs of the
+  // program + its pickup + inactive programs, its transactions, and the whole
+  // payload (Men's ~3 s). A due date lives only in our DB, so the card and the
+  // sheet take the new date at once and the tab refreshes in the background
+  // (the badge — server-computed status — follows when it lands).
   async setNextDue(laRegistrationId, isoDate) {
     if (!laRegistrationId || !isoDate) return;
     this._showBusy('Saving due date…');
+    let saved = false;
     try {
       const res = await this.auth.fetch(
         `/api/payments/members/${laRegistrationId}/next-due`,
@@ -2217,28 +2223,26 @@ class TuitionScreen extends Screen {
         const text = await res.text();
         throw new Error(text.slice(0, 200) || `HTTP ${res.status}`);
       }
-      // Only reload the tab the operator is actually looking at, in
-      // the foreground.  Every /api/payments/{tab}/members call
-      // triggers a fresh LaProgramSync::run for that program (external
-      // LA API round trip), so awaiting all four in Promise.all made
-      // the "saving..." spinner wait on the slowest of four LA calls.
-      // The other tabs are refreshed silently in the background - the
-      // operator will see fresh data when they switch tabs, and the
-      // "All Programs" bar recomputes from membersByTab whenever any
-      // tab lands.
-      const currentTabs = this.tab === 'all' ? [] : this._shardKeys().filter(k => this.membersByTab[k] !== null);
-      await Promise.all(currentTabs.map(k => this.loadMembers(k)));
-      // Fire-and-forget the other tabs.
+      saved = true;
+      // the new date on every row with this registration, now
       for (const k of TuitionScreen.ALL_TABS) {
-        if (currentTabs.includes(k)) continue;
-        if (this.membersByTab[k] === null) continue;   // never loaded - leave for on-demand
-        this.loadMembers(k).catch(() => {});
+        for (const m of ((this.membersByTab[k] && this.membersByTab[k].members) || [])) {
+          if (String(m.laRegistrationId) === String(laRegistrationId)) { m.nextDueAt = isoDate; m.nextDueSource = 'operator_override'; }
+        }
       }
+      this.renderMembers();
+      if (window.PlayerSheet) PlayerSheet.refresh();
       this._toast(`Due date set to ${isoDate}`, 'success');
     } catch (err) {
       this._toast(`Failed to set due date: ${err.message}`, 'error');
     } finally {
       this._hideBusy();
+    }
+    if (!saved) return;
+    // background: every loaded tab re-reads (status / badge recomputed server-side)
+    for (const k of TuitionScreen.ALL_TABS) {
+      if (this.membersByTab[k] == null) continue;   // never loaded — leave for on-demand
+      this.loadMembers(k).then(() => { if (window.PlayerSheet) PlayerSheet.refresh(); }).catch(() => {});
     }
   }
 
