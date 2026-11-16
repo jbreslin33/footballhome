@@ -247,6 +247,25 @@ async function syncCalendar(pg, cal) {
     for (const cal of cals) {
       await syncCalendar(pg, cal);
     }
+    // A single event later turned into a repeating series keeps its id —
+    // Google reuses it for the series parent and never sends a cancel for
+    // the single, while singleEvents=true sends the instances under new
+    // ids.  The old single row would live on as a duplicate (11/15: Tue
+    // 11/17 7 PM u17+ twice, the stale copy with the old tags).  Its id
+    // now heading a series is the signal: tombstone it like a cancel.
+    // Split series carry "<id>_R<date>" as recurring_event_id, hence the
+    // prefix match.
+    const { rowCount: absorbed } = await pg.query(`
+      UPDATE gcal_events g
+      SET deleted_at = now(), status = 'cancelled'
+      WHERE g.deleted_at IS NULL
+        AND g.recurring_event_id IS NULL
+        AND EXISTS (SELECT 1 FROM gcal_events i
+                    WHERE i.calendar_id = g.calendar_id
+                      AND i.recurring_event_id IS NOT NULL
+                      AND split_part(i.recurring_event_id, '_', 1) = g.google_event_id)
+    `);
+    if (absorbed) console.log(`  singles turned into series, old copy tombstoned: ${absorbed}`);
     // Bridged matches mirror their calendar event (mig 518).  The
     // gcal_events trigger does this per change; this pass catches anything
     // it missed, and says so.
