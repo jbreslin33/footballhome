@@ -1,4 +1,7 @@
-// PlayerCalendarScreen — simplified player-only roster view.
+// PlayerCalendarScreen — 👥 Players: simplified player-only roster view
+// (👤 Mine → Players).  Not a calendar — the name is history; its heading is
+// the same DB word as the link that opens it (event_center link_players,
+// owner 11/16 one-page clean-up: "player-calendar" read like a 2nd calendar).
 // Read-only, no contact actions, no unassigned bucket, and only the
 // APSL / Liga 1 columns are shown.
 class PlayerCalendarScreen extends Screen {
@@ -16,7 +19,7 @@ class PlayerCalendarScreen extends Screen {
       <div class="screen-header" style="padding: 6px 10px 8px; gap: 8px; align-items:center; flex-wrap:wrap;">
         <button class="btn btn-secondary back-btn" style="padding: 3px 7px; line-height:1;">←</button>
         <div>
-          <h1 style="font-size: 0.95rem; margin: 0; line-height:1;">Player Calendar</h1>
+          <h1 style="font-size: 0.95rem; margin: 0; line-height:1;" id="pc-title">Players</h1>
           <p class="subtitle" id="pc-subtitle" style="margin: 2px 0 0; font-size: 0.68rem; line-height:1;">Loading roster…</p>
         </div>
       </div>
@@ -32,6 +35,9 @@ class PlayerCalendarScreen extends Screen {
   }
 
   onEnter() {
+    const title = this.find('#pc-title');
+    const word = window.MessageCopy && MessageCopy.block('event_center', 'link_players');
+    if (title && word) title.textContent = word;
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();

@@ -161,7 +161,9 @@ and keeps its own RSVP cards, attendance, invites, reminders, call-ins, poll.
    person, filters kept; each history entry remembers its half; a phone
    reload mid-reminders returns to the board (resumeState).  Retired screens
    in browser history go through goTo's redirects.
-4. Rename or delete `player-calendar` (a roster list, not a calendar).
+4. **DONE 11/16** — `player-calendar` kept (👤 Mine → Players, the men's
+   roster list) but titled **Players** from the same DB word as its link
+   (event_center link_players); screen key unchanged.
 
 Known: a month view loads in ~6.5 s (the upcoming feed is heavy per event;
 a week ~1.4 s).
