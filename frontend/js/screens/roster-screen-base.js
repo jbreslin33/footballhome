@@ -1990,11 +1990,12 @@ class RosterScreenBase extends Screen {
     return !terms || terms.includes(t.term);
   }
 
-  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'attendance', 'trials', 'score']; }
+  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score']; }
 
   // ── 📊 🧪 ⭐ Squad-picking sorts (mig 1399, owner 11/16) ─────────────
-  // data.selection[personId] = { attended, expected, trials, trialsHeld }
-  // (fh_selection_scores — practices and trial sessions this club year);
+  // data.selection[personId] = { attended, expected, trials, trialsHeld,
+  // rsvpAnswered, rsvpAsked } (fh_selection_scores — practices and trial
+  // sessions this club year; 📝 RSVP = practices + games answered, mig 1409);
   // data.selectionPolicy = weights + dues rule.  Each part is 0–1 or null
   // when there is nothing to measure; ⭐ Score = the weighted average of
   // the parts that exist, ×100 (none until a practice or trial counts).
@@ -2005,6 +2006,7 @@ class RosterScreenBase extends Screen {
     const pol = (this._data && this._data.selectionPolicy) || null;
     const attendance = s && s.expected > 0 ? s.attended / s.expected : null;
     const trials = s && s.trialsHeld > 0 ? s.trials / s.trialsHeld : null;
+    const rsvp = s && s.rsvpAsked > 0 ? s.rsvpAnswered / s.rsvpAsked : null;
     let dues = null;
     const st = RosterScreenBase.paidState(p);
     if (st === 'none') dues = 0;
@@ -2020,25 +2022,29 @@ class RosterScreenBase extends Screen {
     let score = null;
     if (pol && (attendance != null || trials != null)) {
       let sum = 0, w = 0;
-      [[trials, pol.trialsWeight], [attendance, pol.attendanceWeight], [dues, pol.duesWeight]].forEach(([v, wt]) => {
+      [[rsvp, pol.rsvpWeight], [trials, pol.trialsWeight], [attendance, pol.attendanceWeight], [dues, pol.duesWeight]].forEach(([v, wt]) => {
         if (v != null && Number(wt) > 0) { sum += v * Number(wt); w += Number(wt); }
       });
       if (w > 0) score = Math.round((sum / w) * 100);
     }
-    return { s, attendance, trials, dues, score };
+    return { s, rsvp, attendance, trials, dues, score };
   }
 
   // The chip the 📊 / 🧪 / ⭐ sort puts on each card ('' on other sorts).
   selectionChipHtml(p) {
     const order = this.sortOrder;
-    if (!['attendance', 'trials', 'score'].includes(order) || !p || p.personId == null) return '';
+    if (!['rsvp', 'attendance', 'trials', 'score'].includes(order) || !p || p.personId == null) return '';
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || fb;
     const parts = this.selectionParts(p);
-    const s = parts.s || { attended: 0, expected: 0, trials: 0, trialsHeld: 0 };
+    const s = parts.s || { attended: 0, expected: 0, trials: 0, trialsHeld: 0, rsvpAnswered: 0, rsvpAsked: 0 };
     const pct = (v) => v == null ? '—' : `${Math.round(v * 100)}%`;
     let txt, tip, v;
-    if (order === 'attendance') {
+    if (order === 'rsvp') {
+      v = parts.rsvp;
+      txt = copy('board_chip_rsvp', { went: s.rsvpAnswered, of: s.rsvpAsked }, `📝 ${s.rsvpAnswered}/${s.rsvpAsked}`);
+      tip = v == null ? copy('board_chip_none_tip', {}, 'Nothing to measure yet') : pct(v);
+    } else if (order === 'attendance') {
       v = parts.attendance;
       txt = copy('board_chip_attendance', { went: s.attended, of: s.expected }, `📊 ${s.attended}/${s.expected}`);
       tip = v == null ? copy('board_chip_none_tip', {}, 'Nothing to measure yet') : pct(v);
@@ -2050,11 +2056,12 @@ class RosterScreenBase extends Screen {
       v = parts.score == null ? null : parts.score / 100;
       txt = copy('board_chip_score', { score: parts.score == null ? '—' : parts.score }, `⭐ ${parts.score == null ? '—' : parts.score}`);
       const tok = {
+        rsvp: parts.rsvp == null ? '—' : `${s.rsvpAnswered}/${s.rsvpAsked}`,
         trials: parts.trials == null ? '—' : `${s.trials}/${s.trialsHeld}`,
         attendance: parts.attendance == null ? '—' : `${s.attended}/${s.expected}`,
         dues: pct(parts.dues),
       };
-      tip = copy('board_chip_score_tip', tok, `Trials ${tok.trials} · Attendance ${tok.attendance} · Dues ${tok.dues}`);
+      tip = copy('board_chip_score_tip', tok, `RSVP ${tok.rsvp} · Attendance ${tok.attendance} · Trials ${tok.trials} · Dues ${tok.dues}`);
     }
     const color = v == null ? '#94a3b8' : v >= 0.75 ? '#86efac' : v >= 0.5 ? '#fde68a' : '#fca5a5';
     return `<span title="${esc(tip)}" style="font-size:0.62rem; line-height:1.3; font-weight:800; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.15); color:${color}; white-space:nowrap;">${esc(txt)}</span>`;
@@ -2100,15 +2107,15 @@ class RosterScreenBase extends Screen {
         return alpha(a, b);
       });
     }
-    if (order === 'attendance' || order === 'trials' || order === 'score') {
+    if (order === 'rsvp' || order === 'attendance' || order === 'trials' || order === 'score') {
       // Best first; nothing to measure sorts last; ties → more measured, then A–Z.
       const val = (r) => {
         const pt = this.selectionParts(r.player);
-        return order === 'attendance' ? pt.attendance : order === 'trials' ? pt.trials : pt.score;
+        return order === 'rsvp' ? pt.rsvp : order === 'attendance' ? pt.attendance : order === 'trials' ? pt.trials : pt.score;
       };
       const size = (r) => {
         const sel = this.selectionParts(r.player).s;
-        return !sel ? 0 : order === 'trials' ? sel.trialsHeld : sel.expected;
+        return !sel ? 0 : order === 'trials' ? sel.trialsHeld : order === 'rsvp' ? sel.rsvpAsked : sel.expected;
       };
       return ranked.sort((a, b) => {
         const va = val(a), vb = val(b);

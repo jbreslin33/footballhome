@@ -316,6 +316,7 @@ class RostersScreen extends Screen {
           { id: 'rank',  label: viewCopy('board_sort_rank', 'Rank') },
           { id: 'paid',  label: viewCopy('board_sort_paid', '💰 Paid status') },
           ...(boardView === 'roster' ? [{ id: 'official', label: viewCopy('board_sort_official', '🌐 Official order') }] : []),
+          { id: 'rsvp',       label: viewCopy('board_sort_rsvp', '📝 RSVP') },
           { id: 'attendance', label: viewCopy('board_sort_attendance', '📊 Attendance') },
           { id: 'trials',     label: viewCopy('board_sort_trials', '🧪 Trials') },
           { id: 'score',      label: viewCopy('board_sort_score', '⭐ Score') },

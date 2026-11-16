@@ -191,7 +191,8 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
 
     // 📊 🧪 ⭐ Squad-picking sorts (mig 1399): per player on the board,
     // practices went/expected and trial sessions went/held this club year
-    // (fh_selection_scores), plus the score weights.  The board turns these
+    // (fh_selection_scores), plus practices+games answered / asked (mig 1409),
+    // plus the score weights.  The board turns these
     // and the card's own dues balance into the ⭐ Score.
     try {
         std::string arr = "{";
@@ -213,24 +214,27 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
         nlohmann::json sel = nlohmann::json::object();
         if (!seen.empty()) {
             for (const auto& r : db->query(
-                "SELECT person_id, attended, expected, trials, trials_held FROM fh_selection_scores($1::int[])", {arr}))
+                "SELECT person_id, attended, expected, trials, trials_held, rsvp_answered, rsvp_asked "
+                "  FROM fh_selection_scores($1::int[])", {arr}))
                 sel[r["person_id"].c_str()] = {
                     {"attended", r["attended"].as<int>()}, {"expected", r["expected"].as<int>()},
-                    {"trials", r["trials"].as<int>()}, {"trialsHeld", r["trials_held"].as<int>()}};
+                    {"trials", r["trials"].as<int>()}, {"trialsHeld", r["trials_held"].as<int>()},
+                    {"rsvpAnswered", r["rsvp_answered"].as<int>()}, {"rsvpAsked", r["rsvp_asked"].as<int>()}};
         }
         body["selection"] = std::move(sel);
         for (const auto& r : db->query(
             "SELECT p.trials_weight::float8 AS tw, p.attendance_weight::float8 AS aw, p.dues_weight::float8 AS dw, "
-            "       p.dues_months_to_zero::float8 AS mz, "
+            "       p.rsvp_weight::float8 AS rw, p.dues_months_to_zero::float8 AS mz, "
             "       (SELECT d.monthly_dues_usd::float8 FROM dues_policies d "
             "         WHERE d.club_id = p.club_id AND d.club_section_id IS NULL AND d.effective_from <= now() "
             "         ORDER BY d.effective_from DESC LIMIT 1) AS monthly "
             "  FROM selection_score_policies p "
             " WHERE p.club_id = 134 AND p.effective_from <= CURRENT_DATE "
-            " ORDER BY p.effective_from DESC LIMIT 1"))
+            " ORDER BY p.effective_from DESC, p.id DESC LIMIT 1"))
             body["selectionPolicy"] = {
                 {"trialsWeight", r["tw"].as<double>()}, {"attendanceWeight", r["aw"].as<double>()},
-                {"duesWeight", r["dw"].as<double>()}, {"duesMonthsToZero", r["mz"].as<double>()},
+                {"duesWeight", r["dw"].as<double>()}, {"rsvpWeight", r["rw"].as<double>()},
+                {"duesMonthsToZero", r["mz"].as<double>()},
                 {"monthlyDues", r["monthly"].is_null() ? 0.0 : r["monthly"].as<double>()}};
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] selection scores attach failed: " << e.what() << std::endl;
