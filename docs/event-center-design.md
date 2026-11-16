@@ -155,7 +155,12 @@ and keeps its own RSVP cards, attendance, invites, reminders, call-ins, poll.
    games + ⚔️ Lineup · 🎯 Tactics · 📇 Opponent · 📣 Posts; practices + Groups ·
    Plan).  Games still open on Starters & Bench.  RSVP screen is
    uptime-sensitive: test on a test event first.
-3. **Fold #rsvps** — admin "By event / By person" switch on the Calendar.
+3. **DONE 11/16 (mig 1391)** — #rsvps is the Calendar's 👥 By person half for
+   admins (📅 By event · 👥 By person chips; RsvpBoardScreen hosted in
+   #ec-people minus its header).  `goTo('rsvps', filters)` → Calendar, By
+   person, filters kept; each history entry remembers its half; a phone
+   reload mid-reminders returns to the board (resumeState).  Retired screens
+   in browser history go through goTo's redirects.
 4. Rename or delete `player-calendar` (a roster list, not a calendar).
 
 Known: a month view loads in ~6.5 s (the upcoming feed is heavy per event;

@@ -121,6 +121,9 @@ class NavigationStateMachine {
     // An old #my door (sign-in link, RSVP text) opens Event Center on 👤 Mine,
     // staff included (mig 1296).
     if (state === 'my') params = { ...params, view: 'mine' };
+    // #rsvps (RSVP Reminders) is the Calendar's 👥 By person since 11/16;
+    // its filters (dashboard: kind, section; a saved return) ride along.
+    if (state === 'rsvps') params = { mode: 'people', board: params.resume ? { resume: params.resume } : params };
     if (NavigationStateMachine.RETIRED[state]) state = NavigationStateMachine.RETIRED[state];
     // ⏳ The screen's loading shows like a boot log (components/boot-log.js, mig 1300).
     if (window.BootLog) BootLog.begin(state);
@@ -273,6 +276,9 @@ class NavigationStateMachine {
   // behind us, or one without state).  replaceState so the URL and the
   // entry's stored state match what is on screen.
   _showEntry(entry) {
+    // A retired screen in the stack (#calendar, #rsvps … 11/16) goes
+    // through goTo's redirects instead of a screen that is no longer there.
+    if (NavigationStateMachine.RETIRED[entry.screen]) { this.goTo(entry.screen, entry.params || {}); return; }
     const params = entry.params || {};
     this.currentState = entry.screen;
     this.currentParams = params;
@@ -299,6 +305,7 @@ class NavigationStateMachine {
     if (state.context) {
       this.context = state.context;
     }
+    if (NavigationStateMachine.RETIRED[state.screen]) { this.goTo(state.screen, state.params || {}); return; }
 
     // Update internal state — including the in-app back stack as it was
     // when this entry was created, so the ← button keeps working after
@@ -344,6 +351,7 @@ NavigationStateMachine.RETIRED = {
   // the one 📅 Calendar 2026-11-16 (owner: "rsvp, calendar and event center
   // should be one page").
   "calendar": "event-center",
+  "rsvps": "event-center",
   "team-dashboard": "main-menu",
   // #payments was renamed #tuition (mig 1293, 2026-11-12).
   "payments": "tuition",

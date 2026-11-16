@@ -56,7 +56,6 @@ class App {
       youthRoster: new YouthRosterScreen(this.navigation, this.auth),
       tuition: new TuitionScreen(this.navigation, this.auth),
       reports: new ReportsScreen(this.navigation, this.auth),
-      rsvps: new RsvpBoardScreen(this.navigation, this.auth),
       kit: new KitBoardScreen(this.navigation, this.auth),
       jobs: new JobsScreen(this.navigation, this.auth),
       coachSchedule: new CoachScheduleScreen(this.navigation, this.auth),
@@ -166,9 +165,6 @@ class App {
     // Reports hub (#reports) — Attendance & RSVP report; Payments chip
     // hands off to #tuition. See screens/reports.js.
     this.screenManager.register('reports', this.screens.reports);
-    // RSVP follow-up board (#rsvps) — who owes an answer + tracked reminders.
-    // See screens/rsvps.js.
-    this.screenManager.register('rsvps', this.screens.rsvps);
     // Jobs (#jobs, mig 625) — auto-assigned event jobs, default-done. See screens/jobs.js.
     this.screenManager.register('jobs', this.screens.jobs);
     // Coach Schedule (#coach-schedule, mig 955) — the days each coach RSVPs to.

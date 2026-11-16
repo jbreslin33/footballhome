@@ -100,7 +100,7 @@ class MainMenu {
     const g = MainMenu.groups().find(x => x.code === code);
     if (!g) return;
     let page = g.pages[0];
-    // Players land on the first page (This Week → RSVP); staff where they were.
+    // Players land on the first page (This Week → 📅 Calendar); staff where they were.
     if (MainMenu.isStaff()) {
       let last = null;
       try { last = localStorage.getItem(MainMenu._lastKey(code)); } catch (_) { /* fine */ }

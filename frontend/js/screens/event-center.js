@@ -56,6 +56,11 @@ class EventCenterScreen extends Screen {
     // 🗓 Week · Month · Agenda (the old #calendar's three views, owner 11/16:
     // "rsvp, calendar and event center should be one page") — remembered per
     // browser, a convenience only.
+    // 📅 By event (the calendar) · 👥 By person (the RSVP Reminders board,
+    // folded in 11/16 — owner: "3. fold it").  Admins only; the board is
+    // the RsvpBoardScreen class (screens/rsvps.js) hosted in #ec-people.
+    this.mode = 'event';
+    this.board = null;
     this.view = 'week';
     try { const v = localStorage.getItem('fh.cal.view'); if (EventCenterScreen.VIEWS.includes(v)) this.view = v; } catch {}
     this.error    = null;
@@ -117,6 +122,7 @@ class EventCenterScreen extends Screen {
         <div id="ec-kinds" style="display:contents;"></div>
       </div>
       <div id="ec-stack">
+        <div id="ec-mode" style="display:none; gap:var(--space-1); flex-wrap:wrap;"></div>
         <div id="ec-notices" style="display:none;"></div>
         <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
         <div id="ec-ops" style="display:none; flex-direction:column; gap:6px;">
@@ -127,6 +133,7 @@ class EventCenterScreen extends Screen {
              each game (moved off Game Center 11/16).  Who may post. -->
         <div id="ec-weekend"></div>
         <div id="ec-body"></div>
+        <div id="ec-people" style="display:none;"></div>
         <section id="ec-mine">
           <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
           <div id="ec-push"></div>
@@ -141,9 +148,16 @@ class EventCenterScreen extends Screen {
   }
 
   onEnter(params = {}) {
+    // An old #rsvps door (menu, dashboard, saved return) or a phone reload
+    // mid-reminders (resumeState) lands on 👥 By person.
+    const r = params.resume || {};
+    // Each history entry remembers its half (_keepMode), so Back returns to it.
+    this.mode = (params.mode === 'people' || r.mode === 'people') ? 'people' : 'event';
+    this._boardParams = params.board || (r.board ? { resume: r.board } : null);
     this._mountMine();
     this._mountOps();
     this._mountWeekend();
+    this._paintMode();
     // An old door with one event (saved history) shows that event's week.
     const evAt = params.event && new Date(params.event.starts_at);
     if (evAt && !isNaN(evAt)) { this.anchor = evAt; this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
@@ -164,7 +178,68 @@ class EventCenterScreen extends Screen {
     if (window.GcalRefresh) GcalRefresh.ping(this.auth, () => this._loadEvents());
   }
 
-  onExit() { if (this.chat) this.chat.stop(); }
+  onExit() {
+    if (this.chat) this.chat.stop();
+    if (this.board) this.board.isMounted = false;
+  }
+
+  // For Navigation.rememberForReturn: a phone reload after a REMIND text
+  // comes back to the board as it was.
+  resumeState() {
+    return { mode: this.mode, board: this.board && this.mode === 'people' ? this.board.resumeState() : null };
+  }
+
+  // The half in this history entry's params (replaceState), so Back from an
+  // event opened here — or from a page opened off the board — lands on it.
+  _keepMode() {
+    const nav = this.navigation;
+    if (!nav || nav.currentState !== 'event-center') return;
+    nav.currentParams = { ...(nav.currentParams || {}), mode: this.mode };
+    delete nav.currentParams.board;
+    try { window.history.replaceState(nav._historyState('event-center', nav.currentParams), '', window.location.hash); } catch (_) {}
+  }
+
+  // The switch, and which half of the page shows.
+  _paintMode() {
+    const admin = this._isAdmin() && typeof RsvpBoardScreen !== 'undefined';
+    if (!admin) this.mode = 'event';
+    const bar = this.find('#ec-mode');
+    const people = this.mode === 'people';
+    if (bar) {
+      bar.style.display = admin ? 'flex' : 'none';
+      const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+      const chip = (m, label) => `<button type="button" class="ec-chip ${this.mode === m ? 'on' : ''}" data-ec-mode="${m}">${this.escapeHtml(label)}</button>`;
+      bar.innerHTML = admin ? chip('event', cp('mode_event', '📅 By event')) + chip('people', cp('mode_people', '👥 By person')) : '';
+    }
+    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-people', true]]) {
+      const el = this.find(sel);
+      if (!el) continue;
+      if (sel === '#ec-ops' && !this._isAdmin()) continue;   // _mountOps decides for non-admins
+      el.style.display = (people === showInPeople) ? (sel === '#ec-ops' ? 'flex' : '') : 'none';
+    }
+    const kinds = this.find('#ec-kinds');
+    if (kinds) kinds.style.display = people ? 'none' : 'contents';
+    if (people) this._mountBoard();
+  }
+
+  // The RSVP Reminders board inside this page: its own element (filters,
+  // cards, REMIND), minus its old screen header.  Built once per visit.
+  _mountBoard() {
+    const host = this.find('#ec-people');
+    if (!host) return;
+    if (this.board && this.board.element && host.contains(this.board.element)) return;
+    const prev = this.board ? this.board.resumeState() : null;
+    this.board = this.board || new RsvpBoardScreen(this.navigation, this.auth);
+    const el = this.board.render();
+    const head = el.querySelector('.screen-header');
+    if (head) head.remove();
+    el.classList.remove('screen');
+    host.replaceChildren(el);
+    this.board.isMounted = true;
+    const params = this._boardParams || (prev ? { resume: prev } : {});
+    this._boardParams = null;
+    this.board.onEnter(params);
+  }
 
   // Reads follow view-as (auth.fetch adds ?asPersonId); writes go as the
   // real caller and the server refuses them under view-as — the contract
@@ -355,6 +430,13 @@ class EventCenterScreen extends Screen {
         return;
       }
       if ((el = t('[data-ec-view]'))) { this._setView(el.dataset.ecView); return; }
+      if ((el = t('[data-ec-mode]'))) {
+        this.mode = el.dataset.ecMode === 'people' ? 'people' : 'event';
+        this._keepMode();
+        this._paintMode();
+        if (this.mode === 'event') this._render();
+        return;
+      }
       // Month: a day's number (or +N) opens that week.
       if ((el = t('[data-ec-goday]'))) {
         const [y, m, d] = el.dataset.ecGoday.split('-').map(Number);
