@@ -278,6 +278,7 @@ json Expenses::projection(int clubId) {
                                    {"section_id", sectionId ? json(sectionId) : json(nullptr)},
                                    {"category", category}, {"category_label", str(r, "category_label")}, {"fee_kind", str(r, "fee_kind")},
                                    {"label", str(r, "fee_label")}, {"unit", str(r, "unit")}, {"unit_label", str(r, "unit_label")},
+                                   {"season_start", str(r, "season_start")}, {"season_end", str(r, "season_end")},
                                    {"rate", num(r, "rate")}, {"quantity", num(r, "quantity")}, {"amount", num(r, "proposed")},
                                    {"players_included", r["players_included"].is_null() ? 0 : r["players_included"].as<int>() * num(r, "quantity")},
                                    {"is_option", r["is_option"].as<bool>()}, {"entry_note", str(r, "entry_note")}, {"short_label", str(r, "short_label")},
