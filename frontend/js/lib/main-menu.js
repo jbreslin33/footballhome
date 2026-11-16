@@ -100,7 +100,7 @@ class MainMenu {
     const g = MainMenu.groups().find(x => x.code === code);
     if (!g) return;
     let page = g.pages[0];
-    // Players land on the first page (This Week → 📅 Calendar); staff where they were.
+    // Players land on the first page (📅 Calendar group → the Calendar); staff where they were.
     if (MainMenu.isStaff()) {
       let last = null;
       try { last = localStorage.getItem(MainMenu._lastKey(code)); } catch (_) { /* fine */ }
@@ -179,7 +179,8 @@ class MainMenu {
                border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${label}</button>`;
     host.innerHTML = `
       ${pill('data-menu-home', esc(copy('home_pill', '☰ Menu')), false)}
-      <span style="flex:0 0 auto; align-self:center; font-weight:800; opacity:0.6; font-size:0.8rem; margin:0 2px 0 6px;">${esc(group.icon)} ${esc(group.label)}</span>
+      ${group.pages.some(p => p.label === group.label) ? '' /* 📅 Calendar group's own Calendar page — say it once */
+        : `<span style="flex:0 0 auto; align-self:center; font-weight:800; opacity:0.6; font-size:0.8rem; margin:0 2px 0 6px;">${esc(group.icon)} ${esc(group.label)}</span>`}
       ${group.pages.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, p.code === page.code)).join('')}`;
     host.style.display = 'flex';
     if (!host._wired) {
