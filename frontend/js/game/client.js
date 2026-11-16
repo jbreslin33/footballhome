@@ -13,7 +13,9 @@
   const editBtn = document.getElementById('btn-edit');
   const editPanel = document.getElementById('edit-panel');
   const canvas = document.getElementById('game-canvas');
-  const renderer = new GameRenderer(canvas);
+  // Two views of the one match (boot.js picks; James 11/16): the top-down 2D canvas or the 3D scene.
+  const VIEW_2D = window.GAME_VIEW === '2d';
+  const renderer = VIEW_2D ? new GameRenderer2D(canvas) : new GameRenderer(canvas);
   const input = new GameInput(
     document.getElementById('joystick'),
     document.getElementById('joystick-knob'),
@@ -717,7 +719,7 @@
         });
       }
       statusEl.textContent =
-        `match ${h.matchId} — tap a player to take control · drag to rotate`;
+        `match ${h.matchId} — tap a player to take control · drag to ${VIEW_2D ? 'pan' : 'rotate'}`;
       // Ship intents at tick rate for every slot we own. The server
       // samples (last write before its tick wins), so this cadence is
       // exactly right. [QUAKE]
@@ -949,6 +951,25 @@
       followBtn.style.background = renderer.rig.follow ? '' : 'rgba(255,204,0,.5)';
     }
   };
+  // 2D: a drag pans the view and turns follow off; the button says so.
+  renderer.onFollowLost = () => {
+    if (followBtn) { followBtn.textContent = 'FOLLOW OFF'; followBtn.style.background = 'rgba(255,204,0,.5)'; }
+  };
+  // 2D / 3D (boot.js): this device's choice, then a reload into the other view.
+  const viewBtn = document.getElementById('btn-view');
+  if (viewBtn) {
+    viewBtn.textContent = VIEW_2D ? '3D VIEW' : '2D VIEW';
+    const flipView = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const next = VIEW_2D ? '3d' : '2d';
+      try { localStorage.setItem('fh.game.view', next); } catch (err) { /* the URL carries it */ }
+      const u = new URL(location.href);
+      u.searchParams.set('view', next);
+      location.href = u.toString();
+    };
+    viewBtn.addEventListener('click', flipView);
+    viewBtn.addEventListener('touchstart', flipView);
+  }
   if (followBtn) {
     followBtn.addEventListener('click', toggleFollow);
     followBtn.addEventListener('touchstart', (e) => {
@@ -1095,6 +1116,7 @@
   };
   const modeNote = document.getElementById('mode-note');
   if (mode !== 'game' && mode !== 'design' && !COMING[mode]) mode = 'game';
+  if (VIEW_2D) mode = 'game';   // DESIGN and the night modes are the 3D Lighthouse model's
   // GAME plays on the DESIGNED pitch (James: "we need field oriented like
   // it is in design. and add 7v7 too"): the site turns so the club's 11v11
   // is the match pitch, and the designed 7v7 is chalked on the grass. From

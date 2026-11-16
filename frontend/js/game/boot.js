@@ -1,19 +1,27 @@
-// frontend/js/game/boot.js — loads three.js as an ES module (0.160, the import map in game.html),
-// exposes it as the global THREE the game's classic scripts expect (a mutable copy: renderer.js
-// swaps CanvasTexture for an sRGB one), plus the addons on THREE_ADDONS, then loads those scripts
-// in order. Graphics tier 2, step 1 (James 11/11): the module build is what gives us the glTF
-// loader (real skinned bodies) and post-processing (ambient occlusion, bloom).
-import * as T from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
+// frontend/js/game/boot.js — picks the VIEW, then loads the game's classic scripts in order.
+//
+// Two views of the same match (James 11/16: "nhl 94 style now and later add the 3d client …
+// allow for both views"): 2D = the top-down canvas view (renderer2d.js), no three.js at all;
+// 3D = three.js 0.160 as an ES module (the import map in game.html), exposed as the global THREE
+// the 3D scripts expect (a mutable copy: renderer.js swaps CanvasTexture for an sRGB one), plus the
+// addons on THREE_ADDONS (graphics tier 2, 11/11: glTF bodies, post-processing).
+// ?view=2d|3d wins; else this device's last choice (localStorage fh.game.view); else 2D.
+// The 2D / 3D button (client.js) stores the choice and reloads; the server match carries on.
 
-window.THREE = Object.assign({}, T);
-window.THREE_ADDONS = { GLTFLoader, SkeletonUtils, ConvexGeometry };
+const qs = new URLSearchParams(location.search).get('view');
+let view = qs === '2d' || qs === '3d' ? qs : null;
+if (!view) {
+  try { view = localStorage.getItem('fh.game.view'); } catch (e) { /* this visit only */ }
+}
+if (view !== '3d') view = '2d';
+window.GAME_VIEW = view;
+document.body.classList.add('view-' + view);
 
-const SCRIPTS = [
+const COMMON_HEAD = [
   'js/game/wire.js?v=20261110feet1',
   'js/game/net.js?v=20261109step',
+];
+const SCRIPTS_3D = [
   'js/game/players.js?v=20261113runup',
   'js/game/bodies.js?v=20261113runup',
   'js/game/lighthouse-site.js?v=20261022s',
@@ -28,8 +36,26 @@ const SCRIPTS = [
   'js/game/input.js?v=20261022e',
   'js/game/lighthouse-planner-data.js?v=20261022d',
   'js/game/pitch-planner.js?v=20261029a',
-  'js/game/client.js?v=20261113runup',
 ];
+const SCRIPTS_2D = [
+  'js/game/renderer2d.js?v=20261116v2d',
+  'js/game/input.js?v=20261022e',
+];
+const CLIENT = 'js/game/client.js?v=20261116v2d';
+
+if (view === '3d') {
+  const T = await import('three');
+  const { GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js');
+  const SkeletonUtils = await import('three/addons/utils/SkeletonUtils.js');
+  const { ConvexGeometry } = await import('three/addons/geometries/ConvexGeometry.js');
+  window.THREE = Object.assign({}, T);
+  window.THREE_ADDONS = { GLTFLoader, SkeletonUtils, ConvexGeometry };
+} else {
+  // No ☰ View menu in 2D (its choices are the 3D scene's): the HUD shows as soon as it loads.
+  document.body.classList.add('hud-ready');
+}
+
+const SCRIPTS = [...COMMON_HEAD, ...(view === '3d' ? SCRIPTS_3D : SCRIPTS_2D), CLIENT];
 for (const src of SCRIPTS) {
   await new Promise((ok, fail) => {
     const s = document.createElement('script');
