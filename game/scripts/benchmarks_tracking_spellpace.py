@@ -69,9 +69,24 @@ def one(pos_path):
             cur = {"car": car, "sc": sc, "last": n, "pos": []}
         cur["last"] = n; cur["pos"].append((n, fr[car]))
     if cur: spells.append(cur)
+    prev = None
     for sp in spells:
         p = sp["pos"]
+        # G5.133 (§8.234): how it came to him — a mate's spell ended within 3 s before (a pass received)
+        # or not (won / loose) — and his speed over the second before (0.2 s steps, -1.0 .. 0 s).
+        got = 1 if prev and prev["sc"] == sp["sc"] and who.get(prev["car"]) == who.get(sp["car"]) and prev["car"] != sp["car"] and 0 < p[0][0] - prev["last"] <= 75 else 0
+        if got: plen = math.hypot(prev["pos"][-1][1][0] - p[0][1][0], prev["pos"][-1][1][1] - p[0][1][1]); ft = (p[0][0] - prev["last"]) / 25.0
+        prev = sp
         if len(p) < 4: continue
+        n0 = p[0][0]; ap = [pl.get((sp["sc"], n0 - 5 * k), {}).get(sp["car"]) for k in range(6)]
+        if all(ap):
+            for k in range(5): c[("pre", got, k)] += math.hypot(ap[k][0] - ap[k + 1][0], ap[k][1] - ap[k + 1][1]) / 0.2; c[("pre_n", got, k)] += 1
+            e = math.hypot(p[1][1][0] - p[0][1][0], p[1][1][1] - p[0][1][1]) / ((p[1][0] - p[0][0]) / 25.0)
+            c[("got", got)] += 1; c[("got_v", got)] += e; c[("got_slow", got)] += e < 2
+            vin = math.hypot(ap[0][0] - ap[1][0], ap[0][1] - ap[1][1]) / 0.2; ib = 0 if vin < 1 else 1 if vin < 4 else 2
+            c[("ib", got, ib)] += 1
+            if got: c[("iblen", ib)] += plen; c[("ibft", ib)] += ft
+            c[("hin", got, min(6, int(math.hypot(ap[0][0] - ap[1][0], ap[0][1] - ap[1][1]) / 0.2)))] += 1; c[("hf0", got, min(6, int(e)))] += 1
         dur = (p[-1][0] - p[0][0]) / 25.0
         sv = [math.hypot(p[i][1][0] - p[i - 1][1][0], p[i][1][1] - p[i - 1][1][1]) / ((p[i][0] - p[i - 1][0]) / 25.0) for i in range(1, len(p))]
         for i, v in enumerate(sv[:10]): c[("since", i)] += v; c[("since_n", i)] += 1
@@ -106,6 +121,11 @@ if __name__ == "__main__":
         n = max(1, c[("pe_n", b)])
         print(f"  per spell, got it at {lab} m/s, settled pace permille by 0.5 m/s band 0..7+: " + ", ".join(f"{round(1000*c[('pse', b, q)]/n)}" for q in range(15)))
     print("  per spell: settled pace by pace got it at 0-2 / 2-4 / 4+ m/s: " + " / ".join(f"{c[('pe_v', b)]/max(1,c[('pe_n', b)]):.2f} ({100*c[('pe_n', b)]/pt:.0f}%)" for b in range(3)))
+    for g, lab in enumerate(["won / loose", "pass received"]):
+        n = max(1, c[("got", g)])
+        print(f"  how it came, {lab}: {c[('got', g)]/tm:.1f} a team-match; his speed before (s -1.0 .. -0.2 .. 0): " + " ".join(f"{-0.2*k:.1f} {c[('pre', g, k)]/max(1,c[('pre_n', g, k)]):.2f}" for k in reversed(range(5))) + f" | first 0.2 s {c[('got_v', g)]/n:.2f}, under 2 m/s {100*c[('got_slow', g)]/n:.0f}%")
+        print("    " + " ".join(f"in {lab2} {100*c[('ib', g, ib)]/n:.0f}%" + (f" pass {c[('iblen', ib)]/max(1,c[('ib', g, ib)]):.1f} m flight {c[('ibft', ib)]/max(1,c[('ib', g, ib)]):.2f} s;" if g else ";") for ib, lab2 in enumerate(["<1", "1-4", "4+"])))
+        print(f"    % by m/s 0-1..6+, into it (window ending 0): " + " ".join(f"{100*c[('hin', g, q)]/n:.1f}" for q in range(7)) + " | first 0.2 s: " + " ".join(f"{100*c[('hf0', g, q)]/n:.1f}" for q in range(7)))
     for b, lab in enumerate(["0.6-1.2", "1.2-2", "2-3", "3-5"]):
         n = max(1, c[("n", b)])
         print(f"  {lab:7s} s: {c[('n', b)]/tm:5.1f} a team-match | net {c[('net', b)]/n:4.1f} m | path {c[('path', b)]/n:4.1f} m | mean speed {c[('path', b)]/max(1e-9, c[('dur', b)]):.2f} m/s")

@@ -146,6 +146,7 @@ struct Stats {
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
     long sp_vb[8] = {}, ps_h[15] = {}, pe_n[3] = {}; double pe_v[3] = {}; double sp_since[10] = {}, sp_before[5] = {}, sp_net[4] = {}, sp_path[4] = {}, sp_dur[4] = {}; long sp_since_n[10] = {}, sp_before_n[5] = {}, sp_n[4] = {};   // §8.232 SPELL PACE
+    double rp_pre[2][5] = {}, rp_f0[2] = {}; long rp_n[2] = {}, rp_slow[2] = {}, rp_hin[2][7] = {}, rp_hf0[2][7] = {}, rp_why[2][3][32] = {}, rp_bn[2][3] = {}; double rp_len[3] = {}, rp_ft[3] = {};   // §8.234 RECEIPT PACE: [won / loose, pass received]
     core::World::CarryDiag cd{};   // §8.233
     long cw_n[ai::kWhyCount] = {}, cw_flip = 0, cw_fn = 0; double cw_cos[ai::kWhyCount] = {}, cw_v[ai::kWhyCount] = {}, cw_turn = 0;   // §8.233 by his why: cos(vel, his move), speed; tick-to-tick turn of his move
     long ov_n[5] = {}, ov_why[ai::kWhyCount] = {}, ov_ticks = 0, ov_spells = 0; double ov_sum = 0, ov_drawn = 0, ov_act = 0;   // §8.232 HOLD OVERRUN: spell time past the drawn hold
@@ -272,6 +273,7 @@ int main(int argc, char** argv) {
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false; long own_hu = 0; double own_lx = 0, own_ly = 0, own_path = 0, own_v[5] = {}, own_ss = 0, own_e = 0; int own_nv = 0, own_sn = 0;
+        double pos_ring[32][31][2] = {}; double own_pre[5] = {}, own_f0 = 0, own_plen = 0, own_ft = 0, last_plen = 0, last_ft = 0; int own_got = -1, own_why = 0;   // §8.234: every man's last 30 ticks; his pace into the receipt
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
@@ -810,6 +812,7 @@ int main(int argc, char** argv) {
 
             // ── concept acts by ownership (StatsBomb's cuts) ──────────────
             const int own = b.owner ? static_cast<int>(*b.owner) : -1;
+            for (std::uint8_t j = 0; j < N && j < 32; ++j) { pos_ring[j][k % 31][0] = W.player(j).pos.x.toDouble(); pos_ring[j][k % 31][1] = W.player(j).pos.y.toDouble(); }
             auto wsz = [](double tl, double y) { const bool w = std::fabs(y) >= 14; return tl < 18 ? (w ? 1 : 4) : tl < 35 ? (w ? 0 : 2) : (w ? 3 : 5); };
             auto endPass = [&](double ex, double ey, bool ok = false) {
                 if (rel.ws && !rel.set && !rel.shot && !rel.cross) {   // §8.155: pass to 18-35w / 35+ / 0-18w / 18-35c / 0-18c
@@ -876,6 +879,8 @@ int main(int argc, char** argv) {
                             for (int q = 0; q < 5 && q < own_nv; ++q) { S.sp_before[q] += own_v[(own_nv - 1 - q) % 5]; ++S.sp_before_n[q]; }
                             const int b = du < 1.2 ? 0 : du < 2 ? 1 : du < 3 ? 2 : du < 5 ? 3 : -1;
                             if (b >= 0) { ++S.sp_n[b]; S.sp_net[b] += ln; S.sp_path[b] += own_path; S.sp_dur[b] += du; }
+                            if (own_got >= 0) { for (int q = 0; q < 5; ++q) S.rp_pre[own_got][q] += own_pre[q]; ++S.rp_n[own_got]; S.rp_f0[own_got] += own_f0; S.rp_slow[own_got] += own_f0 < 2; ++S.rp_hin[own_got][std::min(6, static_cast<int>(own_pre[0]))]; ++S.rp_hf0[own_got][std::min(6, static_cast<int>(own_f0))];
+                                const int ib = own_pre[0] < 1 ? 0 : own_pre[0] < 4 ? 1 : 2; ++S.rp_why[own_got][ib][own_why & 31]; ++S.rp_bn[own_got][ib]; if (own_got == 1) { S.rp_len[ib] += own_plen; S.rp_ft[ib] += own_ft; } }
                         }
                         {   // §8.232 HOLD OVERRUN
                             const double ov = std::max(0.0, (k - std::max(own_hu, owner_got)) / static_cast<double>(core::kTickRate));
@@ -1058,6 +1063,7 @@ int main(int argc, char** argv) {
                             std::fprintf(stderr, "PASS_TRACE nsafe=%d nmates=%d csafe=%d why=%d mg=%.2f opt=%d len=%d out=%d\n", mk.nsafe, mk.nmates, mk.csafe, mk.why[mk.p], mk.mg, mk.opt, mk.lb, mate ? 1 : q.team != mk.team ? 0 : 2);
                         mk.on = false;
                         from[own] = (mate && !rel.set) ? rel.p : -1; from_t[own] = k;
+                        last_plen = std::hypot(rel.x - q.pos.x.toDouble(), rel.y - q.pos.y.toDouble()); last_ft = (k - last_kick_k) / static_cast<double>(core::kTickRate);   // §8.234
                         endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot);
                     } else from[own] = -1;
                     if (owner_team >= 0 && q.team != owner_team) loss_tick[owner_team] = k;
@@ -1069,6 +1075,9 @@ int main(int argc, char** argv) {
                         if (ws_on) ++S.ws_n; }
                     if (fo_pend_team >= 0) { if (q.team != fo_pend_team) ++S.fo_lost[fo_pend_z]; else ++S.fo_kept[fo_pend_z]; fo_pend_team = -1; }
                     own_lx = q.pos.x.toDouble(); own_ly = q.pos.y.toDouble(); own_path = 0; own_nv = 0; own_ss = 0; own_sn = 0; own_e = 0;
+                    own_got = -1;   // §8.234: his 5 Hz pace over the second before the receipt (windows ending 0 / -0.2 .. -0.8 s)
+                    if (k >= 30 && own < 32) { own_got = from[own] >= 0 ? 1 : 0; own_why = static_cast<int>(s.lastOrders()[own].why); own_plen = last_plen; own_ft = last_ft;
+                        for (int q = 0; q < 5; ++q) { const auto& a = pos_ring[own][(k - 6 * q) % 31]; const auto& z = pos_ring[own][(k - 6 * q - 6) % 31]; own_pre[q] = std::hypot(a[0] - z[0], a[1] - z[1]) / 0.2; } }
                     owner = own; owner_team = q.team; owner_got = k; own_sx = q.pos.x.toDouble(); own_sy = q.pos.y.toDouble(); own_pr = false; own_live0 = W.restartTeam() == 0xFF && W.outStage() == 0;
                     hz_on = hz_rec && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(static_cast<std::uint8_t>(own));
                     if (hz_on) {   // §8.227: where, and pressed (theirs within 2.5 m, StatsBomb's under_pressure ~ 10% of receipts)
@@ -1105,6 +1114,7 @@ int main(int argc, char** argv) {
                     const int si = static_cast<int>((k - owner_got) / 6) - 1; if (!own_set && own_live0 && si >= 0 && si < 10) { S.sp_since[si] += vv; ++S.sp_since_n[si]; }
                     if (!own_set && own_live0 && si >= 5) { ++S.sp_vb[std::min(7, static_cast<int>(vv))]; own_ss += vv; ++own_sn; }
                     if (si == 0 || si == 1) own_e += vv / 2;
+                    if (si == 0) own_f0 = vv;
                     own_v[own_nv % 5] = vv; ++own_nv;
                 }
                 if (!own_set && own_live0 && k > owner_got + 30) {   // §8.233 CARRY BY WHY
@@ -3340,6 +3350,20 @@ int main(int argc, char** argv) {
                   long pt = 0; for (int q = 0; q < 15; ++q) pt += S.ps_h[q]; pt = std::max(1L, pt);
                   std::printf("\n     per spell 1.6 s+, settled pace %% by 0.5 m/s 0..7+:"); for (int q = 0; q < 15; ++q) std::printf(" %.1f %.1f (%.1f)", q / 2.0, 100.0 * S.ps_h[q] / pt, rp[q]);
                   std::printf("\n     per spell, settled pace by pace he got it at 0-2 / 2-4 / 4+ m/s:"); for (int b = 0; b < 3; ++b) std::printf(" %.2f (%.2f) %.0f%% (%.0f%%)", S.pe_v[b] / std::max(1L, S.pe_n[b]), re[b], 100.0 * S.pe_n[b] / pt, rq[b]); }
+                {   static const double rpre[2][5] = {{3.41, 3.55, 3.63, 3.63, 3.57}, {2.68, 2.80, 2.90, 2.93, 2.95}}, rf0[2] = {3.29, 2.59}, rsl[2] = {34, 45}, rn2[2] = {91.4, 222.4};
+                    static const char* gl[2] = {"won / loose", "pass received"};
+                    for (int g = 0; g < 2; ++g) { const double n = std::max(1L, S.rp_n[g]);
+                        std::printf("\n     RECEIPT PACE (§8.234) %s: %.1f (%.1f) a team-match; his speed in the second before, windows ending -0.8 .. 0 s:", gl[g], S.rp_n[g] / tm, rn2[g]);
+                        for (int q = 4; q >= 0; --q) std::printf(" %.2f (%.2f)", S.rp_pre[g][q] / n, rpre[g][q]);
+                        std::printf(" | first 0.2 s %.2f (%.2f), under 2 m/s %.0f%% (%.0f%%)", S.rp_f0[g] / n, rf0[g], 100.0 * S.rp_slow[g] / n, rsl[g]);
+                        static const double rhi[2][7] = {{12.5, 17.7, 17.5, 16.3, 11.9, 10.2, 14.0}, {16.7, 25.4, 23.3, 14.1, 8.8, 5.6, 6.1}}, rhf[2][7] = {{13.9, 20.2, 16.8, 14.2, 12.0, 10.2, 12.7}, {19.5, 25.6, 21.2, 14.0, 8.5, 5.7, 5.5}};
+                        std::printf("\n       %% by m/s 0-1..6+, into it:"); for (int q = 0; q < 7; ++q) std::printf(" %.1f (%.1f)", 100.0 * S.rp_hin[g][q] / n, rhi[g][q]);
+                        std::printf(" | first 0.2 s:"); for (int q = 0; q < 7; ++q) std::printf(" %.1f (%.1f)", 100.0 * S.rp_hf0[g][q] / n, rhf[g][q]);
+                        static const char* ibl[3] = {"in under 1 m/s", "1-4", "4+"};
+                        for (int ib = 0; ib < 3; ++ib) { const double bn = std::max(1L, S.rp_bn[g][ib]);
+                            std::printf("\n       %s (%.0f%%): his order then", ibl[ib], 100.0 * S.rp_bn[g][ib] / n);
+                            for (int q = 0; q < ai::kWhyCount; ++q) if (S.rp_why[g][ib][q] * 20 > S.rp_bn[g][ib]) std::printf(" %s %.0f%%", ai::kWhyNames[q], 100.0 * S.rp_why[g][ib][q] / bn);
+                            if (g == 1) std::printf(" | pass %.1f m, flight %.2f s", S.rp_len[ib] / bn, S.rp_ft[ib] / bn); } } }
                 std::printf("\n     by spell length: "); for (int b = 0; b < 4; ++b) { const double n = std::max(1L, S.sp_n[b]);
                     std::printf("%s s %.1f a team-match, net %.1f (%.1f) m, %.2f (%.2f) m/s; ", bl[b], S.sp_n[b] / tm, S.sp_net[b] / n, rn[b], S.sp_path[b] / std::max(1e-9, S.sp_dur[b]), rv[b]); }
                 std::printf("\n");

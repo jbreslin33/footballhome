@@ -183,6 +183,11 @@ same DB registries and never touches the match engine.
   Phone-first: virtual joystick + pass/shoot/press buttons + tap-to-switch,
   broadcast-angle camera legible on a 6" screen. Touch controls and camera
   are named milestones, not afterthoughts.
+- **Two views of one match** (§8.235, James 11/16 "nhl 94 style now and later add the 3d client …
+  allow for both views"): the top-down 2D canvas view (`js/game/renderer2d.js`, no three.js; the
+  default) and the 3D scene (`renderer.js`). `boot.js` picks by `?view=2d|3d`, else the device's last
+  choice; the 2D / 3D VIEW button flips it. The engine is 2D for the players (PlayerState z = 0) with
+  a ball that has height, so neither view needs anything from the server the other doesn't.
 - Snapshot budget ~15–25 KB/s (22 slots + 3D ball at 20–30 Hz) — fine on LTE.
 - Later, without server changes: realistic desktop C++ client, native apps,
   WASM build of the fixed-point core for offline solo practice.
@@ -9871,3 +9876,54 @@ again, which by then should land near the real without giving back the carries.
 
 Shipped: `line_latch` (Possession, on); CARRY DIAG / CARRY BY WHY (harness, `World::carryDiag`); goldens
 re-locked; tests 22/22.
+
+### 8.234 G5.133 (in progress) — the slow receipt, measured: a spread, and the won ball
+
+From §8.233's "next: the slow receipt". `benchmarks_tracking_spellpace.py` now splits spells by how the
+ball came (a mate's spell ended within 3 s before = a pass received, else won / loose) and reads the man's
+5 Hz speed over the second before the spell; fh-game-match prints RECEIPT PACE on the same cut (a
+completed pass from a mate, else won / loose; harness only, no sim change).
+
+Real (DFL 7 matches): pass received 222.4 a team-match, 2.95 m/s a second out easing to 2.68 at the
+receipt, first 0.2 s 2.59, 45% under 2 m/s; by 1 m/s into it 16.7 / 25.4 / 23.3 / 14.1 / 8.8 / 5.6 / 6.1%
+(0-1 .. 6+). Won / loose 91.4, 3.57 → 3.41, first 0.2 s 3.29, 34% under 2. Standing receivers get the
+same passes as moving ones (14.1 v 14.4 m, flight 1.07 v 1.09 s).
+
+Ours (HEAD, seeds 1000-4000 x 8): pass received 221-232, 2.54-2.63 into it, first 0.2 s 2.39-2.46 — the
+mean is near; the spread isn't: 26-27% come in under 1 m/s (17), 24-26% at 2-4 (37), 10-12% 6+ (6),
+56-58% start under 2 (45). Won / loose is the real gap: 65-68 a team-match (91), 2.80-2.97 into it
+(3.41), first 0.2 s 2.48-2.70 (3.29), 24-29% in under 1 m/s (12.5) — suspect: the touch-to-steal
+contest (touch-tight 10 ticks) has the winner matching the carrier's pace, not running through the ball.
+
+Trial: `physics.receive.early_s` 0.25 → 0.001 (seeds 1000/2000 x 8) puts the pass-received mean on the
+real (2.66-2.74 into it, first 0.2 s 2.50-2.56) with completion unchanged (78.9-79.1%, 79.1), but the
+standing share stays 25-27%: the men standing aren't the early arrivals. Not shipped.
+
+Next: who the standing receivers are (RECEIPT PACE now prints their order at the receipt, pass length and
+flight by how fast they came in); then the won ball.
+
+### 8.235 Client — the 2D view (both views, one match)
+
+James 11/16: "is the 3d holding us back? … nhl 94 … could it be like that but realistic?" → "go nhl 94
+style now and later add the 3d client" → "allow for both views". The realism work is all 2D (players
+are planar, the benchmarks are x/y tracking); 3D is the client's dressing. So a second renderer, not a
+second game.
+
+`frontend/js/game/renderer2d.js` (GameRenderer2D): the surface client.js already drives on the 3D
+renderer — buildWorld, pushSnapshot into the buffer + 2-minute history, frame() interpolating the two
+snapshots bracketing the render tick [QUAKE], replay, setBrain (the [Buckland] overlay: target line,
+dashed line to his man, his decision's label), pickSlot, screenToPitch, celebrate / goalFlash, and a
+Rig2D answering the camera buttons (BALL follows the ball, FULL fits the pitch, WATCH follows one man;
++ / − zoom, mouse drag pans and drops follow). Top-down: mown stripes and the full markings from the
+HELLO pitch size, men as kit-coloured discs (TEAMS frame kits, keepers their own) with a facing notch and
+number, names when zoomed in, a squashed disc for a man down in a tackle (flags bit2), officials as
+black-and-yellow dots; the ball's shadow stays on the grass while the ball rises up the screen and grows
+with its height (the 16-bit top-down way). Portrait phones get the pitch running up the screen (a
+quarter-turn rotation, never a mirror) and the controls follow the screen: up is up.
+
+`boot.js` loads three.js and the 3D files only for 3D; 2D loads wire / net / input / renderer2d /
+client. DESIGN and the night modes stay with the 3D Lighthouse model (2D hides the mode bar). The 3D
+body / animation track pauses; the brain work goes on. Checked live on footballhome.org against the
+running match (2D ball and full views, forced portrait, 3D still loads, the toggle both ways, no console
+errors); claiming a man not tried on the live match — James's phone test.
+
