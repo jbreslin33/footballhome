@@ -347,6 +347,12 @@ public:
             // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
             // 64-68 / 177-193 / 105-111 / 46-50) — a lift by the pass's length band.
             w0 = w0 * P.len_lift[std::min(5, static_cast<int>(d.raw >> Fixed64::FRAC_BITS) / 10)];
+            {   // §8.237: real passers find the man on the move (DFL: against the mates at the release, 4+ m/s
+                // picked 2.19x, under 1 m/s 0.71x) — a lift by his speed band.
+                const Fixed64 sp2 = m.vel.x * m.vel.x + m.vel.y * m.vel.y;
+                const int pb2 = sp2 < Fixed64::one() ? 0 : sp2 < Fixed64::fromInt(4) ? 1 : sp2 < Fixed64::fromInt(16) ? 2 : 3;
+                w0 = w0 * P.pace_lift[pb2];
+            }
             if (w0.raw <= 0) continue;
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
@@ -1242,6 +1248,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
         // length share (27.1 / 41.8 / 17.2 / 6.8 / 3.8 %); 50+ m is short for other reasons (range, air) [FH fit]
         static const int kLenLift[6] = {2080, 755, 440, 340, 850, 1000};
         for (int l = 0; l < 6; ++l) len_lift[l] = p.fixed(("physics.pass.len_lift_" + std::to_string(l)).c_str(), kLenLift[l]);
+        for (int l = 0; l < 4; ++l) pace_lift[l] = p.fixed(("physics.pass.pace_lift_" + std::to_string(l)).c_str(), 1000);   // §8.237
     }
     {   // G5.83 (§8.184): DFL 7 matches, benchmarks_tracking_passpick.py MARKED PICK — within his zone the split
         // ~ e^(-d/lambda) x lift by his nearest opponent's metres, iterative scaling (8+ m = 1), x1000

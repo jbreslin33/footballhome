@@ -9966,3 +9966,29 @@ passer at the touch on 10-20 / 20-30 / 30+ m passes (running onto it); ours ~0 /
 (G4.81) leads a moving man; ours are stood still when it's played — off-ball movement before the pass.
 50+ m passes 4 a team-match v 13. Next: the receiver's movement before the pass, then the won ball.
 Goldens re-locked; tests 22/22.
+
+### 8.237 G5.134 — the standing receiver: he moves like a real one, he's picked like nobody — pick-by-pace trial, not shipped
+
+From §8.236's "next: the receiver's movement before the pass". New on both sides (`benchmarks_tracking_spellpace.py`
+and fh-game-match, same cut): OFF THE BALL (the side on the ball's other outfielders, 5 Hz speed bands), THE
+RECEIVER AT THE RELEASE (his 0.2 s speed at the passer's last frame, the part away from the passer), THROUGH THE
+FLIGHT (his speed at 0 / 25 / 50 / 75 / 100% of the flight, by his speed into the touch) and PICK BY PACE (the
+receiver's speed band at the release against every mate's: the passer's lift by pace).
+
+Real (DFL 7 matches) / ours (seeds 1000-4000 x 8, HEAD):
+- At the release: standing-at-the-touch men 1.76 m/s, 28% under 1 / ours 1.68-1.79, 28-32%; all 2.86, 12% / 2.62-2.70, 15-16%.
+  Away from the passer -0.13 m/s / +0.04-0.11 — real receivers don't run away from the ball before it's played.
+- Through the flight, by speed into the touch: <1 1.76 → 1.59 → 1.28 → 0.96 → 0.61 / 1.72 → 1.68 → 1.59 → 1.25 → 0.72;
+  1-4 2.59 → 2.31 / 2.73 → 2.35; 4+ 4.57 → 5.49 / 3.96 → 5.13. Each group moves as real men do.
+- PICK BY PACE: mates at the release <1 / 1-2 / 2-4 / 4+ m/s 16.3 / 35.3 / 36.9 / 11.4% / 16 / 19 / 48 / 17; picked x
+  0.71 / 0.63 / 1.12 / 2.19 / 1.07-1.11 / 0.99-1.02 / 0.95-0.99 / 0.96-1.02. Ours is blind to pace.
+- OFF THE BALL: 13.4 / 34.6 / 38.4 / 13.6% / 14.3-14.5 / 18.6-19.0 / 47.0-48.9 / 18.1-18.4 — ours jog where real men walk.
+
+So the standing share (25-26% v 17) is who gets the ball, not how he takes it. Trial (`physics.pass.pace_lift_0..3`,
+a mate's weight by his speed band; default 1 = off): 0.66 / 0.62 / 1.15 / 2.2 → lift 0.92-0.99 / 0.75-0.86 / 0.97-0.99
+/ 1.29-1.40, standing 22-23%, pass received 190-201; 0.50 / 0.48 / 1.31 / 3.64 → 0.82-0.88 / 0.65-0.74 / 0.97-1.01 /
+1.49-1.54, standing 20-22%, pass received 185-196 (222, HEAD 200-207), completed 78.9-79.4%. It saturates (the
+passes at runners the race read calls unsafe are cut by risk_weight) and costs receipts. Not shipped. A real
+receiver's pace isn't a reason to pick him — he moves because he's getting ready for it (checking off, coming short),
+and ours walk half as much (1-2 m/s 19% v 35). Next: off-ball movement in possession — the walking share and the
+move to receive. Harness and benchmark only; tests 22/22, goldens unchanged.
