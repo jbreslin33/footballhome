@@ -2841,6 +2841,27 @@ class RosterScreenBase extends Screen {
   // and the email subject ("U8 Travel", "all boys"). Players are
   // stashed on the instance keyed by token, because a click handler
   // can't carry an array through a data-attribute.
+  // 📇 CONTACT for a whole column (owner 11/16: "those email and texts
+  // buttons should open by hitting a contact button that is like player
+  // one but goes to that whole group").  Same look as a card's 📇
+  // button; tapping it opens the column's group sends (💬 text, ✉ email,
+  // and any extras such as the youth DOCS ✉) in a small drop-down that
+  // floats over the board.  '' when nobody in the column can be reached.
+  groupContactHtml(col, players, extraHtml = '') {
+    if (!col || col.isUnassigned) return '';
+    const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '');
+    const btns = this.renderMessageButtons(name, players, { compact: true }) + (extraHtml || '');
+    if (!btns.trim()) return '';
+    const word = (window.MessageCopy && MessageCopy.block('contact_popup', 'button')) || 'CONTACT';
+    const n = (players || []).filter(Boolean).length;
+    return `<details class="rs-group-contact" style="position:relative;">
+        <summary style="list-style:none; cursor:pointer; font-size:0.68rem; font-weight:800; line-height:1.2; padding:2px 6px;
+          border-radius:3px; color:#fff; background:#334155; white-space:nowrap;">📇 ${RosterScreenBase.escapeHtml(word)} · ${n}</summary>
+        <div style="position:absolute; right:0; top:calc(100% + 4px); z-index:30; display:flex; flex-direction:column; align-items:flex-end; gap:6px;
+          padding:8px; border-radius:8px; background:#0f172a; border:1px solid #475569; box-shadow:0 8px 24px rgba(0,0,0,0.5);">${btns}</div>
+      </details>`;
+  }
+
   renderMessageButtons(scope, players, { compact = false, preset = null, channels = null } = {}) {
     if (!window.RosterMessaging) return '';
     const list = (players || []).filter(Boolean);
