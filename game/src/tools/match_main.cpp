@@ -146,6 +146,8 @@ struct Stats {
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
     long sp_vb[8] = {}, ps_h[15] = {}, pe_n[3] = {}; double pe_v[3] = {}; double sp_since[10] = {}, sp_before[5] = {}, sp_net[4] = {}, sp_path[4] = {}, sp_dur[4] = {}; long sp_since_n[10] = {}, sp_before_n[5] = {}, sp_n[4] = {};   // §8.232 SPELL PACE
+    core::World::CarryDiag cd{};   // §8.233
+    long cw_n[ai::kWhyCount] = {}, cw_flip = 0, cw_fn = 0; double cw_cos[ai::kWhyCount] = {}, cw_v[ai::kWhyCount] = {}, cw_turn = 0;   // §8.233 by his why: cos(vel, his move), speed; tick-to-tick turn of his move
     long ov_n[5] = {}, ov_why[ai::kWhyCount] = {}, ov_ticks = 0, ov_spells = 0; double ov_sum = 0, ov_drawn = 0, ov_act = 0;   // §8.232 HOLD OVERRUN: spell time past the drawn hold
     long fo_n[5] = {}, fo_past[5] = {}, fo_lost[5] = {}, fo_kept[5] = {};   // §8.231 FACED outcomes by zone (benchmarks_tracking_takeon.py)
     long cl_h[10][2][12] = {}, cl_atg[10][2] = {}; double cl_len[10][2] = {};   // §8.229 CARRY LINE [zone][pressed][sector in 0-5 / out 6-11]
@@ -1104,6 +1106,15 @@ int main(int argc, char** argv) {
                     if (!own_set && own_live0 && si >= 5) { ++S.sp_vb[std::min(7, static_cast<int>(vv))]; own_ss += vv; ++own_sn; }
                     if (si == 0 || si == 1) own_e += vv / 2;
                     own_v[own_nv % 5] = vv; ++own_nv;
+                }
+                if (!own_set && own_live0 && k > owner_got + 30) {   // §8.233 CARRY BY WHY
+                    static double pmx = 0, pmy = 0; static long pk = -2;
+                    const auto& oo = s.lastOrders()[own]; const double mx = oo.move.move.x.toDouble(), my = oo.move.move.y.toDouble();
+                    const double vx = c.vel.x.toDouble(), vy = c.vel.y.toDouble(), vv = std::hypot(vx, vy), mm = std::hypot(mx, my);
+                    const int wy = static_cast<int>(oo.why); ++S.cw_n[wy]; S.cw_v[wy] += vv;
+                    if (vv > 0.1 && mm > 0.1) S.cw_cos[wy] += (vx * mx + vy * my) / (vv * mm);
+                    if (pk == k - 1 && mm > 0.1 && std::hypot(pmx, pmy) > 0.1) { const double cs = (mx * pmx + my * pmy) / (mm * std::hypot(pmx, pmy)); S.cw_turn += std::acos(std::max(-1.0, std::min(1.0, cs))) * 57.2958; ++S.cw_fn; if (cs < 0.7) ++S.cw_flip; }
+                    pmx = mx; pmy = my; pk = k;
                 }
                 if (!own_set && own_live0 && k > own_hu) { ++S.ov_ticks; ++S.ov_why[static_cast<int>(s.lastOrders()[own].why)]; }
                 if (!own_set) for (std::uint8_t j = 0; j < N && j < 32; ++j) {
@@ -2322,6 +2333,7 @@ int main(int argc, char** argv) {
         }
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
+        { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish; A.after += D.after; A.desire += D.desire; A.gait += D.gait; A.top += D.top; A.vw += D.vw; A.v1 += D.v1; A.ang += D.ang; for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = W.score(0), ag = W.score(1);
         if (hg > ag) ++S.w; else if (hg == ag) ++S.d; else ++S.l;
@@ -3331,6 +3343,16 @@ int main(int argc, char** argv) {
                 std::printf("\n     by spell length: "); for (int b = 0; b < 4; ++b) { const double n = std::max(1L, S.sp_n[b]);
                     std::printf("%s s %.1f a team-match, net %.1f (%.1f) m, %.2f (%.2f) m/s; ", bl[b], S.sp_n[b] / tm, S.sp_net[b] / n, rn[b], S.sp_path[b] / std::max(1e-9, S.sp_dur[b]), rv[b]); }
                 std::printf("\n");
+            }
+            {   // §8.233 CARRY DIAG (World::carryDiag; the carrier 1 s+ into his spell, in play, per tick)
+                const auto& D = S.cd; const double n = std::max(1L, D.n);
+                std::printf("   CARRY DIAG (§8.233): %ld ticks | brain wish %.2f (full %.0f%%) | after share %.2f | final desire %.2f, going back to the ball %.0f%% | gait %.2f | top %.2f m/s | wanted %.2f | speed %.2f | cos(vel, desire) %.2f\n",
+                            D.n, D.wish / n, 100 * D.wfull / n, D.after / n, D.desire / n, 100 * D.chase / n, D.gait / n, D.top / n, D.vw / n, D.v1 / n, D.ang / std::max(1L, D.contact));
+                std::printf("     speed %% by m/s 0..7+:"); for (int q = 0; q < 8; ++q) std::printf(" %.1f", 100 * D.vb[q] / n);
+                { long tn = 0; for (int q = 0; q < ai::kWhyCount; ++q) tn += S.cw_n[q];
+                  std::printf("     by his why (%% of ticks | cos(vel, move) | m/s):"); for (int q = 0; q < ai::kWhyCount; ++q) if (S.cw_n[q] * 100 > tn) std::printf(" %s %.0f%% %.2f %.2f;", ai::kWhyNames[q], 100.0 * S.cw_n[q] / tn, S.cw_cos[q] / S.cw_n[q], S.cw_v[q] / S.cw_n[q]);
+                  std::printf(" his move turns %.1f deg a tick, 45+ deg %.1f%% of ticks\n", S.cw_turn / std::max(1L, S.cw_fn), 100.0 * S.cw_flip / std::max(1L, S.cw_fn)); }
+                std::printf(" | wanted %% by m/s:"); for (int q = 0; q < 8; ++q) std::printf(" %.1f", 100 * D.vwb[q] / n); std::printf("\n");
             }
             {   // §8.232 HOLD OVERRUN
                 const double n = std::max(1L, S.ov_spells);

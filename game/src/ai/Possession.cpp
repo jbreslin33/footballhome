@@ -151,14 +151,21 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         if (d2 < nd) { nd = d2; near = j; }
     }
     const auto& P = c.poss.params();
-    const bool pressed_line = P.line_press_m.raw > 0 && near >= 0 && nd < P.line_press_m * P.line_press_m;
+    bool pressed_line = P.line_press_m.raw > 0 && near >= 0 && nd < P.line_press_m * P.line_press_m;
+    bool cone = near >= 0 && nd < Fixed64::fromInt(9);
+    int zl = zoneOf(w.pitchHalfX(), sp, v.sg);
+    if (P.line_latch) {   // G5.132 (§8.233): as at his spell's first call
+        auto& L = c.poss.lineLatch(v.slot);
+        if (L.at != w.ownedAtTick()) { L.at = w.ownedAtTick(); L.z = zl; L.pr = pressed_line; L.cone = cone; }
+        zl = L.z; pressed_line = L.pr; cone = L.cone;
+    }
     if (P.line_on && (near < 0 || nd >= Fixed64::fromInt(9) || pressed_line)) {
         // G5.128 (§8.229): nobody of theirs within 3 m — his line is drawn from the real free carries
         // from his zone (kCarryLine), one draw a spell, so his wish holds while he has it. Off the
         // touchline / their goal line it turns back in rather than walk the ball out.
         auto roll = [&](int ch) { return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2); };
         const Fixed64 hx = w.pitchHalfX(), hy = w.pitchHalfY();
-        const int z = zoneOf(hx, sp, v.sg);
+        const int z = zl;
         const int pick = static_cast<int>((roll(59) * Fixed64::fromInt(1000)).raw >> Fixed64::FRAC_BITS);
         int sec = 11, acc = 0;
         const int* row = pressed_line ? (P.line_pw[z][0] + P.line_pw[z][1] > 0 ? P.line_pw[z] : kCarryLinePressed[z])
@@ -185,7 +192,7 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         // already in the drawn cone stays; else it turns, on its own side of the man, into it. The
         // first touch plays the ball his way (World::playFirstTouch): "at goal" with the marker
         // behind him had it stolen inside half a second.
-        if (P.press_on && nd < Fixed64::fromInt(9)) {
+        if (P.press_on && cone) {
             const Vec2 q = Vec2{-away.x, -away.y};
             auto roll = [&](int ch) { return (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, ch) + Fixed64::one()) * Fixed64::fromFraction(1, 2); };
             const Fixed64 u1 = roll(57), u2 = roll(58), half = Fixed64::fromFraction(1, 2);
@@ -1237,6 +1244,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
     line_on = p.fixed("physics.onball.carry_line", 1000).raw > 0;
+    line_latch = p.fixed("physics.onball.line_latch", 1000).raw > 0;   // G5.132 (§8.233)
     for (int z = 0; z < kLineZones; ++z) {   // G5.128: physics.onball.line_<zone>_<sector> permille (kCarryLine), renormalized to 1000
         int t = 0;
         for (int q = 0; q < 12; ++q) { line_w[z][q] = static_cast<int>(p.fixed(("physics.onball.line_" + std::to_string(z) + "_" + std::to_string(q)).c_str(), std::int64_t{kCarryLine[z][q]} * 1000).raw >> math::Fixed64::FRAC_BITS); t += line_w[z][q]; }

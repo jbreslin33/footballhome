@@ -9831,3 +9831,43 @@ gait off the line; then the slow receipt (0.2 s in 2.4 v 2.8). Only then the pac
 
 Shipped: `benchmarks_tracking_spellpace.py` (real); SPELL PACE, per-spell pace, HOLD OVERRUN (harness); the
 pace draw + governor behind `physics.tempo.carry_pace` (0, off). Tests 22/22, goldens unchanged.
+
+### 8.233 G5.132 — the carry line held for the spell: he was turning, not slow
+
+From §8.232's "why a full wish settles at 4.5". New CARRY DIAG in fh-game-match (`World::carryDiag`, the
+carrier 1 s+ into his spell, in play, every tick) and CARRY BY WHY (his order's why, cos of his velocity to
+his move, how far his move turns a tick). G5.131 / HEAD, seeds 1000-2000 x 8: his wish is full on 100% of
+ticks, gait 0.99, top dribble 8.10 m/s, wanted 8.02 — and he goes 4.5, because his move is 53 deg off his run
+(cos 0.60), 17% of ticks going back to the ball. His move turns 3.8 deg a tick, 45+ deg on 2.8% of ticks
+(about once every 1.2 s). Nothing caps his pace; he never runs in a line long enough to reach it.
+
+**Why.** `carryDir` draws his line "one draw a spell", but the row it reads was picked every tick: his zone
+(`zoneOf` at where he is now — carry over a zone edge and the same draw lands in another row) and the table
+(free / pressed by the nearest of theirs inside 4 m, the pressed-touch cone inside 3 m — a man crossing those
+rings flips it). Each flip is a new line.
+
+**Change.** `PossessionParams::line_latch` (`physics.onball.line_latch`, on): the zone, the pressed table
+and the cone are latched at his spell's first `carryDir` (`Possession::LineLatch`, per slot, keyed by the
+World's owned-at tick); the push off the nearest man stays live. A behaviour fix: the draw now holds as
+G5.128 / G5.130 said it did.
+
+**After** (seeds 1000-4000 x 8; HEAD G5.131 → G5.132, real in brackets). 45+ deg turns 2.8 → 1.0% of ticks,
+cos 0.60 → 0.80, going back to the ball 17 → 16%, carrier 4.5 → 5.5 m/s. Passes 474-483 → 440-468 (434);
+take-ons completed 5.7-6.3 → 10.7-13.0 (10.6); carried into their crossing zone 4.8-5.8 → 7.4-8.1 (8.8);
+completed 80.3-81.3 → 78.8-80.1% (79.1); shots 12.2-14.1 → 12.8-16.2, goals 1.81-2.69 (the known
+over-conversion). Worse: he is now too fast — settled 5.2-5.3 / 5.5 / 4.9-5.2 m/s by the pace he got it at
+(2.79 / 3.72 / 4.62); carries long (free middle 7.0-7.8 m v 4.8 at 4.0-4.1 m/s v 3.42; 3-5 s spells 17 m net
+v 11.6).
+
+**Trial with §8.232's pace draw on top** (`carry_pace` 1, gain 4; same seeds): now he can reach his pace —
+settled 2.63-2.70 / 3.57-3.59 / 3.52-3.70 (2.79 / 3.72 / 4.62), net by length 1.9-2.0 / 3.7-3.8 / 6.0-6.2 /
+9.5-9.8 m (2.2 / 4.0 / 6.8 / 11.6). But it hands the latch's gains back: passes 485-510, take-ons completed
+4.1-4.8, carried into the crossing zone 3.0-4.2, StatsBomb free middle carry 2.5 m/s (3.42). Two reasons in
+view: 59-61% of our spells start under 2 m/s (41) so the slow rows are over-drawn, and the line itself is
+short of forward (free middle +1.1-1.3 m v +2.4). Not shipped: `carry_pace` stays 0.
+
+**Next:** the slow receipt (0.2 s in ~2.2 v 2.79; 60% of spells under 2 m/s v 41) — then the pace draw
+again, which by then should land near the real without giving back the carries.
+
+Shipped: `line_latch` (Possession, on); CARRY DIAG / CARRY BY WHY (harness, `World::carryDiag`); goldens
+re-locked; tests 22/22.

@@ -102,6 +102,7 @@ struct PossessionParams {
     bool press_on = true; math::Fixed64 press_toward{}, press_across{};
     static constexpr int kLineZones = 10; int line_w[kLineZones][12]{}, line_pw[kLineZones][12]{}; math::Fixed64 line_press_m = math::Fixed64::fromInt(5);   // permille by zone x sector (configure())
     bool line_on = true;   // G5.128 (§8.229): a free carry's line drawn from the real free carries by zone
+    bool line_latch = true;   // G5.132 (§8.233): the carry line's zone + pressure latched for the spell
     math::Fixed64 pass_min_m{};
     math::Fixed64 onside_margin_m{};
     math::Fixed64 spread_r_m{}, spread_k{}, spread_max_m{};   // G5.118 (§8.219): a supporting man's spot steps off a mate within spread_r_m (0 = off); DFL SPACING fit: 12 m, 0.8
@@ -215,9 +216,14 @@ public:
     bool channel(std::uint8_t slot) const { return slot < 32 && ((chan_ >> slot) & 1u); }   // G5.56: his runner spot is their wide channel
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; }
+    void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; for (auto& l : latch_) l = LineLatch{}; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
+    // G5.132 (§8.233): the carry line's zone and pressure, latched at his spell's first carryDir call so
+    // the drawn line holds for the spell (it read a new zone row / table as he crossed a zone or a man
+    // crossed 3-4 m: his move swung 45+ deg about once a second and he never got going).
+    struct LineLatch { std::uint64_t at = ~std::uint64_t{0}; int z = 0; bool pr = false, cone = false; };
+    LineLatch& lineLatch(std::uint8_t slot) const { return latch_[slot & 31]; }
     // His depth offset for this spell (G5.46), metres further from their line.
     math::Fixed64 spellDepth(const PlayerView& v) const;
 
@@ -241,6 +247,7 @@ private:
     std::uint64_t drawn_[2] = {0, 0};
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw
     std::uint64_t won_[2] = {0, 0};
+    mutable LineLatch latch_[32];
     bool had_[2] = {false, false};
     std::uint8_t front_[2][2] = {{0xFF, 0xFF}, {0xFF, 0xFF}};   // [team][front man, second man]
     std::uint64_t front_at_[2][2] = {{0, 0}, {0, 0}};

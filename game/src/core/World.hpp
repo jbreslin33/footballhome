@@ -150,6 +150,9 @@ public:
     // G5.78 (§8.179): the carried ball rolls and the carrier touches it (DFL carries). On by default.
     void configureDribble(const ModelParams& p);
     std::uint32_t dribbleTouches() const noexcept { return dribble_touches_; }
+    // G5.132 (§8.233) diagnostics: the carrier 1 s+ into his spell, in play, per tick — not state.
+    struct CarryDiag { long n = 0, chase = 0, wfull = 0, steps = 0, contact = 0; double wish = 0, after = 0, desire = 0, gait = 0, top = 0, vw = 0, v0 = 0, v1 = 0, ang = 0; long vb[8] = {}, vwb[8] = {}; };
+    const CarryDiag& carryDiag() const noexcept { return carry_diag_; }
     std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
     // G5.79 (§8.180): kicks off a plant foot. Each player's strong foot (0 = right, 1 = left) and his
@@ -396,6 +399,7 @@ private:
                                       math::Fixed64::fromFraction(88, 100), math::Fixed64::fromFraction(95, 100)};
     std::uint64_t last_touch_tick_ = 0;
     std::uint32_t dribble_touches_ = 0, dribble_lost_ = 0, steals_ = 0;
+    CarryDiag carry_diag_;
     // G5.79 (§8.180)
     struct PendingKick {
         SlotIndex slot = 0xFF; Action act = Action::None; std::uint8_t carry_m = 0, pass_to = 0xFF, first_time = 0, die = 0, has_aim = 0, foot = 0;
