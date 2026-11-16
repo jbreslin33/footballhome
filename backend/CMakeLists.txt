@@ -47,6 +47,7 @@ set(SOURCES
     src/models/NoticeBoard.cpp
     src/models/Expenses.cpp
     src/models/ProgramBudget.cpp
+    src/models/DuesLedger.cpp
     src/models/CashFlow.cpp
     src/models/LaPool.cpp
     src/models/PersonBilling.cpp

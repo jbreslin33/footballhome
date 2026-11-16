@@ -16,6 +16,7 @@
 #include "../models/PersonActivity.h"
 #include "../models/PersonFines.h"
 #include "../models/PaymentsOverview.h"
+#include "../models/DuesLedger.h"
 #include "../models/WelcomeLog.h"
 #include "../database/Database.h"
 #include "../services/LaProgramSync.h"
@@ -79,6 +80,14 @@ void PaymentsController::registerRoutes(Router& router, const std::string& prefi
             if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
             return this->handleOverview(req);
         });
+
+    // ── The money, not the members (owner 11/16): every soccer payment by
+    // section and month since the books start — #tuition's money boxes. ──
+    router.get(prefix + "/ledger", [this](const Request& req) {
+        if (!requireAdminLevel(req, {"club", "super"})) return errorResponse(denialStatus(req), "Unauthorized");
+        try { return jsonResponse(DuesLedger::byMonth(WelcomeLog::kLighthouseClubId).dump()); }
+        catch (const std::exception& e) { std::cerr << "[payments ledger] " << e.what() << std::endl; return errorResponse(HttpStatus::INTERNAL_SERVER_ERROR, "Could not read the payments."); }
+    });
 
     // ── Payment history per program ──
     // Every route below is registered through laGet(), which mandates a

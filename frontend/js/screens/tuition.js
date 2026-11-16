@@ -257,6 +257,35 @@ class TuitionScreen extends Screen {
     // click each tab.  Silent = no spinner takeover on the current view.
     this._loadAllProgramsInBackground();
     this._loadFines();
+    this._loadLedger();
+  }
+
+  // 💰 The money is the payments, not the members (mig 1398; owner 11/16
+  // "we should be counting money gotten from pickup guys … we are couning
+  // their money lol"): every counted soccer payment by section + month since
+  // the books start, pickup and people who left included — as #finances.
+  async _loadLedger() {
+    try {
+      const res = await this.auth.fetch('/api/payments/ledger');
+      this.ledger = res.ok ? await res.json() : null;
+    } catch (_e) { this.ledger = null; }
+    if (this.isMounted) this._renderStats();
+  }
+  // { collected, thisMonth, avg, months, pending, byMonth } for these tabs;
+  // avg = the last finished months since the books start (up to 3)
+  _ledgerFor(keys) {
+    const lg = this.ledger; if (!lg || !lg.start) return null;
+    const cat = { mens: 'men', womens: 'women', boys: 'boys', girls: 'girls' };
+    const byMonth = {}; let pending = 0;
+    for (const k of keys) for (const [ym, v] of Object.entries((lg.sections || {})[cat[k]] || {})) {
+      byMonth[ym] = (byMonth[ym] || 0) + Number(v.amount || 0); pending += Number(v.pending || 0);
+    }
+    const startYm = String(lg.start).slice(0, 7), nowYm = lg.now_ym;
+    const closed = []; { let [y, m] = startYm.split('-').map(Number); for (let i = 0; i < 24; i++) { const ym = `${y}-${String(m).padStart(2, '0')}`; if (ym >= nowYm) break; closed.push(ym); m++; if (m > 12) { m = 1; y++; } } }
+    const last = closed.slice(-3);
+    const collected = Object.values(byMonth).reduce((a, v) => a + v, 0);
+    return { collected, thisMonth: byMonth[nowYm] || 0, avg: last.length ? last.reduce((a, ym) => a + (byMonth[ym] || 0), 0) / last.length : (byMonth[nowYm] || 0),
+             months: last.length, last, pending, byMonth, startYm, nowYm, start: lg.start };
   }
 
   // 🧾 Fines part of the money (mig 1294, lib/fines-collected.js): the
@@ -2742,6 +2771,9 @@ class TuitionScreen extends Screen {
     if (this.month) {
       // 📅 A past month (mig 1254): that month's money and who paid it.
       const ms = this._monthSummary(keys, this.month);
+      // that month's money = every payment in it (mig 1398), not just today's members'
+      const lgm = this._ledgerFor(keys);
+      if (lgm && this.month >= lgm.startYm) ms.collected = Number(lgm.byMonth[this.month] || 0);
       const name = this._monthName(this.month);
       const L = (tier, fb) => this.escape(this._monthCopy(tier, fb));
       const fm = this._finesByMonth(keys);
@@ -2797,21 +2829,25 @@ class TuitionScreen extends Screen {
   // for the three averages so they add up.
   _splitRows(s, keys, cell) {
     const L = (tier, fb, tokens) => this.escape(this._monthCopy(tier, fb, tokens));
-    const fm = this._finesByMonth(keys);
-    const f = fm ? FinesCollected.totals(fm, s.monthsElapsed) : null;
-    const wait = '…';
+    // the money from the ledger (every payment, mig 1398); fines over the same months
+    const fm = this._finesByMonth(keys), lg = this._ledgerFor(keys);
+    const ok = !!(fm && lg), wait = '…';
+    const fSum = (yms) => yms.reduce((a, ym) => a + Number((fm || {})[ym] || 0), 0);
+    const f = ok ? { collected: Object.keys(fm).filter(ym => ym >= lg.startYm).reduce((a, ym) => a + Number(fm[ym] || 0), 0),
+                     thisMonth: Number(fm[lg.nowYm] || 0), avg: lg.last.length ? fSum(lg.last) / lg.last.length : Number(fm[lg.nowYm] || 0) } : null;
     const row = (title, total, fines) => ({ title, cells: [
-      cell(L('split_tuition', '🎓 Tuition'), f ? this.fmtMoney(total - fines) : wait, '#86efac'),
-      cell(L('split_fines', '🧾 Fines'), f ? this.fmtMoney(fines) : wait, '#fde68a'),
-      cell(L('split_total', '💰 Total'), this.fmtMoney(total), '#86efac'),
+      cell(L('split_tuition', '🎓 Tuition'), ok ? this.fmtMoney(total - fines) : wait, '#86efac'),
+      cell(L('split_fines', '🧾 Fines'), ok ? this.fmtMoney(fines) : wait, '#fde68a'),
+      cell(L('split_total', '💰 Total'), ok ? this.fmtMoney(total) : wait, '#86efac'),
     ] });
-    const mo = String(s.monthsElapsed || 0);
+    const start = lg ? new Date(`${lg.start}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const mo = String(lg ? lg.months : 0);
     return [
-      row(L('split_row_collected', 'MONEY IN · COLLECTED'), s.netCollected, f ? f.collected : 0),
-      row(L('split_row_month', 'MONEY IN · THIS MONTH'), s.thisMonth, f ? f.thisMonth : 0),
-      row(L('split_row_avg', `MONEY IN · AVG / MONTH (${mo} mo)`, { months: mo }), s.avgPerMonth, f ? f.avg : 0),
-      ...(s.pendingBank > 0.005 ? [{ title: L('split_row_pending', 'BANK PAYMENTS NOT DEPOSITED YET'),
-        cells: [cell(L('split_pending', '⏳ Pending'), this.fmtMoney(s.pendingBank), '#fde68a')] }] : []),
+      row(L('split_row_collected', `MONEY IN · SINCE ${start}`, { start }), lg ? lg.collected : 0, f ? f.collected : 0),
+      row(L('split_row_month', 'MONEY IN · THIS MONTH'), lg ? lg.thisMonth : 0, f ? f.thisMonth : 0),
+      row(L('split_row_avg', `MONEY IN · AVG / MONTH (last ${mo} finished)`, { months: mo }), lg ? lg.avg : 0, f ? f.avg : 0),
+      ...(lg && lg.pending > 0.005 ? [{ title: L('split_row_pending', 'BANK PAYMENTS NOT DEPOSITED YET'),
+        cells: [cell(L('split_pending', '⏳ Pending'), this.fmtMoney(lg.pending), '#fde68a')] }] : []),
     ];
   }
 
