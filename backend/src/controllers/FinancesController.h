@@ -31,4 +31,5 @@ private:
     Response handleCashFlow(const Request& request);
     Response handleCapacity(const Request& request);
     Response handleCapacityCoach(const Request& request);
+    Response handlePrograms(const Request& request);
 };

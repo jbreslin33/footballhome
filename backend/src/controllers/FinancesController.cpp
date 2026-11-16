@@ -8,6 +8,7 @@
 
 #include "../database/Database.h"
 #include "../models/CapacityPlan.h"
+#include "../models/ProgramBudget.h"
 #include "../models/CashFlow.h"
 #include "../models/Expenses.h"
 #include "../models/PaymentsOverview.h"
@@ -73,6 +74,16 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     // 👥 Full capacity (mig 1387): every team full, a coach per team
     router.get(prefix + "/capacity", [this](const Request& r) { return handleCapacity(r); });
     router.post(prefix + "/capacity-coach", [this](const Request& r) { return handleCapacityCoach(r); });
+    // 🧩 Programs (mig 1390): a budget per program per season — players per
+    // program come from today's members, so it syncs the four programs first.
+    laGet(router, prefix + "/programs", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) { Response d; if (!gate(r, &d)) return d; refreshPaymentsFromLa(); return handlePrograms(r); });
+}
+
+Response FinancesController::handlePrograms(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try { return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId)); }
+    catch (const std::exception& e) { std::cerr << "[finances programs] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the programs."); }
 }
 
 Response FinancesController::handleCapacity(const Request& request) {
