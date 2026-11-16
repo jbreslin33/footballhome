@@ -136,7 +136,32 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
     std::vector<PendingSnap> pendingSnaps;
     pendingSnaps.reserve(recs.size());
 
+    // Steady state (owner 11/16 #tuition load): ONE query finds the records
+    // whose per-record linkLa + recordMembership writes would change
+    // nothing; they skip those ~6-12 round trips each.  Opening #tuition
+    // syncs 10 programs at once on an 8-connection pool, so ~600 tiny
+    // queries per program queued behind each other (db 200 ms alone →
+    // ~2 s in the burst).  New / changed records still take the full path.
+    std::unordered_map<std::size_t, int> unchanged;
+    {
+        std::vector<PersonLinker::SyncProbe> probes;
+        probes.reserve(recs.size());
+        for (const auto& rec : recs) {
+            PersonLinker::SyncProbe p;
+            p.rec = &rec;
+            std::string st;
+            if (auto it = rec.find("registrationStatus"); it != rec.end() && it->is_string()) st = upperAscii(it->get<std::string>());
+            p.member = st == "SPOT_RESERVED" || st == "SPOT_PENDING" || st == "WAITING_LIST";
+            p.registrationId = extractRegistrationId(rec);
+            if (p.member) p.registeredAtIso = extractRegisteredIso(rec);
+            probes.push_back(std::move(p));
+        }
+        unchanged = linker.unchangedRecords(probes, programId);
+    }
+
+    std::size_t recIdx = 0;
     for (auto& rec : recs) {
+        const std::size_t thisIdx = recIdx++;
         std::string statusRaw;
         if (auto it = rec.find("registrationStatus"); it != rec.end() && it->is_string()) {
             statusRaw = it->get<std::string>();
@@ -201,7 +226,13 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
         // current for people who later re-join.  Only WRITE the
         // membership row when isMember == true.
         try {
-            auto r = linker.linkLa(rec);
+            // Steady records: the alias already resolves (the person id
+            // came back with the check) and nothing would be written.
+            const auto un = unchanged.find(thisIdx);
+            const bool steady = un != unchanged.end();
+            PersonLinker::Result r;
+            if (steady) r.personId = un->second;
+            else        r = linker.linkLa(rec);
             if (!r.skipReason.empty()) {
                 std::cerr << "[la-sync program=" << programId
                           << "] linkLa skipped userId=" << uid
@@ -219,7 +250,7 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
                 // record").  See PersonLinker.h recordMembership doc
                 // + billing-badge.js.
                 const std::string regIso = extractRegisteredIso(rec);
-                linker.recordMembership(r.personId, programId, regId, regIso);
+                if (!steady) linker.recordMembership(r.personId, programId, regId, regIso);
 
                 // Snapshot LA-authoritative billing state onto the
                 // membership row (migration 117) — payments card reads
@@ -335,6 +366,7 @@ LaProgramSync::Result LaProgramSync::run(int programId) {
     std::cerr << "[la-sync program=" << programId
               << "] recs=" << out.recs.size()
               << " active=" << out.activeUserIds.size()
+              << " steady=" << unchanged.size()
               << " fetch=" << fetchMs << "ms"
               << " db=" << dbMs << "ms"
               << " total=" << totalMs << "ms"

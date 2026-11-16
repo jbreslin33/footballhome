@@ -1,3 +1,5 @@
+#include <iostream>
+#include <chrono>
 #include "PersonFines.h"
 
 #include <cmath>
@@ -37,6 +39,8 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
     const std::string ids = idList(personIds);
     if (ids.empty()) return out;
     if (monthsBack <= 0) monthsBack = 3;
+    const auto tF0 = std::chrono::steady_clock::now(); auto tF = tF0; std::ostringstream fLog;
+    auto fmark = [&](const char* n) { auto now = std::chrono::steady_clock::now(); fLog << " " << n << "=" << std::chrono::duration_cast<std::chrono::milliseconds>(now - tF).count() << "ms"; tF = now; };
     const std::string back = std::to_string(monthsBack - 1);
     // Periods run first Friday → next first Friday, the tuition dates
     // (mig 1207; owner 2026-11-09: "same schedule as tuition").  A period
@@ -58,6 +62,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
         << " WHERE tp.removed_at IS NULL AND tp.person_id IN (" << ids << ")"
         << " GROUP BY tp.person_id";
     auto whoRows = db_->query(who.str());
+    fmark("whoRows");
     if (whoRows.empty()) return out;
 
     // The period boxes: the period running now and the (monthsBack − 1)
@@ -74,6 +79,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
            << "       to_char(now() AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS today"
            << "  FROM generate_series(" << oldest << ", " << cur << ", interval '1 month') d ORDER BY d";
     auto monthRows = db_->query(months.str());
+    fmark("monthRows");
 
     // Every fine since the first shown period, oldest first, with its label
     // and the period it falls in.
@@ -87,6 +93,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
           << "  JOIN fine_kinds k ON k.code = f.fine_kind"
           << " ORDER BY f.person_id, f.starts_at";
     auto fineRows = db_->query(fines.str());
+    fmark("fineRows");
 
     // What was added to each player's LeagueApps invoice since the first
     // shown month — amount and day, no description (LA's API has none).
@@ -131,6 +138,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
             << "                      AND n.observed_at > c.observed_at)"
             << ") x ORDER BY person_id, at";
     auto chargeRows = db_->query(charges.str());
+    fmark("chargeRows");
     struct Charge { double amount; std::string day; bool used = false; bool withFines = false; };
     std::unordered_map<int, std::unordered_map<std::string, std::vector<Charge>>> chargesBy;   // person → ym → charges
     for (const auto& r : chargeRows) {
@@ -331,6 +339,8 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
 
         out[pid] = json{{"since", since}, {"total", total}, {"months", std::move(monthsJson)}, {"dues", std::move(dues)}};
     }
+    fmark("rest");
+    std::cerr << "[PersonFines::monthsFor n=" << personIds.size() << " months=" << monthsBack << "]" << fLog.str() << std::endl;
     return out;
 }
 

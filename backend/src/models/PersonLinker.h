@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 #include <set>
+#include <unordered_map>
+#include <vector>
 #include "../third_party/json.hpp"
 
 class Database;
@@ -84,6 +86,28 @@ public:
     // MUST come from LA every time — no more "sync only opens" behavior.
     void closeStaleMemberships(long long programId,
                                const std::set<std::string>& activeLaUserIds);
+
+    // One record of a program sync, as LaProgramSync would hand it to
+    // linkLa (+ recordMembership when `member`).
+    struct SyncProbe {
+        const nlohmann::json* rec = nullptr;
+        bool        member = false;
+        long long   registrationId = 0;
+        std::string registeredAtIso;
+    };
+
+    // Steady-state check for a whole program in ONE query (owner 11/16
+    // #tuition "load fix"): for each probe whose linkLa + recordMembership
+    // would write nothing — LA userId already aliased, its email already
+    // this person's, its phone already on file, a youth's parent already
+    // linked with contacts + guardian row, the open membership already
+    // carrying this reg id / reg date — returns probe index → person id.
+    // Those records skip the ~6-12 per-record round trips; everything
+    // else (new people, changed contacts, missing rows, name-less
+    // records) goes the full path as before.  A failed query returns
+    // an empty map, i.e. everyone goes the full path.
+    std::unordered_map<std::size_t, int> unchangedRecords(
+        const std::vector<SyncProbe>& probes, long long programId);
 
 private:
     Database* db_;

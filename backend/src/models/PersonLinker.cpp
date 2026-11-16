@@ -630,3 +630,91 @@ void PersonLinker::closeStaleMemberships(long long programId,
                   << " (programId=" << programId << ")" << std::endl;
     }
 }
+
+std::unordered_map<std::size_t, int> PersonLinker::unchangedRecords(
+        const std::vector<SyncProbe>& probes, long long programId) {
+    std::unordered_map<std::size_t, int> out;
+    if (probes.empty() || programId <= 0) return out;
+
+    // The same field reads linkLa / upsertContact / ensureParentLink make,
+    // so "no-op" here means exactly "their writes would match nothing".
+    std::ostringstream values;
+    std::size_t n = 0;
+    for (std::size_t i = 0; i < probes.size(); ++i) {
+        const json& rec = *probes[i].rec;
+        const std::string uid = strOrEmpty(rec, "userId");
+        const std::string first = rec.contains("firstName") && rec["firstName"].is_string()
+                                ? trim(rec["firstName"].get<std::string>()) : std::string{};
+        const std::string last  = rec.contains("lastName")  && rec["lastName"].is_string()
+                                ? trim(rec["lastName"].get<std::string>())  : std::string{};
+        if (uid.empty() || (first.empty() && last.empty())) continue;   // full path logs the skip
+
+        const std::string email = trimAscii(strOrEmpty(rec, "email"));
+        const std::string phone = trimAscii(rec.contains("phoneNumber") && rec["phoneNumber"].is_string()
+                                          ? rec["phoneNumber"].get<std::string>()
+                                          : strOrEmpty(rec, "phone"));
+        // ensureParentLink only acts on a CHILD with a parent userId + name.
+        const std::string puid = strOrEmpty(rec, "parentUserId");
+        const bool child = strOrEmpty(rec, "userType") == "CHILD" && !puid.empty()
+                        && !(trimAscii(strOrEmpty(rec, "parentFirstName")).empty()
+                             && trimAscii(strOrEmpty(rec, "parentLastName")).empty());
+        const std::string pemail = child ? trimAscii(strOrEmpty(rec, "parentEmail")) : std::string{};
+        const std::string pphone = child ? trimAscii(strOrEmpty(rec, "parentPhone")) : std::string{};
+
+        if (n++) values << ",";
+        values << "(" << i << "::int," << db_->escape(uid) << "::text,"
+               << db_->escape(email) << "::text," << db_->escape(phone) << "::text,"
+               << (child ? "true" : "false") << "," << db_->escape(child ? puid : std::string{}) << "::text,"
+               << db_->escape(pemail) << "::text," << db_->escape(pphone) << "::text,"
+               << (probes[i].member ? "true" : "false") << ","
+               << probes[i].registrationId << "::bigint,"
+               << (probes[i].registeredAtIso.empty() ? "false" : "true") << ")";
+    }
+    if (n == 0) return out;
+
+    const std::string prog = std::to_string(programId);
+    const std::string sql =
+        "WITH v(idx, uid, email, phone, is_child, puid, pemail, pphone, member, reg_id, has_iso) AS ("
+        "  VALUES " + values.str() + "),"
+        " r AS ("
+        "  SELECT v.*, a.person_id AS pid,"
+        "         CASE WHEN v.is_child THEN"
+        "           (SELECT person_id FROM person_la_user_ids WHERE la_user_id = v.puid"
+        "            UNION ALL SELECT id FROM persons WHERE la_user_id = v.puid LIMIT 1)"
+        "         END AS parent_pid"
+        "    FROM v JOIN person_la_user_ids a ON a.la_user_id = v.uid)"
+        " SELECT r.idx, r.pid FROM r"
+        "  WHERE (r.email = '' OR EXISTS (SELECT 1 FROM person_emails e"
+        "                                  WHERE e.email = r.email AND e.person_id = r.pid))"
+        "    AND (r.phone = '' OR EXISTS (SELECT 1 FROM person_phones ph WHERE ph.phone_number = r.phone))"
+        "    AND (NOT r.is_child OR ("
+        "          r.parent_pid IS NOT NULL"
+        "      AND (r.pemail = '' OR EXISTS (SELECT 1 FROM person_emails e"
+        "                                     WHERE e.email = r.pemail AND e.person_id = r.parent_pid))"
+        "      AND (r.pphone = '' OR EXISTS (SELECT 1 FROM person_phones ph WHERE ph.phone_number = r.pphone))"
+        "      AND (EXISTS (SELECT 1 FROM person_self_contacts s WHERE s.person_id = r.pid)"
+        "           OR ((SELECT p.parent_person_id FROM persons p WHERE p.id = r.pid) IS NOT NULL"
+        "               AND (r.parent_pid = r.pid"
+        "                    OR EXISTS (SELECT 1 FROM person_guardians g"
+        "                                WHERE g.child_person_id = r.pid"
+        "                                  AND g.guardian_person_id = r.parent_pid))))))"
+        "    AND (NOT r.member OR ("
+        "          EXISTS (SELECT 1 FROM person_la_memberships m"
+        "                   WHERE m.person_id = r.pid AND m.la_program_id = " + prog +
+        "                     AND m.ended_at IS NULL)"
+        "      AND NOT EXISTS (SELECT 1 FROM person_la_memberships m"
+        "                   WHERE m.person_id = r.pid AND m.la_program_id = " + prog +
+        "                     AND m.ended_at IS NULL"
+        "                     AND ((r.reg_id > 0 AND m.la_registration_id IS DISTINCT FROM r.reg_id)"
+        "                          OR (r.has_iso AND m.la_registered_at IS NULL)))))";
+    try {
+        for (const auto& row : db_->query(sql)) {
+            out.emplace(static_cast<std::size_t>(row["idx"].as<int>()), row["pid"].as<int>());
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[PersonLinker::unchangedRecords program=" << programId << "] "
+                  << e.what() << " — every record takes the full path" << std::endl;
+        out.clear();
+    }
+    return out;
+}

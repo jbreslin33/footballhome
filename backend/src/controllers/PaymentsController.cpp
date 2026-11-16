@@ -1,5 +1,6 @@
 #include "PaymentsController.h"
 
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <iostream>
@@ -256,6 +257,15 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     //    If the sync entry is absent, the sync failed — laReachable
     //    stays false and step 5 no-ops (every member gets
     //    discrepancy=null) rather than misclassifying.
+    // Stage timing (11/16 #tuition load): one stderr line per request.
+    const auto tStage0 = std::chrono::steady_clock::now();
+    auto tStage = tStage0;
+    std::ostringstream stageLog;
+    auto mark = [&](const char* name) {
+        const auto now = std::chrono::steady_clock::now();
+        stageLog << " " << name << "=" << std::chrono::duration_cast<std::chrono::milliseconds>(now - tStage).count() << "ms";
+        tStage = now;
+    };
     std::unordered_map<long long, LaProgramSync::LaPayment> laPayments;
     bool laReachable = false;
     if (auto it = sync.find(static_cast<int>(programId)); it != sync.end()) {
@@ -300,6 +310,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         std::cerr << "[PaymentsController::members] payments sync failed: " << e.what() << std::endl;
     }
 
+    mark("txnSync");
     // 3. Load the joined + windowed report.
     std::vector<PersonPayments::MemberRow> rows;
     try {
@@ -344,6 +355,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         }
     }
 
+    mark("loadRows");
     // 4. Serialise.  Counts per status let the tile badge / summary strip
     //    render "N need attention" without a second query.
     //
@@ -585,6 +597,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         members.push_back(std::move(row));
     }
 
+    mark("serialise");
     // The active club's name (e.g. "Lighthouse Men's Club 1893 Soccer
     // Membership") is what belongs in member-facing text even for
     // inactive-section rows — it's their real, recognized club
@@ -625,6 +638,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         std::cerr << "[PaymentsController] pay_reminder_log tally failed: " << e.what() << std::endl;
     }
 
+    mark("tally");
     // RSVP + attendance trail per person (fh_event_rsvps /
     // fh_event_attendance via PersonActivity).  Owner 2026-09-24: "show
     // some attendance and rsvp data so we can see if the player is a
@@ -678,6 +692,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         std::cerr << "[PaymentsController] person activity roll-up failed: " << e.what() << std::endl;
     }
 
+    mark("activity");
     // Fines by month (fine_policies / fh_person_fines, migration 460).
     // Owner 2026-09-27: "a fines part to financial ... next to pro rate
     // ... last 3 months ... each in a box".  Only people on a team whose
@@ -705,6 +720,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         std::cerr << "[PaymentsController] person fines roll-up failed: " << e.what() << std::endl;
     }
 
+    mark("fines");
     // duesSelection: the alternate-on-balance rule covers this member
     // (fh_dues_selection_policy, mig 1149 — Men today), so the dues
     // notice speaks of selection for starters/bench, never a ban or
@@ -724,9 +740,17 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         std::unordered_map<int, std::string> vol;
         if (!ids.empty()) {
             for (const auto& r : Database::getInstance()->query(
-                     "SELECT p AS person_id, fh_dues_selection_policy(p) AS sel, "
-                     "       CASE WHEN fh_volunteer_offer(p) THEN fh_volunteer_days_text(p) END AS vol "
-                     "  FROM unnest(ARRAY[" + ids + "]::int[]) AS p")) {
+                     // The days text depends only on the person's sections
+                     // (~120 ms a call: it reads the practice calendar per
+                     // shift), so it is built once per section set — Men's
+                     // 13 offers were 1.6 s of the tab (11/16).
+                     "WITH m AS ("
+                     "  SELECT p, fh_dues_selection_policy(p) AS sel, fh_volunteer_offer(p) AS offer,"
+                     "         ARRAY(SELECT x FROM fh_volunteer_sections(p) x ORDER BY x) AS secs"
+                     "    FROM unnest(ARRAY[" + ids + "]::int[]) AS p),"
+                     " d AS (SELECT secs, fh_volunteer_days_text(min(p)) AS txt FROM m WHERE offer GROUP BY secs) "
+                     "SELECT m.p AS person_id, m.sel, CASE WHEN m.offer THEN d.txt END AS vol "
+                     "  FROM m LEFT JOIN d ON d.secs = m.secs")) {
                 sel[r["person_id"].as<int>()] = r["sel"].as<bool>();
                 if (!r["vol"].is_null()) vol[r["person_id"].as<int>()] = r["vol"].c_str();
             }
@@ -753,6 +777,7 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
     out["programName"]    = programName;
     out["total"]          = members.size();
     out["inactiveCount"]  = inactiveRows.size();
+    mark("selection");
     // First day of the current budget year (budget_years, Aug 1): where
     // the #payments month pills start.
     out["budgetYearStart"] = nullptr;
@@ -780,7 +805,12 @@ Response PaymentsController::handleGetMembersForProgram(const std::string& progr
         {"mismatches",  std::move(mismatches)},
     };
     out["members"]     = std::move(members);
-    return Response(HttpStatus::OK, out.dump());
+    mark("rest");
+    { std::string dumped = out.dump(); mark("dump");
+      std::cerr << "[payments members " << programKey << "]" << stageLog.str() << " total="
+                << std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - tStage0).count()
+                << "ms bytes=" << dumped.size() << std::endl;
+      return Response(HttpStatus::OK, std::move(dumped)); }
 }
 
 // ────────────────────────────────────────────────────────────────────────
