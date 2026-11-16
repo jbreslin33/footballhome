@@ -78,6 +78,22 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
            << "       to_char(fh_first_friday((d + interval '1 month')::date), 'YYYY-MM-DD') AS post_first_friday,"
            << "       to_char(now() AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS today"
            << "  FROM generate_series(" << oldest << ", " << cur << ", interval '1 month') d ORDER BY d";
+    // Only the fineable people go to fh_person_fines, from the first policy
+    // date on (11/16 "speed up the fines part too"): #tuition's Men's tab
+    // sent all 127 (pickup, coaches' kids…) and the 24-month board reached
+    // back to Dec 2024 for fines that start Sep 2026 — same rows, half the
+    // work (checked on prod both windows).
+    std::string fineIds, minSince;
+    for (const auto& w : whoRows) {
+        if (!fineIds.empty()) fineIds += ",";
+        fineIds += w["person_id"].c_str();
+        const std::string sn = w["since"].is_null() ? std::string{} : w["since"].c_str();
+        if (!sn.empty() && (minSince.empty() || sn < minSince)) minSince = sn;
+    }
+    const std::string finesFrom = minSince.empty()
+        ? "fh_fine_period_start_of(" + oldest + ")"
+        : "GREATEST(fh_fine_period_start_of(" + oldest + "), (" + db_->escape(minSince) + "::date)::timestamp AT TIME ZONE 'America/New_York')";
+
     auto monthRows = db_->query(months.str());
     fmark("monthRows");
 
@@ -88,8 +104,7 @@ PersonFines::Map PersonFines::monthsFor(const std::vector<int>& personIds, int m
           << "       f.amount_usd::text AS amount, f.response, f.attendance,"
           << "       to_char(fh_fine_period_month(f.starts_at), 'YYYY-MM') AS ym,"
           << "       to_char(f.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS start_iso"
-          << "  FROM fh_person_fines(ARRAY[" << ids << "]::int[],"
-          << "         fh_fine_period_start_of(" << oldest << ")) f"
+          << "  FROM fh_person_fines(ARRAY[" << fineIds << "]::int[], " << finesFrom << ") f"
           << "  JOIN fine_kinds k ON k.code = f.fine_kind"
           << " ORDER BY f.person_id, f.starts_at";
     auto fineRows = db_->query(fines.str());
