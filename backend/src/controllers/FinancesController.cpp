@@ -78,12 +78,37 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
     // program come from today's members, so it syncs the four programs first.
     laGet(router, prefix + "/programs", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { Response d; if (!gate(r, &d)) return d; refreshPaymentsFromLa(); return handlePrograms(r); });
+    // a plan season's fields / a youth league entry → the programs again
+    laPost(router, prefix + "/program-plan", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, false); });
+    laPost(router, prefix + "/program-entry", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, true); });
 }
 
 Response FinancesController::handlePrograms(const Request& request) {
     Response denied; if (!gate(request, &denied)) return denied;
     try { return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId)); }
     catch (const std::exception& e) { std::cerr << "[finances programs] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the programs."); }
+}
+
+// { program, year, season ("all" = every plan season), fields: {…} } or, for an
+// entry, { program, year, season, league_season_id, age_band, teams, remove }.
+Response FinancesController::handleProgramSave(const Request& request, bool entry) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try {
+        const json b = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        const std::string program = b.value("program", ""), year = b.value("year", ""), season = b.value("season", "");
+        if (entry) {
+            if (!b.contains("league_season_id") || !b["league_season_id"].is_number_integer()) return jsonError(HttpStatus::BAD_REQUEST, "Which league?");
+            ProgramBudget::saveEntry(WelcomeLog::kLighthouseClubId, program, year, season, b["league_season_id"].get<int>(),
+                                     b.value("age_band", std::string{}), b.contains("teams") ? b["teams"] : json(nullptr), b.value("remove", false));
+        } else {
+            if (!b.contains("fields") || !b["fields"].is_object()) return jsonError(HttpStatus::BAD_REQUEST, "What changes?");
+            ProgramBudget::savePlan(WelcomeLog::kLighthouseClubId, program, year, season, b["fields"], bearerUserId(request));
+        }
+        return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId));
+    } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
+    catch (const std::exception& e) { std::cerr << "[finances program save] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the change."); }
 }
 
 Response FinancesController::handleCapacity(const Request& request) {

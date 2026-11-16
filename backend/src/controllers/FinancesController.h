@@ -32,4 +32,5 @@ private:
     Response handleCapacity(const Request& request);
     Response handleCapacityCoach(const Request& request);
     Response handlePrograms(const Request& request);
+    Response handleProgramSave(const Request& request, bool entry);
 };

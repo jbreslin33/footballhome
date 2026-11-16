@@ -1,7 +1,10 @@
 #include "ProgramBudget.h"
 
 #include <cmath>
+#include <chrono>
 #include <map>
+#include <mutex>
+#include <stdexcept>
 #include <set>
 #include <string>
 #include <vector>
@@ -41,6 +44,20 @@ struct Program {
 };
 struct Season { int id = 0; std::string code, label; int from = 0, to = 0; };
 struct Line { std::string group, category, key, label, detail; double amount = 0; bool assumed = false; };
+
+// The books (CashFlow, Expenses) take seconds; a plan edit re-reads them, so
+// they are kept for a minute. Plans and entries are always read fresh.
+std::mutex gCacheMu;
+std::chrono::steady_clock::time_point gCacheAt;
+json gFlow, gProj;
+std::pair<json, json> books(int clubId) {
+    std::lock_guard<std::mutex> lock(gCacheMu);
+    const auto now = std::chrono::steady_clock::now();
+    if (gFlow.is_null() || now - gCacheAt > std::chrono::seconds(60)) {
+        gFlow = CashFlow::build(clubId); gProj = Expenses::projection(clubId); gCacheAt = now;
+    }
+    return {gFlow, gProj};
+}
 
 // The months of a season in the budget year that starts in (startYear, startMonth).
 std::vector<std::string> seasonMonths(const Season& s, int startYear, int startMonth) {
@@ -173,8 +190,7 @@ json ProgramBudget::build(int clubId) {
     };
 
     // ── the books (this year's real seasons) and the projection (money still ahead) ──
-    const json flow = CashFlow::build(clubId);
-    const json proj = Expenses::projection(clubId);
+    const auto [flow, proj] = books(clubId);
 
     // real dues per program per month (approved money; payer → program)
     std::map<int, std::map<std::string, std::pair<double, double>>> realDues;   // program (0 = youth, no birth date) → ym → {gross, fee}
@@ -275,6 +291,23 @@ json ProgramBudget::build(int clubId) {
     // ── build ──
     json out = {{"this_year", ""}, {"now_ym", nowYm}, {"years", json::array()}, {"seasons", json::array()}, {"programs", json::array()},
                 {"settings", {{"coach_rate", coachRate}, {"weeks_per_year", weeksPerYear}, {"fee_ratio", feeRatio}, {"monthly", monthly}, {"collect_rate", collectRate}}}, {"budgets", json::object()}};
+    // leagues a youth program can enter: league seasons with a rate card, by
+    // budget year and the budget season their start falls in
+    out["league_options"] = json::object();
+    for (const auto& r : db->query(
+            "SELECT ls.id, l.name AS league, ls.name, y.label AS year, extract(month FROM ls.start_date)::int AS m, "
+            "       COALESCE((SELECT string_agg(DISTINCT lf.age_band, ',' ORDER BY lf.age_band) FROM league_fees lf WHERE lf.season_id = ls.id AND lf.age_band IS NOT NULL), '') AS bands "
+            "  FROM seasons ls JOIN leagues l ON l.id = ls.league_id "
+            "  JOIN budget_years y ON y.club_id = $1::int AND ls.start_date BETWEEN y.starts_on AND y.ends_on "
+            " WHERE y.ends_on >= (now() AT TIME ZONE 'America/New_York')::date "
+            "   AND EXISTS (SELECT 1 FROM league_fees lf WHERE lf.season_id = ls.id AND lf.fee_kind = 'team_entry') "
+            " ORDER BY ls.start_date, l.name", {club})) {
+        const int m = r["m"].as<int>(); std::string sc;
+        for (const auto& se : seasons) { const int to = se.to >= se.from ? se.to : se.to + 12; for (int k = se.from; k <= to; ++k) if ((k - 1) % 12 + 1 == m) sc = se.code; }
+        if (sc.empty()) continue;
+        json bands = json::array(); { std::string b = str(r, "bands"); size_t a = 0; while (!b.empty() && a <= b.size()) { size_t e = b.find(',', a); if (e == std::string::npos) e = b.size(); bands.push_back(b.substr(a, e - a)); a = e + 1; } }
+        out["league_options"][str(r, "year")][sc].push_back({{"id", r["id"].as<int>()}, {"league", str(r, "league")}, {"name", str(r, "name")}, {"bands", bands}});
+    }
     for (const auto& s : seasons) out["seasons"].push_back({{"code", s.code}, {"label", s.label}, {"from_month", s.from}, {"to_month", s.to}});
     for (const auto& p : programs) out["programs"].push_back({{"id", p.id}, {"code", p.code}, {"label", p.label}, {"kind", p.kind}, {"age_from", p.ageFrom}, {"age_to", p.ageTo},
                                                               {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])}});
@@ -477,6 +510,10 @@ json ProgramBudget::build(int clubId) {
                 for (const auto& [k, l] : folded) if (std::fabs(l.amount) >= 0.005)
                     lines.push_back({{"group", l.group}, {"category", l.category}, {"key", l.key}, {"label", l.label}, {"detail", l.detail}, {"amount", round2(l.amount)}, {"assumed", l.assumed}});
                 json sj = meta[(int)si][p.id]; sj["lines"] = lines;
+                sj["entries"] = json::array();
+                if (entries.count({p.id, Y.id, seasons[si].id}))
+                    for (const auto& e : entries[{p.id, Y.id, seasons[si].id}])
+                        sj["entries"].push_back({{"league_season_id", e.leagueSeason}, {"league", e.league}, {"name", e.seasonName}, {"age_band", e.band}, {"teams", e.teams >= 0 ? json(e.teams) : json(nullptr)}});
                 pj[seasons[si].code] = sj;
             }
             yj["programs"][p.code] = pj;
@@ -484,4 +521,87 @@ json ProgramBudget::build(int clubId) {
         out["budgets"][Y.label] = yj;
     }
     return out;
+}
+
+namespace {
+// program id, year id and the plan seasons a save touches (never a real one)
+struct Target { int program; int year; std::vector<int> seasons; };
+Target target(int clubId, const std::string& program, const std::string& year, const std::string& season) {
+    auto* db = Database::getInstance();
+    const std::string club = std::to_string(clubId);
+    auto p = db->query("SELECT id FROM finance_programs WHERE club_id = $1::int AND code = $2 AND is_active", {club, program});
+    if (p.empty()) throw std::invalid_argument("Which program?");
+    auto y = db->query("SELECT id FROM budget_years WHERE club_id = $1::int AND label = $2 AND ends_on >= (now() AT TIME ZONE 'America/New_York')::date", {club, year});
+    if (y.empty()) throw std::invalid_argument("Which year?");
+    Target t{p[0]["id"].as<int>(), y[0]["id"].as<int>(), {}};
+    for (const auto& r : db->query(
+            "SELECT s.id FROM budget_seasons s WHERE s.club_id = $1::int AND ($2 = 'all' OR s.code = $2) "
+            "   AND NOT EXISTS (SELECT 1 FROM budget_season_actuals a WHERE a.budget_year_id = $3::int AND a.season_id = s.id) ORDER BY s.sort_order",
+            {club, season, std::to_string(t.year)}))
+        t.seasons.push_back(r["id"].as<int>());
+    if (t.seasons.empty()) throw std::invalid_argument("That season is real (from the books) — it can't be planned.");
+    return t;
+}
+}
+
+void ProgramBudget::savePlan(int clubId, const std::string& program, const std::string& year, const std::string& season,
+                             const json& fields, long long userId) {
+    auto* db = Database::getInstance();
+    const Target t = target(clubId, program, year, season);
+    // column → kind; nullable ones go back to the live default on null
+    struct Col { const char* name; char kind; bool nullable; double lo, hi; };
+    static const Col cols[] = {
+        {"players", 'i', true, 0, 500}, {"teams", 'i', true, 0, 20}, {"practice_hours_week", 'n', true, 0, 40},
+        {"practice_weeks", 'n', true, 0, 30}, {"games", 'i', false, 0, 60}, {"hours_per_game", 'n', false, 0, 6},
+        {"coach_paid", 'b', false, 0, 0}, {"coach_rate", 'n', true, 0, 200}, {"note", 't', true, 0, 0}};
+    std::vector<std::pair<std::string, std::string>> sets;   // column, value ('' = NULL)
+    for (auto it = fields.begin(); it != fields.end(); ++it) {
+        const Col* c = nullptr; for (const auto& x : cols) if (it.key() == x.name) c = &x;
+        if (!c) throw std::invalid_argument("Unknown field: " + it.key());
+        const json& v = it.value();
+        if (v.is_null()) {
+            if (c->kind == 'i' && !c->nullable) sets.push_back({c->name, "0"});
+            else if (!c->nullable) throw std::invalid_argument(std::string(c->name) + " needs a value.");
+            else sets.push_back({c->name, ""});
+            continue;
+        }
+        if (c->kind == 'b') { if (!v.is_boolean()) throw std::invalid_argument(std::string(c->name) + " is yes / no."); sets.push_back({c->name, v.get<bool>() ? "true" : "false"}); continue; }
+        if (c->kind == 't') { if (!v.is_string()) throw std::invalid_argument("Note is text."); sets.push_back({c->name, v.get<std::string>().substr(0, 500)}); continue; }
+        if (!v.is_number()) throw std::invalid_argument(std::string(c->name) + " is a number.");
+        const double d = v.get<double>();
+        if (d < c->lo || d > c->hi) throw std::invalid_argument(std::string(c->name) + " must be between " + std::to_string((int)c->lo) + " and " + std::to_string((int)c->hi) + ".");
+        char b[32]; if (c->kind == 'i') std::snprintf(b, sizeof b, "%d", (int)std::lround(d)); else std::snprintf(b, sizeof b, "%.2f", d);
+        sets.push_back({c->name, b});
+    }
+    if (sets.empty()) throw std::invalid_argument("Nothing to change.");
+    const std::string uid = userId > 0 ? std::to_string(userId) : std::string{};
+    for (const int sid : t.seasons) {
+        db->query("INSERT INTO program_season_plans (program_id, budget_year_id, season_id) VALUES ($1::int, $2::int, $3::int) "
+                  "ON CONFLICT (program_id, budget_year_id, season_id) DO NOTHING",
+                  {std::to_string(t.program), std::to_string(t.year), std::to_string(sid)});
+        for (const auto& [col, val] : sets)
+            db->query("UPDATE program_season_plans SET " + col + " = NULLIF($1, '')::" +
+                      (col == "coach_paid" ? "boolean" : col == "note" ? "text" : (col == "players" || col == "teams" || col == "games") ? "integer" : "numeric") +
+                      ", updated_at = now(), updated_by_user_id = NULLIF($2, '')::int "
+                      " WHERE program_id = $3::int AND budget_year_id = $4::int AND season_id = $5::int",
+                      {val, uid, std::to_string(t.program), std::to_string(t.year), std::to_string(sid)});
+    }
+}
+
+void ProgramBudget::saveEntry(int clubId, const std::string& program, const std::string& year, const std::string& season,
+                              int leagueSeasonId, const std::string& ageBand, const json& teams, bool remove) {
+    auto* db = Database::getInstance();
+    if (season == "all") throw std::invalid_argument("Pick one season.");
+    const Target t = target(clubId, program, year, season);
+    const std::string p = std::to_string(t.program), y = std::to_string(t.year), s = std::to_string(t.seasons[0]), ls = std::to_string(leagueSeasonId);
+    if (remove) {
+        db->query("DELETE FROM program_season_entries WHERE program_id = $1::int AND budget_year_id = $2::int AND season_id = $3::int AND league_season_id = $4::int", {p, y, s, ls});
+        return;
+    }
+    if (db->query("SELECT 1 FROM seasons WHERE id = $1::int", {ls}).empty()) throw std::invalid_argument("Which league season?");
+    std::string tv; if (teams.is_number()) { const int n = teams.get<int>(); if (n < 0 || n > 20) throw std::invalid_argument("Teams must be between 0 and 20."); tv = std::to_string(n); }
+    db->query("INSERT INTO program_season_entries (program_id, budget_year_id, season_id, league_season_id, age_band, teams, note) "
+              "VALUES ($1::int, $2::int, $3::int, $4::int, NULLIF($5, ''), NULLIF($6, '')::int, 'Set on the page') "
+              "ON CONFLICT (program_id, budget_year_id, season_id, league_season_id) DO UPDATE SET age_band = EXCLUDED.age_band, teams = EXCLUDED.teams",
+              {p, y, s, ls, ageBand.substr(0, 10), tv});
 }

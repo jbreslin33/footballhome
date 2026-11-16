@@ -72,11 +72,26 @@ class FinancesScreen extends Screen {
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
       const cy = e.target.closest('[data-cap-year]'); if (cy) { this.capYear = cy.dataset.capYear; this._renderBody(); return; }
       const gy = e.target.closest('[data-pg-year]'); if (gy) { this.pgYear = gy.dataset.pgYear; this._renderBody(); return; }
+      const gpaid = e.target.closest('[data-pg-paid]'); if (gpaid) { this._pgSave('program-plan', { season: gpaid.dataset.pgPaid, fields: { coach_paid: gpaid.dataset.on !== '1' } }); return; }
+      const grm = e.target.closest('[data-pg-entry-rm]'); if (grm) { this._pgSave('program-entry', { season: grm.dataset.season, league_season_id: Number(grm.dataset.pgEntryRm), remove: true }); return; }
+      if (e.target.closest('.pg-in, [data-pg-entry-add]')) return;
       const gp = e.target.closest('[data-pg-prog]'); if (gp) { this.pgProg = this.pgProg === gp.dataset.pgProg ? null : gp.dataset.pgProg; this._renderBody(); return; }
       const cp = e.target.closest('[data-cap-paid]'); if (cp) { const t = this._capTeam(Number(cp.dataset.capPaid)); if (t) this._saveCapCoach(t, { is_paid: !this._capCoach(t).is_paid }); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
     div.addEventListener('change', (e) => {
+      const gf = e.target.closest('[data-pg-field]');
+      if (gf) {
+        const raw = String(gf.value).trim(), v = raw === '' ? null : Number(raw);
+        if (v !== null && !Number.isFinite(v)) { this._renderBody(); return; }
+        this._pgSave('program-plan', { season: gf.dataset.season, fields: { [gf.dataset.pgField]: v } }); return;
+      }
+      const ga = e.target.closest('[data-pg-entry-add]');
+      if (ga) {
+        const id = Number(ga.value); if (!id) return;
+        const opt = ((((this.programs || {}).league_options || {})[this._pgYearNow()] || {})[ga.dataset.season] || []).find(o => o.id === id) || {};
+        this._pgSave('program-entry', { season: ga.dataset.season, league_season_id: id, age_band: this._pgBand(opt.bands || []) }); return;
+      }
       const r = e.target.closest('[data-cap-rate]'); if (!r) return;
       const t = this._capTeam(Number(r.dataset.capRate)), v = Number(r.value);
       if (t && r.value !== '' && Number.isFinite(v) && v >= 0) this._saveCapCoach(t, { rate_per_hour: v }); else this._renderBody();
@@ -461,6 +476,26 @@ class FinancesScreen extends Screen {
     this.auth.fetch('/api/finances/programs').then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); this.programs = j; })
       .catch(e => { this.pgErr = e.message; }).finally(() => { this._pgLoading = false; if (this.view === 'programs') this._renderBody(); });
   }
+  _pgYearNow() { const pg = this.programs || {}, years = pg.years || []; return years.includes(this.pgYear) ? this.pgYear : (pg.this_year || years[0]); }
+  // the rate-card band for the open program: the smallest band at or above its age
+  _pgBand(bands) {
+    const p = ((this.programs || {}).programs || []).find(x => x.code === this.pgProg); if (!p || !bands.length) return '';
+    const n = (b) => Number(String(b).replace(/\D/g, '')) || 0, sorted = [...bands].sort((a, b) => n(a) - n(b));
+    return sorted.find(b => n(b) >= p.age_to) || sorted[sorted.length - 1];
+  }
+  // one plan change → the server re-adds everything and answers the programs
+  async _pgSave(path, body) {
+    if (!this.pgProg || this._pgBusy) return;
+    this._pgBusy = true; this.pgMsg = this._copy('pg_saving') || 'Saving…'; this._renderBody();
+    try {
+      const r = await this.auth.fetch(`/api/finances/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ program: this.pgProg, year: this._pgYearNow(), ...body }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      this.programs = j; this.pgMsg = '';
+    } catch (e) { this.pgMsg = e.message; }
+    this._pgBusy = false; this._renderBody();
+  }
   static pgSum(lines, group) { return (lines || []).filter(l => l.group === group).reduce((a, l) => a + Number(l.amount || 0), 0); }
   // one program's year: per season and in total
   _pgRoll(year, code) {
@@ -509,7 +544,7 @@ class FinancesScreen extends Screen {
     const g = b.grant ? `<div class="fn-note">${esc(this._copy('plan_grant_used', { used: M0(b.grant.used), award: M0(b.grant.award) }) || `Grant ${M0(b.grant.used)} of ${M0(b.grant.award)}`)}</div>` : '';
     return `<div class="fn-card"><div class="fn-title">${esc(this._copy('pg_title') || 'Programs')} · ${esc(year)}</div>
       <div class="fn-note">${esc(this._copy('pg_note'))}</div>${yearBar}
-      <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}
+      <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
   // One program: seasons across, lines down (dues → own costs → own net →
@@ -537,12 +572,32 @@ class FinancesScreen extends Screen {
     const minus = (a, b2, sign = -1) => { const o = {}; for (const se of ss) o[se.code] = Number(a[se.code] || 0) + sign * Number(b2[se.code] || 0); return o; };
     const dues = groupBy('dues'), own = groupBy('own'), shared = groupBy('shared'), support = groupBy('support');
     const ownNet = minus(dues, own), net = minus(minus(ownNet, shared), support, +1);
-    const meta = (k, fmt) => `<tr class="item"><td>${esc(k)}</td>${ss.map(se => `<td>${esc(fmt(P[se.code] || {}, se))}</td>`).join('')}<td></td></tr>`;
-    let rows = meta(this._copy('pg_col_players') || 'Players', (x, se) => `${x.players ?? ''}${!se.real && x.players_set ? ' ✎' : ''}`)
-      + meta(this._copy('pg_col_teams') || 'Teams', (x) => `${x.teams ?? ''}`)
-      + meta(this._copy('pg_row_practice') || 'Practice h/wk × weeks', (x, se) => se.real ? '' : `${x.practice_hours_week} × ${x.practice_weeks}`)
-      + meta(this._copy('pg_row_games') || 'Games × h', (x, se) => se.real || !x.games ? '' : `${x.games} × ${x.hours_per_game}`)
-      + meta(this._copy('pg_row_coach') || 'Coach', (x, se) => se.real ? '' : x.coach_paid ? `$${x.coach_rate}/h` : (this._copy('pg_volunteer') || 'volunteer'));
+    // plan cells are inputs (empty = the live default, shown greyed); the
+    // Total column sets every plan season of the year at once
+    const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="number" min="0" step="${step || 1}" data-pg-field="${field}" data-season="${season}"
+        value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
+    const plan = ss.filter(se => !se.real);
+    const editRow = (label, fn, allFn) => `<tr class="item"><td>${esc(label)}</td>${ss.map(se => `<td>${fn(P[se.code] || {}, se)}</td>`).join('')}<td>${plan.length && allFn ? allFn() : ''}</td></tr>`;
+    const allTip = this._copy('pg_all_seasons') || 'all';
+    let rows = editRow(this._copy('pg_col_players') || 'Players', (x, se) => se.real ? String(x.players ?? '') : inp(se.code, 'players', x.players_set ? x.players : '', x.players_default),
+                       () => inp('all', 'players', '', allTip))
+      + editRow(this._copy('pg_col_teams') || 'Teams', (x, se) => se.real ? String(x.teams ?? '') : inp(se.code, 'teams', x.teams_set ? x.teams : '', x.teams), () => inp('all', 'teams', '', allTip))
+      + editRow(this._copy('pg_row_practice_h') || 'Practice h/wk', (x, se) => se.real ? '' : inp(se.code, 'practice_hours_week', x.practice_hours_set ? x.practice_hours_week : '', x.calendar_hours, 0.25), () => inp('all', 'practice_hours_week', '', allTip, 0.25))
+      + editRow(this._copy('pg_row_practice_w') || 'Practice weeks', (x, se) => se.real ? '' : inp(se.code, 'practice_weeks', x.practice_weeks_set ? x.practice_weeks : '', x.practice_weeks, 0.5), null)
+      + editRow(this._copy('pg_row_games_n') || 'Games per team', (x, se) => se.real ? '' : inp(se.code, 'games', x.games, 0), null)
+      + editRow(this._copy('pg_row_game_h') || 'Hours a game', (x, se) => se.real ? '' : inp(se.code, 'hours_per_game', x.hours_per_game, 0, 0.25), () => inp('all', 'hours_per_game', '', allTip, 0.25))
+      + editRow(this._copy('pg_row_coach') || 'Coach', (x, se) => se.real ? '' : `<button class="fn-pill ${x.coach_paid ? 'on' : ''}" style="padding:2px 8px; font-size:0.75rem;" data-pg-paid="${se.code}" data-on="${x.coach_paid ? '1' : '0'}">${esc(x.coach_paid ? (this._copy('pg_paid') || 'Paid') : (this._copy('pg_volunteer') || 'volunteer'))}</button>`, null)
+      + editRow(this._copy('pg_row_rate') || 'Coach $/h', (x, se) => se.real ? '' : inp(se.code, 'coach_rate', x.coach_rate_set ? x.coach_rate : '', x.coach_rate, 0.5), () => inp('all', 'coach_rate', '', allTip, 0.5));
+    if (p.kind === 'youth') {
+      const opts = ((this.programs.league_options || {})[year]) || {};
+      rows += editRow(this._copy('pg_row_leagues') || 'Leagues', (x, se) => {
+        if (se.real) return '';
+        const have = (x.entries || []).map(e => `<span style="white-space:nowrap; display:block;">${esc(e.league.replace('Philadelphia Parks & Recreation', 'PPR').replace('Inter-County Soccer League', 'ICSL'))} ${esc(e.name)}${e.age_band ? ` (${esc(e.age_band)})` : ''} <button class="fn-pill" style="padding:0 6px; font-size:0.7rem;" data-pg-entry-rm="${e.league_season_id}" data-season="${se.code}" title="${esc(this._copy('pg_remove') || 'Remove')}">✕</button></span>`).join('');
+        const free = (opts[se.code] || []).filter(o => !(x.entries || []).some(e => e.league_season_id === o.id));
+        const add = free.length ? `<select data-pg-entry-add data-season="${se.code}" style="max-width:9em; font-size:0.75rem; background:transparent; color:inherit;"><option value="">${esc(this._copy('pg_add_league') || '＋ league')}</option>${free.map(o => `<option value="${o.id}">${esc(o.league)} ${esc(o.name)}</option>`).join('')}</select>` : '';
+        return `<div style="text-align:left;">${have}${add}</div>`;
+      }, null);
+    }
     rows += [...groups.dues.values()].map(r => line(r, 'fn-in')).join('');
     rows += [...groups.own.values()].map(r => line(r, 'fn-out')).join('');
     rows += sumRow(this._copy('pg_line_own') || 'Own net', ownNet, 'subtotal');
@@ -550,7 +605,7 @@ class FinancesScreen extends Screen {
     rows += [...groups.support.values()].map(r => line(r, 'fn-in')).join('');
     rows += sumRow(this._copy('pg_line_net') || 'Net with shared', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
-    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div><div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   _capTeam(id) { return ((this.capacity || {}).teams || []).find(t => t.team_id === id); }

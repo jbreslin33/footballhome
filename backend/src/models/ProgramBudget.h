@@ -27,7 +27,17 @@
 // for Men's / Women's; youth plan seasons price their entries from the rate
 // card instead (their team fee plans would count twice).
 // docs/finance-programs.md.
+//
+// savePlan(): set fields of program_season_plans for one plan season (or
+// season "all" = every plan season of that year). A null value goes back to
+// the live default. Real seasons can't be edited.
+// saveEntry(): add / change / remove one league a youth program enters in a
+// plan season (program_season_entries).
 class ProgramBudget {
 public:
     static nlohmann::json build(int clubId);
+    static void savePlan(int clubId, const std::string& program, const std::string& year, const std::string& season,
+                         const nlohmann::json& fields, long long userId);
+    static void saveEntry(int clubId, const std::string& program, const std::string& year, const std::string& season,
+                          int leagueSeasonId, const std::string& ageBand, const nlohmann::json& teams, bool remove);
 };

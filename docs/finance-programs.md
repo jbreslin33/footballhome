@@ -71,7 +71,14 @@ own net − shared + support.
 ## Steps
 
 1. ✅ Programs, seasons, plans, the read-only pill (11/16).
-2. Editing on the page: players, teams, practice, games, coach paid / rate,
-   leagues per plan season.
+2. ✅ Editing on the page (11/16, mig 1393): each plan season's players,
+   teams, practice h/wk + weeks, games, hours a game, coach paid / volunteer
+   + $/h (empty = back to the live default); the Total column sets every plan
+   season of the year; youth leagues ✕ / ＋ from `league_options` (league
+   seasons with a rate card, by the season their start falls in).
+   `POST /api/finances/program-plan` {program, year, season|"all", fields} and
+   `/program-entry` {program, year, season, league_season_id, age_band,
+   teams, remove} answer the whole programs again. The books (CashFlow,
+   Expenses) are cached 60 s in ProgramBudget so an edit takes ~2.5 s.
 3. Full capacity = the same model with players at capacity; Operating Budget
    for later years reads the programs.
