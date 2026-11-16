@@ -1978,8 +1978,41 @@ class EventScreen extends Screen {
       return this.cardFoldHtml('data-ec-fold', key, isOpen, L('sec_coaches', '🧑‍🏫 Coaches'), coaches.length, body,
                                { aside: presentAside(coaches), top: bar });
     };
+    // ✅ Present tally (owner 11/16: "it should show total present on
+    // calendar regardless if they set going … 3 present going, 2 present no
+    // response, 5 total"): everyone marked Present / Late, whatever they
+    // answered, split by their answer; coaches counted apart (never in the
+    // player total). From the event's day on, like the per-section counts.
+    const presentTally = () => {
+      if (!this.att || !this._eventDayReached()) return '';
+      const isP = (id) => { const e = this.att.roster.get(id); return !!e && (e.status === 'present' || e.status === 'late'); };
+      const seen = new Set(), parts = [];
+      const part = (tier, fb, list) => {
+        const n = list.filter(r => !seen.has(r.person_id) && isP(r.person_id)).length;
+        list.forEach(r => seen.add(r.person_id));
+        if (n) parts.push(cp(tier, { n }) || fb.replace('{n}', n));
+      };
+      part('present_going', '{n} going', going.filter(r => !r.is_callup));
+      part('present_invited', '{n} invited', going.filter(r => r.is_callup));
+      part('present_noresp', '{n} no response', noResp);
+      part('present_notgoing', '{n} said not going', players.filter(r => r.response === 'no'));
+      part('present_injured', '{n} injured', injured);
+      part('present_ineligible', '{n} ineligible (dues)', goingAll.filter(r => r.dues_eligible === false));
+      part('present_other', '{n} other', [...suspended, ...inactive]);
+      const coachN = coaches.filter(r => isP(r.person_id)).length; coaches.forEach(r => seen.add(r.person_id));
+      // marked present but not on this event's list at all
+      let off = 0; for (const [id, e] of this.att.roster) if (!seen.has(id) && (e.status === 'present' || e.status === 'late')) off++;
+      if (off) parts.push(cp('present_offlist', { n: off }) || `${off} not on the list`);
+      const total = parts.length ? [...this.att.roster.entries()].filter(([id, e]) => (e.status === 'present' || e.status === 'late') && !coaches.some(c => c.person_id === id)).length : 0;
+      const coachTxt = coachN ? ` <span style="opacity:0.8;">${this.escapeHtml(cp('present_coaches', { n: coachN }) || `+ ${coachN} coach${coachN === 1 ? '' : 'es'}`)}</span>` : '';
+      return `<div style="display:flex; flex-wrap:wrap; gap:6px 10px; align-items:baseline; padding:8px 12px; margin:0 0 var(--space-3); border:1px solid #22c55e; border-radius:10px; background:rgba(34,197,94,0.08);">
+          <span style="font-weight:800; color:#22c55e;">${this.escapeHtml(cp('present_total', { n: total }) || `✅ ${total} present`)}</span>
+          ${parts.length ? `<span style="font-size:0.85rem;">${this.escapeHtml(parts.join(' · '))}</span>` : ''}${coachTxt}
+        </div>`;
+    };
     if (unplacedOnly) return split ? unplacedHtml() : '';
     return `
+      ${presentTally()}
       ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
       ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
