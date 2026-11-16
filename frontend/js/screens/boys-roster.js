@@ -490,7 +490,7 @@ class BoysRosterScreen extends RosterScreenBase {
 
     const body = (shown.length === 0 && !ridersHtml)
       ? '<div style="opacity:0.5; font-size:0.85rem;">(empty)</div>'
-      : this.renderColumnSections(col, shown, renderList, data, ridersHtml);
+      : this.renderColumnSections(col, shown, renderList, data, ridersHtml, this.renderRosterStatusTallies(col, players) + this.renderDocsRow(col, players));
 
     // Column-header financial roll-up ("⚠ N OVERDUE") was removed
     // 2026-07-14 — belongs on the /payments screen, not here.  The
@@ -508,8 +508,6 @@ class BoysRosterScreen extends RosterScreenBase {
           </span>
         </div>
         ${catPills}
-        ${this.renderRosterStatusTallies(col, players)}
-        ${this.renderDocsRow(col, players)}
         <div class="br-drop-zone" data-drop-team-id="${col.isUnassigned ? '' : col.teamId}"
              style="display:flex; flex-direction:column; gap:8px; min-height:8px; min-width:${this.colBoxMinWidth()};">
           ${body}

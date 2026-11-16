@@ -558,7 +558,8 @@ class RosterScreenBase extends Screen {
   // from teams.field_size (migration 322) via col.fieldSize; columns
   // with no format on file just show the tally line.
   renderOnRosterTally(col, players) {
-    if (!col || !col.teamId) return '';
+    // No league roster (winter practice groups, mig 1416) → no tally.
+    if (!col || !col.teamId || col.leagueRoster === false) return '';
     const n = (players || []).filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)).length;
     const fieldSize = Number(col.fieldSize) || 0;
     return `<span data-on-roster-tally="${col.teamId}" data-field-size="${fieldSize}"
@@ -669,9 +670,37 @@ class RosterScreenBase extends Screen {
   // paid status for youth teams by age … do that for men etc too … same
   // with roster pill"): paid / owe $ / no LA for the players the column
   // shows, on both the Roster and Team pills.
-  renderColumnSections(col, shown, renderList, data, ridersHtml = '') {
-    const inner = this._renderColumnSectionsInner(col, shown, renderList, data, ridersHtml);
-    return (col && col.teamId ? this.paidStatsHtml(shown) : '') + inner;
+  // Main list on top, everything else rolled up (owner 11/16: "would
+  // prefer if active is at top and the other stuff is expandable but
+  // rolled up by default").  Team pill: ACTIVE on top; Roster pill: ON
+  // ROSTER on top.  The fold holds the dues line, the board's own extras
+  // (STATUS tallies, docs row) and every other section.
+  renderColumnSections(col, shown, renderList, data, ridersHtml = '', extras = '') {
+    const { top, rest, n } = this._renderColumnSectionsInner(col, shown, renderList, data, ridersHtml);
+    if (!col || !col.teamId) return top + rest;
+    const folded = this.paidStatsHtml(shown) + (extras || '') + rest;
+    return top + (folded.trim() ? this.foldHtml(col, folded, n) : '');
+  }
+
+  // A column's "▸ More" fold — closed by default; one opened stays open
+  // across re-renders this page visit (per pill + team).
+  foldHtml(col, inner, n) {
+    const key = `${this.boardView}:${col.teamId}`;
+    const open = RosterScreenBase.OPEN_FOLDS.has(key);
+    const label = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_more_fold', { n })) || `▸ More · ${n}`;
+    return `<details class="rs-col-fold" data-fold-key="${RosterScreenBase.escapeHtml(key)}" ${open ? 'open' : ''}
+        ontoggle="RosterScreenBase.noteFold(this)" style="margin-top:10px;">
+        <summary style="cursor:pointer; list-style:none; font-size:0.74rem; font-weight:800; color:#94a3b8;
+          padding:5px 8px; border:1px dashed #475569; border-radius:6px;">${RosterScreenBase.escapeHtml(label)}</summary>
+        <div style="margin-top:6px;">${inner}</div>
+      </details>`;
+  }
+
+  static get OPEN_FOLDS() { return RosterScreenBase._openFolds || (RosterScreenBase._openFolds = new Set()); }
+  static noteFold(el) {
+    const key = el && el.dataset && el.dataset.foldKey;
+    if (!key) return;
+    if (el.open) RosterScreenBase.OPEN_FOLDS.add(key); else RosterScreenBase.OPEN_FOLDS.delete(key);
   }
 
   // 'paid' (nothing owed) · 'owes' · 'none' (no LA registration / no billing data).
@@ -705,7 +734,7 @@ class RosterScreenBase extends Screen {
   }
 
   _renderColumnSectionsInner(col, shown, renderList, data, ridersHtml = '') {
-    if (!col || !col.teamId) return renderList(shown) + ridersHtml;
+    if (!col || !col.teamId) return { top: renderList(shown) + ridersHtml, rest: '', n: 0 };
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
     const bucket = (data && data.buckets && data.buckets[String(col.teamId)]) || shown;
@@ -857,8 +886,8 @@ class RosterScreenBase extends Screen {
           + (list.length ? '' : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
         : '';
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', playing.length, ...GREEN)
-        + (playing.length ? ordered(playing).map(p => card(p, offList(p) ? offChip : undefined)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
-        + mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE)
+        + (playing.length ? ordered(playing).map(p => card(p, offList(p) ? offChip : undefined)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+      const mirrorsHtml = mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE)
         + mirrorGroup(dropping, dropSteps, copy('board_team_needs_drop_h') || copy('board_dropping_h') || '⬇ NEEDS DROP', ORANGE);
       // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
       // "take all out of call up pool until i tell you who to put in
@@ -873,12 +902,16 @@ class RosterScreenBase extends Screen {
         ? head(copy('board_needs_onboard_h') || 'NEEDS ONBOARD', cats.onboard.length, '#e879f9', 'rgba(232,121,249,0.14)')
           + (cats.onboard.length ? ordered(cats.onboard).map(p => card(p)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
         : '';
-      return activeHtml
+      firstHead = true;   // the fold's first banner sits flush too
+      const rest = mirrorsHtml
         + onboardGroup
         + ridersGroup
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
+      const n = adding.length + dropping.length + cats.onboard.length + ridersCount
+        + cats.practice_squad.length + cats.injured.length + cats.inactive.length;
+      return { top: activeHtml, rest, n };
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
@@ -1060,8 +1093,9 @@ class RosterScreenBase extends Screen {
         && !RosterScreenBase.countsAsOnRoster(p.rosterStatus) && !shownAsAdd(p));
       return hdr(list.length) + (list.length ? ordered(list).map(p => card(p)).join('') : NONE);
     };
-    if (this.rosterFrozen(col.teamId)) return officialHtml + notOnRosterSection();
-    return officialHtml + needsAddSection() + needsDropSection() + notOnRosterSection() + projectedSection();
+    firstHead = true;   // the fold's first banner sits flush too
+    if (this.rosterFrozen(col.teamId)) return { top: officialHtml, rest: notOnRosterSection(), n: rest.length };
+    return { top: officialHtml, rest: needsAddSection() + needsDropSection() + notOnRosterSection() + projectedSection(), n: rest.length };
   }
 
   // This team's league roster is frozen under the lit season pill
