@@ -134,7 +134,20 @@ and keeps its own RSVP cards, attendance, invites, reminders, call-ins, poll.
    the event's 👀 bar (`lib/event-posts.js`; games flyer only — their posts
    are Game Center pills).  calendar.js deleted; menu rows `player` and
    `game-center` off; `#calendar`/`#my`/`#event-center` land here.
-2. **Next — fold Game Center into the base.**  Delete GC's own RSVP cards,
+2. **DONE 11/16 (214fb1e2, 6242037e, + split)** — a game loads only its own
+   event (GET /api/calendar/events/:id) and the 15 s beat refreshes its
+   RSVPs like a practice; the broken "RSVP & Player Details" sheet (wrote to
+   a 410 endpoint) and Game Center's own game picker are deleted; the page
+   tops out like a practice (👀 bar · pill row · your availability, draft
+   bar on lineup pills only); 🎞 Weekend slideshows moved to the Calendar.
+   game-center.js 7.5k → 4.2k lines: game-only parts in
+   `screens/game-center/*.js` (tactics-plan, lineup-edit, opponent-contacts,
+   roster-print, squad-notice, details-score, eligibility), mixed into
+   GameCenterScreen by `lib/mixin.js` (parts never use `super`).
+   Still open inside 2: Game Center keeps thin hooks over EventScreen
+   (_markAttendance keyed by _fhEventId, its own invite/remind/text-mark
+   loads with extra fields) — fold when touched.
+   Was: **fold Game Center into the base.**  Delete GC's own RSVP cards,
    attendance marking, invites, reminders, call-ins and poll so games run
    EventScreen's (practice's) code; split the rest (lineup, posts, tactics)
    into modules under a slim game child.  Same shell for every kind: header,
