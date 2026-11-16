@@ -597,7 +597,12 @@ class FinancesScreen extends Screen {
     const add = (a, t) => { for (const k of ['dues', 'own', 'shared', 'support', 'ownNet', 'net', 'players', 'teams']) a[k] = (a[k] || 0) + t[k]; return a; };
     let rows = '', youth = {}, club = {};
     for (const p of pg.programs) {
-      const t = this._pgRoll(year, p.code); add(club, t);
+      let t = this._pgRoll(year, p.code);
+      if (p.kind === 'men' && !full) {   // same numbers as the 💵 table under it
+        const m = this._menYear(year), own = m.costs, support = m.grant + m.casa;
+        t = { ...t, dues: m.dues, own, shared: m.share, support, players: m.paying || t.players, ownNet: m.dues - own, net: m.dues - own - m.share + support };
+      }
+      add(club, t);
       if (p.kind === 'youth') add(youth, t);
       rows += row(p.code, p.label, t, '');
       if (p.code === this.pgProg) rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${p.kind === 'men' && !full ? this._menMoneyHtml(year) : this._programDetailHtml(year, p)}</td></tr>`;
@@ -767,12 +772,16 @@ class FinancesScreen extends Screen {
     const monthly = Number(((x.plan_dues || []).find(d => d.section_id === heads.section_id) || {}).monthly || 0);
     return { bands: list(bands), options: list(options), paying: Number(heads.paying || 0), active: Number(heads.active || 0), fullHouse: [...spots.values()].reduce((a, n) => a + n, 0), monthly };
   }
-  _menMoneyHtml(year) {
-    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
+  // The Men's year in money (the 💵 table's Whole year): dues / CASA / grant /
+  // club share from the Year plan's Men's pill (a later year: the programs),
+  // costs per competition from _menCompetitions. The Programs summary row
+  // shows the same numbers (owner 11/16: one set of numbers, not two).
+  _menYear(year) {
+    const M0 = FinancesScreen.money0;
     const thisYear = ((this.flow || {}).year || {}).label || '';
     const C = this._menCompetitions(year), feeRatio = this._laFeeRatio();
     // money in + the club-wide share: this year the Year plan's Men's pill; a later year the programs
-    let dues = 0, duesDetail = '', casa = 0, grant = 0, award = 0, share = 0, shareDetail = '';
+    let dues = 0, duesDetail = '', casa = 0, grant = 0, award = 0, share = 0, shareDetail = '', paying = C.paying;
     if (year === thisYear) {
       const keep = this.scope; this.scope = 'mens';
       let m; try { m = this._budgetModel(year); } finally { this.scope = keep; }
@@ -791,7 +800,16 @@ class FinancesScreen extends Screen {
         else if (l.group === 'support') { if (l.key === 'casa') casa += a; else grant += a; }
       }
       duesDetail = this._copy('plan_prog_dues_unit') || 'from the programs';
+      // a later year's men = the programs' players, averaged over the year's months
+      if (P) { let pm = 0, mo = 0; for (const se of b.seasons) { const n = (se.months || []).length || 1; pm += Number((P[se.code] || {}).players || 0) * n; mo += n; } if (mo) paying = Math.round(pm / mo); }
     }
+    const laFees = dues * feeRatio, costs = C.bands.reduce((a, b) => a + b.total, 0) + laFees;
+    return { C, feeRatio, dues, duesDetail, casa, grant, award, share, shareDetail, laFees, costs, paying };
+  }
+  _menMoneyHtml(year) {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
+    const thisYear = ((this.flow || {}).year || {}).label || '';
+    const { C, feeRatio, dues, duesDetail, casa, grant, award, share, shareDetail, paying } = this._menYear(year);
     // ── season pills: Year (default) or one season. Every line carries its
     // split by season (`by`); a season pill shows that season's part.
     const T = this._pmSplit(year), SS = T.SS;
@@ -824,7 +842,7 @@ class FinancesScreen extends Screen {
     const comps = bands.filter(b => b.code !== 'mens');
     const outTotal = bands.reduce((a, b) => a + b.total, 0) + laFees + shareV;
     const inPre = duesV + casaV, pre = inPre - outTotal, post = pre + grantV;
-    const N = C.paying, F = C.fullHouse, perMan = (v, n) => n > 0 ? v / nMonths / n : 0;
+    const N = paying, F = C.fullHouse, perMan = (v, n) => n > 0 ? v / nMonths / n : 0;
     // dues that fund it: costs less CASA (and the grant), grossed up for LeagueApps' cut
     const costsNoFee = outTotal - laFees, gross = (v) => feeRatio < 1 ? Math.max(0, v) / (1 - feeRatio) : v;
     const needPre = gross(costsNoFee - casaV), needPost = gross(costsNoFee - casaV - grantV);
@@ -887,10 +905,20 @@ class FinancesScreen extends Screen {
     }
     const cols = (this._copy('pm_columns') || 'Line|Rate × qty|Year|Per man / mo').split('|').map(c => c.trim());
     if (selSeason) { cols[1] = this._copy('pm_col_year_cost') || 'Whole year'; cols[2] = selSeason.label; }
+    // a later year's dues come from the programs' players per season: type to
+    // set, clear to go back to the default (grey); this year's dues are real
+    let playersRow = '';
+    const PB = ((this.programs || {}).budgets || {})[year], PM = PB && PB.programs.mens;
+    if (year !== thisYear && PM && PB.seasons.some(se => !se.real)) {
+      const inp = (season, value, placeholder) => `<input class="pg-in" type="number" min="0" step="1" data-pg-field="players" data-season="${esc(season)}" value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
+      playersRow = `<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:4px 0 8px;"><span style="font-weight:700;">${esc(this._copy('pm_players_edit') || 'Paying men per season')}</span>`
+        + PB.seasons.filter(se => !se.real).map(se => { const x = PM[se.code] || {}; return `<label style="white-space:nowrap;">${esc(se.label)} ${inp(se.code, x.players_set ? x.players : '', x.players_default)}</label>`; }).join('')
+        + `<label style="white-space:nowrap;">${esc(this._copy('pg_all_seasons') || 'all')} ${inp('all', '', '')}</label></div>`;
+    }
     const pills = [{ code: 'year', label: this._copy('pm_year') || 'Whole year' }, ...SS].map(se =>
       `<button class="fn-pill ${se.code === sel ? 'on' : ''}" data-pm-season="${esc(se.code)}">${esc(se.label)}</button>`).join(' ');
     return `<div class="fn-card" style="margin:4px 0 8px 0;"><div class="fn-title">${esc(this._copy('pm_title', { year }) || `💵 Men's money · ${year}`)}${selSeason ? ` · ${esc(selSeason.label)}` : ''}</div>
-      <div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;">${pills}</div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin:6px 0;">${pills}</div>${playersRow}
       <div class="fn-note">${esc(this._copy('pm_note', { n: N }) || '')}${selSeason ? ' ' + esc(this._copy('pm_seasons_note') || '') : ''}</div>
       <div style="overflow-x:auto;"><table class="fn-table" style="min-width:520px;"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
       <div class="fn-note" style="margin-top:6px;">${esc(this._copy('assumed_note') || '* assumed')}</div></div>`;
