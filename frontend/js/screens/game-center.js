@@ -684,9 +684,6 @@ class GameCenterScreen extends EventScreen {
            each tap would throw that away and re-fire its four API calls.
            _renderSocial owns that node and only rebuilds it when the
            post or its open/closed state actually changes. -->
-      <!-- 🎞 Weekend slideshows (mig 1179): staff who may post. Owned by
-           WeekendSlides, never rewritten by _render(). -->
-      <div id="gc-weekend" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <div id="gl-head" style="padding: var(--space-3) var(--space-4) 0;"></div>
       <div id="gc-social" style="padding: 0 var(--space-4);"></div>
       <div id="gl-body" style="padding: 0 var(--space-4) var(--space-6);"></div>
@@ -765,7 +762,6 @@ class GameCenterScreen extends EventScreen {
     // Game Center is where staff set it.
     this.playerOnly = params.view === 'player';
     this.view = params.view || null;
-    this._paintWeekend();
     this.error = null;
     this.loaded = false;
     this.viewMode = 'coach';
@@ -3381,21 +3377,6 @@ class GameCenterScreen extends EventScreen {
     }
   }
 
-  // 🎞 Weekend slideshows (mig 1179, owner 11/7): one Instagram carousel of
-  // every game that weekend — Game Announcements, or Lineups (a game with
-  // no lineup gets its announcement slide).  Club-wide, so it sits above
-  // the game's own pills, for the roles that may post.
-  _paintWeekend() {
-    const host = this.find('#gc-weekend');
-    if (!host) return;
-    if (!this._mayPostSocial() || typeof WeekendSlides === 'undefined') { host.innerHTML = ''; return; }
-    this.weekendSlides = this.weekendSlides || new WeekendSlides(this.auth, {
-      navigation: this.navigation,
-      escapeHtml: (t) => this.escapeHtml(t),
-    });
-    this.weekendSlides.mount(host);
-  }
-
   // The header under the title: game · date · Arrival · Warmup · Kickoff
   // (owner 11/5: times on every event in Event Center — a game opens here).
   // The same header as every Event Center event (EventScreen._render):
@@ -3549,21 +3530,18 @@ class GameCenterScreen extends EventScreen {
     // instagram section? why cant we just have it all up top?"): pills
     // flip the one card, that post's tools and Post button sit right
     // under it, and the lineup editor follows.
-    const paint = (bodyHtml) => {
-      // 🎞 Weekend slideshows are posts: only over the post pills, never
-      // over 👥 All Players or 🎯 Tactics (every event looks the same
-      // except where it must differ).
-      const wk = this.find('#gc-weekend');
-      if (wk) wk.style.display = (this.pill === PLAYERS_PILL || this.pill === TACTICS_PILL.key || this.viewMode === 'player') ? 'none' : '';
-      if (this.pill === PLAYERS_PILL) {
+    // The top of every pill, in EventScreen's order (owner 11/16: practice
+    // and games one interface): 👀 bar, the pill row, your availability —
+    // then the pill's own pieces (the lineup pills' Official / draft bar …).
+    const pillRow = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`;
+    const top = seeAsBar + pillRow + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`;
+    const paint = (bodyHtml) => {      if (this.pill === PLAYERS_PILL) {
         // 👥 All Players: EventScreen's list (Going / No response / Not
         // going, P/A/L/E, ✓/✗, reminders, 📇, call-in requests, mark all
         // present) — the very list a practice opens on.
         this._stopCards();
         this._tacticsBigOff();
-        head.innerHTML = seeAsBar + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
-          + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
-          + this._duesAlternateStripHtml();
+        head.innerHTML = top + this._duesAlternateStripHtml();
         EventScreen.ensureCardStyles();
         box.innerHTML = `<div data-gc-players-pane>${this._playersPaneHtml()}</div>`;
         return;
@@ -3571,16 +3549,16 @@ class GameCenterScreen extends EventScreen {
       if (this.pill === TACTICS_PILL.key) {
         // The tactics pitch in place of the graphic; nothing under it.
         this._stopCards();
-        head.innerHTML = seeAsBar + this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
-          + this._tacticsSectionHtml();
+        head.innerHTML = top + this._draftBarHtml() + this._tacticsSectionHtml();
         box.innerHTML = '';
         this._mountTactics();
         return;
       }
       this._tacticsBigOff();
-      head.innerHTML = seeAsBar + this._draftBarHtml() + `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`
+      // Official / My draft / Compare belongs to the lineup pills only.
+      const lineupPill = this.pill === 'lineup' || this.pill === 'starters_bench';
+      head.innerHTML = top + (lineupPill ? this._draftBarHtml() : '')
         + this._unplacedTopHtml()
-        + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`
         + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');

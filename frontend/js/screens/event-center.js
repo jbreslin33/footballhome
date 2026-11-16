@@ -123,6 +123,9 @@ class EventCenterScreen extends Screen {
           <div id="ec-release"></div>
           <div id="ec-clash"></div>
         </div>
+        <!-- 🎞 Weekend slideshows (mig 1179) — club-wide, so here, not on
+             each game (moved off Game Center 11/16).  Who may post. -->
+        <div id="ec-weekend"></div>
         <div id="ec-body"></div>
         <section id="ec-mine">
           <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
@@ -140,6 +143,7 @@ class EventCenterScreen extends Screen {
   onEnter(params = {}) {
     this._mountMine();
     this._mountOps();
+    this._mountWeekend();
     // An old door with one event (saved history) shows that event's week.
     const evAt = params.event && new Date(params.event.starts_at);
     if (evAt && !isNaN(evAt)) { this.anchor = evAt; this.weekStart = EventCenterScreen.monday(evAt); this.events = null; }
@@ -282,6 +286,21 @@ class EventCenterScreen extends Screen {
     this.release = new ReleaseStrip(this.find('#ec-release'), ctx);
     this.release.onChange = () => this._loadEvents();
     new ClashStrip(this.find('#ec-clash'), ctx).load();
+  }
+
+  // 🎞 One Instagram carousel of the weekend's games (WeekendSlides loads
+  // its own games).  The roles that may post: club, super, marketing —
+  // never under view-as.
+  _mountWeekend() {
+    const host = this.find('#ec-weekend');
+    if (!host) return;
+    const role = String((this.auth && this.auth.user && this.auth.user.role) || '').toLowerCase();
+    if (typeof WeekendSlides === 'undefined' || (this.auth && this.auth.viewAsPersonId) || !['club', 'super', 'marketing'].includes(role)) { host.innerHTML = ''; return; }
+    this.weekendSlides = this.weekendSlides || new WeekendSlides(this.auth, {
+      navigation: this.navigation, escapeHtml: (t) => this.escapeHtml(t),
+    });
+    this.weekendSlides.el = null;   // a fresh element every visit
+    this.weekendSlides.mount(host);
   }
 
   _loadOps() {
