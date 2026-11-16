@@ -364,14 +364,22 @@ class FinancesScreen extends Screen {
     }
     // Field rental income (mig 1372; owner: "CASA Rental that soccer club
     // handles so we count that as money soccer earned", "casa always pays"):
-    // every booking on the calendar in the year, club-wide, shared like grants.
-    if (year === thisYear && share) {
+    // every booking on the calendar in the year, club-wide, shared like grants;
+    // a season with nothing booked yet is assumed like fall (mig 1389, owner
+    // "casa will rent in sspring"), so later years count both seasons too.
+    const ry = ((this.flow || {}).rental_years || []).find(r => r.label === year);
+    if (ry && share) {
+      const booked = Number(ry.booked || 0), projected = Number(ry.projected || 0), total = booked + projected;
+      const bn = Number(ry.booked_n || 0), an = Math.round(Number(ry.projected_n || 0));
       const fy = (this.flow || {}).year || {}, s0 = String(fy.starts_on || '').slice(0, 7), e0 = String(fy.ends_on || '').slice(0, 7);
-      const bookings = ((this.flow || {}).items || []).filter(i => i.dir === 'in' && i.category === 'rental' && i.ym >= s0 && (!e0 || i.ym <= e0));
-      const total = bookings.reduce((a, i) => a + Number(i.amount || 0), 0);
+      const aheadBooked = year === thisYear && ((this.flow || {}).items || []).some(i => i.dir === 'in' && i.category === 'rental' && i.ahead && !i.projected && i.ym >= s0 && (!e0 || i.ym <= e0));
+      const detail = pillS ? `${M0(total)} × ${pct}`
+        : !an ? `${bn}`
+        : bn ? (this._copy('plan_rental_detail', { booked: bn, assumed: an }) || `${bn} booked + ${an} assumed`)
+        : (this._copy('plan_rental_assumed', { assumed: an }) || `${an} assumed`);
       if (total) revenue.push({ kind: 'rental', share, label: this._copy('plan_rev_rental') || 'Field rental income',
-        detail: pillS ? `${M0(total)} × ${pct}` : `${bookings.length}`, unit: this._copy('plan_rev_rental_unit') || 'bookings on the calendar',
-        amount: total * share, assumed: bookings.some(i => i.ahead) });
+        detail, unit: an ? (this._copy('plan_rental_unit_assumed') || 'bookings on the calendar; seasons not booked yet assumed like fall') : (this._copy('plan_rev_rental_unit') || 'bookings on the calendar'),
+        amount: total * share, assumed: an > 0 || aheadBooked });
     }
     // expenses by category, in the club's category order
     const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);

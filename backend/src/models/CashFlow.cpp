@@ -1,6 +1,8 @@
 #include "CashFlow.h"
 
+#include <map>
 #include <stdexcept>
+#include <vector>
 
 #include "../database/Database.h"
 #include "Expenses.h"
@@ -189,6 +191,39 @@ json CashFlow::build(int clubId) {
                 "   AND (date_trunc('month', r.starts_at AT TIME ZONE 'America/New_York') ") + (ahead ? ">" : "<=") +
                 " date_trunc('month', now() AT TIME ZONE 'America/New_York')) GROUP BY 1, 2, 3", {club, start}),
             "in", "rental", ahead);
+
+    // Rental seasons not booked yet (mig 1389, owner "casa will rent in
+    // sspring" → same as fall, projected): this budget year's projected months
+    // are items still ahead (never actuals); every year's booked + projected
+    // totals feed the Operating Budget / Full capacity for later years.
+    out["rental_years"] = json::array();
+    {
+        const auto rows = db->query(
+            "SELECT r.budget_year, r.season, r.policy_label, r.ym, r.booked_usd::float8 AS booked, r.booked_n, "
+            "       r.projected_usd::float8 AS projected, r.projected_n::float8 AS projected_n, "
+            "       (r.budget_year = y.label AND r.ym > to_char(now() AT TIME ZONE 'America/New_York', 'YYYY-MM')) AS this_year_ahead "
+            "  FROM fh_field_rental_projected($1::int) r "
+            "  JOIN cash_flow_policies p ON p.club_id = $1::int JOIN budget_years y ON y.id = p.budget_year_id "
+            " WHERE r.budget_year >= y.label", {club});
+        std::map<std::string, json> years;
+        std::vector<std::string> order;
+        for (const auto& r : rows) {
+            const std::string by = r["budget_year"].c_str();
+            if (!years.count(by)) { years[by] = {{"label", by}, {"booked", 0.0}, {"booked_n", 0}, {"projected", 0.0}, {"projected_n", 0.0}}; order.push_back(by); }
+            json& y = years[by];
+            y["booked"] = y["booked"].get<double>() + num(r, "booked");
+            y["booked_n"] = y["booked_n"].get<int>() + r["booked_n"].as<int>();
+            y["projected"] = y["projected"].get<double>() + num(r, "projected");
+            y["projected_n"] = y["projected_n"].get<double>() + num(r, "projected_n");
+            if (r["this_year_ahead"].as<bool>() && num(r, "projected") > 0)
+                out["items"].push_back({{"ym", r["ym"].c_str()}, {"dir", "in"}, {"scope", "club"}, {"type", "rental"},
+                                        {"name", std::string(r["policy_label"].c_str()) + " — " + r["season"].c_str()},
+                                        {"season", r["season"].c_str()}, {"category", "rental"}, {"detail", ""},
+                                        {"amount", num(r, "projected")}, {"ahead", true}, {"projected", true},
+                                        {"sessions", num(r, "projected_n")}});
+        }
+        for (const auto& by : order) out["rental_years"].push_back(years[by]);
+    }
 
     // A season's money paid before the year began (budget_lines.paid_before_usd,
     // e.g. APSL installments 1–13): part of the year's cost, not this year's

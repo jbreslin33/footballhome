@@ -109,3 +109,14 @@ Dues items carry `section` (from the LA program's category) — never map dues
 to sections through the scope tree (youth teams sit under Youth, so Boys lost
 its team-tagged dues; Oct showed $1,898 instead of $3,080). The collection-rate
 guess is out of the budget; the allowance stays on the statements.
+
+**CASA rental seasons (mig 1389):** owner 11/16 *"casa will rent in sspring"*
+→ same as fall, projected. `field_rental_seasons` (fall Sep–Nov, spring
+Mar–May, 5 sessions × 4 h each) + `fh_field_rental_projected(club)`: per
+budget year and season, any calendar booking in the season's months wins;
+otherwise sessions × hours × the policy's rate, spread over the months.
+CashFlow adds this year's unbooked months as `projected` items still ahead
+(Cash Flow Forecast; never actuals, so statements and BvA ignore them) and
+`rental_years` (booked + projected per year) for the Operating Budget and
+Full capacity in later years. 2026-27: $1,500 booked + $1,500 spring
+assumed; 2027-28 on: $3,000 assumed.
