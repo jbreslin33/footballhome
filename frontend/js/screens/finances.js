@@ -762,7 +762,9 @@ class FinancesScreen extends Screen {
       const line = { label: l.scope === 'apsl' && l.short_label && l.short_label !== 'APSL' ? `${l.short_label} — ${l.label}` : l.label, detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, amount: Number(l.amount || 0), assumed: l.is_assumed, note: l.note, by: planBy(l) };
       const block = l.scope === 'cups' ? `cup:${l.league}` : l.scope;
       const label = l.scope === 'cups' ? l.league : scopeLabel(l.scope);
-      put(l.is_option ? options : bands, l.scope, block, label, line);
+      // a later year's game coaching sits on the plans: into the Coaching band
+      if (l.fee_kind === 'game_coaching' && !l.is_option) put(bands, 'coaching', 'coaching', this._copy('pm_coaching') || 'Coaching', { ...line, label: this._copy('plan_game_coaching', { label: l.scope === 'cups' ? l.league : scopeLabel(l.scope) }) || `Game coaching — ${scopeLabel(l.scope)}` });
+      else put(l.is_option ? options : bands, l.scope, block, label, line);
     }
     // budget lines under Men's (kits, practice coaching …): their own scope's band
     // coaching (owner 11/16 "show all coaching on separate lines and do pre
