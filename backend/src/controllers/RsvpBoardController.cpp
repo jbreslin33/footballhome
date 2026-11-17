@@ -678,7 +678,20 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         const bool youth = std::any_of(ctx.recipients.begin(), ctx.recipients.end(),
             [](const RsvpBoard::GroupRecipient& r) { return r.recipientPersonId != r.personId; });
         const bool week = reach == "week";
-        const std::string rollCallUrl = model_->rollCallLink(def ? def->code : "", teamIds, scope.userId);   // mig 544
+        // Event Center / Game Center name no section: take it from the
+        // unanswered players' own board teams, so "Who's in" still comes
+        // (owner 11/17: the women's Remind all went out with no link).
+        std::string section = def ? def->code : "";
+        if (section.empty()) {
+            std::vector<long long> pids;
+            for (const auto& r : ctx.recipients) pids.push_back(r.personId);
+            model_->boardTeamsOf(pids, &section);
+        }
+        const std::string rollCallUrl = model_->rollCallLink(section, teamIds, scope.userId);   // mig 544
+        // {link}: a group message can't carry anyone's magic link, so it
+        // opens the event itself (sign in) — the week's list opens the site.
+        const std::string fhLink = MagicLinkService::publicBaseUrl()
+            + (week ? std::string("/") : "/#event/" + std::to_string(fhEventId));
         std::string eventLines;
         for (const auto& ev : ctx.weekEvents) eventLines += "• " + ev.line + "\n";
         if (!eventLines.empty()) eventLines.pop_back();
@@ -688,7 +701,7 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         const auto msg = copy.render("rsvp_reminder",
             std::string(week ? "group_week_" : "group_") + (youth ? "parent" : "adult"),
             {{"event", ctx.line}, {"events", eventLines}, {"sender", senderName}, {"travel", travel},
-             {"roll_call", rollCallUrl}});
+             {"roll_call", rollCallUrl}, {"link", fhLink}});
         if (!msg.ok())
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "group rsvp_reminder template missing (migration 380 / 381)");
 
