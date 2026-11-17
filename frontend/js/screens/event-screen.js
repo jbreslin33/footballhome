@@ -1359,6 +1359,7 @@ class EventScreen extends Screen {
       if (this._sheetClick(e)) return;
       const t = (sel) => e.target.closest(sel);
       let el;
+      if ((el = t('[data-ec-group-msg]'))) { this._onGroupMessage(el); return; }
       if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
       if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
       if ((el = t('[data-ec-post]'))) { this._onPostAction(el); return; }
@@ -1467,6 +1468,52 @@ class EventScreen extends Screen {
   cardGridHtml(cards, empty = 'None yet') {
     EventScreen.ensureCardStyles();
     return cards.length ? `<div class="ev-grid">${cards.join('')}</div>` : `<div class="ev-none">${empty}</div>`;
+  }
+
+  // 📇 Group CONTACT (owner 11/17 "why … can i not message all players
+  // going, not going etc. where is contact button. all screens should have
+  // contact button!"): one button per section — the same 💬 / ✉ group
+  // composer #teams' column titles open (BulkMessageComposer); every parent
+  // of a kid rides along (the card's own contact rows, mig 682).  Staff only
+  // (viewer.canContact), once the contact rows have loaded.
+  _groupContactHtml(key, label, list) {
+    if (!this.viewer.canContact() || !this.textMarks || !window.RosterMessaging || !window.BulkMessageComposer) return '';
+    const people = (list || []).filter(r => r && r.person_id != null);
+    if (!people.length) return '';
+    const info = RosterMessaging.collect(people.map(r => this._groupMsgPerson(r)), (p) => p.contact);
+    this._groupMsg = this._groupMsg || new Map();
+    this._groupMsg.set(key, { label, people });
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
+    const word = (window.MessageCopy && MessageCopy.block('contact_popup', 'button')) || 'CONTACT';
+    const btn = (kind, icon, n) => `<button type="button" class="ec-send" data-ec-group-msg="${this.escapeHtml(key)}" data-kind="${kind}" ${n ? '' : 'disabled'}
+        title="${this.escapeHtml(kind === 'email' ? cp('group_email_tip', { n }, `Email ${n} (BCC)`) : cp('group_text_tip', { n }, `Text ${n}`))}"
+        style="background:#334155; padding:3px 10px; font-size:0.74rem; ${n ? '' : 'opacity:0.4;'}">${icon} ${n}</button>`;
+    const missing = info.noPhone.length || info.noEmail.length
+      ? `<span style="font-size:0.7rem; opacity:0.7;">${this.escapeHtml(cp('group_missing', { phone: info.noPhone.length, email: info.noEmail.length }, `${info.noPhone.length} no mobile · ${info.noEmail.length} no email`))}</span>` : '';
+    return `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
+        <span style="font-size:0.74rem; font-weight:800; padding:2px 8px; border-radius:3px; background:#334155; color:#fff; white-space:nowrap;">📇 ${this.escapeHtml(word)} · ${people.length}</span>
+        ${btn('sms', '💬', info.phones.length)}${btn('email', '✉', info.emails.length)}${missing}
+      </div>`;
+  }
+  _groupMsgPerson(r) {
+    const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(r.person_id)]) || null;
+    const rows = st ? (Array.isArray(st.recipients) && st.recipients.length ? st.recipients : [st]) : [];
+    return { personId: r.person_id, fullName: r.name || [r.first_name, r.last_name].filter(Boolean).join(' '),
+             contact: { extra: rows.map(x => ({ phone: x.phone || null, email: x.email || null })) } };
+  }
+  _onGroupMessage(el) {
+    const g = this._groupMsg && this._groupMsg.get(el.dataset.ecGroupMsg);
+    if (!g || el.disabled) return;
+    const kind = el.dataset.kind;
+    const info = RosterMessaging.collect(g.people.map(r => this._groupMsgPerson(r)), (p) => p.contact);
+    if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
+    const ev = this.ev || {};
+    const what = [ev.title || ev.summary || '', EventLabels.when(ev)].filter(Boolean).join(' · ');
+    const plain = String(g.label).replace(/<[^>]*>/g, '').replace(/&amp;/g, '&');
+    const scope = (window.MessageCopy && MessageCopy.block('event_center', 'group_scope', { group: plain, event: what })) || `${plain} — ${what}`;
+    const subject = (window.MessageCopy && MessageCopy.block('event_center', 'group_subject', { event: what })) || what;
+    BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: subject ? { label: '', subject } : null },
+      onSent: (n) => { el.textContent = `✓ ${n}`; } });
   }
 
   // A heading "Label (n)" with an aside on the right (a present count),
@@ -1900,14 +1947,15 @@ class EventScreen extends Screen {
     const grid = (list, opts) => this.cardGridHtml(list.map(r => card(r, opts)));
     // "N present" only once attendance can be taken (event day on).
     const presentAside = (list) => this.att && this._eventDayReached() ? `<span style="color:#22c55e;">${present(list)} present</span>` : '';
+    const gc = (label, list) => this._groupContactHtml(`sec:${String(label).replace(/<[^>]*>/g, '')}`, label, list);
     const section = (label, list, opts = {}) => list.length
-      ? this.cardSectionHtml(label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' }) : '';
+      ? this.cardSectionHtml(label, list.length, grid(list, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') }) : '';
     // Folds keep their open/closed state across the 15s refresh and a
     // reminder's re-render (as Game Center's do).
     const fold = (key, label, list, opts = {}) => {
       if (!list.length) return '';
       const isOpen = this.folds.has(key) ? this.folds.get(key) : (!!opts.defaultOpen || EventScreen.STANDING_OPEN.has(key));
-      return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: opts.top || '' });
+      return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') });
     };
 
     // A yes from someone over the dues line (dues_eligible=false,
@@ -1980,7 +2028,7 @@ class EventScreen extends Screen {
                  + part(L('sec_going', '✓ Going'), coaches.filter(r => r.response === 'yes'))
                  + part(L('sec_notgoing', '✗ Not going'), coaches.filter(r => r.response === 'no'));
       return this.cardFoldHtml('data-ec-fold', key, isOpen, L('sec_coaches', '🧑‍🏫 Coaches'), coaches.length, body,
-                               { aside: presentAside(coaches), top: bar });
+                               { aside: presentAside(coaches), top: gc(L('sec_coaches', '🧑‍🏫 Coaches'), coaches) + bar });
     };
     // ✅ Present tally (owner 11/16: "it should show total present on
     // calendar regardless if they set going … 3 present going, 2 present no
@@ -2015,7 +2063,10 @@ class EventScreen extends Screen {
         </div>`;
     };
     if (unplacedOnly) return split ? unplacedHtml() : '';
+    // 📇 Everyone on the list (players; coaches have their own) at the top.
+    const everyone = this._groupContactHtml('all', L('group_all', '👥 Everyone'), [...players, ...suspended, ...inactive]);
     return `
+      ${everyone ? `<div style="margin:0 0 var(--space-2);"><div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:0 0 4px;">${L('group_all', '👥 Everyone')}</div>${everyone}</div>` : ''}
       ${presentTally()}
       ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
