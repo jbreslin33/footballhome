@@ -10318,3 +10318,34 @@ direction, beside §8.236's len_lift; 1 = off, kept in code at 1):
 mix, not the volume: passes per team-match follow spells (how often a man gets it) and the time in play (61-65%,
 55.2; we don't stop for DFL's 'other' — injuries, subs, drop balls, 225 s a team-match — nor play added time,
 95.5 min). Next: a fair clock first (the 'other' stoppages and added time from DFL), then spells per minute in play.
+
+### 8.250 G5.146 — a fair clock: the referee's stoppages, added time, and two halves in the harness (shipped)
+
+James 11/17, on §8.249's question (a fair clock that makes matches longer than 90 min, or per-minute comparison only,
+or straight to spells): "do it all".
+
+**Why.** DFL's matches are 95.5 min with 52.7 in play; 225 s a team-match of their dead time is 'other' — injuries,
+subs, drop balls, VAR — and the referee adds time for it (Law 7). Ours played a flat 90 (the harness untimed: no
+half-time, no second-half kick-off) and never stopped for anything the named restarts don't cover. Every
+per-match count was on a different clock.
+
+**Change.**
+- World (Laws 5 and 8): `tickStoppage` — while the ball is live the referee stops play at
+  `physics.stoppage.per_min_in_play` 0.304 (DFL 'other', 16 a match ÷ 52.7 min); dead for a roll in
+  `dead_lo_s`-`dead_hi_s` (5-24 s: DFL's 9.9 / 18.4 / 35.6 s p25 / median / p75 is skewed, a flat roll between the
+  quartiles put the median at 27 s as played); then a drop ball (`MatchEventType::DropBall` 14, appended, PROTOCOL §7)
+  to the side that last touched it where the ball was, theirs `physics.restart.drop_law_m` 4 m off (Brain, Law 8).
+  Inside the penalty area Law 8 gives it to the keeper — not modelled.
+- World (Law 7): each half runs its length plus the time lost to those stoppages × `physics.stoppage.added_share`
+  0.73 ([FH]: 5.5 min added of 7.5 lost = DFL's 95.5 min), rounded up to whole minutes, decided as the half's own
+  time runs out; the second half starts at 45:00 whatever was added.
+- Harness: two halves (`half_length_ticks` = minutes / 2) to the FullTime event; goals counted from events (the World
+  resets at full time); the half-time kick-off isn't a dead spell (DFL counts within halves); DEAD TIME and BALL IN
+  PLAY name 'drop ball (other)' (DFL 8.0 a team-match / 225 s); new PER MINUTE IN PLAY (passes, spells, shots, fouls,
+  throw-ins per minute in play a team v real ÷ 52.7). `GAME_FLAT_CLOCK=1` = the old untimed run.
+- Client: event 14 toasts "Drop ball".
+
+3 seeds × 8: drop balls 7.7-11.2 a team-match (8.0), median 11.2-17.4 s (18.4); a match ~94.4 min (95.5), in play
+57.0-57.2 min (52.7), 60.1-61.0% (55.2); dead 1,094-1,135 s a team-match (1,284). Passes 564-572 a team-match —
+the longer match — **9.9-10.0 a minute in play (8.23): 1.21× real is the gap on one clock.** Tests 22/22, goldens
+unchanged (the golden matches are untimed), no migration.

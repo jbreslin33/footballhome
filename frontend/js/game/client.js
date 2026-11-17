@@ -34,7 +34,7 @@
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
   const EVENT_NAMES = { 1: 'GOAL!', 2: 'Throw-in', 3: 'Goal kick',
                         4: 'Corner', 5: 'Kickoff', 6: 'Half time',
-                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul', 13: 'Foul in the box' };   // 11 = the foul itself (advantage too): no toast
+                        7: 'FULL TIME', 10: 'Offside', 12: 'Foul', 13: 'Foul in the box', 14: 'Drop ball' };   // 11 = the foul itself (advantage too): no toast
 
   // The referee's whistle (G5.2), synthesised: a pip for a restart, a longer
   // blast for a goal or the end of a half. Browsers only open audio after a

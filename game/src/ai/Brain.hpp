@@ -132,7 +132,8 @@ private:
                       throw_free_m = math::Fixed64::fromInt(3), throw_gain = math::Fixed64::fromFraction(3, 10),
                       keeper_long_m = math::Fixed64::fromInt(55), throw_law_m = math::Fixed64::fromInt(2),
                       kick_law_m = math::Fixed64::fromFraction(915, 100),
-                      penalty_arc_m = math::Fixed64::fromFraction(915, 100);
+                      penalty_arc_m = math::Fixed64::fromFraction(915, 100),
+                      drop_law_m = math::Fixed64::fromInt(4);   // §8.250 Law 8
     } restart_play_;
     std::uint8_t hold_team_ = 0xFF;
     std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;

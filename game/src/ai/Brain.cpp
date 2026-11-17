@@ -110,6 +110,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     restart_play_.keeper_long_m = p.fixed("physics.restart.keeper_long_m", 55000);
     restart_play_.throw_law_m = p.fixed("physics.restart.throw_law_m", 2000);
     restart_play_.kick_law_m = p.fixed("physics.restart.kick_law_m", 9150);
+    restart_play_.drop_law_m = p.fixed("physics.restart.drop_law_m", 4000);   // Law 8
     restart_play_.penalty_arc_m = p.fixed("physics.restart.penalty_arc_m", 9150);
     arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
     arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
@@ -567,6 +568,7 @@ void Brain::keepLawDistance(SlotIndex slot, const World& world, Orders& o) const
     Fixed64 r{};
     const core::MatchEventType k = world.restartKind();
     if (k == core::MatchEventType::ThrowIn) r = restart_play_.throw_law_m;
+    else if (k == core::MatchEventType::DropBall) r = restart_play_.drop_law_m;   // §8.250 Law 8: 4 m
     else if (k == core::MatchEventType::Corner || k == core::MatchEventType::Offside ||
              k == core::MatchEventType::FreeKick) r = restart_play_.kick_law_m;
     else return;

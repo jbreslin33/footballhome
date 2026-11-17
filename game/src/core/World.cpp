@@ -1329,12 +1329,40 @@ void World::configureFouls(const ModelParams& p) {
     // one went at about the fastest real time). DFL dead time p25-p75 (throw-in 8.1-19.2 s, goal kick
     // 17.1-30.5, corner 28.4-35.6) less the taker's own 1.3-2.4 s to the ball after it (fitted, 3 seeds
     // x 8: as played the medians land on DFL's 13.8 / 23.2 / 32.8). A p75 of 0 = the officials' earliest.
+    // G5.146 (§8.250): the referee's stoppages and the added time for them.
+    {
+        const Fixed64 per_min = p.fixed("physics.stoppage.per_min_in_play", 304);   // 16 a match / 52.7 min (DFL 'other')
+        stop_per_tick_ = per_min / Fixed64::fromInt(60 * kTickRate);
+        // DFL 'other' p25 / median / p75 9.9 / 18.4 / 35.6 s, skewed: a flat roll between the quartiles put the median at
+        // 22.8 + the taker's walk. 5-24 s puts the median as played on 18.4 (the tails narrower than real).
+        stop_lo_ = p.fixed("physics.stoppage.dead_lo_s", 5000);
+        stop_hi_ = p.fixed("physics.stoppage.dead_hi_s", 24000);
+        added_share_ = p.fixed("physics.stoppage.added_share", 730);   // [FH] 5.5 min added of 7.5 lost: DFL's 95.5-min match
+    }
     static const char* kOut[3] = {"throw_in", "goal_kick", "corner"};
     static const int kOutLo[3] = {5700, 15800, 26900}, kOutHi[3] = {16800, 29200, 34100};
     for (int i = 0; i < 3; ++i) {
         out_dead_lo_[i] = p.fixed(std::string("physics.restart.") + kOut[i] + "_dead_p25_s", kOutLo[i]);
         out_dead_hi_[i] = p.fixed(std::string("physics.restart.") + kOut[i] + "_dead_p75_s", kOutHi[i]);
     }
+}
+
+// G5.146 (§8.250, Laws 5 and 8): the referee stops play — an injury, a stoppage the restarts don't name —
+// at DFL's rate for dead spells ended by none of the named restarts ('other': 8.0 a team-match, 16 a match
+// over 52.7 min in play), dead for a roll between that kind's p25 and p75 (9.9-35.6 s), then a drop ball to
+// the side that last touched it where the ball was (inside the penalty area: to their keeper, Law 8, not
+// modelled — the spot as it is). Its dead time counts as time lost to the half's added time.
+void World::tickStoppage(std::vector<MatchEvent>& events) {
+    if (restart_team_ != 0xFF || out_stage_ != 0) {
+        if (half_length_ticks_ != 0 && restart_kind_ == MatchEventType::DropBall && restart_team_ != 0xFF) ++lost_ticks_;
+        return;
+    }
+    if (stop_per_tick_.raw <= 0) return;
+    const Fixed64 u = (detNoise(match_seed_, clock_.tick(), 0, 71) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    if (u >= stop_per_tick_) return;
+    const std::uint8_t team = last_touch_team_ < 2 ? last_touch_team_ : 0;
+    awardRestart(MatchEventType::DropBall, team, Vec3{ball_.pos.x, ball_.pos.y, Fixed64::zero()}, events);
+    restart_ready_tick_ = clock_.tick() + deadRoll(stop_lo_, stop_hi_, 14);
 }
 
 std::uint32_t World::deadRoll(Fixed64 lo, Fixed64 hi, std::uint8_t salt) const {
@@ -1678,12 +1706,25 @@ void World::setRestart(MatchEventType type, std::uint8_t team, const Vec3& spot,
 void World::tickClock(std::vector<MatchEvent>& events) {
     if (half_length_ticks_ == 0) return;  // untimed sandbox
     ++match_clock_;
-    if (period_ == 1 && match_clock_ == half_length_ticks_) {
+    // G5.146 (§8.250, Law 7): each half runs its length plus the time lost to stoppages, the referee's
+    // allowance shown in whole minutes, decided as the half's own time runs out.
+    const std::uint32_t base_end = period_ == 1 ? half_length_ticks_ : half_length_ticks_ * 2;
+    if (match_clock_ == base_end && added_share_.raw > 0) {
+        const Fixed64 lost_min = Fixed64::fromInt(static_cast<std::int64_t>(lost_ticks_)) * added_share_ / Fixed64::fromInt(60 * kTickRate);
+        std::int64_t mins = lost_min.raw >> Fixed64::FRAC_BITS;
+        if ((lost_min - Fixed64::fromInt(mins)).raw > 0) ++mins;   // rounded up
+        half_end_ = base_end + static_cast<std::uint32_t>(mins * 60 * kTickRate);
+    }
+    const std::uint32_t end = half_end_ > base_end ? half_end_ : base_end;
+    if (period_ == 1 && match_clock_ >= end) {
         period_ = 2;
+        match_clock_ = half_length_ticks_;   // the second half starts at 45:00 whatever was added
+        lost_ticks_ = 0; half_end_ = 0;
         events.push_back({MatchEventType::HalfTime, 0});
         // Second half kicks off to the team that didn't open the match.
         awardKickoff(kickoff_team_ == 0 ? 1 : 0, events);
-    } else if (period_ == 2 && match_clock_ >= half_length_ticks_ * 2) {
+    } else if (period_ == 2 && match_clock_ >= end) {
+        lost_ticks_ = 0; half_end_ = 0;
         events.push_back({MatchEventType::FullTime, 0});
         // Perpetual sandbox: full reset, opening kickoff alternates.
         score_[0] = score_[1] = 0;
@@ -1702,6 +1743,7 @@ std::vector<MatchEvent> World::tick() {
     tickTackles(events);
     tickPossessionAndKicks(events);
     tickFreeBall(events);
+    tickStoppage(events);
     tickClock(events);
     // Actions are per-tick: consumed by the owner's kick above, discarded
     // for everyone else, so a stale tap can't fire ticks later.
