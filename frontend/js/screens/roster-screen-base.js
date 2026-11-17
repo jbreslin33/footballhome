@@ -643,6 +643,23 @@ class RosterScreenBase extends Screen {
     return !!(p && window.PersonStanding && typeof PersonStanding.answered === 'function' && PersonStanding.answered(p.personId) === false);
   }
 
+  // Never-answered box shaded by days since LA registration (owner 11/16:
+  // "if withing 1 days of reg make them green. if 2 days make yellow. if 3
+  // make orange 4 or more make red. that is shade of thier box").  No
+  // registration date → unshaded.  The tint overlays the whole card.
+  onboardShadeWrap(p, inner) {
+    if (!this.needsOnboard(p) || !p.laRegisteredAt) return inner;
+    const d = new Date(p.laRegisteredAt);
+    if (isNaN(d)) return inner;
+    const days = Math.max(0, Math.floor((Date.now() - d) / 86400000));
+    const [line, fill] = days <= 1 ? ['#22c55e', 'rgba(34,197,94,0.22)']
+      : days === 2 ? ['#eab308', 'rgba(234,179,8,0.24)']
+      : days === 3 ? ['#f97316', 'rgba(249,115,22,0.24)']
+      : ['#ef4444', 'rgba(239,68,68,0.24)'];
+    return `<div style="position:relative; border:2px solid ${line}; border-radius:9px; padding:2px; margin-bottom:4px; background:${fill};">
+        ${inner}<div style="position:absolute; inset:0; border-radius:7px; background:${fill}; pointer-events:none;"></div></div>`;
+  }
+
   // Never-answered cards lead with when he registered and what we sent
   // (owner 2026-11-05: "show date they registered for needs onboard
   // players atleast so i know if i sent them anything or if they just
@@ -776,10 +793,11 @@ class RosterScreenBase extends Screen {
         data.columns, col, rank, bucket.length);
       const flag = this.boardView === 'roster' && !this.rosterFrozen(col.teamId) && laneFlag[sectionOf(p)];
       const lead = this.onboardLeadHtml(p);
+      const body = this.onboardShadeWrap(p, lead + html);
       return flag
         ? `<div style="border:2px solid ${flag[1]}; border-radius:9px; padding:2px;">
-             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${lead}${html}</div>`
-        : lead + html;
+             <div style="font-size:0.62rem; font-weight:900; letter-spacing:0.05em; color:${flag[2]}; padding:0 4px 2px;">${esc(flag[0])}</div>${body}</div>`
+        : body;
     };
     const ordered = (list) => {
       const keep = new Set(list);
