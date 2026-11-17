@@ -585,8 +585,7 @@ class RosterScreenBase extends Screen {
   //     A column with no list uses the On Roster status instead.
   //   NEEDS ADD — board_section proposed + pending_add: only players
   //     someone picked (owner 2026-11-02), grouped by step.
-  //   NEEDS DROP — board_section drop + pending_drop, as name + official #
-  //     rows (their cards stay in ON ROSTER, flagged).
+  //   (No NEEDS DROP since mig 1437 — owner 11/17 "take away needs drops".)
   //   Nothing else: a member on no list sits in the team-free left column
   //   (renderMemberStacks), so a column never implies he belongs to it.
   //   The card's status dropdown is the move control (mig 777).
@@ -828,7 +827,6 @@ class RosterScreenBase extends Screen {
     const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
     const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
     const GREY  = ['#94a3b8', 'rgba(148,163,184,0.14)'];
-    const ORANGE = ['#f97316', 'rgba(249,115,22,0.14)'];
     const RED    = ['#ef4444', 'rgba(239,68,68,0.14)'];
     // Direction (owner 11/3: "call downs belong in liga 1 … apsl col should
     // be call ups"): the board runs top-down by board_sort_order (APSL →
@@ -889,13 +887,10 @@ class RosterScreenBase extends Screen {
       const offChip = `<span style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
           background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_wants_in_chip', { list: listName(familyCol) }) || `⚠ not on ${listName(familyCol)} list`)}</span>`;
       const addSteps = ['proposed', 'pending_add', 'no_room'];
-      // ⬇ NEEDS DROP mirrors the Roster pill's drop lanes (owner 11/4,
-      // "for informational purpose"): still on the league's list, so he
-      // still plays and counts toward 👀 Sees every game.
-      const dropSteps = ['drop', 'pending_drop'];
+      // No ⬇ NEEDS DROP group (owner 11/17 "take away needs drops from
+      // all"; mig 1437 took the drop statuses out).
       const adding = cats.active.filter(p => addSteps.includes(sectionOf(p)));
-      const dropping = cats.active.filter(p => dropSteps.includes(sectionOf(p)));
-      const playing = cats.active.filter(p => !addSteps.includes(sectionOf(p)) && !dropSteps.includes(sectionOf(p)));
+      const playing = cats.active.filter(p => !addSteps.includes(sectionOf(p)));
       const mirrorGroup = (list, steps, label, colors) => (list.length || shows('active'))
         ? head(label, list.length, ...colors)
           + RosterScreenBase.ROSTER_STATUSES.filter(st => steps.includes(st.boardSection)).map(st => {
@@ -906,8 +901,7 @@ class RosterScreenBase extends Screen {
         : '';
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', playing.length, ...GREEN)
         + (playing.length ? spots(ordered(playing).map(p => card(p, offList(p) ? offChip : undefined))) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
-      const mirrorsHtml = mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE)
-        + mirrorGroup(dropping, dropSteps, copy('board_team_needs_drop_h') || copy('board_dropping_h') || '⬇ NEEDS DROP', ORANGE);
+      const mirrorsHtml = mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE);
       // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
       // "take all out of call up pool until i tell you who to put in
       // there … its obvious who is in pool if they are on APSL official
@@ -930,7 +924,7 @@ class RosterScreenBase extends Screen {
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
-      const n = adding.length + dropping.length + ridersCount
+      const n = adding.length + ridersCount
         + cats.practice_squad.length + cats.injured.length + cats.inactive.length;
       return { top: activeHtml + onboardGroup, rest, n };
     }
@@ -1077,15 +1071,8 @@ class RosterScreenBase extends Screen {
           return sub.length ? subHead(st.displayName || st.code, sub.length) + ordered(sub).map(ruleCard).join('') : '';
         }).join('');
     };
-    // NEEDS DROP — name + official # rows; the cards stay in ON ROSTER
-    // (1:1 with the list), the dropdown there moves them.  A drop already
-    // asked of the league says so.
-    const needsDropSection = () => {
-      const asked = copy('board_pending_drop_chip') || '⏳ PENDING DROP';
-      const list = [...lanes.drop, ...lanes.pending_drop.map(d => ({ ...d, note: asked }))];
-      return head(copy('board_dropping_h') || 'NEEDS DROP', list.length, ...ORANGE)
-        + (list.length ? list.map(({ name, n, note }) => nameRow(n - 1, name, note)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
-    };
+    // No NEEDS DROP section (owner 11/17 "take away needs drops from all",
+    // mig 1437); ✂ CUT under ON ROSTER still flags list men who left LA.
     // PROJECTED ROSTER — the list once the moves land: OFFICIAL minus the
     // drop lanes (their # shown, so the league list is easy to cross off),
     // then the adds with their step.  Collapsed; only when there are moves.
@@ -1130,7 +1117,7 @@ class RosterScreenBase extends Screen {
     };
     firstHead = true;   // the fold's first banner sits flush too
     if (this.rosterFrozen(col.teamId)) return { top: officialHtml, rest: notOnRosterSection(), n: rest.length };
-    return { top: officialHtml, rest: needsAddSection() + needsDropSection() + notOnRosterSection() + projectedSection(), n: rest.length };
+    return { top: officialHtml, rest: needsAddSection() + notOnRosterSection() + projectedSection(), n: rest.length };
   }
 
   // This team's league roster is frozen under the lit season pill
