@@ -774,10 +774,6 @@ class RosterScreenBase extends Screen {
                  background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;">${esc(copy('board_also_on_team', { team }) || `⚠ also on ${team} team, not its list`)}</span>`; })
         .join('');
     };
-    // Cut (migs 807/810): on the league list with no live playing LeagueApps
-    // membership — still official (counts, keeps his #) until the league
-    // drops him; listed in the red ✂ CUT block at the foot of OFFICIAL.
-    const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
     const card = (p, extraChip = '') => {
       const rank = bucket.indexOf(p) + 1;
       // Team pill 📋 chips folded into the card's 📋 ROSTERS line (mig 1435).
@@ -966,11 +962,8 @@ class RosterScreenBase extends Screen {
     const inelRows = [];   // [{ n, html }] — list players breaking a rule
     const lanes = { drop: [], pending_drop: [] };   // [{ p, name, n, note }] — + their official #
     const addLane = (p, n) => { const l = lanes[sectionOf(p)]; if (l && !l.some(d => d.p === p)) l.push({ p, name: nameOf(p), n, note: '' }); };
-    // Cut (owner 2026-10-29: "in section at bottom so they still count on
-    // official roster total wise but should be in a red section") — pulled
-    // out of the list order into a red ✂ CUT block that closes OFFICIAL.
-    const cutRows = [];   // [{ n, html }] — + their official #
-    const addCut = (n, html) => cutRows.push({ n, html });
+    // No ✂ CUT block (owner 11/17 "take away the cut section too"): a
+    // list man who left LeagueApps is just a row in ON ROSTER.
     const listRows = [];   // every OFFICIAL row {name, n} — the projected list's source
     let rows, officialCount, rest;
     if (official) {
@@ -984,26 +977,15 @@ class RosterScreenBase extends Screen {
       const rowHtml = official.names.map((n, i) => {
         const id = official.personIds[i];
         const p = id != null && byPerson.get(Number(id));
-        const cut = official.cut[i] === true;
         listRows.push({ name: p && !used.has(p) ? nameOf(p) : n, n: i + 1 });
         if (p && !used.has(p)) {
           used.add(p);
-          const inLane = !!lanes[sectionOf(p)];   // a drop already in motion wins over the cut flag
-          if (inLane) addLane(p, i + 1);
-          else if (cut) { addCut(i + 1, card(p)); return ''; }
+          if (lanes[sectionOf(p)]) addLane(p, i + 1);
           const why = ruleWhy(id);
           if (why) { inelRows.push({ n: i + 1, html: whyWrap(why, card(p)) }); return ''; }
           const html = card(p);
           cardHtml.set(p, html);
           return { card: p, html };
-        }
-        if (cut) {
-          // drop already asked (mig 861) — no card to move to Pending Drop
-          const asked = official.dropAsked[i];
-          addCut(i + 1, nameRow(i, n, asked
-            ? (copy('board_official_cut_asked', { date: asked }) || `⏳ ✂ drop asked ${asked} — waiting on the league`)
-            : cutFlag[0], true));
-          return '';
         }
         const why = ruleWhy(id);
         if (why) { inelRows.push({ n: i + 1, html: nameRow(i, n, why, true) }); return ''; }
@@ -1024,9 +1006,9 @@ class RosterScreenBase extends Screen {
       officialCount = on.length;
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
-    // PROJECTED (mig 809) = OFFICIAL − every drop lane (cuts included) +
+    // PROJECTED (mig 809) = OFFICIAL − every drop lane +
     // both add lanes; over teams.max_roster turns it red.
-    const outNums = new Set([...lanes.drop, ...lanes.pending_drop, ...cutRows].map(d => d.n));
+    const outNums = new Set([...lanes.drop, ...lanes.pending_drop].map(d => d.n));
     const adds = rest.filter(p => (sectionOf(p) === 'proposed' || sectionOf(p) === 'pending_add') && !RosterScreenBase.HEALTH.people[p.personId]);
     const projected = officialCount - outNums.size + adds.length;
     const moves = outNums.size + adds.length > 0;
@@ -1036,20 +1018,15 @@ class RosterScreenBase extends Screen {
     const live = !this.rosterFrozen(col.teamId);
     const extra = [
       inelRows.length ? (copy('board_ineligible_banner', { n: inelRows.length }) || `${inelRows.length} ineligible`) : '',
-      cutRows.length ? (copy('board_cuts', { n: cutRows.length }) || `${cutRows.length} cut`) : '',
       live && lanes.drop.length ? (copy('board_planned_drops', { n: lanes.drop.length }) || `${lanes.drop.length} dropping`) : '',
       live && lanes.pending_drop.length ? (copy('board_pending_drops', { n: lanes.pending_drop.length }) || `${lanes.pending_drop.length} pending drop`) : '',
       live && moves ? (copy('board_projected_banner', { n: projected }) || `→ ${projected} projected`) : '',
     ].filter(Boolean).join(' · ');
-    const cutHtml = cutRows.length
-      ? head(copy('board_cut_h') || '✂ CUT — still on the official roster, needs to be dropped', cutRows.length, ...RED)
-        + cutRows.map(r => r.html).join('')
-      : '';
     const inelHtml = inelRows.length
       ? head(copy('board_ineligible_h') || '⚠ INELIGIBLE — league rule, fix before the league does', inelRows.length, ...RED)
         + inelRows.map(r => r.html).join('')
       : '';
-    const officialHtml = head(copy('board_official_h') || 'ON ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml + cutHtml;
+    const officialHtml = head(copy('board_official_h') || 'ON ROSTER', officialCount, ...GREEN, extra) + rows + inelHtml;
     // NEEDS ADD — one sub-group per paperwork step, in pipeline order.
     const needsAddSection = () => {
       // NO ROOM (awaiting a roster spot) is an add waiting for space — its
@@ -1976,15 +1953,15 @@ class RosterScreenBase extends Screen {
     const byTeam = new Map();
     for (const r of rows) {
       if (r.role === 'staff' || r.team_id == null) continue;
-      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, note: null, bg: r.pill_bg, fg: r.pill_fg };
+      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, plays: false, note: null, bg: r.pill_bg, fg: r.pill_fg, section: r.section };
       if ((rankG[r.games] || 0) > (rankG[m.games] || 0)) m.games = r.games;
       if ((rankP[r.practices] || 0) > (rankP[m.practices] || 0)) { m.practices = r.practices; m.days = r.days; }
       if (r.role === 'coach') m.coach = true;
+      if (r.role === 'player') m.plays = true;
       if (r.role === 'player' && r.note) m.note = r.note;
       byTeam.set(r.team_id, m);
     }
     const teams = [...byTeam.values()];
-    const coachOnly = teams.filter(t => t.coach);
     // ONE pill look for both blocks (owner 11/17 "be consistent in roster
     // box. use green pill" + "same for sees. use pill"): green = asked /
     // on the list; grey = asked about nothing; red/amber = ⛔ / 🩹.
@@ -2015,24 +1992,34 @@ class RosterScreenBase extends Screen {
       const coach = t.coach ? cp('card_sees_coach', {}, '🧢') + ' ' : '';
       return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' '))}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
     };
+    // A coach of 2+ teams in one section (only coaching, not playing)
+    // gets ONE pill — "🧢 Youth coach · 20" — that opens to those teams
+    // (owner 11/17 "maybe we have youth coach pill or something and its
+    // clickable to show who he coaches").  One coached team stays a pill.
+    const GROUP = { boys: 'youth', girls: 'youth', mens: 'mens', womens: 'womens' };
+    const groups = new Map();
+    for (const t of teams) {
+      if (!t.coach || t.plays) continue;
+      const g = GROUP[t.section] || 'youth';
+      if (!groups.has(g)) groups.set(g, []);
+      groups.get(g).push(t);
+    }
+    const folded = new Set([...groups.values()].filter(l => l.length > 1).flat());
+    const groupPill = (g, list) => {
+      const name = cp('card_sees_group_' + g, {}, g === 'youth' ? 'Youth' : g === 'mens' ? 'Men' : 'Women');
+      return `<details data-sees-coach-group style="display:contents;">
+          <summary onclick="event.stopPropagation()" style="list-style:none; cursor:pointer; display:inline-flex;">${pill(esc(cp('card_sees_coach_group', { group: name, n: String(list.length) }, `🧢 ${name} coach · ${list.length}`)) + ' ▾')}</summary>
+          <div style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:3px 4px; padding:2px 0 2px 8px; border-left:2px solid rgba(34,197,94,0.45);">${list.map(t => item({ ...t, coach: false })).join('')}</div>
+        </details>`;
+    };
+    const coachPills = [...groups.entries()].filter(([, l]) => l.length > 1).map(([g, l]) => groupPill(g, l));
+    const rest = teams.filter(t => !folded.has(t));
     let sees;
     if (staff) {
       // Staff see every team: say so once, plus where he plays.
-      sees = [pill(esc(cp('card_sees_staff', {}, '🛡 every team')))]
-        .concat(teams.filter(t => !t.coach).map(item));
-    } else if (coachOnly.length > 4) {
-      // Coach of many teams: one entry, still with what he's asked about
-      // (a schedule's days — "🧢 18 teams ⚽ 🏃 Sat·Sun").
-      const agg = { team: cp('card_sees_coach_many', { n: String(coachOnly.length) }, `🧢 ${coachOnly.length} teams`),
-                    games: 'no', practices: 'no', days: [], coach: false, note: null };
-      for (const t of coachOnly) {
-        if ((rankG[t.games] || 0) > (rankG[agg.games] || 0)) agg.games = t.games;
-        if (t.practices === 'yes') agg.practices = 'yes';
-        else if (t.practices === 'days' && agg.practices !== 'yes') { agg.practices = 'days'; agg.days = [...new Set([...agg.days, ...(t.days || [])])].sort(); }
-      }
-      sees = [item({ ...agg, raw: true })].concat(teams.filter(t => !t.coach).map(item));
+      sees = [pill(esc(cp('card_sees_staff', {}, '🛡 every team')))].concat(teams.filter(t => !t.coach).map(item));
     } else {
-      sees = teams.map(item);
+      sees = rest.map(item).concat(coachPills);
     }
     if (!sees.length) sees = [pill(esc(cp('card_sees_none', {}, 'nothing')), 'grey')];
     if (entry.suspended) sees.push(pill(esc(cp('card_sees_suspended', {}, '⛔ suspended')), 'red'));
