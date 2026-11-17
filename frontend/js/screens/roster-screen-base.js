@@ -817,9 +817,16 @@ class RosterScreenBase extends Screen {
         <span>${esc(label)}${extra ? `<span style="font-size:0.68rem; font-weight:800; color:#fdba74; margin-left:8px;">${esc(extra)}</span>` : ''}</span>
         <span style="background:${color}; color:#0f172a; border-radius:10px; padding:0 8px; font-size:0.78rem;">${n}</span></div>`;
     };
+    // Spot number (owner 11/17 "we should number team and rosters spots
+    // … diff then their actual number"): 1, 2, 3 down ACTIVE / ON ROSTER in
+    // the order shown — a count to the cap, not the # shirt on the card.
+    const spot = (i, html) => `<div style="display:flex; gap:4px; align-items:center;">
+        <span class="rs-spot" title="Spot ${i}" style="flex:0 0 auto; min-width:1.5em; text-align:right; font-size:0.7rem; font-weight:800; color:#64748b;">${i}</span>
+        <div style="flex:1 1 auto; min-width:0;">${html}</div></div>`;
+    const spots = (htmls) => htmls.map((h, i) => spot(i + 1, h)).join('');
     const subHead = (label, n) => `<div style="font-size:0.68rem; font-weight:800; color:#cbd5e1; padding:4px 4px 0;">${esc(label)} · ${n}</div>`;
     const section = (label, list, color, bg, always = false) => (list.length || always)
-      ? head(label, list.length, color, bg) + (list.length ? ordered(list).map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
+      ? head(label, list.length, color, bg) + (list.length ? ordered(list).map(p => card(p)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
       : '';
     const ridersCount = ridersHtml ? ((data.autoInvites && data.autoInvites[String(col.teamId)]) || []).length : 0;
     const GREEN = ['#22c55e', 'rgba(34,197,94,0.14)'];
@@ -904,7 +911,7 @@ class RosterScreenBase extends Screen {
           + (list.length ? '' : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
         : '';
       const activeHtml = head(copy('board_plays_h') || 'ACTIVE', playing.length, ...GREEN)
-        + (playing.length ? ordered(playing).map(p => card(p, offList(p) ? offChip : undefined)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
+        + (playing.length ? spots(ordered(playing).map(p => card(p, offList(p) ? offChip : undefined))) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>');
       const mirrorsHtml = mirrorGroup(adding, addSteps, copy('board_team_needs_add_h') || copy('board_needs_add_h') || '🟢 NEEDS ADD', BLUE)
         + mirrorGroup(dropping, dropSteps, copy('board_team_needs_drop_h') || copy('board_dropping_h') || '⬇ NEEDS DROP', ORANGE);
       // ⭐ CALL-UP POOL is gone until the owner names who is in it (11/3:
@@ -1017,15 +1024,15 @@ class RosterScreenBase extends Screen {
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
       }).map(r => (typeof r === 'string' ? { card: null, html: r } : r));
       rows = this.sortOrder === 'official'
-        ? (this._sortDesc ? [...rowHtml].reverse() : rowHtml).map(r => r.html).join('')
-        : ordered([...cardHtml.keys()]).map(p => cardHtml.get(p)).join('')
-          + rowHtml.filter(r => !r.card).map(r => r.html).join('');
+        ? spots((this._sortDesc ? [...rowHtml].reverse() : rowHtml).filter(r => r.html).map(r => r.html))
+        : spots([...ordered([...cardHtml.keys()]).map(p => cardHtml.get(p)),
+          ...rowHtml.filter(r => !r.card && r.html).map(r => r.html)]);
       officialCount = official.names.length;
       rest = shown.filter(p => !used.has(p));
     } else {
       const on = ordered(shown.filter(p => p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
       on.forEach((p, i) => { addLane(p, i + 1); listRows.push({ name: nameOf(p), n: i + 1 }); });
-      rows = on.length ? on.map(card).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
+      rows = on.length ? spots(on.map(p => card(p))) : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
       officialCount = on.length;
       rest = shown.filter(p => !(p && RosterScreenBase.countsAsOnRoster(p.rosterStatus)));
     }
