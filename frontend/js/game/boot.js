@@ -15,15 +15,6 @@ if (!view) {
 }
 if (view !== '3d') view = '2d';
 window.GAME_VIEW = view;
-// ARCADE (James 11/16): the 3D view's real bodies and clips through a 16-bit camera, drawn low-res.
-// ?style=arcade|circles wins, else this device's last choice (fh.game.style2d); arcade means 3D.
-const qsStyle = new URLSearchParams(location.search).get('style');
-let style = qsStyle === 'arcade' || qsStyle === 'circles' ? qsStyle : null;
-if (!style) { try { style = localStorage.getItem('fh.game.style2d'); } catch (e) { /* this visit only */ } }
-if (qsStyle === 'arcade') view = '3d';
-window.GAME_VIEW = view;
-window.GAME_RETRO = view === '3d' && style === 'arcade';
-if (window.GAME_RETRO) document.body.classList.add('view-retro');
 document.body.classList.add('view-' + view);
 
 const COMMON_HEAD = [
@@ -39,18 +30,18 @@ const SCRIPTS_3D = [
   'js/game/lighthouse-drainage.js?v=20261022zzd',
   'js/game/lighthouse-layout.js?v=20261025b',
   'js/game/field.js?v=20261107ground',
-  'js/game/camera.js?v=20261116arc5',
-  'js/game/renderer.js?v=20261116arc5',
-  'js/game/view-menu.js?v=20261116arc3',
+  'js/game/camera.js?v=20261116circ',
+  'js/game/renderer.js?v=20261116circ',
+  'js/game/view-menu.js?v=20261116circ',
   'js/game/input.js?v=20261022e',
   'js/game/lighthouse-planner-data.js?v=20261022d',
   'js/game/pitch-planner.js?v=20261029a',
 ];
 const SCRIPTS_2D = [
-  'js/game/renderer2d.js?v=20261116arc3',
+  'js/game/renderer2d.js?v=20261116circ',
   'js/game/input.js?v=20261022e',
 ];
-const CLIENT = 'js/game/client.js?v=20261116arc3';
+const CLIENT = 'js/game/client.js?v=20261116circ';
 
 if (view === '3d') {
   const T = await import('three');

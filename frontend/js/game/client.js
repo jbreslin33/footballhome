@@ -962,30 +962,13 @@
     const flipView = (e) => {
       e.preventDefault(); e.stopPropagation();
       const next = VIEW_2D ? '3d' : '2d';
-      try { localStorage.setItem('fh.game.view', next); localStorage.setItem('fh.game.style2d', 'circles'); } catch (err) { /* the URL carries it */ }
+      try { localStorage.setItem('fh.game.view', next); } catch (err) { /* the URL carries it */ }
       const u = new URL(location.href);
-      u.searchParams.set('view', next); u.searchParams.set('style', 'circles');
+      u.searchParams.set('view', next);
       location.href = u.toString();
     };
     viewBtn.addEventListener('click', flipView);
     viewBtn.addEventListener('touchstart', flipView);
-  }
-  // ARCADE (James 11/16): the 3D bodies and clips through the 16-bit camera, drawn low-res (boot.js
-  // GAME_RETRO). In 2D and plain 3D the button opens it; in it, CIRCLES goes back to the 2D discs.
-  const styleBtn = document.getElementById('btn-style');
-  if (styleBtn) {
-    const RETRO = !!window.GAME_RETRO;
-    styleBtn.textContent = RETRO ? 'CIRCLES' : 'ARCADE';
-    const flipStyle = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      const style = RETRO ? 'circles' : 'arcade', view = RETRO ? '2d' : '3d';
-      try { localStorage.setItem('fh.game.style2d', style); localStorage.setItem('fh.game.view', view); } catch (err) { /* the URL carries it */ }
-      const u = new URL(location.href);
-      u.searchParams.set('view', view); u.searchParams.set('style', style);
-      location.href = u.toString();
-    };
-    styleBtn.addEventListener('click', flipStyle);
-    styleBtn.addEventListener('touchstart', flipStyle);
   }
   if (followBtn) {
     followBtn.addEventListener('click', toggleFollow);

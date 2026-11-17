@@ -10068,6 +10068,11 @@ GAME_RETRO. The STYLE button: ARCADE in 2D and plain 3D, CIRCLES in arcade (back
 2D / 3D VIEW button goes to the plain views. Checked live: pixelated men on the clips, frame on the pitch,
 no console errors.
 
+Then out (James: "interesting but bad lol" … "the 3d models were not great so 2d version is bad" … "lets focus
+on the circles"): the low-poly stand-in bodies were the limit, not the camera. Arcade camera, retro render and the
+STYLE button deleted; circles are the 2D view. Better bodies (MakeHuman CC0 builds, or a pixel artist's sprites) are
+the way back if it's ever wanted.
+
 ### 8.241 G5.137 — the walk off the ball: a walk zone round the spot, trial, not shipped
 
 From §8.238's "the gap-closing law". `physics.body.hold_walk_m` (0 = off) / `hold_walk_mps` (1.5): with our

@@ -250,8 +250,7 @@
 
     applyQuality(r) {
       const sharp = this.get('sharp');
-      // ARCADE draws low-res on purpose (renderer.js RETRO_PIXEL): its ratio isn't the quality choice.
-      const ratio = r.retro ? r.renderer.getPixelRatio() : sharp ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+      const ratio = sharp ? Math.min(window.devicePixelRatio || 1, 2) : 1;
       if (r.renderer.getPixelRatio() !== ratio) {
         r.renderer.setPixelRatio(ratio);
         r.resize();

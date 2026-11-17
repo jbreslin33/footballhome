@@ -63,7 +63,6 @@
     body.view-2d #mode-bar, body.view-2d #mode-note, body.view-2d #btn-leaves,
     body.view-2d #btn-contours { display: none !important; }
     body.view-2d { background: #2f6b2a; }
-    body:not(.mode-game) #btn-style { display: none !important; }   /* ARCADE is the match's camera */
   </style>
 </head>
 <body class="mode-game"><!-- view-menu.js: GAME hides the HUD until the ☰ View choices load -->
@@ -91,9 +90,6 @@
   <button id="btn-view" class="kick-btn" style="right: 12px; top: 204px;
        bottom: auto; width: 92px; height: 34px; border-radius: 17px;
        font-size: 11px;">3D VIEW</button>
-  <button id="btn-style" class="kick-btn" style="right: 12px; top: 124px;
-       bottom: auto; width: 92px; height: 34px; border-radius: 17px;
-       font-size: 11px;">ARCADE</button>
   <button id="btn-zoom-in" data-hud="camera" class="kick-btn" style="right: 60px; top: 84px;
        bottom: auto; width: 40px; height: 34px; border-radius: 17px;
        font-size: 18px; padding: 0;">+</button>
@@ -122,6 +118,6 @@
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
                  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
   </script>
-  <script type="module" src="js/game/boot.js?v=20261116arc5"></script>
+  <script type="module" src="js/game/boot.js?v=20261116circ"></script>
 </body>
 </html>
