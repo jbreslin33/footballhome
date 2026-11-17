@@ -83,7 +83,9 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             "SELECT p.id, p.code, p.label, p.kind, p.age_from, p.age_to, p.pays_dues, "
             // capacity = its own teams' roster size (a team shared with another
             // program — fall's two-year teams — only when it has no own team)
-            "       COALESCE((SELECT MAX(t.max_roster) FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id "
+            // finance_programs.roster_size first (mig 1429: the projection's full
+            // roster, apart from board caps), else the teams' max_roster
+            "       COALESCE(p.roster_size, (SELECT MAX(t.max_roster) FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id "
             "                  WHERE pt.program_id = p.id AND t.is_active "
             "                    AND NOT EXISTS (SELECT 1 FROM finance_program_teams o WHERE o.team_id = pt.team_id AND o.program_id <> p.id)), "
             "                (SELECT MAX(t.max_roster) FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id "
@@ -350,10 +352,16 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                 const Plan pl = plans.count({p.id, Y.id, S.id}) ? plans[{p.id, Y.id, S.id}] : Plan{};
                 const double rate0 = p.paysDues && collectRate.count(p.kind) ? collectRate[p.kind] : 1.0;
                 const int heads0 = p.paysDues ? h.second : h.first;
-                const int defPlayers = isReal ? heads0 : (int)std::lround(heads0 * rate0);
                 const int cap = std::max(1, p.capacity);
+                // youth plan seasons project every team full and paid (owner
+                // 11/16 "for youth projections project full paid roster for each
+                // team. its a projection"): teams (typed, else today's, at least
+                // one) × the roster; adults keep paying now × collection rate
+                const bool youthFull = !isReal && p.kind == "youth" && p.paysDues && p.capacity > 0;
+                const int teamsNow = std::max(1, (heads0 + cap - 1) / cap);
+                const int defPlayers = isReal ? heads0 : youthFull ? (pl.teams >= 0 ? pl.teams : teamsNow) * cap : (int)std::lround(heads0 * rate0);
                 int players = isReal ? defPlayers : (pl.players >= 0 ? pl.players : defPlayers);
-                int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : (players > 0 ? (players + cap - 1) / cap : 0));
+                int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : youthFull ? teamsNow : (players > 0 ? (players + cap - 1) / cap : 0));
                 if (full && !isReal) { teams = std::max(1, pl.teams >= 0 ? pl.teams : teams); players = teams * cap; }
                 payW[(int)si][p.id] = p.paysDues ? players : 0;
                 const double ph = pl.ph >= 0 ? pl.ph : calHours[p.id];
