@@ -1731,6 +1731,10 @@ class EventScreen extends Screen {
         else if (final) rsvps.push({ person_id: rsvpPersonId, response: final, created_via: 'manual' });
       }
       if (!this._onMyAvailabilitySaved(data)) this._paintMyAvailability();
+      // 📅 Then the rest of the week (lib/week-ask.js, owner 11/17: "we
+      // send them to an event if they set it then we hit them with why not
+      // set all for week") — once per event per visit, every section.
+      if (!clearing && window.WeekAsk) WeekAsk.maybeShow(this.auth, ev);
     } catch (err) {
       btn.disabled = false;
       const msg = this.element.querySelector('[data-gc-avail-msg]');
