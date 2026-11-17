@@ -5,6 +5,11 @@
 //             leaves, contours, water, the 7v7 chalk, name tags, shadows, sharp resolution);
 //   • SHOW  — which on-screen controls float over the pitch (elements tagged data-hud="<key>");
 //   • the camera / brain / mode controls themselves, so a hidden button never strands a feature.
+//   • CONTROLS (James 11/17: "everything is supposed to be contained in 'menu' in top left that is
+//     rolled up by default") — Home, status, EDIT, camera, view switch, Brain, Watch, speed, matchup,
+//     kick-off and replay are MOVED into the panel, in the 2D view and the 3D view alike. Over the pitch
+//     stay only the scoreboard, the brain's decision panels while Brain is on, and the touch play buttons
+//     if switched on here (off by default).
 // Essentials (pitch + goals, ball, players, officials, scoreboard) are always drawn. Choices are
 // remembered on this device (localStorage fh.game.view). DESIGN keeps its own layer pills: the
 // menu applies nothing there, and re-applies when GAME comes back. FH original.
@@ -31,19 +36,12 @@
     { k: 'shadows', label: 'Shadows' },
     { k: 'sharp',   label: 'Sharp (high-res screens)' },
   ];
-  // On-screen controls: key → label (elements carry data-hud="<key>").
+  // On-screen controls that may float over the pitch (elements carry data-hud="<key>"); every other
+  // data-hud control lives inside the panel (CONTAIN) and is always shown there.
   const SHOW = [
-    { k: 'status',  label: 'Status line' },
-    { k: 'play',    label: 'Play buttons (PASS / LOFT / TKL / AUTO)' },
-    { k: 'camera',  label: 'Camera buttons (CAM, zoom, follow)' },
-    { k: 'brain',   label: 'Brain button + panels' },
-    { k: 'replay',  label: 'Replay bar' },
-    { k: 'speed',   label: 'Speed bar (admin)' },
-    { k: 'match',   label: 'Matchup picker (admin)' },
-    { k: 'edit',    label: 'EDIT lineup button (admin)' },
-    { k: 'watch',   label: 'Watch-a-player list' },
-    { k: 'modes',   label: 'Mode bar (GAME / DESIGN …)' },
+    { k: 'play',    label: 'Touch play buttons over the pitch (PASS / LOFT / TKL / AUTO, stick)' },
   ];
+  const CONTAIN = ['status', 'edit', 'camera', 'brain', 'match', 'speed', 'replay', 'watch'];
   const ALL = [...DRAW, ...QUALITY, ...SHOW].map((o) => o.k);
   const ESSENTIAL = { sharp: true };   // everything else off: field, ball, players, refs only
 
@@ -53,12 +51,14 @@
     //          syncSeven() }
     constructor(hooks) {
       this.h = hooks;
+      this.is3d = !!(hooks.renderer && hooks.renderer.renderer && hooks.renderer.scene);   // 2D: no scene to dress
       this.v = ViewMenu.load();
       this.fps = { n: 0, t0: performance.now(), val: 0 };
       this.surround = null;
       this.injectCss();
       this.buildButton();
       this.buildPanel();
+      this.contain();
       this.applyHud();
       window.addEventListener('keydown', (e) => {
         if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
@@ -94,7 +94,15 @@
       const hud = SHOW.map((o) => `body.mode-game:not(.hud-${o.k}) [data-hud="${o.k}"]`).join(',\n');
       const st = document.createElement('style');
       st.textContent = `${hud} { display: none !important; }
-        #view-btn { position: fixed; top: env(safe-area-inset-top, 8px); left: 78px; z-index: 30;
+        #mode-bar { display: none !important; }   /* its modes are the menu's Mode section */
+        #view-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+        #view-controls > * { position: static !important; inset: auto !important; left: auto !important; right: auto !important;
+          top: auto !important; bottom: auto !important; transform: none !important; margin: 0 !important; z-index: auto !important;
+          max-width: 100%; box-sizing: border-box; }
+        #view-controls > #status, #view-controls > [data-hud="match"], #view-controls > [data-hud="speed"],
+        #view-controls > [data-hud="replay"], #view-controls > [data-hud="watch"] { flex-basis: 100%; width: 100% !important; }
+        #view-controls > #back { color: #ffcc00; font: 700 12px system-ui, sans-serif; text-decoration: none; padding: 4px 0; }
+        #view-btn { position: fixed; top: env(safe-area-inset-top, 8px); left: 8px; z-index: 30;
           margin-top: 4px; border: 1px solid rgba(255,204,0,.55); border-radius: 16px; padding: 5px 12px;
           background: rgba(10,14,20,.72); color: #ffcc00; font: 700 12px system-ui, sans-serif; cursor: pointer; }
         #view-btn[aria-expanded="true"] { background: #ffcc00; color: #0b1c3d; }
@@ -120,8 +128,8 @@
       const b = document.createElement('button');
       b.id = 'view-btn';
       b.type = 'button';
-      b.textContent = '☰ View';
-      b.title = 'What to draw and which controls to show (M)';
+      b.textContent = '☰ Menu';
+      b.title = 'Every control, camera, brain and what to draw (M)';
       b.setAttribute('aria-expanded', 'false');
       b.setAttribute('aria-controls', 'view-panel');
       b.addEventListener('click', (e) => { e.stopPropagation(); this.toggle(); });
@@ -137,22 +145,19 @@
       p.setAttribute('aria-label', 'View');
       const box = (o) => `<label><input type="checkbox" data-k="${o.k}"> ${o.label}</label>`;
       p.innerHTML =
-        `<div class="row"><strong style="font-size:13px;">View</strong><span class="fps" data-fps>— fps</span></div>` +
-        `<div class="row" style="margin-top:6px;">` +
+        `<div class="row"><strong style="font-size:13px;">Menu</strong><span class="fps" data-fps>— fps</span></div>` +
+        `<h3>Controls</h3><div id="view-controls"></div>` +
+        (this.is3d ? `<div class="row" style="margin-top:8px;">` +
         `<button type="button" data-act="essential" title="Field, ball, players and referees only">Essentials only</button>` +
-        `<button type="button" data-act="all">Everything on</button></div>` +
-        `<h3>Camera</h3><div class="row">` +
-        `<button type="button" data-act="cam" title="Cycle the camera (C)"></button>` +
-        `<button type="button" data-act="zin" aria-label="Zoom in">+</button>` +
-        `<button type="button" data-act="zout" aria-label="Zoom out">−</button>` +
-        `<button type="button" data-act="follow" title="Camera follows the ball (V)"></button></div>` +
-        `<h3>Coach</h3><div class="row"><button type="button" data-act="brain" title="Each player's decision on the pitch"></button></div>` +
-        `<h3>Draw on the field</h3>` +
+        `<button type="button" data-act="all">Everything on</button></div>` : '') +
+        // Camera and Brain: their own buttons are in CONTROLS now (no second copy here).
+
+        (this.is3d ? `<h3>Draw on the field</h3>` +
         `<div class="note" style="margin:0 0 2px;">Always drawn: pitch, goals, ball, players, referees.</div>` +
         DRAW.map(box).join('') +
-        `<h3>Quality</h3>` + QUALITY.map(box).join('') +
-        `<h3>Show on screen</h3>` + SHOW.map(box).join('') +
-        `<h3>Mode</h3><div class="row" data-modes></div>` +
+        `<h3>Quality</h3>` + QUALITY.map(box).join('') : '') +
+        `<h3>Over the pitch</h3>` + SHOW.map(box).join('') +
+        (this.is3d ? `<h3>Mode</h3><div class="row" data-modes></div>` : '') +
         `<div class="note">M opens this menu. Saved on this device.</div>`;
       p.addEventListener('change', (e) => {
         const k = e.target.dataset && e.target.dataset.k;
@@ -195,21 +200,36 @@
       for (const el of this.panel.querySelectorAll('input[data-k]')) el.checked = this.get(el.dataset.k);
       const leaves = this.panel.querySelector('input[data-k="leaves"]');
       if (leaves) leaves.disabled = !this.get('trees');
-      const { cam, brain, modes } = this.h;
+      const { modes } = this.h;
       const q = (s) => this.panel.querySelector(s);
-      q('[data-act="cam"]').textContent = '🎥 ' + cam.label();
-      const f = q('[data-act="follow"]');
-      f.textContent = cam.follow() ? 'Follow ball: on' : 'Follow ball: off';
-      f.classList.toggle('on', cam.follow());
-      const b = q('[data-act="brain"]');
-      b.textContent = brain.on() ? '🧠 Brain on' : '🧠 Brain off';
-      b.classList.toggle('on', brain.on());
-      q('[data-modes]').innerHTML = modes.list.map(([k, label]) =>
+
+      if (q('[data-modes]')) q('[data-modes]').innerHTML = modes.list.map(([k, label]) =>
         `<button type="button" data-mode="${k}" class="${modes.current() === k ? 'on' : ''}">${label}</button>`).join('');
+    }
+
+    // CONTROLS: move every contained control into the panel — now, and any the client builds later.
+    contain() {
+      const box = this.panel.querySelector('#view-controls');
+      const wanted = (el) => el && el.parentElement === document.body && el !== this.btn && el !== this.panel &&
+        (el.id === 'back' || el.id === 'btn-view' ||
+         (CONTAIN.includes(el.dataset.hud) && el.getAttribute('role') !== 'region'));   // brain decision panels stay out
+      const order = ['back', 'status', 'btn-view'];
+      const take = (el) => {
+        if (!wanted(el)) return;
+        const i = order.indexOf(el.id);
+        if (i >= 0) {   // Home, status, view switch first, in that order
+          const after = [...box.children].find((c) => order.indexOf(c.id) > i || order.indexOf(c.id) < 0);
+          box.insertBefore(el, after || null);
+        } else box.appendChild(el);
+      };
+      [...document.body.children].forEach(take);
+      new MutationObserver((ms) => ms.forEach((m) => m.addedNodes.forEach((n) => n.nodeType === 1 && take(n))))
+        .observe(document.body, { childList: true });
     }
 
     // Body classes for the on-screen controls (CSS hides untagged ones in GAME only).
     applyHud() {
+      for (const k of CONTAIN) document.body.classList.add('hud-' + k);   // inside the menu: always shown there
       for (const o of SHOW) document.body.classList.toggle('hud-' + o.k, this.get(o.k));
       document.body.classList.add('hud-ready');
     }
@@ -217,6 +237,7 @@
     // The scene: called by client.js whenever GAME is (re)applied, and on every change here.
     apply() {
       this.applyHud();
+      if (!this.is3d) return;   // the 2D view draws only the match
       const r = this.h.renderer;
       this.applyQuality(r);
       if (!this.h.isGame()) return;
@@ -278,6 +299,7 @@
         F.val = Math.round(F.n * 1000 / (now - F.t0));
         F.n = 0; F.t0 = now;
         if (this.open) this.panel.querySelector('[data-fps]').textContent = F.val + ' fps';
+        if (!this.is3d) return;
         const tags = this.get('tags') || !this.h.isGame();
         for (const fig of this.h.renderer.figures || []) if (fig.tag && fig.tag.visible !== tags) fig.tag.visible = tags;
       }

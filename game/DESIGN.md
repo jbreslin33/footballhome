@@ -10426,3 +10426,18 @@ time (9.95 a minute of 11.4), real 73% (8.23 of 11.24) — the rest are headers 
 blocks. And a struck ball is ours again 74% (65): fewer contests in flight. The pass excess (1.21×) is the release
 mix, not the tempo. Next: the contest for the ball in the air — aerial duels 15 a match (44.1), the defender 11.6 m
 off the man a loft is for (6.9; §8.247), the biggest share of releases that real football has and ours doesn't.
+
+### 8.255 Viewer — every control in the ☰ Menu, top left, closed by default (2D and 3D)
+
+James 11/17: "what is there items over screen. everything is supposed to be contained in 'menu' in top left that is
+rolled up by default". The ☰ View menu (11/10) only loaded in the 3D view, and there it showed or hid controls in
+place; in the 2D circles view (the default since §8.240) there was no menu, so Home, EDIT, status, Brain, speed,
+matchup, Kick off, Replay, CAM / zoom / FOLLOW, 2D/3D, Watch and the touch play buttons all floated over the pitch.
+
+`view-menu.js` now loads in both views and is **☰ Menu**: closed by default, top left. CONTROLS moves the controls
+themselves into the panel (Home, status line, 2D/3D switch, EDIT, CAM / zoom / follow, Brain, matchup + Kick off,
+speed, Replay, Watch), including ones the client builds later (a MutationObserver). Over the pitch: the scoreboard;
+the brain's decision panels while Brain is on; the touch play buttons (PASS / LOFT / TKL / AUTO, stick) only if
+switched on under "Over the pitch" (off by default). The 3D view keeps its Draw / Quality / Mode sections; the old
+floating mode bar is gone (its modes are in the menu). M opens it, Esc closes. Checked live in Chrome, 2D and 3D,
+no console errors.
