@@ -1976,7 +1976,7 @@ class RosterScreenBase extends Screen {
     const byTeam = new Map();
     for (const r of rows) {
       if (r.role === 'staff' || r.team_id == null) continue;
-      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, note: null };
+      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, note: null, bg: r.pill_bg, fg: r.pill_fg };
       if ((rankG[r.games] || 0) > (rankG[m.games] || 0)) m.games = r.games;
       if ((rankP[r.practices] || 0) > (rankP[m.practices] || 0)) { m.practices = r.practices; m.days = r.days; }
       if (r.role === 'coach') m.coach = true;
@@ -1985,6 +1985,22 @@ class RosterScreenBase extends Screen {
     }
     const teams = [...byTeam.values()];
     const coachOnly = teams.filter(t => t.coach);
+    // ONE pill look for both blocks (owner 11/17 "be consistent in roster
+    // box. use green pill" + "same for sees. use pill"): green = asked /
+    // on the list; grey = asked about nothing; red/amber = ⛔ / 🩹.
+    const PILL = {
+      green: 'background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;',
+      grey:  'background:rgba(148,163,184,0.12); border:1px solid rgba(148,163,184,0.45); color:#cbd5e1;',
+      red:   'background:rgba(239,68,68,0.16); border:1px solid #ef4444; color:#fca5a5;',
+      amber: 'background:rgba(245,158,11,0.16); border:1px solid #f59e0b; color:#fcd34d;',
+    };
+    // A team's own pill colour (teams.card_pill_bg/fg, mig 1438 — APSL
+    // royal blue, Liga 1 white) wins over green.
+    const hex = (c) => /^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : null;
+    const pill = (html, tone, bg, fg) => {
+      const look = hex(bg) ? `background:${bg}; border:1px solid ${bg}; color:${hex(fg) || '#ffffff'};` : PILL[tone || 'green'];
+      return `<span style="white-space:nowrap; font-weight:800; padding:0 6px; border-radius:999px; ${look}">${html}</span>`;
+    };
     const item = (t) => {
       const marks = [];
       if (t.games === 'yes') marks.push(cp('card_sees_games', {}, '⚽'));
@@ -1997,12 +2013,12 @@ class RosterScreenBase extends Screen {
       else if (t.note === 'practice_squad') why = cp('card_sees_why_practice_squad', {}, 'practice squad');
       else if (t.note === 'not_on_roster') why = cp('card_sees_why_not_on_roster', {}, 'not on roster');
       const coach = t.coach ? cp('card_sees_coach', {}, '🧢') + ' ' : '';
-      return `<span style="white-space:nowrap; ${marks.length ? '' : 'opacity:0.55;'}"><b>${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))}</b> ${esc(coach + marks.join(' '))}${why ? ` <span style="opacity:0.75;">${esc(why)}</span>` : ''}</span>`;
+      return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' '))}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
     };
     let sees;
     if (staff) {
       // Staff see every team: say so once, plus where he plays.
-      sees = [`<span style="white-space:nowrap;">${esc(cp('card_sees_staff', {}, '🛡 every team'))}</span>`]
+      sees = [pill(esc(cp('card_sees_staff', {}, '🛡 every team')))]
         .concat(teams.filter(t => !t.coach).map(item));
     } else if (coachOnly.length > 4) {
       // Coach of many teams: one entry, still with what he's asked about
@@ -2018,9 +2034,9 @@ class RosterScreenBase extends Screen {
     } else {
       sees = teams.map(item);
     }
-    if (!sees.length) sees = [`<span style="opacity:0.55;">${esc(cp('card_sees_none', {}, 'nothing'))}</span>`];
-    if (entry.suspended) sees.push(`<span style="color:#fca5a5; font-weight:800;">${esc(cp('card_sees_suspended', {}, '⛔ suspended'))}</span>`);
-    if (entry.injured) sees.push(`<span style="color:#fcd34d; font-weight:800;">${esc(cp('card_sees_injured', {}, '🩹 injured'))}</span>`);
+    if (!sees.length) sees = [pill(esc(cp('card_sees_none', {}, 'nothing')), 'grey')];
+    if (entry.suspended) sees.push(pill(esc(cp('card_sees_suspended', {}, '⛔ suspended')), 'red'));
+    if (entry.injured) sees.push(pill(esc(cp('card_sees_injured', {}, '🩹 injured')), 'amber'));
     // 📋 ROSTERS — "<league> <team>", the team left off when the league's
     // name already says it (APSL Reserves / APSL Res → "APSL Reserves";
     // CASA / L1 → "CASA L1"; Parks & Rec / U8 → "Parks & Rec U8").
@@ -2029,8 +2045,7 @@ class RosterScreenBase extends Screen {
       const lg = String(r.league || ''), tm = label(r.team);
       return !tm || lg.toLowerCase().includes(tm.toLowerCase()) ? lg : `${lg} ${tm}`;
     };
-    const rosterChip = (r) => `<span style="white-space:nowrap; font-weight:800; padding:0 4px; border-radius:3px;
-        background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">${esc(rosterName(r))}</span>`;
+    const rosterChip = (r) => pill(esc(rosterName(r)), 'green', r.pill_bg, r.pill_fg);
     // Each section is its own boxed block: header on top, contents below.
     const block = (tier, fb, tipTier, tipFb, accent, body, gap) => `
       <div title="${esc(cp(tipTier, {}, tipFb))}" style="flex:1 1 140px; min-width:0; border:1px solid ${accent}; border-radius:6px;
@@ -2039,9 +2054,9 @@ class RosterScreenBase extends Screen {
         <div style="display:flex; flex-wrap:wrap; gap:${gap}; align-items:center;">${body}</div>
       </div>`;
     return block('card_sees_h', '👁 SEES', 'card_sees_tip', 'What each team asks him about by default',
-        'rgba(148,163,184,0.35)', sees.join('<span style="opacity:0.4;">·</span>'), '2px 6px')
+        'rgba(148,163,184,0.35)', sees.join(''), '3px 4px')
       + block('card_rosters_h', '📋 ROSTERS', 'card_rosters_tip', 'Official league rosters he is on',
-        'rgba(34,197,94,0.45)', rosters.length ? rosters.map(rosterChip).join('') : `<span style="opacity:0.55;">${esc(cp('card_rosters_none', {}, 'none'))}</span>`, '3px 4px');
+        'rgba(34,197,94,0.45)', rosters.length ? rosters.map(rosterChip).join('') : pill(esc(cp('card_rosters_none', {}, 'none')), 'grey'), '3px 4px');
   }
 
   // "Also a pickup member" chip. Members and Pickup are two independent
