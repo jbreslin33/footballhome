@@ -10197,3 +10197,28 @@ only because every kind ran long.) p75 0 = the officials' earliest, as before.
 fouls 6-8 (12.5) — free kicks 160-215 s (363); 'other' stoppages (225 s) not modelled. The first two roughly
 cancel the third in the total. Next: why ours put it out over the touchline so often, then the fouls. Tests
 22/22, goldens unchanged, no migration.
+
+### 8.245 G5.141 — the ball carried over the touchline: every carry line turns back in (shipped)
+
+From §8.244's "why ours put it out over the touchline so often" (throw-ins 32-35 a team-match; DFL 19.9, StatsBomb
+23.1). New harness line: throw-ins by what put it out, beside `benchmarks_statsbomb_out.py` (PL 15/16, a team-match:
+pass 7.31 (air 5.88), clearance 4.70, block 3.10, dispossessed 2.31, miscontrol 2.11, interception 1.42, dribble
+1.32). Ours (3 seeds × 8): pass 13.4-15.0, carried out 10.1-10.5, "throw-in" 3.7-4.8 — the last is nothing kicked
+since the throw (the receiver took it and it went out with nobody kicking), so the same thing as carried out.
+
+`GAME_OUT_TRACE` now traces throw-ins too, and a carried-out ball (the man on it, his order, his and the ball's
+velocity, theirs nearest and his order, how long he'd had it). Men with a pass ordered, carrying it before the World's
+release, ran it over the line at 1-5 m/s, theirs pressing 2-9 m away. `carryDir`'s free line already turned back in
+within 3 m of the touchline / their goal line (G5.128); the branch for a man with theirs near (away from him, and the
+pressed cone) never looked, so a man pressed from the inside went away from him over the touchline.
+
+**Change.** The same turn-back applied to whatever drew the line, at the end of `carryDir`:
+`physics.onball.carry_edge_m` 3 (0 = off).
+
+3 seeds × 8, before → after: carried out 10.1-10.5 → 6.4-7.6; nothing kicked since the throw 3.7-4.8 → 3.3-3.7;
+throw-ins 32.0-34.9 → 29.6-30.7 (19.9); ball in play 59.1-60.9 → 60.8-61.6% (55.2); passes 453-466 → 458-476 (434);
+take-ons tried 62-67 → 66-71 (18). Goals 3.8 → 4.7 a match over 24 matches (shots similar) — watch it; could be noise.
+
+**Next:** ground passes out. Traced, about half our passes that go out for a throw-in are ground balls to a wide man
+at |y| 23-28 m that run past him into touch (leaving at 17-18 m/s; real ground passes out 1.43 a team-match, ours ~6).
+Tests 22/22, goldens unchanged, no migration.

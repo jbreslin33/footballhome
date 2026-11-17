@@ -209,6 +209,15 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
             }
         }
     }
+    // G5.141 (§8.245): whatever drew his line, within edge_m of the touchline or their goal line it
+    // turns back in, as the free line already did. Away from a man pressing from inside took the carrier
+    // over the touchline: 'carried out' + nothing kicked since the throw = 15.8 throw-ins a team-match,
+    // real non-kick causes ~10.7 (dispossessed, miscontrol, dribble, interception, block; StatsBomb).
+    if (P.edge_m.raw > 0) {
+        const Fixed64 hx = w.pitchHalfX(), hy = w.pitchHalfY();
+        if (math::fx_abs(sp.y) > hy - P.edge_m && (dir.y * sp.y).raw > 0) dir.y = -dir.y;
+        if (hx - sp.x * v.sg < P.edge_m && (dir.x * v.sg).raw > 0) dir.x = -dir.x;
+    }
     return dir;
 }
 
@@ -1313,6 +1322,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
             for (int n = 0; n < 4; ++n)
                 clear_rate[z][n] = p.fixed(std::string("physics.onball.clear_") + kZ[z] + "_" + kN[n], kClear[z][n]);
         clear_touch_y = p.fixed("physics.onball.clear_touch_y_m", 24000);
+        edge_m = p.fixed("physics.onball.carry_edge_m", 3000);   // §8.245: the free line's 3 m
         // The aim's length, a draw on these knots (m upfield at 0/25/50/75/100%): real foot clearances'
         // next touch in play is 4.3 / 15.2 / 28.2 m upfield at p25 / median / p75 (StatsBomb PL 15/16) —
         // charged down, scuffed, hoofed; a fixed 35 m aim landed clean on a mate 44% of the time (23.5).
