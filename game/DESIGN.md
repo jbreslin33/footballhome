@@ -10349,3 +10349,20 @@ per-match count was on a different clock.
 57.0-57.2 min (52.7), 60.1-61.0% (55.2); dead 1,094-1,135 s a team-match (1,284). Passes 564-572 a team-match —
 the longer match — **9.9-10.0 a minute in play (8.23): 1.21× real is the gap on one clock.** Tests 22/22, goldens
 unchanged (the golden matches are untimed), no migration.
+
+### 8.251 G5.147 — spells per minute in play; the challenge rate fitted (shipped)
+
+From §8.250, on one clock (3 seeds × 8; a team, per minute in play, real = StatsBomb / DFL ÷ 52.7): passes 9.90-9.99
+(8.23), spells 13.27-13.38 (12.15), shots 0.317-0.326 (0.245), fouls 0.164-0.168 (0.238), throw-ins 0.29-0.33
+(0.378); REWIN (the ball changes side in play, the loser had it 1 s+) 111-117 a team-match (148.4) — **the ball
+changes side 30% too rarely**, so possessions run long and fill with passes. Challenges: tackles won + lost ~15 a
+team-match + fouls 9.4-9.6, ~0.435 a minute (StatsBomb tackle duels 20.3 + fouls 12.5 = 0.62).
+
+`physics.press.tackle_per_s` (the presser in reach and goal-side dives at this rate) was §G4's [FH] 0.5, never fitted.
+**0.75** (3 seeds × 8): fouls 12.3-14.4 a team-match (12.52), 0.225-0.271 a minute (0.238); tackles won + lost
+~21 (20.3); in play 53.0-55.1 min a match (52.7); completion 78.9-79.2% (79.1). Unmoved: passes 9.98-10.12 a minute,
+REWIN 109-111 — the extra challenges end as fouls (dead) or beaten tackles, not won balls.
+
+**Next:** the turnover. Real sides lose it 148 times a team-match in play; ours 110. Where real ones come from
+(StatsBomb: miscontrols, dispossessions, interceptions, failed passes to a man) against ours. Tests 22/22, goldens
+unchanged, no migration.

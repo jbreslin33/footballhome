@@ -211,7 +211,7 @@ void BlockParams::configure(const core::ModelParams& p) {
         cut_margin = m.raw <= 0 ? 0 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
     }
     press_on_pass = p.fixed("physics.press.on_pass", 1000).raw > 0;
-    tackle_per_s = p.fixed("physics.press.tackle_per_s", 500);
+    tackle_per_s = p.fixed("physics.press.tackle_per_s", 750);   // G5.147 (§8.251) fit: 0.5 → 0.75 = StatsBomb fouls 12.5 + tackle duels 20.3 a team-match
 }
 
 void DefendingBlock::assign(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
