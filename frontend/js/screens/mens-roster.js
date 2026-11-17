@@ -26,6 +26,10 @@
 //     that gate was REMOVED 2026-07-04 pm per user directive.  Admin
 //     now decides roster + Dues Owed column placement manually.
 class MensRosterScreen extends RosterScreenBase {
+  // 👁 SEES lists only this board's own section's teams (owner 11/17
+  // "we really don't need to show youth stuff on the mens page").
+  seesSections() { return ['mens']; }
+
   // ── League registration-form presets (owner 2026-08-31) ────────────
   //
   // 📋 Liga1/APSL Reg + 📋 APSL Reg SMS/EMAIL buttons on every card.

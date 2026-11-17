@@ -14,6 +14,10 @@
 // mens.  The backend routes just point at BoysRosterController which
 // shares MensTeamColumns/MensTeamAssignments parametrised by domain.
 class BoysRosterScreen extends RosterScreenBase {
+  // 👁 SEES lists only this board's own section's teams (owner 11/17
+  // "we really don't need to show youth stuff on the mens page").
+  seesSections() { return ['boys', 'girls']; }
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';

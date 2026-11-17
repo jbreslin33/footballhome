@@ -16,6 +16,10 @@
 // just Tri County Women); to add a second women's team later just set
 // board_sort_order on that row — no code change required.
 class WomensRosterScreen extends RosterScreenBase {
+  // 👁 SEES lists only this board's own section's teams (owner 11/17
+  // "we really don't need to show youth stuff on the mens page").
+  seesSections() { return ['womens']; }
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';

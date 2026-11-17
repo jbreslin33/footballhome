@@ -1961,7 +1961,10 @@ class RosterScreenBase extends Screen {
       if (r.role === 'player' && r.note) m.note = r.note;
       byTeam.set(r.team_id, m);
     }
-    const teams = [...byTeam.values()];
+    // Only the board's own section (seesSections(); null = every team) —
+    // no youth teams or 🧢 Youth coach pill on the Men's page.
+    const own = typeof this.seesSections === 'function' ? this.seesSections() : null;
+    const teams = [...byTeam.values()].filter(t => !own || !t.section || own.includes(t.section));
     // ONE pill look for both blocks (owner 11/17 "be consistent in roster
     // box. use green pill" + "same for sees. use pill"): green = asked /
     // on the list; grey = asked about nothing; red/amber = ⛔ / 🩹.
