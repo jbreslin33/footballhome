@@ -287,6 +287,38 @@ public:
         // Without it ours passed every one of those balls (own third: 127 passes, 0 clearances; real
         // 102 + 11.4). One roll a spell, at his spot, struck at the World's release; hurried
         // (physics.kick.clear_err_deg). Aimed upfield to the emptier side, or up his touchline wide.
+        // 1c. G5.144 (§8.248): the keeper goes long at the real share — StatsBomb PL 15/16, 40 m+: goal kicks
+        // 82% (6.8 of 8.3 a team-match, 82% high), his open-play kicks 52.5% (9.8 of 18.7). Through the
+        // open-play pick (from his own box: short) ours went 40 m+ 23% / 21%, 50-70 m 0.4 and 1.3 a team-match
+        // (5.7 and 6.1). One roll a spell; lofted to a mate 40-70 m off him (evenly), else long_m upfield.
+        if (v.keeper && P.gk_long_on) {
+            const bool gkick = w.heldRestart() && w.restartKind() == core::MatchEventType::GoalKick;
+            const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 49) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            if (u < (gkick ? P.gk_long_kick : P.gk_long_open)) {
+                int cands[16]; int nc2 = 0;
+                const Fixed64 lo2 = P.gk_long_min_m * P.gk_long_min_m, hi2 = P.gk_long_max_m * P.gk_long_max_m;
+                for (std::uint8_t j = 0; j < w.playerCount() && nc2 < 16; ++j) {
+                    if (j == v.slot || c.team_of_slot[j] != v.team || w.isKeeper(j)) continue;
+                    const Fixed64 e = distSq(w.player(j).pos, me.pos);
+                    if (e >= lo2 && e <= hi2 && ((w.player(j).pos.x - sp.x) * v.sg).raw > 0) cands[nc2++] = j;
+                }
+                const Fixed64 u2 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 50) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                Vec2 to{sp.x + v.sg * P.gk_long_m, sp.y};
+                if (nc2 > 0) {
+                    const int k = std::min(nc2 - 1, static_cast<int>((u2 * Fixed64::fromInt(nc2)).raw >> Fixed64::FRAC_BITS));
+                    to = v2(w.player(static_cast<std::uint8_t>(cands[k])).pos);
+                    o.pass_to = static_cast<std::uint8_t>(cands[k]);
+                    o.other = static_cast<std::int16_t>(cands[k]);
+                }
+                const Fixed64 len = math::length(Vec2{to.x - sp.x, to.y - sp.y});
+                o.target = to;
+                o.carry_m = aimedCarry(me.pos, to, rangeFor(w.skillOf(v.slot), len));
+                o.move.move = math::normalized(Vec2{to.x - sp.x, to.y - sp.y});
+                o.action = Action::LoftedKick;
+                o.why = Why::Pass;
+                return true;
+            }
+        }
         if (!v.keeper && P.clear_on) {
             const Fixed64 ay = math::fx_abs(sp.y);
             const int cz = own_end < Fixed64::fromFraction(165, 10) && ay < Fixed64::fromFraction(2016, 100) ? 0
@@ -1322,7 +1354,15 @@ void PossessionParams::configure(const core::ModelParams& p) {
             for (int n = 0; n < 4; ++n)
                 clear_rate[z][n] = p.fixed(std::string("physics.onball.clear_") + kZ[z] + "_" + kN[n], kClear[z][n]);
         clear_touch_y = p.fixed("physics.onball.clear_touch_y_m", 24000);
-        edge_m = p.fixed("physics.onball.carry_edge_m", 3000);   // §8.245: the free line's 3 m
+        edge_m = p.fixed("physics.onball.carry_edge_m", 3000);
+        // §8.248: the rolls sit on top of the pick's own long balls (~23% / 21% 40 m+): (real - own) / (1 - own)
+        // gives the real 82% / 52.5%. The band and spot fitted so his long ball ends 50-70 m off (StatsBomb).
+        gk_long_on = p.fixed("physics.keeper.long_on", 1000).raw > 0;
+        gk_long_kick = p.fixed("physics.keeper.long_goal_kick", 770);
+        gk_long_open = p.fixed("physics.keeper.long_open", 400);
+        gk_long_min_m = p.fixed("physics.keeper.long_min_m", 50000);
+        gk_long_max_m = p.fixed("physics.keeper.long_max_m", 75000);
+        gk_long_m = p.fixed("physics.keeper.long_m", 60000);   // §8.245: the free line's 3 m
         // The aim's length, a draw on these knots (m upfield at 0/25/50/75/100%): real foot clearances'
         // next touch in play is 4.3 / 15.2 / 28.2 m upfield at p25 / median / p75 (StatsBomb PL 15/16) —
         // charged down, scuffed, hoofed; a fixed 35 m aim landed clean on a mate 44% of the time (23.5).

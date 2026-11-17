@@ -10266,3 +10266,34 @@ calls nearly every loft safe — rightly: nobody of theirs is near where it come
 **Read.** The long ball is easy because their men aren't on ours where it lands — the same positional mole as
 §8.203-8.216 (free options at 35-70 m ~20 points high, eight trials). Next: the defender against the man a loft is
 for, by role, from the launch — where he is told to be (spot / mark / cover) and why 4.7 m farther than real.
+
+### 8.248 G5.144 — the keeper goes long at the real share (shipped)
+
+From §8.247: LOFT FLIGHT by carry, a team-match, ours v DFL: 10-20 m 18.0 (5.9), 20-30 20.3 (8.9), 30-40 19.9 (16.7),
+40-50 10.4 (11.1), **50-70 0.2 (12.6)** — we never play the long ball that makes the real aerial duels. New harness
+PASS LENGTH by who kicks, v StatsBomb PL 15/16 (pass length; goal kicks by pass type, keepers by position), a
+team-match 0-20 / 20-40 / 40-50 / 50-70 / 70+ m:
+- outfield open play: real 290.5 / 103.9 / 13.2 / 7.1 / 0.4 — ours 384 / 104 / 11.4 / 4.9 / 0: the whole volume
+  excess is passes under 20 m; 20-40 m exact.
+- keeper open play: real 4.0 / 4.9 / 2.9 / 6.1 / 0.8 (57% high) — ours 10.4 / 6.5 / 2.4 / 1.3 / 0.
+- goal kicks: real 0.6 / 1.0 / 0.5 / 5.7 / 0.7 (82% high) — ours 7.5 / 3.3 / 2.5 / 0.4 / 0.
+
+A goal kick went through the keeper's open-play pick (`Possession` OnBall; from his own box the zone table is
+short), the long kick only when that found nothing.
+
+**Change** (OnBall, keepers; one roll a spell, before the pick): he goes long at `physics.keeper.long_goal_kick`
+0.77 / `long_open` 0.40 — on top of the pick's own ~23% / 21% 40 m+, (real − own) / (1 − own) = StatsBomb's
+82% / 52.5%. Lofted to a mate `long_min_m`-`long_max_m` (50-75 m) off him, upfield, evenly; none there, `long_m`
+(60) upfield. Counted as a pass (StatsBomb does). `long_on` 0 = off. First band 40-70 / 55 m ended 40-50 m (the
+target met it short); 50-75 / 60 lands them 50-70.
+
+3 seeds × 8 (40-70 rolls 0.82 / 0.525; the defaults then corrected for the pick's own share, checked on seed 1000):
+- Goal kicks 50-70 m 0.4 → 10.0-11.3 (5.7; ours concede 12-13 goal kicks, real 7.1 — the shots wide); keeper open
+  play 50-70 1.3 → 9.3-10.8 (6.1), 7.9 on the corrected default.
+- Aerial duels 10.2-14.4 → 14.5-17.4 a match (44.1); completion 80.2-81.0 → 79.4-79.9% (79.1).
+- Passes 536-560 → 543-568 (434) — the outfield short passes, untouched.
+
+Golden 11v11 re-locked (the keeper's kick is in the short match); 3v3 unchanged. Tests 22/22, no migration.
+
+**Next:** outfield passes under 20 m, 384-430 a team-match (290.5) — the whole volume excess; then why goal kicks
+come 12-13 a team-match (8.4 of them from shots wide, real 4.3).

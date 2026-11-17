@@ -159,7 +159,8 @@ constexpr std::uint64_t kGolden3v3   = 0x113e98a56c75b003ULL;
 // Re-locked G5.132 (2026-11-16): the carry line's zone + pressure latched for the spell (§8.233).
 // Re-locked G5.133 (2026-11-16): a mate's pass weight by its length band (StatsBomb pass lengths, §8.236).
 // Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
-constexpr std::uint64_t kGolden11v11 = 0x1c17da56ee451569ULL;
+// Re-locked G5.144 (2026-11-17): the keeper goes long at the real share, goal kicks and open play (StatsBomb, §8.248).
+constexpr std::uint64_t kGolden11v11 = 0x4fff39764b1ff407ULL;
 
 struct Rig {
     World world;

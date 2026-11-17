@@ -105,6 +105,10 @@ struct PossessionParams {
     // (under 1.2 / 1.2-3 / 3-6 / 6+ m), StatsBomb 360 (benchmarks_statsbomb_clear.py rates, §8.106);
     // rolled once a spell like the shot (on by default; clear_on 0 = off). Struck 24 m+ off the middle: up his touchline.
     bool clear_on = false;
+    // G5.144 (§8.248): the keeper's long ball at the real share (StatsBomb PL 15/16): goal kicks / open play
+    // go 40 m+ at long_goal_kick / long_open, to a mate long_min_m-long_max_m off him, else long_m upfield.
+    bool gk_long_on = false;
+    math::Fixed64 gk_long_kick{}, gk_long_open{}, gk_long_min_m{}, gk_long_max_m{}, gk_long_m{};
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
     math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};   // clear_len_q: the aim's metres upfield at 0/25/50/75/100% of a draw
     // G5.81 (§8.182): pressed (a man inside 3 m), his carry's line to that man — toward / across / the

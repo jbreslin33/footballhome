@@ -83,6 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long plk_n[3][5] = {};   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
     long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
     long pwhy_n[ai::kWhyCount + 1] = {}, rwhy_n[3][ai::kWhyCount] = {}, clr_out[3] = {}; std::vector<double> clr_dx[3], clr_ay[3];   // §8.243: passes by why; open-play releases by why and third; a clearance's end (mate / theirs / out)
     long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {}; double zm_tl[15][15][ai::kRoleCount] = {}, zm_ay[15][15][ai::kRoleCount] = {};   // §8.190: where they stand   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
@@ -276,10 +277,10 @@ int main(int argc, char** argv) {
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false; long own_hu = 0; double own_lx = 0, own_ly = 0, own_path = 0, own_v[5] = {}, own_ss = 0, own_e = 0; int own_nv = 0, own_sn = 0;
         double pos_ring[32][31][2] = {}; double own_pre[5] = {}, own_f0 = 0, own_plen = 0, own_ft = 0, last_plen = 0, last_ft = 0, kv0 = 0, own_v0 = 0, own_va = 0, last_v0 = 0, last_va = 0, free_v = 0; int own_got = -1, own_why = 0, kkind = 0, own_kk = 0, last_kk = 0; double hq_tx[32] = {}, hq_ty[32] = {}, hq_bx = 0, hq_by = 0; int hq_own = -1; long hq_k[32] = {}; int hq_b[32] = {}; bool hq_ok[32] = {}; double ring5[32][24][2] = {}, own_fl[5] = {}; long rl_k = -1; bool own_fl_ok = false; double rk_vx[32] = {}, rk_vy[32] = {}, rk_px = 0, rk_py = 0, rl_vx[32] = {}, rl_vy[32] = {}, rl_px = 0, rl_py = 0;   /* §8.237: every man's 0.2 s velocity at the last kick */   // §8.234: every man's last 30 ticks; his pace into the receipt
-        bool own_set = false;
+        bool own_set = false; int own_rk = -1;   // own_rk: §8.248 the restart he has the ball for
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0, rk = -1; bool gk = false; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
@@ -881,6 +882,10 @@ int main(int argc, char** argv) {
                     }
                     if (cat == 2 && rel.why >= 0 && rel.why < ai::kWhyCount) { ++S.dwl_n[rel.why]; if (ok) ++S.dwl_ok[rel.why]; else if (W.outStage() != 0 || W.restartTeam() != 0xFF) ++S.dwl_out[rel.why]; else if (b.owner && W.isKeeper(*b.owner)) ++S.dwl_gk[rel.why]; S.dwl_len[rel.why].push_back(std::hypot(ex - rel.x, ey - rel.y)); }
                 }
+                if (rel.p >= 0 && !rel.shot && rel.why != static_cast<int>(ai::Why::Clear)) {   // §8.248 PASS LENGTH by who: outfield open / keeper open / goal kick
+                    const int kq = rel.set ? (rel.rk == 3 ? 2 : -1) : rel.gk ? 1 : 0;
+                    if (kq >= 0) { const double L = std::hypot(ex - rel.x, ey - rel.y); ++S.plk_n[kq][L < 20 ? 0 : L < 40 ? 1 : L < 50 ? 2 : L < 70 ? 3 : 4]; }
+                }
                 if (rel.p >= 0 && W.outStage() != 0 && std::getenv("GAME_OUT_TRACE"))   // §8.246
                     std::fprintf(stderr, "FLIGHT why %s act %d to %d: closest %.1f m, ball %.1f m/s z %.1f, he %.1f m/s %s | from %.1f,%.1f out at %.1f,%.1f\n",
                                  rel.why >= 0 ? ai::kWhyNames[rel.why] : "?", rel.act, rel.to, rel.fl_min, rel.fl_v, rel.fl_z, rel.fl_rv,
@@ -979,6 +984,7 @@ int main(int argc, char** argv) {
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
                         rel.why = static_cast<int>(why);   // §8.191
+                        rel.rk = own_set ? own_rk : -1; rel.gk = W.isKeeper(owner);   // §8.248
                         { const std::uint8_t pt = s.lastOrders()[owner].pass_to; rel.to = pt < N && W.player(pt).team == owner_team ? pt : -1; rel.act = static_cast<int>(s.lastOrders()[owner].action); }   // §8.246
                         if (!own_set) { const double tl = (owner_team == 0 ? hx - own_px : hx + own_px); ++S.rwhy_n[tl >= 70 ? 0 : tl >= 35 ? 1 : 2][static_cast<int>(why)]; }   // §8.243
                         {   // §8.243 PASS ROLES
@@ -1178,7 +1184,7 @@ int main(int argc, char** argv) {
             if (own >= 0) {
                 const auto& c = W.player(static_cast<std::uint8_t>(own));
                 const double sg = c.team == 0 ? 1.0 : -1.0;
-                own_px = c.pos.x.toDouble(); own_py = c.pos.y.toDouble(); own_set = W.restartTeam() != 0xFF;
+                own_px = c.pos.x.toDouble(); own_py = c.pos.y.toDouble(); own_set = W.restartTeam() != 0xFF; own_rk = own_set ? static_cast<int>(W.restartKind()) : -1;
                 if (std::getenv("GAME_CARRY_TRACE") && !own_set && own_live0 && (k - owner_got) % 3 == 0 && k - owner_got < 90) {
                     const double tl0 = hx - own_sx * sg;
                     if (tl0 >= 35 && tl0 < 70 && !own_pr) {
@@ -2625,6 +2631,13 @@ int main(int argc, char** argv) {
         static const double rl[2][7][8] = {
 #include "passroles_real.inc"
         };
+        {   // §8.248 PASS LENGTH v StatsBomb PL 15/16 (pass length, set pieces by type, keeper by position)
+            static const char* kn3[3] = {"outfield, open play", "keeper, open play", "goal kicks"};
+            static const double rl[3][5] = {{290.49, 103.88, 13.20, 7.14, 0.44}, {3.97, 4.86, 2.90, 6.11, 0.81}, {0.57, 0.97, 0.49, 5.66, 0.66}};
+            std::printf("   PASS LENGTH a team-match, 0-20 / 20-40 / 40-50 / 50-70 / 70+ m (StatsBomb PL 15/16 in brackets):");
+            for (int q = 0; q < 3; ++q) { std::printf(" %s", kn3[q]); for (int b = 0; b < 5; ++b) std::printf(" %.2f (%.2f)", S.plk_n[q][b] / tm, rl[q][b]); std::printf(";"); }
+            std::printf("\n");
+        }
         std::printf("   PASSES BY WHY (a team-match):");
         for (int w = 0; w <= ai::kWhyCount; ++w) if (S.pwhy_n[w]) std::printf(" %s %.1f;", w < ai::kWhyCount ? ai::kWhyNames[w] : "other", S.pwhy_n[w] / tm);
         std::printf("\n");
