@@ -337,6 +337,29 @@ class RostersScreen extends Screen {
           this._buildTeamsPills();   // move the ↑ / ↓
         },
       },
+      {
+        // ↑ Asc / ↓ Desc beside the sort pills (owner 11/17 "still not
+        // seeing asc/desc toggle") — the real direction of the lit sort:
+        // Asc = A→Z, #1 first, lowest score first; Desc the other way.
+        // Players with nothing to sort on stay at the foot either way.
+        name:     'teams-sort-dir',
+        chips: [
+          { id: 'asc',  label: viewCopy('board_sort_asc', '↑ Asc') },
+          { id: 'desc', label: viewCopy('board_sort_desc', '↓ Desc') },
+        ],
+        selected: RosterScreenBase.sortArrow(litSort, this.teamsSortDesc) === '↑' ? 'asc' : 'desc',
+        onSelect: (id) => {
+          const bigFirst = RosterScreenBase.SORTS_BIG_FIRST.includes(litSort);
+          this.teamsSortDesc = id == null ? !this.teamsSortDesc : ((id === 'desc') !== bigFirst);
+          this.teamsSort = litSort;
+          for (const child of this._mountedChildren) {
+            if (child && child.columnScope === 'teams' && typeof child.setSortOrder === 'function') {
+              child.setSortOrder(litSort, this.teamsSortDesc);
+            }
+          }
+          this._buildTeamsPills();
+        },
+      },
     ]);
   }
 
