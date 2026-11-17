@@ -1,4 +1,5 @@
 #include "PyramidController.h"
+#include "../models/PyramidForecast.h"
 
 #include <algorithm>
 #include <iostream>
@@ -187,6 +188,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/county-lines", [this](const Request& r) { return handleCountyLines(r); });
     router.get(prefix + "/model-diff", [this](const Request& r) { return handleModelDiff(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
+    router.get(prefix + "/forecast", [this](const Request& r) { return handleForecast(r); });   // mig 1447
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
 }
@@ -618,6 +620,21 @@ Response PyramidController::handleZoneRules(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"ok", true}});
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] zone rules: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// 📈 Forecast (mig 1447), public like the page: one conference's season
+// played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>
+Response PyramidController::handleForecast(const Request& request) {
+    try {
+        const std::string c = request.getQueryParam("conference");
+        if (c.empty() || c.find_first_not_of("0123456789") != std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "conference is required");
+        return jsonOut(HttpStatus::OK, PyramidForecast::build(std::stoi(c)));
+    } catch (const std::invalid_argument& e) {
+        return jsonError(HttpStatus::NOT_FOUND, e.what());
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] forecast: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

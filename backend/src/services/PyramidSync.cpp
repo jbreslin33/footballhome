@@ -565,6 +565,34 @@ void PyramidSync::geocodePending() {
     }).detach();
 }
 
+// 📈 Forecast (mig 1447): the feed's games and its own table order, kept so
+// #apsl can play the rest of the season out.  A failure never fails the read.
+void PyramidSync::storeGames(int sourceId, const json& body) {
+    try {
+        if (!body.contains("games") || !body["games"].is_array()) return;
+        std::string tb = "{";
+        const json st = body.contains("standings") && body["standings"].is_object() ? body["standings"] : json::object();
+        if (st.contains("sort_keys") && st["sort_keys"].is_array() && st.contains("sort_features") && st["sort_features"].is_object()) {
+            bool first = true;
+            for (const auto& k : st["sort_keys"]) {
+                if (!k.is_number()) continue;
+                const std::string key = std::to_string(k.get<long long>());
+                if (!st["sort_features"].contains(key)) continue;
+                std::string code = st["sort_features"][key].value("codename", "");
+                std::string clean; for (char c : code) if (std::isalnum((unsigned char)c) || c == ' ') clean += c;
+                if (clean.empty()) continue;
+                tb += (first ? "\"" : ",\"") + clean + "\""; first = false;
+            }
+        }
+        tb += "}";
+        auto r = Database::getInstance()->query("SELECT fh_pyramid_games_load($1::int, $2::jsonb, $3::text[])",
+                                                {std::to_string(sourceId), body["games"].dump(), tb});
+        std::cerr << "[pyramid] games, source " << sourceId << ": " << (r.empty() ? 0 : r[0][0].as<int>()) << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] games, source " << sourceId << ": " << e.what() << std::endl;
+    }
+}
+
 // Growth by season (mig 847): the current season re-counted from the feed
 // just read; every past season in its season_list read ONCE (it can't
 // change), in the background.  A failure here never fails the table read.
@@ -930,7 +958,11 @@ json PyramidSync::refreshSource(int sourceId) {
         auto r = db->query("SELECT fh_pyramid_load($1::int, $2::jsonb)", {std::to_string(sourceId), divisions.dump()});
         result["ok"] = true;
         result["teams"] = r.empty() ? 0 : r[0][0].as<int>();
-        if (system == "teampass_json") storeSeasons(sourceId, locator, static_cast<TeamPassJsonReader*>(reader.get())->body);
+        if (system == "teampass_json") {
+            const json& body = static_cast<TeamPassJsonReader*>(reader.get())->body;
+            storeGames(sourceId, body);
+            storeSeasons(sourceId, locator, body);
+        }
         if (system == "demosphere") demosphereGrounds(sourceId, locator);
     } catch (const std::exception& e) {
         note = e.what();
