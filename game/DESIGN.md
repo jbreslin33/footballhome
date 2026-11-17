@@ -10049,22 +10049,24 @@ not StatsBomb's tag; a harness definition to check before it's a target.
 Next: draw the spell's pace and its hold together (a real spell's metres and seconds as one draw), or the gap-
 closing law off the ball (§8.238) first, which doesn't touch the carrier. Tests 22/22.
 
-### 8.240 Viewer — the 2D view's ARCADE style (circles stay)
+### 8.240 Viewer — ARCADE: the real bodies through a 16-bit camera (circles stay)
 
-James 11/16: "have a circle option like you have but also a arcade style". The 2D view (§8.235) gets a
-style: CIRCLES (the kit discs with a facing notch, as before) or ARCADE — 16-bit pixel men in the manner of
-the early-90s top-down sports games (our own drawing, no sprites copied from any game). `renderer2d.js`
-`drawArcadeMan`: block pixels on a 9 × 16 grid from the kit colours (shirt, trim collar, shorts, socks),
-skin and hair tones fixed per slot, standing upright on the screen with feet on his spot; four views from his
-screen heading (front / back with the number / left / right profile, with hysteresis on the diagonal); a
-4-frame run cycle advancing one frame per 1.1 m run, arms against the legs; a kick swing for 0.24 s when the
-ball leaves him; flat on the grass in a slide (flag 4); arms up and hopping celebrating; keepers' gloves.
-Men drawn back to front so the nearer overlaps. Redrawn the same day (James: "too big and the art is bad … too
-cartoony. nhl 94 was more realistic"): a real body's proportions on a 22-row grid (head + hair 4, torso 6, legs
-10 — a ~1.9 m man, one pixel 0.085 m, drawn in device pixels), every colour in three tones (lit left / base /
-shadow right) inside a dark one-pixel outline, knees bending in profile, the lifted leg foreshortened facing us. The STYLE button (2D only; LEAVES' slot, which 2D hides) flips it live;
-`?style=circles|arcade`, else this device's last choice (`fh.game.style2d`), else circles. Pure dressing,
-no server change. Checked live: both styles, no console errors.
+James 11/16: "have a circle option like you have but also a arcade style". First cut: procedural pixel men
+drawn in the 2D canvas (block sprites from the kit colours, a 4-frame leg cycle); then redrawn with real
+proportions and three-tone shading. Both read wrong — "too cartoony. nhl 94 was more realistic", "the
+animation is just too cartoony": a hand-made 4-frame cycle can't move like a footballer. Deleted.
+
+ARCADE now is the 3D view's own bodies and motion-capture clips (§8.208-8.214: Quaternius UAL, CMU) seen
+the way the early-90s top-down sports games framed play (our camera and rendering; nothing copied from any
+game): camera mode `arcade` (camera.js) high and steep on the ball — pitch 1.0 rad, 44 m back, a 28° lens so
+the men stand up the screen with little perspective; side-on in landscape, end-on on a phone held upright;
+the frame clamped to the pitch. renderer.js draws at RETRO_PIXEL = 0.34 render pixels per CSS pixel without
+antialiasing and the canvas is scaled up `image-rendering: pixelated` — a man ≈ 22 render pixels, a real
+run, cut, kick, slide and header as sprites (view-menu's quality setting leaves that ratio alone).
+boot.js: `?style=arcade` (or this device's last choice, `fh.game.style2d`) opens the 3D view with
+GAME_RETRO. The STYLE button: ARCADE in 2D and plain 3D, CIRCLES in arcade (back to the 2D discs); the
+2D / 3D VIEW button goes to the plain views. Checked live: pixelated men on the clips, frame on the pitch,
+no console errors.
 
 ### 8.241 G5.137 — the walk off the ball: a walk zone round the spot, trial, not shipped
 

@@ -147,6 +147,8 @@
     return new THREE.CanvasTexture(c);
   }
 
+  const RETRO_PIXEL = 0.34;   // ARCADE: render pixels per CSS pixel (a man ≈ 22 px tall)
+
   class GameRenderer {
     constructor(canvas) {
       this.canvas = canvas;
@@ -175,11 +177,16 @@
 
       this.camera = new THREE.PerspectiveCamera(
         45, window.innerWidth / window.innerHeight, 0.5, 1400);
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      // ARCADE (boot.js GAME_RETRO): drawn at a fraction of the screen's resolution and blown up with
+      // hard pixel edges — the real bodies and motion-capture clips as 16-bit sprites.
+      this.retro = !!window.GAME_RETRO;
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !this.retro });
+      this.renderer.setPixelRatio(this.retro ? RETRO_PIXEL : Math.min(window.devicePixelRatio, 2));
+      if (this.retro) canvas.style.imageRendering = 'pixelated';
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.rig = new CameraRig(this.camera, canvas);
+      if (this.retro) this.rig.setMode('arcade');
 
       // Low evening sun from the main-stand side: long readable shadows.
       const sun = new THREE.DirectionalLight(0xfff1dc, 1.15 * LEGACY);
@@ -235,6 +242,7 @@
       this.tickRate = hello.tickRate || 30;
       const hx = hello.pitchHalfX, hy = hello.pitchHalfY;
       this.hx = hx; this.hy = hy;
+      this.rig.halfX = hx; this.rig.halfY = hy;   // ARCADE keeps its frame on the pitch
 
       // Grass (sim x → three x, sim y → three z): one canvas texture with
       // mowing stripes + blade noise, receiving real shadows.

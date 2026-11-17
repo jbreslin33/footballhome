@@ -63,7 +63,7 @@
     body.view-2d #mode-bar, body.view-2d #mode-note, body.view-2d #btn-leaves,
     body.view-2d #btn-contours { display: none !important; }
     body.view-2d { background: #2f6b2a; }
-    body.view-3d #btn-style { display: none !important; }   /* circles / arcade is the 2D view's */
+    body:not(.mode-game) #btn-style { display: none !important; }   /* ARCADE is the match's camera */
   </style>
 </head>
 <body class="mode-game"><!-- view-menu.js: GAME hides the HUD until the ☰ View choices load -->
@@ -122,6 +122,6 @@
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
                  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
   </script>
-  <script type="module" src="js/game/boot.js?v=20261116arc2"></script>
+  <script type="module" src="js/game/boot.js?v=20261116arc5"></script>
 </body>
 </html>

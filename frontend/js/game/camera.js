@@ -26,9 +26,9 @@
 (function () {
   'use strict';
 
-  const MODES = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch'];
+  const MODES = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch', 'arcade'];
   const LABEL = { broadcast: 'TV', ball: 'BALL', third: '3RD', first: '1ST',
-                  top: 'TOP', orbit: 'FREE', watch: 'WATCH' };
+                  top: 'TOP', orbit: 'FREE', watch: 'WATCH', arcade: 'ARCADE' };
   const wrap = (a) => ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
   class CameraRig {
@@ -224,6 +224,20 @@
             goal = { yaw: this.cur.yaw, pitch: 0.4, dist: 30 * Z };
           }
           break;
+        case 'arcade': {
+          // ARCADE (James 11/16, "nhl 94 … more realistic"): the 16-bit top-down camera — high and
+          // steep on the ball, a long lens so the men stand up the screen with little perspective;
+          // the pitch across the screen in landscape, running up it on a phone held upright.
+          const upright = this.camera.aspect < 0.95;
+          goal = { yaw: upright ? -Math.PI / 2 : 0, pitch: 1.0, dist: 44 * Z };
+          // keep the frame on the pitch (the touchline at the frame's edge, not mid-screen)
+          if (this.halfX) {
+            const ex = upright ? 10 : 16 * Z, ez = upright ? 16 * Z : 9 * Z;
+            tx = Math.max(-this.halfX + ex, Math.min(this.halfX - ex, tx));
+            tz = Math.max(-this.halfY + ez, Math.min(this.halfY - ez, tz));
+          }
+          break;
+        }
         case 'top':
           tx = b.x * 0.35; tz = 0;
           goal = { yaw: 0, pitch: 1.5, dist: 96 * Z * Math.max(1, 1.2 / this.camera.aspect) };
@@ -231,7 +245,7 @@
         default:  // FREE
           goal = { ...this.user };
       }
-      this.applyFov(45, dt);
+      this.applyFov(this.mode === 'arcade' ? 28 : 45, dt);
       if (!this.follow) { tx = this.target.x; ty = this.target.y; tz = this.target.z; }
       const k = Math.min(1, dt * 4);
       this.target.x += (tx - this.target.x) * k;
