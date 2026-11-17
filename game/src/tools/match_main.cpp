@@ -279,7 +279,7 @@ int main(int argc, char** argv) {
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; } rel;   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
@@ -313,6 +313,12 @@ int main(int argc, char** argv) {
         for (long k = 0; k < ticks; ++k) {
             const auto before = W.ball().owner;
             s.tickOnce();
+            if (rel.p >= 0 && rel.to >= 0 && !W.ball().owner) {   // §8.246: closest the ball comes to the man it is for
+                const auto& q = W.player(static_cast<std::uint8_t>(rel.to)); const auto& bb = W.ball();
+                const double d = std::hypot(bb.pos.x.toDouble() - q.pos.x.toDouble(), bb.pos.y.toDouble() - q.pos.y.toDouble());
+                if (d < rel.fl_min) { rel.fl_min = d; rel.fl_v = std::hypot(bb.vel.x.toDouble(), bb.vel.y.toDouble()); rel.fl_z = bb.pos.z.toDouble();
+                                      rel.fl_rv = std::hypot(q.vel.x.toDouble(), q.vel.y.toDouble()); rel.fl_why = static_cast<int>(s.lastOrders()[rel.to].why); }
+            }
             if (cut_trace && mk.on && !mk.raced && mk.to >= 0 && !W.ball().owner && k > mk.k0) {
                 ai::Reads::RaceBall rb; rb.pos = W.ball().pos; rb.vel = W.ball().vel; rb.kicker = static_cast<core::SlotIndex>(mk.p);
                 rb.lockout = std::max(0, core::kKickerLockoutTicks - static_cast<int>(W.tickCount() - W.flightTick())); rb.ours = static_cast<std::uint8_t>(mk.team);
@@ -875,6 +881,10 @@ int main(int argc, char** argv) {
                     }
                     if (cat == 2 && rel.why >= 0 && rel.why < ai::kWhyCount) { ++S.dwl_n[rel.why]; if (ok) ++S.dwl_ok[rel.why]; else if (W.outStage() != 0 || W.restartTeam() != 0xFF) ++S.dwl_out[rel.why]; else if (b.owner && W.isKeeper(*b.owner)) ++S.dwl_gk[rel.why]; S.dwl_len[rel.why].push_back(std::hypot(ex - rel.x, ey - rel.y)); }
                 }
+                if (rel.p >= 0 && W.outStage() != 0 && std::getenv("GAME_OUT_TRACE"))   // §8.246
+                    std::fprintf(stderr, "FLIGHT why %s act %d to %d: closest %.1f m, ball %.1f m/s z %.1f, he %.1f m/s %s | from %.1f,%.1f out at %.1f,%.1f\n",
+                                 rel.why >= 0 ? ai::kWhyNames[rel.why] : "?", rel.act, rel.to, rel.fl_min, rel.fl_v, rel.fl_z, rel.fl_rv,
+                                 rel.fl_why >= 0 ? ai::kWhyNames[rel.fl_why] : "-", rel.x * (rel.team == 0 ? 1.0 : -1.0), rel.y, ex * (rel.team == 0 ? 1.0 : -1.0), ey);
                 if (rel.p >= 0 && rel.why == static_cast<int>(ai::Why::Clear)) {   // §8.243 CLEARANCES: end, and the next touch in play by where struck
                     const bool out = W.outStage() != 0;
                     ++S.clr_out[ok ? 0 : out ? 2 : 1];
@@ -969,6 +979,7 @@ int main(int argc, char** argv) {
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
                         rel.why = static_cast<int>(why);   // §8.191
+                        { const std::uint8_t pt = s.lastOrders()[owner].pass_to; rel.to = pt < N && W.player(pt).team == owner_team ? pt : -1; rel.act = static_cast<int>(s.lastOrders()[owner].action); }   // §8.246
                         if (!own_set) { const double tl = (owner_team == 0 ? hx - own_px : hx + own_px); ++S.rwhy_n[tl >= 70 ? 0 : tl >= 35 ? 1 : 2][static_cast<int>(why)]; }   // §8.243
                         {   // §8.243 PASS ROLES
                             const std::uint8_t pt = s.lastOrders()[owner].pass_to;

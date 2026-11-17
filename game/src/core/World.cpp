@@ -951,7 +951,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                                 players_[ball_.last_kicker].team != players_[i].team;
         const Fixed64 reach = gk ? (their_shot && keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_)
                               : box_def ? box_reach_m_
-                              : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : kBallControlRadius);
+                              : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : controlRadius());
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
         // Hard cap: nobody touches a ball above the engine capture cap
@@ -1281,6 +1281,7 @@ void World::configureTempo(const ModelParams& p) {
     cut_share_box_ = p.fixed("physics.tempo.cut_share_box", 0);   // G5.11
     box_reach_m_ = p.fixed("physics.tempo.box_reach_m", 0);       // G5.11
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
+    control_r_ = p.fixed("physics.ball.reach_m", 900);   // §8.246: an outfielder's reach to a ground ball [FH; fit: ground passes out, completion]
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too

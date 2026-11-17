@@ -215,7 +215,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
             const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
-                                (gk ? world.keeperReach() : header ? aerial_radius_ : core::kBallControlRadius) +
+                                (gk ? world.keeperReach() : header ? aerial_radius_ : world.controlRadius()) +
                                 (p.team != rb.ours ? rb.opp_margin : Fixed64::zero());
             const Fixed64 gap_sq = header ? math::lengthSquared(Vec2{p.pos.x - pos.x, p.pos.y - pos.y}) : distSq(p.pos, pos);
             if (gap_sq <= run * run) {
@@ -278,7 +278,7 @@ bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
         // 0.3 m off the line of a ball 3 m from him "couldn't get there" at any near point
         // (0.25 s early leaves him 0.05 s), and the spot he took was 13 m down the line: he
         // jogged off to it as the ball reached him late or rolled by to their man.
-        const Fixed64 r = runToward(world, slot, pos, t) + core::kBallControlRadius;
+        const Fixed64 r = runToward(world, slot, pos, t) + world.controlRadius();
         if (distSq(p.pos, Vec3{pos.x, pos.y, Fixed64::zero()}) <= r * r) {
             at = pos;
             return true;
@@ -315,7 +315,7 @@ bool Reads::raceSafe(const World& world, SlotIndex passer, const Vec3& pos, cons
     rb.lockout = core::kKickerLockoutTicks;
     rb.ours = (*team_of_slot_)[passer];
     rb.offside = false;
-    rb.opp_margin = reach > core::kBallControlRadius ? reach - core::kBallControlRadius : Fixed64::zero();
+    rb.opp_margin = reach > world.controlRadius() ? reach - world.controlRadius() : Fixed64::zero();
     rb.first_only = true;
     FlightRead& f = pass_race_;
     race(world, rb, f);

@@ -10222,3 +10222,29 @@ take-ons tried 62-67 → 66-71 (18). Goals 3.8 → 4.7 a match over 24 matches (
 **Next:** ground passes out. Traced, about half our passes that go out for a throw-in are ground balls to a wide man
 at |y| 23-28 m that run past him into touch (leaving at 17-18 m/s; real ground passes out 1.43 a team-match, ours ~6).
 Tests 22/22, goldens unchanged, no migration.
+
+### 8.246 G5.142 — a man reaches a ground ball 0.9 m away, not 0.5 (shipped)
+
+From §8.245's next: ground passes into touch. New `GAME_OUT_TRACE` FLIGHT line: for every pass that ends out, the
+closest the ball came to the man it was for, the ball's speed and height there, his speed and order. Of the ground
+passes out for a throw-in, most passed 0.4-1.3 m from him at 8.6-9.9 m/s on the floor, he on "meet the pass" at
+0.3-2 m/s — and rolled on into touch. World's capture is `kBallControlRadius` 0.5 m for everyone; §8.103's
+`physics.tempo.stretch_m` (the intended man only) has no row. The rest of the outs: the passer standing on or over
+the touchline, the ball out at once (next).
+
+**Trials** (3 seeds × 8; throw-ins / ground passes out / completion / passes / shots a team-match; real 19.9 DFL,
+23.1 StatsBomb / 7.3 / 79.1% / 434 / 12.9):
+- 0.5 m (before): 29.6-30.7 / 12.6-14.6 / 81.6-82.2% / 458-476 / 13.9-16.6.
+- stretch_m 0.9, the intended man only: 23.1-23.8 / 8.2-9.6 / 84.5-84.9% / 509-519 / 15.7-18.9 — every pass easier:
+  the man it's for reaches, the man in the lane doesn't.
+- **0.9 m for every outfielder** (`physics.ball.reach_m`, World's capture and the passer's race read, `Reads`, alike):
+  18.6-19.9 / 6.3-7.3 / 80.2-81.0% / 536-560 / 17.2-19.6.
+
+**Shipped:** `physics.ball.reach_m` 0.9 (World::controlRadius(); no row before = 0.5). A leg reaches a ball a stride
+off; the outcomes it governs — balls into touch, passes reaching a mate — land on real. [FH; the fit is to those two]
+
+**The moves, honestly:** passes 458-476 → 536-560 (434), shots 13.9-16.6 → 17.2-19.6 (12.9), pressures 372-395
+(151.8; a different cut, §8.126), ball in play 61-63%. Correct behaviour, ships (James 10/29, whack-a-mole). The ball
+now stays with men who reach it, so there are more spells and more passes per minute in play. **Next mole:** why
+our side passes so often per minute in play — spells and how long a man keeps it — and the shots that came with it.
+Tests 22/22, goldens unchanged, no migration.

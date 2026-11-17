@@ -136,6 +136,8 @@ public:
     // G4.87: how the ball flies (air drag) — the one law World and Brain share.
     void setBallFlight(const BallFlight& f) { ball_flight_ = f; }
     math::Fixed64 keeperReach() const noexcept { return keeper_reach_; }
+    // §8.246: an outfielder's reach to a ball on the ground (physics.ball.reach_m; no row = kBallControlRadius).
+    math::Fixed64 controlRadius() const noexcept { return control_r_.raw > 0 ? control_r_ : kBallControlRadius; }
     math::Fixed64 keeperShotReach() const noexcept { return keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_; }
     math::Fixed64 shotLift(math::Fixed64 v, math::Fixed64 d, math::Fixed64 h) const;
     const BallFlight& ballFlight() const noexcept { return ball_flight_; }
@@ -430,7 +432,7 @@ private:
                                        math::Fixed64::fromFraction(13, 100), math::Fixed64::fromFraction(9, 100), math::Fixed64::fromFraction(5, 100),
                                        math::Fixed64::fromFraction(2, 100), math::Fixed64::fromFraction(7, 100)};
     math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
-    math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{}, out_dead_lo_[3]{}, out_dead_hi_[3]{};
+    math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{}, out_dead_lo_[3]{}, out_dead_hi_[3]{}, control_r_{};
     std::uint32_t fouls_[2] = {0, 0};
     std::uint32_t deadRoll(math::Fixed64 lo, math::Fixed64 hi, std::uint8_t salt) const;
     math::Fixed64 cut_share_box_{}, box_reach_m_{};   // G5.11: their pass in our box, the share we take
