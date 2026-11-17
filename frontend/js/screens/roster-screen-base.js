@@ -2057,60 +2057,6 @@ class RosterScreenBase extends Screen {
         'rgba(34,197,94,0.45)', rosters.length ? rosters.map(rosterChip).join('') : `<span style="opacity:0.55;">${esc(cp('card_rosters_none', {}, 'none'))}</span>`, '3px 4px');
   }
 
-  renderSeesGamesChip(player, col) {
-    let sees = player.seesGamesHere === true;
-    if (!sees) {
-      if (!col || !col.teamId) return '';
-      const d = this._data || {};
-      const gated = Array.isArray(d.callupOnlyTeams) && d.callupOnlyTeams.includes(col.teamId);
-      const standing = ((d.autoInvites || {})[String(col.teamId)] || []).some(r => Number(r.personId) === Number(player.personId));
-      sees = (player.inviteOnly !== true && !gated) || standing;
-    }
-    if (!sees) return '';
-    const copy = (tier, tokens) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens)) || '';
-    const tip = copy('card_sees_games_tip', { team: (col && col.label) || '' }) || `Asked about every ${(col && col.label) || ''} game automatically`;
-    return `<span title="${this.escape(tip)}" style="font-size:0.66rem; line-height:1.3; white-space:nowrap;">${this.escape(copy('card_sees_games') || '👀⚽')}</span>`;
-  }
-
-  // Multi-team badge — flags a player who holds more than one active
-  // roster spot (e.g. a boy called up to a mens team, or someone on two
-  // mens squads) so it's visually obvious without cross-referencing
-  // every board. Only counts teams OTHER than the one this exact card
-  // lives in (col.teamId) — that one's already obvious from the column
-  // itself. Backed by ActiveTeamBadges (backend/src/models) via
-  // player.activeTeams (Boys/Girls/Mens boards) or player.active_teams
-  // (Women's Club cards, rosters.js) — covers every gender_category,
-  // not just this board's own domain.
-  renderActiveTeamsBadge(player, col) {
-    const teams = player.activeTeams || player.active_teams || [];
-    const currentTeamId = col && col.teamId ? col.teamId : null;
-    // Only teams playing in the lit season (owner 11/4: a U8 kid's winter
-    // "U9" team read like a second age chip under Fall).  A team with no
-    // season rows (Men's, Cup) always shows.
-    const term = this._term;
-    const inLitSeason = (tid) => {
-      if (!term || !term.term) return true;
-      const terms = term.teams && term.teams[String(tid)];
-      return !terms || terms.includes(term.term);
-    };
-    const others = teams.filter((t) => t && t.teamId !== currentTeamId && inLitSeason(t.teamId));
-    if (!others.length) return '';
-    const icon = { boys: '🧒', girls: '👧', mens: '🧔', womens: '👩' };
-    return others.map((t) => {
-      const category = t.genderCategory || t.gender_category || '';
-      const name = t.name || 'Team';
-      // The club's own name is noise on its own board (owner 2026-09-17:
-      // "we know we are lh") — the chip drops it, the tooltip keeps it.
-      // Card chips use the team's board label from the DB (teams.label,
-      // "APSL Reserves") minus its icon; a team with no label falls back
-      // to its name without the club.  The full name stays in the tooltip
-      // — and everywhere that isn't a card.
-      const boardLabel = String(t.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();
-      const shortName = RosterScreenBase.teamChipName(boardLabel || RosterScreenBase.dropClubName(name), 'team');
-      return `<span title="Also on ${this.escape(name)}" style="font-size:0.62rem; line-height:1.3; font-weight:700; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.18); color:#cbd5e1; white-space:nowrap;">${icon[category] || '⚽'} ${this.escape(shortName)}</span>`;
-    }).join('');
-  }
-
   // "Also a pickup member" chip. Members and Pickup are two independent
   // LeagueApps sub-programs — a person can hold one, the other, both or
   // neither — and holding both is not supposed to happen (owner
@@ -2578,8 +2524,9 @@ class RosterScreenBase extends Screen {
     // DOB is not drawn (owner 2026-09-17: "drop dob from the card, age chip is
     // enough"); callers may still pass dobShort — it is ignored here.
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
-    // 👀⚽ folded into the 👁 SEES line (mig 1435).
-    const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
+    // 👀⚽ and the "also on" team pills folded into the 👁 SEES / 📋 ROSTERS
+    // blocks (owner 11/17 "apsl reserves pill NOT in rosters box has to go
+    // as does the usasa cup … it all needs to go in rosters box").
     const pickupBadge = this.renderPickupBadge(player);
     // Both modes show the whole name; they differ in where it gets the
     // room to do it.
@@ -2697,7 +2644,6 @@ class RosterScreenBase extends Screen {
         ${window.PersonStanding && player.personId ? `<span data-standing-chip="${player.personId}" data-standing-inactive="${this.boardView === 'roster' ? '0' : '1'}" style="display:inline-flex; gap:3px; align-items:center;">${PersonStanding.chip(player.personId, { inactive: this.boardView !== 'roster' })}</span>` : ''}
         ${statusChip}
         ${this.renderHealthChip(player)}
-        ${activeTeamsBadge}
         ${pickupBadge}
         <span style="display:inline-flex; align-items:stretch; margin-left:auto;">${controls}</span>
        </div>
