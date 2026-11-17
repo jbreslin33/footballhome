@@ -621,6 +621,60 @@ class FinancesScreen extends Screen {
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
+  // The plan inputs every program shares (owner 11/17 "the now and future
+  // years should be consistent in format with options … for diff amount of
+  // players and paid or volunteer coach" + "also need hours for coach"):
+  // one row per input, seasons across (real seasons blank), the last cell
+  // sets every plan season at once.  withTotal: the caller's table has a
+  // Total column after the seasons.
+  _pgGridRows(year, p, withTotal = true) {
+    const esc = (t) => this.escapeHtml(t);
+    const b = this.programs.budgets[year], P = b.programs[p.code], ss = b.seasons;
+    // plan cells are inputs (empty = the live default, shown greyed); the
+    // Total column sets every plan season of the year at once
+    const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="number" min="0" step="${step || 1}" data-pg-field="${field}" data-season="${season}"
+        value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
+    const plan = ss.filter(se => !se.real);
+    const editRow = (label, fn, allFn) => `<tr class="item"><td>${esc(label)}</td>${ss.map(se => `<td>${fn(P[se.code] || {}, se)}</td>`).join('')}${withTotal ? `<td>${plan.length && allFn ? allFn() : ''}</td>` : ''}</tr>`;
+    const allTip = this._copy('pg_all_seasons') || 'all';
+    const full = this.pgScenario === 'capacity';   // players = teams × capacity there
+    let rows = editRow(this._copy('pg_col_players') || 'Players', (x, se) => se.real || full ? String(x.players ?? '') : inp(se.code, 'players', x.players_set ? x.players : '', x.players_default),
+                       full ? null : () => inp('all', 'players', '', allTip))
+      + editRow(this._copy('pg_col_teams') || 'Teams', (x, se) => se.real ? String(x.teams ?? '') : inp(se.code, 'teams', x.teams_set ? x.teams : '', x.teams), () => inp('all', 'teams', '', allTip))
+      + editRow(this._copy('pg_row_practice_h') || 'Practice h/wk', (x, se) => se.real ? '' : inp(se.code, 'practice_hours_week', x.practice_hours_set ? x.practice_hours_week : '', x.calendar_hours, 0.25), () => inp('all', 'practice_hours_week', '', allTip, 0.25))
+      + editRow(this._copy('pg_row_practice_w') || 'Practice weeks', (x, se) => se.real ? '' : inp(se.code, 'practice_weeks', x.practice_weeks_set ? x.practice_weeks : '', x.practice_weeks, 0.5), null)
+      + editRow(this._copy('pg_row_games_n') || 'Games per team', (x, se) => se.real ? '' : inp(se.code, 'games', x.games, 0), null)
+      + editRow(this._copy('pg_row_game_h') || 'Hours a game', (x, se) => se.real ? '' : inp(se.code, 'hours_per_game', x.hours_per_game, 0, 0.25), () => inp('all', 'hours_per_game', '', allTip, 0.25))
+      + editRow(this._copy('pg_row_coach') || 'Coach', (x, se) => se.real ? '' : `<button class="fn-pill ${x.coach_paid ? 'on' : ''}" style="padding:2px 8px; font-size:0.75rem;" data-pg-paid="${se.code}" data-on="${x.coach_paid ? '1' : '0'}">${esc(x.coach_paid ? (this._copy('pg_paid') || 'Paid') : (this._copy('pg_volunteer') || 'volunteer'))}</button>`, null)
+      + editRow(this._copy('pg_row_rate') || 'Coach $/h', (x, se) => se.real ? '' : inp(se.code, 'coach_rate', x.coach_rate_set ? x.coach_rate : '', x.coach_rate, 0.5), () => inp('all', 'coach_rate', '', allTip, 0.5));
+    if (p.kind === 'youth') {
+      const opts = ((this.programs.league_options || {})[year]) || {};
+      rows += editRow(this._copy('pg_row_leagues') || 'Leagues', (x, se) => {
+        if (se.real) return '';
+        const have = (x.entries || []).map(e => `<span style="white-space:nowrap; display:block;">${esc(e.league.replace('Philadelphia Parks & Recreation', 'PPR').replace('Inter-County Soccer League', 'ICSL'))} ${esc(e.name)}${e.age_band ? ` (${esc(e.age_band)})` : ''} <button class="fn-pill" style="padding:0 6px; font-size:0.7rem;" data-pg-entry-rm="${e.league_season_id}" data-season="${se.code}" title="${esc(this._copy('pg_remove') || 'Remove')}">✕</button></span>`).join('');
+        const free = (opts[se.code] || []).filter(o => !(x.entries || []).some(e => e.league_season_id === o.id));
+        const add = free.length ? `<select data-pg-entry-add data-season="${se.code}" style="max-width:9em; font-size:0.75rem; background:transparent; color:inherit;"><option value="">${esc(this._copy('pg_add_league') || '＋ league')}</option>${free.map(o => `<option value="${o.id}">${esc(o.league)} ${esc(o.name)}</option>`).join('')}</select>` : '';
+        return `<div style="text-align:left;">${have}${add}</div>`;
+      }, null);
+    }
+    return rows;
+  }
+  // The weekly practice slots on the calendar behind "Practice h/wk"
+  // (owner 11/17 "it should show the schedule in there for that team").
+  _pgScheduleHtml(p) {
+    const esc = (t) => this.escapeHtml(t);
+    const prog = ((this.programs || {}).programs || []).find(x => x.code === p.code) || p;
+    const slots = prog.schedule || [];
+    const days = (this._copy('pg_days') || 'Mon|Tue|Wed|Thu|Fri|Sat|Sun').split('|');
+    const t12 = (hm) => { const [h, m] = String(hm).split(':').map(Number); return `${((h + 11) % 12) + 1}${m ? ':' + String(m).padStart(2, '0') : ''}${h < 12 ? 'am' : 'pm'}`; };
+    const total = slots.reduce((a, sl) => a + Number(sl.hours || 0) * Number(sl.weeks || 0), 0) / Math.max(1, Number(prog.weeks_read || 4));
+    const head = this._copy('pg_schedule', { hours: (Math.round(Number(prog.calendar_hours || total) * 100) / 100).toString(), weeks: prog.weeks_read || 4 })
+      || `Practice schedule — calendar, next ${prog.weeks_read || 4} weeks · ${prog.calendar_hours || 0} h/wk`;
+    const list = slots.length
+      ? slots.map(sl => `<span style="white-space:nowrap; margin-right:12px;">${esc(days[(Number(sl.dow) + 6) % 7] || '')} ${esc(t12(sl.start))}–${esc(t12(sl.end))}${sl.location ? ` · ${esc(sl.location)}` : ''}${Number(sl.weeks) < Number(prog.weeks_read || 4) ? ` <span class="fn-dim">(${esc(this._copy('pg_schedule_weeks', { n: sl.weeks, of: prog.weeks_read || 4 }) || `${sl.weeks} of ${prog.weeks_read || 4} wks`)})</span>` : ''}</span>`).join('')
+      : `<span class="fn-dim">${esc(this._copy('pg_schedule_none') || 'No practices on the calendar')}</span>`;
+    return `<div class="fn-note" style="margin:4px 0 6px;"><span style="font-weight:700;">${esc(head)}</span><div style="margin-top:2px;">${list}</div></div>`;
+  }
   // One program: seasons across, lines down (dues → own costs → own net →
   // shared → grant / CASA → net with shared).
   _programDetailHtml(year, p) {
@@ -654,33 +708,8 @@ class FinancesScreen extends Screen {
     const minus = (a, b2, sign = -1) => { const o = {}; for (const se of ss) o[se.code] = Number(a[se.code] || 0) + sign * Number(b2[se.code] || 0); return o; };
     const dues = groupBy('dues'), own = groupBy('own'), coach = groupBy('coach'), shared = groupBy('shared'), grant = groupBy('grant');
     const preCoach = minus(dues, own), preClub = minus(preCoach, coach), preGrant = minus(preClub, shared), net = minus(preGrant, grant, +1);
-    // plan cells are inputs (empty = the live default, shown greyed); the
-    // Total column sets every plan season of the year at once
-    const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="number" min="0" step="${step || 1}" data-pg-field="${field}" data-season="${season}"
-        value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
     const plan = ss.filter(se => !se.real);
-    const editRow = (label, fn, allFn) => `<tr class="item"><td>${esc(label)}</td>${ss.map(se => `<td>${fn(P[se.code] || {}, se)}</td>`).join('')}<td>${plan.length && allFn ? allFn() : ''}</td></tr>`;
-    const allTip = this._copy('pg_all_seasons') || 'all';
-    const full = this.pgScenario === 'capacity';   // players = teams × capacity there
-    let rows = editRow(this._copy('pg_col_players') || 'Players', (x, se) => se.real || full ? String(x.players ?? '') : inp(se.code, 'players', x.players_set ? x.players : '', x.players_default),
-                       full ? null : () => inp('all', 'players', '', allTip))
-      + editRow(this._copy('pg_col_teams') || 'Teams', (x, se) => se.real ? String(x.teams ?? '') : inp(se.code, 'teams', x.teams_set ? x.teams : '', x.teams), () => inp('all', 'teams', '', allTip))
-      + editRow(this._copy('pg_row_practice_h') || 'Practice h/wk', (x, se) => se.real ? '' : inp(se.code, 'practice_hours_week', x.practice_hours_set ? x.practice_hours_week : '', x.calendar_hours, 0.25), () => inp('all', 'practice_hours_week', '', allTip, 0.25))
-      + editRow(this._copy('pg_row_practice_w') || 'Practice weeks', (x, se) => se.real ? '' : inp(se.code, 'practice_weeks', x.practice_weeks_set ? x.practice_weeks : '', x.practice_weeks, 0.5), null)
-      + editRow(this._copy('pg_row_games_n') || 'Games per team', (x, se) => se.real ? '' : inp(se.code, 'games', x.games, 0), null)
-      + editRow(this._copy('pg_row_game_h') || 'Hours a game', (x, se) => se.real ? '' : inp(se.code, 'hours_per_game', x.hours_per_game, 0, 0.25), () => inp('all', 'hours_per_game', '', allTip, 0.25))
-      + editRow(this._copy('pg_row_coach') || 'Coach', (x, se) => se.real ? '' : `<button class="fn-pill ${x.coach_paid ? 'on' : ''}" style="padding:2px 8px; font-size:0.75rem;" data-pg-paid="${se.code}" data-on="${x.coach_paid ? '1' : '0'}">${esc(x.coach_paid ? (this._copy('pg_paid') || 'Paid') : (this._copy('pg_volunteer') || 'volunteer'))}</button>`, null)
-      + editRow(this._copy('pg_row_rate') || 'Coach $/h', (x, se) => se.real ? '' : inp(se.code, 'coach_rate', x.coach_rate_set ? x.coach_rate : '', x.coach_rate, 0.5), () => inp('all', 'coach_rate', '', allTip, 0.5));
-    if (p.kind === 'youth') {
-      const opts = ((this.programs.league_options || {})[year]) || {};
-      rows += editRow(this._copy('pg_row_leagues') || 'Leagues', (x, se) => {
-        if (se.real) return '';
-        const have = (x.entries || []).map(e => `<span style="white-space:nowrap; display:block;">${esc(e.league.replace('Philadelphia Parks & Recreation', 'PPR').replace('Inter-County Soccer League', 'ICSL'))} ${esc(e.name)}${e.age_band ? ` (${esc(e.age_band)})` : ''} <button class="fn-pill" style="padding:0 6px; font-size:0.7rem;" data-pg-entry-rm="${e.league_season_id}" data-season="${se.code}" title="${esc(this._copy('pg_remove') || 'Remove')}">✕</button></span>`).join('');
-        const free = (opts[se.code] || []).filter(o => !(x.entries || []).some(e => e.league_season_id === o.id));
-        const add = free.length ? `<select data-pg-entry-add data-season="${se.code}" style="max-width:9em; font-size:0.75rem; background:transparent; color:inherit;"><option value="">${esc(this._copy('pg_add_league') || '＋ league')}</option>${free.map(o => `<option value="${o.id}">${esc(o.league)} ${esc(o.name)}</option>`).join('')}</select>` : '';
-        return `<div style="text-align:left;">${have}${add}</div>`;
-      }, null);
-    }
+    let rows = this._pgGridRows(year, p, true);
     const lines = (g, cls) => [...groups[g].values()].map(r => line(r, cls)).join('');
     rows += lines('dues', 'fn-in') + lines('own', 'fn-out');
     rows += sumRow(this._copy('pm_pre_coach') || 'BALANCE BEFORE COACHING', preCoach, 'subtotal');
@@ -689,7 +718,7 @@ class FinancesScreen extends Screen {
     rows += sumRow(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', preGrant, 'subtotal');
     if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
-    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${this._pgScheduleHtml(p)}${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   // ── 💵 Men's: where the money goes (mig 1407, owner 11/16 "apsl only. liga 1
@@ -763,7 +792,7 @@ class FinancesScreen extends Screen {
       const block = l.scope === 'cups' ? `cup:${l.league}` : l.scope;
       const label = l.scope === 'cups' ? l.league : scopeLabel(l.scope);
       // a later year's game coaching sits on the plans: into the Coaching band
-      if (l.fee_kind === 'game_coaching' && !l.is_option) put(bands, 'coaching', 'coaching', this._copy('pm_coaching') || 'Coaching', { ...line, label: this._copy('plan_game_coaching', { label: l.scope === 'cups' ? l.league : scopeLabel(l.scope) }) || `Game coaching — ${scopeLabel(l.scope)}` });
+      if (l.fee_kind === 'game_coaching' && !l.is_option) put(bands, 'coaching', 'coaching', this._copy('pm_coaching') || 'Coaching', { ...line, coach: 'games', label: this._copy('plan_game_coaching', { label: l.scope === 'cups' ? l.league : scopeLabel(l.scope) }) || `Game coaching — ${scopeLabel(l.scope)}` });
       else put(l.is_option ? options : bands, l.scope, block, label, line);
     }
     // budget lines under Men's (kits, practice coaching …): their own scope's band
@@ -771,15 +800,16 @@ class FinancesScreen extends Screen {
     // coaching balance"): practice + every game-coaching line in ONE band
     const coachLabel = this._copy('pm_coaching') || 'Coaching';
     for (const b of (x.budget || []).filter(b => b.budget_year === year && mens.has(b.scope)))
-      put(bands, b.category === 'labor' ? 'coaching' : b.scope, b.category === 'labor' ? 'coaching' : `bl:${b.scope}`, b.category === 'labor' ? coachLabel : scopeLabel(b.scope), { label: b.label, detail: `${M2(b.amount)} × ${qty(b.year_units)}`, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note, by: T.even(Number(b.year_total || 0), T.span(b.period_start, b.period_end)) });
+      put(bands, b.category === 'labor' ? 'coaching' : b.scope, b.category === 'labor' ? 'coaching' : `bl:${b.scope}`, b.category === 'labor' ? coachLabel : scopeLabel(b.scope), { ...(b.category === 'labor' ? { coach: 'practice' } : {}), label: b.label, detail: `${M2(b.amount)} × ${qty(b.year_units)}`, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note, by: T.even(Number(b.year_total || 0), T.span(b.period_start, b.period_end)) });
     // game coaching this year (coaching policies; a later year has it on the plans)
     if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && mens.has(p.scope))) {
       const games = (p.seasons || []).reduce((a, s) => a + Number(s.expected || 0), 0); if (!games) continue;
       const scope = mens.has(p.team_scope) ? p.team_scope : p.scope;
       put(bands, 'coaching', 'coaching', coachLabel,
-        { label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, detail: `${M2(p.rate)} × ${games}`, amount: Number(p.rate) * games, assumed: (p.seasons || []).some(s => s.is_assumed), note: p.note,
+        { coach: 'games', label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, detail: `${M2(p.rate)} × ${games}`, amount: Number(p.rate) * games, assumed: (p.seasons || []).some(s => s.is_assumed), note: p.note,
           by: T.fromMonths(Number(p.rate) * games, T.polW(p)) || T.even(Number(p.rate) * games) });
     }
+    this._menCoachingFromGrid(year, bands, T);
     const order = ['apsl', 'liga1', 'u23', 'cups', 'liga2', 'temple7s'];
     const rank = (c) => c === 'coaching' ? 950 : c === 'mens' ? 900 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
     const list = (map) => [...map.values()].map(b => ({ ...b, blocks: [...b.blocks.values()].map(k => ({ ...k, total: k.lines.reduce((a, l) => a + l.amount, 0) })) }))
@@ -794,6 +824,46 @@ class FinancesScreen extends Screen {
   // club share from the Year plan's Men's pill (a later year: the programs),
   // costs per competition from _menCompetitions. The Programs summary row
   // shows the same numbers (owner 11/16: one set of numbers, not two).
+  // Men's coaching in a plan season comes from the program grid (owner
+  // 11/17: the grid drives it, now and later years; fall stays real).
+  // 🧑‍🏫 volunteer → no coaching that season.  Paid → the grid's practice
+  // coaching (teams × h/wk × weeks × $/h; h/wk defaults to the calendar)
+  // replaces the Year plan's practice line for that season, and when games
+  // are typed the grid's game coaching replaces the per-game lines too
+  // (blank games = the Year plan's per-game coaching stays).
+  _menCoachingFromGrid(year, bands, T) {
+    const b = ((this.programs || {}).budgets || {})[year], P = b && b.programs.mens;
+    if (!P || this.pgScenario === 'capacity') return;
+    const coach = bands.get('coaching');
+    if (!coach) bands.set('coaching', { code: 'coaching', label: this._copy('pm_coaching') || 'Coaching', blocks: new Map() });
+    const band = bands.get('coaching');
+    if (!band.blocks.has('coaching')) band.blocks.set('coaching', { label: this._copy('pm_coaching') || 'Coaching', lines: [] });
+    const lines = band.blocks.get('coaching').lines;
+    for (const l of lines) if (!l.by) l.by = T.even(Number(l.amount || 0)) || {};
+    const add = { practice: { by: {}, details: [] }, games: { by: {}, details: [] } };
+    let touched = false;
+    for (const se of b.seasons) {
+      const x = P[se.code];
+      if (se.real || !x) continue;
+      touched = true;
+      const grid = (kind) => (x.lines || []).filter(l => l.key === 'coaching' && l.label === kind);
+      const zero = (pred) => { for (const l of lines) if (pred(l)) l.by[se.code] = 0; };
+      if (!x.coach_paid) { zero(() => true); continue; }
+      zero(l => l.coach === 'practice');
+      for (const g of grid('practice')) { add.practice.by[se.code] = (add.practice.by[se.code] || 0) + Number(g.amount || 0); add.practice.details.push(`${se.label} ${g.detail}`); }
+      if (Number(x.games || 0) > 0) {
+        zero(l => l.coach === 'games');
+        for (const g of grid('games')) { add.games.by[se.code] = (add.games.by[se.code] || 0) + Number(g.amount || 0); add.games.details.push(`${se.label} ${g.detail}`); }
+      }
+    }
+    if (!touched) return;
+    const label = { practice: this._copy('pm_grid_practice') || 'Practice coaching — plan seasons', games: this._copy('pm_grid_games') || 'Game coaching — plan seasons' };
+    for (const k of ['practice', 'games']) {
+      const tot = Object.values(add[k].by).reduce((a, v) => a + v, 0);
+      if (tot >= 0.5) lines.push({ label: label[k], detail: add[k].details.join(' · '), amount: tot, assumed: true, coach: k, by: add[k].by });
+    }
+    for (const l of lines) l.amount = Object.values(l.by || {}).reduce((a, v) => a + Number(v || 0), 0);
+  }
   _menYear(year) {
     const M0 = FinancesScreen.money0;
     const thisYear = ((this.flow || {}).year || {}).label || '';
@@ -995,11 +1065,15 @@ class FinancesScreen extends Screen {
     // the typed men over the default (see _menYear)
     let playersRow = '';
     const PB = ((this.programs || {}).budgets || {})[year], PM = PB && PB.programs.mens;
-    if (PM && PB.seasons.some(se => !se.real)) {   // this year too (owner 11/17): fall is real, the rest can be set
-      const inp = (season, value, placeholder) => `<input class="pg-in" type="number" min="0" step="1" data-pg-field="players" data-season="${esc(season)}" value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
-      playersRow = `<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:4px 0 8px;"><span style="font-weight:700;">${esc(this._copy('pm_players_edit') || 'Paying men per season')}</span>`
-        + PB.seasons.filter(se => !se.real).map(se => { const x2 = PM[se.code] || {}; return `<label style="white-space:nowrap;">${esc(se.label)} ${inp(se.code, x2.players_set ? x2.players : '', x2.players_default)}</label>`; }).join('')
-        + `<label style="white-space:nowrap;">${esc(this._copy('pg_all_seasons') || 'all')} ${inp('all', '', '')}</label></div>`;
+    const mensProg = ((this.programs || {}).programs || []).find(x => x.code === 'mens');
+    if (mensProg) playersRow = this._pgScheduleHtml(mensProg);
+    if (mensProg && PM && PB.seasons.some(se => !se.real)) {
+      // the same plan grid as every program (owner 11/17 "the now and future
+      // years should be consistent in format with options"): players,
+      // teams, practice h/wk, weeks, games, hours a game, Paid/volunteer, $/h
+      const gh = `<tr><th></th>${PB.seasons.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('pg_all_seasons') || 'all')}</th></tr>`;
+      playersRow += `<div class="fn-note">${esc(this._copy('pm_grid_note') || 'Plan seasons: blank = the default (grey). Paying men add their dues; coaching follows the grid — volunteer = no coaching that season; blank games keep the per-game coaching.')}</div>
+        <div style="overflow-x:auto; margin:4px 0 8px;"><table class="fn-table"><thead>${gh}</thead><tbody>${this._pgGridRows(year, mensProg, true)}</tbody></table></div>`;
     }
     const pills = [{ code: 'year', label: this._copy('pm_year') || 'Whole year', on: yearView }, ...SS.map(se => ({ ...se, on: picked.has(se.code) }))].map(se =>
       `<button class="fn-pill ${se.on ? 'on' : ''}" data-pm-season="${esc(se.code)}">${esc(se.label)}</button>`).join(' ');

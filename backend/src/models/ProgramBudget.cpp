@@ -157,6 +157,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
     // busiest of its teams (as the old Full capacity did: a session that also carries a
     // men's team counts for the men only)
     std::map<int, double> calHours;
+    std::map<int, json> calSlots;   // program → weekly practice slots
     {
         std::map<int, double> teamHours;
         for (const auto& r : db->query(R"SQL(
@@ -175,6 +176,35 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                  GROUP BY et.team_id)SQL", {std::to_string(weeksRead)}))
             teamHours[r["team_id"].as<int>()] = num(r, "per_week");
         for (const auto& p : programs) { double h = 0; for (int t : p.teams) h = std::max(h, teamHours.count(t) ? teamHours[t] : 0.0); calHours[p.id] = h; }
+        // The weekly slots behind those hours (owner 11/17 "it should show the
+        // schedule in there for that team"): the same calendar weeks, one row
+        // per weekday + time + place that comes back at least half the weeks.
+        std::map<int, std::vector<json>> teamSlots;
+        for (const auto& r : db->query(R"SQL(
+                WITH ev AS (
+                  SELECT e.id, g.starts_at AT TIME ZONE 'America/New_York' AS s, g.ends_at AT TIME ZONE 'America/New_York' AS f,
+                         split_part(COALESCE(g.location, ''), ',', 1) AS loc
+                    FROM gcal_events g JOIN fh_events e ON e.gcal_event_id = g.id AND e.kind = 'practice'
+                   WHERE g.deleted_at IS NULL AND g.status IS DISTINCT FROM 'cancelled'
+                     AND g.starts_at >= date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York' + interval '7 days'
+                     AND g.starts_at <  date_trunc('week', now() AT TIME ZONE 'America/New_York') AT TIME ZONE 'America/New_York' + make_interval(days => 7 + 7 * $1::int))
+                SELECT et.team_id, EXTRACT(ISODOW FROM ev.s)::int AS dow, to_char(ev.s, 'HH24:MI') AS st, to_char(ev.f, 'HH24:MI') AS en,
+                       EXTRACT(EPOCH FROM (ev.f - ev.s)) / 3600.0 AS h, ev.loc, COUNT(*)::int AS n
+                  FROM ev JOIN fh_event_teams et ON et.fh_event_id = ev.id
+                 GROUP BY 1, 2, 3, 4, 5, 6
+                HAVING COUNT(*) * 2 >= $1::int
+                 ORDER BY 2, 3)SQL", {std::to_string(weeksRead)}))
+            teamSlots[r["team_id"].as<int>()].push_back({{"dow", r["dow"].as<int>()}, {"start", str(r, "st")}, {"end", str(r, "en")},
+                                                         {"hours", round2(num(r, "h"))}, {"location", str(r, "loc")}, {"weeks", r["n"].as<int>()}});
+        for (const auto& p : programs) {
+            std::map<std::string, json> seen;   // dow|start|end|place → slot (shared sessions once)
+            for (int t : p.teams) if (teamSlots.count(t)) for (const auto& sl : teamSlots[t]) {
+                const std::string k = std::to_string(sl["dow"].get<int>()) + "|" + sl["start"].get<std::string>() + "|" + sl["end"].get<std::string>() + "|" + sl["location"].get<std::string>();
+                if (!seen.count(k) || seen[k]["weeks"].get<int>() < sl["weeks"].get<int>()) seen[k] = sl;
+            }
+            json arr = json::array(); for (auto& [k, sl] : seen) arr.push_back(sl);
+            calSlots[p.id] = arr;
+        }
     }
     // scope → programs (cash_flow_scopes): a team scope → the programs holding
     // the team; a section scope → that kind's programs; club → shared
@@ -318,7 +348,8 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
     }
     for (const auto& s : seasons) out["seasons"].push_back({{"code", s.code}, {"label", s.label}, {"from_month", s.from}, {"to_month", s.to}});
     for (const auto& p : programs) out["programs"].push_back({{"id", p.id}, {"code", p.code}, {"label", p.label}, {"kind", p.kind}, {"age_from", p.ageFrom}, {"age_to", p.ageTo},
-                                                              {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])}});
+                                                              {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])},
+                                                              {"weeks_read", weeksRead}, {"schedule", calSlots.count(p.id) ? calSlots[p.id] : json::array()}});
 
     for (size_t yi = 0; yi < years.size(); ++yi) {
         const Year& Y = years[yi];
