@@ -810,6 +810,26 @@ class FinancesScreen extends Screen {
         else if (r.kind === 'award') grant += r.amount;
       }
       const alloc = m.cats.find(c => c.code === 'allocated'); if (alloc) { share = alloc.sub; shareDetail = `${M0(alloc.sub / (m.frac || 1))} × ${m.pct}`; }
+      // More paid spots this year too (owner 11/17 "i should have option to
+      // increase paid player numbers even for the current year" + "allowing
+      // diff totals fall, spring etc"): a plan season (fall is real) whose
+      // paying men were typed adds (typed − default) × that season's dues
+      // per man on top of the Year plan's dues.  The standard reports stay
+      // as they are — this is the Men's money table only.
+      const b = ((this.programs || {}).budgets || {})[year], P = b && b.programs.mens;
+      if (P) {
+        const bits = [];
+        for (const se of b.seasons) {
+          const x = P[se.code] || {};
+          if (se.real || !x.players_set) continue;
+          const pl = Number(x.players || 0), def = Number(x.players_default || 0);
+          const lineDues = FinancesScreen.pgSum(x.lines, 'dues');
+          const per = pl > 0 && lineDues > 0 ? lineDues / pl : Number(C.monthly || 0) * ((se.months || []).length || 1);
+          const add = (pl - def) * per;
+          if (Math.abs(add) >= 0.5) { dues += add; bits.push(`${se.label} ${pl}`); }
+        }
+        if (bits.length) duesDetail = (this._copy('pm_dues_set', { seasons: bits.join(' · ') }) || `with ${bits.join(' · ')} paying`) + (duesDetail ? ` · ${duesDetail}` : '');
+      }
     } else {
       const b = ((this.programs || {}).budgets || {})[year], P = b && b.programs.mens;
       if (P) for (const se of b.seasons) for (const l of ((P[se.code] || {}).lines || [])) {
@@ -970,11 +990,12 @@ class FinancesScreen extends Screen {
     const base = (this._copy('pm_columns') || 'Line|Rate × qty|Year|Per man / mo').split('|').map(c => c.trim());
     const heads = [base[0], yearView ? base[1] : (this._copy('pm_col_year_cost') || 'Whole year'),
       ...(yearView ? [base[2]] : cols.map(se => se.label)), ...(multi ? [this._copy('pm_col_total') || 'Total'] : []), base[3]];
-    // a later year's dues come from the programs' players per season: type to
-    // set, clear to go back to the default (grey); this year's dues are real
+    // paying men per plan season: type to set, clear to go back to the
+    // default (grey).  A later year's dues come from these; this year's add
+    // the typed men over the default (see _menYear)
     let playersRow = '';
     const PB = ((this.programs || {}).budgets || {})[year], PM = PB && PB.programs.mens;
-    if (year !== thisYear && PM && PB.seasons.some(se => !se.real)) {
+    if (PM && PB.seasons.some(se => !se.real)) {   // this year too (owner 11/17): fall is real, the rest can be set
       const inp = (season, value, placeholder) => `<input class="pg-in" type="number" min="0" step="1" data-pg-field="players" data-season="${esc(season)}" value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
       playersRow = `<div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:4px 0 8px;"><span style="font-weight:700;">${esc(this._copy('pm_players_edit') || 'Paying men per season')}</span>`
         + PB.seasons.filter(se => !se.real).map(se => { const x2 = PM[se.code] || {}; return `<label style="white-space:nowrap;">${esc(se.label)} ${inp(se.code, x2.players_set ? x2.players : '', x2.players_default)}</label>`; }).join('')
