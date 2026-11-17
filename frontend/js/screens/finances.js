@@ -904,8 +904,9 @@ class FinancesScreen extends Screen {
     rows += `<tr class="subtotal"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_in_total') || 'Money in (before any grant)')}</td>${cells(inPre, 'fn-in')}<td>${pm(inPre.tot)}</td></tr>`;
     rows += head(this._copy('pm_out') || 'MONEY OUT — BY COMPETITION', '#fca5a5');
     for (const b of comps) rows += band(b);
-    rows += subtotal(this._copy('pm_out_comps') || 'Money out — competitions', sum(comps.map(b => b.v)));
-    rows += head(this._copy('pm_out_rest') || "MONEY OUT — WHAT EVERY MEN'S TEAM SHARES", '#94a3b8');
+    // Men's club wide (kits, LeagueApps fees) sits with the competitions, one
+    // subtotal for both (owner 11/16 "kits are mens expense with other stuff …
+    // its part of competitions")
     const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k, lines: [...k.lines] })) } : { code: 'mens', label: this._copy('pm_general') || "Men's — general (every team)", blocks: [{ label: '', lines: [], v: Z() }], v: Z() };
     if (Math.abs(laFees.tot) >= 0.5) { gen.blocks[0].lines.push({ label: this._copy('soa_la_fees') || 'LeagueApps fees', detail: `${M0(dues)} × ${(100 * feeRatio).toFixed(1)}%`, v: laFees, year: yearView ? null : dues * feeRatio }); gen.blocks[0].v = plus(gen.blocks[0].v, laFees); gen.v = plus(gen.v, laFees); }
     if (Math.abs(gen.v.tot) >= 0.5) rows += band(gen);
