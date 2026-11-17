@@ -351,6 +351,10 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                                                               {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])},
                                                               {"weeks_read", weeksRead}, {"schedule", calSlots.count(p.id) ? calSlots[p.id] : json::array()}});
 
+    // adults only grow (owner 11/17 "our numbers will keep going up not down
+    // till we hit 70"): a plan season's default players = the season before's
+    // (real fall, or what was typed), never fewer than paying now
+    std::map<int, int> prevPlayers;   // program → last season's players
     for (size_t yi = 0; yi < years.size(); ++yi) {
         const Year& Y = years[yi];
         out["years"].push_back(Y.label);
@@ -390,11 +394,13 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                 // one) × the roster; adults keep paying now × collection rate
                 const bool youthFull = !isReal && p.kind == "youth" && p.paysDues && p.capacity > 0;
                 const int teamsNow = std::max(1, (heads0 + cap - 1) / cap);
-                const int defPlayers = isReal ? heads0 : youthFull ? (pl.teams >= 0 ? pl.teams : teamsNow) * cap : (int)std::lround(heads0 * rate0);
+                const int defPlayers = isReal ? heads0 : youthFull ? (pl.teams >= 0 ? pl.teams : teamsNow) * cap
+                                    : std::max(heads0, prevPlayers.count(p.id) ? prevPlayers[p.id] : 0);
                 int players = isReal ? defPlayers : (pl.players >= 0 ? pl.players : defPlayers);
                 int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : youthFull ? teamsNow : (players > 0 ? (players + cap - 1) / cap : 0));
                 if (full && !isReal) { teams = std::max(1, pl.teams >= 0 ? pl.teams : teams); players = teams * cap; }
                 payW[(int)si][p.id] = p.paysDues ? players : 0;
+                if (!full) prevPlayers[p.id] = players;
                 const double ph = pl.ph >= 0 ? pl.ph : calHours[p.id];
                 const double weeks = pl.weeks >= 0 ? pl.weeks : weeksPerYear * months.size() / 12.0;
                 const double rate = pl.rate >= 0 ? pl.rate : coachRate;
@@ -439,8 +445,13 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                     // dues: players × monthly × months
                     if (p.paysDues && players > 0) {
                         const double mo = monthly.count(p.kind) ? monthly[p.kind] : 0.0;
-                        const double dues = players * mo * months.size();
-                        char d[96]; std::snprintf(d, sizeof d, "%d × $%.0f × %zu", players, mo, months.size());
+                        // reality rule: the headcount stays whole, the money
+                        // is what actually gets collected (last 3 months' share)
+                        const double cr = m.value("collect_rate", 1.0);
+                        const double dues = players * mo * months.size() * cr;
+                        char d[128];
+                        if (cr < 0.995) std::snprintf(d, sizeof d, "%d × $%.0f × %zu × %.0f%% collected", players, mo, months.size(), 100 * cr);
+                        else std::snprintf(d, sizeof d, "%d × $%.0f × %zu", players, mo, months.size());
                         lines.push_back({"dues", "dues", "dues", "", d, dues, true});
                         if (feeRatio > 0) { char f[64]; std::snprintf(f, sizeof f, "%.1f%%", 100 * feeRatio); lines.push_back({"own", "la_fees", "la_fees", "", f, dues * feeRatio, false}); }
                     }

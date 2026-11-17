@@ -43,11 +43,13 @@ in the months (bonds out) by scope: a team scope → its programs, a section
 scope → that section's programs by players, club → shared.
 
 **Plan season:**
-- players default = today's paying players × the share of dues actually
-  collected over the last 3 closed months (reality rule); later years move
-  the youth up an age per year (U16 → Men's / Women's)
+- players default = the season before's players (fall real, or what was
+  typed), never fewer than today's paying players: adults only grow (owner
+  11/17 "our numbers will keep going up not down till we hit 70"); later
+  years move the youth up an age per year (U16 → Men's / Women's)
 - teams default = players ÷ capacity (`teams.max_roster`), rounded up
-- dues = players × monthly dues × months (Women's: none)
+- dues = players × monthly dues × months × the share of dues actually
+  collected over the last 3 closed months (reality rule; Women's: none)
 - coaching = teams × (practice h/wk × weeks + games × h/game) × rate —
   one coach per team for every practice and game; practice h/wk default = the
   calendar's next 4 weeks (busiest of the program's teams); weeks = the

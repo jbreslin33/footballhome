@@ -83,6 +83,14 @@ class FinancesScreen extends Screen {
       const gp = e.target.closest('[data-pg-prog]'); if (gp) { this.pgProg = this.pgProg === gp.dataset.pgProg ? null : gp.dataset.pgProg; this._renderBody(); return; }
       const c = e.target.closest('[data-cat]'); if (c) { const k = c.dataset.cat; if (this.expanded.has(k)) this.expanded.delete(k); else this.expanded.add(k); this._renderBody(); }
     });
+    // plan boxes take numbers only (owner 11/17 "make them num boxes only
+    // accept numbers"): digits, plus one '.' where the field has decimals
+    div.addEventListener('input', (e) => {
+      const gf = e.target.closest('.pg-in'); if (!gf) return;
+      let v = gf.value.replace(gf.dataset.pgDec ? /[^0-9.]/g : /[^0-9]/g, '');
+      const dot = v.indexOf('.'); if (dot >= 0) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+      if (v !== gf.value) gf.value = v;
+    });
     div.addEventListener('change', (e) => {
       const gf = e.target.closest('[data-pg-field]');
       if (gf) {
@@ -632,8 +640,8 @@ class FinancesScreen extends Screen {
     const b = this.programs.budgets[year], P = b.programs[p.code], ss = b.seasons;
     // plan cells are inputs (empty = the live default, shown greyed); the
     // Total column sets every plan season of the year at once
-    const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="number" min="0" step="${step || 1}" data-pg-field="${field}" data-season="${season}"
-        value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.2em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
+    const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="text" inputmode="${step && step < 1 ? 'decimal' : 'numeric'}" autocomplete="off" data-pg-dec="${step && step < 1 ? '1' : ''}" data-pg-field="${field}" data-season="${season}"
+        value="${value ?? ''}" placeholder="${esc(String(placeholder ?? ''))}" style="width:4.6em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;">`;
     const plan = ss.filter(se => !se.real);
     const editRow = (label, fn, allFn) => `<tr class="item"><td>${esc(label)}</td>${ss.map(se => `<td>${fn(P[se.code] || {}, se)}</td>`).join('')}${withTotal ? `<td>${plan.length && allFn ? allFn() : ''}</td>` : ''}</tr>`;
     const allTip = this._copy('pg_all_seasons') || 'all';
