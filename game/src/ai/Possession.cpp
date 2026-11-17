@@ -272,6 +272,46 @@ public:
                 }
             }
         }
+        // 1b. G5.139 (§8.243): clear the danger. Real defenders boot it clear at the 360 rate for
+        // where they are and how close the nearest opponent is (own box 13-54%, the rest of our third
+        // 0.4-7%) — StatsBomb logs 11.4 foot clearances a team-match, nearly all in the own third.
+        // Without it ours passed every one of those balls (own third: 127 passes, 0 clearances; real
+        // 102 + 11.4). One roll a spell, at his spot, struck at the World's release; hurried
+        // (physics.kick.clear_err_deg). Aimed upfield to the emptier side, or up his touchline wide.
+        if (!v.keeper && P.clear_on) {
+            const Fixed64 ay = math::fx_abs(sp.y);
+            const int cz = own_end < Fixed64::fromFraction(165, 10) && ay < Fixed64::fromFraction(2016, 100) ? 0
+                         : own_end < Fixed64::fromInt(35) ? 1 : own_end < Fixed64::fromInt(70) ? 2 : 3;
+            Fixed64 nd2 = Fixed64::fromInt(10000);
+            int crowd[2] = {0, 0};   // their outfielders on each side of the middle
+            for (std::uint8_t q = 0; q < w.playerCount(); ++q) {
+                if (c.team_of_slot[q] == v.team || w.isKeeper(q)) continue;
+                const Fixed64 e = distSq(w.player(q).pos, me.pos);
+                if (e < nd2) nd2 = e;
+                ++crowd[w.player(q).pos.y.raw >= 0 ? 1 : 0];
+            }
+            const int cn = nd2 < Fixed64::fromFraction(144, 100) ? 0 : nd2 < Fixed64::fromInt(9) ? 1 : nd2 < Fixed64::fromInt(36) ? 2 : 3;
+            const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 47) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            if (u < P.clear_rate[cz][cn]) {
+                const Fixed64 hy = w.pitchHalfY();
+                const Fixed64 ul = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 48) + Fixed64::one()) * Fixed64::fromInt(2);   // 0..4 over the knots
+                const int qi = std::min(3, static_cast<int>(ul.raw >> Fixed64::FRAC_BITS));
+                const Fixed64 clen = P.clear_len_q[qi] + (P.clear_len_q[qi + 1] - P.clear_len_q[qi]) * (ul - Fixed64::fromInt(qi));
+                Fixed64 ax = sp.x * v.sg + clen;
+                if (ax > hx - Fixed64::fromInt(30)) ax = hx - Fixed64::fromInt(30);
+                Fixed64 ty;
+                if (ay >= P.clear_touch_y) ty = sp.y.raw >= 0 ? hy : -hy;   // "if in doubt, put it out"
+                else { const Fixed64 off = hy * Fixed64::fromFraction(7, 20); ty = crowd[0] <= crowd[1] ? -off : off; }
+                o.target = Vec2{ax * v.sg, ty};
+                const Fixed64 len = math::length(Vec2{o.target.x - sp.x, o.target.y - sp.y});
+                o.carry_m = aimedCarry(me.pos, o.target, rangeFor(w.skillOf(v.slot), len));
+                o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
+                o.action = Action::LoftedKick;
+                o.first_time = true;   // hit first time, no settling touch: the hurried kick (World, clear_err_deg)
+                o.why = Why::Clear;
+                return true;
+            }
+        }
         // 2. A pass — the real policy (StatsBomb PL 2015/16 open play). Each
         // mate's weight is the share of real passes from this zone to his zone,
         // split among the mates standing there; only passes the race read says
@@ -1264,6 +1304,21 @@ void PossessionParams::configure(const core::ModelParams& p) {
         mark_on = p.fixed("physics.pass.mark_on", 1000).raw > 0;
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);
+    {   // G5.139 (§8.243): StatsBomb 360, 115 matches (§8.106's table), permille
+        static const int kClear[4][4] = {{535, 444, 360, 134}, {69, 54, 20, 4}, {10, 5, 2, 0}, {1, 0, 0, 0}};
+        static const char* kZ[4] = {"box", "own3", "mid", "fin3"};
+        static const char* kN[4] = {"lt1_2", "1_2_3", "3_6", "6p"};
+        clear_on = p.fixed("physics.onball.clear_on", 1000).raw > 0;
+        for (int z = 0; z < 4; ++z)
+            for (int n = 0; n < 4; ++n)
+                clear_rate[z][n] = p.fixed(std::string("physics.onball.clear_") + kZ[z] + "_" + kN[n], kClear[z][n]);
+        clear_touch_y = p.fixed("physics.onball.clear_touch_y_m", 24000);
+        // The aim's length, a draw on these knots (m upfield at 0/25/50/75/100%): real foot clearances'
+        // next touch in play is 4.3 / 15.2 / 28.2 m upfield at p25 / median / p75 (StatsBomb PL 15/16) —
+        // charged down, scuffed, hoofed; a fixed 35 m aim landed clean on a mate 44% of the time (23.5).
+        static const int kLenQ[5] = {3000, 5000, 12000, 24000, 40000};   // fitted, 3 seeds x 8 (§8.243)
+        for (int i = 0; i < 5; ++i) clear_len_q[i] = p.fixed("physics.onball.clear_len_q" + std::to_string(i) + "_m", kLenQ[i]);
+    }
     line_on = p.fixed("physics.onball.carry_line", 1000).raw > 0;
     line_latch = p.fixed("physics.onball.line_latch", 1000).raw > 0;   // G5.132 (§8.233)
     for (int z = 0; z < kLineZones; ++z) {   // G5.128: physics.onball.line_<zone>_<sector> permille (kCarryLine), renormalized to 1000

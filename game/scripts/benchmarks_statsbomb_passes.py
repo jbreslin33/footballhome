@@ -18,6 +18,7 @@ import collections, glob, json, os, sys
 SX, SY = 105 / 120, 68 / 80
 DEPTH = (18, 35, 52, 70)          # metres from their line; 5 bands
 NAMES = ("0-18", "18-35", "35-52", "52-70", "70+")
+SET = ("Corner", "Free Kick", "Goal Kick", "Kick Off", "Throw-in")   # as benchmarks_statsbomb_concepts.py
 
 
 def zone(x, y):
@@ -42,8 +43,8 @@ for f in files:
         if e["type"]["name"] != "Pass":
             continue
         p = e["pass"]
-        if p.get("type") is not None:      # corners, free kicks, throws, goal kicks, kick-offs
-            continue
+        if p.get("type", {}).get("name") in SET:   # corners, free kicks, throws, goal kicks, kick-offs
+            continue                                 # (Recovery / Interception passes are open play: kept, §8.243)
         o = zone(*e["location"])
         d = zone(*p["end_location"])
         n[o] += 1

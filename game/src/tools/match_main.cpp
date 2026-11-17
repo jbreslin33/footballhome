@@ -83,6 +83,8 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
+    long pwhy_n[ai::kWhyCount + 1] = {}, rwhy_n[3][ai::kWhyCount] = {}, clr_out[3] = {}; std::vector<double> clr_dx[3], clr_ay[3];   // §8.243: passes by why; open-play releases by why and third; a clearance's end (mate / theirs / out)
     long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {}; double zm_tl[15][15][ai::kRoleCount] = {}, zm_ay[15][15][ai::kRoleCount] = {};   // §8.190: where they stand   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
     long bx_gf[2][2] = {}, bx_g[2][2][5] = {}; long bx_lf[6][2] = {}, bx_li[6][2] = {}, bx_lst[6][2] = {}; double bx_lsd[6][2] = {}; long bx_sf[6][3] = {}, bx_si[6][3] = {}; long bx_ch[6] = {}, bx_i2[6] = {}, bx_was[6] = {}; double bx_mv[6] = {};   // §8.162: in the box now, there 2 s before, moved
      long bx_f[6] = {}, bx_in[6] = {}, bx_run[6] = {}; double bx_run_tl[6] = {}, bx_ln[6] = {}, bx_lead[6] = {}, bx_deep[6] = {}, bx_cbm[6] = {}, bx_gap2[6] = {}; long bx_drole[6][ai::kRoleCount] = {};   // ours in the box zone (0-18 m, |y| < 20.16) by the ball's zone (DFL box)   // passes as played: origin zone → end zone (the pass policy's grid)   // the nearest defender to the man on the ball, by band (DFL press)   // each goal by the last kick's why (+ none), own goals   // balls let go in open play by distance (<12, 12-18, 18-25, 25-35, 35+), and shots
@@ -277,7 +279,7 @@ int main(int argc, char** argv) {
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; } rel;   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; } rel;   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
@@ -864,7 +866,13 @@ int main(int argc, char** argv) {
                     }
                     if (cat == 2 && rel.why >= 0 && rel.why < ai::kWhyCount) { ++S.dwl_n[rel.why]; if (ok) ++S.dwl_ok[rel.why]; else if (W.outStage() != 0 || W.restartTeam() != 0xFF) ++S.dwl_out[rel.why]; else if (b.owner && W.isKeeper(*b.owner)) ++S.dwl_gk[rel.why]; S.dwl_len[rel.why].push_back(std::hypot(ex - rel.x, ey - rel.y)); }
                 }
-                if (rel.p < 0 || rel.set || rel.shot) { rel = Rel{}; return; }
+                if (rel.p >= 0 && rel.why == static_cast<int>(ai::Why::Clear)) {   // §8.243 CLEARANCES: end, and the next touch in play by where struck
+                    const bool out = W.outStage() != 0;
+                    ++S.clr_out[ok ? 0 : out ? 2 : 1];
+                    if (!out) { const double ay0 = std::fabs(rel.y); const int zy = ay0 < 12 ? 0 : ay0 < 24 ? 1 : 2;
+                                S.clr_dx[zy].push_back((ex - rel.x) * (rel.team == 0 ? 1.0 : -1.0)); S.clr_ay[zy].push_back(std::fabs(ey)); }
+                }
+                if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
                 if (rel.mp_rb >= 0 && rel.mp_pb >= 0)   // §8.184 MARKED PICK
@@ -889,6 +897,8 @@ int main(int argc, char** argv) {
                 }
                 auto zn = [](double d, double y) { int b = d < 18 ? 0 : d < 35 ? 1 : d < 52 ? 2 : d < 70 ? 3 : 4; return b * 2 + (std::fabs(y) < 20.16 ? 0 : 1); };
                 { const int oz = zn(stl, rel.y), ez = zn(etl, ey); ++S.pz_n[oz]; ++S.pz_to[oz][ez]; }
+                if (rel.pr >= 0) ++S.pro_n[stl >= 52.5 ? 1 : 0][rel.pr][rel.rr + 1];   // §8.243
+                ++S.pwhy_n[rel.why >= 0 && rel.why < ai::kWhyCount ? rel.why : ai::kWhyCount];
                 if (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.cutbacks;
                 rel = Rel{};
             };
@@ -950,6 +960,12 @@ int main(int argc, char** argv) {
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
                         rel.why = static_cast<int>(why);   // §8.191
+                        if (!own_set) { const double tl = (owner_team == 0 ? hx - own_px : hx + own_px); ++S.rwhy_n[tl >= 70 ? 0 : tl >= 35 ? 1 : 2][static_cast<int>(why)]; }   // §8.243
+                        {   // §8.243 PASS ROLES
+                            const std::uint8_t pt = s.lastOrders()[owner].pass_to;
+                            rel.pr = W.isKeeper(owner) ? 6 : role(owner);
+                            rel.rr = pt < N && W.player(pt).team == owner_team ? (W.isKeeper(pt) ? 6 : role(pt)) : -1;
+                        }
                         if (why == ai::Why::InBehind || why == ai::Why::IntoSpace || why == ai::Why::Pass) {   // §8.192 RACE: the spot, and who is nearest it at the kick
                             const auto& lo = s.lastOrders()[owner];
                             rel.rc_tx = lo.target.x.toDouble(); rel.rc_ty = lo.target.y.toDouble();
@@ -2568,6 +2584,42 @@ int main(int argc, char** argv) {
             std::printf("     %-12s %6.1f |", zz[o], S.pz_n[o] / tm);
             for (int d = 0; d < 10; ++d) std::printf(" %4.1f", 100.0 * S.pz_to[o][d] / S.pz_n[o]);
             std::printf("\n");
+        }
+    }
+    {   // §8.243 PASS ROLES (benchmarks_statsbomb_passroles.py the same; real PL 15/16 in brackets)
+        static const char* rn[7] = {"CB", "FB", "DM", "AM", "Wide", "ST", "GK"};
+        // real: [own half][passer][receiver + 1], a team-match (filled from the script's output)
+        static const double rl[2][7][8] = {
+#include "passroles_real.inc"
+        };
+        std::printf("   PASSES BY WHY (a team-match):");
+        for (int w = 0; w <= ai::kWhyCount; ++w) if (S.pwhy_n[w]) std::printf(" %s %.1f;", w < ai::kWhyCount ? ai::kWhyNames[w] : "other", S.pwhy_n[w] / tm);
+        std::printf("\n");
+        {   const long cn = S.clr_out[0] + S.clr_out[1] + S.clr_out[2];
+            std::printf("   CLEARANCES (foot, open play; StatsBomb PL 15/16 12.7 a team-match, 11.4 in the own third): %.1f a team-match; to a mate %.0f%% (23.5) / theirs %.0f%% / out %.0f%% (29)\n",
+                        cn / tm, 100.0 * S.clr_out[0] / std::max(1L, cn), 100.0 * S.clr_out[1] / std::max(1L, cn), 100.0 * S.clr_out[2] / std::max(1L, cn));
+            static const char* zn3[3] = {"centre", "mid", "wide"};
+            static const double rdx[3][3] = {{4.3, 15.2, 28.2}, {5.8, 18.7, 32.2}, {2.6, 16.9, 30.3}}, ray[3] = {10.9, 17.0, 26.3};
+            std::printf("     next touch in play by where struck |y| 0-12 / 12-24 / 24+: n, m forward p25/med/p75 | next |y| med (real):");
+            for (int z = 0; z < 3; ++z) {
+                auto& a = S.clr_dx[z]; auto& b = S.clr_ay[z]; if (a.size() < 4) continue;
+                std::sort(a.begin(), a.end()); std::sort(b.begin(), b.end());
+                std::printf(" %s %zu %.1f/%.1f/%.1f (%.1f/%.1f/%.1f) | %.1f (%.1f);", zn3[z], a.size(), a[a.size() / 4], a[a.size() / 2], a[3 * a.size() / 4], rdx[z][0], rdx[z][1], rdx[z][2], b[b.size() / 2], ray[z]);
+            }
+            std::printf("\n"); }
+        for (int t = 0; t < 3; ++t) {
+            std::printf("   RELEASES BY WHY, %s third (open play, a team-match):", t == 0 ? "own" : t == 1 ? "middle" : "their");
+            for (int w = 0; w < ai::kWhyCount; ++w) if (S.rwhy_n[t][w]) std::printf(" %s %.1f;", ai::kWhyNames[w], S.rwhy_n[t][w] / tm);
+            std::printf("\n");
+        }
+        for (int h = 1; h >= 0; --h) {
+            std::printf("   PASS ROLES, passer in %s half (a team-match, passer -> receiver none/CB/FB/DM/AM/Wide/ST/GK; real in brackets):\n", h ? "his own" : "their");
+            for (int a = 0; a < 7; ++a) {
+                double t = 0, tr = 0; for (int b = 0; b < 8; ++b) { t += S.pro_n[h][a][b]; tr += rl[h][a][b]; }
+                std::printf("     %-4s %5.1f (%5.1f) |", rn[a], t / tm, tr);
+                for (int b = 0; b < 8; ++b) std::printf(" %4.1f (%4.1f)", S.pro_n[h][a][b] / tm, rl[h][a][b]);
+                std::printf("\n");
+            }
         }
     }
     {

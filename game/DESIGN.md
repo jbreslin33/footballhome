@@ -10114,3 +10114,53 @@ spellpace.py` and fh-game-match, OFF THE BALL by distance to the man on the ball
 Open: inside 10 m ours still barely walk (14% v 26) and run more (25 v 22); and passes were already ~10% over
 real before this — next is why our side passes so often. Tests 22/22, goldens unchanged (their short matches
 don't reach it).
+
+### 8.243 G5.139 — why our side passes so often: a cut, the passes back to the centre-backs, and the clearance put back (shipped)
+
+From §8.242's "why our side passes so often" (passes 472-498 a team-match v 434).
+
+**A cut first.** `benchmarks_statsbomb_passes.py` dropped every pass with a StatsBomb pass type — set pieces,
+but also Recovery and Interception passes, which are open play (377.7 a team-match). It now drops only the
+set pieces, as `benchmarks_statsbomb_concepts.py` does: 433.8, the number the harness already compares to.
+Real PASS POLICY origins a team-match, m off their line, centre / wide: 0-18 11.9 / 19.0; 18-35 37.3 / 36.0;
+35-52 61.5 / 48.7; 52-70 72.2 / 45.2; 70+ 71.3 / 30.7. Ours (seeds 1000/2000/3000 × 8): 9.9 / 15.2; 36.3 / 27.9;
+76.7 / 50.5; 90.0 / 49.3; 97.6 / 32.3 — the excess is all central and in our half, mostly passes that stay in
+their zone (70+ centre keeps 55% of its passes, real 41%).
+
+**Who to whom.** New `scripts/benchmarks_statsbomb_passroles.py` (StatsBomb positions folded to our six roles;
+CMs count as DM, approximate) and harness PASS ROLES, passer → receiver, own half / theirs; the real table is
+generated into `src/tools/passroles_real.inc` (`--inc`). In their half every role is near real. In our half the
+receivers are the fault: passes TO a centre-back 73-75 a team-match (35.5) — DM → CB 21.9 (11.2), CB → CB 19.3
+(10.8), FB → CB 18.2 (6.9) — and CB → FB 26.6 (13.5). FORWARDS ON THEIR CBS says why the CB is open: with their
+DM on the ball our ST is 10.9 m from their nearest CB (8.8) and 8.8 m from the ball (12.5); a man within 3 m of a
+CB 7% (14). Eight positional trials (§8.203-8.216) have not moved that.
+
+**Tried, not shipped:** one IPF step on `pass_kappa` for the own-half origins (real share ÷ ours, clamped 0.5-2).
+Passes to CBs 74 → 59-65, but passes 487-495, origins unmoved, ball in play 63-64%: the CBs got the ball anyway.
+
+**The clearance was gone.** New harness RELEASES BY WHY (open play, by third) and PASSES BY WHY: in our third
+127 passes, **0 clearances**. Real (StatsBomb PL 15/16): 102 passes + 11.4 foot clearances (12.7 in all; 15.8
+headed). §8.106's clear-the-danger roll was deleted in G5.22's clean slate and never re-attached; the only
+clearance left was the no-option fallback, which never fires. Every ball a pro boots clear, ours passed.
+
+Re-attached in `OnBall` (Possession.cpp), after the shot roll and the same way — one roll a spell at his spot,
+struck at the World's release: `physics.onball.clear_<zone>_<near>`, the §8.106 StatsBomb 360 rates (own box /
+own third / midfield / their third × nearest outfield opponent under 1.2 / 1.2-3 / 3-6 / 6+ m). Hit first time
+(`Orders::first_time`, so World's `physics.kick.clear_err_deg` 40 hurries it); toward the emptier side, or up his
+own touchline 24 m+ off the middle (`clear_touch_y_m`). Its length is a draw on `clear_len_q0..4_m` (3 / 5 / 12 /
+24 / 40 m), fitted to where the next touch comes: real foot clearances' next touch in play is 4.3 / 15.2 / 28.2 m
+upfield (p25 / median / p75; centre-struck, next |y| median 10.9 m). A fixed 35 m aim landed 28-40 m upfield, to
+a mate 44%. The harness leaves clearances out of passes, as StatsBomb does. New CLEARANCES line (count; to a
+mate / theirs / out; next touch by where struck). `physics.onball.clear_on` 0 = off.
+
+3 seeds × 8, before → after:
+- Foot clearances 0 → 8.9-10.1 a team-match (12.7); own-third passes 127 → 111-119 (102).
+- Next touch, centre-struck: 3.5-5.4 / 15.2-23.0 / 29.7-35.8 m (4.3 / 15.2 / 28.2), |y| 10.1-12.1 (10.9).
+- Clearances to a mate 30-42% (23.5), out 12-19% (29: real slices and deflections behind aren't modelled).
+- Passes 472-498 → 476-484 (434); completion 80.0-80.8 → 81.5-82.0% (79.1); ball in play 61-63 → 63-64% (55.2).
+- From 70+ centre 97.6 → 92.6 (71.3); throw-ins 34-37 → 34-37; goals and shots unchanged within noise.
+
+**Read.** Correct behaviour, ships. The volume barely moved: the ball stays in play 1.14× real, and passes per
+in-play minute are already about real (pass excess 1.12×). Next: why the ball stays in play — throw-ins 34-37
+a team-match (19.9) yet their dead spells are short (median 10 s v 13.8), corners 1.6-2.2 (3.2), free kicks
+6-8 (10.5) — and the passes back to the centre-backs. Tests 22/22, goldens unchanged, no migration.
