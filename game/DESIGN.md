@@ -10020,3 +10020,31 @@ Possession::spot built it (a diag record, `spotBranch`, never read by the sim).
 
 Next: the carrier's pace (§8.233's open "too fast"), since every spot runs with the ball, then the gap-closing
 law (walk to a near spot, run only when the ball goes forward). Goldens re-locked; tests 22/22.
+
+### 8.239 G5.136 — the carrier's pace again: pooled draw + take-on burst, trial, not shipped
+
+From §8.238's "next: the carrier's pace". §8.233's plan was to fix the slow receipt and then try the pace
+draw again; §8.236-8.237 fixed the length mix but the receipt mix (58-60% of spells starting under 2 m/s v 41)
+stands. Seeds 1000-4000 x 8 unless noted; HEAD / trial (real):
+
+- `carry_pace` 1 (by receipt band, as §8.233; seeds 1000/2000): settled 2.6-2.7 / 3.6-3.7 / 3.6-3.7 (2.79 / 3.72 /
+  4.62) — but take-ons completed 11-12 → 4.1-4.4 (10.6), passes 474-478 → 519-520 (434), completed 80 → 83-84%
+  (79.1), free middle carry 4.1 → 2.5 m/s (3.42), carried into the crossing zone 6.4-7.3 → 2.9-4.4 (8.8).
+- New `carry_pace` 2: one draw from the pooled real spread (every DFL spell 1.6 s+), not by his receipt band, so
+  our slow receipts don't make slow carriers. Settled 3.1 / 3.5 / 3.0; take-ons completed 4.6-6.0, passes 510-535.
+  The fast draws still don't arrive (the 4+ band settles at 3.0).
+- New `carry_pace_free_m` 3 on top: an opponent within 3 m and he goes at his full dribble share (the take-on
+  burst). Take-ons completed back to 7.7-10.6 (10.6); settled 3.6 / 4.0 / 3.5; free middle carries 5.0 m (4.8)
+  but at 2.6 m/s over 1.95 s (3.42, 1.62 s); passes 513-524 (434), completed 82.6-83.3% (79.1), carried into the
+  crossing zone 4.7-6.6 (8.8); off the ball gap 8.4 → 7.5 m, walking 19 → 21% (35).
+
+The third time the pace draw has traded the carry for the passing game: slower men on the ball hold it as long
+and pass more and safer. The carry's length is now right and its time is too long — what the hold draws (the
+spell's time) and the pace (its metres) have to agree, and today they're drawn apart. Not shipped: both new
+options default off, goldens unchanged.
+
+Noted: take-ons tried 62-71 a team-match v StatsBomb's 18 in every run (completed matches) — our "tried" cut is
+not StatsBomb's tag; a harness definition to check before it's a target.
+
+Next: draw the spell's pace and its hold together (a real spell's metres and seconds as one draw), or the gap-
+closing law off the ball (§8.238) first, which doesn't touch the carrier. Tests 22/22.

@@ -377,7 +377,9 @@ private:
     std::uint64_t flight_tick_ = 0;
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
-    bool carry_pace_on_ = false;              // G5.131 (§8.232): his pace for the spell, drawn at the receipt
+    bool carry_pace_on_ = false;
+    bool carry_pace_pooled_ = false;   // §8.239
+    math::Fixed64 carry_pace_free_m_{};   // §8.239              // G5.131 (§8.232): his pace for the spell, drawn at the receipt
     math::Fixed64 carry_pace_{};              // m/s; 0 = carry_share as before
     math::Fixed64 carry_pace_gain_{};
     math::Fixed64 carryShare(SlotIndex slot) const;

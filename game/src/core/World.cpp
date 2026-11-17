@@ -1279,6 +1279,8 @@ void World::configureTempo(const ModelParams& p) {
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
+    carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
+    carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band
     carry_pace_gain_ = p.fixed("physics.tempo.carry_pace_gain", 4000);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
     one_touch_first_ = p.fixed("physics.tempo.one_touch_first", 1000).raw > 0;   // G5.126 (§8.227)
@@ -1462,12 +1464,16 @@ void World::settleControl(SlotIndex slot, Fixed64 speed) {
             {2, 7, 20, 49, 49, 68, 83, 65, 115, 105, 114, 101, 70, 77, 76}};
         const auto& me = players_[slot];
         const Fixed64 v = math::length(Vec2{me.vel.x, me.vel.y});
-        const int eb = v < Fixed64::fromInt(2) ? 0 : v < Fixed64::fromInt(4) ? 1 : 2;
-        int tot = 0; for (int q = 0; q < 15; ++q) tot += kPace[eb][q];
+        // §8.239: pooled — every real spell 1.6 s+ (benchmarks_tracking_spellpace.py "per spell", permille).
+        // By his receipt band the slow row was over-drawn: 58-60% of our spells start under 2 m/s (41).
+        static constexpr int kPacePooled[15] = {8, 34, 77, 86, 95, 99, 103, 93, 108, 92, 72, 54, 30, 23, 25};
+        const int eb = carry_pace_pooled_ ? 3 : v < Fixed64::fromInt(2) ? 0 : v < Fixed64::fromInt(4) ? 1 : 2;
+        const int* row = eb == 3 ? kPacePooled : kPace[eb];
+        int tot = 0; for (int q = 0; q < 15; ++q) tot += row[q];
         const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 77) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
         Fixed64 acc{}; int q = 0;
-        for (; q < 14; ++q) { const Fixed64 w = Fixed64::fromFraction(kPace[eb][q], tot); if (u < acc + w) break; acc += w; }
-        const Fixed64 w = Fixed64::fromFraction(kPace[eb][q], tot);
+        for (; q < 14; ++q) { const Fixed64 w = Fixed64::fromFraction(row[q], tot); if (u < acc + w) break; acc += w; }
+        const Fixed64 w = Fixed64::fromFraction(row[q], tot);
         const Fixed64 in = w.raw > 0 ? (u - acc) / w : Fixed64::fromFraction(1, 2);
         carry_pace_ = (Fixed64::fromInt(q) + (in < Fixed64::one() ? in : Fixed64::one())) * Fixed64::fromFraction(1, 2);
     }
@@ -1578,6 +1584,11 @@ void World::playFirstTouch(SlotIndex slot) {
 // G5.131 (§8.232): the carrier's share of his dribble pace — his drawn pace for the spell, else carry_share.
 math::Fixed64 World::carryShare(SlotIndex slot) const {
     if (!carry_pace_on_ || carry_pace_.raw <= 0) return carry_share_;
+    if (carry_pace_free_m_.raw > 0) {   // §8.239: faced inside carry_pace_free_m he goes at his full share — the take-on burst
+        const Fixed64 r2 = carry_pace_free_m_ * carry_pace_free_m_;
+        for (SlotIndex j = 0; j < players_.size(); ++j)
+            if (players_[j].team != players_[slot].team && math::lengthSquared(Vec2{players_[j].pos.x - players_[slot].pos.x, players_[j].pos.y - players_[slot].pos.y}) < r2) return carry_share_;
+    }
     const Fixed64 top = players_[slot].max_speed * bodies_[slot].dribble();
     if (top.raw <= 0) return carry_share_;
     // a target speed, not a cap on his wish: a carrier makes ~2/3 of his wish (turns, touches, going
