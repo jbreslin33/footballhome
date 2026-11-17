@@ -10248,3 +10248,21 @@ off; the outcomes it governs — balls into touch, passes reaching a mate — la
 now stays with men who reach it, so there are more spells and more passes per minute in play. **Next mole:** why
 our side passes so often per minute in play — spells and how long a man keeps it — and the shots that came with it.
 Tests 22/22, goldens unchanged, no migration.
+
+### 8.247 G5.143 — passes per minute in play: high balls nobody contests — measured; a pick trial, not shipped
+
+From §8.246's next. Decomposed (seed 1000, shipped build, DFL cut): spells 735 a team-match (640), 1.40 s each
+(1.21); ball between spells 0.89 s (1.26); PASS PACE by travel real. Not the hold, not the flight.
+
+**High balls.** HIGH BY LENGTH: our lofts complete 55-88% by origin × length (real 28-51%); HIGH OUTCOME completed
+by zone 82-86 / 67-72 / 58-64% (57.0 / 46.0 / 36.0), lost in the air 2-18% (6-27). Aerial duels 10.2-14.4 a match
+(44.1). HIGH BALLS COMING DOWN, both sides within 2 m 11-18% (36.4), theirs within 2 m 22-26% (49.8); at the launch
+the defender nearest the drop is 11.6 m from the attacker it's for (6.9), 11.6 m from the drop (9.4).
+
+**Tried:** `physics.pass.high_risk_weight` 0.6 → 1.0 (G5.73 fit 0.6 then gave 40.8 aerial duels; today 11.4).
+3 seeds × 8: aerial duels 12.1-13.0, high completion unchanged, passes 536-560 → 536-549. The race read already
+calls nearly every loft safe — rightly: nobody of theirs is near where it comes down. Not shipped.
+
+**Read.** The long ball is easy because their men aren't on ours where it lands — the same positional mole as
+§8.203-8.216 (free options at 35-70 m ~20 points high, eight trials). Next: the defender against the man a loft is
+for, by role, from the launch — where he is told to be (spot / mark / cover) and why 4.7 m farther than real.
