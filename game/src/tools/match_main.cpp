@@ -83,7 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long rcz_n[6] = {};   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
+    long rcz_n[6] = {}, ctt_n[5][3] = {};   // ctt_: §8.253 CONTESTED TOUCH [opponent band][kept / theirs / neither]   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
     long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
     long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
     long pwhy_n[ai::kWhyCount + 1] = {}, rwhy_n[3][ai::kWhyCount] = {}, clr_out[3] = {}; std::vector<double> clr_dx[3], clr_ay[3];   // §8.243: passes by why; open-play releases by why and third; a clearance's end (mate / theirs / out)
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
 
         struct Env { double x[32][29], y[32][29]; bool live[29]; } env{};   // §8.178: the last 29 ticks of every man
         struct Cr { std::uint32_t touches = 0; long last_k = -1000; int last_o = -1; double peak = 0; } cr{};   // §8.179
-        struct Ft { long k0; int who; double vin, r = -1; int q = -1; double qd = 99, qx = 0, qy = 0; int rel = -1; } ;   // q: his nearest opponent inside 3 m at the touch (§8.182)
+        struct Ft { long k0; int who; double vin, r = -1; int q = -1; double qd = 99, qx = 0, qy = 0; int rel = -1; double qa = 99; } ;   // qa: §8.253 his nearest opponent at any distance   // q: his nearest opponent inside 3 m at the touch (§8.182)
         std::vector<Ft> fts; int ft_prev_owner = -1; double ft_pbx = 0, ft_pby = 0, ft_bvx = 0, ft_bvy = 0;   // §8.181
         // §8.183 RECEIVER SPACE, as benchmarks_tracking_firsttouch.py: the ball free (nobody within 1.5 m, on the
         // ground, in play) 0.4 s+, then a man within 1.5 m; his closest tick over the next 0.32 s within 1 m = the
@@ -366,6 +366,7 @@ int main(int argc, char** argv) {
                             if (W.player(j).team == rp.team) continue;
                             const double ex = W.player(j).pos.x.toDouble() - rp.pos.x.toDouble(), ey = W.player(j).pos.y.toDouble() - rp.pos.y.toDouble();
                             const double e = std::hypot(ex, ey);
+                            f.qa = std::min(f.qa, e);
                             if (e < 3 && e < f.qd) { f.qd = e; f.q = j; f.qx = ex / std::max(e, 1e-6); f.qy = ey / std::max(e, 1e-6); }
                         }
                         fts.push_back(f);
@@ -389,6 +390,13 @@ int main(int argc, char** argv) {
                         }
                     }
                     if (dk == 30) {
+                        {   // §8.253 CONTESTED TOUCH, as benchmarks_tracking_firsttouch.py: 1 s on, the nearest man within 1.5 m of the ball
+                            int nw = -1; double nd = 1.5;
+                            for (std::uint8_t j = 0; j < W.playerCount(); ++j) { const double e = std::hypot(bx - W.player(j).pos.x.toDouble(), by - W.player(j).pos.y.toDouble()); if (e <= nd) { nd = e; nw = j; } }
+                            const int cb = f.qa < 1 ? 0 : f.qa < 2 ? 1 : f.qa < 3 ? 2 : f.qa < 5 ? 3 : 4;
+                            const int oc = nw == f.who ? 0 : (nw >= 0 && W.player(static_cast<std::uint8_t>(nw)).team != pp.team) ? 1 : 2;
+                            ++S.ctt_n[cb][oc];
+                        }
                         if (f.r >= 0 && f.r < 0.7) { ++S.ft_n; S.ft_r.push_back(f.r); S.ft_g10.push_back(gap); if (ow == f.who && gap < 1.5) ++S.ft_kept; }
                         fts.erase(fts.begin() + static_cast<long>(i)); continue;
                     }
@@ -2839,6 +2847,10 @@ int main(int argc, char** argv) {
                         if (n > 0) {
                             static const double rS[5] = {46.0, 29.3, 15.3, 6.5, 2.9}, rBk[5] = {38.3, 32.5, 27.0, 11.1, 3.3}, rD1[5] = {3.3, 4.1, 4.4, 7.0, 16.0}, rKs[3] = {18.9, 13.4, 67.7}, rKb[3] = {27.5, 39.9, 31.8}, rKl[3] = {2.9, 2.2, 1.9}, rKw[3] = {1.7, 1.3, 0.8}, rS1[5] = {19.3, 29.3, 30.1, 16.5, 4.8}, rB1[5] = {49.6, 33.1, 21.9, 12.8, 0.0};
                             static const char* bn[5] = {"0-2", "2-4", "4-7", "7-12", "12+"}; static const char* kn[3] = {"kicked", "air", "feet"};
+                            { static const double rn[5] = {7.7, 15.2, 19.6, 37.4, 171.4}, rk[5][3] = {{28.7, 13.0, 58.3}, {31.5, 10.3, 58.2}, {27.0, 6.6, 66.4}, {38.2, 7.1, 54.8}, {67.2, 1.2, 31.6}};
+                              static const char* bnm[5] = {"0-1", "1-2", "2-3", "3-5", "5+"};
+                              std::printf("\n        CONTESTED TOUCH (ours: every change of owner, NOT DFL's free-ball cut — compare the shares, not the counts; by his nearest opponent at the touch; 1 s on the nearest man within 1.5 m: kept / theirs / neither %%; real DFL benchmarks_tracking_firsttouch.py receptions):");
+                              for (int q = 0; q < 5; ++q) { const long t = S.ctt_n[q][0] + S.ctt_n[q][1] + S.ctt_n[q][2]; std::printf(" %s m %.1f (%.1f) %.0f / %.0f / %.0f (%.0f / %.0f / %.0f);", bnm[q], t / tm, rn[q], 100.0 * S.ctt_n[q][0] / std::max(1L, t), 100.0 * S.ctt_n[q][1] / std::max(1L, t), 100.0 * S.ctt_n[q][2] / std::max(1L, t), rk[q][0], rk[q][1], rk[q][2]); } }
                             { static const char* cn[6] = {"none", "tackled (ground duel; real air duels 9.4 too)", "shot", "other ball action", "pass (completed)", "pass (failed)"};
                               static const double cr[6] = {41.9, 17.6, 3.5, 27.3, 12.2, 36.5};
                               std::printf("\n        REWIN CAUSE (the loser's last act in the 3 s before; real DFL events in brackets), a team-match:");

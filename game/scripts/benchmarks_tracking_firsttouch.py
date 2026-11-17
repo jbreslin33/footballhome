@@ -129,6 +129,10 @@ def one(pos_path):
                         same0 = math.hypot(pq[fs][0] - pos[fs][0], pq[fs][1] - pos[fs][1]) if pq is not None and fs in pq and fs in pos else 99
                         rec = (vout / vin, vout, g5, g10, w25 == who, dirn, prs < 3, rel, (prs, prs0, (n - fs) / 25, last_tm == tm, rx, math.hypot(ball[n][0] - ball[fs][0], ball[n][1] - ball[fs][1]), same0, (math.hypot(pos[fs][0] - ball[fs][0], pos[fs][1] - ball[fs][1]) - math.hypot(pos[n][0] - ball[fs][0], pos[n][1] - ball[fs][1])) if fs in pos else None))
                         out[b].append(rec); out["P" if prs < 3 else "F"].append(rec); out["all"].append(rec)
+                        # G5.149 (§8.253) CONTESTED TOUCH: by his nearest opponent at the touch, 1 s on — he is the nearest
+                        # within 1.5 m (kept) / one of theirs is (lost) / neither (loose, or he has passed it on)
+                        w2 = pl[w25][1] if w25 is not None else None
+                        out["ct"].append((prs, 0 if w25 == who else 1 if (w2 is not None and w2 != tm) else 2))
                 last_touch = n
             free_since = None
     return out
@@ -158,6 +162,13 @@ def main():
     for i, (lo, hi) in enumerate(SP):
         summ(tot[i], f"in {lo}-{hi if hi < 99 else '+'}")
     summ(tot["P"], "pressed"); summ(tot["F"], "free"); summ(tot["all"], "all")
+    # G5.149 (§8.253) CONTESTED TOUCH: every reception by his nearest opponent at the touch; 1 s on kept / lost / neither
+    CB = ((0, 1), (1, 2), (2, 3), (3, 5), (5, 999))
+    ct = tot["ct"]; tmn = 2 * len(files)
+    print("CONTESTED TOUCH (every reception) by his nearest opponent at the touch 0-1 / 1-2 / 2-3 / 3-5 / 5+ m: a team-match | 1 s on kept / theirs / neither %")
+    for lo, hi in CB:
+        z = [x for x in ct if lo <= x[0] < hi]
+        if z: print(f"   {lo}-{hi if hi < 999 else '+'} m: {len(z) / tmn:5.1f} | " + " / ".join(f"{100 * sum(1 for x in z if x[1] == o) / len(z):4.1f}" for o in range(3)))
     # CONTROLLED: the touch took pace off (off-touch under 70% of the incoming) — the first touches a
     # receiver keeps, not one-touch passes or balls running past a man.
     print("CONTROLLED first touches (off-touch < 0.7 x incoming):")

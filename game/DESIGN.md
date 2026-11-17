@@ -10390,3 +10390,23 @@ tackle duels real).
 deflections, scrappy touches; a man who receives it never loses it on his touch (completed then lost 0 v 12.2);
 PRESSED TOUCH 84 a team-match (10.0). The game is played ~1.1-1.2× quicker per minute in play everywhere: spells
 1.38 s (1.21) but the ball between spells 3.1 s a cycle (3.7). Next: that gap between men.
+
+### 8.253 G5.149 — the contested touch: measured — the outcomes are real, no new mechanic
+
+From §8.252: real sides lose it on the touch (completed-then-lost 12.2, other ball actions 27.3), ours almost never —
+the plan was a contested-touch mechanic in World's control rule. Measured first.
+
+`benchmarks_tracking_firsttouch.py` now prints CONTESTED TOUCH: every DFL reception (a free ground ball 3 m/s+
+reaching a man) by his nearest opponent at the touch, 1 s on the nearest man within 1.5 m — kept / theirs / neither
+(passed on, or loose): 0-1 m 7.7 a team-match 28.7 / 13.0 / 58.3%; 1-2 m 15.2 31.5 / 10.3 / 58.2; 2-3 m 19.6 27.0 /
+6.6 / 66.4; 3-5 m 37.4 38.2 / 7.1 / 54.8; 5+ m 171.4 67.2 / 1.2 / 31.6. Ours, the same outcome (harness CONTESTED
+TOUCH, 3 seeds × 8): 0-1 m 33-41 / 12-17 / 45-52; 1-2 m 36-40 / 9-12 / 47-53; 2-3 m 42-48 / 7-8 / 45-50; 3-5 m 57-60 /
+4-5 / 36-38; 5+ m 58-60 / 2 / 38-40 — **lost on the touch at the real rate for each distance**. (The harness line
+counts every change of owner, not DFL's free-ball cut, so its counts — 23-26 / 55-62 / 57-63 / 95-101 / 246-255 —
+aren't comparable; RECEIVER SPACE is the exact cut: 321 receptions a team-match (251.3), nearest opponent at the
+touch 0-1.5 / 1.5-3 m 5 / 14% (6 / 11), median 6.1 m (7.4).)
+
+**Read.** Not built: a pressed receiver already loses it as often as a real one, and ours aren't pressed much more
+often. The turnover mix of §8.252 is volume: more receptions (1.28×) and more passes (1.21×) at real per-touch odds,
+and failed passes counted where DFL's annotators name a duel or a touch. Next: the tempo itself — why everything is
+~1.2× per minute in play (spells 1.38 s v 1.21, yet more of them).
