@@ -38,7 +38,7 @@ const SCRIPTS_3D = [
   'js/game/pitch-planner.js?v=20261029a',
 ];
 const SCRIPTS_2D = [
-  'js/game/renderer2d.js?v=20261116arc',
+  'js/game/renderer2d.js?v=20261116arc2',
   'js/game/input.js?v=20261022e',
 ];
 const CLIENT = 'js/game/client.js?v=20261116arc';

@@ -10059,7 +10059,9 @@ skin and hair tones fixed per slot, standing upright on the screen with feet on 
 screen heading (front / back with the number / left / right profile, with hysteresis on the diagonal); a
 4-frame run cycle advancing one frame per 1.1 m run, arms against the legs; a kick swing for 0.24 s when the
 ball leaves him; flat on the grass in a slide (flag 4); arms up and hopping celebrating; keepers' gloves.
-Men drawn back to front so the nearer overlaps. One "pixel" = 0.19 m (a man ≈ 3 m: arcade scale, readable
-on the full pitch). The STYLE button (2D only; LEAVES' slot, which 2D hides) flips it live;
+Men drawn back to front so the nearer overlaps. Redrawn the same day (James: "too big and the art is bad … too
+cartoony. nhl 94 was more realistic"): a real body's proportions on a 22-row grid (head + hair 4, torso 6, legs
+10 — a ~1.9 m man, one pixel 0.085 m, drawn in device pixels), every colour in three tones (lit left / base /
+shadow right) inside a dark one-pixel outline, knees bending in profile, the lifted leg foreshortened facing us. The STYLE button (2D only; LEAVES' slot, which 2D hides) flips it live;
 `?style=circles|arcade`, else this device's last choice (`fh.game.style2d`), else circles. Pure dressing,
 no server change. Checked live: both styles, no console errors.
