@@ -970,6 +970,19 @@
     viewBtn.addEventListener('click', flipView);
     viewBtn.addEventListener('touchstart', flipView);
   }
+  // 2D style (James 11/16): circles / arcade, flipped live, remembered on this device.
+  const styleBtn = document.getElementById('btn-style');
+  if (styleBtn && VIEW_2D && renderer.setStyle) {
+    const label = () => { styleBtn.textContent = renderer.style === 'arcade' ? 'CIRCLES' : 'ARCADE'; };
+    label();
+    const flipStyle = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      renderer.setStyle(renderer.style === 'arcade' ? 'circles' : 'arcade');
+      label();
+    };
+    styleBtn.addEventListener('click', flipStyle);
+    styleBtn.addEventListener('touchstart', flipStyle);
+  }
   if (followBtn) {
     followBtn.addEventListener('click', toggleFollow);
     followBtn.addEventListener('touchstart', (e) => {

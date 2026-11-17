@@ -167,6 +167,15 @@
       this.is2d = true;
       // The 3D field's calls (client.js mode switching): nothing to switch in 2D.
       this.field = { setContours() {}, setOldPitch() {}, setGamePitch() {}, setGameSeven() {}, setLeaves() {}, update() {} };
+      // Style (James 11/16: "have a circle option like you have but also a arcade style"):
+      // circles = the discs; arcade = 16-bit pixel men, upright on the screen, legs on a run cycle.
+      // ?style=circles|arcade wins, else this device's last choice, else circles.
+      const qsStyle = new URLSearchParams(location.search).get('style');
+      let st = qsStyle;
+      if (st !== 'arcade' && st !== 'circles') { try { st = localStorage.getItem('fh.game.style2d'); } catch (e) { st = null; } }
+      this.style = st === 'arcade' ? 'arcade' : 'circles';
+      this.prevOwner = NO_OWNER;
+      this.lastDrawAt = 0;
       this.rig = new Rig2D(this);
       window.addEventListener('resize', () => this.resize());
       this.resize();
@@ -212,6 +221,11 @@
       if (this.buffer.length > 90) this.buffer.splice(0, 30);
       this.history.push({ tick: snap.tick, snap });
       if (this.history.length > 3600 + 300) this.history.splice(0, 300);
+    }
+
+    setStyle(st) {
+      this.style = st === 'arcade' ? 'arcade' : 'circles';
+      try { localStorage.setItem('fh.game.style2d', this.style); } catch (e) { /* this visit only */ }
     }
 
     setWatchSlot(slot) { this.watchSlot = slot; }
@@ -314,11 +328,23 @@
       const R = Math.max(7, 0.55 * s);
       const showNum = R >= 8;
       const showName = s >= 12;   // names only zoomed in; the whole pitch would be a wall of tags
-      for (const p of players) {
+      const arcade = this.style === 'arcade';
+      const fdt = this.lastDrawAt ? Math.min((now - this.lastDrawAt) / 1000, 0.1) : 0;
+      this.lastDrawAt = now;
+      // A kick, for the arcade swing: the ball has left the man who had it.
+      if (ball) {
+        if (this.prevOwner !== NO_OWNER && ball.owner !== this.prevOwner && this.figures[this.prevOwner])
+          this.figures[this.prevOwner].kickAt = now;
+        this.prevOwner = ball.owner;
+      }
+      // Arcade men overlap: draw back to front (further up the screen first).
+      const order = arcade ? players.map((p) => ({ p, q: this.toScreen(p.x, p.y) })).sort((u, v) => u.q.y - v.q.y).map((e) => e.p) : players;
+      for (const p of order) {
         const f = this.figures[p.i];
         const q = this.toScreen(p.x, p.y);
         f.sx = q.x; f.sy = q.y; f.drawn = true;
         const kit = f.kit();
+        if (arcade) { this.drawArcadeMan(c, p, f, q, kit, now, fdt, s, showName); continue; }
         const down = (p.flags & 4) !== 0;
         let hop = 0;
         if (f.celebrateAt && now - f.celebrateAt < 2500) hop = Math.abs(Math.sin((now - f.celebrateAt) / 120)) * R * 0.5;
@@ -385,6 +411,125 @@
       if (now < this.flashUntil) {
         c.fillStyle = 'rgba(255,204,0,0.28)';
         c.fillRect(0, 0, this.W, this.H);
+      }
+    }
+
+    // ARCADE (James 11/16): a 16-bit pixel man drawn from blocks on a 9 × 16 grid, feet on his spot,
+    // standing upright on the screen the way the top-down arcade sports games drew them. Four views
+    // from his screen heading (front / back / left / right profile), a 4-frame run cycle whose rate
+    // follows his speed (one stride ≈ 1.1 m), arms against the legs, a kick swing when the ball leaves
+    // him, lying flat in a slide, arms up celebrating. Drawn from the kit colours — no sprite files.
+    drawArcadeMan(c, p, f, q, kit, now, dt, s, showName) {
+      const u = Math.max(2, Math.round(s * 0.19));   // one "pixel" in CSS px (the man ≈ 3 m tall: arcade scale)
+      const spd = Math.hypot(p.vx || 0, p.vy || 0);
+      f.phase = ((f.phase || 0) + spd * dt / 1.1) % 4;     // a stride a frame, 4 frames a cycle
+      const frame = spd < 0.35 ? -1 : Math.floor(f.phase) % 4;
+      // heading on the screen: face vector, else his run
+      let hx = p.fx, hy = p.fy;
+      if (spd > 0.8 || (!hx && !hy)) { hx = p.vx; hy = p.vy; }
+      let view = f.view || 'front';
+      if (Math.hypot(hx || 0, hy || 0) > 1e-3) {
+        const tip = this.toScreen(p.x + hx, p.y + hy);
+        const nx = tip.x - q.x, ny = tip.y - q.y;
+        // a little hysteresis so he doesn't flicker between views on the diagonal
+        const side = f.view === 'left' || f.view === 'right' ? Math.abs(nx) > Math.abs(ny) * 0.7 : Math.abs(nx) > Math.abs(ny) * 1.4;
+        view = side ? (nx > 0 ? 'right' : 'left') : (ny > 0 ? 'front' : 'back');
+      }
+      f.view = view;
+      const down = (p.flags & 4) !== 0;
+      const kicking = f.kickAt && now - f.kickAt < 240;
+      const celebrating = f.celebrateAt && now - f.celebrateAt < 2500;
+      const hop = celebrating ? Math.round(Math.abs(Math.sin((now - f.celebrateAt) / 120)) * 2) * u : 0;
+      // skin and hair by slot: a few tones, fixed per man
+      const SKIN = ['#f1c7a0', '#d9a274', '#a8693f', '#7a4a2a', '#e8b88f', '#5c3a22'];
+      const HAIR = ['#2a1a10', '#5a3a1a', '#111111', '#c8a050', '#3a2a20', '#8a4a20'];
+      const skin = SKIN[(f.slot * 7 + 3) % SKIN.length], hair = HAIR[(f.slot * 5 + 1) % HAIR.length];
+      const shirt = hex(kit.shirt), trim = hex(kit.trim);
+      const shorts = f.keeper ? '#202020' : hex(kit.shorts !== undefined ? kit.shorts : kit.trim);
+      const socks = f.keeper ? shirt : hex(kit.socks !== undefined ? kit.socks : kit.shirt);
+      const boot = '#151515';
+      c.save();
+      c.translate(Math.round(q.x), Math.round(q.y));
+      // shadow + rings at his feet
+      c.beginPath(); c.ellipse(0, 0, 4.2 * u, 1.5 * u, 0, 0, Math.PI * 2);
+      c.fillStyle = 'rgba(0,0,0,0.3)'; c.fill();
+      if (p.i === this.activeSlot || p.i === this.watchSlot || this.mySlots.has(p.i)) {
+        c.beginPath(); c.ellipse(0, 0, 5.5 * u, 2.2 * u, 0, 0, Math.PI * 2);
+        c.lineWidth = Math.max(2, u * 0.8);
+        c.strokeStyle = p.i === this.activeSlot ? '#ffcc00' : p.i === this.watchSlot ? '#00e5ff' : 'rgba(255,204,0,0.45)';
+        c.stroke();
+      }
+      if (down) c.rotate(view === 'left' ? -Math.PI / 2 : Math.PI / 2);
+      c.translate(0, -hop);
+      const P = (x, y, w, h, col) => { c.fillStyle = col; c.fillRect(x * u, y * u, w * u, h * u); };
+      const m = view === 'left' ? -1 : 1;   // profile mirror
+      if (view === 'front' || view === 'back') {
+        // legs: one lifts on frames 0 / 2 (the near-camera stride), both down on 1 / 3
+        const liftL = frame === 0 ? 1 : 0, liftR = frame === 2 ? 1 : 0;
+        const leg = (x, lift) => {
+          P(x, -5 - lift, 2, 1, skin);
+          P(x, -4 - lift, 2, 3, socks);
+          P(x, -1 - lift, 2, 1, boot);
+        };
+        leg(-2, kicking ? 0 : liftL); leg(0, kicking ? 2 : liftR);
+        P(-3, -7, 6, 2, shorts);
+        P(-3, -11, 6, 4, shirt);
+        // arms swing against the legs; up in the air celebrating
+        const aL = frame === 2 ? -1 : frame === 0 ? 1 : 0, aR = -aL;
+        if (celebrating) {
+          P(-4, -14, 1, 3, skin); P(3, -14, 1, 3, skin);
+        } else {
+          P(-4, -11 + aL, 1, 1, shirt); P(-4, -10 + aL, 1, 2, skin);
+          P(3, -11 + aR, 1, 1, shirt); P(3, -10 + aR, 1, 2, skin);
+          if (f.keeper) { P(-4, -8 + aL, 1, 1, '#f2f2f2'); P(3, -8 + aR, 1, 1, '#f2f2f2'); }
+        }
+        if (view === 'front') {
+          P(-1, -11, 2, 1, trim);                       // collar
+          P(-2, -15, 4, 4, skin);                       // face
+          P(-2, -15, 4, 1, hair);
+          P(-1, -13, 1, 1, '#1a1a1a'); P(1, -13, 1, 1, '#1a1a1a');   // eyes
+        } else {
+          P(-3, -10, 6, 1, trim);                       // shoulder trim
+          P(-2, -15, 4, 4, hair);                       // back of the head
+          P(-2, -12, 4, 1, skin);                       // neck
+          if (f.number && u >= 3) {
+            c.font = `700 ${Math.round(u * 2.6)}px monospace`;
+            c.textAlign = 'center'; c.textBaseline = 'middle';
+            c.fillStyle = trim; c.fillText(String(f.number), 0, -8.4 * u);
+          }
+        }
+      } else {
+        // profile: legs scissor fore and aft; the far leg darker
+        const stride = kicking ? 4 : frame === 0 ? 2 : frame === 2 ? -2 : 0;
+        const leg = (o, near) => {
+          for (let r = 0; r < 5; r++) {
+            const x = -1 + Math.round(o * r / 4) * m;
+            const col = r === 0 ? skin : r === 4 ? boot : socks;
+            P(m > 0 ? x : x - 1, -5 + r - (kicking && near ? Math.round(2 * r / 4) : 0), 2, 1, col);
+          }
+          if (!near) { c.fillStyle = 'rgba(0,0,0,0.28)'; for (let r = 0; r < 5; r++) { const x = -1 + Math.round(o * r / 4) * m; c.fillRect((m > 0 ? x : x - 1) * u, (-5 + r) * u, 2 * u, u); } }
+        };
+        leg(-stride, false); leg(stride, true);
+        P(-2, -7, 4, 2, shorts);
+        P(-2, -11, 4, 4, shirt);
+        // the near arm swings against the near leg
+        const ax = celebrating ? 0 : frame === 0 ? -1 : frame === 2 ? 1 : 0;
+        if (celebrating) P(m > 0 ? 0 : -1, -14, 1, 3, skin);
+        else { P(ax * m + (m > 0 ? 0 : -1), -11, 1, 1, shirt); P(ax * m + (m > 0 ? 0 : -1), -10, 1, 2, skin); }
+        P(-2, -15, 4, 4, skin);
+        P(-2, -15, 4, 1, hair);
+        P(m > 0 ? -2 : 1, -14, 1, 2, hair);             // back of the head
+        P(m > 0 ? 1 : -2, -13, 1, 1, '#1a1a1a');        // eye
+        P(m > 0 ? 2 : -3, -13, 1, 1, skin);             // nose
+      }
+      c.restore();
+      if (showName && f.tagName) {
+        c.font = `700 ${Math.round(Math.max(9, u * 2.4))}px monospace`;
+        c.textAlign = 'center'; c.textBaseline = 'bottom';
+        c.lineWidth = 3; c.strokeStyle = 'rgba(0,0,0,0.65)';
+        const ty = q.y - hop - 16.5 * u;
+        c.strokeText(f.tagName, q.x, ty);
+        c.fillStyle = '#fff'; c.fillText(f.tagName, q.x, ty);
       }
     }
 

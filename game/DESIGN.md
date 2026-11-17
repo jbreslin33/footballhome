@@ -10048,3 +10048,18 @@ not StatsBomb's tag; a harness definition to check before it's a target.
 
 Next: draw the spell's pace and its hold together (a real spell's metres and seconds as one draw), or the gap-
 closing law off the ball (§8.238) first, which doesn't touch the carrier. Tests 22/22.
+
+### 8.240 Viewer — the 2D view's ARCADE style (circles stay)
+
+James 11/16: "have a circle option like you have but also a arcade style". The 2D view (§8.235) gets a
+style: CIRCLES (the kit discs with a facing notch, as before) or ARCADE — 16-bit pixel men in the manner of
+the early-90s top-down sports games (our own drawing, no sprites copied from any game). `renderer2d.js`
+`drawArcadeMan`: block pixels on a 9 × 16 grid from the kit colours (shirt, trim collar, shorts, socks),
+skin and hair tones fixed per slot, standing upright on the screen with feet on his spot; four views from his
+screen heading (front / back with the number / left / right profile, with hysteresis on the diagonal); a
+4-frame run cycle advancing one frame per 1.1 m run, arms against the legs; a kick swing for 0.24 s when the
+ball leaves him; flat on the grass in a slide (flag 4); arms up and hopping celebrating; keepers' gloves.
+Men drawn back to front so the nearer overlaps. One "pixel" = 0.19 m (a man ≈ 3 m: arcade scale, readable
+on the full pitch). The STYLE button (2D only; LEAVES' slot, which 2D hides) flips it live;
+`?style=circles|arcade`, else this device's last choice (`fh.game.style2d`), else circles. Pure dressing,
+no server change. Checked live: both styles, no console errors.
