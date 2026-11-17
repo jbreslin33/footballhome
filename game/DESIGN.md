@@ -10297,3 +10297,24 @@ Golden 11v11 re-locked (the keeper's kick is in the short match); 3v3 unchanged.
 
 **Next:** outfield passes under 20 m, 384-430 a team-match (290.5) — the whole volume excess; then why goal kicks
 come 12-13 a team-match (8.4 of them from shots wide, real 4.3).
+
+### 8.249 G5.145 — the short pass is square and back: measured; a direction lift tried, not shipped
+
+From §8.248: all the volume excess is outfield passes under 20 m. New `scripts/benchmarks_statsbomb_shortpass.py`
+and harness SHORT PASSES (<20 m, open play, outfield, by the passer's m off their line × forward / lateral / back,
+45° cones; completed %). Real (StatsBomb PL 15/16, a team-match) v ours (3 seeds × 8):
+- forward: 2.6 / 17.6 / 25.8 / 26.8 / 21.9 — ours 3.5-4.0 / 15.8-19.7 / 31-33 / 29-31 / 20-21: real.
+- lateral: 15.4 / 29.8 / 40.2 / 38.3 / 22.0 — ours 11.6 / 28-30 / 65-73 / 74-75 / 41-44: **2× from 35 m out back**.
+- back: 6.2 / 11.5 / 16.0 / 13.3 / 6.5 — ours 6-8 / 13-16 / 28-30 / 28-32 / 12: **2×**.
+- Also: back passes from our third complete 72-77% (96.5); everything 0-18 m out completes 9-61% (48-90).
+
+**Tried, not shipped** — `physics.pass.short_dir_<band>_<dir>` (Possession; a pass under 20 m × this by band and
+direction, beside §8.236's len_lift; 1 = off, kept in code at 1):
+- step 1 (real ÷ ours: lateral ×0.51-0.58, back ×0.45-0.56): passes 545-571 → 525-546; lateral 52-70 75 → 59-63; to
+  our CBs 74-77 → 59-66; completion 78.8-79.8% (79.1) — but 20-40 m passes 104 → 117-123 (103.9).
+- step 2 (×0.32-0.40 / ×0.24-0.36, forward ×0.67-0.74): passes 524-538; short 353-361 (290.5); 20-40 m 130-139.
+
+**Read.** The man on the ball still passes; cut his square ball and he plays a longer square one. The pick sets the
+mix, not the volume: passes per team-match follow spells (how often a man gets it) and the time in play (61-65%,
+55.2; we don't stop for DFL's 'other' — injuries, subs, drop balls, 225 s a team-match — nor play added time,
+95.5 min). Next: a fair clock first (the 'other' stoppages and added time from DFL), then spells per minute in play.

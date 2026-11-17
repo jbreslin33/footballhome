@@ -83,7 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long plk_n[3][5] = {};   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
+    long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
     long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
     long pwhy_n[ai::kWhyCount + 1] = {}, rwhy_n[3][ai::kWhyCount] = {}, clr_out[3] = {}; std::vector<double> clr_dx[3], clr_ay[3];   // §8.243: passes by why; open-play releases by why and third; a clearance's end (mate / theirs / out)
     long zm_f[15] = {}, zm_n[15][15] = {}, zm_0[15][15] = {}; long zm_r[15][15][ai::kRoleCount] = {}, zm_c[15][ai::kRoleCount] = {}; double zm_tl[15][15][ai::kRoleCount] = {}, zm_ay[15][15][ai::kRoleCount] = {};   // §8.190: where they stand   // §8.189: by role, and who has it   // §8.160: mates by zone, by the ball's zone
@@ -884,7 +884,14 @@ int main(int argc, char** argv) {
                 }
                 if (rel.p >= 0 && !rel.shot && rel.why != static_cast<int>(ai::Why::Clear)) {   // §8.248 PASS LENGTH by who: outfield open / keeper open / goal kick
                     const int kq = rel.set ? (rel.rk == 3 ? 2 : -1) : rel.gk ? 1 : 0;
-                    if (kq >= 0) { const double L = std::hypot(ex - rel.x, ey - rel.y); ++S.plk_n[kq][L < 20 ? 0 : L < 40 ? 1 : L < 50 ? 2 : L < 70 ? 3 : 4]; }
+                    if (kq >= 0) { const double L = std::hypot(ex - rel.x, ey - rel.y); ++S.plk_n[kq][L < 20 ? 0 : L < 40 ? 1 : L < 50 ? 2 : L < 70 ? 3 : 4];
+                        if (kq == 0 && L < 20) {   // §8.249
+                            const double sg5 = rel.team == 0 ? 1.0 : -1.0, tl5 = hx - rel.x * sg5;
+                            const int b5 = tl5 < 18 ? 0 : tl5 < 35 ? 1 : tl5 < 52 ? 2 : tl5 < 70 ? 3 : 4;
+                            const double a5 = std::atan2(std::fabs(ey - rel.y), (ex - rel.x) * sg5) * 57.29578;
+                            const int d5 = a5 <= 45 ? 0 : a5 >= 135 ? 2 : 1;
+                            ++S.shp_n[b5][d5]; if (ok) ++S.shp_ok[b5][d5];
+                        } }
                 }
                 if (rel.p >= 0 && W.outStage() != 0 && std::getenv("GAME_OUT_TRACE"))   // §8.246
                     std::fprintf(stderr, "FLIGHT why %s act %d to %d: closest %.1f m, ball %.1f m/s z %.1f, he %.1f m/s %s | from %.1f,%.1f out at %.1f,%.1f\n",
@@ -2636,6 +2643,13 @@ int main(int argc, char** argv) {
             static const double rl[3][5] = {{290.49, 103.88, 13.20, 7.14, 0.44}, {3.97, 4.86, 2.90, 6.11, 0.81}, {0.57, 0.97, 0.49, 5.66, 0.66}};
             std::printf("   PASS LENGTH a team-match, 0-20 / 20-40 / 40-50 / 50-70 / 70+ m (StatsBomb PL 15/16 in brackets):");
             for (int q = 0; q < 3; ++q) { std::printf(" %s", kn3[q]); for (int b = 0; b < 5; ++b) std::printf(" %.2f (%.2f)", S.plk_n[q][b] / tm, rl[q][b]); std::printf(";"); }
+            std::printf("\n");
+            // §8.249 SHORT PASSES v benchmarks_statsbomb_shortpass.py
+            static const double rn5[5][3] = {{2.6, 15.4, 6.2}, {17.6, 29.8, 11.5}, {25.8, 40.2, 16.0}, {26.8, 38.3, 13.3}, {21.9, 22.0, 6.5}};
+            static const double rc5[5][3] = {{60.4, 47.9, 90.0}, {67.5, 83.9, 94.1}, {72.0, 90.3, 94.6}, {74.1, 92.3, 95.8}, {73.1, 91.2, 96.5}};
+            static const char* bn5[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+            std::printf("   SHORT PASSES (<20 m, open play, outfield; StatsBomb PL 15/16 in brackets) a team-match by m off their line, forward / lateral / back, completed %%:");
+            for (int b = 0; b < 5; ++b) { std::printf(" %s", bn5[b]); for (int d = 0; d < 3; ++d) std::printf(" %.1f (%.1f) %.0f%% (%.0f)", S.shp_n[b][d] / tm, rn5[b][d], 100.0 * S.shp_ok[b][d] / std::max(1L, S.shp_n[b][d]), rc5[b][d]); std::printf(";"); }
             std::printf("\n");
         }
         std::printf("   PASSES BY WHY (a team-match):");

@@ -109,6 +109,9 @@ struct PossessionParams {
     // go 40 m+ at long_goal_kick / long_open, to a mate long_min_m-long_max_m off him, else long_m upfield.
     bool gk_long_on = false;
     math::Fixed64 gk_long_kick{}, gk_long_open{}, gk_long_min_m{}, gk_long_max_m{}, gk_long_m{};
+    // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
+    // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
+    math::Fixed64 short_dir[5][3]{};
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
     math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};   // clear_len_q: the aim's metres upfield at 0/25/50/75/100% of a draw
     // G5.81 (§8.182): pressed (a man inside 3 m), his carry's line to that man — toward / across / the

@@ -428,6 +428,12 @@ public:
             // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
             // 64-68 / 177-193 / 105-111 / 46-50) — a lift by the pass's length band.
             w0 = w0 * P.len_lift[std::min(5, static_cast<int>(d.raw >> Fixed64::FRAC_BITS) / 10)];
+            if (d < Fixed64::fromInt(20)) {   // §8.249: a short pass's direction — real passers play it square or back half as often (StatsBomb SHORT PASSES)
+                const int sb = depth < Fixed64::fromInt(18) ? 0 : depth < Fixed64::fromInt(35) ? 1 : depth < Fixed64::fromInt(52) ? 2 : depth < Fixed64::fromInt(70) ? 3 : 4;
+                const Fixed64 fx = (to.x - sp.x) * v.sg, fy = math::fx_abs(to.y - sp.y);
+                const int sd = fx >= fy ? 0 : -fx >= fy ? 2 : 1;   // within 45 deg forward / back, else lateral
+                w0 = w0 * P.short_dir[sb][sd];
+            }
             {   // §8.237: real passers find the man on the move (DFL: against the mates at the release, 4+ m/s
                 // picked 2.19x, under 1 m/s 0.71x) — a lift by his speed band.
                 const Fixed64 sp2 = m.vel.x * m.vel.x + m.vel.y * m.vel.y;
@@ -1355,6 +1361,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
                 clear_rate[z][n] = p.fixed(std::string("physics.onball.clear_") + kZ[z] + "_" + kN[n], kClear[z][n]);
         clear_touch_y = p.fixed("physics.onball.clear_touch_y_m", 24000);
         edge_m = p.fixed("physics.onball.carry_edge_m", 3000);
+        for (int b = 0; b < 5; ++b) for (int d = 0; d < 3; ++d)   // §8.249
+            short_dir[b][d] = p.fixed("physics.pass.short_dir_" + std::to_string(b) + "_" + std::to_string(d), 1000);
         // §8.248: the rolls sit on top of the pick's own long balls (~23% / 21% 40 m+): (real - own) / (1 - own)
         // gives the real 82% / 52.5%. The band and spot fitted so his long ball ends 50-70 m off (StatsBomb).
         gk_long_on = p.fixed("physics.keeper.long_on", 1000).raw > 0;
