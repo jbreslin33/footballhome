@@ -93,6 +93,14 @@ def one(pos_path):
         mine = [e for e in sp if e[1] == att]
         first = mine[0][2] if mine else "none"
         c[("first", out, first)] += 1
+        # §8.252 THE CAUSE: the loser's last act in the 3 s before the win — his side's pass (completed or not), shot,
+        # other ball action (clearance, deflection, miscontrol), or a duel the winner won (he was tackled); none = no event
+        tw = tsec[keys[i0]]
+        pre = [e for e in evs[bisect.bisect_left(evt, tw - 3.0):bisect.bisect_right(evt, tw + 0.4)]
+               if (e[1] != att and e[2] in ("pass_ok", "pass_fail", "shot", "touch", "claim")) or (e[1] == att and e[2].startswith("duel"))]
+        cause = "none" if not pre else (("duel (air)" if pre[-1][2] == "duel_air" else "tackled (ground duel)") if pre[-1][2].startswith("duel") else
+                {"pass_ok": "pass (completed)", "pass_fail": "pass (failed)", "shot": "shot", "touch": "other ball action", "claim": "keeper claim"}[pre[-1][2]])
+        c[("cause", cause)] += 1
         if out == "back":
             tb = tsec[keys[i1]]; near_ev = [e for e in sp if abs(e[0] - tb) <= 0.8]
             took = "duel won by loser" if any(e[1] != att and e[2].startswith("duel") for e in near_ev) else \
@@ -155,6 +163,7 @@ if __name__ == "__main__":
     tm = 2 * len(files); N = max(1, c["n"])
     print(f"{len(files)} DFL matches: THE WIN (ball changes side in play, the loser had it 1 s+): {N/tm:.1f} a team-match; "
           f"given straight back (other side on it inside 3 s) {100*c[('o','back')]/N:.1f}%, dead inside 3 s {100*c[('o','dead')]/N:.1f}%, kept 3 s+ {100*c[('o','kept')]/N:.1f}%")
+    print("  THE CAUSE (the loser's last act in the 3 s before, DFL events): " + ", ".join(f"{k[1]} {c[k]/tm:.1f}" for k in sorted((k for k in c if isinstance(k, tuple) and k[0] == "cause"), key=lambda k: -c[k])))
     print(f"  at the win, nearest outfielder to the ball med: loser {med(H['dL']):.1f} m, winner {med(H['dW']):.1f} m")
     BN = ["0-2", "2-4", "4-7", "7-12", "12+"]
     print("  by the loser's nearest at the win: share % | given back by 3 s % | the loser's nearest 1 s later med")

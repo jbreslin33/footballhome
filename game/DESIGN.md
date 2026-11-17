@@ -10366,3 +10366,27 @@ REWIN 109-111 — the extra challenges end as fouls (dead) or beaten tackles, no
 **Next:** the turnover. Real sides lose it 148 times a team-match in play; ours 110. Where real ones come from
 (StatsBomb: miscontrols, dispossessions, interceptions, failed passes to a man) against ours. Tests 22/22, goldens
 unchanged, no migration.
+
+### 8.252 G5.148 — how the ball changes side: measured; §8.251's "30% too rarely" was a cut mismatch
+
+From §8.251's next. **Real, two ways.**
+- New `scripts/benchmarks_statsbomb_turnover.py` (StatsBomb possession sequences): only ~40 in-play changes a
+  team-match — StatsBomb's possession changes only when the other side establishes control. A different ruler
+  from REWIN's 148; kept for the cause shares (failed passes 60%, dispossessed 16%, miscontrol 10%).
+- `benchmarks_tracking_rewin.py` now names each DFL win by **THE CAUSE**, the loser's last act in the 3 s before
+  (DFL events), a team-match: none 41.9, pass failed 36.5, other ball action (clearance, deflection, miscontrol)
+  27.3, ground duel 17.6, pass completed (then lost) 12.2, air duel 9.4, shot 3.5.
+
+**Ours** (harness REWIN CAUSE; 3 seeds × 8): none 38.3-38.9, pass failed 56.1-58.4, ground duel (TackleWon) 7.4-8.1,
+other ball action (clearances) 1.8-2.4, pass completed then lost 0.0, shot 4.0-4.6.
+
+**The cut.** REWIN's real side flips on DFL's hand-set BallPossession; ours on our own possession rule — not alike.
+CONTROL SPELLS (tracking only: the nearest man within 1.5 m, ball under 1.5 m, two 5 Hz frames — both cut alike):
+changes 103.4 a team-match (80.8), wins 92.9 (73.1). **Ours change side more, not less** — ~1.2× per minute in play,
+like passes (1.21×) and spells (1.10×). §8.251's "30% too rarely" is withdrawn; its tackle fit stands (fouls and
+tackle duels real).
+
+**What is real, on any cut:** ours lose it to failed passes, real sides to contests — duels (ground and air),
+deflections, scrappy touches; a man who receives it never loses it on his touch (completed then lost 0 v 12.2);
+PRESSED TOUCH 84 a team-match (10.0). The game is played ~1.1-1.2× quicker per minute in play everywhere: spells
+1.38 s (1.21) but the ball between spells 3.1 s a cycle (3.7). Next: that gap between men.

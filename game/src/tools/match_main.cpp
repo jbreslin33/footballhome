@@ -83,6 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long rcz_n[6] = {};   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
     long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
     long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
     long pwhy_n[ai::kWhyCount + 1] = {}, rwhy_n[3][ai::kWhyCount] = {}, clr_out[3] = {}; std::vector<double> clr_dx[3], clr_ay[3];   // §8.243: passes by why; open-play releases by why and third; a clearance's end (mate / theirs / out)
@@ -313,12 +314,14 @@ int main(int argc, char** argv) {
         std::vector<std::uint8_t> rd_tos(N); for (std::uint8_t j = 0; j < N; ++j) rd_tos[j] = W.player(j).team;
         ai::Reads rd(&rd_tos, W.pitchHalfX(), W.pitchHalfY()); rd.configure(cfg.model_params);   // §8.199 the race read, replayed on the ball as kicked
         const bool cut_trace = std::getenv("GAME_CUT_TRACE") != nullptr;
+        long rc_own_k[2] = {-1000, -1000}, rc_tkl_k[2] = {-1000, -1000};   // §8.252: each side's last tick on the ball; its last tackle won
         int mg[2] = {0, 0}; bool ft = false, dead_skip = false;   // §8.250: goals this match (the World resets at full time); a half-time kick-off isn't a dead spell (DFL: within halves)
         const long kmax = cfg.half_length_ticks ? ticks * 2 : ticks;
         for (long k = 0; k < kmax && !ft; ++k) {
             const auto before = W.ball().owner;
             s.tickOnce();
-            for (const auto& e : s.lastEvents()) { if (e.type == core::MatchEventType::FullTime) ft = true; else if (e.type == core::MatchEventType::HalfTime) dead_skip = true; else if (e.type == core::MatchEventType::Goal && e.team < 2) ++mg[e.team]; }
+            if (W.ball().owner) rc_own_k[W.player(*W.ball().owner).team & 1] = k;   // §8.252
+            for (const auto& e : s.lastEvents()) { if (e.type == core::MatchEventType::TackleWon && e.team < 2) rc_tkl_k[e.team] = k; if (e.type == core::MatchEventType::FullTime) ft = true; else if (e.type == core::MatchEventType::HalfTime) dead_skip = true; else if (e.type == core::MatchEventType::Goal && e.team < 2) ++mg[e.team]; }
             if (rel.p >= 0 && rel.to >= 0 && !W.ball().owner) {   // §8.246: closest the ball comes to the man it is for
                 const auto& q = W.player(static_cast<std::uint8_t>(rel.to)); const auto& bb = W.ball();
                 const double d = std::hypot(bb.pos.x.toDouble() - q.pos.x.toDouble(), bb.pos.y.toDouble() - q.pos.y.toDouble());
@@ -1745,6 +1748,18 @@ int main(int argc, char** argv) {
                         const double spd = pb_k == kk - 12 ? 5 * std::hypot(bx - pb_x[1], by - pb_y[1]) : 0.0;
                         rw_kd = spd >= 8 ? (b.pos.z.toDouble() >= 1.5 ? 1 : 0) : 2;
                         rw_k = rw_last = kk; rw_a = a; rw_b = dbin(dL); rw_b1 = -1;
+                        {   // §8.252 THE CAUSE, as benchmarks_tracking_rewin.py: the loser's last act in the 3 s before
+                            const int L = a ^ 1; const long tk = rc_tkl_k[a], kq = last_kick_team == L ? last_kick_k : -1000;
+                            int cz = 0;   // none
+                            if (tk >= kk - 90 && tk >= kq) cz = 1;   // tackled
+                            else if (kq >= kk - 90) {
+                                const int wy = last_kick_why;
+                                if (wy == static_cast<int>(ai::Why::Shoot)) cz = 2;
+                                else if (wy == static_cast<int>(ai::Why::Clear)) cz = 3;   // other ball action
+                                else cz = rc_own_k[L] > kq + 3 ? 4 : 5;   // pass completed (his man had it, then lost it) / failed
+                            }
+                            ++S.rcz_n[cz];
+                        }
                         ++S.rw_n[rw_b]; ++S.rw_kn[rw_kd]; S.rw_dL.push_back(dL); S.rw_dW.push_back(dW); S.rw_kdL[rw_kd].push_back(dL); S.rw_kdW[rw_kd].push_back(dW);
                     }
                 }
@@ -2824,6 +2839,10 @@ int main(int argc, char** argv) {
                         if (n > 0) {
                             static const double rS[5] = {46.0, 29.3, 15.3, 6.5, 2.9}, rBk[5] = {38.3, 32.5, 27.0, 11.1, 3.3}, rD1[5] = {3.3, 4.1, 4.4, 7.0, 16.0}, rKs[3] = {18.9, 13.4, 67.7}, rKb[3] = {27.5, 39.9, 31.8}, rKl[3] = {2.9, 2.2, 1.9}, rKw[3] = {1.7, 1.3, 0.8}, rS1[5] = {19.3, 29.3, 30.1, 16.5, 4.8}, rB1[5] = {49.6, 33.1, 21.9, 12.8, 0.0};
                             static const char* bn[5] = {"0-2", "2-4", "4-7", "7-12", "12+"}; static const char* kn[3] = {"kicked", "air", "feet"};
+                            { static const char* cn[6] = {"none", "tackled (ground duel; real air duels 9.4 too)", "shot", "other ball action", "pass (completed)", "pass (failed)"};
+                              static const double cr[6] = {41.9, 17.6, 3.5, 27.3, 12.2, 36.5};
+                              std::printf("\n        REWIN CAUSE (the loser's last act in the 3 s before; real DFL events in brackets), a team-match:");
+                              for (int q = 0; q < 6; ++q) std::printf(" %s %.1f (%.1f);", cn[q], S.rcz_n[q] / tm, cr[q]); }
                             std::printf("\n        REWIN (the ball changes side in play, the loser had it 1 s+; real DFL benchmarks_tracking_rewin.py): %.1f a team-match (148.4); given straight back by 3 s %.1f%% (32.1), dead by 3 s %.1f%% (15.4); at the win nearest outfielder med loser %.1f (2.2) / winner %.1f (1.0) m",
                                         n / tmn, 100.0 * bk / n, 100.0 * dd / n, md(S.rw_dL), md(S.rw_dW));
                             std::printf("\n          by the loser's nearest at the win: share %% (real) | given back %% (real) | his nearest 1 s on med (real):");
