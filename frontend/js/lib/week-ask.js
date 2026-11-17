@@ -10,7 +10,7 @@
 // (Mon–Sun) the viewer or one of their kids can answer: the ones still
 // unanswered first, then the ones already answered (so they see them and
 // can change them).  Going / Not Going per person per event; tapping the
-// lit answer clears it, as everywhere.  Nothing else open → no popup.
+// lit answer clears it, as everywhere.  Nothing unanswered → no popup.
 //
 // Feed: GET /api/calendar/upcoming?start=<Monday>&days=7 — already scoped
 // per viewer; the same rules the 📅 Calendar tiles follow: my_rsvp_eligible
@@ -93,7 +93,10 @@
       console.warn('[week-ask] week load failed:', err);
       return;
     }
-    if (!events.length) return;
+    // Only when something is still unanswered (owner 11/17: "if they have
+    // all set for the week there is no pop up right") — the answered ones
+    // ride along so they see them, but never open it on their own.
+    if (!events.some(x => x.rows.some(r => !r.response))) return;
     open(auth, events);
   }
 
