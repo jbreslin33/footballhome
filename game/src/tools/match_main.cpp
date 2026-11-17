@@ -83,6 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long fb_live = 0, fb_end[2][3] = {}; std::vector<double> fb_d[2];   // §8.254 FREE BALL [struck / touch][same / other / dead]
     long rcz_n[6] = {}, ctt_n[5][3] = {};   // ctt_: §8.253 CONTESTED TOUCH [opponent band][kept / theirs / neither]   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
     long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
     long pro_n[2][7][8] = {};   // §8.243 PASS ROLES: [own half?][passer role, GK = 6][receiver role + 1, 0 = none]
@@ -314,6 +315,7 @@ int main(int argc, char** argv) {
         std::vector<std::uint8_t> rd_tos(N); for (std::uint8_t j = 0; j < N; ++j) rd_tos[j] = W.player(j).team;
         ai::Reads rd(&rd_tos, W.pitchHalfX(), W.pitchHalfY()); rd.configure(cfg.model_params);   // §8.199 the race read, replayed on the ball as kicked
         const bool cut_trace = std::getenv("GAME_CUT_TRACE") != nullptr;
+        long fb_start = -1; int fb_side = -1; double fb_v0 = 0, fb_px = 0, fb_py = 0; bool fb_has = false;   // §8.254
         long rc_own_k[2] = {-1000, -1000}, rc_tkl_k[2] = {-1000, -1000};   // §8.252: each side's last tick on the ball; its last tackle won
         int mg[2] = {0, 0}; bool ft = false, dead_skip = false;   // §8.250: goals this match (the World resets at full time); a half-time kick-off isn't a dead spell (DFL: within halves)
         const long kmax = cfg.half_length_ticks ? ticks * 2 : ticks;
@@ -321,6 +323,22 @@ int main(int argc, char** argv) {
             const auto before = W.ball().owner;
             s.tickOnce();
             if (W.ball().owner) rc_own_k[W.player(*W.ball().owner).team & 1] = k;   // §8.252
+            if (k % 6 == 0) {   // §8.254 FREE BALL, as benchmarks_tracking_freeball.py: 5 Hz, nobody within 2 m, in play
+                const auto& fb = W.ball(); const double fx = fb.pos.x.toDouble(), fy = fb.pos.y.toDouble();
+                const bool fl = W.outStage() == 0 && W.restartTeam() == 0xFF;
+                if (!fl) { if (fb_start >= 0 && fb_side >= 0) { S.fb_d[fb_v0 >= 8 ? 0 : 1].push_back((k - fb_start) / 30.0); ++S.fb_end[fb_v0 >= 8 ? 0 : 1][2]; } fb_start = -1; fb_side = -1; fb_has = false; }
+                else {
+                    ++S.fb_live;
+                    double nd = 99; int nw = -1;
+                    for (std::uint8_t j = 0; j < N; ++j) { const double e = std::hypot(W.player(j).pos.x.toDouble() - fx, W.player(j).pos.y.toDouble() - fy); if (e < nd) { nd = e; nw = j; } }
+                    if (nd <= 2.0) {
+                        const int sd = W.player(static_cast<std::uint8_t>(nw)).team;
+                        if (fb_start >= 0 && fb_side >= 0) { const int q = fb_v0 >= 8 ? 0 : 1; S.fb_d[q].push_back((k - fb_start) / 30.0); ++S.fb_end[q][sd == fb_side ? 0 : 1]; }
+                        fb_start = -1; fb_side = sd;
+                    } else if (fb_start < 0 && fb_side >= 0) { fb_start = k; fb_v0 = fb_has ? std::hypot(fx - fb_px, fy - fb_py) * 5 : 0.0; }
+                    fb_px = fx; fb_py = fy; fb_has = true;
+                }
+            }
             for (const auto& e : s.lastEvents()) { if (e.type == core::MatchEventType::TackleWon && e.team < 2) rc_tkl_k[e.team] = k; if (e.type == core::MatchEventType::FullTime) ft = true; else if (e.type == core::MatchEventType::HalfTime) dead_skip = true; else if (e.type == core::MatchEventType::Goal && e.team < 2) ++mg[e.team]; }
             if (rel.p >= 0 && rel.to >= 0 && !W.ball().owner) {   // §8.246: closest the ball comes to the man it is for
                 const auto& q = W.player(static_cast<std::uint8_t>(rel.to)); const auto& bb = W.ball();
@@ -2641,6 +2659,20 @@ int main(int argc, char** argv) {
     std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
     std::printf("   PENALTIES (Law 14) %.3f a team-match (StatsBomb PL 15/16 0.120), scored %ld of %ld (81.3%%); tackles in his own area %.2f a team-match (tackle duels there 1.61)\n", S.pens / tm, S.pen_goals, S.pens, S.tkl_area / tm);
     std::printf("   THEIR MAN ON THE BALL IN OUR AREA a team-match (StatsBomb PL 15/16, benchmarks_statsbomb_area_duels.py): spells begun there %.2f (receipts 12.83), on the ball %.1f s (carries 10.7 s); tackles per second on it %.3f (0.151)\n", S.area_rec / tm, S.area_ticks / 30.0 / tm, S.tkl_area / std::max(1e-9, S.area_ticks / 30.0));
+    {   // §8.254 FREE BALL v benchmarks_tracking_freeball.py (DFL)
+        const double tmin = 2.0 * S.fb_live / 5.0 / 60.0; double fr = 0; long nn = 0;
+        for (int q = 0; q < 2; ++q) for (double x : S.fb_d[q]) { fr += x; ++nn; }
+        std::printf("   FREE BALL (5 Hz, nobody within 2 m, in play; real DFL in brackets): %.1f%% of in-play time (36.9) | runs %.2f a team-minute (11.24), mean %.2f s (0.98)",
+                    100.0 * fr / std::max(1.0, S.fb_live / 5.0), nn / std::max(1e-9, tmin), fr / std::max(1L, nn));
+        static const char* qn[2] = {"struck 8+ m/s", "a touch"}; static const double rq[2][3] = {{9.60, 1.02, 0.80}, {1.64, 0.75, 0.60}}; static const int re[2][3] = {{65, 30, 5}, {59, 33, 9}};
+        for (int q = 0; q < 2; ++q) {
+            auto v = S.fb_d[q]; if (v.empty()) continue; std::sort(v.begin(), v.end()); double m = 0; for (double x : v) m += x;
+            const long t = S.fb_end[q][0] + S.fb_end[q][1] + S.fb_end[q][2];
+            std::printf(" | %s %.2f (%.2f) mean %.2f (%.2f) med %.2f (%.2f), ends same / other / dead %.0f / %.0f / %.0f%% (%d / %d / %d)", qn[q], v.size() / tmin, rq[q][0], m / v.size(), rq[q][1], v[v.size() / 2], rq[q][2],
+                        100.0 * S.fb_end[q][0] / std::max(1L, t), 100.0 * S.fb_end[q][1] / std::max(1L, t), 100.0 * S.fb_end[q][2] / std::max(1L, t), re[q][0], re[q][1], re[q][2]);
+        }
+        std::printf("\n");
+    }
     {   // §8.250 PER MINUTE IN PLAY: the volumes on one clock — real per team-match ÷ DFL's 52.7 min in play a match
         const double mip = S.tick_live / 30.0 / 60.0 / static_cast<double>(matches);   // minutes in play a match
         std::printf("   PER MINUTE IN PLAY (%.1f min a match, DFL 52.7; a team): passes %.2f (8.23) | spells %.2f (12.15) | shots %.3f (0.245) | fouls %.3f (0.238) | throw-ins %.3f (0.378)\n",

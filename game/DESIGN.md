@@ -10410,3 +10410,19 @@ touch 0-1.5 / 1.5-3 m 5 / 14% (6 / 11), median 6.1 m (7.4).)
 often. The turnover mix of §8.252 is volume: more receptions (1.28×) and more passes (1.21×) at real per-touch odds,
 and failed passes counted where DFL's annotators name a duel or a touch. Next: the tempo itself — why everything is
 ~1.2× per minute in play (spells 1.38 s v 1.21, yet more of them).
+
+### 8.254 G5.150 — the tempo is real: the ball goes man to man at the real rate; the pass excess is the release mix
+
+From §8.253's next (everything ~1.2× per minute in play). New `scripts/benchmarks_tracking_freeball.py` and harness
+FREE BALL: at 5 Hz in play the ball is free when nobody is within 2 m; a free run is consecutive free frames, by how
+it started (struck 8 m/s+ / a touch) and who has it next (the side last on it / the other / dead), per team-minute
+in play. Real (DFL): free 36.9% of in-play time; 11.24 runs a team-minute, mean 0.98 s (median 0.80); struck 9.60
+(ends 65 / 30 / 5%), touches 1.64. Ours (3 seeds × 8): 33.7-34.6%; **11.26-11.51 runs, mean 0.90-0.91 s**; struck
+9.85-10.06 (ends 73-74 / 22-23 / 3-4%), touches 1.41-1.46.
+
+**Read.** §8.251-8.252's "the ball between spells 3.1 s v 3.7" was derived from per-match spell counts — wrong; on one
+cut the ball moves between men at the real rate and pace. What differs is what a free run is: ours a pass 87% of the
+time (9.95 a minute of 11.4), real 73% (8.23 of 11.24) — the rest are headers and flick-ons, clearances, deflections,
+blocks. And a struck ball is ours again 74% (65): fewer contests in flight. The pass excess (1.21×) is the release
+mix, not the tempo. Next: the contest for the ball in the air — aerial duels 15 a match (44.1), the defender 11.6 m
+off the man a loft is for (6.9; §8.247), the biggest share of releases that real football has and ours doesn't.
