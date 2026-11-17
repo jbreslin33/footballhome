@@ -10441,3 +10441,26 @@ the brain's decision panels while Brain is on; the touch play buttons (PASS / LO
 switched on under "Over the pitch" (off by default). The 3D view keeps its Draw / Quality / Mode sections; the old
 floating mode bar is gone (its modes are in the menu). M opens it, Esc closes. Checked live in Chrome, 2D and 3D,
 no console errors.
+
+### 8.256 G5.151 — the man contesting their high ball attacks it: from the launch, flat out (shipped)
+
+From §8.247 / §8.254. HIGH BALLS COMING DOWN, the defender nearest a midfield drop through the flight (fb0, seed
+1000): 8.1 m off at the launch (real 8.4), his target on the drop (1.1-1.3 m) only from 1.5 s, chasing from a
+median 1.2 s, at 2.5-4.5 m/s; 3.4-3.7 m off as it comes down (real nearest of theirs 1.6 m). Two holds:
+`DefendingBlock`'s contest of their high ball only took over at `contest_min_z_m` 1.5 (head height), and the contester
+ran Brain's on-time chase pace (G4.84, dist / time to meet × 1.1, made for ground passes): he arrived with their man
+at best. New harness LOFT BY WHAT (lofts by carry × what launched them): the long ball is there since §8.248 (50-70 m
+15.4 a team-match, 12.6 real, mostly the keeper); the 10-30 m excess is chipped passes (16.0 / 12.9; real lofts of
+all kinds 5.9 / 8.9).
+
+**Change** [FH coaching: attack the ball in the air]: the contester of their high ball runs flat out
+(`physics.block.contest_full_pace`, Brain's chase pace) and is picked from 0.3 m (`contest_min_z_m` 1.5 → 0.3).
+
+3 seeds × 8 (before / flat out / flat out from the launch): aerial duels 12.9-14.1 / 15.1-18.0 / **16.2-19.6** a match
+(44.1); midfield drops with both sides within 2 m 20-21 / 21.5-23.7 / 22.7-24.7% (39.3), theirs within 2 m 32-34 /
+35-38 / 36-39% (56.8); completion, passes, shots unchanged within noise. Goldens re-locked (3v3 and 11v11). Tests
+22/22, no migration.
+
+**Still a third of the real duels.** Next: the start — the nearest to the drop is someone else's job until the
+contest picks him (hold shape / press 50-70% of the first second) — and our short chipped passes, which nobody
+contests because they drop on free men.

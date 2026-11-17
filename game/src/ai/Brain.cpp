@@ -111,6 +111,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     restart_play_.throw_law_m = p.fixed("physics.restart.throw_law_m", 2000);
     restart_play_.kick_law_m = p.fixed("physics.restart.kick_law_m", 9150);
     restart_play_.drop_law_m = p.fixed("physics.restart.drop_law_m", 4000);   // Law 8
+    contest_full_ = p.fixed("physics.block.contest_full_pace", 1000).raw > 0;   // §8.256
     restart_play_.penalty_arc_m = p.fixed("physics.restart.penalty_arc_m", 9150);
     arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
     arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
@@ -959,6 +960,10 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     switch (o.why) {
         case Why::MeetPass: case Why::Chase: {
             if (world.ball().owner || world.restartTeam() != 0xFF) break;
+            // G5.151 (§8.256): the man contesting their high ball attacks it — flat out, not on time. On time he met
+            // their man there at best: the nearest of ours 2.5 m off a midfield drop (DFL 1.6), aerial duels 15 a
+            // match (44.1). [FH coaching: attack the ball in the air]
+            if (o.why == Why::Chase && contest_full_ && block_.contester(setup_.team_of_slot[slot]) == static_cast<int>(slot)) { v_ok = me.max_speed; break; }
             const FlightRead& fr = reads_.flightRead(world);
             if (!fr.live || slot >= fr.tick.size() || fr.tick[slot] <= 0) break;
             const Fixed64 t = Fixed64::fromInt(fr.tick[slot]) * core::kTickDt;

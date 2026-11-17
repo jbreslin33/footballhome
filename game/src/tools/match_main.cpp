@@ -83,6 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
+    long lfw_n[5][6] = {};   // §8.256 LOFT FLIGHT by carry band x pass / clear / keeper / cross / other kick / header-deflection
     long fb_live = 0, fb_end[2][3] = {}; std::vector<double> fb_d[2];   // §8.254 FREE BALL [struck / touch][same / other / dead]
     long rcz_n[6] = {}, ctt_n[5][3] = {};   // ctt_: §8.253 CONTESTED TOUCH [opponent band][kept / theirs / neither]   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
     long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
@@ -260,7 +261,7 @@ int main(int argc, char** argv) {
         int rc_team = -1; long rc_k = 0;   // the last touch's side, and since when
         bool hb_rose = false; double hb_pz = 0; struct HbP { long k; int po, z; }; std::vector<HbP> hb_p;   // §8.172: high balls coming down
         long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
-        struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; } lf;   // §8.185 LOFT FLIGHT
+        struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; int what = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
         struct FlF { long k; float x[32], y[32], bx, by, bz; int a = 0; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
@@ -1302,7 +1303,8 @@ int main(int argc, char** argv) {
                         if (lf.pk >= 4.0) {
                             const double c = std::hypot(lf.lx - lf.x0, lf.ly - lf.y0);
                             int bi = c < 10 ? -1 : c < 20 ? 0 : c < 30 ? 1 : c < 40 ? 2 : c < 50 ? 3 : c < 70 ? 4 : -1;
-                            if (bi >= 0) { ++S.lf_n[bi]; S.lf_ang[bi].push_back(lf.ang); S.lf_pk[bi].push_back(lf.pk); S.lf_v[bi].push_back(lf.v);
+                            if (bi >= 0) { ++S.lfw_n[bi][lf.what];   // §8.256 by what launched it
+                                ++S.lf_n[bi]; S.lf_ang[bi].push_back(lf.ang); S.lf_pk[bi].push_back(lf.pk); S.lf_v[bi].push_back(lf.v);
                                 if (lf.down >= 0) S.lf_dn[bi].push_back(lf.down); if (!touched) S.lf_ld[bi].push_back((kk - lf.k0) / 30.0); }
                         }
                         lf.on = false;
@@ -1311,6 +1313,12 @@ int main(int argc, char** argv) {
                     else if (!lf.on) {
                         if (lf.lz < 0.5 && bz >= 0.5 && !b.owner && W.restartTeam() == 0xFF) {
                             lf.on = true; lf.k0 = kk - 1; lf.x0 = lf.lx; lf.y0 = lf.ly; lf.pk = bz; lf.down = -1; lf.kicker = b.last_kicker;
+                            {   // §8.256: what launched it — the last kick (within 0.2 s) by its why, else a header / deflection / touch
+                                const bool kicked = static_cast<long>(kk) - last_kick_k <= 6;
+                                const int wy = last_kick_why;
+                                lf.what = !kicked ? 5 : wy == static_cast<int>(ai::Why::Clear) ? 1 : (wy == static_cast<int>(ai::Why::KeeperPunt) || (b.last_kicker < N && W.isKeeper(b.last_kicker))) ? 2
+                                        : wy == static_cast<int>(ai::Why::Cross) ? 3 : wy == static_cast<int>(ai::Why::Pass) || wy == static_cast<int>(ai::Why::InBehind) || wy == static_cast<int>(ai::Why::IntoSpace) ? 0 : 4;
+                            }
                             const double vx = b.vel.x.toDouble(), vy = b.vel.y.toDouble(), vz = b.vel.z.toDouble(), vh = std::hypot(vx, vy);
                             lf.ang = std::atan2(vz, std::max(0.1, vh)) * 57.29578; lf.v = std::hypot(vh, vz);
                         }
@@ -3097,6 +3105,9 @@ int main(int argc, char** argv) {
                         {   // §8.185 LOFT FLIGHT v benchmarks_tracking_loft.py
                             static const char* rf[5] = {"5.9 | 5.6 | 2.52 | 2.88", "8.9 | 5.9 | 2.24 | 2.48", "16.7 | 5.8 | 2.20 | 2.48", "11.1 | 7.3 | 2.64 | 2.92", "12.6 | 9.9 | 3.28 | 3.60"};
                             static const char* bn[5] = {"10-20", "20-30", "30-40", "40-50", "50-70"};
+                            { static const char* lb5[5] = {"10-20", "20-30", "30-40", "40-50", "50-70"};
+                              std::printf("\n        LOFT BY WHAT (a team-match, by carry; pass / clearance / keeper / cross / other kick / header-deflection-touch):");
+                              for (int q = 0; q < 5; ++q) { std::printf(" %s", lb5[q]); for (int w = 0; w < 6; ++w) std::printf(" %.1f", S.lfw_n[q][w] / tmn); std::printf(";"); } }
                             std::printf("\n        LOFT FLIGHT (rose past 4 m, in play; benchmarks_tracking_loft.py, real DFL in brackets), by carry m: a team-match | launch deg med | peak m med | down through 2.4 m s med | landing s med | launch m/s med  (real: a team-match | peak | down | landing)");
                             for (int q = 0; q < 5; ++q) if (S.lf_n[q]) std::printf("\n          %s %5.1f | %4.1f | %4.1f | %4.2f | %4.2f | %4.1f  (%s)", bn[q], S.lf_n[q] / tmn, mdh(S.lf_ang[q]), mdh(S.lf_pk[q]), mdh(S.lf_dn[q]), mdh(S.lf_ld[q]), mdh(S.lf_v[q]), rf[q]);
                         }

@@ -201,7 +201,7 @@ void BlockParams::configure(const core::ModelParams& p) {
     gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)
     gs_w = p.fixed("physics.block.gs_w", 10000);
     gs_m = p.fixed("physics.block.gs_m", 1000);
-    contest_min_z = p.fixed("physics.block.contest_min_z_m", 1500);
+    contest_min_z = p.fixed("physics.block.contest_min_z_m", 300);   // G5.151 (§8.256): from the launch, not head height (1.5)
     {   // G5.82 (§8.183): s -> ticks; negative = off
         const Fixed64 m = p.fixed("physics.block.their_pass_margin_s", 0);
         their_pass_margin = m.raw < 0 ? -1 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
