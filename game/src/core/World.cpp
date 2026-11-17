@@ -139,7 +139,7 @@ void World::tickPlayers() {
         }
         Vec2 desire = intents_[i].move;
         const bool cdg = ball_.owner && *ball_.owner == i && !keeper_[i] && !heldRestart() && restart_team_ == 0xFF && clock_.tick() > owned_at_tick_ + 30;
-        double cd_wish = math::length(desire).toDouble(), cd_after = 0; bool cd_chase = false;
+        Fixed64 cd_wish = math::length(desire), cd_after = Fixed64::zero(); bool cd_chase = false;
         // G5.4: holding it he takes it along, he doesn't run at goal. A real
         // carry is ~5 m and gains 2-3 m (PL 2015/16). Off without carry_share.
         if (carry_share_.raw > 0 && ball_.owner && *ball_.owner == i && clock_.tick() < hold_until_tick_) {
@@ -149,7 +149,7 @@ void World::tickPlayers() {
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
-        cd_after = math::length(desire).toDouble();
+        cd_after = math::length(desire);
         // G5.78 (§8.179): a carrier whose rolling ball is out of his reach goes to it — the
         // body keeps the ball (the brain still thinks it is at his feet). The ball first (3:1
         // over his wish, which can point straight away from it), at least a jog's share.
@@ -221,12 +221,12 @@ void World::tickPlayers() {
             v = body.step(v0, vw, kTickDt);
         }
         if (cdg) {
-            auto& D = carry_diag_; ++D.n; if (cd_chase) ++D.chase; if (cd_wish > 0.99) ++D.wfull;
-            D.wish += cd_wish; D.after += cd_after; D.desire += math::length(desire).toDouble(); D.gait += share.toDouble();
-            D.top += top.toDouble(); D.vw += math::length(vw).toDouble(); D.v0 += math::length(v0).toDouble(); D.v1 += math::length(v).toDouble();
+            auto& D = carry_diag_; ++D.n; if (cd_chase) ++D.chase; if (cd_wish > Fixed64::fromFraction(99, 100)) ++D.wfull;
+            D.wish += cd_wish; D.after += cd_after; D.desire += math::length(desire); D.gait += share;
+            D.top += top; D.vw += math::length(vw); D.v0 += math::length(v0); D.v1 += math::length(v);
             if (math::lengthSquared(v0) > Fixed64::fromFraction(1, 100) && math::lengthSquared(desire) > Fixed64::fromFraction(1, 100)) {
-                const Vec2 a = math::normalized(v0), b = math::normalized(desire); D.ang += (a.x * b.x + a.y * b.y).toDouble(); ++D.contact; }
-            ++D.vb[std::min(7, static_cast<int>(math::length(v).toDouble()))]; ++D.vwb[std::min(7, static_cast<int>(math::length(vw).toDouble()))];
+                const Vec2 a = math::normalized(v0), b = math::normalized(desire); D.ang += a.x * b.x + a.y * b.y; ++D.contact; }
+            ++D.vb[std::min<std::int64_t>(7, math::length(v).raw >> Fixed64::FRAC_BITS)]; ++D.vwb[std::min<std::int64_t>(7, math::length(vw).raw >> Fixed64::FRAC_BITS)];
         }
         p.vel = Vec3{v.x, v.y, Fixed64::zero()};
         p.pos += p.vel * kTickDt;

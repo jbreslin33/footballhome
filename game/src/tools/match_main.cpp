@@ -147,7 +147,7 @@ struct Stats {
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
     long sp_vb[8] = {}, ps_h[15] = {}, pe_n[3] = {}; double pe_v[3] = {}; double sp_since[10] = {}, sp_before[5] = {}, sp_net[4] = {}, sp_path[4] = {}, sp_dur[4] = {}; long sp_since_n[10] = {}, sp_before_n[5] = {}, sp_n[4] = {};   // §8.232 SPELL PACE
     double rp_pre[2][5] = {}, rp_f0[2] = {}; long rp_n[2] = {}, rp_slow[2] = {}, rp_hin[2][7] = {}, rp_hf0[2][7] = {}, rp_why[2][3][32] = {}, rp_bn[2][3] = {}; double rp_len[3] = {}, rp_ft[3] = {}; long rp_kk[3][4] = {}, rp_lh[3][8] = {}, rp_l3[3] = {}, ob_h[4] = {}, rv_n[4] = {}, rv_still[4] = {}, tf_n[3] = {}, tf_s[3][5] = {}, pk_a[4] = {}, pk_p[4] = {}, ob_w[32][4] = {}, hq_sv[5] = {}, hq_gap[5] = {}, hq_n = 0; double hq_sv_m = 0, hq_gap_m = 0, hq_v_by_sv[5] = {}; long hq_v_by_sv_n[5] = {}, hq_j[5] = {}, hq_dir[4] = {}, obc[3][4] = {}, hq_br[5] = {}, hq_brj[2][5] = {}; double rv_v[4] = {}, rv_away[4] = {}, tf_v[3][5] = {}; double rp_v0[3][4] = {}, rp_va[3][4] = {}, rp_kl[3][4] = {};   // §8.234 RECEIPT PACE: [won / loose, pass received]
-    core::World::CarryDiag cd{};   // §8.233
+    struct { long n = 0, chase = 0, wfull = 0, steps = 0, contact = 0; double wish = 0, after = 0, desire = 0, gait = 0, top = 0, vw = 0, v0 = 0, v1 = 0, ang = 0; long vb[8] = {}, vwb[8] = {}; } cd;   // §8.233 (World's Fixed64 sums, summed over matches as doubles here)
     long cw_n[ai::kWhyCount] = {}, cw_flip = 0, cw_fn = 0; double cw_cos[ai::kWhyCount] = {}, cw_v[ai::kWhyCount] = {}, cw_turn = 0;   // §8.233 by his why: cos(vel, his move), speed; tick-to-tick turn of his move
     long ov_n[5] = {}, ov_why[ai::kWhyCount] = {}, ov_ticks = 0, ov_spells = 0; double ov_sum = 0, ov_drawn = 0, ov_act = 0;   // §8.232 HOLD OVERRUN: spell time past the drawn hold
     long fo_n[5] = {}, fo_past[5] = {}, fo_lost[5] = {}, fo_kept[5] = {};   // §8.231 FACED outcomes by zone (benchmarks_tracking_takeon.py)
@@ -2391,7 +2391,7 @@ int main(int argc, char** argv) {
         }
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
-        { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish; A.after += D.after; A.desire += D.desire; A.gait += D.gait; A.top += D.top; A.vw += D.vw; A.v1 += D.v1; A.ang += D.ang; for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
+        { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish.toDouble(); A.after += D.after.toDouble(); A.desire += D.desire.toDouble(); A.gait += D.gait.toDouble(); A.top += D.top.toDouble(); A.vw += D.vw.toDouble(); A.v1 += D.v1.toDouble(); A.ang += D.ang.toDouble(); for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = W.score(0), ag = W.score(1);
         if (hg > ag) ++S.w; else if (hg == ag) ++S.d; else ++S.l;

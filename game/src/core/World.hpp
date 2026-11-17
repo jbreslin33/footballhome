@@ -151,7 +151,7 @@ public:
     void configureDribble(const ModelParams& p);
     std::uint32_t dribbleTouches() const noexcept { return dribble_touches_; }
     // G5.132 (§8.233) diagnostics: the carrier 1 s+ into his spell, in play, per tick — not state.
-    struct CarryDiag { long n = 0, chase = 0, wfull = 0, steps = 0, contact = 0; double wish = 0, after = 0, desire = 0, gait = 0, top = 0, vw = 0, v0 = 0, v1 = 0, ang = 0; long vb[8] = {}, vwb[8] = {}; };
+    struct CarryDiag { long n = 0, chase = 0, wfull = 0, steps = 0, contact = 0; math::Fixed64 wish{}, after{}, desire{}, gait{}, top{}, vw{}, v0{}, v1{}, ang{}; long vb[8] = {}, vwb[8] = {}; };   // sums, Fixed64 (no floats in core, §9; a match's carry ticks × ≤10 stays far inside its range)
     const CarryDiag& carryDiag() const noexcept { return carry_diag_; }
     std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
