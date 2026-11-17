@@ -1939,7 +1939,7 @@ class RosterScreenBase extends Screen {
     const cache = this._seesCache || (this._seesCache = new Map());
     const known = cache.get(pid);
     if (!known) this._queueSees(pid);
-    return `<div data-sees-person="${pid}" style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:1px 10px; font-size:0.6rem; line-height:1.35; padding:1px 0 0;">${known ? this._seesContent(known) : ''}</div>`;
+    return `<div data-sees-person="${pid}" style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:4px 6px; font-size:0.6rem; line-height:1.35; padding:4px 0 0;">${known ? this._seesContent(known) : ''}</div>`;
   }
 
   clearSeesCache() { this._seesCache = new Map(); }
@@ -2044,10 +2044,17 @@ class RosterScreenBase extends Screen {
     };
     const rosterChip = (r) => `<span style="white-space:nowrap; font-weight:800; padding:0 4px; border-radius:3px;
         background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">${esc(rosterName(r))}</span>`;
-    const head = (tier, fb, tipTier, tipFb) => `<span title="${esc(cp(tipTier, {}, tipFb))}" style="font-weight:900; letter-spacing:0.04em; opacity:0.7;">${esc(cp(tier, {}, fb))}</span>`;
-    return `
-      <span style="display:inline-flex; flex-wrap:wrap; gap:1px 6px; align-items:center;">${head('card_sees_h', '👁 SEES', 'card_sees_tip', 'What each team asks him about by default')}${sees.join('<span style="opacity:0.4;">·</span>')}</span>
-      <span style="display:inline-flex; flex-wrap:wrap; gap:1px 4px; align-items:center;">${head('card_rosters_h', '📋 ROSTERS', 'card_rosters_tip', 'Official league rosters he is on')}${rosters.length ? rosters.map(rosterChip).join('') : `<span style="opacity:0.55;">${esc(cp('card_rosters_none', {}, 'none'))}</span>`}</span>`;
+    // Each section is its own boxed block: header on top, contents below.
+    const block = (tier, fb, tipTier, tipFb, accent, body, gap) => `
+      <div title="${esc(cp(tipTier, {}, tipFb))}" style="flex:1 1 140px; min-width:0; border:1px solid ${accent}; border-radius:6px;
+          background:rgba(255,255,255,0.03); padding:3px 6px 4px;">
+        <div style="font-weight:900; letter-spacing:0.06em; font-size:0.56rem; opacity:0.75; margin-bottom:2px;">${esc(cp(tier, {}, fb))}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:${gap}; align-items:center;">${body}</div>
+      </div>`;
+    return block('card_sees_h', '👁 SEES', 'card_sees_tip', 'What each team asks him about by default',
+        'rgba(148,163,184,0.35)', sees.join('<span style="opacity:0.4;">·</span>'), '2px 6px')
+      + block('card_rosters_h', '📋 ROSTERS', 'card_rosters_tip', 'Official league rosters he is on',
+        'rgba(34,197,94,0.45)', rosters.length ? rosters.map(rosterChip).join('') : `<span style="opacity:0.55;">${esc(cp('card_rosters_none', {}, 'none'))}</span>`, '3px 4px');
   }
 
   renderSeesGamesChip(player, col) {
