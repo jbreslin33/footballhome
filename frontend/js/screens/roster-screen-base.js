@@ -1949,15 +1949,15 @@ class RosterScreenBase extends Screen {
     const rankG = { yes: 3, invite: 2, callup: 1, no: 0 };
     const rankP = { yes: 2, days: 1, no: 0 };
     const rows = Array.isArray(entry.sees) ? entry.sees : [];
-    const staff = rows.some(r => r.role === 'staff');
     const byTeam = new Map();
     for (const r of rows) {
-      if (r.role === 'staff' || r.team_id == null) continue;
+      if (r.team_id == null) continue;
       const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, plays: false, note: null, bg: r.pill_bg, fg: r.pill_fg, section: r.section };
       if ((rankG[r.games] || 0) > (rankG[m.games] || 0)) m.games = r.games;
       if ((rankP[r.practices] || 0) > (rankP[m.practices] || 0)) { m.practices = r.practices; m.days = r.days; }
       if (r.role === 'coach') m.coach = true;
       if (r.role === 'player') m.plays = true;
+      if (r.role === 'staff') m.staff = true;
       if (r.role === 'player' && r.note) m.note = r.note;
       byTeam.set(r.team_id, m);
     }
@@ -1995,35 +1995,34 @@ class RosterScreenBase extends Screen {
       const coach = t.coach ? cp('card_sees_coach', {}, '🧢') + ' ' : '';
       return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' '))}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
     };
-    // A coach of 2+ teams in one section (only coaching, not playing)
-    // gets ONE pill — "🧢 Youth coach · 20" — that opens to those teams
-    // (owner 11/17 "maybe we have youth coach pill or something and its
-    // clickable to show who he coaches").  One coached team stays a pill.
+    // Coach / club staff of MANY teams in one section (not playing on
+    // them) gets ONE pill — "🧢 Youth coach · 18", "🛡 Youth staff · 18" —
+    // that opens to those teams (owner 11/17 "maybe we have youth coach
+    // pill or something and its clickable to show who he coaches").  A
+    // short list (Men: APSL + L1) stays separate pills (owner 11/17 "2
+    // possible pills for men. liga 1 and apsl").
     const GROUP = { boys: 'youth', girls: 'youth', mens: 'mens', womens: 'womens' };
     const groups = new Map();
     for (const t of teams) {
-      if (!t.coach || t.plays) continue;
+      if (!(t.coach || t.staff) || t.plays) continue;
       const g = GROUP[t.section] || 'youth';
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push(t);
     }
-    const folded = new Set([...groups.values()].filter(l => l.length > 1).flat());
+    const FOLD_AT = 5;
+    const folded = new Set([...groups.values()].filter(l => l.length >= FOLD_AT).flat());
     const groupPill = (g, list) => {
       const name = cp('card_sees_group_' + g, {}, g === 'youth' ? 'Youth' : g === 'mens' ? 'Men' : 'Women');
       return `<details data-sees-coach-group style="display:contents;">
-          <summary onclick="event.stopPropagation()" style="list-style:none; cursor:pointer; display:inline-flex;">${pill(esc(cp('card_sees_coach_group', { group: name, n: String(list.length) }, `🧢 ${name} coach · ${list.length}`)) + ' ▾')}</summary>
-          <div style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:3px 4px; padding:2px 0 2px 8px; border-left:2px solid rgba(34,197,94,0.45);">${list.map(t => item({ ...t, coach: false })).join('')}</div>
+          <summary onclick="event.stopPropagation()" style="list-style:none; cursor:pointer; display:inline-flex;">${pill(esc(list.some(t => t.staff)
+            ? cp('card_sees_staff_group', { group: name, n: String(list.length) }, `🛡 ${name} staff · ${list.length}`)
+            : cp('card_sees_coach_group', { group: name, n: String(list.length) }, `🧢 ${name} coach · ${list.length}`)) + ' ▾')}</summary>
+          <div style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:3px 4px; padding:2px 0 2px 8px; border-left:2px solid rgba(34,197,94,0.45);">${list.map(t => item({ ...t, coach: false, staff: false })).join('')}</div>
         </details>`;
     };
-    const coachPills = [...groups.entries()].filter(([, l]) => l.length > 1).map(([g, l]) => groupPill(g, l));
+    const coachPills = [...groups.entries()].filter(([, l]) => l.length >= FOLD_AT).map(([g, l]) => groupPill(g, l));
     const rest = teams.filter(t => !folded.has(t));
-    let sees;
-    if (staff) {
-      // Staff see every team: say so once, plus where he plays.
-      sees = [pill(esc(cp('card_sees_staff', {}, '🛡 every team')))].concat(teams.filter(t => !t.coach).map(item));
-    } else {
-      sees = rest.map(item).concat(coachPills);
-    }
+    let sees = rest.map(item).concat(coachPills);
     if (!sees.length) sees = [pill(esc(cp('card_sees_none', {}, 'nothing')), 'grey')];
     if (entry.suspended) sees.push(pill(esc(cp('card_sees_suspended', {}, '⛔ suspended')), 'red'));
     if (entry.injured) sees.push(pill(esc(cp('card_sees_injured', {}, '🩹 injured')), 'amber'));
