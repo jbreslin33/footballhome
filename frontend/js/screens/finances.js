@@ -628,24 +628,32 @@ class FinancesScreen extends Screen {
     const b = this.programs.budgets[year], P = b.programs[p.code], ss = b.seasons;
     const cell = (v, cls) => `<td class="${cls || ''}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
     const lineLabel = (l) => l.key === 'dues' ? (this._copy('pg_line_dues') || 'Dues') : l.key === 'la_fees' ? (this._copy('pg_line_la_fees') || 'LeagueApps fees')
+      : l.key === 'coaching' && l.label === 'practice' ? (this._copy('pg_line_coach_practice') || 'Practice coaching')
+      : l.key === 'coaching' && l.label === 'games' ? (this._copy('pg_line_coach_games') || 'Game coaching')
       : l.key === 'coaching' ? (this._copy('pg_line_coaching') || 'Coaching') : l.key === 'grant' ? (this._copy('pg_line_grant') || 'Grant') : l.key === 'casa' ? (this._copy('pg_line_casa') || 'CASA field rental')
       : l.label || this._catName(l.category);
     // rows keyed by group + category (+ label for plan lines), values per season
-    const groups = { dues: new Map(), own: new Map(), shared: new Map(), support: new Map() };
+    // groups in running-balance order (owner 11/16 "show all coaching on
+    // separate lines and do pre coaching balance" + "pre club wide total" +
+    // "pre grant total" + "do that for all"): money in (dues, CASA) → own
+    // costs → coaching (practice / games / paid so far, each a line) → club
+    // wide share → grant
+    const groups = { dues: new Map(), own: new Map(), coach: new Map(), shared: new Map(), grant: new Map() };
     for (const se of ss) for (const l of (P[se.code] || {}).lines || []) {
-      const key = l.group === 'own' || l.group === 'shared' ? `${l.category}` : l.key;
-      const m = groups[l.group]; if (!m) continue;
-      if (!m.has(key)) m.set(key, { label: l.group === 'own' || l.group === 'shared' ? (l.category === 'la_fees' ? lineLabel(l) : l.category === 'labor' && l.key === 'coaching' ? lineLabel(l) : this._catName(l.category)) : lineLabel(l), by: {}, details: {}, assumed: false });
+      const g = l.group === 'own' && l.category === 'labor' ? 'coach' : l.group === 'support' ? (l.key === 'casa' ? 'dues' : 'grant') : l.group;
+      const key = g === 'coach' ? (l.key === 'coaching' ? `coaching:${l.label}` : 'labor') : g === 'own' || g === 'shared' ? `${l.category}` : l.key;
+      const m = groups[g]; if (!m) continue;
+      if (!m.has(key)) m.set(key, { label: g === 'coach' ? (l.key === 'coaching' ? lineLabel(l) : this._catName('labor')) : g === 'own' || g === 'shared' ? (l.category === 'la_fees' ? lineLabel(l) : this._catName(l.category)) : lineLabel(l), by: {}, details: {}, assumed: false });
       const r = m.get(key); r.by[se.code] = (r.by[se.code] || 0) + Number(l.amount || 0); if (l.assumed) r.assumed = true;
-      (r.details[se.code] = r.details[se.code] || []).push(`${l.label || lineLabel(l)}${l.detail ? ': ' + l.detail : ''} = ${M0(l.amount)}`);
+      (r.details[se.code] = r.details[se.code] || []).push(`${l.key === 'coaching' ? lineLabel(l) : (l.label || lineLabel(l))}${l.detail ? ': ' + l.detail : ''} = ${M0(l.amount)}`);
     }
     const tot = (by) => ss.reduce((a, se) => a + Number(by[se.code] || 0), 0);
     const line = (r, cls) => `<tr class="item"><td title="${esc(Object.values(r.details).flat().join('\n'))}">${esc(r.label)}${r.assumed ? '*' : ''}</td>${ss.map(se => cell(r.by[se.code] || 0, cls)).join('')}${cell(tot(r.by), cls)}</tr>`;
     const sumRow = (label, by, cls) => `<tr class="${cls}"><td>${esc(label)}</td>${ss.map(se => cell(by[se.code] || 0)).join('')}${cell(tot(by))}</tr>`;
     const groupBy = (g) => { const by = {}; for (const r of groups[g].values()) for (const [k, v] of Object.entries(r.by)) by[k] = (by[k] || 0) + v; return by; };
     const minus = (a, b2, sign = -1) => { const o = {}; for (const se of ss) o[se.code] = Number(a[se.code] || 0) + sign * Number(b2[se.code] || 0); return o; };
-    const dues = groupBy('dues'), own = groupBy('own'), shared = groupBy('shared'), support = groupBy('support');
-    const ownNet = minus(dues, own), net = minus(minus(ownNet, shared), support, +1);
+    const dues = groupBy('dues'), own = groupBy('own'), coach = groupBy('coach'), shared = groupBy('shared'), grant = groupBy('grant');
+    const preCoach = minus(dues, own), preClub = minus(preCoach, coach), preGrant = minus(preClub, shared), net = minus(preGrant, grant, +1);
     // plan cells are inputs (empty = the live default, shown greyed); the
     // Total column sets every plan season of the year at once
     const inp = (season, field, value, placeholder, step) => `<input class="pg-in" type="number" min="0" step="${step || 1}" data-pg-field="${field}" data-season="${season}"
@@ -673,12 +681,13 @@ class FinancesScreen extends Screen {
         return `<div style="text-align:left;">${have}${add}</div>`;
       }, null);
     }
-    rows += [...groups.dues.values()].map(r => line(r, 'fn-in')).join('');
-    rows += [...groups.own.values()].map(r => line(r, 'fn-out')).join('');
-    rows += sumRow(this._copy('pg_line_own') || 'Own net', ownNet, 'subtotal');
-    rows += [...groups.shared.values()].map(r => line(r, 'fn-out')).join('');
-    rows += [...groups.support.values()].map(r => line(r, 'fn-in')).join('');
-    rows += sumRow(this._copy('pg_line_net') || 'Net with shared', net, 'sum');
+    const lines = (g, cls) => [...groups[g].values()].map(r => line(r, cls)).join('');
+    rows += lines('dues', 'fn-in') + lines('own', 'fn-out');
+    rows += sumRow(this._copy('pm_pre_coach') || 'BALANCE BEFORE COACHING', preCoach, 'subtotal');
+    if (groups.coach.size) rows += lines('coach', 'fn-out') + sumRow(this._copy('pm_pre_club') || 'BALANCE BEFORE CLUB WIDE', preClub, 'subtotal');
+    if (groups.shared.size) rows += lines('shared', 'fn-out');
+    rows += sumRow(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', preGrant, 'subtotal');
+    if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
   }
@@ -744,7 +753,7 @@ class FinancesScreen extends Screen {
     const M2 = FinancesScreen.money2, qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const bands = new Map(), options = new Map();   // scope → { code, label, blocks: Map(key → { label, lines }) }
     const put = (map, scope, blockKey, blockLabel, line) => {
-      if (!map.has(scope)) map.set(scope, { code: scope, label: scope === 'mens' ? (this._copy('pm_general') || "Men's — general (every team)") : scopeLabel(scope), blocks: new Map() });
+      if (!map.has(scope)) map.set(scope, { code: scope, label: scope === 'mens' ? (this._copy('pm_general') || "Men's club wide") : scope === 'coaching' ? (this._copy('pm_coaching') || 'Coaching') : scopeLabel(scope), blocks: new Map() });
       const b = map.get(scope); if (!b.blocks.has(blockKey)) b.blocks.set(blockKey, { label: blockLabel, lines: [] });
       b.blocks.get(blockKey).lines.push(line);
     };
@@ -756,19 +765,21 @@ class FinancesScreen extends Screen {
       put(l.is_option ? options : bands, l.scope, block, label, line);
     }
     // budget lines under Men's (kits, practice coaching …): their own scope's band
+    // coaching (owner 11/16 "show all coaching on separate lines and do pre
+    // coaching balance"): practice + every game-coaching line in ONE band
+    const coachLabel = this._copy('pm_coaching') || 'Coaching';
     for (const b of (x.budget || []).filter(b => b.budget_year === year && mens.has(b.scope)))
-      put(bands, b.scope, `bl:${b.scope}`, scopeLabel(b.scope), { label: b.label, detail: `${M2(b.amount)} × ${qty(b.year_units)}`, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note, by: T.even(Number(b.year_total || 0), T.span(b.period_start, b.period_end)) });
+      put(bands, b.category === 'labor' ? 'coaching' : b.scope, b.category === 'labor' ? 'coaching' : `bl:${b.scope}`, b.category === 'labor' ? coachLabel : scopeLabel(b.scope), { label: b.label, detail: `${M2(b.amount)} × ${qty(b.year_units)}`, amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note, by: T.even(Number(b.year_total || 0), T.span(b.period_start, b.period_end)) });
     // game coaching this year (coaching policies; a later year has it on the plans)
     if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && mens.has(p.scope))) {
       const games = (p.seasons || []).reduce((a, s) => a + Number(s.expected || 0), 0); if (!games) continue;
       const scope = mens.has(p.team_scope) ? p.team_scope : p.scope;
-      const label = scope === 'cups' ? (this._copy('pm_cups_coaching') || 'Game coaching — every cup') : scopeLabel(scope);
-      put(bands, scope, scope === 'cups' ? 'cups:coaching' : scope, label,
+      put(bands, 'coaching', 'coaching', coachLabel,
         { label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`, detail: `${M2(p.rate)} × ${games}`, amount: Number(p.rate) * games, assumed: (p.seasons || []).some(s => s.is_assumed), note: p.note,
           by: T.fromMonths(Number(p.rate) * games, T.polW(p)) || T.even(Number(p.rate) * games) });
     }
     const order = ['apsl', 'liga1', 'u23', 'cups', 'liga2', 'temple7s'];
-    const rank = (c) => c === 'mens' ? 900 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
+    const rank = (c) => c === 'coaching' ? 950 : c === 'mens' ? 900 : (order.indexOf(c) < 0 ? 500 : order.indexOf(c));
     const list = (map) => [...map.values()].map(b => ({ ...b, blocks: [...b.blocks.values()].map(k => ({ ...k, total: k.lines.reduce((a, l) => a + l.amount, 0) })) }))
       .map(b => ({ ...b, total: b.blocks.reduce((a, k) => a + k.total, 0) })).filter(b => Math.abs(b.total) >= 0.5).sort((a, b2) => rank(a.code) - rank(b2.code));
     // paying men now; full house = roster spots of the dues teams this year
@@ -856,15 +867,17 @@ class FinancesScreen extends Screen {
     const bands = cut(C.bands), options = cut(C.options);
     const duesV = V(dues, duesBy), casaV = V(casa, casaBy), grantV = V(grant, grantBy), laFees = scale(duesV, feeRatio), shareV = V(share, shareBy);
     const general = bands.find(b => b.code === 'mens');
-    const comps = bands.filter(b => b.code !== 'mens');
+    const coach = bands.find(b => b.code === 'coaching');
+    const comps = bands.filter(b => b.code !== 'mens' && b.code !== 'coaching');
     const outTotal = plus(plus(sum(bands.map(b => b.v)), laFees), shareV);
+    const coachV = coach ? coach.v : Z();
     const inPre = plus(duesV, casaV), pre = minus(inPre, outTotal), post = plus(pre, grantV);
     const N = paying, F = C.fullHouse, perMan = (v, n) => n > 0 ? v / nMonths / n : 0;
     // dues that fund it: costs less CASA (and the grant), grossed up for LeagueApps' cut
     const gross = (v) => feeRatio < 1 ? Math.max(0, v) / (1 - feeRatio) : v;
     const costsNoFee = outTotal.tot - laFees.tot;
     const needPre = gross(costsNoFee - casaV.tot), needPost = gross(costsNoFee - casaV.tot - grantV.tot);
-    const colors = { apsl: '#3b82f6', liga1: '#22c55e', u23: '#a855f7', cups: '#f59e0b', liga2: '#14b8a6', temple7s: '#ec4899', mens: '#94a3b8', share: '#64748b', in: '#22c55e' };
+    const colors = { coaching: '#f97316', apsl: '#3b82f6', liga1: '#22c55e', u23: '#a855f7', cups: '#f59e0b', liga2: '#14b8a6', temple7s: '#ec4899', mens: '#94a3b8', share: '#64748b', in: '#22c55e' };
     const col = (code) => colors[code] || '#94a3b8';
     const pm = (t) => N > 0 && Math.abs(t) >= 0.5 ? `${M0(perMan(t, N))}` : '';
     const nCols = 3 + (yearView ? 1 : cols.length) + (multi ? 1 : 0);
@@ -896,10 +909,21 @@ class FinancesScreen extends Screen {
     const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k, lines: [...k.lines] })) } : { code: 'mens', label: this._copy('pm_general') || "Men's — general (every team)", blocks: [{ label: '', lines: [], v: Z() }], v: Z() };
     if (Math.abs(laFees.tot) >= 0.5) { gen.blocks[0].lines.push({ label: this._copy('soa_la_fees') || 'LeagueApps fees', detail: `${M0(dues)} × ${(100 * feeRatio).toFixed(1)}%`, v: laFees, year: yearView ? null : dues * feeRatio }); gen.blocks[0].v = plus(gen.blocks[0].v, laFees); gen.v = plus(gen.v, laFees); }
     if (Math.abs(gen.v.tot) >= 0.5) rows += band(gen);
+    // running balance (owner 11/16 "do pre coaching balance" + "pre club wide
+    // total" + "pre grant total"): own costs → BEFORE COACHING; coaching →
+    // BEFORE CLUB WIDE; club wide share → BEFORE GRANT; grant → AFTER
+    const outOwn = minus(minus(outTotal, coachV), shareV), preCoachV = minus(inPre, outOwn);
+    rows += subtotal(this._copy('pm_out_pre_coach') || 'Money out — before coaching', outOwn);
+    rows += big(this._copy('pm_pre_coach') || 'BALANCE BEFORE COACHING', preCoachV, '');
+    if (coach) {
+      rows += head(this._copy('pm_out_coaching') || 'MONEY OUT — COACHING', col('coaching')); rows += band(coach);
+      rows += big(this._copy('pm_pre_club') || 'BALANCE BEFORE CLUB WIDE', minus(preCoachV, coachV), '');
+    }
     // club-wide share (owner 11/16 "the general total like in parens for whole
     // club then the mens share"): the whole club's total in the band, each
     // club-wide line as (whole club) × Men's % = Men's share
     if (Math.abs(shareV.tot) >= 0.5) {
+      rows += head(this._copy('pm_out_club') || 'MONEY OUT — CLUB WIDE', col('share'));
       const club = clubLines.map(l => ({ ...l, cv: V(l.amount, l.by) })).filter(l => l.cv.tot >= 0.5);
       const clubV = club.reduce((a, l) => a + l.cv.tot, 0);
       rows += bandHead('share', clubYear > 0 ? (this._copy('pm_share_club', { total: M0(clubV), pct }) || `Share of club-wide costs (whole club ${M0(clubV)}) — Men's ${pct}`) : (this._copy('pm_share') || 'Share of club-wide costs'), shareV, 'fn-out');

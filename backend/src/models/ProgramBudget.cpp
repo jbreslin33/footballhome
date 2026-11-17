@@ -409,11 +409,13 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                     if (teams > 0 && m["coach_paid"].get<bool>()) {
                         const double ph = m["practice_hours_week"], weeks = m["practice_weeks"], rate = m["coach_rate"];
                         const int games = m["games"]; const double hpg = m["hours_per_game"];
-                        const double hours = teams * (ph * weeks + games * hpg);
-                        if (hours > 0) {
-                            char d[160]; std::snprintf(d, sizeof d, "%d × (%.1f h × %.1f wk + %d × %.2g h) × $%.0f", teams, ph, weeks, games, hpg, rate);
-                            lines.push_back({"own", "labor", "coaching", "", d, hours * rate, true});
-                        }
+                        // practice and game coaching on their own lines (owner 11/16
+                        // "show all coaching on separate lines"); label = which
+                        const double hp = teams * ph * weeks, hg = teams * games * hpg;
+                        if (hp > 0) { char d[160]; std::snprintf(d, sizeof d, "%d × %.1f h × %.1f wk × $%.0f", teams, ph, weeks, rate);
+                                      lines.push_back({"own", "labor", "coaching", "practice", d, hp * rate, true}); }
+                        if (hg > 0) { char d[160]; std::snprintf(d, sizeof d, "%d × %d × %.2g h × $%.0f", teams, games, hpg, rate);
+                                      lines.push_back({"own", "labor", "coaching", "games", d, hg * rate, true}); }
                     }
                     // youth: the leagues it enters, from the rate card
                     if (p.kind == "youth" && teams > 0 && entries.count({p.id, Y.id, S.id})) {
