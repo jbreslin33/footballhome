@@ -903,15 +903,17 @@ class RosterScreenBase extends Screen {
           + (cats.onboard.length ? ordered(cats.onboard).map(p => card(p)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
         : '';
       firstHead = true;   // the fold's first banner sits flush too
+      // NEEDS ONBOARD sits right under ACTIVE, outside the ▸ fold (owner
+      // 11/16: "need to see needs onboard players. they should go right
+      // under active players").
       const rest = mirrorsHtml
-        + onboardGroup
         + ridersGroup
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
-      const n = adding.length + dropping.length + cats.onboard.length + ridersCount
+      const n = adding.length + dropping.length + ridersCount
         + cats.practice_squad.length + cats.injured.length + cats.inactive.length;
-      return { top: activeHtml, rest, n };
+      return { top: activeHtml + onboardGroup, rest, n };
     }
 
     const nameRow = (i, name, note, red = false) => `<div style="display:flex; gap:6px; align-items:baseline; font-size:0.8rem;
