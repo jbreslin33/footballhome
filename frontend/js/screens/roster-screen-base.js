@@ -981,7 +981,12 @@ class RosterScreenBase extends Screen {
     if (official) {
       const byPerson = new Map(bucket.map(p => [Number(p.personId), p]));
       const used = new Set();
-      rows = official.names.map((n, i) => {
+      // Cards follow the lit sort pill like every other section (owner
+      // 11/17 "the sorts on teams do not work"); only 🌐 Official order
+      // keeps the league list's own order.  Otherwise the matched cards
+      // sort and the list names with no card here follow them.
+      const cardHtml = new Map();   // player → card html, list order
+      const rowHtml = official.names.map((n, i) => {
         const id = official.personIds[i];
         const p = id != null && byPerson.get(Number(id));
         const cut = official.cut[i] === true;
@@ -993,7 +998,9 @@ class RosterScreenBase extends Screen {
           else if (cut) { addCut(i + 1, card(p)); return ''; }
           const why = ruleWhy(id);
           if (why) { inelRows.push({ n: i + 1, html: whyWrap(why, card(p)) }); return ''; }
-          return card(p);
+          const html = card(p);
+          cardHtml.set(p, html);
+          return { card: p, html };
         }
         if (cut) {
           // drop already asked (mig 861) — no card to move to Pending Drop
@@ -1008,7 +1015,11 @@ class RosterScreenBase extends Screen {
         return nameRow(i, n, id == null
           ? (copy('board_official_unmatched') || 'not in Football Home')
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
-      }).join('');
+      }).map(r => (typeof r === 'string' ? { card: null, html: r } : r));
+      rows = this.sortOrder === 'official'
+        ? rowHtml.map(r => r.html).join('')
+        : ordered([...cardHtml.keys()]).map(p => cardHtml.get(p)).join('')
+          + rowHtml.filter(r => !r.card).map(r => r.html).join('');
       officialCount = official.names.length;
       rest = shown.filter(p => !used.has(p));
     } else {
@@ -1103,7 +1114,10 @@ class RosterScreenBase extends Screen {
       const NONE = '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>';
       const hdr = (n) => head(copy('board_not_on_roster_h') || 'NOT ON ROSTER', n, '#f59e0b', 'rgba(245,158,11,0.14)');
       if ((data.columns || []).some(c => c.notOnRosterHome)) {
-        const list = this.membersOffRosters(data).notOnRoster.filter(e => e.homeCol && Number(e.homeCol.teamId) === Number(col.teamId));
+        const stack = this.membersOffRosters(data).notOnRoster.filter(e => e.homeCol && Number(e.homeCol.teamId) === Number(col.teamId));
+        // Same lit sort pill as the cards above (was always first-name A–Z).
+        const byP = new Map(stack.map(e => [e.p, e]));
+        const list = this.orderColumnPlayers(stack.map(e => e.p), col).map(r => byP.get(r.player));
         return hdr(list.length) + (list.length ? list.map((e, i) => this.renderMemberStackCard(e, i, list.length, col, data)).join('') : NONE);
       }
       const frozen = this.rosterFrozen(col.teamId);
