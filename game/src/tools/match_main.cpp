@@ -146,7 +146,7 @@ struct Stats {
     long ws_n = 0, ws_from[6] = {}, ws_as[9] = {}, ws_ok[9] = {};
     long fn_reach[4] = {}, fn_end[4][4] = {}, fn_entry[4][2] = {};   // §8.228 FUNNEL: spells reaching each band (52+ / 35-52 / 18-35 / 0-18 m off their line); by deepest band, shot / lost pass / lost on the ball / dead
     long sp_vb[8] = {}, ps_h[15] = {}, pe_n[3] = {}; double pe_v[3] = {}; double sp_since[10] = {}, sp_before[5] = {}, sp_net[4] = {}, sp_path[4] = {}, sp_dur[4] = {}; long sp_since_n[10] = {}, sp_before_n[5] = {}, sp_n[4] = {};   // §8.232 SPELL PACE
-    double rp_pre[2][5] = {}, rp_f0[2] = {}; long rp_n[2] = {}, rp_slow[2] = {}, rp_hin[2][7] = {}, rp_hf0[2][7] = {}, rp_why[2][3][32] = {}, rp_bn[2][3] = {}; double rp_len[3] = {}, rp_ft[3] = {}; long rp_kk[3][4] = {}, rp_lh[3][8] = {}, rp_l3[3] = {}, ob_h[4] = {}, rv_n[4] = {}, rv_still[4] = {}, tf_n[3] = {}, tf_s[3][5] = {}, pk_a[4] = {}, pk_p[4] = {}; double rv_v[4] = {}, rv_away[4] = {}, tf_v[3][5] = {}; double rp_v0[3][4] = {}, rp_va[3][4] = {}, rp_kl[3][4] = {};   // §8.234 RECEIPT PACE: [won / loose, pass received]
+    double rp_pre[2][5] = {}, rp_f0[2] = {}; long rp_n[2] = {}, rp_slow[2] = {}, rp_hin[2][7] = {}, rp_hf0[2][7] = {}, rp_why[2][3][32] = {}, rp_bn[2][3] = {}; double rp_len[3] = {}, rp_ft[3] = {}; long rp_kk[3][4] = {}, rp_lh[3][8] = {}, rp_l3[3] = {}, ob_h[4] = {}, rv_n[4] = {}, rv_still[4] = {}, tf_n[3] = {}, tf_s[3][5] = {}, pk_a[4] = {}, pk_p[4] = {}, ob_w[32][4] = {}, hq_sv[5] = {}, hq_gap[5] = {}, hq_n = 0; double hq_sv_m = 0, hq_gap_m = 0, hq_v_by_sv[5] = {}; long hq_v_by_sv_n[5] = {}, hq_j[5] = {}, hq_dir[4] = {}, obc[3][4] = {}, hq_br[5] = {}, hq_brj[2][5] = {}; double rv_v[4] = {}, rv_away[4] = {}, tf_v[3][5] = {}; double rp_v0[3][4] = {}, rp_va[3][4] = {}, rp_kl[3][4] = {};   // §8.234 RECEIPT PACE: [won / loose, pass received]
     core::World::CarryDiag cd{};   // §8.233
     long cw_n[ai::kWhyCount] = {}, cw_flip = 0, cw_fn = 0; double cw_cos[ai::kWhyCount] = {}, cw_v[ai::kWhyCount] = {}, cw_turn = 0;   // §8.233 by his why: cos(vel, his move), speed; tick-to-tick turn of his move
     long ov_n[5] = {}, ov_why[ai::kWhyCount] = {}, ov_ticks = 0, ov_spells = 0; double ov_sum = 0, ov_drawn = 0, ov_act = 0;   // §8.232 HOLD OVERRUN: spell time past the drawn hold
@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
         int owner = -1, owner_team = -1; long owner_got = 0; double own_sx = 0, own_px = 0, own_py = 0, own_sy = 0; bool own_pr = false, own_live0 = false; long own_hu = 0; double own_lx = 0, own_ly = 0, own_path = 0, own_v[5] = {}, own_ss = 0, own_e = 0; int own_nv = 0, own_sn = 0;
-        double pos_ring[32][31][2] = {}; double own_pre[5] = {}, own_f0 = 0, own_plen = 0, own_ft = 0, last_plen = 0, last_ft = 0, kv0 = 0, own_v0 = 0, own_va = 0, last_v0 = 0, last_va = 0, free_v = 0; int own_got = -1, own_why = 0, kkind = 0, own_kk = 0, last_kk = 0; double ring5[32][24][2] = {}, own_fl[5] = {}; long rl_k = -1; bool own_fl_ok = false; double rk_vx[32] = {}, rk_vy[32] = {}, rk_px = 0, rk_py = 0, rl_vx[32] = {}, rl_vy[32] = {}, rl_px = 0, rl_py = 0;   /* §8.237: every man's 0.2 s velocity at the last kick */   // §8.234: every man's last 30 ticks; his pace into the receipt
+        double pos_ring[32][31][2] = {}; double own_pre[5] = {}, own_f0 = 0, own_plen = 0, own_ft = 0, last_plen = 0, last_ft = 0, kv0 = 0, own_v0 = 0, own_va = 0, last_v0 = 0, last_va = 0, free_v = 0; int own_got = -1, own_why = 0, kkind = 0, own_kk = 0, last_kk = 0; double hq_tx[32] = {}, hq_ty[32] = {}, hq_bx = 0, hq_by = 0; int hq_own = -1; long hq_k[32] = {}; int hq_b[32] = {}; bool hq_ok[32] = {}; double ring5[32][24][2] = {}, own_fl[5] = {}; long rl_k = -1; bool own_fl_ok = false; double rk_vx[32] = {}, rk_vy[32] = {}, rk_px = 0, rk_py = 0, rl_vx[32] = {}, rl_vy[32] = {}, rl_px = 0, rl_py = 0;   /* §8.237: every man's 0.2 s velocity at the last kick */   // §8.234: every man's last 30 ticks; his pace into the receipt
         bool own_set = false;
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
@@ -823,7 +823,30 @@ int main(int argc, char** argv) {
                     if (j == own || W.player(j).team != W.player(static_cast<std::uint8_t>(own)).team || W.isKeeper(j)) continue;
                     const auto& a1 = pos_ring[j][k % 31]; const auto& a0 = pos_ring[j][(k - 6) % 31]; const double v = std::hypot(a1[0] - a0[0], a1[1] - a0[1]) / 0.2;
                     ++S.ob_h[v < 1 ? 0 : v < 2 ? 1 : v < 4 ? 2 : 3];
+                    {   const auto& c1 = pos_ring[own][k % 31]; const auto& c0 = pos_ring[own][(k - 6) % 31]; const double cv = std::hypot(c1[0] - c0[0], c1[1] - c0[1]) / 0.2;   // §8.238 by the carrier's pace
+                        ++S.obc[cv < 1 ? 0 : cv < 3 ? 1 : 2][v < 1 ? 0 : v < 2 ? 1 : v < 4 ? 2 : 3]; }
+                    ++S.ob_w[static_cast<int>(s.lastOrders()[j].why) & 31][v < 1 ? 0 : v < 2 ? 1 : v < 4 ? 2 : 3];   // §8.238 by his order
+                    {   const auto& oj = s.lastOrders()[j];   // §8.238 HOLD SHAPE: his spot's speed over 0.2 s and his gap to it
+                        const double tx = oj.target.x.toDouble(), ty = oj.target.y.toDouble();
+                        if (oj.why == ai::Why::Hold && hq_ok[j] && static_cast<long>(k) - hq_k[j] == 6) {
+                            const double sv = std::hypot(tx - hq_tx[j], ty - hq_ty[j]) / 0.2, gp = std::hypot(tx - a1[0], ty - a1[1]);
+                            const int sb = sv < 1 ? 0 : sv < 2 ? 1 : sv < 4 ? 2 : sv < 8 ? 3 : 4, gb = gp < 1 ? 0 : gp < 2 ? 1 : gp < 4 ? 2 : gp < 8 ? 3 : 4;
+                            const int brn = s.brain().possession().onLine(W.player(j).team, j) ? 4 : (s.brain().possession().spotBranch(j) & 3); ++S.hq_br[brn];
+                            if (sb == 4) ++S.hq_brj[brn != hq_b[j] ? 1 : 0][brn];
+                            if (sb == 4) {   // a jump: what the ball did over the 0.2 s — 0 owner changed, 1 ball moved 1.6 m+, 2 crossed |y| 20.16 or a 18/35/52/70 band, 3 none of those
+                                const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble(), sgq = W.player(j).team == 0 ? 1.0 : -1.0;
+                                auto band = [&](double x) { const double t = hx - x * sgq; return t < 18 ? 0 : t < 35 ? 1 : t < 52 ? 2 : t < 70 ? 3 : 4; };
+                                const int why = hq_own != own ? 0 : std::hypot(bx - hq_bx, by - hq_by) >= 1.6 ? 1 : ((std::fabs(by) >= 20.16) != (std::fabs(hq_by) >= 20.16) || band(bx) != band(hq_bx)) ? 2 : 3;
+                                ++S.hq_j[why]; ++S.hq_j[4];
+                            }
+                            if (gp >= 4) { const double sgd = W.player(j).team == 0 ? 1.0 : -1.0, fx = (tx - a1[0]) * sgd, fy = std::fabs(ty - a1[1]);   // gap 4 m+: spot ahead / behind / across, and was the man on it carried forward
+                                ++S.hq_dir[fy > std::fabs(fx) ? 2 : fx > 0 ? 0 : 1]; ++S.hq_dir[3]; }
+                            ++S.hq_sv[sb]; ++S.hq_gap[gb]; ++S.hq_n; S.hq_sv_m += sv; S.hq_gap_m += gp; S.hq_v_by_sv[sb] += v; ++S.hq_v_by_sv_n[sb];
+                        }
+                        hq_tx[j] = tx; hq_ty[j] = ty; hq_ok[j] = oj.why == ai::Why::Hold; hq_k[j] = static_cast<long>(k); hq_b[j] = s.brain().possession().onLine(W.player(j).team, j) ? 4 : (s.brain().possession().spotBranch(j) & 3);
+                    }
                 }
+            if (k % 6 == 0) { hq_bx = b.pos.x.toDouble(); hq_by = b.pos.y.toDouble(); hq_own = own; }   // §8.238
             auto wsz = [](double tl, double y) { const bool w = std::fabs(y) >= 14; return tl < 18 ? (w ? 1 : 4) : tl < 35 ? (w ? 0 : 2) : (w ? 3 : 5); };
             auto endPass = [&](double ex, double ey, bool ok = false) {
                 if (rel.ws && !rel.set && !rel.shot && !rel.cross) {   // §8.155: pass to 18-35w / 35+ / 0-18w / 18-35c / 0-18c
@@ -3377,6 +3400,24 @@ int main(int argc, char** argv) {
                   std::printf("\n     per spell, settled pace by pace he got it at 0-2 / 2-4 / 4+ m/s:"); for (int b = 0; b < 3; ++b) std::printf(" %.2f (%.2f) %.0f%% (%.0f%%)", S.pe_v[b] / std::max(1L, S.pe_n[b]), re[b], 100.0 * S.pe_n[b] / pt, rq[b]); }
                 {   const double obt = std::max(1L, S.ob_h[0] + S.ob_h[1] + S.ob_h[2] + S.ob_h[3]);
                     std::printf("\n     OFF THE BALL (§8.237; the side on the ball's other outfielders, 5 Hz): %% by m/s <1 / 1-2 / 2-4 / 4+: %.1f / %.1f / %.1f / %.1f (13.4 / 34.6 / 38.4 / 13.6)", 100 * S.ob_h[0] / obt, 100 * S.ob_h[1] / obt, 100 * S.ob_h[2] / obt, 100 * S.ob_h[3] / obt);
+                    {   static const char* cl[3] = {"<1", "1-3", "3+"}; static const char* cr[3] = {"12%: 19.3 / 40.9 / 32.6 / 7.2", "38%: 16.6 / 39.1 / 35.3 / 8.9", "50%: 9.5 / 29.8 / 42.0 / 18.7"};
+                        long ct = 0; for (int b = 0; b < 3; ++b) for (int q = 0; q < 4; ++q) ct += S.obc[b][q];
+                        std::printf("\n       by the carrier's pace (§8.238):");
+                        for (int b = 0; b < 3; ++b) { const double n = std::max(1L, S.obc[b][0] + S.obc[b][1] + S.obc[b][2] + S.obc[b][3]);
+                            std::printf(" carrier %s %.0f%%: %.1f / %.1f / %.1f / %.1f (%s);", cl[b], 100 * n / std::max(1L, ct), 100 * S.obc[b][0] / n, 100 * S.obc[b][1] / n, 100 * S.obc[b][2] / n, 100 * S.obc[b][3] / n, cr[b]); } }
+                    std::printf("\n       by his order (%% of frames: <1 / 1-2 / 2-4 / 4+ m/s %%):");
+                    for (int q = 0; q < ai::kWhyCount; ++q) { const long n = S.ob_w[q][0] + S.ob_w[q][1] + S.ob_w[q][2] + S.ob_w[q][3]; if (n * 50 < obt) continue;
+                        std::printf("\n         %s %.0f%%: %.0f / %.0f / %.0f / %.0f", ai::kWhyNames[q], 100.0 * n / obt, 100.0 * S.ob_w[q][0] / n, 100.0 * S.ob_w[q][1] / n, 100.0 * S.ob_w[q][2] / n, 100.0 * S.ob_w[q][3] / n); }
+                    {   const double n = std::max(1L, S.hq_n);
+                        std::printf("\n       HOLD SHAPE (§8.238): his spot's speed %% <1 / 1-2 / 2-4 / 4-8 / 8+ m/s:"); for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100 * S.hq_sv[q] / n);
+                        std::printf(" (mean %.2f) | his speed by it:", S.hq_sv_m / n); for (int q = 0; q < 5; ++q) std::printf(" %.2f", S.hq_v_by_sv[q] / std::max(1L, S.hq_v_by_sv_n[q]));
+                        std::printf(" | his gap to it %% <1 / 1-2 / 2-4 / 4-8 / 8+ m:"); for (int q = 0; q < 5; ++q) std::printf(" %.0f", 100 * S.hq_gap[q] / n);
+                        std::printf(" (mean %.1f m)", S.hq_gap_m / n);
+                        { const double dn = std::max(1L, S.hq_dir[3]); std::printf(" | gap 4 m+: spot ahead %.0f%%, behind %.0f%%, across %.0f%%", 100 * S.hq_dir[0] / dn, 100 * S.hq_dir[1] / dn, 100 * S.hq_dir[2] / dn); }
+                        { const double bt = std::max(1L, S.hq_br[0] + S.hq_br[1] + S.hq_br[2] + S.hq_br[3] + S.hq_br[4]); static const char* bl[5] = {"base", "drift", "wing", "lone", "front"};
+                          std::printf(" | spot branch %%:"); for (int q = 0; q < 5; ++q) std::printf(" %s %.0f", bl[q], 100 * S.hq_br[q] / bt);
+                          std::printf(" | jumps, branch same / changed %%:"); for (int q = 0; q < 5; ++q) std::printf(" %s %.0f / %.0f", bl[q], 100.0 * S.hq_brj[0][q] / std::max(1L, S.hq_j[4]), 100.0 * S.hq_brj[1][q] / std::max(1L, S.hq_j[4])); }
+                        const double jn = std::max(1L, S.hq_j[4]); std::printf(" | jumps (8+ m/s): owner changed %.0f%%, ball moved 1.6 m+ %.0f%%, ball crossed a band / |y| 20.16 %.0f%%, none %.0f%%", 100 * S.hq_j[0] / jn, 100 * S.hq_j[1] / jn, 100 * S.hq_j[2] / jn, 100 * S.hq_j[3] / jn); }
                     static const char* rvl[4] = {"in <1", "in 1-4", "in 4+", "all"}; static const char* rvr[4] = {"1.76, 28%, -0.11", "2.59, 11%, -0.18", "4.57, 2%, +0.04", "2.86, 12%, -0.13"};
                     static const char* flr[3] = {"1.76 (28) 1.59 (33) 1.28 (42) 0.96 (58) 0.61 (100)", "2.59 (11) 2.54 (11) 2.53 (8) 2.49 (4) 2.31 (0)", "4.57 (2) 4.86 (1) 5.20 (0) 5.46 (0) 5.49 (0)"};
                     std::printf("\n     THROUGH THE FLIGHT (§8.237): his m/s (under 1 %%) at 0 / 25 / 50 / 75 / 100%% of it:");

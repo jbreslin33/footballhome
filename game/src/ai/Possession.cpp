@@ -1149,7 +1149,11 @@ static Fixed64 yLookup(const Fixed64 (&row)[PossessionParams::kYBins], Fixed64 a
 }
 
 Fixed64 PossessionParams::slideAt(int role, Fixed64 by) const {
-    const Fixed64 s = yLookup(slide[role], math::fx_abs(by));
+    Fixed64 s = yLookup(slide[role], math::fx_abs(by));
+    // §8.238: toward the ball's side, so it must be 0 with the ball on the centre line. Held at the
+    // first bin (0.5-1.2 m) inside 2 m, every spot stepped 1-2.4 m across in one tick each time the
+    // ball crossed the middle (read as a 5-12 m/s spot). Ramped to 0 over the first 2 m.
+    if (slide_ramp && math::fx_abs(by) < Fixed64::fromInt(2)) s = s * math::fx_abs(by) / Fixed64::fromInt(2);
     return by.raw < 0 ? -s : s;
 }
 
@@ -1174,6 +1178,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
             width[r][b] = p.fixed(std::string("physics.support.w_") + kRoleKey[r] + "_" + std::to_string(b * 10 + 5), kRealWidthPm[r][b]);
         }
     slide_on = p.fixed("physics.support.slide_on", 1000).raw > 0;
+    slide_ramp = p.fixed("physics.support.slide_ramp", 1000).raw > 0;   // §8.238
     lone_on = p.fixed("physics.support.lone_on", 1000).raw > 0;
     for (int r = 0; r < kRoleCount; ++r)
         for (int b = 0; b < kYBins; ++b) {
@@ -1483,6 +1488,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             const int t = u < pa ? 0 : u < pa + pl ? 1 : -1;
             if (t >= 0) {
                 const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+                if (v.slot < 32) spot_branch_[v.slot] = 1;
                 return Vec2{(hx - params_.drift_tl[z][r][t]) * v.sg, side * params_.drift_y[z][r][t]};
             }
         }
@@ -1503,6 +1509,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
                     const Fixed64 ylim = world.pitchHalfY() - Fixed64::one();
                     if (y > ylim) y = ylim;
                     if (y < -ylim) y = -ylim;
+                    if (v.slot < 32) spot_branch_[v.slot] = 2;
                     return Vec2{bp.x + v.sg * params_.wing_ah[z][r], y};
                 }
             }
@@ -1520,8 +1527,10 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         const bool pos = by.raw >= 0;
         const bool near = (pos ? u : Fixed64::one() - u) < params_.lone_p[r][b];
         const Fixed64 s = yLookup(near ? params_.lone_near[r] : params_.lone_far[r], ay);
+        if (v.slot < 32) spot_branch_[v.slot] = 3;
         return Vec2{(hx - x) * v.sg, pos ? s : -s};
     }
+    if (v.slot < 32) spot_branch_[v.slot] = 0;
     return Vec2{(hx - x) * v.sg, v.across_ours};
 }
 

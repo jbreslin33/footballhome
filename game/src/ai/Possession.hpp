@@ -52,6 +52,7 @@ struct PossessionParams {
     bool slide_on = true, lone_on = true;
     math::Fixed64 slide[kRoleCount][kYBins]{};
     math::Fixed64 lone_p[kRoleCount][kYBins]{}, lone_near[kRoleCount][kYBins]{}, lone_far[kRoleCount][kYBins]{};
+    bool slide_ramp = false;   // §8.238: the slide ramped to 0 inside 2 m of the centre line (continuous across it)
     math::Fixed64 slideAt(int role, math::Fixed64 ball_y) const;   // signed: toward the ball's side
     // The shot policy (G5.23): of the balls let go at a spot, the share that are
     // shots — by distance (<12, 12-18, 18-25, 25-35 m) × goal angle (<0.25,
@@ -221,6 +222,7 @@ public:
     void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; for (auto& l : latch_) l = LineLatch{}; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
+    std::uint8_t spotBranch(std::uint8_t slot) const { return slot < 32 ? spot_branch_[slot] : 0; }   // §8.238 diag: 0 base / 1 drift / 2 wing / 3 lone (harness only)
     // G5.132 (§8.233): the carry line's zone and pressure, latched at his spell's first carryDir call so
     // the drawn line holds for the spell (it read a new zone row / table as he crossed a zone or a man
     // crossed 3-4 m: his move swung 45+ deg about once a second and he never got going).
@@ -249,6 +251,7 @@ private:
     std::uint64_t drawn_[2] = {0, 0};
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw
     std::uint64_t won_[2] = {0, 0};
+    mutable std::uint8_t spot_branch_[32] = {};   // §8.238 diag, never read by the sim
     mutable LineLatch latch_[32];
     bool had_[2] = {false, false};
     std::uint8_t front_[2][2] = {{0xFF, 0xFF}, {0xFF, 0xFF}};   // [team][front man, second man]

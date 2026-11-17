@@ -105,7 +105,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.130 (2026-11-16): a pressed carry's line from real pressed carries (StatsBomb CARRY LINE).
 // Re-locked G5.132 (2026-11-16): the carry line's zone + pressure latched for the spell (§8.233).
 // Re-locked G5.133 (2026-11-16): a mate's pass weight by its length band (StatsBomb pass lengths, §8.236).
-constexpr std::uint64_t kGolden3v3   = 0xd179d6d1a717a480ULL;
+// Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
+constexpr std::uint64_t kGolden3v3   = 0x113e98a56c75b003ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -157,7 +158,8 @@ constexpr std::uint64_t kGolden3v3   = 0xd179d6d1a717a480ULL;
 // Re-locked G5.130 (2026-11-16): a pressed carry's line from real pressed carries (StatsBomb CARRY LINE).
 // Re-locked G5.132 (2026-11-16): the carry line's zone + pressure latched for the spell (§8.233).
 // Re-locked G5.133 (2026-11-16): a mate's pass weight by its length band (StatsBomb pass lengths, §8.236).
-constexpr std::uint64_t kGolden11v11 = 0x37378cfb466e68e0ULL;
+// Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
+constexpr std::uint64_t kGolden11v11 = 0x1c17da56ee451569ULL;
 
 struct Rig {
     World world;

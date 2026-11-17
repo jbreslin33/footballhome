@@ -16,6 +16,7 @@ import collections, glob, math, multiprocessing, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import benchmarks_tracking as bt
+from benchmarks_tracking_runs import ROLE, NAMES
 
 
 def one(pos_path):
@@ -23,6 +24,7 @@ def one(pos_path):
     info_p = glob.glob(os.path.join(d, f"DFL_02_01_matchinformation_*_{mid}"))[0]
     comp, season, home, guest, length, keepers = bt.dfl_info(info_p)
     half = length / 2; team_of = {home: 0, guest: 1}
+    pos_of = dict(re.findall(r'<Player PersonId="([^"]+)"[^>]*PlayingPosition="([^"]+)"', open(info_p, encoding="utf8").read()))
     ball = {}; pl = collections.defaultdict(dict); who = {}
     set_re = re.compile(r'GameSection="([^"]+)".*TeamId="([^"]+)".*PersonId="([^"]+)"')
     sec = None; isb = False; skip = True; cur = None
@@ -69,6 +71,10 @@ def one(pos_path):
             if who.get(pid) != att or pid in keepers or pid == car or pid not in fb: continue
             v = math.hypot(x - fb[pid][0], y - fb[pid][1]) / 0.2
             c[("ob", 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1
+            c[("obr", ROLE.get(pos_of.get(pid), -1), 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1   # §8.238 by role
+            if car in fb:   # §8.238 by the man on the ball's 0.2 s speed (<1 / 1-3 / 3+ m/s)
+                cv = math.hypot(fr[car][0] - fb[car][0], fr[car][1] - fb[car][1]) / 0.2
+                c[("obc", 0 if cv < 1 else 1 if cv < 3 else 2, 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1
         if not cur or cur["car"] != car or n - cur["last"] > 10 or sc != cur["sc"]:
             if cur: spells.append(cur)
             cur = {"car": car, "sc": sc, "last": n, "pos": []}
@@ -162,6 +168,8 @@ if __name__ == "__main__":
     pat = max(1, sum(c[("pa", q)] for q in range(4))); ppt = max(1, sum(c[("pp", q)] for q in range(4)))
     print("  PICK BY PACE (§8.237): mates at the release <1 / 1-2 / 2-4 / 4+ m/s %: " + " / ".join(f"{100*c[('pa', q)]/pat:.1f}" for q in range(4)) + " | the receiver %: " + " / ".join(f"{100*c[('pp', q)]/ppt:.1f}" for q in range(4)) + " | lift: " + " / ".join(f"{(c[('pp', q)]/ppt)/max(1e-9, c[('pa', q)]/pat):.2f}" for q in range(4)))
     print("  THROUGH THE FLIGHT (§8.237): his m/s (under 1 %) at 0 / 25 / 50 / 75 / 100% of it — " + "; ".join(f"{lab2} " + " ".join(f"{c[('fl', ib, q)]/max(1,c[('fl_n', ib)]):.2f} ({100*c[('fl_s', ib, q)]/max(1,c[('fl_n', ib)]):.0f})" for q in range(5)) for ib, lab2 in enumerate(["in <1", "in 1-4", "in 4+"])))
+    print("  OFF THE BALL by the carrier's pace (§8.238), % <1 / 1-2 / 2-4 / 4+ m/s: " + "; ".join(f"carrier {lab} ({100*sum(c[('obc', b, z)] for z in range(4))/max(1, sum(c[('obc', bb, z)] for bb in range(3) for z in range(4))):.0f}% of frames) " + " / ".join(f"{100*c[('obc', b, q)]/max(1, sum(c[('obc', b, z)] for z in range(4))):.1f}" for q in range(4)) for b, lab in enumerate(["<1", "1-3", "3+"])))
+    print("  OFF THE BALL by role (§8.238), % <1 / 1-2 / 2-4 / 4+ m/s: " + "; ".join(f"{NAMES[r]} " + " / ".join(f"{100*c[('obr', r, q)]/max(1, sum(c[('obr', r, z)] for z in range(4))):.1f}" for q in range(4)) for r in range(6)))
     print("  THE RECEIVER AT THE RELEASE (§8.237): mean m/s, under 1 m/s %, away from the passer m/s — " + "; ".join(f"{lab2} {c[('rv', ib)]/max(1,c[('rv_n', ib)]):.2f}, {100*c[('rv_still', ib)]/max(1,c[('rv_n', ib)]):.0f}%, {c[('rv_away', ib)]/max(1,c[('rv_n', ib)]):+.2f}" for ib, lab2 in enumerate(["in <1", "in 1-4", "in 4+", "all"])))
     for b, lab in enumerate(["0.6-1.2", "1.2-2", "2-3", "3-5"]):
         n = max(1, c[("n", b)])

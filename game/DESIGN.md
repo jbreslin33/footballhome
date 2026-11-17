@@ -9992,3 +9992,31 @@ passes at runners the race read calls unsafe are cut by risk_weight) and costs r
 receiver's pace isn't a reason to pick him — he moves because he's getting ready for it (checking off, coming short),
 and ours walk half as much (1-2 m/s 19% v 35). Next: off-ball movement in possession — the walking share and the
 move to receive. Harness and benchmark only; tests 22/22, goldens unchanged.
+
+### 8.238 G5.135 — off the ball in possession: they jog where real men walk, chasing spots that run ahead
+
+From §8.237's "next: off-ball movement in possession". New in fh-game-match (OFF THE BALL block) and
+`benchmarks_tracking_spellpace.py`: speed bands by role and by the carrier's pace (real), by order, and for
+hold shape the spot's own 0.2 s speed, the man's gap to it and its direction, and which branch of
+Possession::spot built it (a diag record, `spotBranch`, never read by the sim).
+
+- Real (DFL) off the ball <1 / 1-2 / 2-4 / 4+ m/s: 13.4 / 34.6 / 38.4 / 13.6%, the same shape for every role
+  (CB 15 / 39 / 39 / 6 … AM 11 / 31 / 39 / 19). By the carrier's pace <1 / 1-3 / 3+ (12 / 38 / 50% of frames):
+  walking 41 / 39 / 30%. Ours: 14 / 19 / 49 / 18; by the carrier 7 / 24 / 68% of frames, walking 21 / 22 / 17%.
+  The walk is missing at every carrier pace, even with him standing — and our carriers run (3+ m/s 68% v 50, §8.233).
+- Hold shape is 95% of it (14 / 19 / 50 / 17). His spot moves at a mean 4.8-5.0 m/s (4+ m/s 27% of 0.2 s windows,
+  jumps 8+ 6-7%); he is a mean 8.4-8.6 m off it, 38-39% of the time 8 m+, the spot ahead of him 60% (behind 10,
+  across 31). With his spot still he still goes 2.2 m/s — closing the gap at gap / shape_tau_ours (1 s), capped at
+  the build-up jog (3.8 forward, 4.5 across). Real men's positions don't need it: with the ball still ours stand
+  within 1-6 m of the spot's depth and the shape by the ball's speed is near real (POSSESSION SHAPE).
+- Trial `shape_tau_ours_s` 1.0 → 1.5 / 2.0 (seeds 1000/2000 x 8): 4+ 18 → 16 / 13.5 (13.6) but the jog went to
+  standing, not walking (<1 14 → 16.5 / 18; 1-2 19 → 21 / 24); standing receivers 25-26 → 27-28 / 29-30% (17);
+  passes received 200-204 → 207-213 (222), completed 80.8-81.1% (79.1). Not shipped.
+- The spot's jumps (8+ m/s) by branch: base 54-55%, wing 14-16 (5% of the time), front line 13-14, lone 3-4;
+  82% with no owner change, ball move or band crossing. One discontinuity found and fixed (a correct-behaviour
+  fix): `PossessionParams::slideAt` mirrored the slide by the ball's side holding the first bin (0.5-1.2 m) inside
+  2 m, so every spot stepped 1-2.4 m across when the ball crossed the centre line. `physics.support.slide_ramp`
+  (on) ramps it to 0 there. No measurable change in gaps, jumps or pace — small, but right.
+
+Next: the carrier's pace (§8.233's open "too fast"), since every spot runs with the ball, then the gap-closing
+law (walk to a near spot, run only when the ball goes forward). Goldens re-locked; tests 22/22.
