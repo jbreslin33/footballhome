@@ -90,7 +90,7 @@ class CoachScheduleScreen extends Screen {
   }
 
   _onClick(e) {
-    if (e.target.closest('[data-cs-back]')) { this.navigation.goTo('main-menu'); return; }
+    if (e.target.closest('[data-cs-back]')) { this.navigation.goBack(); return; }
     const btn = e.target.closest('[data-cs-coach]');
     if (!btn) return;
     const coachId = Number(btn.dataset.csCoach);

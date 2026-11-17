@@ -14,8 +14,8 @@
 //   MainMenu.groups()                   → [{ code, label, icon, pages:[visible] }] (empty groups dropped)
 //   MainMenu.openGroup(code)            → the group's last-used page (players: the first)
 //   MainMenu.open(pageCode)             → go to that page (the old tile's route)
-//   MainMenu.onScreen(screenName)       → draw / hide the pill strip (#menu-pills);
-//                                         ScreenManager calls it after every show
+//   MainMenu.onScreen(screenName)       → draw the top bar (#menu-pills): groups row +
+//                                         the group's pages row; ScreenManager calls it after every show
 //
 // Last-used page per group: localStorage (a per-device convenience).
 class MainMenu {
@@ -154,7 +154,15 @@ class MainMenu {
     }
   }
 
-  // ── The pill strip ──────────────────────────────────────────────────
+  // ── The top bar: groups, then the group's pages ─────────────────────
+  // Owner 2026-11-16: "the main menu doesn't make sense anymore … i have
+  // to hit back all the time … having 7 pills at top of site is way to
+  // go. then i can switch do diff 'sections' faster and their sub menus".
+  // Row 1 = every group the viewer has a page in (+ 👤 Account, the old
+  // #main-menu: sign out, view-as).  Row 2 = the current group's pages
+  // when it has two or more.  A screen no page claims (an opened event, a
+  // person) keeps the last group lit.
+  static _group = null;
   static async onScreen(screen) {
     const host = document.getElementById('menu-pills');
     if (!host) return;
@@ -164,29 +172,40 @@ class MainMenu {
     // A newer show() may have run while the menu loaded.
     const current = window.app && window.app.navigation && window.app.navigation.currentState;
     if (current && current !== screen) return;
+    const groups = MainMenu.groups();
+    if (!groups.length) return hide();
     const page = MainMenu._pageFor(screen);
-    if (!page) return hide();
-    const group = MainMenu.groups().find(g => g.code === page.group);
-    if (!group) return hide();
-    // A player's group of one (Files, Game) needs no strip.
-    if (group.pages.length < 2) return hide();
-    MainMenu._remember(page);
+    if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
+    const account = screen === 'main-menu';
+    const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const copy = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', tier)) ? MessageCopy.block('main_menu', tier) : fb;
-    const pill = (attrs, label, on) => `<button type="button" ${attrs}
-        style="flex:0 0 auto; padding:5px 12px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.82rem; white-space:nowrap;
-               background:${on ? '#0ea5e9' : 'transparent'}; color:${on ? '#fff' : 'var(--fg, #e5e7eb)'};
+    const pill = (attrs, label, on, big) => `<button type="button" ${attrs} ${on ? 'data-menu-on' : ''}
+        style="flex:0 0 auto; padding:${big ? '6px 12px' : '4px 11px'}; border-radius:999px; cursor:pointer; font-weight:${big ? 800 : 700};
+               font-size:${big ? '0.86rem' : '0.8rem'}; white-space:nowrap;
+               background:${on ? (big ? '#0ea5e9' : 'rgba(14,165,233,0.22)') : 'transparent'}; color:${on && big ? '#fff' : 'var(--fg, #e5e7eb)'};
                border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${label}</button>`;
-    host.innerHTML = `
-      ${pill('data-menu-home', esc(copy('home_pill', '☰ Menu')), false)}
-      ${group.pages.some(p => p.label === group.label) ? '' /* 📅 Calendar group's own Calendar page — say it once */
-        : `<span style="flex:0 0 auto; align-self:center; font-weight:800; opacity:0.6; font-size:0.8rem; margin:0 2px 0 6px;">${esc(group.icon)} ${esc(group.label)}</span>`}
-      ${group.pages.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, p.code === page.code)).join('')}`;
-    host.style.display = 'flex';
+    const row = (inner, extra = '') => `<div class="menu-row" style="display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 0; ${extra}">${inner}</div>`;
+    const top = groups.map(g => pill(`data-menu-group="${esc(g.code)}"`, `${esc(g.icon)} ${esc(g.label)}`, group && g.code === group.code, true)).join('')
+      + pill('data-menu-account', esc(copy('account_pill', '👤 Account')), account, true);
+    const pages = group && group.pages.length >= 2
+      ? row(group.pages.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, page && p.code === page.code, false)).join(''),
+            'margin-top:6px; padding-top:6px; border-top:1px dashed var(--border-color, #374151);')
+      : '';
+    host.innerHTML = row(top) + pages;
+    host.style.display = 'block';
+    // Keep the lit pills in view on a phone.
+    // (scrollLeft only — scrollIntoView would also move the page.)
+    host.querySelectorAll('[data-menu-on]').forEach(b => {
+      const r = b.parentElement;
+      if (r) r.scrollLeft = Math.max(0, b.offsetLeft - r.offsetLeft - (r.clientWidth - b.offsetWidth) / 2);
+    });
     if (!host._wired) {
       host._wired = true;
       host.addEventListener('click', (e) => {
-        if (e.target.closest('[data-menu-home]')) { const n = MainMenu._nav; if (n) n.goTo('main-menu'); return; }
+        if (e.target.closest('[data-menu-account]')) { const n = MainMenu._nav; if (n) n.goTo('main-menu'); return; }
+        const g = e.target.closest('[data-menu-group]');
+        if (g) { MainMenu.openGroup(g.getAttribute('data-menu-group')); return; }
         const b = e.target.closest('[data-menu-page]');
         if (b) MainMenu.open(b.getAttribute('data-menu-page'));
       });

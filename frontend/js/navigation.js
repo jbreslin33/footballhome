@@ -175,8 +175,11 @@ class NavigationStateMachine {
   // ("leave dashboard but don't default to that … default to
   // #role-selection") — #dashboard stays one tap away as the first
   // "Run the week" tile.
+  // Since 11/16 the menu groups are a bar on top of every page (owner:
+  // "the main menu doesn't make sense anymore … i have to hit back all the
+  // time"), so everyone lands on the 📅 Calendar; #main-menu is 👤 Account.
   home() {
-    return 'main-menu';
+    return 'event-center';
   }
 
   // Coming back to the app after a few minutes away.  Owner 2026-10-22:
@@ -326,10 +329,8 @@ class NavigationStateMachine {
   // Clear context set by specific screens when navigating back
   clearContextForScreen(screenName) {
     switch(screenName) {
-      case 'main-menu':
-        // Going back from the main menu clears user (would go to login)
-        this.context.user = null;
-        break;
+      // (#main-menu used to clear the user on Back — it was the top of the
+      // app.  Since 11/16 it is 👤 Account, an ordinary page.)
     }
   }
 

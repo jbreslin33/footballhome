@@ -93,14 +93,13 @@ class DashboardScreen extends Screen {
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
         <div style="flex:1;"><h1 style="margin:0;" id="db-title">📊 Dashboard</h1><div id="db-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-        <button class="btn btn-secondary" id="db-tools" style="padding:6px 12px; font-size:0.9rem;">🧭 All tools</button>
         <button class="btn btn-secondary" id="db-refresh" style="padding:6px 12px; font-size:0.9rem;">🔄</button>
       </div>
       <div class="screen-content" style="max-width:1300px; margin:0 auto;">
         <div id="db-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#db-tools').addEventListener('click', () => this.navigation.goTo('main-menu'));
+    // (🧭 All tools went 11/16 — the groups bar is on top of every page.)
     div.querySelector('#db-refresh').addEventListener('click', () => this.load());
     div.addEventListener('click', (e) => {
       // A row inside a cell wins over the cell itself (a section → that

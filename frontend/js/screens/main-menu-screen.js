@@ -1,6 +1,7 @@
 // MainMenuScreen — #main-menu (was #role-selection until 2026-11-11; owner:
 // "i don't like role-selection screen name … shouldn't it be main-menu").
-// The six group buttons are lib/main-menu.js (MainMenu, mig 1244).
+// Since 2026-11-16 the groups are the top bar (lib/main-menu.js) and this
+// screen is 👤 Account: sign out, view-as (admins), tactical board.
 class MainMenuScreen extends Screen {
   render() {
     const div = document.createElement('div');
@@ -21,13 +22,8 @@ class MainMenuScreen extends Screen {
       </div>
       
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
-        <!-- Six groups (menu_groups / menu_pages, mig 1244): a button per
-             group; its pages are the pill row on every page inside it
-             (lib/main-menu.js).  Filled once GET /api/menu answers. -->
-        <div class="rs-groups" style="display: flex; flex-direction: column; gap: var(--space-4);">
-          <div style="opacity: 0.6; text-align: center; padding: var(--space-4);">Loading…</div>
-        </div>
-
+        <!-- The group buttons moved to the bar on top of every page
+             (lib/main-menu.js, owner 11/16); this is 👤 Account now. -->
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
 
@@ -64,18 +60,10 @@ class MainMenuScreen extends Screen {
     //
     // Coaches and admins keep the picker because they routinely
     // switch context (coach ↔ player, admin ↔ club-admin, etc).
-    this._maybeAutoSkipToMy();
+    // (11/16: no auto-skip any more — players come here on purpose, from
+    // 👤 Account, to sign out; everyone lands on the Calendar.)
 
-    this._drawGroups();
-
-    // Group buttons via event delegation
     this.element.addEventListener('click', (e) => {
-      const groupBtn = e.target.closest('[data-menu-group]');
-      if (groupBtn) {
-        MainMenu.openGroup(groupBtn.dataset.menuGroup);
-        return;
-      }
-      
       // Handle logout
       if (e.target.closest('.logout-btn')) {
         this.handleLogout();
@@ -104,28 +92,6 @@ class MainMenuScreen extends Screen {
     // CSS `display: none` for non-admins, but we also short-circuit
     // the fetch to keep server logs clean.
     this._maybeLoadViewAsPicker();
-  }
-
-  // One big button per group the viewer has pages in; the line under it
-  // names those pages (the pills it opens onto).
-  async _drawGroups() {
-    const host = this.element && this.element.querySelector('.rs-groups');
-    if (!host) return;
-    try {
-      await MainMenu.load(this.auth);
-    } catch (err) {
-      console.error('[menu] load failed:', err);
-      host.innerHTML = `<div style="text-align:center; padding: var(--space-4);">${this.escapeHtml((window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', 'unavailable') && MessageCopy.block('main_menu', 'unavailable')) || 'Menu did not load — refresh the page.')}</div>`;
-      return;
-    }
-    host.innerHTML = MainMenu.groups().map((g) => `
-        <button class="btn btn-lg btn-primary" data-menu-group="${this.escapeHtml(g.code)}" style="display: flex; align-items: center; gap: var(--space-3);">
-          <span style="font-size: 2rem;">${this.escapeHtml(g.icon)}</span>
-          <div style="flex: 1; text-align: left;">
-            <div style="font-weight: bold;">${this.escapeHtml(g.label)}</div>
-            <div style="font-size: 0.85rem; opacity: 0.8;">${g.pages.map((p) => this.escapeHtml(p.label)).join(' · ')}</div>
-          </div>
-        </button>`).join('');
   }
 
   async _maybeLoadViewAsPicker() {
@@ -254,45 +220,6 @@ class MainMenuScreen extends Screen {
     this.navigation.goTo('login');
   }
 
-  // Fetches /api/auth/me/roles and, if the user has NO coach or admin
-  // affiliation, immediately redirects to the weekly RSVP view.  Pure
-  // players never need to see the picker.
-  //
-  // Also treats admin-level `user.role` (club / sport_division / team
-  // / super / system / league / marketing) as "keep the picker" so
-  // admins retain the ability to switch modes even if the DB has no
-  // matching `admins` / `team_coaches` rows yet.
-  async _maybeAutoSkipToMy() {
-    try {
-      const user = this.navigation.context.user || {};
-      const isAdmin = user.role && (
-        user.role === 'club' || user.role === 'sport_division' ||
-        user.role === 'team' || user.role === 'super' ||
-        user.role === 'system' || user.role === 'league' ||
-        user.role === 'marketing'
-      );
-      if (isAdmin) return;
-
-      const res = await this.auth.fetch('/api/auth/me/roles');
-      if (!res.ok) return;
-      const body = await res.json();
-      const roles = (body && body.data && Array.isArray(body.data.roles))
-        ? body.data.roles
-        : [];
-      const hasCoach = roles.some(r => r && r.type === 'coach');
-      const hasAdmin = roles.some(r => r && r.type === 'admin');
-      if (!hasCoach && !hasAdmin) {
-        this.navigation.context.role = 'player';
-        this.navigation.goTo('my');
-        return;
-      }
-      // A coach without an admin role sees the coach pages (Event Center,
-      // Teams, Tactical, Kit, Reports) — MainMenu reads the same roles.
-    } catch (_e) {
-      // Non-fatal — fall back to the manual picker.
-    }
-  }
-  
   // Helper to escape HTML
   escapeHtml(text) {
     const div = document.createElement('div');
