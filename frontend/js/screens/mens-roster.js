@@ -448,6 +448,11 @@ class MensRosterScreen extends RosterScreenBase {
       countHtml = `<span style="opacity:0.6; font-size:0.85rem;">${players.length}</span>`;
     }
 
+    // 📇 the title is the contact button and its number the head count
+    // (owner 11/16): the count beside it keeps only what's left of a cap.
+    const head = this.teamHeadHtml(col, players, '', '0.8rem');
+    if (head.merged) countHtml = col.maxRoster != null ? countHtml.replace(`${players.length}/${col.maxRoster} · `, '') : '';
+
     const renderList = (list) => this.orderColumnPlayers(list, col)
       .map(({ player, rank }) => this.renderPlayer(player, data.columns, col, rank, list.length)).join('');
 
@@ -469,17 +474,11 @@ class MensRosterScreen extends RosterScreenBase {
     // per-card overdue pill keeps the signal at the row level where
     // it's actionable for roster picks.
 
-    // 📇 group CONTACT sits ABOVE the column's top border (owner 11/16:
-    // "above the border. the fancy top border"); the row keeps a fixed
-    // height so every column's border lines up, button or not.
     return `
       <div style="display:flex; flex-direction:column; gap:4px; min-width:${this.colBoxMinWidth()};">
-        <div class="rs-col-above" style="min-height:30px; display:flex; align-items:center; justify-content:flex-end; gap:6px; flex-wrap:wrap;">
-          ${this.groupContactHtml(col, players)}
-        </div>
       <div style="background:var(--bg-secondary); border-radius:var(--radius-md); padding:6px; border-top:3px solid #475569; min-width:${this.colBoxMinWidth()};">
         <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; margin-bottom:4px; gap:6px;">
-          <strong style="font-size:0.8rem;">${col.label}</strong>
+          ${head.labelHtml}
           <span style="display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap;">
             ${this.renderOnRosterTally(col, players)}
             ${countHtml}

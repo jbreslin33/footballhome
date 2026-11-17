@@ -2847,19 +2847,32 @@ class RosterScreenBase extends Screen {
   // button; tapping it opens the column's group sends (💬 text, ✉ email,
   // and any extras such as the youth DOCS ✉) in a small drop-down that
   // floats over the board.  '' when nobody in the column can be reached.
-  groupContactHtml(col, players, extraHtml = '') {
+  // { asLabel }: the button IS the column's title (owner 11/16: "the
+  // contact on teams can be with the u10 label and the number can do double
+  // duty for contact totals and totals on team") — "📇 U10 · 12" (or 12/16
+  // with a cap), opening left-aligned under the title.
+  groupContactHtml(col, players, extraHtml = '', { asLabel = false } = {}) {
     if (!col || col.isUnassigned) return '';
     const name = String(col.label || '').replace(/^[^\p{L}\p{N}]+/u, '');
     const btns = this.renderMessageButtons(name, players, { compact: true }) + (extraHtml || '');
     if (!btns.trim()) return '';
     const word = (window.MessageCopy && MessageCopy.block('contact_popup', 'button')) || 'CONTACT';
     const n = (players || []).filter(Boolean).length;
+    const text = asLabel ? `📇 ${col.label} · ${n}${col.maxRoster != null ? `/${col.maxRoster}` : ''}` : `📇 ${RosterScreenBase.escapeHtml(word)} · ${n}`;
+    const look = asLabel ? 'font-size:0.85rem; font-weight:800; line-height:1.3; padding:2px 8px;' : 'font-size:0.68rem; font-weight:800; line-height:1.2; padding:2px 6px;';
     return `<details class="rs-group-contact" style="position:relative;">
-        <summary style="list-style:none; cursor:pointer; font-size:0.68rem; font-weight:800; line-height:1.2; padding:2px 6px;
-          border-radius:3px; color:#fff; background:#334155; white-space:nowrap;">📇 ${RosterScreenBase.escapeHtml(word)} · ${n}</summary>
-        <div style="position:absolute; right:0; top:calc(100% + 4px); z-index:30; display:flex; flex-direction:column; align-items:flex-end; gap:6px;
+        <summary title="${RosterScreenBase.escapeHtml(word)}" style="list-style:none; cursor:pointer; ${look}
+          border-radius:3px; color:#fff; background:#334155; white-space:nowrap;">${text}</summary>
+        <div style="position:absolute; ${asLabel ? 'left' : 'right'}:0; top:calc(100% + 4px); z-index:30; display:flex; flex-direction:column; align-items:flex-end; gap:6px;
           padding:8px; border-radius:8px; background:#0f172a; border:1px solid #475569; box-shadow:0 8px 24px rgba(0,0,0,0.5);">${btns}</div>
       </details>`;
+  }
+
+  // The column title: the 📇 button carrying the label and the head count
+  // when anyone in the column can be reached (merged), else the plain label.
+  teamHeadHtml(col, players, extraHtml = '', size = '0.85rem') {
+    const btn = this.groupContactHtml(col, players, extraHtml, { asLabel: true });
+    return btn ? { labelHtml: btn, merged: true } : { labelHtml: `<strong style="font-size:${size};">${col.label}</strong>`, merged: false };
   }
 
   renderMessageButtons(scope, players, { compact = false, preset = null, channels = null } = {}) {
