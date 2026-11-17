@@ -903,13 +903,22 @@ class FinancesScreen extends Screen {
     if (Math.abs(casaV.tot) >= 0.5) rows += lineRow('in', { label: this._copy('pm_casa') || "CASA field rental — Men's share", detail: '', v: casaV, year: yearView ? null : casa, assumed: true }, 'fn-in');
     rows += `<tr class="subtotal"><td colspan="2" style="text-align:left;">${esc(this._copy('pm_in_total') || 'Money in (before any grant)')}</td>${cells(inPre, 'fn-in')}<td>${pm(inPre.tot)}</td></tr>`;
     rows += head(this._copy('pm_out') || 'MONEY OUT — BY COMPETITION', '#fca5a5');
-    for (const b of comps) rows += band(b);
-    // Men's club wide (kits, LeagueApps fees) sits with the competitions, one
-    // subtotal for both (owner 11/16 "kits are mens expense with other stuff …
-    // its part of competitions")
-    const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k, lines: [...k.lines] })) } : { code: 'mens', label: this._copy('pm_general') || "Men's — general (every team)", blocks: [{ label: '', lines: [], v: Z() }], v: Z() };
+    // Men's club wide (kits, LeagueApps fees) is a competition cost, split half
+    // on APSL and half on Liga 1 (owner 11/16 "kits are mens expense with
+    // other stuff … its part of competitions" + "put it all on apsl and liga 1")
+    const gen = general ? { ...general, blocks: general.blocks.map(k => ({ ...k, lines: [...k.lines] })) } : { code: 'mens', label: this._copy('pm_general') || "Men's club wide", blocks: [{ label: '', lines: [], v: Z() }], v: Z() };
     if (Math.abs(laFees.tot) >= 0.5) { gen.blocks[0].lines.push({ label: this._copy('soa_la_fees') || 'LeagueApps fees', detail: `${M0(dues)} × ${(100 * feeRatio).toFixed(1)}%`, v: laFees, year: yearView ? null : dues * feeRatio }); gen.blocks[0].v = plus(gen.blocks[0].v, laFees); gen.v = plus(gen.v, laFees); }
-    if (Math.abs(gen.v.tot) >= 0.5) rows += band(gen);
+    const onto = ['apsl', 'liga1'].map(c => comps.find(b => b.code === c)).filter(Boolean);
+    if (onto.length && Math.abs(gen.v.tot) >= 0.5) {
+      const k = 1 / onto.length, genLines = gen.blocks.flatMap(bk => bk.lines);
+      for (const b of onto) {
+        const add = genLines.map(l => ({ ...l, label: this._copy('pm_half_line', { label: l.label }) || `${l.label} — half`, detail: `${M0(l.v.tot)} × ${Math.round(100 * k)}%`, v: scale(l.v, k), year: l.year == null ? null : l.year * k }));
+        const bk = b.blocks[b.blocks.length - 1]; bk.lines.push(...add);
+        for (const l of add) { bk.v = plus(bk.v, l.v); b.v = plus(b.v, l.v); }
+      }
+    }
+    for (const b of comps) rows += band(b);
+    if (!onto.length && Math.abs(gen.v.tot) >= 0.5) rows += band(gen);
     // running balance (owner 11/16 "do pre coaching balance" + "pre club wide
     // total" + "pre grant total"): own costs → BEFORE COACHING; coaching →
     // BEFORE CLUB WIDE; club wide share → BEFORE GRANT; grant → AFTER
