@@ -79,6 +79,14 @@ class PyramidForecastView {
     return `<span class="fc-heat" style="background:${bg};">${this._esc(PyramidForecastView.pct(p))}</span>`;
   }
 
+  // ✅ Safe (owner 11/17 "why not have chance of finishing totally safe in
+  // the table … which is 6th place"): finishing above every place that
+  // moves a team down (relegation playoff included).
+  static safe(t) {
+    const down = Object.entries(t.zones || {}).filter(([k]) => /relegation/.test(k)).reduce((a, [, v]) => a + v, 0);
+    return Math.max(0, 1 - down);
+  }
+
   _pickConf(confs) {
     if (this.conf && confs.some((c) => c.id === this.conf)) return this.conf;
     const drc = confs.find((c) => /delaware/i.test(c.name || ''));
@@ -139,11 +147,12 @@ class PyramidForecastView {
       <div style="overflow-x:auto;"><table class="fc-table">
         <thead><tr><th>#</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
           <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_col_first'))}</th><th>${esc(this._copy('fc_col_playoff'))}</th>
-          ${hasRp ? `<th>${esc(this._copy('fc_col_relplay'))}</th>` : ''}${hasDown ? `<th>${esc(this._copy('fc_col_auto'))}</th><th>${esc(this._copy('fc_col_down'))}</th>` : ''}</tr></thead>
+          ${hasDown ? `<th>${esc(this._copy('fc_col_safe'))}</th>` : ''}${hasRp ? `<th>${esc(this._copy('fc_col_relplay'))}</th>` : ''}${hasDown ? `<th>${esc(this._copy('fc_col_auto'))}</th><th>${esc(this._copy('fc_col_down'))}</th>` : ''}</tr></thead>
         <tbody>${dv.teams.map((t) => `<tr class="z-${zoneAt(dv, t.pos)}">
           <td>${t.pos}</td><td class="tm" data-fc-team="${t.id}">${esc(t.name)}</td><td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
           <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
           <td>${this._heat(t.pos_pct[0], false)}</td><td>${this._heat(t.zones.playoff, false)}</td>
+          ${hasDown ? `<td>${this._heat(PyramidForecastView.safe(t), false)}</td>` : ''}
           ${hasRp ? `<td>${this._heat(t.rel_playoff, true)}</td>` : ''}
           ${hasDown ? `<td>${this._heat((t.zones.relegation || 0) + (t.zones.conditional_relegation || 0), true)}</td><td>${this._heat(t.down, true)}</td>` : ''}
         </tr>`).join('')}</tbody>
@@ -240,7 +249,7 @@ class PyramidForecastView {
       <div class="fc-big">
         ${big(this._copy('fc_col_playoff'), t.zones.playoff || 0, false)}
         ${big(this._copy('fc_col_first'), t.pos_pct[0], false)}
-        ${hasDown ? big(this._copy('fc_col_relplay'), t.rel_playoff, true) + big(this._copy('fc_col_down'), t.down, true) : ''}
+        ${hasDown ? big(this._copy('fc_col_safe'), PyramidForecastView.safe(t), false) + big(this._copy('fc_col_relplay'), t.rel_playoff, true) + big(this._copy('fc_col_down'), t.down, true) : ''}
         <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div>
       </div>
       ${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}
