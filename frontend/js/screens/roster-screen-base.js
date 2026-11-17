@@ -817,26 +817,15 @@ class RosterScreenBase extends Screen {
     const section = (label, list, color, bg, always = false) => (list.length || always)
       ? head(label, list.length, color, bg) + (list.length ? ordered(list).map(p => card(p)).join('') : '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>')
       : '';
-    const ridersCount = ridersHtml ? ((data.autoInvites && data.autoInvites[String(col.teamId)]) || []).length : 0;
+    // ⭐ CALL-DOWNS group retired (mig 1450, owner 11/17 "isn't the pill
+    // enough"): a call-down is the L1 ⬇ pill in the card's 👁 SEES.
+    const ridersCount = 0, riders = '';
     const GREEN = ['#22c55e', 'rgba(34,197,94,0.14)'];
     const AMBER = ['#f59e0b', 'rgba(245,158,11,0.14)'];
     const BLUE  = ['#60a5fa', 'rgba(96,165,250,0.14)'];
     const ROSE  = ['#fb7185', 'rgba(251,113,133,0.14)'];
     const GREY  = ['#94a3b8', 'rgba(148,163,184,0.14)'];
     const RED    = ['#ef4444', 'rgba(239,68,68,0.14)'];
-    // Direction (owner 11/3: "call downs belong in liga 1 … apsl col should
-    // be call ups"): the board runs top-down by board_sort_order (APSL →
-    // Reserves → Liga 1), so a rider from a team lower on the board is
-    // coming UP; from higher up, coming DOWN.
-    const riderList = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
-    const sortOf = (tid) => { const c = (data.columns || []).find(x => Number(x.teamId) === Number(tid)); return c ? Number(c.sortOrder) : null; };
-    // Empty (owner 11/4: "i would rather show them empty"): the column
-    // with teams below it on the board is called UP into, the bottom one DOWN.
-    const ridersUp = riderList.length > 0
-      ? riderList.every(r => sortOf(r.fromTeamId) != null && sortOf(r.fromTeamId) > Number(col.sortOrder))
-      : (data.columns || []).some(c => !c.isUnassigned && !c.teamPillFoldInto && Number(c.sortOrder) > Number(col.sortOrder));
-    const riders = ridersCount ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'),
-      ridersCount, ...BLUE) + ridersHtml : '';
 
     if (this.boardView === 'team') {
       // Every group shows, empty or not (owner 11/4: "can we not make
@@ -844,10 +833,7 @@ class RosterScreenBase extends Screen {
       // column's category pill or 👀 Sees games filter hides it.
       const shows = (cat) => this.columnCategoryShown(col, cat, data);
       const group = (label, list, cat, color, bg) => section(label, list, color, bg, shows(cat));
-      const ridersGroup = riders || (shows('active')
-        ? head(ridersUp ? (copy('board_callups_h') || '⭐ CALL-UPS · every game') : (copy('board_calldowns_h') || '⭐ CALL-DOWNS'), 0, ...BLUE)
-          + '<div style="opacity:0.5; font-size:0.8rem;">(none)</div>'
-        : '');
+      const ridersGroup = '';
       const cats = { onboard: [], active: [], injured: [], practice_squad: [], inactive: [] };
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
@@ -1916,21 +1902,25 @@ class RosterScreenBase extends Screen {
     if (this._seesRestrainBound) return;
     this._seesRestrainBound = true;
     document.addEventListener('click', async (e) => {
-      const b = e.target.closest && e.target.closest('[data-sees-restrain]');
+      const b = e.target.closest && e.target.closest('[data-sees-restrain], [data-sees-set]');
       if (!b || !this.auth) return;
       e.preventDefault(); e.stopPropagation();
       if (b.dataset.busy) return;
       b.dataset.busy = '1'; b.style.opacity = '0.4';
-      const pid = Number(b.dataset.seesRestrain), teamId = Number(b.dataset.team);
+      // one SEES write (mig 1450): true = call-down, false = restrained, null = roster decides
+      const pid = Number(b.dataset.seesRestrain || b.dataset.seesSet), teamId = Number(b.dataset.team);
+      const sees = b.dataset.seesSet ? JSON.parse(b.dataset.sees) : (b.dataset.on === '1' ? false : null);
       try {
-        const res = await this.auth.fetch('/api/person-sees/restrain', {
+        const res = await this.auth.fetch('/api/person-sees/set', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ person_id: pid, team_id: teamId, restrained: b.dataset.on === '1' }),
+          body: JSON.stringify({ person_id: pid, team_id: teamId, sees }),
         });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body.error || res.status);
+        // re-read him whole: SEES, ROSTERS and the ＋ call-down options
         const cache = this._seesCache || (this._seesCache = new Map());
-        const fresh = (body.people || {})[String(pid)];
+        const again = await this.auth.fetch(`/api/person-sees?ids=${pid}`).then(r => r.ok ? r.json() : null).catch(() => null);
+        const fresh = (again && again.people && again.people[String(pid)]) || (body.people || {})[String(pid)];
         if (fresh) cache.set(pid, { ...(cache.get(pid) || {}), ...fresh });
         document.querySelectorAll(`[data-sees-person="${pid}"]`).forEach(el => { el.innerHTML = this._seesContent(cache.get(pid), pid); });
       } catch (err) {
@@ -2038,8 +2028,14 @@ class RosterScreenBase extends Screen {
               style="cursor:pointer; padding:0 2px; margin-left:1px; border-left:1px solid currentColor; opacity:0.85;">${esc(t.note === 'official_list'
                 ? cp('card_sees_restrain', {}, '🚫') : cp('card_sees_unrestrain', {}, '↺'))}</span>`
         : '';
+      // ⬇ standing call-down (mig 1450: sees yes on the team) → ✕ ends it (admins)
+      const endBtn = admin && personId && t.teamId && t.note === 'standing_invite'
+        ? ` <span role="button" data-sees-set="${personId}" data-team="${t.teamId}" data-sees="null"
+              title="${esc(cp('card_sees_end_call_down_tip', { team: t.team }, `Called down to every ${t.team} game. Tap to stop.`))}"
+              style="cursor:pointer; padding:0 2px; margin-left:1px; border-left:1px solid currentColor; opacity:0.85;">${esc(cp('card_sees_end_call_down', {}, '✕'))}</span>`
+        : '';
       const via = t.note === 'official_list' && !t.staff ? ' ' + cp('card_sees_via_list', {}, '📋') : '';
-      return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' ') + via)}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}${btn}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
+      return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' ') + via)}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}${btn}${endBtn}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
     };
     // Coach / club staff of MANY teams in one section (not playing on
     // them) gets ONE pill — "🧢 Youth coach · 18", "🛡 Youth staff · 18" —
@@ -2070,6 +2066,14 @@ class RosterScreenBase extends Screen {
     const rest = teams.filter(t => !folded.has(t));
     let sees = rest.map(item).concat(coachPills);
     if (!sees.length) sees = [pill(esc(cp('card_sees_none', {}, 'nothing')), 'grey')];
+    // ＋ L1 ⬇ (admins): a league call-down rule lets him be sent down to a
+    // team he does not see yet → sees yes on it (mig 1450).
+    if (admin && personId) for (const c of (Array.isArray(entry.call_down) ? entry.call_down : [])) {
+      const tm = RosterScreenBase.dropClubName(String(c.team || '')) || c.team;
+      sees.push(`<span role="button" data-sees-set="${personId}" data-team="${c.team_id}" data-sees="true"
+        title="${esc(cp('card_sees_call_down_tip', { team: tm }, `Call him down to every ${tm} game.`))}"
+        style="cursor:pointer; white-space:nowrap; font-weight:700; padding:0 6px; border-radius:999px; border:1px dashed rgba(148,163,184,0.6); color:#cbd5e1;">${esc(cp('card_sees_call_down', { team: tm }, `＋ ${tm} ⬇`))}</span>`);
+    }
     if (entry.suspended) sees.push(pill(esc(cp('card_sees_suspended', {}, '⛔ suspended')), 'red'));
     if (entry.injured) sees.push(pill(esc(cp('card_sees_injured', {}, '🩹 injured')), 'amber'));
     // 📋 ROSTERS — "<league> <team>", the team left off when the league's
@@ -3414,7 +3418,6 @@ class RosterScreenBase extends Screen {
   renderColumnPills(col, players, data) {
     if (col.isUnassigned) return { pillsHtml: '', shown: players, ridersHtml: '' };
 
-    const riders = (data.autoInvites && data.autoInvites[String(col.teamId)]) || [];
     // ↔ Call In (mig 637) is an invite-only row too, but its own
     // category — a same-level player, not a 📄 roster-filler.
     const catOf = (p) => this.columnCategoryOf(p);
@@ -3518,38 +3521,7 @@ class RosterScreenBase extends Screen {
       ${officialPanel}`;
 
     const shown = players.filter(p => !off(catOf(p)));
-    // ⭐ Standing call-downs (team_auto_invites) are listed with the
-    // column's ✅ Active players (owner 2026-10-22: "rhoden and pena
-    // should show like others but with standing call up chip on name") —
-    // the rider's real card from their home column, de-fanged here
-    // (draggable off, which also keeps it out of the reorder collector,
-    // and the duplicate DOM id stripped), with the chip on the name.  The
-    // ⋯ menu still acts on their home-team row, which is the right
-    // semantics.  The Active pill shows and hides them with the rest.
-    // Standing = call-down only since mig 1446 (owner 11/17: a league list
-    // now covers call-ups; APSL → L1 call-downs stay standing).
-    const chipLabel = () => MessageCopy.block('invite_chip', 'standing') || '⭐ Standing Call-down';
-    const chipTip = () => MessageCopy.block('invite_chip', 'standing_tip', { team: col.label || '' })
-      || `Standing call-down — rides every ${col.label || ''} game automatically`;
-    const nameChipHtml = (r) => `<span title="${this.escape(chipTip(r))}"
-      style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
-             background:rgba(96,165,250,0.18); border:1px solid #60a5fa; color:#bfdbfe;">${this.escape(chipLabel(r))}${r.fromTeam ? ` · ${this.escape(r.fromTeam)}` : ''}</span>`;
-    const ridersHtml = (riders.length && !off('active')) ? riders.map(r => {
-      let homeCol = null, hp = null;
-      for (const c of (data.columns || [])) {
-        if (c.teamId === col.teamId) continue;
-        const found = (data.buckets[String(c.teamId)] || []).find(p => Number(p.personId) === Number(r.personId));
-        if (found) { homeCol = c; hp = found; break; }
-      }
-      if (!hp) return `
-        <div style="padding:4px 8px; border:${RosterScreenBase.NEUTRAL_CARD_BORDER}; border-radius:8px; font-size:0.78rem;">
-          <b>${this.escape(r.name)}</b> ${nameChipHtml(r)}
-        </div>`;
-      return this.renderPlayer({ ...hp, nameChipHtml: nameChipHtml(r), seesGamesHere: true }, data.columns, homeCol, 0, 0)
-        .replace('draggable="true"', 'draggable="false"')
-        .replace(/ id="[a-z]+-card-[^"]*"/, '');
-    }).join('') : '';
-
+    const ridersHtml = '';   // ⭐ standing call-downs: the card's 👁 SEES (mig 1450)
     return { pillsHtml, shown, ridersHtml };
   }
 

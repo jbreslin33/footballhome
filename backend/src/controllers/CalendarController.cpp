@@ -682,26 +682,21 @@ Response CalendarController::handlePostAutoInvite(const Request& request) {
         if (active) {
             // No cap here (owner 2026-10-20: invites and Going answers are
             // unlimited) — the team_invite_caps rule binds the lineup only.
-            db->query(
-                "INSERT INTO team_auto_invites (team_id, person_id, from_team_id, active) "
-                "VALUES ($1::int, $2::int, NULLIF($3, '0')::int, true) "
-                "ON CONFLICT (team_id, person_id) DO UPDATE SET active = true, "
-                "   from_team_id = COALESCE(EXCLUDED.from_team_id, team_auto_invites.from_team_id)", {t, p, f});
-            // Upcoming games AND practices of the team (mig 1073, owner
-            // 2026-11-05: "a standing call up should see the practice for
-            // the team they are standing call to") — a practice they see
-            // from their own roster row is skipped (fh_auto_invite_wanted).
-            db->query("SELECT fh_team_auto_invites_backfill($1::int, $2::int, NULLIF($3, '0')::int)", {t, p, f});
-        } else {
-            db->query("UPDATE team_auto_invites SET active = false WHERE team_id = $1::int AND person_id = $2::int", {t, p});
+            // 👁 Sees yes on this team = standing call-down (mig 1450): the
+            // fh_event_invites view gives him every game from now on — no
+            // per-game rows to backfill. An open "no" is closed first; an
+            // open "yes" stays as it is.
             const std::string uid = resolveUserId(db, gate.personId);
-            db->query(R"SQL(
-                UPDATE fh_event_invites i SET revoked_at = now(), revoked_by_user_id = NULLIF($3, '')::int
-                  FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
-                 WHERE i.fh_event_id = fe.id AND i.person_id = $2::int AND i.channel = 'auto'
-                   AND i.revoked_at IS NULL AND ge.starts_at > now()
-                   AND EXISTS (SELECT 1 FROM fh_event_teams fet
-                                WHERE fet.fh_event_id = fe.id AND fet.team_id = $1::int))SQL", {t, p, uid});
+            db->query("UPDATE person_team_sees SET ended_at = now(), ended_by_user_id = NULLIF($3, '')::int "
+                      " WHERE team_id = $1::int AND person_id = $2::int AND ended_at IS NULL AND NOT sees", {t, p, uid});
+            db->query("INSERT INTO person_team_sees (person_id, team_id, sees, from_team_id, created_by_user_id) "
+                      "SELECT $2::int, $1::int, true, NULLIF($3, '0')::int, NULLIF($4, '')::int "
+                      " WHERE NOT EXISTS (SELECT 1 FROM person_team_sees WHERE team_id = $1::int AND person_id = $2::int "
+                      "                     AND sees AND ended_at IS NULL)", {t, p, f, uid});
+        } else {
+            const std::string uid = resolveUserId(db, gate.personId);
+            db->query("UPDATE person_team_sees SET ended_at = now(), ended_by_user_id = NULLIF($3, '')::int "
+                      " WHERE team_id = $1::int AND person_id = $2::int AND sees AND ended_at IS NULL", {t, p, uid});
         }
         return jsonOk({{"active", active}});
     } catch (const std::exception& e) {
@@ -3416,9 +3411,9 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         json invites = json::array();
         for (const auto& row : db->query(
                 "SELECT i.person_id, p.first_name, p.last_name, ft.name AS from_team, i.from_team_id, "
-                "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
+                "       EXISTS (SELECT 1 FROM person_team_sees a JOIN fh_event_teams fet2 "
                 "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = i.fh_event_id "
-                "                WHERE a.person_id = i.person_id AND a.active) AS auto_invite, "
+                "                WHERE a.person_id = i.person_id AND a.sees AND a.ended_at IS NULL) AS auto_invite, "
                 // ↔ Call In (mig 637): rostered on this game's team as a
                 // same-level invite-only player — Game Center's chip.
                 "       EXISTS (SELECT 1 FROM fh_event_teams fet3 JOIN team_persons tp3 "
@@ -3491,9 +3486,9 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
                 "                 'phone', fh_recipient_phone(m.recipient_person_id, p.id), "
                 "                 'email', fh_recipient_email(m.recipient_person_id, p.id)) ORDER BY m.ord) "
                 "          FROM fh_message_recipients(p.id) m JOIN persons rp ON rp.id = m.recipient_person_id)::text AS recipients, "
-                "       EXISTS (SELECT 1 FROM team_auto_invites a JOIN fh_event_teams fet2 "
+                "       EXISTS (SELECT 1 FROM person_team_sees a JOIN fh_event_teams fet2 "
                 "                 ON fet2.team_id = a.team_id AND fet2.fh_event_id = $1::bigint "
-                "                WHERE a.person_id = c.person_id AND a.active) AS auto_invite, "
+                "                WHERE a.person_id = c.person_id AND a.sees AND a.ended_at IS NULL) AS auto_invite, "
                 "       COALESCE((SELECT phone_number FROM person_phones "
                 "                  WHERE person_id = p.id AND can_receive_sms = true "
                 "                  ORDER BY is_primary DESC, id ASC LIMIT 1), "
@@ -3677,12 +3672,14 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
         const long long adminUserId = adminUserIdStr.empty() ? 0 : std::stoll(adminUserIdStr);
 
         auto ins = db->query(
-            "INSERT INTO fh_event_invites "
-            "    (fh_event_id, person_id, from_team_id, recipient_person_id, invited_by_user_id, channel, contact) "
-            "VALUES ($1::bigint, $2::int, NULLIF($3, '')::int, $4::int, NULLIF($5, '')::int, $6, NULLIF($7, '')) "
-            "ON CONFLICT (fh_event_id, person_id) WHERE revoked_at IS NULL DO UPDATE "
-            "   SET channel = EXCLUDED.channel, contact = COALESCE(EXCLUDED.contact, fh_event_invites.contact), "
-            "       invited_by_user_id = EXCLUDED.invited_by_user_id "
+            // one-game sees yes (mig 1450)
+            "INSERT INTO event_person_sees "
+            "    (fh_event_id, person_id, sees, from_team_id, recipient_person_id, set_by_user_id, channel, contact) "
+            "VALUES ($1::bigint, $2::int, true, NULLIF($3, '')::int, $4::int, NULLIF($5, '')::int, $6, NULLIF($7, '')) "
+            "ON CONFLICT (fh_event_id, person_id) DO UPDATE "
+            "   SET sees = true, channel = EXCLUDED.channel, contact = COALESCE(EXCLUDED.contact, event_person_sees.contact), "
+            "       from_team_id = COALESCE(EXCLUDED.from_team_id, event_person_sees.from_team_id), "
+            "       recipient_person_id = EXCLUDED.recipient_person_id, set_by_user_id = EXCLUDED.set_by_user_id "
             "RETURNING id, to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS created_at",
             {std::to_string(fhEventId), std::to_string(targetPersonId), fromTeamId,
              std::to_string(recipientPersonId), adminUserIdStr, channel, contact});
@@ -3767,10 +3764,16 @@ Response CalendarController::handleDeleteEventInvite(const Request& request) {
             return jsonError(HttpStatus::FORBIDDEN, "Only coaches and admins can revoke invites");
         }
         const std::string userId = resolveUserId(db, personId);
+        // one-game sees no (mig 1450): beats a standing call-down or the
+        // list for this game only
         auto rows = db->query(
-            "UPDATE fh_event_invites SET revoked_at = now(), revoked_by_user_id = NULLIF($3, '')::int "
-            " WHERE fh_event_id = $1::bigint AND person_id = $2::int AND revoked_at IS NULL "
-            "RETURNING id",
+            "SELECT 1 FROM fh_event_invites WHERE fh_event_id = $1::bigint AND person_id = $2::int",
+            {std::to_string(fhEventId), std::to_string(targetPersonId)});
+        db->query(
+            "INSERT INTO event_person_sees (fh_event_id, person_id, sees, set_by_user_id, note) "
+            "VALUES ($1::bigint, $2::int, false, NULLIF($3, '')::int, 'taken off this game') "
+            "ON CONFLICT (fh_event_id, person_id) DO UPDATE SET sees = false, set_by_user_id = EXCLUDED.set_by_user_id, "
+            "       note = EXCLUDED.note, channel = NULL, contact = NULL, created_at = now()",
             {std::to_string(fhEventId), std::to_string(targetPersonId), userId});
         return jsonOk({{"fh_event_id", fhEventId}, {"person_id", targetPersonId},
                        {"revoked", !rows.empty()}});
@@ -4003,9 +4006,9 @@ Response CalendarController::handlePostCallinDecision(const Request& request) {
         const std::string r = std::to_string(*rid);
         if (decision == "accept") {
             db->query(
-                "INSERT INTO fh_event_invites (fh_event_id, person_id, from_team_id, recipient_person_id, invited_by_user_id, channel, note) "
-                "VALUES ($1::bigint, $2::int, $3::int, $2::int, NULLIF($4, '')::int, 'copy', 'call-in request (mig 1265)') "
-                "ON CONFLICT (fh_event_id, person_id) WHERE revoked_at IS NULL DO NOTHING",
+                "INSERT INTO event_person_sees (fh_event_id, person_id, sees, from_team_id, recipient_person_id, set_by_user_id, channel, note) "
+                "VALUES ($1::bigint, $2::int, true, $3::int, $2::int, NULLIF($4, '')::int, 'copy', 'call-in request (mig 1265)') "
+                "ON CONFLICT (fh_event_id, person_id) DO UPDATE SET sees = true WHERE NOT event_person_sees.sees",
                 {std::to_string(fhEventId), req[0]["person_id"].c_str(),
                  req[0]["from_team_id"].is_null() ? std::string() : std::string(req[0]["from_team_id"].c_str()), uid});
             db->query("UPDATE fh_event_callin_requests SET decision = 'accepted', decided_at = now(), "

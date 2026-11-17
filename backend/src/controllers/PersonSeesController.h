@@ -12,14 +12,19 @@
 //       rosters = fh_person_rosters: the official league lists he is on.
 //       Club admins and coaches (it carries injuries and suspensions).
 //
-//   POST /api/person-sees/restrain  { person_id, team_id, restrained }
-//       🚫 game_restraints (mig 1443): an official-list man is NOT asked
-//       about that team's games (true) / is again (false). Club admins.
+//       call_down = teams a league call-down rule lets him be sent down
+//                 to that he does not see yet (the ＋ on SEES).
+//
+//   POST /api/person-sees/set  { person_id, team_id, sees: true|false|null }
+//       person_team_sees (mig 1450): the exception to the roster for every
+//       game of a team. true = standing call-down (needs a league rule from
+//       a team he is on), false = restrained, null = back to the roster.
+//       Club admins. /restrain { restrained } is the same call (🚫 / ↺).
 class PersonSeesController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
 private:
     Response handleGet(const Request& request);
-    Response handleRestrain(const Request& request);
+    Response handleSet(const Request& request);
 };
