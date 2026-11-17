@@ -973,6 +973,33 @@ json PyramidSync::refreshSource(int sourceId) {
     return result;
 }
 
+// 📈 Forecast (owner 11/17 "so that it constantly updates on load as
+// seasons progress"): the forecast's source is re-read on a page load only
+// when a game it lists has finished since the last read (kick-off + 3 h
+// passed, no result yet, read before then) — one read after a match day,
+// none in between, so the weekly rhythm (mig 865) holds otherwise.
+bool PyramidSync::refreshIfGameDue(int sourceId) {
+    std::unique_lock<std::mutex> lock(gRefreshMutex, std::try_to_lock);
+    if (!lock.owns_lock()) return false;
+    try {
+        auto due = Database::getInstance()->query(
+            "SELECT 1 FROM pyramid_games g JOIN pyramid_sources s ON s.id = g.source_id "
+            " WHERE g.source_id = $1::int AND g.removed_at IS NULL AND NOT g.complete AND NOT g.cancelled "
+            "   AND g.starts_local IS NOT NULL "
+            "   AND (g.starts_local + interval '3 hours') < (now() AT TIME ZONE 'America/New_York') "
+            "   AND (g.starts_local + interval '3 hours') > COALESCE(s.last_fetched_at AT TIME ZONE 'America/New_York', '-infinity') "
+            "   AND (g.starts_local) > (now() AT TIME ZONE 'America/New_York') - interval '21 days' LIMIT 1",
+            {std::to_string(sourceId)});
+        if (due.empty()) return false;
+        json res = refreshSource(sourceId);
+        std::cerr << "[pyramid] forecast read " << res.dump() << std::endl;
+        return res.value("ok", false);
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] forecast read: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 void PyramidSync::refreshIfStale(bool force) {
     std::unique_lock<std::mutex> lock(gRefreshMutex, std::try_to_lock);
     if (!lock.owns_lock()) return;

@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "../database/Database.h"
+#include "../services/PyramidSync.h"
 
 using nlohmann::json;
 
@@ -70,6 +71,8 @@ json PyramidForecast::build(int conferenceId) {
     if (divs.empty() || !sourceId) { out["note"] = "no_tables"; return out; }
     std::string extList;
     for (const auto& e : divExt) extList += (extList.empty() ? "" : ",") + e;
+    // A game finished since the feed was last read → read it now (mig 1455).
+    PyramidSync::refreshIfGameDue(sourceId);
 
     // Cache stamp: the games' last read.
     auto stampRow = db->query(
@@ -265,6 +268,10 @@ json PyramidForecast::build(int conferenceId) {
     std::vector<std::map<std::string, int>> zoneCount(N);
     std::vector<int> playoffLost(N, 0), feederLost(N, 0), downAll(N, 0), relPlayoff(N, 0);
     std::vector<double> ptsSum(N, 0);
+    // points each place finishes on (owner 11/17 "what is probable point
+    // total of 6th place" → "give me % spread" → "put that on site too")
+    std::vector<std::vector<std::map<int, int>>> placePts(divs.size());
+    for (size_t di = 0; di < divs.size(); ++di) placePts[di].resize(divs[di].teams.size());
     // relegation playoff: paired when two tables each have one such place
     std::vector<int> rpDivs;
     for (int i = 0; i < (int)divs.size(); ++i) {
@@ -290,6 +297,7 @@ json PyramidForecast::build(int conferenceId) {
             for (size_t i = 0; i < l.size(); ++i) {
                 const int x = l[i], pos = (int)i + 1;
                 if (pos < 32) posCount[x][pos]++;
+                placePts[di][i][t[x].pts]++;
                 ptsSum[x] += t[x].pts;
                 const std::string z = zoneAt(divs[di], pos);
                 if (!z.empty()) zoneCount[x][z]++;
@@ -357,6 +365,18 @@ json PyramidForecast::build(int conferenceId) {
                                    {"rel_playoff", r3(relPlayoff[x] / S)}, {"lost_playoff", r3(playoffLost[x] / S)},
                                    {"lost_feeder", r3(feederLost[x] / S)}, {"down", r3(downAll[x] / S)}});
         }
+        // per place: median, 10th / 90th percentile, mean, and the spread
+        json places = json::array();
+        const auto& pp = placePts[&d - &divs[0]];
+        for (size_t i = 0; i < pp.size(); ++i) {
+            const auto& m = pp[i];
+            long tot = 0; double sum = 0; for (const auto& [k, v] : m) { tot += v; sum += (double)k * v; }
+            auto q = [&](double f) { long acc = 0; for (const auto& [k, v] : m) { acc += v; if (acc >= f * tot) return k; } return m.empty() ? 0 : m.rbegin()->first; };
+            json spread = json::array();
+            for (const auto& [k, v] : m) spread.push_back({k, r3((double)v / (tot ? tot : 1))});
+            places.push_back({{"pos", (int)i + 1}, {"mean", r1(tot ? sum / tot : 0)}, {"p10", q(0.1)}, {"p50", q(0.5)}, {"p90", q(0.9)}, {"spread", spread}});
+        }
+        dj["places"] = places;
         out["divisions"].push_back(dj);
     }
     for (const auto& g : games) out["games"].push_back(gameJson(g));

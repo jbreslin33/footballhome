@@ -156,7 +156,8 @@ class PyramidForecastView {
           ${hasRp ? `<td>${this._heat(t.rel_playoff, true)}</td>` : ''}
           ${hasDown ? `<td>${this._heat((t.zones.relegation || 0) + (t.zones.conditional_relegation || 0), true)}</td><td>${this._heat(t.down, true)}</td>` : ''}
         </tr>`).join('')}</tbody>
-      </table></div>`).join('');
+      </table></div>
+      ${this._placesHtml(dv)}`).join('');
     const upcoming = this._upcoming(d);
     return `
       <h3 style="margin-top:4px;">${esc(this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() }))}</h3>
@@ -187,6 +188,52 @@ class PyramidForecastView {
         </div>
         <div class="fc-scores" title="${esc(this._copy('fc_scores'))}">${top}</div>
       </div>`;
+  }
+
+  // ⭐ Target (owner 11/17: 6th = "totally safe" … "that is our north
+  // star"): the last place above every relegation place, the points it
+  // usually ends on, and what that asks of this team's games left.
+  _targetHtml(t) {
+    const dv = t.division, esc = (x) => this._esc(x);
+    const down = (pos) => (dv.zones || []).some((z) => /relegation/.test(z.kind) && pos >= z.from && pos <= z.to);
+    let place = 0; for (let p = 1; p <= dv.teams.length; p++) if (!down(p)) place = p;
+    const pl = (dv.places || [])[place - 1];
+    if (!place || !pl) return '';
+    const th = (n) => `${n}${['st', 'nd', 'rd'][n - 1] || 'th'}`;
+    const need = Math.max(0, pl.p50 - t.pts), wins = Math.ceil(need / 3);
+    const words = need <= 0
+      ? this._copy('fc_target_done', { place: th(place), pts: pl.p50 })
+      : this._copy('fc_target', { place: th(place), pts: pl.p50, lo: pl.p10, hi: pl.p90, need, left: t.left, wins });
+    const ok = need <= 3 * t.left;
+    return `<div style="margin:6px 0; padding:8px 12px; border-radius:10px; border:1px solid #facc15; background:rgba(250,204,21,0.10); font-size:0.86rem;">
+        <b>⭐ ${esc(words)}</b>${ok ? '' : ` <span style="color:#fca5a5;">${esc(this._copy('fc_target_out'))}</span>`}</div>`;
+  }
+
+  // ⛳ Points each place finishes on (owner 11/17 "what is probable point
+  // total of 6th place in div b" → "give me % spread" → "put that on site
+  // too"): per place the likely total, the 80% range, a bar per points
+  // total; tap the bars for every total with its chance and the chance of
+  // that many or more.
+  _placesHtml(dv) {
+    if (!dv.places || !dv.places.length) return '';
+    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v));
+    const lo = Math.min(...dv.places.map((p) => (p.spread[0] || [0])[0]));
+    const hi = Math.max(...dv.places.map((p) => (p.spread[p.spread.length - 1] || [0])[0]));
+    const W = 220, H = 26, span = Math.max(1, hi - lo + 1), bw = W / span;
+    const max = Math.max(...dv.places.flatMap((p) => p.spread.map((x) => x[1])), 0.001);
+    const rows = dv.places.map((p) => {
+      const color = this._barColor(dv, p.pos);
+      const bars = p.spread.map(([pts, v]) => `<rect x="${((pts - lo) * bw).toFixed(1)}" y="${(H - H * v / max).toFixed(1)}" width="${Math.max(1, bw - 1).toFixed(1)}" height="${(H * v / max).toFixed(1)}" fill="${color}"><title>${pts} pts · ${esc(PyramidForecastView.pct(v))}</title></rect>`).join('');
+      let atLeast = 1;
+      const chips = p.spread.map(([pts, v]) => { const c = `<span>${pts}: ${P(v)} <small style="opacity:0.65;">≥${P(atLeast)}</small></span>`; atLeast -= v; return c; }).join('');
+      return `<tr><td>${p.pos}</td><td><b>${p.p50}</b></td><td>${p.p10}–${p.p90}</td>
+        <td style="text-align:left; white-space:normal;"><details><summary style="list-style:none; cursor:pointer;"><svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="vertical-align:middle;">${bars}</svg></summary>
+          <div class="fc-scores" style="margin:4px 0 6px;">${chips}</div></details></td></tr>`;
+    }).join('');
+    return `<div class="fc-note" style="margin-top:8px; font-weight:700; opacity:0.9;">${esc(this._copy('fc_places', { from: lo, to: hi }))}</div>
+      <div style="overflow-x:auto;"><table class="fc-table" style="max-width:560px;">
+        <thead><tr><th>#</th><th>${esc(this._copy('fc_places_likely'))}</th><th>${esc(this._copy('fc_places_range'))}</th><th style="text-align:left;">${esc(this._copy('fc_places_spread'))}</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
   }
 
   // Remaining games: the league's dated ones first, then the meetings it
@@ -253,6 +300,7 @@ class PyramidForecastView {
         <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div>
       </div>
       ${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}
+      ${hasDown ? this._targetHtml(t) : ''}
       <div class="fc-note">${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))} · ${t.w}-${t.d}-${t.l}, ${t.gf}:${t.ga}</div>
       <h3>${esc(this._copy('fc_finish'))}</h3>
       <div class="fc-bars">${bars}</div>
