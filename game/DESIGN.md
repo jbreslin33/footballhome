@@ -10164,3 +10164,36 @@ mate / theirs / out; next touch by where struck). `physics.onball.clear_on` 0 = 
 in-play minute are already about real (pass excess 1.12×). Next: why the ball stays in play — throw-ins 34-37
 a team-match (19.9) yet their dead spells are short (median 10 s v 13.8), corners 1.6-2.2 (3.2), free kicks
 6-8 (10.5) — and the passes back to the centre-backs. Tests 22/22, goldens unchanged, no migration.
+
+### 8.244 G5.140 — the ball is dead as long as a real match's out of play too (shipped)
+
+From §8.243's next: the ball in play 63-64% of 90 minutes (DFL 55.2% of 95.5) while passes per in-play minute were
+already about real. New harness DEAD TIME: seconds dead a team-match by the restart that ends it, its p25 / p75,
+and minutes in play a match, against `benchmarks_tracking_dead.py` (DFL: 52.7 of 95.5 min in play; 1,284 s dead a
+team-match — throw-ins 312, goal kicks 194, corners 109, free kicks 363, kick-offs 55, penalties 26, other 225:
+injuries, subs, drop balls, VAR, which the game never stops for).
+
+Ours (3 seeds × 8, after §8.243): 976-998 s dead, 56.7-57.4 min in play. Throw-ins 365-400 s, goal kicks 208-230,
+corners 39-53, free kicks 184-217, kick-offs 133-151. The out-of-play restarts were near-constant: throw-in p25 /
+p75 9.9 / 11.3 s (DFL 8.1 / 19.2), goal kick 21.8 / 22.1 (17.1 / 30.5), corner 23.2 / 25 (28.4 / 35.6) — the
+officials' `official.restart.*_s` rows are the *earliest* a restart may be taken (about the lower quartile), so
+every one went at about the fastest real time.
+
+**Change (World::ballOut).** As §8.126 did for free kicks: the restart may be taken after a roll between
+`physics.restart.<throw_in|goal_kick|corner>_dead_p25_s` and `_p75_s` from the ball going out. DFL's quartiles
+less the taker's own walk to the ball after it, fitted so the dead time *as played* lands on DFL: 5.7-16.8 /
+15.8-29.2 / 26.9-34.1 s. (The raw quartiles gave medians 16.2 / 24.5 / 34-35 s and passes 430-438 — on the total
+only because every kind ran long.) p75 0 = the officials' earliest, as before.
+
+3 seeds × 8, before → after:
+- Medians, as played: throw-in 10.0 → 13.3-14.0 s (13.8); goal kick 22.1 → 22.2-23.1 (23.2); corner 23.2 → 32.2-34.3
+  (32.8). Spread: throw-in p25 / p75 10.6-10.9 / 16.0-16.6 (8.1 / 19.2).
+- Dead 976-998 → 1,054-1,105 s a team-match (1,284 with 'other'); in play 56.7-57.4 → 53.2-54.8 min a match (52.7).
+- **Passes 476-484 → 453-466 a team-match (434)**; completion 81.0-81.6% (79.1); passes to our centre-backs in our
+  half 71-77 → 67-72 (35.5); from 70+ centre 92.6 → 83.5 (71.3).
+- Goals and shots within noise.
+
+**Still off:** throw-ins 32-35 a team-match (19.9) — too many balls over the touchline, 440-470 s dead (312);
+fouls 6-8 (12.5) — free kicks 160-215 s (363); 'other' stoppages (225 s) not modelled. The first two roughly
+cancel the third in the total. Next: why ours put it out over the touchline so often, then the fouls. Tests
+22/22, goldens unchanged, no migration.

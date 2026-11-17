@@ -1217,6 +1217,7 @@ void World::tickBallOut(std::vector<MatchEvent>& events) {
     MatchEventType type = MatchEventType::ThrowIn;
     std::uint8_t award = other;
     std::uint32_t ready = officials_.readyTicksThrow();
+    int okind = 0;   // §8.244: 0 throw-in, 1 goal kick, 2 corner
     if (out_end_line_) {
         const Fixed64 end = out_crossed_.x.raw > 0 ? Fixed64::one() : -Fixed64::one();
         const Fixed64 ys = out_crossed_.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
@@ -1226,6 +1227,7 @@ void World::tickBallOut(std::vector<MatchEvent>& events) {
             type = MatchEventType::Corner;
             award = defenders ^ 1;
             ready = officials_.readyTicksCorner();
+            okind = 2;
             const Fixed64 in = Fixed64::fromFraction(1, 2);
             spot = Vec3{end * (half_x_ - in), ys * (half_y_ - in), Fixed64::zero()};
         } else {
@@ -1234,6 +1236,7 @@ void World::tickBallOut(std::vector<MatchEvent>& events) {
             type = MatchEventType::GoalKick;
             award = defenders;
             ready = officials_.readyTicksGoalKick();
+            okind = 1;
             spot = Vec3{end * (half_x_ - Fixed64::fromInt(5)), ys * Fixed64::fromInt(6), Fixed64::zero()};
         }
     } else {
@@ -1241,6 +1244,7 @@ void World::tickBallOut(std::vector<MatchEvent>& events) {
         const Fixed64 ys = out_crossed_.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
         spot = Vec3{out_crossed_.x, ys * half_y_, Fixed64::zero()};
     }
+    if (out_dead_hi_[okind].raw > 0) ready = deadRoll(out_dead_lo_[okind], out_dead_hi_[okind], static_cast<std::uint8_t>(award + 2 * okind));   // §8.244
     setRestart(type, award, spot, events);
     restart_ready_tick_ = out_tick_ + ready;
     out_stage_ = 2;
@@ -1319,6 +1323,17 @@ void World::configureFouls(const ModelParams& p) {
     fk_dead_hi_ = p.fixed("physics.restart.free_kick_dead_p75_s", 43000);
     ko_dead_lo_ = p.fixed("physics.restart.goal_kickoff_dead_p25_s", 35700);
     ko_dead_hi_ = p.fixed("physics.restart.goal_kickoff_dead_p75_s", 76100);
+    // G5.140 (§8.244): out of play the same way — the restart may be taken after a roll from the ball
+    // going out, not the officials' earliest (8.4 / 21.8 / 21.2 s, about the lower quartile, so every
+    // one went at about the fastest real time). DFL dead time p25-p75 (throw-in 8.1-19.2 s, goal kick
+    // 17.1-30.5, corner 28.4-35.6) less the taker's own 1.3-2.4 s to the ball after it (fitted, 3 seeds
+    // x 8: as played the medians land on DFL's 13.8 / 23.2 / 32.8). A p75 of 0 = the officials' earliest.
+    static const char* kOut[3] = {"throw_in", "goal_kick", "corner"};
+    static const int kOutLo[3] = {5700, 15800, 26900}, kOutHi[3] = {16800, 29200, 34100};
+    for (int i = 0; i < 3; ++i) {
+        out_dead_lo_[i] = p.fixed(std::string("physics.restart.") + kOut[i] + "_dead_p25_s", kOutLo[i]);
+        out_dead_hi_[i] = p.fixed(std::string("physics.restart.") + kOut[i] + "_dead_p75_s", kOutHi[i]);
+    }
 }
 
 std::uint32_t World::deadRoll(Fixed64 lo, Fixed64 hi, std::uint8_t salt) const {

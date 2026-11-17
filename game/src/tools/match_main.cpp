@@ -2553,6 +2553,18 @@ int main(int argc, char** argv) {
             std::printf(" %s %.1f / %.1f (%s);", kn[i], S.dead_n[i] / tm, v[v.size() / 2], rl[i]);
         }
         std::printf("\n");
+        {   // §8.244 DEAD TIME: seconds dead a team-match by the restart that ends it; real DFL (benchmarks_tracking_dead.py:
+            // 52.7 of 95.5 min in play, shares of the dead time x 1284 s a team-match)
+            static const int ord[7] = {2, 3, 4, 12, 5, 13, 10};
+            static const double rs[14] = {0, 0, 312, 194, 109, 55, 0, 0, 0, 0, 0, 0, 363, 26};
+            double tot = 0; for (int i = 0; i < 14; ++i) for (double x : S.dead_s[i]) tot += x;
+            std::printf("   DEAD TIME a team-match, s (real DFL; plus 225 s 'other' — injuries, subs, drop balls — we don't stop for): total %.0f (1284) | in play %.1f min a match (52.7 of 95.5) |",
+                        tot / tm, S.tick_live / 30.0 / 60.0 / static_cast<double>(matches));
+            for (int i : ord) { if (!S.dead_n[i]) continue; double t = 0; for (double x : S.dead_s[i]) t += x;
+                auto v = S.dead_s[i]; std::sort(v.begin(), v.end());
+                std::printf(" %s %.0f (%.0f) p25/p75 %.1f/%.1f;", kn[i], t / tm, rs[i], v[v.size() / 4], v[3 * v.size() / 4]); }
+            std::printf("\n");
+        }
         for (int g = 0; g < 2; ++g) {   // what put it over the byline: the last kick's why, or carried out
             std::printf("   %s by what put it out (a team-match; StatsBomb PL 15/16 %s):", g ? "corners" : "goal kicks",
                         g ? "5.4: clearance 1.38, block 1.34, shot 0.92, keeper save 0.60, dispossessed 0.43, dribble 0.23"

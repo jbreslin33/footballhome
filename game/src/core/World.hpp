@@ -430,7 +430,7 @@ private:
                                        math::Fixed64::fromFraction(13, 100), math::Fixed64::fromFraction(9, 100), math::Fixed64::fromFraction(5, 100),
                                        math::Fixed64::fromFraction(2, 100), math::Fixed64::fromFraction(7, 100)};
     math::Fixed64 hold_under1_, hold_under2_, hold_under4_, hold_press_m_, cut_share_, carry_share_, stretch_m_;
-    math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{};
+    math::Fixed64 foul_p_[3]{}, foul_adv_{}, fk_dead_lo_{}, fk_dead_hi_{}, ko_dead_lo_{}, ko_dead_hi_{}, out_dead_lo_[3]{}, out_dead_hi_[3]{};
     std::uint32_t fouls_[2] = {0, 0};
     std::uint32_t deadRoll(math::Fixed64 lo, math::Fixed64 hi, std::uint8_t salt) const;
     math::Fixed64 cut_share_box_{}, box_reach_m_{};   // G5.11: their pass in our box, the share we take
