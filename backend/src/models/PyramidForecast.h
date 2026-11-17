@@ -41,5 +41,9 @@
 // ────────────────────────────────────────────────────────────────────────────
 class PyramidForecast {
 public:
-    static nlohmann::json build(int conferenceId);
+    // What if (owner 11/17 "add a slider to set our strength on the page"):
+    // teamId > 0 plays the season with that team's strength (attack ÷
+    // defence) set to `rating`, the split between attack and defence kept;
+    // never cached.
+    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0);
 };

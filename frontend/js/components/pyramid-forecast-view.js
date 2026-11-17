@@ -109,7 +109,9 @@ class PyramidForecastView {
     if (!d) return `<div class="loading">Loading…</div>`;
     if (d.error) return `<div class="error">${this._esc(d.error)}</div>`;
     if (!d.games || !d.games.length) return `<div class="fc-none">${this._esc(this._copy('fc_none'))}</div>`;
-    return this.team ? this._teamHtml(d, this.team) : this._leagueHtml(d);
+    if (!this.team) return this._leagueHtml(d);
+    const w = this.whatIf && this.whatIf.team === this.team && this.whatIf.conf === this.conf ? this.whatIf : null;
+    return this._teamHtml(w && w.data ? w.data : d, this.team, d);
   }
 
   _teamsById(d) {
@@ -188,6 +190,63 @@ class PyramidForecastView {
         </div>
         <div class="fc-scores" title="${esc(this._copy('fc_scores'))}">${top}</div>
       </div>`;
+  }
+
+  // 🎚 What if (owner 11/17 "add a slider to set our strength on the
+  // page"): the team's strength (attack ÷ defence, 1.00 = average) on a log
+  // scale from the weakest side to the strongest, the other teams marked;
+  // let go → the whole season replayed with that strength (server side,
+  // ?team=&rating=).  Reset = the strength its results give.
+  _sliderRange(base) {
+    const r = base.divisions.flatMap((dv) => dv.teams.map((t) => t.rating)).filter((x) => x > 0);
+    return { lo: Math.min(...r) * 0.8, hi: Math.max(...r) * 1.1 };
+  }
+  _toSlider(base, v) { const { lo, hi } = this._sliderRange(base); return Math.round(1000 * Math.log(v / lo) / Math.log(hi / lo)); }
+  _fromSlider(base, s) { const { lo, hi } = this._sliderRange(base); return lo * Math.pow(hi / lo, s / 1000); }
+  _nearestTeam(base, v, id) {
+    let best = null;
+    for (const dv of base.divisions) for (const t of dv.teams) if (t.id !== id && (!best || Math.abs(Math.log(t.rating / v)) < Math.abs(Math.log(best.rating / v)))) best = t;
+    return best;
+  }
+  _sliderLabel(base, v, id) {
+    const n = this._nearestTeam(base, v, id);
+    return this._copy('fc_slider_value', { rating: v.toFixed(2), team: n ? n.name : '', team_rating: n ? n.rating.toFixed(2) : '' });
+  }
+  _sliderHtml(base, id) {
+    const esc = (x) => this._esc(x);
+    const t0 = this._teamsById(base).get(id);
+    if (!t0) return '';
+    const w = this.whatIf && this.whatIf.team === id && this.whatIf.conf === this.conf ? this.whatIf : null;
+    const v = w ? w.rating : t0.rating;
+    const ticks = base.divisions.flatMap((dv) => dv.teams).filter((t) => t.id !== id)
+      .map((t) => `<option value="${this._toSlider(base, t.rating)}" label="${esc(t.name)}"></option>`).join('');
+    const status = w && w.loading ? this._copy('fc_slider_busy') : w && w.error ? w.error : w ? this._copy('fc_slider_on', { base: t0.rating.toFixed(2) }) : this._copy('fc_slider_off');
+    return `<div style="margin:8px 0; padding:8px 12px; border-radius:10px; border:1px solid #38bdf8; background:rgba(56,189,248,0.08);">
+        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800;">
+          <span>🎚 ${esc(this._copy('fc_slider'))}</span>
+          ${w ? `<button class="ap-pill" data-fc-reset style="padding:1px 10px; font-size:0.75rem;">${esc(this._copy('fc_slider_reset'))}</button>` : ''}
+        </div>
+        <input type="range" min="0" max="1000" step="1" value="${this._toSlider(base, v)}" data-fc-slider="${id}" list="fc-ticks" style="width:100%; margin:6px 0 2px;">
+        <datalist id="fc-ticks">${ticks}</datalist>
+        <div data-fc-slider-label style="font-size:0.8rem;">${esc(this._sliderLabel(base, v, id))}</div>
+        <div style="font-size:0.72rem; opacity:0.75; margin-top:2px;">${esc(status)}</div>
+      </div>`;
+  }
+  async _runWhatIf(id, rating) {
+    const conf = this.conf;
+    this.whatIf = { team: id, conf, rating, loading: true, data: this.whatIf && this.whatIf.team === id ? this.whatIf.data : null };
+    this._repaint();
+    const seq = (this._wiSeq = (this._wiSeq || 0) + 1);
+    try {
+      const r = await fetch(`/api/pyramid/forecast?conference=${encodeURIComponent(conf)}&team=${encodeURIComponent(id)}&rating=${encodeURIComponent(rating.toFixed(3))}`);
+      const j = await r.json().catch(() => ({}));
+      if (seq !== this._wiSeq) return;
+      this.whatIf = r.ok ? { team: id, conf, rating, data: j } : { team: id, conf, rating, error: j.error || `HTTP ${r.status}` };
+    } catch (e) {
+      if (seq !== this._wiSeq) return;
+      this.whatIf = { team: id, conf, rating, error: e.message };
+    }
+    this._repaint();
   }
 
   // ⭐ Target (owner 11/17: 6th = "totally safe" … "that is our north
@@ -270,7 +329,8 @@ class PyramidForecastView {
         <tbody>${rows}</tbody></table></div>`;
   }
 
-  _teamHtml(d, id) {
+  _teamHtml(d, id, base) {
+    base = base || d;
     const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), Pt = PyramidForecastView.pct;
     const t = this._teamsById(d).get(id);
     if (!t) { this.team = null; return this._leagueHtml(d); }
@@ -300,6 +360,7 @@ class PyramidForecastView {
         <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div>
       </div>
       ${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}
+      ${this._sliderHtml(base, id)}
       ${hasDown ? this._targetHtml(t) : ''}
       <div class="fc-note">${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))} · ${t.w}-${t.d}-${t.l}, ${t.gf}:${t.ga}</div>
       <h3>${esc(this._copy('fc_finish'))}</h3>
@@ -347,15 +408,31 @@ class PyramidForecastView {
       if (t) { this.team = Number(t.dataset.fcTeam) || null; this._repaint(); root.scrollIntoView({ block: 'start' }); return; }
       const fl = e.target.closest('[data-fc-filter]');
       if (fl) { this.filter = fl.dataset.fcFilter; this._repaint(); return; }
+      if (e.target.closest('[data-fc-reset]')) { this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1; this._repaint(); return; }
       if (e.target.closest('[data-fc-back]')) { this.team = null; this._repaint(); }
     };
     root.addEventListener('click', this._onClick);
+    // the slider: the label follows the thumb; letting go replays the season
+    this._onInput = (e) => {
+      const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
+      const base = this.data.get(this.conf); if (!base) return;
+      const lab = root.querySelector('[data-fc-slider-label]');
+      if (lab) lab.textContent = this._sliderLabel(base, this._fromSlider(base, Number(sl.value)), Number(sl.dataset.fcSlider));
+    };
+    this._onChange = (e) => {
+      const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
+      const base = this.data.get(this.conf); if (!base) return;
+      this._runWhatIf(Number(sl.dataset.fcSlider), this._fromSlider(base, Number(sl.value)));
+    };
+    root.addEventListener('input', this._onInput);
+    root.addEventListener('change', this._onChange);
     this._root = root;
     this._load(this.conf);
   }
 
   unmount() {
     if (this._root && this._onClick) this._root.removeEventListener('click', this._onClick);
+    if (this._root && this._onInput) { this._root.removeEventListener('input', this._onInput); this._root.removeEventListener('change', this._onChange); }
     this._root = null;
   }
 }

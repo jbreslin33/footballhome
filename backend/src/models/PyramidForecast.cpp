@@ -46,7 +46,8 @@ std::mutex gMutex;
 std::map<int, Cached> gCache;
 }  // namespace
 
-json PyramidForecast::build(int conferenceId) {
+json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRating) {
+    const bool whatIf = whatIfTeam > 0 && whatIfRating > 0;
     auto* db = Database::getInstance();
     const std::string cid = std::to_string(conferenceId);
 
@@ -79,7 +80,7 @@ json PyramidForecast::build(int conferenceId) {
         "SELECT COALESCE(max(last_seen_at)::text, '') || ':' || count(*) AS s FROM pyramid_games "
         " WHERE source_id = $1::int AND division_ext = ANY(string_to_array($2, ','))", {std::to_string(sourceId), extList});
     const std::string stamp = stampRow.empty() ? "" : str(stampRow[0], "s");
-    {
+    if (!whatIf) {
         std::lock_guard<std::mutex> lock(gMutex);
         auto it = gCache.find(conferenceId);
         if (it != gCache.end() && it->second.stamp == stamp
@@ -189,6 +190,16 @@ json PyramidForecast::build(int conferenceId) {
                 moved = std::max(moved, std::fabs(v - slot)); slot = v;
             }
         if (moved < 1e-6) break;
+    }
+    // What if: that team's strength moved to the slider's, split evenly
+    // between attack (×√k) and defence (÷√k).
+    json whatIfOut = nullptr;
+    if (whatIf) {
+        for (auto& t : teams) if (t.id == whatIfTeam) {
+            const double r0 = t.att / t.def, k = std::sqrt(std::max(0.05, std::min(20.0, whatIfRating)) / r0);
+            whatIfOut = {{"team", t.id}, {"rating", r2(whatIfRating)}, {"base_rating", r2(r0)}, {"base_att", r2(t.att)}, {"base_def", r2(t.def)}};
+            t.att *= k; t.def /= k;
+        }
     }
     auto lam = [&](int h, int a, bool neutral) {
         const double e = neutral ? 1.0 : home;
@@ -386,6 +397,7 @@ json PyramidForecast::build(int conferenceId) {
     out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}};
     out["policy"] = {{"paired", paired}, {"feeder", feeder.empty() ? json(nullptr) : json(feeder)}, {"feeder_stay_up_pct", feederPct}};
     out["tiebreak"] = tiebreak;
+    if (whatIf) { out["what_if"] = whatIfOut; return out; }
     {
         std::lock_guard<std::mutex> lock(gMutex);
         gCache[conferenceId] = {stamp, std::chrono::steady_clock::now(), out};
