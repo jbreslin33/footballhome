@@ -240,7 +240,7 @@ class RostersScreen extends Screen {
     let boardView = 'roster';
     try { boardView = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
     const viewCopy = (tier, fallback) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || fallback;
-    const litSort = (this.teamsSort === 'official' && boardView !== 'roster') ? 'alpha' : (this.teamsSort || this._defaultSort());
+    const litSort = this.teamsSort || this._defaultSort();
     this._teamsFilterBar.setRows([
       {
         name:     'teams-view',
@@ -255,7 +255,6 @@ class RostersScreen extends Screen {
           for (const child of this._mountedChildren) {
             if (child && typeof child.setBoardView === 'function') child.setBoardView(id);
           }
-          // 🌐 Official order is a Roster-pill sort: redraw the sort row.
           this._buildTeamsPills();
         },
       },
@@ -309,8 +308,8 @@ class RostersScreen extends Screen {
         // Card order inside every team column (owner 2026-09-17).  Last
         // name is the default; Rank is the coach's order and the only
         // mode where cards can be dragged / re-slotted.
-        // 💰 Paid status (owner 2026-11-11) on both pills; 🌐 Official order
-        // = the league website's list order, Roster pill only.
+        // 💰 Paid status (owner 2026-11-11) and 🌐 Official order (the
+        // league website's list order; Team pill too since 11/17) on both.
         // Tap the lit pill again to flip it (owner 11/17 "it needs to sort
         // asc or desc"); the lit pill wears ↑ / ↓.
         name:     'teams-sort',
@@ -318,7 +317,7 @@ class RostersScreen extends Screen {
           { id: 'alpha', label: viewCopy('board_sort_alpha', 'A–Z last name') },
           { id: 'rank',  label: viewCopy('board_sort_rank', 'Rank') },
           { id: 'paid',  label: viewCopy('board_sort_paid', '💰 Paid status') },
-          ...(boardView === 'roster' ? [{ id: 'official', label: viewCopy('board_sort_official', '🌐 Official order') }] : []),
+          { id: 'official', label: viewCopy('board_sort_official', '🌐 Official order') },
           { id: 'rsvp',       label: viewCopy('board_sort_rsvp', '📝 RSVP') },
           { id: 'attendance', label: viewCopy('board_sort_attendance', '📊 Attendance') },
           { id: 'trials',     label: viewCopy('board_sort_trials', '🧪 Trials') },

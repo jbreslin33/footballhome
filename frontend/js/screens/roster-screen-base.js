@@ -1017,7 +1017,7 @@ class RosterScreenBase extends Screen {
           : (copy('board_official_off_team') || 'not on this team in Football Home'));
       }).map(r => (typeof r === 'string' ? { card: null, html: r } : r));
       rows = this.sortOrder === 'official'
-        ? rowHtml.map(r => r.html).join('')
+        ? (this._sortDesc ? [...rowHtml].reverse() : rowHtml).map(r => r.html).join('')
         : ordered([...cardHtml.keys()]).map(p => cardHtml.get(p)).join('')
           + rowHtml.filter(r => !r.card).map(r => r.html).join('');
       officialCount = official.names.length;
@@ -2162,9 +2162,9 @@ class RosterScreenBase extends Screen {
     let missing = () => false;
     if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
       missing = (r) => this.selectionParts(r.player)[order] == null;
-    } else if (order === 'official' && this.boardView === 'roster' && col && col.teamId && this.leagueListFor(col.teamId)) {
-      const ids = new Set(this.leagueListFor(col.teamId).personIds.filter(x => x != null).map(Number));
-      missing = (r) => !ids.has(Number(r.player.personId));
+    } else if (order === 'official' && this.officialPositions(col)) {
+      const pos = this.officialPositions(col);
+      missing = (r) => !pos.has(Number(r.player.personId));
     }
     const have = out.filter(r => !missing(r));
     return [...have.reverse(), ...out.filter(missing)];
@@ -2177,8 +2177,33 @@ class RosterScreenBase extends Screen {
   //            A–Z inside each (owner 2026-11-11 "allow for sort by paid status")
   //   official the league website's own order (official_roster_names.sort_order,
   //            the 🌐 mirror — owner: "official order … right from website of
-  //            league"); players not on the list follow, A–Z.  Roster pill
-  //            only — on the Team pill it reads as A–Z.
+  //            league"); players not on the list follow, A–Z.  Both pills
+  //            (officialPositions); a column with no list reads as A–Z.
+  // 🌐 Official order: personId → place on the column's league list(s),
+  // exactly as the league website lists them.  Team pill (owner 11/17
+  // "add sort by official roster … on teams page"): the column's own list,
+  // then each folded team's (APSL Active, then Reserve).  null = no list.
+  officialPositions(col) {
+    if (!col || !col.teamId) return null;
+    const cols = (this._data && this._data.columns) || [];
+    const ids = [Number(col.teamId)];
+    if (this.boardView === 'team') {
+      cols.filter(x => Number(x.teamPillFoldInto) === Number(col.teamId))
+        .sort((a, b) => Number(a.sortOrder) - Number(b.sortOrder))
+        .forEach(x => ids.push(Number(x.teamId)));
+    }
+    const pos = new Map();
+    let base = 0, any = false;
+    for (const tid of ids) {
+      const list = this.leagueListFor(tid);
+      if (!list) continue;
+      any = true;
+      list.personIds.forEach((id, i) => { if (id != null && !pos.has(Number(id))) pos.set(Number(id), base + i); });
+      base += list.personIds.length;
+    }
+    return any ? pos : null;
+  }
+
   _orderColumnPlayersFirstTap(players, col) {
     const ranked = (players || []).map((player, i) => ({ player, rank: i + 1 }));
     const order = this.sortOrder;
@@ -2219,11 +2244,9 @@ class RosterScreenBase extends Screen {
         return (vb - va) || (size(b) - size(a)) || alpha(a, b);
       });
     }
-    if (order === 'official' && this.boardView === 'roster' && col && col.teamId) {
-      const list = this.leagueListFor(col.teamId);
-      if (list) {
-        const pos = new Map();
-        list.personIds.forEach((id, i) => { if (id != null && !pos.has(Number(id))) pos.set(Number(id), i); });
+    if (order === 'official') {
+      const pos = this.officialPositions(col);
+      if (pos) {
         const at = (r) => { const v = pos.get(Number(r.player.personId)); return v == null ? 1e9 : v; };
         return ranked.sort((a, b) => (at(a) - at(b)) || alpha(a, b));
       }
