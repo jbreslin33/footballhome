@@ -77,7 +77,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_), hold_walk_m_(o.hold_walk_m_), hold_walk_mps_(o.hold_walk_mps_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_), hold_walk_m_(o.hold_walk_m_), hold_walk_mps_(o.hold_walk_mps_), hold_walk_far_m_(o.hold_walk_far_m_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -127,8 +127,9 @@ void Brain::setModelParams(const core::ModelParams& p) {
     run_tgap_ = p.fixed("physics.run.line_spot_m", 4000);   // his spot on or within this of the line
     run_tau_ = p.fixed("physics.run.line_tau_s", 400);
     shift_fwd_max_ = p.fixed("physics.body.shift_fwd_max_mps", 3800);   // G5.95 (§8.196): our ball, forward, not a line run — the build-up jog (0 = shape_max)
-    hold_walk_m_ = p.fixed("physics.body.hold_walk_m", 0);
+    hold_walk_m_ = p.fixed("physics.body.hold_walk_m", 200000);   // G5.138 (§8.242): shipped as "walk anywhere past hold_walk_far_m" (200 m = the whole pitch)
     hold_walk_mps_ = p.fixed("physics.body.hold_walk_mps", 1500);
+    hold_walk_far_m_ = p.fixed("physics.body.hold_walk_far_m", 15000);   // G5.138 (§8.242): only this far from the ball (0 = any distance)
     fwd_back_max_ = p.fixed("physics.body.fwd_back_max_mps", 3500);   // G5.96 (§8.197): forwards back toward our goal, holding, in danger too (0 = defend_max)
     carry_keep_ = p.fixed("physics.onball.carry_keep", 1000).raw > 0;   // G5.127 (§8.228): 0 = he walks at the man he'll pass to, as before
     fwd_back_roles_ = p.integer("physics.body.fwd_back_roles", 56);   // bit per Role CB FB DM AM WIDE ST; 56 = AM WIDE ST
@@ -891,7 +892,12 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team
                                   : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
         const Fixed64 sgw = team == 0 ? Fixed64::one() : -Fixed64::one();
-        if (ours && b.vel.x * sgw < poss_.params().run_ball_fwd && !lineRun(slot, world, o)) {
+        // G5.138 (§8.242): real men walk more the further they are from the ball (DFL: walking 26% of
+        // frames within 10 m of the man on it, 42% beyond 30 m; 4+ m/s 22% → 8.5%). Walking everywhere,
+        // our receivers took it under 2 m/s 71% of the time (real 45) and the side passed short and safe.
+        const bool far = hold_walk_far_m_.raw == 0 ||
+            math::lengthSquared(Vec2{b.pos.x - me.pos.x, b.pos.y - me.pos.y}) >= hold_walk_far_m_ * hold_walk_far_m_;
+        if (far && ours && b.vel.x * sgw < poss_.params().run_ball_fwd && !lineRun(slot, world, o)) {
             walk_cap = hold_walk_mps_;
             if (dist > hold_walk_m_ && shape_tau_ours_.raw > 0) walk_cap = walk_cap + (dist - hold_walk_m_) / shape_tau_ours_;
             if (walk_cap < v_ok) v_ok = walk_cap;

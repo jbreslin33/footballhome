@@ -72,6 +72,8 @@ def one(pos_path):
             v = math.hypot(x - fb[pid][0], y - fb[pid][1]) / 0.2
             c[("ob", 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1
             c[("obr", ROLE.get(pos_of.get(pid), -1), 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1   # §8.238 by role
+            dc = math.hypot(x - fr[car][0], y - fr[car][1])   # §8.242 by his distance to the man on the ball
+            c[("obd", 0 if dc < 10 else 1 if dc < 20 else 2 if dc < 30 else 3, 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1
             if car in fb:   # §8.238 by the man on the ball's 0.2 s speed (<1 / 1-3 / 3+ m/s)
                 cv = math.hypot(fr[car][0] - fb[car][0], fr[car][1] - fb[car][1]) / 0.2
                 c[("obc", 0 if cv < 1 else 1 if cv < 3 else 2, 0 if v < 1 else 1 if v < 2 else 2 if v < 4 else 3)] += 1
@@ -169,6 +171,7 @@ if __name__ == "__main__":
     print("  PICK BY PACE (§8.237): mates at the release <1 / 1-2 / 2-4 / 4+ m/s %: " + " / ".join(f"{100*c[('pa', q)]/pat:.1f}" for q in range(4)) + " | the receiver %: " + " / ".join(f"{100*c[('pp', q)]/ppt:.1f}" for q in range(4)) + " | lift: " + " / ".join(f"{(c[('pp', q)]/ppt)/max(1e-9, c[('pa', q)]/pat):.2f}" for q in range(4)))
     print("  THROUGH THE FLIGHT (§8.237): his m/s (under 1 %) at 0 / 25 / 50 / 75 / 100% of it — " + "; ".join(f"{lab2} " + " ".join(f"{c[('fl', ib, q)]/max(1,c[('fl_n', ib)]):.2f} ({100*c[('fl_s', ib, q)]/max(1,c[('fl_n', ib)]):.0f})" for q in range(5)) for ib, lab2 in enumerate(["in <1", "in 1-4", "in 4+"])))
     print("  OFF THE BALL by the carrier's pace (§8.238), % <1 / 1-2 / 2-4 / 4+ m/s: " + "; ".join(f"carrier {lab} ({100*sum(c[('obc', b, z)] for z in range(4))/max(1, sum(c[('obc', bb, z)] for bb in range(3) for z in range(4))):.0f}% of frames) " + " / ".join(f"{100*c[('obc', b, q)]/max(1, sum(c[('obc', b, z)] for z in range(4))):.1f}" for q in range(4)) for b, lab in enumerate(["<1", "1-3", "3+"])))
+    print("  OFF THE BALL by distance to the man on the ball (§8.242), % <1 / 1-2 / 2-4 / 4+ m/s: " + "; ".join(f"{lab} m ({100*sum(c[('obd', b, z)] for z in range(4))/max(1, sum(c[('obd', bb, z)] for bb in range(4) for z in range(4))):.0f}% of frames) " + " / ".join(f"{100*c[('obd', b, q)]/max(1, sum(c[('obd', b, z)] for z in range(4))):.1f}" for q in range(4)) for b, lab in enumerate(["0-10", "10-20", "20-30", "30+"])))
     print("  OFF THE BALL by role (§8.238), % <1 / 1-2 / 2-4 / 4+ m/s: " + "; ".join(f"{NAMES[r]} " + " / ".join(f"{100*c[('obr', r, q)]/max(1, sum(c[('obr', r, z)] for z in range(4))):.1f}" for q in range(4)) for r in range(6)))
     print("  THE RECEIVER AT THE RELEASE (§8.237): mean m/s, under 1 m/s %, away from the passer m/s — " + "; ".join(f"{lab2} {c[('rv', ib)]/max(1,c[('rv_n', ib)]):.2f}, {100*c[('rv_still', ib)]/max(1,c[('rv_n', ib)]):.0f}%, {c[('rv_away', ib)]/max(1,c[('rv_n', ib)]):+.2f}" for ib, lab2 in enumerate(["in <1", "in 1-4", "in 4+", "all"])))
     for b, lab in enumerate(["0.6-1.2", "1.2-2", "2-3", "3-5"]):

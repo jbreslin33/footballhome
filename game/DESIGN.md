@@ -10090,3 +10090,27 @@ The fourth time (with §8.233, §8.238's tau, §8.239) a slower body off the bal
 more, and more safely: the passing game was tuned on men who run. The walk is reachable; the passes it costs
 are the thing to understand first — which passes are added (length, who to, from a standing receiver) when
 the receivers walk. Defaults off; tests 22/22, goldens unchanged.
+
+### 8.242 G5.138 — the walk off the ball, by distance to the ball: shipped
+
+From §8.241's "which passes it adds". Walking everywhere, our receivers took the ball under 2 m/s 71% of the time
+(real 45, DFL) and the side passed short and safe: receipts in the middle third 44 → 54 a team-match (45), in
+their half's centre 59-64 → 78-81 (54). Real men don't walk everywhere — new in both `benchmarks_tracking_
+spellpace.py` and fh-game-match, OFF THE BALL by distance to the man on the ball (0-10 / 10-20 / 20-30 / 30+ m),
+% <1 / 1-2 / 2-4 / 4+ m/s:
+
+- Real: 14.0 / 25.6 / 38.2 / 22.1 | 12.2 / 29.4 / 41.2 / 17.2 | 12.7 / 34.4 / 39.5 / 13.4 | 14.6 / 41.7 / 35.2 / 8.5
+  — the walk grows and the run shrinks with distance: away from the ball men walk; near it they're the options.
+- Ours: 8.8 / 14.4 / 51.2 / 25.6 | 13.9 / 17.7 / 49.1 / 19.2 | 15.1 / 18.5 / 48.1 / 18.4 | 16.8 / 21.3 / 47.0 / 15.0.
+
+`physics.body.hold_walk_far_m` (15 m, shipped): §8.241's walk applies only that far or further from the ball;
+`hold_walk_m` shipped at 200 m (walk anywhere past it). Seeds 1000/2000/3000 × 8, off → on:
+
+- Off the ball 14.5 / 18.7 / 48.4 / 18.4 → 15.2-15.6 / 33.6-33.8 / 39.4-39.7 / 11.2-11.4 (13.4 / 34.6 / 38.4 / 13.6);
+  by distance 20-30 m 17 / 40 / 35 / 8, 30+ 17 / 41 / 34 / 7 — real. 10-20 m (15 m cut) 15 / 29 / 43 / 13 (real).
+- Passes received 199-204 → 206-220 (222); receivers under 2 m/s 56-59 → 58-59% (45); completed 80.0-80.3 → 80.0-80.8%
+  (79.1); passes 474-480 → 472-498 (434); take-ons and carries unchanged.
+
+Open: inside 10 m ours still barely walk (14% v 26) and run more (25 v 22); and passes were already ~10% over
+real before this — next is why our side passes so often. Tests 22/22, goldens unchanged (their short matches
+don't reach it).
