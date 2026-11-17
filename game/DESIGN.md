@@ -10464,3 +10464,31 @@ all kinds 5.9 / 8.9).
 **Still a third of the real duels.** Next: the start — the nearest to the drop is someone else's job until the
 contest picks him (hold shape / press 50-70% of the first second) — and our short chipped passes, which nobody
 contests because they drop on free men.
+
+### 8.257 G5.152 — a close race for their high ball is contested, not pressed (shipped)
+
+From §8.256's next (the nearest to the drop is someone else's job for the first second). New harness probe
+(`Brain::block()`; the §8.185 flight lines now print each 0.5 s bin's **block job** — contester / chaser /
+presser on their pass / none — for the defender who ends up nearest the drop). Midfield drops (35-70 m off the
+kicker's goal, seed 1000): in the first second he was the **presser on their pass** 41-42%, the contester only
+12-17%; 70+ m 55-56% presser. G5.99's `cut_margin_s` (1.0 s, §8.200): our first man goes for their pass only if he
+wins its race by that much, else he keeps his job and the presser steps to their man — **stand_off metres goal-side
+of where their man meets it** (2-8 m), at the press pace. The contest (§8.172) only took their high ball when their
+man was strictly first, so on every close race in the air our man ran to a spot a few metres short of the drop
+and waited: target 4.4-5.1 m off the drop through the first second, 2.3-2.6 m/s.
+
+**Change** [FH coaching: a 50-50 in the air is attacked, not shown]: on their high ball (z ≥ `contest_min_z_m`),
+the race the press branch takes — ours first by under `cut_margin` — is contested too (`physics.block.contest_close_race`,
+default on, no row). After: the same defender is the contester 59-62% from the launch, target 0.8-0.9 m off the
+drop, chasing from a median 0.20 s (1.40).
+
+3 seeds × 8 (before / after): **aerial duels 19.6 / 16.2 / 17.1 → 27.5 / 34.2 / 34.0 a match (44.1)**; lone headers
+37-40 → 40-44; midfield drops both within 2 m 23-25 → 33-36% (39.3), theirs within 2 m 36-39 → 47-49% (56.8), the
+other side touches it within 3 s 50-53 → 56-60% (71.6), their nearest median 2.3-2.4 → 2.0-2.1 m (1.6); 0-35 m both
+within 2 m 15-19 → 22-23% (36.4); 70+ m unmoved (24-32, real 43). REWIN 109-120 → 117-119 a team-match (148.4).
+Shots, goals, fouls, ball in play, FREE BALL tempo unchanged within noise. Goldens unchanged (the golden rigs run the
+code default `cut_margin` 0, so the branch never fires there). Tests 22/22, lint clean, no migration.
+
+**Still 0.7× the real duels.** Next: the 70+ m drop (their long ball into our third) — our contester gets to 2.6-2.9 m
+and slows (3.4-4.5 m/s in the last second); and the 20-30% of midfield drops where the nearest at the drop still
+holds shape because the contest picked a man nearer to where their man meets it, not to the drop.

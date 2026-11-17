@@ -82,6 +82,7 @@ public:
     using FlightRead = Reads::FlightRead;
     const FlightRead& flightRead(const core::World& world) const { return reads_.flightRead(world); }
     const Reads& reads() const { return reads_; }
+    const DefendingBlock& block() const { return block_; }   // harness probe: who chases / contests / presses (§8.257)
     int restartTaker(const core::World& world, std::uint8_t team) const;
     // Harness probe: the target his state gave him this tick.
     math::Vec2 debugAnchor(core::SlotIndex slot) const { return dbg_anchor_[slot & 31]; }

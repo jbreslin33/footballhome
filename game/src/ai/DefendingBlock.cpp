@@ -201,7 +201,8 @@ void BlockParams::configure(const core::ModelParams& p) {
     gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)
     gs_w = p.fixed("physics.block.gs_w", 10000);
     gs_m = p.fixed("physics.block.gs_m", 1000);
-    contest_min_z = p.fixed("physics.block.contest_min_z_m", 300);   // G5.151 (§8.256): from the launch, not head height (1.5)
+    contest_min_z = p.fixed("physics.block.contest_min_z_m", 300);
+    contest_close = p.fixed("physics.block.contest_close_race", 1000).raw > 0;   // G5.152 (§8.257): a close race for their high ball is contested, not pressed   // G5.151 (§8.256): from the launch, not head height (1.5)
     {   // G5.82 (§8.183): s -> ticks; negative = off
         const Fixed64 m = p.fixed("physics.block.their_pass_margin_s", 0);
         their_pass_margin = m.raw < 0 ? -1 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
@@ -270,7 +271,8 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         int& ct = contest_[team & 1];
         const int mine = fr.first[team];
         if (params_.contest_min_z.raw > 0 && world.lastTouchTeam() != team && ball.pos.z >= params_.contest_min_z &&
-            theirs >= 0 && fr.tick[theirs] >= 0 && (mine < 0 || fr.tick[mine] < 0 || fr.tick[theirs] < fr.tick[mine])) {
+            theirs >= 0 && fr.tick[theirs] >= 0 && (mine < 0 || fr.tick[mine] < 0 || fr.tick[theirs] < fr.tick[mine] ||
+                                                    (params_.contest_close && press_to >= 0))) {
             const Vec2 at = fr.at[theirs];
             const Vec3 at3{at.x, at.y, Fixed64::zero()};
             int best = -1; Fixed64 bd{};
