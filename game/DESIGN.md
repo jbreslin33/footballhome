@@ -10065,3 +10065,21 @@ cartoony. nhl 94 was more realistic"): a real body's proportions on a 22-row gri
 shadow right) inside a dark one-pixel outline, knees bending in profile, the lifted leg foreshortened facing us. The STYLE button (2D only; LEAVES' slot, which 2D hides) flips it live;
 `?style=circles|arcade`, else this device's last choice (`fh.game.style2d`), else circles. Pure dressing,
 no server change. Checked live: both styles, no console errors.
+
+### 8.241 G5.137 — the walk off the ball: a walk zone round the spot, trial, not shipped
+
+From §8.238's "the gap-closing law". `physics.body.hold_walk_m` (0 = off) / `hold_walk_mps` (1.5): with our
+ball not going forward (under run.ball_fwd), holding shape outside danger and not on a line run, inside
+hold_walk_m of his spot his pace is the walk; beyond it, walk + the excess gap / shape_tau_ours (the same cap
+on the leading spot's tracking). Seeds 1000/2000 × 8, off-ball % <1 / 1-2 / 2-4 / 4+ (real 13.4 / 34.6 /
+38.4 / 13.6; ours 14 / 19 / 49 / 18):
+
+- 3 m: 15 / 21 / 46 / 17, gap 8.6 m; passes 440-468 → 489-490 (434), completed 80.2-80.5% (79.1).
+- 6 m: 16 / 26 / 43 / 15, gap 8.7-8.9; passes 481-486, standing receivers 26-27 → 29-30% (17).
+- Everyone always walking (a units slip, "3000" read as 3 km): 18 / 40 / 34 / 8 — the walk band real — but
+  passes 509-521, completed 82%, standing 36-37%.
+
+The fourth time (with §8.233, §8.238's tau, §8.239) a slower body off the ball or on it has made the side pass
+more, and more safely: the passing game was tuned on men who run. The walk is reachable; the passes it costs
+are the thing to understand first — which passes are added (length, who to, from a standing receiver) when
+the receivers walk. Defaults off; tests 22/22, goldens unchanged.

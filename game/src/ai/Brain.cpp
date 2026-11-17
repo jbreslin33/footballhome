@@ -77,7 +77,7 @@ Brain::Brain(const Brain& o)
       think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
-      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_),
+      shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_), hold_walk_m_(o.hold_walk_m_), hold_walk_mps_(o.hold_walk_mps_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
@@ -127,6 +127,8 @@ void Brain::setModelParams(const core::ModelParams& p) {
     run_tgap_ = p.fixed("physics.run.line_spot_m", 4000);   // his spot on or within this of the line
     run_tau_ = p.fixed("physics.run.line_tau_s", 400);
     shift_fwd_max_ = p.fixed("physics.body.shift_fwd_max_mps", 3800);   // G5.95 (§8.196): our ball, forward, not a line run — the build-up jog (0 = shape_max)
+    hold_walk_m_ = p.fixed("physics.body.hold_walk_m", 0);
+    hold_walk_mps_ = p.fixed("physics.body.hold_walk_mps", 1500);
     fwd_back_max_ = p.fixed("physics.body.fwd_back_max_mps", 3500);   // G5.96 (§8.197): forwards back toward our goal, holding, in danger too (0 = defend_max)
     carry_keep_ = p.fixed("physics.onball.carry_keep", 1000).raw > 0;   // G5.127 (§8.228): 0 = he walks at the man he'll pass to, as before
     fwd_back_roles_ = p.integer("physics.body.fwd_back_roles", 56);   // bit per Role CB FB DM AM WIDE ST; 56 = AM WIDE ST
@@ -876,6 +878,25 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         const Fixed64 ease = dist / tau;
         if (ease < v_ok) v_ok = ease;
     }
+    // G5.137 (§8.240): with our ball, not going forward, a man near his spot
+    // walks — he doesn't run with every step it takes. Inside hold_walk_m his
+    // pace is the walk; beyond it, walk + the excess gap / shape_tau_ours. Real
+    // men off the ball walk (1-2 m/s) 35% of the time at every carrier pace,
+    // ours 19% (DFL, §8.238): our spots move 4.8 m/s, mostly to and fro, and
+    // every man tracked them. Run when the ball goes forward [FH coaching].
+    Fixed64 walk_cap = Fixed64::zero();
+    if (o.why == Why::Hold && !danger && hold_walk_m_.raw > 0) {
+        const auto& b = world.ball();
+        const std::uint8_t team = setup_.team_of_slot[slot];
+        const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team
+                                  : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
+        const Fixed64 sgw = team == 0 ? Fixed64::one() : -Fixed64::one();
+        if (ours && b.vel.x * sgw < poss_.params().run_ball_fwd && !lineRun(slot, world, o)) {
+            walk_cap = hold_walk_mps_;
+            if (dist > hold_walk_m_ && shape_tau_ours_.raw > 0) walk_cap = walk_cap + (dist - hold_walk_m_) / shape_tau_ours_;
+            if (walk_cap < v_ok) v_ok = walk_cap;
+        }
+    }
 
     // A team shifts as a block at a jog and accepts the lag: most of what was
     // left over 5 m/s was a man 15 m+ off his target (§8.103).
@@ -911,6 +932,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         Fixed64 sp = math::length(want);
         Vec2 w = want;
         if (cap.raw > 0 && sp > cap) { w = Vec2{want.x * cap / sp, want.y * cap / sp}; sp = cap; }
+        if (walk_cap.raw > 0 && sp > walk_cap) { w = Vec2{w.x * walk_cap / sp, w.y * walk_cap / sp}; sp = walk_cap; }
         if (sp > me.max_speed) w = Vec2{w.x * me.max_speed / sp, w.y * me.max_speed / sp};
         o.move.move = Vec2{w.x / me.max_speed, w.y / me.max_speed};
         return;
