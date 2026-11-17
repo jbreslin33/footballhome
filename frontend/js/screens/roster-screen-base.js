@@ -1903,10 +1903,42 @@ class RosterScreenBase extends Screen {
     const cache = this._seesCache || (this._seesCache = new Map());
     const known = cache.get(pid);
     if (!known) this._queueSees(pid);
-    return `<div data-sees-person="${pid}" style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:4px 6px; font-size:0.6rem; line-height:1.35; padding:4px 0 0;">${known ? this._seesContent(known) : ''}</div>`;
+    this._bindSeesRestrain();
+    return `<div data-sees-person="${pid}" style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:4px 6px; font-size:0.6rem; line-height:1.35; padding:4px 0 0;">${known ? this._seesContent(known, pid) : ''}</div>`;
   }
 
   clearSeesCache() { this._seesCache = new Map(); }
+
+  // 🚫 / ↺ on an official-list pill (mig 1443): restrain him from that
+  // team's games, or lift it. One capture-phase listener so the card's own
+  // tap (the ⋯ sheet) never fires; the server re-syncs the game invites.
+  _bindSeesRestrain() {
+    if (this._seesRestrainBound) return;
+    this._seesRestrainBound = true;
+    document.addEventListener('click', async (e) => {
+      const b = e.target.closest && e.target.closest('[data-sees-restrain]');
+      if (!b || !this.auth) return;
+      e.preventDefault(); e.stopPropagation();
+      if (b.dataset.busy) return;
+      b.dataset.busy = '1'; b.style.opacity = '0.4';
+      const pid = Number(b.dataset.seesRestrain), teamId = Number(b.dataset.team);
+      try {
+        const res = await this.auth.fetch('/api/person-sees/restrain', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ person_id: pid, team_id: teamId, restrained: b.dataset.on === '1' }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || res.status);
+        const cache = this._seesCache || (this._seesCache = new Map());
+        const fresh = (body.people || {})[String(pid)];
+        if (fresh) cache.set(pid, { ...(cache.get(pid) || {}), ...fresh });
+        document.querySelectorAll(`[data-sees-person="${pid}"]`).forEach(el => { el.innerHTML = this._seesContent(cache.get(pid), pid); });
+      } catch (err) {
+        console.warn('[sees] restrain failed:', err);
+        delete b.dataset.busy; b.style.opacity = '';
+      }
+    }, true);
+  }
 
   _queueSees(pid) {
     const q = this._seesQueue || (this._seesQueue = new Set());
@@ -1936,15 +1968,16 @@ class RosterScreenBase extends Screen {
     const root = this.element || document;
     root.querySelectorAll('[data-sees-person]').forEach(el => {
       const known = cache.get(Number(el.dataset.seesPerson));
-      if (known) el.innerHTML = this._seesContent(known);
+      if (known) el.innerHTML = this._seesContent(known, Number(el.dataset.seesPerson));
     });
   }
 
-  _seesContent(entry) {
+  _seesContent(entry, personId) {
     const esc = (s) => this.escape(s);
     const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens || {})) || fb;
     const label = (t) => RosterScreenBase.dropClubName(String(t || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()) || t || '';
     const DAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const admin = this._cardClassFor() === AdminTeamCard;
     // One entry per team: a coach who also plays merges (best of each).
     const rankG = { yes: 3, invite: 2, callup: 1, no: 0 };
     const rankP = { yes: 2, days: 1, no: 0 };
@@ -1952,7 +1985,7 @@ class RosterScreenBase extends Screen {
     const byTeam = new Map();
     for (const r of rows) {
       if (r.team_id == null) continue;
-      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, plays: false, note: null, bg: r.pill_bg, fg: r.pill_fg, section: r.section };
+      const m = byTeam.get(r.team_id) || { teamId: r.team_id, team: r.team, games: 'no', practices: 'no', days: null, coach: false, plays: false, note: null, bg: r.pill_bg, fg: r.pill_fg, section: r.section };
       if ((rankG[r.games] || 0) > (rankG[m.games] || 0)) m.games = r.games;
       if ((rankP[r.practices] || 0) > (rankP[m.practices] || 0)) { m.practices = r.practices; m.days = r.days; }
       if (r.role === 'coach') m.coach = true;
@@ -1989,11 +2022,24 @@ class RosterScreenBase extends Screen {
       if (t.practices === 'yes') marks.push(cp('card_sees_practices', {}, '🏃'));
       else if (t.practices === 'days') marks.push(cp('card_sees_days', { days: (t.days || []).map(d => DAY[d] || d).join('·') }, '🏃'));
       let why = '';
-      if (!marks.length) why = t.note === 'inactive' ? cp('card_sees_why_inactive', {}, '💤') : cp('card_sees_nothing', {}, '—');
+      if (!marks.length) why = t.note === 'inactive' ? cp('card_sees_why_inactive', {}, '💤')
+        : t.note === 'restrained' ? cp('card_sees_why_restrained', {}, '🚫 restrained') : cp('card_sees_nothing', {}, '—');
       else if (t.note === 'practice_squad') why = cp('card_sees_why_practice_squad', {}, 'practice squad');
       else if (t.note === 'not_on_roster') why = cp('card_sees_why_not_on_roster', {}, 'not on roster');
       const coach = t.coach ? cp('card_sees_coach', {}, '🧢') + ' ' : '';
-      return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' '))}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
+      // 📋 games through an official list → 🚫 restrains; restrained → ↺ lifts (admins).
+      // Club staff see every game anyway: no list mark, nothing to restrain.
+      const canRestrain = admin && personId && t.teamId && !t.staff && (t.note === 'official_list' || t.note === 'restrained');
+      const btn = canRestrain
+        ? ` <span role="button" data-sees-restrain="${personId}" data-team="${t.teamId}" data-on="${t.note === 'official_list' ? '1' : '0'}"
+              title="${esc(t.note === 'official_list'
+                ? cp('card_sees_restrain_tip', { team: t.team }, `On the official list, so asked about ${t.team} games. Tap to restrain.`)
+                : cp('card_sees_unrestrain_tip', { team: t.team }, `Restrained from ${t.team} games. Tap to ask him again.`))}"
+              style="cursor:pointer; padding:0 2px; margin-left:1px; border-left:1px solid currentColor; opacity:0.85;">${esc(t.note === 'official_list'
+                ? cp('card_sees_restrain', {}, '🚫') : cp('card_sees_unrestrain', {}, '↺'))}</span>`
+        : '';
+      const via = t.note === 'official_list' && !t.staff ? ' ' + cp('card_sees_via_list', {}, '📋') : '';
+      return pill(`${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))} ${esc(coach + marks.join(' ') + via)}${why ? ` <span style="font-weight:600; opacity:0.8;">${esc(why)}</span>` : ''}${btn}`, marks.length ? 'green' : 'grey', marks.length ? t.bg : null, t.fg);
     };
     // Coach / club staff of MANY teams in one section (not playing on
     // them) gets ONE pill — "🧢 Youth coach · 18", "🛡 Youth staff · 18" —
