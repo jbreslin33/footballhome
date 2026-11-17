@@ -2135,11 +2135,39 @@ class RosterScreenBase extends Screen {
     return `<span title="${esc(tip)}" style="font-size:0.62rem; line-height:1.3; font-weight:800; padding:0 5px; border-radius:8px; background:rgba(148,163,184,0.15); color:${color}; white-space:nowrap;">${esc(txt)}</span>`;
   }
 
-  setSortOrder(value) {
+  // desc (owner 11/17 "it needs to sort asc or desc"): tap the lit pill
+  // again to flip it.  Direction only redraws — no refetch.
+  setSortOrder(value, desc = false) {
     const next = RosterScreenBase.SORT_ORDERS.includes(value) ? value : 'alpha';
-    if (next === this.sortOrder) return Promise.resolve();
+    if (next === this.sortOrder && !!desc === !!this._sortDesc) return Promise.resolve();
+    const sameOrder = next === this.sortOrder;
     this._sortOrder = next;
+    this._sortDesc = !!desc;
+    if (sameOrder && this._data && typeof this.renderRoster === 'function') { this.renderRoster(this._data); return Promise.resolve(); }
     return typeof this.load === 'function' ? this.load({ quiet: true }) : Promise.resolve();
+  }
+
+  // Sorts whose first-tap order is biggest/best first (shown ↓); the rest
+  // start smallest first (A→Z, #1 first — shown ↑).
+  static get SORTS_BIG_FIRST() { return ['paid', 'rsvp', 'attendance', 'trials', 'score']; }
+  static sortArrow(order, flipped) { return (RosterScreenBase.SORTS_BIG_FIRST.includes(order) !== !!flipped) ? '↓' : '↑'; }
+
+  // The lit pill's order, flipped when _sortDesc.  Cards with nothing to
+  // sort on (no practices yet, not on the league list) stay at the foot
+  // in A–Z either way.
+  orderColumnPlayers(players, col) {
+    const out = this._orderColumnPlayersFirstTap(players, col);
+    if (!this._sortDesc) return out;
+    const order = this.sortOrder;
+    let missing = () => false;
+    if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
+      missing = (r) => this.selectionParts(r.player)[order] == null;
+    } else if (order === 'official' && this.boardView === 'roster' && col && col.teamId && this.leagueListFor(col.teamId)) {
+      const ids = new Set(this.leagueListFor(col.teamId).personIds.filter(x => x != null).map(Number));
+      missing = (r) => !ids.has(Number(r.player.personId));
+    }
+    const have = out.filter(r => !missing(r));
+    return [...have.reverse(), ...out.filter(missing)];
   }
 
   // → [{ player, rank }] in display order; rank is the 1-based coach slot.
@@ -2151,7 +2179,7 @@ class RosterScreenBase extends Screen {
   //            the 🌐 mirror — owner: "official order … right from website of
   //            league"); players not on the list follow, A–Z.  Roster pill
   //            only — on the Team pill it reads as A–Z.
-  orderColumnPlayers(players, col) {
+  _orderColumnPlayersFirstTap(players, col) {
     const ranked = (players || []).map((player, i) => ({ player, rank: i + 1 }));
     const order = this.sortOrder;
     if (order === 'rank') return ranked;

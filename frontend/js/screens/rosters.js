@@ -240,6 +240,7 @@ class RostersScreen extends Screen {
     let boardView = 'roster';
     try { boardView = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
     const viewCopy = (tier, fallback) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || fallback;
+    const litSort = (this.teamsSort === 'official' && boardView !== 'roster') ? 'alpha' : (this.teamsSort || this._defaultSort());
     this._teamsFilterBar.setRows([
       {
         name:     'teams-view',
@@ -310,6 +311,8 @@ class RostersScreen extends Screen {
         // mode where cards can be dragged / re-slotted.
         // 💰 Paid status (owner 2026-11-11) on both pills; 🌐 Official order
         // = the league website's list order, Roster pill only.
+        // Tap the lit pill again to flip it (owner 11/17 "it needs to sort
+        // asc or desc"); the lit pill wears ↑ / ↓.
         name:     'teams-sort',
         chips: [
           { id: 'alpha', label: viewCopy('board_sort_alpha', 'A–Z last name') },
@@ -320,16 +323,19 @@ class RostersScreen extends Screen {
           { id: 'attendance', label: viewCopy('board_sort_attendance', '📊 Attendance') },
           { id: 'trials',     label: viewCopy('board_sort_trials', '🧪 Trials') },
           { id: 'score',      label: viewCopy('board_sort_score', '⭐ Score') },
-        ],
-        selected: (this.teamsSort === 'official' && boardView !== 'roster') ? 'alpha' : (this.teamsSort || this._defaultSort()),
+        ].map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
+        selected: litSort,
         onSelect: (id) => {
-          if (id == null) return;
+          // FilterBar hands back null when the lit pill is tapped: flip it.
+          if (id == null) { this.teamsSortDesc = !this.teamsSortDesc; id = litSort; }
+          else this.teamsSortDesc = false;
           this.teamsSort = id;
           for (const child of this._mountedChildren) {
             if (child && child.columnScope === 'teams' && typeof child.setSortOrder === 'function') {
-              child.setSortOrder(id);
+              child.setSortOrder(id, this.teamsSortDesc);
             }
           }
+          this._buildTeamsPills();   // move the ↑ / ↓
         },
       },
     ]);
@@ -401,6 +407,7 @@ class RostersScreen extends Screen {
       child.includeInactive = this.teamsIncludeInactive;
     }
     child._sortOrder = this.teamsSort || this._defaultSort();   // the A–Z / Rank pill
+    child._sortDesc = !!this.teamsSortDesc;          // tapped again = flipped
     child._term = this._termForChildren();          // the season pill (mig 795)
     // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
     // server-side (data.unassignedCount) — mirror it here so the Teams
