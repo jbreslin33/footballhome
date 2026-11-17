@@ -146,6 +146,7 @@ set(SOURCES
     src/controllers/WelcomeController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
+    src/controllers/PersonSeesController.cpp
     src/controllers/PersonTeamsController.cpp
     src/controllers/PracticeCriteriaController.cpp
     src/controllers/JobsController.cpp

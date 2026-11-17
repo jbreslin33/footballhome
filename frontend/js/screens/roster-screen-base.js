@@ -529,7 +529,7 @@ class RosterScreenBase extends Screen {
     const card = select.closest('[data-roster-card]');
     const chip = card && card.querySelector('[data-roster-status-chip]');
     if (chip) {
-      chip.hidden = !select.value;
+      chip.hidden = !select.value || select.value === 'on_roster';   // 📋 ROSTERS says it (mig 1435)
       chip.textContent = select.value ? (select.selectedOptions[0]?.textContent || select.value) : '';
       chip.style.background = c.bg; chip.style.color = c.fg; chip.style.border = `1px solid ${c.border}`;
     }
@@ -763,13 +763,6 @@ class RosterScreenBase extends Screen {
       drop:         [copy('board_planned_drop_chip') || '⬇ DROPPING', '#f97316', '#fdba74'],
       pending_drop: [copy('board_pending_drop_chip') || '⏳ PENDING DROP', '#dc2626', '#fca5a5'],
     };
-    // Team pill (owner 2026-10-27: "team pill should show on their card what
-    // official rosters they are on with labels") — one 📋 chip per column
-    // whose league list has him.
-    const listChips = (p) => (data.columns || []).filter(c => c.teamId && this.inTerm(c) && this.onLeagueList(c.teamId, p.personId))
-      .map(c => `<span title="On the league's official roster for ${esc(c.label || '')}"
-          style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap;
-                 background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">📋 ${esc(RosterScreenBase.teamChipName(RosterScreenBase.dropClubName(String(c.shortLabel || c.label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()), 'list'))}</span>`).join(' ');
     // Roster pill: he's on this list but also on a team here whose list
     // doesn't have him, a gap the left column can't show because he is on
     // a roster.  Skipped when he's already headed there, it's only a
@@ -788,7 +781,8 @@ class RosterScreenBase extends Screen {
     const cutFlag = [copy('board_official_cut') || '✂ not in LeagueApps — needs to be dropped', '#ef4444', '#fca5a5'];
     const card = (p, extraChip = '') => {
       const rank = bucket.indexOf(p) + 1;
-      const chips = (this.boardView === 'team' ? listChips(p) : listGapChips(p)) + extraChip;
+      // Team pill 📋 chips folded into the card's 📋 ROSTERS line (mig 1435).
+      const chips = (this.boardView === 'team' ? '' : listGapChips(p)) + extraChip;
       const html = this.renderPlayer(chips ? { ...p, nameChipHtml: (p.nameChipHtml || '') + chips } : p,
         data.columns, col, rank, bucket.length);
       const flag = this.boardView === 'roster' && !this.rosterFrozen(col.teamId) && laneFlag[sectionOf(p)];
@@ -1925,6 +1919,137 @@ class RosterScreenBase extends Screen {
     return copy || (kind === 'list' ? `${n} list` : `${n} team`);
   }
 
+  // ── 👁 SEES + 📋 ROSTERS (mig 1435, owner 2026-11-17) ──────────────
+  // Their own line on every card, Team and Roster pills, every board:
+  //   👁 SEES     what each team's events ask him about by default (no
+  //               per-game invite) — fh_person_sees, the RSVP board's own
+  //               rules: ⚽ games, 🏃 practices (a coach's days), ⚽ if
+  //               called up, ⭐⚽ standing invite, — nothing (💤 / why).
+  //               A team with no events of its own (APSL Reserves) is a
+  //               roster, so it's never here.
+  //   📋 ROSTERS  the official league lists he is on (pulled from the
+  //               league sites every load) — replaces the green On Roster
+  //               chip and the Team pill's 📋 chips.
+  // Each card draws a placeholder; one GET /api/person-sees?ids= per batch
+  // fills every placeholder on the board, and the answers are cached for
+  // re-renders (a write that changes them calls clearSeesCache()).
+  seesRostersHtml(personId) {
+    const pid = Number(personId);
+    if (!pid) return '';
+    const cache = this._seesCache || (this._seesCache = new Map());
+    const known = cache.get(pid);
+    if (!known) this._queueSees(pid);
+    return `<div data-sees-person="${pid}" style="flex-basis:100%; display:flex; flex-wrap:wrap; gap:1px 10px; font-size:0.6rem; line-height:1.35; padding:1px 0 0;">${known ? this._seesContent(known) : ''}</div>`;
+  }
+
+  clearSeesCache() { this._seesCache = new Map(); }
+
+  _queueSees(pid) {
+    const q = this._seesQueue || (this._seesQueue = new Set());
+    q.add(pid);
+    if (this._seesTimer) return;
+    this._seesTimer = setTimeout(() => this._flushSees(), 0);
+  }
+
+  async _flushSees() {
+    this._seesTimer = null;
+    const ids = [...(this._seesQueue || [])];
+    this._seesQueue = new Set();
+    if (!ids.length || !this.auth) return;
+    const cache = this._seesCache || (this._seesCache = new Map());
+    for (let i = 0; i < ids.length; i += 300) {
+      const chunk = ids.slice(i, i + 300);
+      try {
+        const res = await this.auth.fetch(`/api/person-sees?ids=${chunk.join(',')}`);
+        if (!res.ok) return;   // players / a lapsed session: no sections
+        const body = await res.json();
+        for (const id of chunk) cache.set(id, (body.people || {})[String(id)] || { sees: [], rosters: [] });
+      } catch (err) {
+        console.warn('[sees] load failed:', err);
+        return;
+      }
+    }
+    const root = this.element || document;
+    root.querySelectorAll('[data-sees-person]').forEach(el => {
+      const known = cache.get(Number(el.dataset.seesPerson));
+      if (known) el.innerHTML = this._seesContent(known);
+    });
+  }
+
+  _seesContent(entry) {
+    const esc = (s) => this.escape(s);
+    const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens || {})) || fb;
+    const label = (t) => RosterScreenBase.dropClubName(String(t || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()) || t || '';
+    const DAY = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // One entry per team: a coach who also plays merges (best of each).
+    const rankG = { yes: 3, invite: 2, callup: 1, no: 0 };
+    const rankP = { yes: 2, days: 1, no: 0 };
+    const rows = Array.isArray(entry.sees) ? entry.sees : [];
+    const staff = rows.some(r => r.role === 'staff');
+    const byTeam = new Map();
+    for (const r of rows) {
+      if (r.role === 'staff' || r.team_id == null) continue;
+      const m = byTeam.get(r.team_id) || { team: r.team, games: 'no', practices: 'no', days: null, coach: false, note: null };
+      if ((rankG[r.games] || 0) > (rankG[m.games] || 0)) m.games = r.games;
+      if ((rankP[r.practices] || 0) > (rankP[m.practices] || 0)) { m.practices = r.practices; m.days = r.days; }
+      if (r.role === 'coach') m.coach = true;
+      if (r.role === 'player' && r.note) m.note = r.note;
+      byTeam.set(r.team_id, m);
+    }
+    const teams = [...byTeam.values()];
+    const coachOnly = teams.filter(t => t.coach);
+    const item = (t) => {
+      const marks = [];
+      if (t.games === 'yes') marks.push(cp('card_sees_games', {}, '⚽'));
+      else if (t.games === 'invite') marks.push(cp('card_sees_invite', {}, '⭐⚽'));
+      else if (t.games === 'callup') marks.push(cp('card_sees_callup', {}, '⚽ if called up'));
+      if (t.practices === 'yes') marks.push(cp('card_sees_practices', {}, '🏃'));
+      else if (t.practices === 'days') marks.push(cp('card_sees_days', { days: (t.days || []).map(d => DAY[d] || d).join('·') }, '🏃'));
+      let why = '';
+      if (!marks.length) why = t.note === 'inactive' ? cp('card_sees_why_inactive', {}, '💤') : cp('card_sees_nothing', {}, '—');
+      else if (t.note === 'practice_squad') why = cp('card_sees_why_practice_squad', {}, 'practice squad');
+      else if (t.note === 'not_on_roster') why = cp('card_sees_why_not_on_roster', {}, 'not on roster');
+      const coach = t.coach ? cp('card_sees_coach', {}, '🧢') + ' ' : '';
+      return `<span style="white-space:nowrap; ${marks.length ? '' : 'opacity:0.55;'}"><b>${esc(t.raw ? t.team : (RosterScreenBase.dropClubName(String(t.team || '')) || t.team))}</b> ${esc(coach + marks.join(' '))}${why ? ` <span style="opacity:0.75;">${esc(why)}</span>` : ''}</span>`;
+    };
+    let sees;
+    if (staff) {
+      // Staff see every team: say so once, plus where he plays.
+      sees = [`<span style="white-space:nowrap;">${esc(cp('card_sees_staff', {}, '🛡 every team'))}</span>`]
+        .concat(teams.filter(t => !t.coach).map(item));
+    } else if (coachOnly.length > 4) {
+      // Coach of many teams: one entry, still with what he's asked about
+      // (a schedule's days — "🧢 18 teams ⚽ 🏃 Sat·Sun").
+      const agg = { team: cp('card_sees_coach_many', { n: String(coachOnly.length) }, `🧢 ${coachOnly.length} teams`),
+                    games: 'no', practices: 'no', days: [], coach: false, note: null };
+      for (const t of coachOnly) {
+        if ((rankG[t.games] || 0) > (rankG[agg.games] || 0)) agg.games = t.games;
+        if (t.practices === 'yes') agg.practices = 'yes';
+        else if (t.practices === 'days' && agg.practices !== 'yes') { agg.practices = 'days'; agg.days = [...new Set([...agg.days, ...(t.days || [])])].sort(); }
+      }
+      sees = [item({ ...agg, raw: true })].concat(teams.filter(t => !t.coach).map(item));
+    } else {
+      sees = teams.map(item);
+    }
+    if (!sees.length) sees = [`<span style="opacity:0.55;">${esc(cp('card_sees_none', {}, 'nothing'))}</span>`];
+    if (entry.suspended) sees.push(`<span style="color:#fca5a5; font-weight:800;">${esc(cp('card_sees_suspended', {}, '⛔ suspended'))}</span>`);
+    if (entry.injured) sees.push(`<span style="color:#fcd34d; font-weight:800;">${esc(cp('card_sees_injured', {}, '🩹 injured'))}</span>`);
+    // 📋 ROSTERS — "<league> <team>", the team left off when the league's
+    // name already says it (APSL Reserves / APSL Res → "APSL Reserves";
+    // CASA / L1 → "CASA L1"; Parks & Rec / U8 → "Parks & Rec U8").
+    const rosters = Array.isArray(entry.rosters) ? entry.rosters : [];
+    const rosterName = (r) => {
+      const lg = String(r.league || ''), tm = label(r.team);
+      return !tm || lg.toLowerCase().includes(tm.toLowerCase()) ? lg : `${lg} ${tm}`;
+    };
+    const rosterChip = (r) => `<span style="white-space:nowrap; font-weight:800; padding:0 4px; border-radius:3px;
+        background:rgba(34,197,94,0.16); border:1px solid #22c55e; color:#bbf7d0;">${esc(rosterName(r))}</span>`;
+    const head = (tier, fb, tipTier, tipFb) => `<span title="${esc(cp(tipTier, {}, tipFb))}" style="font-weight:900; letter-spacing:0.04em; opacity:0.7;">${esc(cp(tier, {}, fb))}</span>`;
+    return `
+      <span style="display:inline-flex; flex-wrap:wrap; gap:1px 6px; align-items:center;">${head('card_sees_h', '👁 SEES', 'card_sees_tip', 'What each team asks him about by default')}${sees.join('<span style="opacity:0.4;">·</span>')}</span>
+      <span style="display:inline-flex; flex-wrap:wrap; gap:1px 4px; align-items:center;">${head('card_rosters_h', '📋 ROSTERS', 'card_rosters_tip', 'Official league rosters he is on')}${rosters.length ? rosters.map(rosterChip).join('') : `<span style="opacity:0.55;">${esc(cp('card_rosters_none', {}, 'none'))}</span>`}</span>`;
+  }
+
   renderSeesGamesChip(player, col) {
     let sees = player.seesGamesHere === true;
     if (!sees) {
@@ -2446,7 +2571,8 @@ class RosterScreenBase extends Screen {
     // DOB is not drawn (owner 2026-09-17: "drop dob from the card, age chip is
     // enough"); callers may still pass dobShort — it is ignored here.
     const fullName = this.escape(player.fullName || player.firstName || '(no name)') || '(no name)';
-    const activeTeamsBadge = this.renderSeesGamesChip(player, col) + this.renderActiveTeamsBadge(player, col);
+    // 👀⚽ folded into the 👁 SEES line (mig 1435).
+    const activeTeamsBadge = this.renderActiveTeamsBadge(player, col);
     const pickupBadge = this.renderPickupBadge(player);
     // Both modes show the whole name; they differ in where it gets the
     // room to do it.
@@ -2483,7 +2609,9 @@ class RosterScreenBase extends Screen {
     const statusNow = statusSelectHtml ? (player.rosterStatus || '') : '';
     const statusMeta = statusNow ? RosterScreenBase.rosterStatusByCode(statusNow) : null;
     const statusChip = statusSelectHtml
-      ? `<span data-roster-status-chip ${statusNow ? '' : 'hidden'}
+      // On Roster itself is the 📋 ROSTERS line now (mig 1435, owner 11/17
+      // "this would replace the on roster pill"); the moves still chip.
+      ? `<span data-roster-status-chip ${statusNow && statusNow !== 'on_roster' ? '' : 'hidden'}
                style="font-size:0.6rem; font-weight:800; line-height:1.3; padding:0 5px; border-radius:3px; white-space:nowrap; ${this.rosterStatusStyle(statusNow)}">${this.escape((statusMeta && statusMeta.displayName) || statusNow)}</span>`
       : '';
     // ⋯ actions menu (owner 2026-09-17: "can we make the buttons on player
@@ -2551,7 +2679,8 @@ class RosterScreenBase extends Screen {
       : 'flex:1 1 auto; min-width:min-content; white-space:normal; overflow-wrap:break-word;';
     return `
       <div id="${cardId}" class="${cardClass}" data-roster-card ${dragAttrs} ${laUidAttr}
-           style="${cardBaseStyle} display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
+           style="${cardBaseStyle} display:flex; flex-direction:column;">
+       <div style="display:flex; flex-direction:row; align-items:center; gap:4px; flex-wrap:${isScroll ? 'nowrap' : 'wrap'}; row-gap:1px;">
         ${jerseyChip}
         <strong style="font-size:0.72rem; line-height:1.2; ${nameStyle}">${fullName}</strong>
         ${player.nameChipHtml || ''}
@@ -2564,6 +2693,8 @@ class RosterScreenBase extends Screen {
         ${activeTeamsBadge}
         ${pickupBadge}
         <span style="display:inline-flex; align-items:stretch; margin-left:auto;">${controls}</span>
+       </div>
+        ${this.seesRostersHtml(player.personId)}
       </div>
     `;
   }

@@ -208,6 +208,7 @@ class BoysRosterScreen extends RosterScreenBase {
       const data = this.applyPlayerFilter(await res.json());
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       this._data = data;
+      this.clearSeesCache();   // 👁 SEES / 📋 ROSTERS refetch with the board (mig 1435)
       // Optional hook — RostersScreen (rosters.js) sets this so the
       // Teams panel can surface data.unassignedCount without reaching
       // into this screen's private DOM/state. Inherited by
