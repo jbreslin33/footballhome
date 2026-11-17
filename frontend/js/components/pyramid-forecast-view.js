@@ -1,4 +1,4 @@
-// pyramid-forecast-view.js — #apsl 📈 Forecast (mig 1447), a view of the
+// pyramid-forecast-view.js — #apsl 📈 Forecast (mig 1448), a view of the
 // APSL page.  Owner 2026-11-17: "make on apsl page an analysis for league
 // and all teams so i can click on any of them" + "make it be able to predict
 // scores etc. like a betting app lol. use analysis".
@@ -43,6 +43,7 @@ class PyramidForecastView {
       .fc-table tr.z-playoff td:first-child { box-shadow:inset 4px 0 #22c55e; }
       .fc-table tr.z-relegation_playoff td:first-child { box-shadow:inset 4px 0 #f97316; }
       .fc-table tr.z-relegation td:first-child { box-shadow:inset 4px 0 #dc2626; }
+      .fc-rows td.tm { text-align:left; }
       .fc-heat { display:inline-block; min-width:38px; padding:1px 5px; border-radius:4px; font-weight:800; }
       .fc-bets { display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:10px; }
       .fc-bet { border:1px solid rgba(148,163,184,0.25); border-radius:10px; padding:8px 10px; background:rgba(15,23,42,0.55); }
@@ -120,6 +121,8 @@ class PyramidForecastView {
   _howHtml(d) {
     const m = d.model || {};
     const parts = [this._copy('fc_how', { games: d.played, left: d.left, avg: m.avg_goals, home: m.home_edge })];
+    const f = d.format || {};
+    if (f.group_rounds) parts.unshift(this._copy('fc_format', { n: f.per_team, rounds: f.group_rounds, cross: f.cross_group_rounds, listed: f.listed, added: f.added }));
     if (d.policy && d.policy.feeder) parts.push(this._copy('fc_feeder_note', { feeder: d.policy.feeder, pct: `${Math.round(d.policy.feeder_stay_up_pct)}%` }));
     if (d.as_of) parts.push(this._copy('fc_asof', { date: this._when(d.as_of) }));
     parts.push(this._copy('fc_fun'));
@@ -145,13 +148,13 @@ class PyramidForecastView {
           ${hasDown ? `<td>${this._heat((t.zones.relegation || 0) + (t.zones.conditional_relegation || 0), true)}</td><td>${this._heat(t.down, true)}</td>` : ''}
         </tr>`).join('')}</tbody>
       </table></div>`).join('');
-    const upcoming = d.games.filter((g) => !g.done);
+    const upcoming = this._upcoming(d);
     return `
       <h3 style="margin-top:4px;">${esc(this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() }))}</h3>
       ${this._howHtml(d)}
       <div class="fc-note">${esc(this._copy('fc_tap_team'))}</div>
       ${tables}
-      ${upcoming.length ? `<h3>${esc(this._copy('fc_all_games'))} · ${upcoming.length}</h3><div class="fc-bets">${upcoming.map((g) => this._betHtml(d, g)).join('')}</div>` : ''}`;
+      ${upcoming.length ? this._matchupsHtml(d, upcoming) : ''}`;
   }
 
   _betHtml(d, g, focus) {
@@ -164,7 +167,7 @@ class PyramidForecastView {
     const likely = (g.scores || [])[0];
     const name = (t) => focus && t.id === focus ? `<u>${esc(t.name)}</u>` : esc(t.name);
     return `<div class="fc-bet">
-        <div class="when">${esc(this._when(g.when))}</div>
+        <div class="when">${esc(g.tbs ? this._copy('fc_tbs') : this._when(g.when))}${g.neutral ? ` · ${esc(this._copy('fc_neutral'))}` : ''}</div>
         <div class="teams"><span data-fc-team="${h.id}">${name(h)}</span><span data-fc-team="${a.id}">${name(a)}</span></div>
         <div class="fc-1x2">${cell('1', ph)}${cell(this._copy('fc_draw') || 'X', pd)}${cell('2', pa)}</div>
         <div class="fc-line">
@@ -175,6 +178,40 @@ class PyramidForecastView {
         </div>
         <div class="fc-scores" title="${esc(this._copy('fc_scores'))}">${top}</div>
       </div>`;
+  }
+
+  // Remaining games: the league's dated ones first, then the meetings it
+  // hasn't scheduled yet (mig 1449).
+  _upcoming(d) {
+    return d.games.filter((g) => !g.done).sort((a, b) => (!!a.tbs - !!b.tbs) || String(a.when).localeCompare(String(b.when)));
+  }
+
+  // Every remaining matchup as one row (owner 11/17 "show all projections
+  // for every matchup for rest of year for all teams"); a filter for
+  // scheduled / not yet.  Tap a team for its own page.
+  _matchupsHtml(d, all) {
+    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), O = PyramidForecastView.odds;
+    const by = this._teamsById(d);
+    const f = this.filter || 'all';
+    const list = all.filter((g) => f === 'all' || (f === 'tbs' ? g.tbs : !g.tbs));
+    const pill = (code, tier, n) => `<button class="ap-pill ${f === code ? 'on' : ''}" data-fc-filter="${code}">${esc(this._copy(tier))} · ${n}</button>`;
+    const nT = all.filter((g) => g.tbs).length;
+    const cell = (p, fav) => `<td><span class="fc-heat" style="${fav ? 'background:rgba(34,197,94,0.3);' : 'background:rgba(148,163,184,0.12);'}">${P(p)}</span><br><small style="opacity:0.7;">${O(p)}</small></td>`;
+    const rows = list.map((g) => {
+      const h = by.get(g.home) || {}, a = by.get(g.away) || {}, [ph, pd, pa] = g.p, fav = Math.max(ph, pd, pa), top = (g.scores || [])[0];
+      return `<tr>
+        <td style="text-align:left; white-space:normal; font-size:0.74rem; opacity:0.8;">${esc(g.tbs ? this._copy('fc_tbs') : this._when(g.when))}${g.neutral ? `<br>${esc(this._copy('fc_neutral'))}` : ''}</td>
+        <td class="tm" data-fc-team="${h.id}">${esc(h.name)}</td>
+        <td class="tm" data-fc-team="${a.id}" style="text-align:left;">${esc(a.name)}</td>
+        ${cell(ph, ph === fav)}${cell(pd, pd === fav)}${cell(pa, pa === fav)}
+        <td>${g.xg[0].toFixed(1)}–${g.xg[1].toFixed(1)}</td><td><b>${top ? `${top.h}–${top.a}` : ''}</b></td><td>${P(g.over25)}</td><td>${P(g.btts)}</td></tr>`;
+    }).join('');
+    return `<h3>${esc(this._copy('fc_all_rows', { n: all.length }))}</h3>
+      <div class="fc-confs">${pill('all', 'fc_filter_all', all.length)}${pill('sched', 'fc_filter_sched', all.length - nT)}${pill('tbs', 'fc_filter_tbs', nT)}</div>
+      <div style="overflow-x:auto;"><table class="fc-table fc-rows">
+        <thead><tr><th style="text-align:left;">${esc(this._copy('fc_col_when'))}</th><th>1</th><th style="text-align:left;">2</th>
+          <th>1</th><th>${esc(this._copy('fc_draw') || 'X')}</th><th>2</th><th>${esc(this._copy('fc_xg'))}</th><th>${esc(this._copy('fc_likely'))}</th><th>${esc(this._copy('fc_over'))}</th><th>${esc(this._copy('fc_btts'))}</th></tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
   }
 
   _teamHtml(d, id) {
@@ -196,7 +233,7 @@ class PyramidForecastView {
       return `<div class="fc-result"><span>${esc(this._when(g.when))} · ${home ? 'vs' : '@'} <span data-fc-team="${o.id}" style="cursor:pointer; text-decoration:underline dotted;">${esc(o.name)}</span></span>
         <span><b>${us}–${them}</b> <span class="wl" style="background:${wl[1]}; color:#fff; padding:0 5px;">${wl[0]}</span></span></div>`;
     }).join('');
-    const upcoming = mine.filter((g) => !g.done);
+    const upcoming = this._upcoming(d).filter((g) => g.home === id || g.away === id);
     return `
       <button class="btn btn-secondary" data-fc-back style="margin:2px 0 8px;">${esc(this._copy('fc_back'))}</button>
       <h3 style="margin-top:0;">${esc(t.name)} <span style="opacity:0.65; font-weight:600;">· ${esc(t.division.name)} · ${t.pos}${['st', 'nd', 'rd'][t.pos - 1] || 'th'} · ${t.pts} pts</span></h3>
@@ -251,6 +288,8 @@ class PyramidForecastView {
       }
       const t = e.target.closest('[data-fc-team]');
       if (t) { this.team = Number(t.dataset.fcTeam) || null; this._repaint(); root.scrollIntoView({ block: 'start' }); return; }
+      const fl = e.target.closest('[data-fc-filter]');
+      if (fl) { this.filter = fl.dataset.fcFilter; this._repaint(); return; }
       if (e.target.closest('[data-fc-back]')) { this.team = null; this._repaint(); }
     };
     root.addEventListener('click', this._onClick);

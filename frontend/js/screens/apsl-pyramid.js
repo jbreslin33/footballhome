@@ -47,7 +47,7 @@ class ApslPyramidScreen extends Screen {
       { code: 'path', tier: 'view_path', built: true, impl: new PyramidPathView(this, flow) },
       { code: 'tables', tier: 'view_tables', built: true, impl: new PyramidTablesView(this, flow) },
       { code: 'growth', tier: 'view_growth', built: true, impl: new PyramidGrowthView(this) },
-      // 📈 Forecast (mig 1447, owner 11/17: "an analysis for league and all teams … predict scores etc. like a betting app")
+      // 📈 Forecast (mig 1448, owner 11/17: "an analysis for league and all teams … predict scores etc. like a betting app")
       { code: 'forecast', tier: 'view_forecast', built: true, impl: new PyramidForecastView(this) },
     ];
     this.view = 'flow';

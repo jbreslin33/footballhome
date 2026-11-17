@@ -188,7 +188,7 @@ void PyramidController::registerRoutes(Router& router, const std::string& prefix
     router.get(prefix + "/county-lines", [this](const Request& r) { return handleCountyLines(r); });
     router.get(prefix + "/model-diff", [this](const Request& r) { return handleModelDiff(r); });
     router.get(prefix + "/club", [this](const Request& r) { return handleClub(r); });
-    router.get(prefix + "/forecast", [this](const Request& r) { return handleForecast(r); });   // mig 1447
+    router.get(prefix + "/forecast", [this](const Request& r) { return handleForecast(r); });   // mig 1448
     router.post(prefix + "/club", [this](const Request& r) { return handleClubSave(r); });
     router.post(prefix + "/zone-rules", [this](const Request& r) { return handleZoneRules(r); });
 }
@@ -624,7 +624,7 @@ Response PyramidController::handleZoneRules(const Request& request) {
     }
 }
 
-// 📈 Forecast (mig 1447), public like the page: one conference's season
+// 📈 Forecast (mig 1448), public like the page: one conference's season
 // played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>
 Response PyramidController::handleForecast(const Request& request) {
     try {

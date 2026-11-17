@@ -64,6 +64,6 @@ private:
     Response handleCountyLines(const Request& request);    // mig 1276
     Response handleModelDiff(const Request& request);      // mig 1304
     Response handleClub(const Request& request);
-    Response handleForecast(const Request& request);   // mig 1447
+    Response handleForecast(const Request& request);   // mig 1448
     Response handleClubSave(const Request& request);
 };

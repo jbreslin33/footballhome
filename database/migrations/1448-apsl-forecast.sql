@@ -1,4 +1,4 @@
--- 1447 (2026-11-17) — 📈 #apsl Forecast: every conference's games stored,
+-- 1448 (2026-11-17) — 📈 #apsl Forecast: every conference's games stored,
 -- a goals model, and the season played out 10,000 times.
 --
 -- Owner 2026-11-17: "anaylaze apsl standings. tell me chances of lightouse

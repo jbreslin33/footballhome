@@ -3,7 +3,7 @@
 #include "../third_party/json.hpp"
 
 // ────────────────────────────────────────────────────────────────────────────
-// PyramidForecast — #apsl 📈 Forecast (migration 1447).
+// PyramidForecast — #apsl 📈 Forecast (migration 1448).
 //
 // Owner 2026-11-17: "tell me chances of lighthouse getting relegated … 8th
 // place in del river a and b get auto relegated. 7th place in a and b play

@@ -32,6 +32,7 @@ struct Team {
 struct Game {
     long long id = 0; int h = -1, a = -1;   // team indexes
     std::string when; bool done = false;
+    bool tbs = false, neutral = false;   // mig 1449: not scheduled by the league yet; no known ground
     int hs = 0, as = 0;
 };
 struct Division { int id = 0; std::string name; std::vector<int> teams; std::vector<json> zones; };
@@ -121,12 +122,15 @@ json PyramidForecast::build(int conferenceId) {
 
     // Policy: this conference's row, else the default.
     int sims = 10000; double prior = 3, feederPct = 50; bool pair = true; std::string feeder;
+    int groupRounds = 0, crossRounds = 0;   // mig 1449: 0 = only the listed games
     {
-        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct FROM pyramid_forecast_policies "
+        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct, group_rounds, cross_group_rounds FROM pyramid_forecast_policies "
                            " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
         if (!p.empty()) {
             sims = p[0]["sims"].as<int>(); prior = num(p[0], "prior_games"); pair = p[0]["pair_relegation_playoffs"].as<bool>();
             feeder = str(p[0], "feeder_label"); feederPct = num(p[0], "feeder_stay_up_pct");
+            groupRounds = p[0]["group_rounds"].is_null() ? 0 : p[0]["group_rounds"].as<int>();
+            crossRounds = p[0]["cross_group_rounds"].is_null() ? 0 : p[0]["cross_group_rounds"].as<int>();
         }
     }
     std::vector<std::string> tiebreak;
@@ -136,6 +140,28 @@ json PyramidForecast::build(int conferenceId) {
         for (size_t p = 0; !t.empty();) { size_t c = t.find('|', p); tiebreak.push_back(t.substr(p, c == std::string::npos ? std::string::npos : c - p)); if (c == std::string::npos) break; p = c + 1; }
         if (tiebreak.empty()) tiebreak = {"Points desc", "PD desc", "PF desc"};
     }
+
+    // ── the whole season (mig 1449, owner 11/17 "its a 22 game schedule …
+    // you play your division 2x and the other division 1x"): every meeting
+    // the feed doesn't list yet is added, not scheduled — a same-group
+    // return leg at the other side's ground (alternating when neither is
+    // listed), a cross-group meeting at no known ground.
+    const int listed = (int)games.size();
+    if (groupRounds > 0) {
+        for (int a = 0; a < N; ++a) for (int b = a + 1; b < N; ++b) {
+            const bool same = teams[a].div == teams[b].div;
+            const int want = same ? groupRounds : crossRounds;
+            int homeA = 0, homeB = 0;
+            for (const auto& g : games) { if (g.h == a && g.a == b) homeA++; else if (g.h == b && g.a == a) homeB++; }
+            for (int k = homeA + homeB; k < want; ++k) {
+                Game g; g.id = -(long long)(games.size() + 1); g.tbs = true;
+                if (same) { const bool aHosts = homeA <= homeB; g.h = aHosts ? a : b; g.a = aHosts ? b : a; (aHosts ? homeA : homeB)++; }
+                else { g.h = a; g.a = b; g.neutral = true; }
+                games.push_back(g);
+            }
+        }
+    }
+    const int added = (int)games.size() - listed;
 
     // ── the goals model ──
     int played = 0; double goals = 0, homeGoals = 0, awayGoals = 0;
@@ -248,7 +274,7 @@ json PyramidForecast::build(int conferenceId) {
     const bool paired = pair && rpDivs.size() == 2;
     std::vector<Res> rs = doneRes; rs.reserve(doneRes.size() + left.size());
     std::vector<std::pair<double, double>> lamLeft;
-    for (int gi : left) lamLeft.push_back(lam(games[gi].h, games[gi].a, false));
+    for (int gi : left) lamLeft.push_back(lam(games[gi].h, games[gi].a, games[gi].neutral));
     std::uniform_real_distribution<double> U(0.0, 1.0);
     for (int s = 0; s < sims; ++s) {
         rs.resize(doneRes.size());
@@ -288,8 +314,10 @@ json PyramidForecast::build(int conferenceId) {
     // ── one game: chances, scores, odds ──
     auto gameJson = [&](const Game& g) {
         json j = {{"id", g.id}, {"when", g.when}, {"home", teams[g.h].id}, {"away", teams[g.a].id}, {"done", g.done}};
+        if (g.tbs) j["tbs"] = true;
+        if (g.neutral) j["neutral"] = true;
         if (g.done) { j["hs"] = g.hs; j["as"] = g.as; }
-        const auto l = lam(g.h, g.a, false);
+        const auto l = lam(g.h, g.a, g.neutral);
         double ph = 0, pd = 0, pa = 0, over = 0, btts = 0;
         std::vector<std::tuple<double, int, int>> sc;
         for (int i = 0; i <= 25; ++i) for (int k = 0; k <= 25; ++k) {   // wide enough for a 9-goal side
@@ -332,6 +360,8 @@ json PyramidForecast::build(int conferenceId) {
         out["divisions"].push_back(dj);
     }
     for (const auto& g : games) out["games"].push_back(gameJson(g));
+    out["format"] = {{"group_rounds", groupRounds}, {"cross_group_rounds", crossRounds}, {"listed", listed}, {"added", added},
+                     {"per_team", N ? 2 * (int)games.size() / N : 0}};
     out["as_of"] = asOf; out["sims"] = sims; out["played"] = played; out["left"] = (int)left.size();
     out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}};
     out["policy"] = {{"paired", paired}, {"feeder", feeder.empty() ? json(nullptr) : json(feeder)}, {"feeder_stay_up_pct", feederPct}};

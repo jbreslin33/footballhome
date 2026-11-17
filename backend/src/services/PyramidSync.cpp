@@ -565,7 +565,7 @@ void PyramidSync::geocodePending() {
     }).detach();
 }
 
-// 📈 Forecast (mig 1447): the feed's games and its own table order, kept so
+// 📈 Forecast (mig 1448): the feed's games and its own table order, kept so
 // #apsl can play the rest of the season out.  A failure never fails the read.
 void PyramidSync::storeGames(int sourceId, const json& body) {
     try {

@@ -37,7 +37,7 @@ public:
     // A TeamPass league's seasons (mig 847, Growth by season): the current
     // one from `body` (the feed just read), each past one fetched once.
     static void storeSeasons(int sourceId, const std::string& locator, const nlohmann::json& body);
-    static void storeGames(int sourceId, const nlohmann::json& body);   // mig 1447
+    static void storeGames(int sourceId, const nlohmann::json& body);   // mig 1448
 
     // A Demosphere league's home grounds: each team's most-hosted field
     // complex, read off its team page on a background thread.
