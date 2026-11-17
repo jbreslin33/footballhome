@@ -690,10 +690,17 @@ Response RsvpBoardController::handleRemindEvent(const Request& request) {
         const std::string rollCallUrl = model_->rollCallLink(section, teamIds, scope.userId);   // mig 544
         // {link}: a group message can't carry anyone's magic link, so it
         // opens the event itself (sign in) — the week's list opens the site.
-        const std::string fhLink = MagicLinkService::publicBaseUrl()
-            + (week ? std::string("/") : "/#event/" + std::to_string(fhEventId));
+        // Whole week with ONE open event links straight to it too (owner
+        // 11/17 "is this direct link to game?"); with several, each line
+        // carries its own event link and {link} is the site.
+        const std::string base = MagicLinkService::publicBaseUrl();
+        const auto eventUrl = [&](long long id) { return base + "/#event/" + std::to_string(id); };
+        const bool oneEvent = !week || ctx.weekEvents.size() <= 1;
+        const std::string fhLink = !week ? eventUrl(fhEventId)
+            : (ctx.weekEvents.size() == 1 ? eventUrl(ctx.weekEvents[0].fhEventId) : base + "/");
         std::string eventLines;
-        for (const auto& ev : ctx.weekEvents) eventLines += "• " + ev.line + "\n";
+        for (const auto& ev : ctx.weekEvents)
+            eventLines += "• " + ev.line + (oneEvent ? std::string{} : "\n  " + eventUrl(ev.fhEventId)) + "\n";
         if (!eventLines.empty()) eventLines.pop_back();
         MessageCopy copy;
         // {travel}: as in the one-player reminder (mig 509).
