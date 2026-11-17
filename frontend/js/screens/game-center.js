@@ -2362,7 +2362,7 @@ class GameCenterScreen extends EventScreen {
               const dir = p.badge && p.badge.dir;
               const down = this._isCallDown(p.id) || dir === 'down';
               const kind = p.standing ? 'standing' : p.callIn ? 'call_in' : down ? 'call_down' : dir === 'up' ? 'call_up' : 'invited';
-              const fallback = { standing: '⭐ Standing Call-up', call_in: '↔ Call In', call_down: '🎟 Call Down', call_up: '🎟 Call-up', invited: '🎟 Invited' }[kind];
+              const fallback = { standing: '⭐ Standing Call-down', call_in: '↔ Call In', call_down: '🎟 Call Down', call_up: '🎟 Call-up', invited: '🎟 Invited' }[kind];
               const label = (window.MessageCopy && MessageCopy.block('invite_chip', kind)) || fallback;
               const [bg, fg] = { standing: ['#1e3a8a', '#bfdbfe'], call_in: ['#4c1d95', '#ddd6fe'], call_down: ['#7c2d12', '#fed7aa'], call_up: ['#166534', '#dcfce7'], invited: ['#78350f', '#fde68a'] }[kind];
               const tip = this._isCallDown(p.id) ? 'From the squad above — counts toward the league cap in starters/bench'
