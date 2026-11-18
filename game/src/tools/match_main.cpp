@@ -109,6 +109,7 @@ struct Stats {
     std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
+    double up_sum = 0;   // §8.264
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
@@ -285,7 +286,7 @@ int main(int argc, char** argv) {
         bool own_set = false; int own_rk = -1;   // own_rk: §8.248 the restart he has the ball for
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0, rk = -1; bool gk = false; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0, rk = -1; bool gk = false; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; double upd = 99; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
@@ -941,6 +942,13 @@ int main(int argc, char** argv) {
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
+                {   // §8.264 PASSES UNDER PRESSURE: StatsBomb's flag by the passer's nearest opponent, from the 360 frames
+                    // (benchmarks_statsbomb_360_pressure.py, 261k passes, 8 men's competitions), permille by bin
+                    static const double kEdge[13] = {0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 1e9};
+                    static const int kP[13] = {620, 556, 471, 326, 196, 112, 67, 41, 24, 15, 11, 10, 3};
+                    int b = 0; while (b < 12 && rel.upd >= kEdge[b]) ++b;
+                    S.up_sum += kP[b] / 1000.0;
+                }
                 if (rel.mp_rb >= 0 && rel.mp_pb >= 0)   // §8.184 MARKED PICK
                     for (int g = 0; g <= (ok ? 1 : 0); ++g) { ++S.mp_n[g][rel.mp_rb]; ++S.mp_pk[g][rel.mp_rb][rel.mp_pb]; for (int q = 0; q < 5; ++q) S.mp_av[g][rel.mp_rb][q] += rel.mp_av[q]; }
                 {   // §8.180 KICK FOOT: strong v weak by length
@@ -1015,7 +1023,12 @@ int main(int argc, char** argv) {
                         const int fz = facing_z[owner];
                         if (own < 0) { fo_pend_team = owner_team; fo_pend_z = fz; }
                         else if (W.player(static_cast<std::uint8_t>(own)).team != owner_team) ++S.fo_lost[fz]; else ++S.fo_kept[fz];
-                        ++S.takeon; facing[owner] = 0; }
+                        // §8.264: StatsBomb's take-on (a Dribble) is an attempt to beat the man — faced and then taken off
+                        // him, or poked loose while carrying it; faced and then passing it away is no take-on. Before,
+                        // every faced spell counted: 80 a team-match v 18.05.
+                        const bool carrying = s.lastOrders()[owner].why == ai::Why::Dribble;
+                        if ((own >= 0 && W.player(static_cast<std::uint8_t>(own)).team != owner_team) || (own < 0 && carrying)) ++S.takeon;
+                        facing[owner] = 0; }
                     if (own < 0) {
                         const auto why = s.lastOrders()[owner].why;
                         if (!own_set && why != ai::Why::KeeperPunt) {
@@ -1026,6 +1039,13 @@ int main(int argc, char** argv) {
                         rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
                         rel.why = static_cast<int>(why);   // §8.191
+                        {   // §8.264: the passer's nearest opponent outfielder at the release (PASSES UNDER PRESSURE)
+                            double nd = 99;
+                            for (std::uint8_t j = 0; j < N; ++j)
+                                if (W.player(j).team != owner_team && !W.isKeeper(j))
+                                    nd = std::min(nd, std::hypot(W.player(j).pos.x.toDouble() - own_px, W.player(j).pos.y.toDouble() - own_py));
+                            rel.upd = nd;
+                        }
                         rel.rk = own_set ? own_rk : -1; rel.gk = W.isKeeper(owner);   // §8.248
                         { const std::uint8_t pt = s.lastOrders()[owner].pass_to; rel.to = pt < N && W.player(pt).team == owner_team ? pt : -1; rel.act = static_cast<int>(s.lastOrders()[owner].action); }   // §8.246
                         if (!own_set) { const double tl = (owner_team == 0 ? hx - own_px : hx + own_px); ++S.rwhy_n[tl >= 70 ? 0 : tl >= 35 ? 1 : 2][static_cast<int>(why)]; }   // §8.243
@@ -4083,6 +4103,7 @@ int main(int argc, char** argv) {
                 {"scored_18_25_pct", 100.0 * S.band_goal[2] / std::max(1L, S.shot_band[2])}, {"scored_25p_pct", 100.0 * S.band_goal[3] / std::max(1L, S.shot_band[3])},
                 {"penalties_tm", S.pens / tm},
                 {"passes_tm", S.passes / tm}, {"pass_completion_pct", 100.0 * S.pass_ok / std::max(1L, S.passes)},
+                {"passes_under_pressure_pct", 100.0 * S.up_sum / std::max(1L, S.passes)},
                 {"crosses_tm", S.crosses / tm}, {"switches_tm", S.switches / tm}, {"cutbacks_tm", S.cutbacks / tm},
                 {"takeons_tm", S.takeon / tm}, {"takeon_success_pct", 100.0 * S.takeon_ok / std::max(1L, S.takeon)},
                 {"carries10_tm", S.carry10 / tm}, {"pressures_tm", S.press / tm}, {"counterpress_pct", 100.0 * S.cpress / std::max(1L, S.press)},

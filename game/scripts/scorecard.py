@@ -19,6 +19,10 @@ import json, math, sys
 # Numbers only tracking measures — no PL 15/16 source; provisional until the pooled tracking benchmarks
 # (DESIGN §8.263) replace them: (value, source).
 TRACKING = {"ball_in_play_pct": (55.2, "DFL Bundesliga 22/23, 7 matches")}
+# StatsBomb analyst tags no distance rule reproduces (§8.264): shown, not scored — passes_under_pressure_pct carries
+# the pressing on StatsBomb's own flag instead.
+UNSCORED = {"pressures_tm": "StatsBomb Pressure = an analyst's tag; ours = every man inside 4.5 m closing (DFL cut 375 v 375)",
+            "counterpress_pct": "share of those pressures within 5 s of a loss — same tag"}
 
 
 def main():
@@ -30,7 +34,9 @@ def main():
         xs = [r["stats"][k] for r in runs if k in r["stats"]]
         m = sum(xs) / len(xs)
         sd = math.sqrt(sum((x - m) ** 2 for x in xs) / (len(xs) - 1)) if len(xs) > 1 else 0.0
-        if k in real["stats"]:
+        if k in UNSCORED:
+            side.append((k, (real["stats"].get(k, {}).get("value", float("nan")), UNSCORED[k]), m, min(xs), max(xs)))
+        elif k in real["stats"]:
             rv = real["stats"][k]
             v, lo, hi = rv["value"], rv["lo"], rv["hi"]
             se = math.sqrt(((hi - lo) / 3.92) ** 2 + (sd / math.sqrt(len(xs))) ** 2) or 1e-9
@@ -51,7 +57,7 @@ def main():
     n_ok = sum(r[-1] == "ok" for r in rows); n_off = sum(r[-1] == "off" for r in rows); n_OFF = sum(r[-1] == "OFF" for r in rows)
     print(f"    {n_ok} ok, {n_off} off (within 15%), {n_OFF} OFF of {len(rows)}")
     if side:
-        print("TRACKING-ONLY (provisional; one source until the pooled tracking benchmarks land):")
+        print("NOT SCORED (tracking-only, provisional; or a StatsBomb tag no rule reproduces):")
         for k, (v, src), m, a, b in side:
             print(f"    {k:24s}{v:9.2f} ({src}) ours {m:.2f} [{a:.2f}, {b:.2f}]")
 

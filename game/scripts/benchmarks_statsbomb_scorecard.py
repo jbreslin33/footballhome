@@ -54,6 +54,7 @@ def one(path):
             if pt in SET: continue
             c["pass"] += 1
             if "outcome" not in p: c["pass_ok"] += 1
+            if e.get("under_pressure"): c["pass_up"] += 1
             if p.get("switch"): c["switch"] += 1
             if p.get("cross"): c["cross"] += 1
             if p.get("cut_back"): c["cutback"] += 1
@@ -86,6 +87,7 @@ STATS = {
     "scored_lt12_pct": ("pct", "bg0", "b0"), "scored_12_18_pct": ("pct", "bg1", "b1"),
     "scored_18_25_pct": ("pct", "bg2", "b2"), "scored_25p_pct": ("pct", "bg3", "b3"),
     "penalties_tm": ("tm", "pens"), "passes_tm": ("tm", "pass"), "pass_completion_pct": ("pct", "pass_ok", "pass"),
+    "passes_under_pressure_pct": ("pct", "pass_up", "pass"),
     "crosses_tm": ("tm", "cross"), "switches_tm": ("tm", "switch"), "cutbacks_tm": ("tm", "cutback"),
     "takeons_tm": ("tm", "drib"), "takeon_success_pct": ("pct", "dribok", "drib"), "carries10_tm": ("tm", "carry10"),
     "pressures_tm": ("tm", "press"), "counterpress_pct": ("pct", "cpress", "press"), "tackles_tm": ("tm", "tackle"),

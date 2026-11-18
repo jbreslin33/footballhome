@@ -10695,3 +10695,31 @@ every man inside the radius; take-ons likewise (StatsBomb tags a Dribble only wh
 job of the next slice is to make each harness cut StatsBomb's own; then the misses by mechanism, biggest first —
 goals (shots 1.2×, conversion 1.6×, blocks 0.4×, the 12-18 m finish) and the set-piece volumes (corners, throw-ins,
 offsides all ~0.3-0.7×).
+
+### 8.264 G5.159 — the harness counts take-ons and pressing on StatsBomb's own cut (scorecard, no game change)
+
+§8.263's first job: two OFF lines that might be our counting, not our football.
+
+**Take-ons.** StatsBomb's Dribble is an attempt to beat the man. Ours counted every *faced* spell (theirs goal-side
+within 1.5 m in his 45° cone, §8.231) — including the many that end in a pass. Now an attempt is faced and then
+past him 1 m (complete, as before), taken off him, or poked loose while carrying it; faced then passing it away is
+none (FACED keeps its DFL cut). **80.1 → 23.1 a team-match (18.05), success 19 → 64% (58.7).**
+
+**Pressing.** StatsBomb's Pressure is an analyst's tag; no distance rule reproduces it (ours 385 a team-match on a
+4.5 m closing rule; the same rule on DFL tracking 375 v 375). What carries across is StatsBomb's flag on the act:
+`under_pressure` on an open-play pass. New `benchmarks_statsbomb_360_pressure.py`: in the 360 freeze frames (261k
+open-play passes, 8 men's competitions), P(under_pressure | the passer's nearest visible opponent outfielder),
+0-0.5 / 0.5-1 / … / 8+ m: **62 / 56 / 47 / 33 / 20 / 11 / 7 / 4 / 2 / 2 / 1 / 1 / 0%** — the same curve in every
+competition within a few points (La Liga 20/21, World Cup 22, Euro 20 / 24, Ligue 1 21/22 + 22/23, Bundesliga 23/24,
+MLS 23). Their shares flagged: 12.9-18.9%; **PL 2015/16 16.97%** (329,685 passes). Harness: each of our passes
+through the pooled curve at its release (new scorecard line `passes_under_pressure_pct`). Pressures and
+counter-press stay on the card, unscored, with the reason.
+
+**Card** (G5.158 code, same 4 seeds): 9 ok, 4 off, 20 OFF of 33 (was 9 / 3 / 22 of 34). **Passes under pressure
+12.85% (16.98)** — we press the passer *less* than the Premier League, not 2.5× more. Take-on success 64% (59) off;
+take-ons 1.28× OFF. Everything else as §8.263.
+
+**Next, by mechanism, biggest first:** corners 0.31× (1.67 v 5.40) — with blocked shots 0.42× (12 v 29%) a likely
+shared cause (a real block or a defender's touch sends it out for a corner); then carries 10 m+ 1.87×, cut-backs
+1.84×, goals 1.83× (conversion 1.56×, 12-18 m finish 1.64×), offsides 0.55×, crosses 0.62×, throw-ins 0.70×, pressing
+on the passer 0.76×.
