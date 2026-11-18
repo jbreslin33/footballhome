@@ -58,14 +58,21 @@
     /* Info (fines so far, chat): nothing to act on — plain dark grey, the same on red or green (owner 11/18). */
     #status-banner .sb-box-info { background:#1f2937; border:1px solid #4b5563; }
     /* 💬 at the band's right end; unread → a red count that pulses until opened (owner 11/18). */
-    #status-banner .sb-chat { flex:none; display:inline-flex; align-items:center; gap:6px; height:38px; min-width:38px; min-height:0; padding:0 10px;
-                              box-sizing:border-box; border-radius:999px; cursor:pointer; font:inherit; line-height:1; justify-content:center;
+    /* 💬 box: sender · time, then the start of the message (owner 11/18 "show the last message with
+       time/date and sender and part of message, otherwise it's confusing"). */
+    #status-banner .sb-chat { flex:0 1 auto; min-width:240px; max-width:440px; display:flex; align-items:center; gap:10px; min-height:0; padding:7px 12px;
+                              box-sizing:border-box; border-radius:10px; cursor:pointer; font:inherit; text-align:left;
                               background:#1f2937; border:1px solid #4b5563; color:#fff; }
-    #status-banner .sb-chat-i { position:relative; font-size:1.15rem; }
+    #status-banner .sb-chat-i { position:relative; flex:none; font-size:1.3rem; }
     #status-banner .sb-chat-dot { position:absolute; top:-8px; right:-10px; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:999px;
-                                  background:#fff; color:#dc2626; font-size:0.66rem; font-weight:800; line-height:18px; text-align:center; }
-    #status-banner .sb-chat-n { font-size:0.82rem; font-weight:800; white-space:nowrap; margin-left:8px; }
-    #status-banner .sb-chat.unread { background:#ef4444; border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
+                                  background:#ef4444; color:#fff; font-size:0.66rem; font-weight:800; line-height:18px; text-align:center; border:2px solid #fff; }
+    #status-banner .sb-chat-t { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+    #status-banner .sb-chat-top { display:flex; gap:8px; align-items:baseline; font-size:0.8rem; }
+    #status-banner .sb-chat-who { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #status-banner .sb-chat-when { opacity:0.7; white-space:nowrap; font-size:0.72rem; }
+    #status-banner .sb-chat-n { margin-left:auto; font-size:0.74rem; font-weight:800; white-space:nowrap; color:#fca5a5; }
+    #status-banner .sb-chat-msg { font-size:0.8rem; opacity:0.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #status-banner .sb-chat.unread { border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
     @keyframes sb-pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(255,255,255,0.75); } 50% { box-shadow:0 0 0 8px rgba(255,255,255,0); } }
     @media (prefers-reduced-motion: reduce) { #status-banner .sb-chat.unread { animation:none; } }
     #status-banner .sb-box-open { outline:2px solid #fff; outline-offset:1px; }
@@ -88,7 +95,7 @@
     #status-banner .sb-err { width:100%; font-size:0.74rem; color:#fca5a5; }
     @media (max-width: 640px) {
       #status-banner .sb-boxes { flex-direction:column; align-items:stretch; width:100%; }
-      #status-banner .sb-box { width:100%; max-width:none; min-width:0; }
+      #status-banner .sb-box, #status-banner .sb-chat { width:100%; max-width:none; min-width:0; }
       /* Stacked boxes would eat a phone screen pinned on every page: it scrolls away. */
       #top-banners { position:static !important; }
       #status-banner #sb-modal { align-items:flex-end; padding:0; }
@@ -256,8 +263,15 @@
         // "it should say x unread too" → "show a number if unread and say x
         // unread" — 💬 with a count on the bubble + "3 unread", red, pulsing until opened.
         const words = n ? cp('chat_btn_unread', { n }, `${n} unread`) : '';
+        const who = (s && s.who) || cp('sheet_chat', {}, '💬 Chat'), msg = (s && s.msg) || '';
         this.bar.setTail(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
-            title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words}` : cp('chat_btn', {}, 'Chat'))}"><span class="sb-chat-i">💬${n ? `<span class="sb-chat-dot">${esc(n)}</span>` : ''}</span>${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</button>`);
+            title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words} — ${who}: ${msg}` : `💬 ${who}: ${msg}`)}">
+            <span class="sb-chat-i">💬${n ? `<span class="sb-chat-dot">${esc(n)}</span>` : ''}</span>
+            <span class="sb-chat-t">
+              <span class="sb-chat-top"><span class="sb-chat-who">${esc(who)}</span>${s && s.when ? `<span class="sb-chat-when">${esc(s.when)}</span>` : ''}${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</span>
+              ${msg ? `<span class="sb-chat-msg">${esc(msg)}</span>` : ''}
+            </span>
+          </button>`);
       } }));
       this.chat.start().catch(() => {});
 

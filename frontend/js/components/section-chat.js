@@ -355,8 +355,8 @@ class SectionChat {
     // First look on this device: nothing counts as new.
     if (!Number.isFinite(seen) || seen <= 0 || (this.ctx.isOpen && this.ctx.isOpen())) { this._markSeen(newest.at); seen = newest.at; }
     const unread = feed.filter(m => m.at > seen && !m.mine).length;
-    this.ctx.onSummary({ text: `${newest.who ? newest.who + ': ' : ''}${newest.text}`, when: SectionChat.when(newest.iso),
-                         unread, capped: unread >= feed.length && feed.length > 1 });
+    this.ctx.onSummary({ text: `${newest.who ? newest.who + ': ' : ''}${newest.text}`, who: newest.who || '', msg: newest.text || '',
+                         when: SectionChat.when(newest.iso), unread, capped: unread >= feed.length && feed.length > 1 });
   }
 
   _markSeen(at) { try { localStorage.setItem(this._readKey(), String(at || Date.now())); } catch (_) { /* fine */ } }
