@@ -40,6 +40,9 @@ class App {
       clubDirectory: new ClubDirectoryScreen(this.navigation, this.auth),
       clubDetail: new ClubDetailScreen(this.navigation, this.auth),
       gameCenter: new GameCenterScreen(this.navigation, this.auth),
+      // Each game kind extends the base game (owner 11/18 "each extends game and adds or hides").
+      mensGame: new MensGameScreen(this.navigation, this.auth),
+      youthGame: new YouthGameScreen(this.navigation, this.auth),
       teamHub: new TeamHubScreen(this.navigation, this.auth),
       matchSocial: new MatchSocialScreen(this.navigation, this.auth),
       socialSchedule: new SocialScheduleScreen(this.navigation, this.auth),
@@ -134,6 +137,8 @@ class App {
     // as a backward-compat alias for existing links and bookmarks,
     // same pattern as 'teams'/'rosters' above.
     this.screenManager.register('game-center', this.screens.gameCenter);
+    this.screenManager.register(MensGameScreen.STATE, this.screens.mensGame);
+    this.screenManager.register(YouthGameScreen.STATE, this.screens.youthGame);
     this.screenManager.register('game-lineup', this.screens.gameCenter);
     this.screenManager.register('game-day-roster', this.screens.gameCenter);
     this.screenManager.register('team-hub', this.screens.teamHub);
@@ -347,7 +352,8 @@ class App {
       const game = (window.location.hash || '').match(/^#game-center\/(\d+)(?:\/([a-z_]+))?$/);
       if (game) {
         this.navigation.context.role = this.navigation.context.role || 'player';
-        this.navigation.goTo('game-center', { matchId: Number(game[1]), postType: game[2] || null });
+        // Through its event, so the game opens as its kind (men's / youth).
+        EventKindSwitch.openMatch(this.navigation, this.auth, Number(game[1]), game[2] || null);
         return;
       }
       // One player, full page — #person/<persons.id>[/<tab>] (the player

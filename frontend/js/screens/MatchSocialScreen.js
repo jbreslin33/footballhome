@@ -67,7 +67,8 @@ class MatchSocialScreen extends Screen {
 
         if (screen === 'game-center') {
           // data-post-type carries which pill this row is for.
-          this.navigation.goTo(screen, { matchId, postType: link.dataset.postType || undefined });
+          // As its kind (men's / youth game) — through the game's event.
+          EventKindSwitch.openMatch(this.navigation, this.auth, matchId, link.dataset.postType || null);
         } else if (screen === 'match-form') {
           this.navigation.goTo(screen, { mode: 'edit', matchId });
         } else if (screen === 'match-list') {

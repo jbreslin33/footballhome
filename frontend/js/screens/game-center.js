@@ -338,6 +338,19 @@ const DEFAULT_PILL = 'starters_bench';
 // timer and the pill-row hook (pills()); keeps its own player cards, RSVP
 // and invite tools until they fold into the base.
 class GameCenterScreen extends EventScreen {
+  // The base game; each game kind extends it (screens/game-center/
+  // mens-game.js, youth-game.js — owner 11/18 "each extends game and adds or
+  // hides").  STATE = this class's screen state; stateFor(ev) picks the kind
+  // from the event's teams (teams[].section): Mens → MensGameScreen, Boys /
+  // Girls → YouthGameScreen, anything else (Womens) → this base.
+  static get STATE() { return 'game-center'; }
+  static stateFor(ev) {
+    const secs = new Set((Array.isArray(ev && ev.teams) ? ev.teams : []).map(t => t && t.section).filter(Boolean));
+    if (secs.has('Mens') && window.MensGameScreen) return MensGameScreen.STATE;
+    if ((secs.has('Boys') || secs.has('Girls')) && window.YouthGameScreen) return YouthGameScreen.STATE;
+    return GameCenterScreen.STATE;
+  }
+
   constructor(navigation, auth) {
     super(navigation, auth);
     this.matchId   = null;
@@ -2167,18 +2180,7 @@ class GameCenterScreen extends EventScreen {
     //           published-lineup note (coach: the editor instead)
     //   coach   toolbar, reg gaps, 📣 group bar, the card sections
     const coach = {};   // the coach panels' parts, filled below only when drawn
-    const panels = [
-      new Panel({ key: 'lineup_controls', minTier: 'coach', html: () => coach.controls }),
-      new Panel({ key: 'db_strip', maxTier: 'player', html: (s) => s._dbStripHtml() }),
-      new Panel({ key: 'carpool', applies: (s) => s.lineupView !== 'official', html: (s) => s._renderCarpoolPanel() }),
-      new Panel({ key: 'my_eligibility', applies: (s) => !s.everyonePlays, html: (s) => s._renderMyEligibility() }),
-      new Panel({ key: 'roster_criteria', applies: (s) => !s.everyonePlays, html: (s) => s._renderRosterCriteria() }),
-      new Panel({ key: 'player_notes', maxTier: 'player', applies: (s) => s.pill === 'starters_bench', html: (s) => s._renderPlayerNotes(byZone) }),
-      new Panel({ key: 'reg_gaps', minTier: 'coach', html: (s) => s._renderRegGapSection() }),
-      new Panel({ key: 'group_bar', minTier: 'coach', applies: () => coach.canMessage, html: () => coach.groupBar }),
-      new Panel({ key: 'everyone_note', minTier: 'coach', applies: (s) => s.everyonePlays, html: (s) => s._everyoneNoteHtml() }),
-      new Panel({ key: 'sections', minTier: 'coach', html: () => coach.sections }),
-    ];
+    const panels = this.lineupPlayerPanels(byZone, coach);
     if (!this.panelViewer.atLeast('coach')) { paint(this._renderPanels(panels)); return; }
 
     // Coach's own Bench section reflects the bench order they set
@@ -3710,6 +3712,22 @@ class GameCenterScreen extends EventScreen {
   // a status line, not a menu item — dropped there.
   menuSkipPanels() { return ['db_strip']; }
 
+  // The lineup body's panels (lib/panel.js).  A game kind adds or hides:
+  // MensGameScreen adds Starter Eligibility, YouthGameScreen hides the
+  // everyone-plays note.  coach = the coach panels' parts, filled later.
+  lineupPlayerPanels(byZone, coach) {
+    return [
+      new Panel({ key: 'lineup_controls', minTier: 'coach', html: () => coach.controls }),
+      new Panel({ key: 'db_strip', maxTier: 'player', html: (s) => s._dbStripHtml() }),
+      new Panel({ key: 'carpool', applies: (s) => s.lineupView !== 'official', html: (s) => s._renderCarpoolPanel() }),
+      new Panel({ key: 'player_notes', maxTier: 'player', applies: (s) => s.pill === 'starters_bench', html: (s) => s._renderPlayerNotes(byZone) }),
+      new Panel({ key: 'reg_gaps', minTier: 'coach', html: (s) => s._renderRegGapSection() }),
+      new Panel({ key: 'group_bar', minTier: 'coach', applies: () => coach.canMessage, html: () => coach.groupBar }),
+      new Panel({ key: 'everyone_note', minTier: 'coach', applies: (s) => s.everyonePlays, html: (s) => s._everyoneNoteHtml() }),
+      new Panel({ key: 'sections', minTier: 'coach', html: () => coach.sections }),
+    ];
+  }
+
   _pillToolsHtml(pill, byZone) {
     const html = this._renderPanels(this.pillToolPanels(pill, byZone));
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
@@ -4007,7 +4025,7 @@ class GameCenterScreen extends EventScreen {
     // in graphic. yes try that").
     const youHtml = live && typeof this._myPracticeLine === 'function' ? this._myPracticeLine() : '';
     // The key to the boxes' mini calendars (eligibility strip_legend, mig 1505).
-    const legend = live && !this.everyonePlays && this.stats && this.stats.size ? (this._eligCopy('strip_legend') || '') : '';
+    const legend = live ? this._cardLegend() : '';
     return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, youHtml, legend };
   }
 

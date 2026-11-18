@@ -45,7 +45,8 @@ const EventKindSwitch = {
     if (!ev) return;
     const params = pill ? { event: ev, pill } : { event: ev };
     if (ev.kind === 'match' && ev.match_id != null) {
-      navigation.goTo('game-center', params);
+      // The game's own kind: MensGameScreen / YouthGameScreen / the base game.
+      navigation.goTo(typeof GameCenterScreen !== 'undefined' ? GameCenterScreen.stateFor(ev) : 'game-center', params);
     } else if (ev.kind === 'practice' || ev.kind === 'pickup') {
       navigation.goTo('practice', params);
     } else {
@@ -57,7 +58,7 @@ const EventKindSwitch = {
   // "games seem to have id in url but practice does not … the urls are
   // random in design"): #event/<fh_event_id>/<pill>.  The kind decides
   // which screen draws it, never the URL.
-  SCREENS: ['event', 'practice', 'game-center'],
+  SCREENS: ['event', 'practice', 'game-center', 'game-men', 'game-youth'],
   hash(ev, pill) {
     if (!ev || ev.fh_event_id == null) return null;
     return `#event/${ev.fh_event_id}${pill ? '/' + pill : ''}`;
@@ -87,6 +88,19 @@ const EventKindSwitch = {
     const body = await res.json();
     if (!body || !body.event) throw new Error('no event');
     EventKindSwitch.open(navigation, body.event, pill);
+  },
+
+  // A game known only by its match id (old #game-center/<id> links, Match
+  // Social): find its event, then open it as its kind.  No event → the
+  // base game by match id, as before.
+  async openMatch(navigation, auth, matchId, pill) {
+    try {
+      const res = await auth.fetch(`/api/matches/${matchId}`);
+      const body = res.ok ? await res.json() : null;
+      const fhEventId = body && body.success && body.data && body.data.fh_event_id;
+      if (fhEventId) { await EventKindSwitch.openById(navigation, auth, fhEventId, pill); return; }
+    } catch (err) { console.warn('[event] match → event failed:', err); }
+    navigation.goTo('game-center', { matchId, postType: pill || null });
   },
 };
 
