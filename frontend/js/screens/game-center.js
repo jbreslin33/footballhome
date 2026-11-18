@@ -3991,13 +3991,13 @@ class GameCenterScreen extends EventScreen {
     const info = live && this.ev && window.Viewer && !Viewer.account().eventHeader
       ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
     const out = live && this._rsvpOut ? this._rsvpOut : null;
-    // Heading colours (owner 11/18 "not placed yellow, no response orange,
+    // Heading colours (owner 11/18 "not placed yellow, no response orange → yellow too 11/18,
     // not going red, alternates powder blue"); ineligible keeps the gold.
     const outRow = (list, tier, fb, color) => ({ label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: [...list].sort(this._byLastName).map(p => p.name) });
     // Order (owner 11/18): substitutes, not placed yet (+ ineligible), no response, not going, alternates.
     const rsvpOut = out ? [outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet', '#facc15'),
                            outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)', '#f5d442'),
-                           outRow(out.noResponse, 'sec_noresp', '– No response', '#fb923c'),
+                           outRow(out.noResponse, 'sec_noresp', '– No response', '#facc15'),
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or

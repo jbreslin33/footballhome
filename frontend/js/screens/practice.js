@@ -142,13 +142,13 @@ class PracticeScreen extends EventScreen {
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
     const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
     // Same colours as the game card, names too (owner 11/18): going green
-    // (the count line), no response orange, not going red.
+    // (the count line), no response yellow (owner 11/18 "no response should be yellow"), not going red.
     const row = (list, tier, fb, c) => list.length ? `
         <div style="margin-top:8px;">
           <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
           <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
         </div>` : '';
-    return row(out.noResponse, 'sec_noresp', '– No response', '#fb923c') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
+    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
   }
 
   // ── 📞 Attendance calls (mig 1277; owner 2026-11-11: "call all coaches
