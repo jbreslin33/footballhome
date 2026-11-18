@@ -15,15 +15,25 @@
 // The owner approves on #payments (VolunteerController), which makes him
 // a 🙋 Volunteer.  Every word is message_templates kind volunteer_shift.
 //
-//   VolunteerShiftCard.mount(host, fetchJson)   fetchJson(url, options) → body
+//   VolunteerShiftCard.mount(host, fetchJson, { folded })   fetchJson(url, options) → body
+//   folded (owner 11/18): the offer stays hidden until 'fh:volunteer-toggle'
+//   (the dues notice's 🙋 Volunteer button) — a pick always shows.
 (function () {
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const t = (tier, tokens) => (window.MessageCopy && MessageCopy.block('volunteer_shift', tier, tokens)) || '';
 
   class VolunteerShiftCard {
-    constructor(host, fetchJson) {
+    constructor(host, fetchJson, opts = {}) {
       this.host = host;
       this.fetchJson = fetchJson;
+      this.folded = !!opts.folded;
+      this.open = false;
+      this._onToggle = () => {
+        if (!this.host.isConnected) { window.removeEventListener('fh:volunteer-toggle', this._onToggle); return; }
+        this.open = !this.open; this.render();
+        if (this.open) this.host.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      };
+      if (this.folded) window.addEventListener('fh:volunteer-toggle', this._onToggle);
       this.data = null;
       this.agreed = false;
       this.busy = false;
@@ -76,6 +86,7 @@
         return;
       }
 
+      if (this.folded && !this.open) { this.host.innerHTML = ''; return; }
       const shifts = (d.shifts || []).map(s => `<button type="button" data-vol-shift="${Number(s.id)}" ${this.busy ? 'disabled' : ''}
           style="flex:1 1 30%; min-width:120px; padding:8px 10px; border-radius:8px; font-weight:800; font-size:0.78rem; cursor:pointer;
                  border:1px solid #3b82f6; background:${this.agreed ? '#2563eb' : 'transparent'}; color:${this.agreed ? '#fff' : '#93c5fd'};
@@ -92,9 +103,9 @@
         ${err}`);
     }
 
-    static mount(host, fetchJson) {
+    static mount(host, fetchJson, opts) {
       if (!host) return null;
-      const card = new VolunteerShiftCard(host, fetchJson);
+      const card = new VolunteerShiftCard(host, fetchJson, opts);
       card.load();
       return card;
     }

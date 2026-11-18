@@ -42,6 +42,21 @@ class DuesNoticeView extends NoticeView {
       ? { icon: '💰', border: '#f59e0b', bg: 'rgba(245,158,11,0.16)', fg: '#fcd34d', btn: '#d97706' }
       : { icon: '⚠️', border: '#f59e0b', bg: 'rgba(245,158,11,0.16)', fg: '#fcd34d', btn: '#d97706' };
     const button = mc.block('my_dues', 'banner_button') || 'Pay here';
+    // 🙋 Owner 11/18: "shorter message stating they are behind and need to
+    // fix and to pay here or to volunteer and let them know volunteer button
+    // contains more info" — with a volunteer offer open, ONE short line and
+    // two doors; the full volunteer card unfolds from its button.
+    if (d.is_self && this.ctx.volunteerOffer && mc.has('my_dues', 'behind_short')) {
+      const pay = /^https:\/\//.test(d.pay_url || '') ? `<a href="${this.esc(d.pay_url)}" target="_blank" rel="noopener"
+             style="padding:6px 14px; border-radius:999px; background:${c.btn}; color:#fff; font-weight:800; text-decoration:none; white-space:nowrap;">${this.esc(button)}</a>` : '';
+      const vol = `<button type="button" data-vol-open
+             style="padding:6px 14px; border-radius:999px; background:#2563eb; color:#fff; font-weight:800; border:0; cursor:pointer; white-space:nowrap;">${this.esc(mc.block('my_dues', 'volunteer_button') || '🙋 Volunteer')}</button>`;
+      return `<div style="display:flex; flex-direction:column; gap:8px; padding:10px 12px; border-radius:8px;
+                          border:1px solid ${c.border}; background:${c.bg}; color:${c.fg}; font-size:0.85rem; font-weight:700; line-height:1.35;">
+          <span>${c.icon} ${this.esc(mc.block('my_dues', 'behind_short', tokens))}</span>
+          <span style="display:flex; gap:8px; flex-wrap:wrap;">${pay}${vol}</span>
+        </div>`;
+    }
     return `<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:8px 10px; border-radius:8px;
                         border:1px solid ${c.border}; background:${c.bg}; color:${c.fg}; font-size:0.78rem; font-weight:700; line-height:1.3;">
         <span>${c.icon} ${who}${this.esc(mc.block('my_dues', d.tier, tokens))}</span>
@@ -57,7 +72,8 @@ class VolunteerShiftNoticeView extends NoticeView {
   html() { return window.VolunteerShiftCard ? '<div data-notice-volunteer></div>' : ''; }
   mount(el) {
     const host = el.querySelector('[data-notice-volunteer]');
-    if (host) VolunteerShiftCard.mount(host, this.ctx.fetchJson);
+    // Folded behind the dues notice's 🙋 Volunteer button when that is up.
+    if (host) VolunteerShiftCard.mount(host, this.ctx.fetchJson, { folded: !!this.ctx.volunteerFolded });
   }
 }
 
@@ -88,6 +104,12 @@ class NoticeStrip {
 
   render() {
     if (!this.host) return;
+    // A volunteer offer (no pick yet) + your own dues notice = one short
+    // dues line with Pay here / 🙋 Volunteer; the card folds behind it.
+    const offer = this.notices.some(n => n && n.kind === 'volunteer_shift' && n.offer && !n.pick);
+    const selfDues = this.notices.some(n => n && n.kind === 'dues' && n.is_self);
+    this.ctx.volunteerOffer = offer;
+    this.ctx.volunteerFolded = offer && selfDues && !!(window.MessageCopy && MessageCopy.has && MessageCopy.has('my_dues', 'behind_short'));
     const views = this.notices
       .map(n => { const V = NoticeStrip.VIEWS[n && n.kind]; return V ? new V(n, this.ctx) : null; })
       .filter(Boolean);
@@ -96,6 +118,13 @@ class NoticeStrip {
     this.host.style.display = parts.length ? '' : 'none';
     const els = this.host.querySelectorAll('[data-notice]');
     parts.forEach((p, i) => p.v.mount(els[i]));
+    if (!this.host._volWired) {
+      this.host._volWired = true;
+      this.host.addEventListener('click', (e) => {
+        if (!e.target.closest('[data-vol-open]')) return;
+        window.dispatchEvent(new CustomEvent('fh:volunteer-toggle'));
+      });
+    }
   }
 }
 
