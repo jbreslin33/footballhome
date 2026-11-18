@@ -136,6 +136,7 @@ game_test(test_restarts)
 game_test(test_aerial)
 game_test(test_phases)
 game_test(test_defending_block)
+game_test(test_block)
 # No realism gate (James 10/24: "no gate!"): realism is measured and read —
 # fh-game-match prints line height, team length, shots, entries — never a
 # test that blocks a build.

@@ -8,7 +8,7 @@ event linked) and a blocked PASS (a Block event whose related event is a Pass): 
 blocker) and out (the blocker → the next located event (within 90 s: a restart comes ~30 s after the ball goes out) that is not the Block itself, a Ball Receipt or a
 Pressure — the next touch, or the restart's spot when it went out). The turn = the angle between in and out, 0° =
 carried straight on, 180° = straight back; by 0-45 / 45-90 / 90-135 / 135-180 (pooled over sides). How far it went
-(m to that next spot, median; its time). And how it ended: behind for a corner (the next event a Corner of the
+(m to that next spot, median; its time). G5.164: the next touch in play alone — its distance, time and whose (quartiles). And how it ended: behind for a corner (the next event a Corner of the
 attacking side) / out for a throw-in / the attackers' / the defenders'. fh-game-match's body block draws its turn
 from these bins. Pitch 120 x 80 scaled to 105 x 68. Data: StatsBomb Open Data, free with attribution. FH original.
 """
@@ -24,7 +24,7 @@ def secs(e):
 
 
 def main():
-    R = {k: {"turn": collections.Counter(), "dist": [], "end": collections.Counter(), "n": 0} for k in ("shot", "pass")}
+    R = {k: {"turn": collections.Counter(), "dist": [], "end": collections.Counter(), "n": 0, "pd": [], "pt": [], "who": collections.Counter()} for k in ("shot", "pass")}
     for f in glob.glob(os.path.join(sys.argv[1], "*.json")):
         if not os.path.basename(f)[0].isdigit(): continue
         ev = json.load(open(f, encoding="utf8"))
@@ -62,12 +62,21 @@ def main():
                    "goal kick" if pt == "Goal Kick" else
                    "attackers" if nxt["team"]["id"] == src["team"]["id"] else "defenders")
             r["end"][end] += 1
+            if end in ("attackers", "defenders"):   # G5.164: the next touch in play — how far from the block, how long after, whose
+                r["pd"].append(lo); r["pt"].append(secs(nxt) - t0)
+                r["who"]["keeper" if nxt["type"]["name"] == "Goal Keeper" or nxt.get("position", {}).get("name") == "Goalkeeper" else end] += 1
     print("StatsBomb PL 2015/16: BLOCKED BALLS — the turn off the body (0 = straight on, 180 = straight back), how far, how it ended")
     for k in ("shot", "pass"):
         r = R[k]; n = max(1, r["n"])
         print(f"  {k:4s} {r['n']:5d}: turn 0-45 / 45-90 / 90-135 / 135-180 " + " / ".join(f"{100 * r['turn'][b] / n:.1f}" for b in range(4))
               + f"% | to the next touch med {statistics.median(r['dist']):.1f} m | ended: "
               + ", ".join(f"{e} {100 * r['end'][e] / n:.1f}%" for e in ("corner", "throw-in", "goal kick", "attackers", "defenders")))
+
+    print("  the next touch IN PLAY (G5.164): how far from the block, how long after (quartiles), whose; under 3 m / under 0.5 s / under 1 s")
+    for k in ("shot", "pass"):
+        r = R[k]; m = max(1, len(r["pd"])); q = lambda a: " / ".join(f"{x:.1f}" for x in statistics.quantiles(a, n=4))
+        print(f"  {k:4s} {len(r['pd']):5d}: {q(r['pd'])} m, {q(r['pt'])} s | " + ", ".join(f"{w} {100 * r['who'][w] / m:.1f}%" for w in ("attackers", "defenders", "keeper"))
+              + f" | under 3 m {100 * sum(d < 3 for d in r['pd']) / m:.1f}%, under 0.5 s {100 * sum(t < 0.5 for t in r["pt"]) / m:.1f}%, under 1 s {100 * sum(t < 1.0 for t in r["pt"]) / m:.1f}%")
 
 
 if __name__ == "__main__":

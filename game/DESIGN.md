@@ -10853,3 +10853,46 @@ none out, none to the keeper; 12 the defenders', 5 the attackers' — most withi
 the body at ~7 m/s it is under the capture cap of whoever stands there; a real blocked shot runs a median 19 m before
 anyone touches it. Next: the blocked ball's pace and the touch that takes it (a deflection at pace is no first touch —
 G4.3b's bobble), fitted on the 19.2 m and the 24% behind.
+
+### 8.270 G5.164 — a ball off a body is unread, leaves on the grass, and keeps the pace its turn keeps (shipped; blocked-shot corners real, total corners unmoved)
+
+From §8.269: the blocked ball was re-taken within a tick, 0-5 m from the block. **Real** (`benchmarks_statsbomb_deflect.py`,
+new: the next touch in play alone, PL 15/16): blocked shots (1,855 in play) are next touched **1.2 / 1.8 / 2.6 s** on
+(quartiles), **7.1 / 13.1 / 21.2 m** away, 3.8% inside 0.5 s, 17.0% inside 1 s; the attackers 47.8%, defenders 44.3%,
+keeper 7.9%. Blocked passes (5,740): 1.1 / 1.6 / 2.2 s, 4.8 / 8.9 / 14.4 m, 3.2% / 18.5%.
+
+**Three faults, one tick-by-tick trace** (a temporary per-tick print after each blocked shot):
+1. *The man beside the blocker took it.* At 7 m/s the ball is under every outfielder's capture cap; the cluster round a
+   block (shooter, blocker, his mates) is inside `physics.ball.reach_m` (0.9 m) of its path. A first try that made a
+   touch inside the window a loose one (the bobble) stopped it dead instead: each body in the cluster took 60% off
+   (`kBobbleKeep` 0.4), three in 0.1 s, then the fourth man had it.
+2. *It kept the height it was struck at.* The block set vel.z = 0 but not pos.z: a knee-high shot's block dropped 0.4 m
+   and skidded (`kBounceSkid` 0.65) on three bounces — 6.8 → 4.3 → 2.8 → 1.8 m/s inside 0.7 s. The bobble already puts
+   the ball on the grass; the block forgot to.
+3. *Every block kept 0.3 of the pace,* whatever the turn: a glancing touch and a full-body rebound both left at 7 m/s,
+   so the next touch bunched at 10-15 m (real 7 / 13 / 21).
+
+**Change** [StatsBomb fit; G4.25's restitution]: `physics.block.unread_s` (default **0.5**): for that long after a body
+block no outfielder can touch the ball (keepers, set for the shot, still play it) — the smallest window the data's
+floor allows (3.8% inside 0.5 s); 1.0 s fitted the median as well but empties the real 17% inside 1 s. With it on: the
+ball leaves the body at ground level, and its speed is an **oblique hit** — the speed into the body comes back at
+`block.keep` (0.3, now the restitution), the speed across it is kept; the drawn turn (§8.269) fixes where it hit
+(cos turn = (1 − c² − e·c²) / √(e²c² + 1 − c²), c the cosine off the normal, solved by bisection in Fixed64), and the
+speed kept is √(e²c² + 1 − c²): straight back 0.30, square 0.55, a glance ~0.9 — a glance off a shot can stay above the
+capture cap and hit a second body, as real ones do. `unread_s` 0 = G5.163. New harness line **BLOCKED SHOTS** (how each
+ended — corner / out else / attackers / defenders / keeper — and the next touch in play, time and distance quartiles,
+against the real ones); `GAME_BLOCK_TRACE` adds the ball's speed in and its turn. Test `test_block` (3): nobody touches
+it inside the window, without it the man beside the blocker takes it, on the grass with the pace its turn keeps.
+
+**Sweep** (8 matches each; small samples, 22-42 blocked shots): window 0 → corner 0%, next touch 0.0 / 0.1 / 1.0 s,
+0.0 / 0.1 / 3.8 m; 0.5 s alone → 1.0 / 1.3 / 1.7 s but 3.9 / 4.6 / 5.2 m (the skid); + grass, flat keep 0.3 / 0.45 →
+4.0-6.7 / 7.7-11.9 m median, corners 0-9%; + oblique → corners 14-23%.
+
+**After** (4 seeds × 8, `card_G5.164.txt`): BLOCKED SHOTS corner **17-23%** (24.0), out else 0-7% (6.0), next touch a
+median 1.3-1.9 s (1.8), 8.1-10.8 m (13.1; upper quartile 10.7-13.9 v 21.2 — still short); corners off shots 0 →
+**0.31-0.38** a team-match (real shot 0.92 + block 1.34 + save 0.60). Total corners **1.55** (1.69 before; seed spread
+1.31-1.81 — unmoved): our shots are blocked 13.4% (29.1), and **no pass is ever body-blocked** — the sweep only fires
+above the 20 m/s capture cap, and real blocked passes (11.8 a team-match) put out 1.26 corners. Card 7 ok / 5 off / 21
+OFF (was 8 / 4 / 21); goals 2.78 → 2.59, shots 15.2 → 14.3 (inside seed spread). Goldens unchanged (no body block in
+their runs); tests 23/23, lint clean. Next: the block of a pass — a man in a pass's line under the cap reads it and
+plays it (cut_share), so the real blocked pass (a body in the way, no time to control) has no path.

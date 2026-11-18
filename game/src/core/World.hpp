@@ -188,6 +188,7 @@ public:
     int headersAtGoal(int team) const { return headers_at_goal_[team]; }
     int headersClear(int team) const { return headers_clear_[team]; }
     int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
+    bool lastBlockShot() const { return block_was_shot_; }   // G5.164: the last body block stopped a shot
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
     }
@@ -385,6 +386,8 @@ private:
     std::uint64_t flight_tick_ = 0;
     std::uint64_t shot_flight_tick_ = ~std::uint64_t{0};   // G5.163: the flight_tick_ of the last shot
     bool block_turn_real_ = false; math::Fixed64 block_turn_p_[2][4]{};   // G5.163 (§8.269)
+    bool block_was_shot_ = false;
+    std::uint64_t block_tick_ = 0, block_unread_ticks_ = 0;   // G5.164 (§8.270): the last body block; how long its ball is unread
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool carry_pace_on_ = false;
