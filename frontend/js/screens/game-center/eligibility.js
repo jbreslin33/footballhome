@@ -120,6 +120,31 @@ class GameCenterEligibility {
       missed: String(s.missedDays != null ? s.missedDays : 0),
       base: String(s.baseNeeded != null ? s.baseNeeded : needed),
     };
+    // Chances (owner 11/18 "1 of 5"): every DAY in the week's window — the
+    // held practice days plus a day that isn't "held" but still counts when
+    // attended (barn night, mig 1497).  extra = those non-held days, named
+    // by their kind when it's clear which ones they are.
+    const days = new Map();
+    for (const p of (Array.isArray(s.practices) ? s.practices : [])) {
+      const at = p.startsAt ? new Date(p.startsAt) : null;
+      if (!at || isNaN(at)) continue;
+      const day = at.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      if (!days.has(day)) days.set(day, new Set());
+      days.get(day).add(String(p.kind || 'practice'));
+    }
+    const chances = s.weekMode ? days.size : Number(s.windowTotal || days.size);
+    const held = s.heldDays != null ? Number(s.heldDays) : chances;
+    const extra = Math.max(0, chances - held);
+    const extraKinds = new Set();
+    let extraDays = 0;
+    for (const kinds of days.values()) {
+      const odd = [...kinds].filter(k => k !== 'practice');
+      if (odd.length) { extraDays++; odd.forEach(k => extraKinds.add(k)); }
+    }
+    tokens.chances = String(chances);
+    tokens.extra = String(extra);
+    tokens.extra_label = extra && extraDays === extra && extraKinds.size ? [...extraKinds].join(' + ') : `${extra} more`;
+    tokens.left_needed = String(Math.max(0, needed - attended));
     return { state, colour, tokens, needed, attended, projected, remaining, future };
   }
 
@@ -231,19 +256,32 @@ class GameCenterEligibility {
   // Words: eligibility tiers lineup_note_practice / lineup_note_dues (mig 1299).
   _lineupNote(playerId) {
     const bits = [];
+    // Under every name for every viewer (owner 11/18 "if we can show
+    // everyone else to the player then that is optimal, even if we need to
+    // make graphic bigger" — the live card grows to fit its notes).  A
+    // player also gets their own _myPracticeLine above the lineup; admins
+    // also get Dues: below.
     const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
     if (s) {
       const st = this._criteriaState(s);
       // P: = the week's total, attended + projected (owner 2026-11-12:
       // "P: to be total of A + P … Luke … A:2,P:5"; copy mig 1301).
+      // Plain words for the week (owner 11/18 "a simple way to show what
+      // practices they made and if they are on pace or made threshold
+      // depending on that week"): ✓ Made it (1/1) · On pace · 0/1 · Needs 1.
+      // needed is the week's own (barn night counts when attended, mig 1497).
+      const made = st.attended >= st.needed;
+      const onPace = !made && st.attended + st.projected >= st.needed;
+      const left = Math.max(0, st.needed - st.attended - st.projected);
+      // "1 of 5" (owner 11/18): made / the week's chances, barn night included.
       const tokens = { attended: String(st.attended), projected: String(st.projected),
-                       total: String(st.attended + st.projected), needed: String(st.needed) };
-      const text = this._eligCopy('lineup_note_practice', tokens) || `A:${tokens.attended} P:${tokens.total}`;
-      // Green = on course for the week (attended + projected ≥ needed;
-      // needed is 2 of 5 / 1 of 4 / 0 of 3 practice days), red = not
-      // (owner 2026-11-12).
-      const onCourse = st.attended + st.projected >= st.needed;
-      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${onCourse ? '#4ade80' : '#f87171'};">${this.escapeHtml(text)}</span>`);
+                       total: String(st.attended + st.projected), needed: String(st.needed), left: String(left),
+                       chances: st.tokens.chances };
+      const tier = made ? 'lineup_note_made' : onPace ? 'lineup_note_on_pace' : 'lineup_note_short';
+      const text = this._eligCopy(tier, tokens)
+        || (made ? `✓ ${tokens.attended} of ${tokens.chances}` : `${tokens.attended} of ${tokens.chances} · need ${tokens.needed}`);
+      const colour = made ? '#4ade80' : onPace ? '#facc15' : '#f87171';
+      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${colour}; font-weight:700;">${this.escapeHtml(text)}</span>`);
     }
     const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
@@ -301,6 +339,27 @@ class GameCenterEligibility {
       </details>`;
   }
 
+  // One line above the lineup, about the viewer only (owner 11/18 "for a
+  // player they only need to know about themselves … in a line above the
+  // lineup"): You · 0 of 5 · need 1 — the week's chances incl. barn night
+  // (mig 1499).  Staff get the per-name notes instead.  Copy: eligibility
+  // tiers lineup_you_made / lineup_you_on_pace / lineup_you_short (mig 1500).
+  _myPracticeLine() {
+    if (this.everyonePlays || this.myPlayerId == null || !this.stats) return '';
+    if (this._staffView() || this._canPostSocial()) return '';
+    const s = this.stats.get(this.myPlayerId);
+    if (!s) return '';
+    const st = this._criteriaState(s);
+    const made = st.attended >= st.needed;
+    const onPace = !made && st.attended + st.projected >= st.needed;
+    const tokens = Object.assign({}, st.tokens, { left: String(Math.max(0, st.needed - st.attended - st.projected)) });
+    const tier = made ? 'lineup_you_made' : onPace ? 'lineup_you_on_pace' : 'lineup_you_short';
+    const text = this._eligCopy(tier, tokens);
+    if (!text) return '';   // no copy row → say nothing (never hard-code it)
+    const [bg, fg] = made ? ['#166534', '#bbf7d0'] : onPace ? ['#854d0e', '#fef08a'] : ['#7f1d1d', '#fecaca'];
+    return `<div data-gc-my-practice style="max-width:540px; margin:0 auto 8px; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:0.85rem; font-weight:700; text-align:center;">${this.escapeHtml(text)}</div>`;
+  }
+
   _renderMyEligibility() {
     if (this.myPlayerId == null) return '';
     const s = this.stats.get(this.myPlayerId);
@@ -326,7 +385,8 @@ class GameCenterEligibility {
     const rule = s.weekMode
       ? this._eligCopy(s.neededReason === 'weekday_game' ? 'rule_week_weekday_game'
           : st.needed === 0 ? 'rule_week_zero'
-          : (s.neededReason !== 'days' && Number(s.missedDays) > 0) ? 'rule_week_reduced' : 'rule_week', tokens)
+          : (s.neededReason !== 'days' && Number(s.missedDays) > 0) ? 'rule_week_reduced'
+          : Number(tokens.extra) > 0 ? 'rule_week_extra' : 'rule_week', tokens)
       : this._eligCopy(s.extended ? 'rule_extended' : 'rule', tokens);
     const legend = this._eligCopy('legend');
     // The second criterion: the game's own RSVP in by its deadline (mig 507).

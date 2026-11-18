@@ -523,7 +523,9 @@ class GameCenterScreen extends EventScreen {
     const built = st.built && st.built.key === this._cardKey(pill) ? st.built : null;
     const h = built ? (built.drawn || built.height) : 700;
     const w = (built && built.width) || 540;
-    return `
+    // The viewer's own practice line sits above the lineup (owner 11/18).
+    const mine = slot === 'top' && typeof this._myPracticeLine === 'function' ? this._myPracticeLine() : '';
+    return `${mine}
       <div data-gc-card="${slot}" style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:${w} / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
         <div data-gc-card-inner style="position:absolute; left:0; top:0; width:${w}px; transform-origin:0 0;">${built ? built.html : ''}</div>
         <canvas data-gc-card-beam style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
