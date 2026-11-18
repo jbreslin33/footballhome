@@ -17,6 +17,9 @@ class PlayerTeamRulesScreen extends Screen {
       </div>
 
       <div style="padding: 0 10px 14px; line-height: 1.5;">
+        <!-- ⚖️ Their live fines + the fine rules (FinesPanel) — owner 11/18 "even on
+             team rules is where we can show live fines".  Hidden without rates. -->
+        <div id="ptr-fines" hidden style="margin-bottom:10px;"></div>
         <div style="background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.16);">
           <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.12);">
             <div style="font-size: 1rem; line-height: 1;">⚽</div>
@@ -118,6 +121,19 @@ class PlayerTeamRulesScreen extends Screen {
   }
 
   onEnter() {
+    const host = this.element.querySelector('#ptr-fines');
+    if (host && window.FinesPanel) {
+      const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      const fetchJson = async (url, options = {}) => {
+        const res = await this.auth.fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
+        let body = null; try { body = await res.json(); } catch (_) { body = null; }
+        if (!res.ok) throw new Error((body && (body.error || body.message)) || `HTTP ${res.status}`);
+        return body || {};
+      };
+      new FinesPanel(host, { fetchJson, escapeHtml: esc, auth: this.auth }).load();
+    }
+    if (this._wired) return;
+    this._wired = true;
     this.element.addEventListener('click', (e) => {
       if (e.target.closest('.back-btn')) {
         this.navigation.goBack();

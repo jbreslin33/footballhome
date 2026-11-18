@@ -43,9 +43,9 @@
   const LINKS = [
     // Owner 11/18: "rules is all we need now. rosters and players are not
     // needed. schedules honestly is what cal is for. signout should be top
-    // right" — Fines / Alerts kept: their only home since 👤 Mine went.
-    ['rules',     'qlink_rules',     '📋 Rules',     'player-team-rules'],
-    ['fines',     'qlink_fines',     '⚖️ Fines',     null],
+    // right" → "even on team rules is where we can show live fines" (the
+    // fines live on Team Rules now).  Alerts kept: turning notifications on.
+    ['rules',     'qlink_rules',     '📋 Rules & fines', 'player-team-rules'],
     ['alerts',    'qlink_alerts',    '🔔 Alerts',    null],
     ['signout',   'qlink_signout',   '↪ Sign out',   null],
   ];
