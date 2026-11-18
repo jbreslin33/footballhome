@@ -244,7 +244,8 @@
 
       // ⚖️ Fines — a box only when something is owed.
       new FinesPanel(this.$('#sb-fines'), this.ctx({ onSummary: (s) => {
-        this.set('fines_owed', s && s.total > 0 ? { amount: s.amount, count: s.count } : null);
+        this.finesNow = s && s.total > 0 ? Number(s.total) : 0;
+        this.updateFines();
       } })).load();
 
       // The band draws once the notices AND the week are in — no green flash.
@@ -313,10 +314,17 @@
       const need = this.$('#sb-need');
       if (need) need.innerHTML = rows.length
         ? `<div class="sb-need-title">${esc(cp('need_how_short', {}, 'Tap ✓ going or ✗ not going — tap the event to open it'))}</div>${rows.join('')}` : '';
-      const st = stake > 0 ? money(stake) : '';
+      this.finesStake = stake;
       this.set('suspended', suspended ? { n: suspended } : null);
-      this.set('rsvp_soon', soon ? { n: soon, stake: st } : null);
-      this.set('rsvp_open', later ? { n: later, stake: st } : null);
+      this.set('rsvp_soon', soon ? { n: soon } : null);
+      this.set('rsvp_open', later ? { n: later } : null);
+      this.updateFines();
+    }
+
+    // ⚖️ One box: owed so far + what this week's unanswered events would add.
+    updateFines() {
+      const now = this.finesNow || 0, stake = this.finesStake || 0;
+      this.set('fines_owed', now > 0 || stake > 0 ? { amount: money(now), stake: stake > 0 ? money(stake) : '' } : null);
     }
 
     show(on) { this.host.style.display = on ? '' : 'none'; }

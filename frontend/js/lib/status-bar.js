@@ -19,7 +19,9 @@
 //
 //   const bar = new StatusBar(headEl, { escapeHtml, onChip(code) });
 //   bar.setRules([{code, severity, window_hours}]);
-//   bar.set('fines_owed', { amount: '$4' });   bar.set('fines_owed', null);
+//   bar.set('fines_owed', { amount: '$4', stake: '$11' });   bar.set('fines_owed', null);
+// Fines (owner 11/18 "a box with fines. current and new potential"): one box,
+// what is owed so far + what this week's unanswered events would add.
 class StatusBar {
   constructor(head, ctx) {
     this.head = head;
@@ -65,7 +67,7 @@ class StatusBar {
     // The two RSVP items read as one box: the total, how many are soon.
     const soon = this.items.get('rsvp_soon'), later = this.items.get('rsvp_open');
     const total = (soon ? Number(soon.n) || 0 : 0) + (later ? Number(later.n) || 0 : 0);
-    const stake = (soon && soon.stake) || (later && later.stake) || '';
+    const stake = '';   // the fines at stake live in the ⚖️ box now
     const shown = live.filter(([code]) => !(code === 'rsvp_open' && soon && this.rules.has('rsvp_soon')));
     const actions = shown.filter(([code]) => sev(code) === 'action');
     const infos = shown.filter(([code]) => sev(code) !== 'action');
@@ -75,7 +77,7 @@ class StatusBar {
       rsvp_open:    () => [`⛔ Missing ${total} RSVPs${stake ? ` · ${stake} in fines if not set` : ''}`, 'Answer ›'],
       dues_blocked: (d) => [`⛔ Can't play — overdue dues ${d.amount}`, 'Pay now ›'],
       dues_owed:    (d) => [`⛔ Overdue dues ${d.amount}`, 'Pay now ›'],
-      fines_owed:   (d) => [`⚖️ Fined so far ${d.amount}`, 'See ›'],
+      fines_owed:   (d) => [`⚖️ Fines ${d.amount} so far${d.stake ? ` · +${d.stake} if RSVPs not set` : ''}`, 'See ›'],
       chat_unread:  (d) => [`💬 ${d.text || 'Chat'}`, d.n ? `${d.n} new ›` : 'Open ›'],
       suspended:    () => ['⛔ Suspended', ''],
     };
@@ -85,7 +87,7 @@ class StatusBar {
       const tokens = { ...d, hours: this.windowHours(code), total, stake };
       const [lfb, bfb] = (FB[code] || (() => [code, '›']))(tokens);
       const rsvp = code === 'rsvp_soon' || code === 'rsvp_open';
-      const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}`, tokens, lfb);
+      const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}`, tokens, lfb);
       const actTier = code === 'chat_unread' && !d.n ? 'act_chat_read' : `act_${code}`;
       const btn = bfb ? StatusBar.copy(actTier, tokens, bfb) : '';
       const extra = (Array.isArray(d.extra) ? d.extra : []).map(x => pill(x.code, x.text)).join('');
