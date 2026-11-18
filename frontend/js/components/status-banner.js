@@ -129,8 +129,7 @@
               <div data-sb-panel="volunteer" hidden><div id="sb-vol"></div></div>
             </div>
           </div>
-        </div>
-        <div id="sb-notices" style="display:none !important;"></div>`;
+        </div>`;
       this.bar = new StatusBar(this.$('#sb-head'), { escapeHtml: esc, onChip: (code) => this.onChip(code) });
       this.host.addEventListener('click', (e) => {
         // ✕, or a tap on the dimmed backdrop outside the sheet, closes.
@@ -219,7 +218,10 @@
       if (window.MessageCopy) await MessageCopy.load(this.auth).catch(() => {});
 
       // Dues (+ the volunteer button when he can volunteer) and the rules.
-      this.notices = new NoticeStrip(this.$('#sb-notices'), this.ctx());
+      // Data only: the notices render into an element that is never on the
+      // page — the band's red box is the one dues line (owner 11/18 "we have
+      // 2 pay now sections we just need the new one in red").
+      this.notices = new NoticeStrip(document.createElement('div'), this.ctx());
       const noticesLoaded = this.notices.load().then(() => {
         const list = this.notices.notices || [];
         const dues = list.filter(n => n && n.kind === 'dues');
