@@ -139,8 +139,10 @@ class CoachViewer extends PlayerViewer {
   // Week · Month and the date picker (the screen's own row).
   get showsMenuBar()      { return true; }
   get showsContextLine()  { return true; }
-  get calendarHeader()    { return true; }
-  get calendarBack()      { return true; }
+  // calendarHeader / calendarBack: inherited (off) — the lit 📅 Calendar pill
+  // says where you are, and it is the home page, so no ← Back (owner 11/18
+  // "first thing is back button. it don't need it right? also we don't need
+  // 📅 Calendar Tap an event … because you have Calendar pill highlighted").
   get calendarKindPills() { return true; }
   get calendarViews()     { return ['week', 'month']; }
   get calendarKind()      { return null; }

@@ -156,6 +156,7 @@ class EventCenterScreen extends Screen {
   }
 
   onEnter(params = {}) {
+    this._calOpen = null;   // ☰ calendar extras start closed each visit
     // An old #rsvps door (menu, dashboard, saved return) or a phone reload
     // mid-reminders (resumeState) lands on 👥 By person.
     const r = params.resume || {};
@@ -215,8 +216,11 @@ class EventCenterScreen extends Screen {
     if (!admin) this.mode = 'event';
     const bar = this.find('#ec-mode');
     const people = this.mode === 'people';
+    // The 📅 By event · 👥 By person switch is gone (owner 11/18 "we don't
+    // need by event and by person pill"); the board still opens when a link
+    // asks for it (#rsvps → mode people).
     if (bar) {
-      bar.style.display = admin ? 'flex' : 'none';
+      bar.style.display = 'none';
       const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
       const chip = (m, label) => `<button type="button" class="ec-chip ${this.mode === m ? 'on' : ''}" data-ec-mode="${m}">${this.escapeHtml(label)}</button>`;
       bar.innerHTML = admin ? chip('event', cp('mode_event', '📅 By event')) + chip('people', cp('mode_people', '👥 By person')) : '';
@@ -230,6 +234,7 @@ class EventCenterScreen extends Screen {
     const kinds = this.find('#ec-kinds');
     if (kinds) kinds.style.display = people ? 'none' : 'contents';
     if (people) this._mountBoard();
+    if (!people) this._applyCalExtras();   // release / slideshows stay in ☰ until picked
   }
 
   // The RSVP Reminders board inside this page: its own element (filters,
@@ -398,6 +403,43 @@ class EventCenterScreen extends Screen {
     this.weekendSlides.mount(host);
   }
 
+  // ── ☰ on the Calendar (owner 11/18 "Week of … and change the rule needs
+  // to be in the calendar hamburger menu" → "same with slide shows") ─────
+  // The week's release notice and the 🎞 weekend slideshows stay hidden
+  // above the week; ☰ lists them (labels read off the blocks themselves,
+  // fresh each time ☰ opens) and a pick shows that block, opened.
+  _syncCalMenu() {
+    const sb = window.StatusBanner && StatusBanner.instance;
+    if (!sb || !sb.setPageItems) return;
+    const screen = this.navigation && this.navigation.currentState;
+    sb.setPageItems(screen, () => this._calMenuItems());
+    this._applyCalExtras();
+  }
+  _calMenuItems() {
+    const items = [];
+    const rel = this.find('#ec-release');
+    const relText = rel ? (rel.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    if (relText) items.push({ label: relText.split(/\.\s/)[0].slice(0, 60), run: () => this._showCalExtra('release') });
+    const wk = this.find('#ec-weekend');
+    if (wk) wk.querySelectorAll('[data-ws-open]').forEach((b) => {
+      const label = (b.textContent || '').replace(/\s+/g, ' ').trim();
+      if (label) items.push({ label, run: () => { this._showCalExtra('weekend'); if (!b.classList.contains('btn-primary')) b.click(); } });
+    });
+    return items;
+  }
+  _applyCalExtras() {
+    const rel = this.find('#ec-release');
+    if (rel) rel.style.display = this._calOpen === 'release' ? '' : 'none';
+    const wk = this.find('#ec-weekend');
+    if (wk) wk.style.display = this._calOpen === 'weekend' ? '' : 'none';
+  }
+  _showCalExtra(key) {
+    this._calOpen = key;
+    this._applyCalExtras();
+    const el = this.find(key === 'release' ? '#ec-release' : '#ec-weekend');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   _loadOps() {
     if (this.release) this.release.load(this.view === 'week' ? this._ymd(this.weekStart) : null);
   }
@@ -564,8 +606,14 @@ class EventCenterScreen extends Screen {
     if (!viewer.calendarViews.includes(this.view)) this.view = viewer.calendarViews[0];
     const back = this.find('.back-btn');
     if (back) back.style.display = viewer.calendarBack ? '' : 'none';
+    // The heading (📅 Calendar / Tap an event…) is the viewer's call; the
+    // header row itself stays while it still carries something (the type
+    // pills for staff) — owner 11/18 "we don't need 📅 Calendar Tap an event
+    // … because you have Calendar pill highlighted".
+    if (title) title.style.display = viewer.calendarHeader ? '' : 'none';
+    if (sub) sub.style.display = viewer.calendarHeader ? '' : 'none';
     const header = this.find('.screen-header');
-    if (header) header.style.display = viewer.calendarHeader ? '' : 'none';
+    if (header) header.style.display = (viewer.calendarHeader || viewer.calendarBack || viewer.calendarKindPills) ? '' : 'none';
     const mine = this.find('#ec-mine');
     if (mine && this.mode !== 'people') mine.style.display = viewer.calendarMine ? '' : 'none';   // PlayerViewer: its links are in the band's row
     const kinds = this.find('#ec-kinds');
@@ -576,6 +624,7 @@ class EventCenterScreen extends Screen {
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     body.innerHTML = this._pickerHtml();
     this._placeScroll();
+    this._syncCalMenu();
   }
 
   // Phone, first paint of THIS week: the NOW line near the top with the

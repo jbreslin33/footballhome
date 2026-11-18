@@ -241,7 +241,9 @@
     }
     currentPageItems() {
       const pi = this.pageItems;
-      return pi && pi.screen === this.screen ? pi.items : [];
+      if (!pi || pi.screen !== this.screen) return [];
+      // A function = read fresh each time ☰ opens (labels that change with the week).
+      return typeof pi.items === 'function' ? (pi.items() || []) : pi.items;
     }
 
     renderMenu() {
