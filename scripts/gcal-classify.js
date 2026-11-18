@@ -724,24 +724,45 @@ async function classifyDsl(pg) {
 async function migrateSplitSeriesRsvps(pg) {
   const stats = { pairs: 0, rsvpsMoved: 0, attendanceMoved: 0 };
 
+  // Two ways to be the same session:
+  //   (a) same title + same location, same day, moved by <= 3h (the time edit);
+  //   (b) same exact start AND end — the title and/or venue was edited
+  //       instead (owner 2026-11-18: Thursday practice moved Erie Ave →
+  //       Somerset St and retitled u17+ → u15+ lost 36 answers, mig 1462).
+  //       (b) only for sessions still to come, and needs a team in common and ONE old + ONE new event in
+  //       that slot on that calendar, so a genuinely cancelled session
+  //       never hands its answers to an unrelated one at the same time.
   const { rows: pairs } = await pg.query(`
-    SELECT old_fe.id AS old_fh_event_id, new_fe.id AS new_fh_event_id,
-           old.id AS old_gcal_id, new.id AS new_gcal_id, new.starts_at
-    FROM gcal_events old
-    JOIN gcal_events new
-      ON  new.calendar_id = old.calendar_id
-      AND new.deleted_at IS NULL
-      AND old.deleted_at IS NOT NULL
-      AND new.google_event_id <> old.google_event_id
-      AND new.summary IS NOT DISTINCT FROM old.summary
-      AND new.location IS NOT DISTINCT FROM old.location
-      AND (new.starts_at AT TIME ZONE 'America/New_York')::date
-        = (old.starts_at AT TIME ZONE 'America/New_York')::date
-      AND abs(extract(epoch FROM (new.starts_at - old.starts_at))) <= 3 * 3600
-      AND abs(extract(epoch FROM (new.first_seen_at - old.deleted_at))) <= 2 * 86400
-    JOIN fh_events old_fe ON old_fe.gcal_event_id = old.id
-    JOIN fh_events new_fe ON new_fe.gcal_event_id = new.id
-    ORDER BY new.starts_at
+    WITH cand AS (
+      SELECT old.id AS old_gcal_id, new.id AS new_gcal_id, new.starts_at,
+             old_fe.id AS old_fh_event_id, new_fe.id AS new_fh_event_id,
+             (new.summary IS NOT DISTINCT FROM old.summary
+              AND new.location IS NOT DISTINCT FROM old.location) AS same_text
+      FROM gcal_events old
+      JOIN gcal_events new
+        ON  new.calendar_id = old.calendar_id
+        AND new.deleted_at IS NULL
+        AND old.deleted_at IS NOT NULL
+        AND new.google_event_id <> old.google_event_id
+        AND (new.starts_at AT TIME ZONE 'America/New_York')::date
+          = (old.starts_at AT TIME ZONE 'America/New_York')::date
+        AND abs(extract(epoch FROM (new.starts_at - old.starts_at))) <= 3 * 3600
+        AND abs(extract(epoch FROM (new.first_seen_at - old.deleted_at))) <= 2 * 86400
+        AND (   (new.summary IS NOT DISTINCT FROM old.summary
+                 AND new.location IS NOT DISTINCT FROM old.location)
+             OR (new.starts_at = old.starts_at AND new.ends_at = old.ends_at
+                 AND new.starts_at > now()))   -- (b) never rewrites a past session
+      JOIN fh_events old_fe ON old_fe.gcal_event_id = old.id
+      JOIN fh_events new_fe ON new_fe.gcal_event_id = new.id
+    )
+    SELECT c.old_fh_event_id, c.new_fh_event_id, c.old_gcal_id, c.new_gcal_id, c.starts_at
+    FROM cand c
+    WHERE c.same_text
+       OR (    EXISTS (SELECT 1 FROM fh_event_teams a JOIN fh_event_teams b ON b.team_id = a.team_id
+                        WHERE a.fh_event_id = c.old_fh_event_id AND b.fh_event_id = c.new_fh_event_id)
+           AND (SELECT count(*) FROM cand x WHERE x.old_gcal_id = c.old_gcal_id AND NOT x.same_text) = 1
+           AND (SELECT count(*) FROM cand x WHERE x.new_gcal_id = c.new_gcal_id AND NOT x.same_text) = 1)
+    ORDER BY c.starts_at
   `);
   stats.pairs = pairs.length;
 
