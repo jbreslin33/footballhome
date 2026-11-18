@@ -116,7 +116,7 @@ std::string Team::getAllTeams() {
     return json.str();
 }
 
-std::string Team::getTeamRoster(const std::string& team_id) {
+std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
     std::ostringstream json;
     json << "[";
     
@@ -135,7 +135,10 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  pl.id as player_id, "
             "  fh_team_first_name(r.team_id, pe.id, pe.first_name) AS first_name, "  // per-team name, migration 413
             "  fh_team_last_name(r.team_id, pe.id, pe.last_name)   AS last_name, "
-            "  fh_dues_eligible(pe.id) AS dues_eligible, "  // migration 416: under the dues line
+            // Dues are admin-only (owner 2026-11-18: "nobody except admin
+            // should be seeing financial info about anyone but themselves").
+            // Everyone else gets NULL → duesEligible:true.
+            "  CASE WHEN $2::bool THEN fh_dues_eligible(pe.id) END AS dues_eligible, "  // migration 416
             "  pem.email, "
             "  pl.photo_url as avatar_url, "
             "  r.jersey_number, "
@@ -163,7 +166,7 @@ std::string Team::getTeamRoster(const std::string& team_id) {
             "  r.jersey_number NULLS LAST, "
             "  last_name, first_name";
         
-        pqxx::result result = executeQuery(sql, {team_id});
+        pqxx::result result = executeQuery(sql, {team_id, includeDues ? "true" : "false"});
         
         bool first = true;
         for (const auto& row : result) {

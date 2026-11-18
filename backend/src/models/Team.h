@@ -19,7 +19,7 @@ public:
     
     // Team-specific methods
     std::string getAllTeams();
-    std::string getTeamRoster(const std::string& team_id);
+    std::string getTeamRoster(const std::string& team_id, bool includeDues = false);
     std::string getDivisionStandings(const std::string& team_id);
     std::string getRosterStatuses();
     std::string getTeamAccolades(const std::string& team_id);

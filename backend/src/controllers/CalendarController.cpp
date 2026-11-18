@@ -1324,7 +1324,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         -- someone over it is kept but counted apart
                                                         -- (owner 2026-09-23: "keep but don't count in
                                                         -- totals instead use sep total for ineligible").
-                                                        'dues_eligible', fh_dues_eligible(roster.person_id),
+                                                        -- Admins only ($7; owner 2026-11-18: "nobody except
+                                                        -- admin should be seeing financial info about anyone
+                                                        -- but themselves") — NULL for everyone else, which the
+                                                        -- screens read as eligible.
+                                                        'dues_eligible', CASE WHEN $7::bool THEN fh_dues_eligible(roster.person_id) END,
                                                         -- 🩹 Open injury (mig 510; owner 2026-10-20: "it just
                                                         -- marks them injured for game but they can see it but
                                                         -- unless they change it it auto marks them injured") —
@@ -1752,6 +1756,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             startParam,
             std::to_string(onlyFhEventId),
             lite ? "true" : "false",
+            viewerIsAdmin ? "true" : "false",
         });
 
         // Whole alias table, once per request — it is a handful of rows

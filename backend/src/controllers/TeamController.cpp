@@ -112,7 +112,16 @@ Response TeamController::handleGetRoster(const Request& request) {
         std::cout << "🔍 Getting roster for team: " << team_id << std::endl;
         
         // Get team roster from database (now includes roster status)
-        std::string roster_json = team_model_->getTeamRoster(team_id);
+        // Signed-in only (11/18: it answered anyone on the internet with
+        // every player's email and dues standing).  Every caller —
+        // Game Center, Team Hub, Weekend slides — sends the bearer.
+        if (!requireBearer(request)) {
+            return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
+        }
+        // Dues standing: club/super admins only, never under view-as.
+        const bool includeDues = requireAdminLevel(request, {"club", "super"})
+                              && request.getQueryParam("asPersonId").empty();
+        std::string roster_json = team_model_->getTeamRoster(team_id, includeDues);
         
         std::ostringstream json;
         json << "{";
