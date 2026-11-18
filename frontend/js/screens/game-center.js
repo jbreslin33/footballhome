@@ -3909,6 +3909,7 @@ class GameCenterScreen extends EventScreen {
           jerseyNumber: p.jerseyNumber || '',
           nameStyle: live ? this._cardNameStyle(p.id) : '',
           noteHtml: live ? this._lineupNote(p.id) : '',
+          boxColor: live ? this._lineupBoxColor(p.id) : null,
           isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
@@ -3964,7 +3965,7 @@ class GameCenterScreen extends EventScreen {
           if (chipLifts[pos.id]) token.lift = chipLifts[pos.id];
           if (chipInsets[pos.id]) token.inset = chipInsets[pos.id];
           if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
-          if (live && occupant) token.noteHtml = this._lineupNote(occupant.id);
+          if (live && occupant) { token.noteHtml = this._lineupNote(occupant.id); token.boxColor = this._lineupBoxColor(occupant.id); }
           if (editing && occupant) {
             token.removeId = occupant.id;
             if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);

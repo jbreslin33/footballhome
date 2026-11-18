@@ -276,12 +276,15 @@ class GameCenterEligibility {
       // "1 of 5" (owner 11/18): made / the week's chances, barn night included.
       const tokens = { attended: String(st.attended), projected: String(st.projected),
                        total: String(st.attended + st.projected), needed: String(st.needed), left: String(left),
-                       chances: st.tokens.chances };
+                       chances: st.tokens.chances, proj_total: String(st.attended + st.projected) };
       const tier = made ? 'lineup_note_made' : onPace ? 'lineup_note_on_pace' : 'lineup_note_short';
       const text = this._eligCopy(tier, tokens)
         || (made ? `✓ ${tokens.attended} of ${tokens.chances}` : `${tokens.attended} of ${tokens.chances} · need ${tokens.needed}`);
       const colour = made ? '#4ade80' : onPace ? '#facc15' : '#f87171';
-      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${colour}; font-weight:700;">${this.escapeHtml(text)}</span>`);
+      // Two lines when the copy has a line break: actual, then projected
+      // (owner 11/18 "clear … between actual and projected and actual total
+      // and projected total for all players").
+      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${colour}; font-weight:700; text-align:center;">${String(text).split('\n').map(l => this.escapeHtml(l)).join('<br>')}</span>`);
     }
     const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
@@ -297,7 +300,19 @@ class GameCenterEligibility {
       bits.push(`<span style="color:${behind ? '#f87171' : '#4ade80'};">${this.escapeHtml(text)}</span>`);
     }
     if (!bits.length) return '';
-    return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;white-space:nowrap;display:inline-flex;gap:5px;justify-content:center;">${bits.join('')}</div>`;
+    return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;display:flex;flex-wrap:wrap;gap:1px 5px;justify-content:center;">${bits.join('')}</div>`;
+  }
+
+  // The box colour for a player on the live card (owner 11/18 "would it help
+  // to get rid of player 'circle' and make a 'box' to put the info in" →
+  // "practice accountability is critical to our culture … front and center
+  // … so players know where they and others stand"): green made it, yellow
+  // on pace (made + said Going), red short.  null = no criterion here.
+  _lineupBoxColor(playerId) {
+    const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
+    if (!s) return null;
+    const st = this._criteriaState(s);
+    return st.attended >= st.needed ? '#4ade80' : st.attended + st.projected >= st.needed ? '#facc15' : '#f87171';
   }
 
   // The verdict in words, as the name's tooltip (copy tier overall_<state>).
@@ -352,7 +367,8 @@ class GameCenterEligibility {
     const st = this._criteriaState(s);
     const made = st.attended >= st.needed;
     const onPace = !made && st.attended + st.projected >= st.needed;
-    const tokens = Object.assign({}, st.tokens, { left: String(Math.max(0, st.needed - st.attended - st.projected)) });
+    const tokens = Object.assign({}, st.tokens, { left: String(Math.max(0, st.needed - st.attended - st.projected)),
+                                                  proj_total: String(st.attended + st.projected) });
     // {what} names the chances (owner 11/18): "(4 practices + barn night)"
     // or just "practices" — copy tiers chances_extra / chances_plain (mig 1501).
     tokens.what = this._eligCopy(Number(tokens.extra) > 0 ? 'chances_extra' : 'chances_plain', tokens);
@@ -360,7 +376,7 @@ class GameCenterEligibility {
     const text = this._eligCopy(tier, tokens);
     if (!text) return '';   // no copy row → say nothing (never hard-code it)
     const [bg, fg] = made ? ['#166534', '#bbf7d0'] : onPace ? ['#854d0e', '#fef08a'] : ['#7f1d1d', '#fecaca'];
-    return `<div data-gc-my-practice style="margin:0 auto; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:14px; font-weight:700; text-align:center;">${this.escapeHtml(text)}</div>`;
+    return `<div data-gc-my-practice style="margin:0 auto; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:14px; font-weight:700; text-align:center;">${String(text).split('\n').map((l, i) => i ? `<div style="font-size:11px; font-weight:600; opacity:0.85; margin-top:2px;">${this.escapeHtml(l)}</div>` : this.escapeHtml(l)).join('')}</div>`;
   }
 
   _renderMyEligibility() {
