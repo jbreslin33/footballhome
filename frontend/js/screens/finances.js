@@ -590,9 +590,11 @@ class FinancesScreen extends Screen {
     for (const se of b.seasons) {
       const x = P[se.code]; if (!x) continue;
       t.dues += S(x.lines, 'dues'); t.own += S(x.lines, 'own'); t.shared += S(x.lines, 'shared'); t.support += S(x.lines, 'support');
+      t.casa = (t.casa || 0) + (x.lines || []).filter(l => l.group === 'support' && l.key === 'casa').reduce((a, l) => a + Number(l.amount || 0), 0);
       if (!anyPlan || !se.real) { t.players = Math.max(t.players, Number(x.players || 0)); t.teams = Math.max(t.teams, Number(x.teams || 0)); }
       if (!se.real) t.assumed = true;
     }
+    t.casa = t.casa || 0; t.grant = t.support - t.casa;
     t.ownNet = t.dues - t.own; t.net = t.ownNet - t.shared + t.support;
     return t;
   }
@@ -607,42 +609,73 @@ class FinancesScreen extends Screen {
     const b = pg.budgets[year]; if (!b) return '';
     const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-pg-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
     const seasonNote = b.seasons.map(se => `${se.label} ${se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan')}`).join(' · ');
-    const signed = (v) => `<td style="font-weight:700; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td>`;
-    const verdict = (v) => v >= -0.5 ? `<span class="fn-in">${esc(this._copy('pg_ok') || '✓ pays for itself')}</span>` : `<span class="fn-out">${esc(this._copy('pg_short', { amount: M0(-v) }) || `✗ short ${M0(-v)}`)}</span>`;
-    const cols = ['pg_col_program', 'pg_col_players', 'pg_col_teams', 'pg_col_dues', 'pg_col_direct', 'pg_col_own', 'pg_col_shared', 'pg_col_support', 'pg_col_net'].map(k => this._copy(k));
+    // Grant-proof view (owner 11/18 "my main thing is to see if we can pay for
+    // everything WITHOUT grants … how much do we need grant as a crutch and
+    // which progams do we need more members"): money in (dues + CASA) − every
+    // cost (own + its club-wide share) = BEFORE GRANT, the headline; then the
+    // grant, after grant, and what closes the gap — more players at its dues,
+    // or more dues a player a month at today's headcount.
+    const fee = this._laFeeRatio ? (this._laFeeRatio() || 0) : 0;
+    const signed = (v, big) => `<td style="font-weight:${big ? 900 : 700}; ${big ? 'font-size:1.05em; ' : ''}color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${v < -0.5 ? '−' + M0(-v) : '+' + M0(v)}</td>`;
+    const fix = (t) => {
+      const pre = t.pre;
+      if (pre >= -0.5) return `<span class="fn-in">${esc(this._copy('pg_gp_ok') || '✓ grant-proof')}</span>`;
+      const per = t.players > 0 ? t.dues * (1 - fee) / t.players : 0;
+      const more = per > 0 ? Math.ceil(-pre / per) : 0;
+      const raise = t.players > 0 ? -pre / (1 - fee) / t.players / 12 : 0;
+      const bits = [];
+      if (more) bits.push(this._copy('pg_gp_more', { n: more }) || `+${more} players`);
+      if (raise) bits.push(this._copy('pg_gp_raise', { amount: M0(Math.ceil(raise)) }) || `or +${M0(Math.ceil(raise))}/mo each`);
+      return `<span class="fn-out">${esc(bits.join(' ') || (this._copy('pg_gp_short') || '✗ short'))}</span>`;
+    };
+    const cols = ['pg_gp_col_program', 'pg_gp_col_players', 'pg_gp_col_in', 'pg_gp_col_costs', 'pg_gp_col_pre', 'pg_gp_col_grant', 'pg_gp_col_post', 'pg_gp_col_fix'];
+    const colDefault = ['Program', 'Players', 'Money in', 'Costs', 'BEFORE GRANT', 'Grant', 'After grant', 'To pay its way without the grant'];
+    const NC = cols.length;
     const row = (code, label, t, cls) => {
       const empty = !t.dues && !t.own && !t.shared && !t.support;
+      const preStyle = 'background:rgba(251,191,36,0.10);';
       return `<tr class="${cls}" ${code ? `data-pg-prog="${esc(code)}" style="cursor:pointer;"` : ''}><td>${esc(label)}${t.assumed && !cls ? '*' : ''}${code === this.pgProg ? ' ▾' : ''}</td>
-        <td>${t.players || ''}</td><td>${t.teams || ''}</td>
-        ${empty && !cls ? `<td colspan="7" class="fn-dim" style="text-align:left;">${esc(this._copy('pg_none') || 'no players expected')}</td>` : `
-        <td class="fn-in">${M0(t.dues)}</td><td class="fn-out">${M0(t.own)}</td>${signed(t.ownNet)}
-        <td class="fn-out">${M0(t.shared)}</td><td class="fn-in">${M0(t.support)}</td>${signed(t.net)}<td style="text-align:left;">${verdict(t.ownNet)}</td>`}</tr>`;
+        <td>${t.players || ''}</td>
+        ${empty && !cls ? `<td colspan="${NC - 2}" class="fn-dim" style="text-align:left;">${esc(this._copy('pg_none') || 'no players expected')}</td>` : `
+        <td class="fn-in" title="${esc(`${this._copy('pg_line_dues') || 'Dues'} ${M0(t.dues)}${t.casa >= 0.5 ? ` + ${this._copy('pg_line_casa') || 'CASA'} ${M0(t.casa)}` : ''}`)}">${M0(t.dues + t.casa)}</td>
+        <td class="fn-out" title="${esc(`${this._copy('pg_col_direct') || 'Own costs'} ${M0(t.own)} + ${this._copy('pg_col_shared') || 'Shared costs'} ${M0(t.shared)}`)}">${M0(t.own + t.shared)}</td>
+        ${signed(t.pre, true).replace('<td style="', `<td style="${preStyle}`)}
+        <td class="fn-in">${t.grant >= 0.5 ? M0(t.grant) : '<span class="fn-dim">–</span>'}</td>${signed(t.post)}
+        <td style="text-align:left; white-space:nowrap;">${fix(t)}</td>`}</tr>`;
     };
-    const add = (a, t) => { for (const k of ['dues', 'own', 'shared', 'support', 'ownNet', 'net', 'players', 'teams']) a[k] = (a[k] || 0) + t[k]; return a; };
+    const finish = (t) => { t.casa = t.casa || 0; t.grant = t.grant || 0; t.pre = t.dues + t.casa - t.own - t.shared; t.post = t.pre + t.grant; return t; };
+    const add = (a, t) => { for (const k of ['dues', 'casa', 'grant', 'own', 'shared', 'support', 'players', 'teams']) a[k] = (a[k] || 0) + (t[k] || 0); return finish(a); };
     let rows = '', youth = {}, club = {};
     for (const p of pg.programs) {
       let t = this._pgRoll(year, p.code);
       if (p.kind === 'men' && !full) {   // same numbers as the 💵 table under it
-        const m = this._menYear(year), own = m.costs, support = m.grant + m.casa;
-        t = { ...t, dues: m.dues, own, shared: m.share, support, players: m.paying || t.players, ownNet: m.dues - own, net: m.dues - own - m.share + support };
+        const m = this._menYear(year);
+        t = { ...t, dues: m.dues, casa: m.casa, grant: m.grant, own: m.costs, shared: m.share, support: m.grant + m.casa, players: m.paying || t.players };
       }
+      finish(t);
       add(club, t);
       if (p.kind === 'youth') add(youth, t);
       rows += row(p.code, p.label, t, '');
-      if (p.code === this.pgProg) rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${p.kind === 'men' && !full ? this._menMoneyHtml(year) : this._programDetailHtml(year, p)}</td></tr>`;
+      if (p.code === this.pgProg) rows += `<tr><td colspan="${NC}" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${p.kind === 'men' && !full ? this._menMoneyHtml(year) : this._programDetailHtml(year, p)}</td></tr>`;
       const next = pg.programs[pg.programs.indexOf(p) + 1];
       if (p.kind === 'youth' && (!next || next.kind !== 'youth')) {
         const youthLabel = this._copy('pg_youth_total') || 'Youth';
         rows += row('youth', youthLabel, youth, 'subtotal');
-        if (this.pgProg === 'youth') rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${this._programDetailHtml(year, { code: 'youth', label: youthLabel }, this._pgCombined(year, 'youth'))}</td></tr>`;
+        if (this.pgProg === 'youth') rows += `<tr><td colspan="${NC}" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${this._programDetailHtml(year, { code: 'youth', label: youthLabel }, this._pgCombined(year, 'youth'))}</td></tr>`;
       }
     }
     rows += row('', this._copy('pg_club_total') || 'Club', club, 'sum');
+    // the one-line answer above the table
+    const crutch = Math.max(0, -club.pre), gr = club.grant || 0;
+    const headline = `<div class="fn-card" style="margin:6px 0; border-left:5px solid ${club.pre < -0.5 ? '#fca5a5' : '#86efac'};"><div style="font-weight:800; font-size:1.05em;">${esc(club.pre < -0.5
+        ? (this._copy('pg_gp_head_short', { short: M0(crutch), grant: M0(gr), pct: gr > 0 ? Math.round(100 * Math.min(1, crutch / gr)) : 0 }) || `Without the grant the club is ${M0(crutch)} short. The grant (${M0(gr)}) covers it — ${gr > 0 ? Math.round(100 * Math.min(1, crutch / gr)) : 0}% of the grant is a crutch.`)
+        : (this._copy('pg_gp_head_ok', { spare: M0(club.pre), grant: M0(gr) }) || `The club pays for everything without the grant (${M0(club.pre)} to spare). The grant (${M0(gr)}) is extra.`))}</div>
+      <div class="fn-note">${esc(this._copy('pg_gp_note') || 'BEFORE GRANT = dues + CASA rental − every cost (its own + its share of club-wide costs). Extra players assume no extra team is needed. Tap a program for its lines.')}</div></div>`;
     const g = b.grant ? `<div class="fn-note">${esc(this._copy('plan_grant_used', { used: M0(b.grant.used), award: M0(b.grant.award) }) || `Grant ${M0(b.grant.used)} of ${M0(b.grant.award)}`)}</div>` : '';
     return `<div class="fn-card"><div class="fn-title">${esc(full ? (this._copy('cap_title') || 'Full capacity') : (this._copy('pg_title') || 'Programs'))} · ${esc(year)}</div>
       <div class="fn-note">${esc(full ? this._copy('pg_cap_note') : this._copy('pg_note'))}</div>${yearBar}
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
-      <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
+      ${headline}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map((c, i) => `<th>${esc(this._copy(c) || colDefault[i])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
   }
   // 🧑‍🏫 Coaches for the year (mig 1491): CoachingPlanTable shows what the
   // server's CoachingPlan works out — no coaching maths on this screen.
@@ -752,8 +785,14 @@ class FinancesScreen extends Screen {
     // before … after each section we should just have a running balance").
     rows += sumRow(this._copy('pm_pre_coach') || 'BALANCE AFTER TEAM COSTS', preCoach, 'subtotal');
     if (groups.coach.size) rows += lines('coach', 'fn-out') + sumRow(this._copy('pm_pre_club') || 'BALANCE AFTER COACHING', preClub, 'subtotal');
-    if (groups.shared.size) rows += lines('shared', 'fn-out') + sumRow(this._copy('pm_pre_grant') || 'BALANCE AFTER CLUB WIDE', preGrant, 'subtotal');
-    if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'sum');
+    if (groups.shared.size) rows += lines('shared', 'fn-out');
+    // the grant-proof line (owner 11/18 "see if we can pay for everything
+    // WITHOUT grants"): every cost is in, nothing from the grant yet
+    const preTot = tot(preGrant), proof = preTot >= -0.5 ? `<span class="fn-in">${esc(this._copy('pm_proof_ok') || '✓ grant-proof')}</span>`
+      : `<span class="fn-out">${esc(this._copy('pm_proof_short', { amount: M0(-preTot) }) || `✗ needs the grant — ${M0(-preTot)} short without it`)}</span>`;
+    const sgn = (v) => `<td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${Math.abs(v) >= 0.5 ? M0(v) : '–'}</td>`;
+    rows += `<tr class="sum" style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"><td style="text-align:left; font-weight:900;">${esc(this._copy('pg_gp_before') || 'BALANCE BEFORE GRANT')} <span style="margin-left:6px;">${proof}</span></td>${ss.map(se => sgn(preGrant[se.code] || 0)).join('')}${sgn(preTot)}</tr>`;
+    if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'subtotal');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${combined ? '' : this._pgScheduleHtml(p)}${plan.length && !combined ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
   }
