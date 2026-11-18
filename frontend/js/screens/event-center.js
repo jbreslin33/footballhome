@@ -163,6 +163,8 @@ class EventCenterScreen extends Screen {
     this.mode = (params.mode === 'people' || r.mode === 'people') ? 'people' : 'event';
     this._boardParams = params.board || (r.board ? { resume: r.board } : null);
     this._mountMine();
+    // Who is staff is known once the menu loads — then the pills / Back follow.
+    if (window.MainMenu) MainMenu.load(this.auth).then(() => { if (this.element && this.element.isConnected) this._render(); }).catch(() => {});
     this._mountOps();
     this._mountWeekend();
     this._paintMode();
@@ -555,8 +557,15 @@ class EventCenterScreen extends Screen {
     const title = this.find('#ec-title');
     const sub = this.find('#ec-sub');
     if (!body) return;
+    // Players / parents: no type pills, no ← Back — the Calendar is their one
+    // page, every event on it (owner 11/18 "pills to switch view like games,
+    // practices are just clutter" / "Back button not needed").  Staff keep both.
+    const staff = !!(window.MainMenu && MainMenu.isStaff());
+    if (!staff) this.kind = 'all';
+    const back = this.find('.back-btn');
+    if (back) back.style.display = staff ? '' : 'none';
     const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.innerHTML = EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t));
+    if (kinds) kinds.innerHTML = staff ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
