@@ -353,6 +353,9 @@ class GameCenterEligibility {
     const made = st.attended >= st.needed;
     const onPace = !made && st.attended + st.projected >= st.needed;
     const tokens = Object.assign({}, st.tokens, { left: String(Math.max(0, st.needed - st.attended - st.projected)) });
+    // {what} names the chances (owner 11/18): "(4 practices + barn night)"
+    // or just "practices" — copy tiers chances_extra / chances_plain (mig 1501).
+    tokens.what = this._eligCopy(Number(tokens.extra) > 0 ? 'chances_extra' : 'chances_plain', tokens);
     const tier = made ? 'lineup_you_made' : onPace ? 'lineup_you_on_pace' : 'lineup_you_short';
     const text = this._eligCopy(tier, tokens);
     if (!text) return '';   // no copy row → say nothing (never hard-code it)
