@@ -720,10 +720,11 @@ class FinancesScreen extends Screen {
     let rows = this._pgGridRows(year, p, true);
     const lines = (g, cls) => [...groups[g].values()].map(r => line(r, cls)).join('');
     rows += lines('dues', 'fn-in') + lines('own', 'fn-out');
-    rows += sumRow(this._copy('pm_pre_coach') || 'BALANCE BEFORE COACHING', preCoach, 'subtotal');
-    if (groups.coach.size) rows += lines('coach', 'fn-out') + sumRow(this._copy('pm_pre_club') || 'BALANCE BEFORE CLUB WIDE', preClub, 'subtotal');
-    if (groups.shared.size) rows += lines('shared', 'fn-out');
-    rows += sumRow(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', preGrant, 'subtotal');
+    // A running balance AFTER each pile (owner 11/18 "i like balance after not
+    // before … after each section we should just have a running balance").
+    rows += sumRow(this._copy('pm_pre_coach') || 'BALANCE AFTER TEAM COSTS', preCoach, 'subtotal');
+    if (groups.coach.size) rows += lines('coach', 'fn-out') + sumRow(this._copy('pm_pre_club') || 'BALANCE AFTER COACHING', preClub, 'subtotal');
+    if (groups.shared.size) rows += lines('shared', 'fn-out') + sumRow(this._copy('pm_pre_grant') || 'BALANCE AFTER CLUB WIDE', preGrant, 'subtotal');
     if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
     return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${this._pgScheduleHtml(p)}${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
@@ -1020,14 +1021,15 @@ class FinancesScreen extends Screen {
     for (const b of comps) rows += band(b);
     if (!onto.length && Math.abs(gen.v.tot) >= 0.5) rows += band(gen);
     // running balance (owner 11/16 "do pre coaching balance" + "pre club wide
-    // total" + "pre grant total"): own costs → BEFORE COACHING; coaching →
-    // BEFORE CLUB WIDE; club wide share → BEFORE GRANT; grant → AFTER
+    // total" + "pre grant total"; 11/18 say AFTER, not before): competitions →
+    // AFTER TEAM COSTS; coaching → AFTER COACHING; club wide share → AFTER
+    // CLUB WIDE (the grant-proof line); grant → AFTER GRANT
     const outOwn = minus(minus(outTotal, coachV), shareV), preCoachV = minus(inPre, outOwn);
-    rows += subtotal(this._copy('pm_out_pre_coach') || 'Money out — before coaching', outOwn);
-    rows += big(this._copy('pm_pre_coach') || 'BALANCE BEFORE COACHING', preCoachV, '');
+    rows += subtotal(this._copy('pm_out_pre_coach') || 'Money out — team costs', outOwn);
+    rows += big(this._copy('pm_pre_coach') || 'BALANCE AFTER TEAM COSTS', preCoachV, '');
     if (coach) {
       rows += head(this._copy('pm_out_coaching') || 'MONEY OUT — COACHING', col('coaching')); rows += band(coach);
-      rows += big(this._copy('pm_pre_club') || 'BALANCE BEFORE CLUB WIDE', minus(preCoachV, coachV), '');
+      rows += big(this._copy('pm_pre_club') || 'BALANCE AFTER COACHING', minus(preCoachV, coachV), '');
     }
     // club-wide share (owner 11/16 "the general total like in parens for whole
     // club then the mens share"): the whole club's total in the band, each
@@ -1043,7 +1045,10 @@ class FinancesScreen extends Screen {
     }
     rows += subtotal(this._copy('pm_out_total') || 'Money out — total', outTotal);
     const proof = pre.tot >= -0.5 ? `<span class="fn-in">${esc(this._copy('pm_proof_ok') || '✓ grant-proof')}</span>` : `<span class="fn-out">${esc(this._copy('pm_proof_short', { amount: M0(-pre.tot) }) || `✗ needs the grant — ${M0(-pre.tot)} short without it`)}</span>`;
-    rows += big(this._copy('pm_pre_grant') || 'BALANCE BEFORE GRANT', pre, proof);
+    // Named for the last pile added (no club-wide share → after coaching / team costs).
+    const preLabel = Math.abs(shareV.tot) >= 0.5 ? (this._copy('pm_pre_grant') || 'BALANCE AFTER CLUB WIDE')
+      : coach ? (this._copy('pm_pre_club') || 'BALANCE AFTER COACHING') : (this._copy('pm_pre_coach') || 'BALANCE AFTER TEAM COSTS');
+    rows += big(preLabel, pre, proof);
     if (Math.abs(grantV.tot) >= 0.5) {
       rows += lineRow('in', { label: this._copy('pm_grant') || "Grant — Men's share (coaching, refs, equipment)", detail: award ? `${M0(grant)} of ${M0(award)}` : '', v: grantV, year: yearView ? null : grant, assumed: true }, 'fn-in');
       rows += big(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', post, '');
