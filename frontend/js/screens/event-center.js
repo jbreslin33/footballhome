@@ -97,6 +97,8 @@ class EventCenterScreen extends Screen {
         .ec-fold-bar .ec-fold-label { font-weight:800; white-space:nowrap; }
         .ec-fold-bar .ec-fold-sum { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0.85; }
         .ec-fold-bar .ec-fold-caret { opacity:0.7; }
+        .ec-fold-bar .ec-fold-when { font-size:0.7rem; opacity:0.7; white-space:nowrap; }
+        .ec-fold-bar .ec-fold-badge { font-size:0.68rem; font-weight:800; color:#fff; background:#ef4444; border-radius:999px; padding:1px 7px; white-space:nowrap; }
         .ec-fold-bar.hot { border-color:#ef4444; background:rgba(239,68,68,0.10); }
         .ec-fold-bar.hot .ec-fold-sum { color:#fca5a5; font-weight:800; opacity:1; }
         .ec-fold-body { margin-top:6px; }
@@ -147,13 +149,13 @@ class EventCenterScreen extends Screen {
         <div id="ec-top">
           <div id="ec-fold-chat" hidden>
             <button type="button" class="ec-fold-bar" data-ec-fold="chat" aria-expanded="false">
-              <span class="ec-fold-label" id="ec-fold-chat-label"></span><span class="ec-fold-sum" id="ec-fold-chat-sum"></span><span class="ec-fold-caret">▾</span>
+              <span class="ec-fold-label" id="ec-fold-chat-label"></span><span class="ec-fold-sum" id="ec-fold-chat-sum"></span><span id="ec-fold-chat-meta" style="display:inline-flex; align-items:center; gap:6px;"></span><span class="ec-fold-caret">▾</span>
             </button>
             <div class="ec-fold-body" hidden><div id="ec-chat"></div></div>
           </div>
           <div id="ec-fold-fines" hidden>
             <button type="button" class="ec-fold-bar" data-ec-fold="fines" aria-expanded="false">
-              <span class="ec-fold-label" id="ec-fold-fines-label"></span><span class="ec-fold-sum" id="ec-fold-fines-sum"></span><span class="ec-fold-caret">▾</span>
+              <span class="ec-fold-label" id="ec-fold-fines-label"></span><span class="ec-fold-sum" id="ec-fold-fines-sum"></span><span id="ec-fold-fines-meta" style="display:inline-flex; align-items:center; gap:6px;"></span><span class="ec-fold-caret">▾</span>
             </button>
             <div class="ec-fold-body" hidden><div id="ec-fines" hidden></div></div>
           </div>
@@ -313,23 +315,35 @@ class EventCenterScreen extends Screen {
     // 💬 / ⚖️ up top, one line each; tap opens the full chat / fines (owner
     // 11/18 "should we show the chat up top and the fines? … just make them
     // smaller?").  Words: event_center top_chat / top_fines / top_fines_none.
-    const fold = (name, label, sum, hot) => {
+    const fold = (name, label, sum, hot, meta = '') => {
       const box = this.find(`#ec-fold-${name}`);
       if (!box) return;
       box.hidden = false;
       const l = this.find(`#ec-fold-${name}-label`), s = this.find(`#ec-fold-${name}-sum`);
       if (l) l.textContent = label;
       if (s) s.textContent = sum || '';
+      const m = this.find(`#ec-fold-${name}-meta`);
+      if (m) m.innerHTML = meta;
       const bar = box.querySelector('.ec-fold-bar');
       if (bar) bar.classList.toggle('hot', !!hot);
     };
-    const chatCtx = { ...ctx, onSummary: (text) => fold('chat', cp('top_chat', '💬 Chat'), text) };
+    const cp2 = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier, tokens) : fb;
+    const chatOpen = () => { const b = this.find('#ec-fold-chat .ec-fold-body'); return !!(b && !b.hidden); };
+    const chatCtx = { ...ctx, isOpen: chatOpen, onSummary: (s) => {
+      const n = s && s.unread ? (s.capped ? `${s.unread}+` : String(s.unread)) : '';
+      const meta = (n ? `<span class="ec-fold-badge">${this.escapeHtml(cp2('top_chat_unread', { n }, `${n} new`))}</span>` : '')
+        + (s && s.when ? `<span class="ec-fold-when">${this.escapeHtml(s.when)}</span>` : '');
+      fold('chat', cp('top_chat', '💬 Chat'), s ? s.text : '', false, meta);
+    } };
     if (this.chat) this.chat.stop();
     this.chat = new SectionChat(this.find('#ec-chat'), chatCtx);
     this.chat.start().catch((err) => console.error('[event-center] chat failed:', err));
     const finesCtx = { ...ctx, onSummary: (s) => {
       if (!s) { const b = this.find('#ec-fold-fines'); if (b) b.hidden = true; return; }
-      fold('fines', cp('top_fines', '⚖️ Fines'), s.total > 0 ? s.amount : cp('top_fines_none', 'None — keep it that way'), s.total > 0);
+      fold('fines', cp('top_fines', '⚖️ Fines'),
+        s.total > 0 ? (s.count === 1 ? cp2('top_fines_one', { amount: s.amount }, `${s.amount} · 1 fine`)
+                                     : cp2('top_fines_many', { amount: s.amount, n: s.count }, `${s.amount} · ${s.count} fines`))
+                    : cp('top_fines_none', 'None — keep it that way'), s.total > 0);
     } };
     new FinesPanel(this.find('#ec-fines'), finesCtx).load();
     const top = this.find('#ec-top');
@@ -344,6 +358,7 @@ class EventCenterScreen extends Screen {
         bar.setAttribute('aria-expanded', String(!body.hidden));
         const caret = bar.querySelector('.ec-fold-caret');
         if (caret) caret.textContent = body.hidden ? '▾' : '▴';
+        if (!body.hidden && bar.getAttribute('data-ec-fold') === 'chat' && this.chat) this.chat.markRead();
       });
     }
   }

@@ -150,15 +150,12 @@ class SectionChat {
     if (!box) return;
     if (this.error) { box.innerHTML = `<div class="empty-state"><p>Chat unavailable: ${this.esc(this.error)}</p></div>`; return; }
     if (!this.messages.length) {
-      if (this.ctx.onSummary && this.messaging) this.ctx.onSummary('');
+      if (this.ctx.onSummary && this.messaging) this.ctx.onSummary({ text: '', when: '', unread: 0 });
       box.innerHTML = `<div style="opacity:0.7; font-size:0.68rem;">No messages yet — be the first to say hi.</div>`;
       return;
     }
     const reversed = this.messages.slice().reverse();   // stored oldest→newest; show newest first
-    if (this.ctx.onSummary) {
-      const m = reversed[0], who = (m.author_first_name || '').trim();
-      this.ctx.onSummary(`${who ? who + ': ' : ''}${m.message || ''}`);
-    }
+    this._emitSummary();
     const toggleCss = `display:block; width:100%; background:transparent; color:#93c5fd; border:1px solid rgba(147,197,253,0.3);
                        border-radius:5px; padding:3px 6px; font-size:0.62rem; font-weight:600; cursor:pointer;`;
     if (!this.expanded) {
@@ -218,8 +215,7 @@ class SectionChat {
     if (!list) return;
     const msgs = this.gm.messages;
     if (!msgs.length) return;
-    // Newest first from the API — the folded bar up top shows it (Event Center).
-    if (this.ctx.onSummary) this.ctx.onSummary(`${msgs[0].name ? msgs[0].name + ': ' : ''}${msgs[0].text || (msgs[0].image_url ? '📷' : '')}`);
+    this._emitSummary();
     // Oldest at the top, newest at the bottom — the way GroupMe reads (owner
     // 2026-09-22); the API hands them newest-first.
     const LATEST = 5;
@@ -325,6 +321,51 @@ class SectionChat {
         <div style="font-size:0.68rem; line-height:1.25; ${wrap ? 'white-space:pre-wrap; overflow-wrap:anywhere;' : 'white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'}">${body}</div>
         ${extra}
       </div>`;
+  }
+
+  // ── The folded bar up top (Event Center, owner 11/18: "part of last
+  // message and then number of unread messages and timestamp of last one").
+  // Unread = newer than the newest one seen on this device (a per-device
+  // convenience in localStorage, per person — view-as keeps its own).
+  _feed() {
+    if (this.messaging) {
+      return this.messages.slice().reverse().map(m => ({
+        at: new Date(m.created_at).getTime() || 0, iso: m.created_at,
+        who: (m.author_first_name || '').trim(), text: m.message || '', mine: m.user_id === this.viewerId }));
+    }
+    return this.gm.messages.map(m => ({
+      at: (Number(m.created_at) || 0) * 1000, iso: m.created_at ? new Date(m.created_at * 1000).toISOString() : '',
+      who: m.name || '', text: m.text || (m.image_url ? '📷' : ''), mine: false }));
+  }
+
+  _readKey() {
+    let who = '';
+    try { who = localStorage.getItem('viewAsPersonId') || ''; } catch (_) { who = ''; }
+    const u = this.ctx.auth && this.ctx.auth.user;
+    return `fh.chat.read.${who ? 'p' + who : 'u' + ((u && u.id) || '0')}.${this.messaging ? 'app' : 'gm'}`;
+  }
+
+  _emitSummary() {
+    if (!this.ctx.onSummary) return;
+    const feed = this._feed();
+    if (!feed.length) { this.ctx.onSummary({ text: '', when: '', unread: 0 }); return; }
+    const newest = feed[0];
+    let seen = NaN;
+    try { seen = Number(localStorage.getItem(this._readKey())); } catch (_) { seen = NaN; }
+    // First look on this device: nothing counts as new.
+    if (!Number.isFinite(seen) || seen <= 0 || (this.ctx.isOpen && this.ctx.isOpen())) { this._markSeen(newest.at); seen = newest.at; }
+    const unread = feed.filter(m => m.at > seen && !m.mine).length;
+    this.ctx.onSummary({ text: `${newest.who ? newest.who + ': ' : ''}${newest.text}`, when: SectionChat.when(newest.iso),
+                         unread, capped: unread >= feed.length && feed.length > 1 });
+  }
+
+  _markSeen(at) { try { localStorage.setItem(this._readKey(), String(at || Date.now())); } catch (_) { /* fine */ } }
+
+  // Opened: everything shown counts as read.
+  markRead() {
+    const feed = this._feed();
+    if (feed.length) this._markSeen(feed[0].at);
+    this._emitSummary();
   }
 
   static when(iso) {

@@ -81,7 +81,7 @@ class FinesPanel {
           <tr><td colspan="3" style="padding:3px 6px 8px; text-align:right; font-weight:800; font-size:0.72rem;">${this.esc(this.t('month_total', { month: mo.label, from: periodDay(mo.from), to: periodDay(mo.to), amount: money(mo.total) }))}</td></tr>`).join('')}
       </table>` : `<div style="font-size:0.74rem; opacity:0.75; margin-top:6px;">${this.esc(this.t('empty'))}</div>`;
 
-    if (this.ctx.onSummary) this.ctx.onSummary({ total, amount: money(total) });
+    if (this.ctx.onSummary) this.ctx.onSummary({ total, amount: money(total), count: months.reduce((n, mo) => n + mo.items.length, 0) });
     host.hidden = false;
     host.innerHTML = `
       <div style="padding:8px 10px; border-radius:8px; border:1px solid ${total > 0 ? '#ef4444' : 'rgba(255,255,255,0.16)'}; background:${total > 0 ? 'rgba(239,68,68,0.10)' : 'rgba(15,23,42,0.5)'};">
