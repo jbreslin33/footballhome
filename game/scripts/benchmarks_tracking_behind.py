@@ -53,6 +53,15 @@ def one(ev_path):
         a = dict(re.findall(r'(\w[\w-]*)="([^"]*)"', m.group(2)))
         if a.get("Team") in team_of:
             shots.append((ms(m.group(1)) // 40, team_of[a["Team"]], "<SuccessfulShot" in m.group(3)))
+    evs = []   # G5.161 (§8.266): every event in order — (grid, kind, player, team) — who of theirs had it next
+    for m in re.finditer(r'<Event [^>]*EventTime="([^"]+)"[^>]*>(.*?)</Event>', txt, re.S):
+        tg = re.search(r'<(\w+) ([^>]*?)/?>', m.group(2))
+        if not tg: continue
+        a = dict(re.findall(r'(\w[\w-]*)="([^"]*)"', tg.group(2)))
+        pl = a.get("Player") or a.get("Winner"); te = a.get("Team") or a.get("WinnerTeam")
+        if pl and te in team_of: evs.append((ms(m.group(1)) // 40, tg.group(1), pl, team_of[te]))
+    evs.sort()
+    ev_t = [e[0] for e in evs]
     kicks = {p[0] for p in passes} | {p[0] - 5 for p in passes}
     window = collections.defaultdict(set)   # person -> grid times wanted (beyond the kicks)
     for t, pa, re_, tm, ok, h in passes:
@@ -182,6 +191,16 @@ def one(ev_path):
         c[("then_shot_ok", ok)] += bool(sh)
         c[("then_goal_ok", ok)] += any(x[2] for x in sh)
         c[("behind_h", h)] += 1
+        # G5.161 (§8.266): by height — completed; if not, who of theirs had it next (the first event of the defending
+        # side within 4 s: their keeper / an outfielder) or nobody (out, or the attackers again); where it was met
+        hb = "high" if h == "high" else "low"
+        c[("bh_n", hb)] += 1; c[("bh_ok", hb)] += ok
+        lists["bh_tl_" + hb].append(half - ra[0] * gdir)
+        if not ok:
+            i0 = bisect.bisect_right(ev_t, t)
+            nxt = next((e for e in evs[i0:i0 + 12] if e[0] <= t + 100 and e[2] != pa), None)
+            w = "nobody" if nxt is None or nxt[3] == tm else ("keeper" if nxt[2] in keepers else "outfielder")
+            c[("bh_who", hb, w)] += 1
         lists["gap"].append(gap)
         lists["speed"].append(rs)
         if vx is not None:
@@ -235,6 +254,12 @@ if __name__ == "__main__":
         print("BEHIND PICK (at the kick, attacking outfielders -1..18 m short of their line, by speed toward their goal m/s): "
               + "; ".join(f"{lab[b]} candidates {100 * tot[('bp_cand', b)] / nc:.1f}% receivers {100 * tot[('bp_recv', b)] / nr:.1f}% lift "
                           f"{(tot[('bp_recv', b)] / nr) / max(1e-9, tot[('bp_cand', b)] / nc):.2f}" for b in range(5)) + f" (n {nr})")
+    print("IN BEHIND BY HEIGHT (G5.161): a team-match | completed % | not completed, theirs next: keeper / outfielder / nobody % of all | met m off their line med")
+    for hb in ("high", "low"):
+        n = tot[("bh_n", hb)]
+        if not n: continue
+        print(f"  {hb:4s} {n / tm:5.1f} | {100 * tot[('bh_ok', hb)] / n:4.1f}% | " + " / ".join(f"{100 * tot[('bh_who', hb, w)] / n:4.1f}" for w in ("keeper", "outfielder", "nobody"))
+              + f" | {statistics.median(L['bh_tl_' + hb]):.1f}")
     print(f"IN BEHIND THEN (a shot / goal by the passer's side within 10 s; all shots {tot['shots'] / tm:.1f}, goals {tot['goals'] / tm:.2f} a team-match):")
     for k, lab in (("high", "high"), ("low", "flat/medium")):
         n = max(1, tot[("then_n", k)])

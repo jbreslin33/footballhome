@@ -10746,3 +10746,31 @@ completed 62% (47.5), met 16.4 m off their line (23.2) — the real high ball ov
 (the keeper's, the recovering CB's); ours is the runner's. Crosses set up too few (5-14% v 31): ours rarely beat
 the defence that way. Next: the high ball in behind, defended — who of theirs gets it (keeper sweeping, CB turning)
 against the DFL races (§8.192), and from there blocks / corners.
+
+### 8.266 G5.161 — a ball in behind's mode is the kicker's: the read sets its risk, never swaps high for ground (shipped)
+
+From §8.265 (the high ball in behind sets up the shots struck past the defence). **Real** (`benchmarks_tracking_behind.py`,
+new IN BEHIND BY HEIGHT; DFL: completed, and when not, the defending side's next event within 4 s — keeper /
+outfielder — or nobody): **high 22.0 a team-match, completed 35.7%**, not completed → keeper 1.9 / outfielder 35.4 /
+nobody 26.9% of all, met 25.6 m off their line; **low 15.7, 64.1%**, 1.8 / 24.1 / 10.0, 19.6 m. Ours (harness line the
+same, seeds 1000 / 2000): high 12.1-12.2, **completed 54%**, 2.6-3.6 / 28.7-28.9 / 13.8-14.9, met 14.6-16.5 m; low
+12.6-13.5, 69-78%. Fewer high balls in behind, completed half again as often, met 10 m nearer goal.
+
+**Why.** G5.51's mode choice: air first at the real share (`behind.air` 0.58) — but a high ball the race read lost
+was swapped for a ground ball it won, and the other way round. Only the safe high balls survived. §8.174 (G5.73)
+removed exactly that for passes to feet: "the race read sets each mode's risk, never the mode".
+
+**Change** [FH, after G5.73]: `physics.behind.mode_split` (default on): each ball in behind is two candidates, high at
+`behind_air` of its share (in range) and ground at the rest, each × `behind_risk` when the read loses it. Off = G5.51.
+11v11 golden re-locked (0x3b6df9c05b15a6c6), 3v3 unchanged; tests 22/22.
+
+**After** (4 seeds × 8 for the card; IN BEHIND lines seeds 1000 / 2000). High in behind **completed 54 → 44-48% (35.7)**,
+not completed → outfielder 31-33% (35.4), nobody 17-19 (26.9); shot within 10 s 19.1 → 14.5% (6.8); still 12-15 a
+team-match (22.0), met 15-18 m out (25.6). Card **11 ok / 4 off / 18 OFF** (9 / 4 / 20): completion 77.9 (77.5), fouls,
+tackles, penalties, free kicks ok; blocks 12 → 15% (29). **Goals 2.47 → 2.88 a team-match (1.35)** — inside the seeds'
+spread (2.44-3.12) but the wrong way: shots struck past the defence after no pass (a loose ball) rose with the extra
+failed high balls (seed 1000: 34% of 0-1 goal-side shots, real 17%).
+
+**Next.** Our line stands 1-2.5 m deeper than real at every ball band (its line by the ball, 5 m bins: 12.3 v 14.2 …
+35.5 v 37.4), so their balls in behind land nearer our goal; and who gets the loose ball after a failed high ball in
+behind near our box (ours / theirs / out).

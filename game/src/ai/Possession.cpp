@@ -535,7 +535,14 @@ public:
             const bool air_first = u4 < P.behind_air && bd <= reach;
             const bool gsafe = c.reads.passSafe(w, v.slot, sp, at, vg, Fixed64::one());
             const bool lsafe = bd <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
-            if (air_first ? lsafe : gsafe) add(Cand{j, bw, air_first, lf, true, at, carry});
+            // G5.161 (§8.266): the mode is the kicker's, at the real share; the race read sets only each mode's
+            // risk (as G5.73 for passes to feet). Swapping a high ball the read lost for a ground ball it won kept
+            // only the safe high balls: ours completed 54% met 15 m out (DFL high 35.7%, 25.6 m), 12 a team-match (22).
+            if (P.behind_split) {
+                if (bd <= reach) add(Cand{j, bw * P.behind_air * (lsafe ? Fixed64::one() : P.behind_risk), true, lf, true, at, carry});
+                add(Cand{j, bw * (bd <= reach ? Fixed64::one() - P.behind_air : Fixed64::one()) * (gsafe ? Fixed64::one() : P.behind_risk), false, lf, true, at, carry});
+            }
+            else if (air_first ? lsafe : gsafe) add(Cand{j, bw, air_first, lf, true, at, carry});
             else if (air_first ? gsafe : lsafe) add(Cand{j, bw, !air_first, lf, true, at, carry});
             // G5.51 (§8.152): a ball in behind the race read says they win is still
             // played, at behind_risk of its share. Real balls over the top are 50/50s
@@ -1523,6 +1530,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     behind_past_lo = p.fixed("physics.behind.past_p25_m", 2630);
     behind_past_hi = p.fixed("physics.behind.past_p75_m", 9730);
     behind_air = p.fixed("physics.behind.air", 580);
+    behind_split = p.fixed("physics.behind.mode_split", 1000).raw > 0;   // G5.161 (§8.266)
     behind_lead_s = p.fixed("physics.behind.lead_s", 1000);   // [FH] his across drift on the ball's way
     // Runs onto their line: DFL (benchmarks_tracking_runs.py, the ball not going forward).
     static const int kRunRate[kRoleCount] = {42, 24, 22, 11, 15, 9};            // starts per eligible man-second, x1000

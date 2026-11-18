@@ -169,7 +169,8 @@ constexpr std::uint64_t kGolden3v3   = 0xeadff4bba13dd47bULL;
 // Re-locked G5.155 (2026-11-18): as the 3v3.
 // Re-locked G5.156 (2026-11-18): as the 3v3.
 // Re-locked G5.157 (2026-11-18): the pass split's marker lift by Height, flat and high apart (DFL, §8.262); 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0x991da6b1b63ba356ULL;
+// Re-locked G5.161 (2026-11-18): a ball in behind's mode at the real share, the read only its risk (§8.266); 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0x3b6df9c05b15a6c6ULL;
 
 struct Rig {
     World world;

@@ -94,6 +94,7 @@ struct PossessionParams {
     math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len, int dir = -1) const;
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
+    bool behind_split = false;   // G5.161 (§8.266): each mode of a ball in behind at its real share, the read only its risk
     // G5.91 (§8.192): the ball in behind goes to a man already running at their goal — the real lift by
     // his speed toward their goal at the kick (<0 / 0-2 / 2-4 / 4-6 / 6+ m/s), among the attackers -1..18 m
     // short of their line (DFL benchmarks_tracking_behind.py BEHIND PICK). behind.lift_on 0 = off.

@@ -110,6 +110,7 @@ struct Stats {
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
+    long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
@@ -770,6 +771,12 @@ int main(int argc, char** argv) {
                     if (bh.behind) {
                         const bool ok = b.owner && W.player(*b.owner).team == bh.team;
                         ++S.bh_n; S.bh_ok += ok; S.bh_air += bh.air; ++S.bh_z[bh.z];
+                        {   // §8.266 IN BEHIND BY HEIGHT v benchmarks_tracking_behind.py: completed; else theirs next (keeper /
+                            // outfielder) or nobody (out, dead); met m off their line
+                            const int ai2 = bh.air ? 0 : 1; ++S.bhh_n[ai2]; S.bhh_ok[ai2] += ok;
+                            if (!ok) ++S.bhh_who[ai2][b.owner ? (W.isKeeper(*b.owner) ? 0 : 1) : 2];
+                            if (bh.best < 1e8) S.bhh_tl[ai2].push_back(hx - bh.mrx * sg);
+                        }
                         bt_rec.push_back(Bt{bh.team, bh.k0, bh.air, ok});
                         S.bh_gap.push_back(bh.gap); S.bh_spd.push_back(bh.spd); S.bh_vx.push_back(bh.vx);
                         S.bh_lead.push_back(std::hypot(bh.mrx - bh.rx, bh.mry - bh.ry)); S.bh_t.push_back((bh.bk - bh.k0) / 30.0);
@@ -3508,6 +3515,14 @@ int main(int argc, char** argv) {
         const double nb = std::max(1L, S.bh_n);
         std::printf("   IN BEHIND (met past their line as it stood at the kick; real DFL in brackets): %.1f a team-match (37.7) = %.1f%% of named passes (10.4%%), completed %.0f%% (47.5%%), in the air %.0f%% (58%%)\n",
                     S.bh_n / tm, 100.0 * S.bh_n / std::max(1L, S.bh_pass), 100.0 * S.bh_ok / nb, 100.0 * S.bh_air / nb);
+        {   // §8.266 IN BEHIND BY HEIGHT (real DFL: high 22.0 | 35.7% | 1.9 / 35.4 / 26.9 | 25.6; low 15.7 | 64.1% | 1.8 / 24.1 / 10.0 | 19.6)
+            static const char* hn[2] = {"high", "low "}; static const char* rr[2] = {"22.0 | 35.7% | 1.9 / 35.4 / 26.9 | 25.6", "15.7 | 64.1% | 1.8 / 24.1 / 10.0 | 19.6"};
+            std::printf("     IN BEHIND BY HEIGHT: a team-match | completed %% | not completed, theirs next: keeper / outfielder / nobody %% of all | met m off their line med (real DFL)");
+            for (int a2 = 0; a2 < 2; ++a2) { const double n = std::max(1L, S.bhh_n[a2]); auto v = S.bhh_tl[a2]; std::sort(v.begin(), v.end());
+                std::printf("\n       %s %5.1f | %4.1f%% | %4.1f / %4.1f / %4.1f | %4.1f  (%s)", hn[a2], S.bhh_n[a2] / tm, 100 * S.bhh_ok[a2] / n, 100 * S.bhh_who[a2][0] / n,
+                            100 * S.bhh_who[a2][1] / n, 100 * S.bhh_who[a2][2] / n, v.empty() ? 0.0 : v[v.size() / 2], rr[a2]); }
+            std::printf("\n");
+        }
         std::printf("     medians: his gap short of the line at the kick %.1f m (2.0), speed %.1f m/s (3.8), toward goal %.1f (2.7); runs to it %.1f m (10.2); ball to him %.1f s (2.8); pass %.1f m (24.6); met %.1f m past the line (5.2), %.1f m off their line (23.2)\n",
                     med(S.bh_gap), med(S.bh_spd), med(S.bh_vx), med(S.bh_lead), med(S.bh_t), med(S.bh_len), med(S.bh_past), med(S.bh_mtl));
         static const double real_z[10] = {2.00, 1.43, 4.79, 4.43, 6.14, 4.00, 4.79, 3.36, 4.57, 2.21};
