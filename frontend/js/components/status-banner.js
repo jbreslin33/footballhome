@@ -53,14 +53,15 @@
     #status-banner .sb-box { flex:0 1 auto; min-width:240px; max-width:440px; display:flex; align-items:center; gap:10px; padding:8px 12px;
                              border-radius:10px; text-align:left; cursor:pointer; color:#fff; box-sizing:border-box; }
     #status-banner .sb-box-act  { background:rgba(0,0,0,0.28); border:1px solid rgba(255,255,255,0.75); }
-    #status-banner .sb-box-info { background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.4); }
+    /* Info (fines so far, chat): nothing to act on — plain dark grey, the same on red or green (owner 11/18). */
+    #status-banner .sb-box-info { background:#1f2937; border:1px solid #4b5563; }
     #status-banner .sb-box-open { outline:2px solid #fff; outline-offset:1px; }
     #status-banner .sb-box-label { flex:1; min-width:0; font-weight:800; font-size:0.86rem; line-height:1.25; }
     #status-banner .sb-box[data-sb-code="chat_unread"] .sb-box-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #status-banner .sb-box-btns { flex:none; display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
     #status-banner .sb-box-go { min-height:0; font:inherit; font-weight:800; font-size:0.8rem; white-space:nowrap; padding:4px 10px; border-radius:999px; cursor:pointer; border:0; }
     #status-banner .sb-box-act .sb-box-go  { background:#fff; color:#b91c1c; }
-    #status-banner .sb-box-info .sb-box-go { background:rgba(255,255,255,0.22); color:#fff; }
+    #status-banner .sb-box-info .sb-box-go { background:#374151; color:#e5e7eb; }
     #status-banner [data-sb-panel] { display:flex; flex-direction:column; gap:6px; }
     #status-banner .sb-need-title { font-weight:800; color:#fca5a5; font-size:0.85rem; }
     #status-banner .sb-need-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:100%; box-sizing:border-box; padding:7px 10px; border-radius:8px;
