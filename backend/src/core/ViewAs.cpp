@@ -57,8 +57,10 @@ std::optional<Response> ViewAs::apply(Request& request) {
 
         // Their own login: the most recently seen users row for the person.
         auto u = db->query(
-            "SELECT u.id, COALESCE(u.email, '') AS email, COALESCE(al.name, '') AS role "
+            "SELECT u.id, COALESCE(pe.email, '') AS email, COALESCE(al.name, '') AS role "
             "  FROM users u "
+            "  LEFT JOIN LATERAL (SELECT email FROM person_emails "
+            "     WHERE person_id = u.person_id ORDER BY is_primary DESC, id ASC LIMIT 1) pe ON true "
             "  LEFT JOIN admins a ON a.user_id = u.id "
             "  LEFT JOIN admin_levels al ON al.id = a.admin_level_id "
             " WHERE u.person_id = $1::int "
