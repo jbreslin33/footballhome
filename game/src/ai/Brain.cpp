@@ -79,6 +79,7 @@ Brain::Brain(const Brain& o)
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
       shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_), hold_walk_m_(o.hold_walk_m_), hold_walk_mps_(o.hold_walk_mps_), hold_walk_far_m_(o.hold_walk_far_m_),
       theirs_cap_y_(o.theirs_cap_y_), ours_shift_y_(o.ours_shift_y_), ours_cap_y_(o.ours_cap_y_), trainer_recover_m_(o.trainer_recover_m_) {
+    contest_full_ = o.contest_full_; contest_brake_ = o.contest_brake_;
     spec_[0] = o.spec_[0]; spec_[1] = o.spec_[1];
     for (int i = 0; i < 2; ++i) teams_[i] = o.teams_[i];
     for (int i = 0; i < 32; ++i) { players_[i] = o.players_[i]; dbg_anchor_[i] = o.dbg_anchor_[i]; }
@@ -112,6 +113,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
     restart_play_.kick_law_m = p.fixed("physics.restart.kick_law_m", 9150);
     restart_play_.drop_law_m = p.fixed("physics.restart.drop_law_m", 4000);   // Law 8
     contest_full_ = p.fixed("physics.block.contest_full_pace", 1000).raw > 0;   // §8.256
+    contest_brake_ = p.fixed("physics.block.contest_brake", 1000).raw > 0;   // §8.258
     restart_play_.penalty_arc_m = p.fixed("physics.restart.penalty_arc_m", 9150);
     arrive_decel_ = p.fixed("physics.body.arrive_decel_mps2", 4500);
     arrive_through_ = p.fixed("physics.body.arrive_through_mps", 3000);
@@ -963,7 +965,13 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
             // G5.151 (§8.256): the man contesting their high ball attacks it — flat out, not on time. On time he met
             // their man there at best: the nearest of ours 2.5 m off a midfield drop (DFL 1.6), aerial duels 15 a
             // match (44.1). [FH coaching: attack the ball in the air]
-            if (o.why == Why::Chase && contest_full_ && block_.contester(setup_.team_of_slot[slot]) == static_cast<int>(slot)) { v_ok = me.max_speed; break; }
+            // G5.153 (§8.258): flat out, but braked to arrive on the spot. Unbraked, on their long ball into our third he got
+            // there a second early at 7-8 m/s, ran on through it and pulled up 2-4 m past while the ball dropped behind him
+            // (the contester not the nearest at the drop 16-18%; their nearest at a 70+ m drop 2.6 m, DFL 1.2).
+            if (o.why == Why::Chase && contest_full_ && block_.contester(setup_.team_of_slot[slot]) == static_cast<int>(slot)) {
+                if (!contest_brake_ || v_ok > me.max_speed) v_ok = me.max_speed;
+                break;
+            }
             const FlightRead& fr = reads_.flightRead(world);
             if (!fr.live || slot >= fr.tick.size() || fr.tick[slot] <= 0) break;
             const Fixed64 t = Fixed64::fromInt(fr.tick[slot]) * core::kTickDt;

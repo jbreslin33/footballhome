@@ -10492,3 +10492,34 @@ code default `cut_margin` 0, so the branch never fires there). Tests 22/22, lint
 **Still 0.7× the real duels.** Next: the 70+ m drop (their long ball into our third) — our contester gets to 2.6-2.9 m
 and slows (3.4-4.5 m/s in the last second); and the 20-30% of midfield drops where the nearest at the drop still
 holds shape because the contest picked a man nearer to where their man meets it, not to the drop.
+
+### 8.258 G5.153 — the contester brakes onto the spot: flat out, not past it (shipped)
+
+From §8.257's next (their long ball into our third: our contester at 2.6-2.9 m, slowing). New harness line **§8.258 who
+contests it 0.5 s in** (each HIGH BALLS zone): the man nearest at the drop is the contester / nobody is (his job, our
+keeper the chaser) / another man is (his job then and at the drop, his metres off the drop then and at it, the
+nearest's then, the contest spot off the drop / off each). 70+ m drops (seeds 1000, 2000): the nearest contests
+59-62%; nobody 22-23% (our keeper the chaser 73% of those: he comes for it); **another 16-18%, 4.3-5.1 m off the drop
+at 0.4 s, chasing, the contest spot 0.8 m off the drop — and 3.7-3.9 m off it when it comes down.** Traced: he got
+to the spot a second before the ball at 7-8 m/s, ran on through it and pulled up 2-4 m past, the ball dropping
+behind him; a team-mate from 9-10 m arrived nearer. §8.256's "flat out" set his pace to max_speed and with it
+dropped the arrive brake (`brakeToArrive`, sqrt(v_end² + 2·decel·d), the curve every other chase runs).
+
+**Change** [FH coaching: get there and set yourself, then attack it]: the contester's pace is flat out *up to the
+arrive brake* — the on-time floor stays off (§8.256), the brake stays on (`physics.block.contest_brake`, default on,
+no row). Also: `Brain`'s copy constructor now copies `contest_full_` / `contest_brake_` (§8.256's flag was dropped
+on a copy, back to off).
+
+3 seeds × 8 (before / after; seed 3000's before = `contest_brake=0`): **70+ m drops both within 2 m 24-32 → 39-48%
+(43.0)**, theirs within 2 m 35-40 → 56-61% (65.3), their nearest 2.4-2.6 → 1.7-1.8 m (1.2), the other side touches
+it within 3 s 75-79 → 86-88% (74.4); the "another man" case 16-20 → 7-9%, ending 2.1-2.6 m off (3.6-3.9). 35-70 m:
+both within 2 m 33-36 → 42-45% (39.3), theirs within 2 m 47-49 → 56-57% (56.8), nearest 2.0-2.1 → 1.8 m (1.6), touch
+within 3 s 56-60 → 63-67% (71.6). **Aerial duels 27.5 / 34.2 / 34.0 → 52.5 / 47.8 / 52.8 a match (44.1)**; HIGH
+PASSES 35-70 m completed 57-59 → 47-50% (46.0), but an aerial duel at it within 5 s 16-18 → 34-38% (16.2). Shots a
+minute in play 0.33-0.35 → 0.27-0.32 (0.245); goals a match 5.8-6.6 → 4.5-5.9; completion 78-79 → 77% (79.1); passes,
+fouls, FREE BALL tempo unchanged within noise. Goldens unchanged. Tests 22/22, no migration.
+
+**Over now: aerial duels 1.15×, and 2× at our high passes into midfield (StatsBomb).** The drops are contested at the
+real rate (DFL both within 2 m) but each contest counts a duel more often than real — next: what the harness's duel is
+(two men within reach as the ball comes down v StatsBomb's won/lost header pair), and whether our second man jumps
+when real ones let the first take it.

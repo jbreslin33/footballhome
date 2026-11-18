@@ -137,6 +137,7 @@ private:
                       drop_law_m = math::Fixed64::fromInt(4);   // §8.250 Law 8
     } restart_play_;
     bool contest_full_ = false;   // §8.256: the contester of their high ball runs flat out
+    bool contest_brake_ = false;   // §8.258: ... braked to arrive on the spot
     std::uint8_t hold_team_ = 0xFF;
     std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;
 
