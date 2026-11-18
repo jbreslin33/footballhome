@@ -79,7 +79,8 @@
     #status-banner .sb-box-open { outline:2px solid #fff; outline-offset:1px; }
     #status-banner .sb-box-label { flex:1; min-width:0; font-weight:800; font-size:0.86rem; line-height:1.25; }
     #status-banner .sb-box[data-sb-code="chat_unread"] .sb-box-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    #status-banner .sb-box-btns { flex:none; display:inline-flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    #status-banner .sb-box-btns { flex:none; display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+    #status-banner .sb-box-or { font-size:0.76rem; font-weight:700; opacity:0.85; }
     #status-banner .sb-box-go { min-height:0; font:inherit; font-weight:800; font-size:0.8rem; white-space:nowrap; padding:4px 10px; border-radius:999px; cursor:pointer; border:0; }
     #status-banner .sb-box-act .sb-box-go  { background:#fff; color:#b91c1c; }
     #status-banner .sb-box-info .sb-box-go { background:#374151; color:#e5e7eb; }

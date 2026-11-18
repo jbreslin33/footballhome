@@ -95,7 +95,9 @@ class StatusBar {
       const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}`, tokens, lfb);
       const actTier = code === 'chat_unread' && !d.n ? 'act_chat_read' : `act_${code}`;
       const btn = bfb ? StatusBar.copy(actTier, tokens, bfb) : '';
-      const extra = (Array.isArray(d.extra) ? d.extra : []).map(x => pill(x.code, x.text)).join('');
+      // A choice reads as one: [Pay now ›] or [🙋 Volunteer ›] (owner 11/18 "Pay now OR Volunteer").
+      const orWord = `<span class="sb-box-or">${esc(StatusBar.copy('or_word', {}, 'or'))}</span>`;
+      const extra = (Array.isArray(d.extra) ? d.extra : []).map(x => orWord + pill(x.code, x.text)).join('');
       const open = this.openCode === code || (Array.isArray(d.extra) && d.extra.some(x => x.code === this.openCode));
       return `<div class="sb-box ${strong ? 'sb-box-act' : 'sb-box-info'} ${open ? 'sb-box-open' : ''}" data-sb-chip="${esc(code)}" data-sb-code="${esc(code)}" role="button" tabindex="0">
           <span class="sb-box-label">${esc(label)}</span>
