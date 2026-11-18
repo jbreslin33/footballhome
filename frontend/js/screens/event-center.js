@@ -675,23 +675,36 @@ class EventCenterScreen extends Screen {
     // Still loading: the filters, ‹ › and view chips stay, the grid says so.
     const loading = !this.events;
     const evAll = this.events || [];
-    const cats = [...new Set(evAll.map(ev => ev.category).filter(Boolean))];
-    const catLabel = (c) => EventCenterScreen.CATEGORY_LABELS[c] || c;
     const chip = (attr, value, label, on) =>
       `<button type="button" class="ec-chip ${on ? 'on' : ''}" ${attr}="${this.escapeHtml(value)}">${this.escapeHtml(label)}</button>`;
     const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
 
-    // Person chips: Everyone · Me · each kid — only when the week holds more
-    // than your own events (a parent's kids, a coach's or admin's whole
-    // scope).  Words: event_center person_all / person_me (mig 1363).
+    // The kids you answer for (guardian_targets) — each gets a colour below.
     const kids = new Map();
     for (const ev of evAll)
       for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
         if (c && c.person_id && !kids.has(Number(c.person_id))) kids.set(Number(c.person_id), String(c.name || '').split(' ')[0] || 'Your player');
-    const hasMine = evAll.some(ev => ev.is_mine === true);
-    const hasOthers = evAll.some(ev => ev.is_mine !== true && !(Array.isArray(ev.guardian_targets) && ev.guardian_targets.length));
-    const personChips = kids.size || (hasMine && hasOthers);
-    if (!loading && (!personChips || (this.person !== 'all' && this.person !== 'me' && !kids.has(Number(this.person))))) this.person = 'all';
+    // No Everyone · Me · kid or All · Boys · Men · Women filters any more —
+    // the week shows everything, and each person in the house gets a colour
+    // on the tiles instead (owner 11/18 "get rid of 'everyone' 'me' etc pills
+    // 'all' boys etc. maybe just color code me and grace and same for
+    // parents with multiple kids").
+    this.person = 'all';
+    this.category = 'all';
+    const household = kids.size > 0;   // you + at least one kid (or kids) → colour each
+    const kidIds = [...kids.keys()].sort((a, b) => a - b);
+    const WHO = ['#f472b6', '#a78bfa', '#fb923c', '#34d399', '#facc15', '#f87171'];
+    const whoColor = (id) => id ? WHO[kidIds.indexOf(Number(id)) % WHO.length] : '#38bdf8';
+    const whoChip = (id, name) => `<span style="font-size:0.66rem; font-weight:900; padding:1px 7px; border-radius:999px; background:${whoColor(id)}; color:#0f172a; white-space:nowrap;">${this.escapeHtml(name)}</span>`;
+    const whoChips = (ev) => {
+      if (!household) return '';
+      const out = [];
+      // Me only where you answer (a coach is "on" nearly everything).
+      if (ev.my_rsvp_eligible === true || ev.my_suspension || ev.my_callin) out.push(whoChip(0, cp('person_me', {}, 'Me')));
+      for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
+        if (c && c.person_id) out.push(whoChip(Number(c.person_id), String(c.name || '').split(' ')[0] || 'Your player'));
+      return out.length ? `<span style="display:flex; flex-wrap:wrap; gap:3px;">${out.join('')}</span>` : '';
+    };
     const forPerson = (ev) => this.person === 'all' ? true
       : this.person === 'me' ? ev.is_mine === true
       : (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []).some(c => c && Number(c.person_id) === Number(this.person));
@@ -800,6 +813,7 @@ class EventCenterScreen extends Screen {
       // …and one row per child of yours on the event (guardian_targets —
       // every guardian of the child gets it; mig 1148: "same with grace").
       const answerRow = (personId, r, [tier, fb, color], tokens) => {
+        const stripe = household ? `border-left:4px solid ${whoColor(personId)}; padding-left:6px;` : '';
         const key = `${ev.fh_event_id}:${personId || 'me'}`;
         const busy = this.saving.has(key);
         const b = (resp, label, c) => {
@@ -810,7 +824,7 @@ class EventCenterScreen extends Screen {
                            border:1px solid ${c}; background:${on ? c : 'transparent'}; color:${on ? '#fff' : c};">${label}</button>`;
         };
         const err = this.rsvpNote[key];
-        return `<span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%; margin-top:2px; padding-top:6px; border-top:1px solid var(--border-color);">
+        return `<span style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; width:100%; margin-top:2px; padding-top:6px; border-top:1px solid var(--border-color); ${stripe}">
             <span style="font-size:0.78rem; font-weight:800; color:${color}; flex:1; min-width:0;">${this.escapeHtml(cp(tier, tokens, fb))}</span>
             ${b('yes', '✓', '#22c55e')}${b('no', '✗', '#ef4444')}
           </span>
@@ -853,6 +867,7 @@ class EventCenterScreen extends Screen {
       const open = unanswered(ev);
       return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}"
                    ${open ? 'style="border:2px solid #f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,0.18);"' : ''}>
+        ${whoChips(ev)}
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
         ${EventLabels.isGame(ev) && EventLabels.timesLine(ev)
           // A game: Arrival · Warmup · Kickoff on top, no bare start time (owner 11/18).
@@ -951,15 +966,6 @@ class EventCenterScreen extends Screen {
     const viewChip = (v, fb) => chip('data-ec-view', v, cp(`view_${v}`, {}, fb), this.view === v);
 
     return `
-      ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
-        ${chip('data-ec-person', 'all', cp('person_all', {}, 'Everyone'), this.person === 'all')}
-        ${hasMine ? chip('data-ec-person', 'me', cp('person_me', {}, 'Me'), this.person === 'me') : ''}
-        ${[...kids].map(([id, name]) => chip('data-ec-person', String(id), name, String(this.person) === String(id))).join('')}
-      </div>` : ''}
-      ${cats.length > 1 ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
-        ${chip('data-ec-category', 'all', 'All', this.category === 'all')}
-        ${cats.map(c => chip('data-ec-category', c, catLabel(c), this.category === c)).join('')}
-      </div>` : ''}
       ${(this.viewer || Viewer.account()).calendarWeekNavHtml({ start, label, cp, esc: (t) => this.escapeHtml(t) }) || `
       <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);">
         <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous">‹</button>
