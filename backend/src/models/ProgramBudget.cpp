@@ -11,6 +11,7 @@
 
 #include "../database/Database.h"
 #include "CashFlow.h"
+#include "CoachingPlan.h"
 #include "Expenses.h"
 
 using nlohmann::json;
@@ -375,6 +376,15 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             }
         };
         auto allPaying = [&](int si) { std::vector<int> ids; for (const auto& p : programs) if (payW[si][p.id] > 0) ids.push_back(p.id); return ids; };
+        // 🧑‍🏫 This year's coaching comes from the coaching plan (mig 1491,
+        // CoachingPlan) when the year has one: each paid coach-session / game
+        // block shared by the programs in it, by paying players — not "one
+        // coach per team" (owner 11/18: Luke + Anthony at every youth session,
+        // James all men's).  A year with no plan keeps the per-team estimate.
+        std::map<std::string, std::vector<CoachingPlan::Item>> cpBySeason;
+        try { CoachingPlan cp(clubId, Y.label); for (const auto& it : cp.items()) cpBySeason[it.season].push_back(it); }
+        catch (const std::exception&) {}
+        const bool useCp = !cpBySeason.empty();
 
         for (size_t si = 0; si < seasons.size(); ++si) {
             const Season& S = seasons[si];
@@ -450,7 +460,8 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         if (feeRatio > 0) { char f[64]; std::snprintf(f, sizeof f, "%.1f%%", 100 * feeRatio); lines.push_back({"own", "la_fees", "la_fees", "", f, dues * feeRatio, false}); }
                     }
                     // coaching: one coach per team, every practice and every game
-                    if (teams > 0 && m["coach_paid"].get<bool>()) {
+                    // (only when the year has no coaching plan — see useCp)
+                    if (!useCp && teams > 0 && m["coach_paid"].get<bool>()) {
                         const double ph = m["practice_hours_week"], weeks = m["practice_weeks"], rate = m["coach_rate"];
                         const int games = m["games"]; const double hpg = m["hours_per_game"];
                         // practice and game coaching on their own lines (owner 11/16
@@ -495,6 +506,21 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                             if (mine && std::fabs(pl.amount) >= 0.005) lines.push_back({"own", pl.category, "plan_line", pl.league + " — " + pl.label, "", pl.amount, true});
                         }
                 }
+                // coaching plan: each item split over its programs that pay a
+                // coach this season (🧑‍🏫 volunteer = that program's share drops)
+                if (useCp && cpBySeason.count(S.code))
+                    for (const auto& it : cpBySeason[S.code]) {
+                        std::vector<int> paid; double wAll = 0, wPaid = 0;
+                        for (int id : it.programs) {
+                            if (!progIdx.count(id)) continue;
+                            const double w = payW[(int)si][id]; wAll += w;
+                            if (meta[(int)si][id].value("coach_paid", true)) { paid.push_back(id); wPaid += w; }
+                        }
+                        if (paid.empty()) continue;
+                        const double amt = it.amount() * (wAll > 0 ? wPaid / wAll : (double)paid.size() / it.programs.size());
+                        char d[160]; std::snprintf(d, sizeof d, "%s — %s %d × %.2g h × $%.0f", it.coach.c_str(), it.label.c_str(), it.times, it.hoursEach, it.rate);
+                        split((int)si, paid, amt, {"own", "labor", "coaching", it.kind == "game" ? "games" : "practice", d, 0, true});
+                    }
                 // This year's plan seasons, Men's / Women's: league money and
                 // refs still ahead (Expenses), by scope; budget lines (every
                 // program) — the projected months in the season

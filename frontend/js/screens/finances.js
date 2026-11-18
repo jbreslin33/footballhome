@@ -572,6 +572,17 @@ class FinancesScreen extends Screen {
   }
   static pgSum(lines, group) { return (lines || []).filter(l => l.group === group).reduce((a, l) => a + Number(l.amount || 0), 0); }
   // one program's year: per season and in total
+  // Every program of a kind (youth) folded into one {season: {lines}} for
+  // _programDetailHtml — the same lines, just added together.
+  _pgCombined(year, kind) {
+    const b = this.programs.budgets[year], out = {};
+    for (const p of (this.programs.programs || []).filter(x => x.kind === kind))
+      for (const se of b.seasons) {
+        const x = (b.programs[p.code] || {})[se.code]; if (!x) continue;
+        (out[se.code] = out[se.code] || { lines: [] }).lines.push(...(x.lines || []));
+      }
+    return out;
+  }
   _pgRoll(year, code) {
     const b = this.programs.budgets[year], P = b.programs[code], S = FinancesScreen.pgSum;
     const t = { dues: 0, own: 0, shared: 0, support: 0, players: 0, teams: 0, assumed: false };
@@ -620,7 +631,11 @@ class FinancesScreen extends Screen {
       rows += row(p.code, p.label, t, '');
       if (p.code === this.pgProg) rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${p.kind === 'men' && !full ? this._menMoneyHtml(year) : this._programDetailHtml(year, p)}</td></tr>`;
       const next = pg.programs[pg.programs.indexOf(p) + 1];
-      if (p.kind === 'youth' && (!next || next.kind !== 'youth')) rows += row('', this._copy('pg_youth_total') || 'Youth', youth, 'subtotal');
+      if (p.kind === 'youth' && (!next || next.kind !== 'youth')) {
+        const youthLabel = this._copy('pg_youth_total') || 'Youth';
+        rows += row('youth', youthLabel, youth, 'subtotal');
+        if (this.pgProg === 'youth') rows += `<tr><td colspan="10" style="padding:0 0 10px 0; text-align:left; white-space:normal;">${this._programDetailHtml(year, { code: 'youth', label: youthLabel }, this._pgCombined(year, 'youth'))}</td></tr>`;
+      }
     }
     rows += row('', this._copy('pg_club_total') || 'Club', club, 'sum');
     const g = b.grant ? `<div class="fn-note">${esc(this._copy('plan_grant_used', { used: M0(b.grant.used), award: M0(b.grant.award) }) || `Grant ${M0(b.grant.used)} of ${M0(b.grant.award)}`)}</div>` : '';
@@ -694,9 +709,13 @@ class FinancesScreen extends Screen {
   }
   // One program: seasons across, lines down (dues → own costs → own net →
   // shared → grant / CASA → net with shared).
-  _programDetailHtml(year, p) {
+  // One program's money by season — or, with `combined` (a {season: {lines}}
+  // built by _pgCombined), a whole group like Youth (owner 11/18 "the youth
+  // club need to be grouped as a whole like men … see if the tuition is
+  // covering the coach pay and league fees"): same rows, no plan grid.
+  _programDetailHtml(year, p, combined = null) {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0;
-    const b = this.programs.budgets[year], P = b.programs[p.code], ss = b.seasons;
+    const b = this.programs.budgets[year], P = combined || b.programs[p.code], ss = b.seasons;
     const cell = (v, cls) => `<td class="${cls || ''}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
     const lineLabel = (l) => l.key === 'dues' ? (this._copy('pg_line_dues') || 'Dues') : l.key === 'la_fees' ? (this._copy('pg_line_la_fees') || 'LeagueApps fees')
       : l.key === 'coaching' && l.label === 'practice' ? (this._copy('pg_line_coach_practice') || 'Practice coaching')
@@ -726,7 +745,7 @@ class FinancesScreen extends Screen {
     const dues = groupBy('dues'), own = groupBy('own'), coach = groupBy('coach'), shared = groupBy('shared'), grant = groupBy('grant');
     const preCoach = minus(dues, own), preClub = minus(preCoach, coach), preGrant = minus(preClub, shared), net = minus(preGrant, grant, +1);
     const plan = ss.filter(se => !se.real);
-    let rows = this._pgGridRows(year, p, true);
+    let rows = combined ? '' : this._pgGridRows(year, p, true);
     const lines = (g, cls) => [...groups[g].values()].map(r => line(r, cls)).join('');
     rows += lines('dues', 'fn-in') + lines('own', 'fn-out');
     // A running balance AFTER each pile (owner 11/18 "i like balance after not
@@ -736,7 +755,7 @@ class FinancesScreen extends Screen {
     if (groups.shared.size) rows += lines('shared', 'fn-out') + sumRow(this._copy('pm_pre_grant') || 'BALANCE AFTER CLUB WIDE', preGrant, 'subtotal');
     if (groups.grant.size) rows += lines('grant', 'fn-in') + sumRow(this._copy('pm_post_grant') || 'BALANCE AFTER GRANT', net, 'sum');
     const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? (this._copy('pg_real') || 'real') : (this._copy('pg_plan') || 'plan'))}</span></th>`).join('')}<th>${esc(this._copy('col_total') || 'Total')}</th></tr>`;
-    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${this._pgScheduleHtml(p)}${plan.length ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="fn-card" style="margin:4px 0 0 0;"><div class="fn-title">${esc(p.label)} · ${esc(year)}</div>${combined ? '' : this._pgScheduleHtml(p)}${plan.length && !combined ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}<div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   // ── 💵 Men's: where the money goes (mig 1407, owner 11/16 "apsl only. liga 1
