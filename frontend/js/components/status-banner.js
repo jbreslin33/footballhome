@@ -61,7 +61,9 @@
     #status-banner .sb-chat { flex:none; display:inline-flex; align-items:center; gap:6px; height:38px; min-width:38px; min-height:0; padding:0 10px;
                               box-sizing:border-box; border-radius:999px; cursor:pointer; font:inherit; line-height:1; justify-content:center;
                               background:#1f2937; border:1px solid #4b5563; color:#fff; }
-    #status-banner .sb-chat-i { font-size:1.15rem; }
+    #status-banner .sb-chat-i { position:relative; font-size:1.15rem; }
+    #status-banner .sb-chat-dot { position:absolute; top:-8px; right:-10px; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:999px;
+                                  background:#fff; color:#dc2626; font-size:0.66rem; font-weight:800; line-height:18px; text-align:center; }
     #status-banner .sb-chat-n { font-size:0.82rem; font-weight:800; white-space:nowrap; }
     #status-banner .sb-chat.unread { background:#ef4444; border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
     @keyframes sb-pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(255,255,255,0.75); } 50% { box-shadow:0 0 0 8px rgba(255,255,255,0); } }
@@ -251,10 +253,11 @@
         // the 💬 button … a blinking button to read unread messages").
         const n = s && s.unread ? (s.capped ? `${s.unread}+` : s.unread) : 0;
         const tip = s && s.text ? `${s.text}${s.when ? ' · ' + s.when : ''}` : cp('sheet_chat', {}, '💬 Chat');
-        // "it should say x unread too" — 💬 3 unread, red and pulsing until opened.
+        // "it should say x unread too" → "show a number if unread and say x
+        // unread" — 💬 with a count on the bubble + "3 unread", red, pulsing until opened.
         const words = n ? cp('chat_btn_unread', { n }, `${n} unread`) : '';
         this.bar.setTail(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
-            title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words}` : cp('chat_btn', {}, 'Chat'))}"><span class="sb-chat-i">💬</span>${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</button>`);
+            title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words}` : cp('chat_btn', {}, 'Chat'))}"><span class="sb-chat-i">💬${n ? `<span class="sb-chat-dot">${esc(n)}</span>` : ''}</span>${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</button>`);
       } }));
       this.chat.start().catch(() => {});
 
