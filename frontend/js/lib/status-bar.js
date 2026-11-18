@@ -30,6 +30,7 @@ class StatusBar {
     this.items = new Map();
     this.openCode = null;
     this.ready = false;
+    this.tail = '';   // the page's own HTML at the band's right end (the 💬 button)
     if (head) head.addEventListener('click', (e) => {
       const hit = e.target.closest('[data-sb-chip]');
       if (hit && this.ctx.onChip) this.ctx.onChip(hit.getAttribute('data-sb-chip'));
@@ -56,6 +57,8 @@ class StatusBar {
   }
 
   has(code) { return this.items.has(code) && this.rules.has(code); }
+
+  setTail(html) { if (html !== this.tail) { this.tail = html || ''; this.render(); } }
 
   render() {
     if (!this.head) return;
@@ -105,7 +108,7 @@ class StatusBar {
     const c = actions.length ? { b: '#b91c1c', bg: '#dc2626' } : { b: '#15803d', bg: '#16a34a' };
     this.head.className = 'sb-band';
     this.head.style.cssText = `border-bottom:1px solid ${c.b}; background:${c.bg};`;
-    this.head.innerHTML = `${lead}${boxes.length ? `<div class="sb-boxes">${boxes.join('')}</div>` : ''}`;
+    this.head.innerHTML = `${lead}${boxes.length ? `<div class="sb-boxes">${boxes.join('')}</div>` : ''}${this.tail}`;
     // Hidden until the rules arrive — never a green "all set" before anything is known.
     this.head.hidden = !this.ready;
   }

@@ -57,6 +57,15 @@
     #status-banner .sb-box-act  { background:rgba(0,0,0,0.28); border:1px solid rgba(255,255,255,0.75); }
     /* Info (fines so far, chat): nothing to act on — plain dark grey, the same on red or green (owner 11/18). */
     #status-banner .sb-box-info { background:#1f2937; border:1px solid #4b5563; }
+    /* 💬 at the band's right end; unread → a red count that pulses until opened (owner 11/18). */
+    #status-banner .sb-chat { flex:none; display:inline-flex; align-items:center; gap:6px; height:38px; min-width:38px; min-height:0; padding:0 10px;
+                              box-sizing:border-box; border-radius:999px; cursor:pointer; font:inherit; line-height:1; justify-content:center;
+                              background:#1f2937; border:1px solid #4b5563; color:#fff; }
+    #status-banner .sb-chat-i { font-size:1.15rem; }
+    #status-banner .sb-chat-n { font-size:0.82rem; font-weight:800; white-space:nowrap; }
+    #status-banner .sb-chat.unread { background:#ef4444; border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
+    @keyframes sb-pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(255,255,255,0.75); } 50% { box-shadow:0 0 0 8px rgba(255,255,255,0); } }
+    @media (prefers-reduced-motion: reduce) { #status-banner .sb-chat.unread { animation:none; } }
     #status-banner .sb-box-open { outline:2px solid #fff; outline-offset:1px; }
     #status-banner .sb-box-label { flex:1; min-width:0; font-weight:800; font-size:0.86rem; line-height:1.25; }
     #status-banner .sb-box[data-sb-code="chat_unread"] .sb-box-label { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -177,7 +186,7 @@
     set(code, data) {
       this.bar.set(code, data);
       const open = this.bar.openCode;
-      if (!open || open === 'volunteer') return;
+      if (!open || open === 'volunteer' || open === 'chat_unread') return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -238,8 +247,14 @@
       // 💬 Chat — always a box when the section has one: newest · N new.
       const chatOpen = () => this.bar.openCode === 'chat_unread';
       this.chat = new SectionChat(this.$('#sb-chat'), this.ctx({ isOpen: chatOpen, onSummary: (s) => {
+        // 💬 a button at the band's right end, not a box (owner 11/18 "make chat
+        // the 💬 button … a blinking button to read unread messages").
         const n = s && s.unread ? (s.capped ? `${s.unread}+` : s.unread) : 0;
-        this.set('chat_unread', { n, text: (s && s.text) || '', when: (s && s.when) || '' });
+        const tip = s && s.text ? `${s.text}${s.when ? ' · ' + s.when : ''}` : cp('sheet_chat', {}, '💬 Chat');
+        // "it should say x unread too" — 💬 3 unread, red and pulsing until opened.
+        const words = n ? cp('chat_btn_unread', { n }, `${n} unread`) : '';
+        this.bar.setTail(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
+            title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words}` : cp('chat_btn', {}, 'Chat'))}"><span class="sb-chat-i">💬</span>${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</button>`);
       } }));
       this.chat.start().catch(() => {});
 
