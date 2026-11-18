@@ -10774,3 +10774,33 @@ failed high balls (seed 1000: 34% of 0-1 goal-side shots, real 17%).
 **Next.** Our line stands 1-2.5 m deeper than real at every ball band (its line by the ball, 5 m bins: 12.3 v 14.2 …
 35.5 v 37.4), so their balls in behind land nearer our goal; and who gets the loose ball after a failed high ball in
 behind near our box (ours / theirs / out).
+
+### 8.267 G5.162 — the block's depth from where the ball is: real men trail a moving ball, ours led it (shipped)
+
+From §8.266's next (our line 1-2.5 m deep of real at every ball band). **Where.** DEFENDING SHAPE by role v DFL:
+settled CB 0.8-4.2 m deep (ball 20-80 m out), FB ~2, DM/CM ~3; forwards the other way near our goal. Holders reach
+their targets (target ~ position), so the targets are deep. SETTLED SHAPE BY THE BALL'S SPEED AT THEM (§8.142's
+lag line) puts it in one cell: ball away or still — real within ~1 m; **ball coming at us 5+ m/s — ours 2-5 m deep**
+(20-30 m out: CB 19.9 v 23.5, FB 22.7 v 26.5, DM 28.0 v 33.0). RECOVERY: 5+ m/s back 2-4 s after the loss 12.3-13.2%
+(5.2). Not the retreat pace: `shape_tau_back_s` 2.5 → 3.2 / 4.0 moved the coming rows ≤0.4 m (sprints back 12.9 →
+11.8 / 10.1%).
+
+**Why.** G5.42 (§8.142) made the spot table the real *still-ball* rows — "where a man stands once he has caught up;
+trailing a moving ball is the body". But G5.30 (§8.128) keys the spot on `ball_to`, the point the race read's first
+man takes a free ball: on their forward pass our block's target jumps at once to the still spot for where it lands —
+ahead of the ball, the opposite of the real ~1 s trail.
+
+**Change** [DFL, §8.142's reading]: `physics.block.depth_now` (default on) — the block's depth band from the ball where
+it is; across (the slide) and the spot's lead (Brain::blockLead) unchanged. Off = G5.30. Test
+`block_spot_is_the_real_table`: ball_to no longer moves the depth; off restores G5.30's. Goldens re-locked (3v3
+0x88349c561a1f3d06, 11v11 0x5de9a077f50724d6). Tests 22/22, lint clean.
+
+**After** (4 seeds × 8; real DFL). Coming 5+ m/s, 20-30 m: CB 19.9 → 21.6-21.9 (23.5), FB 22.7 → 24.2-24.6 (26.5), DM
+28.0 → 29.4-29.9 (33.0); 10-20 m CB 14.3 → 16.2-16.6 (17.2); 0-10 m CB 10.8 → 12.2-12.7 (11.8, now over); still / away
+rows real as before. Line by the ball 10 m 12.3 → 12.9-13.3 (14.2); from 30 m out unchanged (35.5 v 37.4 at 50) — the
+rest of the depth is elsewhere. **Card 6 ok / 9 off / 18 OFF** (was 11 / 4 / 18): goals 2.80 (2.88; 1.35), passes,
+shots as before; the ok → off moves are mostly lines at the edge (penalties 0.08, take-on success 62%), but aerial
+duels 46.9 → 49.9 (44.3) and fouls 13.0 → 13.6 (12.5) look real.
+
+**Next.** The depth from 30 m out (the settled CB 2-4 m deep where the ball is still / away is real: the gap there is
+the share of frames by ball speed, §8.142 — ours twice the still frames), then corners and blocks as §8.264.

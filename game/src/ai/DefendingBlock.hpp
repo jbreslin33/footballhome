@@ -63,6 +63,7 @@ struct BlockParams {
     // benchmarks_tracking_goalside.py). gs_r 0 = off — and OFF it ships: our targets already put as
     // many men goal-side as real; the men don't reach them (§8.186). Moved nothing at 20 / 25 / 30 m.
     math::Fixed64 gs_r{}, gs_w{}, gs_m{};
+    bool depth_now = false;   // G5.162 (§8.267): the block's depth from the ball where it is, not where it's going
     void configure(const core::ModelParams& p);
 };
 

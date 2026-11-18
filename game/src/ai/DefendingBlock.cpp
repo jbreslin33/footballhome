@@ -198,6 +198,7 @@ void BlockParams::configure(const core::ModelParams& p) {
         }
     }
     switch_m = p.fixed("physics.press.switch_m", 2000);
+    depth_now = p.fixed("physics.block.depth_now", 1000).raw > 0;   // G5.162 (§8.267), default on
     gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)
     gs_w = p.fixed("physics.block.gs_w", 10000);
     gs_m = p.fixed("physics.block.gs_m", 1000);
@@ -406,7 +407,9 @@ void DefendingBlock::assignCover(std::uint8_t team, const core::World& world, co
 
 Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
-    const Fixed64 off_line = hx + v.ball_to.x * v.sg;   // the ball's metres off our own line, where it's going
+    // the ball's metres off our own line, where it's going (G5.30) — or, G5.162 (§8.267) with depth_now, where it is:
+    // the table is where real men stand with the ball still (G5.42); real ones trail a moving ball ~1 s, ours led it
+    const Fixed64 off_line = hx + (params_.depth_now ? world.ball().pos.x : v.ball_to.x) * v.sg;
     Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role)], off_line);
     // G5.41: the pair's mean is the real CB spot; the deeper man half the gap below it.
     if (v.role == Role::CB) {

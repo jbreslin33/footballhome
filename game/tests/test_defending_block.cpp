@@ -60,13 +60,16 @@ FH_TEST(block_spot_is_the_real_table) {
     v.team = 1; v.sg = -Fixed64::one(); v.role = ai::Role::ST;
     const Vec2 s2 = b.spot(v, w);
     FH_EXPECT(near(s2.x, Fixed64::fromFraction(-64, 10), 3));
-    // G5.30 (§8.128): a ball in flight — the spot is for where it will be
-    // taken, not where it is: met 25 m off the home line, the home CB stands
-    // at the table's 25 m (17.0 m at band 25) = x -35.5.
+    // G5.162 (§8.267): a ball in flight — the depth is from where the ball IS (real men trail it), not
+    // where it will be taken: ball_to 25 m off the home line changes nothing...
     v.team = 0; v.sg = Fixed64::one(); v.role = ai::Role::CB;
     v.ball_to = Vec2{Fixed64::fromFraction(-55, 2), Fixed64::zero()};
     const Vec2 s3 = b.spot(v, w);
-    FH_EXPECT(near(s3.x, Fixed64::fromFraction(-355, 10), 1));
+    FH_EXPECT(near(s3.x, want, 1));
+    // ...and with depth_now 0 it is G5.30's: the table's 25 m (17.0 m at band 25) = x -35.5.
+    mp.setMilli("physics.block.depth_now", 0);
+    ai::DefendingBlock b0; b0.configure(mp);
+    FH_EXPECT(near(b0.spot(v, w).x, Fixed64::fromFraction(-355, 10), 1));
 }
 
 FH_TEST(one_presser_nearest_and_sticky) {

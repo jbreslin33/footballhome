@@ -110,7 +110,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.154 (2026-11-18): loft landing times refit to every real flight past 1.8 m (DFL CHIP HEIGHT, §8.259).
 // Re-locked G5.155 (2026-11-18): each loft at one of five real landing times for its carry (p10-p90, §8.260).
 // Re-locked G5.156 (2026-11-18): an aimed loft carries backspin lift (C_L 0.25, DFL peak-for-time, §8.261).
-constexpr std::uint64_t kGolden3v3   = 0xeadff4bba13dd47bULL;
+// Re-locked G5.162 (2026-11-18): the block's depth from where the ball is, not where it's going (§8.267).
+constexpr std::uint64_t kGolden3v3   = 0x88349c561a1f3d06ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -170,7 +171,8 @@ constexpr std::uint64_t kGolden3v3   = 0xeadff4bba13dd47bULL;
 // Re-locked G5.156 (2026-11-18): as the 3v3.
 // Re-locked G5.157 (2026-11-18): the pass split's marker lift by Height, flat and high apart (DFL, §8.262); 3v3 unchanged.
 // Re-locked G5.161 (2026-11-18): a ball in behind's mode at the real share, the read only its risk (§8.266); 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0x3b6df9c05b15a6c6ULL;
+// Re-locked G5.162 (2026-11-18): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x5de9a077f50724d6ULL;
 
 struct Rig {
     World world;
