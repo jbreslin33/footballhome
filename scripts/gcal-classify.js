@@ -426,6 +426,7 @@ async function lookupFingerprint(pg) {
                                           || '|' || coalesce(weekday_arrival_minutes_before::text,'') || '|' || coalesce(weekday_warmup_minutes_before::text,''), ',' ORDER BY organization_id)
                          FROM league_matchday_offsets), '')
           || '#' || coalesce((SELECT string_agg(alias || '|' || team_id, ',' ORDER BY alias) FROM gcal_opponent_aliases), '')
+          || '#' || coalesce((SELECT string_agg(calendar_id || '|' || summary_pattern || '|' || dsl || '|' || is_active, ',' ORDER BY id) FROM gcal_title_rules), '')
          ) AS fp
   `);
   // Bump when the classifier's own rules change so every row re-walks
@@ -478,7 +479,7 @@ async function classifyDsl(pg) {
   // Pull every candidate row with description body + summary for logs.
   // The description ~* '\mteam[[:space:]]*:' regex mirrors the
   // exclusion in classifyPattern so the two paths are truly disjoint.
-  const { rows: events } = await pg.query(`
+  const { rows: tagged } = await pg.query(`
     SELECT ge.id, ge.summary, ge.description, ge.hash
     FROM   gcal_events ge
     LEFT JOIN fh_events fe ON fe.gcal_event_id = ge.id
@@ -487,6 +488,21 @@ async function classifyDsl(pg) {
       AND  ($2::boolean OR fe.classified_hash IS DISTINCT FROM (ge.hash || ':' || $1))
     ORDER BY ge.id
   `, [fp, full]);
+  // Mig 1496: untagged events classified by their TITLE (gcal_title_rules —
+  // "Barn Night" on soccer@ → Club: Mens / Team: APSL, Liga 1 / Kind: Barn
+  // Night; owner 11/18 "if you can see it then always have it on schedule").
+  // The rule's tag text stands in for the description; a real Team: tag wins.
+  const { rows: titled } = await pg.query(`
+    SELECT DISTINCT ON (ge.id) ge.id, ge.summary, r.dsl AS description, ge.hash
+    FROM   gcal_events ge
+    JOIN   gcal_title_rules r ON r.is_active AND r.calendar_id = ge.calendar_id AND ge.summary ~* r.summary_pattern
+    LEFT JOIN fh_events fe ON fe.gcal_event_id = ge.id
+    WHERE  ge.deleted_at IS NULL
+      AND  coalesce(ge.description, '') !~* '\\mteam[[:space:]]*:'
+      AND  ($2::boolean OR fe.classified_hash IS DISTINCT FROM (ge.hash || ':' || $1))
+    ORDER BY ge.id, r.id
+  `, [fp, full]);
+  const events = tagged.concat(titled);
 
   for (const ev of events) {
     stats.scanned += 1;
