@@ -1049,6 +1049,10 @@ class SocialPostCard {
 
         ${middleHtml}
 
+        ${grow && this.rosterData && Array.isArray(this.rosterData.info) && this.rosterData.info.length
+          ? `<div style="margin:2px 0 8px;font-size:13px;font-weight:700;line-height:1.4;color:#fde68a;">${this.rosterData.info.map(t => `<div>${this.escapeHtml(t)}</div>`).join('')}</div>`
+          : ''}
+
         ${goalScorerHtml}
 
         ${playersPlayedHtml}

@@ -56,6 +56,12 @@ class PlayerViewer {
   // and bench right now for game screen for players").
   eventPillKeys(ev)       { return ev && (ev.kind === 'match' || ev.kind === 'intrasquad') ? ['starters_bench'] : ['players']; }
   get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
+  // A game page: no header (title · times · address · HOME-11v11) — the live
+  // card already says who / when / where, and Arrival · Warmup · Kickoff +
+  // 🏟 HOME-11v11 ride on it under the matchup (owner 11/18 "do we need the
+  // info under the calender? … that should just go in grphic underneath as
+  // its not the actuall instagram post but informational for players").
+  get gameHeader()        { return false; }
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
   get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
@@ -132,6 +138,7 @@ class CoachViewer extends PlayerViewer {
   get eventKindPills()    { return true; }
   eventPillKeys()         { return null; }
   get eventLocationLine() { return false; }
+  get gameHeader()        { return true; }
   get eventCardStanding() { return true; }
   // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
   // coaches edit the official lineup directly.  Flip here to bring drafts back.

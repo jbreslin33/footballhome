@@ -1961,6 +1961,9 @@ class GameCenterScreen extends EventScreen {
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;
+    // PlayerViewer: no header on a game — its lines are on the card (gameHeader).
+    const hdr = this.find('.screen-header');
+    if (hdr) hdr.style.display = this.matchId && window.Viewer && this.ev && !Viewer.account().gameHeader ? 'none' : '';
     const setup = this.find('#gc-home-setup');
     if (setup) setup.innerHTML = this.matchId ? EventLabels.homeSetupBadge(this.ev, (t) => this.escapeHtml(t)) : '';
 
@@ -3970,7 +3973,11 @@ class GameCenterScreen extends EventScreen {
     const sharedIds = pitch && !this.everyonePlays ? new Set([...this.shares.keys()].map(String)) : new Set();
     const split = this.splitSquad && !this.everyonePlays && pitch
       ? { band: this._copySplit('band'), times: this._copySplit('times') } : null;
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split };
+    // The player's header lines, on the live card under the matchup (never
+    // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11 (Viewer.gameHeader).
+    const info = live && this.ev && window.Viewer && !Viewer.account().gameHeader
+      ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
