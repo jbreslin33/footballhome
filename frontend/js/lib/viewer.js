@@ -56,17 +56,20 @@ class PlayerViewer {
   // and bench right now for game screen for players").
   eventPillKeys(ev)       { return ev && (ev.kind === 'match' || ev.kind === 'intrasquad') ? ['starters_bench'] : ['players']; }
   get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
-  // A game page: no header (title · times · address · HOME-11v11) — the live
-  // card already says who / when / where, and Arrival · Warmup · Kickoff +
-  // 🏟 HOME-11v11 ride on it under the matchup (owner 11/18 "do we need the
-  // info under the calender? … that should just go in grphic underneath as
-  // its not the actuall instagram post but informational for players").
-  get gameHeader()        { return false; }
-  // Everything under the game graphic (🎯 match plan, 🚗 carpool, 🖨 rosters,
-  // starter eligibility …) lives in ☰; a pick shows that one under the card
-  // (owner 11/18 "all the stuff under graphic sould go inside hamburgert for
-  // game page").
-  get gameExtrasInMenu()  { return true; }
+  // An opened event (game AND practice — EventScreen, the parent of both):
+  // no header (title · times · address · HOME-11v11) — the graphic says who
+  // / when / where (owner 11/18 "do we need the info under the calender? …
+  // that should just go in grphic underneath … informational for players").
+  get eventHeader()       { return false; }
+  // Everything under the graphic (🎯 match plan, 🚗 carpool, 🖨 rosters,
+  // eligibility, who's coming …) lives in ☰; a pick shows that one under the
+  // graphic (owner 11/18 "all the stuff under graphic sould go inside
+  // hamburgert for game page" → "keep pace with practice … similar to game.
+  // but it should be sibling oop wise of game page inheriting from parent").
+  get eventExtrasInMenu() { return true; }
+  // GOING / NOT GOING on the graphic itself (owner 11/18 "going or not going
+  // button should be on graphic! i am seeing in vision how grahpic is the focus").
+  get eventAvailOnGraphic() { return true; }
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
   get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
@@ -143,8 +146,9 @@ class CoachViewer extends PlayerViewer {
   get eventKindPills()    { return true; }
   eventPillKeys()         { return null; }
   get eventLocationLine() { return false; }
-  get gameHeader()        { return true; }
-  get gameExtrasInMenu()  { return false; }
+  get eventHeader()       { return true; }
+  get eventExtrasInMenu() { return false; }
+  get eventAvailOnGraphic() { return false; }
   get eventCardStanding() { return true; }
   // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
   // coaches edit the official lineup directly.  Flip here to bring drafts back.

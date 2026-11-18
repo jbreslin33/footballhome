@@ -40,6 +40,10 @@ class PracticeScreen extends EventScreen {
     return super.panels(key);
   }
 
+  // The practice card is this page's graphic — it stays on the page when
+  // the rest goes into ☰ (EventScreen._renderPanels).
+  graphicPanels() { return ['team_card']; }
+
   // Edit rights = the server's per-event answer, lowered by 👀 See as.
   _mayEditSides() { return !!(this.sides && this.sides.canEdit) && this.viewer.canEdit(); }
   _mayEditCones() { return !!(this.cones && this.cones.can_edit) && this.viewer.canEdit(); }
@@ -63,7 +67,9 @@ class PracticeScreen extends EventScreen {
     const ev = this.ev;
     const rsvps = Array.isArray(ev && ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes' && !r.suspension);
-    if (!going.length) return '';
+    // No header for a player (Viewer.eventHeader) → the card is always drawn,
+    // so when / where (and GOING / NOT GOING) are on the page with nobody going yet.
+    if (!going.length && (!window.Viewer || Viewer.account().eventHeader)) return '';
     const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
       || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
     const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
@@ -120,10 +126,27 @@ class PracticeScreen extends EventScreen {
                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
         <div style="font-size:12px; text-transform:uppercase; letter-spacing:5px; font-weight:700; margin-bottom:8px;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: ev.kind === 'pickup' ? 'PICKUP' : 'PRACTICE' }))}</div>
         <div style="font-size:15px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.95); margin-bottom:6px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''} · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}</div>
+        ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
         ${pitch}
         <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#f5d442; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
         ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
+        ${this._cardOutHtml()}
       </div>`;
+  }
+
+  // – No response / ✗ Not going under the card, as the game card has them
+  // under its substitutes (owner 11/18 "similar to game").
+  _cardOutHtml() {
+    const out = this._rsvpOutLists();
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
+    const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
+    const row = (list, tier, fb) => list.length ? `
+        <div style="margin-top:8px;">
+          <div style="font-size:13px; letter-spacing:3px; color:#f5d442; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
+          <div style="font-size:14px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.85); margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
+        </div>` : '';
+    return row(out.noResponse, 'sec_noresp', '– No response') + row(out.notGoing, 'sec_notgoing', '✗ Not going');
   }
 
   // ── 📞 Attendance calls (mig 1277; owner 2026-11-11: "call all coaches

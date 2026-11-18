@@ -89,7 +89,77 @@ class EventScreen extends Screen {
   }
 
   // The body under a lit pill = its panels this viewer reaches, in order.
-  pillHtml(key) { return Panel.render(this.panels(key), this); }
+  pillHtml(key) { return this._renderPanels(this.panels(key)); }
+
+  // ── ☰ extras (Viewer.eventExtrasInMenu — PlayerViewer) ──────────────
+  // Owner 11/18: "all the stuff under graphic sould go inside hamburgert"
+  // → practice "similar to game … sibling oop wise of game page inheriting
+  // from parent".  Every panel but the page's graphic renders hidden, one
+  // wrapper each; ☰ lists them (labels = each one's own heading) and a pick
+  // shows that one under the graphic.  Children say which panel IS the
+  // graphic (graphicPanels) and which to leave out (menuSkipPanels).
+  graphicPanels()  { return []; }
+  menuSkipPanels() { return []; }
+  _extrasInMenu() { return !!(this.ev && window.Viewer && Viewer.account().eventExtrasInMenu); }
+  _renderPanels(panels) {
+    if (!this._extrasInMenu()) return Panel.render(panels, this);
+    const graphic = this.graphicPanels(), skip = this.menuSkipPanels();
+    return (panels || []).filter(p => p && p.shownTo(this) && !skip.includes(p.key)).map(p => {
+      const h = p.html(this);
+      if (!h || graphic.includes(p.key)) return h;
+      return `<div data-gc-extra="${p.key}" style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>`;
+    }).join('');
+  }
+  _syncExtrasMenu() {
+    const sb = window.StatusBanner && StatusBanner.instance;
+    if (!sb || !sb.setPageItems) return;
+    const screen = window.app && window.app.navigation && window.app.navigation.currentState;
+    if (!this._extrasInMenu() || !this.element) { sb.setPageItems(screen, []); return; }
+    const items = [...this.element.querySelectorAll('[data-gc-extra]')].map(el => {
+      const key = el.getAttribute('data-gc-extra');
+      const h = el.querySelector('summary, h2, h3, .ec-h, button');
+      let label = ((h || el).textContent || '').replace(/\s+/g, ' ').trim();
+      if (label.length > 60) label = label.slice(0, 57) + '…';
+      return label ? { label, run: () => this._showExtra(key) } : null;
+    }).filter(Boolean);
+    sb.setPageItems(screen, items);
+  }
+  _showExtra(key) {
+    this._extraOpen = key;
+    if (!this.element) return;
+    let shown = null;
+    this.element.querySelectorAll('[data-gc-extra]').forEach(el => {
+      const on = el.getAttribute('data-gc-extra') === key;
+      el.style.display = on ? 'block' : 'none';
+      if (on) shown = el;
+    });
+    if (!shown) return;
+    shown.querySelectorAll('details').forEach(d => { if (!d.open) d.open = true; });
+    shown.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  // The header (title · when · where) — PlayerViewer has none on an opened
+  // event (Viewer.eventHeader): the graphic carries those lines.
+  _applyEventHeader() {
+    const hdr = this.find('.screen-header');
+    if (hdr) hdr.style.display = this.ev && window.Viewer && !Viewer.account().eventHeader ? 'none' : '';
+  }
+  // Your GOING / NOT GOING sits ON the graphic for a player (owner 11/18
+  // "going or not going button should be on graphic! … graphic is the
+  // focus"), above it for staff.  Same markup + data-gc-my-avail either way.
+  _availOnGraphic() { return !!(this.ev && window.Viewer && Viewer.account().eventAvailOnGraphic); }
+  _myAvailBlockHtml() { return `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`; }
+
+  // Who answered what, for a graphic's lists (the same cut as the 👥
+  // sections: coaches, suspended, inactive and injured out).
+  _rsvpOutLists() {
+    const inactiveIds = new Set((Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : []).map(r => r.person_id));
+    const players = (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : [])
+      .filter(r => r && !r.is_coach && !r.suspension && (r.response === 'yes' || !inactiveIds.has(r.person_id)));
+    return {
+      noResponse: players.filter(r => r.response !== 'yes' && r.response !== 'no' && !r.injury),
+      notGoing:   players.filter(r => r.response === 'no'),
+    };
+  }
 
   // A pill was tapped — fetch what it shows the first time.
   onPill(key) {
@@ -1639,6 +1709,8 @@ class EventScreen extends Screen {
       sub.textContent = [EventLabels.whenLine(this.ev), place].filter(Boolean).join(' · ');
     }
     body.innerHTML = this._eventHtml();
+    this._applyEventHeader();
+    this._syncExtrasMenu();
   }
 
   // The big pill row (lib/event-pills.js — Game Center's row), then the
@@ -1652,7 +1724,7 @@ class EventScreen extends Screen {
     return `
       ${this._seeAsHtml()}
       ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
-      <div data-gc-my-avail>${this._myAvailabilityHtml()}</div>
+      ${this._availOnGraphic() ? '' : this._myAvailBlockHtml()}
       ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
       ${this.pillHtml(this.pill)}
@@ -1703,7 +1775,7 @@ class EventScreen extends Screen {
       const active = row.response === response;
       return `<button type="button" data-gc-avail="${response}" ${row.personId ? `data-person-id="${row.personId}"` : ''}
                       ${closed ? `disabled title="${this.escapeHtml(closed)}"` : ''}
-                      style="padding:6px 12px; border-radius:8px; font-weight:800; font-size:0.78rem; cursor:${closed ? 'default' : 'pointer'};
+                      style="padding:${this._availOnGraphic() ? '9px 22px' : '6px 12px'}; border-radius:8px; font-weight:800; font-size:${this._availOnGraphic() ? '15px' : '0.78rem'}; cursor:${closed ? 'default' : 'pointer'};
                              border:2px solid ${colour}; color:#fff; background:${active ? colour : 'transparent'}; opacity:${closed ? 0.45 : 1};">${label}</button>`;
     };
     // One line per person, the buttons say the answer (owner 11/18 "too much
@@ -1713,10 +1785,12 @@ class EventScreen extends Screen {
     // No heading, no "You · ✅ Going", no "Plans changed?" note — the line
     // under it only speaks when the event is over / not open, or on an error.
     void word;
+    // On the graphic (Viewer.eventAvailOnGraphic): centred, bigger.
+    const onG = this._availOnGraphic();
     return `
-      <div style="margin:0 0 10px; display:flex; flex-direction:column; gap:6px;">
+      <div style="margin:0 0 ${onG ? 0 : 10}px; display:flex; flex-direction:column; gap:6px;">
         ${rows.map(row => `
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; ${onG ? 'justify-content:center;' : ''}">
             ${row.personId ? `<span style="font-weight:800; min-width:4.5em;">${this.escapeHtml(row.name)}</span>` : ''}
             ${btn(row, 'yes', cp('answer_yes', 'GOING'), '#16a34a')}
             ${btn(row, 'no', cp('answer_no', 'NOT GOING'), '#dc2626')}

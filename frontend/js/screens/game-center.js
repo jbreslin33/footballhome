@@ -1961,9 +1961,7 @@ class GameCenterScreen extends EventScreen {
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;
-    // PlayerViewer: no header on a game — its lines are on the card (gameHeader).
-    const hdr = this.find('.screen-header');
-    if (hdr) hdr.style.display = this.matchId && window.Viewer && this.ev && !Viewer.account().gameHeader ? 'none' : '';
+    this._applyEventHeader();   // EventScreen: PlayerViewer has none — its lines are on the card
     const setup = this.find('#gc-home-setup');
     if (setup) setup.innerHTML = this.matchId ? EventLabels.homeSetupBadge(this.ev, (t) => this.escapeHtml(t)) : '';
 
@@ -2111,7 +2109,8 @@ class GameCenterScreen extends EventScreen {
     // and games one interface): 👀 bar, the pill row, your availability —
     // then the pill's own pieces (the lineup pills' Official / draft bar …).
     const pillRow = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`;
-    const top = seeAsBar + pillRow + `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`;
+    // GOING / NOT GOING: on the card for a player (Viewer.eventAvailOnGraphic), here for staff.
+    const top = seeAsBar + pillRow + (this._availOnGraphic() ? '' : this._myAvailBlockHtml());
     const paint = (bodyHtml) => {      if (this.pill === PLAYERS_PILL) {
         // 👥 All Players: EventScreen's list (Going / No response / Not
         // going, P/A/L/E, ✓/✗, reminders, 📇, call-in requests, mark all
@@ -3705,47 +3704,9 @@ class GameCenterScreen extends EventScreen {
     ];
   }
 
-  // PlayerViewer.gameExtrasInMenu: the panels under the graphic render
-  // hidden, one wrapper each; ☰ lists them (_syncExtrasMenu) and a pick
-  // shows that one.  Otherwise the plain Panel.render.
-  _extrasInMenu() { return !!(this.matchId && window.Viewer && Viewer.account().gameExtrasInMenu); }
-  _renderPanels(panels) {
-    if (!this._extrasInMenu()) return Panel.render(panels, this);
-    return (panels || []).filter(p => p && p.shownTo(this) && p.key !== 'db_strip').map(p => {
-      const h = p.html(this);
-      return h ? `<div data-gc-extra="${p.key}" style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>` : '';
-    }).join('');
-  }
-  // ☰ items = the hidden sections, labelled by their own heading (summary /
-  // first button — the copy they already carry).
-  _syncExtrasMenu() {
-    const sb = window.StatusBanner && StatusBanner.instance;
-    if (!sb || !sb.setPageItems) return;
-    const screen = window.app && window.app.navigation && window.app.navigation.currentState;
-    if (!this._extrasInMenu() || !this.element) { sb.setPageItems(screen, []); return; }
-    const items = [...this.element.querySelectorAll('[data-gc-extra]')].map(el => {
-      const key = el.getAttribute('data-gc-extra');
-      const h = el.querySelector('summary, h2, h3, button');
-      let label = ((h || el).textContent || '').replace(/\s+/g, ' ').trim();
-      if (label.length > 60) label = label.slice(0, 57) + '…';
-      return label ? { label, run: () => this._showExtra(key) } : null;
-    }).filter(Boolean);
-    sb.setPageItems(screen, items);
-  }
-  _showExtra(key) {
-    this._extraOpen = key;
-    if (!this.element) return;
-    let shown = null;
-    this.element.querySelectorAll('[data-gc-extra]').forEach(el => {
-      const on = el.getAttribute('data-gc-extra') === key;
-      el.style.display = on ? 'block' : 'none';
-      if (on) shown = el;
-    });
-    if (!shown) return;
-    const d = shown.querySelector('details');
-    if (d && !d.open) d.open = true;
-    shown.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
+  // ☰ extras (EventScreen._renderPanels): the "Last change · DB ✓" strip is
+  // a status line, not a menu item — dropped there.
+  menuSkipPanels() { return ['db_strip']; }
 
   _pillToolsHtml(pill, byZone) {
     const html = this._renderPanels(this.pillToolPanels(pill, byZone));
@@ -4023,15 +3984,18 @@ class GameCenterScreen extends EventScreen {
     const split = this.splitSquad && !this.everyonePlays && pitch
       ? { band: this._copySplit('band'), times: this._copySplit('times') } : null;
     // The player's header lines, on the live card under the matchup (never
-    // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11 (Viewer.gameHeader).
-    const info = live && this.ev && window.Viewer && !Viewer.account().gameHeader
+    // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11 (Viewer.eventHeader).
+    const info = live && this.ev && window.Viewer && !Viewer.account().eventHeader
       ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
     const out = live && this._rsvpOut ? this._rsvpOut : null;
     const outRow = (list, tier, fb) => ({ label: `${this._ecCopy(tier, fb)} (${list.length})`, names: [...list].sort(this._byLastName).map(p => p.name) });
     // Order (owner 11/18): substitutes, then no response, not going, alternates.
     const rsvpOut = out ? [outRow(out.noResponse, 'sec_noresp', '– No response'), outRow(out.notGoing, 'sec_notgoing', '✗ Not going'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates')].filter(r => r.names.length) : [];
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut };
+    // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
+    // not going button should be on graphic! … graphic is the focus").
+    const availHtml = live && this._availOnGraphic() ? this._myAvailBlockHtml() : '';
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
