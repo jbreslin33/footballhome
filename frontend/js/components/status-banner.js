@@ -321,10 +321,12 @@
       this.updateFines();
     }
 
-    // ⚖️ One box: owed so far + what this week's unanswered events would add.
+    // ⚖️ One box: owed so far + what this week's unanswered events would add —
+    // ONLY while new fines are at stake (owner 11/18: "if they are not in line
+    // to get fined that week we don't show past fines").
     updateFines() {
       const now = this.finesNow || 0, stake = this.finesStake || 0;
-      this.set('fines_owed', now > 0 || stake > 0 ? { amount: money(now), stake: stake > 0 ? money(stake) : '' } : null);
+      this.set('fines_owed', stake > 0 ? { amount: money(now), stake: money(stake) } : null);
     }
 
     show(on) { this.host.style.display = on ? '' : 'none'; }
