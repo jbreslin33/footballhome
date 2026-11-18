@@ -74,7 +74,11 @@ class NavigationStateMachine {
 
     // Update each field
     userEl.textContent = this.context.user?.email || '';
-    roleEl.textContent = this.context.role ? this.context.role.charAt(0).toUpperCase() + this.context.role.slice(1) : '';
+    // No "Role" (owner 11/18: "role makes no sense … we enhance pages
+    // depending on role but user never changes role").
+    roleEl.textContent = '';
+    roleEl.style.display = 'none';
+    teamEl.style.display = this.context.team?.name ? '' : 'none';
     teamEl.textContent = this.context.team?.name || '';
   }
 
