@@ -1632,11 +1632,11 @@ class EventScreen extends Screen {
     // PlayerViewer: the place on its own line, a map link (eventLocationLine).
     const place = EventLabels.homeSetup(this.ev) || this.ev.location;
     if (this.viewer.eventLocationLine) {
-      sub.innerHTML = `${this.escapeHtml([this._when(this.ev), EventLabels.timesLine(this.ev)].filter(Boolean).join(' · '))}`
+      sub.innerHTML = `${this.escapeHtml(EventLabels.whenLine(this.ev))}`
         + (place ? `<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}" target="_blank" rel="noopener"
              style="color:inherit; text-decoration:underline; text-underline-offset:2px;">📍 ${this.escapeHtml(place)}</a>` : '');
     } else {
-      sub.textContent = [this._when(this.ev), EventLabels.timesLine(this.ev), place].filter(Boolean).join(' · ');
+      sub.textContent = [EventLabels.whenLine(this.ev), place].filter(Boolean).join(' · ');
     }
     body.innerHTML = this._eventHtml();
   }

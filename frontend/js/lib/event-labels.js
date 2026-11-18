@@ -115,6 +115,18 @@ class EventLabels {
 
   static timesLine(ev) { return EventLabels.times(ev).join(' · '); }
 
+  static isGame(ev) { const k = String((ev && ev.kind) || '').toLowerCase(); return k === 'match' || k === 'intrasquad'; }
+
+  // The one "when" line.  A game: the date, then Arrival · Warmup · Kickoff —
+  // never a bare start time in front (owner 11/18 "for games always show
+  // arrival listed first then warmup then kickoff").  Anything else: the
+  // date · time, then its Arrival.
+  static whenLine(ev) {
+    if (!ev) return '';
+    if (EventLabels.isGame(ev)) return [EventLabels.dateStr(ev.starts_at), EventLabels.timesLine(ev)].filter(Boolean).join(' · ');
+    return [EventLabels.when(ev), EventLabels.timesLine(ev)].filter(Boolean).join(' · ');
+  }
+
   // 🚗 Carpool heads-up for a card (mig 1105; owner 11/5: "so we get a
   // quick heads up? with carpool and names?") — one line per car:
   // "🚗 James drives: 804 East Girard Avenue 7:00 PM (Som S.) → Lighthouse

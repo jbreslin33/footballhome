@@ -399,7 +399,11 @@
         if (isSoon) soon += who.length; else later += who.length;
         const fine = ev.my_rsvp_fine_usd > 0 && who.some(w => !w.id) ? Number(ev.my_rsvp_fine_usd) : 0;
         stake += fine;
-        const when = new Date(at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+        // A game shows its arrival first, never a bare start (owner 11/18).
+        const firstTime = window.EventLabels && EventLabels.isGame(ev) ? (EventLabels.times(ev)[0] || '') : '';
+        const when = firstTime
+          ? `${new Date(at).toLocaleDateString('en-US', { weekday: 'short' })} · ${firstTime}`
+          : new Date(at).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' });
         const name = (window.EventLabels && EventLabels.title) ? EventLabels.title(ev) : (ev.summary || '');
         for (const w of who) {
           const key = `${ev.fh_event_id}:${w.id || 'me'}`;

@@ -1943,7 +1943,7 @@ class GameCenterScreen extends EventScreen {
   // title = what it is, sub = when · arrival/warmup/kickoff · where.
   _headSub() {
     if (!this.ev) return [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
-    return [EventLabels.when(this.ev), EventLabels.timesLine(this.ev), this.ev.location].filter(Boolean).join(' · ');
+    return [EventLabels.whenLine(this.ev), this.ev.location].filter(Boolean).join(' · ');   // a game: Arrival · Warmup · Kickoff first
   }
   _headTitle() {
     return this.ev ? `📋 ${EventLabels.title(this.ev)}` : (window.EventKindSwitch ? EventKindSwitch.title() : '📋 Event Center');

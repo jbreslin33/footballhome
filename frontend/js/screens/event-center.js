@@ -805,9 +805,13 @@ class EventCenterScreen extends Screen {
       return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}"
                    ${open ? 'style="border:2px solid #f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,0.18);"' : ''}>
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
-        <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
-        <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
-        ${EventLabels.timesLine(ev) ? `<span style="font-size:0.72rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(EventLabels.timesLine(ev))}</span>` : ''}
+        ${EventLabels.isGame(ev) && EventLabels.timesLine(ev)
+          // A game: Arrival · Warmup · Kickoff on top, no bare start time (owner 11/18).
+          ? `<span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(EventLabels.timesLine(ev))}</span>
+             <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>`
+          : `<span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
+             <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
+             ${EventLabels.timesLine(ev) ? `<span style="font-size:0.72rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(EventLabels.timesLine(ev))}</span>` : ''}`}
         ${EventLabels.carpoolLines(ev).map(l => `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere; text-align:left;">${this.escapeHtml(l)}</span>`).join('')}
         ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
           : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
