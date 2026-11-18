@@ -43,10 +43,12 @@ in the months (bonds out) by scope: a team scope → its programs, a section
 scope → that section's programs by players, club → shared.
 
 **Plan season:**
-- players default = the season before's players (fall real, or what was
-  typed), never fewer than today's paying players: adults only grow (owner
-  11/17 "our numbers will keep going up not down till we hit 70"); later
-  years move the youth up an age per year (U16 → Men's / Women's)
+- players default = today's PAYING players, this year and next, youth and
+  adults (owner 11/18 "for this year and next year assume current numbers
+  of players we have now that are paying for programs"; replaces 11/16
+  youth "full paid roster" and 11/17 adults "only grow"); later years move
+  today's kids up an age per year (U16 → Men's / Women's). A typed box wins;
+  👥 Full capacity still fills every team.
 - teams default = players ÷ capacity (`teams.max_roster`), rounded up
 - dues = players × monthly dues × months × the share of dues actually
   collected over the last 3 closed months (reality rule; Women's: none)

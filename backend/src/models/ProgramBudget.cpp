@@ -351,10 +351,12 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                                                               {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])},
                                                               {"weeks_read", weeksRead}, {"schedule", calSlots.count(p.id) ? calSlots[p.id] : json::array()}});
 
-    // adults only grow (owner 11/17 "our numbers will keep going up not down
-    // till we hit 70"): a plan season's default players = the season before's
-    // (real fall, or what was typed), never fewer than paying now
-    std::map<int, int> prevPlayers;   // program → last season's players
+    // A plan season's default players = the players PAYING NOW (owner 11/18
+    // "for this year and next year assume current numbers of players we have
+    // now that are paying for programs") — this year and every later year,
+    // youth and adults; a later year moves today's kids up an age (heads[yi]).
+    // Typed boxes still win; 👥 Full capacity still fills every team.
+    // Replaces 11/16 youth "full paid roster" and 11/17 adults "only grow".
     for (size_t yi = 0; yi < years.size(); ++yi) {
         const Year& Y = years[yi];
         out["years"].push_back(Y.label);
@@ -388,19 +390,11 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                 const double rate0 = p.paysDues && collectRate.count(p.kind) ? collectRate[p.kind] : 1.0;
                 const int heads0 = p.paysDues ? h.second : h.first;
                 const int cap = std::max(1, p.capacity);
-                // youth plan seasons project every team full and paid (owner
-                // 11/16 "for youth projections project full paid roster for each
-                // team. its a projection"): teams (typed, else today's, at least
-                // one) × the roster; adults keep paying now × collection rate
-                const bool youthFull = !isReal && p.kind == "youth" && p.paysDues && p.capacity > 0;
-                const int teamsNow = std::max(1, (heads0 + cap - 1) / cap);
-                const int defPlayers = isReal ? heads0 : youthFull ? (pl.teams >= 0 ? pl.teams : teamsNow) * cap
-                                    : std::max(heads0, prevPlayers.count(p.id) ? prevPlayers[p.id] : 0);
+                const int defPlayers = heads0;
                 int players = isReal ? defPlayers : (pl.players >= 0 ? pl.players : defPlayers);
-                int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : youthFull ? teamsNow : (players > 0 ? (players + cap - 1) / cap : 0));
+                int teams = isReal ? (players > 0 ? (players + cap - 1) / cap : 0) : (pl.teams >= 0 ? pl.teams : (players > 0 ? (players + cap - 1) / cap : 0));
                 if (full && !isReal) { teams = std::max(1, pl.teams >= 0 ? pl.teams : teams); players = teams * cap; }
                 payW[(int)si][p.id] = p.paysDues ? players : 0;
-                if (!full) prevPlayers[p.id] = players;
                 const double ph = pl.ph >= 0 ? pl.ph : calHours[p.id];
                 const double weeks = pl.weeks >= 0 ? pl.weeks : weeksPerYear * months.size() / 12.0;
                 const double rate = pl.rate >= 0 ? pl.rate : coachRate;
