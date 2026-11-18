@@ -20,7 +20,9 @@
 // Boxes (lib/status-bar.js draws them):
 //   ⛔ Missing N RSVPs · $X in fines if not set  [Answer ›] → ✓ / ✗ on every unanswered event
 //   ⛔ Overdue dues $X  [Pay now ›] [🙋 Volunteer ›]        → LA pay page / the volunteer card
-//   ⚖️ Fined so far $X  [See ›]                              → the fines (FinesPanel)
+// Fines: only the NEW ones at stake, on the RSVP box; the totals live in the
+// fines section under the Calendar (owner 11/18 "don't show total at all
+// except in a fines section").
 //   💬 newest message  [N new › | Open ›]                    → the chat (SectionChat)
 // Loads once per sign-in; refreshes its events on every screen change
 // (≥ 20 s apart), on 'fh:rsvp-changed' from the Calendar, and on focus.
@@ -35,7 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', fines_owed: 'fines', chat_unread: 'chat', volunteer: 'volunteer' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -125,7 +127,6 @@
             <div class="sb-sheet-head"><span class="sb-sheet-title" id="sb-sheet-title"></span><button type="button" class="sb-sheet-x" data-sb-close aria-label="Close">✕</button></div>
             <div class="sb-sheet-body">
               <div data-sb-panel="rsvp" id="sb-need" hidden></div>
-              <div data-sb-panel="fines" hidden><div id="sb-fines" hidden></div></div>
               <div data-sb-panel="chat" hidden><div id="sb-chat"></div></div>
               <div data-sb-panel="volunteer" hidden><div id="sb-vol"></div></div>
             </div>
@@ -158,7 +159,7 @@
       this.bar.openCode = panel ? code : null;
       this.$('#sb-modal').hidden = !panel;
       this.host.querySelectorAll('[data-sb-panel]').forEach(p => { p.hidden = p.getAttribute('data-sb-panel') !== panel; });
-      const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'], fines: ['sheet_fines', '⚖️ Your fines'],
+      const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'],
                        chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
@@ -242,12 +243,6 @@
       } }));
       this.chat.start().catch(() => {});
 
-      // ⚖️ Fines — a box only when something is owed.
-      new FinesPanel(this.$('#sb-fines'), this.ctx({ onSummary: (s) => {
-        this.finesNow = s && s.total > 0 ? Number(s.total) : 0;
-        this.updateFines();
-      } })).load();
-
       // The band draws once the notices AND the week are in — no green flash.
       Promise.all([noticesLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
@@ -314,19 +309,10 @@
       const need = this.$('#sb-need');
       if (need) need.innerHTML = rows.length
         ? `<div class="sb-need-title">${esc(cp('need_how_short', {}, 'Tap ✓ going or ✗ not going — tap the event to open it'))}</div>${rows.join('')}` : '';
-      this.finesStake = stake;
+      const st = stake > 0 ? money(stake) : '';
       this.set('suspended', suspended ? { n: suspended } : null);
-      this.set('rsvp_soon', soon ? { n: soon } : null);
-      this.set('rsvp_open', later ? { n: later } : null);
-      this.updateFines();
-    }
-
-    // ⚖️ One box: owed so far + what this week's unanswered events would add —
-    // ONLY while new fines are at stake (owner 11/18: "if they are not in line
-    // to get fined that week we don't show past fines").
-    updateFines() {
-      const now = this.finesNow || 0, stake = this.finesStake || 0;
-      this.set('fines_owed', stake > 0 ? { amount: money(now), stake: money(stake) } : null);
+      this.set('rsvp_soon', soon ? { n: soon, stake: st } : null);
+      this.set('rsvp_open', later ? { n: later, stake: st } : null);
     }
 
     show(on) { this.host.style.display = on ? '' : 'none'; }

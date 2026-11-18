@@ -67,7 +67,9 @@ class StatusBar {
     // The two RSVP items read as one box: the total, how many are soon.
     const soon = this.items.get('rsvp_soon'), later = this.items.get('rsvp_open');
     const total = (soon ? Number(soon.n) || 0 : 0) + (later ? Number(later.n) || 0 : 0);
-    const stake = '';   // the fines at stake live in the ⚖️ box now
+    // Only the NEW fines at stake, on the RSVP box — never a past total
+    // (owner 11/18 "don't show total at all except in a fines section").
+    const stake = (soon && soon.stake) || (later && later.stake) || '';
     const shown = live.filter(([code]) => !(code === 'rsvp_open' && soon && this.rules.has('rsvp_soon')));
     const actions = shown.filter(([code]) => sev(code) === 'action');
     const infos = shown.filter(([code]) => sev(code) !== 'action');

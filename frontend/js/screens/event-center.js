@@ -145,6 +145,8 @@ class EventCenterScreen extends Screen {
         <section id="ec-mine">
           <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
           <div id="ec-push"></div>
+          <!-- ⚖️ The fines section: totals, each fine, the rules, disputes (the band only warns of new ones) -->
+          <div id="ec-fines" hidden></div>
         </section>
       </div>
     `;
@@ -292,6 +294,9 @@ class EventCenterScreen extends Screen {
       ['player-calendar', 'link_players', 'Players'], ['schedules', 'link_schedules', 'Schedules']]
       .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('');
     if (window.PushOptIn) window.PushOptIn.mount(this.find('#ec-push'), this.auth, {}).catch(() => {});
+    // ⚖️ Fines live here, not in the band (owner 11/18 "don't show total at all
+    // except in a fines section"); hidden for anyone without rates.
+    if (window.FinesPanel) new FinesPanel(this.find('#ec-fines'), ctx).load();
   }
 
   // ── data ────────────────────────────────────────────────────────────
