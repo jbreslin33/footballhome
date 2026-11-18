@@ -10826,3 +10826,30 @@ table), `mark_d` 3-4 → 1.5 m in midfield — each moves the defending line ≤
 10.5-10.8, 18-35 19.3-19.8). None taken. What is deep is **our back line on the ball**: 1.5-2.5 m at 10-70 m off our
 goal (e.g. ball 50 m: 35.5 v 37.4) — POSSESSION SHAPE CB 47.0 v 43.0 m off their line with the ball 10-20 m out. That
 is the next shape question, after corners and blocks (§8.264).
+
+### 8.269 G5.163 — where a blocked ball goes: the real turn off the body (shipped; corners unmoved — the blocked ball is re-taken at once)
+
+From §8.264 (corners 0.31×, blocks 0.52×). Corners by what put them out (StatsBomb 5.4 a team-match): clearance 1.38,
+block 1.34, shot 0.92, keeper save 0.60 — ours clear 0.19, carried out 1.0-1.4, **none off a block, a shot or a save.**
+The body block (G4.25) sends the ball straight back ±60° at 30% of its speed; G5.9 (§8.107) measured that real blocked
+balls turn every way and left it.
+
+**Real** (new `benchmarks_statsbomb_deflect.py`, PL 15/16, the ball's line in — striker → blocker — and out — blocker →
+the next located event, skipping the keeper's "shot faced" record that StatsBomb files at the goal line after every
+blocked shot, and reaching a restart ~30 s later when it went out): turn from carrying straight on, 0-45 / 45-90 /
+90-135 / 135-180°: **blocked shots (2,650) 15.1 / 24.2 / 28.2 / 32.5%**, the next touch a median 19.2 m on, **24.0% behind
+for a corner**, throw-in 4.5, goal kick 1.5, the attackers' 33.5, the defenders' 36.5; **blocked passes (8,935) 22.9 /
+20.0 / 21.7 / 35.4%**, 9.8 m, corner 10.7% (G5.9's 10.7%), throw-in 23.3.
+
+**Change** [StatsBomb fit]: `physics.block.turn_real` (default on) — the turn drawn from those bins, by whether the ball
+was still a shot's flight (`World::shot_flight_tick_`), uniform within the bin, either side; speed kept at `block.keep`
+0.3. Bins `physics.block.turn_<shot|pass>_<0|45|90|135>`. Goldens unchanged (no body block in their runs); tests 22/22.
+New harness line BODY BLOCKS (4.25 a team-match, shots and passes) and `GAME_BLOCK_TRACE` (each block inside 30 m: where,
+its speed out, who had it next and when).
+
+**After** (4 seeds × 8): corners 1.69 (5.40) — unmoved; blocked shots 15.2% (29.1); card 8 ok / 4 off / 21 OFF. keep 0.5
+/ 0.7 (2 seeds each): corners 1.7-1.9 / 1.2-1.7 — not the speed alone. **The trace (3 matches, 17 blocks inside 30 m):
+none out, none to the keeper; 12 the defenders', 5 the attackers' — most within a tick, the ball moved 0-5 m.** Out of
+the body at ~7 m/s it is under the capture cap of whoever stands there; a real blocked shot runs a median 19 m before
+anyone touches it. Next: the blocked ball's pace and the touch that takes it (a deflection at pace is no first touch —
+G4.3b's bobble), fitted on the 19.2 m and the 24% behind.

@@ -383,6 +383,8 @@ private:
     std::uint8_t bad_touch_slot_ = 0xFF;
     std::uint64_t bad_touch_tick_ = 0;
     std::uint64_t flight_tick_ = 0;
+    std::uint64_t shot_flight_tick_ = ~std::uint64_t{0};   // G5.163: the flight_tick_ of the last shot
+    bool block_turn_real_ = false; math::Fixed64 block_turn_p_[2][4]{};   // G5.163 (§8.269)
     std::uint64_t control_until_tick_ = 0;
     std::uint64_t hold_until_tick_ = 0;       // G5.4: unpressed, he keeps it until here
     bool carry_pace_on_ = false;

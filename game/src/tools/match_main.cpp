@@ -110,6 +110,7 @@ struct Stats {
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
+    long bblk = 0;   // §8.269 body blocks (any ball)
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
@@ -785,6 +786,27 @@ int main(int argc, char** argv) {
                     }
                     bh.on = false;
                 }
+            }
+            {   // §8.269 GAME_BLOCK_TRACE: each body block inside 30 m of the goal it was struck at, then how it ended
+                static int bb_prev = 0; static long bb_k = -1; static double bb_x = 0, bb_y = 0, bb_vx = 0, bb_vy = 0; static int bb_team = -1;
+                const int bbn = W.bodyBlocks(0) + W.bodyBlocks(1);
+                if (k == 0) bb_prev = bbn;
+                if (std::getenv("GAME_BLOCK_TRACE")) {
+                    if (bbn != bb_prev && W.lastTouchTeam() <= 1) {
+                        const int dt = W.lastTouchTeam(); const double gx = dt == 0 ? -hx : hx;
+                        if (std::hypot(gx - b.pos.x.toDouble(), b.pos.y.toDouble()) < 30) {
+                            bb_k = static_cast<long>(k); bb_x = b.pos.x.toDouble(); bb_y = b.pos.y.toDouble(); bb_vx = b.vel.x.toDouble(); bb_vy = b.vel.y.toDouble(); bb_team = dt; }
+                    }
+                    if (bb_k >= 0 && static_cast<long>(k) > bb_k && (b.owner || W.outStage() != 0 || static_cast<long>(k) - bb_k > 150)) {
+                        const double gx = bb_team == 0 ? -hx : hx;
+                        std::fprintf(stderr, "BLOCK m%d at %.1f m off goal (x%.1f y%.1f) out-vel %.1f m/s toward goal %.1f | after %.1fs: %s%s ball x%.1f y%.1f\n", m,
+                                     std::hypot(gx - bb_x, bb_y), bb_x, bb_y, std::hypot(bb_vx, bb_vy), (bb_team == 0 ? -bb_vx : bb_vx),
+                                     (k - bb_k) / 30.0, b.owner ? (W.isKeeper(*b.owner) ? "keeper " : W.player(*b.owner).team == bb_team ? "defender " : "attacker ") : "",
+                                     W.outStage() != 0 ? "OUT" : "", b.pos.x.toDouble(), b.pos.y.toDouble());
+                        bb_k = -1;
+                    }
+                }
+                bb_prev = bbn;
             }
             // ── a shot struck this tick, and how it ends ──────────────────
             if (before && !b.owner && b.last_kicker == *before && s.lastOrders()[*before].why == ai::Why::Shoot) {
@@ -2572,6 +2594,7 @@ int main(int argc, char** argv) {
         for (std::uint8_t j = 0; j < N; ++j) if (!W.isKeeper(j)) ++S.ro_n[role(j)];
         S.ro_sides += 2;
         { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish.toDouble(); A.after += D.after.toDouble(); A.desire += D.desire.toDouble(); A.gait += D.gait.toDouble(); A.top += D.top.toDouble(); A.vw += D.vw.toDouble(); A.v1 += D.v1.toDouble(); A.ang += D.ang.toDouble(); for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
+        S.bblk += W.bodyBlocks(0) + W.bodyBlocks(1);   // §8.269
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = mg[0], ag = mg[1];
         if (hg > ag) ++S.w; else if (hg == ag) ++S.d; else ++S.l;
@@ -2753,6 +2776,7 @@ int main(int argc, char** argv) {
     std::printf("   TACKLES a team-match won / lost, by the tackler's own third / middle / their third (StatsBomb tackle duels 10.30 7.82 2.20, fouls 2.78 6.71 3.02):");
     for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
     std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
+    std::printf("   BODY BLOCKS (G4.25 sweep, any ball above capture speed; §8.269): %.2f a team-match\n", S.bblk / tm);
     std::printf("   PENALTIES (Law 14) %.3f a team-match (StatsBomb PL 15/16 0.120), scored %ld of %ld (81.3%%); tackles in his own area %.2f a team-match (tackle duels there 1.61)\n", S.pens / tm, S.pen_goals, S.pens, S.tkl_area / tm);
     std::printf("   THEIR MAN ON THE BALL IN OUR AREA a team-match (StatsBomb PL 15/16, benchmarks_statsbomb_area_duels.py): spells begun there %.2f (receipts 12.83), on the ball %.1f s (carries 10.7 s); tackles per second on it %.3f (0.151)\n", S.area_rec / tm, S.area_ticks / 30.0 / tm, S.tkl_area / std::max(1e-9, S.area_ticks / 30.0));
     {   // §8.254 FREE BALL v benchmarks_tracking_freeball.py (DFL)

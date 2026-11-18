@@ -651,6 +651,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             ball_.owner.reset();
             box_clear_team_ = 0xFF;  // kicked: the goal kick is in play
             flight_tick_ = clock_.tick();
+            shot_flight_tick_ = act == Action::Shot ? flight_tick_ : ~std::uint64_t{0};   // G5.163: this flight is a shot
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
@@ -898,10 +899,24 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // blocked passes turned under 45° 26%, back over 135° 31%
             // (StatsBomb PL 2015/16) — so turn_deg either side of straight
             // back; the 60 / 0.3 defaults are G4.25's.
-            const Fixed64 ang = n * Fixed64::fromFraction(71, 4068) * block_turn_;
+            Fixed64 ang = n * Fixed64::fromFraction(71, 4068) * block_turn_;
+            Vec2 v{-ball_.vel.x, -ball_.vel.y};
+            if (block_turn_real_) {
+                // G5.163 (§8.269): the turn off the body from where real blocked balls went (StatsBomb PL 2015/16,
+                // benchmarks_statsbomb_deflect.py): 0-45 / 45-90 / 90-135 / 135-180° from carrying straight on —
+                // a shot 15 / 24 / 28 / 33%, a pass 23 / 20 / 22 / 35%. Straight back ±60° (G4.25) never let a
+                // blocked shot go on behind: corners from blocks 0 a team-match (real 1.34; 24% of blocked shots).
+                const int kind = flight_tick_ == shot_flight_tick_ ? 0 : 1;
+                const Fixed64 u = (n + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                Fixed64 acc{}; int bin = 3;
+                for (int b = 0; b < 4; ++b) { acc += block_turn_p_[kind][b]; if (u < acc) { bin = b; break; } }
+                const Fixed64 w = (detNoise(match_seed_, clock_.tick(), blocker, 114) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                const Fixed64 side = detNoise(match_seed_, clock_.tick(), blocker, 115).raw < 0 ? -Fixed64::one() : Fixed64::one();
+                ang = (Fixed64::fromInt(45 * bin) + Fixed64::fromInt(45) * w) * Fixed64::fromFraction(71, 4068) * side;
+                v = Vec2{ball_.vel.x, ball_.vel.y};   // turned from carrying straight on
+            }
             const Fixed64 c = math::fx_cos(ang);
             const Fixed64 sn = math::fx_sin(ang);
-            const Vec2 v{-ball_.vel.x, -ball_.vel.y};
             const Fixed64 keep = block_keep_;
             ++body_blocks_[players_[blocker].team];
             ball_.spin = false;   // G5.156: only an aimed loft carries backspin
@@ -1277,6 +1292,14 @@ void World::configureAerial(const ModelParams& p) {
     clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
+    {   // G5.163 (§8.269): StatsBomb PL 2015/16 blocked shots / passes, the turn's bins (permille)
+        block_turn_real_ = p.fixed("physics.block.turn_real", 1000).raw > 0;
+        static const int kP[2][4] = {{151, 242, 282, 325}, {229, 200, 217, 354}};
+        static const char* const kK[2] = {"shot", "pass"};
+        for (int k = 0; k < 2; ++k)
+            for (int b = 0; b < 4; ++b)
+                block_turn_p_[k][b] = p.fixed(std::string("physics.block.turn_") + kK[k] + "_" + std::to_string(b * 45), kP[k][b]);
+    }
 }
 
 void World::configureTempo(const ModelParams& p) {
