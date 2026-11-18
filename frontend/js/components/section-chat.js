@@ -150,10 +150,15 @@ class SectionChat {
     if (!box) return;
     if (this.error) { box.innerHTML = `<div class="empty-state"><p>Chat unavailable: ${this.esc(this.error)}</p></div>`; return; }
     if (!this.messages.length) {
+      if (this.ctx.onSummary && this.messaging) this.ctx.onSummary('');
       box.innerHTML = `<div style="opacity:0.7; font-size:0.68rem;">No messages yet — be the first to say hi.</div>`;
       return;
     }
     const reversed = this.messages.slice().reverse();   // stored oldest→newest; show newest first
+    if (this.ctx.onSummary) {
+      const m = reversed[0], who = (m.author_first_name || '').trim();
+      this.ctx.onSummary(`${who ? who + ': ' : ''}${m.message || ''}`);
+    }
     const toggleCss = `display:block; width:100%; background:transparent; color:#93c5fd; border:1px solid rgba(147,197,253,0.3);
                        border-radius:5px; padding:3px 6px; font-size:0.62rem; font-weight:600; cursor:pointer;`;
     if (!this.expanded) {
@@ -213,6 +218,8 @@ class SectionChat {
     if (!list) return;
     const msgs = this.gm.messages;
     if (!msgs.length) return;
+    // Newest first from the API — the folded bar up top shows it (Event Center).
+    if (this.ctx.onSummary) this.ctx.onSummary(`${msgs[0].name ? msgs[0].name + ': ' : ''}${msgs[0].text || (msgs[0].image_url ? '📷' : '')}`);
     // Oldest at the top, newest at the bottom — the way GroupMe reads (owner
     // 2026-09-22); the API hands them newest-first.
     const LATEST = 5;

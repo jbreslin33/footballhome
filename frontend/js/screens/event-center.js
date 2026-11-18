@@ -90,6 +90,16 @@ class EventCenterScreen extends Screen {
         #ec-stack { display:flex; flex-direction:column; gap:8px; padding: var(--space-3) var(--space-4) var(--space-4); max-width:1400px; margin:0 auto; }
         #ec-notices { display:flex; flex-direction:column; gap:6px; }
         #ec-mine { display:flex; flex-direction:column; gap:8px; margin-top:var(--space-4); }
+        /* 💬 Chat · ⚖️ Fines up top, folded to one line each (owner 11/18). */
+        #ec-top { display:flex; flex-direction:column; gap:6px; }
+        .ec-fold-bar { display:flex; align-items:center; gap:8px; width:100%; min-height:0; padding:6px 10px; border-radius:8px; cursor:pointer;
+                       border:1px solid var(--border-color, #374151); background:rgba(15,23,42,0.55); color:inherit; font:inherit; font-size:0.8rem; text-align:left; }
+        .ec-fold-bar .ec-fold-label { font-weight:800; white-space:nowrap; }
+        .ec-fold-bar .ec-fold-sum { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0.85; }
+        .ec-fold-bar .ec-fold-caret { opacity:0.7; }
+        .ec-fold-bar.hot { border-color:#ef4444; background:rgba(239,68,68,0.10); }
+        .ec-fold-bar.hot .ec-fold-sum { color:#fca5a5; font-weight:800; opacity:1; }
+        .ec-fold-body { margin-top:6px; }
         .ec-mine-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
                         border-bottom:1px solid var(--border-color); padding-bottom:4px; }
         .ec-mine-head h2 { margin:0; font-size:1rem; }
@@ -134,6 +144,20 @@ class EventCenterScreen extends Screen {
       <div id="ec-stack">
         <div id="ec-mode" style="display:none; gap:var(--space-1); flex-wrap:wrap;"></div>
         <div id="ec-notices" style="display:none;"></div>
+        <div id="ec-top">
+          <div id="ec-fold-chat" hidden>
+            <button type="button" class="ec-fold-bar" data-ec-fold="chat" aria-expanded="false">
+              <span class="ec-fold-label" id="ec-fold-chat-label"></span><span class="ec-fold-sum" id="ec-fold-chat-sum"></span><span class="ec-fold-caret">▾</span>
+            </button>
+            <div class="ec-fold-body" hidden><div id="ec-chat"></div></div>
+          </div>
+          <div id="ec-fold-fines" hidden>
+            <button type="button" class="ec-fold-bar" data-ec-fold="fines" aria-expanded="false">
+              <span class="ec-fold-label" id="ec-fold-fines-label"></span><span class="ec-fold-sum" id="ec-fold-fines-sum"></span><span class="ec-fold-caret">▾</span>
+            </button>
+            <div class="ec-fold-body" hidden><div id="ec-fines" hidden></div></div>
+          </div>
+        </div>
         <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
         <div id="ec-ops" style="display:none; flex-direction:column; gap:6px;">
           <div id="ec-release"></div>
@@ -147,8 +171,6 @@ class EventCenterScreen extends Screen {
         <section id="ec-mine">
           <div class="ec-mine-head"><h2 id="ec-mine-title">👤 Mine</h2><span id="ec-mine-links" style="display:flex; gap:4px; flex-wrap:wrap;"></span></div>
           <div id="ec-push"></div>
-          <div id="ec-chat"></div>
-          <div id="ec-fines" hidden></div>
         </section>
       </div>
     `;
@@ -221,7 +243,7 @@ class EventCenterScreen extends Screen {
       const chip = (m, label) => `<button type="button" class="ec-chip ${this.mode === m ? 'on' : ''}" data-ec-mode="${m}">${this.escapeHtml(label)}</button>`;
       bar.innerHTML = admin ? chip('event', cp('mode_event', '📅 By event')) + chip('people', cp('mode_people', '👥 By person')) : '';
     }
-    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-people', true]]) {
+    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-top', false], ['#ec-people', true]]) {
       const el = this.find(sel);
       if (!el) continue;
       if (sel === '#ec-ops' && !this._isAdmin()) continue;   // _mountOps decides for non-admins
@@ -288,9 +310,42 @@ class EventCenterScreen extends Screen {
       .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('');
     if (window.PushOptIn) window.PushOptIn.mount(this.find('#ec-push'), this.auth, {}).catch(() => {});
     if (this.chat) this.chat.stop();
-    this.chat = new SectionChat(this.find('#ec-chat'), ctx);
+    // 💬 / ⚖️ up top, one line each; tap opens the full chat / fines (owner
+    // 11/18 "should we show the chat up top and the fines? … just make them
+    // smaller?").  Words: event_center top_chat / top_fines / top_fines_none.
+    const fold = (name, label, sum, hot) => {
+      const box = this.find(`#ec-fold-${name}`);
+      if (!box) return;
+      box.hidden = false;
+      const l = this.find(`#ec-fold-${name}-label`), s = this.find(`#ec-fold-${name}-sum`);
+      if (l) l.textContent = label;
+      if (s) s.textContent = sum || '';
+      const bar = box.querySelector('.ec-fold-bar');
+      if (bar) bar.classList.toggle('hot', !!hot);
+    };
+    const chatCtx = { ...ctx, onSummary: (text) => fold('chat', cp('top_chat', '💬 Chat'), text) };
+    if (this.chat) this.chat.stop();
+    this.chat = new SectionChat(this.find('#ec-chat'), chatCtx);
     this.chat.start().catch((err) => console.error('[event-center] chat failed:', err));
-    new FinesPanel(this.find('#ec-fines'), ctx).load();
+    const finesCtx = { ...ctx, onSummary: (s) => {
+      if (!s) { const b = this.find('#ec-fold-fines'); if (b) b.hidden = true; return; }
+      fold('fines', cp('top_fines', '⚖️ Fines'), s.total > 0 ? s.amount : cp('top_fines_none', 'None — keep it that way'), s.total > 0);
+    } };
+    new FinesPanel(this.find('#ec-fines'), finesCtx).load();
+    const top = this.find('#ec-top');
+    if (top && !top._wired) {
+      top._wired = true;
+      top.addEventListener('click', (e) => {
+        const bar = e.target.closest('[data-ec-fold]');
+        if (!bar) return;
+        const body = bar.parentElement.querySelector('.ec-fold-body');
+        if (!body) return;
+        body.hidden = !body.hidden;
+        bar.setAttribute('aria-expanded', String(!body.hidden));
+        const caret = bar.querySelector('.ec-fold-caret');
+        if (caret) caret.textContent = body.hidden ? '▾' : '▴';
+      });
+    }
   }
 
   // ── data ────────────────────────────────────────────────────────────
