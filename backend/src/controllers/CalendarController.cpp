@@ -1145,14 +1145,21 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- otherwise tell whose practice a card refers to.
                 (
                     SELECT string_agg(DISTINCT kids.n, ', ') FROM (
+                        -- Start from the caller's OWN children (person_guardians,
+                        -- mig 682) and only then look at the roster: the old
+                        -- order ran fh_roster_row_grants on every player of
+                        -- every event before asking "is this my kid?" —
+                        -- ~1 ms an event for the 99% who are no one's parent
+                        -- (11/18 calendar speed).  Same rows out.
                         SELECT child.first_name || ' ' || child.last_name AS n
-                        FROM fh_event_teams fet
+                        FROM person_guardians pg
+                        JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
                         JOIN team_persons tp ON tp.team_id = fet.team_id
+                                            AND tp.person_id = pg.child_person_id
                                             AND tp.removed_at IS NULL
-                                            AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         JOIN persons child ON child.id = tp.person_id
-                        WHERE fet.fh_event_id = fe.id
-                          AND fh_is_guardian($1::int, child.id)
+                        WHERE pg.guardian_person_id = $1::int
+                          AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         UNION
                         -- Invited kids (fh_event_invites, migration 355):
                         -- a call-up the coach explicitly invited. Age-
@@ -1188,13 +1195,15 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                    'suspension', fh_event_suspension(fe.id, child.id),
                                    'suspension_until', fh_event_suspension_until(fe.id, child.id)
                                ) AS x
-                        FROM fh_event_teams fet
+                        -- Caller's own children first (see guardian_children).
+                        FROM person_guardians pg
+                        JOIN fh_event_teams fet ON fet.fh_event_id = fe.id
                         JOIN team_persons tp ON tp.team_id = fet.team_id
+                                            AND tp.person_id = pg.child_person_id
                                             AND tp.removed_at IS NULL
-                                            AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         JOIN persons child ON child.id = tp.person_id
-                        WHERE fet.fh_event_id = fe.id
-                          AND fh_is_guardian($1::int, child.id)
+                        WHERE pg.guardian_person_id = $1::int
+                          AND fh_roster_row_grants(tp.team_id, tp.invite_only, fe.id)
                         UNION
                         -- Invited kids (migration 355). Flagged so the card
                         -- says "invited to play up" instead of treating it
