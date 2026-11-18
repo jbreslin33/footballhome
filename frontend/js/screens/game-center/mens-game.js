@@ -6,8 +6,8 @@
 //
 //   adds    the week's practice criterion on the live card: a box per player
 //           with the mini calendar + total (Starter Eligibility, migs
-//           562/805/1497/1504/1505), the viewer's own "You: Made … ·
-//           Projected … · Need …" line, the calendar key; the Starter
+//           562/805/1497/1504/1505), the explanation box (why this
+//           week needs what it needs + the calendar key); the Starter
 //           Eligibility panels under the graphic (mine + everyone's)
 //
 // Picked by GameCenterScreen.stateFor(ev) (a Mens team on the event).
@@ -110,33 +110,22 @@ class MensGameScreen extends GameCenterScreen {
     return st.attended >= st.needed ? '#4ade80' : st.attended + st.projected >= st.needed ? '#facc15' : '#f87171';
   }
 
-  // One line above the lineup, about the viewer only (owner 11/18 "for a
-  // player they only need to know about themselves … in a line above the
-  // lineup"): You · 0 of 5 · need 1 — the week's chances incl. barn night
-  // (mig 1499).  Staff get the per-name notes instead.  Copy: eligibility
-  // tiers lineup_you_made / lineup_you_on_pace / lineup_you_short (mig 1500).
-  _myPracticeLine() {
-    if (this.everyonePlays || this.myPlayerId == null || !this.stats) return '';
-    if (this._staffView() || this._canPostSocial()) return '';
-    const s = this.stats.get(this.myPlayerId);
-    if (!s) return '';
-    const st = this._criteriaState(s);
-    const made = st.attended >= st.needed;
-    const onPace = !made && st.attended + st.projected >= st.needed;
-    const tokens = Object.assign({}, st.tokens, { left: String(Math.max(0, st.needed - st.attended - st.projected)),
-                                                  proj_total: String(st.attended + st.projected) });
-    // {what} names the chances (owner 11/18): "(4 practices + barn night)"
-    // or just "practices" — copy tiers chances_extra / chances_plain (mig 1501).
-    tokens.what = this._eligCopy(Number(tokens.extra) > 0 ? 'chances_extra' : 'chances_plain', tokens);
-    const tier = made ? 'lineup_you_made' : onPace ? 'lineup_you_on_pace' : 'lineup_you_short';
-    const text = this._eligCopy(tier, tokens);
-    if (!text) return '';   // no copy row → say nothing (never hard-code it)
-    const [bg, fg] = made ? ['#166534', '#bbf7d0'] : onPace ? ['#854d0e', '#fef08a'] : ['#7f1d1d', '#fecaca'];
-    return `<div data-gc-my-practice style="margin:0 auto; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:14px; font-weight:700; text-align:center;">${String(text).split('\n').map((l, i) => i ? `<div style="font-size:11px; font-weight:600; opacity:0.85; margin-top:2px;">${this.escapeHtml(l)}</div>` : this.escapeHtml(l)).join('')}</div>`;
-  }
-
+  // The explanation box on the card, the same for everyone (owner 11/18 "we
+  // don't need to tell the player in the you section what their status is
+  // because it should be in the graphic like others. so its not a you
+  // section it should be an explanation section"): WHY the week needs what
+  // it needs (you_week_barn on a barn-night week — "barn night is 21+ only
+  // … 4-practice week … counts as a practice too" — else you_week_plain),
+  // then the key to the boxes (strip_legend).  The week's facts are the
+  // same on every row, so any stats row answers.
   _cardLegend() {
-    return !this.everyonePlays && this.stats && this.stats.size ? (this._eligCopy('strip_legend') || '') : '';
+    if (this.everyonePlays || !this.stats || !this.stats.size) return '';
+    const s = this.stats.values().next().value;
+    const st = this._criteriaState(s);
+    const tokens = Object.assign({}, st.tokens, { needed_s: st.needed === 1 ? '' : 's' });
+    const barn = Number(tokens.extra) > 0 && /barn night/i.test(tokens.extra_label || '');
+    return [this._eligCopy(barn ? 'you_week_barn' : 'you_week_plain', tokens), this._eligCopy('strip_legend')]
+      .filter(Boolean).join('\n');
   }
 
   // The Starter Eligibility panels join the lineup body (after carpool).

@@ -1055,9 +1055,7 @@ class SocialPostCard {
 
         ${grow && this.rosterData && this.rosterData.availHtml ? `<div style="margin:0 0 10px;width:100%;">${this.rosterData.availHtml}</div>` : ''}
 
-        ${grow && this.rosterData && this.rosterData.youHtml ? `<div style="margin:0 0 10px;width:100%;">${this.rosterData.youHtml}</div>` : ''}
-
-        ${grow && this.rosterData && this.rosterData.legend ? `<div style="margin:0 0 8px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.85);">${this.escapeHtml(this.rosterData.legend)}</div>` : ''}
+        ${grow && this.rosterData && this.rosterData.legend ? `<div style="margin:0 0 10px;width:100%;box-sizing:border-box;padding:7px 12px;border-radius:10px;background:rgba(0,20,60,0.55);border:1px solid rgba(255,255,255,0.25);font-size:12px;font-weight:600;line-height:1.35;color:rgba(255,255,255,0.92);">${String(this.rosterData.legend).split('\n').map((l, i) => `<div style="${i ? 'margin-top:4px;font-size:11px;opacity:0.85;' : ''}">${this.escapeHtml(l)}</div>`).join('')}</div>` : ''}
 
         ${goalScorerHtml}
 
@@ -1909,9 +1907,9 @@ class SocialPostCard {
     const box = (t, n, extra) => {
       const c = /^#[0-9a-f]{6}$/i.test(t.boxColor || '') ? t.boxColor : 'rgba(255,255,255,0.6)';
       return `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 100 : n === 4 ? 112 : 132}px;${extra}display:flex;flex-direction:column;align-items:stretch;gap:2px;box-sizing:border-box;padding:4px 4px 5px;border-radius:8px;border:2px solid ${c};background:rgba(0,20,60,0.55);${t.removeId != null ? 'cursor:pointer;' : ''}">
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : t.benchMoveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(t.benchMoveId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 100 : n === 4 ? 112 : 132}px;${extra}display:flex;flex-direction:column;align-items:stretch;gap:2px;box-sizing:border-box;padding:4px 4px 5px;border-radius:8px;border:2px solid ${c};background:rgba(0,20,60,0.55);${t.removeId != null || t.benchMoveId != null ? 'cursor:pointer;' : ''}">
         <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;">
-          <span style="flex:0 0 auto;min-width:20px;height:20px;padding:0 3px;box-sizing:border-box;border-radius:5px;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:#facc15;font-weight:800;font-size:13px;line-height:20px;text-align:center;">${this.escapeHtml(String(t.number))}</span>
+          ${String(t.number == null ? '' : t.number) !== '' ? `<span style="flex:0 0 auto;min-width:20px;height:20px;padding:0 3px;box-sizing:border-box;border-radius:5px;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:#facc15;font-weight:800;font-size:13px;line-height:20px;text-align:center;">${this.escapeHtml(String(t.number))}</span>` : ''}
           <span style="font-size:${Math.min(nameSize, 13)}px;font-weight:800;line-height:1.1;color:#fff;overflow-wrap:anywhere;min-width:0;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</span>
         </div>
         ${t.noteHtml || ''}
@@ -1980,10 +1978,21 @@ class SocialPostCard {
         <span style="font-size:13px;letter-spacing:3px;font-weight:700;"><span style="color:#f5d442;">${this.escapeHtml((split.band || '').split('·')[0].trim())}</span>${(split.band || '').includes('·') ? ` · <span style="color:#fdba74;">${this.escapeHtml(split.band.split('·').slice(1).join('·').trim())}</span>` : ''}</span>
         ${split.times ? `<div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.9);margin-top:2px;">${this.escapeHtml(split.times)}</div>` : ''}
       </div>` : '';
+    // Subs get the same box as the starters on the live card (owner 11/18
+    // "subs need a box. no response does not. not going does not. alternate
+    // does not … only box players should show stats the others are just names").
+    const benchBoxes = boxes && bench.some(p => p.boxColor);
+    const benchList = !bench.length ? ''
+      : benchBoxes
+        ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px;">${bench.map(p => box({
+            name: `${p.firstName} ${p.lastName}`.trim(), number: p.jerseyNumber || '', noteHtml: p.noteHtml, boxColor: p.boxColor,
+            nameStyle: p.nameStyle, benchMoveId: this.rosterData && this.rosterData.editing ? p.playerId : null,
+          }, 5, 'flex:0 0 100px;')).join('')}</div>`
+        : `<div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>`;
     const benchHtml = (bench.length || counts) ? `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;">${bandLabel}</span>
-        ${bench.length ? `<div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>` : ''}
+        ${benchList}
       </div>` : '';
     return `
       <div style="flex:1;min-height:0;align-self:stretch;margin:0 -28px;padding:10px 6px;box-sizing:border-box;background:#15803d;border-top:2px solid rgba(255,255,255,0.35);border-bottom:2px solid rgba(255,255,255,0.35);display:flex;flex-direction:column;justify-content:space-between;">

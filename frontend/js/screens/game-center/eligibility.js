@@ -259,8 +259,8 @@ class GameCenterEligibility {
     // Under every name for every viewer (owner 11/18 "if we can show
     // everyone else to the player then that is optimal, even if we need to
     // make graphic bigger" — the live card grows to fit its notes).  A
-    // player also gets their own _myPracticeLine above the lineup; admins
-    // also get Dues: below.
+    // men's game adds the practice week (MensGameScreen); admins also get
+    // Dues: below.
     // Men's games add the practice week first (MensGameScreen._practiceNoteBits).
     bits.push(...this._practiceNoteBits(playerId));
     const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
@@ -284,8 +284,7 @@ class GameCenterEligibility {
   // the base game and YouthGameScreen have none) ──────────────────────
   _practiceNoteBits(_playerId) { return []; }   // under a name on the live card
   _lineupBoxColor(_playerId)   { return null; } // a colour → that player is drawn as a box
-  _myPracticeLine()            { return ''; }   // the viewer's own line on the card
-  _cardLegend()                { return ''; }   // the key line on the card
+  _cardLegend()                { return ''; }   // the explanation box on the card
 
   // The verdict in words, as the name's tooltip (copy tier overall_<state>).
   _eligNameTitle(playerId) {

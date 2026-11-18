@@ -536,7 +536,7 @@ class GameCenterScreen extends EventScreen {
     const built = st.built && st.built.key === this._cardKey(pill) ? st.built : null;
     const h = built ? (built.drawn || built.height) : 700;
     const w = (built && built.width) || 540;
-    // The viewer's own practice line rides ON the card now (_buildRosterData youHtml).
+    // The card carries everything (the explanation box: _buildRosterData legend).
     return `
       <div data-gc-card="${slot}" style="position:relative; width:100%; max-width:540px; margin:0 auto 12px; aspect-ratio:${w} / ${h}; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
         <div data-gc-card-inner style="position:absolute; left:0; top:0; width:${w}px; transform-origin:0 0;">${built ? built.html : ''}</div>
@@ -4021,12 +4021,9 @@ class GameCenterScreen extends EventScreen {
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").
     const availHtml = live && this._availOnGraphic() ? this._myAvailBlockHtml() : '';
-    // …and the "You: 0 of 5 … · need 1" line under them (owner 11/18 "put it
-    // in graphic. yes try that").
-    const youHtml = live && typeof this._myPracticeLine === 'function' ? this._myPracticeLine() : '';
     // The key to the boxes' mini calendars (eligibility strip_legend, mig 1505).
     const legend = live ? this._cardLegend() : '';
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, youHtml, legend };
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, legend };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
