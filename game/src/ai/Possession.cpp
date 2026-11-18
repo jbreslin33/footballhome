@@ -366,6 +366,7 @@ public:
         const int lb = own_end < Fixed64::fromInt(35) ? 0 : own_end < Fixed64::fromInt(70) ? 1 : 2;
         const Fixed64 lam = P.pick_lambda[lb];
         Fixed64 pick[32] = {}, zsum[10] = {};
+        Fixed64 pick_hi[32] = {}, zsum_hi[10] = {};   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
         // G5.76 (§8.177): our keeper is not in a zone's split — he has his own real share (below).
         // Alone in the deep zone when our backs push up, he took all of it: 31 passes a team-match
         // (real 7.7), 12 from 40-60 m out (1.2).
@@ -377,6 +378,7 @@ public:
                 const int ez = zoneOf(hx, to, v.sg);
                 ++in_zone[ez];
                 pick[j] = lam.raw > 0 ? math::fx_exp_neg(math::length(Vec2{to.x - sp.x, to.y - sp.y}) / lam) : Fixed64::one();
+                pick_hi[j] = pick[j];
                 if (P.mark_on) {   // G5.83 (§8.184): a man with theirs close gets less of his zone's share
                     Fixed64 nd2 = Fixed64::fromInt(10000);
                     for (std::uint8_t q = 0; q < w.playerCount(); ++q)
@@ -385,8 +387,10 @@ public:
                     const Fixed64 off = w.pitchHalfX() + to.x * v.sg;
                     const int rb = off < Fixed64::fromInt(35) ? 0 : off < Fixed64::fromInt(70) ? 1 : 2;
                     pick[j] = pick[j] * P.mark_lift[rb][qb];
+                    pick_hi[j] = pick_hi[j] * (P.mark_hi_on ? P.mark_lift_hi[rb][qb] : P.mark_lift[rb][qb]);
                 }
                 zsum[ez] += pick[j];
+                zsum_hi[ez] += pick_hi[j];
             }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
@@ -469,7 +473,12 @@ public:
                 if (ph.raw > 0 && d <= reach) {
                     const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
                     const bool lsafe = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
-                    add(Cand{j, lsafe ? wgt * ph : wgt * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
+                    // G5.157 (§8.262): his share of the zone's high passes is the high split, not the flat one —
+                    // real high balls go to a marked man near as often as a free one (DFL lift 0.5-0.7 v 0.2-0.4).
+                    Fixed64 hw = wgt;
+                    if (P.mark_hi_on && j < 32 && pick[j].raw > 0 && zsum_hi[ez].raw > 0)
+                        hw = wgt * (pick_hi[j] / zsum_hi[ez]) / (pick[j] / zsum[ez]);
+                    add(Cand{j, lsafe ? hw * ph : hw * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
             } else if (wgt.raw > 0) {
                 if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
@@ -1344,10 +1353,19 @@ void PossessionParams::configure(const core::ModelParams& p) {
     }
     {   // G5.83 (§8.184): DFL 7 matches, benchmarks_tracking_passpick.py MARKED PICK — within his zone the split
         // ~ e^(-d/lambda) x lift by his nearest opponent's metres, iterative scaling (8+ m = 1), x1000
-        static const int kLift[3][5] = {{250, 200, 230, 330, 1000}, {270, 260, 270, 410, 1000}, {240, 220, 310, 420, 1000}};
+        // G5.157 (§8.262): refit by DFL Height (PASSPICK_HEIGHT=flat / high): flat passes 0.18-0.23 / 0.17-0.21 /
+        // 0.18-0.26 / 0.29-0.48; high ones barely mind the marker (0.59-0.76 / 0.36-0.72 / 0.48-1.06 / 0.41-0.61).
+        // With mark_hi_on 0 both modes use the flat-fit-on-all-passes table of G5.83.
+        mark_hi_on = p.fixed("physics.pass.mark_hi_on", 1000).raw > 0;
+        static const int kLiftAll[3][5] = {{250, 200, 230, 330, 1000}, {270, 260, 270, 410, 1000}, {240, 220, 310, 420, 1000}};
+        static const int kLiftFlat[3][5] = {{180, 170, 180, 290, 1000}, {190, 180, 240, 380, 1000}, {230, 210, 260, 480, 1000}};
+        static const int kLiftHigh[3][5] = {{760, 360, 650, 610, 1000}, {680, 720, 480, 540, 1000}, {590, 640, 1060, 410, 1000}};
         for (int b = 0; b < 3; ++b)
-            for (int q = 0; q < 5; ++q)
-                mark_lift[b][q] = p.fixed(("physics.pass.mark_lift_" + std::to_string(b) + "_" + std::to_string(q)).c_str(), kLift[b][q]);
+            for (int q = 0; q < 5; ++q) {
+                mark_lift[b][q] = p.fixed(("physics.pass.mark_lift_" + std::to_string(b) + "_" + std::to_string(q)).c_str(),
+                                          mark_hi_on ? kLiftFlat[b][q] : kLiftAll[b][q]);
+                mark_lift_hi[b][q] = p.fixed(("physics.pass.mark_lift_hi_" + std::to_string(b) + "_" + std::to_string(q)).c_str(), kLiftHigh[b][q]);
+            }
         mark_on = p.fixed("physics.pass.mark_on", 1000).raw > 0;
     }
     clear_from_m = p.fixed("physics.onball.clear_from_m", 25000);

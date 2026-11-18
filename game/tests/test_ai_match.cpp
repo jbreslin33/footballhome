@@ -168,7 +168,8 @@ constexpr std::uint64_t kGolden3v3   = 0xeadff4bba13dd47bULL;
 // Re-locked G5.154 (2026-11-18): as the 3v3.
 // Re-locked G5.155 (2026-11-18): as the 3v3.
 // Re-locked G5.156 (2026-11-18): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0xe15631618f521593ULL;
+// Re-locked G5.157 (2026-11-18): the pass split's marker lift by Height, flat and high apart (DFL, §8.262); 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0x991da6b1b63ba356ULL;
 
 struct Rig {
     World world;
@@ -410,6 +411,15 @@ FH_TEST(pass_pick_marked_lift) {
     core::ModelParams off; off.setMilli("physics.pass.mark_on", 0);
     ai::PossessionParams Q; Q.configure(off);
     FH_EXPECT(!Q.mark_on);
+    // G5.157 (§8.262): a high pass has its own lift (DFL Height high): a marked man keeps half or more of
+    // a free one's share in midfield; mark_hi_on 0 = both modes on G5.83's all-pass table.
+    FH_EXPECT(P.mark_hi_on);
+    for (int q = 0; q < 4; ++q) FH_EXPECT(P.mark_lift_hi[1][q] > P.mark_lift[1][q]);
+    FH_EXPECT(P.mark_lift_hi[1][0] > Fixed64::fromFraction(1, 2));
+    core::ModelParams one; one.setMilli("physics.pass.mark_hi_on", 0);
+    ai::PossessionParams R; R.configure(one);
+    FH_EXPECT(!R.mark_hi_on);
+    FH_EXPECT_EQ(R.mark_lift[1][0].raw, Fixed64::fromFraction(27, 100).raw);
 }
 
 FH_TEST(pass_high_share_by_direction) {

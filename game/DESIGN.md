@@ -10622,3 +10622,36 @@ within noise. No migration.
 **Still off.** Our 5-10 m flights past 1.8 m: 4-5 a team-match (real 17.6) — the short dinks, flicks and scoops real
 players make we don't. And the midfield high pass still completes 55-59% (46.0): the flight is real now, so next is
 who is under it — DFL's AT THE LAUNCH (§8.185: our defender off their man 9.1 m at the launch, real 7.1).
+
+### 8.262 G5.157 — the pass split's marker lift by Height: a high ball doesn't shy from a marked man (shipped; little moved)
+
+From §8.261's next (the midfield high pass completes 55-59%, real 46; at the launch our defender 9.5-10.5 m off their
+man, real 7.1). **Looked first.** MARKING, EVERY FRAME is real at every band (35-52 m: nearest 4.4 m v 4.4, within 2 m
+14% v 14) — the block isn't loose in general. RECEIVER'S MARKER AT THE KICK (§8.173), completed high passes into
+midfield: the receiver's nearest 6.2-6.7 m (real 4.7), within 2 m 5-8% (15.1), every mate in that zone 6.0-6.4 m
+(5.3) — real high balls go to a man *more* marked than his mates; ours to a freer one. `high_risk_weight` 0.6 → 1.0
+(no race read for a high ball) moves none of it (receiver 7.2 / 6.6 m; high passes 44 a team-match v 26.3): not the
+read. G5.83's marker lift (§8.184: a man with theirs inside 5 m a quarter of a free man's share) was fitted on all
+passes and served both modes.
+
+**Real, by DFL Height** (`benchmarks_tracking_passpick.py`, new `PASSPICK_HEIGHT=flat|high`; the same iterative
+scaling, 8+ m = 1), nearest opponent 0-2 / 2-3.5 / 3.5-5 / 5-8 m, by the receiver's m off his own goal: **flat** 0-35
+0.18 / 0.17 / 0.18 / 0.29 (log-lik +98), 35-70 0.19 / 0.18 / 0.24 / 0.38 (+98), 70+ 0.23 / 0.21 / 0.26 / 0.48 (+22);
+**high** 0-35 0.76 / 0.36 / 0.65 / 0.61 (+4), 35-70 0.68 / 0.72 / 0.48 / 0.54 (+6), 70+ 0.59 / 0.64 / 1.06 / 0.41
+(+3) — a high ball barely minds the marker (108 / 334 / 88 passes: noisy, kept as fitted).
+
+**Change** [DFL fit]: the split of a zone's share is computed twice, on the flat lift (`physics.pass.mark_lift_*`, now
+the flat refit) and on the high lift (`physics.pass.mark_lift_hi_*`), each normalised in its zone; a man's high
+candidate takes his high split (× his zone share, × the high share for the length, as before), his ground one the
+flat split. `physics.pass.mark_hi_on` 0 = both on G5.83's all-pass table. Test `pass_pick_marked_lift` extended; 11v11
+golden re-locked (0x991da6b1b63ba356), 3v3 unchanged.
+
+3 seeds × 8 (G5.156 → after; real): completed high passes into midfield, receiver's nearest 6.7 / 6.6 / 6.2 → 6.8 /
+5.7 / 6.2 m (4.7), within 2 m 5.4 / 7.2 / 8.4 → 6.9 / 7.2 / 7.1% (15.1) — **inside the noise**; the receiver now sits on
+his mates (6.0-6.4 m) rather than freer. HIGH PASSES 35-70 m completed 55-59 → 58-61% (46.0); aerial duels 44-48 (44.1);
+completion 77.5-78.6% (79.1); flat receivers, shots, fouls, goals unchanged within noise.
+
+**What's left is the defence, not the pick:** at a high ball's kick every man of theirs in midfield has ours 6.0-6.4 m
+off (5.3), within 2 m 7-8% (10.2) — while every-frame marking (ball within 20 m, or not) is real. The moment is the
+long ball's: their side on the ball deep, our block between. Next: MARKING at their deep possession (ball 0-35 m off
+their goal) by our role — who is off whom when they go long.

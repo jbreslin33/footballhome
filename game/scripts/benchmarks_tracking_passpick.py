@@ -2,6 +2,7 @@
 """benchmarks_tracking_passpick.py (G5.74, DESIGN §8.175) — which man in a zone a pass is for.
 
     python3 -I game/scripts/benchmarks_tracking_passpick.py <dfl dir>
+    PASSPICK_HEIGHT=high (or flat) ... : only passes of that DFL Height (G5.157, §8.262)
 
 Source: Bassek, Rein, Weber & Memmert (2025), doi 10.6084/m9.figshare.28196177, CC BY, data
 owner DFL (7 matches of 2022/23, TRACAB positions + official events). Open-play passes that
@@ -38,6 +39,8 @@ def one(ev_path):
     txt = open(ev_path, encoding="utf8").read()
     for m in re.finditer(r'<Event [^>]*EventTime="([^"]+)"[^>]*>\s*<Play ([^>]*)>\s*<Pass', txt):
         a = dict(re.findall(r'(\w[\w-]*)="([^"]*)"', m.group(2)))
+        hf = os.environ.get("PASSPICK_HEIGHT")   # G5.157 (§8.262): "high" / "flat" = only those (DFL Height)
+        if hf and a.get("Height") != hf: continue
         if a.get("Recipient") and a.get("FromOpenPlay") == "true":
             passes.append((ms(m.group(1)) // 40, a["Player"], a["Recipient"], a["Team"]))
     want = {t for t, *_ in passes}
