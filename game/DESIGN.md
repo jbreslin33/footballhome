@@ -10723,3 +10723,26 @@ take-ons 1.28× OFF. Everything else as §8.263.
 shared cause (a real block or a defender's touch sends it out for a corner); then carries 10 m+ 1.87×, cut-backs
 1.84×, goals 1.83× (conversion 1.56×, 12-18 m finish 1.64×), offsides 0.55×, crosses 0.62×, throw-ins 0.70×, pressing
 on the passer 0.76×.
+
+### 8.265 G5.160 — where the goals come from: shots struck past the defence, set up by the high ball in behind (measured; no game change)
+
+From §8.264's next (corners 0.31× with blocks 0.42×; goals 1.83×, conversion 1.56×). **The shot decision is real
+already** (the StatsBomb release policy by distance × angle, §8.135, blind to the lane), so an empty lane at the
+strike is the defence. LANE at the strike: no outfielder within 1 m of the ball→goal line 74% (real 29%), the
+nearest 3.0 m off it (0.56); the shooter's nearest 2.0 m (1.95) but goal-side 52% (70) — as §8.138 found.
+
+**New SHOTS PAST THE DEFENCE** (`benchmarks_statsbomb_shotpast.py`, PL 15/16 open-play shots with freeze frames,
+9,415; harness line the same): by goal-side outfielders at the strike 0-1 / 2-3 / 4+ — share of shots, goals per
+shot, what set it up (StatsBomb's key pass: through ball / cross / cut-back / other pass / none). Real: **13.9 /
+23.8 / 62.3%**, goal 27.6 / 11.8 / 4.5%; 0-1 set up by through ball 17%, cross 31%, other pass 34%, none 17%. Ours
+(seeds 1000, 2000): **28.1-31.0 / 30.9-34.5 / 34.5-41.0%**, goal 24.7-26.4 / 4.4-11.4 / 2.2-5.7%; 0-1 set up by the
+ball in behind 24-40%, cross 5-14%; and the defence *was* there — goal-side of the ball 4 s before 5-6 (median), 2 s
+before 3.
+
+**Read.** Finishing is real by situation (0-1 goal-side 25-26% v 27.6; 4+ 2-6% v 4.5): the goals excess is the mix —
+twice the shots struck past the defence. They come off our ball in behind: IN BEHIND THEN (DFL), **high balls in
+behind lead to a shot within 10 s 19.1% (6.8), a goal 3.1% (1.3)**; flat ones are real (17.6 / 18.6; 1.9 / 3.6);
+completed 62% (47.5), met 16.4 m off their line (23.2) — the real high ball over the top is mostly the defence's
+(the keeper's, the recovering CB's); ours is the runner's. Crosses set up too few (5-14% v 31): ours rarely beat
+the defence that way. Next: the high ball in behind, defended — who of theirs gets it (keeper sweeping, CB turning)
+against the DFL races (§8.192), and from there blocks / corners.

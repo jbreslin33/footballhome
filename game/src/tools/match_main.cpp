@@ -110,6 +110,7 @@ struct Stats {
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
+    long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
     long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
@@ -275,8 +276,9 @@ int main(int argc, char** argv) {
         int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0; } shot;
-        auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; };
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4; } shot;
+        int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
+        auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -792,6 +794,21 @@ int main(int argc, char** argv) {
                     const double t = rc_team == p.team ? (static_cast<long>(k) - rc_k) / 30.0 : 0.0;
                     shot.gsk = std::min(g, 4); shot.tb = t < 5 ? 0 : t < 10 ? 1 : t < 20 ? 2 : 3;
                     shot.gg = g <= 1 ? 0 : g <= 3 ? 1 : 2;
+                    {   // §8.265 SHOTS PAST THE DEFENCE: what set it up (StatsBomb's key pass: the pass he shot from), and
+                        // how many were goal-side of the ball 2 s and 4 s before (5 Hz frames; the ball where it was then)
+                        shot.kp = (kp_to == static_cast<int>(*before) && static_cast<long>(k) - kp_k <= 300 && rc_team == p.team && kp_k >= rc_k) ? kp_kind : 4;
+                        for (int back = 0; back < 2; ++back) {
+                            const long want = static_cast<long>(k) - (back ? 120 : 60);
+                            for (auto it = fl_f.rbegin(); it != fl_f.rend(); ++it) if (it->k <= want) {
+                                if (it->k < want - 12) break;
+                                const double db = std::hypot(gx2 - it->bx, it->by); int gb = 0;
+                                for (std::uint8_t j = 0; j < N && j < 32; ++j)
+                                    if (!W.isKeeper(j) && W.player(j).team != p.team && std::hypot(gx2 - it->x[j], it->y[j]) < db) ++gb;
+                                (back ? S.spd_b4 : S.spd_b2)[shot.gg].push_back(gb);
+                                break;
+                            }
+                        }
+                    }
                     for (std::uint8_t j = 0; j < N; ++j)   // §8.223: his keeper's metres off his line at the strike
                         if (W.isKeeper(j) && W.player(j).team != p.team) S.fn_gk[shot.band][shot.gg].push_back(hx - std::fabs(W.player(j).pos.x.toDouble()));
                     if (std::getenv("GAME_SHOT_TRACE")) {   // §8.186: every opponent at the strike (x = metres off their goal line)
@@ -974,6 +991,10 @@ int main(int argc, char** argv) {
                 if (rel.pr >= 0) ++S.pro_n[stl >= 52.5 ? 1 : 0][rel.pr][rel.rr + 1];   // §8.243
                 ++S.pwhy_n[rel.why >= 0 && rel.why < ai::kWhyCount ? rel.why : ai::kWhyCount];
                 if (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.cutbacks;
+                if (ok && own >= 0 && !rel.set) {   // §8.265: the pass a shot may come from
+                    kp_to = own; kp_k = static_cast<long>(k);
+                    kp_kind = rel.why == static_cast<int>(ai::Why::InBehind) ? 0 : (stl < 9 && etl > stl + 1 && etl < 16.5 && std::fabs(ey) < 20.16) ? 2 : rel.cross ? 1 : 3;
+                }
                 rel = Rel{};
             };
             if (own != owner) {
@@ -2671,6 +2692,19 @@ int main(int argc, char** argv) {
         static const char* rbn[5] = {"<12 m", "12-18", "18-25", "25-35", "35+"};
         std::printf("\n   of the balls let go in open play, the share that were shots:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%% (of %.1f a team-match);", rbn[i], 100.0 * S.rel_shot[i] / std::max(1L, S.rel_n[i]), S.rel_n[i] / tm);
+        std::printf("\n");
+    }
+    {   // §8.265 SHOTS PAST THE DEFENCE v benchmarks_statsbomb_shotpast.py (StatsBomb PL 15/16)
+        static const char* gn[3] = {"0-1", "2-3", "4+ "}; static const char* kn[5] = {"through ball", "cross", "cut-back", "other pass", "no pass"};
+        static const char* rr[3] = {"13.9% | 27.6% | 17 / 31 / 1 / 34 / 17", "23.8% | 11.8% | 5 / 23 / 3 / 50 / 19", "62.3% | 4.5% | 0 / 6 / 2 / 65 / 27"};
+        const double nt = std::max(1L, S.spd_n[0] + S.spd_n[1] + S.spd_n[2]);
+        auto md = [](std::vector<double> v) { if (v.empty()) return -1.0; std::sort(v.begin(), v.end()); return v[v.size() / 2]; };
+        std::printf("SHOTS PAST THE DEFENCE (goal-side outfielders at the strike; real StatsBomb PL 15/16 in brackets): share | goal %% | set up by %s / %s / %s / %s / %s %% || goal-side 2 s / 4 s before, med", kn[0], kn[1], kn[2], kn[3], kn[4]);
+        for (int b = 0; b < 3; ++b) {
+            const double n = std::max(1L, S.spd_n[b]);
+            std::printf("\n   %s %4.1f%% | %4.1f%% | %.0f / %.0f / %.0f / %.0f / %.0f  (%s) || %.0f / %.0f", gn[b], 100 * S.spd_n[b] / nt, 100 * S.spd_g[b] / n,
+                        100 * S.spd_k[b][0] / n, 100 * S.spd_k[b][1] / n, 100 * S.spd_k[b][2] / n, 100 * S.spd_k[b][3] / n, 100 * S.spd_k[b][4] / n, rr[b], md(S.spd_b2[b]), md(S.spd_b4[b]));
+        }
         std::printf("\n");
     }
     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
