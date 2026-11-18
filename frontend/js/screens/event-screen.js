@@ -1646,7 +1646,7 @@ class EventScreen extends Screen {
   _eventHtml() {
     const ev = this.ev;
     // PlayerViewer: just the one page (eventPillKeys) — no Groups / Plan tabs.
-    const keys = this.viewer.eventPillKeys;
+    const keys = this.viewer.eventPillKeys(ev);
     const pills = this.pills(ev).filter(p => !keys || keys.includes(p.key));
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `

@@ -1951,6 +1951,8 @@ class GameCenterScreen extends EventScreen {
 
   _render() {
     this._paintKinds();
+    // The lit pill must be one this viewer has (a player: ⚔️ Starters & Bench).
+    if (this.ev) { const ps = this.pills(this.ev); if (ps.length && !ps.some(p => p.key === this.pill)) this.pill = ps[0].key; }
     // PlayerViewer: no ← Back — 📅 in the band takes them home (lib/viewer.js eventBack).
     const back = this.find('.back-btn');
     if (back) back.style.display = !window.Viewer || Viewer.account().eventBack ? '' : 'none';   // the viewer is known once the game has loaded (coach pills back, player none)
@@ -2113,7 +2115,7 @@ class GameCenterScreen extends EventScreen {
       if (this.pill === TACTICS_PILL.key) {
         // The tactics pitch in place of the graphic; nothing under it.
         this._stopCards();
-        head.innerHTML = top + this._draftBarHtml() + this._tacticsSectionHtml();
+        head.innerHTML = top + (this.viewer.eventLineupDrafts ? this._draftBarHtml() : '') + this._tacticsSectionHtml();
         box.innerHTML = '';
         this._mountTactics();
         return;
@@ -2121,7 +2123,9 @@ class GameCenterScreen extends EventScreen {
       this._tacticsBigOff();
       // Official / My draft / Compare belongs to the lineup pills only.
       const lineupPill = this.pill === 'lineup' || this.pill === 'starters_bench';
-      head.innerHTML = top + (lineupPill ? this._draftBarHtml() : '')
+      // The official lineup only — no draft picker (lib/viewer.js eventLineupDrafts, off for everyone 11/18).
+      if (!this.viewer.eventLineupDrafts) this.lineupView = 'official';
+      head.innerHTML = top + (lineupPill && this.viewer.eventLineupDrafts ? this._draftBarHtml() : '')
         + this._unplacedTopHtml()
         + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
@@ -3706,7 +3710,9 @@ class GameCenterScreen extends EventScreen {
     // should be no game center. its just event center").
     const list = [...super.pills(ev), ...POST_PILLS.map(p => ({ ...p, title: this._pillTitle(p.key) }))];
     if (this._tacticsAvailable()) list.push({ ...TACTICS_PILL, title: this._pillTitle(TACTICS_PILL.key) });
-    return list;
+    // The viewer's pills (lib/viewer.js eventPillKeys): a player gets ⚔️ Starters & Bench only.
+    const keys = this.viewer.eventPillKeys(ev);
+    return keys ? list.filter(p => keys.includes(p.key)) : list;
   }
 
   // ── 👥 All Players, game side (mig 1284; owner 11/11: "the ones 'going'
@@ -3816,7 +3822,9 @@ class GameCenterScreen extends EventScreen {
       }
       return '';
     };
-    return EventPills.buttons(this.pills(this.ev), this.pill,
+    const pills = this.pills(this.ev);
+    if (pills.length <= 1) return '';   // one page (a player): no strip
+    return EventPills.buttons(pills, this.pill,
       { attr: 'data-gc-social-pill', escapeHtml: (t) => this.escapeHtml(t), mark });
   }
 

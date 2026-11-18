@@ -51,9 +51,13 @@ class PlayerViewer {
   // and uncluttered".  A player gets their answer, who's going, the coaches,
   // carpool — nothing to run the event with.
   get eventKindPills()    { return false; }       // Games · Practices · Pickup · All on an event
-  get eventPillKeys()     { return ['players']; } // the big pill row; null = every pill the kind has
+  // The big pill row, per kind; null = every pill the kind has.  A game: just
+  // ⚔️ Starters & Bench (owner 11/18 "i see no need for anything but starters
+  // and bench right now for game screen for players").
+  eventPillKeys(ev)       { return ev && (ev.kind === 'match' || ev.kind === 'intrasquad') ? ['starters_bench'] : ['players']; }
   get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
+  get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
   // page — so event pages lose ← Back (owner 11/18 "they need a back button
   // but instead maybe a calendar button at top because that is the only item
@@ -117,9 +121,12 @@ class CoachViewer extends PlayerViewer {
   get calendarRosterCounts() { return true; }
   get calendarMine()      { return true; }
   get eventKindPills()    { return true; }
-  get eventPillKeys()     { return null; }
+  eventPillKeys()         { return null; }
   get eventLocationLine() { return false; }
   get eventCardStanding() { return true; }
+  // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
+  // coaches edit the official lineup directly.  Flip here to bring drafts back.
+  get eventLineupDrafts() { return false; }
   get showsCalendarButton() { return false; }   // staff have the menu bar
   get eventBack()         { return true; }
   eventSection()          { return true; }
