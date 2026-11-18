@@ -2093,6 +2093,12 @@ class GameCenterScreen extends EventScreen {
     // route). Players always get the player view.
     // The toggle is now the shared 👀 See as bar atop every pill (seeAs,
     // slice 5) — the head in paint() below.
+    // – No response / ✗ Not going under the substitutes on the live card
+    // (owner 11/18 "we need not responded on graphic and not going …
+    // obviously this goes under substitutes") — the same lists as the
+    // sections, after injured / inactive / pool / suspended came out.
+    this._rsvpOut = { noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing] };
+
     const seeAsBar = this._gcSeeAsHtml();
 
     // One assignment point for every pill, so the card mount and the
@@ -4020,7 +4026,12 @@ class GameCenterScreen extends EventScreen {
     // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11 (Viewer.gameHeader).
     const info = live && this.ev && window.Viewer && !Viewer.account().gameHeader
       ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info };
+    const out = live && this._rsvpOut ? this._rsvpOut : null;
+    const outRow = (list, tier, fb) => ({ label: `${this._ecCopy(tier, fb)} (${list.length})`, names: [...list].sort(this._byLastName).map(p => p.name) });
+    // Order (owner 11/18): substitutes, then no response, not going, alternates.
+    const rsvpOut = out ? [outRow(out.noResponse, 'sec_noresp', '– No response'), outRow(out.notGoing, 'sec_notgoing', '✗ Not going'),
+                           outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates')].filter(r => r.names.length) : [];
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from
