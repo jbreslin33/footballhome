@@ -32,6 +32,10 @@
 // one. G5.154 (§8.259): refit to every real flight past 1.8 m (benchmarks_tracking_chip.py,
 // landing med 1.68 / 1.92 / 2.36 / 2.84 / 3.56 s) — "past 4 m" kept only the steepest third
 // of short ones, and every 10-20 m chip of ours hung 2.9 s at a 6.6 m peak (real 3.2 m).
+// G5.155 (§8.260): and its spread — each loft flies at one of kLevels landing times for
+// its carry, the real p10 / p30 / p50 / p70 / p90 (benchmarks_tracking_chip.py), the level
+// drawn per kick (World::loftLevel); physics.ball.loft_time_<bin>_p<q>, the p50 the old
+// loft_time_<bin>. physics.ball.loft_spread_on 0 = the p50 for every kick.
 // physics.ball.loft_time_on 0 = the flat 27° law. Throw-ins keep the flat
 // law (throwSpeed). [FH, fitted to DFL; the law is Goff & Carré's drag]
 #pragma once
@@ -46,6 +50,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <string>
 
 namespace fh::game::core {
 
@@ -63,23 +68,37 @@ public:
         const Fixed64 area = math::FX_PI * d * d / 4;
         k_ = m.raw > 0 ? rho * area * cd / (m * 2) : Fixed64::zero();
         static const int kAt[5] = {15, 25, 35, 45, 60};
-        static const int kT[5] = {1680, 1920, 2360, 2840, 3560};   // G5.154 (§8.259): every flight past 1.8 m
+        // G5.154 (§8.259) p50; G5.155 (§8.260) the spread: real landing s ×1000, p10 / p30 / p50 / p70 / p90 by bin
+        static const int kT[kLevels][5] = {{1160, 1200, 1800, 2280, 3080}, {1400, 1520, 2120, 2600, 3360},
+                                           {1680, 1920, 2360, 2840, 3560}, {2040, 2280, 2640, 3120, 3880},
+                                           {3280, 3240, 3560, 3840, 4360}};
         static const char* const kName[5] = {"physics.ball.loft_time_15", "physics.ball.loft_time_25", "physics.ball.loft_time_35",
                                              "physics.ball.loft_time_45", "physics.ball.loft_time_60"};
+        static const char* const kQ[kLevels] = {"_p10", "_p30", "", "_p70", "_p90"};
         const bool on = p.integer("physics.ball.loft_time_on", 1) != 0;
-        std::array<std::int64_t, 6> key{k_.raw, on ? 1 : 0, 0, 0, 0, 0};
-        Fixed64 tt[5];
-        for (int i = 0; i < 5; ++i) { tt[i] = p.fixed(kName[i], kT[i]); key[1] = key[1] * 1000003 + tt[i].raw; }
+        spread_ = on && p.integer("physics.ball.loft_spread_on", 1) != 0;
+        std::array<std::int64_t, 6> key{k_.raw, on ? 1 : 0, spread_ ? 1 : 0, 0, 0, 0};
+        Fixed64 tt[kLevels][5];
+        for (int l = 0; l < kLevels; ++l)
+            for (int i = 0; i < 5; ++i) {
+                tt[l][i] = p.fixed(std::string(kName[i]) + kQ[l], kT[l][i]);
+                key[3] = key[3] * 1000003 + tt[l][i].raw;
+            }
         // The tables depend only on these numbers: solved once per process for each set
-        // (every World and test builds a BallFlight; the solve is ~2M flight ticks).
+        // (every World and test builds a BallFlight; the solve is ~2M flight ticks a level).
         static std::array<std::int64_t, 6> last_key{};
         static std::shared_ptr<const Tables> last;
         if (last && last_key == key) { tables_ = last; return; }
         auto t = std::make_shared<Tables>();
-        solve(*t, on, kAt, tt);
+        for (int l = 0; l < kLevels; ++l)
+            if (l == kMid || spread_) solve(t->lv[l], on, kAt, tt[l]);
+        if (!spread_) for (int l = 0; l < kLevels; ++l) if (l != kMid) t->lv[l] = t->lv[kMid];
         tables_ = std::move(t);
         last = tables_; last_key = key;
     }
+
+    static constexpr int kLevels = 5, kMid = 2;
+    bool spread() const noexcept { return spread_; }
 
     // Drag coefficient per metre (k above).
     math::Fixed64 k() const noexcept { return k_; }
@@ -93,16 +112,17 @@ public:
     }
 
     // Aimed loft: the speed to strike it (along the ground direction; it
-    // rises at ratio() of that) so the first bounce is carry_m away.
-    math::Fixed64 launchSpeed(math::Fixed64 carry_m) const { return lookup(tables_->speed, carry_m); }
+    // rises at ratio() of that) so the first bounce is carry_m away; at flight
+    // level lv (G5.155: 0 flattest .. kLevels-1 highest, kMid the median).
+    math::Fixed64 launchSpeed(math::Fixed64 carry_m, int lv = kMid) const { return lookup(lvl(lv).speed, carry_m); }
     // G5.84: its rise / ground speed for that carry (kLoftLaunchRatio when off)...
-    math::Fixed64 ratio(math::Fixed64 carry_m) const { return lookup(tables_->ratio, carry_m); }
+    math::Fixed64 ratio(math::Fixed64 carry_m, int lv = kMid) const { return lookup(lvl(lv).ratio, carry_m); }
     // ...and the rise itself (m/s).
-    math::Fixed64 launchRise(math::Fixed64 carry_m) const { return launchSpeed(carry_m) * ratio(carry_m); }
+    math::Fixed64 launchRise(math::Fixed64 carry_m, int lv = kMid) const { return launchSpeed(carry_m, lv) * ratio(carry_m, lv); }
     // A throw-in: the flat kLoftLaunchRatio law (G5.84 left throws alone).
-    math::Fixed64 throwSpeed(math::Fixed64 carry_m) const { return lookup(tables_->flat, carry_m); }
+    math::Fixed64 throwSpeed(math::Fixed64 carry_m) const { return lookup(lvl(kMid).flat, carry_m); }
     // ...and how long it is in the air until that bounce (s).
-    math::Fixed64 flightTime(math::Fixed64 carry_m) const { return lookup(tables_->time, carry_m); }
+    math::Fixed64 flightTime(math::Fixed64 carry_m, int lv = kMid) const { return lookup(lvl(lv).time, carry_m); }
 
     // G5.11 (§8.108): a loft of carry_m, coming down, passes height h this far
     // along the ground (its bounce point if it never rises over h).
@@ -129,9 +149,11 @@ public:
     }
 
 private:
-    struct Tables {
+    struct Level {
         std::array<math::Fixed64, kMaxCarry + 1> speed{}, time{}, ratio{}, flat{};
     };
+    struct Tables { Level lv[kLevels]; };
+    const Level& lvl(int lv) const { return tables_->lv[lv < 0 ? 0 : lv >= kLevels ? kLevels - 1 : lv]; }
 
     // The free-ball law (World::tickFreeBall) for one launch, to the first
     // bounce: metres along the ground and ticks.
@@ -166,7 +188,7 @@ private:
         return hi;
     }
 
-    void solve(Tables& t, bool on, const int* at, const math::Fixed64* tt) const {
+    void solve(Level& t, bool on, const int* at, const math::Fixed64* tt) const {
         using math::Fixed64;
         auto target = [&](int c) {   // the real landing time at carry c: linear between bin middles, held past the ends
             if (c <= at[0]) return tt[0];
@@ -186,8 +208,8 @@ private:
                     const int cc = c < at[0] ? at[0] : c;   // c 0: the 15 m angle
                     const Fixed64 w = Fixed64::fromInt(cc);
                     const int goal = static_cast<int>((target(cc) / kTickDt).raw >> Fixed64::FRAC_BITS);
-                    Fixed64 lo = Fixed64::fromFraction(1, 5), hi = Fixed64::fromFraction(3, 2);   // ~11° .. ~56°
-                    for (int it = 0; it < 16; ++it) {
+                    Fixed64 lo = Fixed64::fromFraction(1, 5), hi = Fixed64::fromInt(3);   // ~11° .. ~72° (G5.155: the p90 lob; was 56°)
+                    for (int it = 0; it < 18; ++it) {
                         const Fixed64 mid = (lo + hi) / 2;
                         Fixed64 dist{};
                         int ticks = 0, down = 0;
@@ -217,6 +239,7 @@ private:
     }
 
     math::Fixed64 k_{};
+    bool spread_ = false;
     std::shared_ptr<const Tables> tables_;   // shared: World is copied per brain per tick
 };
 

@@ -636,8 +636,9 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const std::int32_t cap = lv.kick_range_m;
                 const Fixed64 d = Fixed64::fromInt(
                     cap > 0 && carry_m_[kicker] > cap ? cap : carry_m_[kicker]);
-                const Fixed64 v = ball_flight_.launchSpeed(d) * power_scale;
-                ball_.vel = Vec3{dir.x * v, dir.y * v, v * ball_flight_.ratio(d)};   // G5.84: its angle by carry
+                const int lvl = loftLevel(kicker);   // G5.155: its flight from the real spread
+                const Fixed64 v = ball_flight_.launchSpeed(d, lvl) * power_scale;
+                ball_.vel = Vec3{dir.x * v, dir.y * v, v * ball_flight_.ratio(d, lvl)};   // G5.84: its angle by carry
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v,
@@ -1369,6 +1370,13 @@ std::uint32_t World::deadRoll(Fixed64 lo, Fixed64 hi, std::uint8_t salt) const {
     const Fixed64 u = (detNoise(match_seed_, clock_.tick(), salt, 61) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
     const Fixed64 s = lo + (hi - lo) * u;
     return static_cast<std::uint32_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
+}
+
+int World::loftLevel(SlotIndex kicker) const {
+    if (!ball_flight_.spread()) return BallFlight::kMid;
+    const Fixed64 u = (detNoise(match_seed_, owned_at_tick_, kicker, 113) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    const std::int64_t l = (u * Fixed64::fromInt(BallFlight::kLevels)).raw >> Fixed64::FRAC_BITS;
+    return l < 0 ? 0 : l >= BallFlight::kLevels ? BallFlight::kLevels - 1 : static_cast<int>(l);
 }
 
 // G5.3: the nearest man of each team under a ball at head height. Both there:

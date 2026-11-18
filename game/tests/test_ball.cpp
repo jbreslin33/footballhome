@@ -316,4 +316,41 @@ FH_TEST(ball_flight_loft_time_by_carry) {
     FH_EXPECT_EQ(flat.throwSpeed(Fixed64::fromInt(20)), f.throwSpeed(Fixed64::fromInt(20)));
 }
 
+// G5.155 (§8.260): each flight level lands at its real landing time for the carry (DFL p10 / p30 /
+// p50 / p70 / p90, benchmarks_tracking_chip.py), flatter to higher in order; off, every level the p50.
+FH_TEST(ball_flight_levels_spread_by_carry) {
+    const BallFlight f;
+    FH_EXPECT(f.spread());
+    static const double kWant[2][BallFlight::kLevels] = {{1.20, 1.52, 1.92, 2.28, 3.24}, {2.28, 2.60, 2.84, 3.12, 3.84}};
+    const int carry[2] = {25, 45};
+    for (int b = 0; b < 2; ++b) {
+        Fixed64 prev{};
+        for (int l = 0; l < BallFlight::kLevels; ++l) {
+            const Fixed64 v = f.launchSpeed(Fixed64::fromInt(carry[b]), l), r = f.ratio(Fixed64::fromInt(carry[b]), l);
+            Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
+            int ticks = 0, down = -1;
+            while (ticks < 600) {
+                f.step(vel);
+                vel.z -= kGravity * kTickDt;
+                pos += vel * kTickDt;
+                ++ticks;
+                if (down < 0 && vel.z.raw < 0 && pos.z < Fixed64::fromFraction(1, 2)) down = ticks;
+                if (pos.z.raw < 0) break;
+            }
+            FH_EXPECT_LT(std::abs(down / 30.0 - kWant[b][l]), 0.05);
+            FH_EXPECT_LT(std::abs(pos.x.toDouble() - carry[b]), 0.6);
+            FH_EXPECT_GT(r, prev);
+            prev = r;
+            std::printf("loft %d m level %d: %.1f deg at %.1f m/s, down at %.2f s (real %.2f), bounces at %.1f m\n", carry[b], l,
+                        std::atan(r.toDouble()) * 57.29578, v.toDouble(), down / 30.0, kWant[b][l], pos.x.toDouble());
+        }
+    }
+    ModelParams off;
+    off.setMilli("physics.ball.loft_spread_on", 0);
+    const BallFlight one(off);
+    FH_EXPECT(!one.spread());
+    FH_EXPECT_EQ(one.ratio(Fixed64::fromInt(25), 0), f.ratio(Fixed64::fromInt(25)));
+    FH_EXPECT_EQ(one.ratio(Fixed64::fromInt(25), 4), f.ratio(Fixed64::fromInt(25)));
+}
+
 FH_TEST_MAIN()

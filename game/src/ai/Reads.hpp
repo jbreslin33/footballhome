@@ -34,7 +34,8 @@ math::Fixed64 chanceQuality(const core::World& world, const std::vector<std::uin
                             core::SlotIndex shooter, const math::Vec2& goal);
 struct Loft { math::Vec2 at; std::uint8_t carry_m; };
 // Where to drop a lofted pass for a moving mate, and that carry (capped at max_m).
-Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const math::Vec3& from, math::Fixed64 max_m);
+Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const math::Vec3& from, math::Fixed64 max_m,
+            int level = core::BallFlight::kMid);   // G5.155: at that flight level
 // The carry that drops a loft on a fixed spot.
 std::uint8_t aimedCarry(const math::Vec3& from, const math::Vec2& to, math::Fixed64 max_m);
 // His loft range: max_m capped by his level's kick range.

@@ -108,7 +108,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
 // Re-locked G5.151 (2026-11-17): the man contesting their high ball attacks it from the launch, flat out (§8.256).
 // Re-locked G5.154 (2026-11-18): loft landing times refit to every real flight past 1.8 m (DFL CHIP HEIGHT, §8.259).
-constexpr std::uint64_t kGolden3v3   = 0x4bbf36dac66893d2ULL;
+// Re-locked G5.155 (2026-11-18): each loft at one of five real landing times for its carry (p10-p90, §8.260).
+constexpr std::uint64_t kGolden3v3   = 0x5aeb10430f6eb529ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -164,7 +165,8 @@ constexpr std::uint64_t kGolden3v3   = 0x4bbf36dac66893d2ULL;
 // Re-locked G5.144 (2026-11-17): the keeper goes long at the real share, goal kicks and open play (StatsBomb, §8.248).
 // Re-locked G5.151 (2026-11-17): as the 3v3.
 // Re-locked G5.154 (2026-11-18): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x574724ced5b988f0ULL;
+// Re-locked G5.155 (2026-11-18): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x0e90ac1accae1119ULL;
 
 struct Rig {
     World world;

@@ -59,7 +59,7 @@ Fixed64 chanceQuality(const World& world, const std::vector<std::uint8_t>& team_
     return q;
 }
 
-Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const Vec3& from, Fixed64 max_m) {
+Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const Vec3& from, Fixed64 max_m, int level) {
     Vec2 at{mate.pos.x, mate.pos.y};
     Fixed64 d{};
     for (int k = 0; k < 3; ++k) {
@@ -67,7 +67,7 @@ Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const
         if (d > max_m) d = max_m;
         if (d < Fixed64::one()) d = Fixed64::one();
         // Its time in the air, with drag (G4.87; was 2·r·v / g).
-        const Fixed64 t = flight.flightTime(d);
+        const Fixed64 t = flight.flightTime(d, level);
         at = Vec2{mate.pos.x + mate.vel.x * t, mate.pos.y + mate.vel.y * t};
     }
     const std::int64_t m = (d + Fixed64::fromFraction(1, 2)).raw >> Fixed64::FRAC_BITS;
@@ -301,9 +301,10 @@ bool Reads::loftSafe(const World& world, SlotIndex passer, const Vec2& from, con
     const Vec2 ab{at.x - from.x, at.y - from.y};
     const Fixed64 len = math::length(ab);
     if (len.raw == 0) return true;
-    const Fixed64 v = world.ballFlight().launchSpeed(Fixed64::fromInt(carry_m));
+    const int lv = world.loftLevel(passer);   // G5.155: the flight he would strike
+    const Fixed64 v = world.ballFlight().launchSpeed(Fixed64::fromInt(carry_m), lv);
     return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
-                    Vec3{ab.x / len * v, ab.y / len * v, v * world.ballFlight().ratio(Fixed64::fromInt(carry_m))}, reach);
+                    Vec3{ab.x / len * v, ab.y / len * v, v * world.ballFlight().ratio(Fixed64::fromInt(carry_m), lv)}, reach);
 }
 
 bool Reads::raceSafe(const World& world, SlotIndex passer, const Vec3& pos, const Vec3& vel,

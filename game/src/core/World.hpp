@@ -142,6 +142,9 @@ public:
     math::Fixed64 keeperShotReach() const noexcept { return keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_; }
     math::Fixed64 shotLift(math::Fixed64 v, math::Fixed64 d, math::Fixed64 h) const;
     const BallFlight& ballFlight() const noexcept { return ball_flight_; }
+    // G5.155 (§8.260): the flight level of the loft kicker would strike now (BallFlight::kLevels
+    // equal shares, one roll his spell on the ball: what his reads and the kick both use).
+    int loftLevel(SlotIndex kicker) const;
     void setBody(SlotIndex slot, const Body& b) {
         if (slot < bodies_.size()) bodies_[slot] = b;
     }

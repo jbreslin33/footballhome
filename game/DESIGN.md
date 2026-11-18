@@ -10556,3 +10556,30 @@ within 2 m 22-28 → 13-17% (36.4) — a quick low chip is past its man before h
 over 1.8-2.5 / 2.5-4 / 4-6 / 6+). Next: each kick's landing time drawn from the real spread for its carry (p10-p90 by
 carry above) — the kicker's pick (a flat chip over a man, a hanging ball onto a head) rather than one curve — and the
 high pass's completion with it.
+
+### 8.260 G5.155 — each loft flies one of five real flights for its carry (shipped)
+
+From §8.259's next (one angle a carry: at 20-30 m ours peaked 4-6 m 83-88% of the time). **Change** [DFL, fitted]:
+`BallFlight` solves five tables, one per landing time — the real p10 / p30 / p50 / p70 / p90 for each carry
+(`benchmarks_tracking_chip.py`; 10-20 m 1.16 / 1.40 / 1.68 / 2.04 / 3.28 s ... 50-70 m 3.08 / 3.36 / 3.56 / 3.88 /
+4.36), `physics.ball.loft_time_<bin>_p<10|30|70|90>` (the p50 stays `loft_time_<bin>`), and the angle search now runs
+to ~72° (ratio 3; was ~56°) for the p90 lob. Each loft is struck at one level, equal shares, rolled once for the
+kicker's spell on the ball (`World::loftLevel`, noise channel 113 on match seed × `ownedAtTick` × kicker): the kick,
+his `loftSafe` read and `loftTo`'s lead all use it, so he plays the loft he reads. `physics.ball.loft_spread_on` 0 =
+the p50 for every kick. New test `ball_flight_levels_spread_by_carry` (each level at 25 and 45 m lands within 0.05 s of
+its real time, bounces at the carry, steeper in order). Goldens re-locked (3v3 0x5aeb10430f6eb529, 11v11
+0x0e90ac1accae1119). The level is not the kicker's pick: a draw from the real spread [FH: the pick — a flat ball over a
+man, a hanging one onto a head — waits on data saying which real kick is which].
+
+3 seeds × 8 (§8.259 → after; real in brackets). CHIP HEIGHT peak 1.8-2.5 / 2.5-4 / 4-6 / 6+ m: **10-20 m 3-5 / 66-71 /
+26-29 / 0 → 21-28 / 34-36 / 23-24 / 16-19% (27 / 39 / 18 / 16)**; 20-30 m 1 / 2-3 / 83-88 / 10-13 → 7-10 / 23-33 /
+21-31 / 34-40% (15 / 35 / 26 / 24); 30-40 m 99% 6+ → 71-78% (40); 40-50 m all 6+ → 98% (70). LOFT FLIGHT past 4 m
+10-20 m 4.8-6.2 → 7.2-8.3 (5.9), 20-30 m 15.3-19.1 → 10.6-12.4 (8.9). Aerial duels 40.2-40.6 → 46.6 / 51.4 / 47.8 a
+match (44.1); headed clearances 17-20 → 16-19 (16.1). HIGH PASSES 35-70 m completed 59-62 → 55-61% (46.0), duel at it
+27-29 → 24-31% (16.2). Completion 78-79% (79.1), shots, fouls, goals unchanged within noise.
+
+**Still high from 30 m.** At 30-40 m our landing time is the real one (2.27-2.37 s, real 2.36) and yet the peak 7.4-7.9
+m (5.45): for the same time in the air a real long ball stays lower. In vacuum a 2.36 s flight tops out at g·t²/8 =
+6.8 m; drag alone keeps ours near that — real ones are held up by backspin (Magnus lift), which our flight law (Goff &
+Carré's drag, §G4.87) leaves out. Next: lift on a struck loft [Goff & Carré 2010; Asai et al.] — measured on the
+peak-for-time-in-the-air by carry against DFL — then the midfield high pass's completion again.

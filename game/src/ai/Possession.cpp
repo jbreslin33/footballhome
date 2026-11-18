@@ -467,7 +467,7 @@ public:
                 if (!gsafe) gw = gw * P.risk_weight;
                 add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
                 if (ph.raw > 0 && d <= reach) {
-                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
+                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
                     const bool lsafe = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
                     add(Cand{j, lsafe ? wgt * ph : wgt * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
@@ -475,7 +475,7 @@ public:
                 if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
                     add(Cand{j, wgt, false, Loft{}, false, to, 0});
                 } else {
-                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach);
+                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
                     if (d <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one()))
                         add(Cand{j, wgt, true, lf, false, to, 0});
                     else
@@ -653,7 +653,7 @@ public:
                 if (p_air > Fixed64::one()) p_air = Fixed64::one();
             }
             if (!air && !ch.moded && u2 < p_air) {
-                const Loft l2 = loftTo(w.ballFlight(), m, me.pos, reach);
+                const Loft l2 = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
                 if (c.reads.loftSafe(w, v.slot, sp, l2.at, l2.carry_m, Fixed64::one())) { air = true; lf = l2; crossed = into_box; }
             }
             if (air) {
