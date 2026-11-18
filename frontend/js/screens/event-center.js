@@ -292,7 +292,9 @@ class EventCenterScreen extends Screen {
     const links = this.find('#ec-mine-links');
     if (links) links.innerHTML = [['player-team-rules', 'link_team_rules', 'Team Rules'], ['player-roster', 'link_rosters', 'Rosters'],
       ['player-calendar', 'link_players', 'Players'], ['schedules', 'link_schedules', 'Schedules']]
-      .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('');
+      .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('')
+      // Players / parents have no menu bar (no 👤 Account): sign out lives here.
+      + `<button type="button" class="ec-link" data-ec-signout>${this.escapeHtml(cp('link_sign_out', 'Sign out'))}</button>`;
     if (window.PushOptIn) window.PushOptIn.mount(this.find('#ec-push'), this.auth, {}).catch(() => {});
     // ⚖️ Fines live here, not in the band (owner 11/18 "don't show total at all
     // except in a fines section"); hidden for anyone without rates.
@@ -442,6 +444,14 @@ class EventCenterScreen extends Screen {
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
       if ((el = t('[data-ec-person]'))) { this.person = el.dataset.ecPerson; this._render(); return; }
       if ((el = t('[data-ec-nav]'))) { this.navigation.goTo(el.dataset.ecNav); return; }
+      if (t('[data-ec-signout]')) {
+        this.auth.logout();
+        if (window.MainMenu) MainMenu.reset();
+        this.navigation.context = { user: null, role: null, team: null };
+        this.navigation.updateContextHeader();
+        this.navigation.goTo('login');
+        return;
+      }
       if ((el = t('[data-ec-week]'))) {
         const step = Number(el.dataset.ecWeek);
         if (step) this._step(step); else this._setWeek(new Date());
