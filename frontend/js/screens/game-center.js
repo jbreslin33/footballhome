@@ -1950,7 +1950,10 @@ class GameCenterScreen extends EventScreen {
   }
 
   _render() {
-    this._paintKinds();   // the viewer is known once the game has loaded (coach pills back, player none)
+    this._paintKinds();
+    // PlayerViewer: no ← Back — 📅 in the band takes them home (lib/viewer.js eventBack).
+    const back = this.find('.back-btn');
+    if (back) back.style.display = !window.Viewer || Viewer.account().eventBack ? '' : 'none';   // the viewer is known once the game has loaded (coach pills back, player none)
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;

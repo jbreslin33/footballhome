@@ -1624,6 +1624,9 @@ class EventScreen extends Screen {
     }
     if (this.error) { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.ev) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
+    // PlayerViewer: no ← Back — 📅 in the band takes them home (lib/viewer.js eventBack).
+    const back = this.find('.back-btn');
+    if (back) back.style.display = Viewer.account().eventBack ? '' : 'none';
     title.textContent = `📋 ${EventLabels.title(this.ev)}`;
     // Arrival · Warmup · Kickoff after the date (owner 11/5: every event).
     // PlayerViewer: the place on its own line, a map link (eventLocationLine).

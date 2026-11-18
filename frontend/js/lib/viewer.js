@@ -54,6 +54,12 @@ class PlayerViewer {
   get eventPillKeys()     { return ['players']; } // the big pill row; null = every pill the kind has
   get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
+  // 📅 in the band takes them home from anywhere — the Calendar is their one
+  // page — so event pages lose ← Back (owner 11/18 "they need a back button
+  // but instead maybe a calendar button at top because that is the only item
+  // on their universal menu").
+  get showsCalendarButton() { return true; }
+  get eventBack()         { return false; }
   // Which people sections: ✓ going, 🎟 invited and 🧑‍🏫 coaches.  Not the
   // no-response / not-going / injured / inactive / suspended / ineligible folds.
   eventSection(key)       { return ['going', 'invited', 'coaches'].includes(key); }
@@ -114,6 +120,8 @@ class CoachViewer extends PlayerViewer {
   get eventPillKeys()     { return null; }
   get eventLocationLine() { return false; }
   get eventCardStanding() { return true; }
+  get showsCalendarButton() { return false; }   // staff have the menu bar
+  get eventBack()         { return true; }
   eventSection()          { return true; }
 
   // ☰ = the player's list + 👤 Account (view-as, tactical board …), Sign out last.

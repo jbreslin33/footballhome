@@ -176,6 +176,12 @@
 
     // A box's button: a link (Pay now) or its own panel, one open at a time.
     onChip(code) {
+      if (code === 'calendar') {
+        this.openPanel(null);
+        const nav = window.app && window.app.navigation;
+        if (nav) nav.goTo('calendar');
+        return;
+      }
       if (code === 'dues_owed' || code === 'dues_blocked') {
         const n = ((this.notices && this.notices.notices) || []).find(x => x && x.kind === 'dues' && /^https:\/\//.test(x.pay_url || ''));
         if (n) window.open(n.pay_url, '_blank', 'noopener');
@@ -240,7 +246,16 @@
     }
 
     // The band's right end: 💬 then ☰.
-    setChatHtml(html) { this.chatHtml = html; this.bar.setTail(`${this.chatHtml || ''}${this.burgerHtml()}`); }
+    setChatHtml(html) { this.chatHtml = html; this.paintTail(); }
+    // The band's right end: 📅 (PlayerViewer — home from anywhere), 💬, ☰.
+    paintTail() {
+      // Only away from the Calendar — there it would go nowhere (owner 11/18
+      // "since it's only one it just disappears when they are [not] in event").
+      const onCal = ['calendar', 'event-center', 'my', 'player-calendar'].includes(this.screen);
+      const cal = window.Viewer && Viewer.account().showsCalendarButton && !onCal
+        ? `<button type="button" class="sb-burger sb-cal" data-sb-chip="calendar" aria-label="${esc(cp('band_calendar', {}, '📅 Calendar'))}" title="${esc(cp('band_calendar', {}, '📅 Calendar'))}">📅</button>` : '';
+      this.bar.setTail(`${cal}${this.chatHtml || ''}${this.burgerHtml()}`);
+    }
     burgerHtml() {
       return `<button type="button" class="sb-burger" data-sb-chip="menu" aria-label="${esc(cp('sheet_menu', {}, '☰ Menu'))}">☰</button>`;
     }
@@ -334,6 +349,7 @@
       Promise.all([noticesLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
       this.setChatHtml('');   // ☰ from the start; 💬 joins when the chat answers
+      if (window.MainMenu) MainMenu.load(this.auth).then(() => this.paintTail()).catch(() => {});
       window.addEventListener('fh:rsvp-changed', (e) => { if (!(e.detail && e.detail.source === 'banner')) this.loadEvents(true); });
       window.addEventListener('focus', () => this.loadEvents(false));
     }
@@ -421,8 +437,9 @@
       const sb = StatusBanner.instance;
       sb.show(on);
       if (!on) return;
+      sb.screen = name;
       if (!sb.started) sb.start().catch((err) => console.warn('status banner failed (non-fatal):', err));
-      else sb.loadEvents(false);
+      else { sb.paintTail(); sb.loadEvents(false); }   // 📅 follows the screen (and the viewer once loaded)
     }
   }
 
