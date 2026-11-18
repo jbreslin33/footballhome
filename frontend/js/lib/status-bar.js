@@ -90,28 +90,27 @@ class StatusBar {
       const rsvp = code === 'rsvp_soon' || code === 'rsvp_open';
       const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}`, tokens, lfb);
       const btn = StatusBar.copy(`act_${code}`, tokens, bfb);
-      return `<span style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap;">
-          ${label ? `<span style="font-weight:800;">${esc(label)}</span>` : ''}
-          <button type="button" data-sb-chip="${esc(code)}"
-             style="min-height:0; padding:3px 12px; border-radius:999px; font:inherit; font-size:0.8rem; font-weight:800; cursor:pointer;
-                    border:1px solid ${strong ? '#fff' : 'rgba(255,255,255,0.55)'}; background:${strong ? '#fff' : 'rgba(255,255,255,0.16)'};
-                    color:${strong ? '#b91c1c' : '#fff'};">${esc(btn)}</button>
-        </span>`;
+      // One box per item, the whole box is the button (owner 11/18 "each item
+      // needs to be in a box and actionable … phone stacked, desktop across").
+      // An info item has no label: its button words fill the box.
+      return `<button type="button" class="sb-box ${strong ? 'sb-box-act' : 'sb-box-info'}" data-sb-chip="${esc(code)}">
+          <span class="sb-box-label">${esc(label || btn.replace(/\s*›\s*$/, ''))}</span>
+          <span class="sb-box-go">${esc(label ? btn : '›')}</span>
+        </button>`;
     };
-    const lead = actions.length ? '' : `<span style="font-weight:800;">${esc(StatusBar.copy('status_ok', {}, '✓ All set'))}</span>`;
-    const parts = [lead, ...actions.map(it => seg(it, true)), ...infos.map(it => seg(it, false))].filter(Boolean);
+    const lead = actions.length ? '' : `<span class="sb-ok">${esc(StatusBar.copy('status_ok', {}, '✓ All set'))}</span>`;
+    const boxes = [...actions.map(it => seg(it, true)), ...infos.map(it => seg(it, false))];
 
     const c = actions.length ? { b: '#b91c1c', bg: '#dc2626' } : { b: '#15803d', bg: '#16a34a' };
     const hasBody = !!(this.body && this.body.textContent.trim());
-    const toggle = hasBody ? `<span style="font-size:0.74rem; font-weight:700; white-space:nowrap; opacity:0.9; text-decoration:underline;">${esc(this.open
+    const toggle = hasBody ? `<span class="sb-toggle">${esc(this.open
       ? StatusBar.copy('status_close', {}, 'Hide ▴') : StatusBar.copy('status_open', {}, 'Details ▾'))}</span>` : '';
     this.head.setAttribute('role', 'button');
     this.head.setAttribute('tabindex', '0');
-    this.head.style.cssText = `display:flex; align-items:center; justify-content:center; gap:6px 18px; flex-wrap:wrap; width:100%; box-sizing:border-box;
-        padding:8px 14px; border-bottom:1px solid ${c.b}; cursor:${hasBody ? 'pointer' : 'default'};
-        font-weight:600; background:${c.bg}; color:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.25); text-align:center;`;
+    this.head.className = 'sb-band';
+    this.head.style.cssText = `border-bottom:1px solid ${c.b}; cursor:${hasBody ? 'pointer' : 'default'}; background:${c.bg};`;
     this.head.setAttribute('aria-expanded', String(this.open));
-    this.head.innerHTML = parts.join('') + toggle;
+    this.head.innerHTML = `${lead}${boxes.length ? `<div class="sb-boxes">${boxes.join('')}</div>` : ''}${toggle}`;
     // Hidden until the rules arrive (NoticeStrip.load always hands them over,
     // [] on failure) — never a green "all set" before anything is known.
     this.head.hidden = !this.ready;

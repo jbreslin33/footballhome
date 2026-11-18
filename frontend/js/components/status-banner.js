@@ -60,6 +60,26 @@
         st.id = 'sb-style';
         st.textContent = `
           #status-banner #sb-head[hidden], #status-banner #sb-body[hidden] { display:none !important; }
+          /* The band: one box per item — across on a desktop, stacked on a phone (owner 11/18). */
+          #status-banner .sb-band { display:flex; align-items:center; justify-content:center; gap:8px 12px; flex-wrap:wrap; width:100%; box-sizing:border-box;
+                                    padding:8px 12px; color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.25); text-align:center; }
+          #status-banner .sb-ok { font-weight:800; }
+          #status-banner .sb-boxes { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; flex:0 1 auto; }
+          #status-banner .sb-box { flex:0 1 auto; min-width:240px; max-width:420px; display:flex; align-items:center; gap:10px; min-height:0; padding:8px 12px; border-radius:10px;
+                                   font:inherit; text-align:left; cursor:pointer; color:#fff; }
+          #status-banner .sb-box-act  { background:rgba(0,0,0,0.28); border:1px solid rgba(255,255,255,0.75); }
+          #status-banner .sb-box-info { background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.4); }
+          #status-banner .sb-box-label { flex:1; min-width:0; font-weight:800; font-size:0.86rem; line-height:1.25; }
+          #status-banner .sb-box-go { flex:none; font-weight:800; font-size:0.8rem; white-space:nowrap; padding:4px 10px; border-radius:999px; }
+          #status-banner .sb-box-act .sb-box-go  { background:#fff; color:#b91c1c; }
+          #status-banner .sb-box-info .sb-box-go { background:rgba(255,255,255,0.2); color:#fff; }
+          #status-banner .sb-toggle { font-size:0.74rem; font-weight:700; white-space:nowrap; opacity:0.9; text-decoration:underline; }
+          @media (max-width: 640px) {
+            #status-banner .sb-boxes { flex-direction:column; align-items:stretch; width:100%; }
+            #status-banner .sb-box { flex:1 1 auto; width:100%; max-width:none; min-width:0; box-sizing:border-box; }
+            /* Stacked boxes would eat a phone screen pinned on every page: it scrolls away. */
+            #top-banners { position:static !important; }
+          }
           #status-banner #sb-body { display:flex; flex-direction:column; gap:6px; padding:8px 12px 10px; max-height:70vh; overflow-y:auto;
                                     background:var(--bg-secondary, #111827); border-bottom:1px solid var(--border-color, #374151); text-align:left; }
           #status-banner .sb-need-title { font-weight:800; color:#fca5a5; font-size:0.85rem; }
