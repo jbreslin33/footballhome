@@ -44,12 +44,20 @@ class PlayerViewer {
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
   get calendarRosterCounts() { return false; }
-  // Their links — Rules · Rosters · Players · Schedules · Fines · Alerts ·
-  // Sign out — as one small row under the band on every screen, not buried in
-  // 👤 Mine under the calendar (owner 11/18 "needs to be small and 1 row on
-  // phone. its buried being under cal").
-  get showsQuickLinks()   { return true; }
-  get calendarMine()      { return false; }  // 💤 inactive / ⛔ ineligible on a tile — roster info, coaches' (owner 11/18 "why is naranjo showing how many are inactive")
+  get calendarMine()      { return false; }       // 👤 Mine under the calendar — its links are in ☰
+
+  // ☰ the band's menu (owner 11/18 "a hamburger thingy then the other stuff
+  // would be there … for players we want less options and clean interface.
+  // for admin it will extend base class with more stuff").  The base list;
+  // each child returns [...super.menuItems(), …more].  Sign out always last.
+  // { code, tier (event_center copy), fb, route | null, panel | null }
+  menuItems() {
+    return [
+      { code: 'rules',   tier: 'qlink_rules',   fb: '📋 Rules & fines', route: 'player-team-rules' },
+      { code: 'alerts',  tier: 'qlink_alerts',  fb: '🔔 Alerts',        panel: 'alerts' },
+      { code: 'signout', tier: 'qlink_signout', fb: '↪ Sign out' },
+    ];
+  }  // 💤 inactive / ⛔ ineligible on a tile — roster info, coaches' (owner 11/18 "why is naranjo showing how many are inactive")
 
   // ‹  This week · Nov 16 – Nov 22  ›  (green), Next / Last week, then the
   // range; "Back to this week" off it.  null = the screen's full row.
@@ -89,8 +97,15 @@ class CoachViewer extends PlayerViewer {
   get calendarViews()     { return ['week', 'month']; }
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
-  get showsQuickLinks()   { return false; }   // staff have the menu bar
   get calendarMine()      { return true; }
+
+  // ☰ = the player's list + 👤 Account (view-as, tactical board …), Sign out last.
+  menuItems() {
+    const base = super.menuItems();
+    const out = base.filter(i => i.code !== 'signout');
+    out.push({ code: 'account', tier: 'qlink_account', fb: '👤 Account', route: 'main-menu' });
+    return out.concat(base.filter(i => i.code === 'signout'));
+  }
   calendarWeekNavHtml()   { return null; }
 }
 

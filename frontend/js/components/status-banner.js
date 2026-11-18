@@ -37,18 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts' };
-  // PlayerViewer's one-row links under the band (lib/viewer.js showsQuickLinks).
-  // [code, copy tier, fallback, route | null (a popup / sign out)]
-  const LINKS = [
-    // Owner 11/18: "rules is all we need now. rosters and players are not
-    // needed. schedules honestly is what cal is for. signout should be top
-    // right" → "even on team rules is where we can show live fines" (the
-    // fines live on Team Rules now).  Alerts kept: turning notifications on.
-    ['rules',     'qlink_rules',     '📋 Rules & fines', 'player-team-rules'],
-    ['alerts',    'qlink_alerts',    '🔔 Alerts',    null],
-    ['signout',   'qlink_signout',   '↪ Sign out',   null],
-  ];
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -62,14 +51,12 @@
     #status-banner .sb-band { display:flex; align-items:center; justify-content:center; gap:8px 12px; flex-wrap:wrap; width:100%; box-sizing:border-box;
                               padding:8px 12px; color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.25); text-align:center; }
     #status-banner .sb-ok { font-weight:800; }
-    #status-banner #sb-links[hidden] { display:none !important; }
-    #status-banner #sb-links { display:flex; gap:4px; justify-content:center; overflow-x:auto; white-space:nowrap; scrollbar-width:none;
-                               padding:4px 8px; background:var(--bg-secondary, #111827); border-bottom:1px solid var(--border-color, #374151); }
-    #status-banner #sb-links::-webkit-scrollbar { display:none; }
-    #status-banner .sb-link { flex:none; min-height:0; padding:3px 9px; border-radius:999px; border:1px solid var(--border-color, #374151);
-                              background:transparent; color:var(--fg, #e5e7eb); font:inherit; font-size:0.74rem; font-weight:700; cursor:pointer; }
-    #status-banner #sb-links { justify-content:flex-start; }
-    #status-banner .sb-link-out { margin-left:auto; border-color:transparent; opacity:0.85; }   /* Sign out, top right */
+    /* ☰ at the band's right end, and its menu popup (owner 11/18). */
+    #status-banner .sb-burger { flex:none; width:40px; height:38px; min-height:0; padding:0; border-radius:10px; cursor:pointer; font:inherit;
+                                font-size:1.25rem; line-height:1; background:#1f2937; border:1px solid #4b5563; color:#fff; }
+    #status-banner .sb-menu-item { display:block; width:100%; min-height:0; padding:12px 14px; border-radius:10px; text-align:left; cursor:pointer; font:inherit;
+                                   font-weight:700; font-size:0.95rem; border:1px solid var(--border-color, #374151); background:rgba(255,255,255,0.03); color:inherit; }
+    #status-banner .sb-menu-item.out { opacity:0.8; margin-top:6px; }
     #status-banner .sb-boxes { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; flex:0 1 auto; }
     #status-banner .sb-box { flex:0 1 auto; min-width:240px; max-width:440px; display:flex; align-items:center; gap:10px; padding:8px 12px;
                              border-radius:10px; text-align:left; cursor:pointer; color:#fff; box-sizing:border-box; }
@@ -161,7 +148,6 @@
       }
       this.host.innerHTML = `
         <div id="sb-head" hidden></div>
-        <div id="sb-links" hidden></div>
         <div id="sb-modal" hidden>
           <div class="sb-sheet" role="dialog" aria-modal="true" aria-labelledby="sb-sheet-title">
             <div class="sb-sheet-head"><span class="sb-sheet-title" id="sb-sheet-title"></span><button type="button" class="sb-sheet-x" data-sb-close aria-label="Close">✕</button></div>
@@ -171,6 +157,7 @@
               <div data-sb-panel="volunteer" hidden><div id="sb-vol"></div></div>
               <div data-sb-panel="fines" hidden><div id="sb-fines" hidden></div></div>
               <div data-sb-panel="alerts" hidden><div id="sb-alerts"></div></div>
+              <div data-sb-panel="menu" id="sb-menu" hidden></div>
             </div>
           </div>
         </div>`;
@@ -204,6 +191,7 @@
       this.$('#sb-modal').hidden = !panel;
       this.host.querySelectorAll('[data-sb-panel]').forEach(p => { p.hidden = p.getAttribute('data-sb-panel') !== panel; });
       const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'], fines: ['sheet_fines', '⚖️ Your fines'], alerts: ['sheet_alerts', '🔔 Alerts'],
+                       menu: ['sheet_menu', '☰ Menu'],
                        chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
@@ -212,6 +200,7 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.bar.openCode) this.openPanel(null); });
       }
       if (panel === 'chat' && this.chat) this.chat.markRead();
+      if (panel === 'menu') this.renderMenu();
       if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
         this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
         this.finesPanel.load();
@@ -225,22 +214,21 @@
       this.bar.render();
     }
 
-    // The one-row links (PlayerViewer): a page, a popup, or sign out.
-    renderLinks() {
-      const box = this.$('#sb-links');
+    // ☰ the viewer's menu (lib/viewer.js menuItems — PlayerViewer's short list,
+    // CoachViewer / AdminViewer extend it).
+    menuItems() { return window.Viewer ? Viewer.account().menuItems() : []; }
+
+    renderMenu() {
+      const box = this.$('#sb-menu');
       if (!box) return;
-      const on = !!(window.Viewer && Viewer.account().showsQuickLinks);
-      box.hidden = !on;
-      if (!on) { box.innerHTML = ''; return; }
-      if (box.childElementCount) return;
-      box.innerHTML = LINKS.map(([code, tier, fb]) => `<button type="button" class="sb-link ${code === 'signout' ? 'sb-link-out' : ''}" data-sb-link="${code}">${esc(cp(tier, {}, fb))}</button>`).join('');
+      box.innerHTML = this.menuItems().map(it => `<button type="button" class="sb-menu-item ${it.code === 'signout' ? 'out' : ''}" data-sb-link="${esc(it.code)}">${esc(cp(it.tier, {}, it.fb))}</button>`).join('');
     }
 
     onLink(code) {
-      const row = LINKS.find(l => l[0] === code);
-      if (!row) return;
+      const it = this.menuItems().find(x => x.code === code);
+      if (!it) return;
       const nav = window.app && window.app.navigation;
-      if (row[3]) { this.openPanel(null); if (nav) nav.goTo(row[3]); return; }
+      if (it.route) { this.openPanel(null); if (nav) nav.goTo(it.route); return; }
       if (code === 'signout') {
         this.openPanel(null);
         this.auth.logout();
@@ -248,14 +236,20 @@
         if (nav) { nav.context = { user: null, role: null, team: null }; nav.updateContextHeader(); nav.goTo('login'); }
         return;
       }
-      this.openPanel(this.bar.openCode === code ? null : code);
+      if (it.panel) this.openPanel(it.panel);
+    }
+
+    // The band's right end: 💬 then ☰.
+    setChatHtml(html) { this.chatHtml = html; this.bar.setTail(`${this.chatHtml || ''}${this.burgerHtml()}`); }
+    burgerHtml() {
+      return `<button type="button" class="sb-burger" data-sb-chip="menu" aria-label="${esc(cp('sheet_menu', {}, '☰ Menu'))}">☰</button>`;
     }
 
     // An item that cleared (all answered …) closes its panel.
     set(code, data) {
       this.bar.set(code, data);
       const open = this.bar.openCode;
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts'].includes(open)) return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -325,7 +319,7 @@
         // Always "N unread" — "0 unread" once read, so it never confuses (owner 11/18).
         const words = cp('chat_btn_unread', { n: n || 0 }, `${n || 0} unread`);
         const who = (s && s.who) || cp('sheet_chat', {}, '💬 Chat'), msg = (s && s.msg) || '';
-        this.bar.setTail(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
+        this.setChatHtml(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
             title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words} — ${who}: ${msg}` : `💬 ${who}: ${msg}`)}">
             <span class="sb-chat-i">💬${n ? `<span class="sb-chat-dot">${esc(n)}</span>` : ''}</span>
             <span class="sb-chat-t">
@@ -339,9 +333,7 @@
       // The band draws once the notices AND the week are in — no green flash.
       Promise.all([noticesLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
-      // The links follow the account's viewer, known once the menu has loaded.
-      if (window.MainMenu) MainMenu.load(this.auth).then(() => this.renderLinks()).catch(() => this.renderLinks());
-      else this.renderLinks();
+      this.setChatHtml('');   // ☰ from the start; 💬 joins when the chat answers
       window.addEventListener('fh:rsvp-changed', (e) => { if (!(e.detail && e.detail.source === 'banner')) this.loadEvents(true); });
       window.addEventListener('focus', () => this.loadEvents(false));
     }
@@ -429,7 +421,6 @@
       const sb = StatusBanner.instance;
       sb.show(on);
       if (!on) return;
-      if (sb.started) sb.renderLinks();
       if (!sb.started) sb.start().catch((err) => console.warn('status banner failed (non-fatal):', err));
       else sb.loadEvents(false);
     }
