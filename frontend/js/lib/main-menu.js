@@ -171,6 +171,8 @@ class MainMenu {
     const hide = () => { host.style.display = 'none'; host.innerHTML = ''; };
     if (!screen || screen === 'login' || screen === 'oauth-success') return hide();
     try { await MainMenu.load(); } catch (_) { return hide(); }
+    // Staff or not is known now — the User · Role · Team line follows it.
+    try { if (MainMenu._nav && MainMenu._nav.updateContextHeader) MainMenu._nav.updateContextHeader(); } catch (_) { /* fine */ }
     // A newer show() may have run while the menu loaded.
     const current = window.app && window.app.navigation && window.app.navigation.currentState;
     if (current && current !== screen) return;
