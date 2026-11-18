@@ -176,10 +176,9 @@ class MainMenu {
     // A newer show() may have run while the menu loaded.
     const current = window.app && window.app.navigation && window.app.navigation.currentState;
     if (current && current !== screen) return;
-    // Players and parents: no menu bar at all — the Calendar is their one
-    // page; Sign out sits in its 👤 Mine (owner 11/18 "players/parents …
-    // only need calendar" → "i don't even think they need account").
-    if (!MainMenu.isStaff()) return hide();
+    // PlayerViewer: no menu bar — the Calendar is their one page; Sign out
+    // sits in its 👤 Mine (lib/viewer.js, owner 11/18).
+    if (window.Viewer && !Viewer.account().showsMenuBar) return hide();
     const groups = MainMenu.groups();
     if (!groups.length) return hide();
     const page = MainMenu._pageFor(screen);

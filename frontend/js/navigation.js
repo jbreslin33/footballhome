@@ -67,10 +67,9 @@ class NavigationStateMachine {
 
     // Show header if we have any context
     const hasContext = this.context.user || this.context.role || this.context.team;
-    // Players / parents: no "User · Role · Team" line — clutter on their one
-    // page (owner 11/18 decluttering the player Calendar).  Staff keep it.
-    const staff = !!(window.MainMenu && MainMenu.isStaff());
-    header.style.display = hasContext && staff ? 'block' : 'none';
+    // PlayerViewer: no "User · Team" line (lib/viewer.js, owner 11/18).
+    const shows = !!(window.Viewer && Viewer.account().showsContextLine);
+    header.style.display = hasContext && shows ? 'block' : 'none';
 
     // Update each field
     userEl.textContent = this.context.user?.email || '';

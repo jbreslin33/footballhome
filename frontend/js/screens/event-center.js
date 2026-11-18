@@ -557,19 +557,17 @@ class EventCenterScreen extends Screen {
     const title = this.find('#ec-title');
     const sub = this.find('#ec-sub');
     if (!body) return;
-    // Players / parents: no type pills, no ← Back — the Calendar is their one
-    // page, every event on it (owner 11/18 "pills to switch view like games,
-    // practices are just clutter" / "Back button not needed").  Staff keep both.
-    const staff = !!(window.MainMenu && MainMenu.isStaff());
-    if (!staff) { this.kind = 'all'; this.view = 'week'; }   // + the week view only
+    // What this viewer gets (lib/viewer.js — PlayerViewer: no header, Back,
+    // type pills or Month; CoachViewer / AdminViewer: all of it).  The screen asks, never decides.
+    const viewer = this.viewer = Viewer.account();
+    if (viewer.calendarKind) this.kind = viewer.calendarKind;
+    if (!viewer.calendarViews.includes(this.view)) this.view = viewer.calendarViews[0];
     const back = this.find('.back-btn');
-    if (back) back.style.display = staff ? '' : 'none';
-    // …and no "📅 Calendar / Tap an event…" header — the week says where they
-    // are (owner 11/18 "not needed its obvious they are on cal").
+    if (back) back.style.display = viewer.calendarBack ? '' : 'none';
     const header = this.find('.screen-header');
-    if (header) header.style.display = staff ? '' : 'none';
+    if (header) header.style.display = viewer.calendarHeader ? '' : 'none';
     const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.innerHTML = staff ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
+    if (kinds) kinds.innerHTML = viewer.calendarKindPills ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';
@@ -894,23 +892,7 @@ class EventCenterScreen extends Screen {
         ${chip('data-ec-category', 'all', 'All', this.category === 'all')}
         ${cats.map(c => chip('data-ec-category', c, catLabel(c), this.category === c)).join('')}
       </div>` : ''}
-      ${!(window.MainMenu && MainMenu.isStaff()) ? (() => {
-        // Players / parents: just ‹ › and where they are (owner 11/18 "we just
-        // need the arrows to go up or back a week. and let them know they are on
-        // current week. we don't need date picker or week, month pills").
-        const thisMonday = EventCenterScreen.monday(new Date());
-        const off = Math.round((EventCenterScreen.monday(start).getTime() - thisMonday.getTime()) / (7 * 86400000));
-        const range = label;
-        const where = off === 0 ? cp('wk_this', { range }, `This week · ${range}`)
-          : off === 1 ? cp('wk_next', { range }, `Next week · ${range}`)
-          : off === -1 ? cp('wk_last', { range }, `Last week · ${range}`) : range;
-        return `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:var(--space-2);">
-          <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous week" style="font-size:1.1rem; padding:4px 14px;">‹</button>
-          <span style="font-weight:800; min-width:12em; text-align:center; ${off === 0 ? 'color:#86efac;' : ''}">${this.escapeHtml(where)}</span>
-          <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next week" style="font-size:1.1rem; padding:4px 14px;">›</button>
-          ${off === 0 ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${this.escapeHtml(cp('wk_back', {}, 'Back to this week'))}</button>`}
-        </div>`;
-      })() : `
+      ${(this.viewer || Viewer.account()).calendarWeekNavHtml({ start, label, cp, esc: (t) => this.escapeHtml(t) }) || `
       <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);">
         <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous">‹</button>
         <span style="font-weight:800; min-width:9em; text-align:center;">${this.escapeHtml(label)}</span>
