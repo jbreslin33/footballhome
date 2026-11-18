@@ -276,8 +276,21 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             "SELECT lf.season_id, lf.fee_kind, lf.unit, COALESCE(lf.age_band, '') AS band, k.category, k.label, lf.amount_usd::float8 AS amount "
             "  FROM league_fees lf JOIN fee_kinds k ON k.code = lf.fee_kind "
             " WHERE NOT k.is_refundable AND lf.fee_kind <> 'game_coaching' AND (lf.tier IS NULL OR lf.tier = 'general') "
-            "   AND lf.season_id IN (SELECT league_season_id FROM program_season_entries)"))
+            "   AND lf.season_id IN (SELECT league_season_id FROM program_season_entries UNION SELECT season_id FROM team_season_entries)"))
         fees.push_back({r["season_id"].as<int>(), str(r, "fee_kind"), str(r, "unit"), str(r, "band"), str(r, "category"), str(r, "label"), num(r, "amount")});
+
+    // This year's youth league entries = the travel teams that play them
+    // (team_season_entries, mig 1495: U10 / U12 Travel Fall / Winter / Spring)
+    // — one entry per team, its fees shared by the ages it draws from.
+    struct TeamEntry { int team, season, count; std::string band, ym, year, league, seasonName; };
+    std::vector<TeamEntry> teamEntries;
+    for (const auto& r : db->query(
+            "SELECT e.team_id, e.season_id, COALESCE(e.team_count, 1) AS n, COALESCE(substring(t.name from '^(U[0-9]+)'), '') AS band, "
+            "       to_char(s.start_date, 'YYYY-MM') AS ym, y.label AS year, l.name AS league, s.name AS season_name "
+            "  FROM team_season_entries e JOIN teams t ON t.id = e.team_id JOIN seasons s ON s.id = e.season_id JOIN leagues l ON l.id = s.league_id "
+            "  JOIN budget_years y ON y.club_id = $1::int AND s.start_date BETWEEN y.starts_on AND y.ends_on "
+            " WHERE NOT e.is_option AND t.gender_category IN ('boys', 'girls')", {club}))
+        teamEntries.push_back({r["team_id"].as<int>(), r["season_id"].as<int>(), r["n"].as<int>(), str(r, "band"), str(r, "ym"), str(r, "year"), str(r, "league"), str(r, "season_name")});
 
     // Men's / Women's team fee plans for later years: by the league season's start
     struct PlanLine { int team; std::string year, ym, category, label, league; double amount; };
@@ -473,7 +486,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                                       lines.push_back({"own", "labor", "coaching", "games", d, hg * rate, true}); }
                     }
                     // youth: the leagues it enters, from the rate card
-                    if (p.kind == "youth" && teams > 0 && entries.count({p.id, Y.id, S.id})) {
+                    if (!Y.thisYear && p.kind == "youth" && teams > 0 && entries.count({p.id, Y.id, S.id})) {
                         for (const auto& e : entries[{p.id, Y.id, S.id}]) {
                             const int et = e.teams >= 0 ? e.teams : teams; if (et <= 0) continue;
                             // per fee kind + unit: the band's row if any, else the band-free one; several → the cheapest
@@ -506,6 +519,27 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                             if (mine && std::fabs(pl.amount) >= 0.005) lines.push_back({"own", pl.category, "plan_line", pl.league + " — " + pl.label, "", pl.amount, true});
                         }
                 }
+                // this year's youth leagues: each travel team's entry once, from
+                // the rate card (refs come from the referee policies below)
+                if (Y.thisYear)
+                    for (const auto& e : teamEntries) {
+                        if (e.year != Y.label || !mset.count(e.ym)) continue;
+                        std::vector<int> ids; for (const auto& p : programs) if (p.kind == "youth") for (int t : p.teams) if (t == e.team) { ids.push_back(p.id); break; }
+                        if (ids.empty()) continue;
+                        std::map<std::pair<std::string, std::string>, const Fee*> pick;
+                        for (const auto& f : fees) {
+                            if (f.season != e.season || f.kind == "referee" || (!f.band.empty() && f.band != e.band)) continue;
+                            auto key = std::make_pair(f.kind, f.unit); auto it = pick.find(key);
+                            if (it == pick.end()) { pick[key] = &f; continue; }
+                            const Fee* cur = it->second;
+                            if ((cur->band.empty() && !f.band.empty()) || (cur->band.empty() == f.band.empty() && f.amount < cur->amount)) it->second = &f;
+                        }
+                        for (const auto& [key, f] : pick) {
+                            if (f->unit != "per_team_season" && f->unit != "per_entry") continue;
+                            char d[96]; std::snprintf(d, sizeof d, "$%.2f × %d team", f->amount, e.count);
+                            split((int)si, ids, f->amount * e.count, {"own", f->category, "entry", e.league + " " + e.seasonName + " — " + f->label, d, 0, true});
+                        }
+                    }
                 // coaching plan: each item split over its programs that pay a
                 // coach this season (🧑‍🏫 volunteer = that program's share drops)
                 if (useCp && cpBySeason.count(S.code))
@@ -533,10 +567,11 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         const auto ids = adultOnly(programsOf(r.value("scope", "club")));
                         if (!ids.empty()) split((int)si, ids, v, {"own", r.value("category", ""), "plan_line", r.value("label", ""), "", 0, true});
                     }
+                    // refs: every referee policy, youth too (its team's ages share it)
                     for (const auto& r : proj.value("ref_fees", json::array())) {
                         if (r.value("kind", "") != "referee") continue;
                         const double v = aheadIn(r.value("by_month", json::object())); if (std::fabs(v) < 0.005) continue;
-                        const auto ids = adultOnly(programsOf(r.value("scope", "club")));
+                        const auto ids = programsOf(r.value("scope", "club"));
                         if (!ids.empty()) split((int)si, ids, v, {"own", "referees", "plan_line", r.value("label", ""), "", 0, true});
                     }
                 }
