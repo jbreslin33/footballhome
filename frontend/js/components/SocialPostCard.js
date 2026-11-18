@@ -1950,7 +1950,8 @@ class SocialPostCard {
     // lineup one short says "10 STARTERS" (squadCounts); the post only
     // names the substitutes.
     const counts = this.squadCounts(pitch.flat().filter(t => t && t.name).length, benchAll.length);
-    const bandLabel = counts ? `${counts.starters} · ${counts.subs}` : 'SUBSTITUTES';
+    // Live card: "11 STARTERS" green (owner 11/18 "x starters should be green").
+    const bandLabel = counts ? `<span style="color:#4ade80;">${counts.starters}</span> · ${counts.subs}` : 'SUBSTITUTES';
     const splitHtml = split ? `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;font-weight:700;"><span style="color:#f5d442;">${this.escapeHtml((split.band || '').split('·')[0].trim())}</span>${(split.band || '').includes('·') ? ` · <span style="color:#fdba74;">${this.escapeHtml(split.band.split('·').slice(1).join('·').trim())}</span>` : ''}</span>
@@ -1978,7 +1979,7 @@ class SocialPostCard {
     if (!(rd && rd.live && Array.isArray(rd.rsvpOut) && rd.rsvpOut.length)) return '';
     return rd.rsvpOut.map(r => `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
-        <span style="font-size:13px;letter-spacing:3px;color:#f5d442;font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
+        <span style="font-size:13px;letter-spacing:3px;color:${/^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#f5d442'};font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
         <div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.85);margin-top:2px;">${r.names.map(n => this.escapeHtml(n)).join(', ')}</div>
       </div>`).join('');
   }
