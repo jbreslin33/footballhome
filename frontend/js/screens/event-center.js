@@ -35,11 +35,10 @@
 //
 // Slice 3 (MyScreen no longer mounted here): the page is three pieces, the
 // same for every tier —
-//   NoticeStrip  (lib/notices.js)          dues, volunteer shift — above the calendar
 //   the week calendar                       this screen
-//   👤 Mine                                 page links, PushOptIn, SectionChat
-//                                           (components/section-chat.js), FinesPanel
-//                                           (components/fines-panel.js) — below it
+//   👤 Mine                                 page links, PushOptIn — below it
+// Dues / volunteer notices, the unanswered list, chat and fines moved to the
+// 🚦 status band atop every screen (components/status-banner.js, 11/18).
 class EventCenterScreen extends Screen {
   // 🗓 Week · Month (Agenda — four weeks of Week's tiles — dropped 11/16,
   // owner: "what is point of it?"; Week's ‹ › steps ahead already).
@@ -90,18 +89,6 @@ class EventCenterScreen extends Screen {
         #ec-stack { display:flex; flex-direction:column; gap:8px; padding: var(--space-3) var(--space-4) var(--space-4); max-width:1400px; margin:0 auto; }
         #ec-notices { display:flex; flex-direction:column; gap:6px; }
         #ec-mine { display:flex; flex-direction:column; gap:8px; margin-top:var(--space-4); }
-        /* 💬 Chat · ⚖️ Fines up top, folded to one line each (owner 11/18). */
-        #ec-top { display:flex; flex-direction:column; gap:6px; }
-        .ec-fold-bar { display:flex; align-items:center; gap:8px; width:100%; min-height:0; padding:6px 10px; border-radius:8px; cursor:pointer;
-                       border:1px solid var(--border-color, #374151); background:rgba(15,23,42,0.55); color:inherit; font:inherit; font-size:0.8rem; text-align:left; }
-        .ec-fold-bar .ec-fold-label { font-weight:800; white-space:nowrap; }
-        .ec-fold-bar .ec-fold-sum { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0.85; }
-        .ec-fold-bar .ec-fold-caret { opacity:0.7; }
-        .ec-fold-bar .ec-fold-when { font-size:0.7rem; opacity:0.7; white-space:nowrap; }
-        .ec-fold-bar .ec-fold-badge { font-size:0.68rem; font-weight:800; color:#fff; background:#ef4444; border-radius:999px; padding:1px 7px; white-space:nowrap; }
-        .ec-fold-bar.hot { border-color:#ef4444; background:rgba(239,68,68,0.10); }
-        .ec-fold-bar.hot .ec-fold-sum { color:#fca5a5; font-weight:800; opacity:1; }
-        .ec-fold-body { margin-top:6px; }
         .ec-mine-head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
                         border-bottom:1px solid var(--border-color); padding-bottom:4px; }
         .ec-mine-head h2 { margin:0; font-size:1rem; }
@@ -145,28 +132,6 @@ class EventCenterScreen extends Screen {
       </div>
       <div id="ec-stack">
         <div id="ec-mode" style="display:none; gap:var(--space-1); flex-wrap:wrap;"></div>
-        <!-- 🚦 Status bar (mig 1468): one line, coloured by the worst item; the details fold under it -->
-        <div id="ec-status">
-        <button type="button" id="ec-status-head" hidden></button>
-        <div id="ec-status-body" hidden style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
-        <div id="ec-need"></div>
-        <div id="ec-notices" style="display:none;"></div>
-        <div id="ec-top">
-          <div id="ec-fold-chat" hidden>
-            <button type="button" class="ec-fold-bar" data-ec-fold="chat" aria-expanded="false">
-              <span class="ec-fold-label" id="ec-fold-chat-label"></span><span class="ec-fold-sum" id="ec-fold-chat-sum"></span><span id="ec-fold-chat-meta" style="display:inline-flex; align-items:center; gap:6px;"></span><span class="ec-fold-caret">▾</span>
-            </button>
-            <div class="ec-fold-body" hidden><div id="ec-chat"></div></div>
-          </div>
-          <div id="ec-fold-fines" hidden>
-            <button type="button" class="ec-fold-bar" data-ec-fold="fines" aria-expanded="false">
-              <span class="ec-fold-label" id="ec-fold-fines-label"></span><span class="ec-fold-sum" id="ec-fold-fines-sum"></span><span id="ec-fold-fines-meta" style="display:inline-flex; align-items:center; gap:6px;"></span><span class="ec-fold-caret">▾</span>
-            </button>
-            <div class="ec-fold-body" hidden><div id="ec-fines" hidden></div></div>
-          </div>
-        </div>
-        </div>
-        </div>
         <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
         <div id="ec-ops" style="display:none; flex-direction:column; gap:6px;">
           <div id="ec-release"></div>
@@ -252,7 +217,7 @@ class EventCenterScreen extends Screen {
       const chip = (m, label) => `<button type="button" class="ec-chip ${this.mode === m ? 'on' : ''}" data-ec-mode="${m}">${this.escapeHtml(label)}</button>`;
       bar.innerHTML = admin ? chip('event', cp('mode_event', '📅 By event')) + chip('people', cp('mode_people', '👥 By person')) : '';
     }
-    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-status', false], ['#ec-people', true]]) {
+    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-people', true]]) {
       const el = this.find(sel);
       if (!el) continue;
       if (sel === '#ec-ops' && !this._isAdmin()) continue;   // _mountOps decides for non-admins
@@ -307,21 +272,10 @@ class EventCenterScreen extends Screen {
     const ctx = { fetchJson: (u, o) => this._memberFetch(u, o), escapeHtml: (t) => this.escapeHtml(t),
                   auth: this.auth, navigation: this.navigation };
     const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier) : fb;
-    this.status = window.StatusBar ? new StatusBar(this.find('#ec-status-head'), this.find('#ec-status-body'), ctx) : null;
-    this.notices = new NoticeStrip(this.find('#ec-notices'), ctx);
-    this.notices.load().then(() => {
-      if (this._autoScrollWaiting) this._placeScroll();
-      // 🚦 Rules + dues: ⛔ blocked = major, any other dues notice = minor.
-      if (!this.status) return;
-      this.status.setRules(this.notices.statusItems || []);
-      const dues = (this.notices.notices || []).filter(n => n && n.kind === 'dues');
-      const money = (n) => `$${(Number(n) || 0).toFixed(2).replace(/\.00$/, '')}`;
-      const sum = (list) => money(list.reduce((t, n) => t + (Number(n.balance) || 0), 0));
-      const blocked = dues.filter(n => n.tier === 'banner'), owed = dues.filter(n => n.tier !== 'banner');
-      this.status.set('dues_blocked', blocked.length ? { amount: sum(blocked) } : null);
-      this.status.set('dues_owed', owed.length ? { amount: sum(owed) } : null);
-      this._statusFromEvents();
-    });
+    // 🚦 Dues / volunteer notices, the unanswered list, chat and fines live in
+    // the status band at the top of every screen (components/status-banner.js,
+    // owner 11/18 "its supposed to be just like the viewing as bar").
+    this.notices = null;
     const title = this.find('#ec-mine-title');
     if (title) title.textContent = cp('mine_title', '👤 Mine');
     // Read-only club pages (were #my's header links).  Words: event_center
@@ -331,58 +285,6 @@ class EventCenterScreen extends Screen {
       ['player-calendar', 'link_players', 'Players'], ['schedules', 'link_schedules', 'Schedules']]
       .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('');
     if (window.PushOptIn) window.PushOptIn.mount(this.find('#ec-push'), this.auth, {}).catch(() => {});
-    if (this.chat) this.chat.stop();
-    // 💬 / ⚖️ up top, one line each; tap opens the full chat / fines (owner
-    // 11/18 "should we show the chat up top and the fines? … just make them
-    // smaller?").  Words: event_center top_chat / top_fines / top_fines_none.
-    const fold = (name, label, sum, hot, meta = '') => {
-      const box = this.find(`#ec-fold-${name}`);
-      if (!box) return;
-      box.hidden = false;
-      const l = this.find(`#ec-fold-${name}-label`), s = this.find(`#ec-fold-${name}-sum`);
-      if (l) l.textContent = label;
-      if (s) s.textContent = sum || '';
-      const m = this.find(`#ec-fold-${name}-meta`);
-      if (m) m.innerHTML = meta;
-      const bar = box.querySelector('.ec-fold-bar');
-      if (bar) bar.classList.toggle('hot', !!hot);
-    };
-    const cp2 = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier, tokens) : fb;
-    const chatOpen = () => { const b = this.find('#ec-fold-chat .ec-fold-body'); return !!(b && !b.hidden); };
-    const chatCtx = { ...ctx, isOpen: chatOpen, onSummary: (s) => {
-      const n = s && s.unread ? (s.capped ? `${s.unread}+` : String(s.unread)) : '';
-      const meta = (n ? `<span class="ec-fold-badge">${this.escapeHtml(cp2('top_chat_unread', { n }, `${n} new`))}</span>` : '')
-        + (s && s.when ? `<span class="ec-fold-when">${this.escapeHtml(s.when)}</span>` : '');
-      fold('chat', cp('top_chat', '💬 Chat'), s ? s.text : '', false, meta);
-      if (this.status) this.status.set('chat_unread', s && s.unread ? { n: s.capped ? `${s.unread}+` : s.unread } : null);
-    } };
-    if (this.chat) this.chat.stop();
-    this.chat = new SectionChat(this.find('#ec-chat'), chatCtx);
-    this.chat.start().catch((err) => console.error('[event-center] chat failed:', err));
-    const finesCtx = { ...ctx, onSummary: (s) => {
-      if (this.status) this.status.set('fines_owed', s && s.total > 0 ? { amount: s.amount } : null);
-      if (!s) { const b = this.find('#ec-fold-fines'); if (b) b.hidden = true; return; }
-      fold('fines', cp('top_fines', '⚖️ Fines'),
-        s.total > 0 ? (s.count === 1 ? cp2('top_fines_one', { amount: s.amount }, `${s.amount} · 1 fine`)
-                                     : cp2('top_fines_many', { amount: s.amount, n: s.count }, `${s.amount} · ${s.count} fines`))
-                    : cp('top_fines_none', 'None — keep it that way'), s.total > 0);
-    } };
-    new FinesPanel(this.find('#ec-fines'), finesCtx).load();
-    const top = this.find('#ec-top');
-    if (top && !top._wired) {
-      top._wired = true;
-      top.addEventListener('click', (e) => {
-        const bar = e.target.closest('[data-ec-fold]');
-        if (!bar) return;
-        const body = bar.parentElement.querySelector('.ec-fold-body');
-        if (!body) return;
-        body.hidden = !body.hidden;
-        bar.setAttribute('aria-expanded', String(!body.hidden));
-        const caret = bar.querySelector('.ec-fold-caret');
-        if (caret) caret.textContent = body.hidden ? '▾' : '▴';
-        if (!body.hidden && bar.getAttribute('data-ec-fold') === 'chat' && this.chat) this.chat.markRead();
-      });
-    }
   }
 
   // ── data ────────────────────────────────────────────────────────────
@@ -619,6 +521,7 @@ class EventCenterScreen extends Screen {
     }
     this._render();
     this._loadEvents();   // the tile's counts follow
+    window.dispatchEvent(new CustomEvent('fh:rsvp-changed'));   // 🚦 the status band
   }
 
   // ── render ──────────────────────────────────────────────────────────
@@ -637,37 +540,7 @@ class EventCenterScreen extends Screen {
       || 'The week — pick a type, then tap an event to open it';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     body.innerHTML = this._pickerHtml();
-    const need = this.find('#ec-need');
-    if (need) need.innerHTML = this._needHtml || '';
-    this._statusFromEvents();
     this._placeScroll();
-  }
-
-  // 🚦 Unanswered + suspended, from the loaded week — only while it holds
-  // today (another week leaves the bar as it was).  Within the window
-  // (status_items rsvp_soon, 48 h) = major; later this week = minor.
-  _statusFromEvents() {
-    if (!this.status || !Array.isArray(this.events)) return;
-    const now = Date.now();
-    const { start, days } = this._range();
-    const from = new Date(start).getTime(), to = from + days * 86400000;
-    if (!(now >= from && now < to)) return;
-    const soonMs = this.status.windowHours('rsvp_soon') * 3600000;
-    let soon = 0, later = 0, suspended = 0;
-    for (const ev of this.events) {
-      if (!ev || ev.fh_event_id == null || this._isPast(ev)) continue;
-      const at = new Date(ev.starts_at).getTime();
-      if (!(at >= now)) continue;
-      if (ev.my_suspension) suspended++;
-      let open = (ev.my_rsvp_eligible === true && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no') ? 1 : 0;
-      for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
-        if (c && c.person_id && !c.suspension && !['yes', 'no'].includes(this._childResponse(ev, Number(c.person_id)))) open++;
-      if (!open) continue;
-      if (at - now <= soonMs) soon += open; else later += open;
-    }
-    this.status.set('suspended', suspended ? { n: suspended } : null);
-    this.status.set('rsvp_soon', soon ? { n: soon } : null);
-    this.status.set('rsvp_open', later ? { n: later } : null);
   }
 
   // Phone, first paint of THIS week: the NOW line near the top with the
@@ -976,32 +849,6 @@ class EventCenterScreen extends Screen {
     const nowWord = this.view === 'month' ? cp('this_month', {}, 'This month') : cp('this_week', {}, 'This week');
     const viewChip = (v, fb) => chip('data-ec-view', v, cp(`view_${v}`, {}, fb), this.view === v);
 
-    // ⚠️ The strip over the calendar: what in this range still needs an
-    // answer, and the fines riding on it.
-    let needStrip = '';
-    if (!loading) {
-      const mineOpen = shown.filter(meOpen);
-      const kidCounts = new Map();
-      for (const ev of shown) for (const c of kidsOpen(ev)) {
-        const n = String(c.name || '').split(' ')[0] || 'Your player';
-        kidCounts.set(n, (kidCounts.get(n) || 0) + 1);
-      }
-      const fines = mineOpen.reduce((t, ev) => t + (ev.my_rsvp_fine_usd > 0 ? Number(ev.my_rsvp_fine_usd) : 0), 0);
-      const lines = [];
-      if (mineOpen.length) lines.push(mineOpen.length === 1
-        ? cp('need_one', {}, "⚠️ You haven't set your availability for 1 event")
-        : cp('need_many', { n: mineOpen.length }, `⚠️ You haven't set your availability for ${mineOpen.length} events`));
-      for (const [name, n] of kidCounts) lines.push(cp('need_kid', { name, n }, `⚠️ ${name}: ${n} to answer`));
-      if (lines.length) {
-        needStrip = `<div style="border:2px solid #f59e0b; background:rgba(245,158,11,0.12); border-radius:10px; padding:10px 12px; margin-bottom:var(--space-2); display:flex; flex-direction:column; gap:4px; text-align:left;">
-          ${lines.map(l => `<div style="font-weight:800; font-size:1rem; color:#f59e0b;">${this.escapeHtml(l)}</div>`).join('')}
-          ${fines > 0 ? `<div style="font-weight:800; color:#f87171;">${this.escapeHtml(cp('need_fines', { total: money(fines) }, `💸 ${money(fines)} in fines if they stay unanswered — answer before each one starts.`))}</div>` : ''}
-          <div style="font-size:0.85rem; opacity:0.9;">${this.escapeHtml(cp('need_how', {}, 'Tap ✓ going or ✗ not going on each one below. Your coach builds the squad from it.'))}</div>
-        </div>`;
-      }
-    }
-
-    this._needHtml = needStrip;   // 🚦 shown in the status bar's details (mig 1468)
     return `
       ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
         ${chip('data-ec-person', 'all', cp('person_all', {}, 'Everyone'), this.person === 'all')}

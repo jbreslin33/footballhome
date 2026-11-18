@@ -86,6 +86,10 @@ class ScreenManager {
       if (window.MainMenu) {
         MainMenu.onScreen(name).catch((err) => console.warn('menu pills failed (non-fatal):', err));
       }
+      // 🚦 The status band at the top (mig 1468): shown when signed in.
+      if (window.StatusBanner) {
+        try { StatusBanner.onScreen(name); } catch (err) { console.warn('status banner failed (non-fatal):', err); }
+      }
       
     } catch (error) {
       console.error('Fatal screen transition error:', error);

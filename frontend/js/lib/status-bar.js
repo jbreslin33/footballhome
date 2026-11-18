@@ -63,19 +63,23 @@ class StatusBar {
       const sev = this.rules.get(code).severity;
       const text = StatusBar.copy(`chip_${code}`, { ...d, hours: this.windowHours(code) }, code);
       return `<span style="display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.72rem; font-weight:800; white-space:nowrap;
-                 background:${sev === 'action' ? 'rgba(239,68,68,0.28)' : 'rgba(148,163,184,0.22)'}; color:${sev === 'action' ? '#fecaca' : '#e2e8f0'};">${esc(text)}</span>`;
+                 background:${sev === 'action' ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.22)'}; color:#fff;">${esc(text)}</span>`;
     }).join('');
-    const c = level === 'ok' ? { b: '#16a34a', bg: 'rgba(22,163,74,0.16)', fg: '#bbf7d0' }
-      : { b: '#ef4444', bg: 'rgba(239,68,68,0.16)', fg: '#fecaca' };
+    // Solid like the 🎭 view-as bar above it (owner: "just like the viewing as bar").
+    const c = level === 'ok' ? { b: '#15803d', bg: '#16a34a', fg: '#fff' }
+      : { b: '#b91c1c', bg: '#dc2626', fg: '#fff' };
     const hasBody = !!(this.body && this.body.textContent.trim());
-    const toggle = hasBody ? `<span style="margin-left:auto; font-size:0.74rem; font-weight:700; opacity:0.85; white-space:nowrap;">${esc(this.open
+    const toggle = hasBody ? `<span style="font-size:0.78rem; font-weight:700; white-space:nowrap; padding:2px 10px; border-radius:6px;
+        border:1px solid rgba(255,255,255,0.5); background:rgba(0,0,0,0.15);">${esc(this.open
       ? StatusBar.copy('status_close', {}, 'Hide ▴') : StatusBar.copy('status_open', {}, 'Details ▾'))}</span>` : '';
-    this.head.style.cssText = `display:flex; align-items:center; gap:6px 8px; flex-wrap:wrap; width:100%; min-height:0; padding:8px 12px;
-        border-radius:10px; cursor:${hasBody ? 'pointer' : 'default'}; text-align:left; font:inherit;
-        border:2px solid ${c.b}; background:${c.bg}; color:${c.fg};`;
+    this.head.style.cssText = `display:flex; align-items:center; justify-content:center; gap:6px 10px; flex-wrap:wrap; width:100%; min-height:0;
+        padding:8px 14px; border:0; border-bottom:1px solid ${c.b}; border-radius:0; cursor:${hasBody ? 'pointer' : 'default'};
+        font:inherit; font-weight:600; background:${c.bg}; color:${c.fg}; box-shadow:0 2px 8px rgba(0,0,0,0.25);`;
     this.head.setAttribute('aria-expanded', String(this.open));
-    this.head.innerHTML = `<span style="font-weight:800; font-size:0.92rem;">${esc(headline)}</span>${chips}${toggle}`;
-    this.head.hidden = !this.ready && !live.length;
+    this.head.innerHTML = `<span style="font-weight:700;">${esc(headline)}</span>${chips}${toggle}`;
+    // Hidden until the rules arrive (NoticeStrip.load always hands them over,
+    // [] on failure) — never a green "all set" before anything is known.
+    this.head.hidden = !this.ready;
     if (this.body) this.body.hidden = !this.open;
   }
 }
