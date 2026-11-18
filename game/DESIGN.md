@@ -10804,3 +10804,25 @@ duels 46.9 → 49.9 (44.3) and fouls 13.0 → 13.6 (12.5) look real.
 
 **Next.** The depth from 30 m out (the settled CB 2-4 m deep where the ball is still / away is real: the gap there is
 the share of frames by ball speed, §8.142 — ours twice the still frames), then corners and blocks as §8.264.
+
+### 8.268 Correction to §8.266-§8.267: "its line" is the side in possession's; the defending line is real since G5.162 (measured; no game change)
+
+§8.266's next and §8.267's "line by the ball" read the harness line **"its line in all possession frames"** (§8.172) as
+our defending line. It is the line of the side **on the ball** (second-last, keeper in, by the ball's metres off its
+own goal) — our back line while we have it. The defending line is **"their offside line / our most advanced
+outfielder"** (§8.143, by the ball's band off the defending side's line, real DFL). Re-read:
+
+| ball band (centre) | G5.161 | G5.162 | real |
+|---|---|---|---|
+| 0-18 m | 9.6-9.7 | 10.3-10.4 | 8.7 |
+| 18-35 m | 17.5 | 18.9 | 18.8 |
+| 35-52 m | 26.2-26.4 | 27.2-27.4 | 28.2 |
+
+So: §8.266's "their balls in behind land nearer our goal because our line stands deep" was not shown by its number
+(the defending line was 1.3-2 m deep then, now real within 1 m); §8.267's change put the defending line on the real
+one (18-35 m exact, 35-52 m 1 m deep, 0-18 m 1.6 m high). This slice's three A/Bs (2 seeds each), read on the right
+line: `shape_tau_s` 4 → 2.5 (faster step-up), `line_q` re-centred on 0 (it holds a median -0.8 m on top of a real
+table), `mark_d` 3-4 → 1.5 m in midfield — each moves the defending line ≤1 m and past real inside 35 m (line_q: 0-18
+10.5-10.8, 18-35 19.3-19.8). None taken. What is deep is **our back line on the ball**: 1.5-2.5 m at 10-70 m off our
+goal (e.g. ball 50 m: 35.5 v 37.4) — POSSESSION SHAPE CB 47.0 v 43.0 m off their line with the ball 10-20 m out. That
+is the next shape question, after corners and blocks (§8.264).
