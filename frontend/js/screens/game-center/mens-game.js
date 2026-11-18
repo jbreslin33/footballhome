@@ -56,10 +56,11 @@ class MensGameScreen extends GameCenterScreen {
   // → "then we wouldn't need words?").  One cell per day in the week's
   // window (barn night included), weekday letter over a mark:
   //   ✓ green   made (marked present / late / excused)
-  //   ● yellow  still ahead, said Going (projected)
+  //   ✓ yellow  still ahead, said Going (projected)
   //   ✗ red     said Not going, or said Going and wasn't marked present
-  //   · grey    no answer
-  // then the total: ✓made/need green, else (made + Going)/need yellow / red.
+  //   (blank)   no answer
+  // then the total: made + Going as one number, green made the need /
+  // yellow on pace / red short.
   // The key is one line on the card (eligibility strip_legend).
   _weekStripHtml(s, { made, colour, tokens }) {
     const list = Array.isArray(s && s.practices) ? s.practices : [];
@@ -77,16 +78,22 @@ class MensGameScreen extends GameCenterScreen {
       const st = ss.some(p => !p.future && p.attended) ? 'made'
         : ss.some(p => p.future && p.rsvp === 'yes') ? 'proj'
         : ss.some(p => p.rsvp === 'no' || (!p.future && p.rsvp === 'yes')) ? 'miss' : 'none';
-      const [mark, fg, bg] = { made: ['✓', '#052e16', '#4ade80'], proj: ['●', '#422006', '#facc15'],
-                               miss: ['✗', '#fff', '#dc2626'], none: ['·', 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.18)'] }[st];
+      // A mark only when they answered (owner 11/18 "x or check if it was set.
+      // if it was not set at all then just make it clear blank").
+      const [mark, fg, bg] = { made: ['✓', '#052e16', '#4ade80'], proj: ['✓', '#422006', '#facc15'],
+                               miss: ['✗', '#fff', '#dc2626'], none: ['', 'transparent', 'transparent'] }[st];
       const letter = d.at.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'America/New_York' });
       const kinds = [...new Set(ss.map(p => p.kind).filter(Boolean))].join(', ');
       return `<span title="${this.escapeHtml(`${d.at.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })} ${kinds}`)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px;">
           <span style="font-size:8px; font-weight:800; opacity:0.75; line-height:1;">${this.escapeHtml(letter)}</span>
-          <span style="width:14px; height:14px; border-radius:3px; background:${bg}; color:${fg}; font-size:10px; font-weight:900; line-height:14px; text-align:center;">${mark}</span>
+          <span style="width:14px; height:14px; box-sizing:border-box; border-radius:3px; background:${bg}; color:${fg}; ${st === 'none' ? 'border:1px solid rgba(255,255,255,0.45);' : ''} font-size:10px; font-weight:900; line-height:14px; text-align:center;">${mark}</span>
         </span>`;
     }).join('');
-    const total = made ? `✓${tokens.attended}/${tokens.needed}` : `${tokens.proj_total}/${tokens.needed}`;
+    // One number: made + said Going; the colour says the verdict — green made
+    // the need already, yellow the Goings would, red short (owner 11/18 "1
+    // actual and 1 projected then it says 2 but its green … 0 actual and like
+    // 3 projected it would be a 3 and it would be yellow").
+    const total = tokens.proj_total;
     return `<span style="display:inline-flex; align-items:flex-end; gap:2px;">${cells}
         <span style="margin-left:3px; padding:0 4px; height:14px; line-height:14px; border-radius:3px; background:${colour}; color:#0f172a; font-size:10px; font-weight:900;">${this.escapeHtml(total)}</span></span>`;
   }
