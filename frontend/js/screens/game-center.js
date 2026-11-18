@@ -4006,7 +4006,9 @@ class GameCenterScreen extends EventScreen {
     // …and the "You: 0 of 5 … · need 1" line under them (owner 11/18 "put it
     // in graphic. yes try that").
     const youHtml = live && typeof this._myPracticeLine === 'function' ? this._myPracticeLine() : '';
-    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, youHtml };
+    // The key to the boxes' mini calendars (eligibility strip_legend, mig 1505).
+    const legend = live && !this.everyonePlays && this.stats && this.stats.size ? (this._eligCopy('strip_legend') || '') : '';
+    return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, youHtml, legend };
   }
 
   // rosterById/slotToPlayerId/startingPositions — pure lookups from

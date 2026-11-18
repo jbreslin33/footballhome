@@ -277,14 +277,18 @@ class GameCenterEligibility {
       const tokens = { attended: String(st.attended), projected: String(st.projected),
                        total: String(st.attended + st.projected), needed: String(st.needed), left: String(left),
                        chances: st.tokens.chances, proj_total: String(st.attended + st.projected) };
-      const tier = made ? 'lineup_note_made' : onPace ? 'lineup_note_on_pace' : 'lineup_note_short';
-      const text = this._eligCopy(tier, tokens)
-        || (made ? `✓ ${tokens.attended} of ${tokens.chances}` : `${tokens.attended} of ${tokens.chances} · need ${tokens.needed}`);
       const colour = made ? '#4ade80' : onPace ? '#facc15' : '#f87171';
-      // Two lines when the copy has a line break: actual, then projected
-      // (owner 11/18 "clear … between actual and projected and actual total
-      // and projected total for all players").
-      bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${colour}; font-weight:700; text-align:center;">${String(text).split('\n').map(l => this.escapeHtml(l)).join('<br>')}</span>`);
+      const strip = this._weekStripHtml(s, { made, colour, tokens });
+      if (strip) bits.push(strip);
+      else {
+        const tier = made ? 'lineup_note_made' : onPace ? 'lineup_note_on_pace' : 'lineup_note_short';
+        const text = this._eligCopy(tier, tokens)
+          || (made ? `✓ ${tokens.attended} of ${tokens.chances}` : `${tokens.attended} of ${tokens.chances} · need ${tokens.needed}`);
+        // Two lines when the copy has a line break: actual, then projected
+        // (owner 11/18 "clear … between actual and projected and actual total
+        // and projected total for all players").
+        bits.push(`<span title="${this.escapeHtml(this._eligCopy('row_' + st.state, st.tokens) || '')}" style="color:${colour}; font-weight:700; text-align:center;">${String(text).split('\n').map(l => this.escapeHtml(l)).join('<br>')}</span>`);
+      }
     }
     const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
@@ -301,6 +305,47 @@ class GameCenterEligibility {
     }
     if (!bits.length) return '';
     return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;display:flex;flex-wrap:wrap;gap:1px 5px;justify-content:center;">${bits.join('')}</div>`;
+  }
+
+  // The week as a mini calendar, no words (owner 11/18 "would it be better
+  // with a mini calendar on each box with green check mark for made it. and
+  // yellow for projected … and total at end either green or yellow or red"
+  // → "then we wouldn't need words?").  One cell per day in the week's
+  // window (barn night included), weekday letter over a mark:
+  //   ✓ green   made (marked present / late / excused)
+  //   ● yellow  still ahead, said Going (projected)
+  //   ✗ red     said Not going, or said Going and wasn't marked present
+  //   · grey    no answer
+  // then the total: ✓made/need green, else (made + Going)/need yellow / red.
+  // The key is one line on the card (eligibility strip_legend).
+  _weekStripHtml(s, { made, colour, tokens }) {
+    const list = Array.isArray(s && s.practices) ? s.practices : [];
+    if (!list.length) return '';
+    const days = new Map();
+    for (const p of list) {
+      const at = new Date(p.startsAt || p.date);
+      if (isNaN(at)) continue;
+      const key = at.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      if (!days.has(key)) days.set(key, { at, sessions: [] });
+      days.get(key).sessions.push(p);
+    }
+    const cells = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, d]) => {
+      const ss = d.sessions;
+      const st = ss.some(p => !p.future && p.attended) ? 'made'
+        : ss.some(p => p.future && p.rsvp === 'yes') ? 'proj'
+        : ss.some(p => p.rsvp === 'no' || (!p.future && p.rsvp === 'yes')) ? 'miss' : 'none';
+      const [mark, fg, bg] = { made: ['✓', '#052e16', '#4ade80'], proj: ['●', '#422006', '#facc15'],
+                               miss: ['✗', '#fff', '#dc2626'], none: ['·', 'rgba(255,255,255,0.7)', 'rgba(255,255,255,0.18)'] }[st];
+      const letter = d.at.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'America/New_York' });
+      const kinds = [...new Set(ss.map(p => p.kind).filter(Boolean))].join(', ');
+      return `<span title="${this.escapeHtml(`${d.at.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })} ${kinds}`)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px;">
+          <span style="font-size:8px; font-weight:800; opacity:0.75; line-height:1;">${this.escapeHtml(letter)}</span>
+          <span style="width:14px; height:14px; border-radius:3px; background:${bg}; color:${fg}; font-size:10px; font-weight:900; line-height:14px; text-align:center;">${mark}</span>
+        </span>`;
+    }).join('');
+    const total = made ? `✓${tokens.attended}/${tokens.needed}` : `${tokens.proj_total}/${tokens.needed}`;
+    return `<span style="display:inline-flex; align-items:flex-end; gap:2px;">${cells}
+        <span style="margin-left:3px; padding:0 4px; height:14px; line-height:14px; border-radius:3px; background:${colour}; color:#0f172a; font-size:10px; font-weight:900;">${this.escapeHtml(total)}</span></span>`;
   }
 
   // The box colour for a player on the live card (owner 11/18 "would it help

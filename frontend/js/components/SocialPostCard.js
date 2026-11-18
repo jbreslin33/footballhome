@@ -1057,6 +1057,8 @@ class SocialPostCard {
 
         ${grow && this.rosterData && this.rosterData.youHtml ? `<div style="margin:0 0 10px;width:100%;">${this.rosterData.youHtml}</div>` : ''}
 
+        ${grow && this.rosterData && this.rosterData.legend ? `<div style="margin:0 0 8px;font-size:11px;font-weight:700;color:rgba(255,255,255,0.85);">${this.escapeHtml(this.rosterData.legend)}</div>` : ''}
+
         ${goalScorerHtml}
 
         ${playersPlayedHtml}
