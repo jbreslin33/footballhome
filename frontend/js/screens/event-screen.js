@@ -1618,13 +1618,23 @@ class EventScreen extends Screen {
     const kinds = this.find('#ec-kinds');
     if (kinds) {
       const k = this.ev ? this._kindOf(this.ev) : 'all';
-      kinds.innerHTML = EventKindSwitch.html(EventKindSwitch.KINDS.includes(k) ? k : 'all', (t) => this.escapeHtml(t));
+      // PlayerViewer: no Games · Practices · Pickup · All on an event (lib/viewer.js).
+      kinds.innerHTML = this.viewer.eventKindPills
+        ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(k) ? k : 'all', (t) => this.escapeHtml(t)) : '';
     }
     if (this.error) { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.ev) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     title.textContent = `📋 ${EventLabels.title(this.ev)}`;
     // Arrival · Warmup · Kickoff after the date (owner 11/5: every event).
-    sub.textContent = [this._when(this.ev), EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) || this.ev.location].filter(Boolean).join(' · ');
+    // PlayerViewer: the place on its own line, a map link (eventLocationLine).
+    const place = EventLabels.homeSetup(this.ev) || this.ev.location;
+    if (this.viewer.eventLocationLine) {
+      sub.innerHTML = `${this.escapeHtml([this._when(this.ev), EventLabels.timesLine(this.ev)].filter(Boolean).join(' · '))}`
+        + (place ? `<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}" target="_blank" rel="noopener"
+             style="color:inherit; text-decoration:underline; text-underline-offset:2px;">📍 ${this.escapeHtml(place)}</a>` : '');
+    } else {
+      sub.textContent = [this._when(this.ev), EventLabels.timesLine(this.ev), place].filter(Boolean).join(' · ');
+    }
     body.innerHTML = this._eventHtml();
   }
 
@@ -1632,7 +1642,9 @@ class EventScreen extends Screen {
   // lit pill's body.
   _eventHtml() {
     const ev = this.ev;
-    const pills = this.pills(ev);
+    // PlayerViewer: just the one page (eventPillKeys) — no Groups / Plan tabs.
+    const keys = this.viewer.eventPillKeys;
+    const pills = this.pills(ev).filter(p => !keys || keys.includes(p.key));
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
       ${this._seeAsHtml()}
@@ -1947,7 +1959,7 @@ class EventScreen extends Screen {
           </div>
           ${meStatus(r)}
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
-          ${window.PersonStanding ? PersonStanding.html(r.person_id) : ''}
+          ${window.PersonStanding && this.viewer.eventCardStanding ? PersonStanding.html(r.person_id) : ''}
           ${canContact ? this._contactLineHtml(r, remind && canRemind, callIn) : ''}
           ${callIn ? callInBtn(r) : ''}`,
       });
@@ -2073,21 +2085,23 @@ class EventScreen extends Screen {
     if (unplacedOnly) return split ? unplacedHtml() : '';
     // 📇 Everyone on the list (players; coaches have their own) at the top.
     const everyone = this._groupContactHtml('all', L('group_all', '👥 Everyone'), [...players, ...suspended, ...inactive]);
+    // Which people sections this viewer gets (lib/viewer.js eventSection).
+    const V = (key) => this.viewer.eventSection(key);
     return `
       ${everyone ? `<div style="margin:0 0 var(--space-2);"><div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:0 0 4px;">${L('group_all', '👥 Everyone')}</div>${everyone}</div>` : ''}
       ${presentTally()}
       ${split ? unplacedHtml() : ''}
       ${this._callinsHtml()}
       ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
-      ${(roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop })}
-      ${(roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true })}`}
-      ${(roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false))}
-      ${fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll })}
-      ${fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no'))}
-      ${fold('injured', L('sec_injured', '🩹 Injured'), injured)}
-      ${fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true })}
-      ${fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended)}
-      ${coachSection()}`;
+      ${V('going') ? (roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
+      ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
+      ${V('ineligible') ? (roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false)) : ''}
+      ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
+      ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')) : ''}
+      ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
+      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true }) : ''}
+      ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}
+      ${V('coaches') ? coachSection() : ''}`;
   }
 
   // Open invites with their answer and a withdraw, then everyone who COULD

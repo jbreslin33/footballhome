@@ -46,6 +46,18 @@ class PlayerViewer {
   get calendarRosterCounts() { return false; }
   get calendarMine()      { return false; }       // 👤 Mine under the calendar — its links are in ☰
 
+  // ── an opened event (screens/event-screen.js and its kinds) ──
+  // Owner 11/18: "when they click the event i want it to look sleek and clean
+  // and uncluttered".  A player gets their answer, who's going, the coaches,
+  // carpool — nothing to run the event with.
+  get eventKindPills()    { return false; }       // Games · Practices · Pickup · All on an event
+  get eventPillKeys()     { return ['players']; } // the big pill row; null = every pill the kind has
+  get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
+  get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
+  // Which people sections: ✓ going, 🎟 invited and 🧑‍🏫 coaches.  Not the
+  // no-response / not-going / injured / inactive / suspended / ineligible folds.
+  eventSection(key)       { return ['going', 'invited', 'coaches'].includes(key); }
+
   // ☰ the band's menu (owner 11/18 "a hamburger thingy then the other stuff
   // would be there … for players we want less options and clean interface.
   // for admin it will extend base class with more stuff").  The base list;
@@ -98,6 +110,11 @@ class CoachViewer extends PlayerViewer {
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
   get calendarMine()      { return true; }
+  get eventKindPills()    { return true; }
+  get eventPillKeys()     { return null; }
+  get eventLocationLine() { return false; }
+  get eventCardStanding() { return true; }
+  eventSection()          { return true; }
 
   // ☰ = the player's list + 👤 Account (view-as, tactical board …), Sign out last.
   menuItems() {
