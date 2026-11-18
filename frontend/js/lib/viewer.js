@@ -62,6 +62,11 @@ class PlayerViewer {
   // info under the calender? … that should just go in grphic underneath as
   // its not the actuall instagram post but informational for players").
   get gameHeader()        { return false; }
+  // Everything under the game graphic (🎯 match plan, 🚗 carpool, 🖨 rosters,
+  // starter eligibility …) lives in ☰; a pick shows that one under the card
+  // (owner 11/18 "all the stuff under graphic sould go inside hamburgert for
+  // game page").
+  get gameExtrasInMenu()  { return true; }
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
   get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
@@ -139,6 +144,7 @@ class CoachViewer extends PlayerViewer {
   eventPillKeys()         { return null; }
   get eventLocationLine() { return false; }
   get gameHeader()        { return true; }
+  get gameExtrasInMenu()  { return false; }
   get eventCardStanding() { return true; }
   // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
   // coaches edit the official lineup directly.  Flip here to bring drafts back.

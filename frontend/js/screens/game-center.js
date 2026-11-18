@@ -2136,6 +2136,7 @@ class GameCenterScreen extends EventScreen {
         + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
       box.innerHTML = bodyHtml;
+      this._syncExtrasMenu();
       this._renderSocial(byZone);
       this._mountCard('top', this.pill, byZone);
     };
@@ -2171,7 +2172,7 @@ class GameCenterScreen extends EventScreen {
       new Panel({ key: 'everyone_note', minTier: 'coach', applies: (s) => s.everyonePlays, html: (s) => s._everyoneNoteHtml() }),
       new Panel({ key: 'sections', minTier: 'coach', html: () => coach.sections }),
     ];
-    if (!this.panelViewer.atLeast('coach')) { paint(Panel.render(panels, this)); return; }
+    if (!this.panelViewer.atLeast('coach')) { paint(this._renderPanels(panels)); return; }
 
     // Coach's own Bench section reflects the bench order they set
     // (owner directive) — unlike the Player Lineup View, which always
@@ -3698,8 +3699,50 @@ class GameCenterScreen extends EventScreen {
     ];
   }
 
+  // PlayerViewer.gameExtrasInMenu: the panels under the graphic render
+  // hidden, one wrapper each; ☰ lists them (_syncExtrasMenu) and a pick
+  // shows that one.  Otherwise the plain Panel.render.
+  _extrasInMenu() { return !!(this.matchId && window.Viewer && Viewer.account().gameExtrasInMenu); }
+  _renderPanels(panels) {
+    if (!this._extrasInMenu()) return Panel.render(panels, this);
+    return (panels || []).filter(p => p && p.shownTo(this) && p.key !== 'db_strip').map(p => {
+      const h = p.html(this);
+      return h ? `<div data-gc-extra="${p.key}" style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>` : '';
+    }).join('');
+  }
+  // ☰ items = the hidden sections, labelled by their own heading (summary /
+  // first button — the copy they already carry).
+  _syncExtrasMenu() {
+    const sb = window.StatusBanner && StatusBanner.instance;
+    if (!sb || !sb.setPageItems) return;
+    const screen = window.app && window.app.navigation && window.app.navigation.currentState;
+    if (!this._extrasInMenu() || !this.element) { sb.setPageItems(screen, []); return; }
+    const items = [...this.element.querySelectorAll('[data-gc-extra]')].map(el => {
+      const key = el.getAttribute('data-gc-extra');
+      const h = el.querySelector('summary, h2, h3, button');
+      let label = ((h || el).textContent || '').replace(/\s+/g, ' ').trim();
+      if (label.length > 60) label = label.slice(0, 57) + '…';
+      return label ? { label, run: () => this._showExtra(key) } : null;
+    }).filter(Boolean);
+    sb.setPageItems(screen, items);
+  }
+  _showExtra(key) {
+    this._extraOpen = key;
+    if (!this.element) return;
+    let shown = null;
+    this.element.querySelectorAll('[data-gc-extra]').forEach(el => {
+      const on = el.getAttribute('data-gc-extra') === key;
+      el.style.display = on ? 'block' : 'none';
+      if (on) shown = el;
+    });
+    if (!shown) return;
+    const d = shown.querySelector('details');
+    if (d && !d.open) d.open = true;
+    shown.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   _pillToolsHtml(pill, byZone) {
-    const html = Panel.render(this.pillToolPanels(pill, byZone), this);
+    const html = this._renderPanels(this.pillToolPanels(pill, byZone));
     return html ? `<div style="max-width:540px; margin:10px auto 0;">${html}</div>` : '';
   }
 

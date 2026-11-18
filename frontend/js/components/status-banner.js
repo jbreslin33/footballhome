@@ -165,6 +165,13 @@
       this.host.addEventListener('click', (e) => {
         // ✕, or a tap on the dimmed backdrop outside the sheet, closes.
         if (e.target.closest('[data-sb-close]') || e.target.id === 'sb-modal') { this.openPanel(null); return; }
+        const pg = e.target.closest('[data-sb-page]');
+        if (pg) {
+          const it = this.currentPageItems()[Number(pg.getAttribute('data-sb-page'))];
+          this.openPanel(null);
+          if (it && it.run) it.run();
+          return;
+        }
         const link = e.target.closest('[data-sb-link]');
         if (link) { this.onLink(link.getAttribute('data-sb-link')); return; }
         const ans = e.target.closest('[data-sb-ans]');
@@ -224,10 +231,26 @@
     // CoachViewer / AdminViewer extend it).
     menuItems() { return window.Viewer ? Viewer.account().menuItems() : []; }
 
+    // The page's own items on top of ☰ (owner 11/18 "all the stuff under
+    // graphic should go inside hamburger for game page"): a screen hands
+    // [{ label, run }] tagged with its screen name; they show only while
+    // that screen is up.  setPageItems(screen, []) clears.
+    setPageItems(screen, items) {
+      this.pageItems = { screen, items: items || [] };
+      if (this.bar && this.bar.openCode === 'menu') this.renderMenu();
+    }
+    currentPageItems() {
+      const pi = this.pageItems;
+      return pi && pi.screen === this.screen ? pi.items : [];
+    }
+
     renderMenu() {
       const box = this.$('#sb-menu');
       if (!box) return;
-      box.innerHTML = this.menuItems().map(it => `<button type="button" class="sb-menu-item ${it.code === 'signout' ? 'out' : ''}" data-sb-link="${esc(it.code)}">${esc(cp(it.tier, {}, it.fb))}</button>`).join('');
+      const page = this.currentPageItems();
+      box.innerHTML = page.map((it, i) => `<button type="button" class="sb-menu-item" data-sb-page="${i}">${esc(it.label)}</button>`).join('')
+        + (page.length ? '<div style="height:1px; background:rgba(255,255,255,0.15); margin:8px 0;"></div>' : '')
+        + this.menuItems().map(it => `<button type="button" class="sb-menu-item ${it.code === 'signout' ? 'out' : ''}" data-sb-link="${esc(it.code)}">${esc(cp(it.tier, {}, it.fb))}</button>`).join('');
     }
 
     onLink(code) {
