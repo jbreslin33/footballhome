@@ -2095,7 +2095,10 @@ class GameCenterScreen extends EventScreen {
     // (owner 11/18 "we need not responded on graphic and not going …
     // obviously this goes under substitutes") — the same lists as the
     // sections, after injured / inactive / pool / suspended came out.
-    this._rsvpOut = { noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing] };
+    // + ⚠️ Going · not placed yet (and ⛔ said going · ineligible) on top
+    // (owner 11/18 "also what about not assigned yet. we need them on graphic").
+    this._rsvpOut = { unplaced: [...unassignedGoing], ineligible: [...unassignedIneligible],
+                      noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing] };
 
     const seeAsBar = this._gcSeeAsHtml();
 
@@ -3989,8 +3992,10 @@ class GameCenterScreen extends EventScreen {
       ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
     const out = live && this._rsvpOut ? this._rsvpOut : null;
     const outRow = (list, tier, fb) => ({ label: `${this._ecCopy(tier, fb)} (${list.length})`, names: [...list].sort(this._byLastName).map(p => p.name) });
-    // Order (owner 11/18): substitutes, then no response, not going, alternates.
-    const rsvpOut = out ? [outRow(out.noResponse, 'sec_noresp', '– No response'), outRow(out.notGoing, 'sec_notgoing', '✗ Not going'),
+    // Order (owner 11/18): substitutes, not placed yet (+ ineligible), no response, not going, alternates.
+    const rsvpOut = out ? [outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet'),
+                           outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)'),
+                           outRow(out.noResponse, 'sec_noresp', '– No response'), outRow(out.notGoing, 'sec_notgoing', '✗ Not going'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").
