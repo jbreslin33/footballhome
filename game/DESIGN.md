@@ -10655,3 +10655,43 @@ completion 77.5-78.6% (79.1); flat receivers, shots, fouls, goals unchanged with
 off (5.3), within 2 m 7-8% (10.2) — while every-frame marking (ball within 20 m, or not) is real. The moment is the
 long ball's: their side on the ball deep, our block between. Next: MARKING at their deep possession (ball 0-35 m off
 their goal) by our role — who is off whom when they go long.
+
+### 8.263 G5.158 — the data policy, every open source in one place, and the realism scorecard
+
+**Policy** (James 11/18): realism against Premier League football, in whatever order the misses come, no shortcuts.
+On-ball numbers — rates, locations, pass length / height / duration, pressure flags, duels, shots, goals — are
+judged on **StatsBomb Open Data PL 2015/16, all 380 matches** (no longer a seeded sample). What events can't see —
+off-ball positions, distances, speeds, ball height — has no open PL source (StatsBomb's open 360 covers no PL
+season; PL tracking is commercial), so it is judged on **every open tracking source pooled**, each source's own
+number printed beside the pooled one, thin fits marked provisional, refined as data arrives.
+
+**The data** (`~/football-data/`, outside every repo; manifest + licences in its README): StatsBomb PL 15/16 events
+(380); StatsBomb 360 freeze frames, 300 men's matches (Bundesliga 23/24 34, World Cup 2022 64, La Liga 20/21 35,
+Ligue 1 22/23 32 + 21/22 26, Euro 2024 51, Euro 2020 51, MLS 2023 6, AFCON 2023 1); DFL Bundesliga 22/23 tracking +
+events (7, CC BY); SkillCorner A-League 24/25 broadcast tracking (20, MIT); Metrica samples (3); Last Row (19
+Liverpool goals — "lacks the accuracy needed for research": illustration only). PFF FC World Cup 2022 (64, broadcast
+tracking) sits behind a sign-up form: not fetched. Caveats: 360 frames hold only players in view; SkillCorner
+off-screen positions are extrapolated.
+
+**The scorecard.** `fh-game-match` with `GAME_SCORECARD=<file>` writes 35 headline numbers as JSON, each on its
+harness line's cut. New `benchmarks_statsbomb_scorecard.py`: the same 34 on all 380 PL matches, with a 95% interval
+from 2000 match bootstrap resamples (the uncertainty of the real number). New `scorecard.py`: real [interval] |
+ours over the seeds (min-max) | ours ÷ real | z on both noises | ok (|z| < 2) / off (within 15%) / OFF, biggest miss
+first; tracking-only numbers apart with their source. Every slice reports the whole card from now on. Two cut
+fixes found building it: the harness's real completion label 79.1% was the old 377.7-pass cut — on today's cut
+(433.8 open-play passes, Recovery / Interception passes in) it is **77.5%**; and an aerial duel is one Aerial Lost
+(StatsBomb logs the loser; counting the winner's aerial_won too doubled it): 44.3 a match on all 380 (44.1 sampled).
+
+**The first card** (4 seeds × 8, at G5.157): **9 ok, 3 off, 22 OFF of 34.** Biggest misses: take-ons 80.1 a
+team-match (18.05) and their success 19% (59); corners 1.67 (5.40); pressures 385 (152) and counter-press 37% (21);
+blocked shots 12% (29); carries 10 m+ 64.8 (34.6); cut-backs 1.9 (1.0); **goals 2.47 a team-match (1.35)**,
+conversion 15.6% (10.0), 12-18 m scored 15% (9.3); offsides 1.1 (2.0); crosses 7.1 (11.5); throw-ins 16.2 (23.1);
+passes 562 (434); shots 15.8 (13.0). Ok: aerial duels 46.4 (44.3), tackles, completion 78.1 (77.5), free kicks,
+penalties, scored inside 12 m and 18-25 m. Ball in play 59.0% v DFL's 55.2 (tracking-only, provisional).
+
+**Read before fixing.** Some OFF lines may be our cut, not our football: pressures read 375 v 375 on the DFL cut
+(§8.216) and 385 v 152 on StatsBomb's — StatsBomb tags a pressure only when a man closes the carrier, ours counts
+every man inside the radius; take-ons likewise (StatsBomb tags a Dribble only when he takes a man on). The first
+job of the next slice is to make each harness cut StatsBomb's own; then the misses by mechanism, biggest first —
+goals (shots 1.2×, conversion 1.6×, blocks 0.4×, the 12-18 m finish) and the set-piece volumes (corners, throw-ins,
+offsides all ~0.3-0.7×).

@@ -2656,7 +2656,7 @@ int main(int argc, char** argv) {
     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
                 S.press / tm, S.cpress / tm, 100.0 * S.cpress / std::max(1L, S.press), S.passes / tm, S.switches / tm, S.crosses / tm, S.cutbacks / tm,
                 S.takeon / tm, S.takeon_ok / tm, S.ret / tm, 100.0 * S.ret / std::max(1L, S.ret_base), S.carry10 / tm);
-    std::printf("   passes completed %.1f%% (79.1%%)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
+    std::printf("   passes completed %.1f%% (77.5%%; open play, Recovery / Interception passes in, §8.263 — was 79.1 on the old 377.7-pass cut)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
     {
         std::printf("BALL IN PLAY %.1f%% of the match (real DFL 55.2%%); dead before each restart, a team-match / median s (real):", 100.0 * S.tick_live / std::max(1L, S.tick_n));
         static const char* kn[15] = {"?", "goal", "throw-in", "goal kick", "corner", "kick-off", "", "", "", "", "offside FK", "", "free kick", "penalty", "drop ball (other)"};
@@ -4063,6 +4063,39 @@ int main(int argc, char** argv) {
         std::printf("   middle on the ball, from our goal: slope %.2f, offset %.1f m\n   each role ahead of the middle, ball 25-75 m off their line:", sl, S.fit_m / n - sl * S.fit_b / n);
         for (int r = 0; r < ai::kRoleCount; ++r) if (S.gap_n[r]) std::printf(" %s %+.1f;", kRoleName[r], S.gap_s[r] / S.gap_n[r]);
         std::printf("\n");
+    }
+    // §8.263 SCORECARD: GAME_SCORECARD=<path> writes the headline numbers as JSON for
+    // game/scripts/scorecard.py (real side: benchmarks_statsbomb_scorecard.py). Same cuts as the lines above.
+    if (const char* sc = std::getenv("GAME_SCORECARD")) {
+        if (std::FILE* f = std::fopen(sc, "w")) {
+            const double shots = S.shots[0] + S.shots[1], goals = S.goals[0] + S.goals[1];
+            long fin[4] = {}; for (int g = 0; g < 5; ++g) for (int q = 0; q < 4; ++q) fin[q] += S.fn_gs[g][q];
+            const double fn = std::max(1L, fin[0] + fin[1] + fin[2] + fin[3]);
+            long tk = 0; for (int a = 0; a < 2; ++a) for (int z = 0; z < 3; ++z) tk += S.tkl[a][z];
+            const double sb = std::max(1.0, shots);
+            std::fprintf(f, "{\n  \"matches\": %d,\n  \"seed\": \"%s\",\n  \"stats\": {\n", matches, std::getenv("GAME_MATCH_SEED") ? std::getenv("GAME_MATCH_SEED") : "");
+            const std::pair<const char*, double> kv[] = {
+                {"goals_tm", goals / tm}, {"shots_tm", shots / tm}, {"conversion_pct", 100.0 * goals / sb},
+                {"on_target_pct", 100.0 * (fin[0] + fin[1]) / fn}, {"blocked_pct", 100.0 * fin[2] / fn}, {"off_target_pct", 100.0 * fin[3] / fn},
+                {"shots_lt12_pct", 100.0 * S.shot_band[0] / sb}, {"shots_12_18_pct", 100.0 * S.shot_band[1] / sb},
+                {"shots_18_25_pct", 100.0 * S.shot_band[2] / sb}, {"shots_25p_pct", 100.0 * S.shot_band[3] / sb},
+                {"scored_lt12_pct", 100.0 * S.band_goal[0] / std::max(1L, S.shot_band[0])}, {"scored_12_18_pct", 100.0 * S.band_goal[1] / std::max(1L, S.shot_band[1])},
+                {"scored_18_25_pct", 100.0 * S.band_goal[2] / std::max(1L, S.shot_band[2])}, {"scored_25p_pct", 100.0 * S.band_goal[3] / std::max(1L, S.shot_band[3])},
+                {"penalties_tm", S.pens / tm},
+                {"passes_tm", S.passes / tm}, {"pass_completion_pct", 100.0 * S.pass_ok / std::max(1L, S.passes)},
+                {"crosses_tm", S.crosses / tm}, {"switches_tm", S.switches / tm}, {"cutbacks_tm", S.cutbacks / tm},
+                {"takeons_tm", S.takeon / tm}, {"takeon_success_pct", 100.0 * S.takeon_ok / std::max(1L, S.takeon)},
+                {"carries10_tm", S.carry10 / tm}, {"pressures_tm", S.press / tm}, {"counterpress_pct", 100.0 * S.cpress / std::max(1L, S.press)},
+                {"tackles_tm", tk / tm}, {"fouls_tm", S.fouls / tm}, {"aerial_duels_m", S.aer_d / nm}, {"headed_clearances_tm", S.aer_c / tm},
+                {"throwins_tm", S.dead_n[2] / tm}, {"goalkicks_tm", S.dead_n[3] / tm}, {"corners_tm", S.dead_n[4] / tm},
+                {"freekicks_tm", (S.dead_n[12] + S.dead_n[10]) / tm}, {"offsides_tm", S.dead_n[10] / tm},
+                {"ball_in_play_pct", 100.0 * S.tick_live / std::max(1L, S.tick_n)},
+            };
+            const int n = static_cast<int>(sizeof(kv) / sizeof(kv[0]));
+            for (int i = 0; i < n; ++i) std::fprintf(f, "    \"%s\": %.4f%s\n", kv[i].first, kv[i].second, i + 1 < n ? "," : "");
+            std::fprintf(f, "  }\n}\n");
+            std::fclose(f);
+        }
     }
     return 0;
 }
