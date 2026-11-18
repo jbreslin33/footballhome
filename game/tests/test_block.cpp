@@ -95,4 +95,39 @@ FH_TEST(it_leaves_the_body_on_the_grass_with_the_pace_its_turn_keeps) {
     FH_EXPECT(glance > 0);
 }
 
+// G5.165 (§8.271): their kick reaching a man inside his reaction hits him — a blocked pass, not his ball. Slot 0
+// (home) drives it east along the ground at slot 2 (away) standing 2.5 m off; it is at him in ~0.15 s, inside his
+// 0.2 s reaction + 2 ticks of perception.
+core::World pass(std::int64_t react_reach_milli) {
+    core::World w{5, Fixed64::fromInt(7), Fixed64::fromInt(52), Fixed64::fromInt(34), 0};
+    w.setMatchSeed(7);
+    w.setTeam(0, 0); w.placePlayer(0, at(0, 0), kEast);
+    w.setTeam(1, 0); w.placePlayer(1, at(-300, 200), kEast);
+    w.setTeam(2, 1); w.placePlayer(2, at(25, 0), Vec2{-Fixed64::one(), Fixed64::zero()});
+    w.setTeam(3, 1); w.placePlayer(3, at(-400, -200), kEast);
+    w.setTeam(4, 1); w.placePlayer(4, at(400, -200), kEast);
+    core::ModelParams p;
+    p.setMilli("physics.ball.react_reach", react_reach_milli);
+    w.configureAerial(p);
+    w.giveBall(0);
+    w.setAction(0, core::Action::GroundKick);
+    w.tick();
+    return w;
+}
+
+FH_TEST(a_pass_at_a_man_who_has_not_reacted_comes_off_his_body) {
+    auto w = pass(1000);
+    FH_EXPECT(!w.ball().owner.has_value());   // kicked
+    for (int k = 0; k < 15 && w.bodyBlocks(1) == 0 && !w.ball().owner; ++k) w.tick();
+    FH_EXPECT_EQ(w.bodyBlocks(1), 1);
+    FH_EXPECT(!w.ball().owner.has_value());
+}
+
+FH_TEST(without_the_reaction_rule_he_simply_takes_it) {
+    auto w = pass(0);
+    for (int k = 0; k < 15 && !w.ball().owner && w.lastTouchTeam() == 0; ++k) w.tick();
+    FH_EXPECT_EQ(w.bodyBlocks(1), 0);
+    FH_EXPECT_EQ(static_cast<int>(w.lastTouchTeam()), 1);   // his touch: kept or off him loose
+}
+
 FH_TEST_MAIN()

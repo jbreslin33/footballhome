@@ -10896,3 +10896,48 @@ above the 20 m/s capture cap, and real blocked passes (11.8 a team-match) put ou
 OFF (was 8 / 4 / 21); goals 2.78 → 2.59, shots 15.2 → 14.3 (inside seed spread). Goldens unchanged (no body block in
 their runs); tests 23/23, lint clean. Next: the block of a pass — a man in a pass's line under the cap reads it and
 plays it (cut_share), so the real blocked pass (a body in the way, no time to control) has no path.
+
+### 8.271 G5.165 — inside his reaction a man can only be hit by their kick: the blocked pass (shipped; corners 1.55 → 2.06, completion 77 → 81)
+
+From §8.270: no pass was ever body-blocked (the sweep only fires above the 20 m/s capture cap), and real blocked passes
+(11.97 a team-match) put out 1.26 corners. **Real** (StatsBomb PL 15/16, the Block events linked to an open-play pass):
+the blocker **2.2 / 3.0 / 4.4 m** from the passer (quartiles; 69% under 4 m), the ball at him **0.1-0.3 s** after the kick —
+the presser charging it down, not a race lost downfield. New `benchmarks_statsbomb_360_chargedown.py` (StatsBomb 360
+freeze frames, 261,118 open-play passes in 9 men's competitions): CHARGED DOWN = a linked Block, or the opponents' next
+touch within 8 m of the passer and 0.6 s of the kick, by the passer's nearest visible opponent outfielder **0-1 / 1-2 /
+2-3 / 3-5 / 5+ m: 10.2 / 6.6 / 3.7 / 1.9 / 0.4%** (passes there 6.4 / 17.1 / 18.7 / 25.9 / 31.9%); by height Ground 2.1,
+Low 13.5, High 2.9%. PL 15/16 on the same rule: 17.77 a team-match, 4.1% of passes.
+
+**Ours** (new harness line PASSES CHARGED DOWN: their touch in a kick's first 0.4 s / 8 m, by the same bands; World
+`chargeDiag`): **52.8 a team-match, 9.8%; 51.6 / 20.1 / 10.8 / 6.0 / 1.3% by band** — 3-5× real everywhere, 28 of them
+off him loose (the G4.82 bobble, forward ±60°), none a body block. `GAME_CHARGE_TRACE` (each one: why, pace, aim
+error, where the toucher stood along / across the line): the kick left within ~1° of its aim, a third of the touchers
+stood under 1 m off the kicker and had it on the first tick. Two readings, both tried:
+1. *The passer chose it.* A pass the race read says they win is still played at risk_weight (0.25, fitted to
+   completion) whether the loss is 20 m downfield or the man in front at the kick. A `charge_weight` on passes their
+   man reaches within 0.3 s (0 / 0.1 / 0.3) took 53 → 22-43, but at weight 0 the bands stayed 1.5-2.7× real: the
+   rest are not choices. Dropped (no code).
+2. *He reached it before he could move.* World's capture gave every man his full reach (`physics.ball.reach_m` 0.9)
+   from the instant of the kick; a ball struck from 2-3 m is at him in 0.15-0.2 s, inside his reaction (G4.85: Body
+   reaction 0.2 s + 2 ticks perception = 0.27 s) — what he can touch then is what runs into his body.
+
+**Change** [G4.85's reaction; the G4.25 body]: `physics.ball.react_reach` (default on): their kick (not a block or a
+bobble), inside his reaction, an outfielder's reach is the body (`kPlayerRadius` 0.45 m), and a touch then **is a
+body block** (`World::deflectOffBody`, the §8.269-§8.270 block: the real turn by shot / pass, the oblique pace, the
+unread window) — it hit him, he didn't play it. The race read (`Reads::race`) uses the same rule for their men, so the
+passer reads what the World will do. The block code moved into `deflectOffBody` unchanged (goldens identical with the
+rule off). BLOCKED SHOTS gains a second row, BLOCKED PASSES / ANY OTHER BALL. **Fix** (G5.164): `block_tick_` started
+at 0, so the first 0.5 s of every World was an unread window — nobody could touch a kick-off; now no block, no window.
+Tests `test_block` +2: a pass at a man 2.5 m off comes off his body; without the rule he takes it.
+
+**After** (4 seeds × 8, `card_G5.165.txt`; was G5.164): charged down 26.5-29.0 a team-match, 5.0-5.6% (4.1);
+by band 14-20 / 9-12 / 7-8 / 4.6-5.1 / 1.2-1.7% (10.2 / 6.6 / 3.7 / 1.9 / 0.4) — halved, still ~2× from 1 m out.
+BODY BLOCKS 3.2 → **21.8-24.9** (real blocks ~15.5: shots 3.5 + passes 12.0): blocked shots 1.7-2.9 (3.5; blocked
+share 13.4 → 16.2%, 29.1), blocked passes 19.5-22 (12.0) — but **they hardly go out: corner 0.6-2.3% (10.7), out else
+2.8-5.9% (25.1)**, the next touch 6.5-7.1 m on (8.9). **Corners 1.55 → 2.06** (5.40; seed range 1.31-1.81 → 1.69-2.31),
+throw-ins 16.7 → 18.1 (23.1), offsides 1.30 → 1.80 (1.96), fouls 13.6 → 12.1 (12.5, now ok). **Pass completion 77.2
+→ 81.0% (77.5)** — the losses at the passer were holding it at the real number; they were mostly not real losses, and
+risk_weight 0.4 / 0.6 leaves it at 80% (the read's lost passes are not where completion is lost — open). Card 6 ok / 7
+off / 20 OFF (7 / 5 / 21). Goldens unchanged (their runs load no physics rows); tests 23/23, lint clean.
+Next: where a blocked pass goes out (real 36% out of play, ours 4-8%: where real blocks happen on the pitch — by the
+touchline? — and the ball off a shin rising) and what holds completion at 81%.

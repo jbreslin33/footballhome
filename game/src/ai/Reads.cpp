@@ -217,9 +217,11 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
                 if (!own_end || math::fx_abs(pos.y) > box_y) continue;
             }
             const Fixed64 rt = t > react[i] ? t - react[i] : Fixed64::zero();
+            // G5.165 (§8.271): theirs, before he has reacted to the kick, only reach it with his body (World's rule).
+            const bool body_only = world.reactReach() && !gk && !header && p.team != rb.ours && t < react[i];
             const Fixed64 run = runToward(world, i, Vec2{pos.x, pos.y}, rt) +
-                                (gk ? world.keeperReach() : header ? aerial_radius_ : world.controlRadius()) +
-                                (p.team != rb.ours ? rb.opp_margin : Fixed64::zero());
+                                (body_only ? core::kPlayerRadius : gk ? world.keeperReach() : header ? aerial_radius_ : world.controlRadius()) +
+                                (p.team != rb.ours && !body_only ? rb.opp_margin : Fixed64::zero());
             const Fixed64 gap_sq = header ? math::lengthSquared(Vec2{p.pos.x - pos.x, p.pos.y - pos.y}) : distSq(p.pos, pos);
             if (gap_sq <= run * run) {
                 f.tick[i] = static_cast<std::int16_t>(k);

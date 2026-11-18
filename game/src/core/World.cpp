@@ -652,6 +652,17 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             box_clear_team_ = 0xFF;  // kicked: the goal kick is in play
             flight_tick_ = clock_.tick();
             shot_flight_tick_ = act == Action::Shot ? flight_tick_ : ~std::uint64_t{0};   // G5.163: this flight is a shot
+            kick_tick_ = flight_tick_;   // G5.165: struck (not a block / bobble)
+            if (act != Action::Shot && !held) { pass_kick_tick_ = flight_tick_; pass_kick_pos_ = Vec2{ball_.pos.x, ball_.pos.y}; ++charge_.kicks;
+                pass_kick_act_ = static_cast<int>(act) & 3;
+                Fixed64 nd = Fixed64::fromInt(99);
+                for (SlotIndex j = 0; j < players_.size(); ++j)
+                    if (players_[j].team != players_[kicker].team && !keeper_[j]) {
+                        const Fixed64 dj = math::lengthSquared(Vec2{players_[j].pos.x - o.pos.x, players_[j].pos.y - o.pos.y});
+                        if (dj < nd) nd = dj;
+                    }
+                pass_kick_pressed_ = nd < Fixed64::one() ? 0 : nd < Fixed64::fromInt(4) ? 1 : nd < Fixed64::fromInt(9) ? 2 : nd < Fixed64::fromInt(25) ? 3 : 4;
+                ++charge_.by_kicks[pass_kick_act_][pass_kick_pressed_]; }   // G5.165
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
@@ -893,76 +904,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 continue;
             if (!hit || t < best_t) { hit = true; best_t = t; blocker = i; }
         }
-        if (hit) {
-            const Fixed64 n = detNoise(match_seed_, clock_.tick(), blocker, 15);
-            // G5.9 (§8.107): off a body the ball goes every way — real
-            // blocked passes turned under 45° 26%, back over 135° 31%
-            // (StatsBomb PL 2015/16) — so turn_deg either side of straight
-            // back; the 60 / 0.3 defaults are G4.25's.
-            Fixed64 ang = n * Fixed64::fromFraction(71, 4068) * block_turn_;
-            Vec2 v{-ball_.vel.x, -ball_.vel.y};
-            block_was_shot_ = flight_tick_ == shot_flight_tick_;   // G5.164: for the harness's BLOCKED SHOTS
-            if (block_turn_real_) {
-                // G5.163 (§8.269): the turn off the body from where real blocked balls went (StatsBomb PL 2015/16,
-                // benchmarks_statsbomb_deflect.py): 0-45 / 45-90 / 90-135 / 135-180° from carrying straight on —
-                // a shot 15 / 24 / 28 / 33%, a pass 23 / 20 / 22 / 35%. Straight back ±60° (G4.25) never let a
-                // blocked shot go on behind: corners from blocks 0 a team-match (real 1.34; 24% of blocked shots).
-                const int kind = flight_tick_ == shot_flight_tick_ ? 0 : 1;
-                const Fixed64 u = (n + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-                Fixed64 acc{}; int bin = 3;
-                for (int b = 0; b < 4; ++b) { acc += block_turn_p_[kind][b]; if (u < acc) { bin = b; break; } }
-                const Fixed64 w = (detNoise(match_seed_, clock_.tick(), blocker, 114) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-                const Fixed64 side = detNoise(match_seed_, clock_.tick(), blocker, 115).raw < 0 ? -Fixed64::one() : Fixed64::one();
-                ang = (Fixed64::fromInt(45 * bin) + Fixed64::fromInt(45) * w) * Fixed64::fromFraction(71, 4068) * side;
-                v = Vec2{ball_.vel.x, ball_.vel.y};   // turned from carrying straight on
-            }
-            const Fixed64 c = math::fx_cos(ang);
-            const Fixed64 sn = math::fx_sin(ang);
-            Fixed64 keep = block_keep_;
-            if (block_turn_real_ && block_unread_ticks_ > 0) {
-                // G5.164 (§8.270): an oblique hit — the ball's speed into the body comes back at block.keep (the
-                // restitution, G4.25's 0.3), its speed across the body is kept. The drawn turn fixes where it hit:
-                // with c2 = cos² of the angle off the body's normal, out = (keep·cos, sin) of the ball's speed, so
-                // cos(turn) = (1 − c2 − keep·c2) / √(keep²·c2 + 1 − c2) — solved for c2 (it falls as the turn
-                // closes), and the speed kept is √(keep²·c2 + 1 − c2): straight back 0.30, square 0.55, a glance
-                // ~0.9. One flat 0.3 sent every block out at 7 m/s: the next touch 10-15 m on, real 7 / 13 / 21.
-                Fixed64 lo{}, hi = Fixed64::one();
-                const Fixed64 e2 = keep * keep;
-                for (int it = 0; it < 24; ++it) {
-                    const Fixed64 c2 = (lo + hi) * Fixed64::fromFraction(1, 2);
-                    const Fixed64 sp = math::fx_sqrt(e2 * c2 + Fixed64::one() - c2);
-                    const Fixed64 ct = (Fixed64::one() - c2 - keep * c2) / sp;
-                    if (ct > c) lo = c2; else hi = c2;   // still too glancing: hit it squarer
-                }
-                const Fixed64 c2 = (lo + hi) * Fixed64::fromFraction(1, 2);
-                keep = math::fx_sqrt(e2 * c2 + Fixed64::one() - c2);
-            }
-            ++body_blocks_[players_[blocker].team];
-            ball_.spin = false;   // G5.156: only an aimed loft carries backspin
-            ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
-                             (v.x * sn + v.y * c) * keep, Fixed64::zero()};
-            // G5.164 (§8.270): off the body on the grass, as the bobble is — it kept the height it was struck at with
-            // no lift, dropped, and skidded (kBounceSkid) two or three times: a 7 m/s block out of a knee-high shot
-            // ran on at 1.8 m/s within 0.7 s.
-            if (block_unread_ticks_ > 0) ball_.pos.z = Fixed64::zero();
-            ball_.last_kicker = blocker;
-            ball_.pass_to = 0xFF;
-            flight_tick_ = clock_.tick();
-            block_tick_ = clock_.tick();   // G5.164: nobody has read where it went yet
-            ball_.kicker_lockout = kBobbleLockoutTicks;
-            ball_.kick_alive = kKickAliveTicks;
-            touchedBy(players_[blocker].team, true);
-            if (offside_team_ != 0xFF &&
-                players_[blocker].team != offside_team_) {
-                offside_mask_ = 0;
-                called_mask_ = 0;
-                offside_team_ = 0xFF;
-            }
-            return;
-        }
+        if (hit) { deflectOffBody(blocker); return; }
     }
 
-    bool found = false;
+    bool found = false, best_body = false;
     Fixed64 best_sq{};
     SlotIndex best = 0;
     // G5.3: a ball at head height goes to whoever wins it in the air.
@@ -990,7 +935,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // on (quartiles), 3.8% inside 0.5 s (StatsBomb PL 2015/16, benchmarks_statsbomb_deflect.py); ours were taken
         // by the man beside the blocker within a tick, and a loose touch (the bobble) off each body in the cluster
         // took 60% off its pace three times in 0.1 s. Keepers, set for the shot, still play it.
-        if (!gk && block_unread_ticks_ > 0 && clock_.tick() < block_tick_ + block_unread_ticks_) continue;
+        if (!gk && block_unread_ticks_ > 0 && block_tick_ != kNoTick && clock_.tick() < block_tick_ + block_unread_ticks_) continue;
         // G5.5 (§8.103): the man a pass is for, set for it, reaches out a leg.
         // G5.11 (§8.108): their ball in our box, a defender sticks a leg out.
         const bool box_def = box_reach_m_.raw > 0 && !gk && ball_.last_kicker < players_.size() &&
@@ -1002,9 +947,18 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // other ball (a back pass, a loose one, a cross) at his full reach.
         const bool their_shot = gk && planar_speed_sq > Fixed64::fromInt(144) && ball_.last_kicker < players_.size() &&
                                 players_[ball_.last_kicker].team != players_[i].team;
-        const Fixed64 reach = gk ? (their_shot && keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_)
+        bool body_i = false;   // G5.165: he can only be hit by it
+        Fixed64 reach = gk ? (their_shot && keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_)
                               : box_def ? box_reach_m_
                               : (i == ball_.pass_to && stretch_m_.raw > 0 && players_[i].team == last_touch_team_ ? stretch_m_ : controlRadius());
+        // G5.165 (§8.271): their kick, inside his reaction (G4.85: his reaction + perception delay) — he hasn't moved a
+        // leg for it yet: only a ball into his body touches him. With his full reach from the instant of the kick, a
+        // man 1-2 m off the passer had 20% of our passes (real 6.6%), 0-1 m 52% (10.2; StatsBomb 360).
+        if (react_reach_ && !gk && flight_tick_ == kick_tick_ && ball_.last_kicker < players_.size() &&
+            players_[ball_.last_kicker].team != players_[i].team) {
+            const Fixed64 react = body(i).reaction() + Fixed64::fromInt(skillOf(i).perception_delay_ticks) * kTickDt;
+            if (Fixed64::fromInt(static_cast<std::int64_t>(clock_.tick() - kick_tick_)) * kTickDt < react) { reach = kPlayerRadius; body_i = true; }
+        }
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
         // Hard cap: nobody touches a ball above the engine capture cap
@@ -1037,6 +991,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             found = true;
             best_sq = dsq;
             best = i;
+            best_body = body_i;
         }
     }
     if (!found) return;
@@ -1070,6 +1025,19 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     }
 
     if (header >= 0) { headIt(best, duel); return; }
+
+    // G5.165 (§8.271): an opponent's touch in a pass's first 0.4 s and 8 m — where real passes are blocked (StatsBomb
+    // PL 2015/16: the blocker 2.2 / 3.0 / 4.4 m from the passer, 0.1-0.3 s on). Measured, for the harness.
+    const bool charge = ball_.last_kicker < players_.size() && players_[ball_.last_kicker].team != players_[best].team &&
+                        flight_tick_ == pass_kick_tick_ && clock_.tick() <= pass_kick_tick_ + 12 &&
+                        math::lengthSquared(Vec2{ball_.pos.x - pass_kick_pos_.x, ball_.pos.y - pass_kick_pos_.y}) < Fixed64::fromInt(64);
+    // G5.165 (§8.271): their kick reached him before he reacted — it hit him; he didn't play it (a blocked pass:
+    // StatsBomb PL 2015/16 11.97 a team-match, the blocker 2.2 / 3.0 / 4.4 m off the passer, 0.1-0.3 s on).
+    if (best_body) {
+        if (charge) { ++charge_.loose; ++charge_.by_loose[pass_kick_act_][pass_kick_pressed_]; }
+        deflectOffBody(best);
+        return;
+    }
 
     // Touch quality: a ball faster than the toucher's control level
     // bobbles — deflects onward at reduced speed in a noise-rotated
@@ -1132,6 +1100,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 if (home ? defl.x.raw < 0 : defl.x.raw > 0)
                     defl.x = -defl.x;
             }
+            if (charge) { ++charge_.loose; ++charge_.by_loose[pass_kick_act_][pass_kick_pressed_]; }
             ball_.spin = false;   // G5.156: only an aimed loft carries backspin
             ball_.vel = Vec3{defl.x, defl.y, Fixed64::zero()};
             ball_.pos.z = Fixed64::zero();
@@ -1146,6 +1115,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
     }
 
+    if (charge) { ++charge_.kept; ++charge_.by_kept[pass_kick_act_][pass_kick_pressed_]; }
     // Possession swap = the transition moment (KNVB's 3rd/4th moment).
     if (last_touch_team_ != players_[best].team) {
         losing_team_ = last_touch_team_;
@@ -1307,6 +1277,75 @@ void World::tickBallOut(std::vector<MatchEvent>& events) {
     out_due_tick_ = clock_.tick() + officials_.retrieveTicks();
 }
 
+// Body block (G4.25; G5.163-G5.165): the ball comes off a man who did not play it — a shot above the capture cap
+// (the sweep in tickFreeBall), or their kick that reaches him inside his reaction (§8.271).
+void World::deflectOffBody(SlotIndex blocker) {
+    const Fixed64 n = detNoise(match_seed_, clock_.tick(), blocker, 15);
+    // G5.9 (§8.107): off a body the ball goes every way — real
+    // blocked passes turned under 45° 26%, back over 135° 31%
+    // (StatsBomb PL 2015/16) — so turn_deg either side of straight
+    // back; the 60 / 0.3 defaults are G4.25's.
+    Fixed64 ang = n * Fixed64::fromFraction(71, 4068) * block_turn_;
+    Vec2 v{-ball_.vel.x, -ball_.vel.y};
+    block_was_shot_ = flight_tick_ == shot_flight_tick_;   // G5.164: for the harness's BLOCKED SHOTS
+    if (block_turn_real_) {
+        // G5.163 (§8.269): the turn off the body from where real blocked balls went (StatsBomb PL 2015/16,
+        // benchmarks_statsbomb_deflect.py): 0-45 / 45-90 / 90-135 / 135-180° from carrying straight on —
+        // a shot 15 / 24 / 28 / 33%, a pass 23 / 20 / 22 / 35%. Straight back ±60° (G4.25) never let a
+        // blocked shot go on behind: corners from blocks 0 a team-match (real 1.34; 24% of blocked shots).
+        const int kind = flight_tick_ == shot_flight_tick_ ? 0 : 1;
+        const Fixed64 u = (n + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        Fixed64 acc{}; int bin = 3;
+        for (int b = 0; b < 4; ++b) { acc += block_turn_p_[kind][b]; if (u < acc) { bin = b; break; } }
+        const Fixed64 w = (detNoise(match_seed_, clock_.tick(), blocker, 114) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Fixed64 side = detNoise(match_seed_, clock_.tick(), blocker, 115).raw < 0 ? -Fixed64::one() : Fixed64::one();
+        ang = (Fixed64::fromInt(45 * bin) + Fixed64::fromInt(45) * w) * Fixed64::fromFraction(71, 4068) * side;
+        v = Vec2{ball_.vel.x, ball_.vel.y};   // turned from carrying straight on
+    }
+    const Fixed64 c = math::fx_cos(ang);
+    const Fixed64 sn = math::fx_sin(ang);
+    Fixed64 keep = block_keep_;
+    if (block_turn_real_ && block_unread_ticks_ > 0) {
+        // G5.164 (§8.270): an oblique hit — the ball's speed into the body comes back at block.keep (the
+        // restitution, G4.25's 0.3), its speed across the body is kept. The drawn turn fixes where it hit:
+        // with c2 = cos² of the angle off the body's normal, out = (keep·cos, sin) of the ball's speed, so
+        // cos(turn) = (1 − c2 − keep·c2) / √(keep²·c2 + 1 − c2) — solved for c2 (it falls as the turn
+        // closes), and the speed kept is √(keep²·c2 + 1 − c2): straight back 0.30, square 0.55, a glance
+        // ~0.9. One flat 0.3 sent every block out at 7 m/s: the next touch 10-15 m on, real 7 / 13 / 21.
+        Fixed64 lo{}, hi = Fixed64::one();
+        const Fixed64 e2 = keep * keep;
+        for (int it = 0; it < 24; ++it) {
+            const Fixed64 c2 = (lo + hi) * Fixed64::fromFraction(1, 2);
+            const Fixed64 sp = math::fx_sqrt(e2 * c2 + Fixed64::one() - c2);
+            const Fixed64 ct = (Fixed64::one() - c2 - keep * c2) / sp;
+            if (ct > c) lo = c2; else hi = c2;   // still too glancing: hit it squarer
+        }
+        const Fixed64 c2 = (lo + hi) * Fixed64::fromFraction(1, 2);
+        keep = math::fx_sqrt(e2 * c2 + Fixed64::one() - c2);
+    }
+    ++body_blocks_[players_[blocker].team];
+    ball_.spin = false;   // G5.156: only an aimed loft carries backspin
+    ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
+                     (v.x * sn + v.y * c) * keep, Fixed64::zero()};
+    // G5.164 (§8.270): off the body on the grass, as the bobble is — it kept the height it was struck at with
+    // no lift, dropped, and skidded (kBounceSkid) two or three times: a 7 m/s block out of a knee-high shot
+    // ran on at 1.8 m/s within 0.7 s.
+    if (block_unread_ticks_ > 0) ball_.pos.z = Fixed64::zero();
+    ball_.last_kicker = blocker;
+    ball_.pass_to = 0xFF;
+    flight_tick_ = clock_.tick();
+    block_tick_ = clock_.tick();   // G5.164: nobody has read where it went yet
+    ball_.kicker_lockout = kBobbleLockoutTicks;
+    ball_.kick_alive = kKickAliveTicks;
+    touchedBy(players_[blocker].team, true);
+    if (offside_team_ != 0xFF &&
+        players_[blocker].team != offside_team_) {
+        offside_mask_ = 0;
+        called_mask_ = 0;
+        offside_team_ = 0xFF;
+    }
+}
+
 void World::configureAerial(const ModelParams& p) {
     aerial_radius_ = p.fixed("physics.aerial.radius_m", 0);
     aerial_min_z_ = p.fixed("physics.aerial.min_z_m", 1000);
@@ -1322,6 +1361,7 @@ void World::configureAerial(const ModelParams& p) {
     clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
+    react_reach_ = p.fixed("physics.ball.react_reach", 1000).raw > 0;   // G5.165 (§8.271)
     block_unread_ticks_ = static_cast<std::uint64_t>(std::max<std::int64_t>(0, p.milli("physics.block.unread_s", 500) * 30 / 1000));   // G5.164 (§8.270)
     {   // G5.163 (§8.269): StatsBomb PL 2015/16 blocked shots / passes, the turn's bins (permille)
         block_turn_real_ = p.fixed("physics.block.turn_real", 1000).raw > 0;
