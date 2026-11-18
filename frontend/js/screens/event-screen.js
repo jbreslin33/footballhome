@@ -1708,7 +1708,8 @@ class EventScreen extends Screen {
     };
     // One line per person, the buttons say the answer (owner 11/18 "too much
     // space for the your availability … too busy. needs to be more concise"):
-    //   Going?  [✓ Going] [✗ Not going]      (a parent: a line per kid)
+    //   [GOING] [NOT GOING]   the filled one is the answer — no other words
+    //   (owner 11/18 "just leave the boxes GOING NOT GOING"); a kid's line has the kid's name
     // No heading, no "You · ✅ Going", no "Plans changed?" note — the line
     // under it only speaks when the event is over / not open, or on an error.
     void word;
@@ -1716,9 +1717,9 @@ class EventScreen extends Screen {
       <div style="margin:0 0 10px; display:flex; flex-direction:column; gap:6px;">
         ${rows.map(row => `
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span style="font-weight:800; min-width:4.5em;">${this.escapeHtml(row.personId ? row.name : cp('answer_q', 'Going?'))}</span>
-            ${btn(row, 'yes', cp('answer_yes', '✓ Going'), '#16a34a')}
-            ${btn(row, 'no', cp('answer_no', '✗ Not going'), '#dc2626')}
+            ${row.personId ? `<span style="font-weight:800; min-width:4.5em;">${this.escapeHtml(row.name)}</span>` : ''}
+            ${btn(row, 'yes', cp('answer_yes', 'GOING'), '#16a34a')}
+            ${btn(row, 'no', cp('answer_no', 'NOT GOING'), '#dc2626')}
           </div>`).join('')}
         <div data-gc-avail-msg style="font-size:0.72rem; opacity:0.75; ${closed ? '' : 'display:none;'}">${this.escapeHtml(closed)}</div>
       </div>`;
