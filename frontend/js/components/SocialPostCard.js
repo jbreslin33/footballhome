@@ -1977,11 +1977,12 @@ class SocialPostCard {
   rsvpOutHtml() {
     const rd = this.rosterData;
     if (!(rd && rd.live && Array.isArray(rd.rsvpOut) && rd.rsvpOut.length)) return '';
-    return rd.rsvpOut.map(r => `
+    // Names in their heading's colour too (owner 11/18 "can we make names that color too").
+    return rd.rsvpOut.map(r => { const c = /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#f5d442'; return `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
-        <span style="font-size:13px;letter-spacing:3px;color:${/^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#f5d442'};font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
-        <div style="font-size:14px;font-weight:600;line-height:1.3;color:rgba(255,255,255,0.85);margin-top:2px;">${r.names.map(n => this.escapeHtml(n)).join(', ')}</div>
-      </div>`).join('');
+        <span style="font-size:13px;letter-spacing:3px;color:${c};font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
+        <div style="font-size:14px;font-weight:600;line-height:1.3;color:${c};margin-top:2px;">${r.names.map(n => this.escapeHtml(n)).join(', ')}</div>
+      </div>`; }).join('');
   }
 
   // Head counts for Game Center's live card (owner 2026-10-06: "show me

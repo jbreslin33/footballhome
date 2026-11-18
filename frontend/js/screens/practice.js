@@ -128,7 +128,7 @@ class PracticeScreen extends EventScreen {
         <div style="font-size:15px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.95); margin-bottom:6px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''} · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}</div>
         ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
         ${pitch}
-        <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#f5d442; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
+        <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
         ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
         ${this._cardOutHtml()}
       </div>`;
@@ -141,12 +141,14 @@ class PracticeScreen extends EventScreen {
     const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
     const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
-    const row = (list, tier, fb) => list.length ? `
+    // Same colours as the game card, names too (owner 11/18): going green
+    // (the count line), no response orange, not going red.
+    const row = (list, tier, fb, c) => list.length ? `
         <div style="margin-top:8px;">
-          <div style="font-size:13px; letter-spacing:3px; color:#f5d442; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
-          <div style="font-size:14px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.85); margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
+          <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
+          <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
         </div>` : '';
-    return row(out.noResponse, 'sec_noresp', '– No response') + row(out.notGoing, 'sec_notgoing', '✗ Not going');
+    return row(out.noResponse, 'sec_noresp', '– No response', '#fb923c') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
   }
 
   // ── 📞 Attendance calls (mig 1277; owner 2026-11-11: "call all coaches
