@@ -1673,6 +1673,34 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         OR fh_event_invited(fe.id, $1::int)
                     )
                 END AS my_rsvp_eligible,
+                -- 💸 The fine for leaving THIS event unanswered (owner 11/18
+                -- "make it really clear they have not set availability …
+                -- show fine as label"): fh_person_fines_all's rules (mig
+                -- 460/1403) for this one person — their own roster row on
+                -- the event's team, not call-up-only, not a paper spot,
+                -- not exempt / injured / dues-blocked; the rate in force
+                -- that day.  NULL = no fine (youth, women, coaches, parents).
+                CASE
+                    WHEN $1::int = 0 OR fe.id IS NULL
+                      OR fe.kind NOT IN ('practice', 'match', 'intrasquad') THEN NULL
+                    ELSE (
+                        SELECT MAX(fh_fine_amount_usd(t.club_id, t.club_section_id,
+                                   CASE WHEN fe.kind = 'practice' THEN 'missed_rsvp_practice' ELSE 'missed_rsvp_game' END,
+                                   (ge.starts_at AT TIME ZONE 'America/New_York')::date))
+                          FROM fh_event_teams fet
+                          JOIN team_persons tp ON tp.team_id = fet.team_id
+                                              AND tp.person_id = $1::int
+                                              AND tp.removed_at IS NULL
+                                              AND NOT tp.invite_only
+                          JOIN teams t ON t.id = fet.team_id AND t.is_active AND t.club_section_id IS NOT NULL
+                         WHERE fet.fh_event_id = fe.id
+                           AND ge.starts_at >= tp.joined_at
+                           AND NOT fh_team_callup_only(tp.team_id)
+                           AND NOT fh_fine_exempt($1::int)
+                           AND NOT fh_person_injured_at($1::int, ge.starts_at)
+                           AND fh_dues_eligible_at($1::int, t.club_id, ge.starts_at)
+                    )
+                END AS my_rsvp_fine_usd,
                 -- Schedule release window (migration 334) as it applies
                 -- to THIS event (mig 627): the week's end, stretched to
                 -- cover an early-opened weekday match ("show the weekday
@@ -1858,6 +1886,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["my_arrive_label"]   = textOrNull(row, "my_arrive_label");
             ev["my_leave_label"]    = textOrNull(row, "my_leave_label");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            if (row["my_rsvp_fine_usd"].is_null()) ev["my_rsvp_fine_usd"] = nullptr;
+            else ev["my_rsvp_fine_usd"] = row["my_rsvp_fine_usd"].as<double>();
             // The viewer's + their kids' event jobs (mig 625) — [] when
             // none assigned (or anonymous: person 0 matches nobody).
             try {

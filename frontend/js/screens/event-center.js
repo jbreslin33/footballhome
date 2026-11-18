@@ -672,6 +672,17 @@ class EventCenterScreen extends Screen {
         ${tagIssues(ev)}
       </div>`;
 
+    // ⚠️ Still to answer (owner 11/18 "really clear they have not set
+    // availability … show fine as label"): open events you or your kid may
+    // answer and nobody has.  my_rsvp_fine_usd = the fine if it stays so.
+    const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
+    const meOpen = (ev) => ev.fh_event_id != null && !this._isPast(ev) && ev.my_rsvp_eligible === true
+      && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no';
+    const kidsOpen = (ev) => ev.fh_event_id == null || this._isPast(ev) ? []
+      : (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])
+          .filter(c => c && c.person_id && !c.suspension && !['yes', 'no'].includes(this._childResponse(ev, Number(c.person_id))));
+    const unanswered = (ev) => meOpen(ev) || kidsOpen(ev).length > 0;
+
     const tile = (ev) => {
       if (ev.fh_event_id == null) return rawTile(ev);
       // Players only — coaches never in a player total (owner 2026-10-06).
@@ -731,7 +742,10 @@ class EventCenterScreen extends Screen {
           const r = ev.my_rsvp;
           out += answerRow(0, r, r === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']
             : r === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
-            : ['me_status_none', "You haven't answered yet", '#fbbf24'], {});
+            : ev.my_rsvp_fine_usd > 0
+              ? ['me_status_none_fine', `⚠️ Set your availability — ${money(ev.my_rsvp_fine_usd)} fine if you don't`, '#f59e0b']
+              : ['me_status_none', '⚠️ Set your availability — the coach is counting on it', '#f59e0b'],
+            { amount: ev.my_rsvp_fine_usd > 0 ? money(ev.my_rsvp_fine_usd) : '' });
         }
         for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) {
           if (!c || !c.person_id || c.suspension) continue;   // ⛔ mig 1077: no answer to set
@@ -740,11 +754,13 @@ class EventCenterScreen extends Screen {
           const r = this._childResponse(ev, id);
           out += answerRow(id, r, r === 'yes' ? ['kid_status_yes', `✓ ${name} is going`, '#22c55e']
             : r === 'no' ? ['kid_status_no', `✗ ${name} is not going`, '#ef4444']
-            : ['kid_status_none', `${name} hasn't answered yet`, '#fbbf24'], { name });
+            : ['kid_status_none', `⚠️ Set ${name}'s availability — the coach is counting on it`, '#f59e0b'], { name });
         }
         return out;
       };
-      return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}">
+      const open = unanswered(ev);
+      return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}"
+                   ${open ? 'style="border:2px solid #f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,0.18);"' : ''}>
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
         <span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
         <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
@@ -798,7 +814,7 @@ class EventCenterScreen extends Screen {
         const a = new Date(ev.starts_at);
         // "4:30p" / "7p" — short enough for a phone cell.
         const hm = isNaN(a) ? '' : a.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(':00', '').replace(' ', '').toLowerCase().replace(/m$/, '');
-        const me = ev.my_rsvp === 'yes' ? '✓ ' : ev.my_rsvp === 'no' ? '✗ ' : '';
+        const me = ev.my_rsvp === 'yes' ? '✓ ' : ev.my_rsvp === 'no' ? '✗ ' : unanswered(ev) ? '⚠️ ' : '';
         const door = ev.fh_event_id == null ? `data-ec-gcal="${this.escapeHtml(ev.gcal_event_id)}"` : `data-ec-open="${ev.fh_event_id}"`;
         const label = ev.fh_event_id == null ? (ev.summary || '') : line(ev);
         const warn = (admin && Array.isArray(ev.tag_issues) && ev.tag_issues.length) || ev.fh_event_id == null ? '⚠ ' : '';
@@ -838,7 +854,33 @@ class EventCenterScreen extends Screen {
     const nowWord = this.view === 'month' ? cp('this_month', {}, 'This month') : cp('this_week', {}, 'This week');
     const viewChip = (v, fb) => chip('data-ec-view', v, cp(`view_${v}`, {}, fb), this.view === v);
 
+    // ⚠️ The strip over the calendar: what in this range still needs an
+    // answer, and the fines riding on it.
+    let needStrip = '';
+    if (!loading) {
+      const mineOpen = shown.filter(meOpen);
+      const kidCounts = new Map();
+      for (const ev of shown) for (const c of kidsOpen(ev)) {
+        const n = String(c.name || '').split(' ')[0] || 'Your player';
+        kidCounts.set(n, (kidCounts.get(n) || 0) + 1);
+      }
+      const fines = mineOpen.reduce((t, ev) => t + (ev.my_rsvp_fine_usd > 0 ? Number(ev.my_rsvp_fine_usd) : 0), 0);
+      const lines = [];
+      if (mineOpen.length) lines.push(mineOpen.length === 1
+        ? cp('need_one', {}, "⚠️ You haven't set your availability for 1 event")
+        : cp('need_many', { n: mineOpen.length }, `⚠️ You haven't set your availability for ${mineOpen.length} events`));
+      for (const [name, n] of kidCounts) lines.push(cp('need_kid', { name, n }, `⚠️ ${name}: ${n} to answer`));
+      if (lines.length) {
+        needStrip = `<div style="border:2px solid #f59e0b; background:rgba(245,158,11,0.12); border-radius:10px; padding:10px 12px; margin-bottom:var(--space-2); display:flex; flex-direction:column; gap:4px; text-align:left;">
+          ${lines.map(l => `<div style="font-weight:800; font-size:1rem; color:#f59e0b;">${this.escapeHtml(l)}</div>`).join('')}
+          ${fines > 0 ? `<div style="font-weight:800; color:#f87171;">${this.escapeHtml(cp('need_fines', { total: money(fines) }, `💸 ${money(fines)} in fines if they stay unanswered — answer before each one starts.`))}</div>` : ''}
+          <div style="font-size:0.85rem; opacity:0.9;">${this.escapeHtml(cp('need_how', {}, 'Tap ✓ going or ✗ not going on each one below. Your coach builds the squad from it.'))}</div>
+        </div>`;
+      }
+    }
+
     return `
+      ${needStrip}
       ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
         ${chip('data-ec-person', 'all', cp('person_all', {}, 'Everyone'), this.person === 'all')}
         ${hasMine ? chip('data-ec-person', 'me', cp('person_me', {}, 'Me'), this.person === 'me') : ''}
