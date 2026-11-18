@@ -95,6 +95,7 @@ class NoticeStrip {
     try {
       const body = await this.ctx.fetchJson('/api/my/notices');
       this.notices = Array.isArray(body && body.notices) ? body.notices : [];
+      this.statusItems = Array.isArray(body && body.status_items) ? body.status_items : [];   // 🚦 mig 1468
     } catch (err) {
       console.error('[notices] load failed:', err);
       this.notices = [];

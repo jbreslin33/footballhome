@@ -145,6 +145,11 @@ class EventCenterScreen extends Screen {
       </div>
       <div id="ec-stack">
         <div id="ec-mode" style="display:none; gap:var(--space-1); flex-wrap:wrap;"></div>
+        <!-- 🚦 Status bar (mig 1468): one line, coloured by the worst item; the details fold under it -->
+        <div id="ec-status">
+        <button type="button" id="ec-status-head" hidden></button>
+        <div id="ec-status-body" hidden style="margin-top:6px; display:flex; flex-direction:column; gap:6px;">
+        <div id="ec-need"></div>
         <div id="ec-notices" style="display:none;"></div>
         <div id="ec-top">
           <div id="ec-fold-chat" hidden>
@@ -159,6 +164,8 @@ class EventCenterScreen extends Screen {
             </button>
             <div class="ec-fold-body" hidden><div id="ec-fines" hidden></div></div>
           </div>
+        </div>
+        </div>
         </div>
         <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
         <div id="ec-ops" style="display:none; flex-direction:column; gap:6px;">
@@ -245,7 +252,7 @@ class EventCenterScreen extends Screen {
       const chip = (m, label) => `<button type="button" class="ec-chip ${this.mode === m ? 'on' : ''}" data-ec-mode="${m}">${this.escapeHtml(label)}</button>`;
       bar.innerHTML = admin ? chip('event', cp('mode_event', '📅 By event')) + chip('people', cp('mode_people', '👥 By person')) : '';
     }
-    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-top', false], ['#ec-people', true]]) {
+    for (const [sel, showInPeople] of [['#ec-body', false], ['#ec-ops', false], ['#ec-weekend', false], ['#ec-mine', false], ['#ec-status', false], ['#ec-people', true]]) {
       const el = this.find(sel);
       if (!el) continue;
       if (sel === '#ec-ops' && !this._isAdmin()) continue;   // _mountOps decides for non-admins
@@ -300,8 +307,21 @@ class EventCenterScreen extends Screen {
     const ctx = { fetchJson: (u, o) => this._memberFetch(u, o), escapeHtml: (t) => this.escapeHtml(t),
                   auth: this.auth, navigation: this.navigation };
     const cp = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', tier)) ? MessageCopy.block('event_center', tier) : fb;
+    this.status = window.StatusBar ? new StatusBar(this.find('#ec-status-head'), this.find('#ec-status-body'), ctx) : null;
     this.notices = new NoticeStrip(this.find('#ec-notices'), ctx);
-    this.notices.load().then(() => { if (this._autoScrollWaiting) this._placeScroll(); });
+    this.notices.load().then(() => {
+      if (this._autoScrollWaiting) this._placeScroll();
+      // 🚦 Rules + dues: ⛔ blocked = major, any other dues notice = minor.
+      if (!this.status) return;
+      this.status.setRules(this.notices.statusItems || []);
+      const dues = (this.notices.notices || []).filter(n => n && n.kind === 'dues');
+      const money = (n) => `$${(Number(n) || 0).toFixed(2).replace(/\.00$/, '')}`;
+      const sum = (list) => money(list.reduce((t, n) => t + (Number(n.balance) || 0), 0));
+      const blocked = dues.filter(n => n.tier === 'banner'), owed = dues.filter(n => n.tier !== 'banner');
+      this.status.set('dues_blocked', blocked.length ? { amount: sum(blocked) } : null);
+      this.status.set('dues_owed', owed.length ? { amount: sum(owed) } : null);
+      this._statusFromEvents();
+    });
     const title = this.find('#ec-mine-title');
     if (title) title.textContent = cp('mine_title', '👤 Mine');
     // Read-only club pages (were #my's header links).  Words: event_center
@@ -334,11 +354,13 @@ class EventCenterScreen extends Screen {
       const meta = (n ? `<span class="ec-fold-badge">${this.escapeHtml(cp2('top_chat_unread', { n }, `${n} new`))}</span>` : '')
         + (s && s.when ? `<span class="ec-fold-when">${this.escapeHtml(s.when)}</span>` : '');
       fold('chat', cp('top_chat', '💬 Chat'), s ? s.text : '', false, meta);
+      if (this.status) this.status.set('chat_unread', s && s.unread ? { n: s.capped ? `${s.unread}+` : s.unread } : null);
     } };
     if (this.chat) this.chat.stop();
     this.chat = new SectionChat(this.find('#ec-chat'), chatCtx);
     this.chat.start().catch((err) => console.error('[event-center] chat failed:', err));
     const finesCtx = { ...ctx, onSummary: (s) => {
+      if (this.status) this.status.set('fines_owed', s && s.total > 0 ? { amount: s.amount } : null);
       if (!s) { const b = this.find('#ec-fold-fines'); if (b) b.hidden = true; return; }
       fold('fines', cp('top_fines', '⚖️ Fines'),
         s.total > 0 ? (s.count === 1 ? cp2('top_fines_one', { amount: s.amount }, `${s.amount} · 1 fine`)
@@ -615,7 +637,37 @@ class EventCenterScreen extends Screen {
       || 'The week — pick a type, then tap an event to open it';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     body.innerHTML = this._pickerHtml();
+    const need = this.find('#ec-need');
+    if (need) need.innerHTML = this._needHtml || '';
+    this._statusFromEvents();
     this._placeScroll();
+  }
+
+  // 🚦 Unanswered + suspended, from the loaded week — only while it holds
+  // today (another week leaves the bar as it was).  Within the window
+  // (status_items rsvp_soon, 48 h) = major; later this week = minor.
+  _statusFromEvents() {
+    if (!this.status || !Array.isArray(this.events)) return;
+    const now = Date.now();
+    const { start, days } = this._range();
+    const from = new Date(start).getTime(), to = from + days * 86400000;
+    if (!(now >= from && now < to)) return;
+    const soonMs = this.status.windowHours('rsvp_soon') * 3600000;
+    let soon = 0, later = 0, suspended = 0;
+    for (const ev of this.events) {
+      if (!ev || ev.fh_event_id == null || this._isPast(ev)) continue;
+      const at = new Date(ev.starts_at).getTime();
+      if (!(at >= now)) continue;
+      if (ev.my_suspension) suspended++;
+      let open = (ev.my_rsvp_eligible === true && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no') ? 1 : 0;
+      for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
+        if (c && c.person_id && !c.suspension && !['yes', 'no'].includes(this._childResponse(ev, Number(c.person_id)))) open++;
+      if (!open) continue;
+      if (at - now <= soonMs) soon += open; else later += open;
+    }
+    this.status.set('suspended', suspended ? { n: suspended } : null);
+    this.status.set('rsvp_soon', soon ? { n: soon } : null);
+    this.status.set('rsvp_open', later ? { n: later } : null);
   }
 
   // Phone, first paint of THIS week: the NOW line near the top with the
@@ -949,8 +1001,8 @@ class EventCenterScreen extends Screen {
       }
     }
 
+    this._needHtml = needStrip;   // 🚦 shown in the status bar's details (mig 1468)
     return `
-      ${needStrip}
       ${personChips ? `<div style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-2);">
         ${chip('data-ec-person', 'all', cp('person_all', {}, 'Everyone'), this.person === 'all')}
         ${hasMine ? chip('data-ec-person', 'me', cp('person_me', {}, 'Me'), this.person === 'me') : ''}

@@ -485,7 +485,13 @@ Response MyController::handleGetNotices(const Request& request) {
         return *err;
     try {
         auto* db = Database::getInstance();
-        return jsonOk({{"notices", NoticeBoard::toJson(NoticeBoard::collect(db, personId))}});
+        // 🚦 The Calendar status bar's rules (mig 1468): major/minor per item.
+        json items = json::array();
+        for (const auto& r : db->query(
+                 "SELECT code, severity, window_hours FROM status_items WHERE is_active ORDER BY sort_order, code"))
+            items.push_back({{"code", r["code"].c_str()}, {"severity", r["severity"].c_str()},
+                             {"window_hours", r["window_hours"].is_null() ? json(nullptr) : json(r["window_hours"].as<int>())}});
+        return jsonOk({{"notices", NoticeBoard::toJson(NoticeBoard::collect(db, personId))}, {"status_items", items}});
     } catch (const std::exception& e) {
         std::cerr << "[MyController::notices] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load notices");
