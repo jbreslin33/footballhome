@@ -263,7 +263,8 @@ class GameCenterEligibility {
     // Dues: below.
     // Men's games add the practice week first (MensGameScreen._practiceNoteBits).
     bits.push(...this._practiceNoteBits(playerId));
-    const d = this._canPostSocial() && window.PersonStanding && PersonStanding.dues
+    // Money = Viewer.eventFinancial (AdminViewer only — owner 11/18 "the same except for financial data").
+    const d = window.Viewer && Viewer.account().eventFinancial && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
     if (d) {
       const owed = d.free_reason || !d.member ? 0 : Math.max(0, Math.round(Number(d.balance) || 0));

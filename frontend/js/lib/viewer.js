@@ -70,6 +70,9 @@ class PlayerViewer {
   // GOING / NOT GOING on the graphic itself (owner 11/18 "going or not going
   // button should be on graphic! i am seeing in vision how grahpic is the focus").
   get eventAvailOnGraphic() { return true; }
+  // Money on an event (Dues on the lineup boxes …) — AdminViewer only
+  // (owner 11/18 "the same except for financial data").
+  get eventFinancial()    { return false; }
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
   get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
@@ -146,9 +149,10 @@ class CoachViewer extends PlayerViewer {
   get eventKindPills()    { return true; }
   eventPillKeys()         { return null; }
   get eventLocationLine() { return false; }
-  get eventHeader()       { return true; }
-  get eventExtrasInMenu() { return false; }
-  get eventAvailOnGraphic() { return false; }
+  // eventHeader / eventExtrasInMenu / eventAvailOnGraphic: inherited — staff
+  // get the player's clean, graphic-first event page (owner 11/18 "admin and
+  // coaches … should be the same except for financial data"); their tools
+  // are extra panels, so they land in ☰ with the rest.
   get eventCardStanding() { return true; }
   // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
   // coaches edit the official lineup directly.  Flip here to bring drafts back.
@@ -172,6 +176,7 @@ class AdminViewer extends CoachViewer {
   get tier() { return 'admin'; }
   get rank() { return 2; }
   canAnswerFor() { return true; }
+  get eventFinancial()    { return true; }   // the one thing an admin adds on an event page
 }
 
 const Viewer = {
