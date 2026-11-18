@@ -37,7 +37,18 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts' };
+  // PlayerViewer's one-row links under the band (lib/viewer.js showsQuickLinks).
+  // [code, copy tier, fallback, route | null (a popup / sign out)]
+  const LINKS = [
+    // Owner 11/18: "rules is all we need now. rosters and players are not
+    // needed. schedules honestly is what cal is for. signout should be top
+    // right" — Fines / Alerts kept: their only home since 👤 Mine went.
+    ['rules',     'qlink_rules',     '📋 Rules',     'player-team-rules'],
+    ['fines',     'qlink_fines',     '⚖️ Fines',     null],
+    ['alerts',    'qlink_alerts',    '🔔 Alerts',    null],
+    ['signout',   'qlink_signout',   '↪ Sign out',   null],
+  ];
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -51,6 +62,14 @@
     #status-banner .sb-band { display:flex; align-items:center; justify-content:center; gap:8px 12px; flex-wrap:wrap; width:100%; box-sizing:border-box;
                               padding:8px 12px; color:#fff; font-weight:600; box-shadow:0 2px 8px rgba(0,0,0,0.25); text-align:center; }
     #status-banner .sb-ok { font-weight:800; }
+    #status-banner #sb-links[hidden] { display:none !important; }
+    #status-banner #sb-links { display:flex; gap:4px; justify-content:center; overflow-x:auto; white-space:nowrap; scrollbar-width:none;
+                               padding:4px 8px; background:var(--bg-secondary, #111827); border-bottom:1px solid var(--border-color, #374151); }
+    #status-banner #sb-links::-webkit-scrollbar { display:none; }
+    #status-banner .sb-link { flex:none; min-height:0; padding:3px 9px; border-radius:999px; border:1px solid var(--border-color, #374151);
+                              background:transparent; color:var(--fg, #e5e7eb); font:inherit; font-size:0.74rem; font-weight:700; cursor:pointer; }
+    #status-banner #sb-links { justify-content:flex-start; }
+    #status-banner .sb-link-out { margin-left:auto; border-color:transparent; opacity:0.85; }   /* Sign out, top right */
     #status-banner .sb-boxes { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; flex:0 1 auto; }
     #status-banner .sb-box { flex:0 1 auto; min-width:240px; max-width:440px; display:flex; align-items:center; gap:10px; padding:8px 12px;
                              border-radius:10px; text-align:left; cursor:pointer; color:#fff; box-sizing:border-box; }
@@ -142,6 +161,7 @@
       }
       this.host.innerHTML = `
         <div id="sb-head" hidden></div>
+        <div id="sb-links" hidden></div>
         <div id="sb-modal" hidden>
           <div class="sb-sheet" role="dialog" aria-modal="true" aria-labelledby="sb-sheet-title">
             <div class="sb-sheet-head"><span class="sb-sheet-title" id="sb-sheet-title"></span><button type="button" class="sb-sheet-x" data-sb-close aria-label="Close">✕</button></div>
@@ -149,6 +169,8 @@
               <div data-sb-panel="rsvp" id="sb-need" hidden></div>
               <div data-sb-panel="chat" hidden><div id="sb-chat"></div></div>
               <div data-sb-panel="volunteer" hidden><div id="sb-vol"></div></div>
+              <div data-sb-panel="fines" hidden><div id="sb-fines" hidden></div></div>
+              <div data-sb-panel="alerts" hidden><div id="sb-alerts"></div></div>
             </div>
           </div>
         </div>`;
@@ -156,6 +178,8 @@
       this.host.addEventListener('click', (e) => {
         // ✕, or a tap on the dimmed backdrop outside the sheet, closes.
         if (e.target.closest('[data-sb-close]') || e.target.id === 'sb-modal') { this.openPanel(null); return; }
+        const link = e.target.closest('[data-sb-link]');
+        if (link) { this.onLink(link.getAttribute('data-sb-link')); return; }
         const ans = e.target.closest('[data-sb-ans]');
         if (ans) { this.answer(Number(ans.getAttribute('data-sb-ev')), Number(ans.getAttribute('data-sb-person')) || 0, ans.getAttribute('data-sb-ans')); return; }
         const open = e.target.closest('[data-sb-event]');
@@ -179,7 +203,7 @@
       this.bar.openCode = panel ? code : null;
       this.$('#sb-modal').hidden = !panel;
       this.host.querySelectorAll('[data-sb-panel]').forEach(p => { p.hidden = p.getAttribute('data-sb-panel') !== panel; });
-      const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'],
+      const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'], fines: ['sheet_fines', '⚖️ Your fines'], alerts: ['sheet_alerts', '🔔 Alerts'],
                        chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
@@ -188,16 +212,50 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.bar.openCode) this.openPanel(null); });
       }
       if (panel === 'chat' && this.chat) this.chat.markRead();
+      if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
+        this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
+        this.finesPanel.load();
+      }
+      if (panel === 'alerts' && !this.alertsMounted && window.PushOptIn) {
+        this.alertsMounted = true;
+        window.PushOptIn.mount(this.$('#sb-alerts'), this.auth, {}).catch(() => {});
+      }
       if (panel === 'volunteer' && !this.volCard && window.VolunteerShiftCard)
         this.volCard = VolunteerShiftCard.mount(this.$('#sb-vol'), (u, o) => this.fetchJson(u, o), { folded: false });
       this.bar.render();
+    }
+
+    // The one-row links (PlayerViewer): a page, a popup, or sign out.
+    renderLinks() {
+      const box = this.$('#sb-links');
+      if (!box) return;
+      const on = !!(window.Viewer && Viewer.account().showsQuickLinks);
+      box.hidden = !on;
+      if (!on) { box.innerHTML = ''; return; }
+      if (box.childElementCount) return;
+      box.innerHTML = LINKS.map(([code, tier, fb]) => `<button type="button" class="sb-link ${code === 'signout' ? 'sb-link-out' : ''}" data-sb-link="${code}">${esc(cp(tier, {}, fb))}</button>`).join('');
+    }
+
+    onLink(code) {
+      const row = LINKS.find(l => l[0] === code);
+      if (!row) return;
+      const nav = window.app && window.app.navigation;
+      if (row[3]) { this.openPanel(null); if (nav) nav.goTo(row[3]); return; }
+      if (code === 'signout') {
+        this.openPanel(null);
+        this.auth.logout();
+        if (window.MainMenu) MainMenu.reset();
+        if (nav) { nav.context = { user: null, role: null, team: null }; nav.updateContextHeader(); nav.goTo('login'); }
+        return;
+      }
+      this.openPanel(this.bar.openCode === code ? null : code);
     }
 
     // An item that cleared (all answered …) closes its panel.
     set(code, data) {
       this.bar.set(code, data);
       const open = this.bar.openCode;
-      if (!open || open === 'volunteer' || open === 'chat_unread') return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -281,6 +339,9 @@
       // The band draws once the notices AND the week are in — no green flash.
       Promise.all([noticesLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
+      // The links follow the account's viewer, known once the menu has loaded.
+      if (window.MainMenu) MainMenu.load(this.auth).then(() => this.renderLinks()).catch(() => this.renderLinks());
+      else this.renderLinks();
       window.addEventListener('fh:rsvp-changed', (e) => { if (!(e.detail && e.detail.source === 'banner')) this.loadEvents(true); });
       window.addEventListener('focus', () => this.loadEvents(false));
     }
@@ -368,6 +429,7 @@
       const sb = StatusBanner.instance;
       sb.show(on);
       if (!on) return;
+      if (sb.started) sb.renderLinks();
       if (!sb.started) sb.start().catch((err) => console.warn('status banner failed (non-fatal):', err));
       else sb.loadEvents(false);
     }

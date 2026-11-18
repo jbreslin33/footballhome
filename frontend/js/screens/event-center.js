@@ -293,7 +293,7 @@ class EventCenterScreen extends Screen {
     // link_* (mig 1366).
     const links = this.find('#ec-mine-links');
     if (links) links.innerHTML = [['player-team-rules', 'link_team_rules', 'Team Rules'], ['player-roster', 'link_rosters', 'Rosters'],
-      ['player-calendar', 'link_players', 'Players'], ['schedules', 'link_schedules', 'Schedules']]
+      ['player-calendar', 'link_players', 'Players'], ['teams-directory', 'link_schedules', 'Schedules']]
       .map(([to, tier, fb]) => `<button type="button" class="ec-link" data-ec-nav="${to}">${this.escapeHtml(cp(tier, fb))}</button>`).join('')
       // Players / parents have no menu bar (no 👤 Account): sign out lives here.
       + `<button type="button" class="ec-link" data-ec-signout>${this.escapeHtml(cp('link_sign_out', 'Sign out'))}</button>`;
@@ -566,6 +566,8 @@ class EventCenterScreen extends Screen {
     if (back) back.style.display = viewer.calendarBack ? '' : 'none';
     const header = this.find('.screen-header');
     if (header) header.style.display = viewer.calendarHeader ? '' : 'none';
+    const mine = this.find('#ec-mine');
+    if (mine && this.mode !== 'people') mine.style.display = viewer.calendarMine ? '' : 'none';   // PlayerViewer: its links are in the band's row
     const kinds = this.find('#ec-kinds');
     if (kinds) kinds.innerHTML = viewer.calendarKindPills ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
