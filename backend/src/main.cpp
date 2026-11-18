@@ -11,6 +11,7 @@
 #include "core/Router.h"
 #include "core/Request.h"
 #include "core/Response.h"
+#include "core/ViewAs.h"
 #include "database/Database.h"
 
 #include "database/SqlFileLogger.h"
@@ -887,7 +888,9 @@ private:
             Request request(raw_request);
             std::cout << "📨 " << request.toString() << std::endl;
             
-            Response response = router_.handle(request);
+            // 🎭 View-as: the request runs as the viewed person (reads only).
+            auto viewAsDenied = ViewAs::apply(request);
+            Response response = viewAsDenied ? *viewAsDenied : router_.handle(request);
 
             // Streaming responses (SSE) take ownership of the socket: the
             // handler writes the HTTP preamble itself, registers with the

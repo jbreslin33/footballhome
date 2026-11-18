@@ -28,6 +28,7 @@ set(SOURCES
     src/core/HttpClient.cpp
     src/core/JwtRS256.cpp
     src/core/Crypto.cpp
+    src/core/ViewAs.cpp
     src/core/Mail.cpp
     src/core/TeamLabel.cpp
     src/database/Database.cpp

@@ -41,15 +41,13 @@ class MainMenu {
     if (MainMenu._promise) return MainMenu._promise;
     MainMenu._promise = (async () => {
       const user = MainMenu._user(auth);
-      // 🎭 View-as (owner 11/18 "i am viewing as Anthony … why am i seeing
-      // financials … players and parents should not be seeing this"): the
-      // menu is the viewed person's — a player's — never the admin's own.
-      const viewAs = !!auth.viewAsPersonId;
-      const admin = !viewAs && MainMenu.ADMIN_LEVELS.includes(user.role);
+      // 🎭 View-as (owner 11/18): `user` is the viewed person's and
+      // /api/auth/me/roles answers as them (core/ViewAs) — their menu, exactly.
+      const admin = MainMenu.ADMIN_LEVELS.includes(user.role);
       let coach = admin;
       const [menuRes, rolesRes] = await Promise.all([
         auth.fetch('/api/menu'),
-        (admin || viewAs) ? Promise.resolve(null) : auth.fetch('/api/auth/me/roles').catch(() => null),
+        admin ? Promise.resolve(null) : auth.fetch('/api/auth/me/roles').catch(() => null),
       ]);
       if (!menuRes.ok) throw new Error(`HTTP ${menuRes.status}`);
       const body = await menuRes.json();
@@ -59,8 +57,7 @@ class MainMenu {
         // A coach, or anyone with an admins row, saw the coach tiles.
         coach = roles.some(r => r && (r.type === 'coach' || r.type === 'admin'));
       }
-      MainMenu._access = viewAs ? { admin: false, coach: false, marketing: false, viewAs: true }
-                                : { admin, coach, marketing: admin || user.role === 'marketing' };
+      MainMenu._access = { admin, coach, marketing: admin || user.role === 'marketing' };
       MainMenu._data = (body && body.data) || { groups: [], pages: [] };
       return MainMenu._data;
     })().catch((err) => { MainMenu._promise = null; throw err; });
@@ -180,13 +177,6 @@ class MainMenu {
     const groups = MainMenu.groups();
     if (!groups.length) return hide();
     const page = MainMenu._pageFor(screen);
-    // 🎭 View-as: a staff page (Money, Budget, People, Club…) is not what
-    // the viewed player sees — the admin's token would still load it, so
-    // bounce to the first page they do have.
-    if (!page && (MainMenu._access || {}).viewAs
-        && (MainMenu._data.pages || []).some(p => (p.screens || []).includes(screen))) {
-      return MainMenu.open(groups[0].pages[0].code);
-    }
     if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
     const account = screen === 'main-menu';
     const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;

@@ -120,6 +120,12 @@ std::string Request::getHeader(const std::string& name) const {
     return (it != headers_.end()) ? it->second : "";
 }
 
+void Request::setHeader(const std::string& name, const std::string& value) {
+    std::string lower_name = name;
+    std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);
+    headers_[lower_name] = value;
+}
+
 bool Request::hasHeader(const std::string& name) const {
     std::string lower_name = name;
     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(), ::tolower);

@@ -174,7 +174,7 @@ bool Controller::requireBearer(const Request& request) {
     //     column is missing (pre-migration) or the query throws we
     //     swallow it and continue — the request has already been
     //     authenticated by the JWT check above.
-    if (request.getQueryParam("asPersonId").empty()) {
+    if (request.getQueryParam("asPersonId").empty() && request.getHeader("X-FH-View-As-Active").empty()) {
         // Pull "userId":"NNN" from the JWT payload.  Payload is minted by
         // AuthController::generateJWT / OAuthController::generateJWT in a
         // byte-compatible shape — quoted string, not a bare integer.

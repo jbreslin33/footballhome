@@ -95,13 +95,12 @@ class MainMenuScreen extends Screen {
   }
 
   async _maybeLoadViewAsPicker() {
-    const user = this.navigation.context.user;
-    const isAdmin = user?.role && (
-      user.role === 'club' || user.role === 'sport_division' ||
-      user.role === 'team' || user.role === 'super' ||
-      user.role === 'system' || user.role === 'league'
-    );
-    if (!isAdmin) return;
+    // Club / super admins only (owner 11/18 "reg users should not have view
+    // as"); never offered from inside view-as — the banner's Exit is the way out.
+    const user = this.auth.realUser;
+    const isAdmin = !this.auth.viewAsPersonId && ['club', 'super'].includes(user && user.role);
+    const picker = this.element.querySelector('.view-as-picker');
+    if (!isAdmin) { if (picker) picker.style.display = 'none'; return; }
 
     const select = this.element.querySelector('.view-as-select');
     if (!select) return;
@@ -116,9 +115,20 @@ class MainMenuScreen extends Screen {
       const personId   = Number(opt.value);
       const personName = opt.getAttribute('data-name') || opt.textContent || '';
       if (!personId) return;
-      this.auth.setViewAs(personId, personName);
-      this.navigation.context.role = 'player';
-      this.navigation.goTo('my');
+      select.disabled = true;
+      this.auth.enterViewAs(personId, personName).then((why) => {
+        if (!why) return;   // reloading as them
+        select.disabled = false;
+        select.value = '';
+        let note = this.element.querySelector('.view-as-note');
+        if (!note) {
+          note = document.createElement('div');
+          note.className = 'view-as-note';
+          note.style.cssText = 'color:#f97316; font-weight:600; font-size:0.9rem;';
+          select.insertAdjacentElement('afterend', note);
+        }
+        note.textContent = why;
+      });
     });
 
     try {

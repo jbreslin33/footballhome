@@ -37,6 +37,7 @@ public:
     // Header operations
     std::string getHeader(const std::string& name) const;
     bool hasHeader(const std::string& name) const;
+    void setHeader(const std::string& name, const std::string& value);   // core/ViewAs swaps the bearer
     const std::unordered_map<std::string, std::string>& getHeaders() const { return headers_; }
     
     // Query parameter operations

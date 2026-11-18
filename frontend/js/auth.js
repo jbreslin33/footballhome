@@ -26,25 +26,65 @@ class Auth {
     const vaId = localStorage.getItem('viewAsPersonId');
     this.viewAsPersonId   = vaId ? Number(vaId) : null;
     this.viewAsPersonName = localStorage.getItem('viewAsPersonName') || '';
+
+    // 🎭 View-as = really that person (owner 11/18 "view as needs to be
+    // that person except … the way out"): every API call carries
+    // X-View-As and the server runs it as their own login, reads only
+    // (backend core/ViewAs).  Client-side, `user` IS theirs too, so every
+    // role check on every screen follows.  The admin's own user waits in
+    // `realUser` / localStorage 'user'; the banner's Exit is the way out.
+    this.realUser = this.user;
+    if (this.viewAsPersonId) {
+      try { this.user = JSON.parse(localStorage.getItem('viewAsUser') || 'null'); } catch (_) { this.user = null; }
+      if (!this.user) { this._wipeViewAs(); this.user = this.realUser; }
+    }
+  }
+
+  // Every client trace of view-as (owner 11/18 "kill off any remnant").
+  _wipeViewAs() {
+    this.viewAsPersonId = null;
+    this.viewAsPersonName = '';
+    for (const k of ['viewAsPersonId', 'viewAsPersonName', 'viewAsUser']) {
+      try { localStorage.removeItem(k); } catch (_) { /* fine */ }
+    }
+  }
+
+  // Enter view-as: only a club/super admin (the server checks again on
+  // every call).  Asks the server who that person is, as them; resolves
+  // to null on success (page reloads as them) or the reason it can't.
+  async enterViewAs(personId, personName) {
+    const id = Number(personId) || 0;
+    const role = this.realUser && this.realUser.role;
+    if (!id || !['club', 'super'].includes(role) || this.viewAsPersonId) return 'Not allowed.';
+    const res = await fetch(this.apiBase + '/api/auth/me', {
+      cache: 'no-store', headers: { 'Authorization': `Bearer ${this.token}`, 'X-View-As': String(id) },
+    }).catch(() => null);
+    const body = res ? await res.json().catch(() => ({})) : {};
+    const user = body && body.data && body.data.user;
+    if (!res || !res.ok || !user) return (body && body.message) || 'Could not view as this person.';
+    localStorage.setItem('viewAsPersonId', String(id));
+    localStorage.setItem('viewAsPersonName', String(personName || user.name || ''));
+    localStorage.setItem('viewAsUser', JSON.stringify(user));
+    location.hash = 'calendar';
+    location.reload();
+    return null;
+  }
+
+  // The way out: wipe every trace, back to the admin's own login, fresh page.
+  exitViewAs() {
+    this._wipeViewAs();
+    this.user = this.realUser;
+    location.hash = 'calendar';
+    location.reload();
   }
 
   // Enter view-as mode.  Persists to localStorage so a refresh keeps
   // you in the impersonated view (the banner is your reminder).
-  setViewAs(personId, personName) {
-    const id = Number(personId) || 0;
-    if (!id) { this.clearViewAs(); return; }
-    this.viewAsPersonId   = id;
-    this.viewAsPersonName = String(personName || '');
-    localStorage.setItem('viewAsPersonId',   String(id));
-    localStorage.setItem('viewAsPersonName', this.viewAsPersonName);
-    this._notifyViewAsChanged();
-  }
+  setViewAs(personId, personName) { return this.enterViewAs(personId, personName); }
 
   clearViewAs() {
-    this.viewAsPersonId   = null;
-    this.viewAsPersonName = '';
-    localStorage.removeItem('viewAsPersonId');
-    localStorage.removeItem('viewAsPersonName');
+    this._wipeViewAs();
+    this.user = this.realUser;
     this._notifyViewAsChanged();
   }
 
@@ -114,6 +154,7 @@ class Auth {
   logout() {
     this.token = null;
     this.user = null;
+    this.realUser = null;
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     // Also clear any active view-as impersonation so the next login
@@ -145,36 +186,11 @@ class Auth {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    // ── View-as URL injection ───────────────────────────────────
-    // When impersonating, append `?asPersonId=<id>` to the READ paths
-    // that honour it server-side.  Writes NEVER get the override — an
-    // admin viewing as a player must not accidentally RSVP as them
-    // (see MyController::applyImpersonation +
-    // CalendarController::applyImpersonation).
-    //
-    // Honouring endpoints (all read-only):
-    //   /api/my/*               — MyController
-    //   /api/calendar/upcoming  — CalendarController
-    //   /api/calendar/events/:id and …/:id/attendance (GET) — the open
-    //                             event and its viewer_tier, so Event
-    //                             Center shows the viewed-as person's tier
-    //                             (2026-11-14; both handlers already honour
-    //                             asPersonId; the attendance POST does not)
-    //   /api/carpool/* (GET)    — CarpoolController (2026-10-20: the 🚗
-    //                             panel renders what the viewed-as person
-    //                             would see; its POSTs still run as you)
-    let effectivePath = path;
-    const method = (options.method || 'GET').toUpperCase();
-    const wantsImpersonation = this.viewAsPersonId && (
-      path.startsWith('/api/my/') ||
-      (method === 'GET' && path.startsWith('/api/calendar/upcoming')) ||
-      (method === 'GET' && /^\/api\/calendar\/events\/\d+(\/attendance)?(\?|$)/.test(path)) ||
-      (method === 'GET' && path.startsWith('/api/carpool/'))
-    );
-    if (wantsImpersonation) {
-      const sep = path.includes('?') ? '&' : '?';
-      effectivePath = path + sep + 'asPersonId=' + encodeURIComponent(this.viewAsPersonId);
-    }
+    // ── View-as: every call runs as the viewed person ───────────
+    // The server (core/ViewAs) swaps in their own login for GETs and
+    // refuses every write while this header rides along.
+    if (this.viewAsPersonId) headers['X-View-As'] = String(this.viewAsPersonId);
+    const effectivePath = path;
 
     return fetch(this.apiBase + effectivePath, {
       cache: 'no-store',

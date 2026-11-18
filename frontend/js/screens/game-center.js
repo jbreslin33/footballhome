@@ -1418,8 +1418,8 @@ class GameCenterScreen extends EventScreen {
       // "players dont need player lineup view lol... there view is default
       // player") so view-as always renders exactly what the impersonated
       // player would see — no coach toggle, no edit tools, default view.
-      this.isCoach = !!lineupData.data.isCoach && !(this.auth && this.auth.viewAsPersonId)
-        && !this.playerOnly;
+      // 🎭 View-as: the server answers isCoach as the viewed person.
+      this.isCoach = !!lineupData.data.isCoach && !this.playerOnly;
       this.zones = new Map();
       this.positions = new Map();
       this.benchOrder = new Map();
