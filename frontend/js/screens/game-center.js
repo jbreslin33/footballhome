@@ -782,7 +782,9 @@ class GameCenterScreen extends EventScreen {
     const strip = this.find('#gc-kinds');
     const title = this.find('#gc-title');
     if (title) title.textContent = this._headTitle();
-    if (this.playerOnly || !window.EventKindSwitch) {
+    // PlayerViewer: no Games · Practices · Pickup · All on an event (lib/viewer.js
+    // eventKindPills; owner 11/18 "they don't need the pills … on practice or games").
+    if (this.playerOnly || !window.EventKindSwitch || !this.viewer.eventKindPills) {
       if (strip) strip.innerHTML = '';
       return;
     }
@@ -1948,6 +1950,7 @@ class GameCenterScreen extends EventScreen {
   }
 
   _render() {
+    this._paintKinds();   // the viewer is known once the game has loaded (coach pills back, player none)
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;
