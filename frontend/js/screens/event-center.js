@@ -276,6 +276,13 @@ class EventCenterScreen extends Screen {
     // the status band at the top of every screen (components/status-banner.js,
     // owner 11/18 "its supposed to be just like the viewing as bar").
     this.notices = null;
+    // An answer given in the band → this week's tiles follow.
+    if (!this._onBandRsvp) {
+      this._onBandRsvp = (e) => {
+        if (e.detail && e.detail.source === 'banner' && this.element && this.element.isConnected) this._loadEvents();
+      };
+      window.addEventListener('fh:rsvp-changed', this._onBandRsvp);
+    }
     const title = this.find('#ec-mine-title');
     if (title) title.textContent = cp('mine_title', '👤 Mine');
     // Read-only club pages (were #my's header links).  Words: event_center
@@ -521,7 +528,7 @@ class EventCenterScreen extends Screen {
     }
     this._render();
     this._loadEvents();   // the tile's counts follow
-    window.dispatchEvent(new CustomEvent('fh:rsvp-changed'));   // 🚦 the status band
+    window.dispatchEvent(new CustomEvent('fh:rsvp-changed', { detail: { source: 'calendar' } }));   // 🚦 the status band
   }
 
   // ── render ──────────────────────────────────────────────────────────
