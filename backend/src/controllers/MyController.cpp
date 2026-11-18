@@ -576,10 +576,14 @@ Response MyController::handleVolunteer(const Request& request) {
             json body;
             try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
             catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "invalid JSON"); }
-            const long long shiftId = body.contains("shift_id") && body["shift_id"].is_number_integer()
-                                    ? body["shift_id"].get<long long>() : 0;
+            // mig 1461: {slots:[{isodow, starts_at:"16:45"}], agreed}
             const bool agreed = body.contains("agreed") && body["agreed"].is_boolean() && body["agreed"].get<bool>();
-            r = VolunteerShifts::pick(personId, shiftId, agreed);
+            json slots = body.contains("slots") ? body["slots"] : json::array();
+            for (const auto& s : slots)
+                if (!s.is_object() || !s.contains("isodow") || !s["isodow"].is_number_integer()
+                    || !s.contains("starts_at") || !s["starts_at"].is_string())
+                    return jsonError(HttpStatus::BAD_REQUEST, "slots: [{isodow, starts_at}]");
+            r = VolunteerShifts::pick(personId, slots, agreed);
         }
         if (!r.ok) return jsonError(static_cast<HttpStatus>(r.status), r.error);
         return jsonOk(r.body);

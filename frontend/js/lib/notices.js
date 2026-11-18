@@ -36,7 +36,9 @@ class DuesNoticeView extends NoticeView {
     const tokens = { amount: DuesNoticeView.money(d.balance), min_payment: DuesNoticeView.money(d.min_payment),
                      pause_amount: DuesNoticeView.money(d.line) };
     const who = d.is_self ? '' : `${this.esc(d.first_name || 'Your player')}: `;
-    const c = d.tier === 'banner'
+    const c = d.tier === 'volunteer_owed'
+      ? { icon: '', border: '#2563eb', bg: 'rgba(37,99,235,0.14)', fg: '#bfdbfe', btn: '#2563eb' }
+      : d.tier === 'banner'
       ? { icon: '⛔', border: '#ef4444', bg: 'rgba(239,68,68,0.16)',  fg: '#fca5a5', btn: '#ef4444' }
       : d.tier === 'alternate_banner'
       ? { icon: '💰', border: '#f59e0b', bg: 'rgba(245,158,11,0.16)', fg: '#fcd34d', btn: '#d97706' }

@@ -195,6 +195,12 @@ class TuitionScreen extends Screen {
       // 🙋 volunteer request → Make volunteer / Decline (mig 1222).
       const volBtn = e.target.closest('[data-pay-volunteer]');
       if (volBtn) {
+        // 🛑 End takes two taps (no browser confirm dialogs).
+        if (volBtn.getAttribute('data-decision') === 'end' && !volBtn.hasAttribute('data-armed')) {
+          volBtn.setAttribute('data-armed', '');
+          volBtn.textContent = (window.MessageCopy && MessageCopy.block('volunteer_shift', 'end_confirm')) || 'Tap again to end';
+          return;
+        }
         volBtn.closest('[data-pay-vol-row]')?.querySelectorAll('button').forEach((b) => { b.disabled = true; });
         this._decideVolunteer(Number(volBtn.getAttribute('data-pay-volunteer')), volBtn.getAttribute('data-decision'));
         return;
@@ -1582,26 +1588,50 @@ class TuitionScreen extends Screen {
   async _loadVolunteerRequests() {
     const host = this.find('#pay-volunteers');
     if (!host) return;
-    let list = [];
-    try {
-      const res = await this.auth.fetch('/api/volunteer/requests');
-      const body = res.ok ? await res.json() : {};
-      list = Array.isArray(body.requests) ? body.requests : [];
-    } catch (_) { list = []; }
-    if (!list.length) { host.innerHTML = ''; return; }
+    const get = async (url, keyName) => {
+      try {
+        const res = await this.auth.fetch(url);
+        const body = res.ok ? await res.json() : {};
+        return Array.isArray(body[keyName]) ? body[keyName] : [];
+      } catch (_) { return []; }
+    };
+    const [list, vols] = await Promise.all([get('/api/volunteer/requests', 'requests'), get('/api/volunteer/ledger', 'volunteers')]);
+    if (!list.length && !vols.length) { host.innerHTML = ''; return; }
     const t = (tier, tokens) => (window.MessageCopy && MessageCopy.block('volunteer_shift', tier, tokens)) || '';
     const money = (n) => (Number.isInteger(Number(n)) ? `$${Number(n)}` : `$${Number(n).toFixed(2)}`);
     const btn = (bg) => `background:${bg}; color:#fff; border:0; border-radius:6px; padding:5px 10px; font-weight:700; font-size:0.8rem; cursor:pointer;`;
-    host.innerHTML = `<div style="margin-bottom:var(--space-3); padding:10px 12px; border-radius:8px; border:1px solid #2563eb; background:rgba(37,99,235,0.12);">
+    const box = (inner) => `<div style="margin-bottom:var(--space-3); padding:10px 12px; border-radius:8px; border:1px solid #2563eb; background:rgba(37,99,235,0.12);">${inner}</div>`;
+    const requests = list.length ? box(`
       <div style="font-weight:800; margin-bottom:6px;">${this.escape(t('requests_heading'))} (${list.length})</div>
       ${list.map((r) => `<div data-pay-vol-row style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; padding:4px 0;">
-          <span style="font-size:0.85rem;">${this.escape(t('request_line', { name: r.name, shift: r.shift, owed: money(r.owed), when: this.fmtDate(r.created_at) }))}</span>
+          <span style="font-size:0.85rem;">${this.escape(t('request_line', { name: r.name, shift: r.shift, total: r.total || '', owed: money(r.owed), when: this.fmtDate(r.created_at) }))}</span>
           <span style="display:inline-flex; gap:6px;">
             <button type="button" data-pay-volunteer="${Number(r.id)}" data-decision="approve" style="${btn('#16a34a')}">${this.escape(t('approve'))}</button>
             <button type="button" data-pay-volunteer="${Number(r.id)}" data-decision="deny" style="${btn('#6b7280')}">${this.escape(t('deny'))}</button>
           </span>
-        </div>`).join('')}
-    </div>`;
+        </div>`).join('')}`) : '';
+    // 🙋 Mig 1461: every approved volunteer — this month, last month (the
+    // one to bill or waive on the first Friday), flags.  Nothing ends a
+    // volunteer by itself: 🛑 End is the owner's.
+    const flagText = (f) => f.kind === 'noshow' ? t('flag_noshow') : f.kind === 'pattern' ? t('flag_pattern', { n: f.n }) : '';
+    const esc = (x) => this.escape(x);
+    const ledger = vols.length && window.VolunteerShiftCard ? box(`
+      <div style="font-weight:800; margin-bottom:6px;">${this.escape(t('ledger_heading'))} (${vols.length})</div>
+      ${vols.map((v) => {
+        const months = Array.isArray(v.months) ? v.months : [];
+        const flags = months.slice(0, 1).concat(months.slice(1, 2)).flatMap(m => m.flags || []).map(flagText).filter(Boolean);
+        return `<div data-pay-vol-row style="padding:6px 0; border-top:1px solid rgba(147,197,253,0.2);">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="font-weight:800;">${this.escape(v.name)} <span style="font-weight:600; opacity:0.8; font-size:0.8rem;">· ${this.escape(v.shift || '')} (${this.escape(v.total || '')}) · ${this.escape(money(v.owed))} owed</span></span>
+            <button type="button" data-pay-volunteer="${Number(v.id)}" data-decision="end" style="${btn('#b91c1c')}">${this.escape(t('end'))}</button>
+          </div>
+          ${flags.length ? `<div style="color:#fca5a5; font-weight:800; font-size:0.8rem; margin-top:2px;">${flags.map(f => this.escape(f)).join(' · ')}</div>` : ''}
+          <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:4px;">
+            ${months.slice(0, 2).map(m => `<div style="flex:1 1 220px; min-width:0;">${VolunteerShiftCard.monthHtml(m, esc)}</div>`).join('')}
+          </div>
+        </div>`;
+      }).join('')}`) : '';
+    host.innerHTML = requests + ledger;
   }
 
   async _decideVolunteer(id, decision) {

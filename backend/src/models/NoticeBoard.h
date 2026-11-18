@@ -39,13 +39,14 @@ struct DuesStanding {
     bool blocks = false;      // mig 513: the line blocks this person (Men)
     bool overLine = false;    // mig 513: at/over the line
     bool alternate = false;   // mig 614: any balance + the alternate policy (Men)
+    bool volunteer = false;   // mig 1461: an approved slot volunteer (back balance still owed)
     std::string payUrl;
 
     nlohmann::json toJson() const;
     // The viewer and every child they are a guardian of.
     static std::vector<DuesStanding> forPersonAndKids(Database* db, long long personId);
     // Needs a banner: blocked, over the line, or a dues alternate.
-    bool needsNotice() const { return !eligible || overLine || alternate; }
+    bool needsNotice() const { return !eligible || overLine || alternate || (volunteer && balance > 0); }
 };
 
 // 💰 / ⚠️ / ⛔ dues banner for one person.  Words: message_templates my_dues.

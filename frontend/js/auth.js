@@ -207,3 +207,29 @@ class Auth {
     });
   }
 }
+
+// 🎭 View-as covers EVERY request (owner 11/18 "all encompassing except for
+// the way out"): plenty of screens call fetch() directly for their writes,
+// which would otherwise run as the admin.  While view-as is on, every
+// same-origin /api call carries X-View-As, so the server (core/ViewAs)
+// answers reads as the viewed person and refuses every write.
+(function () {
+  if (typeof window === 'undefined' || !window.fetch || window.fetch._fhViewAs) return;
+  const nativeFetch = window.fetch.bind(window);
+  const wrapped = function (input, init) {
+    let id = null;
+    try { id = localStorage.getItem('viewAsPersonId'); } catch (_) { id = null; }
+    if (!id) return nativeFetch(input, init);
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    let api = false;
+    try { const u = new URL(url, location.href); api = u.origin === location.origin && u.pathname.startsWith('/api/'); } catch (_) { api = false; }
+    if (!api) return nativeFetch(input, init);
+    const opts = { ...(init || {}) };
+    const headers = new Headers(opts.headers || (input && typeof input !== 'string' ? input.headers : undefined) || {});
+    headers.set('X-View-As', String(id));
+    opts.headers = headers;
+    return nativeFetch(input, opts);
+  };
+  wrapped._fhViewAs = true;
+  window.fetch = wrapped;
+})();

@@ -6,21 +6,40 @@
 #include "../third_party/json.hpp"
 
 // ────────────────────────────────────────────────────────────────────────────
-// VolunteerShifts — 🙋 an overdue player helps the club one evening a week
-// instead of paying (migration 1222).  Owner 2026-11-10: "lets add for men
-// that they can also volunteer if over due … monday wed fri … 5pm to 7pm"
-// → "pick one day to help" → on time, every week, tell us ahead → "after
-// they show they are reliable we can start process to actually get them
-// paid".
+// VolunteerShifts — 🙋 a player who is behind on dues coaches the kids instead
+// (migrations 1222 → 1461).
 //
-// The evenings are volunteer_shifts rows per section (Men: Mon/Wed/Fri
-// 5–7 PM).  A player picks ONE (volunteer_requests, after ticking the
-// commitment); the owner approves, which makes him a 🙋 Volunteer
-// (club_volunteers, mig 704: $0 balance, no notices, not an alternate) and
-// an assistant coach for his evening — #my 📋 Coach (mig 1224).
-// Until then his dues stand.  Every word is message_templates kind
-// volunteer_shift.
+// Owner 2026-11-18 (mig 1461): volunteers pick youth-practice SLOTS off the
+// calendar — weekdays only, at least volunteer_policies.min_weekly_minutes
+// (Men: 2 hours) a week, "whole day" = every slot that day.  The owner
+// approves; approval makes him an assistant coach for exactly those slots
+// (coach_schedule_slots) so they show on his calendar.  His back balance
+// stays owed; while approved he stays eligible and is never an alternate
+// (SQL, mig 1461).  Each month's dues are waived when every week is met —
+// one told-ahead miss a month is OK, a no-show or a second miss bills the
+// month (VolunteerLedger below).  Nothing ends a volunteer automatically:
+// the owner does.  Every word is message_templates kind volunteer_shift.
 // ────────────────────────────────────────────────────────────────────────────
+
+// One volunteer's weeks and months, from the coach's attendance marks on his
+// slot practices and his own RSVPs (fh_volunteer_occurrences).
+class VolunteerLedger {
+public:
+    struct Policy {
+        int minWeeklyMinutes = 120;
+        int missesPerMonth = 1;
+        int reviewAfterMonths = 3;
+        double monthlyDues = 0.0;
+    };
+
+    // Week (Mon–Sun): met · told · noshow · short · unmarked · coming · off.
+    // Month: waived · billed · open · pending · none, with flags.
+    // Months newest first; at most `months` of them (current included).
+    static nlohmann::json months(long long requestId, const Policy& policy, int months);
+
+    static Policy policyFor(long long personId);
+};
+
 class VolunteerShifts {
 public:
     struct Result {
@@ -30,20 +49,22 @@ public:
         nlohmann::json body;
     };
 
-    // #my: { offer, shifts: [{id, label}], pick: {id, shift_id, shift, status} | null }
+    // His card: { offer, policy, slots:[…options], pick:{…, slots, ledger} | null }
     static nlohmann::json mine(long long personId);
-    // Pick one shift (replaces a pending pick).  agreed = the commitment tick.
-    static Result pick(long long personId, long long shiftId, bool agreed);
+    // Pick slots ([{isodow, starts_at:"16:45"}]) — replaces a pending pick.
+    static Result pick(long long personId, const nlohmann::json& slots, bool agreed);
     // Cancel a pending pick.
     static Result withdraw(long long personId);
 
     // #payments: pending picks, oldest first.
     static nlohmann::json pending();
-    // approve → club_volunteers row; deny → nothing else changes.
+    // #payments: every approved volunteer — this month + last month, flags.
+    static nlohmann::json ledger();
+    // approve → coach for his slots; deny → nothing else; end → coach slots off.
     static Result decide(long long requestId, const std::string& decision, long long userId);
 
 private:
-    // Approve → assistant coach on the helped section's teams, coach
-    // schedule = his day (practices only when new) — #my 📋 Coach (mig 1224).
-    static void assignCoachDay(pqxx::work& tx, long long personId, long long shiftId);
+    static void assignCoachSlots(pqxx::work& tx, long long personId, long long requestId);
+    static void removeCoachSlots(pqxx::work& tx, long long personId, long long requestId);
+    static nlohmann::json pickSlots(long long requestId);
 };

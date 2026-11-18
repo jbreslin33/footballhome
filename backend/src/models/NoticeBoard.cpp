@@ -18,6 +18,7 @@ json DuesStanding::toJson() const {
         {"blocks",      blocks},
         {"over_line",   overLine},
         {"alternate",   alternate},
+        {"volunteer",   volunteer},
         {"pay_url",     payUrl},
     };
 }
@@ -34,6 +35,8 @@ std::vector<DuesStanding> DuesStanding::forPersonAndKids(Database* db, long long
                fh_dues_blocks_eligibility(p.id, $2::int) AS blocks,
                fh_dues_over_line(p.id, $2::int)         AS over_line,
                fh_dues_alternate(p.id, $2::int)          AS alternate,
+               EXISTS (SELECT 1 FROM volunteer_requests vr
+                        WHERE vr.person_id = p.id AND vr.status = 'approved') AS volunteer,
                fh_fill_form_links('{form:la_dashboard}', $2::int) AS pay_url
           FROM persons p
          WHERE p.id = $1::int OR fh_is_guardian($1::int, p.id)
@@ -51,6 +54,7 @@ std::vector<DuesStanding> DuesStanding::forPersonAndKids(Database* db, long long
         s.blocks     = !r["blocks"].is_null()    && r["blocks"].as<bool>();
         s.overLine   = !r["over_line"].is_null() && r["over_line"].as<bool>();
         s.alternate  = !r["alternate"].is_null() && r["alternate"].as<bool>();
+        s.volunteer  = r["volunteer"].as<bool>();
         s.payUrl     = r["pay_url"].is_null()     ? "" : r["pay_url"].c_str();
         out.push_back(std::move(s));
     }
@@ -62,7 +66,8 @@ json DuesNotice::toJson() const {
     j["kind"] = kind();
     j["person_id"] = s_.personId;
     // Which banner: ⛔ blocked, 💰 alternate, ⚠️ over the line (my_dues tiers).
-    j["tier"] = !s_.eligible ? "banner" : s_.alternate ? "alternate_banner" : "warning";
+    // 🙋 mig 1461: an approved volunteer still owes his back balance — thanks + pay it off.
+    j["tier"] = s_.volunteer ? "volunteer_owed" : !s_.eligible ? "banner" : s_.alternate ? "alternate_banner" : "warning";
     return j;
 }
 

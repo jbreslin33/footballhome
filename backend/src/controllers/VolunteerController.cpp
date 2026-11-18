@@ -23,6 +23,15 @@ bool VolunteerController::gate(const Request& request, Response* error) {
 void VolunteerController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/requests",     [this](const Request& r) { return handleRequests(r); });
     router.post(prefix + "/requests/:id", [this](const Request& r) { return handleDecide(r); });
+    // 🙋 mig 1461: approved volunteers — this month, last month, flags.
+    router.get (prefix + "/ledger",       [this](const Request& r) {
+        Response denied; if (!gate(r, &denied)) return denied;
+        try { return jsonOut(HttpStatus::OK, {{"volunteers", VolunteerShifts::ledger()}}); }
+        catch (const std::exception& e) {
+            std::cerr << "[VolunteerController::ledger] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load volunteers");
+        }
+    });
 }
 
 Response VolunteerController::handleRequests(const Request& request) {
