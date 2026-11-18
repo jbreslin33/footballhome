@@ -118,10 +118,10 @@ Response TeamController::handleGetRoster(const Request& request) {
         if (!requireBearer(request)) {
             return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
         }
-        // Dues standing: club/super admins only, never under view-as.
-        const bool includeDues = requireAdminLevel(request, {"club", "super"})
+        // Dues standing and emails: club/super admins only, never under view-as.
+        const bool adminView = requireAdminLevel(request, {"club", "super"})
                               && request.getQueryParam("asPersonId").empty();
-        std::string roster_json = team_model_->getTeamRoster(team_id, includeDues);
+        std::string roster_json = team_model_->getTeamRoster(team_id, adminView);
         
         std::ostringstream json;
         json << "{";

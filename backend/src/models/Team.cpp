@@ -116,7 +116,7 @@ std::string Team::getAllTeams() {
     return json.str();
 }
 
-std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
+std::string Team::getTeamRoster(const std::string& team_id, bool adminView) {
     std::ostringstream json;
     json << "[";
     
@@ -139,7 +139,8 @@ std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
             // should be seeing financial info about anyone but themselves").
             // Everyone else gets NULL → duesEligible:true.
             "  CASE WHEN $2::bool THEN fh_dues_eligible(pe.id) END AS dues_eligible, "  // migration 416
-            "  pem.email, "
+            // Email: admins only too (11/18 "they should not see emails right?").
+            "  CASE WHEN $2::bool THEN pem.email END AS email, "
             "  pl.photo_url as avatar_url, "
             "  r.jersey_number, "
             "  pos.name as position, "
@@ -166,7 +167,7 @@ std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
             "  r.jersey_number NULLS LAST, "
             "  last_name, first_name";
         
-        pqxx::result result = executeQuery(sql, {team_id, includeDues ? "true" : "false"});
+        pqxx::result result = executeQuery(sql, {team_id, adminView ? "true" : "false"});
         
         bool first = true;
         for (const auto& row : result) {
@@ -213,7 +214,7 @@ std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
             "  c.id as coach_id, "
             "  pe.first_name, "
             "  pe.last_name, "
-            "  pem.email, "
+            "  CASE WHEN $2::bool THEN pem.email END AS email, "  // admins only (11/18)
             "  cr.name as coach_role, "
             "  tc.coach_role_id "
             "FROM team_coaches tc "
@@ -224,7 +225,7 @@ std::string Team::getTeamRoster(const std::string& team_id, bool includeDues) {
             "WHERE tc.team_id = $1 AND tc.ended_at IS NULL "
             "ORDER BY pe.last_name, pe.first_name";
         
-        pqxx::result coach_result = executeQuery(coach_sql, {team_id});
+        pqxx::result coach_result = executeQuery(coach_sql, {team_id, adminView ? "true" : "false"});
         
         for (const auto& row : coach_result) {
             if (!first) json << ",";
