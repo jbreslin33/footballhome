@@ -2652,7 +2652,7 @@ class GameCenterScreen extends EventScreen {
     this.zones.delete(Number(dropped.player_id));
     this._render();
     const note = this.element.querySelector('[data-gc-avail-msg]');
-    if (note && dropped.message) note.textContent = dropped.message;
+    if (note && dropped.message) { note.style.display = ''; note.textContent = dropped.message; }
     return true;
   }
 

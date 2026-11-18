@@ -1706,18 +1706,21 @@ class EventScreen extends Screen {
                       style="padding:6px 12px; border-radius:8px; font-weight:800; font-size:0.78rem; cursor:${closed ? 'default' : 'pointer'};
                              border:2px solid ${colour}; color:#fff; background:${active ? colour : 'transparent'}; opacity:${closed ? 0.45 : 1};">${label}</button>`;
     };
+    // One line per person, the buttons say the answer (owner 11/18 "too much
+    // space for the your availability … too busy. needs to be more concise"):
+    //   Going?  [✓ Going] [✗ Not going]      (a parent: a line per kid)
+    // No heading, no "You · ✅ Going", no "Plans changed?" note — the line
+    // under it only speaks when the event is over / not open, or on an error.
+    void word;
     return `
-      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #334155; background:rgba(15,23,42,0.6);">
-        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:6px; text-transform:uppercase;">${this.escapeHtml(cp('answer_title', `Your availability for this ${what}`))}</div>
+      <div style="margin:0 0 10px; display:flex; flex-direction:column; gap:6px;">
         ${rows.map(row => `
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:4px;">
-            <span style="font-size:0.85rem;"><strong>${this.escapeHtml(row.name)}</strong> · ${word(row.response)}</span>
-            <span style="display:flex; gap:6px;">
-              ${btn(row, 'yes', 'Going', '#16a34a')}
-              ${btn(row, 'no', 'Not Going', '#dc2626')}
-            </span>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span style="font-weight:800; min-width:4.5em;">${this.escapeHtml(row.personId ? row.name : cp('answer_q', 'Going?'))}</span>
+            ${btn(row, 'yes', cp('answer_yes', '✓ Going'), '#16a34a')}
+            ${btn(row, 'no', cp('answer_no', '✗ Not going'), '#dc2626')}
           </div>`).join('')}
-        <div data-gc-avail-msg style="font-size:0.7rem; margin-top:6px; opacity:0.75;">${this.escapeHtml(closed || cp('answer_note', 'Plans changed? Change it here any time — the coaches see it right away.'))}</div>
+        <div data-gc-avail-msg style="font-size:0.72rem; opacity:0.75; ${closed ? '' : 'display:none;'}">${this.escapeHtml(closed)}</div>
       </div>`;
   }
 
@@ -1759,7 +1762,7 @@ class EventScreen extends Screen {
   // A line under Your availability (the same slot a failed save uses).
   _availMsg(text) {
     const msg = this.element && this.element.querySelector('[data-gc-avail-msg]');
-    if (msg) msg.innerHTML = `<span style="color:#fbbf24;">${this.escapeHtml(text)}</span>`;
+    if (msg) { msg.style.display = ''; msg.innerHTML = `<span style="color:#fbbf24;">${this.escapeHtml(text)}</span>`; }
   }
 
   _paintMyAvailability() {
@@ -1808,7 +1811,7 @@ class EventScreen extends Screen {
     } catch (err) {
       btn.disabled = false;
       const msg = this.element.querySelector('[data-gc-avail-msg]');
-      if (msg) msg.innerHTML = `<span style="color:#f87171;">Could not save: ${this.escapeHtml(err.message)}</span>`;
+      if (msg) { msg.style.display = ''; msg.innerHTML = `<span style="color:#f87171;">Could not save: ${this.escapeHtml(err.message)}</span>`; }
     }
   }
 
