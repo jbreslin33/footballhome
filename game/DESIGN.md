@@ -10583,3 +10583,42 @@ m (5.45): for the same time in the air a real long ball stays lower. In vacuum a
 6.8 m; drag alone keeps ours near that — real ones are held up by backspin (Magnus lift), which our flight law (Goff &
 Carré's drag, §G4.87) leaves out. Next: lift on a struck loft [Goff & Carré 2010; Asai et al.] — measured on the
 peak-for-time-in-the-air by carry against DFL — then the midfield high pass's completion again.
+
+### 8.261 G5.156 — an aimed loft carries backspin: lift holds a long ball lower for its time in the air (shipped)
+
+From §8.260's next (30-40 m lofts landing on the real time yet peaking 7.4-7.9 m, real 5.45). **Measure first.** A median
+peak against a median landing time compares two populations (the peak counts touched flights, the landing doesn't);
+new per flight, untouched: **peak ÷ (g·t²/8)** — 1 in vacuum, above with drag alone (the drop is slower than the rise),
+below with lift. `benchmarks_tracking_chip.py` (DFL) by carry 10-20 / 20-30 / 30-40 / 40-50 / 50-70 m, median: **0.96 /
+0.94 / 0.76 / 0.68 / 0.63** (p25-p75 at 30-40 m 0.60-0.93). Ours (G5.155, harness CHIP HEIGHT's new column): 1.19 /
+1.11 / 1.06 / 1.04 / 1.02. Real long balls ride backspin.
+
+**Fit, offline** (a float copy of the flight law, each carry × the five §8.260 landing times): a constant lift
+coefficient C_L (lift = ½ρAC_L·v², perpendicular to v in the vertical plane) at 0.25 gives 0.96 / 0.83 / 0.74 / 0.71 /
+0.65 — inside the published range for a backspun ball [Goff & Carré 2010; Asai, Seo, Kobayashi & Sakashita 2007]. A
+linear Magnus (lift ∝ ω·v, constant spin) at any rate over-lifts short balls (0.85 at 15 m at the rate that fits 60 m).
+One flight no backspin can make: the 15 m p90 lob (3.28 s) — lift pulls a steep slow ball back on itself.
+
+**Change** [fitted to DFL; the law Goff & Carré's]: `BallState::spin` (in the canonical hash) — set by an aimed loft
+(`World` kick), cleared by the bounce and by every other velocity the World gives the ball (kicks, headers,
+deflections, tackles, saves). `BallFlight::step(v, spin)` adds kl·|v|·(ω̂ × v), ω̂ the horizontal axis across its line
+(ω̂ × v = (−vx·vz/h, −vy·vz/h, h)): up while it travels, back while it climbs, on while it falls;
+`physics.ball.lift_coeff` C_L ×1000 (default 250; 0 = drag only). The loft tables solve each carry × level with it; a
+flight that can't make its time (±3 ticks) and carry (±0.6 m) with backspin is struck without (`spins(carry, level)` —
+at the defaults only the 25 m and 15 m p90 lobs). The angle search now starts at ~3° (a backspun p10 flat ball hangs;
+11° was too steep for 25 m's 1.20 s). The race read (`Reads::race`, `loftSafe`) flies the same spin; shots keep none.
+Not on the wire: clients draw the server's ball. Tests: `ball_flight_backspin_lift_holds_it_lower` (35 / 45 / 60 m
+peak ÷ (g·t²/8) 0.73 / 0.69 / 0.64 v 0.76 / 0.68 / 0.63; no spin, no lift), the drag test on `lift_coeff` 0, the
+level test on each flight's own spin. Goldens re-locked (core 400-tick 0xbfcb702ee4639159, 3v3 0xeadff4bba13dd47b,
+11v11 0xe15631618f521593).
+
+3 seeds × 8 (G5.155 → after; real): **peak ÷ (g·t²/8) 1.19 / 1.11 / 1.06 / 1.04 / 1.02 → 1.01 / 0.87-0.88 / 0.74-0.78 /
+0.68-0.71 / 0.68-0.72 (0.96 / 0.94 / 0.76 / 0.68 / 0.63)**; peak med 30-40 m 7.4-7.9 → 5.7-6.0 (5.45), 40-50 9.9-11.1
+→ 6.8-8.0 (7.07), 50-70 13.3-13.7 → 9.2-10.5 (9.94); 30-40 m peaking 6 m+ 71-78 → 47-51% (40). LOFT FLIGHT past 4 m
+30-40 m 14 → 11-12 a team-match (16.7). Aerial duels 46.6-51.4 → 43.9-48.8 a match (44.1); headed clearances 15-17
+(16.1). HIGH PASSES 35-70 m completed 55-61 → 55-59% (46.0). Completion 78% (79.1); shots, fouls, goals unchanged
+within noise. No migration.
+
+**Still off.** Our 5-10 m flights past 1.8 m: 4-5 a team-match (real 17.6) — the short dinks, flicks and scoops real
+players make we don't. And the midfield high pass still completes 55-59% (46.0): the flight is real now, so next is
+who is under it — DFL's AT THE LAUNCH (§8.185: our defender off their man 9.1 m at the launch, real 7.1).

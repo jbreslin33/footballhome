@@ -67,6 +67,9 @@ public:
         const Fixed64 cd = p.fixed("physics.ball.drag_coeff", 200);
         const Fixed64 area = math::FX_PI * d * d / 4;
         k_ = m.raw > 0 ? rho * area * cd / (m * 2) : Fixed64::zero();
+        // G5.156 (§8.261): an aimed loft's backspin lift, C_L [fitted to DFL peak-for-time; Goff & Carré 2010]
+        const Fixed64 cl = p.fixed("physics.ball.lift_coeff", 250);
+        kl_ = m.raw > 0 && cl.raw > 0 ? rho * area * cl / (m * 2) : Fixed64::zero();
         static const int kAt[5] = {15, 25, 35, 45, 60};
         // G5.154 (§8.259) p50; G5.155 (§8.260) the spread: real landing s ×1000, p10 / p30 / p50 / p70 / p90 by bin
         static const int kT[kLevels][5] = {{1160, 1200, 1800, 2280, 3080}, {1400, 1520, 2120, 2600, 3360},
@@ -77,7 +80,7 @@ public:
         static const char* const kQ[kLevels] = {"_p10", "_p30", "", "_p70", "_p90"};
         const bool on = p.integer("physics.ball.loft_time_on", 1) != 0;
         spread_ = on && p.integer("physics.ball.loft_spread_on", 1) != 0;
-        std::array<std::int64_t, 6> key{k_.raw, on ? 1 : 0, spread_ ? 1 : 0, 0, 0, 0};
+        std::array<std::int64_t, 6> key{k_.raw, on ? 1 : 0, spread_ ? 1 : 0, 0, kl_.raw, 0};
         Fixed64 tt[kLevels][5];
         for (int l = 0; l < kLevels; ++l)
             for (int i = 0; i < 5; ++i) {
@@ -104,11 +107,32 @@ public:
     math::Fixed64 k() const noexcept { return k_; }
 
     // One tick of drag on an airborne ball's velocity: v −= k·|v|·v·dt.
-    void step(math::Vec3& v) const {
-        if (k_.raw == 0) return;
+    // G5.156 (§8.261): with backspin, lift too — kl·|v|·(ω̂ × v)·dt, ω̂ the horizontal
+    // axis across his line (ω̂ × v = (−vx·vz/h, −vy·vz/h, h), h the ground speed): up
+    // while it travels, back while it climbs, on while it drops [Goff & Carré 2010].
+    void step(math::Vec3& v, bool spin = false) const {
+        if (k_.raw == 0 && (!spin || kl_.raw == 0)) return;
         const math::Fixed64 sp = math::fx_sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
         const math::Fixed64 f = math::Fixed64::one() - k_ * sp * kTickDt;
-        v = math::Vec3{v.x * f, v.y * f, v.z * f};
+        math::Vec3 n{v.x * f, v.y * f, v.z * f};
+        if (spin && kl_.raw > 0) {
+            const math::Fixed64 h = math::fx_sqrt(v.x * v.x + v.y * v.y);
+            if (h.raw > 0) {
+                const math::Fixed64 q = kl_ * sp * kTickDt;
+                n.x -= q * v.x * v.z / h;
+                n.y -= q * v.y * v.z / h;
+                n.z += q * h;
+            }
+        }
+        v = n;
+    }
+    // G5.156: does an aimed loft carry backspin lift? ...and one of carry_m at level lv (a lob no
+    // backspin flight makes is struck without it).
+    bool lifts() const noexcept { return kl_.raw > 0; }
+    bool spins(math::Fixed64 carry_m, int lv = kMid) const {
+        if (kl_.raw <= 0) return false;
+        const std::int64_t i = carry_m.raw <= 0 ? 1 : carry_m.raw >> math::Fixed64::FRAC_BITS;
+        return lvl(lv).spin[i >= kMaxCarry ? kMaxCarry : i];
     }
 
     // Aimed loft: the speed to strike it (along the ground direction; it
@@ -130,7 +154,7 @@ public:
         math::Vec3 vel{launchSpeed(carry_m), math::Fixed64::zero(), launchRise(carry_m)};
         math::Vec3 pos{};
         for (int ticks = 0; ticks < 600; ++ticks) {
-            step(vel);
+            step(vel, spins(carry_m));
             vel.z -= kGravity * kTickDt;
             pos += vel * kTickDt;
             if (pos.z.raw < 0 || (vel.z.raw < 0 && pos.z <= h)) break;
@@ -151,6 +175,7 @@ public:
 private:
     struct Level {
         std::array<math::Fixed64, kMaxCarry + 1> speed{}, time{}, ratio{}, flat{};
+        std::array<bool, kMaxCarry + 1> spin{};   // G5.156: struck with backspin at this carry
     };
     struct Tables { Level lv[kLevels]; };
     const Level& lvl(int lv) const { return tables_->lv[lv < 0 ? 0 : lv >= kLevels ? kLevels - 1 : lv]; }
@@ -158,14 +183,14 @@ private:
     // The free-ball law (World::tickFreeBall) for one launch, to the first
     // bounce: metres along the ground and ticks.
     // ...and the tick it came back down through 0.5 m (benchmarks_tracking_loft.py's landing).
-    void fly(math::Fixed64 v, math::Fixed64 r, math::Fixed64& dist, int& ticks, int* down = nullptr) const {
+    void fly(math::Fixed64 v, math::Fixed64 r, math::Fixed64& dist, int& ticks, int* down = nullptr, bool spin = false) const {
         math::Vec3 vel{v, math::Fixed64::zero(), v * r};
         math::Vec3 pos{};
         const math::Fixed64 half = math::Fixed64::fromFraction(1, 2);
         ticks = 0;
         if (down) *down = -1;
         while (ticks < 600) {
-            step(vel);
+            step(vel, spin);
             vel.z -= kGravity * kTickDt;
             pos += vel * kTickDt;
             ++ticks;
@@ -175,14 +200,14 @@ private:
         dist = pos.x;
     }
     // The launch speed at ratio r whose first bounce is want away.
-    math::Fixed64 speedFor(math::Fixed64 want, math::Fixed64 r, int iters) const {
+    math::Fixed64 speedFor(math::Fixed64 want, math::Fixed64 r, int iters, bool spin = false) const {
         using math::Fixed64;
         Fixed64 lo = Fixed64::zero(), hi = Fixed64::fromInt(80);
         for (int it = 0; it < iters; ++it) {
             const Fixed64 mid = (lo + hi) / 2;
             Fixed64 dist{};
             int ticks = 0;
-            fly(mid, r, dist, ticks);
+            fly(mid, r, dist, ticks, nullptr, spin);
             if (dist < want) lo = mid; else hi = mid;
         }
         return hi;
@@ -190,42 +215,61 @@ private:
 
     void solve(Level& t, bool on, const int* at, const math::Fixed64* tt) const {
         using math::Fixed64;
+        const bool sp = kl_.raw > 0;   // G5.156: an aimed loft flies with its backspin (a throw-in, t.flat, without)
         auto target = [&](int c) {   // the real landing time at carry c: linear between bin middles, held past the ends
             if (c <= at[0]) return tt[0];
             for (int i = 1; i < 5; ++i)
                 if (c <= at[i]) return tt[i - 1] + (tt[i] - tt[i - 1]) * Fixed64::fromFraction(c - at[i - 1], at[i] - at[i - 1]);
             return tt[4];
         };
+        // The angle whose flight is back down through 0.5 m at goal ticks, the speed solved for the carry at each try.
+        auto search = [&](const Fixed64& w, int goal, bool spin) {
+            Fixed64 lo = Fixed64::fromFraction(1, 20), hi = Fixed64::fromInt(3);   // ~3° .. ~72° (G5.155: the p90 lob; G5.156: a backspun p10 flat ball; was 11-56°)
+            for (int it = 0; it < 18; ++it) {
+                const Fixed64 mid = (lo + hi) / 2;
+                Fixed64 dist{};
+                int ticks = 0, down = 0;
+                fly(speedFor(w, mid, 22, spin), mid, dist, ticks, &down, spin);
+                if (down < goal) lo = mid; else hi = mid;
+            }
+            return hi;
+        };
+        // G5.156: does that flight make it — down at its time (±3 ticks), first bounce at its carry (±0.6 m)?
+        auto makes = [&](const Fixed64& w, int goal, const Fixed64& r, bool spin) {
+            Fixed64 dist{};
+            int ticks = 0, down = 0;
+            fly(speedFor(w, r, 28, spin), r, dist, ticks, &down, spin);
+            const Fixed64 miss = math::fx_abs(dist - w);
+            return down >= goal - 3 && down <= goal + 3 && miss < Fixed64::fromFraction(3, 5);
+        };
         Fixed64 r_lo_end{}, r_hi_end{};
+        bool s_lo_end = sp, s_hi_end = sp;
         for (int c = 0; c <= kMaxCarry; ++c) {
             const Fixed64 want = Fixed64::fromInt(c < 1 ? 1 : c);
             t.flat[c] = speedFor(want, kLoftLaunchRatio, 28);
             Fixed64 r = kLoftLaunchRatio;
+            bool spin = sp;
             if (on) {
-                if (c < at[0] && c > 0 && r_lo_end.raw) r = r_lo_end;
-                else if (c > 70 && r_hi_end.raw) r = r_hi_end;
+                if (c < at[0] && c > 0 && r_lo_end.raw) { r = r_lo_end; spin = s_lo_end; }
+                else if (c > 70 && r_hi_end.raw) { r = r_hi_end; spin = s_hi_end; }
                 else {
                     const int cc = c < at[0] ? at[0] : c;   // c 0: the 15 m angle
                     const Fixed64 w = Fixed64::fromInt(cc);
                     const int goal = static_cast<int>((target(cc) / kTickDt).raw >> Fixed64::FRAC_BITS);
-                    Fixed64 lo = Fixed64::fromFraction(1, 5), hi = Fixed64::fromInt(3);   // ~11° .. ~72° (G5.155: the p90 lob; was 56°)
-                    for (int it = 0; it < 18; ++it) {
-                        const Fixed64 mid = (lo + hi) / 2;
-                        Fixed64 dist{};
-                        int ticks = 0, down = 0;
-                        fly(speedFor(w, mid, 22), mid, dist, ticks, &down);
-                        if (down < goal) lo = mid; else hi = mid;
-                    }
-                    r = hi;
-                    if (c == at[0] || c == 0) r_lo_end = r;
-                    if (c == 70) r_hi_end = r;
+                    r = search(w, goal, spin);
+                    // G5.156 (§8.261): a lob no backspin flight can make (lift pulls a steep slow ball back on
+                    // itself: the 15 m p90, 3.3 s) is struck without it — a scoop, a skied ball.
+                    if (spin && !makes(w, goal, r, true)) { spin = false; r = search(w, goal, false); }
+                    if (c == at[0] || c == 0) { r_lo_end = r; s_lo_end = spin; }
+                    if (c == 70) { r_hi_end = r; s_hi_end = spin; }
                 }
             }
             t.ratio[c] = r;
-            t.speed[c] = r == kLoftLaunchRatio ? t.flat[c] : speedFor(want, r, 28);
+            t.spin[c] = spin;
+            t.speed[c] = r == kLoftLaunchRatio && !spin ? t.flat[c] : speedFor(want, r, 28, spin);
             Fixed64 dist{};
             int ticks = 0;
-            fly(t.speed[c], r, dist, ticks);
+            fly(t.speed[c], r, dist, ticks, nullptr, spin);
             t.time[c] = Fixed64::fromInt(ticks) * kTickDt;
         }
     }
@@ -238,7 +282,7 @@ private:
         return a[i] + (a[i + 1] - a[i]) * f;
     }
 
-    math::Fixed64 k_{};
+    math::Fixed64 k_{}, kl_{};
     bool spread_ = false;
     std::shared_ptr<const Tables> tables_;   // shared: World is copied per brain per tick
 };

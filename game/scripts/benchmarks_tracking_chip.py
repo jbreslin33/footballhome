@@ -83,6 +83,8 @@ if __name__ == "__main__":
         v = [r for r in allr if lo <= r[0] < hi]
         if not v: continue
         sh = [100 * sum(1 for r in v if cuts[k] <= r[2] < cuts[k + 1]) / len(v) for k in range(4)]
+        hr = sorted(r[2] / (G * r[4] ** 2 / 8) for r in v if r[4] is not None and r[4] > 0.3)
+        hq = " ".join(f"{hr[int(k * (len(hr) - 1) / 4)]:4.2f}" for k in (1, 2, 3)) if hr else "-"
         ld = sorted(r[4] for r in v if r[4] is not None)
         lq = " ".join(f"{ld[int(k * (len(ld) - 1) / 10)]:4.2f}" for k in range(1, 10)) if ld else "-"
-        print(f"   {lo:2d}-{hi:2d} {len(v) / tm:5.1f} | " + " / ".join(f"{x:4.1f}" for x in sh) + f" | {sum(1 for r in v if r[2] >= 4) / tm:4.1f} | {med([r[2] for r in v])} | {med([r[5] for r in v])} | landing s p10..p90 {lq} (of {len(ld)})")
+        print(f"   {lo:2d}-{hi:2d} {len(v) / tm:5.1f} | " + " / ".join(f"{x:4.1f}" for x in sh) + f" | {sum(1 for r in v if r[2] >= 4) / tm:4.1f} | {med([r[2] for r in v])} | {med([r[5] for r in v])} | landing s p10..p90 {lq} (of {len(ld)}) | peak / (g t^2 / 8) p25/med/p75 {hq}")

@@ -404,6 +404,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 ball_.owner = i;  // clean: 70% of won tackles
                 owned_at_tick_ = clock_.tick();
                 settleControl(i, Fixed64::zero());
+                ball_.spin = false;   // G5.156: only an aimed loft carries backspin
                 ball_.vel = Vec3{};
                 firstTouch(i);   // G5.80
             } else {
@@ -415,6 +416,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 if (r2.raw & 1) n = Vec2{-n.x, -n.y};
                 flight_tick_ = clock_.tick();
                 ball_.owner.reset();
+                ball_.spin = false;   // G5.156: only an aimed loft carries backspin
                 ball_.vel = Vec3{n.x * kTacklePokeSpeed,
                                  n.y * kTacklePokeSpeed, Fixed64::zero()};
                 ball_.kick_alive = kKickAliveTicks;
@@ -593,6 +595,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             // and over his head, on the touchline, onto the pitch, at the
             // range of an arm.
             const bool held = heldRestart();
+            ball_.spin = false;   // G5.156: set by the aimed loft below
             const MatchEventType kind = restart_kind_;
             if (held && kind == MatchEventType::ThrowIn) {
                 Fixed64 d = carry_m_[kicker] > 0 ? Fixed64::fromInt(carry_m_[kicker]) : Fixed64::fromInt(12);
@@ -639,6 +642,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 const int lvl = loftLevel(kicker);   // G5.155: its flight from the real spread
                 const Fixed64 v = ball_flight_.launchSpeed(d, lvl) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * ball_flight_.ratio(d, lvl)};   // G5.84: its angle by carry
+                ball_.spin = ball_flight_.spins(d, lvl);   // G5.156 (§8.261): struck with backspin
             } else {
                 const Fixed64 v = kLoftKickSpeed * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v,
@@ -688,6 +692,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         if (heldRestart()) {
             ball_.pos = restart_spot_;
             if (restart_kind_ == MatchEventType::ThrowIn) ball_.pos.z = kThrowHeight;
+            ball_.spin = false;   // G5.156: only an aimed loft carries backspin
             ball_.vel = Vec3{};
             return;
         }
@@ -784,6 +789,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                     if (stop.raw < 0) stop = Fixed64::zero();
                     sp = (Fixed64::one() - kBallRollDecayPerTick) * Fixed64::fromInt(kTickRate) * stop;
                 }
+                ball_.spin = false;   // G5.156: only an aimed loft carries backspin
                 ball_.vel = Vec3{dir.x * sp, dir.y * sp, Fixed64::zero()};
                 last_touch_tick_ = clock_.tick();
                 ++dribble_touches_;
@@ -898,6 +904,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             const Vec2 v{-ball_.vel.x, -ball_.vel.y};
             const Fixed64 keep = block_keep_;
             ++body_blocks_[players_[blocker].team];
+            ball_.spin = false;   // G5.156: only an aimed loft carries backspin
             ball_.vel = Vec3{(v.x * c - v.y * sn) * keep,
                              (v.x * sn + v.y * c) * keep, Fixed64::zero()};
             ball_.last_kicker = blocker;
@@ -1080,6 +1087,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 if (home ? defl.x.raw < 0 : defl.x.raw > 0)
                     defl.x = -defl.x;
             }
+            ball_.spin = false;   // G5.156: only an aimed loft carries backspin
             ball_.vel = Vec3{defl.x, defl.y, Fixed64::zero()};
             ball_.pos.z = Fixed64::zero();
             ball_.last_kicker = best;
@@ -1102,6 +1110,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     ball_.owner = best;
     owned_at_tick_ = clock_.tick();
     settleControl(best, math::fx_sqrt(planar_speed_sq));
+    ball_.spin = false;   // G5.156: only an aimed loft carries backspin
     ball_.vel = Vec3{};
     firstTouch(best);
     ball_.pos.z = Fixed64::zero();  // keepers bring a high ball down
@@ -1122,7 +1131,7 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
     // bounce on impact.
     const bool airborne = ball_.pos.z.raw > 0 || ball_.vel.z.raw != 0;
     if (airborne) {
-        ball_flight_.step(ball_.vel);
+        ball_flight_.step(ball_.vel, ball_.spin);
         ball_.vel.z -= kGravity * kTickDt;
     }
 
@@ -1134,6 +1143,7 @@ void World::tickFreeBall(std::vector<MatchEvent>& events) {
         ball_.vel.z = (impact > kBounceDeadSpeed)
                           ? impact * kBallRestitution
                           : Fixed64::zero();
+        ball_.spin = false;   // G5.156: the bounce takes the backspin's lift
         if (impact > kBounceDeadSpeed) {
             ball_.vel.x = ball_.vel.x * kBounceSkid;
             ball_.vel.y = ball_.vel.y * kBounceSkid;
@@ -1453,6 +1463,7 @@ void World::headIt(SlotIndex slot, bool duel) {
     }
     const Fixed64 ang = n * rad * err;
     const Fixed64 c = math::fx_cos(ang), sn = math::fx_sin(ang);
+    ball_.spin = false;   // G5.156: only an aimed loft carries backspin
     ball_.vel = Vec3{(dir.x * c - dir.y * sn) * speed, (dir.x * sn + dir.y * c) * speed, up};
     ball_.last_kicker = slot;
     ball_.pass_to = 0xFF;
@@ -1591,6 +1602,7 @@ void World::playFirstTouch(SlotIndex slot) {
         // deceleration at his pace, so the next touch finds it
         const Fixed64 push = math::fx_sqrt(Fixed64::fromInt(2) * die * (fut + Fixed64::one()) * g);
         Fixed64 off = fut + die * g + (push - die * g) * mv;
+        ball_.spin = false;   // G5.156: only an aimed loft carries backspin
         ball_.vel = Vec3{dir.x * off, dir.y * off, Fixed64::zero()};
         if (touch_body_) {
             // G5.81 (§8.182): the gap is from where his BODY will be half a second on, not from
@@ -1626,6 +1638,7 @@ void World::playFirstTouch(SlotIndex slot) {
             if (mv2 > Fixed64::one()) mv2 = Fixed64::one();
             const Fixed64 v0 = dd * die + (timed - dd * die) * mv2;
             const Vec2 bdir = dd.raw > 0 ? Vec2{D.x / dd, D.y / dd} : dir;
+            ball_.spin = false;   // G5.156: only an aimed loft carries backspin
             ball_.vel = Vec3{bdir.x * v0, bdir.y * v0, Fixed64::zero()};
         }
         last_touch_tick_ = clock_.tick();   // the first touch IS his touch

@@ -46,7 +46,8 @@ namespace {
 //   G5.77 2026-11-10 the footstep body: velocity only through a planted foot 0x7e4e857807d9d056
 //   G5.78 2026-11-10 dribble touches: the carried ball rolls 0xbc7b9c153e90f794
 //   G5.80 2026-11-10 a carrier chases his rolling ball at its speed; re-touch a ball he runs past 0x7757b0b41d93a199
-constexpr std::uint64_t kGolden400TicksSeed42 = 0x7757b0b41d93a199ULL;
+//   G5.156 2026-11-18 the ball's backspin in the state (an aimed loft's lift) 0xbfcb702ee4639159
+constexpr std::uint64_t kGolden400TicksSeed42 = 0xbfcb702ee4639159ULL;
 
 std::uint64_t scriptedRun() {
     World w{4, Fixed64::fromInt(6), Fixed64::fromInt(52), Fixed64::fromInt(34)};

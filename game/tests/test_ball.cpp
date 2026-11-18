@@ -259,7 +259,9 @@ FH_TEST(ball_determinism_two_runs_identical) {
 // carry; drag makes it a harder strike than the drag-free v = sqrt(g·d/2r)
 // and it comes down slower than it went up.
 FH_TEST(ball_flight_drag_loft_lands_at_carry) {
-    const BallFlight f;
+    ModelParams drag_only;   // G5.156: the drag law alone (no backspin lift)
+    drag_only.setMilli("physics.ball.lift_coeff", 0);
+    const BallFlight f(drag_only);
     FH_EXPECT_GT(f.k(), Fixed64::fromFraction(9, 1000));    // ≈ 0.0105 / m
     FH_EXPECT_LT(f.k(), Fixed64::fromFraction(12, 1000));
     for (int c : {10, 30, 50}) {
@@ -296,7 +298,7 @@ FH_TEST(ball_flight_loft_time_by_carry) {
         Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
         int ticks = 0, down = -1;
         while (ticks < 600) {
-            f.step(vel);
+            f.step(vel, f.spins(Fixed64::fromInt(c)));
             vel.z -= kGravity * kTickDt;
             pos += vel * kTickDt;
             ++ticks;
@@ -304,16 +306,16 @@ FH_TEST(ball_flight_loft_time_by_carry) {
             if (pos.z.raw < 0) break;
         }
         FH_EXPECT_LT(std::abs(down / 30.0 - want), 0.05);
-        FH_EXPECT_GT(r, kLoftLaunchRatio);
         std::printf("loft %d m: %.1f deg at %.1f m/s, down at %.2f s (real %.2f)\n", c, std::atan(r.toDouble()) * 57.29578,
                     v.toDouble(), down / 30.0, want);
     }
     ModelParams off;
     off.setMilli("physics.ball.loft_time_on", 0);
+    off.setMilli("physics.ball.lift_coeff", 0);
     const BallFlight flat(off);
     FH_EXPECT_EQ(flat.ratio(Fixed64::fromInt(35)), kLoftLaunchRatio);
-    FH_EXPECT_EQ(flat.launchSpeed(Fixed64::fromInt(35)), f.throwSpeed(Fixed64::fromInt(35)));
-    FH_EXPECT_EQ(flat.throwSpeed(Fixed64::fromInt(20)), f.throwSpeed(Fixed64::fromInt(20)));
+    FH_EXPECT_EQ(flat.launchSpeed(Fixed64::fromInt(35)), flat.throwSpeed(Fixed64::fromInt(35)));
+    FH_EXPECT_EQ(flat.throwSpeed(Fixed64::fromInt(20)), f.throwSpeed(Fixed64::fromInt(20)));   // a throw-in has no backspin
 }
 
 // G5.155 (§8.260): each flight level lands at its real landing time for the carry (DFL p10 / p30 /
@@ -330,7 +332,7 @@ FH_TEST(ball_flight_levels_spread_by_carry) {
             Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
             int ticks = 0, down = -1;
             while (ticks < 600) {
-                f.step(vel);
+                f.step(vel, f.spins(Fixed64::fromInt(carry[b]), l));
                 vel.z -= kGravity * kTickDt;
                 pos += vel * kTickDt;
                 ++ticks;
@@ -341,7 +343,8 @@ FH_TEST(ball_flight_levels_spread_by_carry) {
             FH_EXPECT_LT(std::abs(pos.x.toDouble() - carry[b]), 0.6);
             FH_EXPECT_GT(r, prev);
             prev = r;
-            std::printf("loft %d m level %d: %.1f deg at %.1f m/s, down at %.2f s (real %.2f), bounces at %.1f m\n", carry[b], l,
+            std::printf("loft %d m level %d%s: %.1f deg at %.1f m/s, down at %.2f s (real %.2f), bounces at %.1f m\n", carry[b], l,
+                        f.spins(Fixed64::fromInt(carry[b]), l) ? " (backspin)" : "",
                         std::atan(r.toDouble()) * 57.29578, v.toDouble(), down / 30.0, kWant[b][l], pos.x.toDouble());
         }
     }
@@ -351,6 +354,43 @@ FH_TEST(ball_flight_levels_spread_by_carry) {
     FH_EXPECT(!one.spread());
     FH_EXPECT_EQ(one.ratio(Fixed64::fromInt(25), 0), f.ratio(Fixed64::fromInt(25)));
     FH_EXPECT_EQ(one.ratio(Fixed64::fromInt(25), 4), f.ratio(Fixed64::fromInt(25)));
+}
+
+// G5.156 (§8.261): an aimed loft carries backspin lift — for the same time in the air it tops out
+// lower than the drag law alone would (real peak / (g·t²/8) at the median flight, DFL
+// benchmarks_tracking_chip.py: 35 m 0.76, 45 m 0.68, 60 m 0.63) and still bounces at its carry.
+FH_TEST(ball_flight_backspin_lift_holds_it_lower) {
+    const BallFlight f;
+    FH_EXPECT(f.lifts());
+    static const double kReal[3] = {0.76, 0.68, 0.63};
+    const int carry[3] = {35, 45, 60};
+    for (int b = 0; b < 3; ++b) {
+        const Fixed64 v = f.launchSpeed(Fixed64::fromInt(carry[b])), r = f.ratio(Fixed64::fromInt(carry[b]));
+        Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
+        int ticks = 0, down = -1;
+        Fixed64 pk{};
+        while (ticks < 600) {
+            f.step(vel, true);
+            vel.z -= kGravity * kTickDt;
+            pos += vel * kTickDt;
+            ++ticks;
+            if (pos.z > pk) pk = pos.z;
+            if (down < 0 && vel.z.raw < 0 && pos.z < Fixed64::fromFraction(1, 2)) down = ticks;
+            if (pos.z.raw < 0) break;
+        }
+        const double t = down / 30.0, hr = pk.toDouble() / (9.81 * t * t / 8);
+        FH_EXPECT_LT(std::abs(hr - kReal[b]), 0.08);
+        FH_EXPECT_LT(std::abs(pos.x.toDouble() - carry[b]), 0.6);
+        std::printf("loft %d m with backspin: %.1f deg, peak %.1f m, down at %.2f s, peak/(g t^2/8) %.2f (real %.2f)\n", carry[b],
+                    std::atan(r.toDouble()) * 57.29578, pk.toDouble(), t, hr, kReal[b]);
+    }
+    // a ball without backspin (a header, a deflection) takes no lift
+    Vec3 a{Fixed64::fromInt(20), Fixed64::zero(), Fixed64::fromInt(10)}, b2 = a;
+    f.step(a, false);
+    ModelParams drag_only;
+    drag_only.setMilli("physics.ball.lift_coeff", 0);
+    BallFlight(drag_only).step(b2, true);
+    FH_EXPECT_EQ(a.z, b2.z);
 }
 
 FH_TEST_MAIN()

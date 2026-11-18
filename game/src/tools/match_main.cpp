@@ -83,7 +83,7 @@ struct Stats {
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
     long near_why[2][ai::kWhyCount] = {}, near_cvn[2] = {}; double near_cv[2] = {}, near_held[2] = {};
     long pz_n[10] = {}, pz_to[10][10] = {};
-    long lfw_n[5][6] = {}, ch_n[6] = {}, ch_p[6][4] = {}; std::vector<double> ch_pk[6], ch_ld[6];   // §8.259 CHIP HEIGHT   // §8.256 LOFT FLIGHT by carry band x pass / clear / keeper / cross / other kick / header-deflection
+    long lfw_n[5][6] = {}, ch_n[6] = {}, ch_p[6][4] = {}; std::vector<double> ch_pk[6], ch_ld[6], ch_hr[6];   // §8.259 CHIP HEIGHT   // §8.256 LOFT FLIGHT by carry band x pass / clear / keeper / cross / other kick / header-deflection
     long fb_live = 0, fb_end[2][3] = {}; std::vector<double> fb_d[2];   // §8.254 FREE BALL [struck / touch][same / other / dead]
     long rcz_n[6] = {}, ctt_n[5][3] = {};   // ctt_: §8.253 CONTESTED TOUCH [opponent band][kept / theirs / neither]   // §8.252 REWIN by cause: none / tackled / shot / other ball action / pass completed / pass failed
     long plk_n[3][5] = {}, shp_n[5][3] = {}, shp_ok[5][3] = {};   // shp_: §8.249 SHORT PASSES <20 m by band x forward/lateral/back   // §8.248 PASS LENGTH: [outfield open / keeper open / goal kick][0-20/20-40/40-50/50-70/70+ m]
@@ -1304,7 +1304,7 @@ int main(int argc, char** argv) {
                             const double c = std::hypot(lf.lx - lf.x0, lf.ly - lf.y0);
                             const int ci = c < 5 ? -1 : c < 10 ? 0 : c < 20 ? 1 : c < 30 ? 2 : c < 40 ? 3 : c < 50 ? 4 : c < 70 ? 5 : -1;
                             if (ci >= 0) { ++S.ch_n[ci]; ++S.ch_p[ci][lf.pk < 2.5 ? 0 : lf.pk < 4 ? 1 : lf.pk < 6 ? 2 : 3]; S.ch_pk[ci].push_back(lf.pk);
-                                           if (!touched) S.ch_ld[ci].push_back((kk - lf.k0) / 30.0); }
+                                           if (!touched) { const double tl = (kk - lf.k0) / 30.0; S.ch_ld[ci].push_back(tl); if (tl > 0.3) S.ch_hr[ci].push_back(lf.pk / (9.81 * tl * tl / 8)); } }
                         }
                         if (lf.pk >= 4.0) {
                             const double c = std::hypot(lf.lx - lf.x0, lf.ly - lf.y0);
@@ -3142,9 +3142,9 @@ int main(int argc, char** argv) {
                                 static const char* cr[6] = {"17.6 | 51.0 / 31.6 / 11.3 /  6.1 | 2.48 | 1.36", "17.4 | 27.0 / 39.3 / 18.0 / 15.6 | 3.24 | 1.68",
                                                             "17.9 | 15.1 / 35.1 / 26.3 / 23.5 | 3.99 | 1.92", "19.0 |  0.4 / 11.7 / 48.5 / 39.5 | 5.45 | 2.36",
                                                             "11.6 |  0.0 /  4.3 / 25.9 / 69.8 | 7.07 | 2.84", "12.6 |  0.0 /  0.0 /  2.8 / 97.2 | 9.94 | 3.56"};
-                                std::printf("\n        CHIP HEIGHT (every flight past 1.8 m, in play; benchmarks_tracking_chip.py, real DFL in brackets), by carry m: a team-match | peak 1.8-2.5 / 2.5-4 / 4-6 / 6+ m %% | peak med | landing s med");
+                                std::printf("\n        CHIP HEIGHT (every flight past 1.8 m, in play; benchmarks_tracking_chip.py, real DFL in brackets), by carry m: a team-match | peak 1.8-2.5 / 2.5-4 / 4-6 / 6+ m %% | peak med | landing s med | §8.261 peak / (g t^2 / 8) med");
                                 for (int q = 0; q < 6; ++q) if (S.ch_n[q]) { const double n = S.ch_n[q];
-                                    std::printf("\n          %s %5.1f | %4.1f / %4.1f / %4.1f / %4.1f | %4.2f | %4.2f  (%s)", cb[q], n / tmn, 100 * S.ch_p[q][0] / n, 100 * S.ch_p[q][1] / n, 100 * S.ch_p[q][2] / n, 100 * S.ch_p[q][3] / n, mdh(S.ch_pk[q]), mdh(S.ch_ld[q]), cr[q]); }
+                                    std::printf("\n          %s %5.1f | %4.1f / %4.1f / %4.1f / %4.1f | %4.2f | %4.2f  (%s)", cb[q], n / tmn, 100 * S.ch_p[q][0] / n, 100 * S.ch_p[q][1] / n, 100 * S.ch_p[q][2] / n, 100 * S.ch_p[q][3] / n, mdh(S.ch_pk[q]), mdh(S.ch_ld[q]), cr[q]); std::printf(" | %4.2f", mdh(S.ch_hr[q])); }
                             }
                         }
                         {   // §8.185 HIGH OUTCOME v benchmarks_statsbomb_highpass.py

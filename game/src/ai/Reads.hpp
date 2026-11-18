@@ -58,6 +58,7 @@ public:
         bool offside = true;               // honour the live offside flags
         math::Fixed64 opp_margin{};
         bool first_only = false;
+        bool spin = false;                 // G5.156: an aimed loft's backspin
     };
 
     Reads(const std::vector<std::uint8_t>* team_of_slot, math::Fixed64 half_x, math::Fixed64 half_y)
@@ -74,7 +75,7 @@ public:
     bool loftSafe(const core::World& world, core::SlotIndex passer, const math::Vec2& from, const math::Vec2& at,
                   std::uint8_t carry_m, math::Fixed64 reach) const;
     bool raceSafe(const core::World& world, core::SlotIndex passer, const math::Vec3& pos, const math::Vec3& vel,
-                  math::Fixed64 reach) const;
+                  math::Fixed64 reach, bool spin = false) const;
 
 private:
     const std::vector<std::uint8_t>* team_of_slot_;

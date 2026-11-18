@@ -177,6 +177,7 @@ struct BallState {
     int kicker_lockout = 0;             // ticks last_kicker may not recapture
     int contest_ticks = 0;              // consecutive ticks an opponent is touch-tight
     std::uint8_t pass_to = 0xFF;        // the mate the last kick was played to (G4.81)
+    bool spin = false;                  // G5.156 (§8.261): an aimed loft's backspin — lift until it bounces or is touched
 };
 
 inline math::Fixed64 dieAtSpeed(math::Fixed64 d) {

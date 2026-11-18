@@ -117,6 +117,7 @@ const Reads::FlightRead& Reads::flightRead(const World& world) const {
     RaceBall rb;
     rb.pos = b.pos;
     rb.vel = b.vel;
+    rb.spin = b.spin;   // G5.156
     rb.since = static_cast<std::int64_t>(world.tickCount() - world.flightTick());
     rb.kicker = b.last_kicker;
     rb.lockout = b.kicker_lockout;
@@ -151,17 +152,19 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     const std::uint32_t flagged = rb.offside ? world.offsideMask() : 0u;
     const std::uint8_t flag_team = rb.offside ? world.offsideTeam() : std::uint8_t{0xFF};
     Vec3 pos = rb.pos, vel = rb.vel;
+    bool spin = rb.spin;
     int open = n;
     const int horizon = horizon_ticks_;
     for (int k = 0; k <= horizon && open > 0; ++k) {
         if (k > 0) {  // World::tickFreeBall, one tick
             if (pos.z.raw > 0 || vel.z.raw != 0) {
-                world.ballFlight().step(vel);   // G4.87: the World's own law
+                world.ballFlight().step(vel, spin);   // G4.87: the World's own law (G5.156: with its backspin)
                 vel.z -= core::kGravity * core::kTickDt;
             }
             pos += vel * core::kTickDt;
             if (pos.z.raw < 0) {
                 pos.z = Fixed64::zero();
+                spin = false;
                 const Fixed64 impact = -vel.z;
                 if (impact > core::kBounceDeadSpeed) {
                     vel.z = impact * core::kBallRestitution;
@@ -304,14 +307,16 @@ bool Reads::loftSafe(const World& world, SlotIndex passer, const Vec2& from, con
     const int lv = world.loftLevel(passer);   // G5.155: the flight he would strike
     const Fixed64 v = world.ballFlight().launchSpeed(Fixed64::fromInt(carry_m), lv);
     return raceSafe(world, passer, Vec3{from.x, from.y, Fixed64::zero()},
-                    Vec3{ab.x / len * v, ab.y / len * v, v * world.ballFlight().ratio(Fixed64::fromInt(carry_m), lv)}, reach);
+                    Vec3{ab.x / len * v, ab.y / len * v, v * world.ballFlight().ratio(Fixed64::fromInt(carry_m), lv)}, reach,
+                    world.ballFlight().spins(Fixed64::fromInt(carry_m), lv));   // G5.156: with its backspin
 }
 
 bool Reads::raceSafe(const World& world, SlotIndex passer, const Vec3& pos, const Vec3& vel,
-                     Fixed64 reach) const {
+                     Fixed64 reach, bool spin) const {
     RaceBall rb;
     rb.pos = pos;
     rb.vel = vel;
+    rb.spin = spin;
     rb.kicker = passer;
     rb.lockout = core::kKickerLockoutTicks;
     rb.ours = (*team_of_slot_)[passer];
