@@ -29,7 +29,10 @@
 // time; for each carry the ratio (rise / ground speed) is bisected so the ball
 // is back down to 0.5 m then, the speed solved for the carry at each try.
 // Under 15 m the 15 m angle holds (no hanging 5 m chips); past 70 m the 70 m
-// one. physics.ball.loft_time_on 0 = the flat 27° law. Throw-ins keep the flat
+// one. G5.154 (§8.259): refit to every real flight past 1.8 m (benchmarks_tracking_chip.py,
+// landing med 1.68 / 1.92 / 2.36 / 2.84 / 3.56 s) — "past 4 m" kept only the steepest third
+// of short ones, and every 10-20 m chip of ours hung 2.9 s at a 6.6 m peak (real 3.2 m).
+// physics.ball.loft_time_on 0 = the flat 27° law. Throw-ins keep the flat
 // law (throwSpeed). [FH, fitted to DFL; the law is Goff & Carré's drag]
 #pragma once
 
@@ -60,7 +63,7 @@ public:
         const Fixed64 area = math::FX_PI * d * d / 4;
         k_ = m.raw > 0 ? rho * area * cd / (m * 2) : Fixed64::zero();
         static const int kAt[5] = {15, 25, 35, 45, 60};
-        static const int kT[5] = {2880, 2480, 2480, 2920, 3600};
+        static const int kT[5] = {1680, 1920, 2360, 2840, 3560};   // G5.154 (§8.259): every flight past 1.8 m
         static const char* const kName[5] = {"physics.ball.loft_time_15", "physics.ball.loft_time_25", "physics.ball.loft_time_35",
                                              "physics.ball.loft_time_45", "physics.ball.loft_time_60"};
         const bool on = p.integer("physics.ball.loft_time_on", 1) != 0;

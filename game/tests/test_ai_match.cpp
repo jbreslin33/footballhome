@@ -107,7 +107,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.133 (2026-11-16): a mate's pass weight by its length band (StatsBomb pass lengths, §8.236).
 // Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
 // Re-locked G5.151 (2026-11-17): the man contesting their high ball attacks it from the launch, flat out (§8.256).
-constexpr std::uint64_t kGolden3v3   = 0x7bce7cbca9ef87beULL;
+// Re-locked G5.154 (2026-11-18): loft landing times refit to every real flight past 1.8 m (DFL CHIP HEIGHT, §8.259).
+constexpr std::uint64_t kGolden3v3   = 0x4bbf36dac66893d2ULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -162,7 +163,8 @@ constexpr std::uint64_t kGolden3v3   = 0x7bce7cbca9ef87beULL;
 // Re-locked G5.135 (2026-11-16): the in-possession slide ramped to 0 at the centre line (§8.238).
 // Re-locked G5.144 (2026-11-17): the keeper goes long at the real share, goal kicks and open play (StatsBomb, §8.248).
 // Re-locked G5.151 (2026-11-17): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x0b003e60d5b01816ULL;
+// Re-locked G5.154 (2026-11-18): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x574724ced5b988f0ULL;
 
 struct Rig {
     World world;
@@ -271,6 +273,9 @@ FH_TEST(ai_match_flows_possession_and_stays_on_pitch) {
         // G5.128: a dead ball waiting on its taker (a corner's flag is 20 m+ from everyone
         // while he walks over) is the game going on too.
         if (r.world.restartTeam() != 0xFF) someone_near_ball = true;
+        // G5.154 (§8.259): so is a ball in the air — the window caught a keeper's punt, 15 m up,
+        // landing 28 m from everyone (real long kicks land in space too).
+        if (r.world.ball().pos.z > Fixed64::fromInt(2)) someone_near_ball = true;
     }
     FH_EXPECT(someone_near_ball);
 }

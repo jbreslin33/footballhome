@@ -10523,3 +10523,36 @@ fouls, FREE BALL tempo unchanged within noise. Goldens unchanged. Tests 22/22, n
 real rate (DFL both within 2 m) but each contest counts a duel more often than real — next: what the harness's duel is
 (two men within reach as the ball comes down v StatsBomb's won/lost header pair), and whether our second man jumps
 when real ones let the first take it.
+
+### 8.259 G5.154 — a short loft flies like a real one: landing times refit to every flight past 1.8 m (shipped)
+
+From §8.258's next (aerial duels 1.15×, 2× at our high passes into midfield). **The duel is not it:** our drops with
+both sides within 2 m are 1.09× real a match, and 68% of them are duels (real 65%: 68 a match → 44.1). The excess is
+high balls in midfield — LOFT FLIGHT 10-20 m 16.0 a team-match (real 5.9), 20-30 m 17.9 (8.9) — while HIGH BY LENGTH
+(StatsBomb) has the high share of each length right (10-20 m 4-6%, real 5-7). So the choice is real and the flight
+isn't: every chip of ours rose past 4 m (10-20 m at 55°, peak 6.6 m).
+
+**Real** (new `benchmarks_tracking_chip.py`; DFL 7 matches; `benchmarks_tracking_loft.py`'s cut, every flight past
+1.8 m — StatsBomb's "high", shoulder height — not only past 4 m). By carry 5-10 / 10-20 / 20-30 / 30-40 / 40-50 /
+50-70 m: a team-match 17.6 / 17.4 / 17.9 / 19.0 / 11.6 / 12.6; peak med 2.48 / 3.24 / 3.99 / 5.45 / 7.07 / 9.94 m;
+peak under 4 m 83 / 66 / 50 / 12 / 4 / 0%; **landing med 1.36 / 1.68 / 1.92 / 2.36 / 2.84 / 3.56 s** (p10-p90 at
+10-20 m 1.16-3.28). §8.185 fitted `physics.ball.loft_time_*` to the past-4 m flights' landings (2.88 / 2.48 / 2.48
+/ 2.92 / 3.60): at 10-30 m the steepest third. Harness: new CHIP HEIGHT line, the same cut.
+
+**Change** [DFL, fitted]: `physics.ball.loft_time_<15|25|35|45|60>` defaults 1680 / 1920 / 2360 / 2840 / 3560 (no
+DB rows; code defaults). Test `ball_flight_loft_time_by_carry` on the new times; `ai_match_flows_possession` counts a
+ball in the air (over 2 m) as the game going on (the 3-minute window caught a keeper's punt landing 28 m from
+everyone). Goldens re-locked (3v3 0x4bbf36dac66893d2, 11v11 0x574724ced5b988f0).
+
+3 seeds × 8 (before / after): CHIP HEIGHT landing 10-20 m 1.90-2.13 → 1.60-1.63 s (1.68), 20-30 2.40-2.43 → 1.83-1.90
+(1.92), 30-40 2.47-2.50 → 2.37-2.40 (2.36); peak med 10-20 6.4 → 3.8 m (3.2), 20-30 7.6 → 5.0 (4.0). **LOFT FLIGHT
+past 4 m 10-20 16.0-17.3 → 4.8-6.2 a team-match (5.9)**; 20-30 17.9-18.1 → 15.3-19.1 (8.9). **Aerial duels 52.5 /
+47.8 / 52.8 → 40.5 / 40.6 / 40.2 a match (44.1)**; headed clearances 22-24 → 17-20 a team (16.1); HIGH PASSES 35-70 m
+aerial duel at it within 5 s 34-38 → 27-29% (16.2). Completion 77-78 → 77-79% (79.1); shots, fouls, goals unchanged
+within noise. **Worse:** HIGH PASSES 35-70 m completed 47-50 → 59-62% (46.0); drops 0-35 m off the kicker's goal both
+within 2 m 22-28 → 13-17% (36.4) — a quick low chip is past its man before he gets there.
+
+**One angle a carry; the real ones spread.** At 20-30 m ours peak 4-6 m 83-88% of the time (real: 15 / 35 / 26 / 24%
+over 1.8-2.5 / 2.5-4 / 4-6 / 6+). Next: each kick's landing time drawn from the real spread for its carry (p10-p90 by
+carry above) — the kicker's pick (a flat chip over a man, a hanging ball onto a head) rather than one curve — and the
+high pass's completion with it.

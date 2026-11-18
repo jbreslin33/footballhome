@@ -286,12 +286,12 @@ FH_TEST(ball_flight_drag_loft_lands_at_carry) {
 }
 
 // G5.84 (§8.185): a loft is back down through 0.5 m at the real time for its
-// carry (DFL, benchmarks_tracking_loft.py: 2.48 s at 25-35 m, 3.60 at 60), the
+// carry (DFL, benchmarks_tracking_chip.py since G5.154: 1.92 s at 25 m, 3.56 at 60), the
 // angle steeper than the old flat 27° there; off, the flat law; a throw-in keeps
 // the flat law either way.
 FH_TEST(ball_flight_loft_time_by_carry) {
     const BallFlight f;
-    for (auto [c, want] : {std::pair{25, 2.48}, std::pair{35, 2.48}, std::pair{45, 2.92}, std::pair{60, 3.60}}) {
+    for (auto [c, want] : {std::pair{25, 1.92}, std::pair{35, 2.36}, std::pair{45, 2.84}, std::pair{60, 3.56}}) {
         const Fixed64 v = f.launchSpeed(Fixed64::fromInt(c)), r = f.ratio(Fixed64::fromInt(c));
         Vec3 vel{v, Fixed64::zero(), v * r}, pos{};
         int ticks = 0, down = -1;
