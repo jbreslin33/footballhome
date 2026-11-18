@@ -1249,6 +1249,19 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                             'field_size',      t.field_size,   -- practice card pitch (11/13)
                             'gender_category', t.gender_category,
                             'logo_url',        t.logo_url,
+                            -- The team's section ("Mens", "Boys" …) and whether it is the
+                            -- caller's own (on its roster, coaching it, or a child on it) —
+                            -- a title names only the caller's sections (owner 11/18 "it
+                            -- should not say Men, Boys & Girls for Naranjo … same for everyone").
+                            'section',         (SELECT cs.name FROM club_sections cs WHERE cs.id = t.club_section_id),
+                            'is_mine',         ($1::int > 0 AND (
+                                                  EXISTS (SELECT 1 FROM team_persons tp
+                                                           WHERE tp.team_id = t.id AND tp.removed_at IS NULL
+                                                             AND (tp.person_id = $1::int
+                                                                  OR tp.person_id IN (SELECT g.child_person_id FROM person_guardians g
+                                                                                       WHERE g.guardian_person_id = $1::int)))
+                                                  OR EXISTS (SELECT 1 FROM team_coaches tc JOIN coaches co ON co.id = tc.coach_id
+                                                              WHERE tc.team_id = t.id AND tc.ended_at IS NULL AND co.person_id = $1::int))),
                             -- The RSVP group the team trains in
                             -- (rsvp_team_groups, mig 419: 4:30 kids /
                             -- 5:30 kids / Men) — #my's whose-schedule

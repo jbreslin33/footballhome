@@ -32,7 +32,15 @@ class EventLabels {
     // value like "Match" instead of our friendlier "Game" synonym);
     // fall back to the backend's classified kind/category if untagged.
     const kindLabel  = tags.kind || tags.type || kindLabels[kind] || (kind ? kind[0].toUpperCase() + kind.slice(1) : '');
-    const catLabel   = tags.club || catLabels[category] || category || '';
+    // Only the caller's own sections when they have a team on the event
+    // (teams[].is_mine / .section, CalendarController): Naranjo, Mens only,
+    // sees "Mens Practice", not "Mens, Boys, Girls Practice" (owner 11/18
+    // "same for everyone").  No team of theirs (admins …) → the full tag.
+    const SECTION_ORDER = ['Mens', 'Womens', 'Boys', 'Girls'];
+    const mineSections = [...new Set((Array.isArray(ev.teams) ? ev.teams : [])
+      .filter(t => t && t.is_mine && t.section).map(t => t.section))]
+      .sort((a, b) => (SECTION_ORDER.indexOf(a) + 1 || 99) - (SECTION_ORDER.indexOf(b) + 1 || 99));
+    const catLabel   = (mineSections.length ? mineSections.join(', ') : '') || tags.club || catLabels[category] || category || '';
     const opponent   = ev.opponent || tags.opponent || '';
 
     const base = (kindLabel && catLabel) ? `${catLabel} ${kindLabel}` : (kindLabel || catLabel);

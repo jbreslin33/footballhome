@@ -43,6 +43,7 @@ class PlayerViewer {
   get calendarKindPills() { return false; }     // Games · Practices · Pickup · All
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
+  get calendarRosterCounts() { return false; }  // 💤 inactive / ⛔ ineligible on a tile — roster info, coaches' (owner 11/18 "why is naranjo showing how many are inactive")
 
   // ‹  This week · Nov 16 – Nov 22  ›  (green), Next / Last week, then the
   // range; "Back to this week" off it.  null = the screen's full row.
@@ -81,6 +82,7 @@ class CoachViewer extends PlayerViewer {
   get calendarKindPills() { return true; }
   get calendarViews()     { return ['week', 'month']; }
   get calendarKind()      { return null; }
+  get calendarRosterCounts() { return true; }
   calendarWeekNavHtml()   { return null; }
 }
 

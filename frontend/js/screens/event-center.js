@@ -668,8 +668,20 @@ class EventCenterScreen extends Screen {
     // WHO is playing, up top (mig 778): a game's own team(s) — the
     // primary squads the fixture is for — as big badges in the team's
     // label + colour; a practice's tagged teams as small chips.
-    const teamsOf = (ev) => (Array.isArray(ev.teams) ? ev.teams : []).filter(t => t && (t.label || t.name));
+    // Only the viewer's own teams when they have any on the event (teams[].is_mine,
+    // CalendarController) — David sees Liga 1 / APSL, not every team tagged
+    // (owner 11/18 "it does not need to show the teams he is NOT on. same for
+    // everyone").  None of theirs (admins …) → every team.
+    const teamsOf = (ev) => {
+      const all = (Array.isArray(ev.teams) ? ev.teams : []).filter(t => t && (t.label || t.name));
+      const mine = all.filter(t => t.is_mine);
+      return mine.length ? mine : all;
+    };
     const primaries = (ev) => { const ts = teamsOf(ev), p = ts.filter(t => t.is_primary); return p.length ? p : ts; };
+    // The fixture's real squad (APSL vs Liga 1 both tagged on men's games) —
+    // the "Team vs Opponent" line names it whoever is looking.
+    const fixtureTeam = (ev) => { const ts = (Array.isArray(ev.teams) ? ev.teams : []).filter(t => t && (t.label || t.name));
+                                  return ts.find(t => t.is_primary) || ts[0]; };
     const plain = (label) => String(label || '').replace(/^[^\p{L}\p{N}]+/u, '').trim();   // "⚽ U8 Travel" → "U8 Travel"
     const badge = (t, big) => {
       const c = t.color || 'var(--primary-color)';
@@ -677,7 +689,7 @@ class EventCenterScreen extends Screen {
                 ${big ? 'font-size:0.95rem; padding:3px 8px;' : 'font-size:0.68rem; padding:1px 6px;'}">${this.escapeHtml(big ? (t.label || t.name) : (t.short_label || t.label || t.name))}</span>`;
     };
     const line = (ev) => {
-      const team = primaries(ev)[0];
+      const team = fixtureTeam(ev);
       if (ev.kind === 'match' && team) {
         const opponent = ev.opponent || EventLabels.parseDescTags(ev.description).opponent || 'TBD';
         return cp('tile_vs', { team: plain(team.label || team.name), opponent }, `${plain(team.label || team.name)} vs ${opponent}`);
@@ -711,6 +723,7 @@ class EventCenterScreen extends Screen {
           .filter(c => c && c.person_id && !c.suspension && !['yes', 'no'].includes(this._childResponse(ev, Number(c.person_id))));
     const unanswered = (ev) => meOpen(ev) || kidsOpen(ev).length > 0;
 
+    const rosterCounts = (this.viewer || Viewer.account()).calendarRosterCounts;   // lib/viewer.js
     const tile = (ev) => {
       if (ev.fh_event_id == null) return rawTile(ev);
       // Players only — coaches never in a player total (owner 2026-10-06).
@@ -800,8 +813,8 @@ class EventCenterScreen extends Screen {
           ${count('tile_going', going, `✓ ${going} going`, '#16a34a')}
           ${count('tile_noresp', noResp, `– ${noResp} no response`, '#eab308')}
           ${count('tile_notgoing', notGoing, `✗ ${notGoing} not going`, '#dc2626')}
-          ${ineligible ? count('tile_ineligible', ineligible, `⛔ ${ineligible} ineligible`, '#dc2626') : ''}
-          ${inactive ? count('tile_inactive', inactive, `💤 ${inactive} inactive`, '#94a3b8') : ''}
+          ${ineligible && rosterCounts ? count('tile_ineligible', ineligible, `⛔ ${ineligible} ineligible`, '#dc2626') : ''}
+          ${inactive && rosterCounts ? count('tile_inactive', inactive, `💤 ${inactive} inactive`, '#94a3b8') : ''}
         </span>
         ${posted(ev) ? '' : `<span style="font-size:0.7rem; color:#f59e0b;">${this.escapeHtml(cp('not_posted', {}, 'not posted yet'))}</span>`}
         ${tagIssues(ev)}
