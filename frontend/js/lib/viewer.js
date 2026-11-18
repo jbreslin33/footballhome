@@ -62,7 +62,16 @@ class PlayerViewer {
   // page — so event pages lose ← Back (owner 11/18 "they need a back button
   // but instead maybe a calendar button at top because that is the only item
   // on their universal menu").
-  get showsCalendarButton() { return true; }
+  //
+  // Since 11/18 (later) that is the menu bar's own 📅 Calendar pill, as an
+  // admin sees it in a game (owner "we need calender 'menu' item like we
+  // have on admin when your in game but that is all the players need right
+  // now … game or practice. event basically"): menuBarPages = the menu_pages
+  // codes on a player's bar, shown away from the Calendar only.  The band's
+  // small 📅 icon is off — one Calendar button, not two.
+  get showsCalendarButton() { return false; }
+  get menuBarPages()      { return ['calendar']; }
+  get homeScreens()       { return ['calendar', 'event-center', 'my', 'player-calendar']; }
   get eventBack()         { return false; }
   // Which people sections: ✓ going, 🎟 invited and 🧑‍🏫 coaches.  Not the
   // no-response / not-going / injured / inactive / suspended / ineligible folds.
@@ -128,6 +137,7 @@ class CoachViewer extends PlayerViewer {
   // coaches edit the official lineup directly.  Flip here to bring drafts back.
   get eventLineupDrafts() { return false; }
   get showsCalendarButton() { return false; }   // staff have the menu bar
+  get menuBarPages()      { return null; }       // the full bar
   get eventBack()         { return true; }
   eventSection()          { return true; }
 

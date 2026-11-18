@@ -176,15 +176,6 @@ class MainMenu {
     // A newer show() may have run while the menu loaded.
     const current = window.app && window.app.navigation && window.app.navigation.currentState;
     if (current && current !== screen) return;
-    // PlayerViewer: no menu bar — the Calendar is their one page; Sign out
-    // sits in its 👤 Mine (lib/viewer.js, owner 11/18).
-    if (window.Viewer && !Viewer.account().showsMenuBar) return hide();
-    const groups = MainMenu.groups();
-    if (!groups.length) return hide();
-    const page = MainMenu._pageFor(screen);
-    if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
-    const account = screen === 'main-menu';
-    const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const copy = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', tier)) ? MessageCopy.block('main_menu', tier) : fb;
     const pill = (attrs, label, on, big) => `<button type="button" ${attrs} ${on ? 'data-menu-on' : ''}
@@ -193,6 +184,29 @@ class MainMenu {
                background:${on ? (big ? '#0ea5e9' : 'rgba(14,165,233,0.22)') : 'transparent'}; color:${on && big ? '#fff' : 'var(--fg, #e5e7eb)'};
                border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${label}</button>`;
     const row = (inner, extra = '') => `<div class="menu-row" style="display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 0; ${extra}">${inner}</div>`;
+    // PlayerViewer: no full bar — just its menuBarPages (📅 Calendar) as the
+    // admin's big pill, and only away from the Calendar, where it would go
+    // nowhere (lib/viewer.js, owner 11/18 "calender 'menu' item like we have
+    // on admin when your in game … game or practice. event basically").
+    const acct = window.Viewer ? Viewer.account() : null;
+    if (acct && !acct.showsMenuBar) {
+      if ((acct.homeScreens || []).includes(screen)) return hide();
+      const codes = acct.menuBarPages || [];
+      const mine = ((MainMenu._data && MainMenu._data.pages) || [])
+        .filter(p => codes.includes(p.code) && MainMenu._sees(p))
+        .sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
+      if (!mine.length) return hide();
+      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, true, true)).join(''));
+      host.style.display = 'block';
+      MainMenu._wire(host);
+      return;
+    }
+    const groups = MainMenu.groups();
+    if (!groups.length) return hide();
+    const page = MainMenu._pageFor(screen);
+    if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
+    const account = screen === 'main-menu';
+    const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;
     const top = groups.map(g => pill(`data-menu-group="${esc(g.code)}"`, `${esc(g.icon)} ${esc(g.label)}`, group && g.code === group.code, true)).join('')
       + pill('data-menu-account', esc(copy('account_pill', '👤 Account')), account, true);
     const pages = group && group.pages.length >= 2
@@ -207,6 +221,10 @@ class MainMenu {
       const r = b.parentElement;
       if (r) r.scrollLeft = Math.max(0, b.offsetLeft - r.offsetLeft - (r.clientWidth - b.offsetWidth) / 2);
     });
+    MainMenu._wire(host);
+  }
+
+  static _wire(host) {
     if (!host._wired) {
       host._wired = true;
       host.addEventListener('click', (e) => {
