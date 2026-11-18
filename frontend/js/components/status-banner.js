@@ -71,6 +71,7 @@
     #status-banner .sb-chat-who { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #status-banner .sb-chat-when { opacity:0.7; white-space:nowrap; font-size:0.72rem; }
     #status-banner .sb-chat-n { margin-left:auto; font-size:0.74rem; font-weight:800; white-space:nowrap; color:#fca5a5; }
+    #status-banner .sb-chat-n.zero { color:#9ca3af; }
     #status-banner .sb-chat-msg { font-size:0.8rem; opacity:0.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     #status-banner .sb-chat.unread { border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
     @keyframes sb-pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(255,255,255,0.75); } 50% { box-shadow:0 0 0 8px rgba(255,255,255,0); } }
@@ -262,13 +263,14 @@
         const tip = s && s.text ? `${s.text}${s.when ? ' · ' + s.when : ''}` : cp('sheet_chat', {}, '💬 Chat');
         // "it should say x unread too" → "show a number if unread and say x
         // unread" — 💬 with a count on the bubble + "3 unread", red, pulsing until opened.
-        const words = n ? cp('chat_btn_unread', { n }, `${n} unread`) : '';
+        // Always "N unread" — "0 unread" once read, so it never confuses (owner 11/18).
+        const words = cp('chat_btn_unread', { n: n || 0 }, `${n || 0} unread`);
         const who = (s && s.who) || cp('sheet_chat', {}, '💬 Chat'), msg = (s && s.msg) || '';
         this.bar.setTail(`<button type="button" class="sb-chat ${n ? 'unread' : ''}" data-sb-chip="chat_unread"
             title="${esc(tip)}" aria-label="${esc(n ? `💬 ${words} — ${who}: ${msg}` : `💬 ${who}: ${msg}`)}">
             <span class="sb-chat-i">💬${n ? `<span class="sb-chat-dot">${esc(n)}</span>` : ''}</span>
             <span class="sb-chat-t">
-              <span class="sb-chat-top"><span class="sb-chat-who">${esc(who)}</span>${s && s.when ? `<span class="sb-chat-when">${esc(s.when)}</span>` : ''}${n ? `<span class="sb-chat-n">${esc(words)}</span>` : ''}</span>
+              <span class="sb-chat-top"><span class="sb-chat-who">${esc(who)}</span>${s && s.when ? `<span class="sb-chat-when">${esc(s.when)}</span>` : ''}<span class="sb-chat-n ${n ? '' : 'zero'}">${esc(words)}</span></span>
               ${msg ? `<span class="sb-chat-msg">${esc(msg)}</span>` : ''}
             </span>
           </button>`);
