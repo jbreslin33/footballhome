@@ -31,5 +31,6 @@ private:
     Response handleExpenses(const Request& request);
     Response handleCashFlow(const Request& request);
     Response handlePrograms(const Request& request);
+    Response handleCoaching(const Request& request);
     Response handleProgramSave(const Request& request, bool entry);
 };

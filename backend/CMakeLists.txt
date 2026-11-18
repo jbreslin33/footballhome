@@ -48,6 +48,7 @@ set(SOURCES
     src/models/NoticeBoard.cpp
     src/models/Expenses.cpp
     src/models/ProgramBudget.cpp
+    src/models/CoachingPlan.cpp
     src/models/PyramidForecast.cpp
     src/models/DuesLedger.cpp
     src/models/CashFlow.cpp

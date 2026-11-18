@@ -627,7 +627,16 @@ class FinancesScreen extends Screen {
     return `<div class="fn-card"><div class="fn-title">${esc(full ? (this._copy('cap_title') || 'Full capacity') : (this._copy('pg_title') || 'Programs'))} · ${esc(year)}</div>
       <div class="fn-note">${esc(full ? this._copy('pg_cap_note') : this._copy('pg_note'))}</div>${yearBar}
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
-      <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+      <div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
+  }
+  // 🧑‍🏫 Coaches for the year (mig 1491): CoachingPlanTable shows what the
+  // server's CoachingPlan works out — no coaching maths on this screen.
+  _coachingTable() {
+    if (!this.coaching && window.CoachingPlanTable) {
+      this.coaching = new CoachingPlanTable({ auth: this.auth, copy: (t, tok) => this._copy(t, tok), esc: (t) => this.escapeHtml(t),
+        money: FinancesScreen.money0, onLoaded: () => { if (this.view === 'programs') this._renderBody(); } });
+    }
+    return this.coaching || { html: () => '' };
   }
   // The plan inputs every program shares (owner 11/17 "the now and future
   // years should be consistent in format with options … for diff amount of

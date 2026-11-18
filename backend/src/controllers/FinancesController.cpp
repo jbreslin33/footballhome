@@ -8,6 +8,7 @@
 
 #include "../database/Database.h"
 #include "../models/ProgramBudget.h"
+#include "../models/CoachingPlan.h"
 #include "../models/CashFlow.h"
 #include "../models/Expenses.h"
 #include "../models/PaymentsOverview.h"
@@ -79,6 +80,16 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
         [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, false); });
     laPost(router, prefix + "/program-entry", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, true); });
+    // 🧑‍🏫 Coaching plan (mig 1491): every paid coach's hours and money per
+    // season, from the normalized schedule — ?year=2026-27 ("" = this year).
+    router.get(prefix + "/coaching", [this](const Request& r) { return handleCoaching(r); });
+}
+
+Response FinancesController::handleCoaching(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    try { return jsonOut(HttpStatus::OK, CoachingPlan(WelcomeLog::kLighthouseClubId, request.getQueryParam("year")).toJson()); }
+    catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
+    catch (const std::exception& e) { std::cerr << "[finances coaching] " << e.what() << std::endl; return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the coaching plan."); }
 }
 
 Response FinancesController::handlePrograms(const Request& request) {
