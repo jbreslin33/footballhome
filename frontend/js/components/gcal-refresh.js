@@ -11,6 +11,10 @@
 (function () {
   function ping(auth, onLanded) {
     if (!auth || !auth.fetch) return;
+    // 🎭 View-as is read-only (core/ViewAs refuses every POST): skip the
+    // background pull rather than flash a failed request (owner 11/18
+    // "something when viewing as naranjo is failing but it disappears").
+    if (auth.viewAsPersonId) return;
     auth.fetch('/api/calendar/gcal-refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
       .then(res => (res.ok ? res.json() : null))
       .then(body => {
