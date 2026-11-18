@@ -360,7 +360,7 @@ class GameCenterEligibility {
     const text = this._eligCopy(tier, tokens);
     if (!text) return '';   // no copy row → say nothing (never hard-code it)
     const [bg, fg] = made ? ['#166534', '#bbf7d0'] : onPace ? ['#854d0e', '#fef08a'] : ['#7f1d1d', '#fecaca'];
-    return `<div data-gc-my-practice style="max-width:540px; margin:0 auto 8px; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:0.85rem; font-weight:700; text-align:center;">${this.escapeHtml(text)}</div>`;
+    return `<div data-gc-my-practice style="margin:0 auto; padding:7px 12px; border-radius:10px; background:${bg}; color:${fg}; font-size:14px; font-weight:700; text-align:center;">${this.escapeHtml(text)}</div>`;
   }
 
   _renderMyEligibility() {
