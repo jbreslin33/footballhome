@@ -564,6 +564,10 @@ class EventCenterScreen extends Screen {
     if (!staff) this.kind = 'all';
     const back = this.find('.back-btn');
     if (back) back.style.display = staff ? '' : 'none';
+    // …and no "📅 Calendar / Tap an event…" header — the week says where they
+    // are (owner 11/18 "not needed its obvious they are on cal").
+    const header = this.find('.screen-header');
+    if (header) header.style.display = staff ? '' : 'none';
     const kinds = this.find('#ec-kinds');
     if (kinds) kinds.innerHTML = staff ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
     title.textContent = EventKindSwitch.title();
