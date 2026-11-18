@@ -64,7 +64,7 @@
     #status-banner .sb-chat-i { position:relative; font-size:1.15rem; }
     #status-banner .sb-chat-dot { position:absolute; top:-8px; right:-10px; min-width:18px; height:18px; padding:0 4px; box-sizing:border-box; border-radius:999px;
                                   background:#fff; color:#dc2626; font-size:0.66rem; font-weight:800; line-height:18px; text-align:center; }
-    #status-banner .sb-chat-n { font-size:0.82rem; font-weight:800; white-space:nowrap; }
+    #status-banner .sb-chat-n { font-size:0.82rem; font-weight:800; white-space:nowrap; margin-left:8px; }
     #status-banner .sb-chat.unread { background:#ef4444; border-color:#fff; animation: sb-pulse 1.6s ease-in-out infinite; }
     @keyframes sb-pulse { 0%, 100% { box-shadow:0 0 0 0 rgba(255,255,255,0.75); } 50% { box-shadow:0 0 0 8px rgba(255,255,255,0); } }
     @media (prefers-reduced-motion: reduce) { #status-banner .sb-chat.unread { animation:none; } }
