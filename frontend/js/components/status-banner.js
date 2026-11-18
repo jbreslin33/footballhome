@@ -266,8 +266,14 @@
       return this.loadingEvents;
     }
 
+    // This week only (Mon–Sun, from now on) and only what can be answered now:
+    // RSVPs open (owner 11/18 "showing ones from next week and its saying
+    // window not open … should only be this week and not old ones").
     renderEvents() {
-      const now = Date.now(), horizon = now + 7 * 86400000;
+      const now = Date.now();
+      const sunday = new Date(); sunday.setHours(0, 0, 0, 0);
+      sunday.setDate(sunday.getDate() + ((7 - sunday.getDay()) % 7) + 1);   // next Monday 00:00
+      const horizon = sunday.getTime();
       const soonMs = this.bar.windowHours('rsvp_soon') * 3600000;
       const rows = [];
       let soon = 0, later = 0, suspended = 0, stake = 0;
@@ -276,6 +282,7 @@
         const at = new Date(ev.starts_at).getTime();
         if (!(at >= now && at < horizon) || ev.status === 'cancelled') continue;
         if (ev.my_suspension) suspended++;
+        if (ev.rsvps_open_now === false) continue;   // not open yet — nothing to answer
         const who = [];   // [{ id: 0 = me | child person_id, name }]
         if (ev.my_rsvp_eligible === true && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no') who.push({ id: 0, name: '' });
         for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) {
