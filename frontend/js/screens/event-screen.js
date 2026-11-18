@@ -1508,11 +1508,19 @@ class EventScreen extends Screen {
     const info = RosterMessaging.collect(g.people.map(r => this._groupMsgPerson(r)), (p) => p.contact);
     if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
     const ev = this.ev || {};
-    const what = [ev.title || ev.summary || '', EventLabels.when(ev)].filter(Boolean).join(' · ');
+    // The event as players know it (EventLabels.title — never the raw gcal
+    // title, the admins' shorthand) + when.  Owner 11/18: "message a group
+    // on an event should focus on that event … can't have custom url but
+    // should mention the event in particular" — so the box opens with one
+    // line naming it (event_center group_body, mig 1470), no link; the
+    // sender writes the rest.
+    const what = [EventLabels.title(ev), EventLabels.when(ev)].filter(Boolean).join(' · ');
+    const where = EventLabels.homeSetup(ev) || ev.location || '';
     const plain = String(g.label).replace(/<[^>]*>/g, '').replace(/&amp;/g, '&');
     const scope = (window.MessageCopy && MessageCopy.block('event_center', 'group_scope', { group: plain, event: what })) || `${plain} — ${what}`;
     const subject = (window.MessageCopy && MessageCopy.block('event_center', 'group_subject', { event: what })) || what;
-    BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: subject ? { label: '', subject } : null },
+    const body = (window.MessageCopy && MessageCopy.block('event_center', 'group_body', { event: what, where })) || `${what}${where ? ` @ ${where}` : ''}\n`;
+    BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: { label: '', subject, body } },
       onSent: (n) => { el.textContent = `✓ ${n}`; } });
   }
 

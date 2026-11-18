@@ -3536,9 +3536,13 @@ class GameCenterScreen extends EventScreen {
     const game = this._gameLabelForMessage();
     const scope = this._copyGm('scope', { group: this._copyGm('group_' + group.key), game });
     const subject = this._copyGm('subject', { game });
+    // The box opens naming this game (game_message body, mig 1470; owner
+    // 11/18 "should mention the event in particular", no link).
+    const where = (this.ev && window.EventLabels && (EventLabels.homeSetup(this.ev) || this.ev.location)) || '';
+    const body = this._copyGm('body', { game, where }) || `${game}\n`;
     BulkMessageComposer.open({
       screen: this, kind, info,
-      entry: { scope, preset: subject ? { label: '', subject } : null },
+      entry: { scope, preset: { label: '', subject, body } },
       onSent: (n) => this._toast(`✓ ${n}`),
     });
   }
