@@ -953,8 +953,28 @@ Response PaymentsController::handleStanding(const Request& request) {
                      GROUP BY bp.green_days, bp.yellow_days) AS rsvp_box,
                    -- R:27 on the card (owner 2026-11-04): every RSVP on
                    -- record for him, games and practices.
-                   (SELECT count(*) FROM fh_event_rsvps r WHERE r.person_id = p.id) AS rsvp_total
+                   (SELECT count(*) FROM fh_event_rsvps r WHERE r.person_id = p.id) AS rsvp_total,
+                   -- The box's last payment (owner 11/19 "show the date of
+                   -- last payment even when money is owed … last time a
+                   -- payment went through"): newest money-in transaction on
+                   -- ANY of his LA accounts or registrations, not just the
+                   -- current one (Marco: nothing on his club reg since 8/8,
+                   -- last paid 6/5 on Spring 2026).
+                   to_char(lp.paid_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_paid_at,
+                   lp.amount::float8 AS last_paid_amount
               FROM persons p
+              LEFT JOIN LATERAL (
+                SELECT t.paid_at, (SELECT sum(i.amount) FROM person_payments i WHERE i.la_transaction_id = t.la_transaction_id) AS amount
+                  FROM (SELECT pp.la_transaction_id, pp.paid_at FROM person_payments pp
+                         WHERE pp.txn_type IN ('Charge', 'Offline Payment', 'Bank')
+                           AND pp.la_user_id::text IN (SELECT p.la_user_id::text
+                                                        UNION SELECT u.la_user_id FROM person_la_user_ids u WHERE u.person_id = p.id)
+                        UNION ALL
+                        SELECT pp.la_transaction_id, pp.paid_at FROM person_payments pp
+                         WHERE pp.txn_type IN ('Charge', 'Offline Payment', 'Bank')
+                           AND pp.la_registration_id IN (SELECT m.la_registration_id FROM person_la_memberships m
+                                                          WHERE m.person_id = p.id AND m.la_registration_id IS NOT NULL)) t
+                 ORDER BY t.paid_at DESC LIMIT 1) lp ON true
              WHERE p.id = ANY($1::int[]))SQL", {arr, std::to_string(WelcomeLog::kLighthouseClubId)})) {
             const double bal = r["balance"].is_null() ? 0.0 : r["balance"].as<double>();
             const double monthly = r["monthly"].is_null() ? 0.0 : r["monthly"].as<double>();
@@ -965,6 +985,8 @@ Response PaymentsController::handleStanding(const Request& request) {
                           {"months_behind", (monthly > 0 && bal > 0) ? (int)std::ceil(bal / monthly - 1e-9) : 0}}},
                 {"inactive", r["inactive"].as<bool>()},
                 {"answered", r["answered"].as<bool>()},
+                {"lastPaidAt", r["last_paid_at"].is_null() ? json(nullptr) : json(r["last_paid_at"].c_str())},
+                {"lastPaidAmount", r["last_paid_amount"].is_null() ? json(nullptr) : json(r["last_paid_amount"].as<double>())},
                 {"rsvpBox", r["rsvp_box"].is_null() ? std::string("red") : std::string(r["rsvp_box"].c_str())},
                 {"lastAnsweredAt", r["last_answered_at"].is_null() ? json(nullptr) : json(r["last_answered_at"].c_str())},
                 {"rsvpTotal", r["rsvp_total"].as<long long>()},

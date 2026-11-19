@@ -299,7 +299,12 @@
     // it needs to show date of last payment and AMOUNT OWED all in red"):
     // green "11/10 $35" = last payment; red "11/10 $70" = last payment
     // date + amount owed.  opts.paidAt / opts.paidAmount = the board row's.
-    const paid = opts.paidAt ? md(opts.paidAt) : '';
+    // Last payment on ANY of his LA registrations (standing lastPaidAt,
+    // owner 11/19 "Marco has no date"); the board row's (current reg only)
+    // is the fallback.
+    const paidIso = hit.data.lastPaidAt || opts.paidAt || '';
+    const paidAmt = hit.data.lastPaidAt ? hit.data.lastPaidAmount : opts.paidAmount;
+    const paid = paidIso ? md(paidIso) : '';
     const money = (n) => `$${Math.round(Number(n) || 0)}`;
     if (d) {
       if (d.free_reason === 'volunteer') bottom.push(s(t('box_dues_volunteer', {}, '🙋 vol'), '#cbd5e1'));   // mig 1534
@@ -311,7 +316,7 @@
           paid ? t('box_owes_since_tip', { date: paid, amount }, `Owes ${amount}. Last payment ${paid}.`)
                : t('box_owes_never_tip', { amount }, `Owes ${amount}. No payment on record.`)));
       } else {
-        const amount = opts.paidAmount != null && opts.paidAmount !== '' ? money(opts.paidAmount) : '';
+        const amount = paidAmt != null && paidAmt !== '' ? money(paidAmt) : '';
         bottom.push(s(paid ? t('box_paid_amount', { date: paid, amount }, `${paid} ${amount}`.trim()) : t('box_dues_free', {}, '$0'), '#86efac',
           paid ? t('box_paid_on_tip', { date: paid }, `Last payment ${paid}`) : ''));
       }
