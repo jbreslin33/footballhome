@@ -1301,7 +1301,7 @@ class RosterScreenBase extends Screen {
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
           <span data-tc-num="${pid}" style="position:absolute; top:-8px; left:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:${numColor(pid)}; color:#0f172a; font-weight:800;">@@TCNUM@@</span>
-          <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
+          <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${(() => { const br = this.ruleBreaks(pid, data); return br.length ? flagTag(copy('tc_flag_illegal', {}, 'ILLEGAL'), br.map(b => b.why).join(' · ')) : ''; })()}${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
           <div data-tc-name="${pid}" style="font-size:13px; font-weight:800; line-height:1.15; color:${nameColor(pid)}; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
@@ -1321,6 +1321,26 @@ class RosterScreenBase extends Screen {
         <div data-tc-tally="${esc(list.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-bottom:6px; opacity:0.9;">${tallyHtml(list.map(p => p.personId))}</div>
         <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px; padding:10px 6px; border-radius:8px; background:rgba(0,0,0,0.22);">
           ${ordered(list, list[0] && list[0].__col).map((p, i) => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(i + 1))).join('')}</div></div>` : '';
+    // Everyone on this card's official lists breaking a league rule — from
+    // the lists themselves, so a listed man who isn't on our board counts.
+    const illegalBanner = (teamIds) => {
+      const seen = new Set(), hits = [];
+      for (const tid of teamIds) {
+        const l = this.leagueListFor(tid);
+        if (!l) continue;
+        l.personIds.forEach((pid, i) => {
+          if (pid == null || seen.has(Number(pid))) return;
+          const br = this.ruleBreaks(pid, data).filter(b => teamIds.map(Number).includes(b.teamId));
+          if (!br.length) return;
+          seen.add(Number(pid));
+          hits.push({ name: l.names[i] || '?', why: br.map(b => b.why).join(' · ') });
+        });
+      }
+      if (!hits.length) return '';
+      return `<div style="margin:0 0 8px; padding:6px 8px; border-radius:8px; background:#7f1d1d; border:2px solid #ef4444; text-align:left;">
+          <div style="font-size:12px; font-weight:900; letter-spacing:1px; color:#fff;">${esc(copy('board_ineligible_h', {}, '⚠ INELIGIBLE — league rule, fix before the league does'))} (${hits.length})</div>
+          ${hits.map(h => `<div style="font-size:12px; font-weight:700; color:#fecaca;">${esc(h.name)} — ${esc(h.why)}</div>`).join('')}</div>`;
+    };
     const card = (col) => {
       const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
       const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
@@ -1349,6 +1369,7 @@ class RosterScreenBase extends Screen {
             <span style="font-size:14px; text-transform:uppercase; letter-spacing:4px; font-weight:800;">${esc(label)}</span>
             <span style="font-size:14px; font-weight:800; color:#f5d442;">${groups.active.length}</span>
           </div>
+          ${illegalBanner(listTeamIds)}
           <div data-tc-tally="${esc(groups.active.map(p => p.personId).join(','))}" style="font-size:12px; font-weight:800; margin:-4px 0 8px; opacity:0.95;">${tallyHtml(groups.active.map(p => p.personId))}</div>
           ${pitch(groups.active, col, listTeamIds)}
           ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
@@ -1407,6 +1428,39 @@ class RosterScreenBase extends Screen {
 
   // 🪑 Regulars / Reserves (mig 1530) — the men's board turns it on.
   _hasReserves() { return false; }
+
+  // League rule breaks between the official lists (roster_team_rules, mig
+  // 820) for one person → [{ teamId, why }].  On team T's list and T
+  // `requires` lists he is on none of, or T `excludes` a list he is also
+  // on.  A rule whose other list isn't mirrored isn't checked.  The
+  // Graphic team cards' ILLEGAL tag + banner (owner 11/19 "flag if a
+  // player is on reserves official but not on liga 1 official as that is
+  // illegal with league and if they saw it we would have to fix").
+  ruleBreaks(personId, data) {
+    if (personId == null || personId === '') return [];
+    const id = Number(personId);
+    const rules = (data && data.rosterRules) || {};
+    const copy = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens || {})) || fb;
+    const label = (tid) => {
+      const c = ((data && data.columns) || []).find(x => Number(x.teamId) === Number(tid));
+      return c ? RosterScreenBase.dropClubName(String(c.label || c.shortLabel || '').replace(/^[^\p{L}\p{N}]+/u, '').trim()) : `Team ${tid}`;
+    };
+    const out = [];
+    for (const [tid, r] of Object.entries(rules)) {
+      if (!this.onLeagueList(tid, id)) continue;
+      const req = (r.requires || []).filter(t => this.leagueListFor(t));
+      if (req.length && !req.some(t => this.onLeagueList(t, id))) {
+        const teams = req.map(label).join(' / ');
+        out.push({ teamId: Number(tid), why: `${label(tid)}: ${copy('board_rule_requires', { teams }, `⚠ not on the ${teams} roster`)}` });
+      }
+      for (const t of (r.excludes || [])) {
+        if (this.leagueListFor(t) && this.onLeagueList(t, id)) {
+          out.push({ teamId: Number(tid), why: `${label(tid)}: ${copy('board_rule_excludes', { team: label(t) }, `⚠ also on the ${label(t)} roster — can't be on both`)}` });
+        }
+      }
+    }
+    return out;
+  }
 
   // On the league's own list for this team.
   onLeagueList(teamId, personId) {
