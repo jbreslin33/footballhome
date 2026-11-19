@@ -186,6 +186,7 @@ public:
     int aerialDuels() const { return aerial_duels_; }
     int aerialLone() const { return aerial_lone_; }
     int headersAtGoal(int team) const { return headers_at_goal_[team]; }
+    int headersPass(int team) const { return headers_pass_[team]; }   // G5.181
     int headersClear(int team) const { return headers_clear_[team]; }
     int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
     bool reactReach() const { return react_reach_; }   // G5.165
@@ -342,9 +343,10 @@ private:
     bool headRangeOfGoal(std::uint8_t team) const;
     bool headRangeOfOwn(std::uint8_t team) const;
     math::Fixed64 aerial_radius_{}, aerial_min_z_{}, aerial_duel_slope_{}, aerial_goal_range_{}, aerial_own_range_{};
-    math::Fixed64 aerial_clear_up_{}, aerial_clear_behind_[2][2]{};   // G5.180 (§8.286): a headed clearance's pull upfield; its glance behind [0-6 / 6-18 m][inside / wide the box]
+    math::Fixed64 aerial_clear_up_{}, aerial_clear_behind_[2][2]{};
+    math::Fixed64 aerial_pass_share_[5][2]{}, aerial_pass_err_{}, aerial_pass_err_duel_{}, aerial_pass_reach_{}, aerial_clear_range_{};   // G5.181 (§8.287): a headed pass's share by spot, aim error, reach   // G5.180 (§8.286): a headed clearance's pull upfield; its glance behind [0-6 / 6-18 m][inside / wide the box]
     math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{}, clear_err_{}, block_turn_{}, block_keep_{};
-    int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {}, body_blocks_[2] = {};
+    int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {}, headers_pass_[2] = {}, body_blocks_[2] = {};
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};
     Clock clock_;

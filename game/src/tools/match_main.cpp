@@ -115,7 +115,8 @@ struct Stats {
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
-    long cl_n[8] = {}, cl_c[8] = {}, cl_t[8] = {}, hc_n[8] = {}, hc_c[8] = {}, hc_t[8] = {};   // §8.286 foot clearances by spot; their corner / throw-in
+    long cl_n[8] = {}, cl_c[8] = {}, cl_t[8] = {}, hc_n[8] = {}, hc_c[8] = {}, hc_t[8] = {};
+    long hdr_n[10] = {}, hdr_k[10][3] = {}, hdr_nod_own[10] = {}, hdr_nod_end[10] = {};   // §8.287 HEADERS by spot (5 bands x inside/wide): kind clear / at goal / nod; a nod's next owner ours / anyone   // §8.286 foot clearances by spot; their corner / throw-in
     long bs_st[4] = {}, bs_runs[4] = {}; std::vector<int> bs_len[4];   // §8.285 BALL STATE: on a man / contested / travelling / loose (5 Hz)
     long wng[2][4] = {}, ib_n[3][3] = {}, ib_k[3][3] = {};   // §8.281 INTO THE BOX FROM WIDE   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
@@ -298,7 +299,8 @@ int main(int argc, char** argv) {
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
         auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
-        int cl_band = -1, hc_band = -1; int hc_prev = 0;   // §8.286 + the last headed clearance's band   // §8.286 the last foot clearance's band (m off own goal 0-6/6-18/18-35/35+ x inside/wide), -1 = none since
+        int cl_band = -1, hc_band = -1; int hc_prev = 0;
+        int hdr_prev = 0, hdr_cprev = 0, hdr_gprev = 0, hdr_nod = -1, hdr_team = -1;   // §8.287   // §8.286 + the last headed clearance's band   // §8.286 the last foot clearance's band (m off own goal 0-6/6-18/18-35/35+ x inside/wide), -1 = none since
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
@@ -720,6 +722,18 @@ int main(int argc, char** argv) {
                     hc_band = a * 2 + (std::fabs(b.pos.y.toDouble()) < 20.16 ? 0 : 1); ++S.hc_n[hc_band];
                 }
                 hc_prev = hcn;
+            }
+            {   // §8.287 HEADERS by spot: every World header (duel or lone) by the header's spot off his own goal line, and its kind
+                const int hn = W.aerialDuels() + W.aerialLone(), hcn = W.headersClear(0) + W.headersClear(1), hgn = W.headersAtGoal(0) + W.headersAtGoal(1);
+                if (k == 0) { hdr_prev = hn; hdr_cprev = hcn; hdr_gprev = hgn; hdr_nod = -1; }
+                if (hdr_nod >= 0 && b.owner) { ++S.hdr_nod_end[hdr_nod]; S.hdr_nod_own[hdr_nod] += W.player(*b.owner).team == hdr_team; hdr_nod = -1; }
+                if (hn != hdr_prev && W.lastTouchTeam() <= 1) {
+                    const int t = W.lastTouchTeam(); const double d = hx + b.pos.x.toDouble() * (t == 0 ? 1.0 : -1.0);
+                    const int a = d < 6 ? 0 : d < 18 ? 1 : d < 35 ? 2 : d < 52.5 ? 3 : 4, bd = a * 2 + (std::fabs(b.pos.y.toDouble()) < 20.16 ? 0 : 1);
+                    const int kd = hcn != hdr_cprev ? 0 : hgn != hdr_gprev ? 1 : 2;
+                    ++S.hdr_n[bd]; ++S.hdr_k[bd][kd]; hdr_nod = kd == 2 ? bd : -1; hdr_team = t;
+                }
+                hdr_prev = hn; hdr_cprev = hcn; hdr_gprev = hgn;
             }
             if (!b.owner) free_v = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble());   // §8.236: the free ball's pace, the tick before a receipt
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
@@ -3203,6 +3217,15 @@ int main(int argc, char** argv) {
             std::printf("      HEADED CLEARANCES by spot (ours; StatsBomb headed: corner %% from 0-6 inside 16, 6-18 inside 5): a team-match | corner %% | throw-in %%\n");
             for (int b = 0; b < 8; ++b) std::printf("        %-5s %-6s %.2f | %.1f | %.1f\n", dn[b / 2], b % 2 ? "wide" : "inside", S.hc_n[b] / std::max(1.0, 2.0 * matches),
                                                     100.0 * S.hc_c[b] / std::max(1L, S.hc_n[b]), 100.0 * S.hc_t[b] / std::max(1L, S.hc_n[b]));
+        }
+        {   // §8.287 HEADERS by spot v StatsBomb PL 15/16 (benchmarks_statsbomb_headers.py): a team-match | clear % | nods a team-match, next owner ours %
+            static const double rr[10][4] = {{1.93, 96.9, 0.06, 73.9}, {0.03, 76.0, 0.01, 66.7}, {7.75, 85.4, 1.14, 71.5}, {0.43, 53.8, 0.20, 59.9}, {6.08, 38.4, 3.75, 65.9},
+                                             {2.61, 38.0, 1.62, 58.2}, {6.96, 27.3, 5.06, 56.5}, {4.14, 30.0, 2.90, 52.2}, {7.76, 2.9, 5.42, 54.6}, {3.88, 8.9, 3.54, 51.7}};
+            static const char* const dn[5] = {"0-6", "6-18", "18-35", "35-52", "52+"};
+            std::printf("      HEADERS by spot (m off his own goal line; real StatsBomb PL 15/16 headed clearance / pass / shot, 41.58 a team-match): a team-match | clear %% | at goal %% | nods a team-match, next owner ours %% (real headed passes, completed %%)\n");
+            for (int b = 0; b < 10; ++b) std::printf("        %-5s %-6s %5.2f (%5.2f) | %5.1f (%5.1f) | %4.1f | %5.2f (%5.2f), %4.1f (%4.1f)\n", dn[b / 2], b % 2 ? "wide" : "inside", S.hdr_n[b] / std::max(1.0, 2.0 * matches), rr[b][0],
+                                                     100.0 * S.hdr_k[b][0] / std::max(1L, S.hdr_n[b]), rr[b][1], 100.0 * S.hdr_k[b][1] / std::max(1L, S.hdr_n[b]), S.hdr_k[b][2] / std::max(1.0, 2.0 * matches), rr[b][2],
+                                                     100.0 * S.hdr_nod_own[b] / std::max(1L, S.hdr_nod_end[b]), rr[b][3]);
         }
         {   // §8.285 BALL STATE (DFL: s a match, %, runs a match, run med s)
             static const char* const sn[4] = {"on a man", "contested", "travelling", "loose"};

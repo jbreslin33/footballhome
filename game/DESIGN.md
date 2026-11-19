@@ -11382,3 +11382,40 @@ land (above). Card 9 / 4 / 20 → 8 ok / 5 off / 20 OFF: scored 12-18 m to ok, s
 foot clears inside the box 5.2 (7.3). The glance can't give more corners than the box gives clearances. New harness lines
 CLEARANCES / HEADED CLEARANCES by spot. Next: why our defenders head the ball 18-35 m out — the long balls they meet, v
 real aerial duels by spot — before any change. Goldens unchanged; tests 23/23, lint clean.
+
+### 8.287 G5.181 — a header is a headed pass to a mate at the real share by spot (no migration; off by rows)
+
+From §8.286's "next". New `benchmarks_statsbomb_headers.py` (PL 15/16): every header — Clearance / Pass (restarts out) /
+Shot with body part Head — by m off the heading side's own goal line × inside / wide the box's width: 41.58 a team-match
+(clear 15.78, pass 23.68, shot 2.12). Ours (new harness line HEADERS by spot): every header within `own_range_m` (35) was a
+clearance, every other an unaimed nod (the ball's line at half pace, next owner ours 31-44%).
+
+| spot | real headers / clear % / headed passes completed % | ours before | ours after (4 seeds × 8) |
+|---|---|---|---|
+| 0-6 inside | 1.93 / 96.9 / 74 | 0.52 / 100 / – | 0.70 / 93.3 / – |
+| 6-18 inside | 7.75 / 85.4 / 72 | 4.39 / 100 / – | 4.31 / 84.0 / 71 |
+| 6-18 wide | 0.43 / 53.8 / 60 | 0.91 / 100 / – | 1.00 / 60.9 / 44 |
+| 18-35 inside | 6.08 / 38.4 / 66 | 7.75 / 100 / – | 9.17 / 36.6 / 72 |
+| 18-35 wide | 2.61 / 38.0 / 58 | 4.95 / 100 / – | 4.56 / 38.3 / 55 |
+| 35-52 inside | 6.96 / 27.3 / 57 | 6.44 / 7.5 / 44 | 4.75 / 29.6 / 70 |
+| 35-52 wide | 4.14 / 30.0 / 52 | 2.45 / 12.1 / 33 | 2.09 / 31.3 / 66 |
+| 52+ inside | 7.76 / 2.9 / 55 | 10.16 / 0 / 39 | 10.38 / 0.6 / 64 |
+| 52+ wide | 3.88 / 8.9 / 52 | 2.38 / 0 / 34 | 2.34 / 0 / 65 |
+
+**Change (`World::headIt`):** outside shooting range, at the real share of headed passes among passes + clearances by spot
+(`physics.aerial.pass_share_{6,18,35,52,far}_{inside,wide}`, code defaults 0.03 / 0.24, 0.146 / 0.462, 0.616 / 0.62,
+0.727 / 0.70, 0.971 / 0.911), a headed pass: to a mate 5-25 m off (no keeper), the most room to 8 m, nearest 14 m (real
+median 12-15), forward first (real 72-88% forward); a 2:1 loft at `pass_reach` × √(d g) (1.1, lifted for drag), aim error
+`pass_err_deg` 10 / `pass_err_duel_deg` 20; `ball.pass_to` = him, so he comes to it. No mate in reach → as before. A header
+not passed within `clear_range_m` (52.5) is a clearance (real 27-30% at 35-52 m), not a nod.
+
+Card 8 / 5 / 20 → **5 ok / 8 off / 20 OFF** (`card_G5.181.txt`): corners 2.22 → 2.45, shots 12-18 m to off, scored 25 m+
+to ok; fouls 13.1 → 12.0 and free kicks 12.5 → 11.3 to off (fewer loose 50-50s after a header), aerial duels 42.6 → 39.0
+off, throw-ins 19.8 → 17.6 OFF — our wide clearances from 18-35 m went out at 80% (§8.286), fewer of them, fewer throw-ins.
+Headed clearances 19.3 → 12.2 (15.8): the box gap is now in plain view — ours head it in our 18 m 5.1 a team-match v 9.7.
+First pass without the duel error and the 35-52 m clearance (`card_G5.181_first_pass.txt`): 5 / 6 / 22, headed clearances
+10.9, completion beyond 35 m 55-73%.
+
+**Still off:** headed passes beyond 35 m reach a mate 64-70% (real 52-56) — the duel error barely moved it; and too few
+headers in our box / too many 18-35 m out (the balls we meet). Next: the long balls into our box — crosses are 0.6× — and
+where real defenders meet them, before any change. Goldens unchanged; tests 23/23, lint clean.

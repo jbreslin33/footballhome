@@ -1390,6 +1390,17 @@ void World::configureAerial(const ModelParams& p) {
     {   static const int kB[2][2] = {{160, 110}, {50, 30}};
         for (int a = 0; a < 2; ++a) for (int w = 0; w < 2; ++w)
             aerial_clear_behind_[a][w] = p.fixed(std::string("physics.aerial.clear_behind_") + (a ? "18" : "6") + (w ? "_wide" : "_inside"), kB[a][w]); }
+    // G5.181 (§8.287): a header is a headed pass to a mate at the real share by spot (StatsBomb PL 15/16,
+    // benchmarks_statsbomb_headers.py: headed passes / headers 0-6 / 6-18 / 18-35 / 35-52 / 52+ m off his own line, inside / wide
+    // the box's width). Ours were all clearances inside 35 m and an unaimed nod beyond (next owner ours 31-38% v completed 52-57%).
+    {   static const int kP[5][2] = {{30, 240}, {146, 462}, {616, 620}, {727, 700}, {971, 911}};
+        static const char* const kN[5] = {"6", "18", "35", "52", "far"};
+        for (int a = 0; a < 5; ++a) for (int w = 0; w < 2; ++w)
+            aerial_pass_share_[a][w] = p.fixed(std::string("physics.aerial.pass_share_") + kN[a] + (w ? "_wide" : "_inside"), kP[a][w]); }
+    aerial_pass_err_ = p.fixed("physics.aerial.pass_err_deg", 10000);
+    aerial_pass_err_duel_ = p.fixed("physics.aerial.pass_err_duel_deg", 20000);   // won under a challenge
+    aerial_clear_range_ = p.fixed("physics.aerial.clear_range_m", 52500);   // a header not passed is a clearance this far out (real 27-30% at 35-52 m), not a nod
+    aerial_pass_reach_ = p.fixed("physics.aerial.pass_reach", 1100);   // horizontal speed = reach × √(d g): a 2:1 loft's range, lifted for drag
     clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
@@ -1571,13 +1582,48 @@ void World::headIt(SlotIndex slot, bool duel) {
     Vec2 dir{};
     Fixed64 speed{}, err{}, up{};
     bool glance = false;   // G5.180: aimed wide of the post — no error swing (it would turn it into the goal)
-    if (headRangeOfGoal(p.team)) {
+    std::uint8_t pass_to = 0xFF;
+    // G5.181 (§8.287): outside shooting range, at the real share by spot, a headed pass to a mate — 5-25 m off, the one with
+    // the most room (to 8 m), nearest 14 m (real median 12-15), forward first (real 72-88% forward). No mate → as before.
+    if (!headRangeOfGoal(p.team)) {
+        const Fixed64 own = half_x_ + ball_.pos.x * sg;
+        const int a = own < Fixed64::fromInt(6) ? 0 : own < Fixed64::fromInt(18) ? 1 : own < Fixed64::fromInt(35) ? 2 : own < Fixed64::fromFraction(105, 2) ? 3 : 4;
+        const int wd = math::fx_abs(ball_.pos.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1;
+        const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 25) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (u < aerial_pass_share_[a][wd]) {
+            Fixed64 best = Fixed64::fromInt(-1000);
+            const Vec2 bp{ball_.pos.x, ball_.pos.y};
+            for (SlotIndex j = 0; j < players_.size(); ++j) {
+                if (j == slot || players_[j].team != p.team || keeper_[j]) continue;
+                const Vec2 d{players_[j].pos.x - bp.x, players_[j].pos.y - bp.y};
+                const Fixed64 dist = math::length(d);
+                if (dist < Fixed64::fromInt(5) || dist > Fixed64::fromInt(25)) continue;
+                Fixed64 room = Fixed64::fromInt(8);
+                for (SlotIndex o = 0; o < players_.size(); ++o) {
+                    if (players_[o].team == p.team) continue;
+                    const Fixed64 r = math::length(Vec2{players_[o].pos.x - players_[j].pos.x, players_[o].pos.y - players_[j].pos.y});
+                    if (r < room) room = r;
+                }
+                const Fixed64 score = room - math::fx_abs(dist - Fixed64::fromInt(14)) * Fixed64::fromFraction(1, 4)
+                                    + (d.x * sg > Fixed64::zero() ? Fixed64::fromInt(3) : Fixed64::zero());
+                if (score > best) { best = score; pass_to = static_cast<std::uint8_t>(j); }
+            }
+        }
+    }
+    if (pass_to != 0xFF) {
+        const Vec2 d{players_[pass_to].pos.x - ball_.pos.x, players_[pass_to].pos.y - ball_.pos.y};
+        dir = math::normalized(d);
+        speed = aerial_pass_reach_ * math::fx_sqrt(math::length(d) * kGravity);
+        err = duel ? aerial_pass_err_duel_ : aerial_pass_err_;
+        up = speed * kLoftLaunchRatio;
+        ++headers_pass_[p.team];
+    } else if (headRangeOfGoal(p.team)) {
         dir = math::normalized(Vec2{sg * half_x_ - ball_.pos.x, -ball_.pos.y});
         speed = aerial_goal_speed_;
         err = duel ? aerial_goal_err_duel_ : aerial_goal_err_;
         up = Fixed64::zero();
         ++headers_at_goal_[p.team];
-    } else if (headRangeOfOwn(p.team)) {
+    } else if (headRangeOfOwn(p.team) || half_x_ + ball_.pos.x * sg < aerial_clear_range_) {
         dir = math::normalized(Vec2{ball_.pos.x + sg * half_x_, ball_.pos.y});
         // G5.180 (§8.286): pulled upfield by clear_up; and inside his 18 m, at the real share, glanced behind — at the goal
         // line wide of the post (3.66 + 1-13 m out), his side of the goal — a corner.
@@ -1608,7 +1654,7 @@ void World::headIt(SlotIndex slot, bool duel) {
     ball_.spin = false;   // G5.156: only an aimed loft carries backspin
     ball_.vel = Vec3{(dir.x * c - dir.y * sn) * speed, (dir.x * sn + dir.y * c) * speed, up};
     ball_.last_kicker = slot;
-    ball_.pass_to = 0xFF;
+    ball_.pass_to = pass_to;
     ball_.kicker_lockout = kBobbleLockoutTicks;
     ball_.kick_alive = kKickAliveTicks;
     flight_tick_ = clock_.tick();
