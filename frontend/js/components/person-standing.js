@@ -234,8 +234,40 @@
     return hit && hit.data && hit.data.dues ? hit.data.dues : null;
   }
 
+  // A #teams team card box (owner 11/19 "2 'game' cards for apsl and liga 1
+  // … with boxes and important info in the boxes"): two tiny lines under
+  // the name — 👻 / 🙈 or the last RSVP date, then dues and the CASA form.
+  // Same rules as html() / chip(); '' until loaded or for non-admins.
+  function boxLine(personId) {
+    const hit = cache.get(Number(personId));
+    if (!hit || !hit.data) return '';
+    const { activity: a, dues: d } = hit.data;
+    const regs = Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
+    const s = (text, color, title) => `<span title="${esc(title || '')}" style="color:${color}; white-space:nowrap;">${esc(text)}</span>`;
+    const top = [], bottom = [];
+    if (a) {
+      const heard = a.lastRsvp || a.lastMarked;
+      const ghost = heard && !(a.attended30 > 0) && !(a.rsvpYes30 > 0);
+      const last = a.lastRsvp ? md(a.lastRsvp.eventStartAt || a.lastRsvp.at) : '';
+      if (ghost) top.push(s(t('box_ghost', {}, '👻 ghost'), '#fca5a5', t('ghost_tip', { days: a.windowDays || 30 }, 'No present/late mark and no yes RSVP in 30 days')));
+      top.push(s(last ? t('box_last', { date: last }, `R ${last}`) : t('box_never', {}, 'no RSVP'), last ? 'rgba(255,255,255,0.85)' : '#fca5a5',
+                 a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Answered ${md(a.lastRsvp.at)}`) : ''));
+    }
+    if (d) {
+      if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
+      else if (!d.member) bottom.push(s(t('box_dues_none', {}, 'no LA'), '#9ca3af'));
+      else if (d.balance > 0) bottom.push(s(t('box_dues_owes', { amount: `$${Math.round(d.balance)}` }, `🔴 $${Math.round(d.balance)}`), d.months_behind >= 2 ? '#fca5a5' : '#fbbf24'));
+      else bottom.push(s(t('box_dues_paid', {}, '🟢 paid'), '#86efac'));
+    }
+    regs.filter(g => g && g.league === 'CASA').forEach(g => bottom.push(g.registered
+      ? s(t('box_reg_have', { league: g.league }, `✅${g.league}`), '#86efac', t('reg_have_tip', { league: g.league, date: g.at || '' }, ''))
+      : s(t('box_reg_missing', { league: g.league }, `❌${g.league}`), '#fca5a5', t('reg_missing_tip', { league: g.league }, ''))));
+    const row = (bits) => bits.length ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; overflow:hidden;">${bits.join('')}</div>` : '';
+    return row(top) + row(bottom);
+  }
+
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
   function forget(personId) { cache.delete(Number(personId)); }
 
-  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues };
+  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine };
 })();

@@ -394,6 +394,7 @@ class MensRosterScreen extends RosterScreenBase {
         ${this.renderBoardMessageButtons(data, cols)}
       </div>
 
+      ${this.boardView === 'team' && this.columnScope !== 'unassigned' ? this.renderTeamCards(data, cols) : ''}
       <div style="padding: 0 var(--space-2) var(--space-2);">
         <div style="${this.gridStyleFor(visibleCols.length)}">
           ${visibleCols.map(c => this.renderColumn(c, data)).join('')}

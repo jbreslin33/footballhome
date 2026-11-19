@@ -1198,6 +1198,123 @@ class RosterScreenBase extends Screen {
     return (o && (o.names || []).length) ? { names: o.names, personIds: o.personIds || [], cut: o.cut || [], dropAsked: o.dropAsked || [], fromFile: o.system === 'club_file' } : null;
   }
 
+  // ── 🗂 Team cards atop the Team view (owner 11/19 "maybe 2 'game' cards
+  // for apsl and liga 1 on same screen with boxes and important info in the
+  // boxes" + "no diff between a reserve and a main its just whhat we want
+  // them to see. we can just have the reserves pitch hidden by defualt").
+  //   one card per top column (folded teams ride inside: APSL Reserves),
+  //   the game card's look (blue, gold border, green pitch band, crest);
+  //   ACTIVE = the chase list as boxes — name, then PersonStanding.boxLine
+  //   (last RSVP / 👻, dues, CASA form) and 📋 when on this team's league
+  //   list; a box is a tap → the ⋯ player sheet (⚽ Teams moves him).
+  //   Under the pitch, name rows like the game card: 👋 Not chasing,
+  //   🏋 Practice squad, 🩹 Injured, 💤 Inactive.  The folded team's men
+  //   (on it, not on the top team) are a second pitch, closed by default.
+  // Words: roster_sheet tc_* (mig 1521); the rows reuse the cards' own.
+  renderTeamCards(data, cols) {
+    const esc = RosterScreenBase.escapeHtml;
+    const copy = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens || {})) || fb;
+    const ec = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const tops = (cols || []).filter(c => c && c.teamId && !c.isUnassigned && !c.teamPillFoldInto);
+    if (!tops.length) return '';
+    if (!this._sheetCards) this._sheetCards = new Map();
+    this._wirePlayerSheet();
+    if (!this._tcOpen) this._tcOpen = new Set();
+    const bucket = (id) => (data.buckets && data.buckets[String(id)]) || [];
+    const nameOf = (p) => `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.fullName || '?';
+    const byLast = (a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')) || String(a.firstName || '').localeCompare(String(b.firstName || ''));
+    const groupOf = (p) => {
+      const c = this.columnCategoryOf(p);
+      return c === 'active' && this.needsOnboard(p) ? 'onboard' : c;
+    };
+    const ids = new Set();
+    const box = (p, col, listTeamIds) => {
+      const pid = Number(p.personId);
+      ids.add(pid);
+      const key = `tc:${pid}@${col.teamId}`;
+      this._sheetCards.set(key, { player: p, col, teams: '', contact: '' });
+      const words = nameOf(p).split(/\s+/);
+      const listed = listTeamIds.some(t => this.onLeagueList(t, pid));
+      return `<div data-player-sheet="${esc(key)}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
+          style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
+                 border:2px solid ${listed ? '#f5d442' : 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
+          ${listed ? `<span style="position:absolute; top:-8px; right:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#f5d442; color:#422006; font-weight:800;" title="${esc(copy('tc_listed_tip', {}, 'On the league list'))}">📋</span>` : ''}
+          <div style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
+            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
+            <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
+          </div>
+          <div data-tc-info="${pid}" style="font-size:10px; font-weight:700; line-height:1.25;">${window.PersonStanding && PersonStanding.boxLine ? PersonStanding.boxLine(pid) : ''}</div>
+        </div>`;
+    };
+    const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
+          border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
+        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${players.map(p => box(p, col, listTeamIds)).join('')
+          || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
+    const row = (list, label, color) => list.length ? `<div style="margin-top:8px;">
+        <div style="font-size:12px; letter-spacing:3px; color:${color}; font-weight:700; text-transform:uppercase;">${esc(label)} (${list.length})</div>
+        <div style="font-size:13px; font-weight:600; line-height:1.35; color:${color}; margin-top:2px;">${list.map(p => {
+          const key = `tc:${p.personId}@${p.__col.teamId}`;
+          this._sheetCards.set(key, { player: p, col: p.__col, teams: '', contact: '' });
+          return `<span data-player-sheet="${esc(key)}" data-sheet-tab="teams" style="cursor:pointer;">${esc(nameOf(p))}</span>`;
+        }).join(', ')}</div></div>` : '';
+    const card = (col) => {
+      const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
+      const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
+      const mainIds = new Set(bucket(col.teamId).map(p => Number(p.personId)));
+      const groups = { active: [], onboard: [], practice_squad: [], injured: [], inactive: [] };
+      for (const p of bucket(col.teamId)) (groups[groupOf(p)] || groups.active).push(Object.assign(p, { __col: col }));
+      const extra = [];   // the folded teams' own men: the hidden pitch
+      for (const f of folded) for (const p of bucket(f.teamId)) {
+        if (mainIds.has(Number(p.personId))) continue;
+        mainIds.add(Number(p.personId));
+        const g = groupOf(p);
+        if (g === 'active') extra.push(Object.assign(p, { __col: f })); else (groups[g] || groups.active).push(Object.assign(p, { __col: f }));
+      }
+      Object.values(groups).forEach(l => l.sort(byLast));
+      extra.sort(byLast);
+      const label = RosterScreenBase.dropClubName(String(col.shortLabel || col.label || ''));
+      const openKey = String(col.teamId);
+      const foldLabel = folded.map(f => RosterScreenBase.dropClubName(String(f.shortLabel || f.label || ''))).join(' · ');
+      return `<div style="flex:1 1 360px; max-width:540px; min-width:0; box-sizing:border-box; border:4px solid #f5d442;
+                 background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
+                 color:#fff; text-align:center; padding:14px 18px 12px; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
+            <img src="images/lighthouse-1893-crest.png" style="width:26px; height:26px; object-fit:contain;" alt="">
+            <span style="font-size:14px; text-transform:uppercase; letter-spacing:4px; font-weight:800;">${esc(label)}</span>
+            <span style="font-size:14px; font-weight:800; color:#f5d442;">${groups.active.length}</span>
+          </div>
+          ${pitch(groups.active, col, listTeamIds)}
+          ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
+              <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
+              <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
+          ${row(groups.onboard, ec('sec_not_chasing', '👋 Not chasing'), '#cbd5e1')}
+          ${row(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd')}
+          ${row(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af')}
+          ${row(groups.inactive, ec('sec_inactive', '💤 Inactive'), '#94a3b8')}
+        </div>`;
+    };
+    const html = `<div data-team-cards style="display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin:0 var(--space-2) var(--space-3);">${tops.map(card).join('')}</div>`;
+    // Box lines arrive with PersonStanding (admins); the folds remember open.
+    if (!this._tcWired && this.element) {
+      this._tcWired = true;
+      this.element.addEventListener('toggle', (e) => {
+        const d = e.target && e.target.closest && e.target.closest('[data-tc-fold]');
+        if (!d) return;
+        const k = d.getAttribute('data-tc-fold');
+        if (d.open) this._tcOpen.add(k); else this._tcOpen.delete(k);
+      }, true);
+    }
+    if (window.PersonStanding && PersonStanding.load && ids.size) {
+      PersonStanding.load(this.auth, [...ids]).then(() => {
+        if (!this.element) return;
+        this.element.querySelectorAll('[data-tc-info]').forEach(el => {
+          el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'));
+        });
+      }).catch(() => {});
+    }
+    return html;
+  }
+
   // On the league's own list for this team.
   onLeagueList(teamId, personId) {
     const l = teamId && personId ? this.leagueListFor(teamId) : null;
