@@ -210,8 +210,13 @@ class EventScreen extends Screen {
     const st = this._boxAttStatus(pid);
     const border = st ? st.color : teamColor;
     const tap = this._cardTapAttr(r);
+    // Always two lines — first name, then the rest — so every box is the
+    // same size (owner 11/19 "just use 2 lines for all so boxes are
+    // consistent in size"); a line too long for the box ends in …
+    const words = String(name || '').trim().split(/\s+/);
+    const lines = [words[0] || '', words.slice(1).join(' ')];
     return `<div style="flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:3px; padding:4px 4px 5px; border-radius:8px; border:2px solid ${border}; background:rgba(0,20,60,0.55);">
-        <div ${tap}style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; overflow-wrap:anywhere; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${this.escapeHtml(name)}${also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${this.escapeHtml(also.join(' +'))}</span>` : ''}</div>
+        <div ${tap}style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${lines.map((l, i) => `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${this.escapeHtml(l)}${i === 1 && also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${this.escapeHtml(also.join(' +'))}</span>` : ''}</div>`).join('')}</div>
         ${this._boxAttHtml(pid)}
       </div>`;
   }
