@@ -11268,3 +11268,19 @@ two thirds as often (same as ARRIVE: completed passes into their crossing zone 7
 byline it inverts: ours get there more (carried, 0-6 m 24+ 4.1 v 2.5) and put it into the box less (22-26 v 43%).
 Next: the ball into their wide final third — receptions there by origin, ours v real — and what our man on the byline does
 instead of crossing. Harness/benchmark cuts only; goldens unchanged; tests 23/23, lint clean.
+
+### 8.282 G5.176 — not the race read: crosses are short because the ball doesn't get there; the extra passes are central recycling (measured; no game change)
+
+From §8.281. Real crosses on the geometric cut complete **32.2%** (high 24.5, low 23.3, ground 55.3; StatsBomb PL 15/16, 8,721)
+— most are balls a race read calls lost. Ours: 41-50% (new on the INTO THE BOX FROM WIDE line). A/B: a ball into the box from
+their wide last 30 m that the read says they win kept 0.6 / 1.0 of its share instead of `risk_weight` 0.25: crosses 6.3-6.8
+/ 7.3-7.8 a team-match (baseline 7.9-8.4, 2 seeds × 8 — inside the noise), completion unchanged. The read is not what holds
+them back; not taken. From wide 0-18 m ours pass to the box 32-37% (real 41.9) and along the wide zone 41-47% (33.9) —
+older than G5.172 (G5.170: 27.8 / 49.4).
+
+**Open-play passes a team-match by origin zone** (StatsBomb v ours, G5.174): 0-18 m centre 11.9 / 10.2, wide 19.0 / 15.7;
+18-35 37.3 / 39.7, 36.0 / 31.6; **35-52 centre 61.5 / 100.5**, wide 48.7 / 50.1; **52-70 centre 72.2 / 117.4**, wide
+45.2 / 47.3; 70+ 71.3 / 91.4, 30.7 / 28.1. Our +100 passes a team-match (passes_tm 1.24×) are central midfield, short
+and sideways/back (SHORT PASSES, lateral under 20 m: 35-52 m 64.4 v 40.2, 52-70 m 71.6 v 38.3; back 27.1 v 16.0, 26.8 v
+13.3). The wide final third is about 8 short. Next: why a central midfielder on our ball passes sideways ~1.8× real — the
+on-ball choice (pass v carry v hold) by zone against StatsBomb, before any change. Harness line only; goldens unchanged.

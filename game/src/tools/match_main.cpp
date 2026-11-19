@@ -125,7 +125,7 @@ struct Stats {
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
-    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
+    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
     long ph[ai::kPhaseCount] = {}, ph_n = 0;
@@ -1241,7 +1241,7 @@ int main(int argc, char** argv) {
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
                 // G5.175 (§8.281): a cross on the geometric cut both sides now use (StatsBomb's flag counts ground and low crosses
                 // too; ours counted only the lofted Why::Cross): from within 30 m of their line, outside the box's width, into the box
-                if (stl < 30 && std::fabs(rel.y) >= 20.16 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.crosses;
+                if (stl < 30 && std::fabs(rel.y) >= 20.16 && etl < 16.5 && std::fabs(ey) < 20.16) { ++S.crosses; if (ok) ++S.crosses_ok; }
                 if (rel.cross) ++S.crosses_why;
                 if (stl < 30 && std::fabs(rel.y) >= 14) {   // §8.281 INTO THE BOX FROM WIDE: releases by m off their line x |y|, the share ending in the box
                     const int a = stl < 6 ? 0 : stl < 18 ? 1 : 2, w = std::fabs(rel.y) >= 24 ? 0 : std::fabs(rel.y) >= 20.16 ? 1 : 2;
@@ -3157,8 +3157,8 @@ int main(int argc, char** argv) {
         {   // §8.281 INTO THE BOX FROM WIDE (StatsBomb PL 15/16 open play, attempted: a team-match, into the box %)
             static const double rr[3][3][2] = {{{2.53, 43}, {1.11, 69}, {1.92, 86}}, {{12.01, 34}, {3.36, 52}, {4.26, 65}}, {{18.21, 15}, {5.82, 20}, {9.48, 22}}};
             static const char* const an[3] = {"0-6", "6-18", "18-30"}; static const char* const wn[3] = {"24+", "20-24", "14-20"};
-            std::printf("      INTO THE BOX FROM WIDE (open-play passes by m off their line x |y|): a team-match | into the box %% (StatsBomb PL 15/16); crosses on the geometric cut %.2f a team-match (11.47), Why::Cross %.2f\n",
-                        S.crosses / std::max(1.0, 2.0 * matches), S.crosses_why / std::max(1.0, 2.0 * matches));
+            std::printf("      INTO THE BOX FROM WIDE (open-play passes by m off their line x |y|): a team-match | into the box %% (StatsBomb PL 15/16); crosses on the geometric cut %.2f a team-match (11.47), completed %.1f%% (32.2), Why::Cross %.2f\n",
+                        S.crosses / std::max(1.0, 2.0 * matches), 100.0 * S.crosses_ok / std::max(1L, S.crosses), S.crosses_why / std::max(1.0, 2.0 * matches));
             for (int a = 0; a < 3; ++a) { std::printf("       "); for (int w = 0; w < 3; ++w) std::printf(" | %s %s %.2f (%.2f) %.0f%% (%.0f)", an[a], wn[w], S.ib_n[a][w] / std::max(1.0, 2.0 * matches), rr[a][w][0], 100.0 * S.ib_k[a][w] / std::max(1L, S.ib_n[a][w]), rr[a][w][1]); std::printf("\n"); }
         }
         {   // §8.277 TOUCH HOLD
