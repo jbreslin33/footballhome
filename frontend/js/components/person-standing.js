@@ -156,9 +156,10 @@
     practice_squad: ['#3a2e05', '#fbbf24', '#d97706'],
     call_in:        ['#3a2e05', '#fbbf24', '#d97706'],
     not_eligible:   ['#3b0a0a', '#fca5a5', '#dc2626'],   // ⛔ mig 1523
+    standby:        ['#0c1e3a', '#93c5fd', '#2563eb'],   // 🪑 Reserves, mig 1530
   };
   const ROSTER_FALLBACK = {
-    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in', not_eligible: 'Not On Roster',
+    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in', not_eligible: 'Not On Roster', standby: 'Reserves',
   };
   function rosterHtml(personId) {
     const hit = cache.get(Number(personId));

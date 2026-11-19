@@ -1124,6 +1124,8 @@ class GameCenterScreen extends EventScreen {
       if (oppAdd && this.isCoach) { this._oppAddOpen = !this._oppAddOpen; this._render(); return; }
       const oppSave = e.target.closest('[data-gc-opp-save]');
       if (oppSave && this.isCoach) { this._saveOpponentContact(oppSave); return; }
+      const askRes = e.target.closest('[data-gc-ask-reserves]');
+      if (askRes && this.realIsCoach) { this._askReserves(askRes.dataset.gcAskReserves); return; }
       const msgBtn = e.target.closest('[data-gc-msg-kind]');
       if (msgBtn && this.realIsCoach && !msgBtn.disabled) { this._messageGame(msgBtn); return; }
       const sheetBtn = e.target.closest('[data-gc-roster-sheet]');
@@ -2147,11 +2149,27 @@ class GameCenterScreen extends EventScreen {
     }
     // 💤 = never answered too (mig 1528, owner 11/19 "inactive should be
     // same as not chasing"): one fold, one graphic row.
+    // 🪑 Reserves (men, mig 1530; owner 11/19 "a list of guys that we hit up
+    // for practice and games and then a 2nd teir that we hit up if
+    // desparate"): Reserves who haven't said yes, plus Regulars who never
+    // answered anything, sit in one closed fold with 📣 Ask Reserves — never
+    // in No Response or Remind all.  A Reserve who says Going plays.
+    const isReserve = (p) => !p.callUp && p.squadStatus === 'standby';
+    const unassignedReserves = this._hasReserves()
+      ? [...unassignedNoResponse, ...unassignedNotGoing].filter(isReserve) : [];
+    if (unassignedReserves.length) {
+      const res = new Set(unassignedReserves.map(p => p.id));
+      for (const list of [unassignedNoResponse, unassignedNotGoing])
+        list.splice(0, list.length, ...list.filter(p => !res.has(p.id)));
+    }
     if (unassignedNotChasing.length) {
-      unassignedInactive.push(...unassignedNotChasing);
-      unassignedInactive.sort(this._byLastName);
+      (this._hasReserves() ? unassignedReserves : unassignedInactive).push(...unassignedNotChasing);
       unassignedNotChasing.length = 0;
     }
+    unassignedReserves.sort(this._byLastName);
+    unassignedInactive.sort(this._byLastName);
+    this._reservesUnanswered = unassignedReserves.filter(p => (p.callUp ? p.inviteRsvp : rsvpGroup(p.id)) !== 'notGoing');
+    const reservesLabel = this._ecCopy('sec_standby', '🪑 Reserves');
     const inactiveLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_inactive')) || '💤 Inactive';
 
     // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
@@ -2169,7 +2187,8 @@ class GameCenterScreen extends EventScreen {
     this._rsvpOut = { unplaced: [...unassignedGoing], ineligible: [...unassignedIneligible],
                       noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing],
                       // 👋 coaches only on the graphic (players never see the row)
-                      notChasing: this.isCoach ? [...unassignedInactive] : [] };
+                      notChasing: this.isCoach ? [...unassignedInactive] : [],
+                      reserves: this.isCoach ? [...unassignedReserves] : [] };
 
     const seeAsBar = this._gcSeeAsHtml();
 
@@ -2662,7 +2681,7 @@ class GameCenterScreen extends EventScreen {
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
-        unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
+        unassignedReserves.length ? collapsedSection(this.escapeHtml(reservesLabel), unassignedReserves, { key: 'reserves', top: this._askReservesBtn() }) : '',
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }),
         unassignedNotEligible.length ? collapsedSection(this.escapeHtml(notEligibleLabel), unassignedNotEligible, { key: 'not_eligible' }) : '',
@@ -2686,7 +2705,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
-      this.isCoach && unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
+      this.isCoach && unassignedReserves.length ? collapsedSection(this.escapeHtml(reservesLabel), unassignedReserves, { key: 'reserves', top: this._askReservesBtn() }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }) : '',
       this.isCoach && unassignedNotEligible.length ? collapsedSection(this.escapeHtml(notEligibleLabel), unassignedNotEligible, { key: 'not_eligible' }) : '',
@@ -3634,6 +3653,44 @@ class GameCenterScreen extends EventScreen {
 `)}`;
   }
 
+  // ── 🪑 Reserves (mig 1530) ─────────────────────────────────────────
+  // The base game has none; MensGameScreen turns them on.
+  _hasReserves() { return false; }
+
+  // 📣 Ask Reserves: the unanswered Reserves (and never-answered Regulars)
+  // for THIS game, one BCC email / group text from your own app — nothing
+  // is sent by the server, so nobody is spammed behind your back.
+  _askReservesPeople() {
+    const ids = new Set((this._reservesUnanswered || []).map(p => Number(this._personIdFor(p.id))).filter(Boolean));
+    return (this.gameRecipients || []).filter(r => ids.has(Number(r.personId)));
+  }
+  _askReservesBtn() {
+    if (!this.realIsCoach || !window.RosterMessaging) return '';
+    const people = this._askReservesPeople();
+    if (!people.length) return '';
+    const info = RosterMessaging.collect(people, (p) => ({ phone: p.phone, email: p.email, extra: p.parents }));
+    const label = (window.MessageCopy && MessageCopy.block('event_center', 'ask_standby', { n: people.length })) || `📣 Ask Reserves (${people.length})`;
+    const b = (kind, icon, n) => `<button type="button" class="btn btn-secondary" data-gc-ask-reserves="${kind}" ${n ? '' : 'disabled'}
+        style="padding:3px 10px; font-size:0.72rem; font-weight:700;">${icon} ${n}</button>`;
+    return `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:0 0 6px;">
+        <span style="font-size:0.78rem; font-weight:800;">${this.escapeHtml(label)}</span>${b('sms', '💬', info.phones.length)}${b('email', '✉', info.emails.length)}</div>`;
+  }
+  _askReserves(kind) {
+    if (!window.RosterMessaging || !window.BulkMessageComposer) return;
+    const info = RosterMessaging.collect(this._askReservesPeople(), (p) => ({ phone: p.phone, email: p.email, extra: p.parents }));
+    if (kind === 'email' ? !info.emails.length : !info.phones.length) return;
+    const event = this._gameLabelForMessage();
+    const where = (this.ev && window.EventLabels && (EventLabels.homeSetup(this.ev) || this.ev.location)) || '';
+    const cp = (tier, tk) => (window.MessageCopy && MessageCopy.block('event_center', tier, tk)) || '';
+    BulkMessageComposer.open({
+      screen: this, kind, info,
+      entry: { scope: cp('sec_standby', {}) || '🪑 Reserves',
+               preset: { label: '', subject: cp('ask_standby_subject', { event }) || `Can you make it? ${event}`,
+                         body: cp('ask_standby_body', { event, where }) || `We're short for ${event}. Can you make it?` } },
+      onSent: (n) => this._toast(`✓ ${n}`),
+    });
+  }
+
   _messageGame(btn) {
     const group = this._gameRecipientGroups().find(g => g.key === btn.dataset.gcMsgGroup);
     if (!group || !window.RosterMessaging || !window.BulkMessageComposer) return;
@@ -4157,6 +4214,7 @@ class GameCenterScreen extends EventScreen {
                            outRow(out.noResponse, 'sec_noresp', '– No response', '#facc15'),
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),
                            outRow(out.notChasing || [], 'sec_inactive', '💤 Inactive', '#94a3b8'),
+                           outRow(out.reserves || [], 'sec_standby', '🪑 Reserves', '#93c5fd'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").

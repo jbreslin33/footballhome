@@ -16,6 +16,9 @@ class MensGameScreen extends GameCenterScreen {
 
   // Under each name: the week as a mini calendar + total (or the words
   // where a row has no practice list).
+  // 🪑 Regulars / Reserves (mig 1530): men's games have the second tier.
+  _hasReserves() { return true; }
+
   _practiceNoteBits(playerId) {
     const out = [];
     const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;

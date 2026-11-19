@@ -29,6 +29,8 @@ class MensRosterScreen extends RosterScreenBase {
   // 👁 SEES lists only this board's own section's teams (owner 11/17
   // "we really don't need to show youth stuff on the mens page").
   seesSections() { return ['mens']; }
+  // 🪑 Regulars / Reserves (mig 1530): men only.
+  _hasReserves() { return true; }
 
   // ── League registration-form presets (owner 2026-08-31) ────────────
   //

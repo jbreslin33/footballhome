@@ -835,7 +835,7 @@ class RosterScreenBase extends Screen {
       const group = (label, list, cat, color, bg) => section(label, list, color, bg, shows(cat));
       const ridersGroup = '';
       // ⛔ not_eligible (mig 1523): set by the official-roster sync, own group.
-      const cats = { onboard: [], active: [], injured: [], practice_squad: [], not_eligible: [], inactive: [] };
+      const cats = { onboard: [], active: [], injured: [], practice_squad: [], not_eligible: [], standby: [], inactive: [] };
       // NEEDS ONBOARD (owner 2026-11-03): never answered an RSVP himself
       // (standing defaults and admin answers don't count) and not 💤
       // Inactive or 🩹 Injured — he leaves the moment he answers once.
@@ -906,11 +906,12 @@ class RosterScreenBase extends Screen {
       const rest = mirrorsHtml
         + ridersGroup
         + group(copy('board_not_eligible_h') || '⛔ NOT ON ROSTER', cats.not_eligible, 'not_eligible', '#f87171', 'rgba(248,113,113,0.14)')
+        + group(copy('board_standby_h') || '🪑 RESERVES', cats.standby, 'standby', ...BLUE)
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
       const n = adding.length + ridersCount
-        + cats.not_eligible.length + cats.practice_squad.length + cats.injured.length + cats.inactive.length;
+        + cats.not_eligible.length + cats.standby.length + cats.practice_squad.length + cats.injured.length + cats.inactive.length;
       return { top: activeHtml + onboardGroup, rest, n };
     }
 
@@ -1230,7 +1231,8 @@ class RosterScreenBase extends Screen {
       const c = this.columnCategoryOf(p);
       // 💤 Inactive = never answered too (owner 11/19 "inactive should be same
       // as not chasing … they are still part of club and still liga 1").
-      return c === 'active' && this.needsOnboard(p) ? 'inactive' : (c in { active: 1, injured: 1, practice_squad: 1, inactive: 1 } ? c : 'active');
+      return c === 'active' && this.needsOnboard(p) ? (this._hasReserves() ? 'standby' : 'inactive')
+        : (c in { active: 1, injured: 1, practice_squad: 1, standby: 1, inactive: 1 } ? c : 'active');
     };
     const ids = new Set();
     const box = (p, col, listTeamIds, groupColor = null) => {
@@ -1269,7 +1271,7 @@ class RosterScreenBase extends Screen {
       const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
       const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
       const mainIds = new Set(bucket(col.teamId).map(p => Number(p.personId)));
-      const groups = { active: [], onboard: [], not_eligible: [], practice_squad: [], injured: [], inactive: [] };
+      const groups = { active: [], onboard: [], not_eligible: [], standby: [], practice_squad: [], injured: [], inactive: [] };
       for (const p of bucket(col.teamId)) (groups[groupOf(p)] || groups.active).push(Object.assign(p, { __col: col }));
       const extra = [];   // the folded teams' own men: the hidden pitch
       for (const f of folded) for (const p of bucket(f.teamId)) {
@@ -1297,6 +1299,7 @@ class RosterScreenBase extends Screen {
           ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
               <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
               <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
+          ${band(groups.standby, copy('board_standby_h', {}, '🪑 Reserves'), '#93c5fd', listTeamIds)}
           ${band(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd', listTeamIds)}
           ${band(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af', listTeamIds)}
           ${band(groups.inactive, ec('sec_inactive', '💤 Inactive'), '#94a3b8', listTeamIds)}
@@ -1326,6 +1329,9 @@ class RosterScreenBase extends Screen {
     }
     return html;
   }
+
+  // 🪑 Regulars / Reserves (mig 1530) — the men's board turns it on.
+  _hasReserves() { return false; }
 
   // On the league's own list for this team.
   onLeagueList(teamId, personId) {
@@ -1592,9 +1598,15 @@ class RosterScreenBase extends Screen {
       callin: ['#a78bfa', 'rgba(167,139,250,0.22)', '#ddd6fe'],
       practice_squad: ['#60a5fa', 'rgba(96,165,250,0.22)', '#bfdbfe'],
       not_eligible:   ['#f87171', 'rgba(248,113,113,0.20)', '#fecaca'],   // mig 1523, set by the sync
+      standby:        ['#60a5fa', 'rgba(96,165,250,0.22)', '#bfdbfe'],    // 🪑 Reserves, men (mig 1530)
       inactive:       ['#94a3b8', 'rgba(148,163,184,0.22)', '#e2e8f0'],
     };
-    const opts = [
+    // Men: ✅ Regular / 🪑 Reserves (mig 1530); youth keep their groups.
+    const opts = this._hasReserves() ? [
+      { code: 'plays',   label: copy('team_status_regular') || '✅ Regular' },
+      { code: 'standby', label: copy('team_status_standby') || '🪑 Reserves' },
+      ...H.statuses.filter(st => st.isInjured).map(st => ({ code: st.code, label: (st.icon ? st.icon + ' ' : '') + st.displayName })),
+    ] : [
       { code: 'plays',  label: copy('team_status_plays')  || '✅ Plays' },
       { code: 'practice_squad', label: copy('team_status_practice_squad') || 'Practice Squad' },
       // ⛔ set by the official-roster sync only (mig 1523): shown, never picked.
@@ -1693,7 +1705,7 @@ class RosterScreenBase extends Screen {
         if (value !== wrap.dataset.teamCode) {
           await put('/api/mens-roster/invite-only', 'POST',
             { personId, teamId, inviteOnly: value !== 'plays', callIn: value === 'callin',
-              squadStatus: value === 'inactive_all' ? 'inactive' : ['practice_squad', 'inactive'].includes(value) ? value : '',
+              squadStatus: value === 'inactive_all' ? 'inactive' : ['practice_squad', 'inactive', 'standby'].includes(value) ? value : '',
               allTeams: value === 'inactive_all' });
         }
         if (H.people[personId]) {
