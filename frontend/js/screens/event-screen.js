@@ -277,9 +277,18 @@ class EventScreen extends Screen {
           <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
           <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${[...list].sort((a, b) => last(a).localeCompare(last(b))).map(r => { const t = this._cardTapAttr(r); return t ? `<span ${t}>${this.escapeHtml(nameOf(r))}</span>` : this.escapeHtml(nameOf(r)); }).join(', ')}</div>
         </div>` : '';
-    // 👋 Not chasing (mig 1520): coaches only — players never see the row.
+    // 🪑 Reserves on the graphic too (owner 11/19 "dont hide anythng" →
+    // "i cant see it on gprhic"): the event's Reserve rows (ev.inactive
+    // standby) + never-answered Regulars, as the list below has them; any
+    // other non-playing rows stay 💤 Inactive.  Staff only — players never
+    // see these rows.
+    const inactive = (Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : [])
+      .filter(r => r && r.response !== 'yes' && !cameIds.has(Number(r.person_id)));
+    const reserves = inactive.filter(r => r.standby).concat(this._hasReserves() ? out.notChasing : []);
+    const inactiveOnly = inactive.filter(r => !r.standby).concat(this._hasReserves() ? [] : out.notChasing);
+    const staff = this.viewer.eventSection('inactive') || this.viewer.eventSection('not_chasing');
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
-      + (this.viewer.eventSection('not_chasing') ? row(out.notChasing, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');   // never answered = 💤 (mig 1528)
+      + (staff ? row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd') + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');
   }
 
 
@@ -458,7 +467,7 @@ class EventScreen extends Screen {
   }
   // Is fold <key> open now: the coach's own toggle wins (kept across the
   // 15s refresh), else the standing list.
-  foldOpen(key) { return this.folds.has(key) ? !!this.folds.get(key) : EventScreen.STANDING_OPEN.has(key); }
+  foldOpen(key) { return this.folds.has(key) ? !!this.folds.get(key) : true; }   // nothing hidden by default (11/19)
 
   // A boxed panel (a game's details, contacts, roster sheet, a practice's
   // groups / plan …) as a fold: the summary is the panel's title, the
@@ -757,7 +766,7 @@ class EventScreen extends Screen {
     const top = `<div style="text-align:right; margin:0 0 6px;"><button type="button" class="btn btn-secondary" data-ec-jobs
         style="padding:4px 12px; font-size:0.8rem;">${esc(cp('jobs_edit', {}, '✏️ Edit on Jobs board'))}</button></div>`;
     if (this._rollUp()) {
-      return this.cardFoldHtml('data-ec-fold', 'jobs', !!this.folds.get('jobs'), esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length,
+      return this.cardFoldHtml('data-ec-fold', 'jobs', this.folds.has('jobs') ? !!this.folds.get('jobs') : true, esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length,
                                this.cardGridHtml(cards), { aside: esc(cp('jobs_filled', { filled: String(filled), needed: String(needed) }, `${filled} of ${needed} filled`)), top });
     }
     return this.cardSectionHtml(esc(cp('sec_jobs', {}, '🧹 Jobs')), jobs.length, this.cardGridHtml(cards), { aside, top });
@@ -2477,7 +2486,8 @@ class EventScreen extends Screen {
     // reminder's re-render (as Game Center's do).
     const fold = (key, label, list, opts = {}) => {
       if (!list.length) return '';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : (!!opts.defaultOpen || EventScreen.STANDING_OPEN.has(key));
+      // Open unless you closed it (owner 11/19 "dont hide anythng").
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : true;
       return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') });
     };
 
@@ -2548,7 +2558,7 @@ class EventScreen extends Screen {
       const part = (label, list, opts = {}) => list.length
         ? `<div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:8px 0 4px;">${label} (${list.length})</div>${grid(list, opts)}` : '';
       const key = 'coaches';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : (!roll || EventScreen.STANDING_OPEN.has(key));
+      const isOpen = this.folds.has(key) ? this.folds.get(key) : true;   // owner 11/19 "dont hide anythng"
       const bar = canRemind && noAnswer.length
         ? remindBarHtml(cp('remind_group_coaches', { n: noAnswer.length }) || `📣 Remind all ${noAnswer.length} coaches who haven't answered`, this.coachGroupNote, 'coach') : '';
       const body = part(L('sec_noresp', '– No response'), noAnswer, { remind: true })
