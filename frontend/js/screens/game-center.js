@@ -3687,8 +3687,21 @@ class GameCenterScreen extends EventScreen {
       entry: { scope: cp('sec_standby', {}) || '🪑 Reserves',
                preset: { label: '', subject: cp('ask_standby_subject', { event }) || `Can you make it? ${event}`,
                          body: cp('ask_standby_body', { event, where }) || `We're short for ${event}. Can you make it?` } },
-      onSent: (n) => this._toast(`✓ ${n}`),
+      onSent: (n) => { this._toast(`✓ ${n}`); this._logAsk(kind, this._askReservesPeople()); },
     });
+  }
+
+  // A group message about this game counts as a reminder for each person
+  // in it (mig 1562, owner 11/19 "never a fine for no rsvp unless there
+  // was a reminder sent") — nothing is sent by the server.
+  _logAsk(kind, people) {
+    const id = this._fhEventId ? this._fhEventId() : 0;
+    const ids = (people || []).map(p => Number(p.personId)).filter(Boolean);
+    if (!id || !ids.length || !this.auth) return;
+    this.auth.fetch('/api/rsvp-board/log-ask', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fh_event_id: Number(id), channel: kind === 'email' ? 'email' : 'sms', person_ids: ids }),
+    }).catch(() => {});
   }
 
   _messageGame(btn) {
@@ -3707,7 +3720,7 @@ class GameCenterScreen extends EventScreen {
     BulkMessageComposer.open({
       screen: this, kind, info,
       entry: { scope, preset: { label: '', subject, body } },
-      onSent: (n) => this._toast(`✓ ${n}`),
+      onSent: (n) => { this._toast(`✓ ${n}`); this._logAsk(kind, group.people); },
     });
   }
 

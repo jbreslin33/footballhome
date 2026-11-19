@@ -110,6 +110,7 @@ void RsvpBoardController::registerRoutes(Router& router, const std::string& pref
 
     router.post(prefix + "/remind", [this](const Request& r) { return handleRemind(r); });
     router.post(prefix + "/remind-event", [this](const Request& r) { return handleRemindEvent(r); });
+    router.post(prefix + "/log-ask",      [this](const Request& r) { return handleLogAsk(r); });
     router.post(prefix + "/roll-call",    [this](const Request& r) { return handleRollCall(r); });
     router.get(prefix + "/reminders", [this](const Request& r) { return handleReminders(r); });
     router.post(prefix + "/squad-notice", [this](const Request& r) { return handleSquadNotice(r); });
@@ -627,6 +628,45 @@ Response RsvpBoardController::handleRollCall(const Request& request) {
         std::cerr << "RsvpBoardController::handleRollCall: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not build the roll call");
     }
+}
+
+// POST /api/rsvp-board/log-ask {fh_event_id, person_ids[], channel} — the
+// 📣 Ask Reserves composer went out from the sender's own phone / Gmail for
+// this game (mig 1562).  Nothing is sent here; each person gets a group
+// reminder row naming the game, so "reminded before kickoff" is known —
+// owner 11/19: "never a fine for no rsvp unless there was a reminder sent".
+Response RsvpBoardController::handleLogAsk(const Request& request) {
+    Scope scope;
+    Response error(HttpStatus::OK, "");
+    if (!resolveScope(request, &scope, &error)) return error;
+    json body;
+    try {
+        body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+    } catch (const std::exception& e) {
+        return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what());
+    }
+    const long long fhEventId = body.value("fh_event_id", 0LL);
+    const std::string channel = body.value("channel", std::string{});
+    if (fhEventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "fh_event_id required");
+    if (channel != "sms" && channel != "email") return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
+    if (!body.contains("person_ids") || !body["person_ids"].is_array())
+        return jsonError(HttpStatus::BAD_REQUEST, "person_ids must be an array");
+    std::vector<RsvpBoard::OpenEvent> events(1);
+    events[0].fhEventId = fhEventId;
+    int logged = 0;
+    try {
+        for (const auto& v : body["person_ids"]) {
+            if (!v.is_number_integer()) continue;
+            const long long pid = v.get<long long>();
+            if (pid <= 0) continue;
+            model_->logReminder(pid, pid, channel, "ask_reserves", scope.userId, events, true);
+            ++logged;
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[rsvp-board log-ask] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+    return Response(HttpStatus::OK, json{{"logged", logged}}.dump());
 }
 
 Response RsvpBoardController::handleRemindEvent(const Request& request) {

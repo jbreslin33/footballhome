@@ -2002,7 +2002,18 @@ class EventScreen extends Screen {
     const body = (ask && window.MessageCopy && MessageCopy.block('event_center', 'ask_standby_body', { event: what, where }))
       || (window.MessageCopy && MessageCopy.block('event_center', 'group_body', { event: what, where })) || `${what}${where ? ` @ ${where}` : ''}\n`;
     BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: { label: '', subject, body } },
-      onSent: (n) => { el.textContent = `✓ ${n}`; } });
+      onSent: (n) => {
+        el.textContent = `✓ ${n}`;
+        // Logged as a reminder for THIS event, per person (mig 1562): a
+        // missed-RSVP fine needs one (owner 11/19 "never a fine for no
+        // rsvp unless there was a reminder sent").
+        const id = this.eventId ? this.eventId() : 0;
+        if (id && this.auth) this.auth.fetch('/api/rsvp-board/log-ask', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fh_event_id: Number(id), channel: kind === 'email' ? 'email' : 'sms',
+                                 person_ids: g.people.map(r => Number(r.person_id)).filter(Boolean) }),
+        }).catch(() => {});
+      } });
   }
 
   // A heading "Label (n)" with an aside on the right (a present count),

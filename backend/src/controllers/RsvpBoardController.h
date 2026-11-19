@@ -57,6 +57,7 @@ private:
     Response handleList(const Request& request);
     Response handleRemind(const Request& request);
     Response handleRemindEvent(const Request& request);
+    Response handleLogAsk(const Request& request);
     Response handleRollCall(const Request& request);   // mig 543
     Response handleReminders(const Request& request);
     Response handleSquadNotice(const Request& request);
