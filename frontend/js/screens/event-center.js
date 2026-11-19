@@ -435,6 +435,14 @@ class EventCenterScreen extends Screen {
         run: () => { this.kind = k; if (this.error) this._setWeek(this.weekStart); else this._render(); },
       });
     }
+    // Week · Month and 📆 Go to a date… (owner 11/18 staff calendar piece by
+    // piece — the player's ‹ This week › bar for everyone, the rest in ☰).
+    const ccp = (t, fb) => (window.MessageCopy && MessageCopy.block('event_center', t)) || fb;
+    if (viewer.calendarViews.length > 1) for (const v of viewer.calendarViews) items.push({
+      label: `${v === this.view ? '✓ ' : ''}${ccp(`view_${v}`, v === 'week' ? 'Week' : 'Month')}`,
+      run: () => this._setView(v),
+    });
+    if (viewer.calendarDatePicker) items.push({ label: ccp('cal_goto', '📆 Go to a date…'), run: () => this._pickDate() });
     const rel = this.find('#ec-release');
     const relText = rel ? (rel.textContent || '').replace(/\s+/g, ' ').trim() : '';
     if (relText) items.push({ label: relText.split(/\.\s/)[0].slice(0, 60), run: () => this._showCalExtra('release') });
@@ -444,6 +452,22 @@ class EventCenterScreen extends Screen {
       if (label) items.push({ label, run: () => { this._showCalExtra('weekend'); if (!b.classList.contains('btn-primary')) b.click(); } });
     });
     return items;
+  }
+  // The browser's own date picker from a ☰ tap (a hidden input; the ☰ click
+  // is the user gesture showPicker needs).  A pick jumps to that day's week.
+  _pickDate() {
+    const inp = document.createElement('input');
+    inp.type = 'date';
+    inp.value = this._ymd(this.view === 'week' ? this.weekStart : this.anchor);
+    inp.style.cssText = 'position:fixed; top:40%; left:50%; opacity:0; width:1px; height:1px;';
+    document.body.appendChild(inp);
+    const done = () => setTimeout(() => inp.remove(), 0);
+    inp.addEventListener('change', () => {
+      if (inp.value) { const [y, m, d] = inp.value.split('-').map(Number); this._setWeek(new Date(y, m - 1, d)); }
+      done();
+    });
+    inp.addEventListener('blur', done);
+    try { inp.showPicker(); } catch { inp.focus(); inp.click(); }
   }
   _applyCalExtras() {
     const rel = this.find('#ec-release');
@@ -691,11 +715,9 @@ class EventCenterScreen extends Screen {
   // NOW line (mig 748) crosses today where the clock falls, the events
   // already over dimmed above it.
   _pickerHtml() {
-    // Still loading: the filters, ‹ › and view chips stay, the grid says so.
+    // Still loading: ‹ › stays, the grid says so.
     const loading = !this.events;
     const evAll = this.events || [];
-    const chip = (attr, value, label, on) =>
-      `<button type="button" class="ec-chip ${on ? 'on' : ''}" ${attr}="${this.escapeHtml(value)}">${this.escapeHtml(label)}</button>`;
     const cp = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || fb;
 
     // The kids you answer for (guardian_targets) — each gets a colour below.
@@ -973,30 +995,13 @@ class EventCenterScreen extends Screen {
       }).join('')}</div>`;
     }
 
-    // The range label, and the jump back to now when it is out of sight.
+    // The range label; the bar itself is the viewer's (lib/viewer.js).
     const end = new Date(start); end.setDate(end.getDate() + span - 1);
     const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const label = this.view === 'month' ? this.anchor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : `${fmt(start)} – ${fmt(end)}`;
-    const now = new Date();
-    const hasNow = this.view === 'month'
-      ? now.getMonth() === this.anchor.getMonth() && now.getFullYear() === this.anchor.getFullYear()
-      : now >= start && now < new Date(end.getTime() + 86400000);
-    const nowWord = this.view === 'month' ? cp('this_month', {}, 'This month') : cp('this_week', {}, 'This week');
-    const viewChip = (v, fb) => chip('data-ec-view', v, cp(`view_${v}`, {}, fb), this.view === v);
 
     return `
-      ${(this.viewer || Viewer.account()).calendarWeekNavHtml({ start, label, cp, esc: (t) => this.escapeHtml(t) }) || `
-      <div style="display:flex; gap:var(--space-1); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);">
-        <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous">‹</button>
-        <span style="font-weight:800; min-width:9em; text-align:center;">${this.escapeHtml(label)}</span>
-        <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next">›</button>
-        ${hasNow ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${this.escapeHtml(nowWord)}</button>`}
-        <input type="date" class="ec-chip" data-ec-date value="${this._ymd(this.view === 'week' ? this.weekStart : this.anchor)}"
-               aria-label="Go to a date" style="font-family:inherit;">
-        <span class="ec-views" role="tablist" aria-label="Calendar view">
-          ${viewChip('week', 'Week')}${viewChip('month', 'Month')}
-        </span>
-      </div>`}
+      ${(this.viewer || Viewer.account()).calendarWeekNavHtml({ start, anchor: this.anchor, view: this.view, label, cp, esc: (t) => this.escapeHtml(t) })}
       ${grid}`;
   }
 }

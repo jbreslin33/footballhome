@@ -43,7 +43,7 @@ class PlayerViewer {
   get calendarKindPills() { return false; }     // Games · Practices · Pickup · All — ☰ items on the Calendar
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
-  get calendarRosterCounts() { return false; }
+  get calendarRosterCounts() { return false; }   // 💤 inactive / ⛔ ineligible on a tile — roster info, coaches' (owner 11/18 "why is naranjo showing how many are inactive")
   // ⚠ Field clash banner over the week — silent when there is none (owner
   // 11/18 "'linux' like silence unless there is conflict then a red banner"
   // → "and coaches and admin can see it").
@@ -109,25 +109,38 @@ class PlayerViewer {
       { code: 'alerts',  tier: 'qlink_alerts',  fb: '🔔 Alerts',        panel: 'alerts' },
       { code: 'signout', tier: 'qlink_signout', fb: '↪ Sign out' },
     ];
-  }  // 💤 inactive / ⛔ ineligible on a tile — roster info, coaches' (owner 11/18 "why is naranjo showing how many are inactive")
+  }
 
   // ‹  This week · Nov 16 – Nov 22  ›  (green), Next / Last week, then the
-  // range; "Back to this week" off it.  null = the screen's full row.
-  // ctx: { start: Date, label, cp(tier, tokens, fb), esc }.  Words: event_center wk_* (mig 1480).
-  calendarWeekNavHtml({ start, label, cp, esc }) {
-    const monday = (d) => { const m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; };
-    const off = Math.round((monday(start).getTime() - monday(new Date()).getTime()) / (7 * 86400000));
+  // range; "Back to this week" off it.  Month view (staff) the same:
+  // ‹ This month · November 2026 ›.  Every tier gets this bar (owner 11/18
+  // staff calendar piece by piece); Week · Month and the date picker are ☰
+  // items for the viewers that have them (calendarViews / calendarDatePicker).
+  // ctx: { start: Date, anchor: Date, view, label, cp(tier, tokens, fb), esc }.
+  // Words: event_center wk_* (mig 1480), mo_* (mig 1512).
+  calendarWeekNavHtml({ start, anchor, view, label, cp, esc }) {
+    let off;
+    if (view === 'month') {
+      const now = new Date(), a = anchor || start;
+      off = (a.getFullYear() - now.getFullYear()) * 12 + (a.getMonth() - now.getMonth());
+    } else {
+      const monday = (d) => { const m = new Date(d); m.setHours(0, 0, 0, 0); m.setDate(m.getDate() - ((m.getDay() + 6) % 7)); return m; };
+      off = Math.round((monday(start).getTime() - monday(new Date()).getTime()) / (7 * 86400000));
+    }
     const range = label;
-    const where = off === 0 ? cp('wk_this', { range }, `This week · ${range}`)
-      : off === 1 ? cp('wk_next', { range }, `Next week · ${range}`)
-      : off === -1 ? cp('wk_last', { range }, `Last week · ${range}`) : range;
+    const p = view === 'month' ? 'mo' : 'wk';
+    const unit = view === 'month' ? 'month' : 'week';
+    const where = off === 0 ? cp(`${p}_this`, { range }, `This ${unit} · ${range}`)
+      : off === 1 ? cp(`${p}_next`, { range }, `Next ${unit} · ${range}`)
+      : off === -1 ? cp(`${p}_last`, { range }, `Last ${unit} · ${range}`) : range;
     return `<div style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:var(--space-2);">
-        <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous week" style="font-size:1.1rem; padding:4px 14px;">‹</button>
+        <button type="button" class="ec-chip" data-ec-week="-1" aria-label="Previous ${unit}" style="font-size:1.1rem; padding:4px 14px;">‹</button>
         <span style="font-weight:800; min-width:12em; text-align:center; ${off === 0 ? 'color:#86efac;' : ''}">${esc(where)}</span>
-        <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next week" style="font-size:1.1rem; padding:4px 14px;">›</button>
-        ${off === 0 ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${esc(cp('wk_back', {}, 'Back to this week'))}</button>`}
+        <button type="button" class="ec-chip" data-ec-week="1" aria-label="Next ${unit}" style="font-size:1.1rem; padding:4px 14px;">›</button>
+        ${off === 0 ? '' : `<button type="button" class="ec-chip" data-ec-week="0">${esc(cp(`${p}_back`, {}, `Back to this ${unit}`))}</button>`}
       </div>`;
   }
+  get calendarDatePicker() { return false; }    // 📆 Go to a date… in ☰
 }
 
 class CoachViewer extends PlayerViewer {
@@ -148,7 +161,8 @@ class CoachViewer extends PlayerViewer {
   // "first thing is back button. it don't need it right? also we don't need
   // 📅 Calendar Tap an event … because you have Calendar pill highlighted").
   get calendarKindPills() { return true; }
-  get calendarViews()     { return ['week', 'month']; }
+  get calendarViews()     { return ['week', 'month']; }   // ☰ items (mig 1512)
+  get calendarDatePicker() { return true; }
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
   get calendarClashes()   { return true; }
@@ -176,7 +190,6 @@ class CoachViewer extends PlayerViewer {
     out.push({ code: 'account', tier: 'qlink_account', fb: '👤 Account', route: 'main-menu' });
     return out.concat(base.filter(i => i.code === 'signout'));
   }
-  calendarWeekNavHtml()   { return null; }
 }
 
 class AdminViewer extends CoachViewer {
