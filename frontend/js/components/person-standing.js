@@ -155,9 +155,10 @@
     inactive:       ['#1e293b', '#cbd5e1', '#64748b'],
     practice_squad: ['#3a2e05', '#fbbf24', '#d97706'],
     call_in:        ['#3a2e05', '#fbbf24', '#d97706'],
+    not_eligible:   ['#3b0a0a', '#fca5a5', '#dc2626'],   // ⛔ mig 1523
   };
   const ROSTER_FALLBACK = {
-    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in',
+    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in', not_eligible: 'Not eligible',
   };
   function rosterHtml(personId) {
     const hit = cache.get(Number(personId));
@@ -266,8 +267,19 @@
     return row(top) + row(bottom);
   }
 
+  // ✅CASA / ❌CASA after a name (⛔ Not eligible row on the #teams team
+  // card, mig 1523): filled the form → the commissioner can put him On
+  // Roster now; never → a new registration first.  '' until loaded.
+  function regMark(personId) {
+    const hit = cache.get(Number(personId));
+    const regs = hit && hit.data && Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
+    return regs.filter(g => g && g.league === 'CASA').map(g => g.registered
+      ? `<span style="color:#86efac;" title="${esc(t('reg_have_tip', { league: g.league, date: g.at || '' }, ''))}">${esc(t('box_reg_have', { league: g.league }, `✅${g.league}`))}</span>`
+      : `<span style="color:#fca5a5;" title="${esc(t('reg_missing_tip', { league: g.league }, ''))}">${esc(t('box_reg_missing', { league: g.league }, `❌${g.league}`))}</span>`).join('');
+  }
+
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
   function forget(personId) { cache.delete(Number(personId)); }
 
-  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine };
+  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine, regMark };
 })();

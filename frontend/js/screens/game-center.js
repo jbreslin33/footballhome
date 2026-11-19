@@ -2078,6 +2078,19 @@ class GameCenterScreen extends EventScreen {
         list.splice(0, list.length, ...list.filter(p => !isPracticeSquad(p)));
     }
     const practiceSquadLabel = (window.MessageCopy && MessageCopy.block('roster_sheet', 'board_practice_squad_h')) || 'PRACTICE SQUAD';
+    // ⛔ Not eligible (mig 1523, owner 11/19 "if your not eligible at this
+    // momnemt to play liga 1 i thik you need to be secitoned off"): On
+    // Roster on no official roster that counts for this team — no game
+    // here, so out of every list (and Remind all) into a closed fold.  The
+    // official-roster sync clears it; a call-up still folds him in.
+    const isNotEligible = (p) => !p.callUp && p.squadStatus === 'not_eligible';
+    const unassignedNotEligible = [...unassignedNoResponse, ...unassignedNotGoing, ...unassignedGoing, ...unassignedIneligible]
+      .filter(isNotEligible).sort(this._byLastName);
+    if (unassignedNotEligible.length) {
+      for (const list of [unassignedNoResponse, unassignedNotGoing, unassignedGoing, unassignedIneligible])
+        list.splice(0, list.length, ...list.filter(p => !isNotEligible(p)));
+    }
+    const notEligibleLabel = this._ecCopy('sec_not_eligible', '⛔ Not eligible');
     // 🎟 Call-up pool (owner 11/5, APSL at Vidas: "why on apsl is a bunch of
     // guys no response … those guys are supposed to be inactive right? then
     // i could call them up"): on this game only through a call-up-only team
@@ -2628,6 +2641,7 @@ class GameCenterScreen extends EventScreen {
         unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }),
+        unassignedNotEligible.length ? collapsedSection(this.escapeHtml(notEligibleLabel), unassignedNotEligible, { key: 'not_eligible' }) : '',
         unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
         collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }),
         collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
@@ -2651,6 +2665,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach && unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }) : '',
+      this.isCoach && unassignedNotEligible.length ? collapsedSection(this.escapeHtml(notEligibleLabel), unassignedNotEligible, { key: 'not_eligible' }) : '',
       this.isCoach && unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(inactiveLabel), unassignedInactive, { key: 'inactive', extra: callInBtn }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
