@@ -370,6 +370,26 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     // (pyramid_relegation_size_rules): whole spots = the bottom places
     // relegated, a half = the place above them in a relegation playoff.
     bool zonesAssumed = false;
+    // Two tables (Mid-Atlantic): 1 spot = the bottom of each group play off,
+    // the loser goes down (the paired relegation playoff below); 2 = the
+    // bottom of each group goes down.  Other splits stay unmarked.
+    if (divs.size() == 2 && N > 0) {
+        bool hasDown = false;
+        for (const auto& d : divs) for (const auto& z : d.zones) if (z["kind"].get<std::string>().find("relegation") != std::string::npos) hasDown = true;
+        auto own = db->query("SELECT 1 FROM pyramid_relegation_outlook WHERE competition_id = $1::int LIMIT 1", {cid});
+        if (!hasDown && own.empty()) {
+            auto r = db->query("SELECT relegated::float8 AS d FROM pyramid_relegation_size_rules WHERE teams = $1::int OR teams IS NULL ORDER BY teams NULLS LAST LIMIT 1",
+                               {std::to_string(N)});
+            const double down = r.empty() ? 0 : num(r[0], "d");
+            const char* kind = std::fabs(down - 1) < 1e-9 ? "relegation_playoff" : std::fabs(down - 2) < 1e-9 ? "relegation" : nullptr;
+            if (kind)
+                for (auto& d : divs) {
+                    const int n = (int)d.teams.size();
+                    if (n > 0) d.zones.push_back({{"kind", kind}, {"from", n}, {"to", n}, {"assumed", true}});
+                }
+            zonesAssumed = kind != nullptr;
+        }
+    }
     if (divs.size() == 1 && N > 0) {
         bool hasDown = false;
         for (const auto& z : divs[0].zones) if (z["kind"].get<std::string>().find("relegation") != std::string::npos) hasDown = true;
