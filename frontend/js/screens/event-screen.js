@@ -241,7 +241,7 @@ class EventScreen extends Screen {
     return `<div data-ec-menu-nav style="display:none;">${html}</div>`;
   }
   _menuNavItems() {
-    const ATTRS = ['data-ec-pill', 'data-gc-social-pill', 'data-ec-post', 'data-ec-see-as'];
+    const ATTRS = ['data-ec-pill', 'data-gc-social-pill', 'data-ec-post', 'data-ec-see-as', 'data-gc-post-insta'];
     const btns = [...this.element.querySelectorAll('[data-ec-menu-nav] button')];
     const pills = btns.filter(b => b.getAttribute('role') === 'tab'), rest = btns.filter(b => b.getAttribute('role') !== 'tab');
     return [...pills, ...rest].map(b => {
@@ -299,9 +299,15 @@ class EventScreen extends Screen {
   }
   // The header (title · when · where) — PlayerViewer has none on an opened
   // event (Viewer.eventHeader): the graphic carries those lines.
+  // Hidden from the first paint too (_headerStyle), not only once the event
+  // has loaded — staff saw the old ← Back / title / where line flash while
+  // the game loaded (owner 11/18 staff event screens, piece by piece).
+  // A load error is written in the body, so nothing is lost.
+  _noEventHeader() { return !!(window.Viewer && !Viewer.account().eventHeader); }
+  _headerStyle() { return this._noEventHeader() ? ' display:none;' : ''; }
   _applyEventHeader() {
     const hdr = this.find('.screen-header');
-    if (hdr) hdr.style.display = this.ev && window.Viewer && !Viewer.account().eventHeader ? 'none' : '';
+    if (hdr) hdr.style.display = this._noEventHeader() ? 'none' : '';
   }
   // Your GOING / NOT GOING sits ON the graphic for a player (owner 11/18
   // "going or not going button should be on graphic! … graphic is the
@@ -474,7 +480,7 @@ class EventScreen extends Screen {
         .ec-send[disabled] { opacity:0.5; }
         .ec-box { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:12px; margin-bottom:var(--space-3); }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;">
+      <div class="screen-header" style="flex-wrap:wrap;${this._headerStyle()}">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="ec-title">📋 Event</h1>
         <p class="subtitle" id="ec-sub"></p>

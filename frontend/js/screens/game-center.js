@@ -658,14 +658,17 @@ class GameCenterScreen extends EventScreen {
   // publish panel (#gc-social) for the active pill right there — caption,
   // photo/video, schedule, "Post live". Only the roles that may publish
   // see it, so a player just gets the pills and the card.
+  // Staff: the button sits hidden and ☰ lists it like the pills and chips
+  // (EventScreen._menuNavHtml — owner 11/18 staff event pages, piece by
+  // piece: the graphic is the page; every other button lives in ☰).
   _postButtonHtml() {
     if (!this._canPostSocial() || !this.matchId || !this.teamId) return '';
-    return `
+    return this._menuNavHtml(`
       <div style="max-width:540px; margin:12px auto;">
-        <button type="button" id="gc-post-insta" class="btn ${this._bottomOpen ? 'btn-secondary' : 'btn-primary'}" style="width:100%; font-weight:700; padding:10px 12px;">
+        <button type="button" id="gc-post-insta" data-gc-post-insta="1" class="btn ${this._bottomOpen ? 'btn-secondary' : 'btn-primary'}" style="width:100%; font-weight:700; padding:10px 12px;">
           ${this._bottomOpen ? '▾ Hide' : '📸 Post to Instagram —'} ${this.escapeHtml(this._pillTitle(this.pill))}${this._bottomOpen ? ' post' : ''}
         </button>
-      </div>`;
+      </div>`);
   }
 
   render() {
@@ -678,7 +681,7 @@ class GameCenterScreen extends EventScreen {
         .screen-game-center .ec-att { width:26px; height:26px; padding:0; border-radius:50%; line-height:1; font-size:0.75rem; font-weight:800; cursor:pointer; }
         .screen-game-center .ec-att[disabled] { opacity:0.5; cursor:wait; }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;">
+      <div class="screen-header" style="flex-wrap:wrap;${this._headerStyle()}">
         <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="gc-title">📋 Event Center</h1>
         <p class="subtitle" id="gl-subtitle">Loading…</p>
@@ -1141,6 +1144,9 @@ class GameCenterScreen extends EventScreen {
       if (e.target.closest('#gc-post-insta')) {
         this._bottomOpen = !this._bottomOpen;
         this._render();
+        // Opened from ☰ there is no button on screen to look at — bring
+        // the publish panel into view.
+        if (this._bottomOpen) requestAnimationFrame(() => { const m = this.find('#gc-social'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
         return;
       }
       // 👥 All Players pane: EventScreen's own buttons (P/A/L/E, ✓/✗,

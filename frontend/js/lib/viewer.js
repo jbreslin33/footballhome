@@ -159,10 +159,12 @@ class CoachViewer extends PlayerViewer {
   canContact() { return true; }
   canEdit()    { return true; }
 
-  // The full app: menu, header line, the Calendar's header, Back, type pills,
-  // Week · Month and the date picker (the screen's own row).
+  // The full app: the menu bar, plus ☰ items (type pills, Week · Month, the
+  // date picker).
   get showsMenuBar()      { return true; }
-  get showsContextLine()  { return true; }
+  // showsContextLine: inherited (off) — the signed-in email is already
+  // under ↪ Sign out in ☰ (owner 11/18 staff calendar / event screens,
+  // piece by piece: staff get the player's page, the ladder only adds tools).
   // calendarHeader / calendarBack: inherited (off) — the lit 📅 Calendar pill
   // says where you are, and it is the home page, so no ← Back (owner 11/18
   // "first thing is back button. it don't need it right? also we don't need
