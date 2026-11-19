@@ -123,9 +123,14 @@ class EventScreen extends Screen {
     const ev = this.ev;
     const rsvps = Array.isArray(ev && ev.rsvps) ? ev.rsvps : [];
     const going = rsvps.filter(r => r && r.response === 'yes' && !r.suspension);
+    // Marked Present / Late without saying Going (No response or Not going)
+    // → on the pitch too, the box tagged with what they said (owner 11/19
+    // "if we say that a player attended who was no response or not going we
+    // need to put them on pitch. but show that they set not going but went").
+    const came = this._cardCame();
     // No header for a player (Viewer.eventHeader) → the card is always drawn,
     // so when / where (and GOING / NOT GOING) are on the page with nobody going yet.
-    if (!going.length && (!window.Viewer || Viewer.account().eventHeader)) return '';
+    if (!going.length && !came.length && (!window.Viewer || Viewer.account().eventHeader)) return '';
     const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
       || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
     const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
@@ -147,11 +152,12 @@ class EventScreen extends Screen {
     const full = (r) => String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim();
     const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
     const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
-    const players = going.filter(r => !r.is_coach);
+    const players = going.filter(r => !r.is_coach).concat(came);
     for (const r of players) {
       const mine = (Array.isArray(r.team_ids) ? r.team_ids : []).map(Number).filter(id => byId.has(id))
         .sort((a, b) => teams.indexOf(byId.get(a)) - teams.indexOf(byId.get(b)));
-      (mine.length ? blocks.get(mine[0]) : other).rows.push({ r, also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean) });
+      (mine.length ? blocks.get(mine[0]) : other).rows.push({ r, also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean),
+        said: r.response === 'yes' ? null : r.response === 'no' ? 'no' : 'noresp' });
     }
     const list = [...blocks.values(), other].filter(b => b.rows.length);
     const color = (t) => (/^#[0-9a-f]{6}$/i.test((t && t.color) || '') ? t.color : '#64748b');
@@ -174,8 +180,8 @@ class EventScreen extends Screen {
           <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:5px;">
             <span style="font-size:13px; letter-spacing:3px; font-weight:800; text-transform:uppercase;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
             <span style="font-size:13px; font-weight:800; color:#f5d442;">${b.rows.length}</span></div>
-          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px;">
-            ${b.rows.map(x => this._cardBoxHtml(x.r, full(x.r), c, x.also)).join('')}
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:10px 6px; padding-top:4px;">
+            ${b.rows.map(x => this._cardBoxHtml(x.r, full(x.r), c, x.also, x.said)).join('')}
           </div></div>`;
     };
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -205,7 +211,10 @@ class EventScreen extends Screen {
   // One player box on an event card (practice, pickup …): the game card's
   // box look (SocialPostCard live boxes) — dark fill, coloured border, name
   // in bold — plus the roll on its front for staff (_boxAttHtml).
-  _cardBoxHtml(r, name, teamColor, also = []) {
+  // said = 'no' | 'noresp' when they came without saying Going: a tag on
+  // the box's top edge (✗ said no / – no reply), so the box stays the
+  // same size as the rest.
+  _cardBoxHtml(r, name, teamColor, also = [], said = null) {
     const pid = Number(r && r.person_id);
     const st = this._boxAttStatus(pid);
     const border = st ? st.color : teamColor;
@@ -215,7 +224,11 @@ class EventScreen extends Screen {
     // consistent in size"); a line too long for the box ends in …
     const words = String(name || '').trim().split(/\s+/);
     const lines = [words[0] || '', words.slice(1).join(' ')];
-    return `<div style="flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:3px; padding:4px 4px 5px; border-radius:8px; border:2px solid ${border}; background:rgba(0,20,60,0.55);">
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const tag = said === 'no' ? { text: cp('card_came_notgoing', '✗ said no'), bg: '#dc2626', fg: '#fff' }
+      : said === 'noresp' ? { text: cp('card_came_noresp', '– no reply'), bg: '#facc15', fg: '#422006' } : null;
+    return `<div style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:3px; padding:4px 4px 5px; border-radius:8px; border:2px solid ${border}; background:rgba(0,20,60,0.55);">
+        ${tag ? `<span style="position:absolute; top:-9px; left:50%; transform:translateX(-50%); white-space:nowrap; font-size:10px; font-weight:800; line-height:14px; padding:0 6px; border-radius:7px; background:${tag.bg}; color:${tag.fg};">${this.escapeHtml(tag.text)}</span>` : ''}
         <div ${tap}style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${lines.map((l, i) => `<div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${this.escapeHtml(l)}${i === 1 && also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${this.escapeHtml(also.join(' +'))}</span>` : ''}</div>`).join('')}</div>
         ${this._boxAttHtml(pid)}
       </div>`;
@@ -249,6 +262,10 @@ class EventScreen extends Screen {
   // under its substitutes (owner 11/18 "similar to game").
   _cardOutHtml() {
     const out = this._rsvpOutLists();
+    // Those who came anyway are on the pitch now (_cardCame), not here.
+    const cameIds = new Set(this._cardCame().map(r => Number(r.person_id)));
+    out.noResponse = out.noResponse.filter(r => !cameIds.has(Number(r.person_id)));
+    out.notGoing = out.notGoing.filter(r => !cameIds.has(Number(r.person_id)));
     const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
     const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
@@ -368,6 +385,17 @@ class EventScreen extends Screen {
 
   // Who answered what, for a graphic's lists (the same cut as the 👥
   // sections: coaches, suspended, inactive and injured out).
+  // Players marked Present or Late who did not say Going (No response /
+  // Not going) — the event card puts them on the pitch, tagged.
+  _cardCame() {
+    if (!this.att || !this.att.roster) return [];
+    const out = this._rsvpOutLists();
+    return out.noResponse.concat(out.notGoing).filter(r => {
+      const st = (this.att.roster.get(Number(r.person_id)) || this.att.roster.get(r.person_id) || {}).status;
+      return st === 'present' || st === 'late';
+    });
+  }
+
   _rsvpOutLists() {
     const inactiveIds = new Set((Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : []).map(r => r.person_id));
     const players = (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : [])
