@@ -128,7 +128,7 @@ class OnboardingScreen extends Screen {
       if (inp) inp.click();
       return;
     }
-    if ((el = t('[data-onb-send]'))) { this._send(Number(el.dataset.onbSend)); }
+    if ((el = t('[data-onb-send]'))) { this._send(Number(el.dataset.onbSend), el.dataset.stage || 'volunteer'); }
   }
 
   // 📎 Upload for someone (a document they emailed or handed in).
@@ -156,14 +156,15 @@ class OnboardingScreen extends Screen {
 
   // ✉️ Every file to compliance, cc the person and you (owner 11/19 "a button
   // for me to send it all to compliance … and we would include the volunteer").
-  async _send(pid) {
+  async _send(pid, stage) {
     const p = this._person(pid);
     if (!p) return;
-    const n = (p.steps || []).reduce((t, s) => t + ((s.files || []).length), 0);
-    const to = (this.data.policy && this.data.policy.compliance_email) || '';
+    const n = (p.steps || []).filter(s => s.stage === stage).reduce((t, s) => t + ((s.files || []).length), 0);
+    const st = (this.data.stages || []).find(x => x.stage === stage) || {};
+    const to = st.email_to || '';
     if (!confirm(this._t('send_confirm', { n, name: p.name, to }, 'Email {n} file(s) for {name} to {to}, cc {name} and you?'))) return;
     this.sending = pid;
-    await this._post('/api/onboarding/send', { person_id: pid });
+    await this._post('/api/onboarding/send', { person_id: pid, stage });
     this.sending = null;
     this._renderBody();
   }
@@ -254,15 +255,34 @@ class OnboardingScreen extends Screen {
       </div>`;
   }
 
+  // ✉️ One button per email stage (owner 11/19 "the first submission is
+  // the clearances then yineska the hr lh person has them do financials so
+  // we need to do like 2 email stages"): clearances → compliance, finance →
+  // HR.  🟢 Ready when every step of the stage has a file (or is ✅) and
+  // nothing new is unsent.
   _sendHtml(p, esc) {
-    const n = (p.steps || []).reduce((t, s) => t + ((s.files || []).length), 0);
-    const sent = p.emailed_at ? this._t('sent_line', { when: new Date(p.emailed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }, '✉️ Sent to compliance {when}') : '';
-    if (!n && !sent) return '';
-    const busy = this.busy && this.sending === p.person_id;
-    return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-        ${n ? `<button type="button" class="btn btn-primary" data-onb-send="${p.person_id}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:6px 12px; font-size:0.85rem;">${esc(busy ? this._t('sending', {}, 'Sending…') : `${this._t('act_send', {}, '✉️ Send all to compliance')} (${n})`)}</button>` : ''}
-        ${sent ? `<span style="font-size:0.8rem; opacity:0.8;">${esc(sent)}</span>` : ''}
-      </div>`;
+    const when = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const rows = (this.data.stages || []).map(st => {
+      const steps = (p.steps || []).filter(s => s.stage === st.stage);
+      if (st.stage === 'paid' && p.track !== 'paid') return '';
+      const files = steps.reduce((l, s) => l.concat(s.files || []), []);
+      const sentAt = p.sends && p.sends[st.stage];
+      if (!files.length && !sentAt) return '';
+      const unsent = files.filter(f => !f.emailed_at).length;
+      const complete = steps.length && steps.every(s => s.state === 'done' || (s.files || []).length);
+      const ready = complete && unsent > 0;
+      const label = this._t(`act_send_${st.stage}`, {}, st.stage === 'paid' ? '✉️ Send finance to HR' : '✉️ Send clearances to compliance');
+      const busy = this.busy && this.sending === p.person_id;
+      const stageName = st.stage === 'paid' ? 'Finance' : 'Clearances';
+      return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+          ${files.length ? (st.email_to
+            ? `<button type="button" class="btn ${ready ? 'btn-primary' : 'btn-secondary'}" data-onb-send="${p.person_id}" data-stage="${st.stage}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:6px 12px; font-size:0.85rem;">${esc(busy ? this._t('sending', {}, 'Sending…') : `${label} (${files.length})`)}</button>`
+            : `<span style="font-size:0.8rem; opacity:0.75;">${esc(label)} · ${esc(this._t('paid_no_email', {}, 'HR email not set yet'))}</span>`) : ''}
+          ${ready ? `<span style="font-size:0.8rem; font-weight:800; color:#22c55e;">${esc(this._t('stage_ready', {}, '🟢 Ready to send'))}</span>` : ''}
+          ${sentAt ? `<span style="font-size:0.8rem; opacity:0.8;">${esc(this._t('sent_line_stage', { stage: stageName, when: when(sentAt) }, '✉️ {stage} sent {when}'))}</span>` : ''}
+        </div>`;
+    });
+    return rows.join('');
   }
 
   _addHtml(esc) {

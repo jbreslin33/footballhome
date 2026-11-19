@@ -100,14 +100,14 @@ void OnboardingController::registerRoutes(Router& router, const std::string& pre
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the file");
         }
     });
-    // ✉️ POST /api/onboarding/send {person_id} — every file to compliance.
+    // ✉️ POST /api/onboarding/send {person_id, stage} — that stage's files to its recipient.
     router.post(prefix + "/send", [this](const Request& r) {
         Response denied; if (!gate(r, &denied)) return denied;
         bool ok; json b = parseBody(r, &ok);
         if (!ok) return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON");
         try {
             int sent = 0;
-            const std::string err = Onboarding::sendToCompliance(num(b, "person_id"), bearerUserId(r), &sent);
+            const std::string err = Onboarding::sendStage(num(b, "person_id"), text(b, "stage").empty() ? std::string("volunteer") : text(b, "stage"), bearerUserId(r), &sent);
             if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
             json board = Onboarding::board();
             board["sent_files"] = sent;

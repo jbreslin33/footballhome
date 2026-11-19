@@ -168,11 +168,18 @@ json Onboarding::board() {
         candidates.push_back({{"person_id", r["id"].as<long long>()}, {"name", r["name"].c_str()},
                               {"why", r["volunteer"].as<bool>() ? "volunteer" : "coach"}});
     }
+    for (const auto& r : db->query("SELECT person_id, stage, emailed_at FROM person_onboarding_stage_sends"))
+        for (auto& p : people)
+            if (p["person_id"].get<long long>() == r["person_id"].as<long long>()) p["sends"][r["stage"].c_str()] = r["emailed_at"].c_str();
+    json stages = json::array();
+    for (const auto& r : db->query("SELECT stage, email_to, email_to_name FROM onboarding_stages ORDER BY sort_order"))
+        stages.push_back({{"stage", r["stage"].c_str()}, {"email_to", r["email_to"].is_null() ? json(nullptr) : json(r["email_to"].c_str())},
+                          {"email_to_name", r["email_to_name"].c_str()}});
     json policy = json::object();
     for (const auto& r : db->query("SELECT compliance_email, compliance_name, max_file_mb, purge_days FROM onboarding_policy WHERE id = 1"))
         policy = {{"compliance_email", r["compliance_email"].c_str()}, {"compliance_name", r["compliance_name"].c_str()},
                   {"max_file_mb", r["max_file_mb"].as<int>()}, {"purge_days", r["purge_days"].as<int>()}};
-    return {{"steps", steps}, {"people", people}, {"candidates", candidates}, {"policy", policy}};
+    return {{"steps", steps}, {"people", people}, {"candidates", candidates}, {"policy", policy}, {"stages", stages}};
 }
 
 std::string Onboarding::markSent(long long personId, const std::string& code, bool sent) {
@@ -389,7 +396,7 @@ void Onboarding::purge() {
         " WHERE p.id = 1 AND f.emailed_at IS NOT NULL AND f.emailed_at < now() - make_interval(days => p.purge_days)");
 }
 
-std::string Onboarding::sendToCompliance(long long personId, long long adminUserId, int* sentFiles) {
+std::string Onboarding::sendStage(long long personId, const std::string& stage, long long adminUserId, int* sentFiles) {
     *sentFiles = 0;
     auto* db = Database::getInstance();
     const std::string pid = std::to_string(personId);
@@ -398,8 +405,11 @@ std::string Onboarding::sendToCompliance(long long personId, long long adminUser
         "       (SELECT e.email FROM person_emails e WHERE e.person_id = p.id ORDER BY e.is_primary DESC, e.id LIMIT 1) AS email "
         "  FROM person_onboarding po JOIN persons p ON p.id = po.person_id WHERE po.person_id = $1::int", {pid});
     if (who.empty()) return "That person is not on the onboarding path.";
-    auto pol = db->query("SELECT compliance_email FROM onboarding_policy WHERE id = 1");
-    if (pol.empty() || std::string(pol[0]["compliance_email"].c_str()).empty()) return "No compliance email set.";
+    if (stage != "volunteer" && stage != "paid") return "stage must be volunteer or paid.";
+    // Who this stage's email goes to (onboarding_stages, mig 1545).
+    auto pol = db->query("SELECT COALESCE(email_to, '') AS email_to, email_to_name FROM onboarding_stages WHERE stage = $1", {stage});
+    if (pol.empty() || std::string(pol[0]["email_to"].c_str()).empty())
+        return stage == "paid" ? "No HR email set yet for the finance paperwork." : "No compliance email set.";
     auto admin = db->query(
         "SELECT (SELECT e.email FROM person_emails e WHERE e.person_id = u.person_id ORDER BY e.is_primary DESC, e.id LIMIT 1) AS email "
         "  FROM users u WHERE u.id = $1::int", {std::to_string(adminUserId)});
@@ -411,14 +421,14 @@ std::string Onboarding::sendToCompliance(long long personId, long long adminUser
     auto files = db->query(
         "SELECT f.id, f.filename, f.mime, f.byte_size, encode(f.bytes, 'hex') AS h, s.label "
         "  FROM person_onboarding_files f JOIN onboarding_steps s ON s.code = f.step_code "
-        " WHERE f.person_id = $1::int ORDER BY s.sort_order, f.uploaded_at, f.id", {pid});
-    if (files.empty()) return "No files uploaded yet.";
+        " WHERE f.person_id = $1::int AND s.stage = $2 ORDER BY s.sort_order, f.uploaded_at, f.id", {pid, stage});
+    if (files.empty()) return "No files uploaded yet for this stage.";
 
     // The checklist in the body: every step, ✅ / 🟡 / ⬜, with its files.
     std::string list;
     auto steps = db->query(kStepsSql, {pid});
     for (const auto& st : steps) {
-        if (!st["required"].as<bool>()) continue;
+        if (std::string(st["stage"].c_str()) != stage) continue;
         const std::string state = st["state"].c_str();
         const std::string mark = state == "done" ? "✅" : state == "sent" ? "📎" : "⬜";
         std::string names;
@@ -437,19 +447,22 @@ std::string Onboarding::sendToCompliance(long long personId, long long adminUser
         parts.back().push_back(i);
         used += sz;
     }
-    const auto [subjT, bodyT] = words(db, "email_compliance", "Onboarding documents — {name}",
-                                      "Hi,\n\nOnboarding documents for {name} ({track}), who is copied on this email.\n\n{list}\nThanks!");
+    const auto [subjT, bodyT] = stage == "paid"
+        ? words(db, "email_paid", "Finance paperwork — {name}", "Hi {to_name},\n\nFinance paperwork for {name}, who is copied on this email.\n\n{list}\nThanks!")
+        : words(db, "email_compliance", "Clearances — {name}", "Hi,\n\nClearances for {name} ({track}), who is copied on this email.\n\n{list}\nThanks!");
+    std::string toName = pol[0]["email_to_name"].c_str();
+    if (const auto paren = toName.find(" ("); paren != std::string::npos) toName = toName.substr(0, paren);
     const auto partT = words(db, "email_part", "", " (part {i} of {n})").second;
     const std::string trackWord = track == "paid" ? "paid" : "volunteer";
     for (size_t p = 0; p < parts.size(); ++p) {
         fh::mail::Message m;
-        m.to = pol[0]["compliance_email"].c_str();
+        m.to = pol[0]["email_to"].c_str();
         if (!who[0]["email"].is_null()) m.cc.push_back(who[0]["email"].c_str());
         if (!adminEmail.empty()) { m.cc.push_back(adminEmail); m.replyTo = adminEmail; }
         const std::string part = parts.size() > 1
             ? fill(partT, {{"i", std::to_string(p + 1)}, {"n", std::to_string(parts.size())}}) : "";
         m.subject = fill(subjT, {{"name", name}, {"track", trackWord}}) + part;
-        m.body = fill(bodyT, {{"name", name}, {"track", trackWord}, {"list", list}});
+        m.body = fill(bodyT, {{"name", name}, {"track", trackWord}, {"list", list}, {"to_name", toName}});
         for (size_t i : parts[p])
             m.attachments.push_back({files[i]["filename"].c_str(), files[i]["mime"].c_str(), unhex(files[i]["h"].c_str())});
         if (!fh::mail::sendMessage(m))
@@ -460,7 +473,10 @@ std::string Onboarding::sendToCompliance(long long personId, long long adminUser
             ++*sentFiles;
         }
     }
-    db->query("UPDATE person_onboarding SET emailed_at = now(), emailed_by = NULLIF($2, '')::int WHERE person_id = $1::int",
-              {pid, adminUserId > 0 ? std::to_string(adminUserId) : std::string()});
+    const std::string uid = adminUserId > 0 ? std::to_string(adminUserId) : std::string();
+    db->query("UPDATE person_onboarding SET emailed_at = now(), emailed_by = NULLIF($2, '')::int WHERE person_id = $1::int", {pid, uid});
+    db->query("INSERT INTO person_onboarding_stage_sends (person_id, stage, emailed_at, emailed_by) "
+              "VALUES ($1::int, $2, now(), NULLIF($3, '')::int) "
+              "ON CONFLICT (person_id, stage) DO UPDATE SET emailed_at = now(), emailed_by = EXCLUDED.emailed_by", {pid, stage, uid});
     return "";
 }

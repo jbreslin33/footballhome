@@ -57,10 +57,11 @@ public:
     static std::string removeFile(long long fileId, long long ownerPersonId);
     // A file for a club admin: false when gone (purged / deleted).
     static bool fileBytes(long long fileId, std::string* filename, std::string* mime, std::string* bytes);
-    // ✉️ Email every stored file to compliance (onboarding_policy), cc the
-    // person and the admin, Reply-To the admin; split into parts under the
-    // relay's size cap.  "" = sent; else the error.  *sentFiles = how many.
-    static std::string sendToCompliance(long long personId, long long adminUserId, int* sentFiles);
+    // ✉️ Email one stage's files (volunteer = clearances → compliance,
+    // paid = finance → HR; onboarding_stages, mig 1545), cc the person and
+    // the admin, Reply-To the admin; split into parts under the relay's size
+    // cap.  "" = sent; else the error.  *sentFiles = how many.
+    static std::string sendStage(long long personId, const std::string& stage, long long adminUserId, int* sentFiles);
     // Deletes file bytes purge_days after they went to compliance.
     static void purge();
 };

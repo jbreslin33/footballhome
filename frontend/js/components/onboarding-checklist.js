@@ -28,6 +28,8 @@ class OnboardingChecklist {
         if (b && !b.disabled) { this.markSent(b.getAttribute('data-onb-sent'), b.getAttribute('data-onb-on') === '1'); return; }
         const up = e.target.closest('[data-onb-upload]');
         if (up && !up.disabled) { const inp = el.querySelector(`input[data-onb-file="${up.getAttribute('data-onb-upload')}"]`); if (inp) inp.click(); return; }
+        const op = e.target.closest('[data-onb-open]');
+        if (op) { this.open = op.getAttribute('data-onb-open'); this.render(); return; }
         const fl = e.target.closest('[data-onb-filelink]');
         if (fl) { this.openClubFile(fl.getAttribute('data-onb-filelink')); return; }
         const rm = e.target.closest('[data-onb-rmfile]');
@@ -173,6 +175,11 @@ class OnboardingChecklist {
     if (!d) { this.el.innerHTML = ''; return; }
     const paid = d.track === 'paid';
     const steps = Array.isArray(d.steps) ? d.steps : [];
+    // The focus: the step the person opened, else the first one still to do.
+    const liveSteps = steps.filter(s => s.stage === 'volunteer' || paid);
+    const firstTodo = liveSteps.find(s => s.state === 'todo' || s.state === 'renew');
+    const focus = (this.open && liveSteps.some(s => s.code === this.open && s.state !== 'done')) ? this.open : (firstTodo ? firstTodo.code : null);
+    const stageDone = (key) => steps.filter(s => s.stage === key).every(s => s.state === 'sent' || s.state === 'done');
     const row = (s, live, n) => {
       const cost = s.cost_usd == null ? '' : Number(s.cost_usd) > 0
         ? t('cost', { amount: OnboardingChecklist.money(s.cost_usd) }, '{amount}') : t('cost_free', {}, 'Free');
@@ -192,11 +199,23 @@ class OnboardingChecklist {
         canUpload ? `<button type="button" data-onb-upload="${esc(s.code)}" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:${files.length ? 'transparent' : '#16a34a'}; color:${files.length ? '#22c55e' : '#fff'}; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(busy ? t('uploading', {}, 'Uploading…') : files.length ? t('upload_more', {}, '📎 Add another') : t('upload', {}, '📎 Upload'))}</button><input type="file" data-onb-file="${esc(s.code)}" accept="image/*,application/pdf" hidden>` : '',
         canUndo ? `<button type="button" data-onb-sent="${esc(s.code)}" data-onb-on="0" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #6b7280; background:transparent; color:#d1d5db; font:inherit; font-weight:700; font-size:0.78rem; cursor:pointer;">${esc(t('undo_sent', {}, 'Undo'))}</button>` : '',
       ].filter(Boolean).join('');
+      // One step at a time (owner 11/19 "we need a smart system to walk these
+      // vols through"): the focus step is open; the rest are one line each,
+      // Open › to jump to one.
+      if (live && s.state !== 'done' && s.code !== focus) {
+        const icon = s.state === 'sent' ? '🟡' : s.state === 'renew' ? '⛔' : '⬜';
+        return `<div style="display:flex; align-items:center; gap:8px; padding:6px 11px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); font-size:0.85rem;">
+            <span style="flex:1; min-width:0; font-weight:700;">${icon} <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}${files.length ? ` <span style="opacity:0.7;">📎${files.length}</span>` : ''}</span>
+            <button type="button" data-onb-open="${esc(s.code)}" style="min-height:0; padding:3px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:transparent; color:inherit; font:inherit; font-size:0.78rem; font-weight:700; cursor:pointer;">${esc(t('tap_open', {}, 'Open ›'))}</button>
+          </div>`;
+      }
       // Done = one quiet line (owner 11/19 "make this all easy and make sense").
       if (live && s.state === 'done')
         return `<div style="padding:6px 11px; border-radius:10px; border:1px solid rgba(74,222,128,0.35); font-size:0.85rem; font-weight:700; color:#4ade80;">✅ <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}</div>`;
       const exp = s.state === 'done' && s.expires_at ? ` · ${esc(new Date(s.expires_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }))}` : '';
-      return `<div style="display:flex; flex-direction:column; gap:4px; padding:9px 11px; border-radius:10px; border:1px solid ${s.state === 'done' ? 'rgba(74,222,128,0.45)' : 'rgba(255,255,255,0.18)'}; background:rgba(255,255,255,0.03); ${live ? '' : 'opacity:0.6;'}">
+      const isFocus = live && s.code === focus;
+      return `<div style="display:flex; flex-direction:column; gap:4px; padding:9px 11px; border-radius:10px; border:${isFocus ? '2px solid #22c55e' : `1px solid ${s.state === 'done' ? 'rgba(74,222,128,0.45)' : 'rgba(255,255,255,0.18)'}`}; background:${isFocus ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.03)'}; ${live ? '' : 'opacity:0.6;'}">
+          ${isFocus && s.state !== 'sent' ? `<div style="font-size:0.75rem; font-weight:900; letter-spacing:0.04em; color:#4ade80; text-transform:uppercase;">${esc(t('next_step', {}, '👉 Your next step'))}</div>` : ''}
           <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
             <span style="flex:1; min-width:160px; font-weight:800; font-size:0.9rem;"><span style="opacity:0.6;">${n}.</span> ${esc(s.label)}</span>
             ${live ? `${OnboardingChecklist.stateHtml(s.state, esc)}${exp}` : ''}
@@ -211,6 +230,7 @@ class OnboardingChecklist {
         <div style="margin-top:10px;">
           <div style="font-weight:900; font-size:0.92rem; color:#f5d442;">${esc(t(`stage_${key}`, {}, key === 'paid' ? '💵 Step 2 · Ready to be paid' : '🙋 Step 1 · Cleared to volunteer'))}</div>
           ${sub ? `<div style="font-size:0.78rem; opacity:0.8; margin-top:1px;">${esc(sub)}</div>` : ''}
+          ${live && stageDone(key) && list.some(s => s.state !== 'done') ? `<div style="margin-top:6px; padding:8px 10px; border-radius:8px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.5); font-size:0.82rem; font-weight:700;">${esc(t(`${key}_done`, {}, key === 'paid' ? '🎉 Pay paperwork done! The club sends it to HR.' : "🎉 Clearances done! The club checks them and sends them to compliance. You're cleared once they're ✅."))}</div>` : ''}
           <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">${list.map((s, i) => row(s, live, start + i + 1)).join('')}</div>
         </div>`;
     const vol = steps.filter(s => s.stage === 'volunteer');
