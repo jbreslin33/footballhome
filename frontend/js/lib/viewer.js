@@ -166,7 +166,8 @@ class CoachViewer extends PlayerViewer {
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
   get calendarClashes()   { return true; }
-  get calendarMine()      { return true; }
+  // calendarMine: inherited (off) — 📋 Rules & fines, 🔔 Alerts and Sign out
+  // are already in their ☰ (owner 11/18 staff calendar piece by piece).
   eventPillKeys()         { return null; }
   // eventKindPills / eventLocationLine / eventBack: inherited (off) — they
   // lived in the event header, which staff no longer get either; the menu

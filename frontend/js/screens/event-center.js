@@ -230,6 +230,7 @@ class EventCenterScreen extends Screen {
       const el = this.find(sel);
       if (!el) continue;
       if (sel === '#ec-ops' && !this._isAdmin()) continue;   // _mountOps decides for non-admins
+      if (sel === '#ec-mine' && !(this.viewer || Viewer.account()).calendarMine) { el.style.display = 'none'; continue; }   // lib/viewer.js
       el.style.display = (people === showInPeople) ? (sel === '#ec-ops' ? 'flex' : '') : 'none';
     }
     const kinds = this.find('#ec-kinds');
