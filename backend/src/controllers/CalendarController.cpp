@@ -1350,6 +1350,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         'injury', fh_person_injury_label(roster.person_id),
                                                         -- ⛔ mig 1077: own section, out of No response
                                                         'suspension', fh_event_suspension(fe.id, roster.person_id),
+                                                        -- 👋 mig 1520: never answered anything → Not chasing fold
+                                                        'needs_onboard', fh_person_needs_onboard(roster.person_id),
                                                         -- Practice card pitch (owner 11/13 "i like it on pitch"):
                                                         -- the spot (1–11) he has started at most in games.
                                                         'usual_position', (SELECT ml.position_id FROM match_lineups ml JOIN players pl ON pl.id = ml.player_id
@@ -1492,7 +1494,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                        AND (er.response IS NOT NULL
                                                             OR NOT EXISTS (SELECT 1 FROM squad_statuses ss
                                                                             WHERE ss.id = tp.squad_status_id
-                                                                              AND NOT ss.owes_practice_rsvps))
+                                                                              AND NOT fh_squad_owes_practice(ss.id, tp.team_id)))
 
                                                         UNION ALL
 

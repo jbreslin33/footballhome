@@ -1549,7 +1549,8 @@ class GameCenterScreen extends EventScreen {
           if (byId.has(pid)) continue; // already merged from an earlier team
           byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null,
                           duesEligible: p.duesEligible !== false,   // migration 416: under the dues line
-                          squadStatus: p.squadStatus || null });     // 💤 inactive → own fold (mig 945)
+                          squadStatus: p.squadStatus || null,        // 💤 inactive → own fold (mig 945)
+                          needsOnboard: p.needsOnboard === true });  // 👋 never answered anything → Not chasing (mig 1520)
         }
       }
       this.roster = [...byId.values()];
@@ -2091,6 +2092,16 @@ class GameCenterScreen extends EventScreen {
         list.splice(0, list.length, ...list.filter(p => !isPool(p)));
     }
     const poolLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_callup_pool')) || '🎟 Call-up pool';
+    // 👋 Not chasing (mig 1520, owner 11/19 "they are cluttering my graphic
+    // and the players view graphic"): a man who has never answered an RSVP
+    // (#teams NEEDS ONBOARD) leaves No Response — and Remind all, which the
+    // server skips too — for his own closed fold.  His first answer brings
+    // him back into the lists like anyone else.
+    const isNotChasing = (p) => !p.callUp && p.needsOnboard && !isInactive(p) && !this._isSuspended(p.id);
+    const unassignedNotChasing = unassignedNoResponse.filter(isNotChasing).sort(this._byLastName);
+    if (unassignedNotChasing.length)
+      unassignedNoResponse.splice(0, unassignedNoResponse.length, ...unassignedNoResponse.filter(p => !isNotChasing(p)));
+    const notChasingLabel = this._ecCopy('sec_not_chasing', '👋 Not chasing');
     // ⛔ Suspended (mig 1077): out of every answer group into its own fold.
     const unassignedSuspended = [...unassignedGoing, ...unassignedIneligible, ...unassignedNoResponse, ...unassignedNotGoing]
       .filter(p => this._isSuspended(p.id)).sort(this._byLastName);
@@ -2119,7 +2130,9 @@ class GameCenterScreen extends EventScreen {
     // + ⚠️ Going · not placed yet (and ⛔ said going · ineligible) on top
     // (owner 11/18 "also what about not assigned yet. we need them on graphic").
     this._rsvpOut = { unplaced: [...unassignedGoing], ineligible: [...unassignedIneligible],
-                      noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing] };
+                      noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing],
+                      // 👋 coaches only on the graphic (players never see the row)
+                      notChasing: this.isCoach ? [...unassignedNotChasing] : [] };
 
     const seeAsBar = this._gcSeeAsHtml();
 
@@ -2612,6 +2625,7 @@ class GameCenterScreen extends EventScreen {
         gridSection(this.escapeHtml(this._copyLe('section') || 'Going'), byZone.starter, canMessage ? squadCard : null),
         collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }),
         collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }),
+        unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
         collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }),
         collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }),
         unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
@@ -2634,6 +2648,7 @@ class GameCenterScreen extends EventScreen {
       this.isCoach && unassignedIneligible.length ? gridSection('⛔ Going · Ineligible (dues)', unassignedIneligible, canMessage ? squadCard : null) : '',
       this.isCoach ? collapsedSection('✗ Not Going', unassignedNotGoing, canMessage ? { extra: squadCard, key: 'notgoing' } : { key: 'notgoing' }) : '',
       this.isCoach ? collapsedSection('– No Response', unassignedNoResponse, canMessage ? { extra: bothCards, key: 'noresponse' } : { key: 'noresponse' }) : '',
+      this.isCoach && unassignedNotChasing.length ? collapsedSection(this.escapeHtml(notChasingLabel), unassignedNotChasing, { key: 'not_chasing' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(injuredLabel), unassignedInjured, { key: 'injured' }) : '',
       this.isCoach ? collapsedSection(this.escapeHtml(practiceSquadLabel), unassignedPracticeSquad, { key: 'practice_squad', extra: callInBtn }) : '',
       this.isCoach && unassignedPool.length ? collapsedSection(this.escapeHtml(poolLabel), unassignedPool, { key: 'callup_pool', extra: callInBtn }) : '',
@@ -4090,6 +4105,7 @@ class GameCenterScreen extends EventScreen {
                            outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)', '#f5d442'),
                            outRow(out.noResponse, 'sec_noresp', '– No response', '#facc15'),
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),
+                           outRow(out.notChasing || [], 'sec_not_chasing', '👋 Not chasing', '#94a3b8'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").

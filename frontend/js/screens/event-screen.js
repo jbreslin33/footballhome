@@ -266,6 +266,7 @@ class EventScreen extends Screen {
     const cameIds = new Set(this._cardCame().map(r => Number(r.person_id)));
     out.noResponse = out.noResponse.filter(r => !cameIds.has(Number(r.person_id)));
     out.notGoing = out.notGoing.filter(r => !cameIds.has(Number(r.person_id)));
+    out.notChasing = out.notChasing.filter(r => !cameIds.has(Number(r.person_id)));
     const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
     const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
     const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
@@ -276,7 +277,9 @@ class EventScreen extends Screen {
           <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
           <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${[...list].sort((a, b) => last(a).localeCompare(last(b))).map(r => { const t = this._cardTapAttr(r); return t ? `<span ${t}>${this.escapeHtml(nameOf(r))}</span>` : this.escapeHtml(nameOf(r)); }).join(', ')}</div>
         </div>` : '';
-    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
+    // 👋 Not chasing (mig 1520): coaches only — players never see the row.
+    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
+      + (this.viewer.eventSection('not_chasing') ? row(out.notChasing, 'sec_not_chasing', '👋 Not chasing', '#94a3b8') : '');
   }
 
 
@@ -390,7 +393,7 @@ class EventScreen extends Screen {
   _cardCame() {
     if (!this.att || !this.att.roster) return [];
     const out = this._rsvpOutLists();
-    return out.noResponse.concat(out.notGoing).filter(r => {
+    return out.noResponse.concat(out.notChasing, out.notGoing).filter(r => {
       const st = (this.att.roster.get(Number(r.person_id)) || this.att.roster.get(r.person_id) || {}).status;
       return st === 'present' || st === 'late';
     });
@@ -400,8 +403,11 @@ class EventScreen extends Screen {
     const inactiveIds = new Set((Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : []).map(r => r.person_id));
     const players = (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : [])
       .filter(r => r && !r.is_coach && !r.suspension && (r.response === 'yes' || !inactiveIds.has(r.person_id)));
+    const unanswered = players.filter(r => r.response !== 'yes' && r.response !== 'no' && !r.injury);
     return {
-      noResponse: players.filter(r => r.response !== 'yes' && r.response !== 'no' && !r.injury),
+      // 👋 never answered anything (mig 1520) → Not chasing, not No response
+      noResponse: unanswered.filter(r => !EventScreen.notChasing(r)),
+      notChasing: unanswered.filter(r => EventScreen.notChasing(r)),
       notGoing:   players.filter(r => r.response === 'no'),
     };
   }
@@ -440,6 +446,9 @@ class EventScreen extends Screen {
   // Folds the owner wants open on arrival ("i will tell you what needs
   // standing expansion") — fold keys; empty = everything starts closed.
   static STANDING_OPEN = new Set([]);
+  // 👋 Not chasing (mig 1520): a player who has never answered an RSVP
+  // (needs_onboard from the event payload), not here on a call-up.
+  static notChasing(r) { return !!(r && r.needs_onboard && !r.is_callup); }
   // Is fold <key> open now: the coach's own toggle wins (kept across the
   // 15s refresh), else the standing list.
   foldOpen(key) { return this.folds.has(key) ? !!this.folds.get(key) : EventScreen.STANDING_OPEN.has(key); }
@@ -2466,7 +2475,11 @@ class EventScreen extends Screen {
     // skips them (mig 984).  An explicit answer still wins the grouping.
     const unanswered = players.filter(r => r.response !== 'yes' && r.response !== 'no');
     const injured  = unanswered.filter(r => r.injury);
-    const noResp   = unanswered.filter(r => !r.injury);
+    // 👋 Not chasing (mig 1520, owner 11/19): never answered an RSVP (#teams
+    // NEEDS ONBOARD) → own closed fold, out of No response and Remind all
+    // (the server skips them too).  The first answer brings them back.
+    const notChasing = unanswered.filter(r => !r.injury && EventScreen.notChasing(r));
+    const noResp   = unanswered.filter(r => !r.injury && !EventScreen.notChasing(r));
     const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
     const L = (tier, fb) => this.escapeHtml(cp(tier) || fb);
 
@@ -2571,6 +2584,7 @@ class EventScreen extends Screen {
       ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
       ${V('ineligible') ? (roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false)) : ''}
       ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
+      ${V('not_chasing') && notChasing.length ? fold('not_chasing', L('sec_not_chasing', '👋 Not chasing'), notChasing) : ''}
       ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')) : ''}
       ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
       ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true }) : ''}

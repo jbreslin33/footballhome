@@ -263,6 +263,32 @@ Response RsvpBoardController::handleRemind(const Request& request) {
     if (channel != "sms" && channel != "email")
         return jsonError(HttpStatus::BAD_REQUEST, "channel must be 'sms' or 'email'");
 
+    // 👋 Weekly hold (mig 1520, owner 11/19 "if they are paying dues but
+    // 'busy' we don't want to spam them every day … 1x per week reminder if
+    // that"): a man who never answered anything, or is on men's Practice
+    // Squad everywhere, gets one RSVP reminder per hold window — whoever taps.
+    try {
+        auto held = Database::getInstance()->query(R"SQL(
+            SELECT p.first_name,
+                   to_char((SELECT max(sent_at) FROM rsvp_reminders WHERE person_id = p.id) AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD') AS was,
+                   to_char(fh_rsvp_reminder_held_until(p.id) AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD') AS next,
+                   (SELECT body FROM message_templates WHERE kind = 'rsvp_reminder' AND tier = 'held' AND is_active
+                     ORDER BY sort_order, id LIMIT 1) AS body
+              FROM persons p WHERE p.id = $1::int AND fh_rsvp_reminder_held_until(p.id) IS NOT NULL)SQL",
+            {std::to_string(personId)});
+        if (!held.empty()) {
+            std::string msg = held[0]["body"].is_null() ? std::string("Held: reminded {when}; next after {next}.") : held[0]["body"].c_str();
+            const auto put = [&](const std::string& k, const std::string& v) {
+                for (size_t at; (at = msg.find(k)) != std::string::npos;) msg.replace(at, k.size(), v); };
+            put("{first}", held[0]["first_name"].is_null() ? "" : held[0]["first_name"].c_str());
+            put("{when}", held[0]["was"].is_null() ? "" : held[0]["was"].c_str());
+            put("{next}", held[0]["next"].is_null() ? "" : held[0]["next"].c_str());
+            return jsonError(HttpStatus::CONFLICT, msg);
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[rsvp-board remind] hold check: " << e.what() << std::endl;
+    }
+
     try {
         // One reminder per parent, each with their own words, link and log
         // row (mig 682) — owner 2026-10-24: "any text should go out

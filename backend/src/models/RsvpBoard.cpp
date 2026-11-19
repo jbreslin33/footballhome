@@ -85,7 +85,8 @@ const char* kBaseCtes = R"SQL(
          -- 📄 paper spot (mig 619): owes no answer.  A youth player not On
          -- Roster still owes practices (mig 899).  A Team pill group decides
          -- for itself: Practice Squad owes practices, Inactive owes nothing.
-         AND CASE WHEN ss.id IS NOT NULL THEN ss.owes_practice_rsvps
+         -- mig 1520: per section (men's Practice Squad owes no practices).
+         AND CASE WHEN ss.id IS NOT NULL THEN fh_squad_owes_practice(ss.id, tp.team_id)
                   ELSE NOT tp.invite_only OR tm.games_need_roster END
          -- League-Suspended rows stay (mig 1077): owe practices; the per-event
          -- fh_event_suspended check below skips the games.
@@ -723,6 +724,10 @@ RsvpBoard::GroupReminderContext RsvpBoard::groupReminderContext(
           CROSS JOIN LATERAL (SELECT fh_recipient_email(mr.recipient_person_id, p.id) AS email) em
          WHERE o.fh_event_id = $6::bigint
            AND ($7::text = 'all' OR o.role = $7::text)   -- #rsvps Who pill (mig 530)
+           -- 👋 Not chasing (mig 1520): Remind all skips a man who never
+           -- answered anything, and anyone inside the weekly hold.
+           AND NOT (o.role = 'player' AND fh_person_needs_onboard(p.id))
+           AND fh_rsvp_reminder_held_until(p.id) IS NULL
          ORDER BY p.last_name, p.first_name)SQL";
     auto rows = db->query(sql, {sectionCode, "", pgIntArray(teamIds), "0", "all", std::to_string(fhEventId), role});
     std::vector<std::pair<std::string, OpenEvent>> week;   // (start, event), deduped
@@ -759,7 +764,8 @@ RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long lon
                  || CASE e.kind WHEN 'match' THEN 'Game' || COALESCE(' vs ' || NULLIF(BTRIM(e.opponent), ''), '')
                                 WHEN 'intrasquad' THEN 'Intra Squad' ELSE 'Practice' END AS line,
                fh_rsvp_deadline_note(e.fh_event_id) AS deadline,
-               fh_recipient_phone(mr.recipient_person_id, p.id) AS phone, p.id AS person_id, mr.ord
+               fh_recipient_phone(mr.recipient_person_id, p.id) AS phone, p.id AS person_id, mr.ord,
+               fh_person_needs_onboard(p.id) AS onboard   -- 👋 mig 1520: never named as a straggler
           FROM expected e
           JOIN persons p ON p.id = e.person_id
           CROSS JOIN LATERAL fh_message_recipients(p.id) mr   -- every parent (mig 682)
@@ -787,7 +793,7 @@ RsvpBoard::RollCall RsvpBoard::rollCall(const std::string& sectionCode, long lon
         // A kid with two parents is one row per parent (mig 682): the name
         // goes on the card once, every parent's phone into the text.
         if (r["ord"].as<int>() == 1) {
-            if (r["response"].is_null()) rc.noResponse.push_back(name);
+            if (r["response"].is_null()) { if (!r["onboard"].as<bool>()) rc.noResponse.push_back(name); }
             else if (std::string(r["response"].c_str()) == "yes") rc.going.push_back(name);
             else rc.notGoing.push_back(name);
         }

@@ -287,6 +287,7 @@ class GameCenterLineupEdit {
       [this.roster.filter(p => this.zones.get(p.id) === 'bench' && !placed.has(p.id)), cp('fill_bench', {}, 'Bench')],
       [this.roster.filter(p => this.zones.get(p.id) === 'alternate'), cp('fill_alt', {}, 'Alternate')],
       [out.noResponse || [], cp('fill_noresp', {}, 'No response')],
+      [out.notChasing || [], cp('sec_not_chasing', {}, '👋 Not chasing')],   // mig 1520: still pickable
     ];
     const seen = new Set(), rows = [];
     for (const [list, note] of groups) for (const p of [...list].sort(this._byLastName)) {
