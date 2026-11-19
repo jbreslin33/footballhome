@@ -63,26 +63,9 @@ fi
 
 echo "Done. Daily: $DAILY_COUNT/$DAILY_KEEP, Weekly: $WEEKLY_COUNT/$WEEKLY_KEEP"
 
-# Push to backup git repo
-BACKUP_REPO="/srv/footballhome-backups"
-if [ -d "$BACKUP_REPO/.git" ]; then
-    cp "$BACKUP_FILE" "$BACKUP_REPO/"
-    # Also sync weekly if created
-    if [ "$DAY_OF_WEEK" -eq 7 ]; then
-        cp "$WEEKLY_FILE" "$BACKUP_REPO/"
-    fi
-    chown jbreslin:footballhome "$BACKUP_REPO"/*.sql 2>/dev/null || true
-    # git commit/push need jbreslin's identity + stored GitHub credential
-    # (~/.git-credentials) — this script itself now runs as root (see
-    # backup-db.service), so hand the git steps off via sudo -u rather
-    # than duplicating jbreslin's credentials into root's home dir.
-    sudo -u jbreslin -H bash -c "
-        cd '$BACKUP_REPO' &&
-        git add -A &&
-        git commit -m 'backup $(date +%Y-%m-%d)' --allow-empty &&
-        git push origin main
-    "
-    echo "Pushed to git backup repo"
-else
-    echo "WARNING: Backup repo not found at $BACKUP_REPO, skipping git push"
-fi
+# Off-site: encrypted, split, pushed to GitHub (scripts/backup-offsite.sh).
+# The old step copied the whole plain .sql into /srv/footballhome-backups
+# and pushed it — dead since October (GitHub refuses files over 100 MB, and
+# the failure never surfaced).  A failure here now fails the unit:
+#   systemctl status backup-db / journalctl -u backup-db
+bash "$PROJECT_DIR/scripts/backup-offsite.sh"
