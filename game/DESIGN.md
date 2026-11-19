@@ -11284,3 +11284,23 @@ older than G5.172 (G5.170: 27.8 / 49.4).
 and sideways/back (SHORT PASSES, lateral under 20 m: 35-52 m 64.4 v 40.2, 52-70 m 71.6 v 38.3; back 27.1 v 16.0, 26.8 v
 13.3). The wide final third is about 8 short. Next: why a central midfielder on our ball passes sideways ~1.8× real — the
 on-ball choice (pass v carry v hold) by zone against StatsBomb, before any change. Harness line only; goldens unchanged.
+
+### 8.283 G5.177 — our extra passes are short ones; the length lift doesn't reach them (measured; no game change)
+
+From §8.282. Per minute in play ours pass 9.70 v 8.23 (DFL) while the man on the ball keeps it a touch longer (1.35 s v
+1.21, the DFL cut) — we don't release faster; we play shorter. New harness line PASS LENGTH BY 10 m (outfield, open play;
+StatsBomb PL 15/16 same cut):
+
+| m | 0-10 | 10-20 | 20-30 | 30-40 | 40-50 | 50+ |
+|---|---|---|---|---|---|---|
+| real | 118.3 | 175.7 | 72.9 | 28.4 | 12.7 | 7.1 |
+| ours (G5.176, 2 seeds) | 172-174 | 221-226 | 80 | 29-30 | 7-9 | 1.6-2.0 |
+| len_lift × real / ours (4 seeds) | 161 | 200-206 | 77 | 32 | 10.5 | 2.8-2.9 |
+
+The +100 passes a team-match are under 20 m. Refitting §8.236's length lift (0-10 2.08 → 1.415, 10-20 0.755 → 0.594, 20-30
+0.44 → 0.402, 30-40 0.34 → 0.33, 40-50 0.85 → 1.36, 50+ 1.0 → 2.0): the short bins moved a quarter of the way, passes 529 → 514,
+card 9 / 4 / 20 → 6 / 6 / 21 (switches 9.6 → 12.9, 10.7; goals 2.64 → 2.80). Not taken. The length weight is not what
+keeps our passes short: longer candidates are thinned before it — the race read (a ball it says they win keeps
+`risk_weight` 0.25), the in-zone split's distance decay (G5.74 λ), range. Next: at each of our releases in midfield, the
+candidates on offer by length band and what cut each (unsafe / out of range / zone share), against the real choice by
+length — before any change. Harness line only; goldens unchanged; tests 23/23, lint clean.
