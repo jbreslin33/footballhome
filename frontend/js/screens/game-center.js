@@ -2123,7 +2123,8 @@ class GameCenterScreen extends EventScreen {
     // The top of every pill, in EventScreen's order (owner 11/16: practice
     // and games one interface): 👀 bar, the pill row, your availability —
     // then the pill's own pieces (the lineup pills' Official / draft bar …).
-    const pillRow = `<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`;
+    // Staff: the row sits hidden and ☰ lists its pills (EventScreen._menuNavHtml).
+    const pillRow = this._menuNavHtml(`<div id="gc-social-pills" role="tablist" aria-label="Posts for this game" style="display:flex; gap:6px; margin-bottom:10px; overflow-x:auto;">${this._socialPillsHtml()}</div>`);
     // GOING / NOT GOING: on the card for a player (Viewer.eventAvailOnGraphic), here for staff.
     const top = seeAsBar + pillRow + (this._availOnGraphic() ? '' : this._myAvailBlockHtml());
     const paint = (bodyHtml) => {      if (this.pill === PLAYERS_PILL) {
@@ -2135,6 +2136,7 @@ class GameCenterScreen extends EventScreen {
         head.innerHTML = top + this._duesAlternateStripHtml();
         EventScreen.ensureCardStyles();
         box.innerHTML = `<div data-gc-players-pane>${this._playersPaneHtml()}</div>`;
+        this._syncExtrasMenu();
         return;
       }
       if (this.pill === TACTICS_PILL.key) {
@@ -2143,6 +2145,7 @@ class GameCenterScreen extends EventScreen {
         head.innerHTML = top + (this.viewer.eventLineupDrafts ? this._draftBarHtml() : '') + this._tacticsSectionHtml();
         box.innerHTML = '';
         this._mountTactics();
+        this._syncExtrasMenu();
         return;
       }
       this._tacticsBigOff();
@@ -3868,6 +3871,7 @@ class GameCenterScreen extends EventScreen {
   _paintSocialPills() {
     const strip = this.find('#gc-social-pills');
     if (strip) strip.innerHTML = this._socialPillsHtml();
+    this._syncExtrasMenu();   // ☰ lists these pills for staff (✅ Posted marks follow)
   }
 
   // One read of this match's posts for the marks above. Fire-and-forget:

@@ -227,11 +227,38 @@ class EventScreen extends Screen {
       return `<div data-gc-extra="${p.key}"${label ? ` data-menu-label="${this.escapeHtml(label)}"` : ''} style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>`;
     }).join('');
   }
+  // The big pill row and the 👀 See as / 📷 / 🖨️ chips go into ☰ too
+  // (owner 11/18 "yes move pills and see as chips into hamburger"): drawn
+  // hidden in a data-ec-menu-nav wrapper, each ☰ item clicks its button,
+  // so every screen's own click handler still does the work.  Pills first
+  // (the lit one ✓), then the chips, then the panels.
+  _menuNavHtml(html) {
+    if (!html || !this._extrasInMenu()) return html || '';
+    return `<div data-ec-menu-nav style="display:none;">${html}</div>`;
+  }
+  _menuNavItems() {
+    const ATTRS = ['data-ec-pill', 'data-gc-social-pill', 'data-ec-post', 'data-ec-see-as'];
+    const btns = [...this.element.querySelectorAll('[data-ec-menu-nav] button')];
+    const pills = btns.filter(b => b.getAttribute('role') === 'tab'), rest = btns.filter(b => b.getAttribute('role') !== 'tab');
+    return [...pills, ...rest].map(b => {
+      const attr = ATTRS.find(a => b.hasAttribute(a));
+      if (!attr) return null;
+      const val = b.getAttribute(attr);
+      const on = b.getAttribute('aria-selected') === 'true';
+      const label = (on ? '✓ ' : '') + (b.textContent || '').replace(/\s+/g, ' ').trim();
+      const run = () => {
+        const fresh = this.element && [...this.element.querySelectorAll(`[data-ec-menu-nav] [${attr}]`)].find(x => x.getAttribute(attr) === val);
+        if (fresh) fresh.click();
+      };
+      return { label, run };
+    }).filter(Boolean);
+  }
   _syncExtrasMenu() {
     const sb = window.StatusBanner && StatusBanner.instance;
     if (!sb || !sb.setPageItems) return;
     const screen = window.app && window.app.navigation && window.app.navigation.currentState;
     if (!this._extrasInMenu() || !this.element) { sb.setPageItems(screen, []); return; }
+    const nav = this._menuNavItems();
     const items = [...this.element.querySelectorAll('[data-gc-extra]')].map(el => {
       const key = el.getAttribute('data-gc-extra');
       // The panel's own name (Panel label), else its heading — headings
@@ -241,7 +268,7 @@ class EventScreen extends Screen {
       if (label.length > 60) label = label.slice(0, 57) + '…';
       return label ? { label, run: () => this._showExtra(key) } : null;
     }).filter(Boolean);
-    sb.setPageItems(screen, items);
+    sb.setPageItems(screen, [...nav, ...items]);
   }
   _showExtra(key) {
     this._extraOpen = key;
@@ -1785,7 +1812,7 @@ class EventScreen extends Screen {
     }
     if (real.rank >= 2) lower.push(btn('data-ec-see-as="coach"', cp('see_as_coach', {}, '👀 See as coach')));
     lower.push(btn('data-ec-see-as="player"', cp('see_as_player', {}, '👀 See as player')));
-    return `<div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; margin:0 0 8px;">${lower.join('')}</div>`;
+    return this._menuNavHtml(`<div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; margin:0 0 8px;">${lower.join('')}</div>`);
   }
 
   // 📷 / 🖨️ on the 👀 bar (EventScreen and Game Center both wire it here).
@@ -1842,7 +1869,7 @@ class EventScreen extends Screen {
     if (!pills.some(p => p.key === this.pill)) this.pill = 'players';
     return `
       ${this._seeAsHtml()}
-      ${pills.length > 1 ? EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' }) : ''}
+      ${pills.length > 1 ? this._menuNavHtml(EventPills.row(pills, this.pill, { attr: 'data-ec-pill', escapeHtml: (t) => this.escapeHtml(t), label: 'Event' })) : ''}
       ${this._availOnGraphic() ? '' : this._myAvailBlockHtml()}
       ${this._panelDraftButtons('data-ec-draft-open')}
       ${ev.kind === 'match' ? this._oppContactsHtml() : ''}
