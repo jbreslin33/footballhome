@@ -28,6 +28,8 @@ class OnboardingChecklist {
         if (b && !b.disabled) { this.markSent(b.getAttribute('data-onb-sent'), b.getAttribute('data-onb-on') === '1'); return; }
         const up = e.target.closest('[data-onb-upload]');
         if (up && !up.disabled) { const inp = el.querySelector(`input[data-onb-file="${up.getAttribute('data-onb-upload')}"]`); if (inp) inp.click(); return; }
+        const fl = e.target.closest('[data-onb-filelink]');
+        if (fl) { this.openClubFile(fl.getAttribute('data-onb-filelink')); return; }
         const rm = e.target.closest('[data-onb-rmfile]');
         if (rm && !rm.disabled) this.removeFile(Number(rm.getAttribute('data-onb-rmfile')));
       });
@@ -72,6 +74,25 @@ class OnboardingChecklist {
           ${viewable ? `<button type="button" data-onb-view="${f.id}" style="min-height:0; padding:0 4px; border:0; background:none; color:inherit; cursor:pointer; font:inherit;">${esc(OnboardingChecklist.t('view_file', {}, '👁'))}</button>` : ''}
           ${removable && (viewable || !f.emailed_at) ? `<button type="button" data-onb-rmfile="${f.id}" style="min-height:0; padding:0 4px; border:0; background:none; color:#fca5a5; cursor:pointer; font:inherit; font-weight:800;">${esc(OnboardingChecklist.t('remove_file', {}, '✕'))}</button>` : ''}
         </span>`).join('')}</div>`;
+  }
+
+  // A club form from #files (/api/files/dl/…): fetched with the sign-in and
+  // opened as a blob — a plain link carries no sign-in.
+  async openClubFile(url) {
+    const auth = this.ctx.auth;
+    if (!auth || !/^\/api\/files\/dl\/\d+/.test(url)) return;
+    const win = window.open('', '_blank');
+    try {
+      const res = await auth.fetch(url);
+      if (!res.ok) throw new Error(String(res.status));
+      const blobUrl = URL.createObjectURL(await res.blob());
+      if (win) win.location = blobUrl; else window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (_) {
+      if (win) win.close();
+      this.err = OnboardingChecklist.t('form_unshared', {}, "This form isn't shared yet — ask the club for it.");
+      this.render();
+    }
   }
 
   async upload(code, file) {
@@ -161,13 +182,19 @@ class OnboardingChecklist {
       const files = Array.isArray(s.files) ? s.files : [];
       const canUpload = live && s.state !== 'done';
       const canUndo = live && s.state === 'sent' && !files.length;
-      const link = s.link_url && /^https:\/\//.test(s.link_url)
+      const btnCss = 'display:inline-block; min-height:0; padding:5px 11px; border-radius:999px; border:0; background:#1d4ed8; color:#fff; font:inherit; font-weight:800; font-size:0.8rem; text-decoration:none; cursor:pointer;';
+      const link = s.link_url && /^\/api\/files\/dl\/\d+/.test(s.link_url)
+        ? `<button type="button" data-onb-filelink="${esc(s.link_url)}" style="${btnCss}">${esc(s.link_label || '›')}</button>`
+        : s.link_url && /^https:\/\//.test(s.link_url)
         ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener" style="display:inline-block; padding:5px 11px; border-radius:999px; background:#1d4ed8; color:#fff; font-weight:800; font-size:0.8rem; text-decoration:none;">${esc(s.link_label || '›')}</a>` : '';
       const btns = [
         live ? link : '',
         canUpload ? `<button type="button" data-onb-upload="${esc(s.code)}" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:${files.length ? 'transparent' : '#16a34a'}; color:${files.length ? '#22c55e' : '#fff'}; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(busy ? t('uploading', {}, 'Uploading…') : files.length ? t('upload_more', {}, '📎 Add another') : t('upload', {}, '📎 Upload'))}</button><input type="file" data-onb-file="${esc(s.code)}" accept="image/*,application/pdf" hidden>` : '',
         canUndo ? `<button type="button" data-onb-sent="${esc(s.code)}" data-onb-on="0" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #6b7280; background:transparent; color:#d1d5db; font:inherit; font-weight:700; font-size:0.78rem; cursor:pointer;">${esc(t('undo_sent', {}, 'Undo'))}</button>` : '',
       ].filter(Boolean).join('');
+      // Done = one quiet line (owner 11/19 "make this all easy and make sense").
+      if (live && s.state === 'done')
+        return `<div style="padding:6px 11px; border-radius:10px; border:1px solid rgba(74,222,128,0.35); font-size:0.85rem; font-weight:700; color:#4ade80;">✅ <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}</div>`;
       const exp = s.state === 'done' && s.expires_at ? ` · ${esc(new Date(s.expires_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }))}` : '';
       return `<div style="display:flex; flex-direction:column; gap:4px; padding:9px 11px; border-radius:10px; border:1px solid ${s.state === 'done' ? 'rgba(74,222,128,0.45)' : 'rgba(255,255,255,0.18)'}; background:rgba(255,255,255,0.03); ${live ? '' : 'opacity:0.6;'}">
           <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
@@ -188,7 +215,14 @@ class OnboardingChecklist {
         </div>`;
     const vol = steps.filter(s => s.stage === 'volunteer');
     const pay = steps.filter(s => s.stage === 'paid');
+    const total = Number(d.total) || 0, done = Number(d.done) || 0;
+    const pct = total ? Math.round(100 * done / total) : 0;
     this.el.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+        <div style="flex:1; height:10px; border-radius:999px; background:rgba(255,255,255,0.12); overflow:hidden;"><div style="width:${pct}%; height:100%; background:#22c55e;"></div></div>
+        <span style="font-weight:900; font-size:0.85rem; white-space:nowrap;">${esc(t('my_progress', { done, total }, '{done} of {total} done'))}</span>
+      </div>
+      <div style="font-size:0.82rem; line-height:1.4; padding:7px 10px; border-radius:8px; background:rgba(29,78,216,0.18); border:1px solid rgba(96,165,250,0.35); margin-bottom:8px;">${esc(t('how_it_works', {}, 'For each step: do it, then tap 📎 Upload to add a photo or PDF. The club checks it and it turns ✅.'))}</div>
       <div style="font-size:0.85rem; line-height:1.4; opacity:0.92;">${esc(paid ? t('intro_paid', {}, 'Finish every step so the club can pay you.')
         : t('intro_volunteer', {}, "Step 1 clears you to coach and volunteer with our kids. Step 2 is the paperwork for a paid role — finish step 1 and you're ready when one opens."))}</div>
       ${stage('volunteer', vol, true, '', 0)}
