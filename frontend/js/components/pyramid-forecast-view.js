@@ -202,7 +202,7 @@ class PyramidForecastView {
           <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
         <tbody>${seasons.map((x) => {
           const share = x.down / x.teams;
-          return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${x.divisions || 1}</td>` : ''}<td>${x.teams}</td>
+          return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${(x.divisions || 1) > 1 ? Array.from({ length: x.divisions }, (_, i) => String.fromCharCode(65 + i)).join(' · ') : '1'}</td>` : ''}<td>${x.teams}</td>
             <td><b>${n(x.down)}</b></td>
             <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
             <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;

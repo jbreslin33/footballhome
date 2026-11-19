@@ -82,6 +82,10 @@ class ApslPyramidScreen extends Screen {
         .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
         .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; }
         .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
+        .ap-head { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin:-52px 0 14px 50px; min-height:44px; }
+        .ap-head img { height:30px; width:auto; }
+        .ap-head .t { font-weight:900; font-size:1.05rem; white-space:nowrap; }
+        .ap-head .ap-pills { display:flex; gap:6px; flex-wrap:wrap; }
         .ap-stage #ap-body.flush #ap-view { position:absolute; inset:0; }
         .ap-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.84); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3);
                   border-radius:12px; color:#e5e7eb; font-size:0.8rem; box-shadow:0 4px 18px rgba(0,0,0,0.4); max-width:calc(100% - 20px); }
@@ -206,6 +210,14 @@ class ApslPyramidScreen extends Screen {
     this.element.classList.toggle('ap-readonly', !(user && ['club', 'super'].includes(user.role)));
     window.addEventListener('resize', this._onResize);
     window.addEventListener('keydown', this._onKey);
+    // A member's top band (#top-banners: the 🚦 status bar) stays visible;
+    // the page starts under it, following its height (owner 11/19 "stuff is
+    // blocked by my red menu at top. if that is there all goes under").
+    // A visitor has no band: the page fills the window.
+    const band = document.getElementById('top-banners'), stage = this.find('.ap-stage');
+    const fit = () => { if (stage) stage.style.top = `${band ? Math.max(0, Math.round(band.getBoundingClientRect().height)) : 0}px`; };
+    fit();
+    if (band && window.ResizeObserver) { this._bandObs = new ResizeObserver(fit); this._bandObs.observe(band); }
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
     Promise.resolve(copyReady).then(() => {
       const b = this.find('.ap-menu-btn'); if (b && this._copy('menu_button')) b.title = this._copy('menu_button');
@@ -217,6 +229,7 @@ class ApslPyramidScreen extends Screen {
   onExit() {
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('keydown', this._onKey);
+    if (this._bandObs) { this._bandObs.disconnect(); this._bandObs = null; }
     this._menu(false);
     this._viewCall('unmount');
     this.clubCard.close();
@@ -396,7 +409,18 @@ class ApslPyramidScreen extends Screen {
     // A view that is a canvas (map, presentation) fills the stage edge to edge.
     el.classList.toggle('flush', !!this._impl().fill);
     this._dock = [];
-    el.innerHTML = `
+    // A page view (not a canvas) carries the pyramid's own header — its
+    // logo, name and the view pills — so a shared link (a visitor, the
+    // 📈 Forecast) is a self-contained page (owner 11/19 "what happened to
+    // pyramid? this needs to be presentable link to rest of world" + "only
+    // have way back to fh if your a member. otherwise its self contained":
+    // the 🏠 Main menu stays in ☰ for members only).
+    const root = this.model.root();
+    const head = this._impl().fill ? '' : `<div class="ap-head">
+        ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
+        <div class="ap-pills">${this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('')}</div>
+      </div>`;
+    el.innerHTML = `${head}
       <div id="ap-view">${shown.length ? this._impl().html(this.model, shown) : `<div class="fc-none">${esc(this._copy('none_on'))}</div>`}</div>
       ${this.edit ? this._editorHtml() : ''}`;
     const dock = this.find('.ap-dock');
