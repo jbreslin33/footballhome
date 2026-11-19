@@ -74,7 +74,7 @@ class OnboardingChecklist {
     if (!d) { this.el.innerHTML = ''; return; }
     const paid = d.track === 'paid';
     const steps = Array.isArray(d.steps) ? d.steps : [];
-    const row = (s, live) => {
+    const row = (s, live, n) => {
       const cost = s.cost_usd == null ? '' : Number(s.cost_usd) > 0
         ? t('cost', { amount: OnboardingChecklist.money(s.cost_usd) }, '{amount}') : t('cost_free', {}, 'Free');
       const busy = this.busy.has(s.code);
@@ -90,27 +90,27 @@ class OnboardingChecklist {
       const exp = s.state === 'done' && s.expires_at ? ` · ${esc(new Date(s.expires_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }))}` : '';
       return `<div style="display:flex; flex-direction:column; gap:4px; padding:9px 11px; border-radius:10px; border:1px solid ${s.state === 'done' ? 'rgba(74,222,128,0.45)' : 'rgba(255,255,255,0.18)'}; background:rgba(255,255,255,0.03); ${live ? '' : 'opacity:0.6;'}">
           <div style="display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;">
-            <span style="flex:1; min-width:160px; font-weight:800; font-size:0.9rem;">${esc(s.label)}${cost ? ` <span style="font-weight:700; opacity:0.75;">· ${esc(cost)}</span>` : ''}</span>
+            <span style="flex:1; min-width:160px; font-weight:800; font-size:0.9rem;"><span style="opacity:0.6;">${n}.</span> ${esc(s.label)}</span>
             ${live ? `${OnboardingChecklist.stateHtml(s.state, esc)}${exp}` : ''}
           </div>
-          ${s.how && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.85; line-height:1.35;">${esc(s.how)}</div>` : ''}
+          ${(s.how || cost) && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.88; line-height:1.35;">${cost ? `<b>${esc(cost)}</b>${s.how ? ' · ' : ''}` : ''}${esc(s.how || '')}</div>` : ''}
           ${s.note && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#fca5a5; font-weight:700;">${esc(s.note)}</div>` : ''}
           ${btns ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>` : ''}
         </div>`;
     };
-    const stage = (key, list, live, sub) => !list.length ? '' : `
+    const stage = (key, list, live, sub, start) => !list.length ? '' : `
         <div style="margin-top:10px;">
           <div style="font-weight:900; font-size:0.92rem; color:#f5d442;">${esc(t(`stage_${key}`, {}, key === 'paid' ? '💵 Step 2 · Ready to be paid' : '🙋 Step 1 · Cleared to volunteer'))}</div>
           ${sub ? `<div style="font-size:0.78rem; opacity:0.8; margin-top:1px;">${esc(sub)}</div>` : ''}
-          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">${list.map(s => row(s, live)).join('')}</div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">${list.map((s, i) => row(s, live, start + i + 1)).join('')}</div>
         </div>`;
     const vol = steps.filter(s => s.stage === 'volunteer');
     const pay = steps.filter(s => s.stage === 'paid');
     this.el.innerHTML = `
       <div style="font-size:0.85rem; line-height:1.4; opacity:0.92;">${esc(paid ? t('intro_paid', {}, 'Finish every step so the club can pay you.')
         : t('intro_volunteer', {}, "Step 1 clears you to coach and volunteer with our kids. Step 2 is the paperwork for a paid role — finish step 1 and you're ready when one opens."))}</div>
-      ${stage('volunteer', vol, true, '')}
-      ${stage('paid', pay, paid, paid ? '' : t('stage_paid_next', {}, 'Next, when the club offers you a paid role'))}
+      ${stage('volunteer', vol, true, '', 0)}
+      ${stage('paid', pay, paid, paid ? '' : t('stage_paid_next', {}, 'Next, when the club offers you a paid role'), vol.length)}
       ${this.err ? `<div style="margin-top:8px; font-size:0.8rem; color:#fca5a5;">${esc(this.err)}</div>` : ''}
       <div style="margin-top:12px; font-size:0.78rem; opacity:0.75;">${esc(t('questions', {}, 'Questions or need help with a clearance? Message the club.'))}</div>`;
   }

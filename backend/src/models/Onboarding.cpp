@@ -13,7 +13,7 @@ namespace {
 const char* kStepsSql = R"SQL(
     SELECT po.person_id, po.track, po.note AS path_note,
            TRIM(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')) AS name,
-           s.code, s.stage, s.label, s.how, s.cost_usd, s.link_url, s.link_label, s.renew_months,
+           s.code, s.stage, s.label, COALESCE(s.short_label, s.label) AS short_label, s.how, s.cost_usd, s.link_url, s.link_label, s.renew_months,
            ps.sent_at, ps.verified_at, ps.note,
            CASE WHEN ps.verified_at IS NOT NULL AND s.renew_months IS NOT NULL
                 THEN ps.verified_at + make_interval(months => s.renew_months) END AS expires_at,
@@ -40,6 +40,7 @@ json stepJson(const pqxx::row& r) {
         {"code",        r["code"].c_str()},
         {"stage",       r["stage"].c_str()},
         {"label",       r["label"].c_str()},
+        {"short_label", r["short_label"].c_str()},
         {"how",         r["how"].c_str()},
         {"cost_usd",    r["cost_usd"].is_null() ? json(nullptr) : json(r["cost_usd"].as<double>())},
         {"link_url",    textOrNull(r["link_url"])},

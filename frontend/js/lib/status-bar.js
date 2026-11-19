@@ -85,7 +85,7 @@ class StatusBar {
       fines_owed:   (d) => [`⚖️ Fines ${d.amount} so far${d.stake ? ` · +${d.stake} if RSVPs not set` : ''}`, 'See ›'],
       chat_unread:  (d) => [`💬 ${d.text || 'Chat'}`, d.n ? `${d.n} new ›` : 'Open ›'],
       suspended:    () => ['⛔ Suspended', ''],
-      onboarding:   (d) => [`⛔ Onboarding — ${d.left} of ${d.total} left`, 'Finish ›'],
+      onboarding:   (d) => [`⛔ Onboarding — ${d.left} to do`, 'Finish ›'],
     };
     const caret = (code, text) => (this.openCode === code ? String(text).replace('▾', '▴') : text);
     const pill = (code, text) => `<button type="button" class="sb-box-go" data-sb-chip="${esc(code)}">${esc(caret(code, text))}</button>`;

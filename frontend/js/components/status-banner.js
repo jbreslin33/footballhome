@@ -363,7 +363,13 @@
       // while a step is still to do; the popup is the checklist with its
       // links (owner 11/19 "shows on their calendar as outstanding items
       // like missing rsvps … but has actionable links").
-      const onbBox = (o) => (o && Number(o.left) > 0 ? { left: o.left, total: o.total } : null);
+      // The box names each step still to do (owner 11/19 "it should show each
+      // one he has to do") — never {total}: the band uses that for RSVPs.
+      const onbBox = (o) => {
+        if (!o || !(Number(o.left) > 0)) return null;
+        const todo = (o.steps || []).filter(s => s.required && (s.state === 'todo' || s.state === 'renew'));
+        return { left: o.left, list: todo.map(s => s.short_label || s.label).join(' · ') };
+      };
       this.onbList = window.OnboardingChecklist
         ? new OnboardingChecklist(this.$('#sb-onb'), this.ctx({ onChange: (o) => this.set('onboarding', onbBox(o)) })) : null;
       const onbLoaded = this.onbList
