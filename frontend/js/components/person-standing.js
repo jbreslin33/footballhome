@@ -162,7 +162,8 @@
   function rosterHtml(personId) {
     const hit = cache.get(Number(personId));
     const rosters = hit && hit.data && Array.isArray(hit.data.rosters) ? hit.data.rosters : [];
-    if (!rosters.length) return '';
+    const regs = hit && hit.data && Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
+    if (!rosters.length && !regs.length) return '';
     const bits = [];
     rosters.forEach((r) => {
       const team = r.team || '';
@@ -176,6 +177,23 @@
           t('roster_official_tip', { list: r.officialList || team, date: r.officialAt || '' },
             `On the league's official list — ${r.officialList || team}`),
           '#0c1e3a', '#93c5fd', '#2563eb'));
+      }
+    });
+    // League registration (mig 1518/1519): ✅ filled the league's form (or
+    // on its list), ❌ never did — a call-up then needs a new registration.
+    regs.forEach((g) => {
+      const league = g.league || '';
+      if (g.registered) {
+        const date = g.at || '';
+        bits.push(pill(t('reg_have', { league, date }, `✅ ${league} reg ${date}`.trim()),
+          g.source === 'official_list'
+            ? t('reg_list_tip', { league, date }, `On the ${league} list, so registered with ${league} this season.`)
+            : t('reg_have_tip', { league, date }, `Filled the ${league} registration form.`),
+          '#052e16', '#86efac', '#16a34a'));
+      } else {
+        bits.push(pill(t('reg_missing', { league }, `❌ No ${league} reg`),
+          t('reg_missing_tip', { league }, `Never filled the ${league} registration form.`),
+          '#3b0a0a', '#fca5a5', '#dc2626'));
       }
     });
     return bits.length

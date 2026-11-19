@@ -1003,6 +1003,43 @@ Response PaymentsController::handleStanding(const Request& request) {
                 {"officialAt",   r["official_at"].is_null() ? json(nullptr) : json(r["official_at"].c_str())}});
         }
 
+        // League registrations (mig 1518/1519, owner 11/19 "we also need
+        // to know if they … filled [the] form … so if we call them back up
+        // the commish can just add them"): ✅ per league he registered
+        // with this season, ❌ for a shows_missing league (CASA) when he is
+        // on a team of that league's section and never registered.
+        for (auto it = people.begin(); it != people.end(); ++it) it.value()["registrations"] = json::array();
+        for (const auto& r : db->query(R"SQL(
+            WITH lg AS (
+              SELECT DISTINCT ON (s.league_id) s.league_id, s.season, s.league_label AS league,
+                     t.club_section_id, COALESCE(f.shows_missing, false) AS shows_missing
+                FROM official_roster_sources s
+                JOIN teams t ON t.id = s.team_id
+                LEFT JOIN league_registration_forms f ON f.league_label = s.league_label
+               WHERE s.is_active AND s.league_id IS NOT NULL
+               ORDER BY s.league_id, length(s.league_label), s.id
+            )
+            SELECT p.pid AS person_id, lg.league, r.source,
+                   to_char(r.registered_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD') AS at
+              FROM unnest($1::int[]) AS p(pid)
+              CROSS JOIN lg
+              LEFT JOIN league_registrations r
+                     ON r.person_id = p.pid AND r.league_id = lg.league_id AND r.season = lg.season
+             WHERE r.person_id IS NOT NULL
+                OR (lg.shows_missing AND EXISTS (
+                      SELECT 1 FROM team_persons tp JOIN teams t ON t.id = tp.team_id
+                       WHERE tp.person_id = p.pid AND tp.removed_at IS NULL AND t.is_active
+                         AND t.club_section_id = lg.club_section_id))
+             ORDER BY 1, lg.league_id DESC)SQL", {arr})) {
+            auto it = people.find(r["person_id"].c_str());
+            if (it == people.end()) continue;
+            (*it)["registrations"].push_back({
+                {"league", r["league"].c_str()},
+                {"registered", !r["source"].is_null()},
+                {"source", r["source"].is_null() ? json(nullptr) : json(r["source"].c_str())},
+                {"at", r["at"].is_null() ? json(nullptr) : json(r["at"].c_str())}});
+        }
+
         const int windowDays = 30;
         PersonActivity activity;
         const PersonActivity::Map trail = activity.latestFor(pids, windowDays);
