@@ -11058,3 +11058,45 @@ long ones; ours are all settled ones. (Caveat: DFL's BallPossession flag can fli
 owner, so part of the 165 is short ricochets; real spells 1 s+ are still 137 a team-match.) Kicks per spell, not pace,
 is the next measure: the real width at a kick by time since the spell began (0-3 / 3-8 / 8+ s) against ours, before any
 change. Harness lines only; goldens unchanged.
+
+### 8.276 G5.170 — real full-backs go to the line as the spell settles; ours held one share all spell (shipped)
+
+From §8.275's "next". New `benchmarks_tracking_widesince.py` (DFL 7 matches, 3,855 completed open-play passes with the
+kicker's side's BallPossession flag): each kick's spell, back through in-play frames with his side's flag (a dead ball
+ends it; *settled* = the other side's runs under 1 s don't end it — raw and settled agree within a point). Ours: the WIDE
+PACE spell (§8.275), as **WIDEST BY SPELL AGE** (+ BY ROLE AND AGE) in fh-game-match.
+
+**The kick's spell age is not the gap**: ours median 7.3-7.8 s (real 8.0), p25 3.1-3.4 (3.4); by age 0-3 / 3-8 / 8+ s
+ours 22-24 / 28-30 / 47-49% of kicks (real 21 / 29 / 50). §8.275's guess (real width counted over many short spells) is
+wrong the other way: **real width grows with the spell's age** and ours didn't.
+
+| widest mate within 5 m of the line at a kick | real 0-3 / 3-8 / 8+ s | before (4 seeds) | **G5.170** |
+|---|---|---|---|
+| ball's side | 46.7 / 55.5 / 77.8 | 32-36 / 35-38 / 39-42 | **37-40 / 38-43 / 49-51** |
+| far side | 6.2 / 13.3 / 40.4 | 6-7 / 8-9 / 15-18 | 9-10 / 10-12 / **26-27** |
+| FB near, ball 35-70 m off their line | 24 / 32 / 61 | 28-32 / 29-31 / 31-34 | 33-35 / 31-37 / 42-44 |
+| FB near, ball 70+ | 36 / 43 / 70 | 14-16 / 27-30 / 35-38 | 13-19 / 24-33 / 47-51 |
+| FB far, ball 35-70 / 70+ (8+ s) | 40 / 43 | 13-16 / 15-18 | 25-27 / 25-32 |
+| all kicks, ball's side / far (§8.273) | 62.0 / 22.7 | 36.9 / 12.1 | **44.5 / 17.6** |
+
+It is the full-backs: a real near FB with the ball 35-70 m out is on his line 24 → 32 → 61% as the spell ages, the far FB
+6 → 10 → 40%; WIDE men are flat (near ~20%, far 2-11) and DM-CMs low throughout. Coaching reads the same: the full-backs
+push on once we have settled it, not on the turnover [FH].
+
+**Rule** (`Possession::spot`, `physics.touch.<z>_<side>_<role>[_a3|_a8]_p`): G5.168's touchline share now also by the
+spell's age (`won_`, 0-3 / 3-8 / 8+ s). One roll a man a spell as before, so as the share rises with age a man who went
+to the line stays there. Each age refit as p + (real − ours)(1 − p)/(1 − ours) on the G5.168 share (permille): FB near
+ball 35-70 283 / 349 / 616, 70+ 586 / 586 / 742; far 240 / 257 / 464, 310 / 373 / 506; WIDE near 35-70 170 / 263 / 280,
+70+ 236 / 236 / 268; DM-CM up a little (85-180). Code defaults, no DB rows (as G5.168).
+
+Card 10 ok / 3 off / 20 OFF → **8 / 6 / 19** (`~/football-data/scorecards/card_G5.170.txt`, seeds 1000-4000). Better:
+throw-ins 17.6 → 19.9 (23.1, now off), offsides 1.25 → 1.50 (1.96), take-ons 23.4 → 21.6 (18.1), goal kicks 10.8 → 10.2
+(8.3), headed clearances 19.5 → 18.9 (15.8), blocked shots 12.6 → 13.9% (29.1), aerials now ok. Worse: switches 10.5 →
+11.8 (10.7) and tackles 20.3 → 19.1 (20.3), both to off; penalties 0.08 → 0.02 (0.12; a handful of events). Goals 2.39
+→ 2.36, corners 1.98 → 2.03 unmoved.
+
+Still short at 8+ s (49-51 v 78; far 26 v 40): a near FB with the ball 35-70 m out rolls the line 62% of 8 s+ spells
+but stands on it 42-44%. His Hold target is right (ball 70+: median 2.9 m off the line) and he walks to it at the real
+pace (§8.275); what is open is the roll's share falling under him mid-spell (the ball changes band, or switches and he
+becomes the far FB) so he walks back in. Next: measure how long a rolled FB keeps his target, and where it goes, before any
+change. Goldens re-locked; tests 23/23, lint clean.

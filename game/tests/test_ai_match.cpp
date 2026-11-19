@@ -112,7 +112,8 @@ const Fixed64 kHY = Fixed64::fromInt(34);
 // Re-locked G5.156 (2026-11-18): an aimed loft carries backspin lift (C_L 0.25, DFL peak-for-time, §8.261).
 // Re-locked G5.162 (2026-11-18): the block's depth from where the ball is, not where it's going (§8.267).
 // Re-locked G5.168 (2026-11-18): a FB / DM-CM / WIDE holds his touchline a spell at the real share (DFL, §8.274).
-constexpr std::uint64_t kGolden3v3   = 0x0c84edf26e953c8aULL;
+// Re-locked G5.170 (2026-11-19): that share by the spell's age 0-3 / 3-8 / 8+ s (DFL, §8.276).
+constexpr std::uint64_t kGolden3v3   = 0x440f6541eceb348bULL;
 // Re-locked G5.26 (2026-11-05, 11v11 only): runs into the box (DFL box occupancy).
 // Re-locked G5.27 (2026-11-05): as the 3v3.
 // Re-locked G5.28 (2026-11-05): as the 3v3.
@@ -174,7 +175,8 @@ constexpr std::uint64_t kGolden3v3   = 0x0c84edf26e953c8aULL;
 // Re-locked G5.161 (2026-11-18): a ball in behind's mode at the real share, the read only its risk (§8.266); 3v3 unchanged.
 // Re-locked G5.162 (2026-11-18): as the 3v3.
 // Re-locked G5.168 (2026-11-18): as the 3v3.
-constexpr std::uint64_t kGolden11v11 = 0x3212e080b1f714f5ULL;
+// Re-locked G5.170 (2026-11-19): as the 3v3.
+constexpr std::uint64_t kGolden11v11 = 0x2abc3eb9bf4a4987ULL;
 
 struct Rig {
     World world;

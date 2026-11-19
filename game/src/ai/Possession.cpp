@@ -1511,14 +1511,17 @@ void PossessionParams::configure(const core::ModelParams& p) {
     }
     {   // G5.168 (§8.274): DFL share within 5 m of his touchline at a kick, less ours before (base spot), / (1 - ours):
         // FB near 23/42/51 v ours 5/14/11, far 2/24/28 v 0; WIDE near 17/21/19 v 7/5/5, far 2/6/8 v 0; DM-CM 5/8/9, far 0/4/9 v 0.
-        // Permille; [ball 0-35 / 35-70 / 70+ off their line][his side the ball's / the far side][role].
-        static const int kT[3][2][kRoleCount] = {
-            {{0, 190, 50, 0, 110, 0}, {0, 20, 0, 0, 20, 0}},
-            {{0, 330, 80, 0, 170, 0}, {0, 240, 40, 0, 60, 0}},
-            {{0, 450, 90, 0, 150, 0}, {0, 280, 90, 0, 80, 0}}};
-        static const char* zk[3] = {"0", "35", "70"}; static const char* sk[2] = {"near", "far"};
-        for (int z = 0; z < 3; ++z) for (int sd = 0; sd < 2; ++sd) for (int r = 0; r < kRoleCount; ++r)
-            touch_p[z][sd][r] = p.fixed(std::string("physics.touch.") + zk[z] + "_" + sk[sd] + "_" + kRoleKey[r] + "_p", kT[z][sd][r]);
+        // G5.170 (§8.276): and by the spell's age 0-3 / 3-8 / 8+ s (benchmarks_tracking_widesince.py, DFL settled spells) —
+        // real FBs go to the line as the spell settles (near, ball 35-70: 24 / 32 / 61%; far 6 / 10 / 40), ours stayed flat
+        // (29 / 30 / 32, 6 / 8 / 15). Each age: p + (real - ours)(1 - p)/(1 - ours) on the G5.168 share.
+        // Permille; [ball 0-35 / 35-70 / 70+ off their line][age][his side the ball's / the far side][role].
+        static const int kT[3][3][2][kRoleCount] = {
+            {{{0, 190, 85, 0, 110, 0}, {0, 20, 0, 0, 20, 0}}, {{0, 190, 85, 0, 110, 0}, {0, 20, 0, 0, 20, 0}}, {{0, 190, 85, 0, 110, 0}, {0, 20, 0, 0, 20, 0}}},
+            {{{0, 283, 130, 0, 170, 0}, {0, 240, 40, 0, 60, 0}}, {{0, 349, 130, 0, 263, 0}, {0, 257, 60, 0, 70, 0}}, {{0, 616, 130, 0, 280, 0}, {0, 464, 80, 0, 100, 0}}},
+            {{{0, 586, 120, 0, 236, 0}, {0, 310, 130, 0, 100, 0}}, {{0, 586, 150, 0, 236, 0}, {0, 373, 130, 0, 130, 0}}, {{0, 742, 166, 0, 268, 0}, {0, 506, 180, 0, 140, 0}}}};
+        static const char* zk[3] = {"0", "35", "70"}; static const char* sk[2] = {"near", "far"}; static const char* ak[3] = {"", "_a3", "_a8"};
+        for (int z = 0; z < 3; ++z) for (int a = 0; a < 3; ++a) for (int sd = 0; sd < 2; ++sd) for (int r = 0; r < kRoleCount; ++r)
+            touch_p[z][a][sd][r] = p.fixed(std::string("physics.touch.") + zk[z] + "_" + sk[sd] + "_" + kRoleKey[r] + ak[a] + "_p", kT[z][a][sd][r]);
         touch_m_max = p.fixed("physics.touch.m_max", 4500);
         touch_on = p.fixed("physics.touch.on", 1000).raw > 0;
     }   // [FH, DFL]   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
@@ -1635,7 +1638,9 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         const Fixed64 side = mine.raw >= 0 ? Fixed64::one() : -Fixed64::one();
         const int sd = (mine.raw >= 0) == (by.raw >= 0) ? 0 : 1;
         const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 110) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-        if (u < params_.touch_p[z][sd][static_cast<int>(v.role_ours)]) {
+        const std::uint64_t age = world.tickCount() - won_[v.team & 1];   // G5.170: the spell's age, 0-3 / 3-8 / 8+ s (same roll, its share by age)
+        const int ab = age < 90 ? 0 : age < 240 ? 1 : 2;
+        if (u < params_.touch_p[z][ab][sd][static_cast<int>(v.role_ours)]) {
             const Fixed64 u2 = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 111) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
             const Fixed64 d = params_.touch_m_max * u2 * math::fx_sqrt(u2);
             if (v.slot < 32) spot_branch_[v.slot] = 0;
