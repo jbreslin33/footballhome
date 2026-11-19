@@ -190,7 +190,7 @@ public:
     int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
     bool reactReach() const { return react_reach_; }   // G5.165
     bool lastBlockShot() const { return block_was_shot_; }   // G5.164: the last body block stopped a shot
-    struct ChargeDiag { long kicks = 0, kept = 0, loose = 0; long by_kicks[4][5] = {}, by_kept[4][5] = {}, by_loose[4][5] = {}; };   // [act][their nearest at the kick: 0-1 / 1-2 / 2-3 / 3-5 / 5+ m]   // G5.165: open-play non-shot kicks; their touch in its first 0.4 s / 8 m
+    struct ChargeDiag { long kicks = 0, kept = 0, loose = 0; long by_kicks[4][5] = {}, by_kept[4][5] = {}, by_loose[4][5] = {}; long tl[4] = {}, gl[4] = {}, rtl[4] = {}; };   // rtl: a mate's kick received, by m off the touchline   // tl / gl: kicks by m off the touchline 0-5/5-10/10-20/20+, off the goal line it attacks 0-18/18-35/35-70/70+   // [act][their nearest at the kick: 0-1 / 1-2 / 2-3 / 3-5 / 5+ m]   // G5.165: open-play non-shot kicks; their touch in its first 0.4 s / 8 m
     const ChargeDiag& chargeDiag() const { return charge_; }
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;

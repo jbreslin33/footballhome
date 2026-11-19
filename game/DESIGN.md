@@ -10941,3 +10941,29 @@ risk_weight 0.4 / 0.6 leaves it at 80% (the read's lost passes are not where com
 off / 20 OFF (7 / 5 / 21). Goldens unchanged (their runs load no physics rows); tests 23/23, lint clean.
 Next: where a blocked pass goes out (real 36% out of play, ours 4-8%: where real blocks happen on the pitch — by the
 touchline? — and the ball off a shin rising) and what holds completion at 81%.
+
+### 8.272 G5.166 — where blocked passes happen: ours are central because our ball is (measured; no game change)
+
+From §8.271: blocked passes 19.5-22 a team-match but corner 1-2% (10.7), out otherwise 4-8% (25.1). New
+`benchmarks_statsbomb_width.py` (PL 15/16) + harness lines under PASSES CHARGED DOWN, same bands:
+
+| | real | ours (2 seeds × 8) |
+|---|---|---|
+| blocked passes by m off the touchline 0-5 / 5-10 / 10-20 / 20+ | 18.5 / 21.7 / 31.6 / 28.2% | 5 / 11-12 / 32-33 / 50-51% |
+| … 0-5 m: corner / throw-in | 3.6 / 54.5% | 0-12 / 25-29% |
+| blocked passes by m off the goal line defended 0-18 / 18-35 / 35-70 / 70+ | 32.8 / 19.4 / 31.8 / 16.0% | 11-12 / 18-21 / 53-56 / 13-16% |
+| … 0-18 m: corner | 30.9% | 9-17% |
+| open-play kicks by m off the touchline 0-5 / 5-10 / 10-20 / 20+ | 13.6 / 16.6 / 30.5 / 39.3% | 7.3 / 11.5-13.0 / 28.6-29.1 / 50.6-52.6% |
+| … off the goal line attacked 0-18 / 18-35 / 35-70 / 70+ | 7.1 / 16.9 / 52.5 / 23.5% | 3.4-4.5 / 12.9-13.2 / 59-60 / 22.5-24.2% |
+| passes received by m off the touchline (completed passes' end) | 15.7 / 15.9 / 29.5 / 38.9% | 4.5-4.8 / 13.3-13.9 / 29.4-30.7 / 50.8-52.5% |
+
+Real blocks are where the ball is, more so by the lines (passes struck 0-5 m off the touchline 13.6% → their blocks
+18.5%; in the last 18 m 7.1% → 32.8%, the blocked cross). **Ours are central because our ball is:** a third of the real
+share of passes is received within 5 m of the touchline, half of the real share played from the last 18 m. Inside a
+band ours go out less too (0-5 m throw-in 25-29% v 54.5): `GAME_WIDE_TRACE` (each blocked pass within 5 m of the
+touchline) — those turned toward the line go out (9 of 15), the rest infield, and ours sit 4 m off the line where the
+real band's are nearer 2-3. Our men stand about right per role (ROLE WIDTH: WIDE pair gap 31 m v DFL 30-32; FB 40 v
+44-46, 2-3 m narrow) — so the real ball reaches the touchline because men go to it or are found down the line, not
+because they stand there. Fix in the harness: the BLOCKED PASSES in-play counts (an if / else chain broken in this
+slice's first build). Goldens unchanged; tests 23/23, lint clean. Next: DFL tracking at receptions within 5 m of the
+touchline — where the receiver stood at the kick (already wide, or ran there) — then the wide reception itself.

@@ -111,7 +111,9 @@ struct Stats {
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
     long bblk = 0;   // §8.269 body blocks (any ball)
+    long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {};   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
+    long bp_where[2][4] = {}, bp_out[2][4][3] = {};   // §8.272 blocked passes by [touchline band | goal-line band][band] and corner / throw-in / goal kick
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
@@ -261,6 +263,7 @@ int main(int argc, char** argv) {
         server::GameServer s{cfg, t};
         const auto& W = s.world();
         const double hx = W.pitchHalfX().toDouble();
+        const double hy = W.pitchHalfY().toDouble();   // §8.272
         const std::uint8_t N = W.playerCount();
         // §8.143: the brain's role (formation role name, then number) — by number a "ten" in an 8 shirt was a DM here
         auto role = [&](std::uint8_t j) { return static_cast<int>(s.brain().roleOf(j)); };
@@ -840,7 +843,7 @@ int main(int argc, char** argv) {
                     }
                 }
                 {   // §8.270 BLOCKED SHOTS: how each blocked shot ended (every block of a shot, anywhere)
-                    static long bs_k = -1; static double bs_x = 0, bs_y = 0; static int bs_team = -1, bs_kind = 0;
+                    static long bs_k = -1; static double bs_x = 0, bs_y = 0; static int bs_team = -1, bs_kind = 0, bs_tb = 0, bs_gb = 0; static double bs_vx = 0, bs_vy = 0;
                     if (k == 0) bs_k = -1;
                     if (bs_k >= 0 && static_cast<long>(k) > bs_k && (b.owner || W.outStage() != 0 || static_cast<long>(k) - bs_k > 150 || bbn != bb_prev)) {
                         if (W.outStage() != 0) S.bs_end[bs_kind][std::fabs(b.pos.x.toDouble()) > hx && W.lastTouchTeam() == bs_team ? 0 : 1]++;
@@ -848,10 +851,26 @@ int main(int argc, char** argv) {
                             S.bs_end[bs_kind][W.isKeeper(*b.owner) ? 4 : W.player(*b.owner).team == bs_team ? 3 : 2]++;
                             S.bs_t[bs_kind].push_back((k - bs_k) / 30.0); S.bs_d[bs_kind].push_back(std::hypot(b.pos.x.toDouble() - bs_x, b.pos.y.toDouble() - bs_y));
                         }
+                        if (bs_kind == 1 && bs_tb == 0 && std::getenv("GAME_WIDE_TRACE"))   // §8.272: a blocked pass within 5 m of the touchline
+                            std::fprintf(stderr, "WIDE m%d at y%.1f out %.1f m/s, toward the line %.1f m/s | after %.2fs: %s ball y%.1f, %.1f m on\n", m, bs_y, std::hypot(bs_vx, bs_vy), bs_y > 0 ? bs_vy : -bs_vy,
+                                         (k - bs_k) / 30.0, W.outStage() != 0 ? (std::fabs(b.pos.y.toDouble()) > hy ? "THROW-IN" : "out over goal line") : b.owner ? (W.player(*b.owner).team == bs_team ? "defender" : "attacker") : "loose",
+                                         b.pos.y.toDouble(), std::hypot(b.pos.x.toDouble() - bs_x, b.pos.y.toDouble() - bs_y));
+                        if (bs_kind == 1) {   // §8.272
+                            const int tb = bs_tb, gb = bs_gb;
+                            ++S.bp_where[0][tb]; ++S.bp_where[1][gb];
+                            if (W.outStage() != 0) {
+                                const int o = std::fabs(b.pos.y.toDouble()) > hy ? 1 : W.lastTouchTeam() == bs_team ? 0 : 2;
+                                ++S.bp_out[0][tb][o]; ++S.bp_out[1][gb][o];
+                            }
+                        }
                         bs_k = -1;
                     }
                     if (bbn != bb_prev && W.lastTouchTeam() <= 1) {
-                        bs_kind = W.lastBlockShot() ? 0 : 1; ++S.bs_n[bs_kind]; bs_k = static_cast<long>(k); bs_x = b.pos.x.toDouble(); bs_y = b.pos.y.toDouble(); bs_team = W.lastTouchTeam(); }
+                        bs_kind = W.lastBlockShot() ? 0 : 1; ++S.bs_n[bs_kind]; bs_vx = b.vel.x.toDouble(); bs_vy = b.vel.y.toDouble();
+                        {   const double tl = hy - std::fabs(b.pos.y.toDouble());   // off the touchline; off the passer's attacking goal line (the blockers defend it)
+                            const double gl = W.lastTouchTeam() == 0 ? b.pos.x.toDouble() + hx : hx - b.pos.x.toDouble();
+                            bs_tb = tl < 5 ? 0 : tl < 10 ? 1 : tl < 20 ? 2 : 3; bs_gb = gl < 18 ? 0 : gl < 35 ? 1 : gl < 70 ? 2 : 3; }
+                        bs_k = static_cast<long>(k); bs_x = b.pos.x.toDouble(); bs_y = b.pos.y.toDouble(); bs_team = W.lastTouchTeam(); }
                 }
                 bb_prev = bbn; pv_x = b.vel.x.toDouble(); pv_y = b.vel.y.toDouble();
             }
@@ -2642,7 +2661,7 @@ int main(int argc, char** argv) {
         S.ro_sides += 2;
         { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish.toDouble(); A.after += D.after.toDouble(); A.desire += D.desire.toDouble(); A.gait += D.gait.toDouble(); A.top += D.top.toDouble(); A.vw += D.vw.toDouble(); A.v1 += D.v1.toDouble(); A.ang += D.ang.toDouble(); for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
         S.bblk += W.bodyBlocks(0) + W.bodyBlocks(1);   // §8.269
-        { const auto& C = W.chargeDiag(); S.ch_k += C.kicks; S.ch_kept += C.kept; S.ch_loose += C.loose;
+        { const auto& C = W.chargeDiag(); S.ch_k += C.kicks; S.ch_kept += C.kept; S.ch_loose += C.loose; for (int q = 0; q < 4; ++q) { S.ch_tl[q] += C.tl[q]; S.ch_gl[q] += C.gl[q]; S.ch_rtl[q] += C.rtl[q]; }
           for (int a = 0; a < 4; ++a) for (int q = 0; q < 5; ++q) { S.chb_k[a][q] += C.by_kicks[a][q]; S.chb_kept[a][q] += C.by_kept[a][q]; S.chb_loose[a][q] += C.by_loose[a][q]; } }   // §8.271
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = mg[0], ag = mg[1];
@@ -2840,6 +2859,25 @@ int main(int argc, char** argv) {
     }
     {   // §8.270
         auto q = [](std::vector<double> a) { if (a.empty()) return std::string("-"); std::sort(a.begin(), a.end()); char t[64]; std::snprintf(t, sizeof t, "%.1f / %.1f / %.1f", a[a.size() / 4], a[a.size() / 2], a[3 * a.size() / 4]); return std::string(t); };
+        std::printf("      open-play kicks by m off the touchline 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (StatsBomb PL 15/16 passes 13.6 / 16.6 / 30.5 / 39.3); off the goal line attacked 0-18 / 18-35 / 35-70 / 70+: %.1f / %.1f / %.1f / %.1f%% (7.1 / 16.9 / 52.5 / 23.5)\n",
+                    100.0 * S.ch_tl[0] / std::max(1L, S.ch_k), 100.0 * S.ch_tl[1] / std::max(1L, S.ch_k), 100.0 * S.ch_tl[2] / std::max(1L, S.ch_k), 100.0 * S.ch_tl[3] / std::max(1L, S.ch_k),
+                    100.0 * S.ch_gl[0] / std::max(1L, S.ch_k), 100.0 * S.ch_gl[1] / std::max(1L, S.ch_k), 100.0 * S.ch_gl[2] / std::max(1L, S.ch_k), 100.0 * S.ch_gl[3] / std::max(1L, S.ch_k));
+        {   long r = 0; for (int q = 0; q < 4; ++q) r += S.ch_rtl[q];
+            std::printf("      passes received by m off the touchline 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (StatsBomb PL 15/16 completed open-play passes' end 15.7 / 15.9 / 29.5 / 38.9)\n",
+                        100.0 * S.ch_rtl[0] / std::max(1L, r), 100.0 * S.ch_rtl[1] / std::max(1L, r), 100.0 * S.ch_rtl[2] / std::max(1L, r), 100.0 * S.ch_rtl[3] / std::max(1L, r)); }
+        {   // §8.272
+            static const char* const kT[4] = {"0-5", "5-10", "10-20", "20+"}; static const char* const kG[4] = {"0-18", "18-35", "35-70", "70+"};
+            static const double rs[2][4] = {{18.5, 21.7, 31.6, 28.2}, {32.8, 19.4, 31.8, 16.0}};
+            static const double ro[2][4][3] = {{{3.6, 54.5, 1.5}, {7.3, 35.2, 2.3}, {16.0, 14.6, 2.1}, {11.7, 2.5, 1.1}}, {{30.9, 15.6, 1.4}, {2.3, 20.1, 0.0}, {0.0, 26.1, 0.0}, {0.2, 36.1, 8.1}}};
+            for (int w = 0; w < 2; ++w) {
+                long tot = 0; for (int q = 0; q < 4; ++q) tot += S.bp_where[w][q];
+                std::printf("      blocked passes by m off %s (StatsBomb PL 15/16 in brackets): share %% | corner / throw-in / goal kick %%:", w ? "the goal line they defend" : "the touchline");
+                for (int q = 0; q < 4; ++q) { const double k = std::max(1L, S.bp_where[w][q]);
+                    std::printf("  %s %.0f (%.0f) | %.0f/%.0f/%.0f (%.0f/%.0f/%.0f)", w ? kG[q] : kT[q], 100.0 * S.bp_where[w][q] / std::max(1L, tot), rs[w][q],
+                                100 * S.bp_out[w][q][0] / k, 100 * S.bp_out[w][q][1] / k, 100 * S.bp_out[w][q][2] / k, ro[w][q][0], ro[w][q][1], ro[w][q][2]); }
+                std::printf("\n");
+            }
+        }
         for (int kd = 0; kd < 2; ++kd) {
             const double n = std::max(1L, S.bs_n[kd]);
             std::printf(kd == 0 ? "   BLOCKED SHOTS (§8.270; StatsBomb PL 15/16: corner 24.0%%, out else 6.0%%, attackers 33.5, defenders 31.0, keeper 5.5; next touch in play 1.2 / 1.8 / 2.6 s, 7.1 / 13.1 / 21.2 m): %.2f a team-match — "
