@@ -281,7 +281,6 @@
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data) return '';
     const { activity: a, dues: d } = hit.data;
-    const regs = Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
     const s = (text, color, title) => `<span title="${esc(title || '')}" style="color:${color}; white-space:nowrap;">${esc(text)}</span>`;
     const top = [], bottom = [];
     // RSVP by colour (mig 1546, owner 11/19 "green if they set availabity
@@ -317,15 +316,30 @@
           paid ? t('box_paid_on_tip', { date: paid }, `Last payment ${paid}`) : ''));
       }
     }
-    // Flag only (owner 11/19 "if not flagged then they are good"): ❌ when
-    // he never filled the CASA form, nothing when he did.
-    regs.filter(g => g && g.league === 'CASA' && !g.registered).forEach(g => bottom.push(
-      s(t('box_reg_missing', { league: g.league }, `❌${g.league}`), '#fca5a5', t('reg_missing_tip', { league: g.league }, ''))));
-    docFlags(personId).forEach(f => bottom.push(f.state === 'in'
-      ? s(t('box_docs_in', { league: f.league }, `📎${f.league}`) + (f.stale ? '⚠' : ''), '#93c5fd', docTip(f))
-      : s(t('box_reg_missing', { league: f.league }, `❌${f.league}`) + (f.stale ? '⚠' : ''), '#fca5a5', docTip(f))));
+    // League paperwork is the box's red DOCS corner flag now (docsMissing,
+    // mig 1548), not ❌CASA / ❌APSL on this line.
     const row = (bits) => bits.length ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; overflow:hidden;">${bits.join('')}</div>` : '';
     return row(top) + row(bottom);
+  }
+
+  // DOCS on a #teams box (mig 1548, owner 11/19 "a flag at top of card
+  // that is DOCS in red? its obvois if liga 1 team its for CASA reg and
+  // apsl same"): the league that owns teamId (registrations[].teamIds) has
+  // no registration for him and he is not on its list.  Filled the APSL
+  // form but not listed yet = docs are in, no flag (ROSTER says the rest).
+  // → { league, tip } or null; null until loaded / for non-admins.
+  function docsMissing(personId, teamId) {
+    const hit = cache.get(Number(personId));
+    const regs = hit && hit.data && Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
+    const g = regs.find(r => r && Array.isArray(r.teamIds) && r.teamIds.some(id => Number(id) === Number(teamId)));
+    if (!g || g.registered || g.onList) return null;
+    const league = g.league || '';
+    let tip = g.formSheet
+      ? t('docs_missing_tip', { league }, `No ${league} registration form on file.`)
+      : t('reg_missing_tip', { league }, `Never filled the ${league} registration form.`);
+    const stale = g.formSheet && g.formOk === false;
+    if (stale) tip += ' ' + t('docs_stale_tip', { league, date: g.formAt || '' }, `Couldn't read the ${league} form sheet.`);
+    return { league, tip, stale };
   }
 
   // ✅CASA / ❌CASA after a name (⛔ Not eligible row on the #teams team
@@ -342,5 +356,5 @@
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
   function forget(personId) { cache.delete(Number(personId)); }
 
-  window.PersonStanding = { docFlags, forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine, regMark };
+  window.PersonStanding = { docsMissing, docFlags, forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine, regMark };
 })();

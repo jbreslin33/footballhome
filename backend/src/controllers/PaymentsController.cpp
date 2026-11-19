@@ -1044,6 +1044,9 @@ Response PaymentsController::handleStanding(const Request& request) {
                      COALESCE((SELECT bool_or(f.missing_on_league_teams) FROM official_roster_sources s2
                                  JOIN league_registration_forms f ON f.league_label = s2.league_label
                                 WHERE s2.league_id = lg.league_id AND s2.is_active), false) AS missing_on_teams,
+                     COALESCE((SELECT array_to_json(array_agg(DISTINCT s6.team_id ORDER BY s6.team_id))::text
+                                 FROM official_roster_sources s6
+                                WHERE s6.league_id = lg.league_id AND s6.is_active AND s6.system <> 'club_file'), '[]') AS team_ids,
                      fs.id IS NOT NULL AS form_sheet,
                      fs.last_fetch_ok AS form_ok,
                      to_char(fs.last_fetched_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD FMHH12:MIam') AS form_at
@@ -1061,7 +1064,7 @@ Response PaymentsController::handleStanding(const Request& request) {
                              JOIN team_persons tp ON tp.team_id = s4.team_id
                             WHERE s4.league_id = lg.league_id AND s4.is_active
                               AND tp.person_id = p.pid AND tp.removed_at IS NULL) AS on_league_team,
-                   lg.form_sheet, lg.form_ok, lg.form_at
+                   lg.team_ids, lg.form_sheet, lg.form_ok, lg.form_at
               FROM unnest($1::int[]) AS p(pid)
               CROSS JOIN lgx lg
               LEFT JOIN league_registrations r
@@ -1088,6 +1091,8 @@ Response PaymentsController::handleStanding(const Request& request) {
                 // lists; formOk false = the form sheet's last read failed.
                 {"onList", r["on_list"].as<bool>()},
                 {"onLeagueTeam", r["on_league_team"].as<bool>()},
+                // The league's teams (#teams box: DOCS on that team's card).
+                {"teamIds", json::parse(r["team_ids"].c_str())},
                 {"formSheet", r["form_sheet"].as<bool>()},
                 {"formOk", r["form_ok"].is_null() ? json(nullptr) : json(r["form_ok"].as<bool>())},
                 {"formAt", r["form_at"].is_null() ? json(nullptr) : json(r["form_at"].c_str())}});

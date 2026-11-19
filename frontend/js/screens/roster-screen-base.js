@@ -1235,6 +1235,18 @@ class RosterScreenBase extends Screen {
         : (c in { active: 1, injured: 1, practice_squad: 1, standby: 1, inactive: 1 } ? c : 'active');
     };
     const ids = new Set();
+    // Corner flags (owner 11/19 "a flag at top of card that is DOCS in red?
+    // its obvois if liga 1 team its for CASA reg and apsl same. the minus -
+    // for not on roster sould be ROSTER in red label instead in same basic
+    // spot"): ROSTER = not on this team's official roster (server
+    // notOnRoster); DOCS = no registration with this card's league
+    // (PersonStanding.docsMissing — CASA on Liga 1, APSL on APSL/Reserves),
+    // filled in once PersonStanding loads.
+    const flagTag = (text, tip) => `<span style="font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#dc2626; color:#fff; font-weight:800; letter-spacing:0.5px;" title="${esc(tip)}">${esc(text)}</span>`;
+    const docsTag = (pid, teamId) => {
+      const m = window.PersonStanding && PersonStanding.docsMissing ? PersonStanding.docsMissing(pid, teamId) : null;
+      return m ? flagTag(copy('tc_flag_docs', {}, 'DOCS') + (m.stale ? '⚠' : ''), m.tip) : '';
+    };
     const box = (p, col, listTeamIds, groupColor = null) => {
       const pid = Number(p.personId);
       ids.add(pid);
@@ -1248,7 +1260,7 @@ class RosterScreenBase extends Screen {
       return `<div data-player-sheet="${esc(key)}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
-          ${flagged ? `<span style="position:absolute; top:-8px; right:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#dc2626; color:#fff; font-weight:800;" title="${esc(copy('tc_not_eligible_tip', {}, 'Not On Roster'))}">⛔</span>` : ''}
+          <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
           <div style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
@@ -1321,6 +1333,9 @@ class RosterScreenBase extends Screen {
         if (!this.element) return;
         this.element.querySelectorAll('[data-tc-info]').forEach(el => {
           el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '', paidAmount: el.getAttribute('data-tc-paid-amount') || '' });
+        });
+        this.element.querySelectorAll('[data-tc-docs]').forEach(el => {
+          el.innerHTML = docsTag(el.getAttribute('data-tc-docs'), el.getAttribute('data-tc-docs-team'));
         });
         this.element.querySelectorAll('[data-tc-reg]').forEach(el => {
           el.innerHTML = PersonStanding.regMark ? PersonStanding.regMark(el.getAttribute('data-tc-reg')) : '';
