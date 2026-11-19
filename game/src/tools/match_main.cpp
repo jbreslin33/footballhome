@@ -115,6 +115,7 @@ struct Stats {
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
+    long cl_n[8] = {}, cl_c[8] = {}, cl_t[8] = {}, hc_n[8] = {}, hc_c[8] = {}, hc_t[8] = {};   // §8.286 foot clearances by spot; their corner / throw-in
     long bs_st[4] = {}, bs_runs[4] = {}; std::vector<int> bs_len[4];   // §8.285 BALL STATE: on a man / contested / travelling / loose (5 Hz)
     long wng[2][4] = {}, ib_n[3][3] = {}, ib_k[3][3] = {};   // §8.281 INTO THE BOX FROM WIDE   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
@@ -297,6 +298,7 @@ int main(int argc, char** argv) {
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
         auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
+        int cl_band = -1, hc_band = -1; int hc_prev = 0;   // §8.286 + the last headed clearance's band   // §8.286 the last foot clearance's band (m off own goal 0-6/6-18/18-35/35+ x inside/wide), -1 = none since
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
                     double line = 0, gap = 0, spd = 0, vx = 0, bx = 0, by = 0, rx = 0, ry = 0, best = 1e9, mrx = 0, mry = 0; } bh;
@@ -673,6 +675,9 @@ int main(int argc, char** argv) {
                 else if (dead_k0 >= 0) {
                     const int kd = std::min(14, std::max(0, dead_kind));
                     if (!dead_skip) { ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); } if (kd == 2) { ++S.out_by[2][dead_why]; if (std::getenv("GAME_OUT_TRACE")) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); }   // §8.245 throw-ins
+                    if (cl_band >= 0 && dead_why == static_cast<int>(ai::Why::Clear)) { if (kd == 4) ++S.cl_c[cl_band]; else if (kd == 2) ++S.cl_t[cl_band]; }   // §8.286
+                    if (hc_band >= 0) { if (kd == 4) ++S.hc_c[hc_band]; else if (kd == 2) ++S.hc_t[hc_band]; }
+                    cl_band = -1; hc_band = -1;
                     if (kd == 3 || kd == 4) { ++S.out_by[kd - 3][dead_why]; if (std::getenv("GAME_OUT_TRACE") && dead_why != ai::kWhyCount) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); } dead_k0 = -1; dead_kind = 0; dead_skip = false;
                 }
             }
@@ -706,6 +711,16 @@ int main(int argc, char** argv) {
                 }
                 hp.pz = b.pos.z.toDouble();
             }
+            {   // §8.286 HEADED CLEARANCES by spot: a World header-clear (counted there) sets the band until the next kick / restart
+                const int hcn = W.headersClear(0) + W.headersClear(1);
+                if (k == 0) { hc_prev = hcn; hc_band = -1; }
+                if (hcn != hc_prev && W.lastTouchTeam() <= 1) {
+                    const int t = W.lastTouchTeam(); const double d = hx + b.pos.x.toDouble() * (t == 0 ? 1.0 : -1.0);
+                    const int a = d < 6 ? 0 : d < 18 ? 1 : d < 35 ? 2 : 3;
+                    hc_band = a * 2 + (std::fabs(b.pos.y.toDouble()) < 20.16 ? 0 : 1); ++S.hc_n[hc_band];
+                }
+                hc_prev = hcn;
+            }
             if (!b.owner) free_v = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble());   // §8.236: the free ball's pace, the tick before a receipt
             if (before && !b.owner && b.last_kicker == *before) {   // a kick
                 last_kick_why = static_cast<int>(s.lastOrders()[*before].why);
@@ -714,6 +729,11 @@ int main(int argc, char** argv) {
                     rk_px = W.player(*before).pos.x.toDouble(); rk_py = W.player(*before).pos.y.toDouble(); }   // §8.237
                 kv0 = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()); { const int kd = W.lastKickKind(*before); kkind = kd == 2 ? 3 : W.lastKickDie(*before) ? 2 : kd == 1 ? 1 : 0; }   // §8.236: 0 short / 1 ground to feet / 2 die-at / 3 lofted
                 last_kick_own = hx + W.player(*before).pos.x.toDouble() * (last_kick_team == 0 ? 1.0 : -1.0);
+                cl_band = -1; hc_band = -1;
+                if (last_kick_why == static_cast<int>(ai::Why::Clear)) {   // §8.286 CLEARANCES by spot
+                    const double d = last_kick_own; const int a = d < 6 ? 0 : d < 18 ? 1 : d < 35 ? 2 : 3;
+                    cl_band = a * 2 + (std::fabs(W.player(*before).pos.y.toDouble()) < 20.16 ? 0 : 1); ++S.cl_n[cl_band];
+                }
                 if (std::getenv("GAME_OUT_TRACE")) {
                     const auto& lo2 = s.lastOrders()[*before];
                     const auto& kp = W.player(*before);
@@ -3173,6 +3193,16 @@ int main(int argc, char** argv) {
                 const auto& o = S.fbd_o[sd][z][a]; long n5 = 0; for (double x : o) n5 += x < 5;
                 std::printf("        %-4s %-5s %-3s | %5.1f (%5.1f) | %4.1f (%4.1f), %3.0f (%2.0f) | %5.1f (%5.1f)\n", sd ? "far" : "near", zn[z], an[a], qd(S.fbd_a[sd][z][a], .5), rr[sd][z][a][0],
                             qd(o, .5), rr[sd][z][a][1], 100.0 * n5 / std::max<std::size_t>(1, o.size()), rr[sd][z][a][2], qd(S.fbd_a5[sd][z][a], .5), rr[sd][z][a][3]); }
+        }
+        {   // §8.286 CLEARANCES (foot, Why::Clear) by spot v StatsBomb (all clearances, head + foot): a team-match | corner % | throw-in %
+            static const double rr[8][3] = {{3.43, 17.4, 13.8}, {0.27, 7.7, 49.8}, {12.43, 5.8, 9.7}, {1.11, 1.7, 48.4}, {4.19, 0.5, 10.5}, {2.06, 0.2, 41.7}, {2.70, 0.0, 7.1}, {2.28, 0.0, 37.3}};
+            static const char* const dn[4] = {"0-6", "6-18", "18-35", "35+"};
+            std::printf("      CLEARANCES by spot (ours: foot clears, Why::Clear; StatsBomb PL 15/16 all clearances, head + foot, 28.48 a team-match): a team-match | corner %% | throw-in %%; headed clearances %.2f (15.78)\n", S.aer_c / std::max(1.0, 2.0 * matches));
+            for (int b = 0; b < 8; ++b) std::printf("        %-5s %-6s %.2f (%.2f) | %.1f (%.1f) | %.1f (%.1f)\n", dn[b / 2], b % 2 ? "wide" : "inside", S.cl_n[b] / std::max(1.0, 2.0 * matches), rr[b][0],
+                                                    100.0 * S.cl_c[b] / std::max(1L, S.cl_n[b]), rr[b][1], 100.0 * S.cl_t[b] / std::max(1L, S.cl_n[b]), rr[b][2]);
+            std::printf("      HEADED CLEARANCES by spot (ours; StatsBomb headed: corner %% from 0-6 inside 16, 6-18 inside 5): a team-match | corner %% | throw-in %%\n");
+            for (int b = 0; b < 8; ++b) std::printf("        %-5s %-6s %.2f | %.1f | %.1f\n", dn[b / 2], b % 2 ? "wide" : "inside", S.hc_n[b] / std::max(1.0, 2.0 * matches),
+                                                    100.0 * S.hc_c[b] / std::max(1L, S.hc_n[b]), 100.0 * S.hc_t[b] / std::max(1L, S.hc_n[b]));
         }
         {   // §8.285 BALL STATE (DFL: s a match, %, runs a match, run med s)
             static const char* const sn[4] = {"on a man", "contested", "travelling", "loose"};

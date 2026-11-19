@@ -1383,6 +1383,13 @@ void World::configureAerial(const ModelParams& p) {
     aerial_goal_err_ = p.fixed("physics.aerial.goal_err_deg", 45000);
     aerial_goal_err_duel_ = p.fixed("physics.aerial.goal_err_duel_deg", 80000);
     aerial_clear_err_ = p.fixed("physics.aerial.clear_err_deg", 40000);
+    // G5.180 (§8.286): real headed clearances (StatsBomb PL 15/16, benchmarks_statsbomb_clearcorner.py) go behind for a corner
+    // 16% from inside the 6 m (box's width), 5% at 6-18 m; wide 11 / 3. Ours never did: the header went radially away from
+    // the goal's centre (± clear_err), so from wide it ran at the touchline (throw-in 83-96% v 37-50% of real clearances).
+    aerial_clear_up_ = p.fixed("physics.aerial.clear_up", 0);   // 0 = radial (kept), 1 = straight upfield. 0.5 / 0.65 / 0.8 → throw-in from wide 64-69 / 49-67 / 20-35% (real 42-48) but throw-ins 20.1 → 15.2 (23.1): our wide headers in our half run 5x real — not taken
+    {   static const int kB[2][2] = {{160, 110}, {50, 30}};
+        for (int a = 0; a < 2; ++a) for (int w = 0; w < 2; ++w)
+            aerial_clear_behind_[a][w] = p.fixed(std::string("physics.aerial.clear_behind_") + (a ? "18" : "6") + (w ? "_wide" : "_inside"), kB[a][w]); }
     clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
@@ -1563,6 +1570,7 @@ void World::headIt(SlotIndex slot, bool duel) {
     const Fixed64 rad = Fixed64::fromFraction(71, 4068);
     Vec2 dir{};
     Fixed64 speed{}, err{}, up{};
+    bool glance = false;   // G5.180: aimed wide of the post — no error swing (it would turn it into the goal)
     if (headRangeOfGoal(p.team)) {
         dir = math::normalized(Vec2{sg * half_x_ - ball_.pos.x, -ball_.pos.y});
         speed = aerial_goal_speed_;
@@ -1571,8 +1579,23 @@ void World::headIt(SlotIndex slot, bool duel) {
         ++headers_at_goal_[p.team];
     } else if (headRangeOfOwn(p.team)) {
         dir = math::normalized(Vec2{ball_.pos.x + sg * half_x_, ball_.pos.y});
+        // G5.180 (§8.286): pulled upfield by clear_up; and inside his 18 m, at the real share, glanced behind — at the goal
+        // line wide of the post (3.66 + 1-13 m out), his side of the goal — a corner.
+        if (aerial_clear_up_.raw > 0) dir = math::normalized(Vec2{dir.x * (Fixed64::one() - aerial_clear_up_) + sg * aerial_clear_up_, dir.y * (Fixed64::one() - aerial_clear_up_)});
+        const Fixed64 own = half_x_ + ball_.pos.x * sg;
+        if (own < Fixed64::fromInt(18)) {
+            const int a = own < Fixed64::fromInt(6) ? 0 : 1, wd = math::fx_abs(ball_.pos.y) < Fixed64::fromFraction(2016, 100) ? 0 : 1;
+            const Fixed64 u = (detNoise(match_seed_, clock_.tick(), slot, 23) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            if (u < aerial_clear_behind_[a][wd]) {
+                const Fixed64 u2 = (detNoise(match_seed_, clock_.tick(), slot, 24) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                const Fixed64 side = ball_.pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+                const Vec2 at{-sg * half_x_ - sg * Fixed64::one(), side * (Fixed64::fromFraction(366, 100) + Fixed64::one() + Fixed64::fromInt(12) * u2)};
+                dir = math::normalized(Vec2{at.x - ball_.pos.x, at.y - ball_.pos.y});
+                glance = true;
+            }
+        }
         speed = aerial_clear_speed_;
-        err = aerial_clear_err_;
+        err = glance ? Fixed64::zero() : aerial_clear_err_;
         up = speed * kLoftLaunchRatio;
         ++headers_clear_[p.team];
     } else {

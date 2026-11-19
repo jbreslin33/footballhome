@@ -11349,3 +11349,36 @@ is made of small shifts: about 5% more in-play time (3,290 v 3,140 s a match —
 volumes (corners 0.36×, the card's biggest miss, and throw-ins) also feed it. Next: corners — where our blocked and
 cleared balls go v real, from the §8.271 block work — before any change. Harness line + benchmark only; goldens unchanged;
 tests 23/23, lint clean.
+
+### 8.286 G5.180 — a headed clearance in the box glances behind for a corner at the real share (no migration; off by rows)
+
+From §8.285's "next". Corners are the card's biggest miss (1.92 a team-match v 5.4), and by what put the ball out our
+clearances gave 0.06 corners a team-match v StatsBomb's 1.38. New `benchmarks_statsbomb_clearcorner.py` (PL 15/16, every
+Clearance; the next on-ball event as `benchmarks_statsbomb_out.py`) by spot — m off the clearing side's goal line × inside /
+wide the box's width — and body part:
+
+| spot | real a team-match | corner % | throw-in % | headed (corner %) | ours headed (4 seeds × 8, after) |
+|---|---|---|---|---|---|
+| 0-6 inside | 3.43 | 17.4 | 13.8 | 1.86 (16) | 0.52 (15.1) |
+| 0-6 wide | 0.27 | 7.7 | 49.8 | 0.03 (11) | 0.06 |
+| 6-18 inside | 12.43 | 5.8 | 9.7 | 6.62 (5) | 4.39 (3.9) |
+| 6-18 wide | 1.11 | 1.7 | 48.4 | 0.23 (3) | 0.91 (1.7) |
+| 18-35 inside | 4.19 | 0.5 | 10.5 | 2.33 (0) | 7.75 (0.2) |
+| 18-35 wide | 2.06 | 0.2 | 41.7 | 0.99 (0) | 4.94 (0.0) |
+| 35+ | 4.98 | 0.0 | 7-37 | 3.72 (0) | 0.77 |
+
+Ours never went behind: `World::headIt` sent a clearing header radially away from the goal's centre ± `clear_err`.
+**Change:** inside his own 18 m, at the real share by band and width (`physics.aerial.clear_behind_{6,18}_{inside,wide}`,
+code defaults 0.16 / 0.11 / 0.05 / 0.03), the header is aimed at his goal line wide of the post on his side (3.66 + 1-13 m
+out), no error swing (it would turn it into the goal) — a corner. Corners 1.92 → 2.22 (`card_G5.180.txt`); the shares
+land (above). Card 9 / 4 / 20 → 8 ok / 5 off / 20 OFF: scored 12-18 m to ok, scored 25 m+ (n tiny) to OFF, tackles
+18.84 → 18.64 to off — noise; throw-ins 20.1 → 19.8.
+
+**Not taken:** `physics.aerial.clear_up` (pull the header upfield, 0 = radial kept). From wide our headers run at the touchline
+(throw-in 80-88% v real ~42-48); 0.5 / 0.65 / 0.8 brought that to 64-69 / 49-67 / 20-35% but throw-ins fell 20.1 → 15.2
+(23.1) — the volume of wide headers is the fault, not their angle (`card_G5.180_clear_up_not_shipped.txt`).
+
+**The gap left is where we head it clear:** ours 12.7 a team-match from 18-35 m (real 3.3) and 4.9 inside the box (8.5);
+foot clears inside the box 5.2 (7.3). The glance can't give more corners than the box gives clearances. New harness lines
+CLEARANCES / HEADED CLEARANCES by spot. Next: why our defenders head the ball 18-35 m out — the long balls they meet, v
+real aerial duels by spot — before any change. Goldens unchanged; tests 23/23, lint clean.
