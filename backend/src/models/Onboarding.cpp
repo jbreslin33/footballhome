@@ -18,7 +18,7 @@ namespace {
 const char* kStepsSql = R"SQL(
     SELECT po.person_id, po.track, po.note AS path_note,
            TRIM(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')) AS name,
-           s.code, s.stage, s.label, COALESCE(s.short_label, s.label) AS short_label, s.how, s.cost_usd, s.link_url, s.link_label, s.renew_months,
+           s.code, s.stage, s.label, COALESCE(s.short_label, s.label) AS short_label, s.how, s.cost_usd, s.link_url, s.link_label, s.renew_months, s.fill_form, ps.submitted_at,
            ps.sent_at, ps.verified_at, ps.note,
            CASE WHEN ps.verified_at IS NOT NULL AND s.renew_months IS NOT NULL
                 THEN ps.verified_at + make_interval(months => s.renew_months) END AS expires_at,
@@ -54,6 +54,8 @@ json stepJson(const pqxx::row& r) {
         {"verified_at", textOrNull(r["verified_at"])},
         {"expires_at",  textOrNull(r["expires_at"])},
         {"note",        textOrNull(r["note"])},
+        {"fill_form",   textOrNull(r["fill_form"])},
+        {"submitted_at", textOrNull(r["submitted_at"])},
         {"state",       r["state"].c_str()},
         {"required",    r["required"].as<bool>()},
     };
@@ -118,6 +120,22 @@ json Onboarding::mine(long long personId) {
     for (const auto& r : rows) out["steps"].push_back(stepJson(r));
     tally(out);
     attachFiles(out, filesFor(db, personId));
+    // ✍️ What a fill-in form can start from (their own details only).
+    auto pf = db->query(R"SQL(
+        SELECT p.first_name, p.last_name, to_char(p.birth_date, 'MM/DD/YYYY') AS dob,
+               (SELECT e.email FROM person_emails e WHERE e.person_id = p.id ORDER BY e.is_primary DESC, e.id LIMIT 1) AS email,
+               (SELECT ph.phone_number FROM person_phones ph WHERE ph.person_id = p.id ORDER BY ph.is_primary DESC, ph.id LIMIT 1) AS phone,
+               a.address1, a.address2, a.city, a.state, a.zip
+          FROM persons p
+          LEFT JOIN LATERAL (SELECT * FROM person_addresses x WHERE x.person_id = p.id ORDER BY x.is_primary DESC, x.id LIMIT 1) a ON true
+         WHERE p.id = $1::int
+    )SQL", {std::to_string(personId)});
+    if (!pf.empty()) {
+        json f = json::object();
+        for (const char* k : {"first_name", "last_name", "dob", "email", "phone", "address1", "address2", "city", "state", "zip"})
+            f[k] = pf[0][k].is_null() ? json("") : json(pf[0][k].c_str());
+        out["prefill"] = f;
+    }
     return out;
 }
 
@@ -478,5 +496,56 @@ std::string Onboarding::sendStage(long long personId, const std::string& stage, 
     db->query("INSERT INTO person_onboarding_stage_sends (person_id, stage, emailed_at, emailed_by) "
               "VALUES ($1::int, $2, now(), NULLIF($3, '')::int) "
               "ON CONFLICT (person_id, stage) DO UPDATE SET emailed_at = now(), emailed_by = EXCLUDED.emailed_by", {pid, stage, uid});
+    return "";
+}
+
+std::string Onboarding::sendNsor(long long personId, const std::string& fileDataUrl, const std::string& lastNameIn,
+                                 const std::string& fullNameIn, const std::string& emailIn) {
+    auto* db = Database::getInstance();
+    const std::string pid = std::to_string(personId);
+    if (!onPath(db, personId)) return "You are not on the onboarding path.";
+    auto recent = db->query("SELECT 1 FROM person_onboarding_steps WHERE person_id = $1::int AND step_code = 'nsor' "
+                            "   AND submitted_at > now() - interval '24 hours'", {pid});
+    if (!recent.empty()) return "Your NSOR form already went to the state today.";
+    auto clean = [](const std::string& in, size_t max) {
+        std::string o;
+        for (char c : in) if (c != '\r' && c != '\n') o.push_back(c);
+        return o.substr(0, max);
+    };
+    const std::string lastName = clean(lastNameIn, 60), fullName = clean(fullNameIn, 120), email = clean(emailIn, 160);
+    if (lastName.empty() || fullName.empty()) return "Name required.";
+    if (email.find('@') == std::string::npos) return "A valid email is required — the state sends your letter there.";
+    std::string err;
+    std::string fname;
+    for (char c : lastName) if (std::isalnum(static_cast<unsigned char>(c)) || c == '-') fname.push_back(c);
+    const long long fileId = addFile(personId, "nsor", "NSOR-application-" + (fname.empty() ? std::string("form") : fname) + ".pdf",
+                                     fileDataUrl, 0, &err);
+    if (fileId <= 0) return err;
+    std::string fn, mime, bytes;
+    if (!fileBytes(fileId, &fn, &mime, &bytes) || mime != "application/pdf") {
+        removeFile(fileId, 0);
+        return "The form did not come through as a PDF — try again.";
+    }
+    auto to = db->query("SELECT body FROM message_templates WHERE kind = 'onboarding' AND tier = 'nsor_to' AND is_active ORDER BY id LIMIT 1");
+    const std::string toAddr = to.empty() ? "RA-PWNSOR@pa.gov" : to[0]["body"].c_str();
+    const auto [subjT, bodyT] = words(db, "nsor_email", "NSOR Verification {last_name}",
+        "Hello,\n\nAttached is the completed National Sex Offender Registry verification application for {full_name}. "
+        "Please send the verification letter to {email}.\n\nThank you.");
+    fh::mail::Message m;
+    m.to = toAddr;
+    m.cc.push_back(email);
+    auto mine = db->query("SELECT e.email FROM person_emails e WHERE e.person_id = $1::int ORDER BY e.is_primary DESC, e.id LIMIT 1", {pid});
+    if (!mine.empty()) m.cc.push_back(mine[0]["email"].c_str());
+    m.replyTo = email;
+    const std::map<std::string, std::string> tok = {{"last_name", lastName}, {"full_name", fullName}, {"email", email}};
+    m.subject = fill(subjT, tok);
+    m.body = fill(bodyT, tok);
+    m.attachments.push_back({fn, mime, bytes});
+    if (!fh::mail::sendMessage(m)) {
+        removeFile(fileId, 0);
+        return "The email to the state did not go out — try again.";
+    }
+    db->query("UPDATE person_onboarding_steps SET submitted_at = now(), updated_at = now() "
+              " WHERE person_id = $1::int AND step_code = 'nsor'", {pid});
     return "";
 }

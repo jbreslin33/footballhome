@@ -28,6 +28,8 @@ class OnboardingChecklist {
         if (b && !b.disabled) { this.markSent(b.getAttribute('data-onb-sent'), b.getAttribute('data-onb-on') === '1'); return; }
         const up = e.target.closest('[data-onb-upload]');
         if (up && !up.disabled) { const inp = el.querySelector(`input[data-onb-file="${up.getAttribute('data-onb-upload')}"]`); if (inp) inp.click(); return; }
+        const ff = e.target.closest('[data-onb-fill]');
+        if (ff) { this.formOpen = ff.getAttribute('data-onb-fill'); this.render(); return; }
         const op = e.target.closest('[data-onb-open]');
         if (op) { this.open = op.getAttribute('data-onb-open'); this.render(); return; }
         const fl = e.target.closest('[data-onb-filelink]');
@@ -173,6 +175,24 @@ class OnboardingChecklist {
     const t = OnboardingChecklist.t;
     const d = this.data;
     if (!d) { this.el.innerHTML = ''; return; }
+    // ✍️ A fill-in form open (NSOR, mig 1558) takes the whole popup.
+    if (this.formOpen === 'nsor' && window.NsorForm) {
+      if (!this.nsor) {
+        this.nsor = new NsorForm(this.el, {
+          prefill: d.prefill || {}, track: d.track, t, esc,
+          onCancel: () => { this.formOpen = null; this.nsor = null; this.render(); },
+          onSend: async (payload) => {
+            const body = await this.ctx.fetchJson('/api/my/onboarding/nsor-send', { method: 'POST', body: JSON.stringify(payload) });
+            this.data = body.onboarding || null;
+            this.formOpen = null; this.nsor = null;
+            if (this.ctx.onChange) this.ctx.onChange(this.data);
+            this.render();
+          },
+        });
+      }
+      this.nsor.render();
+      return;
+    }
     const paid = d.track === 'paid';
     const steps = Array.isArray(d.steps) ? d.steps : [];
     // The focus: the step the person opened, else the first one still to do.
@@ -194,9 +214,12 @@ class OnboardingChecklist {
         ? `<button type="button" data-onb-filelink="${esc(s.link_url)}" style="${btnCss}">${esc(s.link_label || '›')}</button>`
         : s.link_url && /^https:\/\//.test(s.link_url)
         ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener" style="display:inline-block; padding:5px 11px; border-radius:999px; background:#1d4ed8; color:#fff; font-weight:800; font-size:0.8rem; text-decoration:none;">${esc(s.link_label || '›')}</a>` : '';
+      const fillBtn = live && s.fill_form === 'nsor' && window.NsorForm && !s.submitted_at && (s.state === 'todo' || s.state === 'renew')
+        ? `<button type="button" data-onb-fill="nsor" style="min-height:0; padding:5px 11px; border-radius:999px; border:0; background:#16a34a; color:#fff; font:inherit; font-weight:900; font-size:0.8rem; cursor:pointer;">${esc(t('nsor_fill', {}, '✍️ Fill it in here'))}</button>` : '';
       const btns = [
+        fillBtn,
         live ? link : '',
-        canUpload ? `<button type="button" data-onb-upload="${esc(s.code)}" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:${files.length ? 'transparent' : '#16a34a'}; color:${files.length ? '#22c55e' : '#fff'}; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(busy ? t('uploading', {}, 'Uploading…') : files.length ? t('upload_more', {}, '📎 Add another') : t('upload', {}, '📎 Upload'))}</button><input type="file" data-onb-file="${esc(s.code)}" accept="image/*,application/pdf" hidden>` : '',
+        canUpload ? `<button type="button" data-onb-upload="${esc(s.code)}" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:${files.length || fillBtn ? 'transparent' : '#16a34a'}; color:${files.length || fillBtn ? '#22c55e' : '#fff'}; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(busy ? t('uploading', {}, 'Uploading…') : files.length ? t('upload_more', {}, '📎 Add another') : t('upload', {}, '📎 Upload'))}</button><input type="file" data-onb-file="${esc(s.code)}" accept="image/*,application/pdf" hidden>` : '',
         canUndo ? `<button type="button" data-onb-sent="${esc(s.code)}" data-onb-on="0" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #6b7280; background:transparent; color:#d1d5db; font:inherit; font-weight:700; font-size:0.78rem; cursor:pointer;">${esc(t('undo_sent', {}, 'Undo'))}</button>` : '',
       ].filter(Boolean).join('');
       // One step at a time (owner 11/19 "we need a smart system to walk these
@@ -206,7 +229,7 @@ class OnboardingChecklist {
         // No tick box on a step still to do (owner 11/19 "why do they have check boxes?").
         const icon = s.state === 'sent' ? '✅' : s.state === 'renew' ? '⛔' : '';
         return `<div style="display:flex; align-items:center; gap:8px; padding:6px 11px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); font-size:0.85rem;">
-            <span style="flex:1; min-width:0; font-weight:700;">${icon} <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}${files.length ? ` <span style="opacity:0.7;">📎${files.length}</span>` : ''}</span>
+            <span style="flex:1; min-width:0; font-weight:700;">${icon} <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}${files.length ? ` <span style="opacity:0.7;">📎${files.length}</span>` : ''}${s.submitted_at ? ` <span style="opacity:0.8; font-weight:600;">· ✉️</span>` : ''}</span>
             <button type="button" data-onb-open="${esc(s.code)}" style="min-height:0; padding:3px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:transparent; color:inherit; font:inherit; font-size:0.78rem; font-weight:700; cursor:pointer;">${esc(t('tap_open', {}, 'Open ›'))}</button>
           </div>`;
       }
@@ -223,6 +246,7 @@ class OnboardingChecklist {
           </div>
           ${(s.how || cost) && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.88; line-height:1.35;">${cost ? `<b>${esc(cost)}</b>${s.how ? ' · ' : ''}` : ''}${esc(s.how || '')}</div>` : ''}
           ${s.note && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#fca5a5; font-weight:700;">${esc(s.note)}</div>` : ''}
+          ${s.submitted_at && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#4ade80; font-weight:700;">${esc(t('nsor_sent_line', { when: new Date(s.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }, '✉️ Sent to the state {when} — your letter comes by email in about 14 days. Upload it here.'))}</div>` : ''}
           ${live ? OnboardingChecklist.filesHtml(files, esc, { removable: s.state !== 'done' }) : ''}
           ${btns ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>` : ''}
         </div>`;

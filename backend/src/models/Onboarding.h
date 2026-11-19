@@ -62,6 +62,12 @@ public:
     // the admin, Reply-To the admin; split into parts under the relay's size
     // cap.  "" = sent; else the error.  *sentFiles = how many.
     static std::string sendStage(long long personId, const std::string& stage, long long adminUserId, int* sentFiles);
+    // ✍️ NSOR filled in on FootballHome (mig 1558): store the filled PDF on
+    // the step and email it to the state (message_templates nsor_to /
+    // nsor_email), cc the person, Reply-To the email on the form.  Once a
+    // day at most.  "" = sent; else the error.
+    static std::string sendNsor(long long personId, const std::string& fileDataUrl, const std::string& lastName,
+                                const std::string& fullName, const std::string& email);
     // Deletes file bytes purge_days after they went to compliance.
     static void purge();
 };

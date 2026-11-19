@@ -408,6 +408,26 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the file");
         }
     });
+    // ✍️ The NSOR form filled in here → the state (mig 1558):
+    // {file: data URL PDF, last_name, full_name, email}.
+    router.post(prefix + "/onboarding/nsor-send", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/false, &personId)) return *err;
+        json body;
+        try { body = r.getBody().empty() ? json::object() : json::parse(r.getBody()); }
+        catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON"); }
+        auto str = [&](const char* k) { return body.contains(k) && body[k].is_string() ? body[k].get<std::string>() : std::string(); };
+        try {
+            const std::string err = Onboarding::sendNsor(personId, str("file"), str("last_name"), str("full_name"), str("email"));
+            if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOk({{"onboarding", Onboarding::mine(personId)}});
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/onboarding/nsor-send] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not send the form");
+        }
+    });
     router.post(prefix + "/onboarding/file-remove", [](const Request& r) {
         auto gate = requireSession(r);
         if (gate.error) return *gate.error;
