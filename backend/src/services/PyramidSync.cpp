@@ -385,6 +385,9 @@ public:
 // 3 for a win, 1 for a draw; rank by points, goal difference, goals for.
 class SportsEngineReader : public PyramidReader {
 public:
+    // mig 1573: every game between two of the season's teams, in the shape
+    // fh_pyramid_games_load reads (the 📉 outlook plays the feeders out).
+    json body = {{"games", json::array()}};
     json read(const std::string& locator, std::string& note) override {
         struct Team { std::string name, division, divisionId; int gp = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0;
                       std::map<std::string, int> homes; std::map<std::string, std::string> homeName; };
@@ -413,6 +416,25 @@ public:
                 }
                 if (!ev.contains("game_details") || !ev["game_details"].is_object()) continue;
                 const json& g = ev["game_details"];
+                if (g.contains("team_1") && g.contains("team_2") && g["team_1"].is_object() && g["team_2"].is_object()) {
+                    const json& a = g["team_1"];
+                    const json& b = g["team_2"];
+                    const std::string ida = a.value("originator_id", ""), idb = b.value("originator_id", "");
+                    const json& homeSide = b.value("is_home_team", false) && !a.value("is_home_team", false) ? b : a;
+                    const json& awaySide = &homeSide == &a ? b : a;
+                    const std::string hid = homeSide.value("originator_id", ""), aid = awaySide.value("originator_id", "");
+                    if (!ida.empty() && !idb.empty() && teams.count(ida) && teams.count(idb) && !teams[hid].divisionId.empty()) {
+                        auto sc = [](const json& x) { return x.contains("score") && x["score"].is_string() ? x["score"].get<std::string>() : std::string{}; };
+                        const bool done = g.value("status", "") == "completed" && !sc(a).empty() && !sc(b).empty();
+                        // kick-off as the feed gives it (UTC; only orders games and times a re-read)
+                        std::string when = ev.contains("start_date_time") && ev["start_date_time"].is_string() ? ev["start_date_time"].get<std::string>() : std::string{};
+                        if (when.size() >= 16) when = when.substr(0, 10) + " " + when.substr(11, 5);
+                        const std::string eid = !ev.contains("id") ? std::string{} : ev["id"].is_string() ? ev["id"].get<std::string>() : ev["id"].dump();
+                        json gj = {{"id", eid}, {"d", teams[hid].divisionId}, {"t1", hid}, {"t2", aid}, {"dt", when}, {"c", done ? 1 : 0}};
+                        if (done) { gj["s1"] = sc(homeSide); gj["s2"] = sc(awaySide); }
+                        if (!gj["id"].get<std::string>().empty()) this->body["games"].push_back(gj);
+                    }
+                }
                 // The home side's ground: where it hosts (mig 844, the map).
                 const std::string where = ev.contains("location_address") && ev["location_address"].is_string() ? ev["location_address"].get<std::string>() : "";
                 if (!where.empty())
@@ -963,6 +985,7 @@ json PyramidSync::refreshSource(int sourceId) {
             storeGames(sourceId, body);
             storeSeasons(sourceId, locator, body);
         }
+        if (system == "sportsengine") storeGames(sourceId, static_cast<SportsEngineReader*>(reader.get())->body);   // mig 1573
         if (system == "demosphere") demosphereGrounds(sourceId, locator);
     } catch (const std::exception& e) {
         note = e.what();

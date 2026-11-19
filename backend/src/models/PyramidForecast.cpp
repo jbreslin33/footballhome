@@ -73,11 +73,23 @@ void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg,
     }
 }
 
-// 📉 The outlook (mig 1571): the conference's seasons (how many go down /
-// come up) and each feeder league — its teams rated from their own games,
-// the rest of their listed games played out `sims` times (points → goal
-// difference → goals → lot), promotion = the top auto_places, plus the next
-// playoff_places × the chance the feeder side beats our group-playoff winner.
+// 📉 The outlook (migs 1571, 1573): the conference's seasons (how many go
+// down / come up) and its feeders (pyramid_links into it), played by the
+// conference's promotion rules (pyramid_promotion_rules):
+//   each feeder   its teams rated from their own games (1.00 = that league's
+//                 average), the rest of its games drawn `sims` times, the
+//                 table by points → goal difference → goals → lot;
+//   eligible      reserves (the club has a side in an APSL conference, or a
+//                 pyramid_promotion_exclusions row) and sides nearest another
+//                 conference are skipped — the next team moves up;
+//   champions     each feeder's top eligible side, a knockout between them
+//                 (random draw, a bye when odd, neutral, a draw = penalties
+//                 50/50); the winner goes up;
+//   playoff       the champions who lost + places playoff_from..to of the
+//                 eligible from each feeder, the same knockout; the winner
+//                 then plays our group-playoff winner (feeder_stay_up_pct).
+// The feeders' averages are taken as equal when they meet (no game links
+// them).
 json outlookJson(Database* db, const std::string& cid, int sims, double prior, double feederStayUpPct,
                  const std::string& ourPattern, std::mt19937_64& rng) {
     json out = {{"seasons", json::array()}, {"feeders", json::array()}};
@@ -86,89 +98,167 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
             " WHERE competition_id = $1::int ORDER BY sort_order, season", {cid}))
         out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"down", num(r, "relegated")},
                                   {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
+    auto rr = db->query("SELECT champion_rank, playoff_from_rank, playoff_to_rank, champion_losers_to_playoff, playoff_winner_meets_survivor, "
+                        "       skip_reserves, skip_other_conference FROM pyramid_promotion_rules WHERE competition_id = $1::int", {cid});
+    if (rr.empty()) return out;
+    const int champRank = rr[0]["champion_rank"].as<int>(), poFrom = rr[0]["playoff_from_rank"].as<int>(), poTo = rr[0]["playoff_to_rank"].as<int>();
+    const bool losersIn = rr[0]["champion_losers_to_playoff"].as<bool>(), meets = rr[0]["playoff_winner_meets_survivor"].as<bool>();
+    const bool skipRes = rr[0]["skip_reserves"].as<bool>(), skipConf = rr[0]["skip_other_conference"].as<bool>();
+    const double winSurvivor = meets ? (100.0 - feederStayUpPct) / 100.0 : 1.0;
+    out["rules"] = {{"champion_rank", champRank}, {"playoff_from", poFrom}, {"playoff_to", poTo}, {"losers_in", losersIn},
+                    {"meets_survivor", meets}, {"win_survivor", r3(winSurvivor)}};
+
+    struct FT { int id = 0; std::string ext, name, skip, skipArg; bool ours = false; double att = 1, def = 1; int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0, left = 0; };
+    struct Feeder { std::string label; int sourceId = 0; double avg = 1.5, home = 1.0; std::vector<FT> t; std::vector<FitRes> done; std::vector<std::pair<int, int>> left; int played = 0; };
+    std::vector<Feeder> feeders;
     for (const auto& f : db->query(
-            "SELECT fixture_source_id, division_label, label, auto_places, playoff_places FROM pyramid_feeder_sources "
-            " WHERE competition_id = $1::int ORDER BY sort_order, id", {cid})) {
-        std::vector<std::string> names; std::map<std::string, int> idx;
-        std::vector<FitRes> done; std::vector<std::pair<int, int>> left;
+            "SELECT l.lower_source_id, d.id AS div_id, split_part(d.external_id, ':', 1) AS ext, COALESCE(c.short_name, c.name) AS comp, d.name AS div "
+            "  FROM pyramid_links l JOIN pyramid_sources s ON s.id = l.lower_source_id AND s.is_active "
+            "  JOIN pyramid_competitions c ON c.id = s.competition_id "
+            "  JOIN pyramid_divisions d ON d.source_id = l.lower_source_id AND d.name = l.lower_division AND d.removed_at IS NULL "
+            " WHERE l.upper_competition_id = $1::int AND l.promotes ORDER BY c.sort_order, c.name", {cid})) {
+        Feeder F; F.label = str(f, "comp") + " " + str(f, "div"); F.sourceId = f["lower_source_id"].as<int>();
+        PyramidSync::refreshIfGameDue(F.sourceId);
+        std::map<std::string, int> byExt;
+        for (const auto& r : db->query(R"SQL(
+                SELECT t.id, t.external_id, t.name,
+                       EXISTS (SELECT 1 FROM pyramid_teams t2 JOIN pyramid_divisions d2 ON d2.id = t2.division_id AND d2.removed_at IS NULL
+                                 JOIN pyramid_competitions c2 ON c2.id = d2.competition_id AND c2.kind = 'conference'
+                                WHERE t2.pyramid_club_id = t.pyramid_club_id AND t2.removed_at IS NULL AND t2.id <> t.id) AS reserve,
+                       (SELECT reason FROM pyramid_promotion_exclusions x WHERE x.competition_id = $2::int AND x.pyramid_club_id = t.pyramid_club_id) AS hand,
+                       (SELECT COALESCE(oc.short_name, oc.name) FROM pyramid_team_nearest_conference n JOIN pyramid_competitions oc ON oc.id = n.conference_id
+                         WHERE n.team_id = t.id AND n.conference_id <> $2::int LIMIT 1) AS other_conf,
+                       ($3 <> '' AND t.name ILIKE $3) AS ours
+                  FROM pyramid_teams t WHERE t.division_id = $1::int AND t.removed_at IS NULL ORDER BY t.position, t.name)SQL",
+                {std::to_string(f["div_id"].as<int>()), cid, ourPattern})) {
+            FT t; t.id = r["id"].as<int>(); t.ext = str(r, "external_id"); t.name = str(r, "name"); t.ours = r["ours"].as<bool>();
+            if (!r["hand"].is_null()) { t.skip = "hand"; t.skipArg = str(r, "hand"); }
+            else if (skipRes && r["reserve"].as<bool>()) t.skip = "reserve";
+            else if (skipConf && !r["other_conf"].is_null()) { t.skip = "conf"; t.skipArg = str(r, "other_conf"); }
+            byExt[t.ext] = (int)F.t.size(); F.t.push_back(t);
+        }
         for (const auto& g : db->query(
-                "SELECT home_name, away_name, home_score, away_score FROM league_fixtures "
-                " WHERE source_id = $1::int AND division_label = $2 AND removed_at IS NULL AND status <> 'cancelled' ORDER BY starts_at",
-                {std::to_string(f["fixture_source_id"].as<int>()), str(f, "division_label")})) {
-            int ix[2];
-            for (int k = 0; k < 2; ++k) {
-                const std::string nm = str(g, k ? "away_name" : "home_name");
-                auto it = idx.find(nm);
-                if (it == idx.end()) { it = idx.emplace(nm, (int)names.size()).first; names.push_back(nm); }
-                ix[k] = it->second;
-            }
-            if (ix[0] == ix[1]) continue;
-            if (!g["home_score"].is_null() && !g["away_score"].is_null()) done.push_back({ix[0], ix[1], g["home_score"].as<int>(), g["away_score"].as<int>()});
-            else left.push_back({ix[0], ix[1]});
+                "SELECT home_ext, away_ext, complete, home_score, away_score FROM pyramid_games "
+                " WHERE source_id = $1::int AND division_ext = $2 AND removed_at IS NULL AND NOT cancelled", {std::to_string(F.sourceId), str(f, "ext")})) {
+            auto h = byExt.find(str(g, "home_ext")), a = byExt.find(str(g, "away_ext"));
+            if (h == byExt.end() || a == byExt.end() || h->second == a->second) continue;
+            if (g["complete"].as<bool>() && !g["home_score"].is_null() && !g["away_score"].is_null())
+                F.done.push_back({h->second, a->second, g["home_score"].as<int>(), g["away_score"].as<int>()});
+            else { F.left.push_back({h->second, a->second}); F.t[h->second].left++; F.t[a->second].left++; }
         }
-        const int n = (int)names.size();
-        if (!n) continue;
-        double avg = 1.5, home = 1.0; std::vector<double> att, def;
-        fitMaher(n, done, prior, avg, home, att, def);
-        struct Row { int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0; };
-        auto tableOf = [&](const std::vector<FitRes>& rs) {
-            std::vector<Row> t(n);
-            for (const auto& r : rs) {
-                Row& H = t[r.h]; Row& A = t[r.a];
-                H.p++; A.p++; H.gf += r.hs; H.ga += r.as; A.gf += r.as; A.ga += r.hs;
-                if (r.hs > r.as) { H.w++; A.l++; H.pts += 3; } else if (r.hs < r.as) { A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; }
+        if (F.t.empty()) continue;
+        std::vector<double> att, def;
+        fitMaher((int)F.t.size(), F.done, prior, F.avg, F.home, att, def);
+        for (size_t i = 0; i < F.t.size(); ++i) { F.t[i].att = att[i]; F.t[i].def = def[i]; }
+        F.played = (int)F.done.size();
+        feeders.push_back(std::move(F));
+    }
+    if (feeders.empty()) return out;
+
+    struct Row { int pts = 0, gd = 0, gf = 0; };
+    auto rankOf = [&](const Feeder& F, const std::vector<FitRes>& rs, bool lot) {
+        const int n = (int)F.t.size();
+        std::vector<Row> t(n);
+        for (const auto& r : rs) {
+            t[r.h].gf += r.hs; t[r.a].gf += r.as; t[r.h].gd += r.hs - r.as; t[r.a].gd += r.as - r.hs;
+            if (r.hs > r.as) t[r.h].pts += 3; else if (r.hs < r.as) t[r.a].pts += 3; else { t[r.h].pts++; t[r.a].pts++; }
+        }
+        std::vector<int> l(n); for (int i = 0; i < n; ++i) l[i] = i;
+        if (lot) std::shuffle(l.begin(), l.end(), rng);
+        std::stable_sort(l.begin(), l.end(), [&](int a, int b) {
+            if (t[a].pts != t[b].pts) return t[a].pts > t[b].pts;
+            if (t[a].gd != t[b].gd) return t[a].gd > t[b].gd;
+            return t[a].gf > t[b].gf;
+        });
+        return l;
+    };
+    std::uniform_real_distribution<double> U(0.0, 1.0);
+    using Side = std::pair<int, int>;   // feeder, team
+    auto meet = [&](Side x, Side y) {   // neutral; a draw = penalties 50/50
+        const Feeder& A = feeders[x.first]; const Feeder& B = feeders[y.first];
+        const double base = std::sqrt(A.avg * B.avg);
+        std::poisson_distribution<int> px(base * A.t[x.second].att * B.t[y.second].def), py(base * B.t[y.second].att * A.t[x.second].def);
+        const int gx = px(rng), gy = py(rng);
+        return gx > gy || (gx == gy && U(rng) < 0.5);
+    };
+    // knockout: random draw, a bye when odd; returns the winner and the losers
+    auto knockout = [&](std::vector<Side> v, std::vector<Side>* losers) {
+        std::shuffle(v.begin(), v.end(), rng);
+        while (v.size() > 1) {
+            std::vector<Side> next;
+            size_t i = 0;
+            if (v.size() % 2) next.push_back(v[i++]);
+            for (; i + 1 < v.size(); i += 2) {
+                const bool first = meet(v[i], v[i + 1]);
+                next.push_back(first ? v[i] : v[i + 1]);
+                if (losers) losers->push_back(first ? v[i + 1] : v[i]);
             }
-            return t;
-        };
-        auto ranked = [&](const std::vector<Row>& t, bool lot) {
-            std::vector<int> l(n); for (int i = 0; i < n; ++i) l[i] = i;
-            if (lot) std::shuffle(l.begin(), l.end(), rng);
-            else std::sort(l.begin(), l.end(), [&](int a, int b) { return names[a] < names[b]; });
-            std::stable_sort(l.begin(), l.end(), [&](int a, int b) {
-                if (t[a].pts != t[b].pts) return t[a].pts > t[b].pts;
-                if (t[a].gf - t[a].ga != t[b].gf - t[b].ga) return t[a].gf - t[a].ga > t[b].gf - t[b].ga;
-                return t[a].gf > t[b].gf;
-            });
-            return l;
-        };
-        const int autoN = f["auto_places"].as<int>(), poN = f["playoff_places"].as<int>();
-        const double winPo = (100.0 - feederStayUpPct) / 100.0;
-        std::vector<int> first(n, 0), autoUp(n, 0), po(n, 0);
-        std::vector<double> ptsSum(n, 0);
-        std::vector<FitRes> rs = done;
-        for (int s = 0; s < sims; ++s) {
-            rs.resize(done.size());
-            for (const auto& [h, a] : left) {
-                std::poisson_distribution<int> ph(avg * home * att[h] * def[a]), pa(avg / home * att[a] * def[h]);
-                rs.push_back({h, a, ph(rng), pa(rng)});
+            v = next;
+        }
+        return v.empty() ? Side{-1, -1} : v[0];
+    };
+
+    std::vector<std::vector<int>> champ(feeders.size()), autoUp(feeders.size()), inPo(feeders.size()), winPo(feeders.size());
+    std::vector<std::vector<double>> up(feeders.size());
+    std::vector<std::vector<long>> ptsSum(feeders.size());
+    for (size_t k = 0; k < feeders.size(); ++k) {
+        const size_t n = feeders[k].t.size();
+        champ[k].assign(n, 0); autoUp[k].assign(n, 0); inPo[k].assign(n, 0); winPo[k].assign(n, 0); up[k].assign(n, 0); ptsSum[k].assign(n, 0);
+    }
+    std::vector<std::vector<FitRes>> rs(feeders.size());
+    for (int s = 0; s < sims; ++s) {
+        std::vector<Side> champs, po;
+        for (size_t k = 0; k < feeders.size(); ++k) {
+            const Feeder& F = feeders[k];
+            rs[k] = F.done;
+            for (const auto& [h, a] : F.left) {
+                std::poisson_distribution<int> ph(F.avg * F.home * F.t[h].att * F.t[a].def), pa(F.avg / F.home * F.t[a].att * F.t[h].def);
+                rs[k].push_back({h, a, ph(rng), pa(rng)});
             }
-            const auto t = tableOf(rs);
-            const auto l = ranked(t, true);
-            for (int i = 0; i < n; ++i) {
-                const int x = l[i]; ptsSum[x] += t[x].pts;
-                if (i == 0) first[x]++;
-                if (i < autoN) autoUp[x]++; else if (i < autoN + poN) po[x]++;
+            for (const auto& r : rs[k]) {
+                ptsSum[k][r.h] += r.hs > r.as ? 3 : r.hs == r.as ? 1 : 0;
+                ptsSum[k][r.a] += r.as > r.hs ? 3 : r.hs == r.as ? 1 : 0;
+            }
+            int rank = 0;
+            for (int x : rankOf(F, rs[k], true)) {
+                if (!F.t[x].skip.empty()) continue;
+                ++rank;
+                if (rank == champRank) { champs.push_back({(int)k, x}); champ[k][x]++; }
+                else if (rank >= poFrom && rank <= poTo) po.push_back({(int)k, x});
             }
         }
-        const double S = sims > 0 ? sims : 1;
-        const auto now = tableOf(done);
-        const auto order = ranked(now, false);
-        json teamsJ = json::array();
-        for (int i = 0; i < n; ++i) {
-            const int x = order[i]; const Row& r = now[x];
-            int gLeft = 0; for (const auto& [h, a] : left) if (h == x || a == x) gLeft++;
-            json tj = {{"name", names[x]}, {"pos", i + 1}, {"p", r.p}, {"w", r.w}, {"d", r.d}, {"l", r.l}, {"gf", r.gf}, {"ga", r.ga},
-                       {"pts", r.pts}, {"left", gLeft}, {"att", r2(att[x])}, {"def", r2(def[x])}, {"rating", r2(att[x] / def[x])},
-                       {"xpts", r1(ptsSum[x] / S)}, {"first", r3(first[x] / S)}, {"playoff", r3(po[x] / S)},
-                       {"up", r3((autoUp[x] + winPo * po[x]) / S)}};
-            if (!ourPattern.empty()) {
-                auto m = db->query("SELECT $1 ILIKE $2 AS m", {names[x], ourPattern});
-                if (!m.empty() && m[0]["m"].as<bool>()) tj["ours"] = true;
+        std::vector<Side> lost;
+        const Side w = knockout(champs, &lost);
+        if (w.first >= 0) { autoUp[w.first][w.second]++; up[w.first][w.second] += 1.0; }
+        if (losersIn) po.insert(po.end(), lost.begin(), lost.end());
+        for (const auto& x : po) inPo[x.first][x.second]++;
+        const Side pw = knockout(po, nullptr);
+        if (pw.first >= 0) { winPo[pw.first][pw.second]++; up[pw.first][pw.second] += winSurvivor; }
+    }
+
+    const double S = sims > 0 ? sims : 1;
+    for (size_t k = 0; k < feeders.size(); ++k) {
+        const Feeder& F = feeders[k];
+        json tj = json::array();
+        int elig = 0;
+        for (int x : rankOf(F, F.done, false)) {
+            const FT& t = F.t[x];
+            int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0;
+            for (const auto& r : F.done) {
+                if (r.h != x && r.a != x) continue;
+                const int us = r.h == x ? r.hs : r.as, them = r.h == x ? r.as : r.hs;
+                p++; gf += us; ga += them; if (us > them) w++; else if (us < them) l++; else d++;
             }
-            teamsJ.push_back(tj);
+            json j = {{"name", t.name}, {"p", p}, {"w", w}, {"d", d}, {"l", l}, {"gf", gf}, {"ga", ga}, {"pts", 3 * w + d}, {"left", t.left},
+                      {"att", r2(t.att)}, {"def", r2(t.def)}, {"rating", r2(t.att / t.def)}, {"xpts", r1(ptsSum[k][x] / S)},
+                      {"champ", r3(champ[k][x] / S)}, {"auto", r3(autoUp[k][x] / S)}, {"in_playoff", r3(inPo[k][x] / S)},
+                      {"win_playoff", r3(winPo[k][x] / S)}, {"up", r3(up[k][x] / S)}};
+            if (t.skip.empty()) j["elig"] = ++elig;
+            else { j["skip"] = t.skip; if (!t.skipArg.empty()) j["skip_arg"] = t.skipArg; }
+            if (t.ours) j["ours"] = true;
+            tj.push_back(j);
         }
-        out["feeders"].push_back({{"label", str(f, "label")}, {"auto", autoN}, {"playoff", poN}, {"win_playoff", r3(winPo)},
-                                  {"played", (int)done.size()}, {"left", (int)left.size()}, {"avg_goals", r2(avg)}, {"teams", teamsJ}});
+        out["feeders"].push_back({{"label", F.label}, {"played", F.played}, {"left", (int)F.left.size()}, {"avg_goals", r2(F.avg)}, {"teams", tj}});
     }
     return out;
 }
