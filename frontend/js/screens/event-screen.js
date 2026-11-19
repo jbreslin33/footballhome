@@ -159,15 +159,21 @@ class EventScreen extends Screen {
     // per team, oldest first (U12 → U10 → U8; adult teams keep the event's
     // order), its players as pills in the team colour, smaller as the count
     // grows so everyone fits.  Halfway line + crest between the bands.
-    const pill = players.length > 36 ? { fs: 11, pad: '2px 7px' } : players.length > 20 ? { fs: 13, pad: '3px 8px' } : { fs: 15, pad: '4px 10px' };
+    // Boxes, like the game card (owner 11/19 "make the practice look like
+    // game with boxes"): name on top, the team colour as the border.  A
+    // practice has no criterion to show, so for staff the box carries the
+    // roll instead — P / A / L / E on its front from the event's day on
+    // ("needs an easy way to do attendance right on front of box"); a
+    // marked box takes the status colour.  The name stays a tap → the
+    // person sheet.
     const band = (b) => {
       const c = color(b.team);
       return `<div style="padding:4px 0;">
           <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:5px;">
             <span style="font-size:13px; letter-spacing:3px; font-weight:800; text-transform:uppercase;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
             <span style="font-size:13px; font-weight:800; color:#f5d442;">${b.rows.length}</span></div>
-          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
-            ${b.rows.map(x => `<span ${tap(x.r)}style="font-size:${pill.fs}px; font-weight:700; line-height:1.2; padding:${pill.pad}; border-radius:999px; background:${c}; color:#fff; border:1.5px solid #fff; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${esc(short(x.r))}${x.also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${esc(x.also.join(' +'))}</span>` : ''}</span>`).join('')}
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px;">
+            ${b.rows.map(x => this._cardBoxHtml(x.r, short(x.r), c, x.also)).join('')}
           </div></div>`;
     };
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -193,6 +199,44 @@ class EventScreen extends Screen {
         ${this._cardOutHtml()}
       </div>`;
   }
+
+  // One player box on an event card (practice, pickup …): the game card's
+  // box look (SocialPostCard live boxes) — dark fill, coloured border, name
+  // in bold — plus the roll on its front for staff (_boxAttHtml).
+  _cardBoxHtml(r, name, teamColor, also = []) {
+    const pid = Number(r && r.person_id);
+    const st = this._boxAttStatus(pid);
+    const border = st ? st.color : teamColor;
+    const tap = this._cardTapAttr(r);
+    return `<div style="flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:3px; padding:4px 4px 5px; border-radius:8px; border:2px solid ${border}; background:rgba(0,20,60,0.55);">
+        <div ${tap}style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; overflow-wrap:anywhere; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${this.escapeHtml(name)}${also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${this.escapeHtml(also.join(' +'))}</span>` : ''}</div>
+        ${this._boxAttHtml(pid)}
+      </div>`;
+  }
+
+  // The roll on the front of a box — P / A / L / E, the lit one tapped
+  // again clears it (the same POST/DELETE as the players list).  Staff
+  // (Viewer canMark), people on the attendance roster, once the roll is
+  // open (_boxAttOpen: a practice from its day, a game from kick-off).
+  _boxAttHtml(personId) {
+    if (!personId || !this.att || !this.viewer.canMark() || !this._boxAttOpen()) return '';
+    if (!this.att.roster.has(personId)) return '';
+    const status = (this.att.roster.get(personId) || {}).status;
+    const saving = this.saving.has(`att:${personId}`);
+    return `<div style="display:flex; gap:3px;">${EventScreen.ATTENDANCE.map(s => {
+      const on = status === s.id;
+      return `<button type="button" data-ec-att="${s.id}" data-person-id="${personId}" data-active="${on ? '1' : '0'}" ${saving ? 'disabled ' : ''}title="${on ? `${s.label} — tap to clear` : s.label}"
+          style="flex:1 1 0; min-width:0; height:24px; padding:0; border-radius:5px; border:1.5px solid ${s.color}; background:${on ? s.color : 'rgba(0,0,0,0.25)'}; color:${on ? '#fff' : s.color}; font-size:12px; font-weight:900; line-height:1; cursor:${saving ? 'wait' : 'pointer'};">${s.letter}</button>`;
+    }).join('')}</div>`;
+  }
+  // The marked status (ATTENDANCE entry) for the box border — staff only,
+  // and only once the roll is open; null otherwise.
+  _boxAttStatus(personId) {
+    if (!personId || !this.att || !this.viewer.canMark() || !this._boxAttOpen()) return null;
+    const status = (this.att.roster.get(personId) || {}).status;
+    return EventScreen.ATTENDANCE.find(s => s.id === status) || null;
+  }
+  _boxAttOpen() { return this._eventDayReached(); }
 
   // – No response / ✗ Not going under the card, as the game card has them
   // under its substitutes (owner 11/18 "similar to game").

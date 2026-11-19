@@ -2940,6 +2940,13 @@ class GameCenterScreen extends EventScreen {
     return Date.now() >= d.getTime();
   }
 
+  // A game's roll opens at kick-off (owner 11/19 "game needs it too after
+  // game starts"); a practice's from its day (EventScreen).
+  _boxAttOpen() {
+    const d = new Date(this.ev && this.ev.starts_at);
+    return isNaN(d) ? false : Date.now() >= d.getTime();
+  }
+
   _gameAttendanceHtml(playerId) {
     if (!this.att || !this.viewer.canMark() || !this._gameDayReached()) return '';
     const personId = this._personIdFor(playerId);

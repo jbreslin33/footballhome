@@ -278,8 +278,11 @@ class GameCenterEligibility {
       const behind = rate > 0 ? owed >= rate : owed > 0;
       bits.push(`<span style="color:${behind ? '#f87171' : '#4ade80'};">${this.escapeHtml(text)}</span>`);
     }
-    if (!bits.length) return '';
-    return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;display:flex;flex-wrap:wrap;gap:1px 5px;justify-content:center;">${bits.join('')}</div>`;
+    // The roll on the front of the box from kick-off, staff only (owner
+    // 11/19 "game needs it too after game starts") — EventScreen._boxAttHtml.
+    const att = this._boxAttHtml(this._personIdFor(playerId));
+    if (!bits.length) return att;
+    return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;display:flex;flex-wrap:wrap;gap:1px 5px;justify-content:center;">${bits.join('')}</div>${att}`;
   }
 
   // ── Hooks a game kind fills (MensGameScreen adds the practice week;
