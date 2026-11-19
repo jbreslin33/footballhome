@@ -159,6 +159,8 @@ struct PossessionParams {
     // mean-fitted width each. [zone][near/far][role]: the share against one roll a man a spell; rolled, his spot is touch_m_max x
     // u^1.5 off the line (real within-5 m: a quarter inside 0.6 m, ~60% inside 2.2 m). touch_on 0 = off.
     math::Fixed64 touch_p[3][3][2][kRoleCount]{}, touch_m_max{};   // [ball band][spell age 0-3/3-8/8+ s (G5.170)][near/far][role]
+    math::Fixed64 touch_fb_ahead[2][3][3]{};   // G5.174 (§8.280): a FB on his touchline, m ahead of the ball [near/far][ball band][spell age]
+    bool touch_fb_depth = true, touch_fb_run = true;
     bool touch_on = true, touch_latch = true;   // G5.171: once on his line, he keeps it the spell
     bool drift_on = true;   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
     bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)

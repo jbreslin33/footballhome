@@ -11202,3 +11202,36 @@ his m off the line by spell age.
 Next: the near FB's depth with the ball in our half (DFL: his m ahead of / behind the ball and off his line, ball 70 m+ out,
 settled spells) against ours — real full-backs push high and wide while the centre-backs build; ours hold a Hold depth
 from the line table and walk up behind it. Harness lines only; goldens unchanged.
+
+### 8.280 G5.174 — a full-back on his touchline stands at the real height from the ball, and pushes on to it (shipped)
+
+From §8.279's "next". New `benchmarks_tracking_fbdepth.py` (DFL, every 5 Hz frame of a spell, the side on the ball's FBs):
+m ahead of the ball, m off his touchline, speed, by side × ball band × spell age; same cut in fh-game-match as **FB DEPTH**.
+
+**Real full-backs build high and wide.** Ball in our deep half (70 m+ off the goal line attacked), 8 s+: the near FB a
+median 18.5 m ahead of the ball and 3.1 m off his line (65% within 5 m); those on the line 20.2 m ahead; the far FB 18.9
+ahead, 6.4 off. Ball 35-70 m out, 8 s+: near 3.0 ahead, on the line 57%, the on-line men 8.5 ahead. Speed: in the push-on
+(3-8 s) real FBs are at 2-4 m/s 38-41% of frames, 4+ 16-25%; settled (8 s+, our half) they slow (median ~1.6). Ours:
+on-line FBs 10.5-12.8 m ahead (ball in our half, 8 s+), −0.4 (35-70); on the line 43-45 / 41%. Our touchline spot kept the
+base depth from the line table, and the rolled FB trailed it 7.8 m at the Hold walk (G5.137, ~1.5 m/s far from the ball).
+
+**Rule** (`Possession::spot` touchline branch, `physics.touch.fb_ahead_<near|far>_<band>_<age>`, `fb_depth`; `Brain`
+`physics.touch.fb_run`): a FB whose spot is his touchline stands at the real median offset from the ball for those on
+the line (near: ball 0-35 −3.1 / −2.3 / −1.3 m by age, 35-70 −0.5 / 1.1 / 8.5, 70+ 8.8 / 14.5 / 20.2; far 17.3 / 13.6 /
+14.2 and 15.5 / 19.4 / 23.8 ball 35 m+), never past their offside line + 1 m; and he is not held to the Hold walk — he is
+pushing on, not easing into a spot. Coaching: "full-backs high and wide when the centre-backs have it" [FH].
+
+| near FB, 8 s+ (2-4 seeds × 8) | real | G5.172 | depth only | **depth + no walk cap** |
+|---|---|---|---|---|
+| ball in our half: on the line / on-line m ahead of the ball | 65% / 20.2 | 43-45 / 10.5-12.8 | 41-42 / 15.7-16.8 | **55-59 / 15.4-17.3** |
+| ball 35-70 m: on the line / on-line ahead | 57% / 8.5 | 41 / −0.4 | 41-42 / 0.4-0.7 | 48-50 / 1.4-1.8 |
+| rolled FB gap to target along / across, speed | | 7.8 / 3.4, 2.0 m/s | 11.7 / 3.6, 2.2 | 9.2 / 1.3-1.4, 3.3 |
+| widest within 5 m at a kick, ball's side / far | 62.0 / 22.7 | 44.7-46.8 / 21.8-23.6 | 43.7-44.2 / 21.9-23.3 | **48.3-48.8 / 26.7-27.5** |
+
+Card 7 / 7 / 19 → **9 ok / 4 off / 20 OFF** (`card_G5.174.txt`): fouls, tackles, shots 18-25 m share to ok, switches 8.7 →
+9.6 (10.7, off); scored from 12-18 m to OFF (11.6 → 15.8%, 9.3), shots-off-target share to OFF. Off-the-ball speed bands
+unchanged (15.4-16.3 / 30-33 / 39-41 / 12-13% v 13.4 / 34.6 / 38.4 / 13.6). Depth only (the walk cap kept) moved the
+target and not the man (he trailed it 11.7 m): not taken alone. Open: our rolled FB runs 3.3 m/s median — the real
+push-on pace, faster than real settled FBs; the far side now a little over (27 v 22.7); at 35-70 m the on-line FB still
+stands level with the ball (1.4-1.8 m ahead v 8.5). Goldens unchanged (the golden match never puts a FB on the touchline
+spot); tests 23/23, lint clean.

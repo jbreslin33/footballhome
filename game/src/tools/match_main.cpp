@@ -114,6 +114,7 @@ struct Stats {
     struct WpCell { std::vector<double> d0, dt[5], vt[5], tt, pace, peak; long far0 = 0, reach = 0; };   // §8.275 WIDE PACE
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
+    std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
     long wng[2][4] = {};   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
     long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap, th_gx, th_gy, th_v, th_age[3];   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
@@ -880,6 +881,17 @@ int main(int argc, char** argv) {
                             }
                         }
                     }
+                }
+            }
+            if (k % 6 == 0 && S.wps_tm >= 0) {   // §8.280 G5.174 FB DEPTH (benchmarks_tracking_fbdepth.py): every 0.2 s of a spell, each FB of the side on it
+                const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble(), gd = S.wps_tm == 0 ? 1.0 : -1.0;
+                const double gl = hx - bx * gd; const int z = gl < 35 ? 0 : gl < 70 ? 1 : 2;
+                const double ag = (static_cast<long>(k) - S.wps_k0) / 30.0; const int ab = ag < 3 ? 0 : ag < 8 ? 1 : 2;
+                for (std::uint8_t j = 0; j < N; ++j) {
+                    if ((W.player(j).team & 1) != S.wps_tm || W.isKeeper(j) || role(j) != 1) continue;
+                    const double px = W.player(j).pos.x.toDouble(), py = W.player(j).pos.y.toDouble();
+                    const int sd = (py >= 0) == (by >= 0) ? 0 : 1; const double a = (px - bx) * gd, o = hy - std::fabs(py);
+                    S.fbd_a[sd][z][ab].push_back(a); S.fbd_o[sd][z][ab].push_back(o); if (o < 5) S.fbd_a5[sd][z][ab].push_back(a);
                 }
             }
             if (k % 6 == 0) {   // §8.277 G5.171 TOUCH HOLD: each FB of the side on the ball whose spot is the touchline (branch 8, holding): how long he keeps it, why it ends, does he get there
@@ -3117,6 +3129,18 @@ int main(int argc, char** argv) {
             for (int oc = 0; oc < 2; ++oc) { const double n = std::max(1L, S.wng[oc][0]), o = std::max(1L, S.wng[oc][2]);
                 std::printf("      WING (%s origin, completed passes into a wide zone, n %ld): far %.0f permille (DFL %.0f); its far wing held a mate %.0f%% (%.0f); far given a mate there %.0f (%.0f)\n",
                             oc ? "wide" : "centre", S.wng[oc][0], 1000.0 * S.wng[oc][1] / n, rw[oc][0], 100.0 * S.wng[oc][2] / n, rw[oc][1], 1000.0 * S.wng[oc][3] / o, rw[oc][2]); }
+        }
+        {   // §8.280 FB DEPTH (DFL: ahead med, off med, within 5 m %; ahead of those within 5 m)
+            static const double rr[2][3][3][4] = {
+                {{{-12.6, 13.0, 24, -3.1}, {-15.8, 11.3, 17, -2.3}, {-8.8, 8.9, 26, -1.3}}, {{-4.7, 11.3, 23, -0.5}, {-3.6, 9.6, 26, 1.1}, {3.0, 3.9, 57, 8.5}}, {{1.8, 14.7, 19, 8.8}, {8.5, 8.9, 34, 14.5}, {18.5, 3.1, 65, 20.2}}},
+                {{{-18.1, 25.0, 0, -14.2}, {-21.2, 22.4, 1, -4.5}, {-16.8, 17.6, 3, -7.2}}, {{-7.4, 24.1, 3, 17.3}, {-6.2, 19.4, 9, 13.6}, {5.1, 8.3, 35, 14.2}}, {{3.8, 26.3, 6, 15.5}, {11.8, 15.8, 15, 19.4}, {18.9, 6.4, 42, 23.8}}}};
+            auto qd = [](std::vector<double> a, double p) { if (a.empty()) return -99.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };
+            static const char* const zn[3] = {"0-35", "35-70", "70+"}; static const char* const an[3] = {"0-3", "3-8", "8+"};
+            std::printf("      FB DEPTH, every 0.2 s of a spell, the side on the ball's FBs: m ahead of the ball med | m off his line med, within 5 m %% | those within 5 m: ahead med (DFL)\n");
+            for (int sd = 0; sd < 2; ++sd) for (int z = 0; z < 3; ++z) for (int a = 0; a < 3; ++a) {
+                const auto& o = S.fbd_o[sd][z][a]; long n5 = 0; for (double x : o) n5 += x < 5;
+                std::printf("        %-4s %-5s %-3s | %5.1f (%5.1f) | %4.1f (%4.1f), %3.0f (%2.0f) | %5.1f (%5.1f)\n", sd ? "far" : "near", zn[z], an[a], qd(S.fbd_a[sd][z][a], .5), rr[sd][z][a][0],
+                            qd(o, .5), rr[sd][z][a][1], 100.0 * n5 / std::max<std::size_t>(1, o.size()), rr[sd][z][a][2], qd(S.fbd_a5[sd][z][a], .5), rr[sd][z][a][3]); }
         }
         {   // §8.277 TOUCH HOLD
             auto qd = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };

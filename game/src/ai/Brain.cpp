@@ -891,7 +891,9 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     // ours 19% (DFL, §8.238): our spots move 4.8 m/s, mostly to and fro, and
     // every man tracked them. Run when the ball goes forward [FH coaching].
     Fixed64 walk_cap = Fixed64::zero();
-    if (o.why == Why::Hold && !danger && hold_walk_m_.raw > 0) {
+    // G5.174 (§8.280): a FB on his touchline is pushing on, not easing into a spot — no walk cap (physics.touch.fb_walk 0)
+    const bool touch_push = poss_.params().touch_fb_depth && poss_.params().touch_fb_run && poss_.spotBranch(slot) == 8 && roleOf(slot) == Role::FB;
+    if (o.why == Why::Hold && !danger && hold_walk_m_.raw > 0 && !touch_push) {
         const auto& b = world.ball();
         const std::uint8_t team = setup_.team_of_slot[slot];
         const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team

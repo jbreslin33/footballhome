@@ -1545,6 +1545,16 @@ void PossessionParams::configure(const core::ModelParams& p) {
         touch_m_max = p.fixed("physics.touch.m_max", 4500);
         touch_on = p.fixed("physics.touch.on", 1000).raw > 0;
         touch_latch = p.fixed("physics.touch.latch", 1000).raw > 0;   // G5.171 (§8.277)
+        // G5.174 (§8.280): DFL (benchmarks_tracking_fbdepth.py, every 5 Hz frame of a spell), a FB within 5 m of his touchline
+        // stands this far ahead of the ball, median, m x 1000 [near / far][ball 0-35 / 35-70 / 70+ off their line][age 0-3 / 3-8 / 8+ s].
+        // Ours kept the base depth from the line table: with the ball in our half 8 s+ 10.5-12.8 m ahead (20.2); 35-70 m -0.4 (8.5).
+        static const int kAh[2][3][3] = {{{-3100, -2300, -1300}, {-500, 1100, 8500}, {8800, 14500, 20200}},
+                                         {{-14200, -4500, -7200}, {17300, 13600, 14200}, {15500, 19400, 23800}}};
+        static const char* sdk[2] = {"near", "far"};
+        for (int sd = 0; sd < 2; ++sd) for (int z = 0; z < 3; ++z) for (int a = 0; a < 3; ++a)
+            touch_fb_ahead[sd][z][a] = p.fixed(std::string("physics.touch.fb_ahead_") + sdk[sd] + "_" + std::to_string(z) + "_" + std::to_string(a), kAh[sd][z][a]);
+        touch_fb_depth = p.fixed("physics.touch.fb_depth", 1000).raw > 0;
+        touch_fb_run = p.fixed("physics.touch.fb_run", 1000).raw > 0;   // G5.174: no Hold walk cap for him (Brain)
     }   // [FH, DFL]   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
@@ -1670,6 +1680,15 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             if (params_.touch_latch && v.slot < 32) touch_latch_[v.slot] = won_[v.team & 1] + 1;
             const Fixed64 u2 = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 111) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
             const Fixed64 d = params_.touch_m_max * u2 * math::fx_sqrt(u2);
+            if (params_.touch_fb_depth && v.role_ours == Role::FB) {
+                // G5.174 (§8.280): on his touchline a FB stands at the real offset from the ball (high and wide while the centre-backs
+                // build: ball in our half, 8 s+, 20 m ahead of it) — never past their offside line. [FH: "full-backs high and wide"]
+                x = off_their - params_.touch_fb_ahead[sd][z][ab];
+                const Fixed64 lim = hx - offsideLine(v.team, world, team_of_slot) + Fixed64::one();
+                if (x < lim) x = lim;
+                if (x.raw < 0) x = Fixed64::zero();
+                if (x > hx + hx - Fixed64::fromInt(5)) x = hx + hx - Fixed64::fromInt(5);
+            }
             if (v.slot < 32) spot_branch_[v.slot] = 8;   // §8.277 diag: the touchline (& 3 = 0, the base, for older lines)
             return Vec2{(hx - x) * v.sg, side * (world.pitchHalfY() - d)};
         }
