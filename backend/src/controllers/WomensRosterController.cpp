@@ -169,6 +169,11 @@ Response WomensRosterController::handleGet(const Request& request, const LaSyncM
         // ⭐/👀/🌐 pill data, same shape as the mens board (owner
         // 2026-10-22: the column category pills come to every section).
         RosterBoardExtras::attach(result.body, "womens-roster");
+        {   // financial info admin-only, contacts staff-only (2026-11-19)
+            bool admin = false, staff = false;
+            RosterBoardExtras::viewerFlags(bearerUserId(request), &admin, &staff);
+            RosterBoardExtras::redactForViewer(result.body, admin, staff);
+        }
         return Response(HttpStatus::OK, result.body.dump());
     } catch (const std::exception& e) {
         std::cerr << "WomensRosterController::handleGet error: " << e.what() << std::endl;

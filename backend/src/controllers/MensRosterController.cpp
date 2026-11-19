@@ -356,6 +356,11 @@ Response MensRosterController::handleGet(const Request& request, const LaSyncMap
         // ⭐/👀/🌐 pill data — shared with the Boys and Womens boards
         // (RosterBoardExtras, lifted from here 2026-10-22).
         RosterBoardExtras::attach(result.body, "mens-roster");
+        {   // financial info admin-only, contacts staff-only (2026-11-19)
+            bool admin = false, staff = false;
+            RosterBoardExtras::viewerFlags(bearerUserId(request), &admin, &staff);
+            RosterBoardExtras::redactForViewer(result.body, admin, staff);
+        }
         return Response(HttpStatus::OK, result.body.dump());
     } catch (const std::exception& e) {
         std::cerr << "MensRosterController::handleGet error: " << e.what() << std::endl;

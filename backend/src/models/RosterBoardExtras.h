@@ -23,4 +23,14 @@
 class RosterBoardExtras {
 public:
     static void attach(nlohmann::json& body, const char* logTag);
+
+    // Financial info is admin-only (owner 2026-11-18 "nobody except admin
+    // should be seeing financial info about anyone but themselves"); the
+    // board GETs only check a bearer, so every row went out to any signed-in
+    // member (found 11/19).  Strips money keys anywhere in the body unless
+    // the caller is a club admin; contact keys too unless staff (admin or
+    // an active coach).
+    static void redactForViewer(nlohmann::json& body, bool isAdmin, bool isStaff);
+    // Admin (club/super) and staff (admin or active team coach) for a user id.
+    static void viewerFlags(long long userId, bool* isAdmin, bool* isStaff);
 };

@@ -1,4 +1,4 @@
--- 1534 (2026-11-19) — A volunteer's dues read "vol", not $0 / paid
+-- 1539 (2026-11-19) — A volunteer's dues read "vol", not $0 / paid
 -- (owner: "so instead of paid if voluneter it soudl said vol right?").
 -- #teams team-card box (PersonStanding.boxLine) and the live game card's
 -- dues note (lineup_note_*).  Words only.

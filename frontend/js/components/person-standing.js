@@ -240,7 +240,9 @@
   // … with boxes and important info in the boxes"): two tiny lines under
   // the name — 👻 / 🙈 or the last RSVP date, then dues and the CASA form.
   // Same rules as html() / chip(); '' until loaded or for non-admins.
-  function boxLine(personId) {
+  // opts.paidAt: the board row's last payment (ISO) → "· 11/10" after the
+  // dues (owner 11/19 "also would like a date paid").
+  function boxLine(personId, opts = {}) {
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data) return '';
     const { activity: a, dues: d } = hit.data;
@@ -255,12 +257,15 @@
       top.push(s(last ? t('box_last', { date: last }, `R ${last}`) : t('box_never', {}, 'no RSVP'), last ? 'rgba(255,255,255,0.85)' : '#fca5a5',
                  a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Answered ${md(a.lastRsvp.at)}`) : ''));
     }
+    const paid = opts.paidAt ? md(opts.paidAt) : '';
+    const paidBit = paid ? s(t('box_paid_on', { date: paid }, paid), 'rgba(255,255,255,0.75)', t('box_paid_on_tip', { date: paid }, `Last payment ${paid}`)) : '';
     if (d) {
       if (d.free_reason === 'volunteer') bottom.push(s(t('box_dues_volunteer', {}, '🙋 vol'), '#cbd5e1'));   // mig 1534
       else if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
       else if (!d.member) bottom.push(s(t('box_dues_none', {}, 'no LA'), '#9ca3af'));
       else if (d.balance > 0) bottom.push(s(t('box_dues_owes', { amount: `$${Math.round(d.balance)}` }, `🔴 $${Math.round(d.balance)}`), d.months_behind >= 2 ? '#fca5a5' : '#fbbf24'));
       else bottom.push(s(t('box_dues_paid', {}, '🟢 paid'), '#86efac'));
+      if (paidBit && !d.free_reason) bottom.push(paidBit);
     }
     // Flag only (owner 11/19 "if not flagged then they are good"): ❌ when
     // he never filled the CASA form, nothing when he did.

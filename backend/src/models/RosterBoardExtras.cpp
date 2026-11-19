@@ -1,3 +1,4 @@
+#include <set>
 #include "RosterBoardExtras.h"
 
 #include <functional>
@@ -217,5 +218,56 @@ void RosterBoardExtras::attach(nlohmann::json& body, const char* logTag) {
                 {"monthlyDues", r["monthly"].is_null() ? 0.0 : r["monthly"].as<double>()}};
     } catch (const std::exception& e) {
         std::cerr << "[" << logTag << "] selection scores attach failed: " << e.what() << std::endl;
+    }
+}
+
+
+// ── Viewer redaction (2026-11-19) ─────────────────────────────────────
+namespace {
+const std::set<std::string>& moneyKeys() {
+    static const std::set<std::string> k{
+        "outstandingBalance", "paymentStatus", "lastPaidAt", "lastPaidAmount", "lastPaidType",
+        "lastPayments", "paymentsWindow", "paymentsWindowStart", "paymentsWindowTotal",
+        "nextBillAmount", "nextBillDate", "isDefault", "daysOverdue", "delinquencyState",
+        "lastPayReminder", "amount", "paidAt", "txnType", "balance", "dues", "duesOwed"};
+    return k;
+}
+const std::set<std::string>& contactKeys() {
+    static const std::set<std::string> k{"email", "phone", "parentEmail", "parentPhone", "parents"};
+    return k;
+}
+void redactWalk(nlohmann::json& j, bool money, bool contact) {
+    if (j.is_object()) {
+        for (auto it = j.begin(); it != j.end();) {
+            if ((money && moneyKeys().count(it.key())) || (contact && contactKeys().count(it.key()))) it = j.erase(it);
+            else { redactWalk(it.value(), money, contact); ++it; }
+        }
+    } else if (j.is_array()) {
+        for (auto& x : j) redactWalk(x, money, contact);
+    }
+}
+}  // namespace
+
+void RosterBoardExtras::redactForViewer(nlohmann::json& body, bool isAdmin, bool isStaff) {
+    if (isAdmin) return;
+    redactWalk(body, true, !isStaff);
+}
+
+void RosterBoardExtras::viewerFlags(long long userId, bool* isAdmin, bool* isStaff) {
+    *isAdmin = false; *isStaff = false;
+    if (userId <= 0) return;
+    try {
+        auto rows = Database::getInstance()->query(R"SQL(
+            SELECT EXISTS (SELECT 1 FROM admins a JOIN admin_levels l ON l.id = a.admin_level_id
+                            WHERE a.user_id = $1::int AND l.name IN ('club', 'super')) AS admin,
+                   EXISTS (SELECT 1 FROM users u JOIN coaches c ON c.person_id = u.person_id
+                             JOIN team_coaches tc ON tc.coach_id = c.id AND tc.ended_at IS NULL
+                            WHERE u.id = $1::int) AS coach)SQL", {std::to_string(userId)});
+        if (!rows.empty()) {
+            *isAdmin = rows[0]["admin"].as<bool>();
+            *isStaff = *isAdmin || rows[0]["coach"].as<bool>();
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[roster-board] viewer flags: " << e.what() << std::endl;   // fail closed: stripped
     }
 }
