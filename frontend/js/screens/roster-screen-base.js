@@ -1369,8 +1369,8 @@ class RosterScreenBase extends Screen {
           // at the foot either way; A–Z (data-tc-alpha) within.
           const flip = this._sortDesc ? -1 : 1;
           [...el.children].filter(c => c.hasAttribute('data-tc-pid'))
-            .map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
-            .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || x.a - y.a)
+            .map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), n: RosterScreenBase.commitPractices(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
+            .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || flip * (y.n - x.n) || x.a - y.a)
             .forEach(x => el.appendChild(x.c));
         });
         this.element.querySelectorAll('[data-tc-tally]').forEach(el => {
@@ -2486,6 +2486,13 @@ class RosterScreenBase extends Screen {
   // we sort asc" "so most commited"): most committed first — 0 up to date, 1 behind
   // on RSVP (not green), 2 behind on dues, 3 behind on both; 4 = not known
   // yet (PersonStanding not loaded / no access), always at the foot.
+  // Practices attended lately (mig 1555) — the tiebreak inside each group,
+  // most first (owner 11/19 "commited should also factor in number of
+  // practices attended in last 2 weeks").
+  static commitPractices(personId) {
+    const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(personId) : null;
+    return b ? b.practices : 0;
+  }
   static commitRank(personId) {
     const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(personId) : null;
     if (!b) return 4;
@@ -2560,7 +2567,9 @@ class RosterScreenBase extends Screen {
     };
     const alpha = (a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank;
     if (order === 'committed') {
-      return ranked.sort((a, b) => RosterScreenBase.commitRank(a.player.personId) - RosterScreenBase.commitRank(b.player.personId) || alpha(a, b));
+      return ranked.sort((a, b) => RosterScreenBase.commitRank(a.player.personId) - RosterScreenBase.commitRank(b.player.personId)
+        || RosterScreenBase.commitPractices(b.player.personId) - RosterScreenBase.commitPractices(a.player.personId)
+        || alpha(a, b));
     }
     if (order === 'paid') {
       const w = { owes: 0, none: 1, paid: 2 };

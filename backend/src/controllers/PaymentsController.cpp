@@ -951,6 +951,23 @@ Response PaymentsController::handleStanding(const Request& request) {
                       FROM fh_event_rsvps r, rsvp_box_policy bp
                      WHERE r.person_id = p.id AND r.created_via = 'manual'
                      GROUP BY bp.green_days, bp.yellow_days) AS rsvp_box,
+                   -- 🤝 Committed tiebreak + the box's P3 (owner 11/19
+                   -- "commited should also factor in number of practices
+                   -- attended in last 2 weeks"): present / late marks on
+                   -- practices that started in the policy window.
+                   -- Only practices of a team he is ON (a coach's youth
+                   -- practices don't count: Luke read 14 in 14 days).
+                   (SELECT count(DISTINCT a.fh_event_id) FROM fh_event_attendance a
+                      JOIN fh_events e ON e.id = a.fh_event_id AND e.kind = 'practice'
+                      JOIN gcal_events ge ON ge.id = e.gcal_event_id
+                     CROSS JOIN rsvp_box_policy bp
+                     WHERE a.person_id = p.id AND a.status IN ('present', 'late')
+                       AND ge.starts_at <= now()
+                       AND ge.starts_at >= now() - make_interval(days => bp.practice_days)
+                       AND EXISTS (SELECT 1 FROM fh_event_teams et
+                                     JOIN team_persons tp ON tp.team_id = et.team_id AND tp.person_id = a.person_id AND tp.removed_at IS NULL
+                                    WHERE et.fh_event_id = e.id)) AS practices_recent,
+                   (SELECT practice_days FROM rsvp_box_policy) AS practice_days,
                    -- R:27 on the card (owner 2026-11-04): every RSVP on
                    -- record for him, games and practices.
                    (SELECT count(*) FROM fh_event_rsvps r WHERE r.person_id = p.id) AS rsvp_total,
@@ -987,6 +1004,8 @@ Response PaymentsController::handleStanding(const Request& request) {
                 {"answered", r["answered"].as<bool>()},
                 {"lastPaidAt", r["last_paid_at"].is_null() ? json(nullptr) : json(r["last_paid_at"].c_str())},
                 {"lastPaidAmount", r["last_paid_amount"].is_null() ? json(nullptr) : json(r["last_paid_amount"].as<double>())},
+                {"practicesRecent", r["practices_recent"].as<long long>()},
+                {"practiceDays", r["practice_days"].is_null() ? 14 : r["practice_days"].as<int>()},
                 {"rsvpBox", r["rsvp_box"].is_null() ? std::string("red") : std::string(r["rsvp_box"].c_str())},
                 {"lastAnsweredAt", r["last_answered_at"].is_null() ? json(nullptr) : json(r["last_answered_at"].c_str())},
                 {"rsvpTotal", r["rsvp_total"].as<long long>()},

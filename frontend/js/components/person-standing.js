@@ -294,6 +294,12 @@
       top.push(s(t('box_rsvp', {}, 'RSVP'), COL[hit.data.rsvpBox] || COL.red,
         at ? t('box_rsvp_tip', { date: md(at), days }, `Last answered ${md(at)} (${days} days ago)`)
            : t('box_rsvp_never_tip', {}, 'Has never answered an RSVP themselves')));
+      // P3 = practices attended lately (mig 1555) — the 🤝 Committed tiebreak.
+      if (hit.data.practicesRecent != null) {
+        const n = Number(hit.data.practicesRecent) || 0;
+        top.push(s(t('box_practices', { n }, `P${n}`), n > 0 ? 'rgba(255,255,255,0.9)' : '#fca5a5',
+          t('box_practices_tip', { n, days: hit.data.practiceDays || 14 }, `Came to ${n} practices in the last ${hit.data.practiceDays || 14} days`)));
+      }
     }
     // Dues (owner 11/19 "in green it dont even need to say paid … if owed
     // it needs to show date of last payment and AMOUNT OWED all in red"):
@@ -369,7 +375,8 @@
     if (!hit || !hit.data) return null;
     const d = hit.data.dues;
     // Not green = behind (owner 11/19: Erick David, yellow RSVP + owes, "is both").
-    return { rsvp: hit.data.rsvpBox !== 'green', dues: !!(d && !d.free_reason && d.member && d.balance > 0) };
+    return { rsvp: hit.data.rsvpBox !== 'green', dues: !!(d && !d.free_reason && d.member && d.balance > 0),
+             practices: Number(hit.data.practicesRecent) || 0 };
   }
 
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
