@@ -1347,18 +1347,17 @@ class RosterScreenBase extends Screen {
       const mainIds = new Set(bucket(col.teamId).map(p => Number(p.personId)));
       const groups = { active: [], onboard: [], not_eligible: [], standby: [], practice_squad: [], injured: [], inactive: [] };
       for (const p of bucket(col.teamId)) (groups[groupOf(p)] || groups.active).push(Object.assign(p, { __col: col }));
-      const extra = [];   // the folded teams' own men: the hidden pitch
       for (const f of folded) for (const p of bucket(f.teamId)) {
         if (mainIds.has(Number(p.personId))) continue;
         mainIds.add(Number(p.personId));
+        // Nothing hidden, simple categories (owner 11/19 "nothing should be
+        // hidden. they should just be reserves right? simple categories"):
+        // the folded team's own men (APSL Reserves) are 🪑 Reserves here.
         const g = groupOf(p);
-        if (g === 'active') extra.push(Object.assign(p, { __col: f })); else (groups[g] || groups.active).push(Object.assign(p, { __col: f }));
+        (groups[g === 'active' ? 'standby' : g] || groups.standby).push(Object.assign(p, { __col: f }));
       }
       Object.values(groups).forEach(l => l.sort(byLast));
-      extra.sort(byLast);
       const label = RosterScreenBase.dropClubName(String(col.shortLabel || col.label || ''));
-      const openKey = String(col.teamId);
-      const foldLabel = folded.map(f => RosterScreenBase.dropClubName(String(f.shortLabel || f.label || ''))).join(' · ');
       // Full width (owner 11/19 "use full screen for them so widen it out"):
       // two cards share the row on a wide screen, each takes it on a phone.
       return `<div style="flex:1 1 520px; min-width:0; box-sizing:border-box; border:4px solid #f5d442;
@@ -1372,10 +1371,6 @@ class RosterScreenBase extends Screen {
           ${illegalBanner(listTeamIds)}
           <div data-tc-tally="${esc(groups.active.map(p => p.personId).join(','))}" style="font-size:12px; font-weight:800; margin:-4px 0 8px; opacity:0.95;">${tallyHtml(groups.active.map(p => p.personId))}</div>
           ${pitch(groups.active, col, listTeamIds)}
-          ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
-              <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
-              <div data-tc-tally="${esc(extra.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-top:4px; opacity:0.9;">${tallyHtml(extra.map(p => p.personId))}</div>
-              <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
           ${band(groups.standby, copy('board_standby_h', {}, '🪑 Reserves'), '#93c5fd', listTeamIds)}
           ${band(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd', listTeamIds)}
           ${band(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af', listTeamIds)}
