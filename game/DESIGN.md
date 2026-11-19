@@ -10967,3 +10967,27 @@ real band's are nearer 2-3. Our men stand about right per role (ROLE WIDTH: WIDE
 because they stand there. Fix in the harness: the BLOCKED PASSES in-play counts (an if / else chain broken in this
 slice's first build). Goldens unchanged; tests 23/23, lint clean. Next: DFL tracking at receptions within 5 m of the
 touchline — where the receiver stood at the kick (already wide, or ran there) — then the wide reception itself.
+
+### 8.273 G5.167 — the wide reception: real men stand on the touchline at the kick, ours never do (measured; no game change)
+
+From §8.272: a third of the real share of passes received within 5 m of the touchline. New
+`benchmarks_tracking_widerecv.py` (DFL 7 Bundesliga 22/23, TRACAB 25 Hz; 3,495 completed open-play passes met by a named
+outfielder): met 0-5 / 5-10 / 10-20 / 20+ m off the touchline 17.5 / 17.5 / 33.2 / 31.8% (StatsBomb PL 15/16 15.7 / 15.9 /
+29.5 / 38.9 — the two agree). **Of the passes met 0-5 m off the line, the man stood 0-5 m off it at the kick 74.7%**
+(5-10 17.6, 10-20 6.7, 20+ 1.0); he moves a median −0.1 m toward the line (p25 −1.1, p75 +1.9) at 0.7 m/s; he is his
+side's widest outfielder on that side 72.4% (2nd 22.5); the ball comes 11.9 m (median), 5.9 m forward, 1.9 s, kicked
+from 0-5 / 5-10 / 10-20 / 20+ m off the same line 33 / 21 / 28 / 15% (far half 3%). **He was already there.** New
+harness lines under PASSES CHARGED DOWN (World `chargeDiag`: every man's y at a kick, the kicker's widest mate each side):
+
+| | real (DFL) | ours (2 seeds × 8) |
+|---|---|---|
+| met 0-5 m: he stood at the kick 0-5 / 5-10 / 10-20 / 20+ | 74.7 / 17.6 / 6.7 / 1.0% | 61-65 / 15 / 16-18 / 4-5% |
+| at a kick, the kicker's widest mate on the ball's side 0-5 / 5-10 / 10-20 / 20+ m off that line | **62.0** / 20.9 / 14.5 / 2.6% (median 3.5 m) | **20.4-20.8** / 36 / 40 / 3% |
+| … on the far side | **22.7** / 18.7 / 28.6 / 30.1% (median 12.6 m) | **0.5-0.7** / 8 / 57 / 34% |
+
+The few wide receptions ours make are mostly from men already wide, like the real ones; there are few because **ours
+stand on the line at a third of the real kicks on the ball's side, and almost never on the far side.** ROLE WIDTH
+(§8.221: pair gaps and centres by role, medians, matched within 1-3 m) does not see it — real width is the widest man
+at the line, not each role's median spot. Goldens unchanged (diagnostic only); tests 23/23, lint clean. Next: who of
+theirs is the man on the line at a real kick (role, ball band, ball side / far) on DFL, then put ours there by that
+rule — a mechanism, not a width factor.

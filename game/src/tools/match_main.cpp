@@ -111,7 +111,7 @@ struct Stats {
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
     long bblk = 0;   // §8.269 body blocks (any ball)
-    long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {};   // §8.272 kicks by touchline / goal-line band
+    long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {};   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
     long bp_where[2][4] = {}, bp_out[2][4][3] = {};   // §8.272 blocked passes by [touchline band | goal-line band][band] and corner / throw-in / goal kick
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
@@ -2661,7 +2661,7 @@ int main(int argc, char** argv) {
         S.ro_sides += 2;
         { const auto& D = W.carryDiag(); auto& A = S.cd; A.n += D.n; A.chase += D.chase; A.wfull += D.wfull; A.contact += D.contact; A.wish += D.wish.toDouble(); A.after += D.after.toDouble(); A.desire += D.desire.toDouble(); A.gait += D.gait.toDouble(); A.top += D.top.toDouble(); A.vw += D.vw.toDouble(); A.v1 += D.v1.toDouble(); A.ang += D.ang.toDouble(); for (int q = 0; q < 8; ++q) { A.vb[q] += D.vb[q]; A.vwb[q] += D.vwb[q]; } }   // §8.233
         S.bblk += W.bodyBlocks(0) + W.bodyBlocks(1);   // §8.269
-        { const auto& C = W.chargeDiag(); S.ch_k += C.kicks; S.ch_kept += C.kept; S.ch_loose += C.loose; for (int q = 0; q < 4; ++q) { S.ch_tl[q] += C.tl[q]; S.ch_gl[q] += C.gl[q]; S.ch_rtl[q] += C.rtl[q]; }
+        { const auto& C = W.chargeDiag(); S.ch_k += C.kicks; S.ch_kept += C.kept; S.ch_loose += C.loose; for (int q = 0; q < 4; ++q) { S.ch_tl[q] += C.tl[q]; S.ch_gl[q] += C.gl[q]; S.ch_rtl[q] += C.rtl[q]; S.ch_wide[0][q] += C.widest[0][q]; S.ch_wide[1][q] += C.widest[1][q]; S.ch_r0f[q] += C.rtl0_from[q]; }
           for (int a = 0; a < 4; ++a) for (int q = 0; q < 5; ++q) { S.chb_k[a][q] += C.by_kicks[a][q]; S.chb_kept[a][q] += C.by_kept[a][q]; S.chb_loose[a][q] += C.by_loose[a][q]; } }   // §8.271
         S.aer_d += W.aerialDuels(); S.aer_l += W.aerialLone(); S.aer_c += W.headersClear(0) + W.headersClear(1); S.aer_g += W.headersAtGoal(0) + W.headersAtGoal(1);   // §8.172
         const int hg = mg[0], ag = mg[1];
@@ -2865,6 +2865,15 @@ int main(int argc, char** argv) {
         {   long r = 0; for (int q = 0; q < 4; ++q) r += S.ch_rtl[q];
             std::printf("      passes received by m off the touchline 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (StatsBomb PL 15/16 completed open-play passes' end 15.7 / 15.9 / 29.5 / 38.9)\n",
                         100.0 * S.ch_rtl[0] / std::max(1L, r), 100.0 * S.ch_rtl[1] / std::max(1L, r), 100.0 * S.ch_rtl[2] / std::max(1L, r), 100.0 * S.ch_rtl[3] / std::max(1L, r)); }
+        {   // §8.273
+            long r0 = 0; for (int q = 0; q < 4; ++q) r0 += S.ch_r0f[q];
+            std::printf("      … met 0-5 m off the touchline: he stood at the kick 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (DFL 74.7 / 17.6 / 6.7 / 1.0)\n",
+                        100.0 * S.ch_r0f[0] / std::max(1L, r0), 100.0 * S.ch_r0f[1] / std::max(1L, r0), 100.0 * S.ch_r0f[2] / std::max(1L, r0), 100.0 * S.ch_r0f[3] / std::max(1L, r0));
+            static const double rw[2][4] = {{62.0, 20.9, 14.5, 2.6}, {22.7, 18.7, 28.6, 30.1}};
+            for (int sd = 0; sd < 2; ++sd)
+                std::printf("      at a kick, the kicker's widest mate on the %s side, m off that touchline 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (DFL %.1f / %.1f / %.1f / %.1f)\n", sd ? "far" : "ball's",
+                            100.0 * S.ch_wide[sd][0] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][1] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][2] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][3] / std::max(1L, S.ch_k),
+                            rw[sd][0], rw[sd][1], rw[sd][2], rw[sd][3]); }
         {   // §8.272
             static const char* const kT[4] = {"0-5", "5-10", "10-20", "20+"}; static const char* const kG[4] = {"0-18", "18-35", "35-70", "70+"};
             static const double rs[2][4] = {{18.5, 21.7, 31.6, 28.2}, {32.8, 19.4, 31.8, 16.0}};

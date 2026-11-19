@@ -666,7 +666,20 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 {   const Fixed64 t = half_y_ - math::fx_abs(o.pos.y);
                     const Fixed64 g = players_[kicker].team == 0 ? half_x_ - o.pos.x : o.pos.x + half_x_;   // team 0 attacks +x
                     ++charge_.tl[t < Fixed64::fromInt(5) ? 0 : t < Fixed64::fromInt(10) ? 1 : t < Fixed64::fromInt(20) ? 2 : 3];
-                    ++charge_.gl[g < Fixed64::fromInt(18) ? 0 : g < Fixed64::fromInt(35) ? 1 : g < Fixed64::fromInt(70) ? 2 : 3]; } }   // G5.165
+                    ++charge_.gl[g < Fixed64::fromInt(18) ? 0 : g < Fixed64::fromInt(35) ? 1 : g < Fixed64::fromInt(70) ? 2 : 3]; }   // G5.165
+                {   // G5.167 (§8.273): where every man stood, and the kicker's widest mate on each side
+                    auto band = [](Fixed64 t) { return t < Fixed64::fromInt(5) ? 0 : t < Fixed64::fromInt(10) ? 1 : t < Fixed64::fromInt(20) ? 2 : 3; };
+                    const bool up = o.pos.y.raw >= 0;
+                    Fixed64 wn = Fixed64::fromInt(99), wf = Fixed64::fromInt(99);
+                    for (SlotIndex j = 0; j < players_.size() && j < pass_kick_y_.size(); ++j) {
+                        pass_kick_y_[j] = players_[j].pos.y;
+                        if (players_[j].team != players_[kicker].team || keeper_[j]) continue;
+                        const Fixed64 tn = half_y_ - (up ? players_[j].pos.y : -players_[j].pos.y);
+                        const Fixed64 tf = half_y_ - (up ? -players_[j].pos.y : players_[j].pos.y);
+                        if (tn < wn) wn = tn;
+                        if (tf < wf) wf = tf;
+                    }
+                    ++charge_.widest[0][band(wn)]; ++charge_.widest[1][band(wf)]; } }
             ball_.kick_alive = kKickAliveTicks;
             ball_.last_kicker = kicker;
             ball_.kicker_lockout = kKickerLockoutTicks;
@@ -1122,6 +1135,10 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     if (!charge && flight_tick_ == pass_kick_tick_ && ball_.last_kicker < players_.size() && players_[ball_.last_kicker].team == players_[best].team) {   // G5.166: where a pass is received
         const Fixed64 t = half_y_ - math::fx_abs(ball_.pos.y);
         ++charge_.rtl[t < Fixed64::fromInt(5) ? 0 : t < Fixed64::fromInt(10) ? 1 : t < Fixed64::fromInt(20) ? 2 : 3];
+        if (t < Fixed64::fromInt(5) && best < pass_kick_y_.size()) {   // G5.167: where he stood at the kick
+            const Fixed64 w = half_y_ - math::fx_abs(pass_kick_y_[best]);
+            ++charge_.rtl0_from[w < Fixed64::fromInt(5) ? 0 : w < Fixed64::fromInt(10) ? 1 : w < Fixed64::fromInt(20) ? 2 : 3];
+        }
     }
     if (charge) { ++charge_.kept; ++charge_.by_kept[pass_kick_act_][pass_kick_pressed_]; }
     // Possession swap = the transition moment (KNVB's 3rd/4th moment).

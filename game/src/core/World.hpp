@@ -190,7 +190,7 @@ public:
     int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
     bool reactReach() const { return react_reach_; }   // G5.165
     bool lastBlockShot() const { return block_was_shot_; }   // G5.164: the last body block stopped a shot
-    struct ChargeDiag { long kicks = 0, kept = 0, loose = 0; long by_kicks[4][5] = {}, by_kept[4][5] = {}, by_loose[4][5] = {}; long tl[4] = {}, gl[4] = {}, rtl[4] = {}; };   // rtl: a mate's kick received, by m off the touchline   // tl / gl: kicks by m off the touchline 0-5/5-10/10-20/20+, off the goal line it attacks 0-18/18-35/35-70/70+   // [act][their nearest at the kick: 0-1 / 1-2 / 2-3 / 3-5 / 5+ m]   // G5.165: open-play non-shot kicks; their touch in its first 0.4 s / 8 m
+    struct ChargeDiag { long kicks = 0, kept = 0, loose = 0; long by_kicks[4][5] = {}, by_kept[4][5] = {}, by_loose[4][5] = {}; long tl[4] = {}, gl[4] = {}, rtl[4] = {}; long widest[2][4] = {}, rtl0_from[4] = {}; };   // G5.167: widest mate at the kick [near/far side][band]; a pass met 0-5 m off the touchline, where its man stood at the kick   // rtl: a mate's kick received, by m off the touchline   // tl / gl: kicks by m off the touchline 0-5/5-10/10-20/20+, off the goal line it attacks 0-18/18-35/35-70/70+   // [act][their nearest at the kick: 0-1 / 1-2 / 2-3 / 3-5 / 5+ m]   // G5.165: open-play non-shot kicks; their touch in its first 0.4 s / 8 m
     const ChargeDiag& chargeDiag() const { return charge_; }
     void setMaxSpeed(SlotIndex slot, math::Fixed64 v) {
         if (slot < players_.size()) players_[slot].max_speed = v;
@@ -392,7 +392,7 @@ private:
     void deflectOffBody(SlotIndex blocker);   // G5.165: the body block, from the sweep or a ball he hadn't reacted to
     bool block_was_shot_ = false;
     bool react_reach_ = false; std::uint64_t kick_tick_ = ~std::uint64_t{0};   // G5.165 (§8.271)
-    std::uint64_t pass_kick_tick_ = ~std::uint64_t{0}; math::Vec2 pass_kick_pos_{}; ChargeDiag charge_{}; int pass_kick_act_ = 0, pass_kick_pressed_ = 0;   // G5.165
+    std::uint64_t pass_kick_tick_ = ~std::uint64_t{0}; math::Vec2 pass_kick_pos_{}; ChargeDiag charge_{}; std::array<math::Fixed64, 32> pass_kick_y_{}; int pass_kick_act_ = 0, pass_kick_pressed_ = 0;   // G5.165
     static constexpr std::uint64_t kNoTick = ~std::uint64_t{0};
     std::uint64_t block_tick_ = kNoTick, block_unread_ticks_ = 0;   // no block yet: no window (G5.165 fix — was 0: the first 0.5 s of a match unplayable)   // G5.164 (§8.270): the last body block; how long its ball is unread
     std::uint64_t control_until_tick_ = 0;
