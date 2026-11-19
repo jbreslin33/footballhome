@@ -41,14 +41,16 @@ class ApslPyramidScreen extends Screen {
     // greyed out").  `built` = this screen draws it; the rest show greyed.
     const flow = new PyramidFlowView(this);
     this.views = [
+      // story order (mig 1580): the pyramid → where → how a club climbs →
+      // this season → what happens next → how it grew → the slideshow
       { code: 'flow', tier: 'view_flow', built: true, impl: flow },
-      { code: 'present', tier: 'view_present', built: true, impl: new PyramidPresentView(this, flow) },
       { code: 'map', tier: 'view_map', built: true, impl: new PyramidMapView(this, flow) },
       { code: 'path', tier: 'view_path', built: true, impl: new PyramidPathView(this, flow) },
       { code: 'tables', tier: 'view_tables', built: true, impl: new PyramidTablesView(this, flow) },
-      { code: 'growth', tier: 'view_growth', built: true, impl: new PyramidGrowthView(this) },
       // 📈 Forecast (mig 1448, owner 11/17: "an analysis for league and all teams … predict scores etc. like a betting app")
       { code: 'forecast', tier: 'view_forecast', built: true, impl: new PyramidForecastView(this) },
+      { code: 'growth', tier: 'view_growth', built: true, impl: new PyramidGrowthView(this) },
+      { code: 'present', tier: 'view_present', built: true, impl: new PyramidPresentView(this, flow) },
     ];
     this.view = 'flow';
     try {
@@ -80,8 +82,15 @@ class ApslPyramidScreen extends Screen {
         .ap-pill.cc.on { background:var(--cc); border-color:var(--cc); color:var(--cc-fg, #fff); }
         .ap-pill.cc.on::before { background:var(--cc-fg, #fff); }
         .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
-        .ap-stage #ap-body { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; }
+        .ap-stage #ap-body { position:absolute; inset:0; top:var(--ap-bar, 64px); overflow:auto; padding:12px 16px 24px; }
         .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
+        .ap-bar { position:absolute; top:0; left:0; right:0; z-index:1250; padding:8px 12px 6px 64px; min-height:60px; box-sizing:border-box;
+                  background:var(--bg-color, #0b1220); border-bottom:1px solid rgba(148,163,184,0.18); }
+        .ap-bar .row { display:flex; align-items:center; gap:6px 12px; flex-wrap:wrap; }
+        .ap-bar img { height:30px; width:auto; }
+        .ap-bar .t { font-weight:900; font-size:1.05rem; white-space:nowrap; }
+        .ap-bar .ap-pills { display:flex; gap:6px; flex-wrap:wrap; }
+        .ap-bar .cap { font-size:0.82rem; opacity:0.8; margin-top:4px; line-height:1.35; }
         .ap-head { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin:-52px 0 14px 50px; min-height:44px; }
         .ap-head img { height:30px; width:auto; }
         .ap-head .t { font-weight:900; font-size:1.05rem; white-space:nowrap; }
@@ -101,7 +110,7 @@ class ApslPyramidScreen extends Screen {
                        border-radius:12px; border:1px solid rgba(148,163,184,0.35); background:rgba(11,18,32,0.84); color:#e5e7eb;
                        font-size:1.35rem; line-height:1; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,0.4); }
         .ap-menu-btn.open { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
-        .ap-menu { position:absolute; top:62px; left:10px; z-index:1300; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 72px); overflow:auto;
+        .ap-menu { position:absolute; top:calc(var(--ap-bar, 64px) + 4px); left:10px; z-index:1300; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 72px); overflow:auto;
                    background:rgba(11,18,32,0.94); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3); border-radius:12px;
                    color:#e5e7eb; font-size:0.85rem; box-shadow:0 6px 24px rgba(0,0,0,0.5); padding:10px 12px; box-sizing:border-box; }
         .ap-menu[hidden] { display:none; }
@@ -148,6 +157,7 @@ class ApslPyramidScreen extends Screen {
         .ap-editor .err { color:#fca5a5; font-size:0.82rem; }
       </style>
       <div class="ap-stage">
+        <div class="ap-bar"></div>
         <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
         <button class="ap-menu-btn" data-menu aria-label="☰">☰</button>
         <div class="ap-menu" hidden><div class="ap-menu-main"></div><div class="ap-dock"></div><div class="ap-menu-extra"></div><div class="ap-menu-tail"></div></div>
@@ -230,6 +240,7 @@ class ApslPyramidScreen extends Screen {
     window.removeEventListener('resize', this._onResize);
     window.removeEventListener('keydown', this._onKey);
     if (this._bandObs) { this._bandObs.disconnect(); this._bandObs = null; }
+    if (this._barObs) { this._barObs.disconnect(); this._barObs = null; }
     this._menu(false);
     this._viewCall('unmount');
     this.clubCard.close();
@@ -409,24 +420,35 @@ class ApslPyramidScreen extends Screen {
     // A view that is a canvas (map, presentation) fills the stage edge to edge.
     el.classList.toggle('flush', !!this._impl().fill);
     this._dock = [];
-    // A page view (not a canvas) carries the pyramid's own header — its
-    // logo, name and the view pills — so a shared link (a visitor, the
-    // 📈 Forecast) is a self-contained page (owner 11/19 "what happened to
-    // pyramid? this needs to be presentable link to rest of world" + "only
-    // have way back to fh if your a member. otherwise its self contained":
-    // the 🏠 Main menu stays in ☰ for members only).
-    const root = this.model.root();
-    const head = this._impl().fill ? '' : `<div class="ap-head">
-        ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
-        <div class="ap-pills">${this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('')}</div>
-      </div>`;
-    el.innerHTML = `${head}
+    this._renderBar();
+    el.innerHTML = `
       <div id="ap-view">${shown.length ? this._impl().html(this.model, shown) : `<div class="fc-none">${esc(this._copy('none_on'))}</div>`}</div>
       ${this.edit ? this._editorHtml() : ''}`;
     const dock = this.find('.ap-dock');
     if (dock) dock.innerHTML = this._dock.join('');
     this._renderMenu();
     if (shown.length) requestAnimationFrame(() => this._viewCall('mount'));
+  }
+
+
+  // ── the header bar on every view (mig 1580, owner 11/19 "that includes
+  // the whole of #apsl-pyramid make it all tied together and tell a story
+  // and easily navigable"): logo, name, the views as numbered chapters in
+  // story order, and one plain sentence (with the numbers) on what this
+  // view shows.  A visitor's page is self-contained; 🏠 stays in ☰ for
+  // members.  The stage below starts under it (--ap-bar).
+  _renderBar() {
+    const bar = this.find('.ap-bar'), stage = this.find('.ap-stage');
+    if (!bar || !this.model) return;
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const root = this.model.root();
+    const pills = this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('');
+    const cap = this._copy(`story_view_${this.view}`, { ...this.model.totals, confs: this._conferences().length });
+    bar.innerHTML = `<div class="row">${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
+        <div class="ap-pills">${pills}</div></div>${cap ? `<div class="cap">${esc(cap)}</div>` : ''}`;
+    const fit = () => { if (stage) stage.style.setProperty('--ap-bar', `${Math.ceil(bar.getBoundingClientRect().height)}px`); };
+    fit();
+    if (window.ResizeObserver && !this._barObs) { this._barObs = new ResizeObserver(() => { fit(); this._viewCall('onResize'); }); this._barObs.observe(bar); }
   }
 
   // ── ✏️ override editor (mig 828) ─────────────────────────────────────
