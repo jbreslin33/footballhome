@@ -11235,3 +11235,36 @@ target and not the man (he trailed it 11.7 m): not taken alone. Open: our rolled
 push-on pace, faster than real settled FBs; the far side now a little over (27 v 22.7); at 35-70 m the on-line FB still
 stands level with the ball (1.4-1.8 m ahead v 8.5). Goldens unchanged (the golden match never puts a FB on the touchline
 spot); tests 23/23, lint clean.
+
+### 8.281 G5.175 — crosses and cut-backs on one cut both sides; crosses short by volume, not by choice (measured; no game change)
+
+From §8.280's open notes. The card compared our geometric cut-back count with StatsBomb's analyst `cut_back` flag, and our
+lofted Why::Cross with StatsBomb's `cross` flag, which counts ground and low crosses too (PL 15/16 a team-match: high
+7.82, low 1.71, ground 1.94; `cut_back` 1.03, 0.68 of them also crosses). Our cut-back geometry (from within 9 m of their
+line, back 1 m+, ending in the box's width inside 16.5 m) on real passes: **3.89** a team-match.
+
+**One cut both sides** (`benchmarks_statsbomb_scorecard.py` real json regenerated, flags kept as *_flag; harness the same):
+- switch: 34 m+ across — StatsBomb's flag is exactly this (10.69 either way);
+- cross: **from within 30 m of their line and outside the box's width (|y| 20.16+), ending in the box**, any height — 11.47
+  a team-match, as the flag (66% of each in the other; tighter widths miss low crosses from the half-space, wider ends add
+  passes into the D);
+- cut-back: the geometry above, 3.89 (was 1.03).
+
+Card on the same G5.174 runs: cut-backs 2.42 v 3.89 (was "2.3× over" v 1.03, now 0.62× under); crosses 6.56 v 11.47 on the
+cut (0.57×). Count unchanged, 9 ok / 4 off / 20 OFF (`card_G5.175.txt`).
+
+**Why ours cross less** (new harness line INTO THE BOX FROM WIDE; real from StatsBomb, open-play passes by m off their line
+× |y|, a team-match, % ending in the box):
+
+| origin | real | ours (2 seeds × 8) |
+|---|---|---|
+| 0-6 m, 24+ | 2.53, 43% | 3.94-4.31, 22-26% |
+| 0-6 m, 20-24 / 14-20 | 1.11, 69% / 1.92, 86% | 0.88-0.94, 27-29% / 1.12-1.50, 67% |
+| 6-18 m, 24+ / 20-24 / 14-20 | 12.01, 34% / 3.36, 52% / 4.26, 65% | 7.69-7.88, 33-34% / 2.25-2.75, 36-47% / 3.12-3.56, 51-52% |
+| 18-30 m, 24+ / 20-24 / 14-20 | 18.21, 15% / 5.82, 20% / 9.48, 22% | 12.88-12.94, 13-20% / 4.75-6.50, 18-20% / 7.81-8.56, 15-19% |
+
+From 6-30 m out the share into the box is about real; the gap is volume — ours release from wide in their last 30 m about
+two thirds as often (same as ARRIVE: completed passes into their crossing zone 7.0 v 12.9, from wide 4.4 v 8.5). On the
+byline it inverts: ours get there more (carried, 0-6 m 24+ 4.1 v 2.5) and put it into the box less (22-26 v 43%).
+Next: the ball into their wide final third — receptions there by origin, ours v real — and what our man on the byline does
+instead of crossing. Harness/benchmark cuts only; goldens unchanged; tests 23/23, lint clean.

@@ -115,9 +115,9 @@ struct Stats {
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
-    long wng[2][4] = {};   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
+    long wng[2][4] = {}, ib_n[3][3] = {}, ib_k[3][3] = {};   // §8.281 INTO THE BOX FROM WIDE   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
-    long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap, th_gx, th_gy, th_v, th_age[3];   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
+    long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap, th_gx, th_gy, th_v, th_age[3], th_ta[3], th_ma[3], th_ln[3];   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
     long ws_zn[3][3] = {}, ws_in[3][2][3] = {}, ws_wn[3][2] = {}, ws_win[3][2] = {}; std::vector<double> ws_age; long ws_rn[3][3][2][3] = {}, ws_r5[3][3][2][3] = {};   // §8.276 ws_r*: [FB/DM/WIDE][ball band][near/far][age] WIDEST BY SPELL AGE [age 0-3/3-8/8+][near/far][ball band]; [age][restart/won]   // [FB/DM/WIDE][restart/won][ball band off the goal line attacked][near/far]
     long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
@@ -125,7 +125,7 @@ struct Stats {
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
-    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
+    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
     long ph[ai::kPhaseCount] = {}, ph_n = 0;
@@ -923,6 +923,11 @@ int main(int argc, char** argv) {
                         S.th_gap.push_back(std::hypot(W.player(j).pos.x.toDouble() - oj.target.x.toDouble(), py - oj.target.y.toDouble()));
                         S.th_gx.push_back(std::fabs(W.player(j).pos.x.toDouble() - oj.target.x.toDouble())); S.th_gy.push_back(std::fabs(py - oj.target.y.toDouble()));
                         S.th_v.push_back(std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()));
+                        {   // §8.281: 8 s+ — his target's and his own m ahead of the ball, and their offside line's m ahead of it, by ball band
+                            const double ag = (static_cast<long>(k) - S.wps_k0) / 30.0, gd = tm == 0 ? 1.0 : -1.0;
+                            if (ag >= 8) { S.th_ta[z].push_back((oj.target.x.toDouble() - bx) * gd); S.th_ma[z].push_back((W.player(j).pos.x.toDouble() - bx) * gd);
+                                S.th_ln[z].push_back((ai::Possession::offsideLine(static_cast<std::uint8_t>(tm), W, rd_tos).toDouble() - bx * gd)); }
+                        }
                         { const double ag = (static_cast<long>(k) - S.wps_k0) / 30.0; S.th_age[ag < 3 ? 0 : ag < 8 ? 1 : 2].push_back(d); }
                     }
                 }
@@ -1233,8 +1238,15 @@ int main(int argc, char** argv) {
                     ++S.swf_n[rel.sw_fb]; ++S.swf_nz[z][rel.sw_fb];
                     if (std::fabs(ey - rel.y) >= 34) { ++S.swf_k[rel.sw_fb]; ++S.swf_kz[z][rel.sw_fb]; if (rel.to == rel.sw_wp) ++S.swf_w[rel.sw_fb]; }
                 }
-                if (rel.cross) ++S.crosses;
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
+                // G5.175 (§8.281): a cross on the geometric cut both sides now use (StatsBomb's flag counts ground and low crosses
+                // too; ours counted only the lofted Why::Cross): from within 30 m of their line, outside the box's width, into the box
+                if (stl < 30 && std::fabs(rel.y) >= 20.16 && etl < 16.5 && std::fabs(ey) < 20.16) ++S.crosses;
+                if (rel.cross) ++S.crosses_why;
+                if (stl < 30 && std::fabs(rel.y) >= 14) {   // §8.281 INTO THE BOX FROM WIDE: releases by m off their line x |y|, the share ending in the box
+                    const int a = stl < 6 ? 0 : stl < 18 ? 1 : 2, w = std::fabs(rel.y) >= 24 ? 0 : std::fabs(rel.y) >= 20.16 ? 1 : 2;
+                    ++S.ib_n[a][w]; if (etl < 16.5 && std::fabs(ey) < 20.16) ++S.ib_k[a][w];
+                }
                 if (ok) {   // §8.191 ARRIVE (benchmarks_statsbomb_cross.py arrive: completed passes ending there)
                     const bool e_in = etl < 18 && std::fabs(ey) >= 14, s_in = stl < 18 && std::fabs(rel.y) >= 14;
                     if (e_in && !s_in) { ++S.ar_pass; if (std::fabs(rel.y) >= 14) ++S.ar_pass_wide; }
@@ -3142,6 +3154,13 @@ int main(int argc, char** argv) {
                 std::printf("        %-4s %-5s %-3s | %5.1f (%5.1f) | %4.1f (%4.1f), %3.0f (%2.0f) | %5.1f (%5.1f)\n", sd ? "far" : "near", zn[z], an[a], qd(S.fbd_a[sd][z][a], .5), rr[sd][z][a][0],
                             qd(o, .5), rr[sd][z][a][1], 100.0 * n5 / std::max<std::size_t>(1, o.size()), rr[sd][z][a][2], qd(S.fbd_a5[sd][z][a], .5), rr[sd][z][a][3]); }
         }
+        {   // §8.281 INTO THE BOX FROM WIDE (StatsBomb PL 15/16 open play, attempted: a team-match, into the box %)
+            static const double rr[3][3][2] = {{{2.53, 43}, {1.11, 69}, {1.92, 86}}, {{12.01, 34}, {3.36, 52}, {4.26, 65}}, {{18.21, 15}, {5.82, 20}, {9.48, 22}}};
+            static const char* const an[3] = {"0-6", "6-18", "18-30"}; static const char* const wn[3] = {"24+", "20-24", "14-20"};
+            std::printf("      INTO THE BOX FROM WIDE (open-play passes by m off their line x |y|): a team-match | into the box %% (StatsBomb PL 15/16); crosses on the geometric cut %.2f a team-match (11.47), Why::Cross %.2f\n",
+                        S.crosses / std::max(1.0, 2.0 * matches), S.crosses_why / std::max(1.0, 2.0 * matches));
+            for (int a = 0; a < 3; ++a) { std::printf("       "); for (int w = 0; w < 3; ++w) std::printf(" | %s %s %.2f (%.2f) %.0f%% (%.0f)", an[a], wn[w], S.ib_n[a][w] / std::max(1.0, 2.0 * matches), rr[a][w][0], 100.0 * S.ib_k[a][w] / std::max(1L, S.ib_n[a][w]), rr[a][w][1]); std::printf("\n"); }
+        }
         {   // §8.277 TOUCH HOLD
             auto qd = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };
             static const char* const en[6] = {"spell ended", "ball changed band", "ball switched side", "order not Hold", "spot branch changed", "other"};
@@ -3151,6 +3170,8 @@ int main(int argc, char** argv) {
             std::printf("        ended by:"); for (int e = 0; e < 6; ++e) std::printf(" %s %.0f%%", en[e], 100.0 * S.th_end[e] / n);
             std::printf(" | m off the line at the end med %.1f | m off his target while on it p25 / med / p75 %.1f / %.1f / %.1f\n", qd(S.th_d_end, .5), qd(S.th_gap, .25), qd(S.th_gap, .5), qd(S.th_gap, .75));
             auto w5 = [](const std::vector<double>& a) { long n = 0; for (double x : a) n += x < 5; return 100.0 * n / std::max<std::size_t>(1, a.size()); };
+            for (int z = 0; z < 3; ++z) std::printf("        8 s+, ball %s: m ahead of the ball, his target med %.1f | he med %.1f | their offside line med %.1f (p25 %.1f)\n", z == 0 ? "0-35" : z == 1 ? "35-70" : "70+",
+                                                    qd(S.th_ta[z], .5), qd(S.th_ma[z], .5), qd(S.th_ln[z], .5), qd(S.th_ln[z], .25));
             std::printf("        while on it: gap along / across med %.1f / %.1f (p75 %.1f / %.1f), his speed med %.1f m/s; within 5 m of the line by spell age 0-3 / 3-8 / 8+ s %.0f / %.0f / %.0f%% (m off med %.1f / %.1f / %.1f)\n",
                         qd(S.th_gx, .5), qd(S.th_gy, .5), qd(S.th_gx, .75), qd(S.th_gy, .75), qd(S.th_v, .5), w5(S.th_age[0]), w5(S.th_age[1]), w5(S.th_age[2]), qd(S.th_age[0], .5), qd(S.th_age[1], .5), qd(S.th_age[2], .5));
         }

@@ -55,9 +55,16 @@ def one(path):
             c["pass"] += 1
             if "outcome" not in p: c["pass_ok"] += 1
             if e.get("under_pressure"): c["pass_up"] += 1
-            if p.get("switch"): c["switch"] += 1
-            if p.get("cross"): c["cross"] += 1
-            if p.get("cut_back"): c["cutback"] += 1
+            # G5.175 (§8.281): the harness's own geometric cuts, not StatsBomb's analyst flags (flags kept as *_flag):
+            # switch = 34 m+ across; cross = from within 30 m of their line and outside the box's width (|y| 20.16+) into
+            # the box (11.47 a team-match, as the flag; 66% overlap; any height); cut-back = from within 9 m of their line,
+            # back 1 m+, ending in the box's width inside 16.5 m (the flag 1.03, this cut 3.89).
+            x0, y0 = e["location"]; x1, y1 = p["end_location"]
+            stl, etl = (120 - x0) * SX, (120 - x1) * SX; ay0, ay1 = abs((y0 - 40) * SY), abs((y1 - 40) * SY)
+            if abs((y1 - y0) * SY) >= 34: c["switch"] += 1
+            if stl < 30 and ay0 >= 20.16 and etl < 16.5 and ay1 < 20.16: c["cross"] += 1
+            if stl < 9 and etl > stl + 1 and etl < 16.5 and ay1 < 20.16: c["cutback"] += 1
+            c["switch_flag"] += bool(p.get("switch")); c["cross_flag"] += bool(p.get("cross")); c["cutback_flag"] += bool(p.get("cut_back"))
         elif t == "Offside":
             c["offside"] += 1
         elif t == "Pressure":
