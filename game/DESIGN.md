@@ -11328,3 +11328,24 @@ ours make 13.56 receptions (12.15), hold each 1.35 s (1.21) and pass 9.70 times 
 between receptions with the ball loose, in a contest or in a duel. Same picture as completion 80.7 v 77.5, losses 150 v 165 a
 team-match, spells won 84 v 165. Next: time between receptions — in flight, loose, contested — ours v DFL, before any change.
 Diagnostic + harness line only; goldens unchanged; tests 23/23, lint clean.
+
+### 8.285 G5.179 — the ball's state in play is real; the pass excess is small shifts adding up (measured; no game change)
+
+From §8.284's "next". New `benchmarks_tracking_ballstate.py` (DFL, every in-play 5 Hz frame): **on a man** (one within 2 m,
+none of the other side), **contested** (both sides within 2 m), **travelling** (nobody within 2 m, 4 m/s+), **loose**
+(slower). Same cut in fh-game-match as BALL STATE.
+
+| in play | DFL s a match / % / runs / run med s | ours (2 seeds × 8) |
+|---|---|---|
+| on a man | 1619 / 51.6 / 1358 / 0.6 | 1795-1802 / 54.6-54.8 / 1559-1578 / 0.6 |
+| contested | 314 / 10.0 / 491 / 0.4 | 295-303 / 9.0-9.2 / 483-492 / 0.4 |
+| travelling | 1161 / 37.0 / 1198 / 0.8 | 1140-1154 / 34.6-35.1 / 1280-1306 / 0.8 |
+| loose | 46 / 1.5 / 69 / 0.4 | 45 / 1.4 / 66 / 0.6 |
+
+§8.284's guess (too little loose or contested ball) is wrong: both are real, run for run. The pass excess (532 v 434 a team-match)
+is made of small shifts: about 5% more in-play time (3,290 v 3,140 s a match — fewer stoppages: corners 1.9 v 5.4, throw-ins
+20 v 23), about 10% more spells on a man a minute in play (28.6 v 25.9) at the real length, and a mildly short pass mix
+(0-10 m 32% v 28.5) that brings the next reception sooner. No one mechanism; not chased further now. The set-piece
+volumes (corners 0.36×, the card's biggest miss, and throw-ins) also feed it. Next: corners — where our blocked and
+cleared balls go v real, from the §8.271 block work — before any change. Harness line + benchmark only; goldens unchanged;
+tests 23/23, lint clean.

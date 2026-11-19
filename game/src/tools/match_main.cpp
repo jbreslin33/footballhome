@@ -115,6 +115,7 @@ struct Stats {
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
+    long bs_st[4] = {}, bs_runs[4] = {}; std::vector<int> bs_len[4];   // §8.285 BALL STATE: on a man / contested / travelling / loose (5 Hz)
     long wng[2][4] = {}, ib_n[3][3] = {}, ib_k[3][3] = {};   // §8.281 INTO THE BOX FROM WIDE   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
     long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap, th_gx, th_gy, th_v, th_age[3], th_ta[3], th_ma[3], th_ln[3];   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
@@ -883,6 +884,21 @@ int main(int argc, char** argv) {
                         }
                     }
                 }
+            }
+            if (k % 6 == 0) {   // §8.285 G5.179 BALL STATE (benchmarks_tracking_ballstate.py): in play, 5 Hz
+                static int bs_prev = -1, bs_run = 0;
+                if (k == 0) { bs_prev = -1; bs_run = 0; }
+                const bool live = W.outStage() == 0 && W.restartTeam() == 0xFF;
+                int sx = -1;
+                if (live) {
+                    bool nr[2] = {false, false}; const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                    for (std::uint8_t j = 0; j < N; ++j) if (std::hypot(W.player(j).pos.x.toDouble() - bx, W.player(j).pos.y.toDouble() - by) < 2) nr[W.player(j).team & 1] = true;
+                    const double v = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble());
+                    sx = nr[0] && nr[1] ? 1 : nr[0] || nr[1] ? 0 : v >= 4 ? 2 : 3;
+                    ++S.bs_st[sx];
+                }
+                if (sx == bs_prev && sx >= 0) ++bs_run;
+                else { if (bs_prev >= 0) { ++S.bs_runs[bs_prev]; S.bs_len[bs_prev].push_back(bs_run); } bs_prev = sx; bs_run = 1; }
             }
             if (k % 6 == 0 && S.wps_tm >= 0) {   // §8.280 G5.174 FB DEPTH (benchmarks_tracking_fbdepth.py): every 0.2 s of a spell, each FB of the side on it
                 const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble(), gd = S.wps_tm == 0 ? 1.0 : -1.0;
@@ -3157,6 +3173,15 @@ int main(int argc, char** argv) {
                 const auto& o = S.fbd_o[sd][z][a]; long n5 = 0; for (double x : o) n5 += x < 5;
                 std::printf("        %-4s %-5s %-3s | %5.1f (%5.1f) | %4.1f (%4.1f), %3.0f (%2.0f) | %5.1f (%5.1f)\n", sd ? "far" : "near", zn[z], an[a], qd(S.fbd_a[sd][z][a], .5), rr[sd][z][a][0],
                             qd(o, .5), rr[sd][z][a][1], 100.0 * n5 / std::max<std::size_t>(1, o.size()), rr[sd][z][a][2], qd(S.fbd_a5[sd][z][a], .5), rr[sd][z][a][3]); }
+        }
+        {   // §8.285 BALL STATE (DFL: s a match, %, runs a match, run med s)
+            static const char* const sn[4] = {"on a man", "contested", "travelling", "loose"};
+            static const double rr[4][4] = {{1619, 51.6, 1358, 0.6}, {314, 10.0, 491, 0.4}, {1161, 37.0, 1198, 0.8}, {46, 1.5, 69, 0.4}};
+            long n = 0; for (int i = 0; i < 4; ++i) n += S.bs_st[i];
+            std::printf("      BALL STATE in play, 5 Hz (2 m: a man / both sides; else 4 m/s+ travelling, slower loose): s a match | %% | runs a match | run med s (DFL)\n");
+            for (int i = 0; i < 4; ++i) { std::vector<int> a = S.bs_len[i]; std::sort(a.begin(), a.end());
+                std::printf("        %-10s %5.0f (%4.0f) | %4.1f (%4.1f) | %5.0f (%4.0f) | %.1f (%.1f)\n", sn[i], S.bs_st[i] / 5.0 / std::max(1, matches), rr[i][0], 100.0 * S.bs_st[i] / std::max(1L, n), rr[i][1],
+                            S.bs_runs[i] / std::max(1.0, 1.0 * matches), rr[i][2], a.empty() ? 0.0 : a[a.size() / 2] / 5.0, rr[i][3]); }
         }
         {   // §8.284 PASS CANDIDATES BY LENGTH (ball 35-70 m off their line; summed over every match of the run)
             const auto& pd = s_last_pdiag;
