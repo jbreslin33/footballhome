@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 // Mail — minimal libcurl-backed SMTP send helper.
 //
@@ -36,6 +37,25 @@ bool send(const std::string& toEmail,
           const std::string& subject,
           const std::string& body,
           const Options& opts = {});
+
+// A message with cc recipients and file attachments (multipart/mixed,
+// base64) — 🎓 onboarding's "send it all to compliance" (mig 1538).
+struct Attachment {
+    std::string filename;   // shown to the recipient (sanitised to ASCII)
+    std::string mime;       // e.g. application/pdf, image/jpeg
+    std::string bytes;      // raw file bytes
+};
+struct Message {
+    std::string to;
+    std::vector<std::string> cc;
+    std::string subject;
+    std::string body;       // plaintext, UTF-8
+    std::string replyTo;    // empty = MAIL_REPLY_TO env default
+    std::vector<Attachment> attachments;
+};
+// Returns true when the relay accepted it (250); logs and returns false
+// otherwise (including SMTP not configured).
+bool sendMessage(const Message& msg);
 
 // True when SMTP_HOST + SMTP_USER + SMTP_PASS are all set.  Cheap; safe
 // to call on every request path.

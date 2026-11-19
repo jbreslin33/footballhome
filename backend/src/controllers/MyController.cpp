@@ -387,6 +387,45 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load onboarding");
         }
     });
+    // 📎 The person uploads a document on a step (mig 1538): {code, filename,
+    // file: data URL}; ✕ takes one back {id} (only before it went to compliance).
+    router.post(prefix + "/onboarding/upload", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/false, &personId)) return *err;
+        json body;
+        try { body = r.getBody().empty() ? json::object() : json::parse(r.getBody()); }
+        catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON"); }
+        auto str = [&](const char* k) { return body.contains(k) && body[k].is_string() ? body[k].get<std::string>() : std::string(); };
+        try {
+            std::string err;
+            const long long id = Onboarding::addFile(personId, str("code"), str("filename"), str("file"), 0, &err);
+            if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOk({{"onboarding", Onboarding::mine(personId)}});
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/onboarding/upload] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the file");
+        }
+    });
+    router.post(prefix + "/onboarding/file-remove", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/false, &personId)) return *err;
+        json body;
+        try { body = r.getBody().empty() ? json::object() : json::parse(r.getBody()); }
+        catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON"); }
+        const long long id = body.contains("id") && body["id"].is_number_integer() ? body["id"].get<long long>() : 0;
+        try {
+            const std::string err = Onboarding::removeFile(id, personId);
+            if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOk({{"onboarding", Onboarding::mine(personId)}});
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/onboarding/file-remove] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not remove the file");
+        }
+    });
     router.post(prefix + "/onboarding", [](const Request& r) {
         auto gate = requireSession(r);
         if (gate.error) return *gate.error;

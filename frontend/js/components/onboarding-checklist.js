@@ -22,10 +22,88 @@ class OnboardingChecklist {
     this.data = null;
     this.busy = new Set();
     this.err = '';
-    if (el) el.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-onb-sent]');
-      if (b && !b.disabled) this.markSent(b.getAttribute('data-onb-sent'), b.getAttribute('data-onb-on') === '1');
+    if (el) {
+      el.addEventListener('click', (e) => {
+        const b = e.target.closest('[data-onb-sent]');
+        if (b && !b.disabled) { this.markSent(b.getAttribute('data-onb-sent'), b.getAttribute('data-onb-on') === '1'); return; }
+        const up = e.target.closest('[data-onb-upload]');
+        if (up && !up.disabled) { const inp = el.querySelector(`input[data-onb-file="${up.getAttribute('data-onb-upload')}"]`); if (inp) inp.click(); return; }
+        const rm = e.target.closest('[data-onb-rmfile]');
+        if (rm && !rm.disabled) this.removeFile(Number(rm.getAttribute('data-onb-rmfile')));
+      });
+      el.addEventListener('change', (e) => {
+        const inp = e.target.closest('input[data-onb-file]');
+        if (inp && inp.files && inp.files[0]) { const f = inp.files[0]; inp.value = ''; this.upload(inp.getAttribute('data-onb-file'), f); }
+      });
+    }
+  }
+
+  // A picked file → { filename, file: data URL }.  Big photos are shrunk on
+  // the phone first (longest side 2000 px, JPEG) so a camera shot uploads
+  // fast and the compliance email stays small; PDFs go as they are.
+  static readFile(file) {
+    const asDataUrl = (blob) => new Promise((res, rej) => {
+      const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(new Error('Could not read the file')); r.readAsDataURL(blob);
     });
+    const name = file.name || 'upload';
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size < 1.5 * 1024 * 1024) return asDataUrl(file).then(d => ({ filename: name, file: d }));
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 2000 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        resolve({ filename: name.replace(/\.[^.]+$/, '') + '.jpg', file: c.toDataURL('image/jpeg', 0.85) });
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); asDataUrl(file).then(d => resolve({ filename: name, file: d })); };
+      img.src = url;
+    });
+  }
+
+  // The file chips under a step: name (+ ✕ while it can still be taken back).
+  static filesHtml(files, esc, { removable, viewable } = {}) {
+    if (!Array.isArray(files) || !files.length) return '';
+    return `<div style="display:flex; gap:5px; flex-wrap:wrap;">${files.map(f => `
+        <span style="display:inline-flex; align-items:center; gap:5px; max-width:100%; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); font-size:0.76rem;">
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">📄 ${esc(f.filename)}</span>${f.emailed_at ? ' ✉️' : ''}
+          ${viewable ? `<button type="button" data-onb-view="${f.id}" style="min-height:0; padding:0 4px; border:0; background:none; color:inherit; cursor:pointer; font:inherit;">${esc(OnboardingChecklist.t('view_file', {}, '👁'))}</button>` : ''}
+          ${removable && (viewable || !f.emailed_at) ? `<button type="button" data-onb-rmfile="${f.id}" style="min-height:0; padding:0 4px; border:0; background:none; color:#fca5a5; cursor:pointer; font:inherit; font-weight:800;">${esc(OnboardingChecklist.t('remove_file', {}, '✕'))}</button>` : ''}
+        </span>`).join('')}</div>`;
+  }
+
+  async upload(code, file) {
+    if (!code || this.busy.has(code)) return;
+    this.busy.add(code);
+    this.err = '';
+    this.render();
+    try {
+      const f = await OnboardingChecklist.readFile(file);
+      const body = await this.ctx.fetchJson('/api/my/onboarding/upload', { method: 'POST', body: JSON.stringify({ code, filename: f.filename, file: f.file }) });
+      this.data = body.onboarding || null;
+      if (this.ctx.onChange) this.ctx.onChange(this.data);
+    } catch (err) {
+      this.err = err.message;
+    }
+    this.busy.delete(code);
+    this.render();
+  }
+
+  async removeFile(id) {
+    if (!id || this.busy.has(`f${id}`)) return;
+    this.busy.add(`f${id}`);
+    this.err = '';
+    try {
+      const body = await this.ctx.fetchJson('/api/my/onboarding/file-remove', { method: 'POST', body: JSON.stringify({ id }) });
+      this.data = body.onboarding || null;
+      if (this.ctx.onChange) this.ctx.onChange(this.data);
+    } catch (err) {
+      this.err = err.message;
+    }
+    this.busy.delete(`f${id}`);
+    this.render();
   }
 
   static t(tier, tokens, fb) {
@@ -78,13 +156,16 @@ class OnboardingChecklist {
       const cost = s.cost_usd == null ? '' : Number(s.cost_usd) > 0
         ? t('cost', { amount: OnboardingChecklist.money(s.cost_usd) }, '{amount}') : t('cost_free', {}, 'Free');
       const busy = this.busy.has(s.code);
-      const canSend = live && (s.state === 'todo' || s.state === 'renew');
-      const canUndo = live && s.state === 'sent';
+      // 📎 Upload is the way in (owner 11/19 "collect it all"); Undo only
+      // for a step marked sent before uploads existed.
+      const files = Array.isArray(s.files) ? s.files : [];
+      const canUpload = live && s.state !== 'done';
+      const canUndo = live && s.state === 'sent' && !files.length;
       const link = s.link_url && /^https:\/\//.test(s.link_url)
         ? `<a href="${esc(s.link_url)}" target="_blank" rel="noopener" style="display:inline-block; padding:5px 11px; border-radius:999px; background:#1d4ed8; color:#fff; font-weight:800; font-size:0.8rem; text-decoration:none;">${esc(s.link_label || '›')}</a>` : '';
       const btns = [
         live ? link : '',
-        canSend ? `<button type="button" data-onb-sent="${esc(s.code)}" data-onb-on="1" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:transparent; color:#22c55e; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(t('mark_sent', {}, '✅ I sent it'))}</button>` : '',
+        canUpload ? `<button type="button" data-onb-upload="${esc(s.code)}" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #22c55e; background:${files.length ? 'transparent' : '#16a34a'}; color:${files.length ? '#22c55e' : '#fff'}; font:inherit; font-weight:800; font-size:0.8rem; cursor:pointer;">${esc(busy ? t('uploading', {}, 'Uploading…') : files.length ? t('upload_more', {}, '📎 Add another') : t('upload', {}, '📎 Upload'))}</button><input type="file" data-onb-file="${esc(s.code)}" accept="image/*,application/pdf" hidden>` : '',
         canUndo ? `<button type="button" data-onb-sent="${esc(s.code)}" data-onb-on="0" ${busy ? 'disabled' : ''} style="min-height:0; padding:5px 11px; border-radius:999px; border:1px solid #6b7280; background:transparent; color:#d1d5db; font:inherit; font-weight:700; font-size:0.78rem; cursor:pointer;">${esc(t('undo_sent', {}, 'Undo'))}</button>` : '',
       ].filter(Boolean).join('');
       const exp = s.state === 'done' && s.expires_at ? ` · ${esc(new Date(s.expires_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }))}` : '';
@@ -95,6 +176,7 @@ class OnboardingChecklist {
           </div>
           ${(s.how || cost) && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.88; line-height:1.35;">${cost ? `<b>${esc(cost)}</b>${s.how ? ' · ' : ''}` : ''}${esc(s.how || '')}</div>` : ''}
           ${s.note && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#fca5a5; font-weight:700;">${esc(s.note)}</div>` : ''}
+          ${live ? OnboardingChecklist.filesHtml(files, esc, { removable: s.state !== 'done' }) : ''}
           ${btns ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${btns}</div>` : ''}
         </div>`;
     };

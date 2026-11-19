@@ -45,4 +45,22 @@ public:
     // A club admin: start / move a person (track volunteer | paid), or take
     // them off the path (track "").  "" = ok, else the error.
     static std::string setTrack(long long personId, const std::string& track, long long userId);
+
+    // ── Documents (mig 1538) ────────────────────────────────────────────
+    // Store an upload (base64 of a PDF / JPEG / PNG / HEIC / WebP, sniffed
+    // by magic bytes) on a step; marks the step sent.  out id > 0 = ok, else
+    // *error says why.
+    static long long addFile(long long personId, const std::string& code, const std::string& filename,
+                             const std::string& base64, long long userId, std::string* error);
+    // Remove an upload.  ownerPersonId > 0 = the person themselves (only
+    // their own, only before it went to compliance); 0 = a club admin.
+    static std::string removeFile(long long fileId, long long ownerPersonId);
+    // A file for a club admin: false when gone (purged / deleted).
+    static bool fileBytes(long long fileId, std::string* filename, std::string* mime, std::string* bytes);
+    // ✉️ Email every stored file to compliance (onboarding_policy), cc the
+    // person and the admin, Reply-To the admin; split into parts under the
+    // relay's size cap.  "" = sent; else the error.  *sentFiles = how many.
+    static std::string sendToCompliance(long long personId, long long adminUserId, int* sentFiles);
+    // Deletes file bytes purge_days after they went to compliance.
+    static void purge();
 };

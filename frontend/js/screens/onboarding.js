@@ -79,6 +79,12 @@ class OnboardingScreen extends Screen {
       <div id="onb-body" style="padding: 0 var(--space-4) var(--space-4); max-width: 860px;"></div>`;
     this.element = div;
     div.addEventListener('click', (e) => this._onClick(e));
+    div.addEventListener('change', (e) => {
+      const inp = e.target.closest('input[data-onb-admin-file]');
+      if (!inp || !inp.files || !inp.files[0]) return;
+      const f = inp.files[0]; inp.value = '';
+      this._upload(Number(inp.dataset.pid), inp.dataset.onbAdminFile, f);
+    });
     return div;
   }
 
@@ -111,7 +117,55 @@ class OnboardingScreen extends Screen {
       if (pid) this._post('/api/onboarding/track', { person_id: pid, track: el.dataset.onbStart });
       return;
     }
-    if ((el = t('[data-onb-contact]'))) { this._contact(Number(el.dataset.onbContact)); }
+    if ((el = t('[data-onb-contact]'))) { this._contact(Number(el.dataset.onbContact)); return; }
+    if ((el = t('[data-onb-view]'))) { this._view(Number(el.dataset.onbView)); return; }
+    if ((el = t('[data-onb-rmfile]'))) {
+      if (confirm('Delete this file?')) this._post('/api/onboarding/file-remove', { id: Number(el.dataset.onbRmfile) });
+      return;
+    }
+    if ((el = t('[data-onb-admin-upload]'))) {
+      const inp = this.element.querySelector(`input[data-onb-admin-file="${el.dataset.onbAdminUpload}"][data-pid="${el.dataset.pid}"]`);
+      if (inp) inp.click();
+      return;
+    }
+    if ((el = t('[data-onb-send]'))) { this._send(Number(el.dataset.onbSend)); }
+  }
+
+  // 📎 Upload for someone (a document they emailed or handed in).
+  async _upload(pid, code, file) {
+    try {
+      const f = await OnboardingChecklist.readFile(file);
+      await this._post('/api/onboarding/upload', { person_id: pid, code, filename: f.filename, file: f.file });
+    } catch (err) { this.error = err.message; this._renderBody(); }
+  }
+
+  // 👁 Open a stored file in a new tab (fetched with the sign-in, shown as a blob).
+  async _view(id) {
+    const win = window.open('', '_blank');
+    try {
+      const res = await this.auth.fetch(`/api/onboarding/file/${id}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const url = URL.createObjectURL(await res.blob());
+      if (win) win.location = url; else window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      if (win) win.close();
+      this.error = err.message; this._renderBody();
+    }
+  }
+
+  // ✉️ Every file to compliance, cc the person and you (owner 11/19 "a button
+  // for me to send it all to compliance … and we would include the volunteer").
+  async _send(pid) {
+    const p = this._person(pid);
+    if (!p) return;
+    const n = (p.steps || []).reduce((t, s) => t + ((s.files || []).length), 0);
+    const to = (this.data.policy && this.data.policy.compliance_email) || '';
+    if (!confirm(this._t('send_confirm', { n, name: p.name, to }, 'Email {n} file(s) for {name} to {to}, cc {name} and you?'))) return;
+    this.sending = pid;
+    await this._post('/api/onboarding/send', { person_id: pid });
+    this.sending = null;
+    this._renderBody();
   }
 
   _contact(pid) {
@@ -147,7 +201,8 @@ class OnboardingScreen extends Screen {
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${order.length ? order.map(p => this._card(p, esc)).join('') : `<p style="opacity:0.7;">${esc(this._t('empty', {}, 'Nobody here yet.'))}</p>`}
       </div>
-      ${this._addHtml(esc)}`;
+      ${this._addHtml(esc)}
+      ${this.data.policy && this.data.policy.purge_days ? `<p style="font-size:0.78rem; opacity:0.65; margin-top:var(--space-3);">${esc(this._t('files_purge', { days: this.data.policy.purge_days }, 'Files are deleted {days} days after they go to compliance — only the ticks stay.'))}</p>` : ''}`;
   }
 
   _card(p, esc) {
@@ -160,7 +215,7 @@ class OnboardingScreen extends Screen {
       return `<button type="button" data-onb-chip="${esc(s.code)}" data-pid="${p.person_id}" title="${esc(s.label)}"
           style="min-height:0; padding:4px 9px; border-radius:8px; font:inherit; font-size:0.78rem; font-weight:700; cursor:pointer;
                  border:${on ? 2 : 1}px solid ${colour[s.state] || '#9ca3af'}; background:${on ? 'rgba(255,255,255,0.08)' : 'transparent'}; color:inherit;
-                 ${s.required ? '' : 'opacity:0.55; border-style:dashed;'}">${icon[s.state] || '⬜'} ${esc(s.label)}</button>`;
+                 ${s.required ? '' : 'opacity:0.55; border-style:dashed;'}">${icon[s.state] || '⬜'} ${esc(s.label)}${(s.files || []).length ? ` 📎${s.files.length}` : ''}</button>`;
     };
     const sel = this.sel && this.sel.pid === p.person_id ? steps.find(s => s.code === this.sel.code) : null;
     const when = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '');
@@ -169,6 +224,9 @@ class OnboardingScreen extends Screen {
           <div style="font-weight:800;">${esc(sel.label)} · ${OnboardingChecklist.stateHtml(sel.state, esc)}</div>
           <div style="font-size:0.8rem; opacity:0.8;">${esc(sel.how)}</div>
           ${sel.sent_at || sel.verified_at ? `<div style="font-size:0.78rem; opacity:0.75;">${sel.sent_at ? `🟡 ${esc(when(sel.sent_at))}` : ''}${sel.verified_at ? ` · ✅ ${esc(when(sel.verified_at))}` : ''}${sel.expires_at ? ` · ⏳ ${esc(when(sel.expires_at))}` : ''}</div>` : ''}
+          ${(sel.files || []).length ? OnboardingChecklist.filesHtml(sel.files, esc, { removable: true, viewable: true }) : `<div style="font-size:0.78rem; opacity:0.7;">${esc(this._t('no_files', {}, 'No files uploaded yet.'))}</div>`}
+          <div><button type="button" class="btn btn-secondary" data-onb-admin-upload="${esc(sel.code)}" data-pid="${p.person_id}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:5px 10px; font-size:0.8rem;">${esc(this._t('upload', {}, '📎 Upload'))}</button>
+            <input type="file" data-onb-admin-file="${esc(sel.code)}" data-pid="${p.person_id}" accept="image/*,application/pdf" hidden></div>
           <input type="text" data-onb-note value="${esc(sel.note || '')}" placeholder="Note (optional)" style="padding:6px 8px; border-radius:6px; border:1px solid var(--border-color); background:transparent; color:inherit; font:inherit;">
           <div style="display:flex; gap:6px; flex-wrap:wrap;">
             <button type="button" class="btn btn-primary" data-onb-act="verified" data-pid="${p.person_id}" data-code="${esc(sel.code)}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:6px 12px;">${esc(this._t('act_verify', {}, '✅ Checked'))}</button>
@@ -188,10 +246,22 @@ class OnboardingScreen extends Screen {
         ${p.note ? `<div style="font-size:0.78rem; opacity:0.75; margin-top:2px;">${esc(p.note)}</div>` : ''}
         <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;">${steps.map(chip).join('')}</div>
         ${actions}
+        ${this._sendHtml(p, esc)}
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
           ${move}
           <button type="button" class="btn btn-secondary" data-onb-track="" data-pid="${p.person_id}" style="min-height:0; padding:5px 10px; font-size:0.8rem; opacity:0.75;">${esc(this._t('act_remove', {}, 'Remove from onboarding'))}</button>
         </div>
+      </div>`;
+  }
+
+  _sendHtml(p, esc) {
+    const n = (p.steps || []).reduce((t, s) => t + ((s.files || []).length), 0);
+    const sent = p.emailed_at ? this._t('sent_line', { when: new Date(p.emailed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }, '✉️ Sent to compliance {when}') : '';
+    if (!n && !sent) return '';
+    const busy = this.busy && this.sending === p.person_id;
+    return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+        ${n ? `<button type="button" class="btn btn-primary" data-onb-send="${p.person_id}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:6px 12px; font-size:0.85rem;">${esc(busy ? this._t('sending', {}, 'Sending…') : `${this._t('act_send', {}, '✉️ Send all to compliance')} (${n})`)}</button>` : ''}
+        ${sent ? `<span style="font-size:0.8rem; opacity:0.8;">${esc(sent)}</span>` : ''}
       </div>`;
   }
 

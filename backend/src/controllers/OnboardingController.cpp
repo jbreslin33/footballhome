@@ -52,6 +52,71 @@ void OnboardingController::registerRoutes(Router& router, const std::string& pre
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save");
         }
     });
+    // 📎 An admin uploads for someone (a document they emailed in): {person_id, code, filename, file}.
+    router.post(prefix + "/upload", [this](const Request& r) {
+        Response denied; if (!gate(r, &denied)) return denied;
+        bool ok; json b = parseBody(r, &ok);
+        if (!ok) return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON");
+        try {
+            std::string err;
+            const long long id = Onboarding::addFile(num(b, "person_id"), text(b, "code"), text(b, "filename"), text(b, "file"),
+                                                     bearerUserId(r), &err);
+            if (id <= 0) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOut(HttpStatus::OK, Onboarding::board());
+        } catch (const std::exception& e) {
+            std::cerr << "[OnboardingController::upload] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the file");
+        }
+    });
+    router.post(prefix + "/file-remove", [this](const Request& r) {
+        Response denied; if (!gate(r, &denied)) return denied;
+        bool ok; json b = parseBody(r, &ok);
+        if (!ok) return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON");
+        try {
+            const std::string err = Onboarding::removeFile(num(b, "id"), 0);
+            if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOut(HttpStatus::OK, Onboarding::board());
+        } catch (const std::exception& e) {
+            std::cerr << "[OnboardingController::file-remove] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not remove the file");
+        }
+    });
+    // 👁 GET /api/onboarding/file/:id — the bytes, inline.
+    router.get(prefix + "/file/:id", [this](const Request& r) {
+        Response denied; if (!gate(r, &denied)) return denied;
+        const std::string path = r.getPath();
+        long long id = 0;
+        try { id = std::stoll(path.substr(path.find_last_of('/') + 1)); } catch (...) {}
+        try {
+            std::string filename, mime, bytes;
+            if (!Onboarding::fileBytes(id, &filename, &mime, &bytes)) return jsonError(HttpStatus::NOT_FOUND, "File not found");
+            Response out(HttpStatus::OK, bytes);
+            out.setHeader("Content-Type", mime);
+            out.setHeader("X-Content-Type-Options", "nosniff");
+            out.setHeader("Cache-Control", "private, no-store");
+            return out;
+        } catch (const std::exception& e) {
+            std::cerr << "[OnboardingController::file] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the file");
+        }
+    });
+    // ✉️ POST /api/onboarding/send {person_id} — every file to compliance.
+    router.post(prefix + "/send", [this](const Request& r) {
+        Response denied; if (!gate(r, &denied)) return denied;
+        bool ok; json b = parseBody(r, &ok);
+        if (!ok) return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON");
+        try {
+            int sent = 0;
+            const std::string err = Onboarding::sendToCompliance(num(b, "person_id"), bearerUserId(r), &sent);
+            if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            json board = Onboarding::board();
+            board["sent_files"] = sent;
+            return jsonOut(HttpStatus::OK, board);
+        } catch (const std::exception& e) {
+            std::cerr << "[OnboardingController::send] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not send");
+        }
+    });
     router.post(prefix + "/step", [this](const Request& r) {
         Response denied; if (!gate(r, &denied)) return denied;
         bool ok; json b = parseBody(r, &ok);
