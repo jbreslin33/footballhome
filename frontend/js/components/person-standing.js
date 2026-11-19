@@ -284,23 +284,38 @@
     const regs = Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
     const s = (text, color, title) => `<span title="${esc(title || '')}" style="color:${color}; white-space:nowrap;">${esc(text)}</span>`;
     const top = [], bottom = [];
-    if (a) {
-      const heard = a.lastRsvp || a.lastMarked;
-      const ghost = heard && !(a.attended30 > 0) && !(a.rsvpYes30 > 0);
-      const last = a.lastRsvp ? md(a.lastRsvp.eventStartAt || a.lastRsvp.at) : '';
-      if (ghost) top.push(s(t('box_ghost', {}, '👻 ghost'), '#fca5a5', t('ghost_tip', { days: a.windowDays || 30 }, 'No present/late mark and no yes RSVP in 30 days')));
-      top.push(s(last ? t('box_last', { date: last }, `R ${last}`) : t('box_never', {}, 'no RSVP'), last ? 'rgba(255,255,255,0.85)' : '#fca5a5',
-                 a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Answered ${md(a.lastRsvp.at)}`) : ''));
+    // RSVP by colour (mig 1546, owner 11/19 "green if they set availabity
+    // in last 7 days … yellow if within 14 days. red if past 14" → "just
+    // the letters RSVP" → "we dont need ghost status as RSVP color will
+    // tell us"): his own newest answer; the date rides on the hover.
+    {
+      const COL = { green: '#86efac', yellow: '#fbbf24', red: '#fca5a5' };
+      const at = hit.data.lastAnsweredAt;
+      const days = at ? Math.max(0, Math.floor((Date.now() - new Date(at)) / 86400000)) : null;
+      top.push(s(t('box_rsvp', {}, 'RSVP'), COL[hit.data.rsvpBox] || COL.red,
+        at ? t('box_rsvp_tip', { date: md(at), days }, `Last answered ${md(at)} (${days} days ago)`)
+           : t('box_rsvp_never_tip', {}, 'Has never answered an RSVP themselves')));
     }
+    // Dues (owner 11/19 "in green it dont even need to say paid … if owed
+    // it needs to show date of last payment and AMOUNT OWED all in red"):
+    // green "11/10 $35" = last payment; red "11/10 $70" = last payment
+    // date + amount owed.  opts.paidAt / opts.paidAmount = the board row's.
     const paid = opts.paidAt ? md(opts.paidAt) : '';
-    const paidBit = paid ? s(t('box_paid_on', { date: paid }, paid), 'rgba(255,255,255,0.75)', t('box_paid_on_tip', { date: paid }, `Last payment ${paid}`)) : '';
+    const money = (n) => `$${Math.round(Number(n) || 0)}`;
     if (d) {
       if (d.free_reason === 'volunteer') bottom.push(s(t('box_dues_volunteer', {}, '🙋 vol'), '#cbd5e1'));   // mig 1534
       else if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
       else if (!d.member) bottom.push(s(t('box_dues_none', {}, 'no LA'), '#9ca3af'));
-      else if (d.balance > 0) bottom.push(s(t('box_dues_owes', { amount: `$${Math.round(d.balance)}` }, `🔴 $${Math.round(d.balance)}`), d.months_behind >= 2 ? '#fca5a5' : '#fbbf24'));
-      else bottom.push(s(t('box_dues_paid', {}, '🟢 paid'), '#86efac'));
-      if (paidBit && !d.free_reason) bottom.push(paidBit);
+      else if (d.balance > 0) {
+        const amount = money(d.balance);
+        bottom.push(s(paid ? t('box_owes_since', { date: paid, amount }, `${paid} ${amount}`) : amount, '#fca5a5',
+          paid ? t('box_owes_since_tip', { date: paid, amount }, `Owes ${amount}. Last payment ${paid}.`)
+               : t('box_owes_never_tip', { amount }, `Owes ${amount}. No payment on record.`)));
+      } else {
+        const amount = opts.paidAmount != null && opts.paidAmount !== '' ? money(opts.paidAmount) : '';
+        bottom.push(s(paid ? t('box_paid_amount', { date: paid, amount }, `${paid} ${amount}`.trim()) : t('box_dues_free', {}, '$0'), '#86efac',
+          paid ? t('box_paid_on_tip', { date: paid }, `Last payment ${paid}`) : ''));
+      }
     }
     // Flag only (owner 11/19 "if not flagged then they are good"): ❌ when
     // he never filled the CASA form, nothing when he did.

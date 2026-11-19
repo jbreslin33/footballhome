@@ -1253,7 +1253,7 @@ class RosterScreenBase extends Screen {
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
           </div>
-          <div data-tc-info="${pid}" data-tc-paid="${esc(p.lastPaidAt || '')}" style="font-size:10px; font-weight:700; line-height:1.25;">${window.PersonStanding && PersonStanding.boxLine ? PersonStanding.boxLine(pid, { paidAt: p.lastPaidAt }) : ''}</div>
+          <div data-tc-info="${pid}" data-tc-paid="${esc(p.lastPaidAt || '')}" data-tc-paid-amount="${esc(p.lastPaidAmount == null ? '' : p.lastPaidAmount)}" style="font-size:10px; font-weight:700; line-height:1.25;">${window.PersonStanding && PersonStanding.boxLine ? PersonStanding.boxLine(pid, { paidAt: p.lastPaidAt, paidAmount: p.lastPaidAmount }) : ''}</div>
         </div>`;
     };
     const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
@@ -1320,7 +1320,7 @@ class RosterScreenBase extends Screen {
       PersonStanding.load(this.auth, [...ids]).then(() => {
         if (!this.element) return;
         this.element.querySelectorAll('[data-tc-info]').forEach(el => {
-          el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '' });
+          el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '', paidAmount: el.getAttribute('data-tc-paid-amount') || '' });
         });
         this.element.querySelectorAll('[data-tc-reg]').forEach(el => {
           el.innerHTML = PersonStanding.regMark ? PersonStanding.regMark(el.getAttribute('data-tc-reg')) : '';

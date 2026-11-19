@@ -940,6 +940,17 @@ Response PaymentsController::handleStanding(const Request& request) {
                    -- defaults and admin overrides don't count.
                    EXISTS (SELECT 1 FROM fh_event_rsvps r
                             WHERE r.person_id = p.id AND r.created_via = 'manual') AS answered,
+                   -- The box's RSVP colour (owner 11/19: green ≤ 7 days,
+                   -- yellow ≤ 14, red past 14): his own newest answer.
+                   (SELECT to_char(max(r.responded_at) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
+                      FROM fh_event_rsvps r
+                     WHERE r.person_id = p.id AND r.created_via = 'manual') AS last_answered_at,
+                   (SELECT CASE WHEN max(r.responded_at) >= now() - make_interval(days => bp.green_days)  THEN 'green'
+                                WHEN max(r.responded_at) >= now() - make_interval(days => bp.yellow_days) THEN 'yellow'
+                                ELSE 'red' END
+                      FROM fh_event_rsvps r, rsvp_box_policy bp
+                     WHERE r.person_id = p.id AND r.created_via = 'manual'
+                     GROUP BY bp.green_days, bp.yellow_days) AS rsvp_box,
                    -- R:27 on the card (owner 2026-11-04): every RSVP on
                    -- record for him, games and practices.
                    (SELECT count(*) FROM fh_event_rsvps r WHERE r.person_id = p.id) AS rsvp_total
@@ -954,6 +965,8 @@ Response PaymentsController::handleStanding(const Request& request) {
                           {"months_behind", (monthly > 0 && bal > 0) ? (int)std::ceil(bal / monthly - 1e-9) : 0}}},
                 {"inactive", r["inactive"].as<bool>()},
                 {"answered", r["answered"].as<bool>()},
+                {"rsvpBox", r["rsvp_box"].is_null() ? std::string("red") : std::string(r["rsvp_box"].c_str())},
+                {"lastAnsweredAt", r["last_answered_at"].is_null() ? json(nullptr) : json(r["last_answered_at"].c_str())},
                 {"rsvpTotal", r["rsvp_total"].as<long long>()},
                 // The dues pill opens his LeagueApps member page (owner
                 // 11/5: run his card from any player card).
