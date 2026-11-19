@@ -265,6 +265,11 @@ class GameCenterEligibility {
     bits.push(...this._practiceNoteBits(playerId));
     // ⬇ call-down (mig 1527, owner 11/19 "flag them as call downs"): On
     // Roster only for APSL — counts toward the league's 2 per game.
+    // ⛔ Not On Roster (mig 1528, owner 11/19 "if your not on roster then it
+    // should show a flag on your card"): a flag, whatever his group.
+    const rp = (this.roster || []).find(r => Number(r.id) === Number(playerId));
+    if (rp && rp.notOnRoster)
+      bits.push(`<span style="color:#f87171;">${this.escapeHtml(this._eligCopy('lineup_note_not_on_roster') || '⛔ Not On Roster')}</span>`);
     if (this._isCallDown && this._isCallDown(playerId))
       bits.push(`<span style="color:#f5d442;">${this.escapeHtml(this._eligCopy('lineup_note_calldown') || '⬇ call-down')}</span>`);
     // Money = Viewer.eventFinancial (AdminViewer only — owner 11/18 "the same except for financial data").

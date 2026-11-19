@@ -42,6 +42,7 @@ public:
         // Team pill Practice Squad / Inactive (squad_statuses.code); empty =
         // his group comes from inviteOnly + callIn.
         std::string squadStatus;
+        bool notOnRoster = false;   // ⛔ not On Roster for this team's games (fh_team_game_eligible, mig 1528)
         // Coach-defined ability rank within the team (1..N).  nullopt =
         // "no rank yet" — sort falls back to alphabetical (see
         // MensRoster.cpp comparator).  Written by

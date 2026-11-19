@@ -1551,7 +1551,8 @@ class GameCenterScreen extends EventScreen {
                           duesEligible: p.duesEligible !== false,   // migration 416: under the dues line
                           squadStatus: p.squadStatus || null,        // 💤 inactive → own fold (mig 945)
                           needsOnboard: p.needsOnboard === true,     // 👋 never answered anything → Not chasing (mig 1520)
-                          calldownFrom: p.calldownFrom || null });   // ⬇ On Roster only for APSL → a call-down (mig 1527)
+                          calldownFrom: p.calldownFrom || null,      // ⬇ On Roster only for APSL → a call-down (mig 1527)
+                          notOnRoster: p.notOnRoster === true });    // ⛔ flag on his box (mig 1528)
         }
       }
       this.roster = [...byId.values()];
@@ -2144,6 +2145,13 @@ class GameCenterScreen extends EventScreen {
       for (const list of [unassignedNoResponse, unassignedNotGoing])
         list.splice(0, list.length, ...list.filter(p => !isInactive(p)));
     }
+    // 💤 = never answered too (mig 1528, owner 11/19 "inactive should be
+    // same as not chasing"): one fold, one graphic row.
+    if (unassignedNotChasing.length) {
+      unassignedInactive.push(...unassignedNotChasing);
+      unassignedInactive.sort(this._byLastName);
+      unassignedNotChasing.length = 0;
+    }
     const inactiveLabel = (window.MessageCopy && MessageCopy.block('event_center', 'sec_inactive')) || '💤 Inactive';
 
     // Coach ↔ Player view toggle (2026-08-22, owner directive: "only need
@@ -2161,7 +2169,7 @@ class GameCenterScreen extends EventScreen {
     this._rsvpOut = { unplaced: [...unassignedGoing], ineligible: [...unassignedIneligible],
                       noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing],
                       // 👋 coaches only on the graphic (players never see the row)
-                      notChasing: this.isCoach ? [...unassignedNotChasing] : [] };
+                      notChasing: this.isCoach ? [...unassignedInactive] : [] };
 
     const seeAsBar = this._gcSeeAsHtml();
 
@@ -4148,7 +4156,7 @@ class GameCenterScreen extends EventScreen {
                            outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)', '#f5d442'),
                            outRow(out.noResponse, 'sec_noresp', '– No response', '#facc15'),
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),
-                           outRow(out.notChasing || [], 'sec_not_chasing', '👋 Not chasing', '#94a3b8'),
+                           outRow(out.notChasing || [], 'sec_inactive', '💤 Inactive', '#94a3b8'),
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").

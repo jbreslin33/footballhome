@@ -1228,7 +1228,9 @@ class RosterScreenBase extends Screen {
     const byLast = (a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')) || String(a.firstName || '').localeCompare(String(b.firstName || ''));
     const groupOf = (p) => {
       const c = this.columnCategoryOf(p);
-      return c === 'active' && this.needsOnboard(p) ? 'onboard' : (c in { active: 1, injured: 1, practice_squad: 1, not_eligible: 1, inactive: 1 } ? c : 'active');
+      // 💤 Inactive = never answered too (owner 11/19 "inactive should be same
+      // as not chasing … they are still part of club and still liga 1").
+      return c === 'active' && this.needsOnboard(p) ? 'inactive' : (c in { active: 1, injured: 1, practice_squad: 1, inactive: 1 } ? c : 'active');
     };
     const ids = new Set();
     const box = (p, col, listTeamIds, groupColor = null) => {
@@ -1240,7 +1242,7 @@ class RosterScreenBase extends Screen {
       // Flag the problem only (owner 11/19 "i think we need flag that they
       // are not eligible and if not flagged then they are good"): no 📋 /
       // gold for On Roster — ⛔ Not On Roster is the flag (its band + tag).
-      const flagged = String(p.squadStatus || '') === 'not_eligible';
+      const flagged = p.notOnRoster === true;   // server: NOT fh_team_game_eligible (mig 1528)
       return `<div data-player-sheet="${esc(key)}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
@@ -1295,8 +1297,6 @@ class RosterScreenBase extends Screen {
           ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
               <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
               <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
-          ${band(groups.onboard, ec('sec_not_chasing', '👋 Not chasing'), '#cbd5e1', listTeamIds)}
-          ${band(groups.not_eligible, copy('tc_not_eligible', {}, '⛔ Not On Roster'), '#f87171', listTeamIds, copy('tc_not_eligible_tip', {}, ''))}
           ${band(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd', listTeamIds)}
           ${band(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af', listTeamIds)}
           ${band(groups.inactive, ec('sec_inactive', '💤 Inactive'), '#94a3b8', listTeamIds)}

@@ -279,7 +279,7 @@ class EventScreen extends Screen {
         </div>` : '';
     // 👋 Not chasing (mig 1520): coaches only — players never see the row.
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
-      + (this.viewer.eventSection('not_chasing') ? row(out.notChasing, 'sec_not_chasing', '👋 Not chasing', '#94a3b8') : '');
+      + (this.viewer.eventSection('not_chasing') ? row(out.notChasing, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');   // never answered = 💤 (mig 1528)
   }
 
 
@@ -2584,10 +2584,9 @@ class EventScreen extends Screen {
       ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
       ${V('ineligible') ? (roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false)) : ''}
       ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
-      ${V('not_chasing') && notChasing.length ? fold('not_chasing', L('sec_not_chasing', '👋 Not chasing'), notChasing) : ''}
       ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')) : ''}
       ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
-      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactive, { callIn: true }) : ''}
+      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactive.concat(notChasing), { callIn: true }) : ''}
       ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}
       ${V('coaches') ? coachSection() : ''}`;
   }
