@@ -1247,6 +1247,26 @@ class RosterScreenBase extends Screen {
       const m = window.PersonStanding && PersonStanding.docsMissing ? PersonStanding.docsMissing(pid, teamId) : null;
       return m ? flagTag(copy('tc_flag_docs', {}, 'DOCS') + (m.stale ? '⚠' : ''), m.tip) : '';
     };
+    // Every group worst-first (mig 1551, owner 11/19 "or is that better
+    // done as a sort?" → "yes build it" → "it should do all reservees and
+    // injured etc" "for apsl and liga 1"): behind on both → dues → RSVP →
+    // up to date, A–Z within; boxes not loaded yet go last.  Each group
+    // gets its ✅ / RSVP / $ / both count line.  The pitch is
+    // re-sorted in place once PersonStanding arrives (no re-render).
+    const rankOf = (pid) => {
+      const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(pid) : null;
+      if (!b) return 4;
+      return b.rsvp && b.dues ? 0 : b.dues ? 1 : b.rsvp ? 2 : 3;
+    };
+    const byRank = (list) => list.map((p, i) => ({ p, i, r: rankOf(p.personId) }))
+      .sort((a, b) => a.r - b.r || a.i - b.i).map(x => x.p);
+    const tallyHtml = (pids) => {
+      const n = [0, 0, 0, 0, 0];
+      pids.forEach(pid => { n[rankOf(pid)] += 1; });
+      if (n[4] === pids.length) return '';
+      return esc(copy('tc_tally', { ok: n[3], rsvp: n[2], dues: n[1], both: n[0] },
+        `✅ ${n[3]} · RSVP ${n[2]} · $ ${n[1]} · both ${n[0]}`));
+    };
     const box = (p, col, listTeamIds, groupColor = null) => {
       const pid = Number(p.personId);
       ids.add(pid);
@@ -1257,7 +1277,7 @@ class RosterScreenBase extends Screen {
       // are not eligible and if not flagged then they are good"): no 📋 /
       // gold for On Roster — ⛔ Not On Roster is the flag (its band + tag).
       const flagged = p.notOnRoster === true;   // server: NOT fh_team_game_eligible (mig 1528)
-      return `<div data-player-sheet="${esc(key)}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
+      return `<div data-player-sheet="${esc(key)}" data-tc-pid="${pid}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
           <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
@@ -1270,15 +1290,16 @@ class RosterScreenBase extends Screen {
     };
     const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
           border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${players.map(p => box(p, col, listTeamIds)).join('')
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${byRank(players).map((p, i) => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`)).join('')
           || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
     // Every player is a box (owner 11/19 "on teams i need everything to be
     // a box all players"): the groups under the pitch are box bands too,
     // the group's colour as the box border.
     const band = (list, label, color, listTeamIds, tip = '') => list.length ? `<div style="margin-top:10px;"${tip ? ` title="${esc(tip)}"` : ''}>
-        <div style="font-size:12px; letter-spacing:3px; color:${color}; font-weight:800; text-transform:uppercase; margin-bottom:8px;">${esc(label)} (${list.length})</div>
-        <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px; padding:10px 6px; border-radius:8px; background:rgba(0,0,0,0.22);">
-          ${list.map(p => box(p, p.__col, listTeamIds, color)).join('')}</div></div>` : '';
+        <div style="font-size:12px; letter-spacing:3px; color:${color}; font-weight:800; text-transform:uppercase; margin-bottom:2px;">${esc(label)} (${list.length})</div>
+        <div data-tc-tally="${esc(list.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-bottom:6px; opacity:0.9;">${tallyHtml(list.map(p => p.personId))}</div>
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px; padding:10px 6px; border-radius:8px; background:rgba(0,0,0,0.22);">
+          ${byRank(list).map(p => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`)).join('')}</div></div>` : '';
     const card = (col) => {
       const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
       const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
@@ -1307,9 +1328,11 @@ class RosterScreenBase extends Screen {
             <span style="font-size:14px; text-transform:uppercase; letter-spacing:4px; font-weight:800;">${esc(label)}</span>
             <span style="font-size:14px; font-weight:800; color:#f5d442;">${groups.active.length}</span>
           </div>
+          <div data-tc-tally="${esc(groups.active.map(p => p.personId).join(','))}" style="font-size:12px; font-weight:800; margin:-4px 0 8px; opacity:0.95;">${tallyHtml(groups.active.map(p => p.personId))}</div>
           ${pitch(groups.active, col, listTeamIds)}
           ${extra.length ? `<details data-tc-fold="${esc(openKey)}"${this._tcOpen.has(openKey) ? ' open' : ''} style="margin-top:8px;">
               <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
+              <div data-tc-tally="${esc(extra.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-top:4px; opacity:0.9;">${tallyHtml(extra.map(p => p.personId))}</div>
               <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
           ${band(groups.standby, copy('board_standby_h', {}, '🪑 Reserves'), '#93c5fd', listTeamIds)}
           ${band(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd', listTeamIds)}
@@ -1333,6 +1356,15 @@ class RosterScreenBase extends Screen {
         if (!this.element) return;
         this.element.querySelectorAll('[data-tc-info]').forEach(el => {
           el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '', paidAmount: el.getAttribute('data-tc-paid-amount') || '' });
+        });
+        this.element.querySelectorAll('[data-tc-pitch]').forEach(el => {
+          const kids = [...el.children].filter(c => c.hasAttribute('data-tc-pid'));
+          kids.map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
+            .sort((x, y) => x.r - y.r || x.a - y.a).forEach(x => el.appendChild(x.c));
+        });
+        this.element.querySelectorAll('[data-tc-tally]').forEach(el => {
+          const pids = (el.getAttribute('data-tc-tally') || '').split(',').filter(Boolean);
+          el.innerHTML = tallyHtml(pids);
         });
         this.element.querySelectorAll('[data-tc-docs]').forEach(el => {
           el.innerHTML = docsTag(el.getAttribute('data-tc-docs'), el.getAttribute('data-tc-docs-team'));
