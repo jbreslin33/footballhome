@@ -1266,6 +1266,12 @@ class RosterScreenBase extends Screen {
     // RSVP → dues → both (migs 1551/1554).  It needs PersonStanding, so that order
     // is re-applied in place once it loads (no re-render).
     const rankOf = (pid) => RosterScreenBase.commitRank(pid);
+    // 1, 2, 3 … in the order shown, per group (owner 11/19 "number the
+    // plaeyrs"); re-run after the in-place 🤝 Committed re-sort.
+    const numberBoxes = (root) => (root || this.element) && (root || this.element).querySelectorAll('[data-tc-pitch]').forEach(el => {
+      let i = 0;
+      [...el.children].forEach(c => { const n = c.querySelector(':scope > [data-tc-num]'); if (n) n.textContent = String(++i); });
+    });
     const ordered = (list, col) => this.orderColumnPlayers(list, col).map(r => r.player);
     const tallyHtml = (pids) => {
       const n = [0, 0, 0, 0, 0];
@@ -1287,6 +1293,7 @@ class RosterScreenBase extends Screen {
       return `<div data-player-sheet="${esc(key)}" data-tc-pid="${pid}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
+          <span data-tc-num style="position:absolute; top:-8px; left:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#f5d442; color:#0f172a; font-weight:800;">@@TCNUM@@</span>
           <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
           <div style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
@@ -1297,7 +1304,7 @@ class RosterScreenBase extends Screen {
     };
     const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
           border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
-        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${ordered(players, col).map(p => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`)).join('')
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${ordered(players, col).map((p, i) => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(i + 1))).join('')
           || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
     // Every player is a box (owner 11/19 "on teams i need everything to be
     // a box all players"): the groups under the pitch are box bands too,
@@ -1306,7 +1313,7 @@ class RosterScreenBase extends Screen {
         <div style="font-size:12px; letter-spacing:3px; color:${color}; font-weight:800; text-transform:uppercase; margin-bottom:2px;">${esc(label)} (${list.length})</div>
         <div data-tc-tally="${esc(list.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-bottom:6px; opacity:0.9;">${tallyHtml(list.map(p => p.personId))}</div>
         <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px; padding:10px 6px; border-radius:8px; background:rgba(0,0,0,0.22);">
-          ${ordered(list, list[0] && list[0].__col).map(p => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`)).join('')}</div></div>` : '';
+          ${ordered(list, list[0] && list[0].__col).map((p, i) => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(i + 1))).join('')}</div></div>` : '';
     const card = (col) => {
       const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
       const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
@@ -1373,6 +1380,7 @@ class RosterScreenBase extends Screen {
             .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || flip * (y.n - x.n) || x.a - y.a)
             .forEach(x => el.appendChild(x.c));
         });
+        numberBoxes();
         this.element.querySelectorAll('[data-tc-tally]').forEach(el => {
           const pids = (el.getAttribute('data-tc-tally') || '').split(',').filter(Boolean);
           el.innerHTML = tallyHtml(pids);
