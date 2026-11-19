@@ -288,7 +288,10 @@ class EventScreen extends Screen {
     const inactiveOnly = inactive.filter(r => !r.standby).concat(this._hasReserves() ? [] : out.notChasing);
     const staff = this.viewer.eventSection('inactive') || this.viewer.eventSection('not_chasing');
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
-      + (staff ? row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd') + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');
+      + (staff ? row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd')
+               + row(out.injured.filter(r => !cameIds.has(Number(r.person_id))), 'sec_injured', '🩹 Injured', '#fda4af')
+               + row(out.suspended, 'sec_suspended_card', '⛔ Suspended', '#fca5a5')
+               + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');
   }
 
 
@@ -418,6 +421,10 @@ class EventScreen extends Screen {
       noResponse: unanswered.filter(r => !EventScreen.notChasing(r)),
       notChasing: unanswered.filter(r => EventScreen.notChasing(r)),
       notGoing:   players.filter(r => r.response === 'no'),
+      // 🩹 / ⛔ for the graphic (owner 11/19 "i should see all mens members"):
+      // an open injury with no answer of his own; suspended for this game.
+      injured:    players.filter(r => r.response !== 'yes' && r.response !== 'no' && r.injury),
+      suspended:  (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : []).filter(r => r && !r.is_coach && r.suspension),
     };
   }
 
