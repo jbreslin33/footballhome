@@ -1633,21 +1633,30 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                'last_name',  p.last_name,
                                'name',       NULLIF(TRIM(CONCAT_WS(' ', p.first_name, p.last_name)), ''),
                                'response',   er.response,
-                               'parent_person_id', p.parent_person_id)
+                               'parent_person_id', p.parent_person_id,
+                               -- 📞 men's Standby (mig 1530) rides here too, with
+                               -- contacts for 📣 Ask Standby (admins only — the
+                               -- C++ below strips them for everyone else)
+                               'standby',    EXISTS (SELECT 1 FROM fh_event_teams fet
+                                                       JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
+                                                       JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code = 'standby'
+                                                      WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id),
+                               'phone',      fh_recipient_phone(p.id, p.id),
+                               'email',      fh_recipient_email(p.id, p.id))
                            ORDER BY p.last_name, p.first_name, p.id)
                       FROM persons p
                       LEFT JOIN fh_event_rsvps er ON er.fh_event_id = fe.id AND er.person_id = p.id
                      WHERE p.id IN (SELECT tp.person_id
                                       FROM fh_event_teams fet
                                       JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
-                                      JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code = 'inactive'
+                                      JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code IN ('inactive', 'standby')
                                      WHERE fet.fh_event_id = fe.id)
                        AND NOT EXISTS (SELECT 1
                                          FROM fh_event_teams fet
                                          JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
                                          LEFT JOIN squad_statuses ss ON ss.id = tp.squad_status_id
                                         WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id
-                                          AND ss.code IS DISTINCT FROM 'inactive')
+                                          AND (ss.code IS NULL OR ss.code NOT IN ('inactive', 'standby')))
                        AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
                                         WHERE i.fh_event_id = fe.id AND i.person_id = p.id AND i.revoked_at IS NULL)
                        AND er.response IS DISTINCT FROM 'yes'
@@ -1995,7 +2004,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             // signed-in gate as the who's-coming list.
             ev["inactive"] = json::array();
             if (personId > 0) {
-                try { ev["inactive"] = json::parse(row["inactive_json"].c_str()); } catch (...) {}
+                try {
+                    ev["inactive"] = json::parse(row["inactive_json"].c_str());
+                    if (!viewerIsAdmin && ev["inactive"].is_array())
+                        for (auto& r : ev["inactive"]) { r.erase("phone"); r.erase("email"); }
+                } catch (...) {}
             }
             events.push_back(std::move(ev));
         }

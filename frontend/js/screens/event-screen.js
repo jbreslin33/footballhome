@@ -449,6 +449,13 @@ class EventScreen extends Screen {
   // 👋 Not chasing (mig 1520): a player who has never answered an RSVP
   // (needs_onboard from the event payload), not here on a call-up.
   static notChasing(r) { return !!(r && r.needs_onboard && !r.is_callup); }
+  // 🪑 Regulars / Reserves (mig 1530) — men's events: a Reserve row rides in
+  // ev.inactive with standby: true, or a men's team is tagged.
+  _hasReserves() {
+    const ev = this.ev || {};
+    return (Array.isArray(ev.inactive) && ev.inactive.some(r => r && r.standby))
+      || (Array.isArray(ev.teams) && ev.teams.some(t => t && t.section === 'Mens'));
+  }
   // Is fold <key> open now: the coach's own toggle wins (kept across the
   // 15s refresh), else the standing list.
   foldOpen(key) { return this.folds.has(key) ? !!this.folds.get(key) : EventScreen.STANDING_OPEN.has(key); }
@@ -1991,7 +1998,9 @@ class EventScreen extends Screen {
     const plain = String(g.label).replace(/<[^>]*>/g, '').replace(/&amp;/g, '&');
     const scope = (window.MessageCopy && MessageCopy.block('event_center', 'group_scope', { group: plain, event: what })) || `${plain} — ${what}`;
     const subject = (window.MessageCopy && MessageCopy.block('event_center', 'group_subject', { event: what })) || what;
-    const body = (window.MessageCopy && MessageCopy.block('event_center', 'group_body', { event: what, where })) || `${what}${where ? ` @ ${where}` : ''}\n`;
+    const ask = el.dataset.ecGroupMsg === 'reserves';   // 📣 Ask Reserves (mig 1530)
+    const body = (ask && window.MessageCopy && MessageCopy.block('event_center', 'ask_standby_body', { event: what, where }))
+      || (window.MessageCopy && MessageCopy.block('event_center', 'group_body', { event: what, where })) || `${what}${where ? ` @ ${where}` : ''}\n`;
     BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: { label: '', subject, body } },
       onSent: (n) => { el.textContent = `✓ ${n}`; } });
   }
@@ -2572,6 +2581,11 @@ class EventScreen extends Screen {
     if (unplacedOnly) return split ? unplacedHtml() : '';
     // 📇 Everyone on the list (players; coaches have their own) at the top.
     const everyone = this._groupContactHtml('all', L('group_all', '👥 Everyone'), [...players, ...suspended, ...inactive]);
+    // 🪑 Reserves (mig 1530, men): Reserve rows (ev.inactive standby) + Regulars
+    // who never answered — one fold with 📣 Ask Reserves (your own app, BCC).
+    const reserves = inactive.filter(r => r && r.standby);
+    const inactiveOnly = inactive.filter(r => !(r && r.standby));
+    const reservesExtra = this._hasReserves() ? notChasing : [];
     // Which people sections this viewer gets (lib/viewer.js eventSection).
     const V = (key) => this.viewer.eventSection(key);
     return `
@@ -2586,7 +2600,9 @@ class EventScreen extends Screen {
       ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
       ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')) : ''}
       ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
-      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactive.concat(notChasing), { callIn: true }) : ''}
+      ${V('inactive') && (reserves.length || reservesExtra.length) ? fold('reserves', L('sec_standby', '🪑 Reserves'), reserves.concat(reservesExtra),
+          { top: this._groupContactHtml('reserves', L('ask_standby_label', '📣 Ask Reserves'), reserves.filter(r => !r.response).concat(reservesExtra)) }) : ''}
+      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactiveOnly.concat(this._hasReserves() ? [] : notChasing), { callIn: true }) : ''}
       ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}
       ${V('coaches') ? coachSection() : ''}`;
   }
