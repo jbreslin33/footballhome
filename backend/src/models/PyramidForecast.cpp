@@ -41,6 +41,138 @@ struct Division { int id = 0; std::string name; std::vector<int> teams; std::vec
 // Poisson P(k; l)
 double pois(int k, double l) { return std::exp(-l + k * std::log(std::max(l, 1e-12)) - std::lgamma(k + 1.0)); }
 
+// The goals model's fit (Maher 1982): an attack and a defence rating per
+// team, 1.00 = average, shrunk toward average by `prior` average games; the
+// league's goals a side a game; a home edge (√ of home ÷ away goals, shrunk
+// by ten average games each side).  Shared by the conference and its feeder.
+struct FitRes { int h, a, hs, as; };
+void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg, double& home,
+              std::vector<double>& att, std::vector<double>& def) {
+    att.assign(n, 1.0); def.assign(n, 1.0);
+    double goals = 0, homeGoals = 0, awayGoals = 0;
+    for (const auto& g : done) { goals += g.hs + g.as; homeGoals += g.hs; awayGoals += g.as; }
+    avg = done.empty() ? 1.5 : goals / (2.0 * done.size());
+    home = done.empty() ? 1.0 : std::sqrt((homeGoals + 10 * avg) / (awayGoals + 10 * avg));
+    for (int it = 0; it < 200 && !done.empty(); ++it) {
+        double moved = 0;
+        for (int pass = 0; pass < 2; ++pass)
+            for (int t = 0; t < n; ++t) {
+                double got = 0, expd = 0;
+                for (const auto& g : done) {
+                    if (g.h != t && g.a != t) continue;
+                    const bool isHome = g.h == t; const int o = isHome ? g.a : g.h;
+                    const double edge = isHome ? home : 1.0 / home;
+                    if (pass == 0) { got += isHome ? g.hs : g.as; expd += avg * edge * def[o]; }
+                    else { got += isHome ? g.as : g.hs; expd += avg / edge * att[o]; }
+                }
+                const double v = (got + prior * avg) / (expd + prior * avg);
+                double& slot = pass == 0 ? att[t] : def[t];
+                moved = std::max(moved, std::fabs(v - slot)); slot = v;
+            }
+        if (moved < 1e-6) break;
+    }
+}
+
+// 📉 The outlook (mig 1571): the conference's seasons (how many go down /
+// come up) and each feeder league — its teams rated from their own games,
+// the rest of their listed games played out `sims` times (points → goal
+// difference → goals → lot), promotion = the top auto_places, plus the next
+// playoff_places × the chance the feeder side beats our group-playoff winner.
+json outlookJson(Database* db, const std::string& cid, int sims, double prior, double feederStayUpPct,
+                 const std::string& ourPattern, std::mt19937_64& rng) {
+    json out = {{"seasons", json::array()}, {"feeders", json::array()}};
+    for (const auto& r : db->query(
+            "SELECT season, teams, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label FROM pyramid_relegation_outlook "
+            " WHERE competition_id = $1::int ORDER BY sort_order, season", {cid}))
+        out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"down", num(r, "relegated")},
+                                  {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
+    for (const auto& f : db->query(
+            "SELECT fixture_source_id, division_label, label, auto_places, playoff_places FROM pyramid_feeder_sources "
+            " WHERE competition_id = $1::int ORDER BY sort_order, id", {cid})) {
+        std::vector<std::string> names; std::map<std::string, int> idx;
+        std::vector<FitRes> done; std::vector<std::pair<int, int>> left;
+        for (const auto& g : db->query(
+                "SELECT home_name, away_name, home_score, away_score FROM league_fixtures "
+                " WHERE source_id = $1::int AND division_label = $2 AND removed_at IS NULL AND status <> 'cancelled' ORDER BY starts_at",
+                {std::to_string(f["fixture_source_id"].as<int>()), str(f, "division_label")})) {
+            int ix[2];
+            for (int k = 0; k < 2; ++k) {
+                const std::string nm = str(g, k ? "away_name" : "home_name");
+                auto it = idx.find(nm);
+                if (it == idx.end()) { it = idx.emplace(nm, (int)names.size()).first; names.push_back(nm); }
+                ix[k] = it->second;
+            }
+            if (ix[0] == ix[1]) continue;
+            if (!g["home_score"].is_null() && !g["away_score"].is_null()) done.push_back({ix[0], ix[1], g["home_score"].as<int>(), g["away_score"].as<int>()});
+            else left.push_back({ix[0], ix[1]});
+        }
+        const int n = (int)names.size();
+        if (!n) continue;
+        double avg = 1.5, home = 1.0; std::vector<double> att, def;
+        fitMaher(n, done, prior, avg, home, att, def);
+        struct Row { int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0; };
+        auto tableOf = [&](const std::vector<FitRes>& rs) {
+            std::vector<Row> t(n);
+            for (const auto& r : rs) {
+                Row& H = t[r.h]; Row& A = t[r.a];
+                H.p++; A.p++; H.gf += r.hs; H.ga += r.as; A.gf += r.as; A.ga += r.hs;
+                if (r.hs > r.as) { H.w++; A.l++; H.pts += 3; } else if (r.hs < r.as) { A.w++; H.l++; A.pts += 3; } else { H.d++; A.d++; H.pts++; A.pts++; }
+            }
+            return t;
+        };
+        auto ranked = [&](const std::vector<Row>& t, bool lot) {
+            std::vector<int> l(n); for (int i = 0; i < n; ++i) l[i] = i;
+            if (lot) std::shuffle(l.begin(), l.end(), rng);
+            else std::sort(l.begin(), l.end(), [&](int a, int b) { return names[a] < names[b]; });
+            std::stable_sort(l.begin(), l.end(), [&](int a, int b) {
+                if (t[a].pts != t[b].pts) return t[a].pts > t[b].pts;
+                if (t[a].gf - t[a].ga != t[b].gf - t[b].ga) return t[a].gf - t[a].ga > t[b].gf - t[b].ga;
+                return t[a].gf > t[b].gf;
+            });
+            return l;
+        };
+        const int autoN = f["auto_places"].as<int>(), poN = f["playoff_places"].as<int>();
+        const double winPo = (100.0 - feederStayUpPct) / 100.0;
+        std::vector<int> first(n, 0), autoUp(n, 0), po(n, 0);
+        std::vector<double> ptsSum(n, 0);
+        std::vector<FitRes> rs = done;
+        for (int s = 0; s < sims; ++s) {
+            rs.resize(done.size());
+            for (const auto& [h, a] : left) {
+                std::poisson_distribution<int> ph(avg * home * att[h] * def[a]), pa(avg / home * att[a] * def[h]);
+                rs.push_back({h, a, ph(rng), pa(rng)});
+            }
+            const auto t = tableOf(rs);
+            const auto l = ranked(t, true);
+            for (int i = 0; i < n; ++i) {
+                const int x = l[i]; ptsSum[x] += t[x].pts;
+                if (i == 0) first[x]++;
+                if (i < autoN) autoUp[x]++; else if (i < autoN + poN) po[x]++;
+            }
+        }
+        const double S = sims > 0 ? sims : 1;
+        const auto now = tableOf(done);
+        const auto order = ranked(now, false);
+        json teamsJ = json::array();
+        for (int i = 0; i < n; ++i) {
+            const int x = order[i]; const Row& r = now[x];
+            int gLeft = 0; for (const auto& [h, a] : left) if (h == x || a == x) gLeft++;
+            json tj = {{"name", names[x]}, {"pos", i + 1}, {"p", r.p}, {"w", r.w}, {"d", r.d}, {"l", r.l}, {"gf", r.gf}, {"ga", r.ga},
+                       {"pts", r.pts}, {"left", gLeft}, {"att", r2(att[x])}, {"def", r2(def[x])}, {"rating", r2(att[x] / def[x])},
+                       {"xpts", r1(ptsSum[x] / S)}, {"first", r3(first[x] / S)}, {"playoff", r3(po[x] / S)},
+                       {"up", r3((autoUp[x] + winPo * po[x]) / S)}};
+            if (!ourPattern.empty()) {
+                auto m = db->query("SELECT $1 ILIKE $2 AS m", {names[x], ourPattern});
+                if (!m.empty() && m[0]["m"].as<bool>()) tj["ours"] = true;
+            }
+            teamsJ.push_back(tj);
+        }
+        out["feeders"].push_back({{"label", str(f, "label")}, {"auto", autoN}, {"playoff", poN}, {"win_playoff", r3(winPo)},
+                                  {"played", (int)done.size()}, {"left", (int)left.size()}, {"avg_goals", r2(avg)}, {"teams", teamsJ}});
+    }
+    return out;
+}
+
 struct Cached { std::string stamp; std::chrono::steady_clock::time_point at; json body; };
 std::mutex gMutex;
 std::map<int, Cached> gCache;
@@ -125,14 +257,14 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     }
 
     // Policy: this conference's row, else the default.
-    int sims = 10000; double prior = 3, feederPct = 50; bool pair = true; std::string feeder;
+    int sims = 10000; double prior = 3, feederPct = 50; bool pair = true; std::string feeder, ourPattern;
     int groupRounds = 0, crossRounds = 0;   // mig 1449: 0 = only the listed games
     {
-        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct, group_rounds, cross_group_rounds FROM pyramid_forecast_policies "
+        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct, group_rounds, cross_group_rounds, our_name_pattern FROM pyramid_forecast_policies "
                            " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
         if (!p.empty()) {
             sims = p[0]["sims"].as<int>(); prior = num(p[0], "prior_games"); pair = p[0]["pair_relegation_playoffs"].as<bool>();
-            feeder = str(p[0], "feeder_label"); feederPct = num(p[0], "feeder_stay_up_pct");
+            feeder = str(p[0], "feeder_label"); feederPct = num(p[0], "feeder_stay_up_pct"); ourPattern = str(p[0], "our_name_pattern");
             groupRounds = p[0]["group_rounds"].is_null() ? 0 : p[0]["group_rounds"].as<int>();
             crossRounds = p[0]["cross_group_rounds"].is_null() ? 0 : p[0]["cross_group_rounds"].as<int>();
         }
@@ -168,28 +300,14 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     const int added = (int)games.size() - listed;
 
     // ── the goals model ──
-    int played = 0; double goals = 0, homeGoals = 0, awayGoals = 0;
-    for (const auto& g : games) if (g.done) { played++; goals += g.hs + g.as; homeGoals += g.hs; awayGoals += g.as; }
-    const double avg = played ? goals / (2.0 * played) : 1.5;
-    // home edge, shrunk toward none by ten average games each side
-    const double home = played ? std::sqrt((homeGoals + 10 * avg) / (awayGoals + 10 * avg)) : 1.0;
-    for (int it = 0; it < 200 && played; ++it) {
-        double moved = 0;
-        for (int pass = 0; pass < 2; ++pass)
-            for (int t = 0; t < N; ++t) {
-                double got = 0, expd = 0;
-                for (const auto& g : games) {
-                    if (!g.done || (g.h != t && g.a != t)) continue;
-                    const bool isHome = g.h == t; const int o = isHome ? g.a : g.h;
-                    const double edge = isHome ? home : 1.0 / home;
-                    if (pass == 0) { got += isHome ? g.hs : g.as; expd += avg * edge * teams[o].def; }
-                    else { got += isHome ? g.as : g.hs; expd += avg / edge * teams[o].att; }
-                }
-                const double v = (got + prior * avg) / (expd + prior * avg);
-                double& slot = pass == 0 ? teams[t].att : teams[t].def;
-                moved = std::max(moved, std::fabs(v - slot)); slot = v;
-            }
-        if (moved < 1e-6) break;
+    int played = 0;
+    std::vector<FitRes> fitDone;
+    for (const auto& g : games) if (g.done) { played++; fitDone.push_back({g.h, g.a, g.hs, g.as}); }
+    double avg = 1.5, home = 1.0;
+    {
+        std::vector<double> att, def;
+        fitMaher(N, fitDone, prior, avg, home, att, def);
+        for (int t = 0; t < N; ++t) { teams[t].att = att[t]; teams[t].def = def[t]; }
     }
     // What if: that team's strength moved to the slider's, split evenly
     // between attack (×√k) and defence (÷√k).
@@ -397,6 +515,13 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}};
     out["policy"] = {{"paired", paired}, {"feeder", feeder.empty() ? json(nullptr) : json(feeder)}, {"feeder_stay_up_pct", feederPct}};
     out["tiebreak"] = tiebreak;
+    // our side here (mig 1571), for the outlook's "our road"
+    if (!ourPattern.empty())
+        for (const auto& t : teams) {
+            auto m = db->query("SELECT $1 ILIKE $2 AS m", {t.name, ourPattern});
+            if (!m.empty() && m[0]["m"].as<bool>()) { out["ours"] = t.id; break; }
+        }
+    out["outlook"] = outlookJson(db, cid, sims, prior, feederPct, ourPattern, rng);
     if (whatIf) { out["what_if"] = whatIfOut; return out; }
     {
         std::lock_guard<std::mutex> lock(gMutex);

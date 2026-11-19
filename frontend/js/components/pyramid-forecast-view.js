@@ -166,7 +166,63 @@ class PyramidForecastView {
       ${this._howHtml(d)}
       <div class="fc-note">${esc(this._copy('fc_tap_team'))}</div>
       ${tables}
+      ${this._outlookHtml(d)}
       ${upcoming.length ? this._matchupsHtml(d, upcoming) : ''}`;
+  }
+
+  // 📉 Up and down (mig 1571, owner 11/19 "3.5 of 16 this year. and 3.5 of
+  // 14 next year. then … 1.5 of 12 … show percentage of teams getting
+  // relegated each year. show strength of teams from casa" + "chances of
+  // getting promoted from feeders"): the seasons table (pyramid_relegation_
+  // outlook), our road through them, and each feeder league's table with
+  // its strength and promotion chance (server: PyramidForecast outlookJson).
+  _outlookHtml(d) {
+    const o = d.outlook || {}, seasons = o.seasons || [], feeders = o.feeders || [];
+    if (!seasons.length && !feeders.length) return '';
+    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v));
+    const n = (v) => String(Math.round(v * 10) / 10);
+    let html = `<h3>${esc(this._copy('fc_ol_title'))}</h3>`;
+    if (seasons.length) {
+      const maxShare = Math.max(...seasons.map((x) => x.down / x.teams), 0.01);
+      html += `<div style="overflow-x:auto;"><table class="fc-table" style="max-width:720px;">
+        <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th><th>${esc(this._copy('fc_ol_teams'))}</th>
+          <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
+        <tbody>${seasons.map((x) => {
+          const share = x.down / x.teams;
+          return `<tr><td style="text-align:left;"><b>${esc(x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td><td>${x.teams}</td>
+            <td><b>${n(x.down)}</b></td>
+            <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
+            <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;
+        }).join('')}</tbody></table></div>
+        <div class="fc-note">${esc(this._copy('fc_ol_note'))}</div>`;
+    }
+    // 🛣 our road: this season's forecast, then the base rates after it
+    const us = d.ours ? this._teamsById(d).get(d.ours) : null;
+    const feeder = feeders[0];
+    if (us && seasons.length >= 2) {
+      const [s1, s2, s3] = seasons;
+      const base2 = s2.down / s2.teams;
+      const lines = [
+        this._copy('fc_ol_road_now', { season: s1.season, down: PyramidForecastView.pct(us.down) }),
+        this._copy('fc_ol_stay', { s1: s1.season, s2: s2.season, base: PyramidForecastView.pct(base2), pct: PyramidForecastView.pct((1 - us.down) * (1 - base2)) }),
+      ];
+      if (s3 && feeder) lines.push(this._copy('fc_ol_bounce', { s2: s2.season, s3: s3.season, feeder: feeder.label, up: n(s1.up), others: n(Math.max(0, s1.down - 1)), s3_down: n(s3.down), s3_teams: s3.teams }));
+      html += `<div style="margin:8px 0; padding:8px 12px; border-radius:10px; border:1px solid #facc15; background:rgba(250,204,21,0.08); font-size:0.84rem; line-height:1.45;">
+          <b>${esc(this._copy('fc_ol_road', { team: us.name }))}</b>${lines.filter(Boolean).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+    }
+    for (const f of feeders) {
+      html += `<h3>${esc(this._copy('fc_ol_feeder', { label: f.label }))}</h3>
+        <div class="fc-note">${esc(this._copy('fc_ol_feeder_note', { auto: f.auto, playoff: f.playoff, pct: PyramidForecastView.pct(f.win_playoff), played: f.played, left: f.left }))}</div>
+        <div style="overflow-x:auto;"><table class="fc-table">
+          <thead><tr><th>#</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
+            <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_ol_col_first'))}</th><th>${esc(this._copy('fc_ol_col_po'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
+          <tbody>${f.teams.map((t) => `<tr class="${t.pos <= f.auto ? 'z-playoff' : t.pos <= f.auto + f.playoff ? 'z-relegation_playoff' : ''}"${t.ours ? ' style="background:rgba(250,204,21,0.10);"' : ''}>
+            <td>${t.pos}</td><td style="text-align:left; white-space:normal; font-weight:700;">${esc(t.name)}</td><td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
+            <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
+            <td>${this._heat(t.first, false)}</td><td>${this._heat(t.playoff, false)}</td><td>${this._heat(t.up, false)}</td></tr>`).join('')}</tbody>
+        </table></div>`;
+    }
+    return html;
   }
 
   _betHtml(d, g, focus) {
