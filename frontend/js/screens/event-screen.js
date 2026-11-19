@@ -80,7 +80,9 @@ class EventScreen extends Screen {
   panels(key) {
     if (key !== 'players') return [];
     return [
-      new Panel({ key: 'coming',  html: (s) => s._comingHtml() }),
+      new Panel({ key: 'team_card', html: (s) => s._teamCardHtml() }),   // the graphic
+      new Panel({ key: 'coming',  html: (s) => s._comingHtml(),
+                  label: () => (window.MessageCopy && MessageCopy.block('event_center', 'menu_coming')) || '👥 Who\'s coming' }),
       new Panel({ key: 'jobs',    minTier: 'coach', html: (s) => s._jobsHtml() }),
       new Panel({ key: 'invites', minTier: 'coach', applies: (s) => !s._isPast(s.ev),
                   html: (s) => s.panelFoldHtml('invites', '🎟 Invites', s._invitesHtml()) }),
@@ -91,6 +93,121 @@ class EventScreen extends Screen {
   // The body under a lit pill = its panels this viewer reaches, in order.
   pillHtml(key) { return this._renderPanels(this.panels(key)); }
 
+  // ── 🗂 The event card — every kind's graphic (owner 11/18: the page is
+  // the graphic, the rest in ☰).  Barn night, meeting, camp … get it as
+  // is; PracticeScreen names itself PRACTICE / PICKUP and always says
+  // Indoor / Outdoor.  GameCenterScreen draws its own game card.
+  graphicPanels()  { return ['team_card']; }
+  _cardKindWord() {
+    const k = String((this.ev && this.ev.kind) || 'event');
+    return (k === 'barn night' ? 'Barn Night' : k).toUpperCase();
+  }
+  _cardSetting() { return !!(this.ev && this.ev.setting); }   // Indoor / Outdoor only when the calendar says
+
+  // ── 🗂 The practice card (owner 2026-11-13: "practice needs a graphic
+  // like game but auto filled … separate in lineup by age. same with mens
+  // practice sep by 'team' apsl or liga 1", then "i like it on pitch", "if
+  // col is small then put another under", "if indoor then indoor pitch. if
+  // outdoor then outdoor", "in order of highest age to lowest").
+  //   look    the men's game card: blue card, gold border, green pitch
+  //           band with the halfway line + crest ("start from that theme")
+  //   bands   listed by age on ONE pitch — a band per tagged team, oldest
+  //           first (U12 → U10 → U8; adult teams keep the event's order),
+  //           players as pills in the team colour, smaller as the count grows
+  //   who     every Going player under his team among the event's tagged
+  //           teams (rsvps.team_ids); a man on two (APSL + L1) once, under
+  //           the first, +L1; Going on none of them (invites) → 'Invited'.
+  //           Coaches a foot line, never counted.  Indoor/outdoor in the
+  //           date line (ev.setting, mig 931).
+  _teamCardHtml() {
+    const ev = this.ev;
+    const rsvps = Array.isArray(ev && ev.rsvps) ? ev.rsvps : [];
+    const going = rsvps.filter(r => r && r.response === 'yes' && !r.suspension);
+    // No header for a player (Viewer.eventHeader) → the card is always drawn,
+    // so when / where (and GOING / NOT GOING) are on the page with nobody going yet.
+    if (!going.length && (!window.Viewer || Viewer.account().eventHeader)) return '';
+    const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
+      || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
+    const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
+    const indoor = ev.setting === 'indoor';
+    const age = (t) => { const m = /U(\d+)/i.exec(t.short_label || t.label || t.name || ''); return m ? Number(m[1]) : 99; };
+    const teams = (Array.isArray(ev.teams) ? ev.teams : []).map((t, i) => ({ t, i }))
+      .sort((a, b) => age(b.t) - age(a.t) || a.i - b.i).map(x => x.t);   // oldest first
+    const byId = new Map(teams.map(t => [Number(t.id), t]));
+    const first = (r) => String(r.name || r.first_name || '?').trim().split(/\s+/)[0];
+    const short = (r) => {
+      const parts = String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim().split(/\s+/);
+      return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+    };
+    const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
+    const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
+    const players = going.filter(r => !r.is_coach);
+    for (const r of players) {
+      const mine = (Array.isArray(r.team_ids) ? r.team_ids : []).map(Number).filter(id => byId.has(id))
+        .sort((a, b) => teams.indexOf(byId.get(a)) - teams.indexOf(byId.get(b)));
+      (mine.length ? blocks.get(mine[0]) : other).rows.push({ r, also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean) });
+    }
+    const list = [...blocks.values(), other].filter(b => b.rows.length);
+    const color = (t) => (/^#[0-9a-f]{6}$/i.test((t && t.color) || '') ? t.color : '#64748b');
+    for (const b of list) b.rows.sort((x, y) => short(x.r).localeCompare(short(y.r)));
+    // Listed by age on the pitch (owner 2026-11-13 "on the graphic now
+    // list them by age. make the player pills smaller if needed"): one band
+    // per team, oldest first (U12 → U10 → U8; adult teams keep the event's
+    // order), its players as pills in the team colour, smaller as the count
+    // grows so everyone fits.  Halfway line + crest between the bands.
+    const pill = players.length > 36 ? { fs: 11, pad: '2px 7px' } : players.length > 20 ? { fs: 13, pad: '3px 8px' } : { fs: 15, pad: '4px 10px' };
+    const band = (b) => {
+      const c = color(b.team);
+      return `<div style="padding:4px 0;">
+          <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:5px;">
+            <span style="font-size:13px; letter-spacing:3px; font-weight:800; text-transform:uppercase;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
+            <span style="font-size:13px; font-weight:800; color:#f5d442;">${b.rows.length}</span></div>
+          <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
+            ${b.rows.map(x => `<span style="font-size:${pill.fs}px; font-weight:700; line-height:1.2; padding:${pill.pad}; border-radius:999px; background:${c}; color:#fff; border:1.5px solid #fff; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${esc(short(x.r))}${x.also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${esc(x.also.join(' +'))}</span>` : ''}</span>`).join('')}
+          </div></div>`;
+    };
+    const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
+    const halfway = `<div style="display:flex; align-items:center; gap:8px; margin:6px 0;">${line}
+        <div style="width:40px;height:40px;border-radius:50%;flex-shrink:0;box-sizing:border-box;border:2px solid rgba(255,255,255,0.5);background:#fff;display:flex;align-items:center;justify-content:center;">
+          <img src="images/lighthouse-1893-crest.png" style="max-width:28px;max-height:28px;object-fit:contain;" alt=""></div>${line}</div>`;
+    const bands = list.map(band);
+    if (bands.length > 1) bands.splice(Math.ceil(bands.length / 2), 0, halfway); else bands.push(halfway);
+    const pitch = `<div style="margin:0 -28px; padding:10px 10px; box-sizing:border-box; background:${indoor ? '#1f6f43' : '#15803d'};
+        border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">${bands.join('')}</div>`;
+    const coaches = going.filter(r => r.is_coach);
+    const when = [this._when(ev), EventLabels.timesLine(ev)].filter(Boolean).join(' · ');
+    return `<div style="max-width:540px; margin:0 auto var(--space-3); box-sizing:border-box; border:4px solid #f5d442;
+                 background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
+                 color:#fff; text-align:center; padding:20px 28px 16px; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);
+                 font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:5px; font-weight:700; margin-bottom:8px;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: this._cardKindWord() }))}</div>
+        <div style="font-size:15px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.95); margin-bottom:6px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''}${this._cardSetting() ? ` · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}` : ''}</div>
+        ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
+        ${pitch}
+        <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
+        ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
+        ${this._cardOutHtml()}
+      </div>`;
+  }
+
+  // – No response / ✗ Not going under the card, as the game card has them
+  // under its substitutes (owner 11/18 "similar to game").
+  _cardOutHtml() {
+    const out = this._rsvpOutLists();
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const nameOf = (r) => r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?';
+    const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
+    // Same colours as the game card, names too (owner 11/18): going green
+    // (the count line), no response yellow (owner 11/18 "no response should be yellow"), not going red.
+    const row = (list, tier, fb, c) => list.length ? `
+        <div style="margin-top:8px;">
+          <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
+          <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
+        </div>` : '';
+    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
+  }
+
+
   // ── ☰ extras (Viewer.eventExtrasInMenu — PlayerViewer) ──────────────
   // Owner 11/18: "all the stuff under graphic sould go inside hamburgert"
   // → practice "similar to game … sibling oop wise of game page inheriting
@@ -98,7 +215,6 @@ class EventScreen extends Screen {
   // wrapper each; ☰ lists them (labels = each one's own heading) and a pick
   // shows that one under the graphic.  Children say which panel IS the
   // graphic (graphicPanels) and which to leave out (menuSkipPanels).
-  graphicPanels()  { return []; }
   menuSkipPanels() { return []; }
   _extrasInMenu() { return !!(this.ev && window.Viewer && Viewer.account().eventExtrasInMenu); }
   _renderPanels(panels) {
@@ -107,7 +223,8 @@ class EventScreen extends Screen {
     return (panels || []).filter(p => p && p.shownTo(this) && !skip.includes(p.key)).map(p => {
       const h = p.html(this);
       if (!h || graphic.includes(p.key)) return h;
-      return `<div data-gc-extra="${p.key}" style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>`;
+      const label = p.label(this);
+      return `<div data-gc-extra="${p.key}"${label ? ` data-menu-label="${this.escapeHtml(label)}"` : ''} style="display:${this._extraOpen === p.key ? 'block' : 'none'};">${h}</div>`;
     }).join('');
   }
   _syncExtrasMenu() {
@@ -117,8 +234,10 @@ class EventScreen extends Screen {
     if (!this._extrasInMenu() || !this.element) { sb.setPageItems(screen, []); return; }
     const items = [...this.element.querySelectorAll('[data-gc-extra]')].map(el => {
       const key = el.getAttribute('data-gc-extra');
-      const h = el.querySelector('summary, h2, h3, .ec-h, button');
-      let label = ((h || el).textContent || '').replace(/\s+/g, ' ').trim();
+      // The panel's own name (Panel label), else its heading — headings
+      // before buttons, so a 💬 64 send button never names it.
+      const h = ['summary', 'h2', 'h3', '.ec-h', 'button'].map(q => el.querySelector(q)).find(Boolean);
+      let label = (el.getAttribute('data-menu-label') || (h || el).textContent || '').replace(/\s+/g, ' ').trim();
       if (label.length > 60) label = label.slice(0, 57) + '…';
       return label ? { label, run: () => this._showExtra(key) } : null;
     }).filter(Boolean);

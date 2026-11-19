@@ -148,9 +148,10 @@ class CoachViewer extends PlayerViewer {
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
   get calendarMine()      { return true; }
-  get eventKindPills()    { return true; }
   eventPillKeys()         { return null; }
-  get eventLocationLine() { return false; }
+  // eventKindPills / eventLocationLine / eventBack: inherited (off) — they
+  // lived in the event header, which staff no longer get either; the menu
+  // bar's lit 📅 Calendar pill is the way home.
   // eventHeader / eventExtrasInMenu / eventAvailOnGraphic: inherited — staff
   // get the player's clean, graphic-first event page (owner 11/18 "admin and
   // coaches … should be the same except for financial data"); their tools
@@ -161,7 +162,6 @@ class CoachViewer extends PlayerViewer {
   get eventLineupDrafts() { return false; }
   get showsCalendarButton() { return false; }   // staff have the menu bar
   get menuBarPages()      { return null; }       // the full bar
-  get eventBack()         { return true; }
   eventSection()          { return true; }
 
   // ☰ = the player's list + 👤 Account (view-as, tactical board …), Sign out last.

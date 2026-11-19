@@ -18,6 +18,9 @@
 //     applies  (screen) → bool — does this panel exist for this event / team?
 //              (a carpool on a practice, invites while it is still to come …)
 //     html     (screen) → string — the panel's markup; '' = nothing to show
+//     label    optional (screen) → string — its name in ☰ when the page puts
+//              its extras there (EventScreen._renderPanels); without one ☰
+//              reads the panel's own heading
 //
 // The tier asked is screen.panelViewer when a screen defines it (Game
 // Center: a drafter edits their own draft like a coach), else screen.viewer.
@@ -25,12 +28,13 @@
 // Inside a panel, what a tier may DO on a row (mark P/A/L/E, answer for
 // someone) still asks the viewer — Panel only decides what is on the page.
 class Panel {
-  constructor({ key, minTier = 'player', maxTier = null, applies = null, html }) {
+  constructor({ key, minTier = 'player', maxTier = null, applies = null, html, label = null }) {
     this.key = key;
     this.minTier = minTier;
     this.maxTier = maxTier;
     this._applies = applies;
     this._html = html;
+    this._label = label;
   }
 
   // Shown to this screen's viewer, for this event?
@@ -42,6 +46,7 @@ class Panel {
   }
 
   html(screen) { return this._html ? (this._html(screen) || '') : ''; }
+  label(screen) { return this._label ? (this._label(screen) || '') : ''; }
 
   // The kept panels' markup, in list order.
   static render(panels, screen) {
