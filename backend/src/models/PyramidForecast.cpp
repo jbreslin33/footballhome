@@ -93,10 +93,14 @@ void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg,
 json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, double feederStayUpPct, std::mt19937_64& rng) {
     json out = {{"seasons", json::array()}, {"feeders", json::array()}};
     for (const auto& r : db->query(
-            "SELECT season, teams, divisions, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label FROM pyramid_relegation_outlook "
-            " WHERE competition_id = $1::int ORDER BY sort_order, season", {cid}))
-        out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"divisions", r["divisions"].as<int>()},
-                                  {"down", num(r, "relegated")}, {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
+            "SELECT season, teams, divisions, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label, auto_down, playoff_place FROM pyramid_relegation_outlook "
+            " WHERE competition_id = $1::int ORDER BY sort_order, season", {cid})) {
+        json sj = {{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"divisions", r["divisions"].as<int>()},
+                   {"down", num(r, "relegated")}, {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}};
+        if (!r["auto_down"].is_null()) sj["auto_down"] = r["auto_down"].as<int>();       // mig 1583
+        if (!r["playoff_place"].is_null()) sj["playoff_place"] = r["playoff_place"].as<int>();
+        out["seasons"].push_back(sj);
+    }
     // mig 1575: no seasons of its own → its size this season decides
     // (pyramid_relegation_size_rules: that size, else the default row).
     if (out["seasons"].empty() && nTeams > 0) {

@@ -422,15 +422,24 @@ class PyramidForecastView {
     const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), n = (v) => String(Math.round(v * 10) / 10);
     const maxShare = Math.max(...seasons.map((x) => x.down / x.teams), 0.01);
     const groups = seasons.some((x) => (x.divisions || 1) > 1);
+    // mig 1583: how that season's relegations happen, from its rule columns
+    const th = (k) => `${k}${['st', 'nd', 'rd'][k - 1] || 'th'}`;
+    const hows = seasons.some((x) => x.auto_down != null || x.playoff_place != null);
+    const how = (x) => {
+      const g = x.divisions || 1, per = Math.floor(x.teams / g), letters = Array.from({ length: g }, (_, i) => String.fromCharCode(65 + i));
+      const auto = x.auto_down ? Array.from({ length: x.auto_down }, (_, i) => per - i).reverse().map((p) => (g > 1 ? letters.map((l) => `${th(p)} ${l}`).join(' + ') : th(p))).join(' + ') : '';
+      if (!x.playoff_place) return auto;
+      return this._copy(g > 1 ? 'fc_ol_how_paired' : 'fc_ol_how_single', { auto, rp: th(x.playoff_place) });
+    };
     return `<h3>${esc(this._copy('fc_ol_title'))}</h3><div style="overflow-x:auto;"><table class="fc-table" style="max-width:720px;">
       <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th>${groups ? `<th>${esc(this._copy('fc_ol_groups'))}</th>` : ''}<th>${esc(this._copy('fc_ol_teams'))}</th>
-        <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
+        <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th>${hows ? `<th style="text-align:left;">${esc(this._copy('fc_ol_how'))}</th>` : ''}</tr></thead>
       <tbody>${seasons.map((x) => {
         const share = x.down / x.teams;
         return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${(x.divisions || 1) > 1 ? Array.from({ length: x.divisions }, (_, i) => String.fromCharCode(65 + i)).join(' · ') : '1'}</td>` : ''}<td>${x.teams}</td>
           <td><b>${n(x.down)}</b></td>
           <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
-          <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;
+          <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td>${hows ? `<td style="text-align:left; white-space:normal; font-size:0.78rem; min-width:220px;">${esc(how(x))}</td>` : ''}</tr>`;
       }).join('')}</tbody></table></div>
       <div class="fc-note">${esc(this._copy('fc_ol_note'))}</div>`;
   }
