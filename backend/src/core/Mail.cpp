@@ -315,40 +315,37 @@ std::string headerSafe(const std::string& s) {
     return out;
 }
 
-// The body as CRLF lines, dot-stuffed (same rules as buildMessage).
+// The body as CRLF lines.  No dot-stuffing here: libcurl's SMTP upload
+// escapes a leading '.' itself (Curl_smtp_escape_eob) — stuffing twice
+// shows the recipient "..".
 std::string crlfBody(const std::string& body) {
     std::string out;
-    bool lineStart = true;
     for (size_t i = 0; i < body.size(); ++i) {
         char c = body[i];
         if (c == '\r') continue;
-        if (c == '\n') { out += "\r\n"; lineStart = true; continue; }
-        if (lineStart && c == '.') out.push_back('.');
+        if (c == '\n') { out += "\r\n"; continue; }
         out.push_back(c);
-        lineStart = false;
     }
     out += "\r\n";
     return out;
 }
 
+// A header value: ASCII as is, anything else as one RFC 2047 UTF-8 word.
+std::string encodeHeaderText(const std::string& text) {
+    bool nonAscii = false;
+    for (unsigned char c : text) if (c > 127) { nonAscii = true; break; }
+    if (!nonAscii) return text;
+    std::string q = encodeDisplayName(text);   // "=?UTF-8?B?…?=" for non-ASCII
+    return q;
+}
+
 } // namespace
 
-bool sendMessage(const Message& msg) {
-    const std::string smtpHost = env("SMTP_HOST");
-    const std::string smtpUser = env("SMTP_USER");
-    const std::string smtpPass = env("SMTP_PASS");
-    if (smtpHost.empty() || smtpUser.empty() || smtpPass.empty()) {
-        std::cerr << "[mail] SMTP not configured — skipping message to " << msg.to << "\n";
-        return false;
-    }
-    const std::string smtpPort = env("SMTP_PORT").empty() ? std::string("587") : env("SMTP_PORT");
-    const std::string mailFrom = bareAddress(env("MAIL_FROM").empty() ? smtpUser : env("MAIL_FROM"));
+std::string composeMessage(const Message& msg, std::vector<std::string>* rcptOut) {
+    const std::string mailFrom = bareAddress(env("MAIL_FROM").empty() ? env("SMTP_USER") : env("MAIL_FROM"));
     const std::string fromName = env("MAIL_FROM_NAME");
     const std::string toAddr = bareAddress(msg.to);
-    if (toAddr.empty() || toAddr.find('@') == std::string::npos) {
-        std::cerr << "[mail] invalid recipient: " << msg.to << "\n";
-        return false;
-    }
+    if (toAddr.empty() || toAddr.find('@') == std::string::npos) return "";
     std::vector<std::string> cc;
     for (const auto& c : msg.cc) {
         const std::string a = bareAddress(headerSafe(c));
@@ -375,7 +372,7 @@ bool sendMessage(const Message& msg) {
         m << "\r\n";
     }
     m << "Message-Id: <" << idss.str() << "@footballhome>\r\n"
-      << "Subject: " << headerSafe(msg.subject) << "\r\n";
+      << "Subject: " << encodeHeaderText(headerSafe(msg.subject)) << "\r\n";
     if (!replyTo.empty()) m << "Reply-To: <" << replyTo << ">\r\n";
     m << "MIME-Version: 1.0\r\n"
       << "Content-Type: multipart/mixed; boundary=\"" << boundary << "\"\r\n\r\n"
@@ -392,8 +389,26 @@ bool sendMessage(const Message& msg) {
           << base64Lines(a.bytes);
     }
     m << "--" << boundary << "--\r\n";
-    const std::string payload = m.str();
+    if (rcptOut) { rcptOut->clear(); rcptOut->push_back(toAddr); for (const auto& c : cc) rcptOut->push_back(c); }
+    return m.str();
+}
 
+
+bool sendMessage(const Message& msg) {
+    const std::string smtpHost = env("SMTP_HOST");
+    const std::string smtpUser = env("SMTP_USER");
+    const std::string smtpPass = env("SMTP_PASS");
+    if (smtpHost.empty() || smtpUser.empty() || smtpPass.empty()) {
+        std::cerr << "[mail] SMTP not configured — skipping message to " << msg.to << "\n";
+        return false;
+    }
+    const std::string smtpPort = env("SMTP_PORT").empty() ? std::string("587") : env("SMTP_PORT");
+    const std::string mailFrom = bareAddress(env("MAIL_FROM").empty() ? smtpUser : env("MAIL_FROM"));
+    std::vector<std::string> rcpt;
+    const std::string payload = composeMessage(msg, &rcpt);
+    if (payload.empty()) { std::cerr << "[mail] invalid recipient: " << msg.to << "\n"; return false; }
+    const std::string toAddr = rcpt[0];
+    const std::vector<std::string> cc(rcpt.begin() + 1, rcpt.end());
     CURL* curl = curl_easy_init();
     if (!curl) { std::cerr << "[mail] curl_easy_init failed\n"; return false; }
     const bool implicitTls = (smtpPort == "465");

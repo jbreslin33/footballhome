@@ -56,6 +56,9 @@ struct Message {
 // Returns true when the relay accepted it (250); logs and returns false
 // otherwise (including SMTP not configured).
 bool sendMessage(const Message& msg);
+// The RFC 5322 multipart payload sendMessage would transmit (tests /
+// previews); "" when the recipient is invalid.  rcptOut = to + cc.
+std::string composeMessage(const Message& msg, std::vector<std::string>* rcptOut = nullptr);
 
 // True when SMTP_HOST + SMTP_USER + SMTP_PASS are all set.  Cheap; safe
 // to call on every request path.
