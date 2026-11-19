@@ -141,11 +141,11 @@ class OnboardingChecklist {
   static stateHtml(st, esc) {
     const t = OnboardingChecklist.t;
     const m = {
-      todo:  ['state_todo', '⬜ To do', '#fca5a5'],
-      sent:  ['state_sent', '🟡 Sent — club checking', '#facc15'],
-      done:  ['state_done', '✅ Done', '#4ade80'],
+      todo:  ['state_todo', 'To do', '#fca5a5'],
+      sent:  ['state_sent', '✅ Uploaded', '#4ade80'],
+      done:  ['state_done', '✅ Checked by the club', '#4ade80'],
       renew: ['state_renew', '⛔ Renew — expired', '#f87171'],
-    }[st] || ['state_todo', '⬜ To do', '#fca5a5'];
+    }[st] || ['state_todo', 'To do', '#fca5a5'];
     return `<span style="font-size:0.74rem; font-weight:800; color:${m[2]}; white-space:nowrap;">${esc(t(m[0], {}, m[1]))}</span>`;
   }
 
@@ -203,7 +203,8 @@ class OnboardingChecklist {
       // vols through"): the focus step is open; the rest are one line each,
       // Open › to jump to one.
       if (live && s.state !== 'done' && s.code !== focus) {
-        const icon = s.state === 'sent' ? '🟡' : s.state === 'renew' ? '⛔' : '⬜';
+        // No tick box on a step still to do (owner 11/19 "why do they have check boxes?").
+        const icon = s.state === 'sent' ? '✅' : s.state === 'renew' ? '⛔' : '';
         return `<div style="display:flex; align-items:center; gap:8px; padding:6px 11px; border-radius:10px; border:1px solid rgba(255,255,255,0.15); font-size:0.85rem;">
             <span style="flex:1; min-width:0; font-weight:700;">${icon} <span style="opacity:0.7;">${n}.</span> ${esc(s.label)}${files.length ? ` <span style="opacity:0.7;">📎${files.length}</span>` : ''}</span>
             <button type="button" data-onb-open="${esc(s.code)}" style="min-height:0; padding:3px 10px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:transparent; color:inherit; font:inherit; font-size:0.78rem; font-weight:700; cursor:pointer;">${esc(t('tap_open', {}, 'Open ›'))}</button>
@@ -235,7 +236,9 @@ class OnboardingChecklist {
         </div>`;
     const vol = steps.filter(s => s.stage === 'volunteer');
     const pay = steps.filter(s => s.stage === 'paid');
-    const total = Number(d.total) || 0, done = Number(d.done) || 0;
+    // Uploaded counts as done for the volunteer (owner 11/19 "should fh check it off when uploaded?").
+    const req = steps.filter(s => s.required);
+    const total = req.length, done = req.filter(s => s.state === 'sent' || s.state === 'done').length;
     const pct = total ? Math.round(100 * done / total) : 0;
     this.el.innerHTML = `
       <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
