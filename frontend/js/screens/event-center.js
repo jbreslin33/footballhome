@@ -165,8 +165,9 @@ class EventCenterScreen extends Screen {
     this._boardParams = params.board || (r.board ? { resume: r.board } : null);
     this._mountMine();
     // Who is staff is known once the menu loads — then the pills / Back follow.
-    if (window.MainMenu) MainMenu.load(this.auth).then(() => { if (this.element && this.element.isConnected) this._render(); }).catch(() => {});
-    this._mountOps();
+    // The ops strips ask the account's viewer too (coaches get field clashes), so they wait for it.
+    if (window.MainMenu) MainMenu.load(this.auth).then(() => { if (this.element && this.element.isConnected) { this._mountOps(); this._render(); } }).catch(() => this._mountOps());
+    else this._mountOps();
     this._mountWeekend();
     this._paintMode();
     // An old door with one event (saved history) shows that event's week.
@@ -376,16 +377,23 @@ class EventCenterScreen extends Screen {
 
   _isAdmin() { return window.CalendarOps ? CalendarOps.isAdmin(this.auth) : false; }
 
-  // Admin strips above the calendar — the week's schedule release (week
-  // view only: it is about one Monday) and field clashes.
+  // Strips above the calendar — the week's schedule release (admins; week
+  // view only: it is about one Monday, shown from ☰) and field clashes
+  // (Viewer.calendarClashes — coaches and admins; silent unless there is
+  // one, then a red banner).
   _mountOps() {
     const box = this.find('#ec-ops');
-    if (!box || !window.ReleaseStrip || !this._isAdmin()) { if (box) box.style.display = 'none'; return; }
+    const admin = this._isAdmin() && !!window.ReleaseStrip;
+    const clashes = Viewer.account().calendarClashes && !!window.ClashStrip;
+    if (!box || (!admin && !clashes)) { if (box) box.style.display = 'none'; return; }
     box.style.display = 'flex';
     const ctx = { auth: this.auth, escapeHtml: (t) => this.escapeHtml(t) };
-    this.release = new ReleaseStrip(this.find('#ec-release'), ctx);
-    this.release.onChange = () => this._loadEvents();
-    new ClashStrip(this.find('#ec-clash'), ctx).load();
+    if (admin) {
+      this.release = new ReleaseStrip(this.find('#ec-release'), ctx);
+      this.release.onChange = () => this._loadEvents();
+      this._loadOps();   // the week may have loaded before the menu did
+    }
+    if (clashes) new ClashStrip(this.find('#ec-clash'), ctx).load();
   }
 
   // 🎞 One Instagram carousel of the weekend's games (WeekendSlides loads

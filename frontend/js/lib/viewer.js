@@ -44,6 +44,10 @@ class PlayerViewer {
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
   get calendarRosterCounts() { return false; }
+  // ⚠ Field clash banner over the week — silent when there is none (owner
+  // 11/18 "'linux' like silence unless there is conflict then a red banner"
+  // → "and coaches and admin can see it").
+  get calendarClashes()   { return false; }
   get calendarMine()      { return false; }       // 👤 Mine under the calendar — its links are in ☰
 
   // ── an opened event (screens/event-screen.js and its kinds) ──
@@ -147,6 +151,7 @@ class CoachViewer extends PlayerViewer {
   get calendarViews()     { return ['week', 'month']; }
   get calendarKind()      { return null; }
   get calendarRosterCounts() { return true; }
+  get calendarClashes()   { return true; }
   get calendarMine()      { return true; }
   eventPillKeys()         { return null; }
   // eventKindPills / eventLocationLine / eventBack: inherited (off) — they

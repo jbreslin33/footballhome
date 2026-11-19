@@ -202,11 +202,10 @@ class ClashStrip {
     const esc = this.esc;
     const clashes = (body && body.clashes) || [];
     const base = 'padding:8px 12px; border-radius:8px; font-size:0.85rem;';
-    if (!clashes.length) {
-      return `<div style="${base} background:rgba(22,101,52,0.18); border:1px solid rgba(74,222,128,0.35);">
-        ${esc(this.copy('clash_none', { through: body.through || '' }) || `✅ No field clashes on the calendar through ${body.through || ''}.`)}
-      </div>`;
-    }
+    // Silence when all is well, like a Unix tool (owner 11/18 "it should be
+    // 'linux' like silence unless there is conflict then a red banner with
+    // error text").  clash_none copy is no longer drawn.
+    if (!clashes.length) return '';
     const fields = (n) => `${Number(n).toFixed(2).replace(/\.?0+$/, '')}`;
     const unknown = esc(this.copy('clash_unknown') || 'format not set');
     const rows = clashes.map(c => `
@@ -218,9 +217,9 @@ class ClashStrip {
               <span style="opacity:0.75;">· ${g.format ? esc(g.format) : unknown} · ${fields(g.share)} field${Number(g.share) === 1 ? '' : 's'}${g.unknown && g.format ? ` · ${unknown}` : ''}</span></li>`).join('')}
         </ul>
       </div>`).join('');
-    return `<div style="${base} background:rgba(245,158,11,0.14); border:1px solid rgba(251,191,36,0.5);">
+    return `<div role="alert" style="${base} background:rgba(185,28,28,0.28); border:1px solid #ef4444; color:#fecaca;">
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <strong>${esc(this.copy('clash_title') || '⚠ Field clash')}</strong>
+        <strong style="color:#fff;">${esc(this.copy('clash_title') || '⚠ Field clash')}</strong>
         <span style="opacity:0.8;">${esc(this.copy('clash_count', { n: clashes.length, days: body.days || ClashStrip.DAYS }))}</span>
         <span style="opacity:0.65; font-size:0.78rem; flex-basis:100%;">${esc(this.copy('clash_hint'))}</span>
       </div>
