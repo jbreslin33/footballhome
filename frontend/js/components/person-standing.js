@@ -73,6 +73,39 @@
   const inactivePill = () => pill(t('inactive', {}, '💤 INACTIVE'),
     t('inactive_tip', {}, 'Inactive — still billed monthly, no fines, no RSVP reminders'), '#1e293b', '#cbd5e1', '#64748b');
 
+  // 📎 League form flags (mig 1540, owner 11/19: "if we see him … we flag
+  // their card with label docs uploaded" → "once on offical apsl roster we
+  // can take down flag").  Only leagues with a form sheet (APSL), only
+  // while he is off every one of that league's official lists:
+  //   in      filled the form (head shot + ID)
+  //   missing on one of the league's teams, no form row
+  // stale = the sheet's last read failed (⚠ + "as of" on the hover).
+  function docFlags(personId) {
+    const hit = cache.get(Number(personId));
+    const regs = hit && hit.data && Array.isArray(hit.data.registrations) ? hit.data.registrations : [];
+    return regs.filter(g => g && g.formSheet && !g.onList).map(g => ({
+      league: g.league || '',
+      state: g.registered && g.source === 'league_form' ? 'in' : (!g.registered && g.onLeagueTeam ? 'missing' : null),
+      date: g.at || '',
+      stale: g.formOk === false,
+      formAt: g.formAt || '',
+    })).filter(f => f.state);
+  }
+  function docTip(f) {
+    const base = f.state === 'in'
+      ? t('docs_in_tip', { league: f.league, date: f.date }, `Filled the ${f.league} registration form ${f.date}. Not on the ${f.league} official roster yet.`)
+      : t('docs_missing_tip', { league: f.league }, `On a ${f.league} team, not on the official roster, no ${f.league} form.`);
+    return f.stale ? `${base} ${t('docs_stale_tip', { league: f.league, date: f.formAt }, `Couldn't read the ${f.league} form sheet — as of ${f.formAt}.`)}` : base;
+  }
+  function docPill(f, small) {
+    const text = (f.state === 'in'
+      ? t('docs_in', { league: f.league, date: f.date }, `📎 ${f.league} docs uploaded ${f.date}`.trim())
+      : t('docs_missing', { league: f.league }, `❌ ${f.league} docs`)) + (f.stale ? t('docs_stale', {}, ' ⚠') : '');
+    const [bg, fg, border] = f.state === 'in' ? ['#0c1e3a', '#93c5fd', '#2563eb'] : ['#3b0a0a', '#fca5a5', '#dc2626'];
+    const h = pill(text, docTip(f), bg, fg, border);
+    return small ? h.replace('style="padding:0 6px;', 'style="font-size:0.6rem; line-height:1.3; padding:0 4px;') : h;
+  }
+
   function html(personId) {
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data) return '';
@@ -81,6 +114,7 @@
     // 💤 Inactive (mig 945): leads the line; ghost / no-show say nothing
     // about someone who isn't meant to come.
     if (hit.data.inactive) bits.push(inactivePill());
+    docFlags(personId).forEach(f => bits.push(docPill(f)));
 
     if (a) {
       const days = a.windowDays || 30;
@@ -142,7 +176,8 @@
     const rTip = t('chip_rsvp_total_tip', { n: total }, `${total} RSVPs on record — games and practices`);
     // 11/5: date at the chip text size, full opacity, no 🗓 (the emoji drew
     // over the first digit at this size — "no label partially hidden").
-    return `${small(flag)}<span title="${esc(rTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:800; white-space:nowrap;">${esc(rTxt)}</span>`
+    const docs = docFlags(personId).map(f => docPill(f, true)).join('');
+    return `${docs}${small(flag)}<span title="${esc(rTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:800; white-space:nowrap;">${esc(rTxt)}</span>`
       + `<span title="${esc(lastTip)}" style="font-size:0.65rem; line-height:1.3; font-weight:700; white-space:nowrap;">${esc(lastTxt)}</span>`;
   }
 
@@ -271,6 +306,9 @@
     // he never filled the CASA form, nothing when he did.
     regs.filter(g => g && g.league === 'CASA' && !g.registered).forEach(g => bottom.push(
       s(t('box_reg_missing', { league: g.league }, `❌${g.league}`), '#fca5a5', t('reg_missing_tip', { league: g.league }, ''))));
+    docFlags(personId).forEach(f => bottom.push(f.state === 'in'
+      ? s(t('box_docs_in', { league: f.league }, `📎${f.league}`) + (f.stale ? '⚠' : ''), '#93c5fd', docTip(f))
+      : s(t('box_reg_missing', { league: f.league }, `❌${f.league}`) + (f.stale ? '⚠' : ''), '#fca5a5', docTip(f))));
     const row = (bits) => bits.length ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; overflow:hidden;">${bits.join('')}</div>` : '';
     return row(top) + row(bottom);
   }
@@ -289,5 +327,5 @@
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.
   function forget(personId) { cache.delete(Number(personId)); }
 
-  window.PersonStanding = { forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine, regMark };
+  window.PersonStanding = { docFlags, forget, load, html, chip, fillChips, rosterHtml, fillRosters, answered, laMemberUrl, laLink, laUserId, dues, boxLine, regMark };
 })();

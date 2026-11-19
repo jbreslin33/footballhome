@@ -21,6 +21,7 @@
 #include "../models/WelcomeLog.h"
 #include "../database/Database.h"
 #include "../services/LaProgramSync.h"
+#include "../services/LeagueFormSync.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -904,6 +905,11 @@ Response PaymentsController::handleStanding(const Request& request) {
     }
     if (pids.empty()) return Response(HttpStatus::OK, json{{"people", json::object()}}.dump());
     if (pids.size() > 1500) return badRequest("too many person_ids");
+    // The league form sheets (mig 1540: APSL registration — 📎 docs
+    // uploaded): re-read at most every 5 min, on the card load itself
+    // (owner 11/19 "read on load of admin of teams page, rosters page,
+    // game event pages").
+    LeagueFormSync::refreshIfStale(5);
     try {
         std::string arr = "{";
         for (size_t i = 0; i < pids.size(); ++i) arr += (i ? "," : "") + std::to_string(pids[i]);
@@ -1018,11 +1024,33 @@ Response PaymentsController::handleStanding(const Request& request) {
                 LEFT JOIN league_registration_forms f ON f.league_label = s.league_label
                WHERE s.is_active AND s.league_id IS NOT NULL
                ORDER BY s.league_id, length(s.league_label), s.id
+            ), lgx AS (
+              -- mig 1540: ❌ for the league's own teams only (APSL 35/938),
+              -- and how the league's form sheet read last went.
+              SELECT lg.*,
+                     COALESCE((SELECT bool_or(f.missing_on_league_teams) FROM official_roster_sources s2
+                                 JOIN league_registration_forms f ON f.league_label = s2.league_label
+                                WHERE s2.league_id = lg.league_id AND s2.is_active), false) AS missing_on_teams,
+                     fs.id IS NOT NULL AS form_sheet,
+                     fs.last_fetch_ok AS form_ok,
+                     to_char(fs.last_fetched_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD FMHH12:MIam') AS form_at
+                FROM lg
+                LEFT JOIN league_form_sheets fs
+                       ON fs.league_id = lg.league_id AND fs.season = lg.season AND fs.is_active
             )
             SELECT p.pid AS person_id, lg.league, r.source,
-                   to_char(r.registered_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD') AS at
+                   to_char(r.registered_at AT TIME ZONE 'America/New_York', 'FMMM/FMDD') AS at,
+                   EXISTS (SELECT 1 FROM official_roster_sources s3
+                             JOIN official_roster_names n ON n.source_id = s3.id
+                            WHERE s3.league_id = lg.league_id AND s3.is_active AND s3.system <> 'club_file'
+                              AND n.person_id = p.pid) AS on_list,
+                   EXISTS (SELECT 1 FROM official_roster_sources s4
+                             JOIN team_persons tp ON tp.team_id = s4.team_id
+                            WHERE s4.league_id = lg.league_id AND s4.is_active
+                              AND tp.person_id = p.pid AND tp.removed_at IS NULL) AS on_league_team,
+                   lg.form_sheet, lg.form_ok, lg.form_at
               FROM unnest($1::int[]) AS p(pid)
-              CROSS JOIN lg
+              CROSS JOIN lgx lg
               LEFT JOIN league_registrations r
                      ON r.person_id = p.pid AND r.league_id = lg.league_id AND r.season = lg.season
              WHERE r.person_id IS NOT NULL
@@ -1030,6 +1058,11 @@ Response PaymentsController::handleStanding(const Request& request) {
                       SELECT 1 FROM team_persons tp JOIN teams t ON t.id = tp.team_id
                        WHERE tp.person_id = p.pid AND tp.removed_at IS NULL AND t.is_active
                          AND t.club_section_id = lg.club_section_id))
+                OR (lg.missing_on_teams AND EXISTS (
+                      SELECT 1 FROM official_roster_sources s5
+                        JOIN team_persons tp ON tp.team_id = s5.team_id
+                       WHERE s5.league_id = lg.league_id AND s5.is_active
+                         AND tp.person_id = p.pid AND tp.removed_at IS NULL))
              ORDER BY 1, lg.league_id DESC)SQL", {arr})) {
             auto it = people.find(r["person_id"].c_str());
             if (it == people.end()) continue;
@@ -1037,7 +1070,14 @@ Response PaymentsController::handleStanding(const Request& request) {
                 {"league", r["league"].c_str()},
                 {"registered", !r["source"].is_null()},
                 {"source", r["source"].is_null() ? json(nullptr) : json(r["source"].c_str())},
-                {"at", r["at"].is_null() ? json(nullptr) : json(r["at"].c_str())}});
+                {"at", r["at"].is_null() ? json(nullptr) : json(r["at"].c_str())},
+                // mig 1540: 📎 docs / ❌ flag only while off the league's
+                // lists; formOk false = the form sheet's last read failed.
+                {"onList", r["on_list"].as<bool>()},
+                {"onLeagueTeam", r["on_league_team"].as<bool>()},
+                {"formSheet", r["form_sheet"].as<bool>()},
+                {"formOk", r["form_ok"].is_null() ? json(nullptr) : json(r["form_ok"].as<bool>())},
+                {"formAt", r["form_at"].is_null() ? json(nullptr) : json(r["form_at"].c_str())}});
         }
 
         const int windowDays = 30;
