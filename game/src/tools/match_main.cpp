@@ -116,7 +116,7 @@ struct Stats {
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     long wng[2][4] = {};   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
     long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
-    long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap;   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
+    long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap, th_gx, th_gy, th_v, th_age[3];   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
     long ws_zn[3][3] = {}, ws_in[3][2][3] = {}, ws_wn[3][2] = {}, ws_win[3][2] = {}; std::vector<double> ws_age; long ws_rn[3][3][2][3] = {}, ws_r5[3][3][2][3] = {};   // §8.276 ws_r*: [FB/DM/WIDE][ball band][near/far][age] WIDEST BY SPELL AGE [age 0-3/3-8/8+][near/far][ball band]; [age][restart/won]   // [FB/DM/WIDE][restart/won][ball band off the goal line attacked][near/far]
     long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
@@ -909,6 +909,9 @@ int main(int argc, char** argv) {
                     if (rolled && t.on) {
                         if (!t.got && d < 5) { t.got = true; t.t5 = (static_cast<long>(k) - t.k0) / 30.0; }
                         S.th_gap.push_back(std::hypot(W.player(j).pos.x.toDouble() - oj.target.x.toDouble(), py - oj.target.y.toDouble()));
+                        S.th_gx.push_back(std::fabs(W.player(j).pos.x.toDouble() - oj.target.x.toDouble())); S.th_gy.push_back(std::fabs(py - oj.target.y.toDouble()));
+                        S.th_v.push_back(std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()));
+                        { const double ag = (static_cast<long>(k) - S.wps_k0) / 30.0; S.th_age[ag < 3 ? 0 : ag < 8 ? 1 : 2].push_back(d); }
                     }
                 }
             }
@@ -3123,6 +3126,9 @@ int main(int argc, char** argv) {
                         S.th_n / std::max(1.0, 2.0 * matches), qd(S.th_dur, .25), qd(S.th_dur, .5), qd(S.th_dur, .75), 100.0 * S.th_got / n, qd(S.th_t5, .5), qd(S.th_dur_got, .5));
             std::printf("        ended by:"); for (int e = 0; e < 6; ++e) std::printf(" %s %.0f%%", en[e], 100.0 * S.th_end[e] / n);
             std::printf(" | m off the line at the end med %.1f | m off his target while on it p25 / med / p75 %.1f / %.1f / %.1f\n", qd(S.th_d_end, .5), qd(S.th_gap, .25), qd(S.th_gap, .5), qd(S.th_gap, .75));
+            auto w5 = [](const std::vector<double>& a) { long n = 0; for (double x : a) n += x < 5; return 100.0 * n / std::max<std::size_t>(1, a.size()); };
+            std::printf("        while on it: gap along / across med %.1f / %.1f (p75 %.1f / %.1f), his speed med %.1f m/s; within 5 m of the line by spell age 0-3 / 3-8 / 8+ s %.0f / %.0f / %.0f%% (m off med %.1f / %.1f / %.1f)\n",
+                        qd(S.th_gx, .5), qd(S.th_gy, .5), qd(S.th_gx, .75), qd(S.th_gy, .75), qd(S.th_v, .5), w5(S.th_age[0]), w5(S.th_age[1]), w5(S.th_age[2]), qd(S.th_age[0], .5), qd(S.th_age[1], .5), qd(S.th_age[2], .5));
         }
         {   // §8.275 WIDE PACE — benchmarks_tracking_widepace.py (DFL)
             auto med = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };

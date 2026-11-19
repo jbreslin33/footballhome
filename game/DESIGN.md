@@ -11176,3 +11176,29 @@ penalties 0.08 → 0.09 (0.12); off/target shares to off. Worse: shots from 25 m
 origin's far wing held a mate 26-28% (DFL 43) — our far side has fewer men out there, the §8.276/§8.277 width gap, not
 the choice. Next: back to the near FB in a settled spell (43-51% v 61-70% on his line, ball 35 m+ out) and the FB already
 wide when we win it in our own half (13-16 v 36), measured first. Goldens re-locked (11v11); tests 23/23, lint clean.
+
+### 8.279 G5.173 — where the ball-side width is still short: a rolled near FB trails his depth, and the ball in our half (measured; no game change)
+
+From §8.278's "next". TOUCH HOLD now splits a rolled FB's gap to his touchline target into along / across, his speed, and
+his m off the line by spell age.
+
+- **The rolled FB trails his depth, not his width**: gap to target median 7.6-7.9 m along the pitch, 3.1-3.4 m across
+  (p75 16 / 11), at 2.0 m/s; within 5 m of his line by spell age 0-3 / 3-8 / 8+ s 28-29 / 38 / 64-66% (median 11.6-12.2 /
+  7.6 / 3.3-3.4 m off). His target moves up with the ball and he walks after it. With two thirds of the rolled men on the line
+  at 8 s+, a near FB share can't pass ~0.65 × p plus the base.
+- **A refit of the G5.170 age shares on top of the latch and wing split** (p + (real − ours)(1 − p)/(1 − ours), ball 35 m+
+  out; FB near 70+ 8 s+ 742 → 849): far side at 8 s+ to real (39-42 v 40.4), but the near FB barely moved (47-54 v 61 / 70),
+  WIDE far overshot (15-20 v 9-11), card 7 / 7 / 19 → 6 / 5 / 22 (`card_G5.173_refit_not_shipped.txt`). **Not taken.**
+- **The ball in our deep half is the biggest ball-side gap**: widest within 5 m with the ball 70 m+ off the goal line
+  attacked 36% (DFL 65); 35-70 m 52.5 (64.1); 0-35 m 43.9 (50.4). Our near FB there 15 / 30 / 52% by age (36 / 43 / 70),
+  low from the first 3 s.
+- **Not the moment of the win**: at the start of a won spell with the ball there, a real near FB is within 5 m of his line
+  9% (benchmarks_tracking_widepace.py d0); the 36% at kicks in 0-3 s spells is restarts (throw-ins put him there; real
+  restart spells ball's side 80% at 0-3 s v won 35, §8.276) and who the early pass goes from.
+- **Not the goal kick**: real FBs stand ±24-25 m off the centre line for their own goal kick, 9-10 m off the touchline
+  (benchmarks_tracking_goalkick.py, 65 anchored).
+- Passes received within 5 m of the touchline: ours 9.6-10.1% (StatsBomb 15.7) — up from 4.5-4.8 at §8.272.
+
+Next: the near FB's depth with the ball in our half (DFL: his m ahead of / behind the ball and off his line, ball 70 m+ out,
+settled spells) against ours — real full-backs push high and wide while the centre-backs build; ours hold a Hold depth
+from the line table and walk up behind it. Harness lines only; goldens unchanged.
