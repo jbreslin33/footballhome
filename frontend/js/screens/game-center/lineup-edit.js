@@ -264,6 +264,11 @@ class GameCenterLineupEdit {
         run: () => { this._gcContactOpen(Number(personId), remind ? 'practice_criteria' : null); return false; },
       });
     }
+    // ⋯ The one player sheet, as from any event (owner 11/19 "consistent
+    // interface"), its 📇 Contact knowing this game.
+    const sheetLabel = personId && window.PlayerSheet
+      ? ((window.MessageCopy && MessageCopy.block('event_center', 'person_sheet')) || '⋯ Player sheet') : '';
+    if (sheetLabel) rows.push({ label: sheetLabel, run: () => { this._openPersonSheet(Number(personId)); return false; } });
     // ✅ Attendance on top from game day (owner 11/18 "if we click a player
     // during start of practice or game it adds in attendance option").
     const top = this._attendanceTop(personId ? Number(personId) : 0);

@@ -2906,6 +2906,15 @@ class GameCenterScreen extends EventScreen {
     };
   }
 
+  // The player sheet's 📇 Contact on a game: this game's own list (reg,
+  // dues, RSVP reminder, call-up, game link) for a lineup player; anyone
+  // else (a 🪑 Reserve not on the roster) gets the event's.
+  _sheetContactCfg(pid) {
+    const id = Number(pid);
+    const inLineup = (this.players || []).some(x => Number(x.personId) === id);
+    return (inLineup && this._gcContactCfg(id)) || super._sheetContactCfg(id);
+  }
+
   _gcContactButton(personId, extra = {}) {
     const cfg = this._gcContactCfg(personId);
     return cfg ? ContactPopup.button({ ...cfg, ...extra }) : '';

@@ -1043,9 +1043,60 @@ class EventScreen extends Screen {
   // have that as option just like active players") — he owes no answer, so
   // no reminder; his RSVP link is the 🎟 invite, preselected, for a game or
   // a practice.
-  _contactButtonHtml(r, st, noResp, inactive = false) {
-    if (!window.ContactPopup || !window.SectionContact || !st) return '';
-    const pid = r.person_id;
+  // The flags are the caller's old hints; what the person owes this event
+  // is worked out once, here, from the event's own rows (_eventContactNeed)
+  // — so a 🪑 Reserve or 👋 never-answered card gets its RSVP way in too.
+  _contactButtonHtml(r, st, _noResp, _inactive = false) {
+    if (!st) return '';
+    const cfg = this._eventContactCfg(r.person_id);
+    return cfg ? ContactPopup.button(cfg) : '';
+  }
+
+  // The event's row for a person: the RSVP list first, else the event's
+  // inactive / 🪑 Reserve rows (not on the list).
+  _eventPersonRow(pid) {
+    const id = Number(pid);
+    const find = (list) => (Array.isArray(list) ? list : []).find(x => x && Number(x.person_id) === id) || null;
+    return this.ev ? (find(this.ev.rsvps) || find(this.ev.inactive)) : null;
+  }
+
+  // What a person owes this event, for 📇 Contact (owner 11/19: "if i click
+  // a no response or reserves it sould allow me to contact to rsvp"):
+  //   'remind' — on the list, no answer yet (– No response, a coach, a
+  //              👋 never-answered Reserve), staff who may remind;
+  //   'callup' — 🪑 Reserve / 💤 Inactive, not on the list: their RSVP link
+  //              is the 🎟 invite (needs the invites load);
+  //   'ask'    — a 🪑 Reserve who can already answer (no invite needed):
+  //              the 📣 Ask Reserves message, just to him;
+  //   null     — answered, injured, suspended, or the event is over.
+  _eventContactNeed(pid) {
+    const id = Number(pid);
+    if (!id || !this.ev || this._isPast(this.ev)) return null;
+    const off = (Array.isArray(this.ev.inactive) ? this.ev.inactive : []).find(x => x && Number(x.person_id) === id);
+    if (off && off.response !== 'yes') {
+      const cands = this.invites && Array.isArray(this.invites.candidates) ? this.invites.candidates : [];
+      if (cands.some(c => Number(c.person_id) === id)) return 'callup';
+      // 🪑 Reserve (mig 1530): sees every event and can answer any time, but
+      // is never reminded — so it's the 📣 Ask Reserves words, to him alone.
+      return off.standby ? 'ask' : null;
+    }
+    const r = (Array.isArray(this.ev.rsvps) ? this.ev.rsvps : []).find(x => x && Number(x.person_id) === id);
+    if (!r || r.suspension || r.injury || r.response === 'yes' || r.response === 'no') return null;
+    return this.viewer.canRemind() ? 'remind' : null;
+  }
+
+  // The one 📇 Contact popup (owner 2026-11-03: "contact popup is all
+  // inclusive"): this event's RSVP way in first when they owe an answer
+  // (the reminder, or the 🎟 invite preselected for a Reserve / Inactive —
+  // mig 1217), then the section's list (components/section-contact.js) —
+  // the same list #teams offers for Men's / Women's / Boys / Girls.
+  // Recipients are the person's contact rows (every parent of a kid, mig 682).
+  // Used by the card's button and the player sheet's 📇 Contact tab.
+  _eventContactCfg(pid) {
+    pid = Number(pid);
+    const st = (this.textMarks && this.textMarks.people && this.textMarks.people[String(pid)]) || null;
+    if (!window.ContactPopup || !window.SectionContact || !st || !pid) return null;
+    const r = this._eventPersonRow(pid) || { person_id: pid };
     const rows = Array.isArray(st.recipients) && st.recipients.length ? st.recipients : [st];
     const recipients = rows
       .map(x => ({ personId: x.recipient_person_id || pid, name: x.recipient_name || r.name || '',
@@ -1057,7 +1108,8 @@ class EventScreen extends Screen {
     if (!recipients.length) recipients.push({ personId: pid, name: r.name || '', phone: null, email: null, forPersonId: pid });
     const first = r.first_name || String(r.name || '').split(' ')[0] || '';
     const parentRow = recipients.find(x => x.personId !== pid);
-    const remind = noResp ? [{
+    const need = this._eventContactNeed(pid);
+    const remind = need === 'remind' ? [{
       key: 'remind', label: this._cm('what_remind') || '📣 RSVP reminder', noClub: true,
       resolve: async (rc, channel) => {
         const data = await this._postReminder('/api/rsvp-board/remind', {
@@ -1067,25 +1119,33 @@ class EventScreen extends Screen {
         if (!href) throw new Error('No message came back');
         return { ...x, href };
       },
-      onSent: () => this._loadReminders().then(() => this._render()),
+      onSent: () => this._loadReminders().then(() => { this._render(); this._sheetRefresh(); }),
     }] : [];
-    const cand = inactive && this.invites && Array.isArray(this.invites.candidates)
-      ? this.invites.candidates.find(c => Number(c.person_id) === Number(pid)) : null;
-    const invite = cand && this.ev && this.ev.fh_event_id ? [SectionContact.callupMessage(this, this.ev.fh_event_id, pid, {
+    // 📣 Ask Reserves, one man (mig 1530 words: ask_standby_subject / _body).
+    const evw = this.ev || {};
+    const what = [EventLabels.title(evw), EventLabels.when(evw)].filter(Boolean).join(' · ');
+    const where = EventLabels.homeSetup(evw) || evw.location || '';
+    const askBody = need === 'ask' && window.MessageCopy ? MessageCopy.block('event_center', 'ask_standby_body', { event: what, where }) : '';
+    const ask = askBody ? [{
+      key: 'ask_reserve', label: (window.MessageCopy && MessageCopy.block('event_center', 'ask_reserve_msg')) || '📣 Ask (Reserve) — can you make it?',
+      subject: (window.MessageCopy && MessageCopy.block('event_center', 'ask_standby_subject', { event: what })) || what,
+      body: askBody,
+    }] : [];
+    const invite = need === 'callup' && this.ev && this.ev.fh_event_id ? [SectionContact.callupMessage(this, this.ev.fh_event_id, pid, {
       practice: this.ev.kind !== 'match',
-      onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]),
+      onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]).then(() => this._sheetRefresh()),
     })] : [];
-    return ContactPopup.button({
+    return {
       key: `ec:${this.eventId()}:${pid}`, screen: this, recipients,
       messages: SectionContact.messages(this.ev && this.ev.category, {
         screen: this, playerId: pid, first,
         parentFirst: parentRow ? String(parentRow.name || '').split(' ')[0] : '',
-        context: [...invite, ...remind],
+        context: [...invite, ...ask, ...remind],
       }),
-      ...(invite.length ? { defaultKey: 'callup' } : {}),
-      flagged: noResp,
+      ...(invite.length ? { defaultKey: 'callup' } : ask.length ? { defaultKey: 'ask_reserve' } : {}),
+      flagged: !!need,
       title: `Contact ${r.name || first}`,
-    });
+    };
   }
 
   _contactLineHtml(r, noResp, inactive = false) {
@@ -1338,23 +1398,62 @@ class EventScreen extends Screen {
     EventScreen.ensureCardStyles();   // [data-ec-tap-person] { cursor:pointer }
     return `data-ec-tap-person="${pid}" role="button" `;
   }
-  // The person sheet off the event card: ✅ attendance on top from the day on,
-  // then 📇 Contact and ⋯ the player sheet (the one PlayerSheet).
-  _openPersonSheet(personId) {
-    const r = ((this.ev && this.ev.rsvps) || []).find(x => x && Number(x.person_id) === personId)
-      || ((this.ev && this.ev.inactive) || []).find(x => x && Number(x.person_id) === personId) || {};
-    const name = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '';
-    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
-    const open = (tab) => () => {
-      if (window.PlayerSheet) PlayerSheet.open({ host: this.element, auth: this.auth, tab, resolve: () => this._sheetPerson(personId) });
-      return false;
-    };
-    const rows = [];
-    if (window.PlayerSheet && this.viewer.canContact()) rows.push({ label: cp('person_contact', '📇 Contact'), run: open('contact') });
-    if (window.PlayerSheet) rows.push({ label: cp('person_sheet', '⋯ Player sheet'), run: open('person') });
-    const top = this._attendanceTop(personId);
-    this._openSwapSheet({ title: name, sub: '', rows, topLabel: top.length ? this._attendanceTopLabel() : '', top });
+  // A person tapped on an event (the graphic, a ⋯ on a card, Game Center's
+  // move sheet) → the ONE player sheet (owner 11/19: "when you click a player
+  // it should bring up a consistent interface … player profile and have
+  // contact button and then one of the options knows what event it spawned
+  // from").  Same tabs as every screen; this event adds to two of them:
+  //   📇 Contact — the normal Contact popup, this event's RSVP way in first
+  //               (_eventContactCfg) and the line saying what they owe;
+  //   📅 Activity — ✅ attendance for this event, from its day on.
+  // It opens on what matters now: Contact when they owe an answer, Activity
+  // while the roll is open, else Person.
+  _openPersonSheet(personId, tab = null) {
+    if (!window.PlayerSheet || !personId) return;
+    const pid = Number(personId);
+    const start = tab || (this._eventContactNeed(pid) && this.viewer.canContact() ? 'contact'
+      : this._attendanceTop(pid).length ? 'activity' : 'person');
+    PlayerSheet.open({ host: this.element, auth: this.auth, tab: start,
+      resolve: () => this._sheetPerson(pid), extras: () => this._sheetExtras(pid) });
+    // A Reserve / Inactive's RSVP link is the 🎟 invite: the candidates load
+    // once (the 👥 pill does the same), then the sheet redraws.
+    if (this.ev && !this.invites && this._canInvite() && (this.ev.inactive || []).some(x => x && Number(x.person_id) === pid)) {
+      this._loadInvites().then(() => this._sheetRefresh());
+    }
   }
+
+  // This event's parts of the player sheet (see _openPersonSheet).
+  _sheetExtras(pid) {
+    const cp = (tier, fb, tk = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tk))
+      || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tk ? tk[k] : m));
+    const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
+    const out = {};
+    const what = this.ev ? EventLabels.title(this.ev) : '';
+    const cfg = this.viewer.canContact() ? this._sheetContactCfg(pid) : null;
+    if (cfg) {
+      const need = this._eventContactNeed(pid);
+      const note = need === 'remind' ? cp('sheet_contact_remind', "Hasn't answered {event} — 📣 RSVP reminder is first in Contact.", { event: what })
+        : need === 'ask' ? cp('sheet_contact_ask', '🪑 Reserve for {event} — 📣 Ask (can you make it?) is first in Contact.', { event: what })
+        : need === 'callup' ? cp('sheet_contact_callup', 'Not on the list for {event} — 🎟 RSVP link (invite) is first in Contact.', { event: what })
+        : cp('sheet_contact_event', 'From {event}.', { event: what });
+      out.contact = { flag: !!need, html: `<div style="font-size:0.82rem; margin:0 0 8px; color:${need ? '#f0abfc' : 'var(--text-muted)'};">${esc(note)}</div>
+        <div style="display:flex;">${ContactPopup.button({ ...cfg, key: `${cfg.key}:sheet`, big: true })}</div>` };
+    }
+    const top = this._attendanceTop(pid);
+    if (top.length) {
+      out.activity = { html: `<div style="font-size:0.78rem; font-weight:800; margin:0 0 6px;">${esc(this._attendanceTopLabel())} · ${esc(what)}</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">${EventScreen.ATTENDANCE.map((s, i) => {
+          const t = top[i];
+          return `<button type="button" data-ec-sheet-att="${s.id}" data-person-id="${pid}" data-active="${t.active ? '1' : '0'}" title="${esc(t.title)}"
+              ${this.saving.has(`att:${pid}`) ? 'disabled ' : ''}style="flex:1 1 0; min-width:64px; padding:8px 6px; border-radius:8px; border:2px solid ${s.color};
+              background:${t.active ? s.color : 'transparent'}; color:${t.active ? '#fff' : s.color}; font-weight:800; cursor:pointer;">${esc(s.label)}</button>`;
+        }).join('')}</div>` };
+    }
+    return out;
+  }
+  // The sheet's 📇 config — Game Center swaps in its own for lineup players.
+  _sheetContactCfg(pid) { return this._eventContactCfg(pid); }
+  _sheetRefresh() { if (window.PlayerSheet && PlayerSheet.isOpen && PlayerSheet.isOpen()) PlayerSheet.refresh(); }
 
   // ✅ Attendance pills for a player sheet (owner 11/18 "if we click a player
   // during start of practice or game it adds in attendance option"): from the
@@ -1382,6 +1481,7 @@ class EventScreen extends Screen {
     // for people on the attendance roster — Game Center, same rule since 11/16).
     this.att.roster.set(personId, { ...(prev || { person_id: personId }), status: active ? null : status });
     this._render();
+    this._sheetRefresh();
     try {
       await this._json(`/api/calendar/events/${id}/attendance`, {
         method: active ? 'DELETE' : 'POST',
@@ -1394,6 +1494,7 @@ class EventScreen extends Screen {
     } finally {
       this.saving.delete(key);
       this._render();
+      this._sheetRefresh();
     }
   }
 
@@ -1900,17 +2001,23 @@ class EventScreen extends Screen {
   // every screen) ─────────────────────────────────────────────────────
   // The person behind a card: this event's RSVP row (every kind has one).
   _sheetPerson(pid) {
-    const r = ((this.ev && this.ev.rsvps) || []).find(x => x && Number(x.person_id) === Number(pid));
+    const r = this._eventPersonRow(pid);
     return r ? { personId: Number(pid), firstName: r.first_name || r.name || '', lastName: r.last_name || '', returnTo: 'event-center' }
              : { personId: Number(pid), firstName: '', lastName: '', returnTo: 'event-center' };
   }
   // A ⋯ tap on a card (not one inside the open sheet) → the sheet.
+  // ✅ inside the open sheet (its 📅 Activity part) → the same save as a P tap.
   _sheetClick(e) {
+    const att = e.target.closest && e.target.closest('.player-sheet [data-ec-sheet-att]');
+    if (att) {
+      if (!att.disabled) this._markAttendance(Number(att.dataset.personId), att.dataset.ecSheetAtt, att.dataset.active === '1');
+      return true;
+    }
     const btn = e.target.closest && e.target.closest('[data-player-sheet]');
     if (!btn || btn.closest('.player-sheet') || !window.PlayerSheet) return false;
     const pid = Number(btn.dataset.playerSheet);
     if (!pid) return false;
-    PlayerSheet.open({ host: this.element, auth: this.auth, tab: btn.dataset.sheetTab || 'person', resolve: () => this._sheetPerson(pid) });
+    this._openPersonSheet(pid);
     return true;
   }
 
