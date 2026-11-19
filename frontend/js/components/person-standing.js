@@ -260,9 +260,10 @@
       else if (d.balance > 0) bottom.push(s(t('box_dues_owes', { amount: `$${Math.round(d.balance)}` }, `🔴 $${Math.round(d.balance)}`), d.months_behind >= 2 ? '#fca5a5' : '#fbbf24'));
       else bottom.push(s(t('box_dues_paid', {}, '🟢 paid'), '#86efac'));
     }
-    regs.filter(g => g && g.league === 'CASA').forEach(g => bottom.push(g.registered
-      ? s(t('box_reg_have', { league: g.league }, `✅${g.league}`), '#86efac', t('reg_have_tip', { league: g.league, date: g.at || '' }, ''))
-      : s(t('box_reg_missing', { league: g.league }, `❌${g.league}`), '#fca5a5', t('reg_missing_tip', { league: g.league }, ''))));
+    // Flag only (owner 11/19 "if not flagged then they are good"): ❌ when
+    // he never filled the CASA form, nothing when he did.
+    regs.filter(g => g && g.league === 'CASA' && !g.registered).forEach(g => bottom.push(
+      s(t('box_reg_missing', { league: g.league }, `❌${g.league}`), '#fca5a5', t('reg_missing_tip', { league: g.league }, ''))));
     const row = (bits) => bits.length ? `<div style="display:flex; gap:4px; justify-content:center; flex-wrap:nowrap; overflow:hidden;">${bits.join('')}</div>` : '';
     return row(top) + row(bottom);
   }

@@ -1237,11 +1237,14 @@ class RosterScreenBase extends Screen {
       const key = `tc:${pid}@${col.teamId}`;
       this._sheetCards.set(key, { player: p, col, teams: '', contact: '' });
       const words = nameOf(p).split(/\s+/);
-      const listed = listTeamIds.some(t => this.onLeagueList(t, pid));
+      // Flag the problem only (owner 11/19 "i think we need flag that they
+      // are not eligible and if not flagged then they are good"): no 📋 /
+      // gold for On Roster — ⛔ Not On Roster is the flag (its band + tag).
+      const flagged = String(p.squadStatus || '') === 'not_eligible';
       return `<div data-player-sheet="${esc(key)}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
-                 border:2px solid ${groupColor || (listed ? '#f5d442' : 'rgba(255,255,255,0.55)')}; background:rgba(0,20,60,0.55); cursor:pointer;">
-          ${listed ? `<span style="position:absolute; top:-8px; right:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#f5d442; color:#422006; font-weight:800;" title="${esc(copy('tc_listed_tip', {}, 'On Roster (official league roster)'))}">📋</span>` : ''}
+                 border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
+          ${flagged ? `<span style="position:absolute; top:-8px; right:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#dc2626; color:#fff; font-weight:800;" title="${esc(copy('tc_not_eligible_tip', {}, 'Not On Roster'))}">⛔</span>` : ''}
           <div style="font-size:13px; font-weight:800; line-height:1.15; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
