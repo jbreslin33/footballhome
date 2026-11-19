@@ -271,6 +271,8 @@ public:
     // the tick the ball's owner got it, and the last bad touch (a control
     // bobble) — who and when (0xFF / 0 = none yet).
     std::uint64_t ownedAtTick() const noexcept { return owned_at_tick_; }
+    // G5.182 (§8.288): he is on the ball from a free kick (live at his first touch), the same spell
+    bool freeKickSpell(SlotIndex slot) const noexcept { return fk_taker_ == slot && ball_.owner && *ball_.owner == slot && owned_at_tick_ == fk_tick_; }
     std::uint8_t badTouchSlot() const noexcept { return bad_touch_slot_; }
     std::uint64_t badTouchTick() const noexcept { return bad_touch_tick_; }
     // G4.85: the tick the free ball's current flight began — a kick, a
@@ -343,6 +345,7 @@ private:
     bool headRangeOfGoal(std::uint8_t team) const;
     bool headRangeOfOwn(std::uint8_t team) const;
     math::Fixed64 aerial_radius_{}, aerial_min_z_{}, aerial_duel_slope_{}, aerial_goal_range_{}, aerial_own_range_{};
+    std::uint8_t fk_taker_ = 0xFF; std::uint64_t fk_tick_ = 0;   // G5.182 (§8.288): the free kick's taker and his spell's first tick
     math::Fixed64 aerial_clear_up_{}, aerial_clear_behind_[2][2]{};
     math::Fixed64 aerial_pass_share_[5][2]{}, aerial_pass_err_{}, aerial_pass_err_duel_{}, aerial_pass_reach_{}, aerial_clear_range_{};   // G5.181 (§8.287): a headed pass's share by spot, aim error, reach   // G5.180 (§8.286): a headed clearance's pull upfield; its glance behind [0-6 / 6-18 m][inside / wide the box]
     math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{}, clear_err_{}, block_turn_{}, block_keep_{};

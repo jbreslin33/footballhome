@@ -92,6 +92,13 @@ Brain& Brain::operator=(const Brain& o) {
 }
 
 void Brain::setModelParams(const core::ModelParams& p) {
+    {   // G5.182 (§8.288): StatsBomb PL 15/16 free kicks into the box by spot (benchmarks in match_main FREE KICKS line); 0-25 m
+        // central left to the on-ball choice (real 75% shots)
+        static const int kB[4][2] = {{0, 864}, {576, 711}, {312, 281}, {54, 71}};
+        static const char* const kN[4] = {"25", "35", "52", "far"};
+        for (int a = 0; a < 4; ++a) for (int w = 0; w < 2; ++w)
+            restart_play_.fk_box[a][w] = p.fixed(std::string("physics.restart.fk_box_") + kN[a] + (w ? "_wide" : "_inside"), kB[a][w]);
+    }
     reads_.configure(p);
     block_.configure(p);
     poss_.configure(p);
@@ -303,7 +310,7 @@ Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
 Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     think(world);
     Orders o;
-    if (!takeRestart(slot, world, o)) {
+    if (!takeRestart(slot, world, o) && !playFreeKick(slot, world, o)) {
         bool held = false;
         // A restart shape is held until the dead ball is played (G4.58 / G5.2).
         if (hold_team_ != 0xFF && world.restartTeam() == hold_team_)
@@ -527,14 +534,34 @@ void Brain::penaltyPlaces(SlotIndex slot, const World& world, Orders& o) const {
 }
 
 bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {
-    const auto& me = world.player(slot);
-    const std::uint8_t team = setup_.team_of_slot[slot];
     const Vec3& sp = world.restartSpot();
     const Fixed64 end = sp.x.raw > 0 ? Fixed64::one() : -Fixed64::one();
     out.move.face = Vec2{-end, sp.y.raw > 0 ? -Fixed64::one() : Fixed64::one()};
     out.why = Why::CornerKick;
     if (world.tickCount() - world.ownedAtTick() < static_cast<std::uint64_t>(restart_play_.corner_look_ticks))
         return true;
+    return boxDelivery(slot, world, out, end, Vec2{sp.x, sp.y});
+}
+
+// G5.182 (§8.288): a free kick is live at the taker's first touch, so his on-ball state used to play it as open play — never
+// into the box from 25-52 m (real 28-71%). At the real share by spot (one roll for his spell), he delivers it as a corner is.
+bool Brain::playFreeKick(SlotIndex slot, const World& world, Orders& out) const {
+    if (!world.freeKickSpell(slot)) return false;
+    const auto& me = world.player(slot);
+    const Fixed64 end = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();   // the end he attacks
+    const Fixed64 d = half_x_ - me.pos.x * end;
+    const int a = d < Fixed64::fromInt(25) ? 0 : d < Fixed64::fromInt(35) ? 1 : d < Fixed64::fromFraction(105, 2) ? 2 : 3;
+    const int w = math::fx_abs(me.pos.y) >= Fixed64::fromFraction(2016, 100) ? 1 : 0;
+    const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 41) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    if (u >= restart_play_.fk_box[a][w]) return false;
+    out.why = Why::TakeRestart;
+    return boxDelivery(slot, world, out, end, Vec2{me.pos.x, me.pos.y});
+}
+
+// A lofted ball to the freest mate 3-14 m off their line within 12 m of the middle (else 11 m out, central) — the corner's.
+bool Brain::boxDelivery(SlotIndex slot, const World& world, Orders& out, Fixed64 end, Vec2 sp) const {
+    const auto& me = world.player(slot);
+    const std::uint8_t team = setup_.team_of_slot[slot];
     Vec2 at{end * (half_x_ - Fixed64::fromInt(11)), Fixed64::zero()};
     int best = -1;
     Fixed64 bf{};

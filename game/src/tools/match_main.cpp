@@ -116,6 +116,7 @@ struct Stats {
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
     long cl_n[8] = {}, cl_c[8] = {}, cl_t[8] = {}, hc_n[8] = {}, hc_c[8] = {}, hc_t[8] = {};
+    long bxh[6] = {}, fkb_n[8] = {}, fkb_box[8] = {}, fkb_shot[8] = {}, fkb_all = 0, fkb_lost = 0; std::vector<double> fkb_hold;   // §8.288 + FREE KICKS by spot (0-25/25-35/35-52/52+ x inside/wide): into their box / shot   // §8.288 BOX HEADERS by delivery: cross / corner / free kick / long ball / throw-in / other
     long hdr_n[10] = {}, hdr_k[10][3] = {}, hdr_nod_own[10] = {}, hdr_nod_end[10] = {};   // §8.287 HEADERS by spot (5 bands x inside/wide): kind clear / at goal / nod; a nod's next owner ours / anyone   // §8.286 foot clearances by spot; their corner / throw-in
     long bs_st[4] = {}, bs_runs[4] = {}; std::vector<int> bs_len[4];   // §8.285 BALL STATE: on a man / contested / travelling / loose (5 Hz)
     long wng[2][4] = {}, ib_n[3][3] = {}, ib_k[3][3] = {};   // §8.281 INTO THE BOX FROM WIDE   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
@@ -300,6 +301,8 @@ int main(int argc, char** argv) {
         auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         int cl_band = -1, hc_band = -1; int hc_prev = 0;
+        bool fk_wait = false, fk_just = false; int fk_slot = -1; long fk_k = 0;   // §8.288 a free kick (or offside FK) pending; its taker, once on the ball
+        int dk_team = -1, dk_why = -1; long dk_k = -100000; double dk_x = 0, dk_y = 0;   // §8.288 the last kick: side, why, tick, spot
         int hdr_prev = 0, hdr_cprev = 0, hdr_gprev = 0, hdr_nod = -1, hdr_team = -1;   // §8.287   // §8.286 + the last headed clearance's band   // §8.286 the last foot clearance's band (m off own goal 0-6/6-18/18-35/35+ x inside/wide), -1 = none since
         const bool bh_trace = std::getenv("GAME_BEHIND_TRACE") != nullptr;
         struct Bh { bool led = false, space = false; double rd0 = 0, od0 = 0; double tx = 0, ty = 0; bool on = false, geo = false, behind = false, air = false; int team = -1, r = -1, runners = 0, z = 0; long k0 = 0, bk = 0;
@@ -723,14 +726,33 @@ int main(int argc, char** argv) {
                 }
                 hc_prev = hcn;
             }
+            {   // §8.288 the free kick's taker: the first man on the ball after one is given (it is live at his first touch)
+                if (k == 0) { fk_wait = false; fk_slot = -1; }
+                if (W.restartTeam() != 0xFF && (W.restartKind() == core::MatchEventType::FreeKick || W.restartKind() == core::MatchEventType::Offside)) fk_wait = true;
+                else if (fk_wait && b.owner) { fk_wait = false; fk_slot = *b.owner; fk_k = k; ++S.fkb_all; }
+                else if (fk_wait && W.restartTeam() != 0xFF) fk_wait = false;   // another restart came first
+                if (fk_slot >= 0 && b.owner && *b.owner != fk_slot) { ++S.fkb_lost; fk_slot = -1; }   // never kicked: lost / dribbled into a tackle
+            }
             {   // §8.287 HEADERS by spot: every World header (duel or lone) by the header's spot off his own goal line, and its kind
                 const int hn = W.aerialDuels() + W.aerialLone(), hcn = W.headersClear(0) + W.headersClear(1), hgn = W.headersAtGoal(0) + W.headersAtGoal(1);
-                if (k == 0) { hdr_prev = hn; hdr_cprev = hcn; hdr_gprev = hgn; hdr_nod = -1; }
+                if (k == 0) { hdr_prev = hn; hdr_cprev = hcn; hdr_gprev = hgn; hdr_nod = -1; dk_team = -1; }
                 if (hdr_nod >= 0 && b.owner) { ++S.hdr_nod_end[hdr_nod]; S.hdr_nod_own[hdr_nod] += W.player(*b.owner).team == hdr_team; hdr_nod = -1; }
                 if (hn != hdr_prev && W.lastTouchTeam() <= 1) {
                     const int t = W.lastTouchTeam(); const double d = hx + b.pos.x.toDouble() * (t == 0 ? 1.0 : -1.0);
                     const int a = d < 6 ? 0 : d < 18 ? 1 : d < 35 ? 2 : d < 52.5 ? 3 : 4, bd = a * 2 + (std::fabs(b.pos.y.toDouble()) < 20.16 ? 0 : 1);
                     const int kd = hcn != hdr_cprev ? 0 : hgn != hdr_gprev ? 1 : 2;
+                    if (a <= 1 && bd % 2 == 0 && kd != 1) {   // §8.288 a box header: what delivered it (the other side's last kick within 10 s)
+                        int dv = 5;
+                        if (dk_team >= 0 && dk_team != t && k - dk_k <= 10 * core::kTickRate) {
+                            const double sgk = dk_team == 0 ? 1.0 : -1.0, kof = hx - dk_x * sgk;   // the kick's spot, m off the line it attacks
+                            // a restart kick carries 100 + its MatchEventType (the taker's spell began on it)
+                            dv = dk_why == 100 + static_cast<int>(core::MatchEventType::Corner) ? 1 : (dk_why == 100 + static_cast<int>(core::MatchEventType::FreeKick) || dk_why == 100 + static_cast<int>(core::MatchEventType::Offside)) ? 2
+                               : dk_why == 100 + static_cast<int>(core::MatchEventType::ThrowIn) ? 4 : dk_why >= 100 && dk_why != 100 + static_cast<int>(core::MatchEventType::GoalKick) ? 5
+                               : (dk_why == static_cast<int>(ai::Why::Cross) || (kof < 30 && std::fabs(dk_y) >= 20.16)) ? 0
+                               : std::hypot(b.pos.x.toDouble() - dk_x, b.pos.y.toDouble() - dk_y) >= 30 ? 3 : 5;
+                        }
+                        ++S.bxh[dv];
+                    }
                     ++S.hdr_n[bd]; ++S.hdr_k[bd][kd]; hdr_nod = kd == 2 ? bd : -1; hdr_team = t;
                 }
                 hdr_prev = hn; hdr_cprev = hcn; hdr_gprev = hgn;
@@ -743,6 +765,16 @@ int main(int argc, char** argv) {
                     rk_px = W.player(*before).pos.x.toDouble(); rk_py = W.player(*before).pos.y.toDouble(); }   // §8.237
                 kv0 = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()); { const int kd = W.lastKickKind(*before); kkind = kd == 2 ? 3 : W.lastKickDie(*before) ? 2 : kd == 1 ? 1 : 0; }   // §8.236: 0 short / 1 ground to feet / 2 die-at / 3 lofted
                 last_kick_own = hx + W.player(*before).pos.x.toDouble() * (last_kick_team == 0 ? 1.0 : -1.0);
+                const bool fk_kick = fk_slot >= 0 && *before == fk_slot; fk_just = fk_kick; if (fk_kick) S.fkb_hold.push_back((k - fk_k) / 30.0); fk_slot = -1;
+                if (fk_kick) {   // §8.288 FREE KICKS by spot
+                    const double sgk = last_kick_team == 0 ? 1.0 : -1.0, d = hx - W.player(*before).pos.x.toDouble() * sgk;
+                    const int fb = (d < 25 ? 0 : d < 35 ? 1 : d < 52.5 ? 2 : 3) * 2 + (std::fabs(W.player(*before).pos.y.toDouble()) >= 20.16 ? 1 : 0);
+                    const auto& tg = s.lastOrders()[*before].target;
+                    ++S.fkb_n[fb];
+                    if (last_kick_why == static_cast<int>(ai::Why::Shoot)) ++S.fkb_shot[fb];
+                    else if (hx - tg.x.toDouble() * sgk < 18 && std::fabs(tg.y.toDouble()) < 20.16) ++S.fkb_box[fb];
+                }
+                dk_team = last_kick_team; dk_why = fk_kick ? 100 + static_cast<int>(core::MatchEventType::FreeKick) : own_set ? 100 + own_rk : last_kick_why; dk_k = k; dk_x = W.player(*before).pos.x.toDouble(); dk_y = W.player(*before).pos.y.toDouble();   // §8.288
                 cl_band = -1; hc_band = -1;
                 if (last_kick_why == static_cast<int>(ai::Why::Clear)) {   // §8.286 CLEARANCES by spot
                     const double d = last_kick_own; const int a = d < 6 ? 0 : d < 18 ? 1 : d < 35 ? 2 : 3;
@@ -1378,7 +1410,7 @@ int main(int argc, char** argv) {
                             const int rb = d < 12 ? 0 : d < 18 ? 1 : d < 25 ? 2 : d < 35 ? 3 : 4;
                             ++S.rel_n[rb]; if (why == ai::Why::Shoot) ++S.rel_shot[rb];
                         }
-                        rel = Rel{owner, owner_team, own_px, own_py, own_set, why == ai::Why::Cross, why == ai::Why::Shoot};
+                        rel = Rel{owner, owner_team, own_px, own_py, own_set || fk_just, why == ai::Why::Cross, why == ai::Why::Shoot}; fk_just = false;   // §8.288: a free kick is a set piece (live at his first touch, so own_set misses it)
                         rel.weak = W.lastKickWeak(); rel.wait = static_cast<int>(W.lastKickWait());   // §8.180
                         rel.why = static_cast<int>(why);   // §8.191
                         {   // §8.264: the passer's nearest opponent outfielder at the release (PASSES UNDER PRESSURE)
@@ -3226,6 +3258,20 @@ int main(int argc, char** argv) {
             for (int b = 0; b < 10; ++b) std::printf("        %-5s %-6s %5.2f (%5.2f) | %5.1f (%5.1f) | %4.1f | %5.2f (%5.2f), %4.1f (%4.1f)\n", dn[b / 2], b % 2 ? "wide" : "inside", S.hdr_n[b] / std::max(1.0, 2.0 * matches), rr[b][0],
                                                      100.0 * S.hdr_k[b][0] / std::max(1L, S.hdr_n[b]), rr[b][1], 100.0 * S.hdr_k[b][1] / std::max(1L, S.hdr_n[b]), S.hdr_k[b][2] / std::max(1.0, 2.0 * matches), rr[b][2],
                                                      100.0 * S.hdr_nod_own[b] / std::max(1L, S.hdr_nod_end[b]), rr[b][3]);
+        }
+        {   // §8.288 BOX HEADERS by delivery v StatsBomb PL 15/16 (benchmarks_statsbomb_boxheaders.py; 8.56 a team-match)
+            static const double rr[6] = {2.63, 2.01, 1.15, 0.59, 0.25, 1.92};
+            static const char* const dn[6] = {"cross", "corner", "free kick", "long ball", "throw-in", "other"};
+            long t = 0; for (long v : S.bxh) t += v;
+            std::printf("      BOX HEADERS by delivery (a side heading it inside its 18 m, the box's width; the other side's last kick within 10 s): %.2f (8.56) a team-match:", t / std::max(1.0, 2.0 * matches));
+            for (int d = 0; d < 6; ++d) std::printf(" %s %.2f (%.2f);", dn[d], S.bxh[d] / std::max(1.0, 2.0 * matches), rr[d]);
+            std::printf("\n");
+            static const double fr[8][3] = {{0.48, 17.9, 74.7}, {0.81, 86.4, 2.3}, {0.63, 57.6, 23.8}, {0.61, 71.1, 0.2}, {1.43, 31.2, 0.1}, {1.23, 28.1, 0.0}, {4.59, 5.4, 0.0}, {2.79, 7.1, 0.0}};
+            static const char* const fn[4] = {"0-25", "25-35", "35-52", "52+"};
+            std::printf("      FREE KICKS by spot (m off their goal line; StatsBomb PL 15/16): a team-match | aimed into their box %% | shot %%; given %.2f a team-match, never kicked by the taker %.1f%%, taker on the ball median %.1f s\n",
+                        S.fkb_all / std::max(1.0, 2.0 * matches), 100.0 * S.fkb_lost / std::max(1L, S.fkb_all), [](std::vector<double> a) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[a.size() / 2]; }(S.fkb_hold));
+            for (int b = 0; b < 8; ++b) std::printf("        %-5s %-6s %.2f (%.2f) | %.1f (%.1f) | %.1f (%.1f)\n", fn[b / 2], b % 2 ? "wide" : "inside", S.fkb_n[b] / std::max(1.0, 2.0 * matches), fr[b][0],
+                                                    100.0 * S.fkb_box[b] / std::max(1L, S.fkb_n[b]), fr[b][1], 100.0 * S.fkb_shot[b] / std::max(1L, S.fkb_n[b]), fr[b][2]);
         }
         {   // §8.285 BALL STATE (DFL: s a match, %, runs a match, run med s)
             static const char* const sn[4] = {"on a man", "contested", "travelling", "loose"};

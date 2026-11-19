@@ -93,6 +93,8 @@ private:
     bool takeRestart(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playThrow(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playCorner(core::SlotIndex slot, const core::World& world, Orders& out) const;
+    bool playFreeKick(core::SlotIndex slot, const core::World& world, Orders& out) const;   // G5.182 (§8.288)
+    bool boxDelivery(core::SlotIndex slot, const core::World& world, Orders& out, math::Fixed64 end, math::Vec2 from) const;
     bool playPenalty(core::SlotIndex slot, const core::World& world, Orders& out) const;
     void penaltyPlaces(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void keepLawDistance(core::SlotIndex slot, const core::World& world, Orders& o) const;
@@ -135,6 +137,7 @@ private:
                       kick_law_m = math::Fixed64::fromFraction(915, 100),
                       penalty_arc_m = math::Fixed64::fromFraction(915, 100),
                       drop_law_m = math::Fixed64::fromInt(4);   // §8.250 Law 8
+        math::Fixed64 fk_box[4][2]{};   // G5.182 (§8.288): a free kick's share delivered into their box [0-25 / 25-35 / 35-52 / 52+ m off their line][inside / wide]
     } restart_play_;
     bool contest_full_ = false;   // §8.256: the contester of their high ball runs flat out
     bool contest_brake_ = false;   // §8.258: ... braked to arrive on the spot

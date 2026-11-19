@@ -1160,7 +1160,11 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
     touchedBy(players_[best].team, false);
     // A kick-off or free kick is live at the first touch; a throw, goal kick
     // or corner when he plays it (G5.2).
-    if (!heldRestart()) restart_team_ = 0xFF;
+    if (!heldRestart()) {
+        // G5.182 (§8.288): the free kick's taker — his spell on it is a set piece (Brain may deliver it into the box)
+        if (restart_team_ != 0xFF && (restart_kind_ == MatchEventType::FreeKick || restart_kind_ == MatchEventType::Offside)) { fk_taker_ = best; fk_tick_ = owned_at_tick_; }
+        restart_team_ = 0xFF;
+    }
 }
 
 void World::tickFreeBall(std::vector<MatchEvent>& events) {

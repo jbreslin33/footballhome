@@ -11419,3 +11419,42 @@ First pass without the duel error and the 35-52 m clearance (`card_G5.181_first_
 **Still off:** headed passes beyond 35 m reach a mate 64-70% (real 52-56) — the duel error barely moved it; and too few
 headers in our box / too many 18-35 m out (the balls we meet). Next: the long balls into our box — crosses are 0.6× — and
 where real defenders meet them, before any change. Goldens unchanged; tests 23/23, lint clean.
+
+### 8.288 G5.182 — a free kick near their box is delivered into it at the real share (no migration; off by rows)
+
+From §8.287's "next". New `benchmarks_statsbomb_boxheaders.py` (PL 15/16): a side heads it inside its own 18 m (the box's
+width) 8.56 times a team-match; by the other side's last pass within 10 s: cross 2.63, corner 2.01, free kick 1.15, long
+ball (30 m+) 0.59, throw-in 0.25, other 1.92. Into the box a team-match (high %), and the share a defender heads: crosses
+12.12 (55%) 22%, corners 4.56 (93%) 44%, free kicks 2.82 (96%) 41%, long balls 6.12 (82%) 10%. Same cut in fh-game-match
+(BOX HEADERS by delivery): ours 5.0 — cross 1.30, corner 1.35, free kick 0.03, long ball 0.14. Per cross and per corner our
+defenders head about the real share (19% of crosses); there the gap is the volume. Free kicks were a hole.
+
+**Why:** a free kick is live at the taker's first touch (G5.2), so the taker was an open-play man on the ball — the harness
+missed it too (`own_set` false: our free kicks were counted as open-play passes; now marked set pieces — passes 528 → 518,
+`card_G5.182_harness_only.txt` 5 / 7 / 21). New FREE KICKS by spot line (real, StatsBomb Free Kick passes + shots, m off
+their line × inside / wide the box's width):
+
+| spot | real a team-match / into the box % / shot % | ours before | ours after |
+|---|---|---|---|
+| 0-25 inside | 0.48 / 17.9 / 74.7 | 0.70 / 42 / 27 | 0.92 / 19 / 51 |
+| 0-25 wide | 0.81 / 86.4 / 2.3 | 0.44 / 39 / 7 | 0.17 / 91 / 0 |
+| 25-35 inside | 0.63 / 57.6 / 23.8 | 1.05 / 9 / 8 | 1.12 / 68 / 1 |
+| 25-35 wide | 0.61 / 71.1 / 0.2 | 0.33 / 5 / 0 | 0.34 / 77 / 0 |
+| 35-52 inside | 1.43 / 31.2 / 0.1 | 2.36 / 1 / 0 | 2.31 / 28 / 0 |
+| 35-52 wide | 1.23 / 28.1 / 0.0 | 1.16 / 0 / 0 | 1.03 / 23 / 0 |
+| 52+ inside / wide | 4.59 / 5.4, 2.79 / 7.1 | 3.37 / 0, 1.44 / 0 | 3.41 / 3, 1.50 / 6 |
+
+**Change:** `World::freeKickSpell(slot)` — the man whose first touch made a free kick (or offside free kick) live, the same
+spell. `Brain::playFreeKick`: at the real share by spot (`physics.restart.fk_box_{25,35,52,far}_{inside,wide}`, code defaults
+0 / 0.864, 0.576 / 0.711, 0.312 / 0.281, 0.054 / 0.071; one roll a spell; 0-25 m central left to the on-ball choice, real 75%
+shots), he delivers it as a corner is — `boxDelivery`, the corner's lofted ball to the freest mate 3-14 m out (corners unchanged).
+
+Card 5 / 7 / 21 → **7 ok / 7 off / 19 OFF** (`card_G5.182.txt`): fouls to ok, shots 25 m+ to ok, switches 8.9 → 9.4 to off;
+corners 2.45 → 2.03 (seed noise ~±0.3 — not explained by this change; watch), throw-ins 17.6 → 16.8. Box headers from free kicks
+0.03 → 0.27 (1.15): ours deliver ~2.4 a team-match into the box (2.82) but a defender heads 11% (41%) — the kick comes 1.3 s
+after the taker reaches it (median), before either side has set up; and nobody holds a set-piece shape (`Brain::setRestartShape`
+has no caller). Still: central free kicks within 25 m shot 51% (75%).
+
+Next: the set-piece shape — who goes into the box for our free kicks and corners, who marks there, and the wait before the
+kick (real dead time before a free kick 32.5 s; ours the same, spent before the taker touches it). Goldens unchanged; tests
+23/23, lint clean.
