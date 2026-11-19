@@ -276,7 +276,10 @@ class GameCenterEligibility {
     // This event's viewer, so 👀 See as coach / player hides it too.
     const d = this.viewer && this.viewer.eventFinancial && window.PersonStanding && PersonStanding.dues
       ? PersonStanding.dues(this._personIdFor(playerId)) : null;
-    if (d) {
+    if (d && d.free_reason === 'volunteer') {
+      // 🙋 a volunteer owes no dues — say so (mig 1534), not Dues:0.
+      bits.push(`<span style="color:#cbd5e1;">${this.escapeHtml(this._eligCopy('lineup_note_volunteer') || 'Vol')}</span>`);
+    } else if (d) {
       const owed = d.free_reason || !d.member ? 0 : Math.max(0, Math.round(Number(d.balance) || 0));
       const amount = String(owed);
       const text = this._eligCopy('lineup_note_dues', { amount }) || `Dues:${amount}`;

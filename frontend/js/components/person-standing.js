@@ -256,7 +256,8 @@
                  a.lastRsvp ? t('last_rsvp_tip', { date: md(a.lastRsvp.at) }, `Answered ${md(a.lastRsvp.at)}`) : ''));
     }
     if (d) {
-      if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
+      if (d.free_reason === 'volunteer') bottom.push(s(t('box_dues_volunteer', {}, '🙋 vol'), '#cbd5e1'));   // mig 1534
+      else if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
       else if (!d.member) bottom.push(s(t('box_dues_none', {}, 'no LA'), '#9ca3af'));
       else if (d.balance > 0) bottom.push(s(t('box_dues_owes', { amount: `$${Math.round(d.balance)}` }, `🔴 $${Math.round(d.balance)}`), d.months_behind >= 2 ? '#fca5a5' : '#fbbf24'));
       else bottom.push(s(t('box_dues_paid', {}, '🟢 paid'), '#86efac'));
