@@ -219,7 +219,8 @@ class PyramidForecastView {
       const best = (k) => all.reduce((m, t) => (!m || t[k] > m[k] ? t : m), null);
       const ba = best('auto'), bp = best('win_playoff');
       html += `<h3>${esc(this._copy('fc_ol_feeder'))}</h3>
-        <div class="fc-note" style="opacity:0.9;">${esc(this._copy('fc_ol_rules_text', { champ: ru.champion_rank === 1 ? 'champion' : th(ru.champion_rank), from: th(ru.playoff_from), to: th(ru.playoff_to), meet }))}</div>
+        <div class="fc-note" style="opacity:0.9;">${esc(this._copy('fc_ol_rules_text', { champ: ru.champion_rank === 1 ? 'champion' : th(ru.champion_rank), meet,
+          stage: this._copy(ru.feeder_first ? 'fc_ol_stage_feeder' : 'fc_ol_stage_pooled', { from: th(ru.playoff_from), to: th(ru.playoff_to), losers: ru.losers_in ? this._copy('fc_ol_stage_losers') : '' }) }))}</div>
         ${ba && bp ? `<div class="fc-note" style="font-weight:700; opacity:0.95;">${esc(this._copy('fc_ol_summary', { auto: `${ba.name} ${PyramidForecastView.pct(ba.auto)}`, po: `${bp.name} ${PyramidForecastView.pct(bp.win_playoff)}` }))}</div>` : ''}
         <div class="fc-note">${esc(this._copy('fc_ol_feeder_note'))}</div>`;
       const skipWords = (t) => t.skip === 'reserve' ? this._copy('fc_ol_skip_reserve')
@@ -229,7 +230,7 @@ class PyramidForecastView {
         html += `<div class="fc-note" style="margin-top:10px; font-weight:800; opacity:1;">${esc(f.label)} <span style="opacity:0.6; font-weight:600;">· ${f.played} played, ${f.left} to go</span></div>
           <div style="overflow-x:auto;"><table class="fc-table">
             <thead><tr><th>${esc(this._copy('fc_ol_col_rank'))}</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
-              <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_ol_col_champ'))}</th><th>${esc(this._copy('fc_ol_col_auto'))}</th>
+              <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_ol_col_champ'))}</th><th>${esc(this._copy('fc_ol_col_auto'))}</th>${ru.feeder_first ? `<th>${esc(this._copy('fc_ol_col_fwin'))}</th>` : ''}
               <th>${esc(this._copy('fc_ol_col_poin'))}</th><th>${esc(this._copy('fc_ol_col_powin'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
             <tbody>${f.teams.map((t) => {
               const cls = t.skip ? '' : t.elig === ru.champion_rank ? 'z-playoff' : t.elig >= ru.playoff_from && t.elig <= ru.playoff_to ? 'z-relegation_playoff' : '';
@@ -238,7 +239,7 @@ class PyramidForecastView {
                 <td>${t.elig || '–'}</td><td style="text-align:left; white-space:normal; font-weight:700;">${esc(t.name)}${t.skip ? ` <small style="font-weight:600;">· ${esc(skipWords(t))}</small>` : ''}</td>
                 <td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
                 <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
-                ${t.skip ? '<td></td><td></td><td></td><td></td><td></td>' : `<td>${this._heat(t.champ, false)}</td><td>${this._heat(t.auto, false)}</td><td>${this._heat(t.in_playoff, false)}</td><td>${this._heat(t.win_playoff, false)}</td><td>${this._heat(t.up, false)}</td>`}</tr>`;
+                ${t.skip ? '<td></td>'.repeat(ru.feeder_first ? 6 : 5) : `<td>${this._heat(t.champ, false)}</td><td>${this._heat(t.auto, false)}</td>${ru.feeder_first ? `<td>${this._heat(t.feeder_po, false)}</td>` : ''}<td>${this._heat(t.in_playoff, false)}</td><td>${this._heat(t.win_playoff, false)}</td><td>${this._heat(t.up, false)}</td>`}</tr>`;
             }).join('')}</tbody>
           </table></div>`;
       }

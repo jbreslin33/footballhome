@@ -99,14 +99,15 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
         out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"down", num(r, "relegated")},
                                   {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
     auto rr = db->query("SELECT champion_rank, playoff_from_rank, playoff_to_rank, champion_losers_to_playoff, playoff_winner_meets_survivor, "
-                        "       skip_reserves, skip_other_conference FROM pyramid_promotion_rules WHERE competition_id = $1::int", {cid});
+                        "       skip_reserves, skip_other_conference, feeder_playoff_first FROM pyramid_promotion_rules WHERE competition_id = $1::int", {cid});
     if (rr.empty()) return out;
     const int champRank = rr[0]["champion_rank"].as<int>(), poFrom = rr[0]["playoff_from_rank"].as<int>(), poTo = rr[0]["playoff_to_rank"].as<int>();
     const bool losersIn = rr[0]["champion_losers_to_playoff"].as<bool>(), meets = rr[0]["playoff_winner_meets_survivor"].as<bool>();
     const bool skipRes = rr[0]["skip_reserves"].as<bool>(), skipConf = rr[0]["skip_other_conference"].as<bool>();
+    const bool feederFirst = rr[0]["feeder_playoff_first"].as<bool>();   // mig 1574
     const double winSurvivor = meets ? (100.0 - feederStayUpPct) / 100.0 : 1.0;
     out["rules"] = {{"champion_rank", champRank}, {"playoff_from", poFrom}, {"playoff_to", poTo}, {"losers_in", losersIn},
-                    {"meets_survivor", meets}, {"win_survivor", r3(winSurvivor)}};
+                    {"meets_survivor", meets}, {"win_survivor", r3(winSurvivor)}, {"feeder_first", feederFirst}};
 
     struct FT { int id = 0; std::string ext, name, skip, skipArg; bool ours = false; double att = 1, def = 1; int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0, left = 0; };
     struct Feeder { std::string label; int sourceId = 0; double avg = 1.5, home = 1.0; std::vector<FT> t; std::vector<FitRes> done; std::vector<std::pair<int, int>> left; int played = 0; };
@@ -198,12 +199,34 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
         return v.empty() ? Side{-1, -1} : v[0];
     };
 
-    std::vector<std::vector<int>> champ(feeders.size()), autoUp(feeders.size()), inPo(feeders.size()), winPo(feeders.size());
+    // mig 1574: a feeder's own playoff — seeded (list in seed order), best v
+    // worst each round, the better seed at home, top seeds get the byes.
+    auto seeded = [&](const std::vector<int>& seeds, int k) {
+        const Feeder& F = feeders[k];
+        std::vector<int> v = seeds;   // indexes into F.t, best seed first
+        while (v.size() > 1) {
+            size_t P = 1; while (P < v.size()) P <<= 1;
+            const size_t byes = P - v.size();
+            std::vector<int> next(v.begin(), v.begin() + byes);
+            for (size_t i = byes, j = v.size() - 1; i < j; ++i, --j) {
+                const int h = v[i], a = v[j];
+                std::poisson_distribution<int> ph(F.avg * F.home * F.t[h].att * F.t[a].def), pa(F.avg / F.home * F.t[a].att * F.t[h].def);
+                const int gh = ph(rng), ga = pa(rng);
+                next.push_back(gh > ga || (gh == ga && U(rng) < 0.5) ? h : a);
+            }
+            std::sort(next.begin(), next.end(), [&](int x, int y) {
+                return std::find(seeds.begin(), seeds.end(), x) < std::find(seeds.begin(), seeds.end(), y); });
+            v = next;
+        }
+        return v.empty() ? -1 : v[0];
+    };
+
+    std::vector<std::vector<int>> champ(feeders.size()), autoUp(feeders.size()), inPo(feeders.size()), winPo(feeders.size()), fWin(feeders.size());
     std::vector<std::vector<double>> up(feeders.size());
     std::vector<std::vector<long>> ptsSum(feeders.size());
     for (size_t k = 0; k < feeders.size(); ++k) {
         const size_t n = feeders[k].t.size();
-        champ[k].assign(n, 0); autoUp[k].assign(n, 0); inPo[k].assign(n, 0); winPo[k].assign(n, 0); up[k].assign(n, 0); ptsSum[k].assign(n, 0);
+        champ[k].assign(n, 0); fWin[k].assign(n, 0); autoUp[k].assign(n, 0); inPo[k].assign(n, 0); winPo[k].assign(n, 0); up[k].assign(n, 0); ptsSum[k].assign(n, 0);
     }
     std::vector<std::vector<FitRes>> rs(feeders.size());
     for (int s = 0; s < sims; ++s) {
@@ -220,12 +243,17 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
                 ptsSum[k][r.a] += r.as > r.hs ? 3 : r.hs == r.as ? 1 : 0;
             }
             int rank = 0;
+            std::vector<int> fpo;   // this feeder's playoff places, in seed order
             for (int x : rankOf(F, rs[k], true)) {
                 if (!F.t[x].skip.empty()) continue;
                 ++rank;
                 if (rank == champRank) { champs.push_back({(int)k, x}); champ[k][x]++; }
-                else if (rank >= poFrom && rank <= poTo) po.push_back({(int)k, x});
+                else if (rank >= poFrom && rank <= poTo) fpo.push_back(x);
             }
+            if (feederFirst) {
+                const int w = seeded(fpo, (int)k);
+                if (w >= 0) { fWin[k][w]++; po.push_back({(int)k, w}); }
+            } else for (int x : fpo) po.push_back({(int)k, x});
         }
         std::vector<Side> lost;
         const Side w = knockout(champs, &lost);
@@ -251,7 +279,7 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
             }
             json j = {{"name", t.name}, {"p", p}, {"w", w}, {"d", d}, {"l", l}, {"gf", gf}, {"ga", ga}, {"pts", 3 * w + d}, {"left", t.left},
                       {"att", r2(t.att)}, {"def", r2(t.def)}, {"rating", r2(t.att / t.def)}, {"xpts", r1(ptsSum[k][x] / S)},
-                      {"champ", r3(champ[k][x] / S)}, {"auto", r3(autoUp[k][x] / S)}, {"in_playoff", r3(inPo[k][x] / S)},
+                      {"champ", r3(champ[k][x] / S)}, {"feeder_po", r3(fWin[k][x] / S)}, {"auto", r3(autoUp[k][x] / S)}, {"in_playoff", r3(inPo[k][x] / S)},
                       {"win_playoff", r3(winPo[k][x] / S)}, {"up", r3(up[k][x] / S)}};
             if (t.skip.empty()) j["elig"] = ++elig;
             else { j["skip"] = t.skip; if (!t.skipArg.empty()) j["skip_arg"] = t.skipArg; }
