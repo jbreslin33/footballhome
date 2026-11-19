@@ -143,6 +143,8 @@ class EventScreen extends Screen {
     // 📇 contact) — owner 11/18 "if we click a player during start of practice
     // or game it adds in attendance option".
     const tap = (r) => this._cardTapAttr(r);
+    // The box carries the whole name (owner 11/19 "put their whole name").
+    const full = (r) => String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim();
     const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
     const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
     const players = going.filter(r => !r.is_coach);
@@ -173,7 +175,7 @@ class EventScreen extends Screen {
             <span style="font-size:13px; letter-spacing:3px; font-weight:800; text-transform:uppercase;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
             <span style="font-size:13px; font-weight:800; color:#f5d442;">${b.rows.length}</span></div>
           <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:6px;">
-            ${b.rows.map(x => this._cardBoxHtml(x.r, short(x.r), c, x.also)).join('')}
+            ${b.rows.map(x => this._cardBoxHtml(x.r, full(x.r), c, x.also)).join('')}
           </div></div>`;
     };
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
