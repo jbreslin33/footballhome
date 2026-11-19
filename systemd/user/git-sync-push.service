@@ -1,0 +1,10 @@
+[Unit]
+Description=Football Home — push main's commits to GitHub
+Documentation=file:///srv/footballhome/scripts/git-sync-push.sh
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /srv/footballhome/scripts/git-sync-push.sh
+TimeoutStartSec=300s
+Nice=10

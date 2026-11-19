@@ -1,0 +1,16 @@
+[Unit]
+Description=Football Home — push commits to GitHub every 10 minutes
+Documentation=file:///srv/footballhome/scripts/git-sync-push.sh
+
+[Timer]
+# User timer (jbreslin, Linger=yes) — runs logged out; GitHub creds are
+# jbreslin's (~/.git-credentials).  Install:
+#   mkdir -p ~/.config/systemd/user
+#   ln -sf /srv/footballhome/systemd/user/git-sync-push.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now git-sync-push.timer
+OnBootSec=2min
+OnUnitActiveSec=10min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
