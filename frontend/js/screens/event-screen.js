@@ -1110,7 +1110,10 @@ class EventScreen extends Screen {
     const parentRow = recipients.find(x => x.personId !== pid);
     const need = this._eventContactNeed(pid);
     const remind = need === 'remind' ? [{
-      key: 'remind', label: this._cm('what_remind') || '📣 RSVP reminder', noClub: true,
+      // Sent from this event, so it leads with it: the words name it first
+      // and the link opens the roll call on it (?e=…&more=1), highlighted,
+      // with the rest they owe this week below (RsvpBoardController remind).
+      key: 'remind', label: this._remindLabel(), noClub: true,
       resolve: async (rc, channel) => {
         const data = await this._postReminder('/api/rsvp-board/remind', {
           person_id: pid, channel, fh_event_id: this.eventId() || 0, recipient_person_ids: [rc.personId] });
@@ -1638,6 +1641,11 @@ class EventScreen extends Screen {
   // tracked paths the old buttons used (squad notice, remind, club text,
   // registration form); the sheet only chooses between them.
 
+  // 📣 The reminder's name in the popup: this event first, then the rest.
+  _remindLabel() {
+    const what = this.ev ? EventLabels.title(this.ev) : '';
+    return this._cm('what_remind_event', { event: what }) || this._cm('what_remind') || `📣 RSVP reminder — ${what} first, then the rest they owe`;
+  }
   _cm(tier, tokens) { return (window.MessageCopy && MessageCopy.block('contact_menu', tier, tokens)) || ''; }
 
   // The choices for one person: WHAT (only what applies to them) and, for

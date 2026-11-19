@@ -2866,7 +2866,7 @@ class GameCenterScreen extends EventScreen {
         { match_id: Number(this.matchId), person_id: personId, channel, ...only(rc) }), channel),
     });
     if (noResp) ctx.push({
-      key: 'remind', label: this._cm('what_remind') || '📣 RSVP reminder', noClub: true, purpose: `remind:${this.matchId}`,
+      key: 'remind', label: this._remindLabel(), noClub: true, purpose: `remind:${this.matchId}`,
       resolve: async (rc, channel) => hrefOf(await this._postReminder('/api/rsvp-board/remind',
         { person_id: personId, channel, fh_event_id: this._fhEventId() || 0, ...only(rc) }), channel),
       onSent: () => this._loadReminders().then(() => this._render()),
