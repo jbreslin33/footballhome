@@ -158,7 +158,7 @@
     not_eligible:   ['#3b0a0a', '#fca5a5', '#dc2626'],   // ⛔ mig 1523
   };
   const ROSTER_FALLBACK = {
-    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in', not_eligible: 'Not eligible',
+    active: 'Active', inactive: 'Inactive', practice_squad: 'Practice Squad', call_in: 'Call-in', not_eligible: 'Not On Roster',
   };
   function rosterHtml(personId) {
     const hit = cache.get(Number(personId));

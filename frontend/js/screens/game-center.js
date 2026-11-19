@@ -2090,7 +2090,7 @@ class GameCenterScreen extends EventScreen {
       for (const list of [unassignedNoResponse, unassignedNotGoing, unassignedGoing, unassignedIneligible])
         list.splice(0, list.length, ...list.filter(p => !isNotEligible(p)));
     }
-    const notEligibleLabel = this._ecCopy('sec_not_eligible', '⛔ Not eligible');
+    const notEligibleLabel = this._ecCopy('sec_not_eligible', '⛔ Not On Roster');
     // 🎟 Call-up pool (owner 11/5, APSL at Vidas: "why on apsl is a bunch of
     // guys no response … those guys are supposed to be inactive right? then
     // i could call them up"): on this game only through a call-up-only team

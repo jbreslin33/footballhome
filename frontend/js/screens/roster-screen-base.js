@@ -905,7 +905,7 @@ class RosterScreenBase extends Screen {
       // under active players").
       const rest = mirrorsHtml
         + ridersGroup
-        + group(copy('board_not_eligible_h') || '⛔ NOT ELIGIBLE', cats.not_eligible, 'not_eligible', '#f87171', 'rgba(248,113,113,0.14)')
+        + group(copy('board_not_eligible_h') || '⛔ NOT ON ROSTER', cats.not_eligible, 'not_eligible', '#f87171', 'rgba(248,113,113,0.14)')
         + group(copy('board_practice_squad_h') || 'PRACTICE SQUAD', cats.practice_squad, 'practice_squad', ...BLUE)
         + group(copy('board_injured_h') || '🩹 INJURED', cats.injured, 'injured', ...ROSE)
         + group(copy('board_inactive_h') || '💤 INACTIVE', cats.inactive, 'inactive', ...GREY);
@@ -1295,7 +1295,7 @@ class RosterScreenBase extends Screen {
               <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
               <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
           ${row(groups.onboard, ec('sec_not_chasing', '👋 Not chasing'), '#cbd5e1')}
-          ${row(groups.not_eligible, copy('tc_not_eligible', {}, '⛔ Not eligible'), '#fca5a5', copy('tc_not_eligible_tip', {}, ''), true)}
+          ${row(groups.not_eligible, copy('tc_not_eligible', {}, '⛔ Not On Roster'), '#fca5a5', copy('tc_not_eligible_tip', {}, ''), true)}
           ${row(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd')}
           ${row(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af')}
           ${row(groups.inactive, ec('sec_inactive', '💤 Inactive'), '#94a3b8')}
@@ -1597,7 +1597,7 @@ class RosterScreenBase extends Screen {
       { code: 'plays',  label: copy('team_status_plays')  || '✅ Plays' },
       { code: 'practice_squad', label: copy('team_status_practice_squad') || 'Practice Squad' },
       // ⛔ set by the official-roster sync only (mig 1523): shown, never picked.
-      ...(teamCode === 'not_eligible' ? [{ code: 'not_eligible', label: copy('team_status_not_eligible') || '⛔ Not eligible (auto)', disabled: true }] : []),
+      ...(teamCode === 'not_eligible' ? [{ code: 'not_eligible', label: copy('team_status_not_eligible') || '⛔ Not On Roster (auto)', disabled: true }] : []),
       // 💤 Inactive is per team (mig 1074, 📄 Paper spot folded in); the
       // "all teams" pick parks him on every team he is on in one tap.
       { code: 'inactive', label: copy('team_status_inactive') || '💤 Inactive' },
