@@ -139,6 +139,10 @@ class EventScreen extends Screen {
       const parts = String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim().split(/\s+/);
       return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
     };
+    // Staff: a name is a tap → the person sheet (✅ attendance from the day on,
+    // 📇 contact) — owner 11/18 "if we click a player during start of practice
+    // or game it adds in attendance option".
+    const tap = (r) => this._cardTapAttr(r);
     const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
     const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
     const players = going.filter(r => !r.is_coach);
@@ -163,7 +167,7 @@ class EventScreen extends Screen {
             <span style="font-size:13px; letter-spacing:3px; font-weight:800; text-transform:uppercase;">${esc(b.team.short_label || b.team.label || b.team.name)}</span>
             <span style="font-size:13px; font-weight:800; color:#f5d442;">${b.rows.length}</span></div>
           <div style="display:flex; flex-wrap:wrap; justify-content:center; gap:4px;">
-            ${b.rows.map(x => `<span style="font-size:${pill.fs}px; font-weight:700; line-height:1.2; padding:${pill.pad}; border-radius:999px; background:${c}; color:#fff; border:1.5px solid #fff; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${esc(short(x.r))}${x.also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${esc(x.also.join(' +'))}</span>` : ''}</span>`).join('')}
+            ${b.rows.map(x => `<span ${tap(x.r)}style="font-size:${pill.fs}px; font-weight:700; line-height:1.2; padding:${pill.pad}; border-radius:999px; background:${c}; color:#fff; border:1.5px solid #fff; white-space:nowrap; text-shadow:0 1px 1px rgba(0,0,0,0.45);">${esc(short(x.r))}${x.also.length ? ` <span style="font-size:0.75em; opacity:0.85;">+${esc(x.also.join(' +'))}</span>` : ''}</span>`).join('')}
           </div></div>`;
     };
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -185,7 +189,7 @@ class EventScreen extends Screen {
         ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
         ${pitch}
         <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
-        ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${esc(cp('card_coaches', 'Coaches: {names}', { names: coaches.map(short).join(', ') }))}</div>` : ''}
+        ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${cp('card_coaches', 'Coaches: {names}', { names: '\u0000' }).split('\u0000').map(esc).join(coaches.map(r => `<span ${tap(r)}>${esc(short(r))}</span>`).join(', '))}</div>` : ''}
         ${this._cardOutHtml()}
       </div>`;
   }
@@ -202,7 +206,7 @@ class EventScreen extends Screen {
     const row = (list, tier, fb, c) => list.length ? `
         <div style="margin-top:8px;">
           <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
-          <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${this.escapeHtml([...list].sort((a, b) => last(a).localeCompare(last(b))).map(nameOf).join(', '))}</div>
+          <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${[...list].sort((a, b) => last(a).localeCompare(last(b))).map(r => { const t = this._cardTapAttr(r); return t ? `<span ${t}>${this.escapeHtml(nameOf(r))}</span>` : this.escapeHtml(nameOf(r)); }).join(', ')}</div>
         </div>` : '';
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171');
   }
@@ -1210,6 +1214,31 @@ class EventScreen extends Screen {
     if (this._swapSheetKey) { document.removeEventListener('keydown', this._swapSheetKey); this._swapSheetKey = null; }
   }
 
+  // A name on the event card, for staff (Viewer canMark): data hook + pointer.
+  _cardTapAttr(r) {
+    const pid = r && Number(r.person_id);
+    if (!pid || !this.viewer.canMark()) return '';
+    EventScreen.ensureCardStyles();   // [data-ec-tap-person] { cursor:pointer }
+    return `data-ec-tap-person="${pid}" role="button" `;
+  }
+  // The person sheet off the event card: ✅ attendance on top from the day on,
+  // then 📇 Contact and ⋯ the player sheet (the one PlayerSheet).
+  _openPersonSheet(personId) {
+    const r = ((this.ev && this.ev.rsvps) || []).find(x => x && Number(x.person_id) === personId)
+      || ((this.ev && this.ev.inactive) || []).find(x => x && Number(x.person_id) === personId) || {};
+    const name = r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '';
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const open = (tab) => () => {
+      if (window.PlayerSheet) PlayerSheet.open({ host: this.element, auth: this.auth, tab, resolve: () => this._sheetPerson(personId) });
+      return false;
+    };
+    const rows = [];
+    if (window.PlayerSheet && this.viewer.canContact()) rows.push({ label: cp('person_contact', '📇 Contact'), run: open('contact') });
+    if (window.PlayerSheet) rows.push({ label: cp('person_sheet', '⋯ Player sheet'), run: open('person') });
+    const top = this._attendanceTop(personId);
+    this._openSwapSheet({ title: name, sub: '', rows, topLabel: top.length ? this._attendanceTopLabel() : '', top });
+  }
+
   // ✅ Attendance pills for a player sheet (owner 11/18 "if we click a player
   // during start of practice or game it adds in attendance option"): from the
   // event's day on, for viewers who may mark, people on the attendance roster.
@@ -1706,6 +1735,7 @@ class EventScreen extends Screen {
       if (this._sheetClick(e)) return;
       const t = (sel) => e.target.closest(sel);
       let el;
+      if ((el = t('[data-ec-tap-person]'))) { this._openPersonSheet(Number(el.dataset.ecTapPerson)); return; }
       if ((el = t('[data-ec-group-msg]'))) { this._onGroupMessage(el); return; }
       if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
       if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
@@ -1781,6 +1811,7 @@ class EventScreen extends Screen {
     const st = document.createElement('style');
     st.id = 'ev-card-styles';
     st.textContent = `
+      [data-ec-tap-person] { cursor:pointer; }
       .ev-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(270px, 1fr)); gap:6px; }
       .ev-card { border:1px solid var(--border-color); border-radius:8px; background:var(--bg-secondary); overflow:hidden; min-width:0; font-size:0.9rem; }
       .ev-card-in { padding:7px 10px; }
