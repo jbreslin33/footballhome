@@ -249,6 +249,12 @@ public:
     void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; for (auto& l : latch_) l = LineLatch{}; for (auto& t : touch_latch_) t = 0; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
+    // §8.284 diag (harness only, never read by the sim): our passes with the ball 35-70 m off their line — each to-feet
+    // candidate's weight by length band 0-10 … 50+ m before the race read (pre) and as offered (post, raw >> 8), how many the read
+    // cut, and the band chosen.
+    struct PassDiag { std::int64_t pre[6] = {}, post[6] = {}; long n[6] = {}, cut[6] = {}, chosen[6] = {}, other = 0, dec = 0; };
+    const PassDiag& passDiag() const { return pdiag_; }
+    PassDiag& passDiagMut() const { return pdiag_; }   // the on-ball state writes it (diag only)
     std::uint8_t spotBranch(std::uint8_t slot) const { return slot < 32 ? spot_branch_[slot] : 0; }   // §8.238 diag: 0 base / 1 drift / 2 wing / 3 lone / 8 touchline (§8.277) (harness only)
     // G5.132 (§8.233): the carry line's zone and pressure, latched at his spell's first carryDir call so
     // the drawn line holds for the spell (it read a new zone row / table as he crossed a zone or a man
@@ -279,7 +285,8 @@ private:
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw
     std::uint64_t won_[2] = {0, 0};
     mutable std::uint64_t touch_latch_[32] = {};   // G5.171 (§8.277): the spell (won_ + 1) he went to his touchline in; 0 = none
-    mutable std::uint8_t spot_branch_[32] = {};   // §8.238 diag, never read by the sim
+    mutable std::uint8_t spot_branch_[32] = {};
+    mutable PassDiag pdiag_{};   // §8.284 diag   // §8.238 diag, never read by the sim
     mutable LineLatch latch_[32];
     bool had_[2] = {false, false};
     std::uint8_t front_[2][2] = {{0xFF, 0xFF}, {0xFF, 0xFF}};   // [team][front man, second man]

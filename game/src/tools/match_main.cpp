@@ -251,6 +251,7 @@ int main(int argc, char** argv) {
         if (sides.size() % 2) sides.pop_back();   // the circle wants an even count
     }
     std::vector<std::string> fixtures;
+    ai::Possession::PassDiag s_last_pdiag{};   // §8.284 summed over the matches
 
     for (int m = 0; m < matches; ++m) {
         server::GameServer::Config cfg = base;
@@ -2679,6 +2680,9 @@ int main(int argc, char** argv) {
             rk[ri] = k; rbx[ri] = bx; rat[ri] = a;
             for (std::uint8_t j = 0; j < N && j < 32; ++j) { rpx[ri][j] = W.player(j).pos.x.toDouble(); rpy[ri][j] = W.player(j).pos.y.toDouble(); }
         }
+        {   const auto& pd = s.brain().possession().passDiag();   // §8.284
+            for (int b = 0; b < 6; ++b) { s_last_pdiag.pre[b] += pd.pre[b]; s_last_pdiag.post[b] += pd.post[b]; s_last_pdiag.n[b] += pd.n[b]; s_last_pdiag.cut[b] += pd.cut[b]; s_last_pdiag.chosen[b] += pd.chosen[b]; }
+            s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec; }
         {   // §8.225 ARRIVE (benchmarks_tracking_arrive.py): the ball inside 12 m of a goal centre, 16 m+ out within the 2 s
             // before; the defending side at -1 / 0 / +0.5 / +1 / +2 s (5 Hz frames, contiguous only)
             const int F = static_cast<int>(fl_f.size());
@@ -3153,6 +3157,13 @@ int main(int argc, char** argv) {
                 const auto& o = S.fbd_o[sd][z][a]; long n5 = 0; for (double x : o) n5 += x < 5;
                 std::printf("        %-4s %-5s %-3s | %5.1f (%5.1f) | %4.1f (%4.1f), %3.0f (%2.0f) | %5.1f (%5.1f)\n", sd ? "far" : "near", zn[z], an[a], qd(S.fbd_a[sd][z][a], .5), rr[sd][z][a][0],
                             qd(o, .5), rr[sd][z][a][1], 100.0 * n5 / std::max<std::size_t>(1, o.size()), rr[sd][z][a][2], qd(S.fbd_a5[sd][z][a], .5), rr[sd][z][a][3]); }
+        }
+        {   // §8.284 PASS CANDIDATES BY LENGTH (ball 35-70 m off their line; summed over every match of the run)
+            const auto& pd = s_last_pdiag;
+            double pre = 0, post = 0; long ch = 0; for (int b = 0; b < 6; ++b) { pre += pd.pre[b]; post += pd.post[b]; ch += pd.chosen[b]; }
+            std::printf("      PASS CANDIDATES BY LENGTH (our passes, ball 35-70 m off their line; %ld decisions, %.0f%% to feet): 0-10 ... 50+ m | candidates a decision | weight share before the read %% | after %% | cut by the read %% of them | chosen %%\n", pd.dec, 100.0 * ch / std::max(1L, pd.dec));
+            for (int b = 0; b < 6; ++b) std::printf("        %d-%s m | %.2f | %.1f | %.1f | %.0f | %.1f\n", b * 10, b == 5 ? "" : std::to_string(b * 10 + 10).c_str(), pd.n[b] / std::max(1.0, 1.0 * pd.dec),
+                                                    100.0 * pd.pre[b] / std::max(1.0, pre), 100.0 * pd.post[b] / std::max(1.0, post), 100.0 * pd.cut[b] / std::max(1L, pd.n[b]), 100.0 * pd.chosen[b] / std::max(1L, ch));
         }
         {   // §8.281 INTO THE BOX FROM WIDE (StatsBomb PL 15/16 open play, attempted: a team-match, into the box %)
             static const double rr[3][3][2] = {{{2.53, 43}, {1.11, 69}, {1.92, 86}}, {{12.01, 34}, {3.36, 52}, {4.26, 65}}, {{18.21, 15}, {5.82, 20}, {9.48, 22}}};

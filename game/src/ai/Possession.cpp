@@ -358,6 +358,7 @@ public:
         // split among the mates standing there; only passes the race read says
         // we win (ground, else lofted) stay in; one roll for the spell picks.
         const int oz = zoneOf(hx, sp, v.sg);
+        const bool diag_mid = depth >= Fixed64::fromInt(35) && depth < Fixed64::fromInt(70);   // §8.284 diag
         int in_zone[10] = {};
         // G5.74 (§8.175): a zone's share is split among the mates standing there by e^(-d/lambda),
         // d = his metres from the passer (DFL: the man a pass is for is the nearest in his zone 50-62%
@@ -498,6 +499,12 @@ public:
                         // the real 79.1% completion, StatsBomb PL 2015/16).
                         add(Cand{j, wgt * P.risk_weight, false, Loft{}, false, to, 0});
                 }
+            }
+            if (diag_mid && !is_gk && wgt.raw > 0) {   // §8.284 diag
+                const int lb6 = std::min(5, static_cast<int>(d.raw >> Fixed64::FRAC_BITS) / 10);
+                auto& pd = c.poss.passDiagMut();
+                pd.pre[lb6] += wgt.raw >> 8; pd.post[lb6] += (sum - s0).raw >> 8; ++pd.n[lb6];
+                if ((sum - s0).raw < wgt.raw - (wgt.raw >> 6)) ++pd.cut[lb6];
             }
             if (is_gk) { gk_lo = nc0; gk_hi = nc; gk_w = sum - s0; sum = s0; }
             if (pb.raw <= 0) continue;
@@ -643,6 +650,11 @@ public:
             int k = 0; Fixed64 acc = cand[0].wgt;
             while (k + 1 < nc && acc < u) { ++k; acc += cand[k].wgt; }
             const Cand& ch = cand[k];
+            if (diag_mid) {   // §8.284 diag: the band chosen (to feet), or another kind
+                auto& pd = c.poss.passDiagMut(); ++pd.dec;
+                if (!ch.behind && !ch.space && ch.j >= 0) { const Fixed64 dl = math::length(Vec2{w.player(static_cast<std::uint8_t>(ch.j)).pos.x - sp.x, w.player(static_cast<std::uint8_t>(ch.j)).pos.y - sp.y});
+                    ++pd.chosen[std::min(5, static_cast<int>(dl.raw >> Fixed64::FRAC_BITS) / 10)]; } else ++pd.other;
+            }
             const auto& m = w.player(static_cast<std::uint8_t>(ch.j));
             o.other = static_cast<std::int16_t>(ch.j);
             if (ch.behind && ch.cross) {   // G5.54: a cross into the box to space

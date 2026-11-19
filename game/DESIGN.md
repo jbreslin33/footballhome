@@ -11304,3 +11304,27 @@ keeps our passes short: longer candidates are thinned before it — the race rea
 `risk_weight` 0.25), the in-zone split's distance decay (G5.74 λ), range. Next: at each of our releases in midfield, the
 candidates on offer by length band and what cut each (unsafe / out of range / zone share), against the real choice by
 length — before any change. Harness line only; goldens unchanged; tests 23/23, lint clean.
+
+### 8.284 G5.178 — the pass mix by length is near real; the excess is the count — our game has too little loose ball (measured; no game change)
+
+From §8.283's "next". New diagnostic (`Possession::passDiag`, written by the on-ball state, never read by the sim; harness line
+**PASS CANDIDATES BY LENGTH**): every to-feet candidate when we pass with the ball 35-70 m off their line — candidates a
+decision, weight share before the race read, after it, the share the read cut, and the band chosen (2 seeds × 8, ~234k
+decisions — every tick on the ball; 91-92% to feet):
+
+| m | 0-10 | 10-20 | 20-30 | 30-40 | 40-50 | 50+ |
+|---|---|---|---|---|---|---|
+| candidates a decision | 0.77 | 2.97-3.00 | 2.72-2.75 | 1.53 | 0.58 | 0.22-0.23 |
+| weight before the read % | 40.6-41.2 | 39.2-39.8 | 12.7-12.8 | 3.3-3.4 | 2.4 | 1.0-1.1 |
+| after the read % | 44.0-44.4 | 39.6-40.1 | 11.3-11.4 | 2.6 | 1.9 | 0.1 |
+| cut by the read % | 29 | 39-40 | 62 | 81 | 85 | 99-100 |
+| chosen % | 32.0-32.7 | 45.3-46.1 | 13.7-14.3 | 4.3-4.5 | 2.9-3.5 | 0.3-0.4 |
+| real share of passes (PL, all zones) | 28.5 | 42.3 | 17.6 | 6.8 | 3.1 | 1.7 |
+
+The race read does cut long candidates hard (81-100% past 30 m), but they carry little weight before it: the short bins hold
+80% already (length lift 2.08 on 0-10 m and the in-zone distance decay). And the choice is close to real by length — 0-10 /
+10-20 32 / 46% v 28.5 / 42.3. **The excess is the count** (532 v 434 a team-match), not the mix. Per minute in play (DFL cut)
+ours make 13.56 receptions (12.15), hold each 1.35 s (1.21) and pass 9.70 times (8.23): 6.2 s a pass cycle v 7.3 — less time
+between receptions with the ball loose, in a contest or in a duel. Same picture as completion 80.7 v 77.5, losses 150 v 165 a
+team-match, spells won 84 v 165. Next: time between receptions — in flight, loose, contested — ours v DFL, before any change.
+Diagnostic + harness line only; goldens unchanged; tests 23/23, lint clean.
