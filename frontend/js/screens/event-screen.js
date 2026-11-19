@@ -268,7 +268,17 @@ class EventScreen extends Screen {
       if (label.length > 60) label = label.slice(0, 57) + '…';
       return label ? { label, run: () => this._showExtra(key) } : null;
     }).filter(Boolean);
-    sb.setPageItems(screen, [...nav, ...items]);
+    sb.setPageItems(screen, [...nav, ...this.menuOwnItems(), ...items]);
+  }
+  // A kind's own ☰ actions, after the pills / chips and before the panels
+  // ({ label, run }).  The base: 📝 Text view where the screen has one.
+  _hasTextView() { return false; }
+  _textViewOn() { return this._hasTextView() && this.viewer.eventTextView; }
+  menuOwnItems() {
+    if (!this._hasTextView() || !this.viewer.eventTextViewToggle) return [];
+    const on = this.viewer.eventTextView;
+    const label = (window.MessageCopy && MessageCopy.block('event_center', 'menu_text_view')) || '📝 Text view';
+    return [{ label: `${on ? '✓ ' : ''}${label}`, run: () => { Viewer.setTextView(!on); this._render(); } }];
   }
   _showExtra(key) {
     this._extraOpen = key;
@@ -1095,6 +1105,127 @@ class EventScreen extends Screen {
   }
 
   // Tap a status to set it; tap the active one to clear it.
+  // ── The bottom sheet (was Game Center's swap sheet; on the base since 11/18 so
+  // the practice card's player sheet shares it).  top = a row of coloured pills
+  // above the grid (✅ attendance P/A/L/E).
+  // The sheet itself: fixed to the bottom of the viewport, on
+  // document.body so _render()'s repaint of this.element cannot wipe it.
+  // A row runs its action, then the screen repaints and saves once; a
+  // grid pill (the move sheet's positions) runs its own, which may open
+  // the next sheet, so it repaints and saves itself.
+  _openSwapSheet({ title, sub, gridLabel = '', grid = [], rows, topLabel = '', top = [] }) {
+    this._closeSwapSheet();
+    const esc = (t) => this.escapeHtml(t);
+    const overlay = document.createElement('div');
+    overlay.id = 'gc-swap-sheet';
+    overlay.style.cssText = `position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.55);
+      display:flex; align-items:flex-end; justify-content:center;`;
+    const rowStyle = (r) => `display:block; width:100%; text-align:left; padding:12px 16px; border:0;
+      border-top:1px solid var(--border-color); background:transparent; color:var(--text-primary);
+      font:inherit; font-weight:600; cursor:${r.disabled ? 'not-allowed' : 'pointer'}; opacity:${r.disabled ? '0.45' : '1'};`;
+    overlay.innerHTML = `
+      <div role="dialog" aria-modal="true" data-swap-dialog
+        style="background:var(--bg-surface); color:var(--text-primary); width:100%; max-width:480px;
+               border:1px solid var(--border-color); border-radius:14px 14px 0 0; max-height:85vh; overflow-y:auto;
+               box-shadow:0 -10px 40px rgba(0,0,0,0.45); padding-bottom:env(safe-area-inset-bottom);">
+        <div style="padding:14px 16px 10px;">
+          <div style="font-weight:800; font-size:1rem;">${esc(title)}</div>
+          ${sub ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${esc(sub)}</div>` : ''}
+        </div>
+        ${top.length ? `
+          <div style="padding:0 16px 12px;">
+            ${topLabel ? `<div style="font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">${esc(topLabel)}</div>` : ''}
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${top.map((g, i) => `
+                <button type="button" data-swap-top="${i}" title="${esc(g.title || '')}"
+                  style="flex:1 1 0; min-width:64px; height:44px; padding:0 10px; border-radius:6px; font:inherit; font-weight:800; font-size:0.9rem; cursor:pointer;
+                         border:1px solid ${g.color}; background:${g.active ? g.color : 'transparent'}; color:${g.active ? '#fff' : g.color};">
+                  ${esc(g.label)}
+                </button>`).join('')}
+            </div>
+          </div>` : ''}
+        ${grid.length ? `
+          <div style="padding:0 16px 12px;">
+            ${gridLabel ? `<div style="font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">${esc(gridLabel)}</div>` : ''}
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+              ${grid.map((g, i) => `
+                <button type="button" data-swap-pill="${i}" title="${esc(g.title || '')}"
+                  style="min-width:44px; height:44px; padding:0 10px; border-radius:6px; font:inherit; font-weight:800; font-size:1rem; cursor:pointer;
+                         ${g.active ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e;'
+                           : g.taken ? 'background:#1e293b; color:#64748b; border:1px solid #334155;'
+                           : 'background:#334155; color:#fff; border:1px solid #475569;'}">
+                  ${esc(g.label)}
+                </button>`).join('')}
+            </div>
+          </div>` : ''}
+        ${rows.map((r, i) => `
+          <button type="button" data-swap-row="${i}" ${r.disabled ? 'disabled' : ''} style="${rowStyle(r)}">
+            <div>${esc(r.label)}</div>
+            ${r.note ? `<div style="font-size:0.76rem; font-weight:500; color:var(--text-muted); margin-top:2px;">${esc(r.note)}</div>` : ''}
+          </button>`).join('')}
+        <button type="button" data-swap-cancel style="${rowStyle({})} text-align:center; color:var(--text-muted);">
+          ${esc((window.MessageCopy && MessageCopy.block('lineup_swap', 'cancel', {})) || '×')}
+        </button>
+      </div>`;
+    // One listener on the overlay; the dialog must NOT stop propagation
+    // or nothing in it is ever heard (the 2026-09-26 "cancel doesn't
+    // even work" bug).
+    overlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const topBtn = e.target.closest('[data-swap-top]');
+      if (topBtn) {
+        const g = top[Number(topBtn.getAttribute('data-swap-top'))];
+        this._closeSwapSheet();
+        if (g) g.run();
+        return;
+      }
+      const pill = e.target.closest('[data-swap-pill]');
+      if (pill) {
+        const g = grid[Number(pill.getAttribute('data-swap-pill'))];
+        this._closeSwapSheet();
+        if (g) g.run();
+        return;
+      }
+      const row = e.target.closest('[data-swap-row]');
+      if (row) {
+        if (row.disabled) return;
+        const r = rows[Number(row.getAttribute('data-swap-row'))];
+        this._closeSwapSheet();
+        // A row that opened another sheet or already repainted returns
+        // false; the rest get one repaint + one debounced save here.
+        if (r && r.run() !== false) { this._render(); if (this._scheduleSave) this._scheduleSave(); }
+        return;
+      }
+      if (e.target.closest('[data-swap-cancel]') || !e.target.closest('[data-swap-dialog]')) {
+        this._closeSwapSheet();   // Cancel row, or the dimmed backdrop
+      }
+    });
+    this._swapSheetKey = (e) => { if (e.key === 'Escape') this._closeSwapSheet(); };
+    document.addEventListener('keydown', this._swapSheetKey);
+    document.body.appendChild(overlay);
+  }
+
+  _closeSwapSheet() {
+    document.getElementById('gc-swap-sheet')?.remove();
+    if (this._swapSheetKey) { document.removeEventListener('keydown', this._swapSheetKey); this._swapSheetKey = null; }
+  }
+
+  // ✅ Attendance pills for a player sheet (owner 11/18 "if we click a player
+  // during start of practice or game it adds in attendance option"): from the
+  // event's day on, for viewers who may mark, people on the attendance roster.
+  // [] otherwise.  Tap = _markAttendance (tap the lit one to clear).
+  _attendanceTop(personId) {
+    if (!personId || !this.att || !this.viewer.canMark() || !this._eventDayReached()) return [];
+    if (!this.att.roster.has(personId)) return [];
+    const status = (this.att.roster.get(personId) || {}).status;
+    return EventScreen.ATTENDANCE.map(s => ({
+      label: s.label, color: s.color, active: status === s.id,
+      title: status === s.id ? `${s.label} — tap to clear` : s.label,
+      run: () => this._markAttendance(personId, s.id, status === s.id),
+    }));
+  }
+  _attendanceTopLabel() { return (window.MessageCopy && MessageCopy.block('event_center', 'attendance_label')) || 'Attendance'; }
+
   async _markAttendance(personId, status, active) {
     const key = `att:${personId}`;
     const id = this.eventId();

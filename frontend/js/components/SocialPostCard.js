@@ -1909,7 +1909,7 @@ class SocialPostCard {
     const box = (t, n, extra) => {
       const c = /^#[0-9a-f]{6}$/i.test(t.boxColor || '') ? t.boxColor : 'rgba(255,255,255,0.6)';
       return `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : t.benchMoveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(t.benchMoveId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 100 : n === 4 ? 112 : 132}px;${extra}display:flex;flex-direction:column;align-items:stretch;gap:2px;box-sizing:border-box;padding:4px 4px 5px;border-radius:8px;border:2px solid ${c};background:rgba(0,20,60,0.55);${t.removeId != null || t.benchMoveId != null ? 'cursor:pointer;' : ''}">
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : t.benchMoveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(t.benchMoveId))}" title="Move ${this.escapeHtml(t.name)}" ` : this._fillAttr(t)}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 100 : n === 4 ? 112 : 132}px;${extra}display:flex;flex-direction:column;align-items:stretch;gap:2px;box-sizing:border-box;padding:4px 4px 5px;border-radius:8px;border:2px solid ${c};background:rgba(0,20,60,0.55);${t.removeId != null || t.benchMoveId != null || t.fillPosId != null ? 'cursor:pointer;' : ''}">
         <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;">
           ${String(t.number == null ? '' : t.number) !== '' ? `<span style="flex:0 0 auto;min-width:20px;height:20px;padding:0 3px;box-sizing:border-box;border-radius:5px;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:#facc15;font-weight:800;font-size:13px;line-height:20px;text-align:center;">${this.escapeHtml(String(t.number))}</span>` : ''}
           <span style="font-size:${Math.min(nameSize, 13)}px;font-weight:800;line-height:1.1;color:#fff;overflow-wrap:anywhere;min-width:0;${t.boxColor ? `color:${c};` : (t.name && t.nameStyle ? t.nameStyle : '')}">${t.name ? this.escapeHtml(t.name) : '—'}</span>
@@ -1922,7 +1922,7 @@ class SocialPostCard {
     const token = (t, n = 0, extra = '') => t.gap
       ? `<div aria-hidden="true" style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;"></div>`
       : boxes ? box(t, n, extra) : `
-      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : ''}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null ? 'cursor:pointer;' : ''}">
+      <div ${t.removeId != null ? `data-lineup-remove-starter="${this.escapeHtml(String(t.removeId))}" title="Move ${this.escapeHtml(t.name)}" ` : this._fillAttr(t)}style="flex:1 1 0;min-width:0;max-width:${n >= 5 ? 96 : n === 4 ? 100 : 128}px;${extra}display:flex;flex-direction:column;align-items:center;gap:3px;${t.removeId != null || t.fillPosId != null ? 'cursor:pointer;' : ''}">
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
         ${t.noteHtml || ''}
@@ -2006,6 +2006,12 @@ class SocialPostCard {
     `;
   }
 
+  // An empty pitch spot on Game Center's live card while editing: a tap asks
+  // who plays there (owner 11/18 graphic-first).  Never on the post.
+  _fillAttr(t) {
+    return t && t.fillPosId != null ? `data-lineup-fill-pos="${this.escapeHtml(String(t.fillPosId))}" title="Who plays #${this.escapeHtml(String(t.number))}?" ` : '';
+  }
+
   // Under the substitutes on Game Center's live card only (never the post):
   // – No response (n) / ✗ Not going (n) with the names (owner 11/18).
   rsvpOutHtml() {
@@ -2015,7 +2021,9 @@ class SocialPostCard {
     return rd.rsvpOut.map(r => { const c = /^#[0-9a-f]{6}$/i.test(r.color || '') ? r.color : '#f5d442'; return `
       <div style="margin-top:8px;width:100%;padding-right:76px;box-sizing:border-box;">
         <span style="font-size:13px;letter-spacing:3px;color:${c};font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
-        <div style="font-size:14px;font-weight:600;line-height:1.3;color:${c};margin-top:2px;">${r.names.map(n => this.escapeHtml(n)).join(', ')}</div>
+        <div style="font-size:14px;font-weight:600;line-height:1.3;color:${c};margin-top:2px;">${r.names.map((n, i) => rd.editing && r.ids && r.ids[i] != null
+          ? `<span data-lineup-remove-bench="${this.escapeHtml(String(r.ids[i]))}" title="Move ${this.escapeHtml(n)}" style="cursor:pointer;">${this.escapeHtml(n)}</span>`
+          : this.escapeHtml(n)).join(', ')}</div>
       </div>`; }).join('');
   }
 

@@ -78,6 +78,13 @@ class PlayerViewer {
   // (owner 11/18 "the same except for financial data").
   get eventFinancial()    { return false; }
   get eventCardStanding() { return false; }       // 👻 Last RSVP / dues line on other people's cards — coaches'
+  // 📝 Text view (owner 11/18 "if we can do the graphic as most of the work
+  // of setting lineup and attendance then we do it … we can always have a
+  // more 'text' based option that can be turned on in hamburger … stays on
+  // over sessions until turned off"): the graphic is the workspace; Text
+  // view brings back the card lists + toolbar under it.  Staff only.
+  get eventTextViewToggle() { return false; }
+  get eventTextView()     { return false; }
   get eventLineupDrafts() { return false; }       // Official · 📝 My draft · 🔀 Compare (owner 11/18 "get rid of lineup picker … not really used and clutters screen")
   // 📅 in the band takes them home from anywhere — the Calendar is their one
   // page — so event pages lose ← Back (owner 11/18 "they need a back button
@@ -177,6 +184,9 @@ class CoachViewer extends PlayerViewer {
   // coaches … should be the same except for financial data"); their tools
   // are extra panels, so they land in ☰ with the rest.
   get eventCardStanding() { return true; }
+  get eventTextViewToggle() { return true; }
+  // Remembered on this device until turned off (Viewer.setTextView).
+  get eventTextView()     { try { return localStorage.getItem(Viewer.TEXT_VIEW_KEY) === '1'; } catch { return false; } }
   // Off for everyone (owner 11/18 "so official, my draft, compare delete them"):
   // coaches edit the official lineup directly.  Flip here to bring drafts back.
   get eventLineupDrafts() { return false; }
@@ -202,6 +212,8 @@ class AdminViewer extends CoachViewer {
 
 const Viewer = {
   RANK: { player: 0, coach: 1, admin: 2 },
+  TEXT_VIEW_KEY: 'fh.event.textView',
+  setTextView(on) { try { if (on) localStorage.setItem(Viewer.TEXT_VIEW_KEY, '1'); else localStorage.removeItem(Viewer.TEXT_VIEW_KEY); } catch {} },
   CLASSES: { player: PlayerViewer, coach: CoachViewer, admin: AdminViewer },
 
   // The viewer for a server tier string; unknown / missing → player.

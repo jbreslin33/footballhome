@@ -264,92 +264,43 @@ class GameCenterLineupEdit {
         run: () => { this._gcContactOpen(Number(personId), remind ? 'practice_criteria' : null); return false; },
       });
     }
-    this._openSwapSheet({ title, sub: copy('sub'), gridLabel: copy('grid'), grid, rows });
+    // ✅ Attendance on top from game day (owner 11/18 "if we click a player
+    // during start of practice or game it adds in attendance option").
+    const top = this._attendanceTop(personId ? Number(personId) : 0);
+    this._openSwapSheet({ title, sub: copy('sub'), gridLabel: copy('grid'), grid, rows,
+                          topLabel: top.length ? this._attendanceTopLabel() : '', top });
     return true;
   }
 
-  // The sheet itself: fixed to the bottom of the viewport, on
-  // document.body so _render()'s repaint of this.element cannot wipe it.
-  // A row runs its action, then the screen repaints and saves once; a
-  // grid pill (the move sheet's positions) runs its own, which may open
-  // the next sheet, so it repaints and saves itself.
-  _openSwapSheet({ title, sub, gridLabel = '', grid = [], rows }) {
-    this._closeSwapSheet();
-    const esc = (t) => this.escapeHtml(t);
-    const overlay = document.createElement('div');
-    overlay.id = 'gc-swap-sheet';
-    overlay.style.cssText = `position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.55);
-      display:flex; align-items:flex-end; justify-content:center;`;
-    const rowStyle = (r) => `display:block; width:100%; text-align:left; padding:12px 16px; border:0;
-      border-top:1px solid var(--border-color); background:transparent; color:var(--text-primary);
-      font:inherit; font-weight:600; cursor:${r.disabled ? 'not-allowed' : 'pointer'}; opacity:${r.disabled ? '0.45' : '1'};`;
-    overlay.innerHTML = `
-      <div role="dialog" aria-modal="true" data-swap-dialog
-        style="background:var(--bg-surface); color:var(--text-primary); width:100%; max-width:480px;
-               border:1px solid var(--border-color); border-radius:14px 14px 0 0; max-height:85vh; overflow-y:auto;
-               box-shadow:0 -10px 40px rgba(0,0,0,0.45); padding-bottom:env(safe-area-inset-bottom);">
-        <div style="padding:14px 16px 10px;">
-          <div style="font-weight:800; font-size:1rem;">${esc(title)}</div>
-          ${sub ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:3px;">${esc(sub)}</div>` : ''}
-        </div>
-        ${grid.length ? `
-          <div style="padding:0 16px 12px;">
-            ${gridLabel ? `<div style="font-size:0.7rem; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px;">${esc(gridLabel)}</div>` : ''}
-            <div style="display:flex; flex-wrap:wrap; gap:6px;">
-              ${grid.map((g, i) => `
-                <button type="button" data-swap-pill="${i}" title="${esc(g.title || '')}"
-                  style="min-width:44px; height:44px; padding:0 10px; border-radius:6px; font:inherit; font-weight:800; font-size:1rem; cursor:pointer;
-                         ${g.active ? 'background:#22c55e; color:#052e16; border:1px solid #22c55e;'
-                           : g.taken ? 'background:#1e293b; color:#64748b; border:1px solid #334155;'
-                           : 'background:#334155; color:#fff; border:1px solid #475569;'}">
-                  ${esc(g.label)}
-                </button>`).join('')}
-            </div>
-          </div>` : ''}
-        ${rows.map((r, i) => `
-          <button type="button" data-swap-row="${i}" ${r.disabled ? 'disabled' : ''} style="${rowStyle(r)}">
-            <div>${esc(r.label)}</div>
-            ${r.note ? `<div style="font-size:0.76rem; font-weight:500; color:var(--text-muted); margin-top:2px;">${esc(r.note)}</div>` : ''}
-          </button>`).join('')}
-        <button type="button" data-swap-cancel style="${rowStyle({})} text-align:center; color:var(--text-muted);">
-          ${esc(this._swapCopy('cancel', {}) || '×')}
-        </button>
-      </div>`;
-    // One listener on the overlay; the dialog must NOT stop propagation
-    // or nothing in it is ever heard (the 2026-09-26 "cancel doesn't
-    // even work" bug).
-    overlay.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const pill = e.target.closest('[data-swap-pill]');
-      if (pill) {
-        const g = grid[Number(pill.getAttribute('data-swap-pill'))];
-        this._closeSwapSheet();
-        if (g) g.run();
-        return;
-      }
-      const row = e.target.closest('[data-swap-row]');
-      if (row) {
-        if (row.disabled) return;
-        const r = rows[Number(row.getAttribute('data-swap-row'))];
-        this._closeSwapSheet();
-        // A row that opened another sheet or already repainted returns
-        // false; the rest get one repaint + one debounced save here.
-        if (r && r.run() !== false) { this._render(); this._scheduleSave(); }
-        return;
-      }
-      if (e.target.closest('[data-swap-cancel]') || !e.target.closest('[data-swap-dialog]')) {
-        this._closeSwapSheet();   // Cancel row, or the dimmed backdrop
-      }
-    });
-    this._swapSheetKey = (e) => { if (e.key === 'Escape') this._closeSwapSheet(); };
-    document.addEventListener('keydown', this._swapSheetKey);
-    document.body.appendChild(overlay);
+  // An empty spot on the live card (owner 11/18 "if we can do the graphic as
+  // most of the work of setting lineup and attendance then we do it"): who
+  // plays #N?  Going · not placed first, then the bench, alternates, no
+  // response.  A pick = _setPosition (the move sheet's grid does the same).
+  _openFillSheet(positionId) {
+    const pos = this.positionList.find(x => x.id === positionId);
+    if (!pos) return false;
+    const cp = (tier, tk, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tk)) || fb;
+    const out = this._rsvpOut || {};
+    const placed = new Set(this.positions.keys());
+    const groups = [
+      [out.unplaced || [], cp('fill_unplaced', {}, 'Going · not placed')],
+      [this.roster.filter(p => this.zones.get(p.id) === 'bench' && !placed.has(p.id)), cp('fill_bench', {}, 'Bench')],
+      [this.roster.filter(p => this.zones.get(p.id) === 'alternate'), cp('fill_alt', {}, 'Alternate')],
+      [out.noResponse || [], cp('fill_noresp', {}, 'No response')],
+    ];
+    const seen = new Set(), rows = [];
+    for (const [list, note] of groups) for (const p of [...list].sort(this._byLastName)) {
+      if (seen.has(p.id)) continue;
+      seen.add(p.id);
+      rows.push({ label: p.name, note, run: () => { this._setPosition(p.id, positionId); return false; } });
+    }
+    const title = cp('fill_title', { number: pos.sortOrder, position: pos.name }, `Who plays #${pos.sortOrder} · ${pos.name}?`);
+    this._openSwapSheet({ title, sub: '', rows });
+    return true;
   }
 
-  _closeSwapSheet() {
-    document.getElementById('gc-swap-sheet')?.remove();
-    if (this._swapSheetKey) { document.removeEventListener('keydown', this._swapSheetKey); this._swapSheetKey = null; }
-  }
+  // _openSwapSheet / _closeSwapSheet live on EventScreen (11/18: the
+  // practice card's player sheet uses them too).
 
   _toast(msg) {
     // Cheap, no-dep toast. Clears itself after 2.5s.

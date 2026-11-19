@@ -1244,6 +1244,9 @@ class GameCenterScreen extends EventScreen {
         if (!this._openMoveSheet(playerId)) this._toggleZone(playerId, 'bench');
         return;
       }
+      // An empty spot on the live card → who plays here (_openFillSheet).
+      const fillPos = e.target.closest('[data-lineup-fill-pos]');
+      if (fillPos && this.isCoach) { this._openFillSheet(Number(fillPos.getAttribute('data-lineup-fill-pos'))); return; }
       const moveStarter = e.target.closest('[data-lineup-remove-starter]');
       if (moveStarter && this.isCoach) {
         const playerId = Number(moveStarter.getAttribute('data-lineup-remove-starter'));
@@ -2154,7 +2157,7 @@ class GameCenterScreen extends EventScreen {
       // The official lineup only — no draft picker (lib/viewer.js eventLineupDrafts, off for everyone 11/18).
       if (!this.viewer.eventLineupDrafts) this.lineupView = 'official';
       head.innerHTML = top + (lineupPill && this.viewer.eventLineupDrafts ? this._draftBarHtml() : '')
-        + this._unplacedTopHtml()
+        + (this._hasTextView() && !this._textViewOn() ? '' : this._unplacedTopHtml())   // graphic-first: the card's ⚠️ row says it
         + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
@@ -2610,7 +2613,7 @@ class GameCenterScreen extends EventScreen {
         collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }),
         this._renderCallupSection(),
       ].join('');
-      paint(Panel.render(panels, this));
+      paint(this._lineupBodyHtml(panels));
       return;
     }
     coach.sections = [
@@ -2632,7 +2635,16 @@ class GameCenterScreen extends EventScreen {
       this.isCoach ? collapsedSection(this.escapeHtml(suspendedLabel), unassignedSuspended, { key: 'suspended' }) : '',
       this.isCoach ? this._renderCallupSection() : '',
     ].join('');
-    paint(Panel.render(panels, this));
+    paint(this._lineupBodyHtml(panels));
+  }
+
+  // The coach's lineup body.  📝 Text view: every panel under the graphic,
+  // as before.  Graphic-first (default): no toolbar and no card lists — the
+  // card does that work — and the rest (📣 message a group, reg gaps) go
+  // into ☰ like every other extra.
+  _lineupBodyHtml(panels) {
+    if (this._textViewOn() || !this._extrasInMenu()) return Panel.render(panels, this);
+    return this._renderPanels(panels.filter(p => !['lineup_controls', 'sections'].includes(p.key)));
   }
 
   // ---- Your availability ----
@@ -3711,6 +3723,47 @@ class GameCenterScreen extends EventScreen {
     ];
   }
 
+  // ── Graphic-first lineup (owner 11/18 "if we can do the graphic as most of
+  // the work of setting lineup and attendance then we do it imo"): names and
+  // empty spots on the card are taps; the toolbar's pieces are ☰ items; the
+  // card lists come back with 📝 Text view (EventScreen.menuOwnItems).
+  _lineupPillOn() { return this.pill === 'starters_bench' || this.pill === 'lineup'; }
+  _hasTextView() { return !!(this.loaded && this.isCoach && this._lineupPillOn() && this.lineupView === 'official'); }
+  menuOwnItems() {
+    if (!this._hasTextView()) return [];
+    const cp = (tier, tk, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier, tk)) || fb;
+    const items = [];
+    if (!this.everyonePlays) {
+      items.push({ label: cp('menu_formation', { formation: this.formation }, `📐 Formation · ${this.formation}`), run: () => this._openFormationSheet() });
+      if (this._matchupSelectHtml(false)) {
+        const m = this._matchup(this.matchupId);
+        items.push({ label: cp('menu_matchup', {}, '🆚 Match opponent') + (m ? ` · ${m.opponentCode}` : ''), run: () => this._openMatchupSheet() });
+      }
+    }
+    items.push({ label: this.showLineupStats ? cp('menu_avail_hide', {}, '👁 Hide availability') : cp('menu_avail_show', {}, '👁 Show availability'),
+                 run: () => { this.showLineupStats = !this.showLineupStats; this._render(); } });
+    if (!this.everyonePlays && this._copySplit('button_on'))
+      items.push({ label: this._copySplit(this.splitSquad ? 'button_off' : 'button_on'), run: () => this._toggleSplitSquad() });
+    return [...items, ...super.menuOwnItems()];
+  }
+  _openFormationSheet() {
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const grid = Object.keys(this._fieldSpec().formations).map(f => ({
+      label: f, title: f, active: f === this.formation,
+      run: () => { if (f === this.formation) return; this.formation = f; this.matchupId = null; this._render(); this._saveLineup(); },
+    }));
+    this._openSwapSheet({ title: cp('sheet_formation', '📐 Formation'), sub: '', grid, rows: [] });
+  }
+  _openMatchupSheet() {
+    const cp = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    const pick = (m) => () => { this.matchupId = m ? m.id : null; if (m) this.formation = m.code; this._render(); this._saveLineup(); return false; };
+    const cur = this._matchup(this.matchupId);
+    const rows = [{ label: this._copyMatchup('none'), disabled: !cur, run: pick(null) },
+      ...this._matchupOptions().map(m => ({ label: this._copyMatchup('option', { opponent: m.opponentCode, ours: m.code }),
+        note: m.id === this.matchupId ? m.note : '', disabled: m.id === this.matchupId, run: pick(m) }))];
+    this._openSwapSheet({ title: cp('menu_matchup', '🆚 Match opponent'), sub: '', rows });
+  }
+
   // ☰ extras (EventScreen._renderPanels): the "Last change · DB ✓" strip is
   // a status line, not a menu item — dropped there.
   menuSkipPanels() { return ['db_strip']; }
@@ -3725,7 +3778,7 @@ class GameCenterScreen extends EventScreen {
       new Panel({ key: 'carpool', applies: (s) => s.lineupView !== 'official', html: (s) => s._renderCarpoolPanel() }),
       new Panel({ key: 'player_notes', maxTier: 'player', applies: (s) => s.pill === 'starters_bench', html: (s) => s._renderPlayerNotes(byZone) }),
       new Panel({ key: 'reg_gaps', minTier: 'coach', html: (s) => s._renderRegGapSection() }),
-      new Panel({ key: 'group_bar', minTier: 'coach', applies: () => coach.canMessage, html: () => coach.groupBar }),
+      new Panel({ key: 'group_bar', minTier: 'coach', applies: () => coach.canMessage, html: () => coach.groupBar, label: (sc) => sc._cm('bar_title') }),
       new Panel({ key: 'everyone_note', minTier: 'coach', applies: (s) => s.everyonePlays, html: (s) => s._everyoneNoteHtml() }),
       new Panel({ key: 'sections', minTier: 'coach', html: () => coach.sections }),
     ];
@@ -3988,6 +4041,7 @@ class GameCenterScreen extends EventScreen {
           if (chipInsets[pos.id]) token.inset = chipInsets[pos.id];
           if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
           if (live && occupant) { token.noteHtml = this._lineupNote(occupant.id); token.boxColor = this._lineupBoxColor(occupant.id); }
+          if (editing && !occupant) token.fillPosId = pos.id;   // tap = who plays here (_openFillSheet)
           if (editing && occupant) {
             token.removeId = occupant.id;
             if (this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(occupant.id);
@@ -4015,7 +4069,9 @@ class GameCenterScreen extends EventScreen {
     const out = live && this._rsvpOut ? this._rsvpOut : null;
     // Heading colours (owner 11/18 "not placed yellow, no response orange → yellow too 11/18,
     // not going red, alternates powder blue"); ineligible keeps the gold.
-    const outRow = (list, tier, fb, color) => ({ label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: [...list].sort(this._byLastName).map(p => p.name) });
+    // ids ride along while editing: a name is a tap → the move sheet (owner 11/18 graphic-first).
+    const outRow = (list, tier, fb, color) => { const l = [...list].sort(this._byLastName);
+      return { label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: l.map(p => p.name), ids: editing ? l.map(p => p.id) : null }; };
     // Order (owner 11/18): substitutes, not placed yet (+ ineligible), no response, not going, alternates.
     const rsvpOut = out ? [outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet', '#facc15'),
                            outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)', '#f5d442'),
