@@ -178,11 +178,17 @@ class MainMenu {
     if (current && current !== screen) return;
     const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const copy = (tier, fb) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', tier)) ? MessageCopy.block('main_menu', tier) : fb;
-    const pill = (attrs, label, on, big) => `<button type="button" ${attrs} ${on ? 'data-menu-on' : ''}
+    // Phone: icon only, the name in title / aria-label, rows wrap — no
+    // side-scrolling for the menu on any page (owner 11/18 "we need icons for
+    // phone so we don't have to scroll across for menu items on any page").
+    MainMenu._phoneStyle();
+    const lbl = (icon, name) => [icon, name];
+    const split = (text) => { const m = /^(\S+)\s+(.*)$/.exec(String(text || '')); return m ? [m[1], m[2]] : ['', String(text || '')]; };
+    const pill = (attrs, [icon, name], on, big) => `<button type="button" ${attrs} ${on ? 'data-menu-on' : ''} title="${esc(name)}" aria-label="${esc(name)}"
         style="flex:0 0 auto; padding:${big ? '6px 12px' : '4px 11px'}; border-radius:999px; cursor:pointer; font-weight:${big ? 800 : 700};
                font-size:${big ? '0.86rem' : '0.8rem'}; white-space:nowrap;
                background:${on ? (big ? '#0ea5e9' : 'rgba(14,165,233,0.22)') : 'transparent'}; color:${on && big ? '#fff' : 'var(--fg, #e5e7eb)'};
-               border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};">${label}</button>`;
+               border:1px solid ${on ? '#0ea5e9' : 'var(--border-color, #374151)'};"><span class="menu-ico">${esc(icon)}</span><span class="menu-lbl"> ${esc(name)}</span></button>`;
     const row = (inner, extra = '') => `<div class="menu-row" style="display:flex; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 0; ${extra}">${inner}</div>`;
     // PlayerViewer: no full bar — just its menuBarPages (📅 Calendar) as the
     // admin's big pill, and only away from the Calendar, where it would go
@@ -196,7 +202,7 @@ class MainMenu {
         .filter(p => codes.includes(p.code) && MainMenu._sees(p))
         .sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
       if (!mine.length) return hide();
-      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, true, true)).join(''));
+      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), true, true)).join(''));
       host.style.display = 'block';
       MainMenu._wire(host);
       return;
@@ -207,10 +213,10 @@ class MainMenu {
     if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
     const account = screen === 'main-menu';
     const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;
-    const top = groups.map(g => pill(`data-menu-group="${esc(g.code)}"`, `${esc(g.icon)} ${esc(g.label)}`, group && g.code === group.code, true)).join('')
-      + pill('data-menu-account', esc(copy('account_pill', '👤 Account')), account, true);
+    const top = groups.map(g => pill(`data-menu-group="${esc(g.code)}"`, lbl(g.icon, g.label), group && g.code === group.code, true)).join('')
+      + pill('data-menu-account', lbl(...split(copy('account_pill', '👤 Account'))), account, true);
     const pages = group && group.pages.length >= 2
-      ? row(group.pages.map(p => pill(`data-menu-page="${esc(p.code)}"`, `${esc(p.icon)} ${esc(p.label)}`, page && p.code === page.code, false)).join(''),
+      ? row(group.pages.map(p => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), page && p.code === page.code, false)).join(''),
             'margin-top:6px; padding-top:6px; border-top:1px dashed var(--border-color, #374151);')
       : '';
     host.innerHTML = row(top) + pages;
@@ -222,6 +228,19 @@ class MainMenu {
       if (r) r.scrollLeft = Math.max(0, b.offsetLeft - r.offsetLeft - (r.clientWidth - b.offsetWidth) / 2);
     });
     MainMenu._wire(host);
+  }
+
+  static _phoneStyle() {
+    if (document.getElementById('menu-phone-style')) return;
+    const st = document.createElement('style');
+    st.id = 'menu-phone-style';
+    st.textContent = `@media (max-width: 640px) {
+      #menu-pills { padding:6px 8px !important; }
+      #menu-pills .menu-row { flex-wrap:wrap; overflow-x:visible !important; justify-content:center; gap:4px !important; }
+      #menu-pills .menu-lbl { display:none; }
+      #menu-pills button { padding:7px 0 !important; font-size:1.1rem !important; line-height:1; width:38px !important; min-width:0 !important; min-height:38px; }
+    }`;
+    document.head.appendChild(st);
   }
 
   static _wire(host) {
