@@ -205,6 +205,20 @@ class RostersScreen extends Screen {
     return (this.teamsPill === 'boys' || this.teamsPill === 'girls') ? 'rank' : 'alpha';
   }
 
+  // Men's Team view: 🤝 Committed and 🧪 Trials only (owner 11/19 "get rid
+  // of other pills" → "except trials one right as that has trials as
+  // factor"); Committed is the default there.  Roster view and the other
+  // boards keep the full sort row (Committed is Team-view only).
+  _commitOnly() {
+    let view = 'roster';
+    try { view = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
+    return this.teamsPill === 'mens' && view === 'team';
+  }
+  _effectiveSort() {
+    if (this._commitOnly()) return this.teamsSort === 'trials' ? 'trials' : 'committed';
+    return this.teamsSort === 'committed' ? this._defaultSort() : (this.teamsSort || this._defaultSort());
+  }
+
   _termForChildren() {
     return this.termInfo && this.teamsTerm ? { term: this.teamsTerm, teams: this.termInfo.teams || {}, frozen: this.termInfo.frozen || {}, starts: this.termInfo.starts || {} } : null;
   }
@@ -240,7 +254,8 @@ class RostersScreen extends Screen {
     let boardView = 'roster';
     try { boardView = localStorage.getItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY) === 'team' ? 'team' : 'roster'; } catch (e) { /* private mode */ }
     const viewCopy = (tier, fallback) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || fallback;
-    const litSort = this.teamsSort || this._defaultSort();
+    const litSort = this._effectiveSort();
+    const commitOnly = this._commitOnly();
     this._teamsFilterBar.setRows([
       {
         name:     'teams-view',
@@ -252,7 +267,11 @@ class RostersScreen extends Screen {
         onSelect: (id) => {
           if (id == null) return;
           try { localStorage.setItem(RosterScreenBase.BOARD_VIEW_STORAGE_KEY, id); } catch (e) { /* private mode */ }
+          // The sort row differs per view: start the new one fresh.
+          this.teamsSortDesc = false;
+          const sort = this._effectiveSort();
           for (const child of this._mountedChildren) {
+            if (child && typeof child.setSortOrder === 'function') child.setSortOrder(sort, this.teamsSortDesc);
             if (child && typeof child.setBoardView === 'function') child.setBoardView(id);
           }
           this._buildTeamsPills();
@@ -345,7 +364,8 @@ class RostersScreen extends Screen {
           // 🤝 Committed (migs 1551/1554): RSVP + dues — most committed
           // first: up to date, behind RSVP, behind dues, behind both.
           { id: 'committed',  label: viewCopy('board_sort_committed', '🤝 Committed') },
-        ].map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
+        ].filter(c => commitOnly ? (c.id === 'committed' || c.id === 'trials') : c.id !== 'committed')
+          .sort((a, b) => commitOnly ? (a.id === 'committed' ? -1 : b.id === 'committed' ? 1 : 0) : 0).map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
         selected: litSort,
         onSelect: (id) => {
           // FilterBar hands back null when the lit pill is tapped: flip it.
@@ -451,7 +471,7 @@ class RostersScreen extends Screen {
     if (typeof child.setIncludeInactive === 'function') {
       child.includeInactive = this.teamsIncludeInactive;
     }
-    child._sortOrder = this.teamsSort || this._defaultSort();   // the A–Z / Rank pill
+    child._sortOrder = this._effectiveSort();   // the lit sort pill (men's Team view: 🤝 Committed)
     child._sortDesc = !!this.teamsSortDesc;          // tapped again = flipped
     child._term = this._termForChildren();          // the season pill (mig 795)
     // Mens/Boys/Girls/Womens each compute an LA-driven Unassigned count
