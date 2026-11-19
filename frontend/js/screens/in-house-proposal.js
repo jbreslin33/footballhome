@@ -30,6 +30,7 @@ class InHouseProposalScreen extends Screen {
         <div style="flex:1;"><h1 style="margin:0;" id="ihp-title"></h1><div id="ihp-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
       </div>
       <div class="screen-content"><div class="ihp-wrap" id="ihp-body"></div></div>`;
+    this.element = div;
     div.querySelector('#ihp-back').addEventListener('click', () => this.navigation.goBack());
     return div;
   }

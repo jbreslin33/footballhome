@@ -79,6 +79,7 @@ class App {
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
       inHouseProposal: new InHouseProposalScreen(this.navigation, this.auth),
+      proposals: new ProposalsScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
       film: new FilmScreen(this.navigation, this.auth),
       apslHub: new ApslHubScreen(this.navigation, this.auth),
@@ -209,6 +210,8 @@ class App {
     // #cash-flow (mig 882): soccer money in from LeagueApps against invoices out.
     // #in-house-proposal (mig 900): the case for youth in-house.
     this.screenManager.register('in-house-proposal', this.screens.inHouseProposal);
+    // 📑 #proposals[/<code>] (mig 1572): every club proposal on one page.
+    this.screenManager.register('proposals', this.screens.proposals);
     // #fines (mig 534): the Men's fines by month and player, on their own page.
     this.screenManager.register('fines', this.screens.fines);
     // #film (mig 599): the league's game-film sheet, read-only, matched to games.
@@ -364,6 +367,12 @@ class App {
       const personLink = (window.location.hash || '').match(/^#person\/(\d+)(?:\/([a-z]+))?$/);
       if (personLink) {
         this.navigation.goTo('person', { personId: personLink[1], entity: personLink[2] ? `${personLink[1]}/${personLink[2]}` : personLink[1], tab: personLink[2] || null });
+        return;
+      }
+      // 📑 #proposals or #proposals/<code> (mig 1572).
+      const proposalLink = (window.location.hash || '').match(/^#proposals(?:\/([a-z0-9-]+))?$/);
+      if (proposalLink) {
+        this.navigation.goTo('proposals', proposalLink[1] ? { entity: proposalLink[1] } : {});
         return;
       }
       if (window.location.hash === '#apsl-pyramid') {
