@@ -22,6 +22,8 @@
 #include <thread>
 #include <vector>
 
+#include "../models/Onboarding.h"
+
 using nlohmann::json;
 
 namespace {
@@ -370,6 +372,40 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "/groupme/feed",   [this](const Request& r) { return handleGetGroupMeFeed(r); });
     router.get (prefix + "/fines",          [this](const Request& r) { return handleGetFines(r); });
     router.get (prefix + "/notices",        [this](const Request& r) { return handleGetNotices(r); });
+    // 🎓 Onboarding (mig 1526): the viewer's own path (view-as follows) and
+    // "I sent it" on a step (as the real caller — view-as is read-only).
+    //   GET  /api/my/onboarding            { onboarding: {track, steps, left, total} | null }
+    //   POST /api/my/onboarding  {code, sent}
+    router.get (prefix + "/onboarding", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/true, &personId)) return *err;
+        try { return jsonOk({{"onboarding", Onboarding::mine(personId)}}); }
+        catch (const std::exception& e) {
+            std::cerr << "[GET /api/my/onboarding] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load onboarding");
+        }
+    });
+    router.post(prefix + "/onboarding", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/false, &personId)) return *err;
+        json body;
+        try { body = r.getBody().empty() ? json::object() : json::parse(r.getBody()); }
+        catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON"); }
+        const std::string code = body.contains("code") && body["code"].is_string() ? body["code"].get<std::string>() : "";
+        const bool sent = body.value("sent", true);
+        try {
+            const std::string err = Onboarding::markSent(personId, code, sent);
+            if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            return jsonOk({{"onboarding", Onboarding::mine(personId)}});
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/onboarding] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save");
+        }
+    });
     router.post(prefix + "/fines/dispute",  [this](const Request& r) { return handlePostFineDispute(r); });
     router.get (prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });
     router.post(prefix + "/volunteer",      [this](const Request& r) { return handleVolunteer(r); });

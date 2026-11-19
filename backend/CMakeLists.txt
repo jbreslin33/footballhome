@@ -175,7 +175,9 @@ set(SOURCES
     src/services/CarpoolRouting.cpp
     src/controllers/FinesController.cpp
     src/controllers/VolunteerController.cpp
+    src/controllers/OnboardingController.cpp
     src/models/VolunteerShifts.cpp
+    src/models/Onboarding.cpp
     src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp
     src/controllers/CupRosterController.cpp

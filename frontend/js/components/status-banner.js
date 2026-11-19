@@ -37,7 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -158,6 +158,7 @@
               <div data-sb-panel="fines" hidden><div id="sb-fines" hidden></div></div>
               <div data-sb-panel="alerts" hidden><div id="sb-alerts"></div></div>
               <div data-sb-panel="menu" id="sb-menu" hidden></div>
+              <div data-sb-panel="onboarding" hidden><div id="sb-onb"></div></div>
             </div>
           </div>
         </div>`;
@@ -205,7 +206,8 @@
       this.host.querySelectorAll('[data-sb-panel]').forEach(p => { p.hidden = p.getAttribute('data-sb-panel') !== panel; });
       const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'], fines: ['sheet_fines', '⚖️ Your fines'], alerts: ['sheet_alerts', '🔔 Alerts'],
                        menu: ['sheet_menu', '☰ Menu'],
-                       chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'] };
+                       chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'],
+                       onboarding: ['sheet_onboarding', '🎓 Your path at Lighthouse'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
       if (panel && !this._escWired) {
@@ -214,6 +216,7 @@
       }
       if (panel === 'chat' && this.chat) this.chat.markRead();
       if (panel === 'menu') this.renderMenu();
+      if (panel === 'onboarding' && this.onbList) this.onbList.render();
       if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
         this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
         this.finesPanel.load();
@@ -297,7 +300,8 @@
     set(code, data) {
       this.bar.set(code, data);
       const open = this.bar.openCode;
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu'].includes(open)) return;   // panels that aren't band items
+      // 🎓 onboarding stays open as its last step is sent — the person sees it go 🟡.
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -355,6 +359,20 @@
         this.set('dues_owed', owed.length ? { amount: sum(owed), extra: blocked.length ? [] : extra } : null);
       });
 
+      // 🎓 Onboarding (mig 1526): "⛔ Onboarding — N of M left [Finish ›]"
+      // while a step is still to do; the popup is the checklist with its
+      // links (owner 11/19 "shows on their calendar as outstanding items
+      // like missing rsvps … but has actionable links").
+      const onbBox = (o) => (o && Number(o.left) > 0 ? { left: o.left, total: o.total } : null);
+      this.onbList = window.OnboardingChecklist
+        ? new OnboardingChecklist(this.$('#sb-onb'), this.ctx({ onChange: (o) => this.set('onboarding', onbBox(o)) })) : null;
+      const onbLoaded = this.onbList
+        ? this.fetchJson('/api/my/onboarding').then((b) => {
+            this.onbList.set(b.onboarding || null);
+            this.set('onboarding', onbBox(b.onboarding));
+          }).catch(() => {})
+        : Promise.resolve();
+
       // 💬 Chat — always a box when the section has one: newest · N new.
       const chatOpen = () => this.bar.openCode === 'chat_unread';
       this.chat = new SectionChat(this.$('#sb-chat'), this.ctx({ isOpen: chatOpen, onSummary: (s) => {
@@ -379,7 +397,7 @@
       this.chat.start().catch(() => {});
 
       // The band draws once the notices AND the week are in — no green flash.
-      Promise.all([noticesLoaded, this.loadEvents(true)])
+      Promise.all([noticesLoaded, onbLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
       this.setChatHtml('');   // ☰ from the start; 💬 joins when the chat answers
       if (window.MainMenu) MainMenu.load(this.auth).then(() => this.paintTail()).catch(() => {});
