@@ -360,15 +360,16 @@
 
   // Behind on what (mig 1551, owner 11/19 "categorize the players who are
   // regulars … up to date in rsvp and dues, behind rsvp, behind in dues,
-  // behind in both" → "or is that better done as a sort?"): rsvp = red
-  // RSVP (no own answer in rsvp_box_policy.yellow_days); dues = owes on a
+  // behind in both" → "or is that better done as a sort?"): rsvp = not
+  // green (no own answer in rsvp_box_policy.green_days); dues = owes on a
   // live membership (volunteer / $0 / no LA never count).  null until
   // loaded / for non-admins.
   function behind(personId) {
     const hit = cache.get(Number(personId));
     if (!hit || !hit.data) return null;
     const d = hit.data.dues;
-    return { rsvp: hit.data.rsvpBox === 'red', dues: !!(d && !d.free_reason && d.member && d.balance > 0) };
+    // Not green = behind (owner 11/19: Erick David, yellow RSVP + owes, "is both").
+    return { rsvp: hit.data.rsvpBox !== 'green', dues: !!(d && !d.free_reason && d.member && d.balance > 0) };
   }
 
   // A save changed his teams (player sheet ⚽ pills): the next load re-reads.

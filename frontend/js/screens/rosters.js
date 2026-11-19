@@ -342,8 +342,9 @@ class RostersScreen extends Screen {
           { id: 'attendance', label: viewCopy('board_sort_attendance', '📊 Attendance') },
           { id: 'trials',     label: viewCopy('board_sort_trials', '🧪 Trials') },
           { id: 'score',      label: viewCopy('board_sort_score', '⭐ Score') },
-          // 🚩 Behind (mig 1551): RSVP + dues — both, dues, RSVP, up to date.
-          { id: 'behind',     label: viewCopy('board_sort_behind', '🚩 Behind') },
+          // 🤝 Committed (migs 1551/1554): RSVP + dues — most committed
+          // first: up to date, behind RSVP, behind dues, behind both.
+          { id: 'committed',  label: viewCopy('board_sort_committed', '🤝 Committed') },
         ].map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
         selected: litSort,
         onSelect: (id) => {

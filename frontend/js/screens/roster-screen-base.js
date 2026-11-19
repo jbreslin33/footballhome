@@ -1262,17 +1262,17 @@ class RosterScreenBase extends Screen {
       return m ? flagTag(copy('tc_flag_docs', {}, 'DOCS') + (m.stale ? '⚠' : ''), m.tip) : '';
     };
     // Each group follows the lit sort pill like the columns do (owner 11/19
-    // "wait we already have sort buttons"); 🚩 Behind = both → dues → RSVP
-    // → up to date (mig 1551).  Behind needs PersonStanding, so that order
+    // "wait we already have sort buttons"); 🤝 Committed = up to date →
+    // RSVP → dues → both (migs 1551/1554).  It needs PersonStanding, so that order
     // is re-applied in place once it loads (no re-render).
-    const rankOf = (pid) => RosterScreenBase.behindRank(pid);
+    const rankOf = (pid) => RosterScreenBase.commitRank(pid);
     const ordered = (list, col) => this.orderColumnPlayers(list, col).map(r => r.player);
     const tallyHtml = (pids) => {
       const n = [0, 0, 0, 0, 0];
       pids.forEach(pid => { n[rankOf(pid)] += 1; });
       if (n[4] === pids.length) return '';
-      return esc(copy('tc_tally', { ok: n[3], rsvp: n[2], dues: n[1], both: n[0] },
-        `✅ ${n[3]} · RSVP ${n[2]} · $ ${n[1]} · both ${n[0]}`));
+      return esc(copy('tc_tally', { ok: n[0], rsvp: n[1], dues: n[2], both: n[3] },
+        `✅ ${n[0]} · RSVP ${n[1]} · $ ${n[2]} · both ${n[3]}`));
     };
     const box = (p, col, listTeamIds, groupColor = null) => {
       const pid = Number(p.personId);
@@ -1364,7 +1364,7 @@ class RosterScreenBase extends Screen {
         this.element.querySelectorAll('[data-tc-info]').forEach(el => {
           el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '', paidAmount: el.getAttribute('data-tc-paid-amount') || '' });
         });
-        if (this.sortOrder === 'behind') this.element.querySelectorAll('[data-tc-pitch]').forEach(el => {
+        if (this.sortOrder === 'committed') this.element.querySelectorAll('[data-tc-pitch]').forEach(el => {
           // Same rule as orderColumnPlayers: flipped = best first, unknown
           // at the foot either way; A–Z (data-tc-alpha) within.
           const flip = this._sortDesc ? -1 : 1;
@@ -2386,7 +2386,7 @@ class RosterScreenBase extends Screen {
     return !terms || terms.includes(t.term);
   }
 
-  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score', 'behind']; }
+  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score', 'committed']; }
 
   // ── 📊 🧪 ⭐ Squad-picking sorts (mig 1399, owner 11/16) ─────────────
   // data.selection[personId] = { attended, expected, trials, trialsHeld,
@@ -2477,16 +2477,19 @@ class RosterScreenBase extends Screen {
 
   // Sorts whose first-tap order is biggest/best first (shown ↓); the rest
   // start smallest first (A→Z, #1 first — shown ↑).
-  static get SORTS_BIG_FIRST() { return ['paid', 'rsvp', 'attendance', 'trials', 'score', 'behind']; }
+  static get SORTS_BIG_FIRST() { return ['paid', 'rsvp', 'attendance', 'trials', 'score']; }
 
-  // 🚩 Behind (mig 1551, owner 11/19 "categorize … up to date in rsvp and
+  // 🤝 Committed (migs 1551/1554, owner 11/19 "categorize … up to date in rsvp and
   // dues, behind rsvp, behind in dues, behind in both" → "better done as a
-  // sort?" → "we already have sort buttons"): 0 both, 1 dues, 2 RSVP,
-  // 3 up to date, 4 not known yet (PersonStanding not loaded / no access).
-  static behindRank(personId) {
+  // sort?" → "we already have sort buttons" → "erick david is both and he
+  // should be last right?" → "maybe the pill should say 'commited' and then
+  // we sort asc" "so most commited"): most committed first — 0 up to date, 1 behind
+  // on RSVP (not green), 2 behind on dues, 3 behind on both; 4 = not known
+  // yet (PersonStanding not loaded / no access), always at the foot.
+  static commitRank(personId) {
     const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(personId) : null;
     if (!b) return 4;
-    return b.rsvp && b.dues ? 0 : b.dues ? 1 : b.rsvp ? 2 : 3;
+    return b.rsvp && b.dues ? 3 : b.dues ? 2 : b.rsvp ? 1 : 0;
   }
   static sortArrow(order, flipped) { return (RosterScreenBase.SORTS_BIG_FIRST.includes(order) !== !!flipped) ? '↓' : '↑'; }
 
@@ -2498,8 +2501,8 @@ class RosterScreenBase extends Screen {
     if (!this._sortDesc) return out;
     const order = this.sortOrder;
     let missing = () => false;
-    if (order === 'behind') {
-      missing = (r) => RosterScreenBase.behindRank(r.player.personId) === 4;
+    if (order === 'committed') {
+      missing = (r) => RosterScreenBase.commitRank(r.player.personId) === 4;
     } else if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
       missing = (r) => this.selectionParts(r.player)[order] == null;
     } else if (order === 'official' && this.officialPositions(col)) {
@@ -2556,8 +2559,8 @@ class RosterScreenBase extends Screen {
       return `${last || fallback}\u0000${first}`.toLowerCase();
     };
     const alpha = (a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank;
-    if (order === 'behind') {
-      return ranked.sort((a, b) => RosterScreenBase.behindRank(a.player.personId) - RosterScreenBase.behindRank(b.player.personId) || alpha(a, b));
+    if (order === 'committed') {
+      return ranked.sort((a, b) => RosterScreenBase.commitRank(a.player.personId) - RosterScreenBase.commitRank(b.player.personId) || alpha(a, b));
     }
     if (order === 'paid') {
       const w = { owes: 0, none: 1, paid: 2 };
