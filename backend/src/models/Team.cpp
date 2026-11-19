@@ -148,7 +148,8 @@ std::string Team::getTeamRoster(const std::string& team_id, bool adminView) {
             "  DATE(r.joined_at) as joined_date, "
             "  lr.name as lineup_role, "
             "  (SELECT ss.code FROM squad_statuses ss WHERE ss.id = r.squad_status_id) AS squad_status, "  // 💤 Team pill, mig 945
-            "  fh_person_needs_onboard(pe.id) AS needs_onboard "  // 👋 Not chasing, mig 1520
+            "  fh_person_needs_onboard(pe.id) AS needs_onboard, "  // 👋 Not chasing, mig 1520
+            "  fh_calldown_from(r.team_id, pe.id) AS calldown_from "  // ⬇ call-down, mig 1527
             "FROM team_persons r "
             "JOIN persons pe ON pe.id = r.person_id "
             "JOIN players pl ON pl.person_id = pe.id "
@@ -204,6 +205,7 @@ std::string Team::getTeamRoster(const std::string& team_id, bool adminView) {
             json << "\"duesEligible\":" << (row["dues_eligible"].is_null() || row["dues_eligible"].as<bool>() ? "true" : "false") << ",";
             json << "\"squadStatus\":" << (row["squad_status"].is_null() ? "null" : "\"" + escapeJSON(row["squad_status"].as<std::string>()) + "\"") << ",";
             json << "\"needsOnboard\":" << (!row["needs_onboard"].is_null() && row["needs_onboard"].as<bool>() ? "true" : "false") << ",";
+            json << "\"calldownFrom\":" << (row["calldown_from"].is_null() ? std::string("null") : row["calldown_from"].as<std::string>()) << ",";
             json << "\"roleType\":\"PLAYER\"";
             json << "}";
             

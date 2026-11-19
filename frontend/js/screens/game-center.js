@@ -1550,7 +1550,8 @@ class GameCenterScreen extends EventScreen {
           byId.set(pid, { id: pid, name: p.name || '(unnamed)', lastName: p.lastName || '', lineupRole: p.lineupRole || null, teamId: fromTeamId, jerseyNumber: p.jerseyNumber || null,
                           duesEligible: p.duesEligible !== false,   // migration 416: under the dues line
                           squadStatus: p.squadStatus || null,        // 💤 inactive → own fold (mig 945)
-                          needsOnboard: p.needsOnboard === true });  // 👋 never answered anything → Not chasing (mig 1520)
+                          needsOnboard: p.needsOnboard === true,     // 👋 never answered anything → Not chasing (mig 1520)
+                          calldownFrom: p.calldownFrom || null });   // ⬇ On Roster only for APSL → a call-down (mig 1527)
         }
       }
       this.roster = [...byId.values()];
@@ -1634,29 +1635,48 @@ class GameCenterScreen extends EventScreen {
   // the PUT enforces the same rule server-side.
   // A folded invitee whose from-team has a cap row for this game is a
   // CALL-DOWN (APSL → CASA); every other invitee is a call-up.
-  _isCallDown(playerId) {
-    const caps = (this.invites && this.invites.caps) || [];
-    if (!caps.length) return false;
-    const r = this.roster.find(x => Number(x.id) === Number(playerId));
-    if (!r || !r.callUp || !r.fromTeamId) return false;
-    return caps.some(c => Number(c.from_team_id) === Number(r.fromTeamId));
-  }
-
-  _callDownCapHit(playerId) {
+  // Since mig 1527 the official rosters decide (owner 11/19 "not more than
+  // 2 apsl guys that are not on liga 1 roster"): a roster card carries
+  // calldownFrom (On Roster for APSL, not for this team — Caleb Rojas);
+  // an invitee still counts by its from-team.  → the cap's from_team_id or null.
+  _callDownFrom(playerId) {
     const caps = (this.invites && this.invites.caps) || [];
     if (!caps.length) return null;
-    const fromOf = new Map(((this.invites && this.invites.invites) || [])
-      .filter(i => i.player_id && i.from_team_id).map(i => [Number(i.player_id), Number(i.from_team_id)]));
-    const mine = fromOf.get(Number(playerId));
-    if (!mine) return null;
-    for (const c of caps) {
-      if (mine !== Number(c.from_team_id)) continue;
-      const used = [...this.zones.entries()].filter(([id, z]) =>
-        (z === 'starter' || z === 'bench') && Number(id) !== Number(playerId)
-        && fromOf.get(Number(id)) === Number(c.from_team_id)).length;
-      if (used >= Number(c.max)) return c;
+    const r = this.roster.find(x => Number(x.id) === Number(playerId));
+    if (!r) return null;
+    const from = r.calldownFrom ? Number(r.calldownFrom) : (r.callUp && r.fromTeamId ? Number(r.fromTeamId) : null);
+    return from && caps.some(c => Number(c.from_team_id) === from) ? from : null;
+  }
+  _isCallDown(playerId) { return this._callDownFrom(playerId) != null; }
+
+  // The squad's call-downs per cap: [{ cap, ids }] (starters + bench).
+  _callDownTally() {
+    const caps = (this.invites && this.invites.caps) || [];
+    return caps.map(c => ({ cap: c, ids: [...this.zones.entries()]
+      .filter(([id, z]) => (z === 'starter' || z === 'bench') && this._callDownFrom(id) === Number(c.from_team_id))
+      .map(([id]) => id) }));
+  }
+
+  // Placing playerId would put a cap over its max → { cap, n } (n = the
+  // count with him), else null.  A warning, not a block (owner 11/19 "flag
+  // them as call downs and warn if 3 of more"): the caller asks.
+  _callDownCapHit(playerId) {
+    const from = this._callDownFrom(playerId);
+    if (!from) return null;
+    for (const t of this._callDownTally()) {
+      if (Number(t.cap.from_team_id) !== from) continue;
+      const n = t.ids.filter(id => Number(id) !== Number(playerId)).length + 1;
+      if (n > Number(t.cap.max)) return { cap: t.cap, n };
     }
     return null;
+  }
+  // true = go ahead (under the cap, or the coach said yes).
+  _callDownOk(playerId) {
+    const hit = this._callDownCapHit(playerId);
+    if (!hit) return true;
+    const tk = { max: hit.cap.max, team: hit.cap.from_team || 'APSL', n: hit.n };
+    return window.confirm((window.MessageCopy && MessageCopy.block('event_center', 'calldown_confirm', tk))
+      || `League rule: at most ${tk.max} ${tk.team} call-downs in the squad. This makes ${tk.n}. Place anyway?`);
   }
 
   // Bench/Alt only — Starting XI assignment goes through _setPosition
@@ -1683,10 +1703,7 @@ class GameCenterScreen extends EventScreen {
       this.zones.delete(playerId); // tap active zone again → unassign
     } else {
       if (this._isSuspended(playerId)) { this._suspendedToast(); return; }
-      if (zone === 'bench') {
-        const hit = this._callDownCapHit(playerId);
-        if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
-      }
+      if (zone === 'bench' && this.zones.get(playerId) !== 'starter' && !this._callDownOk(playerId)) return;   // ⬇ mig 1527: warn + ask
       if (zone === 'bench' && this._benchFull(playerId)) {
         // Full: swap with someone or extend the squad for this game
         // (2026-09-26 / mig 760).  The toast is the fallback while the
@@ -1756,8 +1773,7 @@ class GameCenterScreen extends EventScreen {
     }
     {
       // Call-down cap (migs 616/617) — a position pill is the starter door.
-      const hit = this.zones.get(playerId) === 'starter' ? null : this._callDownCapHit(playerId);
-      if (hit) { this._toast(`League rule: only ${hit.max} call-downs from ${hit.from_team} in the squad — use Alt for the extra.`); return; }
+      if (!['starter', 'bench'].includes(this.zones.get(playerId)) && !this._callDownOk(playerId)) return;   // ⬇ mig 1527: warn + ask
     }
     for (const [otherId, otherPos] of this.positions.entries()) {
       if (otherPos === positionId && otherId !== playerId) {
@@ -4116,7 +4132,19 @@ class GameCenterScreen extends EventScreen {
     const outRow = (list, tier, fb, color) => { const l = [...list].sort(this._byLastName);
       return { label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: l.map(p => p.name), ids: editing ? l.map(p => p.id) : null }; };
     // Order (owner 11/18): substitutes, not placed yet (+ ineligible), no response, not going, alternates.
-    const rsvpOut = out ? [outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet', '#facc15'),
+    // ⬇ Call-downs in the squad, per cap (mig 1527, owner 11/19 "show me a
+    // tally of how many bench and starters i have like that" + "warn if 3
+    // of more"): gold under the cap, red over it.  Coaches only.
+    const calldownRows = out && this.isCoach ? this._callDownTally().filter(t => t.ids.length).map(t => {
+      const over = t.ids.length > Number(t.cap.max);
+      const tk = { n: t.ids.length, max: t.cap.max, team: t.cap.from_team || 'APSL' };
+      const ppl = t.ids.map(id => this.roster.find(r => Number(r.id) === Number(id))).filter(Boolean).sort(this._byLastName);
+      return { label: over ? ((window.MessageCopy && MessageCopy.block('event_center', 'card_calldowns_over', tk)) || `⚠ ${tk.team} call-downs ${tk.n}/${tk.max} — league max is ${tk.max}`)
+                           : ((window.MessageCopy && MessageCopy.block('event_center', 'card_calldowns', tk)) || `⬇ ${tk.team} call-downs ${tk.n}/${tk.max}`),
+               color: over ? '#f87171' : '#f5d442', names: ppl.map(p => p.name), ids: editing ? ppl.map(p => p.id) : null };
+    }) : [];
+    const rsvpOut = out ? [...calldownRows,
+                           outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet', '#facc15'),
                            outRow(out.ineligible || [], 'sec_ineligible', '⛔ Said going · Ineligible (dues)', '#f5d442'),
                            outRow(out.noResponse, 'sec_noresp', '– No response', '#facc15'),
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),

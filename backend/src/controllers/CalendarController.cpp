@@ -3587,19 +3587,14 @@ Response CalendarController::handleGetEventInvites(const Request& request) {
         json caps = json::array();
         for (const auto& row : db->query(R"SQL(
                 SELECT t.name AS from_team, c.from_team_id, c.to_team_id, c.max_per_event,
-                       (SELECT count(*) FROM fh_events fe
+                       -- mig 1527: by the official rosters (fh_calldown_from)
+                       (SELECT count(DISTINCT pe.id) FROM fh_events fe
                           JOIN match_lineups ml ON ml.match_id = fe.match_id
                           JOIN players pl ON pl.id = ml.player_id
                           JOIN persons pe ON pe.id = pl.person_id
                          WHERE fe.id = $1::bigint AND fe.match_id IS NOT NULL
                            AND ml.zone IN ('starter', 'bench')
-                           AND EXISTS (SELECT 1 FROM team_persons tp
-                                        WHERE tp.person_id = pe.id AND tp.team_id = c.from_team_id
-                                          AND tp.removed_at IS NULL)
-                           AND NOT EXISTS (SELECT 1 FROM team_persons tp2
-                                            JOIN fh_event_teams fet2 ON fet2.team_id = tp2.team_id
-                                                                    AND fet2.fh_event_id = $1::bigint
-                                           WHERE tp2.person_id = pe.id AND tp2.removed_at IS NULL)) AS used
+                           AND fh_calldown_from(c.to_team_id, pe.id) = c.from_team_id) AS used
                   FROM team_invite_caps c
                   JOIN teams t ON t.id = c.from_team_id
                  WHERE EXISTS (SELECT 1 FROM fh_event_teams fet

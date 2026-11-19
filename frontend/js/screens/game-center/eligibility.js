@@ -263,6 +263,10 @@ class GameCenterEligibility {
     // Dues: below.
     // Men's games add the practice week first (MensGameScreen._practiceNoteBits).
     bits.push(...this._practiceNoteBits(playerId));
+    // ⬇ call-down (mig 1527, owner 11/19 "flag them as call downs"): On
+    // Roster only for APSL — counts toward the league's 2 per game.
+    if (this._isCallDown && this._isCallDown(playerId))
+      bits.push(`<span style="color:#f5d442;">${this.escapeHtml(this._eligCopy('lineup_note_calldown') || '⬇ call-down')}</span>`);
     // Money = Viewer.eventFinancial (AdminViewer only — owner 11/18 "the same except for financial data").
     // This event's viewer, so 👀 See as coach / player hides it too.
     const d = this.viewer && this.viewer.eventFinancial && window.PersonStanding && PersonStanding.dues
