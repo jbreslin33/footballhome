@@ -1295,7 +1295,8 @@ class RosterScreenBase extends Screen {
               <summary style="cursor:pointer; list-style:none; font-size:12px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#f5d442;">${esc(copy('tc_folded', { team: foldLabel, n: extra.length }, `▸ ${foldLabel} pitch · ${extra.length}`))}</summary>
               <div style="margin-top:6px;">${pitch(extra, folded[0], listTeamIds)}</div></details>` : ''}
           ${row(groups.onboard, ec('sec_not_chasing', '👋 Not chasing'), '#cbd5e1')}
-          ${row(groups.not_eligible, copy('tc_not_eligible', {}, '⛔ Not On Roster'), '#fca5a5', copy('tc_not_eligible_tip', {}, ''), true)}
+          ${row(groups.not_eligible, copy('tc_not_eligible', {}, '⛔ Not On Roster'), '#fca5a5', copy('tc_not_eligible_tip', {}, ''),
+                /^CASA/i.test(String(((data.officialRosters || {})[String(col.teamId)] || {}).league || '')))}
           ${row(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd')}
           ${row(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af')}
           ${row(groups.inactive, ec('sec_inactive', '💤 Inactive'), '#94a3b8')}
