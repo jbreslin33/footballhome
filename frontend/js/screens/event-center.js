@@ -417,6 +417,16 @@ class EventCenterScreen extends Screen {
   }
   _calMenuItems() {
     const items = [];
+    // Games · Practices · Pickup · All — the viewer's to pick (calendarKindPills),
+    // in ☰ with the lit one ✓ (owner 11/18 "move Games Practices Pickup etc to hamburger").
+    const viewer = this.viewer || Viewer.account();
+    if (viewer.calendarKindPills && window.EventKindSwitch) {
+      const lit = EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all';
+      for (const k of EventKindSwitch.KINDS) items.push({
+        label: `${k === lit ? '✓ ' : ''}${EventKindSwitch.label(k)}`,
+        run: () => { this.kind = k; if (this.error) this._setWeek(this.weekStart); else this._render(); },
+      });
+    }
     const rel = this.find('#ec-release');
     const relText = rel ? (rel.textContent || '').replace(/\s+/g, ' ').trim() : '';
     if (relText) items.push({ label: relText.split(/\.\s/)[0].slice(0, 60), run: () => this._showCalExtra('release') });
@@ -613,11 +623,12 @@ class EventCenterScreen extends Screen {
     if (title) title.style.display = viewer.calendarHeader ? '' : 'none';
     if (sub) sub.style.display = viewer.calendarHeader ? '' : 'none';
     const header = this.find('.screen-header');
-    if (header) header.style.display = (viewer.calendarHeader || viewer.calendarBack || viewer.calendarKindPills) ? '' : 'none';
+    // Games · Practices · Pickup · All are ☰ items now (_calMenuItems), not a row here.
+    if (header) header.style.display = (viewer.calendarHeader || viewer.calendarBack) ? '' : 'none';
     const mine = this.find('#ec-mine');
     if (mine && this.mode !== 'people') mine.style.display = viewer.calendarMine ? '' : 'none';   // PlayerViewer: its links are in the band's row
     const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.innerHTML = viewer.calendarKindPills ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(this.kind) ? this.kind : 'all', (t) => this.escapeHtml(t)) : '';
+    if (kinds) kinds.innerHTML = '';
     title.textContent = EventKindSwitch.title();
     sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
       || 'The week — pick a type, then tap an event to open it';

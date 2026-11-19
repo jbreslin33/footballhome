@@ -40,7 +40,7 @@ class PlayerViewer {
   get showsContextLine()  { return false; }     // "User · Team" (navigation.js)
   get calendarHeader()    { return false; }     // "📅 Calendar / Tap an event…"
   get calendarBack()      { return false; }
-  get calendarKindPills() { return false; }     // Games · Practices · Pickup · All
+  get calendarKindPills() { return false; }     // Games · Practices · Pickup · All — ☰ items on the Calendar
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
   get calendarRosterCounts() { return false; }
