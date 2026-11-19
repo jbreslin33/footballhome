@@ -71,6 +71,9 @@
     <!-- 🚦 One sticky stack at the top: the admin's 🎭 view-as bar, then the
          status band (components/status-banner.js, mig 1468) for everyone. -->
     <div id="top-banners" style="position:sticky; top:0; z-index:9998;">
+    <!-- Phone: the top stack scrolls away (status-banner.js) and the Calendar
+         scrolls to NOW, so the 🎭 bar pins to the bottom of the screen there. -->
+    <style>@media (max-width: 640px) { #view-as-banner { position:fixed; left:0; right:0; bottom:0; z-index:10000; padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important; } }</style>
     <div id="view-as-banner" style="display:none;
          background:#f97316; color:white;
          padding:8px 14px; font-weight:600; text-align:center;
@@ -396,7 +399,7 @@
   <script src="js/screens/cup-rosters.js?v=20261016"></script>
   <script src="js/lib/notices.js?v=20261118-status"></script>
   <script src="js/lib/status-bar.js?v=20261118-or"></script>
-  <script src="js/components/status-banner.js?v=20261118-cal2"></script>
+  <script src="js/components/status-banner.js?v=20261118-exitva"></script>
   <script src="js/components/fines-panel.js?v=20261118-top2"></script>
   <script src="js/components/section-chat.js?v=20261118-chatbox"></script>
   <script src="js/screens/event-center.js?v=20261118-cal7"></script>

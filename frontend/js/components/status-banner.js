@@ -229,7 +229,14 @@
 
     // ☰ the viewer's menu (lib/viewer.js menuItems — PlayerViewer's short list,
     // CoachViewer / AdminViewer extend it).
-    menuItems() { return window.Viewer ? Viewer.account().menuItems() : []; }
+    // 🎭 Exit view-as first while an admin views as someone — the orange bar
+    // can be off-screen on a phone (owner 11/18 "on phone i am still elegbe
+    // and there is no exit view as at top").
+    menuItems() {
+      const base = window.Viewer ? Viewer.account().menuItems() : [];
+      return this.auth && this.auth.viewAsPersonId
+        ? [{ code: 'exitviewas', tier: 'qlink_exit_view_as', fb: '🎭 Exit view-as' }, ...base] : base;
+    }
 
     // The page's own items on top of ☰ (owner 11/18 "all the stuff under
     // graphic should go inside hamburger for game page"): a screen hands
@@ -260,6 +267,7 @@
       if (!it) return;
       const nav = window.app && window.app.navigation;
       if (it.route) { this.openPanel(null); if (nav) nav.goTo(it.route); return; }
+      if (code === 'exitviewas') { this.openPanel(null); this.auth.exitViewAs(); return; }
       if (code === 'signout') {
         this.openPanel(null);
         this.auth.logout();
