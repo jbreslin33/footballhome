@@ -23,13 +23,19 @@ class PyramidForecastView {
     this.conf = null; this.team = null;
     try { const c = Number(localStorage.getItem('apsl-forecast-conf')); if (c) this.conf = c; } catch (_) { /* private mode */ }
     // A shared link (mig 1575): /?fc=<conference>&focus=<team>#apsl-pyramid
+    // mig 1577: fc=all = every conference; ff=<name> = a feeder team marked
     const q = new URLSearchParams(window.location.search || '');
-    if (Number(q.get('fc'))) { this.conf = Number(q.get('fc')); this.team = Number(q.get('focus')) || null; }
+    this.section = PyramidForecastView.SECTIONS.includes(q.get('s')) ? q.get('s') : 'story';
+    this.feederPick = null;
+    if (q.get('fc') === 'all') this.conf = 0;
+    else if (Number(q.get('fc'))) { this.conf = Number(q.get('fc')); this.team = Number(q.get('focus')) || null; this.feederFocus = q.get('ff') || null; }
   }
 
   // 🔗 the link to what's on screen — the conference, and the team if one is open
   _shareUrl() {
-    return `${window.location.origin}/?fc=${this.conf}${this.team ? `&focus=${this.team}` : ''}#apsl-pyramid`;
+    const sec = this.section && this.section !== 'story' ? `&s=${this.section}` : '';
+    if (this.conf === 0) return `${window.location.origin}/?fc=all${sec}#apsl-pyramid`;
+    return `${window.location.origin}/?fc=${this.conf}${this.team ? `&focus=${this.team}` : ''}${!this.team && this.feederFocus ? `&ff=${encodeURIComponent(this.feederFocus)}` : ''}${sec}#apsl-pyramid`;
   }
   _shareHtml() {
     return `<button class="ap-pill" data-fc-share style="float:right; margin-left:8px;">${this._esc(this._copy('fc_share'))}</button>`;
@@ -42,7 +48,12 @@ class PyramidForecastView {
 
   static css() {
     return `
-      .fc-wrap { max-width:980px; margin:0 auto; }
+      .fc-wrap { max-width:1440px; margin:0 auto; }
+      .fc-cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap:4px 22px; align-items:start; }
+      .fc-mini { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap:12px; }
+      .fc-mini .fc-table td, .fc-mini .fc-table th { padding:3px 5px; font-size:0.76rem; }
+      .fc-sub { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px; }
+      .fc-sub .ap-pill { font-size:0.78rem; padding:3px 10px; }
       .fc-wrap h3 { font-size:1rem; margin:16px 0 6px; }
       .fc-confs { display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px; }
       .fc-note { font-size:0.76rem; opacity:0.72; margin:4px 0 8px; line-height:1.4; }
@@ -98,31 +109,165 @@ class PyramidForecastView {
     return Math.max(0, 1 - down);
   }
 
+  // 0 = every conference; else the one picked; else the first (no home side).
   _pickConf(confs) {
+    if (this.conf === 0) return 0;
     if (this.conf && confs.some((c) => c.id === this.conf)) return this.conf;
-    const drc = confs.find((c) => /delaware/i.test(c.name || ''));
-    return (drc || confs[0] || {}).id || null;
+    return (confs[0] || {}).id || null;
+  }
+
+  // 🔎 Every APSL team and every feeder team (a table linked up into a
+  // conference; a table feeding two goes by the pyramid's outlier rows).
+  _focusList() {
+    const m = this.screen.model;
+    if (!m) return [];
+    const out = [];
+    const confName = (id) => { const c = m.comp(id); return c ? (c.short_name || c.name) : ''; };
+    for (const d of m.divisions) {
+      const c = m.comp(d.competition_id);
+      if (c && c.kind === 'conference') for (const t of d.teams || []) out.push({ label: `${t.name} — ${confName(c.id)}`, conf: c.id, team: t.id });
+      const ups = (m.links || []).filter((l) => l.lower === d.id && l.promotes && l.upper_competition && (m.comp(l.upper_competition) || {}).kind === 'conference');
+      if (!ups.length) continue;
+      for (const t of d.teams || []) {
+        const l = ups.find((x) => (x.outlier_teams || []).includes(t.id)) || ups.find((x) => !(x.outlier_teams || []).length) || ups[0];
+        out.push({ label: `${t.name} — ${confName(d.competition_id)} ${d.name} → ${confName(l.upper_competition)}`, conf: l.upper_competition, feeder: t.name });
+      }
+    }
+    return out.sort((a, b) => a.label.localeCompare(b.label));
   }
 
   html(model, confs) {
     const esc = (t) => this._esc(t);
     this.confs = confs;
     this.conf = this._pickConf(confs);
-    const pills = confs.map((c) => `<button class="ap-pill ${c.id === this.conf ? 'on' : ''}" data-fc-conf="${c.id}">${esc(c.short_name || c.name)}</button>`).join('');
+    const pills = `<button class="ap-pill ${this.conf === 0 ? 'on' : ''}" data-fc-conf="0">${esc(this._copy('fc_all'))}</button>`
+      + confs.map((c) => `<button class="ap-pill ${c.id === this.conf ? 'on' : ''}" data-fc-conf="${c.id}">${esc(c.short_name || c.name)}</button>`).join('');
+    this._focus = this._focusList();
     return `<div class="fc-wrap" data-fc-root>
-        <div class="fc-confs">${pills}</div>
+        <div class="fc-confs" style="align-items:center;"><input class="fc-focus" data-fc-focus list="fc-focus-list" placeholder="${esc(this._copy('fc_focus'))}"
+          style="width:min(300px, 100%); padding:5px 12px; border-radius:999px; font-size:0.85rem;">
+          <datalist id="fc-focus-list">${this._focus.map((f) => `<option value="${esc(f.label)}">`).join('')}</datalist>${pills}</div>
         <div data-fc-body>${this._bodyHtml()}</div>
       </div>`;
   }
 
+  // ── layout (mig 1578, owner 11/19 "too much right now on one pill … we
+  // need more pills. matchup pills for all or 1 team … standings predictions
+  // thus relegation spots and percents. feeder focus so feeders should have
+  // pills … its really a presentation"): scope on top (🇺🇸 all / a
+  // conference / one team), then section pills, then that section only.
+  static get SECTIONS() { return ['story', 'table', 'games', 'updown', 'feeders']; }
   _bodyHtml() {
-    const d = this.data.get(this.conf);
-    if (!d) return `<div class="loading">Loading…</div>`;
-    if (d.error) return `<div class="error">${this._esc(d.error)}</div>`;
-    if (!d.games || !d.games.length) return `<div class="fc-none">${this._esc(this._copy('fc_none'))}</div>`;
-    if (!this.team) return this._leagueHtml(d);
-    const w = this.whatIf && this.whatIf.team === this.team && this.whatIf.conf === this.conf ? this.whatIf : null;
-    return this._teamHtml(w && w.data ? w.data : d, this.team, d);
+    const esc = (x) => this._esc(x);
+    let d = null, t = null, base = null;
+    if (this.conf === 0) {
+      const confs = this.confs || [];
+      const got = confs.map((c) => this.data.get(c.id)).filter((x) => x && !x.error && x.divisions);
+      if (got.length < confs.length) return LoadProgress.html({ done: got.length, total: confs.length, what: this._copy('fc_all') });
+      this._all = got;
+    } else {
+      base = this.data.get(this.conf);
+      if (!base) return `<div class="loading">Loading…</div>`;
+      if (base.error) return `<div class="error">${esc(base.error)}</div>`;
+      if (!base.games || !base.games.length) return `<div class="fc-none">${esc(this._copy('fc_none'))}</div>`;
+      const w = this.team && this.whatIf && this.whatIf.team === this.team && this.whatIf.conf === this.conf ? this.whatIf : null;
+      d = w && w.data ? w.data : base;
+      t = this.team ? this._teamsById(d).get(this.team) : null;
+      if (this.team && !t) this.team = null;
+    }
+    const hasFeeders = this.conf === 0 ? this._all.some((x) => ((x.outlook || {}).feeders || []).length) : ((base.outlook || {}).feeders || []).length > 0;
+    const secs = PyramidForecastView.SECTIONS.filter((k) => k !== 'feeders' || (hasFeeders && !t));
+    if (!secs.includes(this.section)) this.section = 'story';
+    const title = this.conf === 0 ? this._copy('story_nat_title')
+      : t ? `${t.name} · ${this._groupName(d, t.division)}` : this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() });
+    const head = `${this._shareHtml()}${t ? `<button class="ap-pill" data-fc-back style="margin:0 8px 6px 0;">${esc(this._copy('fc_back'))}</button>` : ''}
+      <h3 style="margin:4px 0 8px; font-size:1.15rem;">${esc(title)}</h3>
+      <div class="fc-confs" style="margin-bottom:12px;">${secs.map((k) => `<button class="ap-pill ${this.section === k ? 'on' : ''}" data-fc-sec="${k}">${esc(this._copy(`fc_sec_${k}`))}</button>`).join('')}</div>`;
+    let body;
+    if (this.conf === 0) body = this._allSection(this._all);
+    else if (t) body = this._teamSection(d, t, base);
+    else body = this._confSection(d);
+    return head + body;
+  }
+
+  _confSection(d) {
+    const esc = (x) => this._esc(x);
+    switch (this.section) {
+      case 'table': {
+        const pts = this.tableView === 'points';
+        const sub = `<div class="fc-sub"><button class="ap-pill ${!pts ? 'on' : ''}" data-fc-tview="odds">${esc(this._copy('fc_tview_odds'))}</button><button class="ap-pill ${pts ? 'on' : ''}" data-fc-tview="points">${esc(this._copy('fc_tview_points'))}</button></div>`;
+        return `${sub}<div class="fc-cols">${d.divisions.map((dv) => `<div>${pts ? (d.divisions.length > 1 ? `<div class="fc-note" style="font-weight:800; opacity:1;">${esc(this._groupName(d, dv))}</div>` : '') + this._placesHtml(dv) : this._divTableHtml(d, dv)}</div>`).join('')}</div>
+          ${pts ? '' : `<div class="fc-note">${esc(this._copy('fc_tap_team'))}</div>`}`;
+      }
+      case 'games': { const up = this._upcoming(d); return up.length ? this._matchupsHtml(up.map((g) => ({ d, g }))) : `<div class="fc-none">${esc(this._copy('story_no_games'))}</div>`; }
+      case 'updown': return `<div class="fc-cols"><div>${this._seasonsHtml(d)}</div><div>${this._dangerHtml(d)}</div></div>`;
+      case 'feeders': return this._storyBox(this._feederFocusLines(d)) + this._feedersHtml(d);
+      default: return this._storyBox(this._feederFocusLines(d).concat(this._confStory(d)));
+    }
+  }
+
+  _teamSection(d, t, base) {
+    const esc = (x) => this._esc(x), P = (v) => esc(PyramidForecastView.pct(v)), Pt = PyramidForecastView.pct;
+    const hasDown = (t.division.zones || []).some((z) => /relegation/.test(z.kind));
+    const big = (label, v, bad) => `<div style="${bad && v > 0.5 ? 'background:rgba(220,38,38,0.25);' : !bad && v > 0.5 ? 'background:rgba(34,197,94,0.22);' : ''}"><b>${P(v)}</b><small>${esc(label)}</small></div>`;
+    const bigs = `<div class="fc-big">
+        ${big(this._copy('fc_col_first'), t.pos_pct[0], false)}${big(this._copy('fc_col_playoff'), t.zones.playoff || 0, false)}
+        ${hasDown ? big(this._copy('fc_col_safe'), PyramidForecastView.safe(t), false) + big(this._copy('fc_col_down'), t.down, true) : ''}
+        <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div></div>`;
+    switch (this.section) {
+      case 'table': {
+        const bars = t.pos_pct.map((p, i) => `<div><span>${i + 1}${['st', 'nd', 'rd'][i] || 'th'}</span><i style="width:${Math.max(0.3, 100 * p)}%; background:${this._barColor(t.division, i + 1)}"></i><span>${P(p)}</span></div>`).join('');
+        return `<div class="fc-cols"><div><h3 style="margin-top:0;">${esc(this._copy('fc_finish'))}</h3><div class="fc-bars">${bars}</div>${hasDown ? this._targetHtml(t) : ''}</div><div>${this._divTableHtml(d, t.division, t.id)}</div></div>`;
+      }
+      case 'games': {
+        const by = this._teamsById(d), id = t.id;
+        const upcoming = this._upcoming(d).filter((g) => g.home === id || g.away === id);
+        const results = d.games.filter((g) => g.done && (g.home === id || g.away === id)).map((g) => {
+          const home = g.home === id, us = home ? g.hs : g.as, them = home ? g.as : g.hs, o = by.get(home ? g.away : g.home) || {};
+          const wl = us > them ? ['W', '#22c55e'] : us < them ? ['L', '#dc2626'] : ['D', '#94a3b8'];
+          return `<div class="fc-result"><span>${esc(this._when(g.when))} · ${home ? 'vs' : '@'} <span data-fc-team="${o.id}" style="cursor:pointer; text-decoration:underline dotted;">${esc(o.name)}</span></span>
+            <span><b>${us}–${them}</b> <span class="wl" style="background:${wl[1]}; color:#fff; padding:0 5px;">${wl[0]}</span></span></div>`;
+        }).join('');
+        return `${upcoming.length ? `<h3>${esc(this._copy('fc_upcoming'))}</h3><div class="fc-bets">${upcoming.map((g) => this._betHtml(d, g, id)).join('')}</div>` : ''}
+          ${results ? `<h3>${esc(this._copy('fc_results'))}</h3><div>${results}</div>` : ''}`;
+      }
+      case 'updown': {
+        const auto = (t.zones.relegation || 0) + (t.zones.conditional_relegation || 0);
+        const path = hasDown ? (d.policy && d.policy.feeder
+          ? this._copy('fc_down_path', { auto: Pt(auto), playoff: Pt(t.lost_playoff), feeder: Pt(t.lost_feeder), feeder_label: d.policy.feeder })
+          : this._copy('fc_down_path_nofeed', { auto: Pt(auto), playoff: Pt(t.lost_playoff) })) : '';
+        return `<div class="fc-cols"><div>${bigs}${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}${this._roadHtml(base, t)}</div><div>${this._sliderHtml(base, t.id)}${this._seasonsHtml(base)}</div></div>`;
+      }
+      default: return `<div class="fc-cols"><div>${this._storyBox(this._teamStory(d, t))}</div><div>${bigs}<div class="fc-note">${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}</div>${this._roadHtml(base, t)}</div></div>`;
+    }
+  }
+
+  _allSection(all) {
+    const esc = (x) => this._esc(x), P = (v) => esc(PyramidForecastView.pct(v)), n = (v) => String(Math.round(v * 10) / 10);
+    const confLink = (d) => `<span class="tm" data-fc-conf="${d.conference.id}" style="cursor:pointer; text-decoration:underline dotted; font-weight:800;">${esc(d.conference.name)}</span>`;
+    switch (this.section) {
+      case 'table':
+        return `<div class="fc-mini">${all.flatMap((d) => d.divisions.map((dv) => `<div><div style="font-size:0.85rem; margin:0 0 2px;">${confLink(d)}${d.divisions.length > 1 ? ` <span style="opacity:0.7;">· ${esc(this._groupName(d, dv))}</span>` : ''}</div>${this._miniTableHtml(d, dv)}</div>`)).join('')}</div>`;
+      case 'games': {
+        const rows = all.flatMap((d) => this._upcoming(d).map((g) => ({ d, g })));
+        return rows.length ? this._matchupsHtml(rows, true) : `<div class="fc-none">${esc(this._copy('story_no_games'))}</div>`;
+      }
+      case 'updown': {
+        const rows = all.map((d) => {
+          const s1 = ((d.outlook || {}).seasons || [])[0];
+          const teams = d.divisions.flatMap((dv) => dv.teams);
+          const likely = teams.filter((x) => x.down >= 0.5).sort((a, b) => b.down - a.down);
+          return `<tr><td style="text-align:left;">${confLink(d)}</td><td>${teams.length}</td><td>${d.divisions.length}</td>
+            <td><b>${s1 ? n(s1.down) : '–'}</b></td><td>${s1 ? P(s1.down / s1.teams) : '–'}</td><td>${s1 ? n(s1.up) : '–'}</td>
+            <td style="text-align:left; white-space:normal;">${likely.length ? esc(this._list(likely, 'down')) : '<span style="opacity:0.5;">–</span>'}</td></tr>`;
+        }).join('');
+        return `<div style="overflow-x:auto;"><table class="fc-table fc-rows"><thead><tr><th style="text-align:left;">${esc(this._copy('story_col_conf'))}</th><th>${esc(this._copy('fc_ol_teams'))}</th><th>${esc(this._copy('fc_ol_groups'))}</th>
+          <th>${esc(this._copy('fc_ol_down'))}</th><th>${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th style="text-align:left;">${esc(this._copy('story_col_likely_down'))}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      }
+      case 'feeders':
+        return all.filter((d) => ((d.outlook || {}).feeders || []).length).map((d) => `<h3>${confLink(d)}</h3>${this._feedersHtml(d)}`).join('');
+      default: return this._nationalStoryHtml(all);
+    }
   }
 
   _teamsById(d) {
@@ -151,102 +296,6 @@ class PyramidForecastView {
     return `<div class="fc-note">${parts.filter(Boolean).map((p) => this._esc(p)).join(' ')}</div>`;
   }
 
-  _leagueHtml(d) {
-    const esc = (t) => this._esc(t);
-    const zoneAt = (dv, pos) => ((dv.zones || []).find((z) => pos >= z.from && pos <= z.to) || {}).kind || '';
-    const hasRp = d.divisions.some((dv) => (dv.zones || []).some((z) => z.kind === 'relegation_playoff'));
-    const hasDown = d.divisions.some((dv) => (dv.zones || []).some((z) => /relegation/.test(z.kind)));
-    const tables = d.divisions.map((dv) => `
-      <h3>${esc(dv.name)}</h3>
-      <div style="overflow-x:auto;"><table class="fc-table">
-        <thead><tr><th>#</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
-          <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_col_first'))}</th><th>${esc(this._copy('fc_col_playoff'))}</th>
-          ${hasDown ? `<th>${esc(this._copy('fc_col_safe'))}</th>` : ''}${hasRp ? `<th>${esc(this._copy('fc_col_relplay'))}</th>` : ''}${hasDown ? `<th>${esc(this._copy('fc_col_auto'))}</th><th>${esc(this._copy('fc_col_down'))}</th>` : ''}</tr></thead>
-        <tbody>${dv.teams.map((t) => `<tr class="z-${zoneAt(dv, t.pos)}">
-          <td>${t.pos}</td><td class="tm" data-fc-team="${t.id}">${esc(t.name)}</td><td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
-          <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
-          <td>${this._heat(t.pos_pct[0], false)}</td><td>${this._heat(t.zones.playoff, false)}</td>
-          ${hasDown ? `<td>${this._heat(PyramidForecastView.safe(t), false)}</td>` : ''}
-          ${hasRp ? `<td>${this._heat(t.rel_playoff, true)}</td>` : ''}
-          ${hasDown ? `<td>${this._heat((t.zones.relegation || 0) + (t.zones.conditional_relegation || 0), true)}</td><td>${this._heat(t.down, true)}</td>` : ''}
-        </tr>`).join('')}</tbody>
-      </table></div>
-      ${this._placesHtml(dv)}`).join('');
-    const upcoming = this._upcoming(d);
-    return `
-      ${this._shareHtml()}<h3 style="margin-top:4px;">${esc(this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() }))}</h3>
-      ${this._howHtml(d)}
-      <div class="fc-note">${esc(this._copy('fc_tap_team'))}</div>
-      ${tables}
-      ${this._outlookHtml(d)}
-      ${upcoming.length ? this._matchupsHtml(d, upcoming) : ''}`;
-  }
-
-  // 📉 Up and down (mig 1571, owner 11/19 "3.5 of 16 this year. and 3.5 of
-  // 14 next year. then … 1.5 of 12 … show percentage of teams getting
-  // relegated each year. show strength of teams from casa" + "chances of
-  // getting promoted from feeders"): the seasons table (pyramid_relegation_
-  // outlook), our road through them, and each feeder league's table with
-  // its strength and promotion chance (server: PyramidForecast outlookJson).
-  _outlookHtml(d) {
-    const o = d.outlook || {}, seasons = o.seasons || [], feeders = o.feeders || [];
-    if (!seasons.length && !feeders.length) return '';
-    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v));
-    const n = (v) => String(Math.round(v * 10) / 10);
-    let html = `<h3>${esc(this._copy('fc_ol_title'))}</h3>`;
-    if (seasons.length) {
-      const maxShare = Math.max(...seasons.map((x) => x.down / x.teams), 0.01);
-      const groups = seasons.some((x) => (x.divisions || 1) > 1);
-      html += `<div style="overflow-x:auto;"><table class="fc-table" style="max-width:720px;">
-        <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th>${groups ? `<th>${esc(this._copy('fc_ol_groups'))}</th>` : ''}<th>${esc(this._copy('fc_ol_teams'))}</th>
-          <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
-        <tbody>${seasons.map((x) => {
-          const share = x.down / x.teams;
-          return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${(x.divisions || 1) > 1 ? Array.from({ length: x.divisions }, (_, i) => String.fromCharCode(65 + i)).join(' · ') : '1'}</td>` : ''}<td>${x.teams}</td>
-            <td><b>${n(x.down)}</b></td>
-            <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
-            <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;
-        }).join('')}</tbody></table></div>
-        <div class="fc-note">${esc(this._copy('fc_ol_note'))}</div>`;
-    }
-    if (seasons.length) html += `<div class="fc-note">${esc(this._copy('fc_ol_tap_road'))}</div>`;
-    // ⬆ the feeders, played by the conference's promotion rules (mig 1573)
-    const ru = o.rules;
-    if (feeders.length && ru) {
-      const th = (k) => `${k}${['st', 'nd', 'rd'][k - 1] || 'th'}`;
-      const meet = ru.meets_survivor ? this._copy('fc_ol_rules_meet', { pct: PyramidForecastView.pct(ru.win_survivor) }) : '';
-      const all = feeders.flatMap((f) => f.teams.filter((t) => !t.skip));
-      const best = (k) => all.reduce((m, t) => (!m || t[k] > m[k] ? t : m), null);
-      const ba = best('auto'), bp = best('win_playoff');
-      html += `<h3>${esc(this._copy('fc_ol_feeder'))}</h3>
-        <div class="fc-note" style="opacity:0.9;">${esc(this._copy('fc_ol_rules_text', { champ: ru.champion_rank === 1 ? 'champion' : th(ru.champion_rank), meet,
-          stage: this._copy(ru.feeder_first ? 'fc_ol_stage_feeder' : 'fc_ol_stage_pooled', { from: th(ru.playoff_from), to: th(ru.playoff_to), losers: ru.losers_in ? this._copy('fc_ol_stage_losers') : '' }) }))}</div>
-        ${ba && bp ? `<div class="fc-note" style="font-weight:700; opacity:0.95;">${esc(this._copy('fc_ol_summary', { auto: `${ba.name} ${PyramidForecastView.pct(ba.auto)}`, po: `${bp.name} ${PyramidForecastView.pct(bp.win_playoff)}` }))}</div>` : ''}
-        <div class="fc-note">${esc(this._copy('fc_ol_feeder_note'))}</div>`;
-      const skipWords = (t) => t.skip === 'reserve' ? this._copy('fc_ol_skip_reserve')
-        : t.skip === 'conf' ? this._copy('fc_ol_skip_conf', { conf: t.skip_arg || '' })
-        : this._copy('fc_ol_skip_hand', { reason: t.skip_arg || '' });
-      for (const f of feeders) {
-        html += `<div class="fc-note" style="margin-top:10px; font-weight:800; opacity:1;">${esc(f.label)} <span style="opacity:0.6; font-weight:600;">· ${f.played} played, ${f.left} to go</span></div>
-          <div style="overflow-x:auto;"><table class="fc-table">
-            <thead><tr><th>${esc(this._copy('fc_ol_col_rank'))}</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
-              <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_ol_col_champ'))}</th><th>${esc(this._copy('fc_ol_col_auto'))}</th>${ru.feeder_first ? `<th>${esc(this._copy('fc_ol_col_fwin'))}</th>` : ''}
-              <th>${esc(this._copy('fc_ol_col_poin'))}</th><th>${esc(this._copy('fc_ol_col_powin'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
-            <tbody>${f.teams.map((t) => {
-              const cls = t.skip ? '' : t.elig === ru.champion_rank ? 'z-playoff' : t.elig >= ru.playoff_from && t.elig <= ru.playoff_to ? 'z-relegation_playoff' : '';
-              const style = t.skip ? ' style="opacity:0.45;"' : '';
-              return `<tr class="${cls}"${style}>
-                <td>${t.elig || '–'}</td><td style="text-align:left; white-space:normal; font-weight:700;">${esc(t.name)}${t.skip ? ` <small style="font-weight:600;">· ${esc(skipWords(t))}</small>` : ''}</td>
-                <td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
-                <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
-                ${t.skip ? '<td></td>'.repeat(ru.feeder_first ? 6 : 5) : `<td>${this._heat(t.champ, false)}</td><td>${this._heat(t.auto, false)}</td>${ru.feeder_first ? `<td>${this._heat(t.feeder_po, false)}</td>` : ''}<td>${this._heat(t.in_playoff, false)}</td><td>${this._heat(t.win_playoff, false)}</td><td>${this._heat(t.up, false)}</td>`}</tr>`;
-            }).join('')}</tbody>
-          </table></div>`;
-      }
-    }
-    return html;
-  }
-
   // 🛣 The road ahead for any team (mig 1575 — the page has no home team):
   // this season from the forecast; with more seasons listed, staying up
   // through the next one at an average side's rate, and the drop-and-
@@ -265,6 +314,227 @@ class PyramidForecastView {
     } else lines.push(this._copy('fc_ol_road_base', { season: label(s1), pct: pct(s1.down / s1.teams) }));
     return `<div style="margin:8px 0; padding:8px 12px; border-radius:10px; border:1px solid #facc15; background:rgba(250,204,21,0.08); font-size:0.84rem; line-height:1.45;">
         <b>${esc(this._copy('fc_ol_road'))}</b>${lines.filter(Boolean).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
+  }
+
+  // ── 📖 the story (mig 1578, owner 11/19 "focus on all conf. or one conf.
+  // or 1 team in conf. it should tell a story and use numbers. it should be
+  // understandable to gen pop"): plain sentences from story_* copy rows,
+  // every number from the forecast.
+  _storyBox(lines) {
+    const ls = (lines || []).filter(Boolean);
+    if (!ls.length) return '';
+    return `<div style="margin:6px 0 10px; padding:10px 14px; border-radius:12px; border:1px solid rgba(56,189,248,0.45); background:rgba(56,189,248,0.07); font-size:0.95rem; line-height:1.55;">
+        ${ls.map((l) => `<p style="margin:0 0 6px;">${this._esc(l)}</p>`).join('')}</div>`;
+  }
+  _list(teams, key) {
+    const P = PyramidForecastView.pct;
+    return teams.map((t) => `${t.name} (${P(typeof key === 'function' ? key(t) : t[key])})`).join(', ');
+  }
+  _groupName(d, dv) {
+    // "Delaware River Conference (…) - Group A" → "Group A"; one table → the conference
+    // "Mid-Atlantic Conference - Chesapeake (Maryland)" → "Chesapeake"
+    if (d.divisions.length < 2) return d.conference.short_name || d.conference.name;
+    const tail = String(dv.name || '').split(/\s-\s?|-(?=[A-Z])/).pop().replace(/\s*\(.*\)\s*$/, '').trim();
+    return tail || dv.name;
+  }
+  _confStory(d) {
+    const P = PyramidForecastView.pct, lines = [];
+    const all = d.divisions.flatMap((dv) => dv.teams.map((t) => ({ ...t, dv })));
+    const seasons = ((d.outlook || {}).seasons) || [], s1 = seasons[0];
+    const n = (v) => String(Math.round(v * 10) / 10);
+    lines.push(this._copy('story_conf_size', { conf: d.conference.name, teams: all.length, groups: d.divisions.length, left: d.left, played: d.played }));
+    for (const dv of d.divisions) {
+      const fav = dv.teams.reduce((m, t) => (!m || t.pos_pct[0] > m.pos_pct[0] ? t : m), null);
+      if (fav) lines.push(this._copy(fav.pos_pct[0] >= 0.95 ? 'story_conf_fav_sure' : 'story_conf_fav', { team: fav.name, group: this._groupName(d, dv), pct: P(fav.pos_pct[0]) }));
+    }
+    const po = all.filter((t) => (t.zones.playoff || 0) >= 0.5).sort((a, b) => b.zones.playoff - a.zones.playoff);
+    if (po.length) lines.push(this._copy('story_conf_playoff', { list: this._list(po, (t) => t.zones.playoff) }));
+    if (s1) lines.push(this._copy(s1.down > 0 ? 'story_conf_spots' : 'story_conf_nobody', { down: n(s1.down), teams: s1.teams, pct: P(s1.down / s1.teams) }));
+    if (!s1 || s1.down > 0) {
+      const sure = all.filter((t) => t.down >= 0.75).sort((a, b) => b.down - a.down);
+      const risk = all.filter((t) => t.down >= 0.1 && t.down < 0.75).sort((a, b) => b.down - a.down).slice(0, 4);
+      if (sure.length) lines.push(this._copy('story_conf_doomed', { list: this._list(sure, 'down') }));
+      if (risk.length) lines.push(this._copy('story_conf_risk', { list: this._list(risk, 'down') }));
+    }
+    const feeders = ((d.outlook || {}).feeders || []).flatMap((f) => f.teams.filter((t) => !t.skip).map((t) => ({ ...t, feeder: f.label })));
+    const up = feeders.sort((a, b) => b.up - a.up).slice(0, 3).filter((t) => t.up >= 0.05);
+    if (up.length) lines.push(this._copy('story_conf_up', { list: up.map((t) => `${t.name}, ${t.feeder} (${P(t.up)})`).join('; '), spots: s1 ? n(s1.up) : '' }));
+    lines.push(this._copy('story_how', { sims: Number(d.sims).toLocaleString() }));
+    return lines;
+  }
+  _teamStory(d, t) {
+    const P = PyramidForecastView.pct, th = (k) => `${k}${['st', 'nd', 'rd'][k - 1] || 'th'}`;
+    const lines = [this._copy('story_team_now', { team: t.name, pos: th(t.pos), group: this._groupName(d, t.division), pts: t.pts, p: t.p, w: t.w, d: t.d, l: t.l, left: t.left })];
+    const hasDown = (t.division.zones || []).some((z) => /relegation/.test(z.kind));
+    lines.push(this._copy(hasDown ? 'story_team_odds' : 'story_team_odds_nodown', { sims: Number(d.sims).toLocaleString(), first: P(t.pos_pct[0]), playoff: P(t.zones.playoff || 0), down: P(t.down), safe: P(PyramidForecastView.safe(t)) }));
+    const likely = t.pos_pct.reduce((m, v, i) => (v > t.pos_pct[m] ? i : m), 0);
+    lines.push(this._copy('story_team_likely', { pos: th(likely + 1), pct: P(t.pos_pct[likely]), xpts: t.xpts }));
+    const next = this._upcoming(d).find((g) => g.home === t.id || g.away === t.id);
+    if (next) {
+      const home = next.home === t.id, o = this._teamsById(d).get(home ? next.away : next.home) || {};
+      const [ph, pd, pa] = next.p, top = (next.scores || [])[0];
+      lines.push(this._copy('story_team_next', { opp: o.name || '', where: this._copy(home ? 'story_home' : 'story_away'), when: next.tbs ? this._copy('fc_tbs') : this._when(next.when),
+        win: P(home ? ph : pa), draw: P(pd), lose: P(home ? pa : ph), score: top ? (home ? `${top.h}–${top.a}` : `${top.a}–${top.h}`) : '' }));
+    }
+    return lines;
+  }
+  _feederFocusLines(d) {
+    if (!this.feederFocus) return [];
+    const P = PyramidForecastView.pct;
+    for (const f of ((d.outlook || {}).feeders || [])) {
+      const t = f.teams.find((x) => x.name === this.feederFocus);
+      if (!t) continue;
+      if (t.skip) return [this._copy('story_feeder_skip', { team: t.name, feeder: f.label, why: t.skip === 'reserve' ? this._copy('fc_ol_skip_reserve') : t.skip === 'conf' ? this._copy('fc_ol_skip_conf', { conf: t.skip_arg || '' }) : this._copy('fc_ol_skip_hand', { reason: t.skip_arg || '' }) })];
+      return [this._copy('story_feeder', { team: t.name, feeder: f.label, pts: t.pts, p: t.p, champ: P(t.champ), auto: P(t.auto), up: P(t.up), conf: d.conference.name })];
+    }
+    return [this._copy('fc_focus_feeder', { team: this.feederFocus, feeder: d.conference.name })];
+  }
+
+  // one predicted table (a conference group); focusId marks a row; compact
+  // = the every-conference list (fewer columns).
+  _divTableHtml(d, dv, focusId, compact) {
+    const esc = (t) => this._esc(t);
+    const zoneAt = (pos) => ((dv.zones || []).find((z) => pos >= z.from && pos <= z.to) || {}).kind || '';
+    const hasRp = (dv.zones || []).some((z) => z.kind === 'relegation_playoff');
+    const hasDown = (dv.zones || []).some((z) => /relegation/.test(z.kind));
+    const name = d.divisions.length > 1 ? this._groupName(d, dv) : (compact ? '' : dv.name);
+    const tm = (t) => `<td class="tm" data-fc-team="${t.id}" data-fc-team-conf="${d.conference.id}">${esc(t.name)}</td>`;
+    return `${name ? `<div class="fc-note" style="margin-top:10px; font-weight:800; opacity:1;">${esc(name)}</div>` : ''}
+      <div style="overflow-x:auto;"><table class="fc-table">
+        <thead><tr><th>#</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
+          ${compact ? '' : `<th>${esc(this._copy('fc_col_rating'))}</th>`}<th>${esc(this._copy('fc_col_first'))}</th><th>${esc(this._copy('fc_col_playoff'))}</th>
+          ${hasDown && !compact ? `<th>${esc(this._copy('fc_col_safe'))}</th>` : ''}${hasRp && !compact ? `<th>${esc(this._copy('fc_col_relplay'))}</th>` : ''}${hasDown ? `<th>${esc(this._copy('fc_col_down'))}</th>` : ''}</tr></thead>
+        <tbody>${dv.teams.map((t) => `<tr class="z-${zoneAt(t.pos)}"${t.id === focusId ? ' style="background:rgba(56,189,248,0.16);"' : ''}>
+          <td>${t.pos}</td>${tm(t)}<td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
+          ${compact ? '' : `<td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>`}
+          <td>${this._heat(t.pos_pct[0], false)}</td><td>${this._heat(t.zones.playoff, false)}</td>
+          ${hasDown && !compact ? `<td>${this._heat(PyramidForecastView.safe(t), false)}</td>` : ''}
+          ${hasRp && !compact ? `<td>${this._heat(t.rel_playoff, true)}</td>` : ''}
+          ${hasDown ? `<td>${this._heat(t.down, true)}</td>` : ''}
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+  }
+
+  // ⬇⬆ the seasons: how many go down / come up, share relegated, size next year
+  _seasonsHtml(d) {
+    const seasons = ((d.outlook || {}).seasons) || [];
+    if (!seasons.length) return '';
+    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), n = (v) => String(Math.round(v * 10) / 10);
+    const maxShare = Math.max(...seasons.map((x) => x.down / x.teams), 0.01);
+    const groups = seasons.some((x) => (x.divisions || 1) > 1);
+    return `<h3>${esc(this._copy('fc_ol_title'))}</h3><div style="overflow-x:auto;"><table class="fc-table" style="max-width:720px;">
+      <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th>${groups ? `<th>${esc(this._copy('fc_ol_groups'))}</th>` : ''}<th>${esc(this._copy('fc_ol_teams'))}</th>
+        <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
+      <tbody>${seasons.map((x) => {
+        const share = x.down / x.teams;
+        return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${(x.divisions || 1) > 1 ? Array.from({ length: x.divisions }, (_, i) => String.fromCharCode(65 + i)).join(' · ') : '1'}</td>` : ''}<td>${x.teams}</td>
+          <td><b>${n(x.down)}</b></td>
+          <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
+          <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;
+      }).join('')}</tbody></table></div>
+      <div class="fc-note">${esc(this._copy('fc_ol_note'))}</div>`;
+  }
+
+  // 💀 who goes down: every team by its chance, how it would happen
+  _dangerHtml(d) {
+    const esc = (t) => this._esc(t);
+    const all = d.divisions.flatMap((dv) => dv.teams.map((t) => ({ ...t, dv }))).filter((t) => (t.dv.zones || []).some((z) => /relegation/.test(z.kind)) && t.down >= 0.01);
+    if (!all.length) return `<div class="fc-none">${esc(this._copy('story_conf_nobody', {}))}</div>`;
+    all.sort((a, b) => b.down - a.down);
+    const hasRp = all.some((t) => (t.dv.zones || []).some((z) => z.kind === 'relegation_playoff'));
+    return `<h3>${esc(this._copy('story_danger_title'))}</h3><div style="overflow-x:auto;"><table class="fc-table fc-rows" style="max-width:760px;">
+      <thead><tr><th style="text-align:left;">${esc(this._copy('fc_col_team'))}</th><th>${esc(this._copy('fc_col_now'))}</th><th>${esc(this._copy('fc_col_safe'))}</th>
+        ${hasRp ? `<th>${esc(this._copy('fc_col_relplay'))}</th>` : ''}<th>${esc(this._copy('fc_col_auto'))}</th><th>${esc(this._copy('fc_col_down'))}</th></tr></thead>
+      <tbody>${all.map((t) => `<tr><td class="tm" data-fc-team="${t.id}">${esc(t.name)}</td><td>${d.divisions.length > 1 ? `${esc(this._groupName(d, t.dv))} · ` : ''}${t.pos} · ${t.pts} pts</td>
+        <td>${this._heat(PyramidForecastView.safe(t), false)}</td>${hasRp ? `<td>${this._heat(t.rel_playoff, true)}</td>` : ''}
+        <td>${this._heat((t.zones.relegation || 0) + (t.zones.conditional_relegation || 0), true)}</td><td>${this._heat(t.down, true)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+
+  // 🪜 the feeders: the rules in a sentence, the favourites, a pill per
+  // feeder (All feeders first), then each feeder's table.
+  _feedersHtml(d) {
+    const o = d.outlook || {}, feeders = o.feeders || [], ru = o.rules;
+    if (!feeders.length || !ru) return '';
+    const esc = (t) => this._esc(t);
+    const th = (k) => `${k}${['st', 'nd', 'rd'][k - 1] || 'th'}`;
+    const meet = ru.meets_survivor ? this._copy('fc_ol_rules_meet', { pct: PyramidForecastView.pct(ru.win_survivor) }) : '';
+    const elig = feeders.flatMap((f) => f.teams.filter((t) => !t.skip));
+    const best = (k) => elig.reduce((m, t) => (!m || t[k] > m[k] ? t : m), null);
+    const ba = best('auto'), bp = best('win_playoff');
+    const pick = this.conf === 0 ? null : this.feederPick;
+    const shown = pick ? feeders.filter((f) => f.label === pick) : feeders;
+    const pills = this.conf === 0 ? '' : `<div class="fc-sub">${[`<button class="ap-pill ${!pick ? 'on' : ''}" data-fc-feeder="">${esc(this._copy('story_all_feeders'))}</button>`]
+      .concat(feeders.map((f) => `<button class="ap-pill ${pick === f.label ? 'on' : ''}" data-fc-feeder="${esc(f.label)}">${esc(f.label)}</button>`)).join('')}</div>`;
+    const skipWords = (t) => t.skip === 'reserve' ? this._copy('fc_ol_skip_reserve')
+      : t.skip === 'conf' ? this._copy('fc_ol_skip_conf', { conf: t.skip_arg || '' })
+      : this._copy('fc_ol_skip_hand', { reason: t.skip_arg || '' });
+    let html = `${this._storyBox([this._copy('fc_ol_rules_text', { champ: ru.champion_rank === 1 ? 'champion' : th(ru.champion_rank), meet,
+        stage: this._copy(ru.feeder_first ? 'fc_ol_stage_feeder' : 'fc_ol_stage_pooled', { from: th(ru.playoff_from), to: th(ru.playoff_to), losers: ru.losers_in ? this._copy('fc_ol_stage_losers') : '' }) }),
+      ba && bp ? this._copy('fc_ol_summary', { auto: `${ba.name} ${PyramidForecastView.pct(ba.auto)}`, po: `${bp.name} ${PyramidForecastView.pct(bp.win_playoff)}` }) : ''])}
+      ${pills}<div class="fc-note">${esc(this._copy('fc_ol_feeder_note'))}</div>`;
+    if (!pick) {
+      // All feeders = who comes up: every eligible side by its chance, the top ten
+      const top = feeders.flatMap((f) => f.teams.filter((t) => !t.skip).map((t) => ({ ...t, feeder: f.label }))).sort((x, y) => y.up - x.up).slice(0, 10);
+      return html + `<div style="overflow-x:auto;"><table class="fc-table fc-rows" style="max-width:900px;">
+        <thead><tr><th style="text-align:left;">${esc(this._copy('fc_col_team'))}</th><th style="text-align:left;">${esc(this._copy('story_col_feeder'))}</th><th>Pts</th>
+          <th>${esc(this._copy('fc_ol_col_champ'))}</th><th>${esc(this._copy('fc_ol_col_auto'))}</th><th>${esc(this._copy('fc_ol_col_poin'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
+        <tbody>${top.map((t) => `<tr${this.feederFocus === t.name ? ' style="background:rgba(56,189,248,0.18);" data-fc-ffrow' : ''}><td style="text-align:left; font-weight:700;">${esc(t.name)}</td><td style="text-align:left;">${esc(t.feeder)}</td><td>${t.pts}</td>
+          <td>${this._heat(t.champ, false)}</td><td>${this._heat(t.auto, false)}</td><td>${this._heat(t.in_playoff, false)}</td><td>${this._heat(t.up, false)}</td></tr>`).join('')}</tbody></table></div>`;
+    }
+    for (const f of shown) {
+      html += `<div class="fc-note" style="margin-top:10px; font-weight:800; opacity:1;">${esc(f.label)} <span style="opacity:0.6; font-weight:600;">· ${f.played} played, ${f.left} to go</span></div>
+        <div style="overflow-x:auto;"><table class="fc-table">
+          <thead><tr><th>${esc(this._copy('fc_ol_col_rank'))}</th><th>${esc(this._copy('fc_col_team'))}</th><th>P</th><th>Pts</th><th>${esc(this._copy('fc_col_xpts'))}</th>
+            <th>${esc(this._copy('fc_col_rating'))}</th><th>${esc(this._copy('fc_ol_col_champ'))}</th><th>${esc(this._copy('fc_ol_col_auto'))}</th>${ru.feeder_first ? `<th>${esc(this._copy('fc_ol_col_fwin'))}</th>` : ''}
+            <th>${esc(this._copy('fc_ol_col_poin'))}</th><th>${esc(this._copy('fc_ol_col_powin'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
+          <tbody>${f.teams.map((t) => {
+            const cls = t.skip ? '' : t.elig === ru.champion_rank ? 'z-playoff' : t.elig >= ru.playoff_from && t.elig <= ru.playoff_to ? 'z-relegation_playoff' : '';
+            const style = this.feederFocus === t.name ? ' style="background:rgba(56,189,248,0.18); outline:2px solid #38bdf8;" data-fc-ffrow' : t.skip ? ' style="opacity:0.45;"' : '';
+            return `<tr class="${cls}"${style}>
+              <td>${t.elig || '–'}</td><td style="text-align:left; white-space:normal; font-weight:700;">${esc(t.name)}${t.skip ? ` <small style="font-weight:600;">· ${esc(skipWords(t))}</small>` : ''}</td>
+              <td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
+              <td title="${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))}">${t.rating.toFixed(2)}</td>
+              ${t.skip ? '<td></td>'.repeat(ru.feeder_first ? 6 : 5) : `<td>${this._heat(t.champ, false)}</td><td>${this._heat(t.auto, false)}</td>${ru.feeder_first ? `<td>${this._heat(t.feeder_po, false)}</td>` : ''}<td>${this._heat(t.in_playoff, false)}</td><td>${this._heat(t.win_playoff, false)}</td><td>${this._heat(t.up, false)}</td>`}</tr>`;
+          }).join('')}</tbody>
+        </table></div>`;
+    }
+    return html;
+  }
+
+  // 🇺🇸 the national story, then a card per conference (tap → that conference)
+  _nationalStoryHtml(got) {
+    const esc = (x) => this._esc(x), P = PyramidForecastView.pct;
+    const teams = got.reduce((a, d) => a + d.divisions.reduce((b, dv) => b + dv.teams.length, 0), 0);
+    const left = got.reduce((a, d) => a + (d.left || 0), 0);
+    const down = got.reduce((a, d) => a + d.divisions.reduce((b, dv) => b + dv.teams.reduce((c, t) => c + (t.down || 0), 0), 0), 0);
+    const head = [this._copy('story_nat_head', { confs: got.length, teams, left, down: String(Math.round(down * 10) / 10) })];
+    const cards = got.map((d) => {
+      const all = d.divisions.flatMap((dv) => dv.teams);
+      const fav = all.reduce((m, t) => (!m || t.pos_pct[0] > m.pos_pct[0] ? t : m), null);
+      const risk = all.slice().sort((a, b) => b.down - a.down)[0];
+      const s1 = ((d.outlook || {}).seasons || [])[0];
+      const lines = [
+        fav ? this._copy('story_card_fav', { team: fav.name, pct: P(fav.pos_pct[0]) }) : '',
+        risk && risk.down >= 0.05 ? this._copy('story_card_risk', { team: risk.name, pct: P(risk.down) }) : this._copy('story_card_safe'),
+        s1 ? this._copy('story_card_spots', { down: String(Math.round(s1.down * 10) / 10), teams: s1.teams }) : '',
+      ].filter(Boolean);
+      return `<div class="fc-bet" data-fc-conf="${d.conference.id}" style="cursor:pointer;">
+          <div class="teams"><span>${esc(d.conference.name)}</span><span style="opacity:0.6; font-weight:600;">${all.length}</span></div>
+          ${lines.map((l) => `<div style="font-size:0.85rem; margin-top:4px;">${esc(l)}</div>`).join('')}</div>`;
+    }).join('');
+    return `${this._storyBox(head.concat([this._copy('story_how', { sims: Number((got[0] || {}).sims || 10000).toLocaleString() })]))}
+      <div class="fc-note">${esc(this._copy('story_nat_tap'))}</div>
+      <div class="fc-bets">${cards}</div>`;
+  }
+
+  // a conference table in a few columns (the every-conference grid)
+  _miniTableHtml(d, dv) {
+    const esc = (t) => this._esc(t);
+    const zoneAt = (pos) => ((dv.zones || []).find((z) => pos >= z.from && pos <= z.to) || {}).kind || '';
+    const hasDown = (dv.zones || []).some((z) => /relegation/.test(z.kind));
+    return `<table class="fc-table"><thead><tr><th>#</th><th>${esc(this._copy('fc_col_team'))}</th><th>Pts</th><th>${esc(this._copy('fc_col_first'))}</th>${hasDown ? `<th>${esc(this._copy('fc_col_down'))}</th>` : ''}</tr></thead>
+      <tbody>${dv.teams.map((t) => `<tr class="z-${zoneAt(t.pos)}"><td>${t.pos}</td><td class="tm" data-fc-team="${t.id}" data-fc-team-conf="${d.conference.id}">${esc(t.name)}</td><td><b>${t.pts}</b></td>
+        <td>${this._heat(t.pos_pct[0], false)}</td>${hasDown ? `<td>${this._heat(t.down, true)}</td>` : ''}</tr>`).join('')}</tbody></table>`;
   }
 
   _betHtml(d, g, focus) {
@@ -402,71 +672,36 @@ class PyramidForecastView {
   // Every remaining matchup as one row (owner 11/17 "show all projections
   // for every matchup for rest of year for all teams"); a filter for
   // scheduled / not yet.  Tap a team for its own page.
-  _matchupsHtml(d, all) {
+  // 🎯 matchups by week (owner 11/19 "each pill should do one thing well …
+  // scrolling is not really needed"): This week / Next week / Later / Not
+  // scheduled yet, one at a time.  rows = [{d, g}] — one conference or many.
+  _weekOf(g) {
+    if (g.tbs || !g.when) return 'tbs';
+    const now = new Date(), mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7));
+    const next = new Date(mon.getTime() + 7 * 864e5), after = new Date(mon.getTime() + 14 * 864e5), w = new Date(g.when);
+    return w < next ? 'week' : w < after ? 'next' : 'later';
+  }
+  _matchupsHtml(rows, multi) {
     const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), O = PyramidForecastView.odds;
-    const by = this._teamsById(d);
-    const f = this.filter || 'all';
-    const list = all.filter((g) => f === 'all' || (f === 'tbs' ? g.tbs : !g.tbs));
-    const pill = (code, tier, n) => `<button class="ap-pill ${f === code ? 'on' : ''}" data-fc-filter="${code}">${esc(this._copy(tier))} · ${n}</button>`;
-    const nT = all.filter((g) => g.tbs).length;
+    const buckets = ['week', 'next', 'later', 'tbs'], count = {};
+    for (const r of rows) { const k = this._weekOf(r.g); count[k] = (count[k] || 0) + 1; }
+    let pick = buckets.includes(this.weekPick) && count[this.weekPick] ? this.weekPick : buckets.find((k) => count[k]);
+    const list = rows.filter((r) => this._weekOf(r.g) === pick).sort((x, y) => String(x.g.when).localeCompare(String(y.g.when)));
     const cell = (p, fav) => `<td><span class="fc-heat" style="${fav ? 'background:rgba(34,197,94,0.3);' : 'background:rgba(148,163,184,0.12);'}">${P(p)}</span><br><small style="opacity:0.7;">${O(p)}</small></td>`;
-    const rows = list.map((g) => {
-      const h = by.get(g.home) || {}, a = by.get(g.away) || {}, [ph, pd, pa] = g.p, fav = Math.max(ph, pd, pa), top = (g.scores || [])[0];
+    const body = list.map(({ d, g }) => {
+      const by = this._teamsById(d), h = by.get(g.home) || {}, a = by.get(g.away) || {}, [ph, pd, pa] = g.p, fav = Math.max(ph, pd, pa), top = (g.scores || [])[0];
+      const tm = (t, left) => `<td class="tm" data-fc-team="${t.id}" data-fc-team-conf="${d.conference.id}"${left ? ' style="text-align:left;"' : ''}>${esc(t.name)}</td>`;
       return `<tr>
-        <td style="text-align:left; white-space:normal; font-size:0.74rem; opacity:0.8;">${esc(g.tbs ? this._copy('fc_tbs') : this._when(g.when))}${g.neutral ? `<br>${esc(this._copy('fc_neutral'))}` : ''}</td>
-        <td class="tm" data-fc-team="${h.id}">${esc(h.name)}</td>
-        <td class="tm" data-fc-team="${a.id}" style="text-align:left;">${esc(a.name)}</td>
+        <td style="text-align:left; white-space:normal; font-size:0.74rem; opacity:0.8;">${esc(g.tbs ? this._copy('fc_tbs') : this._when(g.when))}${multi ? `<br><b>${esc(d.conference.short_name || d.conference.name)}</b>` : ''}</td>
+        ${tm(h)}${tm(a, true)}
         ${cell(ph, ph === fav)}${cell(pd, pd === fav)}${cell(pa, pa === fav)}
         <td>${g.xg[0].toFixed(1)}–${g.xg[1].toFixed(1)}</td><td><b>${top ? `${top.h}–${top.a}` : ''}</b></td><td>${P(g.over25)}</td><td>${P(g.btts)}</td></tr>`;
     }).join('');
-    return `<h3>${esc(this._copy('fc_all_rows', { n: all.length }))}</h3>
-      <div class="fc-confs">${pill('all', 'fc_filter_all', all.length)}${pill('sched', 'fc_filter_sched', all.length - nT)}${pill('tbs', 'fc_filter_tbs', nT)}</div>
+    return `<div class="fc-sub">${buckets.filter((k) => count[k]).map((k) => `<button class="ap-pill ${k === pick ? 'on' : ''}" data-fc-week="${k}">${esc(this._copy(`fc_week_${k}`))} · ${count[k]}</button>`).join('')}</div>
       <div style="overflow-x:auto;"><table class="fc-table fc-rows">
         <thead><tr><th style="text-align:left;">${esc(this._copy('fc_col_when'))}</th><th>1</th><th style="text-align:left;">2</th>
           <th>1</th><th>${esc(this._copy('fc_draw') || 'X')}</th><th>2</th><th>${esc(this._copy('fc_xg'))}</th><th>${esc(this._copy('fc_likely'))}</th><th>${esc(this._copy('fc_over'))}</th><th>${esc(this._copy('fc_btts'))}</th></tr></thead>
-        <tbody>${rows}</tbody></table></div>`;
-  }
-
-  _teamHtml(d, id, base) {
-    base = base || d;
-    const esc = (t) => this._esc(t), P = (v) => esc(PyramidForecastView.pct(v)), Pt = PyramidForecastView.pct;
-    const t = this._teamsById(d).get(id);
-    if (!t) { this.team = null; return this._leagueHtml(d); }
-    const auto = (t.zones.relegation || 0) + (t.zones.conditional_relegation || 0);
-    const big = (label, v, bad) => `<div style="${bad && v > 0.5 ? 'background:rgba(220,38,38,0.25);' : !bad && v > 0.5 ? 'background:rgba(34,197,94,0.22);' : ''}"><b>${P(v)}</b><small>${esc(label)}</small></div>`;
-    const hasDown = (t.division.zones || []).some((z) => /relegation/.test(z.kind));
-    const path = hasDown ? (d.policy && d.policy.feeder
-      ? this._copy('fc_down_path', { auto: Pt(auto), playoff: Pt(t.lost_playoff), feeder: Pt(t.lost_feeder), feeder_label: d.policy.feeder })
-      : this._copy('fc_down_path_nofeed', { auto: Pt(auto), playoff: Pt(t.lost_playoff) })) : '';
-    const bars = t.pos_pct.map((p, i) => `<div><span>${i + 1}${['st', 'nd', 'rd'][i] || 'th'}</span><i style="width:${Math.max(0.3, 100 * p)}%; background:${this._barColor(t.division, i + 1)}"></i><span>${P(p)}</span></div>`).join('');
-    const mine = d.games.filter((g) => g.home === id || g.away === id);
-    const by = this._teamsById(d);
-    const results = mine.filter((g) => g.done).map((g) => {
-      const home = g.home === id, us = home ? g.hs : g.as, them = home ? g.as : g.hs, o = by.get(home ? g.away : g.home) || {};
-      const wl = us > them ? ['W', '#22c55e'] : us < them ? ['L', '#dc2626'] : ['D', '#94a3b8'];
-      return `<div class="fc-result"><span>${esc(this._when(g.when))} · ${home ? 'vs' : '@'} <span data-fc-team="${o.id}" style="cursor:pointer; text-decoration:underline dotted;">${esc(o.name)}</span></span>
-        <span><b>${us}–${them}</b> <span class="wl" style="background:${wl[1]}; color:#fff; padding:0 5px;">${wl[0]}</span></span></div>`;
-    }).join('');
-    const upcoming = this._upcoming(d).filter((g) => g.home === id || g.away === id);
-    return `
-      ${this._shareHtml()}<button class="btn btn-secondary" data-fc-back style="margin:2px 0 8px;">${esc(this._copy('fc_back'))}</button>
-      <h3 style="margin-top:0;">${esc(t.name)} <span style="opacity:0.65; font-weight:600;">· ${esc(t.division.name)} · ${t.pos}${['st', 'nd', 'rd'][t.pos - 1] || 'th'} · ${t.pts} pts</span></h3>
-      <div class="fc-big">
-        ${big(this._copy('fc_col_playoff'), t.zones.playoff || 0, false)}
-        ${big(this._copy('fc_col_first'), t.pos_pct[0], false)}
-        ${hasDown ? big(this._copy('fc_col_safe'), PyramidForecastView.safe(t), false) + big(this._copy('fc_col_relplay'), t.rel_playoff, true) + big(this._copy('fc_col_down'), t.down, true) : ''}
-        <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div>
-      </div>
-      ${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}
-      ${this._roadHtml(base, t)}
-      ${this._sliderHtml(base, id)}
-      ${hasDown ? this._targetHtml(t) : ''}
-      <div class="fc-note">${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))} · ${t.w}-${t.d}-${t.l}, ${t.gf}:${t.ga}</div>
-      <h3>${esc(this._copy('fc_finish'))}</h3>
-      <div class="fc-bars">${bars}</div>
-      ${upcoming.length ? `<h3>${esc(this._copy('fc_upcoming'))}</h3><div class="fc-bets">${upcoming.map((g) => this._betHtml(d, g, id)).join('')}</div>` : ''}
-      ${results ? `<h3>${esc(this._copy('fc_results'))}</h3><div>${results}</div>` : ''}
-      ${this._howHtml(d)}`;
+        <tbody>${body}</tbody></table></div>`;
   }
 
   _barColor(dv, pos) {
@@ -477,10 +712,11 @@ class PyramidForecastView {
   _repaint() {
     const body = this.screen.find('[data-fc-body]');
     if (body) body.innerHTML = this._bodyHtml();
-    this.screen.findAll('[data-fc-conf]').forEach((b) => b.classList.toggle('on', Number(b.dataset.fcConf) === this.conf));
+    this.screen.findAll('button[data-fc-conf]').forEach((b) => b.classList.toggle('on', Number(b.dataset.fcConf) === this.conf));
   }
 
   async _load(id) {
+    if (id === 0) { this._repaint(); await Promise.all((this.confs || []).map((c) => this._load(c.id))); if (this.conf === 0) this._repaint(); return; }
     if (!id || this.data.has(id)) { this._repaint(); return; }
     this._repaint();
     try {
@@ -490,7 +726,8 @@ class PyramidForecastView {
     } catch (e) {
       this.data.set(id, { error: e.message });
     }
-    if (id === this.conf) this._repaint();
+    if (id === this.conf || this.conf === 0) this._repaint();
+    if (id === this.conf && this.feederFocus) requestAnimationFrame(() => { const r = this.screen.find('[data-fc-ffrow]'); if (r) r.scrollIntoView({ block: 'center' }); });
   }
 
   mount() {
@@ -499,12 +736,25 @@ class PyramidForecastView {
     this._onClick = (e) => {
       const c = e.target.closest('[data-fc-conf]');
       if (c) {
-        this.conf = Number(c.dataset.fcConf); this.team = null;
+        this.conf = Number(c.dataset.fcConf); this.team = null; this.feederFocus = null; this.feederPick = null;
         try { localStorage.setItem('apsl-forecast-conf', String(this.conf)); } catch (_) { /* private mode */ }
         this._load(this.conf); return;
       }
+      const wk = e.target.closest('[data-fc-week]');
+      if (wk) { this.weekPick = wk.dataset.fcWeek; this._repaint(); return; }
+      const tv = e.target.closest('[data-fc-tview]');
+      if (tv) { this.tableView = tv.dataset.fcTview; this._repaint(); return; }
+      const sc = e.target.closest('[data-fc-sec]');
+      if (sc) { this.section = sc.dataset.fcSec; this._repaint(); return; }
+      const fp = e.target.closest('[data-fc-feeder]');
+      if (fp) { this.feederPick = fp.dataset.fcFeeder || null; this._repaint(); return; }
       const t = e.target.closest('[data-fc-team]');
-      if (t) { this.team = Number(t.dataset.fcTeam) || null; this._repaint(); root.scrollIntoView({ block: 'start' }); return; }
+      if (t) {
+        const tc = Number(t.dataset.fcTeamConf);
+        this.team = Number(t.dataset.fcTeam) || null; this.feederFocus = null;
+        if (tc && tc !== this.conf) { this.conf = tc; this._load(tc); } else this._repaint();
+        root.scrollIntoView({ block: 'start' }); return;
+      }
       const sh = e.target.closest('[data-fc-share]');
       if (sh) {
         const url = this._shareUrl();
@@ -513,8 +763,6 @@ class PyramidForecastView {
         else window.prompt('', url);
         return;
       }
-      const fl = e.target.closest('[data-fc-filter]');
-      if (fl) { this.filter = fl.dataset.fcFilter; this._repaint(); return; }
       if (e.target.closest('[data-fc-reset]')) { this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1; this._repaint(); return; }
       if (e.target.closest('[data-fc-back]')) { this.team = null; this._repaint(); }
     };
@@ -527,6 +775,16 @@ class PyramidForecastView {
       if (lab) lab.textContent = this._sliderLabel(base, this._fromSlider(base, Number(sl.value)), Number(sl.dataset.fcSlider));
     };
     this._onChange = (e) => {
+      const fo = e.target.closest('[data-fc-focus]');
+      if (fo) {
+        const f = (this._focus || []).find((x) => x.label === fo.value);
+        if (!f) return;
+        fo.value = ''; this.whatIf = null;
+        this.conf = f.conf; this.team = f.team || null; this.feederFocus = f.feeder || null; this.feederPick = null;
+        if (f.feeder) this.section = 'feeders';
+        this._load(this.conf); root.scrollIntoView({ block: 'start' });
+        return;
+      }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       this._runWhatIf(Number(sl.dataset.fcSlider), this._fromSlider(base, Number(sl.value)));
