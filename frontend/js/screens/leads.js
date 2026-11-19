@@ -620,6 +620,7 @@ class LeadsScreen extends Screen {
           </button>`;
         }).join('')}
       </div>
+      ${this.renderClubBcc(leads)}
       <p style="opacity:0.6; font-size:0.85rem; margin-bottom:var(--space-3);">
         ${visibleLeadCount} of ${leads.length} lead${leads.length !== 1 ? 's' : ''} shown
         ${activeStatus !== 'all' ? `<span style="opacity:0.7;">— filtered by <strong>${(statusTabs.find(t => t.id === activeStatus) || {}).label}</strong></span>` : ''}
@@ -647,6 +648,17 @@ class LeadsScreen extends Screen {
         `;}).join('')}
       </div>`}
     `;
+
+    // ✉️ BCC touch 1 per club — the rich body goes on the clipboard and
+    // every lead on the list logs an email touch.
+    container.querySelectorAll('.club-bcc-btn').forEach(a => {
+      a.addEventListener('click', () => {
+        const club = this._clubBcc && this._clubBcc[a.getAttribute('data-club')];
+        if (!club) return;
+        this.copyRichEmail(club.body, '');
+        for (const id of club.leadIds) this.logLeadTouch(id, 'email', 'first-touch-bcc', club.body);
+      });
+    });
 
     // Wire status-tab clicks → persist + re-render from cached data.
     container.querySelectorAll('.status-tab').forEach(btn => {
@@ -1206,6 +1218,63 @@ class LeadsScreen extends Screen {
   // Anchoring also keeps "Men's Club" / "Women's Club" out.
   isParentFunnel(label) {
     return /^(youth|boys club|girls club)\b/i.test(label || '');
+  }
+
+  // Which club a funnel sells: men / women / youth (boys + girls), or null
+  // when even the keywords can't tell (an unanswered club-wide lead).
+  static clubOfLabel(label) {
+    const cat = LeadsScreen.categoryFromLabel(label);
+    if (cat === 'mens' || cat === 'womens') return cat === 'mens' ? 'men' : 'women';
+    if (cat === 'boys' || cat === 'girls') return 'youth';
+    if (/apsl|liga/i.test(label || '')) return 'men';
+    return null;
+  }
+
+  // ✉️ BCC touch 1, one button per club (James 11/19 "for leads there
+  // should be a bcc all who did not register 1st touch" → "by club so one
+  // for men, youth women").  The list = every lead on the board (follows
+  // the Live / Past / All pill) still not registered: not signed up, not
+  // already a member, not dead, with an email — deduped by address.  The
+  // body is the club's touch-1 email with the greeting name from the
+  // leads_bcc rows, since one email can't say each first name.
+  renderClubBcc(leads) {
+    const CLUBS = [
+      { id: 'men',   funnel: "Men's Club" },
+      { id: 'women', funnel: "Women's Club" },
+      { id: 'youth', funnel: 'Youth (Grades K–9)' },
+    ];
+    const greet = MessageCopy.block('leads_bcc', 'greeting', {});
+    this._clubBcc = {};
+    const buttons = CLUBS.map(({ id, funnel }) => {
+      const seen = new Set();
+      const leadIds = [];
+      for (const l of leads) {
+        if (LeadsScreen.clubOfLabel(this.leadFunnelLabel(l)) !== id) continue;
+        if (l.converted_at || l.status === 'signedup' || l.status === 'dead' || l.member_status === 'active') continue;
+        const email = (l.email || '').trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) continue;
+        leadIds.push(l.id);
+        seen.add(email);
+      }
+      const t = this.messageTemplate(funnel);
+      const subject = this.fillTemplate(t.subject, { name: '' }, { first: greet });
+      const body    = this.fillTemplate(t.email,   { name: '' }, { first: greet });
+      const href = seen.size && body
+        ? this.buildGmailComposeHref({ bcc: [...seen].join(','), subject, body })
+        : null;
+      this._clubBcc[id] = { body, leadIds };
+      const label = MessageCopy.block('leads_bcc', 'button', {
+        club: MessageCopy.block('leads_bcc', `club_${id}`, {}), n: String(seen.size),
+      });
+      return href
+        ? `<a class="btn btn-sm btn-primary club-bcc-btn" data-club="${id}" href="${href}" target="_blank" rel="noopener">${label}</a>`
+        : `<button type="button" class="btn btn-sm btn-secondary" disabled>${label}</button>`;
+    });
+    return `
+      <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);">
+        ${buttons.join('')}
+        <span style="opacity:0.6; font-size:0.8rem;">${MessageCopy.block('leads_bcc', 'hint', {})}</span>
+      </div>`;
   }
 
   renderLead(lead, columnLabel = null) {
