@@ -158,7 +158,7 @@ struct PossessionParams {
     // mean-fitted width each. [zone][near/far][role]: the share against one roll a man a spell; rolled, his spot is touch_m_max x
     // u^1.5 off the line (real within-5 m: a quarter inside 0.6 m, ~60% inside 2.2 m). touch_on 0 = off.
     math::Fixed64 touch_p[3][3][2][kRoleCount]{}, touch_m_max{};   // [ball band][spell age 0-3/3-8/8+ s (G5.170)][near/far][role]
-    bool touch_on = true;
+    bool touch_on = true, touch_latch = true;   // G5.171: once on his line, he keeps it the spell
     bool drift_on = true;   // G5.62: their line's mean depth by the ball (5 m bins); support men follow a deeper one
     bool box_restart_keep = true;   // G5.61: our restart (or the call to come after their touch): runners held, no redraw (physics.box.restart_keep)
     bool box_stay = true;   // G5.61: a box runner in the box stays one when a redraw rolls fewer (physics.box.stay)
@@ -243,10 +243,10 @@ public:
     bool channel(std::uint8_t slot) const { return slot < 32 && ((chan_ >> slot) & 1u); }   // G5.56: his runner spot is their wide channel
     int runnerIndex(std::uint8_t slot) const;   // 0, 1, 2 … among his team's runners (their box spots)
     int ballZone(std::uint8_t team) const { return zone_[team & 1]; }
-    void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; for (auto& l : latch_) l = LineLatch{}; }
+    void reset() { runners_ = 0; chan_ = 0; zone_[0] = zone_[1] = -1; drawn_[0] = drawn_[1] = 0; deep_[0] = deep_[1] = false; won_[0] = won_[1] = 0; had_[0] = had_[1] = false; for (auto& f : front_) f[0] = f[1] = 0xFF; for (auto& f : front_at_) f[0] = f[1] = 0; for (auto& l : led_) l = Led{}; for (auto& r : run_) r = Run{}; for (auto& l : latch_) l = LineLatch{}; for (auto& t : touch_latch_) t = 0; }
     // The tick this team's live spell on the ball began (a restart or a loss ends one).
     std::uint64_t spellStart(std::uint8_t team) const { return won_[team & 1]; }
-    std::uint8_t spotBranch(std::uint8_t slot) const { return slot < 32 ? spot_branch_[slot] : 0; }   // §8.238 diag: 0 base / 1 drift / 2 wing / 3 lone (harness only)
+    std::uint8_t spotBranch(std::uint8_t slot) const { return slot < 32 ? spot_branch_[slot] : 0; }   // §8.238 diag: 0 base / 1 drift / 2 wing / 3 lone / 8 touchline (§8.277) (harness only)
     // G5.132 (§8.233): the carry line's zone and pressure, latched at his spell's first carryDir call so
     // the drawn line holds for the spell (it read a new zone row / table as he crossed a zone or a man
     // crossed 3-4 m: his move swung 45+ deg about once a second and he never got going).
@@ -275,6 +275,7 @@ private:
     std::uint64_t drawn_[2] = {0, 0};
     bool deep_[2] = {false, false};   // G5.53: their line was inside box_line_deep_m at the last draw
     std::uint64_t won_[2] = {0, 0};
+    mutable std::uint64_t touch_latch_[32] = {};   // G5.171 (§8.277): the spell (won_ + 1) he went to his touchline in; 0 = none
     mutable std::uint8_t spot_branch_[32] = {};   // §8.238 diag, never read by the sim
     mutable LineLatch latch_[32];
     bool had_[2] = {false, false};

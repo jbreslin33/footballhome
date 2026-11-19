@@ -113,7 +113,8 @@ struct Stats {
     long bblk = 0;   // §8.269 body blocks (any ball)
     struct WpCell { std::vector<double> d0, dt[5], vt[5], tt, pace, peak; long far0 = 0, reach = 0; };   // §8.275 WIDE PACE
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
-    int wps_tm = -1, wps_won = 0; long wps_k0 = 0;   // §8.276: the WIDE PACE spell now (side, won, first tick)
+    int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
+    long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap;   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
     long ws_zn[3][3] = {}, ws_in[3][2][3] = {}, ws_wn[3][2] = {}, ws_win[3][2] = {}; std::vector<double> ws_age; long ws_rn[3][3][2][3] = {}, ws_r5[3][3][2][3] = {};   // §8.276 ws_r*: [FB/DM/WIDE][ball band][near/far][age] WIDEST BY SPELL AGE [age 0-3/3-8/8+][near/far][ball band]; [age][restart/won]   // [FB/DM/WIDE][restart/won][ball band off the goal line attacked][near/far]
     long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
@@ -876,6 +877,36 @@ int main(int argc, char** argv) {
                                 w.dt[w.nt] = d; w.vt[w.nt] = (py - p5) * w.side; ++w.nt;
                             }
                         }
+                    }
+                }
+            }
+            if (k % 6 == 0) {   // §8.277 G5.171 TOUCH HOLD: each FB of the side on the ball whose spot is the touchline (branch 8, holding): how long he keeps it, why it ends, does he get there
+                struct Th { bool on = false; long k0 = 0; int z = 0, sd = 0; bool got = false; double t5 = -1; };
+                static Th th[32];
+                if (k == 0) for (auto& t : th) t = Th{};
+                const auto& ps = s.brain().possession();
+                const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                    if (W.isKeeper(j) || role(j) != 1) continue;
+                    const int tm = W.player(j).team & 1;
+                    const bool spell = S.wps_tm == tm;
+                    const auto& oj = s.lastOrders()[j];
+                    const bool rolled = spell && oj.why == ai::Why::Hold && ps.spotBranch(j) == 8;
+                    const double py = W.player(j).pos.y.toDouble(), d = hy - std::fabs(py);
+                    const double gl = tm == 0 ? hx - bx : bx + hx; const int z = gl < 35 ? 0 : gl < 70 ? 1 : 2;
+                    const int sd = (py >= 0) == (by >= 0) ? 0 : 1;
+                    auto& t = th[j];
+                    if (t.on && !rolled) {
+                        const int why = !spell ? 0 : z != t.z ? 1 : sd != t.sd ? 2 : oj.why != ai::Why::Hold ? 3 : ps.spotBranch(j) != 8 ? 4 : 5;
+                        const double dur = (static_cast<long>(k) - t.k0) / 30.0;
+                        ++S.th_n; ++S.th_end[why]; S.th_dur.push_back(dur); S.th_d_end.push_back(d);
+                        if (t.got) { ++S.th_got; S.th_dur_got.push_back(dur); S.th_t5.push_back(t.t5); }
+                        t.on = false;
+                    }
+                    if (rolled && !t.on) { t.on = true; t.k0 = static_cast<long>(k); t.z = z; t.sd = sd; t.got = d < 5; t.t5 = t.got ? 0 : -1; }
+                    if (rolled && t.on) {
+                        if (!t.got && d < 5) { t.got = true; t.t5 = (static_cast<long>(k) - t.k0) / 30.0; }
+                        S.th_gap.push_back(std::hypot(W.player(j).pos.x.toDouble() - oj.target.x.toDouble(), py - oj.target.y.toDouble()));
                     }
                 }
             }
@@ -3041,6 +3072,15 @@ int main(int argc, char** argv) {
                 for (int z = 0; z < 3; ++z) { std::printf(" | %s", zn[z]);
                     for (int a = 0; a < 3; ++a) std::printf(" %.0f (%.0f)", 100.0 * S.ws_r5[r][z][sd][a] / std::max(1L, S.ws_rn[r][z][sd][a]), rra[r][sd][z][a]); }
                 std::printf("\n"); }
+        }
+        {   // §8.277 TOUCH HOLD
+            auto qd = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };
+            static const char* const en[6] = {"spell ended", "ball changed band", "ball switched side", "order not Hold", "spot branch changed", "other"};
+            const double n = std::max(1L, S.th_n);
+            std::printf("      TOUCH HOLD: FB episodes with his spot on the touchline, %.1f a team-match; length s p25 / med / p75 %.1f / %.1f / %.1f; got within 5 m %.0f%% (in s med %.1f; those last med %.1f s)\n",
+                        S.th_n / std::max(1.0, 2.0 * matches), qd(S.th_dur, .25), qd(S.th_dur, .5), qd(S.th_dur, .75), 100.0 * S.th_got / n, qd(S.th_t5, .5), qd(S.th_dur_got, .5));
+            std::printf("        ended by:"); for (int e = 0; e < 6; ++e) std::printf(" %s %.0f%%", en[e], 100.0 * S.th_end[e] / n);
+            std::printf(" | m off the line at the end med %.1f | m off his target while on it p25 / med / p75 %.1f / %.1f / %.1f\n", qd(S.th_d_end, .5), qd(S.th_gap, .25), qd(S.th_gap, .5), qd(S.th_gap, .75));
         }
         {   // §8.275 WIDE PACE — benchmarks_tracking_widepace.py (DFL)
             auto med = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };

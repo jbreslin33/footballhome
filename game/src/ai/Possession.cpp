@@ -1524,6 +1524,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
             touch_p[z][a][sd][r] = p.fixed(std::string("physics.touch.") + zk[z] + "_" + sk[sd] + "_" + kRoleKey[r] + ak[a] + "_p", kT[z][a][sd][r]);
         touch_m_max = p.fixed("physics.touch.m_max", 4500);
         touch_on = p.fixed("physics.touch.on", 1000).raw > 0;
+        touch_latch = p.fixed("physics.touch.latch", 1000).raw > 0;   // G5.171 (§8.277)
     }   // [FH, DFL]   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
@@ -1640,10 +1641,16 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 110) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
         const std::uint64_t age = world.tickCount() - won_[v.team & 1];   // G5.170: the spell's age, 0-3 / 3-8 / 8+ s (same roll, its share by age)
         const int ab = age < 90 ? 0 : age < 240 ? 1 : 2;
-        if (u < params_.touch_p[z][ab][sd][static_cast<int>(v.role_ours)]) {
+        // G5.171 (§8.277): once he has gone to his line this spell he keeps it — the ball changing band or switching side
+        // no longer walks him back in (ours flickered: 214 episodes a team-match, median 2.6 s). "One man is our width this spell" [FH].
+        // Not into their last 35 m: there the shape changes and real full-backs tuck in (FB far 0 / 1 / 4% by age, near 26 /
+        // 15 / 29 — latched, ours stood out 17-34 / 34-48), so that band's own roll decides.
+        const bool kept = params_.touch_latch && z > 0 && v.slot < 32 && touch_latch_[v.slot] == won_[v.team & 1] + 1;
+        if (kept || u < params_.touch_p[z][ab][sd][static_cast<int>(v.role_ours)]) {
+            if (params_.touch_latch && v.slot < 32) touch_latch_[v.slot] = won_[v.team & 1] + 1;
             const Fixed64 u2 = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 111) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
             const Fixed64 d = params_.touch_m_max * u2 * math::fx_sqrt(u2);
-            if (v.slot < 32) spot_branch_[v.slot] = 0;
+            if (v.slot < 32) spot_branch_[v.slot] = 8;   // §8.277 diag: the touchline (& 3 = 0, the base, for older lines)
             return Vec2{(hx - x) * v.sg, side * (world.pitchHalfY() - d)};
         }
     }

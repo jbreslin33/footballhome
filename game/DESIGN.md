@@ -11100,3 +11100,39 @@ but stands on it 42-44%. His Hold target is right (ball 70+: median 2.9 m off th
 pace (§8.275); what is open is the roll's share falling under him mid-spell (the ball changes band, or switches and he
 becomes the far FB) so he walks back in. Next: measure how long a rolled FB keeps his target, and where it goes, before any
 change. Goldens re-locked; tests 23/23, lint clean.
+
+### 8.277 G5.171 — a man who went to his touchline keeps it the spell, not into their last 35 m (shipped)
+
+From §8.276's "next". New harness line **TOUCH HOLD** (Possession's spot-branch diag now marks the touchline spot 8; `& 3`
+keeps it 0 for the older lines): each FB of the side on the ball whose spot is the touchline, holding — how long he keeps
+it, why it ends, whether he gets within 5 m.
+
+**Ours flickered.** 211-214 episodes a team-match, median 2.6 s (p75 6.0); ended by the ball changing band 34%, the
+spell ending 26-27, another order 15, the ball switching side 13-14, another spot branch 10-12. Within 5 m in 46-47% —
+nearly all of them already there (median 0 s to get there); the rest stood a median 11.7 m off the target when it ended.
+G5.168's one roll a spell held, but its share changes with the ball's band and side (and since G5.170 with age), so
+the man under the new share walked back in. A real width man stays out: a real far FB at 8 s+ is on his line 40%.
+
+**Rule** (`Possession::spot`, `physics.touch.latch` 1000 = on): once a FB / DM-CM / WIDE has gone to his touchline in
+a spell, he keeps it (his own side, his rolled distance) until the spell ends — except with the ball in their last 35 m,
+where that band's own roll decides (there real full-backs tuck in: FB far 0 / 1 / 4% by age, near 26 / 15 / 29; a latch
+that held there put ours out 17-34 / 34-48 — first A/B arm). Coaching: "one man is our width this spell", and the far
+full-back comes in to defend when we're in their third [FH].
+
+| 4 seeds × 8 | real | G5.170 | latch everywhere | **not into the last 35 m** |
+|---|---|---|---|---|
+| episodes a team-match, length med s | | 211-214, 2.6 | 199-206, 3.8-4.2 | 198-206, 3.6-3.8 |
+| widest within 5 m, ball's side / far, all kicks | 62.0 / 22.7 | 44.5 / 17.6 | 47.6 / 25.3 | **44.8 / 20.1** |
+| … at 8 s+ | 77.8 / 40.4 | 49-51 / 26-27 | 55-59 / 39-43 | 52-55 / 29-34 |
+| FB near / far, ball 0-35, 8 s+ | 29 / 4 | 19-25 / 6-10 | 37-41 / 32-34 | 24-25 / 10-13 |
+| FB far, ball 35-70 / 70+, 8 s+ | 40 / 43 | 25-27 / 25-32 | 31-35 / 36-40 | 27-33 / 29-35 |
+| WIDE near, ball 35-70, 8 s+ | 22 | 9-11 | | 17-19 |
+
+Card 8 / 6 / 19 → **8 ok / 4 off / 21 OFF** (`card_G5.171.txt`). Better: blocked shots 13.9 → 16.0% (29.1), shots from
+25 m+ 16.6 → 14.6% (13.0, ok), penalties 0.02 → 0.08 (0.12), throw-ins 19.9 → 20.4 (23.1). Worse: switches 11.8 → 13.2
+(10.7, OFF) — a far FB on his line is open and ours pick him out more than real sides do; shots 14.9 → 15.1 (13.0, OFF);
+goals 2.36 → 2.61 (1.35); crosses 6.9 → 6.2 (11.5); scored from 12-18 m / inside 12 m to OFF. The width moved toward real
+in every cell measured, so it ships (correct behaviour first, §feedback); the switch is the next measure: real switches by
+where the far-side widest man stood at the kick (DFL), against ours, before any change. Still short: the near FB with the
+ball 35-70 / 70+ m out at 8 s+ (43-51 v 61 / 70) and from a turnover in our half (13-16 v 36). Goldens re-locked
+(11v11; 3v3 unchanged); tests 23/23, lint clean.
