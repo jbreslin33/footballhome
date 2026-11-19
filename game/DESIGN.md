@@ -11025,3 +11025,36 @@ the ball 70+ m out but he stands at 10.9 m (real median 4.9). With the ball in o
 hold_walk) and the spell ends first. Next: the pace a man goes to his width at when we win it ("make the pitch big"),
 measured on DFL (wide men's lateral speed in the first seconds of a spell) before any change. Goldens re-locked;
 tests 23/23, lint clean.
+
+### 8.275 G5.169 — "make the pitch big": ours go to the line at the real pace; the pace isn't the gap (measured; no game change)
+
+From §8.274's "next". New `benchmarks_tracking_widepace.py` (DFL 7 matches, 5 Hz): a spell = in-play frames with one
+BallPossession side (dead ball ends it; *won* = the other side had it the frame before, else *restart*); each FB / WIDE /
+DM-CM of that side, m off the touchline his side at the start, at 1 / 2 / 3 / 5 / 8 s, and, from 10 m+ off, whether he
+reaches 5 m inside the spell, how long it takes, his pace across. Same cut in fh-game-match as **WIDE PACE** (a loose
+ball keeps the last owner's side).
+
+**Real wide men don't race to the line when they win it.** From 10 m+ off, a near FB reaches within 5 m in 10% of spells
+(far 12, WIDE 8 / 8, DM-CM 3 / 5), in a median 7.2 s (far 9.2), at 1.6 m/s across (peak 0.2 s 3.3): a jog. Won spells,
+the near FB's median off the line barely moves for 3 s (ball 35-70 m out: 12.3 → 11.8 → 11.1 at 8 s); the far FB goes out
+from about 2 s at 0.5-1.0 m/s (24.5 → 17.5 by 8 s); the near WIDE and DM-CM drift *in* (15.2 → 19.5, 18.8 → 24.8).
+
+| 2 seeds × 8 | real (DFL) | ours |
+|---|---|---|
+| from 10 m+: reach 5 m, FB near / far | 10 / 12% | **28-29 / 16-17%** |
+| … time med, s (FB near / far) | 7.2 / 9.2 | 6.0-6.4 / 9.8-10.4 |
+| … pace across med / peak, m/s (FB near) | 1.6 / 3.3 | 1.7 / 3.1-3.3 |
+| … WIDE near: reach, pace | 8%, 2.1 | 13%, 1.3-1.5 |
+| won FB near, ball 70+: off the line start / 3 s / 8 s | 17.8 / 15.9 / 12.1 | 15.3-15.7 / 12.3-12.5 / 8.7-8.8 |
+| won DM-CM near, ball 35-70 | 18.8 / 20.0 / 24.8 | 24.2-24.7 / 23.9-24.2 / 25.3-25.5 |
+| spells won: a team-match, length med / p90 s | 165.4, 3.0 / 16.8 | **81.7-84.0, 9.6-10.0 / 26.4** |
+| spells from a restart | 50.6, 5.4 / 22.4 | 53.9-55.6, 8.2-8.4 / 23.4-24.0 |
+
+Our men go to their width at the real pace and get there *more* often than real ones (the G5.168 roll); at 8 s our near FB
+is nearer the line than the real one. So the §8.274 note ("he walks there and the spell ends first") is wrong: the walk
+is the real pace, and ours start no wider. **The gap is the spell.** Ours win the ball half as often as real sides and keep
+it three times as long (median 9.6-10 s v 3.0). Real width at a kick is counted over many short, scrappy spells plus the
+long ones; ours are all settled ones. (Caveat: DFL's BallPossession flag can flip on a contested touch, ours only on an
+owner, so part of the 165 is short ricochets; real spells 1 s+ are still 137 a team-match.) Kicks per spell, not pace,
+is the next measure: the real width at a kick by time since the spell began (0-3 / 3-8 / 8+ s) against ours, before any
+change. Harness lines only; goldens unchanged.

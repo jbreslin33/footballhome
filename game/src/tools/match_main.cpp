@@ -111,6 +111,8 @@ struct Stats {
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
     long bblk = 0;   // §8.269 body blocks (any ball)
+    struct WpCell { std::vector<double> d0, dt[5], vt[5], tt, pace, peak; long far0 = 0, reach = 0; };   // §8.275 WIDE PACE
+    WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];   // [FB/DM/WIDE][restart/won][ball band off the goal line attacked][near/far]
     long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
     long bp_where[2][4] = {}, bp_out[2][4][3] = {};   // §8.272 blocked passes by [touchline band | goal-line band][band] and corner / throw-in / goal kick
@@ -819,6 +821,60 @@ int main(int argc, char** argv) {
                         S.bh_mtl.push_back(hx - bh.mrx * sg);
                     }
                     bh.on = false;
+                }
+            }
+            {   // §8.275 G5.169 WIDE PACE (benchmarks_tracking_widepace.py): a spell = in play with one side on the ball (a loose
+                // ball keeps the last owner's side; dead ends it; won = the other side had it the frame before). Each FB / DM / WIDE
+                // of that side: m off the touchline his side at the start, at 1/2/3/5/8 s, 1 s speed toward it; from 10 m+, reach 5 m.
+                struct WpMan { int j, ri, sd; double side, d0, peak; bool far0, reached; double tt, pace; double dt[5], vt[5]; int nt; };
+                static int wp_tm = -1; static long wp_k0 = 0; static int wp_won = 0, wp_z = 0; static std::vector<WpMan> wp_men;
+                static const int kTs[5] = {1, 2, 3, 5, 8};
+                if (k == 0) { wp_tm = -1; wp_men.clear(); }
+                if (k % 6 == 0) {
+                    const bool live = W.outStage() == 0 && W.restartTeam() == 0xFF;
+                    int now = -1;
+                    if (live) now = b.owner ? W.player(*b.owner).team & 1 : wp_tm >= 0 ? wp_tm : (W.lastTouchTeam() <= 1 ? W.lastTouchTeam() : -1);
+                    auto close = [&]() {
+                        const double dur = (k - 6 - wp_k0) / 30.0;
+                        S.wp_dur[wp_won].push_back(dur);
+                        if (dur >= 1) for (const auto& w : wp_men) {
+                            auto& C = S.wp[w.ri][wp_won][wp_z][w.sd];
+                            C.d0.push_back(w.d0);
+                            for (int q = 0; q < w.nt; ++q) { C.dt[q].push_back(w.dt[q]); C.vt[q].push_back(w.vt[q]); }
+                            if (w.far0) { ++C.far0; if (w.reached) { ++C.reach; C.tt.push_back(w.tt); C.pace.push_back(w.pace); C.peak.push_back(w.peak); } }
+                        }
+                        wp_men.clear(); wp_tm = -1;
+                    };
+                    if (wp_tm >= 0 && now != wp_tm) {
+                        const int was = wp_tm; close();
+                        if (now >= 0 && was >= 0) wp_won = 2;   // marker: won
+                    } else if (wp_tm < 0 && now >= 0) wp_won = 0;
+                    if (now >= 0 && wp_tm < 0) {
+                        wp_won = wp_won == 2 ? 1 : 0;
+                        wp_tm = now; wp_k0 = k;
+                        const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble(), gl = now == 0 ? hx - bx : bx + hx;
+                        wp_z = gl < 35 ? 0 : gl < 70 ? 1 : 2;
+                        for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                            if ((W.player(j).team & 1) != now || W.isKeeper(j)) continue;
+                            const int r = role(j), ri = r == 1 ? 0 : r == 2 ? 1 : r == 4 ? 2 : -1;
+                            if (ri < 0) continue;
+                            const double py = W.player(j).pos.y.toDouble(), side = py >= 0 ? 1.0 : -1.0;
+                            WpMan w{}; w.j = j; w.ri = ri; w.sd = (py >= 0) == (by >= 0) ? 0 : 1; w.side = side; w.d0 = hy - py * side;
+                            w.far0 = w.d0 >= 10; w.nt = 0; wp_men.push_back(w);
+                        }
+                    } else if (now >= 0) {
+                        const long dk = k - wp_k0;
+                        for (auto& w : wp_men) {
+                            const double py = W.player(static_cast<std::uint8_t>(w.j)).pos.y.toDouble(), d = hy - py * w.side;
+                            const double p1 = ring5[w.j][((k / 6) + 23) % 24][1];   // 0.2 s back
+                            if (!w.reached) w.peak = std::max(w.peak, (py - p1) * w.side / 0.2);
+                            if (w.far0 && !w.reached && d < 5) { w.reached = true; w.tt = dk / 30.0; w.pace = (w.d0 - d) / w.tt; }
+                            if (w.nt < 5 && dk == 30L * kTs[w.nt]) {
+                                const double p5 = ring5[w.j][((k / 6) + 19) % 24][1];   // 1 s back
+                                w.dt[w.nt] = d; w.vt[w.nt] = (py - p5) * w.side; ++w.nt;
+                            }
+                        }
+                    }
                 }
             }
             {   // §8.274 G5.168 WIDEST AT THE KICK: on each open-play pass kick, the kicker's side's widest outfielder each side, by the ball's band off the goal line attacked, and who he is
@@ -2944,6 +3000,34 @@ int main(int argc, char** argv) {
                     for (int sd = 0; sd < 2; ++sd) { std::vector<double> a = S.wk_ft[z][sd]; if (a.empty()) continue; std::sort(a.begin(), a.end());
                         std::printf(" | %s: holding, target m off the line p25 / med / p75 %.1f / %.1f / %.1f", sd ? "far" : "near", a[a.size() / 4], a[a.size() / 2], a[3 * a.size() / 4]); }
                     std::printf("\n"); } } }
+        {   // §8.275 WIDE PACE — benchmarks_tracking_widepace.py (DFL)
+            auto med = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };
+            static const double rd[2][3] = {{165.4, 3.0, 16.8}, {50.6, 5.4, 22.4}};   // a team-match, med s, p90 s: won / restart
+            for (int w = 1; w >= 0; --w) { const int ww = w;
+                std::printf("      WIDE PACE spells %s: %.1f a team-match, length med %.1f s, p75 %.1f, p90 %.1f (DFL %.1f, med %.1f, p90 %.1f)\n", ww ? "won" : "from a restart",
+                            S.wp_dur[ww].size() / std::max(1.0, 2.0 * matches), med(S.wp_dur[ww], .5), med(S.wp_dur[ww], .75), med(S.wp_dur[ww], .9), rd[1 - ww][0], rd[1 - ww][1], rd[1 - ww][2]); }
+            // won spells 1 s+: his m off his touchline, median at the start / 3 s / 8 s [FB/DM/WIDE][near/far][ball 0-35/35-70/70+]
+            static const double rw[3][2][3][3] = {
+                {{{12.3, 12.4, 9.6}, {12.3, 11.8, 11.1}, {17.8, 15.9, 12.1}}, {{23.8, 22.7, 18.4}, {24.5, 23.4, 17.5}, {28.2, 26.4, 16.8}}},
+                {{{20.8, 20.2, 20.6}, {18.8, 20.0, 24.8}, {22.6, 22.8, 27.4}}, {{27.0, 30.3, 30.1}, {25.5, 27.8, 24.4}, {29.1, 30.6, 29.2}}},
+                {{{16.7, 16.2, 17.6}, {15.2, 16.1, 19.5}, {17.1, 15.6, 15.7}}, {{26.3, 27.2, 26.9}, {24.8, 24.3, 21.6}, {25.6, 24.9, 19.0}}}};
+            // pooled (won + restart, every band): from 10 m+ off, reach 5 m %, time med s, pace med, peak med
+            static const double rp[3][2][4] = {{{10, 7.2, 1.6, 3.3}, {12, 9.2, 1.9, 3.4}}, {{3, 5.4, 2.4, 4.3}, {5, 8.0, 1.9, 3.6}}, {{8, 5.4, 2.1, 4.0}, {8, 10.6, 1.5, 3.8}}};
+            static const char* const rn3[3] = {"FB", "DM", "WIDE"}; static const char* const zn[3] = {"0-35", "35-70", "70+"};
+            std::printf("      WIDE PACE, won spells 1 s+: m off his touchline, med at the start / 3 s / 8 s, by the ball's m off the goal line attacked (DFL)\n");
+            for (int r = 0; r < 3; ++r) for (int sd = 0; sd < 2; ++sd) {
+                std::printf("        %-5s %-4s", rn3[r], sd ? "far" : "near");
+                for (int z = 0; z < 3; ++z) { const auto& C = S.wp[r][1][z][sd];
+                    std::printf(" | %s %.1f / %.1f / %.1f (%.1f / %.1f / %.1f)", zn[z], med(C.d0, .5), med(C.dt[2], .5), med(C.dt[4], .5), rw[r][sd][z][0], rw[r][sd][z][1], rw[r][sd][z][2]); }
+                std::printf("\n"); }
+            std::printf("      WIDE PACE, every spell 1 s+, from 10 m+ off his line: reach 5 m %%, time s med, pace across m/s med, peak 0.2 s med (DFL)\n");
+            for (int r = 0; r < 3; ++r) for (int sd = 0; sd < 2; ++sd) {
+                long f0 = 0, rc = 0; std::vector<double> tt, pc, pk;
+                for (int w = 0; w < 2; ++w) for (int z = 0; z < 3; ++z) { const auto& C = S.wp[r][w][z][sd]; f0 += C.far0; rc += C.reach;
+                    tt.insert(tt.end(), C.tt.begin(), C.tt.end()); pc.insert(pc.end(), C.pace.begin(), C.pace.end()); pk.insert(pk.end(), C.peak.begin(), C.peak.end()); }
+                std::printf("        %-5s %-4s reach %.0f%% of %ld (%.0f), %.1f s (%.1f), %.1f m/s (%.1f), peak %.1f (%.1f)\n", rn3[r], sd ? "far" : "near", 100.0 * rc / std::max(1L, f0), f0, rp[r][sd][0],
+                            med(tt, .5), rp[r][sd][1], med(pc, .5), rp[r][sd][2], med(pk, .5), rp[r][sd][3]); }
+        }
         {   // §8.272
             static const char* const kT[4] = {"0-5", "5-10", "10-20", "20+"}; static const char* const kG[4] = {"0-18", "18-35", "35-70", "70+"};
             static const double rs[2][4] = {{18.5, 21.7, 31.6, 28.2}, {32.8, 19.4, 31.8, 16.0}};
