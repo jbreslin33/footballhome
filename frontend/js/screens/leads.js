@@ -1244,28 +1244,42 @@ class LeadsScreen extends Screen {
       { id: 'youth', funnel: 'Youth (Grades K–9)' },
     ];
     const greet = MessageCopy.block('leads_bcc', 'greeting', {});
+    // Anyone emailed or texted inside this many days sits this one out
+    // (James 11/19 "by default if one was sent out in last 3 days? then
+    // dont include them").
+    const recentDays = Number(MessageCopy.block('leads_bcc', 'recent_days', {})) || 0;
+    const cutoff = Date.now() - recentDays * 86400000;
+    const sentRecently = (l) => [l.last_email_at, l.last_text_at]
+      .some(t => t && new Date(t).getTime() > cutoff);
     this._clubBcc = {};
     const buttons = CLUBS.map(({ id, funnel }) => {
       const seen = new Set();
       const leadIds = [];
+      const skipped = new Set();
       for (const l of leads) {
         if (LeadsScreen.clubOfLabel(this.leadFunnelLabel(l)) !== id) continue;
         if (l.converted_at || l.status === 'signedup' || l.status === 'dead' || l.member_status === 'active') continue;
         const email = (l.email || '').trim().toLowerCase();
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) continue;
-        leadIds.push(l.id);
+        if (recentDays && sentRecently(l)) { skipped.add(email); continue; }
+        leadIds.push({ id: l.id, email });
         seen.add(email);
       }
+      // An address that got something recently on ANY of its leads waits.
+      for (const e of skipped) seen.delete(e);
+      const ids = leadIds.filter(x => seen.has(x.email)).map(x => x.id);
       const t = this.messageTemplate(funnel);
       const subject = this.fillTemplate(t.subject, { name: '' }, { first: greet });
       const body    = this.fillTemplate(t.email,   { name: '' }, { first: greet });
       const href = seen.size && body
         ? this.buildGmailComposeHref({ bcc: [...seen].join(','), subject, body })
         : null;
-      this._clubBcc[id] = { body, leadIds };
+      this._clubBcc[id] = { body, leadIds: ids };
       const label = MessageCopy.block('leads_bcc', 'button', {
         club: MessageCopy.block('leads_bcc', `club_${id}`, {}), n: String(seen.size),
-      });
+      }) + (skipped.size
+        ? MessageCopy.block('leads_bcc', 'skipped', { k: String(skipped.size), days: String(recentDays) })
+        : '');
       return href
         ? `<a class="btn btn-sm btn-primary club-bcc-btn" data-club="${id}" href="${href}" target="_blank" rel="noopener">${label}</a>`
         : `<button type="button" class="btn btn-sm btn-secondary" disabled>${label}</button>`;
@@ -1273,7 +1287,7 @@ class LeadsScreen extends Screen {
     return `
       <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin-bottom:var(--space-2);">
         ${buttons.join('')}
-        <span style="opacity:0.6; font-size:0.8rem;">${MessageCopy.block('leads_bcc', 'hint', {})}</span>
+        <span style="opacity:0.6; font-size:0.8rem;">${MessageCopy.block('leads_bcc', 'hint', { days: String(recentDays) })}</span>
       </div>`;
   }
 
