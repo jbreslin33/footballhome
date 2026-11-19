@@ -90,14 +90,22 @@ void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg,
 //                 then plays our group-playoff winner (feeder_stay_up_pct).
 // The feeders' averages are taken as equal when they meet (no game links
 // them).
-json outlookJson(Database* db, const std::string& cid, int sims, double prior, double feederStayUpPct,
-                 const std::string& ourPattern, std::mt19937_64& rng) {
+json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, double feederStayUpPct, std::mt19937_64& rng) {
     json out = {{"seasons", json::array()}, {"feeders", json::array()}};
     for (const auto& r : db->query(
-            "SELECT season, teams, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label FROM pyramid_relegation_outlook "
+            "SELECT season, teams, divisions, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label FROM pyramid_relegation_outlook "
             " WHERE competition_id = $1::int ORDER BY sort_order, season", {cid}))
-        out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"down", num(r, "relegated")},
-                                  {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
+        out["seasons"].push_back({{"season", str(r, "season")}, {"teams", r["teams"].as<int>()}, {"divisions", r["divisions"].as<int>()},
+                                  {"down", num(r, "relegated")}, {"up", num(r, "promoted")}, {"rules", str(r, "rules_label")}});
+    // mig 1575: no seasons of its own → its size this season decides
+    // (pyramid_relegation_size_rules: that size, else the default row).
+    if (out["seasons"].empty() && nTeams > 0) {
+        auto r = db->query("SELECT relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label FROM pyramid_relegation_size_rules "
+                           " WHERE teams = $1::int OR teams IS NULL ORDER BY teams NULLS LAST LIMIT 1", {std::to_string(nTeams)});
+        if (!r.empty())
+            out["seasons"].push_back({{"season", nullptr}, {"teams", nTeams}, {"divisions", 1}, {"down", num(r[0], "relegated")},
+                                      {"up", num(r[0], "promoted")}, {"rules", str(r[0], "rules_label")}, {"every", true}});
+    }
     auto rr = db->query("SELECT champion_rank, playoff_from_rank, playoff_to_rank, champion_losers_to_playoff, playoff_winner_meets_survivor, "
                         "       skip_reserves, skip_other_conference, feeder_playoff_first FROM pyramid_promotion_rules WHERE competition_id = $1::int", {cid});
     if (rr.empty()) return out;
@@ -109,7 +117,7 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
     out["rules"] = {{"champion_rank", champRank}, {"playoff_from", poFrom}, {"playoff_to", poTo}, {"losers_in", losersIn},
                     {"meets_survivor", meets}, {"win_survivor", r3(winSurvivor)}, {"feeder_first", feederFirst}};
 
-    struct FT { int id = 0; std::string ext, name, skip, skipArg; bool ours = false; double att = 1, def = 1; int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0, left = 0; };
+    struct FT { int id = 0; std::string ext, name, skip, skipArg; double att = 1, def = 1; int p = 0, w = 0, d = 0, l = 0, gf = 0, ga = 0, pts = 0, left = 0; };
     struct Feeder { std::string label; int sourceId = 0; double avg = 1.5, home = 1.0; std::vector<FT> t; std::vector<FitRes> done; std::vector<std::pair<int, int>> left; int played = 0; };
     std::vector<Feeder> feeders;
     for (const auto& f : db->query(
@@ -128,11 +136,10 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
                                 WHERE t2.pyramid_club_id = t.pyramid_club_id AND t2.removed_at IS NULL AND t2.id <> t.id) AS reserve,
                        (SELECT reason FROM pyramid_promotion_exclusions x WHERE x.competition_id = $2::int AND x.pyramid_club_id = t.pyramid_club_id) AS hand,
                        (SELECT COALESCE(oc.short_name, oc.name) FROM pyramid_team_nearest_conference n JOIN pyramid_competitions oc ON oc.id = n.conference_id
-                         WHERE n.team_id = t.id AND n.conference_id <> $2::int LIMIT 1) AS other_conf,
-                       ($3 <> '' AND t.name ILIKE $3) AS ours
+                         WHERE n.team_id = t.id AND n.conference_id <> $2::int LIMIT 1) AS other_conf
                   FROM pyramid_teams t WHERE t.division_id = $1::int AND t.removed_at IS NULL ORDER BY t.position, t.name)SQL",
-                {std::to_string(f["div_id"].as<int>()), cid, ourPattern})) {
-            FT t; t.id = r["id"].as<int>(); t.ext = str(r, "external_id"); t.name = str(r, "name"); t.ours = r["ours"].as<bool>();
+                {std::to_string(f["div_id"].as<int>()), cid})) {
+            FT t; t.id = r["id"].as<int>(); t.ext = str(r, "external_id"); t.name = str(r, "name");
             if (!r["hand"].is_null()) { t.skip = "hand"; t.skipArg = str(r, "hand"); }
             else if (skipRes && r["reserve"].as<bool>()) t.skip = "reserve";
             else if (skipConf && !r["other_conf"].is_null()) { t.skip = "conf"; t.skipArg = str(r, "other_conf"); }
@@ -283,7 +290,6 @@ json outlookJson(Database* db, const std::string& cid, int sims, double prior, d
                       {"win_playoff", r3(winPo[k][x] / S)}, {"up", r3(up[k][x] / S)}};
             if (t.skip.empty()) j["elig"] = ++elig;
             else { j["skip"] = t.skip; if (!t.skipArg.empty()) j["skip_arg"] = t.skipArg; }
-            if (t.ours) j["ours"] = true;
             tj.push_back(j);
         }
         out["feeders"].push_back({{"label", F.label}, {"played", F.played}, {"left", (int)F.left.size()}, {"avg_goals", r2(F.avg)}, {"teams", tj}});
@@ -359,6 +365,27 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
                                        {std::to_string(d.id)}))
             d.zones.push_back({{"kind", str(r, "kind")}, {"from", r["from_pos"].as<int>()}, {"to", r["to_pos"].as<int>()}});
 
+    // mig 1575: a one-table conference the league marks no relegation places
+    // for, with no seasons of its own, takes them from its size
+    // (pyramid_relegation_size_rules): whole spots = the bottom places
+    // relegated, a half = the place above them in a relegation playoff.
+    bool zonesAssumed = false;
+    if (divs.size() == 1 && N > 0) {
+        bool hasDown = false;
+        for (const auto& z : divs[0].zones) if (z["kind"].get<std::string>().find("relegation") != std::string::npos) hasDown = true;
+        auto own = db->query("SELECT 1 FROM pyramid_relegation_outlook WHERE competition_id = $1::int LIMIT 1", {cid});
+        if (!hasDown && own.empty()) {
+            auto r = db->query("SELECT relegated::float8 AS d FROM pyramid_relegation_size_rules WHERE teams = $1::int OR teams IS NULL ORDER BY teams NULLS LAST LIMIT 1",
+                               {std::to_string(N)});
+            const double down = r.empty() ? 0 : num(r[0], "d");
+            const int whole = (int)std::floor(down + 1e-9);
+            const bool half = down - whole > 0.25;
+            if (whole > 0) divs[0].zones.push_back({{"kind", "relegation"}, {"from", N - whole + 1}, {"to", N}, {"assumed", true}});
+            if (half && N - whole >= 1) divs[0].zones.push_back({{"kind", "relegation_playoff"}, {"from", N - whole}, {"to", N - whole}, {"assumed", true}});
+            zonesAssumed = whole > 0 || half;
+        }
+    }
+
     // Games: every listed one between two of these teams, not cancelled.
     std::vector<Game> games;
     std::string asOf;
@@ -375,14 +402,14 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     }
 
     // Policy: this conference's row, else the default.
-    int sims = 10000; double prior = 3, feederPct = 50; bool pair = true; std::string feeder, ourPattern;
+    int sims = 10000; double prior = 3, feederPct = 50; bool pair = true; std::string feeder;
     int groupRounds = 0, crossRounds = 0;   // mig 1449: 0 = only the listed games
     {
-        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct, group_rounds, cross_group_rounds, our_name_pattern FROM pyramid_forecast_policies "
+        auto p = db->query("SELECT sims, prior_games, pair_relegation_playoffs, feeder_label, feeder_stay_up_pct, group_rounds, cross_group_rounds FROM pyramid_forecast_policies "
                            " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
         if (!p.empty()) {
             sims = p[0]["sims"].as<int>(); prior = num(p[0], "prior_games"); pair = p[0]["pair_relegation_playoffs"].as<bool>();
-            feeder = str(p[0], "feeder_label"); feederPct = num(p[0], "feeder_stay_up_pct"); ourPattern = str(p[0], "our_name_pattern");
+            feeder = str(p[0], "feeder_label"); feederPct = num(p[0], "feeder_stay_up_pct");
             groupRounds = p[0]["group_rounds"].is_null() ? 0 : p[0]["group_rounds"].as<int>();
             crossRounds = p[0]["cross_group_rounds"].is_null() ? 0 : p[0]["cross_group_rounds"].as<int>();
         }
@@ -633,13 +660,8 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}};
     out["policy"] = {{"paired", paired}, {"feeder", feeder.empty() ? json(nullptr) : json(feeder)}, {"feeder_stay_up_pct", feederPct}};
     out["tiebreak"] = tiebreak;
-    // our side here (mig 1571), for the outlook's "our road"
-    if (!ourPattern.empty())
-        for (const auto& t : teams) {
-            auto m = db->query("SELECT $1 ILIKE $2 AS m", {t.name, ourPattern});
-            if (!m.empty() && m[0]["m"].as<bool>()) { out["ours"] = t.id; break; }
-        }
-    out["outlook"] = outlookJson(db, cid, sims, prior, feederPct, ourPattern, rng);
+    if (zonesAssumed) out["zones_assumed"] = true;
+    out["outlook"] = outlookJson(db, cid, N, sims, prior, feederPct, rng);
     if (whatIf) { out["what_if"] = whatIfOut; return out; }
     {
         std::lock_guard<std::mutex> lock(gMutex);

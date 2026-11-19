@@ -57,6 +57,8 @@ class ApslPyramidScreen extends Screen {
       const v = localStorage.getItem('apsl-pyramid-view');
       if (this.views.some((x) => x.code === v && x.built)) this.view = v;
     } catch (_) { /* private mode */ }
+    // A shared Forecast link (mig 1575: /?fc=<conference>&focus=<team>) opens on it.
+    if (new URLSearchParams(window.location.search || '').get('fc')) this.view = 'forecast';
     this._onResize = () => { clearTimeout(this._rt); this._rt = setTimeout(() => this._viewCall('onResize'), 120); };
   }
 

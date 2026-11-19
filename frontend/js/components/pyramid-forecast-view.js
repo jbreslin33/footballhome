@@ -22,6 +22,17 @@ class PyramidForecastView {
     this.data = new Map();   // conference id → forecast | {error}
     this.conf = null; this.team = null;
     try { const c = Number(localStorage.getItem('apsl-forecast-conf')); if (c) this.conf = c; } catch (_) { /* private mode */ }
+    // A shared link (mig 1575): /?fc=<conference>&focus=<team>#apsl-pyramid
+    const q = new URLSearchParams(window.location.search || '');
+    if (Number(q.get('fc'))) { this.conf = Number(q.get('fc')); this.team = Number(q.get('focus')) || null; }
+  }
+
+  // 🔗 the link to what's on screen — the conference, and the team if one is open
+  _shareUrl() {
+    return `${window.location.origin}/?fc=${this.conf}${this.team ? `&focus=${this.team}` : ''}#apsl-pyramid`;
+  }
+  _shareHtml() {
+    return `<button class="ap-pill" data-fc-share style="float:right; margin-left:8px;">${this._esc(this._copy('fc_share'))}</button>`;
   }
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
@@ -134,6 +145,7 @@ class PyramidForecastView {
     const f = d.format || {};
     if (f.group_rounds) parts.unshift(this._copy('fc_format', { n: f.per_team, rounds: f.group_rounds, cross: f.cross_group_rounds, listed: f.listed, added: f.added }));
     if (d.policy && d.policy.feeder) parts.push(this._copy('fc_feeder_note', { feeder: d.policy.feeder, pct: `${Math.round(d.policy.feeder_stay_up_pct)}%` }));
+    if (d.zones_assumed) parts.push(this._copy('fc_zones_assumed'));
     if (d.as_of) parts.push(this._copy('fc_asof', { date: this._when(d.as_of) }));
     parts.push(this._copy('fc_fun'));
     return `<div class="fc-note">${parts.filter(Boolean).map((p) => this._esc(p)).join(' ')}</div>`;
@@ -162,7 +174,7 @@ class PyramidForecastView {
       ${this._placesHtml(dv)}`).join('');
     const upcoming = this._upcoming(d);
     return `
-      <h3 style="margin-top:4px;">${esc(this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() }))}</h3>
+      ${this._shareHtml()}<h3 style="margin-top:4px;">${esc(this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() }))}</h3>
       ${this._howHtml(d)}
       <div class="fc-note">${esc(this._copy('fc_tap_team'))}</div>
       ${tables}
@@ -184,32 +196,20 @@ class PyramidForecastView {
     let html = `<h3>${esc(this._copy('fc_ol_title'))}</h3>`;
     if (seasons.length) {
       const maxShare = Math.max(...seasons.map((x) => x.down / x.teams), 0.01);
+      const groups = seasons.some((x) => (x.divisions || 1) > 1);
       html += `<div style="overflow-x:auto;"><table class="fc-table" style="max-width:720px;">
-        <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th><th>${esc(this._copy('fc_ol_teams'))}</th>
+        <thead><tr><th>${esc(this._copy('fc_ol_season'))}</th><th>${esc(this._copy('fc_ol_rules'))}</th>${groups ? `<th>${esc(this._copy('fc_ol_groups'))}</th>` : ''}<th>${esc(this._copy('fc_ol_teams'))}</th>
           <th>${esc(this._copy('fc_ol_down'))}</th><th style="text-align:left;">${esc(this._copy('fc_ol_down_pct'))}</th><th>${esc(this._copy('fc_ol_up'))}</th><th>${esc(this._copy('fc_ol_next'))}</th></tr></thead>
         <tbody>${seasons.map((x) => {
           const share = x.down / x.teams;
-          return `<tr><td style="text-align:left;"><b>${esc(x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td><td>${x.teams}</td>
+          return `<tr><td style="text-align:left;"><b>${esc(x.every ? this._copy('fc_ol_every') : x.season)}</b></td><td style="text-align:left; white-space:normal;">${esc(x.rules)}</td>${groups ? `<td>${x.divisions || 1}</td>` : ''}<td>${x.teams}</td>
             <td><b>${n(x.down)}</b></td>
             <td style="text-align:left;"><span style="display:inline-block; vertical-align:middle; height:10px; border-radius:3px; background:#dc2626; width:${Math.round(110 * share / maxShare)}px;"></span> <b>${P(share)}</b></td>
             <td>${n(x.up)}</td><td>${n(x.teams - x.down + x.up)}</td></tr>`;
         }).join('')}</tbody></table></div>
         <div class="fc-note">${esc(this._copy('fc_ol_note'))}</div>`;
     }
-    // 🛣 our road: this season's forecast, then the base rates after it
-    const us = d.ours ? this._teamsById(d).get(d.ours) : null;
-    const feeder = feeders.find((f) => f.teams.some((t) => t.ours)) || feeders[0];
-    if (us && seasons.length >= 2) {
-      const [s1, s2, s3] = seasons;
-      const base2 = s2.down / s2.teams;
-      const lines = [
-        this._copy('fc_ol_road_now', { season: s1.season, down: PyramidForecastView.pct(us.down) }),
-        this._copy('fc_ol_stay', { s1: s1.season, s2: s2.season, base: PyramidForecastView.pct(base2), pct: PyramidForecastView.pct((1 - us.down) * (1 - base2)) }),
-      ];
-      if (s3 && feeder) lines.push(this._copy('fc_ol_bounce', { s2: s2.season, s3: s3.season, feeder: feeder.label, up: n(s1.up), others: n(Math.max(0, s1.down - 1)), s3_down: n(s3.down), s3_teams: s3.teams }));
-      html += `<div style="margin:8px 0; padding:8px 12px; border-radius:10px; border:1px solid #facc15; background:rgba(250,204,21,0.08); font-size:0.84rem; line-height:1.45;">
-          <b>${esc(this._copy('fc_ol_road', { team: us.name }))}</b>${lines.filter(Boolean).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
-    }
+    if (seasons.length) html += `<div class="fc-note">${esc(this._copy('fc_ol_tap_road'))}</div>`;
     // ⬆ the feeders, played by the conference's promotion rules (mig 1573)
     const ru = o.rules;
     if (feeders.length && ru) {
@@ -234,7 +234,7 @@ class PyramidForecastView {
               <th>${esc(this._copy('fc_ol_col_poin'))}</th><th>${esc(this._copy('fc_ol_col_powin'))}</th><th>${esc(this._copy('fc_ol_col_up'))}</th></tr></thead>
             <tbody>${f.teams.map((t) => {
               const cls = t.skip ? '' : t.elig === ru.champion_rank ? 'z-playoff' : t.elig >= ru.playoff_from && t.elig <= ru.playoff_to ? 'z-relegation_playoff' : '';
-              const style = t.skip ? ' style="opacity:0.45;"' : t.ours ? ' style="background:rgba(250,204,21,0.10);"' : '';
+              const style = t.skip ? ' style="opacity:0.45;"' : '';
               return `<tr class="${cls}"${style}>
                 <td>${t.elig || '–'}</td><td style="text-align:left; white-space:normal; font-weight:700;">${esc(t.name)}${t.skip ? ` <small style="font-weight:600;">· ${esc(skipWords(t))}</small>` : ''}</td>
                 <td>${t.p}</td><td><b>${t.pts}</b></td><td>${t.xpts}</td>
@@ -245,6 +245,26 @@ class PyramidForecastView {
       }
     }
     return html;
+  }
+
+  // 🛣 The road ahead for any team (mig 1575 — the page has no home team):
+  // this season from the forecast; with more seasons listed, staying up
+  // through the next one at an average side's rate, and the drop-and-
+  // come-back-up route when a third season's rules differ.
+  _roadHtml(base, t) {
+    const seasons = ((base.outlook || {}).seasons) || [];
+    if (!seasons.length || !(t.division.zones || []).some((z) => /relegation/.test(z.kind))) return '';
+    const esc = (x) => this._esc(x), pct = PyramidForecastView.pct, n = (v) => String(Math.round(v * 10) / 10);
+    const [s1, s2, s3] = seasons;
+    const label = (x) => (x.every ? this._copy('fc_ol_every') : x.season);
+    const lines = [this._copy('fc_ol_road_now', { season: label(s1), down: pct(t.down) })];
+    if (s2) {
+      const b2 = s2.down / s2.teams;
+      lines.push(this._copy('fc_ol_stay', { s1: label(s1), s2: label(s2), base: pct(b2), pct: pct((1 - t.down) * (1 - b2)) }));
+      if (s3) lines.push(this._copy('fc_ol_bounce', { s2: label(s2), s3: label(s3), up: n(s1.up), others: n(Math.max(0, s1.down - 1)), s3_down: n(s3.down), s3_teams: s3.teams }));
+    } else lines.push(this._copy('fc_ol_road_base', { season: label(s1), pct: pct(s1.down / s1.teams) }));
+    return `<div style="margin:8px 0; padding:8px 12px; border-radius:10px; border:1px solid #facc15; background:rgba(250,204,21,0.08); font-size:0.84rem; line-height:1.45;">
+        <b>${esc(this._copy('fc_ol_road'))}</b>${lines.filter(Boolean).map((l) => `<div>${esc(l)}</div>`).join('')}</div>`;
   }
 
   _betHtml(d, g, focus) {
@@ -429,7 +449,7 @@ class PyramidForecastView {
     }).join('');
     const upcoming = this._upcoming(d).filter((g) => g.home === id || g.away === id);
     return `
-      <button class="btn btn-secondary" data-fc-back style="margin:2px 0 8px;">${esc(this._copy('fc_back'))}</button>
+      ${this._shareHtml()}<button class="btn btn-secondary" data-fc-back style="margin:2px 0 8px;">${esc(this._copy('fc_back'))}</button>
       <h3 style="margin-top:0;">${esc(t.name)} <span style="opacity:0.65; font-weight:600;">· ${esc(t.division.name)} · ${t.pos}${['st', 'nd', 'rd'][t.pos - 1] || 'th'} · ${t.pts} pts</span></h3>
       <div class="fc-big">
         ${big(this._copy('fc_col_playoff'), t.zones.playoff || 0, false)}
@@ -438,6 +458,7 @@ class PyramidForecastView {
         <div><b>${t.xpts}</b><small>${esc(this._copy('fc_col_xpts'))} (${t.left} left)</small></div>
       </div>
       ${path ? `<div class="fc-note" style="opacity:0.9;">${esc(path)}</div>` : ''}
+      ${this._roadHtml(base, t)}
       ${this._sliderHtml(base, id)}
       ${hasDown ? this._targetHtml(t) : ''}
       <div class="fc-note">${esc(this._copy('fc_strength', { att: t.att.toFixed(2), def: t.def.toFixed(2) }))} · ${t.w}-${t.d}-${t.l}, ${t.gf}:${t.ga}</div>
@@ -484,6 +505,14 @@ class PyramidForecastView {
       }
       const t = e.target.closest('[data-fc-team]');
       if (t) { this.team = Number(t.dataset.fcTeam) || null; this._repaint(); root.scrollIntoView({ block: 'start' }); return; }
+      const sh = e.target.closest('[data-fc-share]');
+      if (sh) {
+        const url = this._shareUrl();
+        const done = () => { sh.textContent = this._copy('fc_shared'); setTimeout(() => { sh.textContent = this._copy('fc_share'); }, 1800); };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => window.prompt('', url));
+        else window.prompt('', url);
+        return;
+      }
       const fl = e.target.closest('[data-fc-filter]');
       if (fl) { this.filter = fl.dataset.fcFilter; this._repaint(); return; }
       if (e.target.closest('[data-fc-reset]')) { this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1; this._repaint(); return; }
