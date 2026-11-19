@@ -1270,6 +1270,9 @@ class RosterScreenBase extends Screen {
     // name green … missing one or the other … yellow. if missing both …
     // red"): RSVP (green) + dues; white until PersonStanding loads.
     const nameColor = (pid) => ['#86efac', '#fde047', '#fde047', '#fca5a5', '#fff'][rankOf(pid)] || '#fff';
+    // The number badge in the same colour (owner 11/19 "so same with his
+    // number"); gold until loaded.
+    const numColor = (pid) => ['#86efac', '#fde047', '#fde047', '#fca5a5', '#f5d442'][rankOf(pid)] || '#f5d442';
     // 1, 2, 3 … in the order shown, per group (owner 11/19 "number the
     // plaeyrs"); re-run after the in-place 🤝 Committed re-sort.
     const numberBoxes = (root) => (root || this.element) && (root || this.element).querySelectorAll('[data-tc-pitch]').forEach(el => {
@@ -1297,7 +1300,7 @@ class RosterScreenBase extends Screen {
       return `<div data-player-sheet="${esc(key)}" data-tc-pid="${pid}" data-sheet-tab="teams" title="${esc(copy('tc_box_tip', {}, 'Tap — player sheet (⚽ Teams to move)'))}"
           style="position:relative; flex:0 0 104px; min-width:0; box-sizing:border-box; display:flex; flex-direction:column; gap:2px; padding:4px 4px 5px; border-radius:8px;
                  border:2px solid ${groupColor || 'rgba(255,255,255,0.55)'}; background:rgba(0,20,60,0.55); cursor:pointer;">
-          <span data-tc-num style="position:absolute; top:-8px; left:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:#f5d442; color:#0f172a; font-weight:800;">@@TCNUM@@</span>
+          <span data-tc-num="${pid}" style="position:absolute; top:-8px; left:4px; font-size:10px; line-height:13px; padding:0 4px; border-radius:6px; background:${numColor(pid)}; color:#0f172a; font-weight:800;">@@TCNUM@@</span>
           <span style="position:absolute; top:-8px; right:4px; display:flex; gap:3px;">${flagged ? flagTag(copy('tc_flag_roster', {}, 'ROSTER'), copy('tc_not_eligible_tip', {}, 'Not On Roster')) : ''}<span data-tc-docs="${pid}" data-tc-docs-team="${esc(col.teamId)}" style="display:contents;">${docsTag(pid, col.teamId)}</span></span>
           <div data-tc-name="${pid}" style="font-size:13px; font-weight:800; line-height:1.15; color:${nameColor(pid)}; text-shadow:0 1px 1px rgba(0,0,0,0.45);">
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
@@ -1386,6 +1389,7 @@ class RosterScreenBase extends Screen {
         });
         numberBoxes();
         this.element.querySelectorAll('[data-tc-name]').forEach(el => { el.style.color = nameColor(el.getAttribute('data-tc-name')); });
+        this.element.querySelectorAll('[data-tc-num]').forEach(el => { el.style.background = numColor(el.getAttribute('data-tc-num')); });
         this.element.querySelectorAll('[data-tc-tally]').forEach(el => {
           const pids = (el.getAttribute('data-tc-tally') || '').split(',').filter(Boolean);
           el.innerHTML = tallyHtml(pids);
