@@ -612,6 +612,20 @@ class RosterScreenBase extends Screen {
 
   static get BOARD_VIEW_STORAGE_KEY() { return 'fh.teams.boardView'; }
 
+  // Team view layout (owner 11/19): 'graphic' = the team cards alone,
+  // 'list' = the columns alone.  Per browser; graphic by default.
+  static get TEAM_LAYOUT_STORAGE_KEY() { return 'fh.teams.teamLayout'; }
+  static teamLayoutStored() {
+    let v = null;
+    try { v = localStorage.getItem(RosterScreenBase.TEAM_LAYOUT_STORAGE_KEY); } catch (e) { /* private mode */ }
+    return v === 'list' ? 'list' : 'graphic';
+  }
+  get teamLayout() { return this._teamLayout || RosterScreenBase.teamLayoutStored(); }
+  setTeamLayout(layout) {
+    this._teamLayout = layout === 'list' ? 'list' : 'graphic';
+    if (this._data && typeof this.renderRoster === 'function') this.renderRoster(this._data);
+  }
+
   // ✅ active / 🩹 injured / practice_squad / inactive (📄 paper mig 1074, ↔ call-in mig 1076 folded in) —
   // the column pills' categories, also the Team view's sections.  An injured
   // player stays in INJURED whatever his squad group.
@@ -1247,19 +1261,12 @@ class RosterScreenBase extends Screen {
       const m = window.PersonStanding && PersonStanding.docsMissing ? PersonStanding.docsMissing(pid, teamId) : null;
       return m ? flagTag(copy('tc_flag_docs', {}, 'DOCS') + (m.stale ? '⚠' : ''), m.tip) : '';
     };
-    // Every group worst-first (mig 1551, owner 11/19 "or is that better
-    // done as a sort?" → "yes build it" → "it should do all reservees and
-    // injured etc" "for apsl and liga 1"): behind on both → dues → RSVP →
-    // up to date, A–Z within; boxes not loaded yet go last.  Each group
-    // gets its ✅ / RSVP / $ / both count line.  The pitch is
-    // re-sorted in place once PersonStanding arrives (no re-render).
-    const rankOf = (pid) => {
-      const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(pid) : null;
-      if (!b) return 4;
-      return b.rsvp && b.dues ? 0 : b.dues ? 1 : b.rsvp ? 2 : 3;
-    };
-    const byRank = (list) => list.map((p, i) => ({ p, i, r: rankOf(p.personId) }))
-      .sort((a, b) => a.r - b.r || a.i - b.i).map(x => x.p);
+    // Each group follows the lit sort pill like the columns do (owner 11/19
+    // "wait we already have sort buttons"); 🚩 Behind = both → dues → RSVP
+    // → up to date (mig 1551).  Behind needs PersonStanding, so that order
+    // is re-applied in place once it loads (no re-render).
+    const rankOf = (pid) => RosterScreenBase.behindRank(pid);
+    const ordered = (list, col) => this.orderColumnPlayers(list, col).map(r => r.player);
     const tallyHtml = (pids) => {
       const n = [0, 0, 0, 0, 0];
       pids.forEach(pid => { n[rankOf(pid)] += 1; });
@@ -1290,7 +1297,7 @@ class RosterScreenBase extends Screen {
     };
     const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
           border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
-        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${byRank(players).map((p, i) => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`)).join('')
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${ordered(players, col).map(p => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`)).join('')
           || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
     // Every player is a box (owner 11/19 "on teams i need everything to be
     // a box all players"): the groups under the pitch are box bands too,
@@ -1299,7 +1306,7 @@ class RosterScreenBase extends Screen {
         <div style="font-size:12px; letter-spacing:3px; color:${color}; font-weight:800; text-transform:uppercase; margin-bottom:2px;">${esc(label)} (${list.length})</div>
         <div data-tc-tally="${esc(list.map(p => p.personId).join(','))}" style="font-size:11px; font-weight:800; margin-bottom:6px; opacity:0.9;">${tallyHtml(list.map(p => p.personId))}</div>
         <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px; padding:10px 6px; border-radius:8px; background:rgba(0,0,0,0.22);">
-          ${byRank(list).map(p => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`)).join('')}</div></div>` : '';
+          ${ordered(list, list[0] && list[0].__col).map(p => box(p, p.__col, listTeamIds, color).replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`)).join('')}</div></div>` : '';
     const card = (col) => {
       const folded = (data.columns || []).filter(x => Number(x.teamPillFoldInto) === Number(col.teamId));
       const listTeamIds = [col.teamId, ...folded.map(x => x.teamId)];
@@ -1357,10 +1364,14 @@ class RosterScreenBase extends Screen {
         this.element.querySelectorAll('[data-tc-info]').forEach(el => {
           el.innerHTML = PersonStanding.boxLine(el.getAttribute('data-tc-info'), { paidAt: el.getAttribute('data-tc-paid') || '', paidAmount: el.getAttribute('data-tc-paid-amount') || '' });
         });
-        this.element.querySelectorAll('[data-tc-pitch]').forEach(el => {
-          const kids = [...el.children].filter(c => c.hasAttribute('data-tc-pid'));
-          kids.map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
-            .sort((x, y) => x.r - y.r || x.a - y.a).forEach(x => el.appendChild(x.c));
+        if (this.sortOrder === 'behind') this.element.querySelectorAll('[data-tc-pitch]').forEach(el => {
+          // Same rule as orderColumnPlayers: flipped = best first, unknown
+          // at the foot either way; A–Z (data-tc-alpha) within.
+          const flip = this._sortDesc ? -1 : 1;
+          [...el.children].filter(c => c.hasAttribute('data-tc-pid'))
+            .map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
+            .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || x.a - y.a)
+            .forEach(x => el.appendChild(x.c));
         });
         this.element.querySelectorAll('[data-tc-tally]').forEach(el => {
           const pids = (el.getAttribute('data-tc-tally') || '').split(',').filter(Boolean);
@@ -2375,7 +2386,7 @@ class RosterScreenBase extends Screen {
     return !terms || terms.includes(t.term);
   }
 
-  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score']; }
+  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score', 'behind']; }
 
   // ── 📊 🧪 ⭐ Squad-picking sorts (mig 1399, owner 11/16) ─────────────
   // data.selection[personId] = { attended, expected, trials, trialsHeld,
@@ -2466,7 +2477,17 @@ class RosterScreenBase extends Screen {
 
   // Sorts whose first-tap order is biggest/best first (shown ↓); the rest
   // start smallest first (A→Z, #1 first — shown ↑).
-  static get SORTS_BIG_FIRST() { return ['paid', 'rsvp', 'attendance', 'trials', 'score']; }
+  static get SORTS_BIG_FIRST() { return ['paid', 'rsvp', 'attendance', 'trials', 'score', 'behind']; }
+
+  // 🚩 Behind (mig 1551, owner 11/19 "categorize … up to date in rsvp and
+  // dues, behind rsvp, behind in dues, behind in both" → "better done as a
+  // sort?" → "we already have sort buttons"): 0 both, 1 dues, 2 RSVP,
+  // 3 up to date, 4 not known yet (PersonStanding not loaded / no access).
+  static behindRank(personId) {
+    const b = window.PersonStanding && PersonStanding.behind ? PersonStanding.behind(personId) : null;
+    if (!b) return 4;
+    return b.rsvp && b.dues ? 0 : b.dues ? 1 : b.rsvp ? 2 : 3;
+  }
   static sortArrow(order, flipped) { return (RosterScreenBase.SORTS_BIG_FIRST.includes(order) !== !!flipped) ? '↓' : '↑'; }
 
   // The lit pill's order, flipped when _sortDesc.  Cards with nothing to
@@ -2477,7 +2498,9 @@ class RosterScreenBase extends Screen {
     if (!this._sortDesc) return out;
     const order = this.sortOrder;
     let missing = () => false;
-    if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
+    if (order === 'behind') {
+      missing = (r) => RosterScreenBase.behindRank(r.player.personId) === 4;
+    } else if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
       missing = (r) => this.selectionParts(r.player)[order] == null;
     } else if (order === 'official' && this.officialPositions(col)) {
       const pos = this.officialPositions(col);
@@ -2533,6 +2556,9 @@ class RosterScreenBase extends Screen {
       return `${last || fallback}\u0000${first}`.toLowerCase();
     };
     const alpha = (a, b) => key(a.player).localeCompare(key(b.player)) || a.rank - b.rank;
+    if (order === 'behind') {
+      return ranked.sort((a, b) => RosterScreenBase.behindRank(a.player.personId) - RosterScreenBase.behindRank(b.player.personId) || alpha(a, b));
+    }
     if (order === 'paid') {
       const w = { owes: 0, none: 1, paid: 2 };
       return ranked.sort((a, b) => {

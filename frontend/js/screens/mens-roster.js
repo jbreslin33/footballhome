@@ -361,6 +361,10 @@ class MensRosterScreen extends RosterScreenBase {
     // has exactly one column, nothing to focus down to).
     const showFocusPills = this.columnScope !== 'unassigned' && cols.length > 1;
     const visibleCols = this.focusedCols(cols);
+    // Team view: Graphic = the team cards alone, List = the columns alone
+    // (owner 11/19 "that should be a toggle to show grphic or list view").
+    const teamCards = this.boardView === 'team' && this.columnScope !== 'unassigned' && this.teamLayout === 'graphic'
+      ? this.renderTeamCards(data, cols) : '';
 
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
@@ -396,12 +400,12 @@ class MensRosterScreen extends RosterScreenBase {
         ${this.renderBoardMessageButtons(data, cols)}
       </div>
 
-      ${this.boardView === 'team' && this.columnScope !== 'unassigned' ? this.renderTeamCards(data, cols) : ''}
-      <div style="padding: 0 var(--space-2) var(--space-2);">
+      ${teamCards}
+      ${teamCards ? '' : `<div style="padding: 0 var(--space-2) var(--space-2);">
         <div style="${this.gridStyleFor(visibleCols.length)}">
           ${visibleCols.map(c => this.renderColumn(c, data)).join('')}
         </div>
-      </div>
+      </div>`}
     `;
   }
 

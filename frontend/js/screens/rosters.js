@@ -258,6 +258,26 @@ class RostersScreen extends Screen {
           this._buildTeamsPills();
         },
       },
+      // Team view: 🗂 Graphic (the game-style team cards) | ☰ List (the old
+      // columns) — one or the other, not both stacked (owner 11/19 "why
+      // are we shoing the old view too? that should be a toggle to show
+      // grphic or list view right?").  Graphic is the default.
+      ...(boardView === 'team' ? [{
+        name:     'teams-layout',
+        chips: [
+          { id: 'graphic', label: viewCopy('board_layout_graphic', '🗂 Graphic') },
+          { id: 'list',    label: viewCopy('board_layout_list', '☰ List') },
+        ],
+        selected: RosterScreenBase.teamLayoutStored(),
+        onSelect: (id) => {
+          if (id == null) return;
+          for (const child of this._mountedChildren) {
+            if (child && typeof child.setTeamLayout === 'function') child.setTeamLayout(id);
+          }
+          try { localStorage.setItem(RosterScreenBase.TEAM_LAYOUT_STORAGE_KEY, id); } catch (e) { /* private mode */ }
+          this._buildTeamsPills();
+        },
+      }] : []),
       {
         name:     'teams-category',
         chips:    this._categoryChips(),
@@ -322,6 +342,8 @@ class RostersScreen extends Screen {
           { id: 'attendance', label: viewCopy('board_sort_attendance', '📊 Attendance') },
           { id: 'trials',     label: viewCopy('board_sort_trials', '🧪 Trials') },
           { id: 'score',      label: viewCopy('board_sort_score', '⭐ Score') },
+          // 🚩 Behind (mig 1551): RSVP + dues — both, dues, RSVP, up to date.
+          { id: 'behind',     label: viewCopy('board_sort_behind', '🚩 Behind') },
         ].map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
         selected: litSort,
         onSelect: (id) => {
