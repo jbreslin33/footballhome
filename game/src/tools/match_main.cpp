@@ -111,7 +111,7 @@ struct Stats {
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
     double up_sum = 0;   // §8.264
     long bblk = 0;   // §8.269 body blocks (any ball)
-    long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {};   // §8.272 kicks by touchline / goal-line band
+    long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
     long ch_k = 0, ch_kept = 0, ch_loose = 0, chb_k[4][5] = {}, chb_kept[4][5] = {}, chb_loose[4][5] = {};   // §8.271 PASSES CHARGED DOWN
     long bp_where[2][4] = {}, bp_out[2][4][3] = {};   // §8.272 blocked passes by [touchline band | goal-line band][band] and corner / throw-in / goal kick
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
@@ -820,6 +820,43 @@ int main(int argc, char** argv) {
                     }
                     bh.on = false;
                 }
+            }
+            {   // §8.274 G5.168 WIDEST AT THE KICK: on each open-play pass kick, the kicker's side's widest outfielder each side, by the ball's band off the goal line attacked, and who he is
+                static long wk_prev = 0;
+                const long kn = W.chargeDiag().kicks;
+                if (k == 0) wk_prev = kn;
+                if (kn != wk_prev && b.last_kicker < N) {
+                    const int kk = b.last_kicker, tm = W.player(kk).team;
+                    const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                    const double gl = tm == 0 ? hx - bx : bx + hx;
+                    const int z = gl < 35 ? 0 : gl < 70 ? 1 : 2;
+                    ++S.wk_n[z];
+                    for (std::uint8_t j = 0; j < N; ++j) {   // each FB / DM / WIDE of his side, not the kicker
+                        if (W.player(j).team != tm || W.isKeeper(j) || j == kk) continue;
+                        const int r = role(j), ri = r == 1 ? 0 : r == 2 ? 1 : r == 4 ? 2 : -1;
+                        if (ri < 0) continue;
+                        const double py = W.player(j).pos.y.toDouble();
+                        S.wk_rw[ri][z][(py >= 0) == (by >= 0) ? 0 : 1].push_back(hy - std::fabs(py));
+                        if (ri == 0) {   // the FB's order now, and (holding shape) his target's m off the touchline
+                            const auto& oj = s.lastOrders()[j];
+                            ++S.wk_fw[z][static_cast<int>(oj.why) & 31];
+                            if (oj.why == ai::Why::Hold) S.wk_ft[z][(py >= 0) == (by >= 0) ? 0 : 1].push_back(hy - std::fabs(oj.target.y.toDouble()));
+                        }
+                    }
+                    for (int sd = 0; sd < 2; ++sd) {
+                        const double sg = ((by >= 0) == (sd == 0)) ? 1.0 : -1.0;
+                        double wm = 1e9; int wp = -1;
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.player(j).team != tm || W.isKeeper(j)) continue;
+                            const double t = hy - W.player(j).pos.y.toDouble() * sg;
+                            if (t < wm) { wm = t; wp = j; }
+                        }
+                        const int bd = wm < 5 ? 0 : wm < 10 ? 1 : wm < 20 ? 2 : 3;
+                        ++S.wk_b[sd][z][bd];
+                        if (bd == 0 && wp >= 0) ++S.wk_r[sd][z][wp == kk ? 7 : role(static_cast<std::uint8_t>(wp))];
+                    }
+                }
+                wk_prev = kn;
             }
             {   // §8.269 GAME_BLOCK_TRACE: each body block inside 30 m of the goal it was struck at, then how it ended
                 static int bb_prev = 0; static long bb_k = -1; static double bb_x = 0, bb_y = 0, bb_vx = 0, bb_vy = 0; static int bb_team = -1;
@@ -2873,7 +2910,40 @@ int main(int argc, char** argv) {
             for (int sd = 0; sd < 2; ++sd)
                 std::printf("      at a kick, the kicker's widest mate on the %s side, m off that touchline 0-5 / 5-10 / 10-20 / 20+: %.1f / %.1f / %.1f / %.1f%% (DFL %.1f / %.1f / %.1f / %.1f)\n", sd ? "far" : "ball's",
                             100.0 * S.ch_wide[sd][0] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][1] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][2] / std::max(1L, S.ch_k), 100.0 * S.ch_wide[sd][3] / std::max(1L, S.ch_k),
-                            rw[sd][0], rw[sd][1], rw[sd][2], rw[sd][3]); }
+                            rw[sd][0], rw[sd][1], rw[sd][2], rw[sd][3]);
+            // §8.274 real DFL benchmarks_tracking_widerecv.py: within 5 m %, 5-10 %, then role % of those (CB FB DM/CM AM WIDE ST - kicker)
+            static const double rz[2][3][2] = {{{50.4, 26.6}, {64.1, 19.7}, {65.0, 19.8}}, {{3.1, 9.6}, {23.8, 18.4}, {31.6, 24.2}}};
+            static const double rr[2][3][8] = {{{3, 26, 10, 4, 25, 4, 0, 28}, {2, 37, 13, 2, 25, 4, 0, 17}, {1, 46, 17, 1, 23, 2, 0, 9}},
+                                               {{5, 50, 0, 5, 40, 0, 0, 0}, {0, 72, 9, 1, 17, 1, 0, 0}, {1, 62, 16, 0, 19, 1, 0, 0}}};
+            static const char* const zn[3] = {"0-35", "35-70", "70+"}; static const char* const rn[8] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST", "?", "kicker"};
+            for (int sd = 0; sd < 2; ++sd) {
+                std::printf("      WIDEST AT THE KICK, %s side, by the ball's m off the goal line attacked: within 5 m %% (5-10) | who, role %% of those (real DFL in brackets)\n", sd ? "far" : "ball's");
+                for (int z = 0; z < 3; ++z) {
+                    const double nz = std::max(1L, S.wk_n[z]), n5 = std::max(1L, S.wk_b[sd][z][0]);
+                    std::printf("        %-6s %.1f (%.1f) [%.1f (%.1f)] |", zn[z], 100.0 * S.wk_b[sd][z][0] / nz, rz[sd][z][0], 100.0 * S.wk_b[sd][z][1] / nz, rz[sd][z][1]);
+                    for (int r = 0; r < 8; ++r) if (r != 6) std::printf(" %s %.0f (%.0f)", rn[r], 100.0 * S.wk_r[sd][z][r] / n5, rr[sd][z][r]);
+                    std::printf("\n"); } }
+            {   static const double rq[3][2][3][5] = {   // p10 / p25 / med / p75 / within 5 m %, real DFL
+                    {{{2.1, 5.7, 11.1, 18.5, 23}, {0.6, 2.2, 6.7, 13.3, 42}, {0.6, 1.8, 4.9, 11.0, 51}}, {{10.1, 15.6, 21.2, 26.1, 2}, {2.0, 5.2, 14.1, 22.7, 24}, {1.4, 4.2, 10.2, 21.4, 28}}},
+                    {{{8.4, 15.2, 21.5, 27.3, 5}, {6.7, 14.0, 21.0, 26.9, 8}, {5.7, 14.9, 22.3, 28.0, 9}}, {{14.4, 22.1, 28.0, 31.6, 0}, {8.1, 17.1, 25.7, 30.4, 4}, {5.4, 16.2, 25.5, 30.5, 9}}},
+                    {{{2.9, 7.2, 14.8, 25.8, 17}, {2.3, 6.5, 14.4, 23.7, 21}, {2.3, 6.9, 13.8, 21.2, 19}}, {{13.4, 20.2, 25.7, 29.6, 2}, {7.5, 14.7, 21.2, 26.4, 6}, {6.0, 12.0, 19.0, 25.0, 8}}}};
+                static const char* const rn3[3] = {"FB", "DM", "WIDE"};
+                std::printf("      BY ROLE AT THE KICK: each FB / DM / WIDE of the kicker's side, m off the touchline his side: p10 / p25 / med / p75, within 5 m %% (real DFL)\n");
+                for (int r = 0; r < 3; ++r) for (int sd = 0; sd < 2; ++sd) {
+                    std::printf("        %-5s %-4s", rn3[r], sd ? "far" : "near");
+                    for (int z = 0; z < 3; ++z) { std::vector<double> a = S.wk_rw[r][z][sd]; if (a.empty()) continue; std::sort(a.begin(), a.end());
+                        long n5 = 0; for (double x : a) n5 += x < 5;
+                        auto qq = [&](double p) { return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };
+                        std::printf(" | %s %.1f / %.1f / %.1f / %.1f, %.0f%% (%.1f / %.1f / %.1f / %.1f, %.0f%%)", zn[z], qq(.1), qq(.25), qq(.5), qq(.75), 100.0 * n5 / a.size(),
+                                    rq[r][sd][z][0], rq[r][sd][z][1], rq[r][sd][z][2], rq[r][sd][z][3], rq[r][sd][z][4]); }
+                    std::printf("\n"); }
+                for (int z = 0; z < 3; ++z) {
+                    long nf = 0; for (int w = 0; w < 32; ++w) nf += S.wk_fw[z][w];
+                    std::printf("        FB orders at the kick, ball %s:", zn[z]);
+                    for (int w = 0; w < ai::kWhyCount; ++w) if (S.wk_fw[z][w] * 100 >= nf) std::printf(" %s %.0f%%", ai::kWhyNames[w], 100.0 * S.wk_fw[z][w] / std::max(1L, nf));
+                    for (int sd = 0; sd < 2; ++sd) { std::vector<double> a = S.wk_ft[z][sd]; if (a.empty()) continue; std::sort(a.begin(), a.end());
+                        std::printf(" | %s: holding, target m off the line p25 / med / p75 %.1f / %.1f / %.1f", sd ? "far" : "near", a[a.size() / 4], a[a.size() / 2], a[3 * a.size() / 4]); }
+                    std::printf("\n"); } } }
         {   // §8.272
             static const char* const kT[4] = {"0-5", "5-10", "10-20", "20+"}; static const char* const kG[4] = {"0-18", "18-35", "35-70", "70+"};
             static const double rs[2][4] = {{18.5, 21.7, 31.6, 28.2}, {32.8, 19.4, 31.8, 16.0}};

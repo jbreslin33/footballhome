@@ -10991,3 +10991,37 @@ stand on the line at a third of the real kicks on the ball's side, and almost ne
 at the line, not each role's median spot. Goldens unchanged (diagnostic only); tests 23/23, lint clean. Next: who of
 theirs is the man on the line at a real kick (role, ball band, ball side / far) on DFL, then put ours there by that
 rule — a mechanism, not a width factor.
+
+### 8.274 G5.168 — who holds the touchline: one man a spell, at the real share by role, ball band and side
+
+From §8.273. `benchmarks_tracking_widerecv.py` now splits the kicker's side's widest man by the ball's metres off the goal
+line attacked (0-35 / 35-70 / 70+) and says who he is (DFL, role from PlayingPosition). Within 5 m of the ball-side line
+50.4 / 64.1 / 65.0% (far side 3.1 / 23.8 / 31.6); of those, FB 26 / 37 / 46%, WIDE 25 / 25 / 23, DM-CM 10 / 13 / 17, the
+kicker himself 28 / 17 / 9; on the far side FB 50-72%, WIDE 17-40. By role at a kick, the share within 5 m of his own
+touchline: **FB 23 / 42 / 51% on the ball's side (far 2 / 24 / 28)**, WIDE 17 / 21 / 19 (2 / 6 / 8), DM-CM 5 / 8 / 9
+(0 / 4 / 9). The real spread is wide (FB ball side 35-70: p10 0.6 m, median 6.7, p75 13.3); ours was one mean-fitted
+width each (§8.204 / §8.221 match the pair's mean gap), clamped 2 m off the line, so **ours 5 / 14 / 11%** and the far
+side never. New harness lines WIDEST AT THE KICK and BY ROLE AT THE KICK (+ the FB's order and Hold target at a kick).
+
+**Rule** (`Possession::spot`, `physics.touch.*`): a FB, DM-CM or WIDE of the side on the ball rolls once a spell; under
+his share for the ball's band and his side (the real share less ours before, over 1 − ours: FB near 190 / 330 / 450 ‰,
+far 20 / 240 / 280; WIDE 110 / 170 / 150, 20 / 60 / 80; DM-CM 50 / 80 / 90, 0 / 40 / 90) he stands on his touchline,
+`touch.m_max` 4.5 × u^1.5 m off it (real within-5 m spread: a quarter inside 0.6 m, ~60% inside 2.2) at his usual depth.
+One roll a spell, not a spell and a zone: rolled by zone (A/B arm 1), the ball crossing 35 or 70 m re-rolled him back in;
+the coach's version is "one man is our width this spell" [FH]. Support's spread clamp keeps a touchline spot's width.
+
+| 4 seeds × 8 | real | before | by zone | **a spell** |
+|---|---|---|---|---|
+| widest mate within 5 m, ball's side | 62.0% | 20.4-20.8 | 34.4 | **36.3-37.2** |
+| … far side | 22.7% | 0.5-0.7 | 11.0 | **11.3-12.1** |
+| met 0-5 m: stood 0-5 m at the kick | 74.7% | 61-65 | 72.9 | 74.8-78.9 |
+| FB pair gap, ball 70-80 / 80-90 m off their line | 44.0 / 43.1 | 38.2 / 35.2 | 40.9 / 37.7 | 39.9 / 37.8 |
+| card ok / off / OFF of 33 | | 6 / 7 / 20 | 8 / 6 / 19 | **10 / 3 / 20** |
+
+Now ok: tackles 20.3 (20.3), free kicks, switches 10.5 (10.7), fouls, take-on success. Worse within the seed spread or
+just past it: corners 2.06 → 1.98 (5.40), offsides 1.80 → 1.25 (1.96), throw-ins 18.1 → 17.6 (23.1), blocked shots 16 →
+13% (29). Goals 2.64 → 2.39 (1.35). Still half the real width: the rolled FB's Hold target sits 4.0 m off the line with
+the ball 70+ m out but he stands at 10.9 m (real median 4.9). With the ball in our half he walks out to it (G5.137
+hold_walk) and the spell ends first. Next: the pace a man goes to his width at when we win it ("make the pitch big"),
+measured on DFL (wide men's lateral speed in the first seconds of a spell) before any change. Goldens re-locked;
+tests 23/23, lint clean.

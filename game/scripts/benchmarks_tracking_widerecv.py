@@ -16,6 +16,7 @@ import collections, datetime, glob, math, multiprocessing, os, re, statistics, s
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import benchmarks_tracking as bt
+from benchmarks_tracking_runs import ROLE, NAMES
 
 BANDS = (5, 10, 20)
 
@@ -36,6 +37,7 @@ def one(ev_path):
     comp, season, home, guest, length, keepers = bt.dfl_info(info_p)
     hy = float(re.search(r'PitchY="([\d.]+)"', open(info_p, encoding="utf8").read()).group(1)) / 2
     half = length / 2
+    pos_of = dict(re.findall(r'<Player PersonId="([^"]+)"[^>]*PlayingPosition="([^"]+)"', open(info_p, encoding="utf8").read()))
     team_of = {home: 0, guest: 1}
     txt = open(ev_path, encoding="utf8").read()
     passes = []
@@ -94,11 +96,21 @@ def one(ev_path):
         rx, ry, rs = fr[re_]
         # at every kick: his side's widest outfielder on the ball's side and on the far side, m off that touchline
         bs = 1 if by >= 0 else -1
+        kz = 0 if half - bx * gdir < 35 else 1 if half - bx * gdir < 70 else 2   # G5.168: the ball off the goal line attacked
+        c[("kz", kz)] += 1
         for k_, sd in (("near", bs), ("far", -bs)):
-            wm = min((hy - p[1] * sd) for pid, p in fr.items() if who.get(pid) == tm and pid not in keepers)
+            wm, wp = min(((hy - p[1] * sd), pid) for pid, p in fr.items() if who.get(pid) == tm and pid not in keepers)
             c[("widest", k_, band(max(0.0, wm)))] += 1
             L[("widest", k_)].append(wm)
+            c[("wz", k_, kz, band(max(0.0, wm)))] += 1
+            if wm < 5:   # G5.168: who he is
+                c[("wrole", k_, kz, ROLE.get(pos_of.get(wp, ""), 6) if wp != pa else 7)] += 1
         c["kicks"] += 1
+        for pid, p in fr.items():   # G5.168: each FB / WIDE / DM-CM of his side (not the kicker), m off the touchline he stands nearer
+            r = ROLE.get(pos_of.get(pid, ""), 6)
+            if who.get(pid) != tm or pid in keepers or pid == pa or r not in (1, 2, 4):
+                continue
+            L[("rw", r, kz, "near" if (p[1] >= 0) == (by >= 0) else "far")].append(hy - abs(p[1]))
         best = None
         for k in range(t + 2, t + 101):
             b = ball.get(k); r = frames.get(k, {}).get(re_)
@@ -173,6 +185,20 @@ if __name__ == "__main__":
     for k_ in ("near", "far"):
         print(f"AT THE KICK, the passer's side's widest outfielder on the {k_} side, m off that touchline 0-5 / 5-10 / 10-20 / 20+: "
               + " / ".join(f"{100 * tot[('widest', k_, b)] / nk:.1f}" for b in range(4)) + f"%  median {statistics.median(L[('widest', k_)]):.2f}")
+    zn = ("0-35", "35-70", "70+")
+    rn = NAMES + ["?", "the kicker"]
+    for k_ in ("near", "far"):
+        print(f"WIDEST ON THE {k_.upper()} SIDE by the ball's m off the goal line attacked (G5.168): within 5 m % | of those, who (role %)")
+        for z in range(3):
+            nz = max(1, tot[("kz", z)]); n5 = max(1, tot[("wz", k_, z, 0)])
+            print(f"  {zn[z]:6s} {100 * tot[('wz', k_, z, 0)] / nz:5.1f}% (5-10 {100 * tot[('wz', k_, z, 1)] / nz:.1f}) | "
+                  + " ".join(f"{rn[r]} {100 * tot[('wrole', k_, z, r)] / n5:.0f}" for r in range(8) if tot[("wrole", k_, z, r)]))
+    print("BY ROLE AT THE KICK (G5.168): each FB / DM-CM / WIDE of the kicker's side, m off the touchline his side of the pitch: p10 / p25 / med / p75, within 5 m %")
+    for r in (1, 2, 4):
+        for sd in ("near", "far"):
+            print(f"  {NAMES[r]:6s} {sd:4s} " + " | ".join(
+                f"{zn[z]} {q(L[('rw', r, z, sd)], .1):.1f} / {q(L[('rw', r, z, sd)], .25):.1f} / {q(L[('rw', r, z, sd)], .5):.1f} / {q(L[('rw', r, z, sd)], .75):.1f}, "
+                f"{100 * sum(x < 5 for x in L[('rw', r, z, sd)]) / max(1, len(L[('rw', r, z, sd)])):.0f}%" for z in range(3) if L.get(('rw', r, z, sd))))
     n0 = max(1, tot[("recv", 0)])
     print("MET 0-5: the receiver's rank among his side's outfielders nearest that touchline at the kick 1st / 2nd / 3rd / 4th+: "
           + " / ".join(f"{100 * tot[('rank', r)] / n0:.1f}" for r in range(4)) + "%")

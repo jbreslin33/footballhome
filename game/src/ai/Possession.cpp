@@ -711,6 +711,7 @@ public:
     const char* name() const override { return "support"; }
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         Vec2 t = c.poss.spot(v, c.world, c.team_of_slot);
+        const Fixed64 t0y = math::fx_abs(t.y);   // G5.168: a spot on his touchline keeps its width through the spread clamp
         // Law 11: no further on than their second-last man (or the ball, or
         // halfway), less onside_margin_m.
         Fixed64 a{}, b{};   // their deepest two, in our attack direction
@@ -744,7 +745,8 @@ public:
                 const Fixed64 pl = math::length(push);
                 if (pl > P.spread_max_m) { push.x = push.x * P.spread_max_m / pl; push.y = push.y * P.spread_max_m / pl; }
                 t.x += push.x; t.y += push.y;
-                const Fixed64 ylim = c.world.pitchHalfY() - Fixed64::fromInt(2);
+                Fixed64 ylim = c.world.pitchHalfY() - Fixed64::fromInt(2);
+                if (t0y > ylim) ylim = t0y;
                 if (t.y > ylim) t.y = ylim;
                 if (t.y < -ylim) t.y = -ylim;
             }
@@ -1506,7 +1508,20 @@ void PossessionParams::configure(const core::ModelParams& p) {
             wing_in[z][r] = p.fixed(k + "_in", std::int64_t{kIn[z][r]} * 100);
         }
         wing_on = p.fixed("physics.wing.on", 1000).raw > 0;
-    }   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
+    }
+    {   // G5.168 (§8.274): DFL share within 5 m of his touchline at a kick, less ours before (base spot), / (1 - ours):
+        // FB near 23/42/51 v ours 5/14/11, far 2/24/28 v 0; WIDE near 17/21/19 v 7/5/5, far 2/6/8 v 0; DM-CM 5/8/9, far 0/4/9 v 0.
+        // Permille; [ball 0-35 / 35-70 / 70+ off their line][his side the ball's / the far side][role].
+        static const int kT[3][2][kRoleCount] = {
+            {{0, 190, 50, 0, 110, 0}, {0, 20, 0, 0, 20, 0}},
+            {{0, 330, 80, 0, 170, 0}, {0, 240, 40, 0, 60, 0}},
+            {{0, 450, 90, 0, 150, 0}, {0, 280, 90, 0, 80, 0}}};
+        static const char* zk[3] = {"0", "35", "70"}; static const char* sk[2] = {"near", "far"};
+        for (int z = 0; z < 3; ++z) for (int sd = 0; sd < 2; ++sd) for (int r = 0; r < kRoleCount; ++r)
+            touch_p[z][sd][r] = p.fixed(std::string("physics.touch.") + zk[z] + "_" + sk[sd] + "_" + kRoleKey[r] + "_p", kT[z][sd][r]);
+        touch_m_max = p.fixed("physics.touch.m_max", 4500);
+        touch_on = p.fixed("physics.touch.on", 1000).raw > 0;
+    }   // [FH, DFL]   // [FH]   // G5.61 [FH]: hysteresis; = line_deep_m turns it off
     // G5.56: their wide channel (0-18 m, |y| 20.16+), DFL benchmarks_tracking_box.py: mean men by the
     // zone and their line 16+ / inside 16, x1000; mean count by role (CB FB DM AM WIDE ST) x1000; depth, |y|.
     static const int kChN[6][2] = {{60, 520}, {310, 1390}, {20, 310}, {10, 500}, {0, 220}, {10, 470}};
@@ -1612,6 +1627,21 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         }
     }
     if (x.raw < 0) x = Fixed64::zero();
+    if (params_.touch_on && (v.role_ours == Role::FB || v.role_ours == Role::DM || v.role_ours == Role::Wide)) {
+        // G5.168 (§8.274): he holds his touchline this spell — one roll a man a spell (the zone and side set the share), so the man who holds it keeps it as the ball moves.
+        const int z = off_their < Fixed64::fromInt(35) ? 0 : off_their < Fixed64::fromInt(70) ? 1 : 2;
+        const Fixed64 by = world.ball().pos.y;
+        const Fixed64 mine = v.across_ours.raw != 0 ? v.across_ours : by;
+        const Fixed64 side = mine.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        const int sd = (mine.raw >= 0) == (by.raw >= 0) ? 0 : 1;
+        const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 110) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (u < params_.touch_p[z][sd][static_cast<int>(v.role_ours)]) {
+            const Fixed64 u2 = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 111) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            const Fixed64 d = params_.touch_m_max * u2 * math::fx_sqrt(u2);
+            if (v.slot < 32) spot_branch_[v.slot] = 0;
+            return Vec2{(hx - x) * v.sg, side * (world.pitchHalfY() - d)};
+        }
+    }
     // G5.89 (§8.190): the striker / AM's drift into their wide channel on the ball's side — real
     // ones stand there 4-13% of the time with the ball 35-70 m out (ours: ST 0-3%, AM never). One
     // roll a man a spell a ball zone, against the real share; he takes the real spot. [FH, DFL]
