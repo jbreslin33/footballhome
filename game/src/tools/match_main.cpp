@@ -114,6 +114,8 @@ struct Stats {
     struct WpCell { std::vector<double> d0, dt[5], vt[5], tt, pace, peak; long far0 = 0, reach = 0; };   // §8.275 WIDE PACE
     WpCell wp[3][2][3][2]; std::vector<double> wp_dur[2];
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
+    long wng[2][4] = {};   // §8.278 WING [centre / wide origin][n, far, far wing occupied, far and occupied]
+    long swf_n[4] = {}, swf_k[4] = {}, swf_w[4] = {}, swf_nz[3][4] = {}, swf_kz[3][4] = {};   // §8.278 SWITCH BY FAR WIDEST
     long th_n = 0, th_end[6] = {}, th_got = 0; std::vector<double> th_dur, th_dur_got, th_t5, th_d_end, th_gap;   // §8.277 TOUCH HOLD: rolled FB episodes; end: spell / band / side / order / branch / other   // §8.276: the WIDE PACE spell now (side, won, first tick)
     long ws_zn[3][3] = {}, ws_in[3][2][3] = {}, ws_wn[3][2] = {}, ws_win[3][2] = {}; std::vector<double> ws_age; long ws_rn[3][3][2][3] = {}, ws_r5[3][3][2][3] = {};   // §8.276 ws_r*: [FB/DM/WIDE][ball band][near/far][age] WIDEST BY SPELL AGE [age 0-3/3-8/8+][near/far][ball band]; [age][restart/won]   // [FB/DM/WIDE][restart/won][ball band off the goal line attacked][near/far]
     long ch_tl[4] = {}, ch_gl[4] = {}, ch_rtl[4] = {}, ch_wide[2][4] = {}, ch_r0f[4] = {}; long wk_n[3] = {}, wk_b[2][3][4] = {}, wk_r[2][3][8] = {}; std::vector<double> wk_rw[3][3][2], wk_ft[3][2]; long wk_fw[3][32] = {};   // §8.274 [FB/DM/WIDE][ball band][near/far]; FB's Hold target off the line, FB's order [FB/DM/WIDE][ball band][near/far]   // §8.272 kicks by touchline / goal-line band
@@ -300,7 +302,7 @@ int main(int argc, char** argv) {
         bool own_set = false; int own_rk = -1;   // own_rk: §8.248 the restart he has the ball for
         bool hz_on = false; int hz_z = 0, hz_pr = 0; double hz_x0 = 0, hz_y0 = 0;   // §8.227
         struct Hp { bool on = false; double pz = 0; int kicker = -1, team = -1, z = 0; long k0 = 0; int duels0 = 0; bool duel = false, high = false; int oz = 0, lb = 0, gk = -1; double tx = 0, ty = 0; } hp;   // §8.174 HIGH PASSES
-        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0, rk = -1; bool gk = false; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; double upd = 99; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
+        struct Rel { int p = -1, team = -1; double x = 0, y = 0; bool set = false, cross = false, shot = false, ws = false, weak = false; int wait = 0; int why = -1; double rc_tx = 0, rc_ty = 0, rc_me = -1, rc_def = -1, rc_gk = -1, rc_vt = 0; int rc_who = -1, rc_role = -1; int mp_rb = -1, mp_pb = -1; int mp_av[5] = {}; int pr = -1, rr = -1; int to = -1, act = 0, rk = -1; bool gk = false; double fl_min = 99, fl_v = 0, fl_z = 0, fl_rv = 0; int fl_why = -1; double upd = 99; int sw_fb = -1, sw_wp = -1, sw_occ = 0; } rel;   // fl_: §8.246 the flight past the man it is for   // mp_: §8.184 MARKED PICK
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
@@ -1206,6 +1208,16 @@ int main(int argc, char** argv) {
                     if (lb == 0) { const int wb = rel.wait == 0 ? 0 : rel.wait <= 3 ? 1 : rel.wait <= 8 ? 2 : 3; ++S.kw_n[wb]; if (ok) ++S.kw_ok[wb]; }
                 }
                 if (std::fabs(ey - rel.y) >= 34) ++S.switches;
+                if (ok && std::fabs(ey) >= 20.16 && rel.y != 0) {   // §8.278 WING (DFL benchmarks_tracking_switchwide.py): into a wide zone, far wing, its far wing held a mate
+                    const int oc = std::fabs(rel.y) >= 20.16 ? 1 : 0, eb = [&] { const double dd = hx - ex * sg; return dd < 18 ? 0 : dd < 35 ? 1 : dd < 52 ? 2 : dd < 70 ? 3 : 4; }();
+                    const bool far = (ey >= 0) != (rel.y >= 0), occ = (rel.sw_occ >> eb) & 1;
+                    ++S.wng[oc][0]; S.wng[oc][1] += far; S.wng[oc][2] += occ; S.wng[oc][3] += far && occ;
+                }
+                if (ok && rel.sw_fb >= 0) {   // §8.278: completed, by the far widest band at the release; switched; met by that man
+                    const double gl = hx - rel.x * sg; const int z = gl < 35 ? 0 : gl < 70 ? 1 : 2;
+                    ++S.swf_n[rel.sw_fb]; ++S.swf_nz[z][rel.sw_fb];
+                    if (std::fabs(ey - rel.y) >= 34) { ++S.swf_k[rel.sw_fb]; ++S.swf_kz[z][rel.sw_fb]; if (rel.to == rel.sw_wp) ++S.swf_w[rel.sw_fb]; }
+                }
                 if (rel.cross) ++S.crosses;
                 const double stl = hx - rel.x * sg, etl = hx - ex * sg;
                 if (ok) {   // §8.191 ARRIVE (benchmarks_statsbomb_cross.py arrive: completed passes ending there)
@@ -1297,6 +1309,19 @@ int main(int argc, char** argv) {
                                 if (W.player(j).team != owner_team && !W.isKeeper(j))
                                     nd = std::min(nd, std::hypot(W.player(j).pos.x.toDouble() - own_px, W.player(j).pos.y.toDouble() - own_py));
                             rel.upd = nd;
+                        }
+                        {   // §8.278 SWITCH BY FAR WIDEST: the passer's side's widest outfielder on the far side at the release
+                            const double sg2 = own_py >= 0 ? -1.0 : 1.0; double wm = 1e9;
+                            for (std::uint8_t j = 0; j < N; ++j)
+                                if (W.player(j).team == owner_team && !W.isKeeper(j)) { const double t = hy - W.player(j).pos.y.toDouble() * sg2; if (t < wm) { wm = t; rel.sw_wp = j; } }
+                            rel.sw_fb = wm < 5 ? 0 : wm < 10 ? 1 : wm < 20 ? 2 : 3;
+                            const double sgx = owner_team == 0 ? 1.0 : -1.0;   // §8.278 WING: which depth bands' far wing (|y| 20.16+, the other side) holds a mate
+                            for (std::uint8_t j = 0; j < N; ++j) {
+                                if (W.player(j).team != owner_team || W.isKeeper(j) || j == owner) continue;
+                                const double py = W.player(j).pos.y.toDouble(), dd = hx - W.player(j).pos.x.toDouble() * sgx;
+                                if (std::fabs(py) < 20.16 || (py >= 0) == (own_py >= 0)) continue;
+                                rel.sw_occ |= 1 << (dd < 18 ? 0 : dd < 35 ? 1 : dd < 52 ? 2 : dd < 70 ? 3 : 4);
+                            }
                         }
                         rel.rk = own_set ? own_rk : -1; rel.gk = W.isKeeper(owner);   // §8.248
                         { const std::uint8_t pt = s.lastOrders()[owner].pass_to; rel.to = pt < N && W.player(pt).team == owner_team ? pt : -1; rel.act = static_cast<int>(s.lastOrders()[owner].action); }   // §8.246
@@ -3072,6 +3097,23 @@ int main(int argc, char** argv) {
                 for (int z = 0; z < 3; ++z) { std::printf(" | %s", zn[z]);
                     for (int a = 0; a < 3; ++a) std::printf(" %.0f (%.0f)", 100.0 * S.ws_r5[r][z][sd][a] / std::max(1L, S.ws_rn[r][z][sd][a]), rra[r][sd][z][a]); }
                 std::printf("\n"); }
+        }
+        {   // §8.278 SWITCH BY FAR WIDEST — benchmarks_tracking_switchwide.py (DFL, completed open-play passes)
+            static const double rs[4][2] = {{22.9, 2.88}, {18.7, 1.69}, {28.8, 1.09}, {29.6, 1.26}}; static const double rw[4] = {39, 55, 64, 69};
+            static const double rz[3][4] = {{0.00, 0.00, 0.43, 0.72}, {3.25, 2.33, 1.42, 1.36}, {2.52, 1.19, 0.94, 1.65}};
+            static const char* const lb[4] = {"0-5", "5-10", "10-20", "20+"};
+            long n = 0, k = 0; for (int b = 0; b < 4; ++b) { n += S.swf_n[b]; k += S.swf_k[b]; }
+            std::printf("      SWITCH BY FAR WIDEST (completed passes): switch %.2f%% of them (DFL 1.66); by the far widest mate at the release, m off his line: share | switch %% | met by him %% | ball 0-35/35-70/70+ switch %% (DFL)\n", 100.0 * k / std::max(1L, n));
+            for (int b = 0; b < 4; ++b) {
+                std::printf("        %-5s %.1f (%.1f) | %.2f (%.2f) | %.0f (%.0f) |", lb[b], 100.0 * S.swf_n[b] / std::max(1L, n), rs[b][0], 100.0 * S.swf_k[b] / std::max(1L, S.swf_n[b]), rs[b][1],
+                            100.0 * S.swf_w[b] / std::max(1L, S.swf_k[b]), rw[b]);
+                for (int z = 0; z < 3; ++z) std::printf(" %.2f (%.2f)", 100.0 * S.swf_kz[z][b] / std::max(1L, S.swf_nz[z][b]), rz[z][b]);
+                std::printf("\n"); }
+        }
+        {   static const double rw[2][3] = {{187, 43, 213}, {6, 19, 15}};
+            for (int oc = 0; oc < 2; ++oc) { const double n = std::max(1L, S.wng[oc][0]), o = std::max(1L, S.wng[oc][2]);
+                std::printf("      WING (%s origin, completed passes into a wide zone, n %ld): far %.0f permille (DFL %.0f); its far wing held a mate %.0f%% (%.0f); far given a mate there %.0f (%.0f)\n",
+                            oc ? "wide" : "centre", S.wng[oc][0], 1000.0 * S.wng[oc][1] / n, rw[oc][0], 100.0 * S.wng[oc][2] / n, rw[oc][1], 1000.0 * S.wng[oc][3] / o, rw[oc][2]); }
         }
         {   // §8.277 TOUCH HOLD
             auto qd = [](std::vector<double> a, double p) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(p * a.size()))]; };

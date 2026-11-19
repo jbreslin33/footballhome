@@ -11136,3 +11136,43 @@ in every cell measured, so it ships (correct behaviour first, §feedback); the s
 where the far-side widest man stood at the kick (DFL), against ours, before any change. Still short: the near FB with the
 ball 35-70 / 70+ m out at 8 s+ (43-51 v 61 / 70) and from a turnover in our half (13-16 v 36). Goldens re-locked
 (11v11; 3v3 unchanged); tests 23/23, lint clean.
+
+### 8.278 G5.172 — a wide zone's two wings apart: the far man gets the far share, not half (shipped)
+
+From §8.277's "next" (switches 11.8 → 13.2 a team-match, PL 10.7, after our far full-backs went wide). Three new measures.
+
+**Switch by the far widest man** (`benchmarks_tracking_switchwide.py`, DFL, 3,495 completed open-play passes; a switch = the
+ball 34 m+ across kick → met, the harness's cut). 1.66% of completed passes switch; by the far side's widest mate at the kick
+0-5 / 5-10 / 10-20 / 20+ m off his line: 2.88 / 1.69 / 1.09 / 1.26%, and only 39 / 55 / 64 / 69% of those go to that man;
+none from their last 35 m with him within 10 m. Ours (new harness line SWITCH BY FAR WIDEST): 1.86-2.07%; 3.6-4.3 / 2.6-3.4 /
+1.2-2.0 / 0.6-1.0, 69-79% to him with him on the line, and 1-5% from their last 35 m.
+
+**Which wing** (`benchmarks_statsbomb_wing.py`, PL 15/16, the pass policy's zones): a wide zone holds both touchlines, and
+the policy split its share over the mates in it whichever wing they stood on. Real passes into a wide zone go to the far
+wing 0.5-6% of the time from a wide zone, 10-37% from the centre (permille table `kFar`).
+
+**The far share given a man there** (DFL WING, the same zones, completed passes into a wide zone; harness line WING):
+from the centre the far wing of the end zone held a mate at the kick 43%, far 187 ‰, given a mate there 213; from wide 19%,
+6, 15. Ours before: centre 370-401 given a mate (and the far wing held one only 26-28%), wide 22-25.
+
+**Rule** (`Possession` pass policy, `physics.pass.far_<origin>_<end band>`, `far_lift_centre/_wide`, `wing_on`): a wide end
+zone's two wings are split apart, far = the other side of the pitch from the ball. Each wing takes its share of the zone
+(far: kFar × lift, capped at a half; near: the rest), split among the mates on that wing as before (G5.74 distance decay,
+G5.83 marker lift). The lift is fitted so ours gives DFL's far share given a mate on that wing: the bare StatsBomb share (×1)
+and DFL's occupancy ratio (×1.13 / ×2.70) gave ours 133-135 / 0 and switches 7.0-7.1 (the length lift, loft share and race
+reads already trim a far ball); **×1.8 / ×10 give 204-247 / 4-24** (213 / 15). ×20 for wide lands the same cut (5-12) with
+switches 9.7 and a worse card; ×10 taken.
+
+| 4 seeds × 8 (1000-4000) | real | G5.171 | **G5.172** |
+|---|---|---|---|
+| switches a team-match (PL) | 10.69 | 13.16 | **8.72** |
+| far share given a mate there, centre / wide (DFL ‰) | 213 / 15 | 370-401 / 22-25 | 204-247 / 4-24 |
+| widest within 5 m at a kick, ball's side / far | 62.0 / 22.7 | 44.8 / 20.1 | 44.7-46.8 / 21.8-23.6 |
+| card ok / off / OFF of 33 | | 8 / 4 / 21 | **7 / 7 / 19** |
+
+Card (`card_G5.172.txt`): to ok, scored from 12-18 m (15.2 → 11.6%, 9.3), scored inside 12 m (25.7 → 24.8, 18.0),
+penalties 0.08 → 0.09 (0.12); off/target shares to off. Worse: shots from 25 m+ to OFF (14.6 → 15.5, 13.0), shots 12-18 m
+32.1 → 33.4 (26.4), fouls 12.45 → 13.22 to off (12.52). Switches now 18% under PL; the cut that is still off is the centre
+origin's far wing held a mate 26-28% (DFL 43) — our far side has fewer men out there, the §8.276/§8.277 width gap, not
+the choice. Next: back to the near FB in a settled spell (43-51% v 61-70% on his line, ball 35 m+ out) and the FB already
+wide when we win it in our own half (13-16 v 36), measured first. Goldens re-locked (11v11); tests 23/23, lint clean.

@@ -365,8 +365,13 @@ public:
         // flank 95-100%). Split evenly, the far flank's man took half of every wide-to-wide share.
         const int lb = own_end < Fixed64::fromInt(35) ? 0 : own_end < Fixed64::fromInt(70) ? 1 : 2;
         const Fixed64 lam = P.pick_lambda[lb];
-        Fixed64 pick[32] = {}, zsum[10] = {};
-        Fixed64 pick_hi[32] = {}, zsum_hi[10] = {};   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
+        // G5.172 (§8.278): a wide zone's two wings apart — index ez, or ez + 10 for the far wing (the other side of the
+        // pitch from the ball), each with its real share of the zone (pass_far); the mates on a wing split that.
+        Fixed64 pick[32] = {}, zsum[20] = {};
+        Fixed64 pick_hi[32] = {}, zsum_hi[20] = {};
+        auto farShare = [&](int ez) { Fixed64 f = P.pass_far[oz][ez / 2] * P.pass_far_lift[oz & 1]; return f > Fixed64::fromFraction(1, 2) ? Fixed64::fromFraction(1, 2) : f; };
+        auto wingIx = [&](int ez, const Vec2& to) { return P.pass_wing_on && (ez & 1) && ((to.y.raw >= 0) != (sp.y.raw >= 0)) ? ez + 10 : ez; };
+        auto wingShare = [&](int ez, int wi) { return !P.pass_wing_on || !(ez & 1) ? Fixed64::one() : wi >= 10 ? farShare(ez) : Fixed64::one() - farShare(ez); };   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
         // G5.76 (§8.177): our keeper is not in a zone's split — he has his own real share (below).
         // Alone in the deep zone when our backs push up, he took all of it: 31 passes a team-match
         // (real 7.7), 12 from 40-60 m out (1.2).
@@ -389,8 +394,8 @@ public:
                     pick[j] = pick[j] * P.mark_lift[rb][qb];
                     pick_hi[j] = pick_hi[j] * (P.mark_hi_on ? P.mark_lift_hi[rb][qb] : P.mark_lift[rb][qb]);
                 }
-                zsum[ez] += pick[j];
-                zsum_hi[ez] += pick_hi[j];
+                zsum[wingIx(ez, to)] += pick[j];
+                zsum_hi[wingIx(ez, to)] += pick_hi[j];
             }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
         Cand cand[64]; int nc = 0; Fixed64 sum{};
@@ -424,9 +429,9 @@ public:
             const Vec2 to = v2(m.pos);
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
             if (d < P.pass_min_m) continue;
-            const int ez = zoneOf(hx, to, v.sg);
+            const int ez = zoneOf(hx, to, v.sg), wi = wingIx(ez, to);
             Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
-                             : zsum[ez].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * pick[j] / zsum[ez] : Fixed64{};
+                             : zsum[wi].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * wingShare(ez, wi) * pick[j] / zsum[wi] : Fixed64{};
             if (w0.raw <= 0) continue;
             // §8.236: real passers play near mates more than the zone table's split gives (StatsBomb PL
             // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
@@ -476,8 +481,8 @@ public:
                     // G5.157 (§8.262): his share of the zone's high passes is the high split, not the flat one —
                     // real high balls go to a marked man near as often as a free one (DFL lift 0.5-0.7 v 0.2-0.4).
                     Fixed64 hw = wgt;
-                    if (P.mark_hi_on && j < 32 && pick[j].raw > 0 && zsum_hi[ez].raw > 0)
-                        hw = wgt * (pick_hi[j] / zsum_hi[ez]) / (pick[j] / zsum[ez]);
+                    if (P.mark_hi_on && j < 32 && pick[j].raw > 0 && zsum_hi[wi].raw > 0)
+                        hw = wgt * (pick_hi[j] / zsum_hi[wi]) / (pick[j] / zsum[wi]);
                     add(Cand{j, lsafe ? hw * ph : hw * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
             } else if (wgt.raw > 0) {
@@ -1319,12 +1324,27 @@ void PossessionParams::configure(const core::ModelParams& p) {
         {1000, 1000, 1322, 2600, 687, 922, 682, 1100, 1328, 4000},  {1000, 1000, 1510, 3400, 657, 779, 606, 1042, 1071, 2591},
         {1000, 1000, 4000, 1000, 878, 1319, 721, 992, 811, 1417},   {1000, 1000, 1000, 1000, 1146, 1846, 829, 1045, 775, 1307}};
     const bool kappa_on = p.fixed("physics.pass.kappa_on", 1000).raw > 0;
+    pass_wing_on = p.fixed("physics.pass.wing_on", 1000).raw > 0;   // G5.172
+    // G5.172: a lift on the far share, fitted so ours gives DFL's far share given a mate on that wing at the kick
+    // (benchmarks_tracking_switchwide.py WING, completed passes into a wide zone: from the centre 213 permille, from wide 15).
+    // The bare StatsBomb share (x1) gave ours 133 / 0 — the length lift, loft and race reads already trim a far ball — and
+    // switches 7.0 a team-match (10.7); the DFL occupancy ratio (x1.13 / x2.70) the same. x1.8 / x10: 204-247 / 4-24.
+    pass_far_lift[0] = p.fixed("physics.pass.far_lift_centre", 1800);
+    pass_far_lift[1] = p.fixed("physics.pass.far_lift_wide", 10000);
     for (int o = 0; o < 10; ++o) {
         for (int d = 0; d < 10; ++d) {
             pass_to[o][d] = p.fixed(("physics.pass.to_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kTo[o][d]);
             pass_kappa[o][d] = kappa_on ? p.fixed(("physics.pass.kappa_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kKappa[o][d]) : Fixed64::one();
         }
         pass_loft[o] = p.fixed(("physics.pass.loft_" + std::to_string(o)).c_str(), kLoft[o]);
+        {   // G5.172 (§8.278): StatsBomb PL 15/16 open play (benchmarks_statsbomb_wing.py), permille of an origin zone's passes into a
+            // wide end zone that go to the far wing (the other side of the pitch from the passer); cells under 30 passes filled
+            // (centre origins 150, wide 10). From wide 0.5-6%, from the centre 10-37%; our even split gave the far man half.
+            static const int kFar[10][5] = {{188, 129, 150, 150, 150}, {50, 9, 10, 10, 10}, {104, 99, 120, 150, 150}, {38, 5, 6, 9, 10},
+                                            {340, 188, 133, 107, 179}, {63, 18, 8, 7, 10}, {370, 360, 148, 147, 152}, {43, 39, 13, 8, 10},
+                                            {315, 295, 243, 152, 151}, {26, 22, 18, 9, 6}};
+            for (int d = 0; d < 5; ++d) pass_far[o][d] = p.fixed(("physics.pass.far_" + std::to_string(o) + "_" + std::to_string(d)).c_str(), kFar[o][d]);
+        }
         pass_cross[o] = p.fixed(("physics.pass.cross_" + std::to_string(o)).c_str(), kCross[o]);
     }
     {   // G5.73 (§8.174): StatsBomb PL 15/16 open play, crosses out — high share by origin x length, permille

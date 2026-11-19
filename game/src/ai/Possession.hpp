@@ -68,6 +68,7 @@ struct PossessionParams {
     // zones holding a mate; × this when the zone is held (DFL recipient zones at the
     // kick, iterative fit — benchmarks_tracking_passzone.py kKappa). 1 = off.
     math::Fixed64 pass_kappa[10][10]{};
+    math::Fixed64 pass_far[10][5]{}, pass_far_lift[2]{}; bool pass_wing_on = true;   // lift [centre / wide origin];   // G5.172 (§8.278): of a wide end zone's share, the far wing's [origin][end depth band]
     // G5.73 (§8.174): the share of real passes played high (StatsBomb height High), by the
     // passer's metres off his own goal 0-35 / 35-70 / 70+ and the pass's length at the band
     // middles 5 … 55 m — benchmarks_statsbomb_highpass.py --length. A pass to feet goes high at

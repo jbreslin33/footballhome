@@ -177,7 +177,8 @@ constexpr std::uint64_t kGolden3v3   = 0x440f6541eceb348bULL;
 // Re-locked G5.168 (2026-11-18): as the 3v3.
 // Re-locked G5.170 (2026-11-19): as the 3v3.
 // Re-locked G5.171 (2026-11-19): a man who went to his touchline keeps it the spell, not into their last 35 m (§8.277); 3v3 unchanged.
-constexpr std::uint64_t kGolden11v11 = 0x02ac5e8f5bf3b82dULL;
+// Re-locked G5.172 (2026-11-19): a wide zone's two wings apart in the pass policy, the far one at its real share (§8.278); 3v3 unchanged.
+constexpr std::uint64_t kGolden11v11 = 0xa30722dbc1ad79feULL;
 
 struct Rig {
     World world;
