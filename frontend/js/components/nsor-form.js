@@ -49,22 +49,24 @@ class NsorForm {
   }
 
   // What is still missing, in the form's own words.
-  missing() {
+  // Which fields are still empty or wrong: [{ key, label }] (key 'sig' = the signature).
+  bad() {
     const v = this.v, t = this.o.t, out = [];
-    const need = (ok, tier, fb) => { if (!ok) out.push(t(tier, {}, fb)); };
-    need(v.last.trim(), 'nsor_f_last', 'Last name');
-    need(v.first.trim(), 'nsor_f_first', 'First name');
-    need(NsorForm.digits(v.ssn).length === 9, 'nsor_f_ssn', 'Social Security number');
-    need(NsorForm.validDob(v.dob), 'nsor_f_dob', 'Date of birth');
-    need(NsorForm.digits(v.phone).replace(/^1(?=\d{10}$)/, '').length === 10, 'nsor_f_phone', 'Daytime phone');
-    need(v.street.trim(), 'nsor_f_street', 'Street address (apt #)');
-    need(v.city.trim(), 'nsor_f_city', 'City');
-    need(/^[A-Za-z]{2}$/.test(v.state.trim()), 'nsor_f_state', 'State');
-    need(/^\d{5}(-\d{4})?$/.test(v.zip.trim()), 'nsor_f_zip', 'ZIP');
-    need(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim()), 'nsor_f_email', 'Email');
-    need(this.signed, 'nsor_f_sign', 'Signature');
+    const need = (ok, key, tier, fb) => { if (!ok) out.push({ key, label: t(tier, {}, fb) }); };
+    need(v.last.trim(), 'last', 'nsor_f_last', 'Last name');
+    need(v.first.trim(), 'first', 'nsor_f_first', 'First name');
+    need(NsorForm.validDob(v.dob), 'dob', 'nsor_f_dob', 'Date of birth');
+    need(NsorForm.digits(v.ssn).length === 9, 'ssn', 'nsor_f_ssn', 'Social Security number');
+    need(NsorForm.digits(v.phone).replace(/^1(?=\d{10}$)/, '').length === 10, 'phone', 'nsor_f_phone', 'Daytime phone');
+    need(v.street.trim(), 'street', 'nsor_f_street', 'Street address (apt #)');
+    need(v.city.trim(), 'city', 'nsor_f_city', 'City');
+    need(/^[A-Za-z]{2}$/.test(v.state.trim()), 'state', 'nsor_f_state', 'State');
+    need(/^\d{5}(-\d{4})?$/.test(v.zip.trim()), 'zip', 'nsor_f_zip', 'ZIP');
+    need(/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email.trim()), 'email', 'nsor_f_email', 'Email');
+    need(this.signed, 'sig', 'nsor_f_sign', 'Signature');
     return out;
   }
+  missing() { return this.bad().map(b => b.label); }
 
   render() {
     const { t, esc } = this.o;
@@ -92,21 +94,37 @@ class NsorForm {
         <button type="button" data-nsor-clear style="float:right; min-height:0; padding:1px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:transparent; color:inherit; font:inherit; font-size:0.75rem; cursor:pointer;">${esc(t('nsor_clear_sign', {}, 'Clear'))}</button></div>
       <canvas data-nsor-sig width="600" height="160" style="margin-top:4px; width:100%; height:110px; border-radius:8px; background:#fff; touch-action:none; cursor:crosshair;"></canvas>
       <div style="margin-top:8px; font-size:0.72rem; opacity:0.8; line-height:1.35;">${esc(t('nsor_affirm', {}, 'I affirm the above information is accurate and complete to the best of my knowledge and belief, and submitted as true and correct under penalty of law per Section 4904 of the Pennsylvania Crimes Code.'))}</div>
-      <div data-nsor-miss style="margin-top:8px; font-size:0.8rem; color:#fca5a5; font-weight:700;">${miss.length ? esc(t('nsor_missing', { list: miss.join(', ') }, 'Still needed: {list}')) : ''}</div>
+      <div data-nsor-miss style="margin-top:8px; font-size:0.82rem; color:#f87171; font-weight:800;">${miss.length && this.tried ? esc(t('nsor_missing', { list: miss.join(', ') }, 'Still needed: {list}')) : ''}</div>
       ${this.err ? `<div style="margin-top:6px; font-size:0.82rem; color:#fca5a5; font-weight:700;">${esc(this.err)}</div>` : ''}
       <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-        <button type="button" data-nsor-send ${miss.length || this.busy ? 'disabled' : ''} style="min-height:0; padding:9px 14px; border-radius:999px; border:0; background:${miss.length ? '#4b5563' : '#16a34a'}; color:#fff; font:inherit; font-weight:900; cursor:${miss.length ? 'default' : 'pointer'};">${esc(this.busy ? t('nsor_sending', {}, 'Sending…') : t('nsor_send', {}, '✉️ Sign & send to the state'))}</button>
+        <button type="button" data-nsor-send ${this.busy ? 'disabled' : ''} style="min-height:0; padding:9px 14px; border-radius:999px; border:0; background:#16a34a; color:#fff; font:inherit; font-weight:900; cursor:pointer;">${esc(this.busy ? t('nsor_sending', {}, 'Sending…') : t('nsor_send', {}, '✉️ Sign & send to the state'))}</button>
         <button type="button" data-nsor-cancel style="min-height:0; padding:9px 14px; border-radius:999px; border:1px solid rgba(255,255,255,0.35); background:transparent; color:inherit; font:inherit; font-weight:700; cursor:pointer;">${esc(t('nsor_cancel', {}, 'Back'))}</button>
       </div>`;
     this._wire();
+    this._paintBad();
+  }
+
+  // Red on every field still empty or wrong (owner 11/19 "it should warn if
+  // not all filled out. with red highlight"): all of them once Send was
+  // tapped, before that only the ones the person has left.
+  _paintBad() {
+    const bad = new Set(this.bad().map(b => b.key));
+    this.touched = this.touched || new Set();
+    this.el.querySelectorAll('input[data-nsor]').forEach(inp => {
+      const red = bad.has(inp.dataset.nsor) && (this.tried || this.touched.has(inp.dataset.nsor));
+      inp.style.border = red ? '2px solid #ef4444' : '1px solid rgba(255,255,255,0.3)';
+      inp.style.background = red ? 'rgba(239,68,68,0.15)' : 'rgba(0,0,0,0.25)';
+    });
+    const sig = this.el.querySelector('[data-nsor-sig]');
+    if (sig) sig.style.outline = bad.has('sig') && this.tried ? '3px solid #ef4444' : 'none';
   }
 
   _wire() {
     const el = this.el;
-    el.querySelectorAll('input[data-nsor]').forEach(inp => inp.addEventListener('input', () => {
-      this.v[inp.dataset.nsor] = inp.value;
-      this._refreshMissing();
-    }));
+    el.querySelectorAll('input[data-nsor]').forEach(inp => {
+      inp.addEventListener('input', () => { this.v[inp.dataset.nsor] = inp.value; this._refreshMissing(); });
+      inp.addEventListener('blur', () => { (this.touched = this.touched || new Set()).add(inp.dataset.nsor); this._paintBad(); });
+    });
     el.querySelector('[data-nsor-cancel]').addEventListener('click', () => this.o.onCancel && this.o.onCancel());
     el.querySelector('[data-nsor-send]').addEventListener('click', () => this._send());
     const c = el.querySelector('[data-nsor-sig]');
@@ -131,9 +149,8 @@ class NsorForm {
   _refreshMissing() {
     const miss = this.missing();
     const box = this.el.querySelector('[data-nsor-miss]');
-    if (box) box.textContent = miss.length ? this.o.t('nsor_missing', { list: miss.join(', ') }, 'Still needed: {list}') : '';
-    const btn = this.el.querySelector('[data-nsor-send]');
-    if (btn) { btn.disabled = !!miss.length || this.busy; btn.style.background = miss.length ? '#4b5563' : '#16a34a'; btn.style.cursor = miss.length ? 'default' : 'pointer'; }
+    if (box) box.textContent = miss.length && this.tried ? this.o.t('nsor_missing', { list: miss.join(', ') }, 'Still needed: {list}') : '';
+    this._paintBad();
   }
 
   static loadLib() {
@@ -176,7 +193,16 @@ class NsorForm {
   }
 
   async _send() {
-    if (this.missing().length || this.busy) return;
+    if (this.busy) return;
+    const bad = this.bad();
+    if (bad.length) {
+      // Nothing goes out: every gap turns red and the first one comes into view.
+      this.tried = true;
+      this._refreshMissing();
+      const first = bad[0].key === 'sig' ? this.el.querySelector('[data-nsor-sig]') : this.el.querySelector(`input[data-nsor="${bad[0].key}"]`);
+      if (first) { first.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (first.focus && bad[0].key !== 'sig') first.focus({ preventScroll: true }); }
+      return;
+    }
     this.busy = true; this.err = '';
     this._refreshMissing();
     const btn = this.el.querySelector('[data-nsor-send]');
