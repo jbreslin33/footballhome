@@ -179,6 +179,7 @@ set(SOURCES
     src/controllers/OnboardingController.cpp
     src/models/VolunteerShifts.cpp
     src/models/Onboarding.cpp
+    src/models/PersonTodos.cpp
     src/controllers/ScheduleLinksController.cpp
     src/controllers/DashboardController.cpp
     src/controllers/CupRosterController.cpp

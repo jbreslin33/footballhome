@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "../models/Onboarding.h"
+#include "../models/PersonTodos.h"
 
 using nlohmann::json;
 
@@ -385,6 +386,49 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
         catch (const std::exception& e) {
             std::cerr << "[GET /api/my/onboarding] " << e.what() << std::endl;
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load onboarding");
+        }
+    });
+    // ✅ To do (mig 1570): the viewer's own list (view-as follows, read-only).
+    //   GET  /api/my/todos                         {todos:[…], due}
+    //   POST /api/my/todos  {action:add, body, remind_at?}   ISO, "" = now
+    //                       {action:done|undo|remove, id}    → the list again
+    router.get (prefix + "/todos", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/true, &personId)) return *err;
+        try { return jsonOk(PersonTodos::list(personId)); }
+        catch (const std::exception& e) {
+            std::cerr << "[GET /api/my/todos] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load your to-do list");
+        }
+    });
+    router.post(prefix + "/todos", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long personId = gate.session->personId;
+        if (auto err = applyImpersonation(r, personId, /*allowImpersonation=*/false, &personId)) return *err;
+        json body;
+        try { body = r.getBody().empty() ? json::object() : json::parse(r.getBody()); }
+        catch (...) { return jsonError(HttpStatus::BAD_REQUEST, "Invalid JSON"); }
+        auto str = [&](const char* k) { return body.contains(k) && body[k].is_string() ? body[k].get<std::string>() : std::string(); };
+        const long long id = body.contains("id") && body["id"].is_number_integer() ? body["id"].get<long long>() : 0;
+        const std::string action = str("action");
+        try {
+            if (action == "add") {
+                const std::string err = PersonTodos::add(personId, str("body"), str("remind_at"));
+                if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
+            } else if (action == "done" || action == "undo") {
+                if (!PersonTodos::setDone(personId, id, action == "done")) return jsonError(HttpStatus::NOT_FOUND, "That item is gone");
+            } else if (action == "remove") {
+                if (!PersonTodos::remove(personId, id)) return jsonError(HttpStatus::NOT_FOUND, "That item is gone");
+            } else {
+                return jsonError(HttpStatus::BAD_REQUEST, "Unknown action");
+            }
+            return jsonOk(PersonTodos::list(personId));
+        } catch (const std::exception& e) {
+            std::cerr << "[POST /api/my/todos] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save");
         }
     });
     // 📎 The person uploads a document on a step (mig 1538): {code, filename,

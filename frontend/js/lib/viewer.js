@@ -200,6 +200,8 @@ class CoachViewer extends PlayerViewer {
   menuItems() {
     const base = super.menuItems();
     const out = base.filter(i => i.code !== 'signout');
+    // ✅ To do (mig 1570) — open the list even when nothing is due.
+    out.push({ code: 'todo', tier: 'qlink_todo', fb: '✅ To do', panel: 'todo' });
     out.push({ code: 'account', tier: 'qlink_account', fb: '👤 Account', route: 'main-menu' });
     return out.concat(base.filter(i => i.code === 'signout'));
   }

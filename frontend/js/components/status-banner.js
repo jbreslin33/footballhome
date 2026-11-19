@@ -37,7 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding', todo: 'todo' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -159,6 +159,7 @@
               <div data-sb-panel="alerts" hidden><div id="sb-alerts"></div></div>
               <div data-sb-panel="menu" id="sb-menu" hidden></div>
               <div data-sb-panel="onboarding" hidden><div id="sb-onb"></div></div>
+              <div data-sb-panel="todo" hidden><div id="sb-todo"></div></div>
             </div>
           </div>
         </div>`;
@@ -207,7 +208,8 @@
       const titles = { rsvp: ['sheet_rsvp', '⚠️ Set your availability'], fines: ['sheet_fines', '⚖️ Your fines'], alerts: ['sheet_alerts', '🔔 Alerts'],
                        menu: ['sheet_menu', '☰ Menu'],
                        chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'],
-                       onboarding: ['sheet_onboarding', '🎓 Your path at Lighthouse'] };
+                       onboarding: ['sheet_onboarding', '🎓 Your path at Lighthouse'],
+                       todo: ['sheet_todo', '✅ To do'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
       if (panel && !this._escWired) {
@@ -217,6 +219,7 @@
       if (panel === 'chat' && this.chat) this.chat.markRead();
       if (panel === 'menu') this.renderMenu();
       if (panel === 'onboarding' && this.onbList) this.onbList.render();
+      if (panel === 'todo' && this.todo) { this.todo.render(); setTimeout(() => this.$('#sb-todo [data-td-body]')?.focus(), 0); }
       if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
         this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
         this.finesPanel.load();
@@ -301,7 +304,7 @@
       this.bar.set(code, data);
       const open = this.bar.openCode;
       // 🎓 onboarding stays open as its last step is sent — the person sees it go 🟡.
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding'].includes(open)) return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -379,6 +382,19 @@
           }).catch(() => {})
         : Promise.resolve();
 
+      // ✅ To do (mig 1570): "✅ To do — <each due item>  Open ›" while any is
+      // due (owner 11/19 "a todo all my screens … a reminer every time i oepn
+      // app"); stays open as items are ticked.  Re-read on focus / screen
+      // change so a "Tomorrow 9 AM" item turns up without a reload.
+      const todoBox = (d) => {
+        const due = (d && d.todos || []).filter(t => t.due);
+        return due.length ? { n: due.length, list: due.map(t => t.body).join(' · ') } : null;
+      };
+      this.todo = window.TodoPanel
+        ? new TodoPanel(this.$('#sb-todo'), this.ctx({ onChange: (d) => this.set('todo', todoBox(d)) })) : null;
+      const todoLoaded = this.todo ? this.todo.load() : Promise.resolve();
+      this.todoAt = Date.now();
+
       // 💬 Chat — always a box when the section has one: newest · N new.
       const chatOpen = () => this.bar.openCode === 'chat_unread';
       this.chat = new SectionChat(this.$('#sb-chat'), this.ctx({ isOpen: chatOpen, onSummary: (s) => {
@@ -403,12 +419,12 @@
       this.chat.start().catch(() => {});
 
       // The band draws once the notices AND the week are in — no green flash.
-      Promise.all([noticesLoaded, onbLoaded, this.loadEvents(true)])
+      Promise.all([noticesLoaded, onbLoaded, todoLoaded, this.loadEvents(true)])
         .then(() => this.bar.setRules(this.notices.statusItems || []));
       this.setChatHtml('');   // ☰ from the start; 💬 joins when the chat answers
       if (window.MainMenu) MainMenu.load(this.auth).then(() => this.paintTail()).catch(() => {});
       window.addEventListener('fh:rsvp-changed', (e) => { if (!(e.detail && e.detail.source === 'banner')) this.loadEvents(true); });
-      window.addEventListener('focus', () => this.loadEvents(false));
+      window.addEventListener('focus', () => { this.loadEvents(false); this.loadTodos(); });
     }
 
     // The next 7 days: what is still unanswered (you + your kids), and any suspension.
@@ -487,6 +503,13 @@
       this.set('rsvp_open', later ? { n: later, stake: st } : null);
     }
 
+    // ✅ the to-do list again, ≥ 20 s apart (not while its popup is open — typing).
+    loadTodos() {
+      if (!this.todo || this.bar.openCode === 'todo' || Date.now() - (this.todoAt || 0) < 20000) return;
+      this.todoAt = Date.now();
+      this.todo.load();
+    }
+
     show(on) { this.host.style.display = on ? '' : 'none'; }
 
     static onScreen(name) {
@@ -500,7 +523,7 @@
       if (!on) return;
       sb.screen = name;
       if (!sb.started) sb.start().catch((err) => console.warn('status banner failed (non-fatal):', err));
-      else { sb.paintTail(); sb.loadEvents(false); }   // 📅 follows the screen (and the viewer once loaded)
+      else { sb.paintTail(); sb.loadEvents(false); sb.loadTodos(); }   // 📅 follows the screen (and the viewer once loaded)
     }
   }
 

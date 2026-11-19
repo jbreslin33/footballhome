@@ -86,6 +86,7 @@ class StatusBar {
       chat_unread:  (d) => [`💬 ${d.text || 'Chat'}`, d.n ? `${d.n} new ›` : 'Open ›'],
       suspended:    () => ['⛔ Suspended', ''],
       onboarding:   (d) => [`⛔ Onboarding — ${d.left} to do: ${d.list}`, 'Finish ›'],
+      todo:         (d) => [`✅ To do — ${d.list}`, 'Open ›'],
     };
     const caret = (code, text) => (this.openCode === code ? String(text).replace('▾', '▴') : text);
     const pill = (code, text) => `<button type="button" class="sb-box-go" data-sb-chip="${esc(code)}">${esc(caret(code, text))}</button>`;
