@@ -187,7 +187,7 @@
         const date = g.at || '';
         bits.push(pill(t('reg_have', { league, date }, `✅ ${league} reg ${date}`.trim()),
           g.source === 'official_list'
-            ? t('reg_list_tip', { league, date }, `On the ${league} list, so registered with ${league} this season.`)
+            ? t('reg_list_tip', { league, date }, `On the ${league} official roster, so registered with ${league} this season.`)
             : t('reg_have_tip', { league, date }, `Filled the ${league} registration form.`),
           '#052e16', '#86efac', '#16a34a'));
       } else {
