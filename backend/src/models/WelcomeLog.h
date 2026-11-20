@@ -69,6 +69,10 @@ public:
     //     recipients: [{person_id, name, phone, email, is_guardian}]}]
     nlohmann::json dueList(int clubId);
 
+    // ✓ Done (mig 1602): welcome_dismissals rows — handled without a
+    // message, off dueList.  Returns how many ids were taken.
+    int dismiss(const std::vector<long long>& playerIds, long long byUserId);
+
     static constexpr int kLighthouseClubId = 134;
 
 private:

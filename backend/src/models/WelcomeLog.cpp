@@ -171,7 +171,8 @@ json WelcomeLog::dueList(int clubId) {
                            JOIN persons rp ON rp.id = x.recipient_person_id), '[]'::jsonb)::text AS recipients
           FROM reg r
           JOIN persons p ON p.id = r.person_id
-         WHERE NOT EXISTS (
+         WHERE NOT EXISTS (SELECT 1 FROM welcome_dismissals d WHERE d.person_id = p.id)  -- ✓ Done (mig 1602)
+           AND NOT EXISTS (
                 SELECT 1 FROM person_welcomes w
                  WHERE w.person_id = p.id OR w.player_person_id = p.id
                     OR w.person_id IN (SELECT y.recipient_person_id FROM fh_message_recipients(p.id) y))
@@ -191,4 +192,19 @@ json WelcomeLog::dueList(int clubId) {
         });
     }
     return out;
+}
+
+// ✓ Done / ✓ Done all (mig 1602): off the band's list without a message.
+int WelcomeLog::dismiss(const std::vector<long long>& playerIds, long long byUserId) {
+    int n = 0;
+    for (long long pid : playerIds) {
+        if (pid <= 0) continue;
+        db_->query(
+            "INSERT INTO welcome_dismissals (person_id, dismissed_by_user) "
+            "SELECT $1::int, NULLIF($2, '')::int WHERE EXISTS (SELECT 1 FROM persons WHERE id = $1::int) "
+            "ON CONFLICT (person_id) DO NOTHING",
+            {std::to_string(pid), byUserId > 0 ? std::to_string(byUserId) : std::string{}});
+        ++n;
+    }
+    return n;
 }

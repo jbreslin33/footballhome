@@ -23,7 +23,12 @@ class WelcomeDuePanel {
     this.el = el;
     this.ctx = ctx;
     this.due = [];
+    this.busy = false;
+    this.err = '';
     if (el) el.addEventListener('click', (e) => {
+      const done = e.target.closest('[data-wd-done]');
+      if (done) { this.done([Number(done.getAttribute('data-wd-done'))]); return; }
+      if (e.target.closest('[data-wd-done-all]')) { this.done(this.due.map(p => Number(p.person_id))); return; }
       const b = e.target.closest('[data-wd-person]');
       if (b) this.contact(Number(b.getAttribute('data-wd-person')));
     });
@@ -50,6 +55,21 @@ class WelcomeDuePanel {
     this.due = Array.isArray(list) ? list : [];
     this.render();
     if (this.ctx.onChange) this.ctx.onChange(this.due);
+  }
+
+  // ✓ Done / ✓ Done all (mig 1602, owner 11/20 "done all or done each one
+  // indivicually … pretty much all are old"): off the list, nothing sent.
+  async done(ids) {
+    if (this.busy || !ids.length) return;
+    this.busy = true; this.err = ''; this.render();
+    try {
+      await this.ctx.fetchJson('/api/welcomes/dismiss', { method: 'POST', body: JSON.stringify({ person_ids: ids }) });
+      const gone = new Set(ids);
+      this.busy = false;
+      this.set(this.due.filter(p => !gone.has(Number(p.person_id))));
+    } catch (e) {
+      this.busy = false; this.err = e.message || 'Could not mark done'; this.render();
+    }
   }
 
   static nameOf(p) { return `${p.first_name || ''} ${p.last_name || ''}`.trim(); }
@@ -101,15 +121,23 @@ class WelcomeDuePanel {
       const bits = [SECTION[p.section] || '', p.registered_at ? cp('welcome_reg_on', { date: day(p.registered_at) }, `registered ${day(p.registered_at)}`) : '',
                     parents.length ? cp('welcome_via', { parent: parents.map(r => String(r.name || '').split(' ')[0]).join(' & ') }, `to ${parents.map(r => r.name).join(' & ')}`) : '']
         .filter(Boolean).join(' · ');
-      return `<button type="button" data-wd-person="${esc(p.person_id)}" title="${esc(p.programs || '')}"
-          style="display:flex; width:100%; align-items:center; gap:8px; text-align:left; margin:0 0 6px; padding:9px 10px;
-                 border:1px solid #f0abfc; border-left:4px solid #c026d3; border-radius:6px; background:#fdf4ff; cursor:pointer; font:inherit;">
-          <span style="font-weight:800; color:#0f172a;">👋 ${esc(WelcomeDuePanel.nameOf(p))}</span>
-          <span style="margin-left:auto; font-size:0.78rem; color:#64748b; text-align:right;">${esc(bits)}</span>
-        </button>`;
+      return `<div style="display:flex; gap:6px; margin:0 0 6px;">
+          <button type="button" data-wd-person="${esc(p.person_id)}" title="${esc(p.programs || '')}"
+            style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; text-align:left; padding:9px 10px;
+                   border:1px solid #f0abfc; border-left:4px solid #c026d3; border-radius:6px; background:#fdf4ff; cursor:pointer; font:inherit;">
+            <span style="font-weight:800; color:#0f172a;">👋 ${esc(WelcomeDuePanel.nameOf(p))}</span>
+            <span style="margin-left:auto; font-size:0.78rem; color:#64748b; text-align:right;">${esc(bits)}</span>
+          </button>
+          <button type="button" data-wd-done="${esc(p.person_id)}" ${this.busy ? 'disabled' : ''}
+            style="flex:none; padding:0 12px; border-radius:6px; border:1px solid #22c55e; background:transparent; color:#22c55e; font:inherit; font-weight:800; cursor:pointer;">${esc(cp('welcome_done', {}, '✓ Done'))}</button>
+        </div>`;
     }).join('');
-    this.el.innerHTML = `<p style="margin:0 0 10px; font-size:0.85rem; color:#475569;">${esc(cp('welcome_intro', {},
-      'Tap a name — their contact opens with the welcome ready. They leave this list once it is sent.'))}</p>${rows}`;
+    const all = `<button type="button" data-wd-done-all ${this.busy ? 'disabled' : ''}
+        style="align-self:flex-start; margin:0 0 10px; padding:7px 14px; border-radius:8px; border:0; background:#16a34a; color:#fff; font:inherit; font-weight:800; cursor:pointer;">
+        ${esc(cp('welcome_done_all', { n: this.due.length }, `✓ Done all (${this.due.length})`))}</button>`;
+    const err = this.err ? `<p style="margin:0 0 8px; color:#fca5a5; font-size:0.8rem;">${esc(this.err)}</p>` : '';
+    this.el.innerHTML = `<p style="margin:0 0 8px; font-size:0.85rem; color:#94a3b8;">${esc(cp('welcome_intro', {},
+      'Tap a name — their contact opens with the welcome ready. ✓ Done takes someone off without sending.'))}</p>${all}${err}${rows}`;
   }
 }
 

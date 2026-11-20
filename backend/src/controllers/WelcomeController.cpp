@@ -73,6 +73,7 @@ void WelcomeController::registerRoutes(Router& router, const std::string& prefix
               return requireAdminLevel(r, {"club", "super"}) ? Controller::allLaProgramIds() : std::vector<int>{};
           },
           [this](const Request& r, const LaSyncMap&) { return handleDue(r); });
+    router.post(prefix + "/dismiss", [this](const Request& r) { return handleDismiss(r); });
 }
 
 // GET /api/welcomes/due — 👋 the band's Welcome box (mig 1599): new
@@ -89,6 +90,29 @@ Response WelcomeController::handleDue(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "[GET /api/welcomes/due] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load new registrations");
+    }
+}
+
+// POST /api/welcomes/dismiss {person_ids: [..]} — ✓ Done / ✓ Done all on
+// the band's 👋 list (mig 1602): off the list, nothing sent.  Admins only.
+Response WelcomeController::handleDismiss(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"}))
+        return jsonError(denialStatus(request), "Admins only");
+    json body;
+    try { body = request.getBody().empty() ? json::object() : json::parse(request.getBody()); }
+    catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }
+    std::vector<long long> ids;
+    if (body.contains("person_ids") && body["person_ids"].is_array())
+        for (const auto& v : body["person_ids"]) if (v.is_number_integer()) ids.push_back(v.get<long long>());
+    if (ids.empty()) return jsonError(HttpStatus::BAD_REQUEST, "person_ids required");
+    try {
+        const int n = model_->dismiss(ids, bearerUserId(request));
+        Response r(HttpStatus::OK, json({{"dismissed", n}}).dump());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    } catch (const std::exception& e) {
+        std::cerr << "[POST /api/welcomes/dismiss] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not mark done");
     }
 }
 
