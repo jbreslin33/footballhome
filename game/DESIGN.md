@@ -11575,3 +11575,39 @@ beaten. SHOTS PAST THE DEFENCE puts the beating in the last 2-4 s: shots with 0-
 before and 5 at 4 s (set up by a through ball 22%, no pass 27%). Next: how the 4-5 become 0-1 — the carry through
 (carries10 1.71x real) and the ball past the DMs into the zone in front of the box.
 Goldens unchanged; tests 23/23, lint clean.
+
+### 8.293 G5.187 — the man on the ball carries at a real pace (mig 1601; shipped)
+
+From §8.292's "next" (how the block gets beaten in the last 2-4 s). Two reads on the way:
+
+- **The shot lane is empty, not leaky.** LANE ±1 m at the strike: blocked by lane count is real (1 man 34.8% v 34.4), but
+  no outfielder in the lane 78.5% (28.6), nearest to it median 4.1 m (0.56). `GAME_SHOT_TRACE`: the presser is 2.0-2.1 m
+  off the shooter, goal-side 56%, and then beside the line (1.1 m along, 1.1 off), not on it — one body, late.
+- **The carrier sprints.** CARRY DIAG: he wants full dribble speed on 96-97% of ticks (7.86 m/s), goes 5.4; CARRY BY THIRD
+  3.96-4.38 m/s in every row (StatsBomb carries 2.63-3.76); let go 10 m+ from the receipt 17% v 10% (18-35 centre),
+  pressed middle carries forward 10 m+ 25.9% (12.8); carries10 59.1 v 34.6. Our attack outruns the block into the zone in
+  front of the box.
+
+**Change** (rows, mig 1601; code and goldens unchanged): §8.239's governor on — `physics.tempo.carry_pace` 2 (one draw a
+spell from the pooled real carrier pace, DFL) + `carry_pace_free_m` 3 (an opponent within 3 m: his full dribble share,
+the take-on burst). Three trials (§8.232, §8.233, §8.239) left it off because the passes rose; on today's HEAD the card
+says otherwise.
+
+| seeds 1000-4000 × 8 (real) | G5.184 | G5.187 |
+|---|---|---|
+| card ok / off / OFF | 5 / 8 / 20 | **12 / 6 / 15** |
+| goals / conversion % | 2.77 / 18.6 | 2.12 / 15.8 (1.35 / 10.0) |
+| scored 18-25 / <12 % | 7.8 / 26.2 | 7.2 ok / 21.6 ok (3.6 / 18.0) |
+| carries 10 m+ | 59.1 | 42.1 (34.6) |
+| shots / tackles / switches / goal kicks | 14.8 / 17.7 / 8.8 / 10.4 | 13.5 / 19.7 / 10.4 / 8.1 — all ok |
+| blocked % | 13.8 | 16.4 (29.1) |
+| passes / completion % | 511 / 81.0 | **570 / 83.5** (434 / 77.5) |
+| corners / throw-ins | 2.25 / 18.0 | **1.41 / 13.9** (5.4 / 23.1) |
+
+CARRY BY THIRD, seed 1000 (real): free own third 5.0 m at 2.63 m/s (5.5 / 2.63), middle 4.5 at 2.61 (4.8 / 3.42), final
+third 3.9 at 2.87 (3.8 / 3.03); pressed 3.4-3.6 m/s (3.1-3.8). CARRY DIAG wanted 7.86 → 5.56, speed 5.44 → 3.81.
+Card `card_G5.187_carrypace_trial.txt` (same as the rows: seed 1000 byte-identical).
+
+Worse, and the next moles: **passes 570** — the slow carrier holds as long (the hold is drawn apart from the pace, §8.239)
+and passes safe; corners and throw-ins down with fewer carries over the lines. Next: the spell's metres and seconds as one
+draw, then the pass count. Goldens unchanged; tests 23/23, lint clean.
