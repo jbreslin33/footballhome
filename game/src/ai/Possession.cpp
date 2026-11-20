@@ -344,6 +344,19 @@ public:
                 if (ay >= P.clear_touch_y) ty = sp.y.raw >= 0 ? hy : -hy;   // "if in doubt, put it out"
                 else { const Fixed64 off = hy * Fixed64::fromFraction(7, 20); ty = crowd[0] <= crowd[1] ? -off : off; }
                 o.target = Vec2{ax * v.sg, ty};
+                if (P.clear_out) {   // G5.188 (§8.294): out at the real share by his spot — behind his own line wide of the post, or over his touchline
+                    const int a = own_end < Fixed64::fromInt(6) ? 0 : own_end < Fixed64::fromInt(18) ? 1 : own_end < Fixed64::fromInt(35) ? 2 : 3;
+                    const int wd = ay < Fixed64::fromFraction(2016, 100) ? 0 : 1;
+                    const Fixed64 uo = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 91) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                    const Fixed64 u2 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 92) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                    const Fixed64 side = sp.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+                    if (uo < P.clear_out_corner[a][wd])
+                        o.target = Vec2{-v.sg * (hx + Fixed64::fromInt(2)), side * (Fixed64::fromFraction(366, 100) + Fixed64::one() + Fixed64::fromInt(12) * u2)};
+                    else if (uo < P.clear_out_corner[a][wd] + P.clear_out_throw[a][wd])
+                        o.target = Vec2{(sp.x * v.sg + Fixed64::fromInt(5) + Fixed64::fromInt(20) * u2) * v.sg, side * (hy + Fixed64::fromInt(3))};
+                    else
+                        o.target = Vec2{ax * v.sg, crowd[0] <= crowd[1] ? -hy * Fixed64::fromFraction(7, 20) : hy * Fixed64::fromFraction(7, 20)};   // upfield, infield
+                }
                 const Fixed64 len = math::length(Vec2{o.target.x - sp.x, o.target.y - sp.y});
                 o.carry_m = aimedCarry(me.pos, o.target, rangeFor(w.skillOf(v.slot), len));
                 o.move.move = math::normalized(Vec2{o.target.x - sp.x, o.target.y - sp.y});
@@ -1419,6 +1432,16 @@ void PossessionParams::configure(const core::ModelParams& p) {
             for (int n = 0; n < 4; ++n)
                 clear_rate[z][n] = p.fixed(std::string("physics.onball.clear_") + kZ[z] + "_" + kN[n], kClear[z][n]);
         clear_touch_y = p.fixed("physics.onball.clear_touch_y_m", 24000);
+        {   // G5.188 (§8.294): StatsBomb PL 15/16 foot clearances, permille — corner / throw-in by spot
+            static const int kC[4][2] = {{190, 70}, {60, 10}, {10, 0}, {0, 0}}, kT[4][2] = {{230, 500}, {160, 500}, {140, 450}, {120, 420}};
+            static const char* kA[4] = {"6", "18", "35", "far"};
+            clear_out = p.fixed("physics.onball.clear_out", 0).raw > 0;
+            for (int a = 0; a < 4; ++a) for (int wd = 0; wd < 2; ++wd) {
+                const std::string suf = std::string(kA[a]) + (wd ? "_wide" : "_inside");
+                clear_out_corner[a][wd] = p.fixed(("physics.onball.clear_out_corner_" + suf).c_str(), kC[a][wd]);
+                clear_out_throw[a][wd] = p.fixed(("physics.onball.clear_out_throw_" + suf).c_str(), kT[a][wd]);
+            }
+        }
         edge_m = p.fixed("physics.onball.carry_edge_m", 3000);
         for (int b = 0; b < 5; ++b) for (int d = 0; d < 3; ++d)   // §8.249
             short_dir[b][d] = p.fixed("physics.pass.short_dir_" + std::to_string(b) + "_" + std::to_string(d), 1000);

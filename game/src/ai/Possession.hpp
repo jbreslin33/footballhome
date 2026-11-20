@@ -117,7 +117,12 @@ struct PossessionParams {
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
-    math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};   // clear_len_q: the aim's metres upfield at 0/25/50/75/100% of a draw
+    math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};
+    // G5.188 (§8.294): a foot clearance goes out at the real share by his spot (0-6 / 6-18 / 18-35 / 35+ m off our line x
+    // inside / wide the box's width): behind for a corner, over his touchline for a throw-in (StatsBomb PL 15/16,
+    // benchmarks_statsbomb_clearcorner.py, foot only); the rest upfield as before. clear_out off = G5.139's aim.
+    bool clear_out = false;
+    math::Fixed64 clear_out_corner[4][2]{}, clear_out_throw[4][2]{};   // clear_len_q: the aim's metres upfield at 0/25/50/75/100% of a draw
     // G5.81 (§8.182): pressed (a man inside 3 m), his carry's line to that man — toward / across / the
     // rest away — DFL controlled first touches (benchmarks_tracking_firsttouch.py PRESSED TOUCH).
     bool press_on = true; math::Fixed64 press_toward{}, press_across{};

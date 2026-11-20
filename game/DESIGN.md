@@ -11611,3 +11611,37 @@ Card `card_G5.187_carrypace_trial.txt` (same as the rows: seed 1000 byte-identic
 Worse, and the next moles: **passes 570** — the slow carrier holds as long (the hold is drawn apart from the pace, §8.239)
 and passes safe; corners and throw-ins down with fewer carries over the lines. Next: the spell's metres and seconds as one
 draw, then the pass count. Goldens unchanged; tests 23/23, lint clean.
+
+### 8.294 G5.188 — the ball goes out off a defender: foot clearances and blocks (mig 1604; shipped)
+
+From §8.293's "worse": passes 570 a team-match (434). **Not the passing**: passes a minute in play 9.59 (DFL 8.23) — G5.187
+put 9.37. The ball was **in play 63.7% of the match** (55.2): nothing a defender touched went out. By what put it out
+(StatsBomb PL 15/16): throw-ins from a pass 7.9 (7.3) — real; from a clearance 0.6 (4.7), a block 0 (3.1); corners from a
+clearance 0 (1.4), a block 0.3 (1.3).
+
+1. **Foot clearances.** `benchmarks_statsbomb_clearcorner.py` now splits corner and throw-in by body part. Real foot
+   clearances out, corner / throw-in % by spot (m off his own line, inside / wide the box's width): 0-6 19 / 23, 7 / 50;
+   6-18 6 / 16, 1 / 50; 18-35 1 / 14, 0 / 45; 35+ 0 / 12, 0 / 42. Ours were 0 / ~0 (aimed upfield to the emptier side
+   unless 24 m+ wide). `physics.onball.clear_out` (code default off; row on): at the real share by spot the clearance is
+   aimed behind his own line wide of the post (3.66 + 1-13 m out, his side) or over his touchline 5-25 m upfield; the rest
+   upfield as G5.139. Corners 1.41 → 1.72, throw-ins 13.9 → 14.5 alone — small, because ours clear 6.5 a team-match
+   (12.7): own-third releases 128.6 passes + 5.4 clears (102 + 11.4) at the real rate by the nearest opponent, so the
+   shortfall is how rarely their men close ours down there, not the roll.
+2. **Blocks.** A ball off a body kept 0.3 of its pace straight back (G4.25; §8.270's oblique model keeps the across part):
+   blocked shots' next touch 6.7 / 9.2 / 10.3 m (7.1 / 13.1 / 21.2), charged-down passes out near the touchline 30% (54).
+   `physics.block.keep` 0.3 → 0.5 / **0.4** (rows): at 0.4 blocked shots go behind for a corner 24.2% (24.0), out else 6.1
+   (6.0), next touch 8.3 / 11.7 / 14.9 m; at 0.5 the median ran long (16.2).
+
+| seeds 1000-4000 × 8 (real) | G5.187 | clear_out | + keep 0.5 | **+ keep 0.4 (shipped)** |
+|---|---|---|---|---|
+| ball in play % | 63.7 | 63.0 | 62.8 | 62.6 (55.2) |
+| corners / throw-ins | 1.41 / 13.9 | 1.72 / 14.5 | 1.98 / 16.4 | 1.95 / 15.8 (5.4 / 23.1) |
+| passes | 570 | 564 | 555 | 559 (434) |
+| goals | 2.12 | 2.12 | 2.16 | 2.28 (1.35) |
+| card ok / off / OFF | 12 / 6 / 15 | 10 / 5 / 18 | 12 / 4 / 17 | 10 / 5 / 18 |
+
+The card's moves are lines at the edge both ways (scored <12 m 21.6 → 27.8%, seeds ran 21-32 before; take-ons and
+penalties to ok; switches, free kicks, tackles to off). Correct behaviour, real outcomes for the touch itself: shipped
+(`card_G5.188.txt`). Still in play 62.6%: the rest of the outs real football gets off a defender — dispossessed 2.3,
+miscontrol 2.1, interception 1.4 throw-ins, and the clearances ours never make. Next: pressing our defenders in their
+third (the clearance count), then the dispossession / miscontrol outs. Goldens unchanged; tests 23/23, lint clean.
