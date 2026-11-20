@@ -144,6 +144,7 @@ class MainMenu {
       // 📣 Marketing's own pills (mig 1349) wear the marketing hat, as when
       // they were tiles on marketing-home.
       case 'ad-preview':
+      case 'messages':
       case 'leads':       ctx.role = 'marketing'; return nav.goTo(code);
       case 'teams':
       case 'tactical':
