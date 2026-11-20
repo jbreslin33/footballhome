@@ -129,7 +129,7 @@ class EventScreen extends Screen {
   //           players as pills in the team colour, smaller as the count grows
   //   who     every Going player under his team among the event's tagged
   //           teams (rsvps.team_ids); a man on two (APSL + L1) once, under
-  //           the first, +L1; Going on none of them (invites) → 'Invited'.
+  //           the first he is a Regular on, +L1; Going on none of them (invites) → 'Invited'.
   //           Coaches a foot line, never counted.  Indoor/outdoor in the
   //           date line (ev.setting, mig 931).
   _teamCardHtml() {
@@ -166,8 +166,12 @@ class EventScreen extends Screen {
     const other = { team: { short_label: cp('card_other', 'Invited'), color: '#f59e0b', field_size: 11 }, rows: [] };
     const players = going.filter(r => !r.is_coach).concat(came);
     for (const r of players) {
+      // A team he is a Regular on before one he is only a 🪑 Reserve on
+      // (rsvps.reserve_team_ids — owner 11/20, Asif: Regular L1 + Reserve
+      // APSL → "put him under liga 1"), then the card's team order.
+      const res = new Set((Array.isArray(r.reserve_team_ids) ? r.reserve_team_ids : []).map(Number));
       const mine = (Array.isArray(r.team_ids) ? r.team_ids : []).map(Number).filter(id => byId.has(id))
-        .sort((a, b) => teams.indexOf(byId.get(a)) - teams.indexOf(byId.get(b)));
+        .sort((a, b) => (res.has(a) - res.has(b)) || (teams.indexOf(byId.get(a)) - teams.indexOf(byId.get(b))));
       (mine.length ? blocks.get(mine[0]) : other).rows.push({ r, also: mine.slice(1).map(id => byId.get(id).short_label || '').filter(Boolean),
         said: r.response === 'yes' ? null : r.response === 'no' ? 'no' : 'noresp' });
     }

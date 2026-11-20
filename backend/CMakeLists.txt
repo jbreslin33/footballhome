@@ -66,6 +66,7 @@ set(SOURCES
     src/models/RsvpBoard.cpp
     src/models/PersonHealth.cpp
     src/models/PersonTeams.cpp
+    src/models/PersonSheet.cpp
     src/models/StarterCriteria.cpp
     src/models/KitBoard.cpp
     src/models/FieldPlan.cpp
@@ -154,6 +155,7 @@ set(SOURCES
     src/controllers/PersonHealthController.cpp
     src/controllers/PersonSeesController.cpp
     src/controllers/PersonTeamsController.cpp
+    src/controllers/PersonSheetController.cpp
     src/controllers/PracticeCriteriaController.cpp
     src/controllers/JobsController.cpp
     src/controllers/CoachScheduleController.cpp

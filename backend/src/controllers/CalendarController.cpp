@@ -1314,6 +1314,14 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                         'callup_from',    roster.callup_from,
                                                         -- ⭐ CALL-UP / CALL-DOWN chip (mig 1024)
                                                         'callup_badge',   CASE WHEN roster.is_callup
+                                                        -- 🪑 of those, the teams he is only a Reserve / Inactive on —
+                                                        -- the practice card files him under a team he is a Regular on
+                                                        -- (owner 11/20, Asif: Regular L1 + Reserve APSL → "put him under liga 1")
+                                                        'reserve_team_ids', (SELECT COALESCE(jsonb_agg(tp.team_id), '[]'::jsonb)
+                                                                               FROM team_persons tp
+                                                                               JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code IN ('inactive', 'standby')
+                                                                              WHERE tp.person_id = roster.person_id AND tp.removed_at IS NULL
+                                                                                AND tp.team_id = ANY(roster.team_ids)),
                                                                                THEN fh_event_invite_badge(fe.id, roster.person_id) END,
                                                         'phone',          roster.phone,
                                                         'email',          roster.email,

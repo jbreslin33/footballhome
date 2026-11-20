@@ -2775,10 +2775,20 @@ class RosterScreenBase extends Screen {
         const c = entry();
         if (!c) return {};
         const label = c.col && (c.col.shortLabel || c.col.label);
+        // The Team status picker is the sheet's own now, for every team he
+        // is on (PlayerSheet squadHtml, owner 11/20); this board adds its
+        // league-paperwork Roster status and Role for the column's team.
+        let own = c.teams || '';
+        if (own) {
+          const box = document.createElement('div');
+          box.innerHTML = own;
+          box.querySelectorAll('.mr-team-status').forEach(n => n.remove());
+          own = box.innerHTML.trim();
+        }
         return {
-          teams: c.teams ? `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+          teams: own ? `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
               ${label ? `<div style="font-size:0.75rem; font-weight:800; opacity:0.75;">${this.escape(RosterScreenBase.dropClubName(label))}</div>` : ''}
-              ${c.teams}</div>` : '',
+              ${own}</div>` : '',
           contact: c.contact || this._sheetContactHtml(c),
         };
       },

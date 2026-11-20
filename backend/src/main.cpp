@@ -45,6 +45,7 @@
 #include "controllers/RsvpBoardController.h"
 #include "controllers/PersonHealthController.h"
 #include "controllers/PersonTeamsController.h"
+#include "controllers/PersonSheetController.h"
 #include "controllers/PersonSeesController.h"
 #include "controllers/PracticeCriteriaController.h"
 #include "controllers/JobsController.h"
@@ -155,6 +156,7 @@ private:
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
     std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<PersonTeamsController> person_teams_controller_;
+    std::shared_ptr<PersonSheetController> person_sheet_controller_;
     std::shared_ptr<PersonSeesController> person_sees_controller_;
     std::shared_ptr<PracticeCriteriaController> practice_criteria_controller_;
     std::shared_ptr<JobsController> jobs_controller_;
@@ -273,6 +275,7 @@ public:
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
         person_health_controller_ = std::make_shared<PersonHealthController>();
         person_teams_controller_ = std::make_shared<PersonTeamsController>();
+        person_sheet_controller_ = std::make_shared<PersonSheetController>();
         person_sees_controller_ = std::make_shared<PersonSeesController>();
         practice_criteria_controller_ = std::make_shared<PracticeCriteriaController>();
         jobs_controller_ = std::make_shared<JobsController>();
@@ -621,6 +624,8 @@ private:
         // Health dropdown on the #teams cards (owner 2026-10-02, mig 510): injuries excuse RSVPs + fines.
         router_.useController("/api/person-health", person_health_controller_);
         router_.useController("/api/person-teams", person_teams_controller_);
+        // ⋯ player sheet: the same card from every screen (owner 11/20).
+        router_.useController("/api/person-sheet", person_sheet_controller_);
         router_.useController("/api/person-sees", person_sees_controller_);  // 👁 SEES + 📋 ROSTERS (mig 1435)
         router_.useController("/api/practice-criteria", practice_criteria_controller_);
         // #jobs (mig 625): auto-assigned event jobs, sticky homes, default-done check-off.

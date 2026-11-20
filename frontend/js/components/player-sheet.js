@@ -36,6 +36,15 @@
 //   PlayerSheet.close()
 //   PlayerSheet.loadHealth(auth) / injuryFor(personId) — shared health data
 //
+// The card reads the person ITSELF (GET /api/person-sheet, owner 2026-11-20:
+// "make player card the same wherever its clicked from and the
+// functionality to move them teams open la put them as volunteers etc
+// contact them for various reasons need to all be there"): the LA id, each
+// parent's contacts, the 🙋 volunteer flag and his status on every team
+// come from the server, so 🔗 Open in LA, 🙋 Volunteer, 📇 CONTACT and the
+// team pills + status pickers are drawn here on every screen — a screen's
+// row only names the person (resolve) and may add its own context.
+//
 // Words: message_templates kind 'player_sheet' (mig 1235); health words
 // kind 'health' (mig 510).  Health saves: PUT /api/person-health, the same
 // call the #teams control makes.
@@ -220,6 +229,201 @@
     return true;
   }
 
+  // ── The card's own read (mig 1638) ─────────────────────────────────
+  // CARD.data[key] = PersonSheet::card or null (a player's 403).  Keyed by
+  // the screen's row (p<person id> / la<LA user id>) and by person id.
+  const CARD = { data: {}, asked: {} };
+  const VOL = { ask: 0, busy: false };
+  const cardKey = (p) => (p && p.personId) ? `p${p.personId}` : (p && p.laUserId ? `la${p.laUserId}` : '');
+  function putCard(key, data) {
+    if (key) CARD.data[key] = data;
+    if (data && data.personId) CARD.data[`p${data.personId}`] = data;
+  }
+  function loadCard(auth, p, force) {
+    const key = cardKey(p);
+    if (!auth || !key) return Promise.resolve(null);
+    if (!force && CARD.asked[key]) return CARD.asked[key];
+    const q = p.personId ? `person_id=${encodeURIComponent(p.personId)}` : `la_user_id=${encodeURIComponent(p.laUserId)}`;
+    CARD.asked[key] = (async () => {
+      try {
+        const res = await auth.fetch(`/api/person-sheet?${q}`);
+        putCard(key, res.ok ? await res.json() : null);
+      } catch (_e) { putCard(key, null); }
+      return CARD.data[key];
+    })();
+    return CARD.asked[key];
+  }
+  // The screen's row + what the server knows: the screen's names win (a
+  // board may show a per-team name); ids, DOB and the card fill the gaps.
+  function withCard(p) {
+    if (!p) return p;
+    const c = CARD.data[cardKey(p)] || null;
+    const pid = p.personId || (c && c.personId) || null;
+    const la = p.laUserId || (c && c.laUserId)
+      || (pid && window.PersonStanding && PersonStanding.laUserId ? PersonStanding.laUserId(pid) : null) || null;
+    return { ...p, personId: pid, laUserId: la,
+      firstName: p.firstName || (c && c.firstName) || '',
+      lastName: p.lastName || (p.firstName ? '' : ((c && c.lastName) || '')),
+      dob: p.dob || (c && c.dob) || '', card: c };
+  }
+
+  // 🙋 Volunteer (club_volunteers, mig 704: no dues, no notices) — on 👤
+  // Person on every screen; club admins flip it, two taps.
+  function volunteerHtml(p) {
+    const c = p.card;
+    if (!c || !p.personId) return '';
+    const on = !!(c.volunteer && c.volunteer.on);
+    if (!on && !c.canVolunteer) return '';
+    const btn = (attr, label, kind) => `<button type="button" ${attr} ${VOL.busy ? 'disabled' : ''}
+        style="padding:6px 10px; border-radius:6px; font-weight:800; font-size:0.78rem; cursor:pointer;
+               ${kind === 'go' ? 'background:#1d4ed8; color:#fff; border:1px solid #3b82f6;'
+                 : kind === 'warn' ? 'background:#7f1d1d; color:#fff; border:1px solid #b91c1c;'
+                 : 'background:transparent; color:#e5e7eb; border:1px solid #475569;'}">${esc(label)}</button>`;
+    const line = on
+      ? t('volunteer_on', { since: (c.volunteer && c.volunteer.since) || '' }, `🙋 Volunteer since ${(c.volunteer && c.volunteer.since) || ''} — no dues`)
+      : t('volunteer_off', {}, 'Not a volunteer — pays dues');
+    let btns = '';
+    if (c.canVolunteer) {
+      btns = VOL.ask === p.personId
+        ? btn(`data-ps-vol-yes="${on ? 'off' : 'on'}"`, on ? t('volunteer_confirm_end', {}, 'Tap again — back to paying dues')
+                                                        : t('volunteer_confirm_make', {}, 'Tap again — volunteer, no dues'), on ? 'warn' : 'go')
+          + btn('data-ps-vol-no', t('teams_cancel', {}, 'Cancel'), '')
+        : btn('data-ps-vol', on ? t('volunteer_end', {}, '🛑 End volunteer') : t('volunteer_make', {}, '🙋 Make volunteer'), '');
+    }
+    return `<div data-ps-volunteer style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed var(--border-color, #374151);">
+        <span style="font-weight:700; ${on ? 'color:#93c5fd;' : 'opacity:0.75;'}">${esc(line)}</span>${btns}</div>`;
+  }
+
+  // ⚽ His status on each team — ✅ Regular / 🪑 Reserves for adults, Plays /
+  // Practice Squad / 💤 Inactive for youth: the #teams board's Team picker,
+  // here for every team he is on (same write: /api/mens-roster/invite-only).
+  const RS = (tier, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier)) || fb;
+  function squadOptions(x) {
+    const adult = x.section === 'M' || x.section === 'W';
+    const list = adult
+      ? [['plays', RS('team_status_regular', '✅ Regular')], ['standby', RS('team_status_standby', '🪑 Reserves')]]
+      : [['plays', RS('team_status_plays', '✅ Plays')], ['practice_squad', RS('team_status_practice_squad', 'Practice Squad')],
+         ['inactive', RS('team_status_inactive', '💤 Inactive')], ['inactive_all', RS('team_status_inactive_all', '💤 Inactive — all his teams')]];
+    if (!list.some(o => o[0] === x.status)) list.push([x.status, RS(`team_status_${x.status}`, x.status), true]);
+    return list;
+  }
+  function squadHtml(p) {
+    const c = p.card;
+    if (!c || !Array.isArray(c.teams) || !c.teams.length) return '';
+    const rows = c.teams.map(x => `
+        <label style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="min-width:90px; font-weight:800;">${esc(x.short || x.label)}</span>
+          <select data-ps-squad="${x.teamId}" data-ps-squad-was="${esc(x.status)}" ${x.canManage ? '' : 'disabled'}
+                  title="${esc(x.canManage ? t('squad_tip', { team: x.label }, `His status on ${x.label}`) : t('teams_no_rights_tip', {}, "You don't run this team"))}"
+                  style="padding:5px 8px; border-radius:6px; border:1px solid #475569; background:#0f172a; color:#fff; font-weight:700; max-width:260px;">
+            ${squadOptions(x).map(o => `<option value="${esc(o[0])}" ${o[0] === x.status ? 'selected' : ''}${o[2] ? ' disabled' : ''}>${esc(o[1])}</option>`).join('')}
+          </select></label>`).join('');
+    return `<div data-ps-squads style="display:flex; flex-direction:column; gap:6px;">
+        <div style="font-size:0.75rem; font-weight:800; opacity:0.75;">${esc(t('squad_heading', {}, 'Status on each team'))}</div>${rows}</div>`;
+  }
+
+  // 📇 CONTACT — the section's one message list (SectionContact) to him, or
+  // to each parent of a kid, on every screen.  A screen that knows why it
+  // is being opened (this event's RSVP reminder, a dues notice) hands over
+  // its own button instead: the same popup, its message first.
+  function contactLines(p) {
+    const c = p.card;
+    const link = (href, text) => `<a href="${esc(href)}" style="color:#93c5fd;">${esc(text)}</a>`;
+    const rs = c && Array.isArray(c.recipients) ? c.recipients : [];
+    if (!rs.length) {
+      const bits = [];
+      if (p.email) bits.push(`<div>✉️ ${link(`mailto:${p.email}`, p.email)}</div>`);
+      if (p.phone) bits.push(`<div>📱 ${link(`tel:${p.phone}`, p.phoneLabel || p.phone)}</div>`);
+      return bits.length ? `<div style="display:flex; flex-direction:column; gap:4px;">${bits.join('')}</div>` : '';
+    }
+    const named = rs.length > 1 || rs.some(r => r.isGuardian);
+    return `<div style="display:flex; flex-direction:column; gap:8px;">${rs.map(r => `
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          ${named ? `<div style="font-weight:800;">${esc(r.name || '')}${r.isGuardian ? ` <span style="opacity:0.65; font-weight:600;">· ${esc(t('contact_parent', {}, 'parent'))}</span>` : ''}</div>` : ''}
+          ${r.email ? `<div>✉️ ${link(`mailto:${r.email}`, r.email)}</div>` : ''}
+          ${r.phone ? `<div>📱 ${link(`tel:${r.phone}`, r.phone)}</div>` : ''}
+          ${!r.email && !r.phone ? `<div style="opacity:0.6; font-style:italic;">${esc(t('empty_contact', {}, 'No email or phone on file.'))}</div>` : ''}
+        </div>`).join('')}</div>`;
+  }
+  function contactButton(p, auth) {
+    const c = p.card;
+    if (!c || !p.personId || !auth || !window.ContactPopup || !window.SectionContact) return '';
+    const name = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+    let people = (c.recipients || []).map(r => ({ personId: r.personId, name: r.name || name, phone: r.phone || null, email: r.email || null, forPersonId: p.personId }));
+    if (!people.length) people = [{ personId: p.personId, name, phone: null, email: null, forPersonId: p.personId }];
+    const parent = (c.recipients || []).find(r => r.isGuardian);
+    const list = SectionContact.messages(c.section || '', {
+      screen: { auth }, playerId: p.personId, first: c.firstName || p.firstName || '',
+      parentFirst: parent ? String(parent.name || '').split(' ')[0] : '' });
+    if (!list.length) return '';
+    return `<div style="display:flex; margin-top:10px;">${ContactPopup.button({
+      key: `sheet:${p.personId}`, recipients: people, messages: list, defaultKey: list[0].key, big: true,
+      title: t('contact_title', { name }, `Contact ${name}`) })}</div>`;
+  }
+
+  // Clicks / changes on the card's own controls.  ctx: { auth, person,
+  // redraw, say(msg, bad), onChange }.  true when it was ours.
+  function handleCardClick(e, ctx) {
+    const p = ctx.person;
+    const pid = p && p.personId;
+    if (!pid) return false;
+    if (e.target.closest('[data-ps-vol-no]')) { VOL.ask = 0; ctx.redraw(); return true; }
+    if (e.target.closest('[data-ps-vol]')) { VOL.ask = pid; ctx.redraw(); return true; }
+    const yes = e.target.closest('[data-ps-vol-yes]');
+    if (!yes) return false;
+    const on = yes.getAttribute('data-ps-vol-yes') === 'on';
+    VOL.busy = true;
+    ctx.redraw();
+    (async () => {
+      try {
+        const res = await ctx.auth.fetch('/api/person-sheet/volunteer', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ person_id: pid, on }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        putCard(ctx.key, data);
+        if (window.PersonStanding && PersonStanding.forget) {
+          PersonStanding.forget(pid);
+          PersonStanding.load(ctx.auth, [pid]).then(() => ctx.redraw());
+        }
+        ctx.say(on ? t('volunteer_saved_on', {}, 'Volunteer — no dues.') : t('volunteer_saved_off', {}, 'No longer a volunteer.'));
+        if (ctx.onChange) ctx.onChange('volunteer');
+      } catch (err) {
+        ctx.say(`${t('teams_failed', {}, 'Could not save')}: ${err.message}`, true);
+      } finally {
+        VOL.busy = false; VOL.ask = 0;
+        ctx.redraw();
+      }
+    })();
+    return true;
+  }
+  function handleCardChange(e, ctx) {
+    const sel = e.target.closest('[data-ps-squad]');
+    const p = ctx.person;
+    if (!sel || !p || !p.personId) return false;
+    const teamId = Number(sel.getAttribute('data-ps-squad'));
+    const value = sel.value;
+    if (value === sel.getAttribute('data-ps-squad-was')) return true;
+    sel.disabled = true;
+    (async () => {
+      try {
+        const res = await ctx.auth.fetch('/api/mens-roster/invite-only', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ personId: p.personId, teamId, inviteOnly: value !== 'plays', callIn: false,
+            squadStatus: value === 'inactive_all' ? 'inactive' : (value === 'plays' ? '' : value),
+            allTeams: value === 'inactive_all' }) });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+        ctx.say(t('squad_saved', {}, 'Team status saved.'));
+        if (ctx.onChange) ctx.onChange('teams');
+      } catch (err) {
+        ctx.say(`${t('teams_failed', {}, 'Could not save')}: ${err.message}`, true);
+      }
+      await loadCard(ctx.auth, ctx.base || p, true);
+      ctx.redraw();
+    })();
+    return true;
+  }
+
   let state = null;   // { opts, tab, el }
 
   function button(key, opts = {}) {
@@ -237,29 +441,28 @@
   }
 
   // ── Core parts (the same on every screen) ──────────────────────────
-  function core(tab, p) {
+  // o: { auth, page (the full page: its header card is the identity),
+  //      ownContact (the screen handed over its own 📇 button) }
+  function core(tab, p, o = {}) {
     const pid = p.personId;
     switch (tab) {
       case 'person': {
-        const profile = window.PersonActions
+        const profile = (!o.page && window.PersonActions)
           ? PersonActions.buttonsHtml({ personId: pid, leagueAppsUserId: p.laUserId, firstName: p.firstName,
               fullName: `${p.firstName || ''} ${p.lastName || ''}`.trim() }, { returnTo: p.returnTo || '', size: 'md' })
           : '';
-        return `<div style="display:flex; flex-direction:column; gap:6px;">
-          ${p.dob ? `<div>🎂 ${esc(p.dob)}</div>` : ''}
-          ${profile ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${profile}</div>` : ''}
-        </div>`;
+        const bits = [
+          (!o.page && p.dob) ? `<div>🎂 ${esc(p.dob)}</div>` : '',
+          profile ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">${profile}</div>` : '',
+          laButton(p), volunteerHtml(p),
+        ].filter(Boolean);
+        return bits.length ? `<div style="display:flex; flex-direction:column; gap:6px;">${bits.join('')}</div>` : '';
       }
-      case 'contact': {
-        const bits = [];
-        if (p.email) bits.push(`<div>✉️ <a href="mailto:${esc(p.email)}" style="color:#93c5fd;">${esc(p.email)}</a></div>`);
-        if (p.phone) bits.push(`<div>📱 <a href="tel:${esc(p.phone)}" style="color:#93c5fd;">${esc(p.phoneLabel || p.phone)}</a></div>`);
-        return bits.length ? `<div style="display:flex; flex-direction:column; gap:4px;">${bits.join('')}</div>` : '';
-      }
+      case 'contact':
+        return `${contactLines(p)}${o.ownContact ? '' : contactButton(p, o.auth)}`;
       case 'teams': {
-        const standing = pid && window.PersonStanding ? (PersonStanding.rosterHtml(pid) || '') : '';
-        const moves = movesHtml(p);
-        return `${standing}${standing && moves ? '<div style="height:10px;"></div>' : ''}${moves}`;
+        const parts = [pid && window.PersonStanding ? (PersonStanding.rosterHtml(pid) || '') : '', movesHtml(p), squadHtml(p)].filter(Boolean);
+        return parts.join('<div style="height:10px;"></div>');
       }
       case 'health':
         return healthHtml(p);
@@ -385,9 +588,17 @@
   // ── Drawing ─────────────────────────────────────────────────────────
   function draw() {
     if (!state) return;
-    const p = state.opts.resolve ? state.opts.resolve() : null;
-    if (!p) { close(); return; }
+    const base = state.opts.resolve ? state.opts.resolve() : null;
+    if (!base) { close(); return; }
+    const p = withCard(base);
     state.person = p;
+    state.base = base;
+    // The card's own read, fresh on every opening; then one redraw.
+    if (!state.cardAsked) {
+      state.cardAsked = true;
+      const mine = state;
+      loadCard(state.opts.auth, base, true).then(() => { if (state === mine) draw(); });
+    }
     const extras = (state.opts.extras && state.opts.extras(p)) || {};
     const part = (k) => {
       const x = extras[k];
@@ -395,7 +606,7 @@
         : (typeof x === 'string' ? { html: x, flag: false } : { html: x.html || '', flag: !!x.flag });
     };
     const tabBtns = tabButtons(state.tab, (k) => part(k).flag);
-    const coreHtml = core(state.tab, p);
+    const coreHtml = core(state.tab, p, { auth: state.opts.auth, ownContact: !!part('contact').html });
     const extraHtml = part(state.tab).html;
     const body = (coreHtml || extraHtml)
       ? `${coreHtml}${coreHtml && extraHtml ? '<div style="height:10px;"></div>' : ''}${extraHtml}`
@@ -449,18 +660,25 @@
       if (e.target.closest('[data-ps-full]')) { openFull(state.person, state.tab); return; }
       const tb = e.target.closest('[data-ps-tab]');
       if (tb) { state.tab = tb.getAttribute('data-ps-tab'); draw(); return; }
-      if (state && handleMovesClick(e, { auth: state.opts.auth, person: state.person, redraw: draw, say: toast,
-          onChange: state.opts.onChange })) e.stopPropagation();
+      if (!state) return;
+      const ctx = { auth: state.opts.auth, person: state.person, base: state.base, key: cardKey(state.base),
+        redraw: draw, say: toast, onChange: state.opts.onChange };
+      if (handleMovesClick(e, ctx) || handleCardClick(e, ctx)) e.stopPropagation();
     });
     el.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
-      if (h) saveHealth(h);
+      if (h) { saveHealth(h); return; }
+      if (state && handleCardChange(e, { auth: state.opts.auth, person: state.person, base: state.base,
+          redraw: draw, say: toast, onChange: state.opts.onChange })) e.stopPropagation();
     });
     host.appendChild(el);
     state = { opts, tab: TABS.includes(opts.tab) ? opts.tab : 'person', el, person: null };
     MOVES.ask = null;
+    VOL.ask = 0;
     document.addEventListener('keydown', onKey);
     if (opts.auth) loadHealth(opts.auth).then(() => { if (state && state.el === el) draw(); });
+    // The section's registration messages for 📇 (cached after the first).
+    if (opts.auth && window.SectionContact) SectionContact.load(opts.auth).then(() => { if (state && state.el === el) draw(); }).catch(() => {});
     draw();
   }
 
@@ -511,13 +729,13 @@
     });
     const visible = (node) => node && node.style.display !== 'none';
     function paint() {
-      const p = ctl.person || {};
+      const p = withCard(ctl.person || {});
       c.querySelector('.ps-page-tabs').innerHTML = tabButtons(ctl.tab);
       TABS.forEach(k => {
         const pane = c.querySelector(`[data-ps-pane="${k}"]`);
         pane.style.display = k === ctl.tab ? 'block' : 'none';
         // The page's header card already is the identity — no self-link.
-        const coreHtml = k === 'person' ? '' : core(k, p);
+        const coreHtml = core(k, p, { auth: opts.auth, page: true });
         const coreEl = pane.querySelector('.ps-page-core');
         coreEl.innerHTML = coreHtml;
         coreEl.style.marginBottom = coreHtml ? '14px' : '0';
@@ -529,12 +747,15 @@
     c.addEventListener('click', (e) => {
       const tb = e.target.closest('[data-ps-tab]');
       if (tb && c.contains(tb)) { ctl.setTab(tb.getAttribute('data-ps-tab')); return; }
-      handleMovesClick(e, { auth: opts.auth, person: ctl.person, redraw: () => paint(),
-        say: (m, bad) => toastIn(document.body, m, bad), onChange: opts.onChange });
+      const ctx = { auth: opts.auth, person: withCard(ctl.person), base: ctl.person, key: cardKey(ctl.person),
+        redraw: () => paint(), say: (m, bad) => toastIn(document.body, m, bad), onChange: opts.onChange };
+      if (!handleMovesClick(e, ctx)) handleCardClick(e, ctx);
     });
     c.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
-      if (h) saveHealthFor(h, opts.auth, ctl.person, () => paint(), (m, bad) => toastIn(document.body, m, bad));
+      if (h) { saveHealthFor(h, opts.auth, ctl.person, () => paint(), (m, bad) => toastIn(document.body, m, bad)); return; }
+      handleCardChange(e, { auth: opts.auth, person: withCard(ctl.person), base: ctl.person,
+        redraw: () => paint(), say: (m, bad) => toastIn(document.body, m, bad), onChange: opts.onChange });
     });
     ctl.setTab = (k) => {
       if (!TABS.includes(k)) return;
@@ -544,6 +765,9 @@
     };
     // Team pills / standing line arrive once PersonStanding has the person.
     function standing() {
+      const who = ctl.person;
+      if (who) loadCard(opts.auth, who, true).then(() => { if (ctl.person === who) paint(); });
+      if (opts.auth && window.SectionContact) SectionContact.load(opts.auth).then(() => paint()).catch(() => {});
       const pid = ctl.person && ctl.person.personId;
       if (pid) loadMoves(opts.auth, pid, true).then(() => { if (ctl.person && ctl.person.personId === pid) paint(); });
       if (!pid || !window.PersonStanding) return;
