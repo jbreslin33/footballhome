@@ -70,7 +70,7 @@
          the current screen. -->
     <!-- 🚦 One sticky stack at the top: the admin's 🎭 view-as bar, then the
          status band (components/status-banner.js, mig 1468) for everyone. -->
-    <div id="top-banners" style="position:sticky; top:0; z-index:9998;">
+    <div id="top-banners" style="position:relative; z-index:9998;">
     <!-- Phone: the top stack scrolls away (status-banner.js) and the Calendar
          scrolls to NOW, so the 🎭 bar pins to the bottom of the screen there. -->
     <style>@media (max-width: 640px) { #view-as-banner { position:fixed; left:0; right:0; bottom:0; z-index:10000; padding-bottom:calc(8px + env(safe-area-inset-bottom)) !important; } }</style>
@@ -405,7 +405,7 @@
   <script src="js/components/onboarding-checklist.js?v=20261119-nsor"></script>
   <script src="js/components/todo-panel.js?v=20261119-todo"></script>
   <script src="js/components/welcome-due-panel.js?v=20261120-welcome2"></script>
-  <script src="js/components/status-banner.js?v=20261120-welcome"></script>
+  <script src="js/components/status-banner.js?v=20261120-unpin"></script>
   <script src="js/components/fines-panel.js?v=20261118-top2"></script>
   <script src="js/components/section-chat.js?v=20261118-chatbox"></script>
   <script src="js/screens/event-center.js?v=20261119-barnask"></script>

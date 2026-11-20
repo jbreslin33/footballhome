@@ -104,8 +104,8 @@
     @media (max-width: 640px) {
       #status-banner .sb-boxes { flex-direction:column; align-items:stretch; width:100%; }
       #status-banner .sb-box, #status-banner .sb-chat { width:100%; max-width:none; min-width:0; }
-      /* Stacked boxes would eat a phone screen pinned on every page: it scrolls away. */
-      #top-banners { position:static !important; }
+      /* The band is never pinned (owner 11/20 "that bar needs to have all page stuff under not
+         behind"): #top-banners is in the page flow on every width, it scrolls away. */
       #status-banner #sb-modal { align-items:flex-end; padding:0; }
       #status-banner .sb-sheet { max-width:none; max-height:88vh; border-radius:16px 16px 0 0; }
     }`;
