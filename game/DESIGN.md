@@ -11670,3 +11670,34 @@ team-match, 31% cleared). Seeds 1000 / 2000 × 8 (real):
 
 Next: the high press — when their back line has the ball, a second man steps to the nearest pass (cover the option), the
 presser's trigger in their third. Behaviour unchanged (seeds match G5.188's runs); goldens unchanged; tests 23/23.
+
+### 8.296 G5.190 — a free man in his own end keeps it until someone closes him (mig 1606; shipped)
+
+From §8.295's "next" (the high press). **First, the real second man** — `benchmarks_tracking_press.py` now prints the
+2nd-nearest defender and defenders within 5 / 10 m by the ball's band (DFL, 5 Hz): 0-18 m 6.3 m med, 1.50 / 2.84; 18-35
+7.2, 1.07 / 2.55; 35-52 8.6, 0.82 / 2.07; 52-70 11.0, 0.61 / 1.60; **70+ 15.1 m, 0.41 / 1.04**. Real sides send nobody
+after the first man on a deep back line — a second presser would be wrong. Yet real own-third releases come pressed
+(nobody within 6 m 29%, ours 56%) while the real nearest man there stands 8.0 m off in the average frame: **a pro with
+time keeps it — carries, waits — and lets it go when a man arrives.** Ours drew his time at the receipt and passed on the
+clock (`hold_strict`: an arriving man doesn't end it either).
+
+**Change** (World; `physics.tempo.free_hold_m`, code default 0 = off, row 6): past his drawn hold a pass waits while no
+opponent is within free_hold_m, in his own half (`free_hold_own_m` 52.5), for up to `free_hold_max_s` (3) more. Not a
+shot, a clearance or any first-time hit.
+
+| seeds 1000-4000 × 8 (real) | G5.188 | free_hold 6 (shipped) | free_hold 4 |
+|---|---|---|---|
+| passes / minute in play | 9.6 | **8.27** (8.23) | 7.85 |
+| spells / minute in play | 13.5 | **12.10** (12.15) | 11.59 |
+| passes a team-match | 559 | 482 (434) | 449 |
+| ball in play % | 62.6 | 61.0 (55.2) | 61.3 |
+| carries 10 m+ | 41.8 | 45.4 (34.6) | 53.0 |
+| goals | 2.28 | 2.20 (1.35) | 2.19 |
+| card ok / off / OFF | 10 / 5 / 18 | 9 / 7 / 17 | 10 / 5 / 18 |
+
+FOOT RELEASES at 6 m, seed 1000 (real): own third 6+ 18.6 (22.4), 3-6 39.6 (24.1), 1.2-3 10.1 (23.9); midfield 3-6 167
+(75), 6+ 31 (60) — the releases now bunch at the trigger: a fixed 6 m is too sharp (real arrive spread, not one ring).
+Worse on the card: aerial duels 43.8 → 39.0 (44.3), switches 9.9 → 9.0 (10.7), free kicks 11.1 → 10.5, fouls 11.8 → 10.9
+— fewer balls, fewer contests. `card_G5.190.txt`. Next: the trigger as a draw (where a real man lets it go by his nearest
+opponent, StatsBomb 360), then the in-play share (61.0 v 55.2) — the dispossession / miscontrol outs. Goldens unchanged;
+tests 23/23, lint clean.

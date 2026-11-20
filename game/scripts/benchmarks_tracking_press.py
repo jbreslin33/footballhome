@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # game/scripts/benchmarks_tracking_press.py (G5.25, DESIGN §8.123) — usage: <DFL dir>
+# G5.190 (§8.296): also the 2nd-nearest defender (p25/med/p75) and defenders within 5 / 10 m (mean), by band.
 # Real: how close the nearest defender stands to the man on the ball, by where the ball is.
 # Carrier = the attacker (BallPossession side, in play, 5 Hz) nearest the ball within 2 m. For
 # each band of the ball's metres from THEIR line (0-18, 18-35, 35-52, 52-70, 70+): frames, the
@@ -32,7 +33,7 @@ def one(pos_path):
             sec, tid, pid = set_re.search(s).groups()
             isb = tid.upper() == "BALL"; skip = not isb and tid not in team_of
             if not skip and not isb: cur = pid; who[pid] = team_of[tid]
-    c = collections.defaultdict(list)
+    c = collections.defaultdict(list); sec2 = collections.defaultdict(list)
     own = {}
     for sc in {k[0] for k in ball}:
         xs = {0: [], 1: []}
@@ -54,22 +55,28 @@ def one(pos_path):
                 cd = (d, x, y)
         if cd is None:
             continue
-        nb = min(((((x - cd[1]) ** 2 + (y - cd[2]) ** 2) ** 0.5, x) for pid, (x, y) in fr.items()
-                  if who.get(pid) is not None and who[pid] != att and pid not in keepers), default=None)
-        if nb is None:
+        ds = sorted(((((x - cd[1]) ** 2 + (y - cd[2]) ** 2) ** 0.5, x) for pid, (x, y) in fr.items()
+                  if who.get(pid) is not None and who[pid] != att and pid not in keepers))
+        if not ds:
             continue
+        nb = ds[0]
+        # G5.190 (§8.296): the second man and the crowd — 2nd-nearest defender, defenders within 5 / 10 m
+        sec2[sum(btl >= t for t in EDGES)].append((ds[1][0] if len(ds) > 1 else 99.0, sum(d < 5 for d, _ in ds), sum(d < 10 for d, _ in ds)))
         b = sum(btl >= t for t in EDGES)
         # G5.39 (§8.139): is he goal-side — nearer the defenders' goal line (x = g * half) than the carrier?
         c[b].append((nb[0], nb[1] * g > cd[1] * g))
-    return dict(c)
+    return dict(c), dict(sec2)
 
 
 files = sorted(glob.glob(os.path.join(sys.argv[1], "DFL_04_03_positions_raw_observed_*.xml")))
 allc = collections.defaultdict(list)
 with multiprocessing.Pool(3) as pool:
-    for r in pool.imap_unordered(one, files):
+    all2 = collections.defaultdict(list)
+    for r, r2 in pool.imap_unordered(one, files):
         for k, v in r.items():
             allc[k].extend(v)
+        for k, v in r2.items():
+            all2[k].extend(v)
 print(f"{len(files)} DFL matches: the nearest defender to the man on the ball, by the ball's metres from their line")
 for b, name in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
     raw = allc.get(b, [])
@@ -79,3 +86,9 @@ for b, name in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
     v = sorted(x[0] for x in raw)
     q = lambda p: v[min(len(v) - 1, int(p * len(v)))]
     print(f"   {name:6s} frames {len(v):6d}  p25 {q(.25):4.1f}  median {q(.5):4.1f}  p75 {q(.75):4.1f} m;  inside 2 m {100*sum(x < 2 for x in v)/len(v):4.1f}%  3 m {100*sum(x < 3 for x in v)/len(v):4.1f}%  5 m {100*sum(x < 5 for x in v)/len(v):4.1f}%;  goal-side {gs:4.1f}%")
+print("SECOND MAN (G5.190): 2nd-nearest defender p25 / med / p75 m | defenders within 5 m / 10 m, mean")
+for b, name in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
+    r = all2.get(b, [])
+    if not r: continue
+    v = sorted(x[0] for x in r); q = lambda p: v[min(len(v) - 1, int(p * len(v)))]
+    print(f"  {name:6s} {q(.25):5.1f} / {q(.5):5.1f} / {q(.75):5.1f} | {sum(x[1] for x in r) / len(r):.2f} / {sum(x[2] for x in r) / len(r):.2f}")

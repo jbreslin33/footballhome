@@ -466,6 +466,9 @@ private:
     // and with hold_strict only a shot (or losing it) ends it early.
     math::Fixed64 hold_one_{}, hold_p_one_{}, hold_p_under1_{}, hold_p_under2_{}, hold_p_under4_{}, hold_pressed_m_{};
     int hold_strict_ = 0;
+    // G5.190 (§8.296): a free man in his own end keeps it past his drawn hold until a man closes within free_hold_m
+    // (or free_hold_max_s more); 0 = off. Real releases there come pressed (StatsBomb 360), ours on the draw's clock.
+    math::Fixed64 free_hold_m_{}, free_hold_own_m_{}, free_hold_max_s_{};
     void settleControl(SlotIndex slot, math::Fixed64 speed);   // G4.92: no kick before (his control touch)
     math::Fixed64 turnover_ball_x_{};
     std::vector<MatchEvent>* pending_events_ = nullptr;  // tick-scoped

@@ -472,6 +472,20 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             const Fixed64 r = own_d < Fixed64::fromInt(35) ? Fixed64::fromFraction(5, 2) : hold_press_m_;
             if (math::lengthSquared(d) < r * r) hold_it = false;
         }
+        // G5.190 (§8.296): his draw is up, but he is free in his own end — he keeps it until a man closes within
+        // free_hold_m (or free_hold_max_s more). A pass only: not a shot, nor a clearance or any first-time hit (first_time set).
+        if (!hold_it && hold_on_ && free_hold_m_.raw > 0 && (act == Action::GroundKick || act == Action::LoftedKick || act == Action::ShortPass) && first_time_[kicker] == 0 && !isKeeper(kicker) &&
+            clock_.tick() >= hold_until_tick_ &&
+            clock_.tick() < hold_until_tick_ + static_cast<std::uint64_t>((free_hold_max_s_ * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS)) {
+            const Fixed64 own_d = players_[kicker].team == 0 ? half_x_ + o.pos.x : half_x_ - o.pos.x;
+            if (own_d < free_hold_own_m_) {
+                bool free = true;
+                for (SlotIndex i = 0; i < players_.size() && free; ++i)
+                    if (players_[i].team != players_[kicker].team &&
+                        math::lengthSquared(Vec2{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y}) < free_hold_m_ * free_hold_m_) free = false;
+                if (free) hold_it = true;
+            }
+        }
         // G5.79 (§8.180): the strike needs the ball within reach of his kicking foot and the other
         // foot planted beside it (the footstep body, §8.178). Not yet: he waits, still on the ball.
         bool wait = false, cancel = false;
@@ -1448,6 +1462,9 @@ void World::configureTempo(const ModelParams& p) {
     hold_p_under4_ = p.fixed("physics.tempo.hold_pressed_under4", 0);
     hold_pressed_m_ = p.fixed("physics.tempo.hold_pressed_m", 0);
     hold_strict_ = p.integer("physics.tempo.hold_strict", 0);
+    free_hold_m_ = p.fixed("physics.tempo.free_hold_m", 0);          // G5.190 (§8.296), 0 = off
+    free_hold_own_m_ = p.fixed("physics.tempo.free_hold_own_m", 52500);
+    free_hold_max_s_ = p.fixed("physics.tempo.free_hold_max_s", 3000);
 }
 
 void World::configureDribble(const ModelParams& p) {
