@@ -80,6 +80,18 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
         [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, false); });
     laPost(router, prefix + "/program-entry", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
         [this](const Request& r, const LaSyncMap&) { return handleProgramSave(r, true); });
+    // 🧮 who pays for a team (mig 1639): { team_id, program, on } → the programs again
+    laPost(router, prefix + "/program-team", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) {
+            Response denied; if (!gate(r, &denied)) return denied;
+            try {
+                const json b = r.getBody().empty() ? json::object() : json::parse(r.getBody());
+                if (!b.contains("team_id") || !b["team_id"].is_number_integer() || !b.contains("on") || !b["on"].is_boolean()) return jsonError(HttpStatus::BAD_REQUEST, "Which team?");
+                ProgramBudget::saveTeamProgram(WelcomeLog::kLighthouseClubId, b["team_id"].get<int>(), b.value("program", ""), b["on"].get<bool>());
+                return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId, "expected"));
+            } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
+            catch (const std::exception& e) { std::cerr << "[finances program team] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the change."); }
+        });
     // 🧑‍🏫 Coaching plan (mig 1491): every paid coach's hours and money per
     // season, from the normalized schedule — ?year=2026-27 ("" = this year).
     router.get(prefix + "/coaching", [this](const Request& r) { return handleCoaching(r); });

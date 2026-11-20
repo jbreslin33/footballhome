@@ -65,6 +65,10 @@ class FinancesScreen extends Screen {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
+      // 🧮 Program budgets (mig 1639): program pill → its sub pills; a "paid for by" chip adds / drops a payer
+      const bpay = e.target.closest('[data-pb-pay]'); if (bpay) { this._pbSaveTeam(Number(bpay.dataset.pbPay), bpay.dataset.program, bpay.dataset.on !== '1'); return; }
+      const bp = e.target.closest('[data-pb-prog]'); if (bp) { this.pbProg = bp.dataset.pbProg; this.pbSub = 'all'; this._renderBody(); return; }
+      const bs = e.target.closest('[data-pb-sub]'); if (bs) { this.pbSub = bs.dataset.pbSub; this._renderBody(); return; }
       const gy = e.target.closest('[data-pg-year]'); if (gy) { this.pgYear = gy.dataset.pgYear; this._renderBody(); return; }
       const gpaid = e.target.closest('[data-pg-paid]'); if (gpaid) { this._pgSave('program-plan', { season: gpaid.dataset.pgPaid, fields: { coach_paid: gpaid.dataset.on !== '1' } }); return; }
       const grm = e.target.closest('[data-pg-entry-rm]'); if (grm) { this._pgSave('program-entry', { season: grm.dataset.season, league_season_id: Number(grm.dataset.pgEntryRm), remove: true }); return; }
@@ -151,7 +155,7 @@ class FinancesScreen extends Screen {
     const el = this.find('#fn-pills'); if (!el) return;
     const pills = [['position', this._copy('pill_position') || 'Statement of Financial Position'], ['activities', this._copy('pill_activities') || 'Statement of Activities'],
                    ['plan', this._copy('pill_plan') || 'Operating Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['forecast', this._copy('pill_forecast') || 'Cash Flow Forecast'],
-                   ['programs', this._copy('pill_programs') || '🧩 Programs'], ['capacity', this._copy('pill_capacity') || '👥 Full capacity']];
+                   ['programs', this._copy('pill_programs') || '🧩 Programs'], ['budgets', this._copy('pill_budgets') || '🧮 Program budgets'], ['capacity', this._copy('pill_capacity') || '👥 Full capacity']];
     el.innerHTML = pills.map(([k, l]) => `<button class="fn-pill ${this.view === k ? 'on' : ''}" data-view="${k}">${this.escapeHtml(l)}</button>`).join('');
     const who = this.find('#fn-who'); if (who) who.innerHTML = this.flow && this._byWho() ? this._whoPillsHtml() : '';
   }
@@ -162,7 +166,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
   }
 
   // ── shared bits ──
@@ -669,6 +673,127 @@ class FinancesScreen extends Screen {
       <div class="fn-note">${esc(full ? this._copy('pg_cap_note') : this._copy('pg_note'))}</div>${yearBar}
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       ${headline}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map((c, i) => `<th>${esc(this._copy(c) || colDefault[i])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
+  }
+  // ── 🧮 Program budgets (mig 1639; owner 11/20 "a pill for each program to
+  // figure out budget. then on that pill we can have sub pills for 'inner'
+  // club wide like boys/girls club wide or mens club wide. then also club wide
+  // share, grants, etc. use teams as pills … share coach with other age groups
+  // and pay their share … a player is only counted 1x").  One pill per program;
+  // its sub pills = itself, each of its teams, shared coaches, its section,
+  // the club-wide share, grants.  A player is counted once, in their age
+  // program (dues by payer → program); a team / coach / section / club cost is
+  // shared by the programs that pay for it, by paying players — ProgramBudget's
+  // "parts" (level + source + whole cost + sharers), no maths of its own here.
+  _pbBucket(l) {
+    if (l.group === 'dues') return 'in';
+    if (l.group === 'support') return l.key === 'casa' ? 'in' : 'grant';
+    return l.level === 'team' ? `team:${l.team}` : l.level === 'coach' ? 'coach' : l.level === 'section' ? 'section' : l.level === 'club' ? 'club' : 'own';
+  }
+  _pbLineLabel(l) {
+    const c = (k, fb) => this._copy(k) || fb;
+    if (l.key === 'dues') return c('pg_line_dues', 'Dues');
+    if (l.key === 'la_fees') return c('pg_line_la_fees', 'LeagueApps fees');
+    if (l.key === 'casa') return c('pg_line_casa', 'CASA field rental');
+    if (l.key === 'grant') return c('pg_line_grant', 'Grant');
+    if (l.key === 'coaching') return `${l.level === 'coach' && l.src ? l.src + ' — ' : ''}${l.label === 'games' ? c('pg_line_coach_games', 'Game coaching') : c('pg_line_coach_practice', 'Practice coaching')}`;
+    // a referee policy's label is the league ("PPR Indoor U10") — say what it is
+    if (l.category === 'referees' && l.label) return `${this._catName('referees')} — ${l.label}`;
+    return l.label || this._catName(l.category);
+  }
+  async _pbSaveTeam(teamId, program, on) {
+    if (this._pgBusy) return;
+    this._pgBusy = true; this.pgMsg = this._copy('pg_saving') || 'Saving…'; this._renderBody();
+    try {
+      const r = await this.auth.fetch('/api/finances/program-team', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ team_id: teamId, program, on }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+      this.programsBy = { expected: j }; this.programs = j; this.pgMsg = '';
+    } catch (e) { this.pgMsg = e.message; }
+    this._pgBusy = false; this._renderBody();
+  }
+  _pbHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, C = (k, fb, tok) => this._copy(k, tok) || fb;
+    if (this.pgErr) return `<div class="error-message">${esc(this.pgErr)}</div>`;
+    this.pgScenario = 'expected'; this.programs = (this.programsBy || {}).expected || null;
+    if (!this.programs) { this._loadPrograms('expected'); return '<div class="loading">Loading…</div>'; }
+    const pg = this.programs, years = pg.years || [], year = this._pgYearNow(), b = pg.budgets[year]; if (!b) return '';
+    const ss = b.seasons, progs = pg.programs || [];
+    const money = (code) => ss.some(se => (((b.programs[code] || {})[se.code] || {}).parts || []).length);
+    if (!progs.some(x => x.code === this.pbProg)) this.pbProg = (progs.find(x => money(x.code)) || progs[0] || {}).code;
+    const p = progs.find(x => x.code === this.pbProg); if (!p) return '';
+    this.pgProg = p.code;   // the plan grid's saves go to the open program
+    const P = b.programs[p.code] || {};
+    // every part of the year, in its bucket
+    const parts = []; for (const se of ss) for (const l of (P[se.code] || {}).parts || []) parts.push({ ...l, se: se.code, bucket: this._pbBucket(l) });
+    // its teams — not the age roster that carries the program's own name unless it has costs
+    const teams = (pg.teams || []).filter(t => (t.programs || []).includes(p.code) && (t.label !== p.label || parts.some(l => l.level === 'team' && l.team === t.id)));
+    const section = (parts.find(l => l.bucket === 'section') || {}).src || (p.kind === 'youth' ? C('pg_youth_total', 'Youth') : p.label);
+    const subs = [['all', C('pb_sub_all', 'Overview')], ['own', C('pb_sub_own', `${p.label} only`, { program: p.label })],
+      ...teams.map(t => [`team:${t.id}`, t.label]),
+      ...(parts.some(l => l.bucket === 'coach') ? [['coach', C('pb_sub_coach', '🧑‍🏫 Shared coaches')]] : []),
+      ['section', C('pb_sub_section', `${section}-wide`, { section })], ['club', C('pb_sub_club', 'Club-wide share')], ['grant', C('pb_sub_grant', 'Grants')]];
+    if (!subs.some(([k]) => k === this.pbSub)) this.pbSub = 'all';
+    const sub = this.pbSub, subLabel = (subs.find(([k]) => k === sub) || [])[1] || '';
+    const sumOf = (list) => list.reduce((a, l) => a + Number(l.amount || 0), 0);
+    const bySeason = (list) => { const o = {}; for (const l of list) o[l.se] = (o[l.se] || 0) + Number(l.amount || 0); return o; };
+    const cell = (v, cls) => `<td class="${cls || ''}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
+    const tot = (by) => ss.reduce((a, se) => a + Number(by[se.code] || 0), 0);
+    const head = `<tr><th></th>${ss.map(se => `<th>${esc(se.label)}<span class="fn-tick">${esc(se.real ? C('pg_real', 'real') : C('pg_plan', 'plan'))}</span></th>`).join('')}<th>${esc(C('col_total', 'Total'))}</th></tr>`;
+    const players = ss.reduce((a, se) => Math.max(a, Number((P[se.code] || {}).players || 0)), 0);
+    const progLabel = (code) => (progs.find(x => x.code === code) || {}).label || code;
+
+    let body = '';
+    if (sub === 'all') {
+      // money in, then one row per sub pill (tap = open it), balance before / after the grant
+      const row = (label, list, cls, open) => { const by = bySeason(list); return `<tr class="item" ${open ? `data-pb-sub="${esc(open)}" style="cursor:pointer;"` : ''}><td>${esc(label)}${open ? ' ›' : ''}</td>${ss.map(se => cell(by[se.code] || 0, cls)).join('')}${cell(tot(by), cls)}</tr>`; };
+      const ins = parts.filter(l => l.bucket === 'in'), outs = parts.filter(l => !['in', 'grant'].includes(l.bucket)), grants = parts.filter(l => l.bucket === 'grant');
+      const group = (label) => `<tr class="group"><td colspan="${ss.length + 2}">${esc(label)}</td></tr>`;
+      const balance = (label, list, strong) => { const by = {}; for (const l of list) by[l.se] = (by[l.se] || 0) + (l.bucket === 'in' || l.bucket === 'grant' ? 1 : -1) * Number(l.amount || 0);
+        const sg = (v) => `<td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${Math.abs(v) >= 0.5 ? M0(v) : '–'}</td>`;
+        return `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}</td>${ss.map(se => sg(by[se.code] || 0)).join('')}${sg(tot(by))}</tr>`; };
+      let rows = this._pgGridRows(year, p, true) + group(C('pb_row_in', 'MONEY IN'));
+      const inKeys = [...new Set(ins.map(l => l.key))];
+      for (const k of inKeys) rows += row(this._pbLineLabel(ins.find(l => l.key === k)), ins.filter(l => l.key === k), 'fn-in', k === 'casa' ? 'club' : '');
+      rows += group(C('pb_row_out', 'MONEY OUT — tap a row to open it'));
+      for (const [k, label] of subs) { if (['all', 'grant'].includes(k)) continue; const list = outs.filter(l => l.bucket === k); if (list.length || k.startsWith('team:')) rows += row(label, list, 'fn-out', k); }
+      rows += balance(C('pg_gp_before', 'BALANCE BEFORE GRANT'), [...ins, ...outs], true);
+      if (grants.length) rows += row(C('pb_sub_grant', 'Grants'), grants, 'fn-in', 'grant') + balance(C('pm_post_grant', 'BALANCE AFTER GRANT'), parts, false);
+      body = `${this._pgScheduleHtml(p)}${ss.some(se => !se.real) ? `<div class="fn-note">${esc(this._copy('pg_edit'))}</div>` : ''}
+        <div style="overflow-x:auto;"><table class="fn-table"><thead>${head}</thead><tbody>${rows}</tbody></table></div>`;
+    } else {
+      // one sub pill: each line with the whole cost, who shares it, and this program's part
+      const list = parts.filter(l => l.bucket === sub || (sub === 'club' && l.key === 'casa'));
+      const lines = new Map();
+      for (const l of list) {
+        const k = [l.group, l.category, l.key, l.label, l.src].join('|');
+        if (!lines.has(k)) lines.set(k, { l, amount: 0, whole: 0, with: new Set(), details: new Set(), assumed: false });
+        const r = lines.get(k); r.amount += Number(l.amount || 0); r.whole += Number(l.whole || 0); (l.with || []).forEach(c => r.with.add(c)); if (l.detail) r.details.add(l.detail); if (l.assumed) r.assumed = true;
+      }
+      const order = progs.map(x => x.code);
+      const rows = [...lines.values()].sort((a, c) => Math.abs(c.amount) - Math.abs(a.amount)).map(r => {
+        const isIn = r.l.group !== 'own' && r.l.group !== 'shared', cls = isIn ? 'fn-in' : 'fn-out';
+        const withL = order.filter(c => r.with.has(c)).map(progLabel), pct = Math.abs(r.whole) >= 0.5 ? Math.round(100 * r.amount / r.whole) : 100;
+        return `<tr class="item"><td style="white-space:normal;">${esc(this._pbLineLabel(r.l))}${r.assumed ? '*' : ''}${r.details.size ? `<span class="fn-tick">${esc([...r.details].join(' · '))}</span>` : ''}</td>
+          ${cell(r.whole, cls)}<td style="text-align:left; white-space:normal;">${withL.length > 1 ? esc(withL.join(' · ')) : `<span class="fn-dim">${esc(withL[0] || p.label)}</span>`}</td>
+          <td>${pct}%</td>${cell(r.amount, cls)}</tr>`; }).join('');
+      const total = list.reduce((a, l) => a + (l.group === 'own' || l.group === 'shared' ? -1 : 1) * Number(l.amount || 0), 0);
+      // a team: who pays for it (tap a program to add / drop it)
+      let payers = '';
+      if (sub.startsWith('team:')) {
+        const t = teams.find(x => `team:${x.id}` === sub), same = progs.filter(x => x.kind === p.kind);
+        if (t && same.length > 1) payers = `<div class="fn-note" style="margin:6px 0;"><span style="font-weight:700;">${esc(C('pb_paid_by', 'Paid for by'))}</span> <span class="fn-dim">${esc(C('pb_paid_by_hint', '(tap a program to add or drop it)'))}</span>
+          <div class="fn-pills" style="margin:4px 0 0;">${same.map(x => { const on = (t.programs || []).includes(x.code); return `<button class="fn-pill ${on ? 'on' : ''}" style="padding:3px 10px; font-size:0.78rem;" data-pb-pay="${t.id}" data-program="${esc(x.code)}" data-on="${on ? '1' : '0'}">${esc(x.label)}</button>`; }).join('')}</div></div>`;
+      }
+      body = `${payers}${rows ? `<div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(subLabel)}</th><th>${esc(C('pb_col_whole', 'Whole cost'))}</th><th style="text-align:left;">${esc(C('pb_col_with', 'Shared by'))}</th><th></th><th>${esc(C('pb_col_share', `${p.label} pays`, { program: p.label }))}</th></tr></thead>
+        <tbody>${rows}<tr class="sum"><td colspan="4">${esc(C('col_total', 'Total'))}</td>${cell(Math.abs(total), total < 0 ? 'fn-out' : 'fn-in')}</tr></tbody></table></div>` : `<div class="fn-note">${esc(C('pb_no_costs', 'Nothing here yet.'))}</div>`}`;
+    }
+    const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-pg-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
+    const progBar = `<div class="fn-pills">${progs.map(x => `<button class="fn-pill ${x.code === p.code ? 'on' : ''} ${money(x.code) ? '' : 'fn-dim'}" data-pb-prog="${esc(x.code)}">${esc(x.label)}</button>`).join('')}</div>`;
+    const subBar = `<div class="fn-pills sub">${subs.map(([k, l]) => `<button class="fn-pill ${k === sub ? 'on' : ''}" data-pb-sub="${esc(k)}">${esc(l)}</button>`).join('')}</div>`;
+    return `<div class="fn-card"><div class="fn-title">${esc(C('pb_title', 'Program budgets'))} · ${esc(year)}</div>
+      <div class="fn-note">${esc(C('pb_note', 'One budget per program. Every player is counted once, in their own age group.'))}</div>${yearBar}${progBar}${subBar}
+      <div class="fn-title" style="margin-top:6px;">${esc(p.label)} · ${esc(subLabel)} <span class="fn-note" style="font-weight:400;">${esc(C('pb_players', `${players} paying players, counted once`, { n: players }))}</span></div>
+      ${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}${body}</div>`;
   }
   // 🧑‍🏫 Coaches for the year (mig 1491): CoachingPlanTable shows what the
   // server's CoachingPlan works out — no coaching maths on this screen.

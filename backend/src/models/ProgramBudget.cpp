@@ -1,5 +1,7 @@
 #include "ProgramBudget.h"
 
+#include <algorithm>
+
 #include <cmath>
 #include <chrono>
 #include <map>
@@ -44,7 +46,13 @@ struct Program {
     std::vector<int> teams;
 };
 struct Season { int id = 0; std::string code, label; int from = 0, to = 0; };
-struct Line { std::string group, category, key, label, detail; double amount = 0; bool assumed = false; };
+// level / src / team / whole / with (mig 1639, 🧮 Program budgets): where the
+// cost sits — the program itself, one of its teams, a shared coach, its
+// section, the club, a grant — the whole cost before the split and the
+// programs sharing it. Set by split() and the callers; "program" = its own.
+struct Line { std::string group, category, key, label, detail; double amount = 0; bool assumed = false;
+              std::string level = "program", src; int team = 0; double whole = 0; std::vector<int> with; };
+Line at(Line l, const std::string& level, const std::string& src, int team = 0) { l.level = level; l.src = src; l.team = team; return l; }
 
 // The books (CashFlow, Expenses) take seconds; a plan edit re-reads them, so
 // they are kept for a minute. Plans and entries are always read fresh.
@@ -210,8 +218,20 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
     // scope → programs (cash_flow_scopes): a team scope → the programs holding
     // the team; a section scope → that kind's programs; club → shared
     std::map<std::string, std::pair<std::string, int>> scopeInfo;   // code → {parent, team_id}
-    for (const auto& r : db->query("SELECT code, COALESCE(parent, '') AS parent, team_id FROM cash_flow_scopes"))
+    std::map<std::string, std::string> scopeLabel;
+    for (const auto& r : db->query("SELECT code, label, COALESCE(parent, '') AS parent, team_id FROM cash_flow_scopes")) {
         scopeInfo[str(r, "code")] = {str(r, "parent"), r["team_id"].is_null() ? 0 : r["team_id"].as<int>()};
+        scopeLabel[str(r, "code")] = str(r, "label");
+    }
+    // a team's name on its pill: its budget scope's label (APSL, Liga 1) unless
+    // that is also a program's name (scope "U10" = the U10 Travel Fall team)
+    std::map<int, std::string> teamLabel;
+    for (const auto& r : db->query("SELECT DISTINCT t.id, t.name FROM finance_program_teams pt JOIN teams t ON t.id = pt.team_id")) teamLabel[r["id"].as<int>()] = str(r, "name");
+    for (const auto& [code, info] : scopeInfo) {
+        if (!info.second || !teamLabel.count(info.second)) continue;
+        bool isProgram = false; for (const auto& p : programs) if (p.label == scopeLabel[code]) isProgram = true;
+        if (!isProgram) teamLabel[info.second] = scopeLabel[code];
+    }
     auto kindOfTop = [](const std::string& top) { return top == "mens" ? std::string("men") : top == "womens" ? std::string("women") : top == "youth" ? std::string("youth") : std::string(); };
     // returns program ids; empty = shared (club-wide)
     auto programsOf = [&](const std::string& scope) {
@@ -226,6 +246,17 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         const std::string kind = kindOfTop(top);
         if (!kind.empty()) for (const auto& p : programs) if (p.kind == kind) out.push_back(p.id);
         return out;
+    };
+    // where a scope's cost sits: one of the programs' teams, a section (the
+    // scope's top: Men's, Women's, Youth) or the club
+    auto atScope = [&](Line l, const std::string& scope) {
+        auto it = scopeInfo.find(scope);
+        if (it != scopeInfo.end() && it->second.second)
+            for (const auto& p : programs) for (int t : p.teams) if (t == it->second.second) return at(l, "team", teamLabel[t], t);
+        std::string top = scope; int guard = 0;
+        while (scopeInfo.count(top) && !scopeInfo[top].first.empty() && guard++ < 10) top = scopeInfo[top].first;
+        if (kindOfTop(top).empty()) return at(l, "club", scopeLabel.count("club") ? scopeLabel["club"] : std::string{});
+        return at(l, "section", scopeLabel[top]);
     };
 
     // ── the books (this year's real seasons) and the projection (money still ahead) ──
@@ -360,6 +391,11 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         json bands = json::array(); { std::string b = str(r, "bands"); size_t a = 0; while (!b.empty() && a <= b.size()) { size_t e = b.find(',', a); if (e == std::string::npos) e = b.size(); bands.push_back(b.substr(a, e - a)); a = e + 1; } }
         out["league_options"][str(r, "year")][sc].push_back({{"id", r["id"].as<int>()}, {"league", str(r, "league")}, {"name", str(r, "name")}, {"bands", bands}});
     }
+    out["teams"] = json::array();
+    for (const auto& [tid, label] : teamLabel) {
+        json codes = json::array(); for (const auto& p : programs) if (std::find(p.teams.begin(), p.teams.end(), tid) != p.teams.end()) codes.push_back(p.code);
+        out["teams"].push_back({{"id", tid}, {"label", label}, {"programs", codes}});
+    }
     for (const auto& s : seasons) out["seasons"].push_back({{"code", s.code}, {"label", s.label}, {"from_month", s.from}, {"to_month", s.to}});
     for (const auto& p : programs) out["programs"].push_back({{"id", p.id}, {"code", p.code}, {"label", p.label}, {"kind", p.kind}, {"age_from", p.ageFrom}, {"age_to", p.ageTo},
                                                               {"pays_dues", p.paysDues}, {"capacity", p.capacity}, {"calendar_hours", round2(calHours[p.id])},
@@ -382,6 +418,8 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         std::map<int, std::map<int, json>> meta;              // season idx → program → {players, teams, …}
         auto split = [&](int si, const std::vector<int>& ids, double amount, Line base) {
             double w = 0; for (int id : ids) w += payW[si][id];
+            base.whole = amount; base.with.clear();
+            for (int id : ids) if ((w > 0 ? payW[si][id] / w : 1.0 / ids.size()) > 0) base.with.push_back(id);
             for (int id : ids) {
                 const double share = w > 0 ? payW[si][id] / w : 1.0 / ids.size();
                 if (share <= 0 || std::fabs(amount * share) < 0.005) continue;
@@ -451,8 +489,8 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                     if (!mset.count(ym) || cat == "bonds") continue;
                     const double amt = it.value("amount", 0.0); if (std::fabs(amt) < 0.005) continue;
                     const auto ids = programsOf(it.value("scope", "club"));
-                    if (ids.empty()) split((int)si, allPaying((int)si), amt, {"shared", cat, "item", "", "", 0, false});
-                    else split((int)si, ids, amt, {"own", cat, "item", "", "", 0, false});
+                    if (ids.empty()) split((int)si, allPaying((int)si), amt, atScope({"shared", cat, "item", "", "", 0, false}, "club"));
+                    else split((int)si, ids, amt, atScope({"own", cat, "item", "", "", 0, false}, it.value("scope", "club")));
                 }
             } else {
                 for (const auto& p : programs) {
@@ -516,7 +554,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         for (const auto& pl : planLines) {
                             if (pl.year != Y.label || !mset.count(pl.ym)) continue;
                             bool mine = false; for (int t : p.teams) if (t == pl.team) mine = true;
-                            if (mine && std::fabs(pl.amount) >= 0.005) lines.push_back({"own", pl.category, "plan_line", pl.league + " — " + pl.label, "", pl.amount, true});
+                            if (mine && std::fabs(pl.amount) >= 0.005) lines.push_back(at({"own", pl.category, "plan_line", pl.league + " — " + pl.label, "", pl.amount, true}, "team", teamLabel[pl.team], pl.team));
                         }
                 }
                 // this year's youth leagues: each travel team's entry once, from
@@ -537,7 +575,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         for (const auto& [key, f] : pick) {
                             if (f->unit != "per_team_season" && f->unit != "per_entry") continue;
                             char d[96]; std::snprintf(d, sizeof d, "$%.2f × %d team", f->amount, e.count);
-                            split((int)si, ids, f->amount * e.count, {"own", f->category, "entry", e.league + " " + e.seasonName + " — " + f->label, d, 0, true});
+                            split((int)si, ids, f->amount * e.count, at({"own", f->category, "entry", e.league + " " + e.seasonName + " — " + f->label, d, 0, true}, "team", teamLabel[e.team], e.team));
                         }
                     }
                 // coaching plan: each item split over its programs that pay a
@@ -553,7 +591,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         if (paid.empty()) continue;
                         const double amt = it.amount() * (wAll > 0 ? wPaid / wAll : (double)paid.size() / it.programs.size());
                         char d[160]; std::snprintf(d, sizeof d, "%s — %s %d × %.2g h × $%.0f", it.coach.c_str(), it.label.c_str(), it.times, it.hoursEach, it.rate);
-                        split((int)si, paid, amt, {"own", "labor", "coaching", it.kind == "game" ? "games" : "practice", d, 0, true});
+                        split((int)si, paid, amt, at({"own", "labor", "coaching", it.kind == "game" ? "games" : "practice", d, 0, true}, "coach", it.coach));
                     }
                 // This year's plan seasons, Men's / Women's: league money and
                 // refs still ahead (Expenses), by scope; budget lines (every
@@ -565,14 +603,14 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                         if (r.value("category", "") == "labor") continue;
                         const double v = aheadIn(r.value("by_month", json::object())); if (std::fabs(v) < 0.005) continue;
                         const auto ids = adultOnly(programsOf(r.value("scope", "club")));
-                        if (!ids.empty()) split((int)si, ids, v, {"own", r.value("category", ""), "plan_line", r.value("label", ""), "", 0, true});
+                        if (!ids.empty()) split((int)si, ids, v, atScope({"own", r.value("category", ""), "plan_line", r.value("label", ""), "", 0, true}, r.value("scope", "club")));
                     }
                     // refs: every referee policy, youth too (its team's ages share it)
                     for (const auto& r : proj.value("ref_fees", json::array())) {
                         if (r.value("kind", "") != "referee") continue;
                         const double v = aheadIn(r.value("by_month", json::object())); if (std::fabs(v) < 0.005) continue;
                         const auto ids = programsOf(r.value("scope", "club"));
-                        if (!ids.empty()) split((int)si, ids, v, {"own", "referees", "plan_line", r.value("label", ""), "", 0, true});
+                        if (!ids.empty()) split((int)si, ids, v, atScope({"own", "referees", "plan_line", r.value("label", ""), "", 0, true}, r.value("scope", "club")));
                     }
                 }
                 for (const auto& b : proj.value("budget", json::array())) {
@@ -580,13 +618,13 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                     const double v = Y.thisYear ? aheadIn(b.value("by_month", json::object())) : b.value("year_total", 0.0) * months.size() / 12.0;
                     if (std::fabs(v) < 0.005) continue;
                     const auto ids = programsOf(b.value("scope", "club"));
-                    if (ids.empty()) split((int)si, allPaying((int)si), v, {"shared", b.value("category", ""), "budget_line", b.value("label", ""), "", 0, b.value("is_assumed", false)});
-                    else split((int)si, ids, v, {"own", b.value("category", ""), "budget_line", b.value("label", ""), "", 0, b.value("is_assumed", false)});
+                    if (ids.empty()) split((int)si, allPaying((int)si), v, atScope({"shared", b.value("category", ""), "budget_line", b.value("label", ""), "", 0, b.value("is_assumed", false)}, "club"));
+                    else split((int)si, ids, v, atScope({"own", b.value("category", ""), "budget_line", b.value("label", ""), "", 0, b.value("is_assumed", false)}, b.value("scope", "club")));
                 }
             }
             // CASA rental in the season, by paying players
             { double v = 0; for (const auto& ym : months) v += rentalByYm.count(ym) ? rentalByYm[ym] : 0.0;
-              if (v) split((int)si, allPaying((int)si), v, {"support", "rental", "casa", "", "", 0, !isReal}); }
+              if (v) split((int)si, allPaying((int)si), v, atScope({"support", "rental", "casa", "", "", 0, !isReal}, "club")); }
         }
 
         // the grant: used = min(award, the year's spend on its purposes), shared
@@ -599,14 +637,17 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             const double used = std::min(award, total);
             if (total > 0) for (const auto& [k, v] : elig) {
                 const double amt = used * v / total;
-                if (amt >= 0.005) L[k.first][k.second].push_back({"support", "grant", "grant", "", "", amt, !actual.count({Y.id, seasons[k.first].id})});
+                if (amt < 0.005) continue;
+                Line g = at({"support", "grant", "grant", "", "", amt, !actual.count({Y.id, seasons[k.first].id})}, "grant", "");
+                g.whole = used; for (const auto& [k2, v2] : elig) if (k2.first == k.first && v2 > 0) g.with.push_back(k2.second);
+                L[k.first][k.second].push_back(g);
             }
             yj["grant"] = {{"award", award}, {"used", round2(used)}, {"eligible", round2(total)}};
         }
         if (awardsFree.count(Y.label) && awardsFree[Y.label] > 0)
             for (size_t si = 0; si < seasons.size(); ++si) {
                 const auto months = seasonMonths(seasons[si], Y.startYear, Y.startMonth);
-                split((int)si, allPaying((int)si), awardsFree[Y.label] * months.size() / 12.0, {"support", "awards", "awards", "", "", 0, true});
+                split((int)si, allPaying((int)si), awardsFree[Y.label] * months.size() / 12.0, at({"support", "awards", "awards", "", "", 0, true}, "grant", ""));
             }
 
         // out: program → season → {meta, lines}
@@ -623,7 +664,26 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                 json lines = json::array();
                 for (const auto& [k, l] : folded) if (std::fabs(l.amount) >= 0.005)
                     lines.push_back({{"group", l.group}, {"category", l.category}, {"key", l.key}, {"label", l.label}, {"detail", l.detail}, {"amount", round2(l.amount)}, {"assumed", l.assumed}});
-                json sj = meta[(int)si][p.id]; sj["lines"] = lines;
+                // 🧮 the same money by where it sits (mig 1639): one part per
+                // level + source + line, with the whole cost and its sharers
+                std::map<std::tuple<std::string, std::string, int, std::string, std::string, std::string, std::string>, Line> byPart;
+                for (Line l : L[(int)si][p.id]) {
+                    if (l.with.empty()) { l.whole = l.amount; l.with = {p.id}; }
+                    auto k = std::make_tuple(l.level, l.src, l.team, l.group, l.category, l.key, l.label);
+                    auto it = byPart.find(k);
+                    if (it == byPart.end()) { byPart[k] = l; continue; }
+                    Line& o = it->second; o.amount += l.amount; o.whole += l.whole; o.assumed = o.assumed || l.assumed;
+                    if (o.detail != l.detail) o.detail.clear();
+                    for (int id : l.with) if (std::find(o.with.begin(), o.with.end(), id) == o.with.end()) o.with.push_back(id);
+                }
+                json parts = json::array();
+                for (const auto& [k, l] : byPart) {
+                    if (std::fabs(l.amount) < 0.005) continue;
+                    json with = json::array(); for (const auto& q : programs) if (std::find(l.with.begin(), l.with.end(), q.id) != l.with.end()) with.push_back(q.code);
+                    parts.push_back({{"level", l.level}, {"src", l.src}, {"team", l.team}, {"group", l.group}, {"category", l.category}, {"key", l.key}, {"label", l.label},
+                                     {"detail", l.detail}, {"amount", round2(l.amount)}, {"whole", round2(l.whole)}, {"with", with}, {"assumed", l.assumed}});
+                }
+                json sj = meta[(int)si][p.id]; sj["lines"] = lines; sj["parts"] = parts;
                 sj["entries"] = json::array();
                 if (entries.count({p.id, Y.id, seasons[si].id}))
                     for (const auto& e : entries[{p.id, Y.id, seasons[si].id}])
@@ -718,4 +778,23 @@ void ProgramBudget::saveEntry(int clubId, const std::string& program, const std:
               "VALUES ($1::int, $2::int, $3::int, $4::int, NULLIF($5, ''), NULLIF($6, '')::int, 'Set on the page') "
               "ON CONFLICT (program_id, budget_year_id, season_id, league_season_id) DO UPDATE SET age_band = EXCLUDED.age_band, teams = EXCLUDED.teams",
               {p, y, s, ls, ageBand.substr(0, 10), tv});
+}
+
+// 🧮 Who pays for a team (mig 1639): add / drop one program on a budget team
+// (finance_program_teams). Only teams already in the budget; a team always
+// keeps at least one payer.
+void ProgramBudget::saveTeamProgram(int clubId, int teamId, const std::string& program, bool on) {
+    auto* db = Database::getInstance();
+    auto p = db->query("SELECT id FROM finance_programs WHERE club_id = $1::int AND code = $2 AND is_active", {std::to_string(clubId), program});
+    if (p.empty()) throw std::invalid_argument("Which program?");
+    const std::string pid = std::to_string(p[0]["id"].as<int>()), tid = std::to_string(teamId);
+    auto n = db->query("SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE fpt.program_id = $2::int) AS mine FROM finance_program_teams fpt "
+                       "  JOIN finance_programs fp ON fp.id = fpt.program_id AND fp.club_id = $3::int WHERE fpt.team_id = $1::int", {tid, pid, std::to_string(clubId)});
+    const int all = n[0]["n"].as<int>(), mine = n[0]["mine"].as<int>();
+    if (all == 0) throw std::invalid_argument("That team is not in the budget.");
+    if (on) db->query("INSERT INTO finance_program_teams (program_id, team_id) VALUES ($1::int, $2::int) ON CONFLICT DO NOTHING", {pid, tid});
+    else {
+        if (mine && all <= 1) throw std::invalid_argument("A team needs at least one program paying for it.");
+        db->query("DELETE FROM finance_program_teams WHERE program_id = $1::int AND team_id = $2::int", {pid, tid});
+    }
 }

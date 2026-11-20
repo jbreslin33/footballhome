@@ -43,4 +43,9 @@ public:
                          const nlohmann::json& fields, long long userId);
     static void saveEntry(int clubId, const std::string& program, const std::string& year, const std::string& season,
                           int leagueSeasonId, const std::string& ageBand, const nlohmann::json& teams, bool remove);
+    // 🧮 Program budgets (mig 1639): which programs pay for a budget team —
+    // add (on) or drop one. build() also answers "parts" per program-season
+    // (each line by where it sits: program / team / coach / section / club /
+    // grant, with the whole cost and the programs sharing it) and "teams".
+    static void saveTeamProgram(int clubId, int teamId, const std::string& program, bool on);
 };

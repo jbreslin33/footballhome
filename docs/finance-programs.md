@@ -113,3 +113,43 @@ options (Liga 2, Temple 7s) beside it, never in the total. Out = the team
 fee plans (rate × qty) + game coaching per team (`ref_fees.team_scope`).
 This year matches the Year plan's Men's pill to the dollar; a later year's
 dues / grant / CASA / club share come from the programs.
+
+## 🧮 Program budgets (mig 1639, 11/20)
+
+Owner: *"a pill for each program to figure out budget. then on that pill we
+can have sub pills for 'inner' club wide like boys/girls club wide or mens
+club wide. then also club wide share, grants, etc. use teams as pills … share
+coach with other age groups and pay their share … a player is only counted
+1x"*; *"u10 travel is paid for by u8, u9, 10. u12 travel is paid for by u11,
+u12"*; *"travel kids can be listed 2x but their money goes to their age"*;
+men: *"roll them all together as mens program"*.
+
+Page: `FinancesScreen._pbHtml` (pill `budgets`). Same model, same numbers as
+🧩 Programs' season table — no maths on the page.
+
+- **A player is counted once**, in their age program: dues go by payer →
+  program (`fh_finance_program`). A team holds no players in the budget, so a
+  travel kid on two team lists never counts twice and a team with no players
+  yet can carry costs.
+- **A cost sits at one level** and is shared, by paying players, by the
+  programs under it. `ProgramBudget::build` answers this as `parts` per
+  program-season: `level` (program / team / coach / section / club / grant),
+  `src` (team, coach or section name), `team`, `whole` (the cost before the
+  split), `with` (program codes sharing it), plus the usual group / category /
+  key / label / detail / amount. `lines` is unchanged.
+- **Who pays for a team** = `finance_program_teams`. On a team's sub pill the
+  "Paid for by" chips add / drop a program: `POST /api/finances/program-team`
+  `{team_id, program, on}` (only teams already in the budget; never the last
+  payer). U10 Travel fall / winter / spring = U8 + U9 + U10; U12 Travel = U11
+  + U12; U8 Travel Fall = U7 + U8.
+- **A shared coach** = a coaching-plan item (`CoachingPlan`): shared by the
+  programs of the team it is for; a volunteer season drops that program's part.
+- Sub pills: Overview (plan grid + money in + one row per sub pill + balance
+  before / after the grant), `<program> only`, each team, 🧑‍🏫 Shared coaches,
+  `<section>-wide`, Club-wide share (CASA rental share shown as money in),
+  Grants. Each line: whole cost · shared by · % · this program's part.
+- Men's here = the books' fall + the money still ahead, as every program.
+  🧩 Programs' Men's ROW shows the Year plan (rate × qty, `_menYear`), so the
+  two differ a little (11/20: before grant −$16,042 here vs −$16,289 there).
+- Open: costs are still edited where they live (budget lines, team fee plans,
+  coach schedule) — only the plan grid and "Paid for by" are editable here.
