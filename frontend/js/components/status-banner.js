@@ -37,7 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding', todo: 'todo' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding', todo: 'todo', welcome_owed: 'welcome' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -160,6 +160,7 @@
               <div data-sb-panel="menu" id="sb-menu" hidden></div>
               <div data-sb-panel="onboarding" hidden><div id="sb-onb"></div></div>
               <div data-sb-panel="todo" hidden><div id="sb-todo"></div></div>
+              <div data-sb-panel="welcome" hidden><div id="sb-welcome"></div></div>
             </div>
           </div>
         </div>`;
@@ -209,7 +210,8 @@
                        menu: ['sheet_menu', '☰ Menu'],
                        chat: ['sheet_chat', '💬 Chat'], volunteer: ['sheet_volunteer', '🙋 Volunteer'],
                        onboarding: ['sheet_onboarding', '🎓 Your path at Lighthouse'],
-                       todo: ['sheet_todo', '✅ To do'] };
+                       todo: ['sheet_todo', '✅ To do'],
+                       welcome: ['sheet_welcome', '👋 New registrations — send a welcome'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
       if (panel && !this._escWired) {
@@ -219,6 +221,7 @@
       if (panel === 'chat' && this.chat) this.chat.markRead();
       if (panel === 'menu') this.renderMenu();
       if (panel === 'onboarding' && this.onbList) this.onbList.render();
+      if (panel === 'welcome' && this.welcome) this.welcome.render();
       if (panel === 'todo' && this.todo) { this.todo.render(); setTimeout(() => this.$('#sb-todo [data-td-body]')?.focus(), 0); }
       if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
         this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
@@ -304,7 +307,7 @@
       this.bar.set(code, data);
       const open = this.bar.openCode;
       // 🎓 onboarding stays open as its last step is sent — the person sees it go 🟡.
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo'].includes(open)) return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo', 'welcome_owed'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -394,6 +397,17 @@
         ? new TodoPanel(this.$('#sb-todo'), this.ctx({ onChange: (d) => this.set('todo', todoBox(d)) })) : null;
       const todoLoaded = this.todo ? this.todo.load() : Promise.resolve();
       this.todoAt = Date.now();
+
+      // 👋 New registrations (mig 1599): "👋 Welcome — N new: names  Welcome ›"
+      // for club/super admins until each one is welcomed (owner 11/20 "any
+      // new registration show as a todo like missing rsvp … until i send
+      // welcome").  A name opens their 📇 Contact with 👋 Welcome preselected.
+      const welcomeBox = (list) => list && list.length
+        ? { n: list.length, list: list.map(p => `${p.first_name || ''} ${p.last_name || ''}`.trim()).join(' · ') } : null;
+      this.welcome = window.WelcomeDuePanel
+        ? new WelcomeDuePanel(this.$('#sb-welcome'), this.ctx({ onChange: (l) => this.set('welcome_owed', welcomeBox(l)) })) : null;
+      // Not awaited by the band: the read syncs LA first (seconds), the box joins when it lands.
+      if (this.welcome) { this.welcomeAt = Date.now(); this.welcome.load(); }
 
       // 💬 Chat — always a box when the section has one: newest · N new.
       const chatOpen = () => this.bar.openCode === 'chat_unread';
@@ -508,6 +522,8 @@
       if (!this.todo || this.bar.openCode === 'todo' || Date.now() - (this.todoAt || 0) < 20000) return;
       this.todoAt = Date.now();
       this.todo.load();
+      // 👋 a new LA registration turns up without a reload — ≥ 5 min apart (each read syncs LA).
+      if (this.welcome && Date.now() - (this.welcomeAt || 0) > 300000) { this.welcomeAt = Date.now(); this.welcome.load(); }
     }
 
     show(on) { this.host.style.display = on ? '' : 'none'; }

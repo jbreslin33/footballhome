@@ -57,6 +57,18 @@ public:
     // Non-fatal: on any DB error rows simply carry welcome:null.
     void attachToRoster(std::vector<nlohmann::json>& unassigned, nlohmann::json& buckets, bool youth);
 
+    // 👋 The band's "Welcome" box (mig 1599, owner 2026-11-20 "any new
+    // registration show as a todo like missing rsvp … until i send
+    // welcome"): every person with a current LA membership registered on
+    // or after the policy cutoff whom no welcome has reached yet — the
+    // same rule as the roster cards' fuchsia WELCOME (a welcome to the
+    // player, about the player, or to any of their message recipients
+    // counts).  Newest registration first:
+    //   [{person_id, first_name, last_name, section: mens|womens|boys|girls,
+    //     registered_at: YYYY-MM-DD, programs,
+    //     recipients: [{person_id, name, phone, email, is_guardian}]}]
+    nlohmann::json dueList(int clubId);
+
     static constexpr int kLighthouseClubId = 134;
 
 private:

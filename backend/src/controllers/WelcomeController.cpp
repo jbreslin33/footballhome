@@ -66,6 +66,30 @@ WelcomeController::~WelcomeController() = default;
 
 void WelcomeController::registerRoutes(Router& router, const std::string& prefix) {
     router.post(prefix, [this](const Request& r) { return handleCreate(r); });
+    // LA → DB → render: every program syncs first (admins only — anyone
+    // else syncs nothing and gets the 403).
+    laGet(router, prefix + "/due",
+          [](const Request& r) {
+              return requireAdminLevel(r, {"club", "super"}) ? Controller::allLaProgramIds() : std::vector<int>{};
+          },
+          [this](const Request& r, const LaSyncMap&) { return handleDue(r); });
+}
+
+// GET /api/welcomes/due — 👋 the band's Welcome box (mig 1599): new
+// registrations no welcome has reached.  Club/super admins only; anyone
+// else gets 403 (never 401 — that would log a player out).
+Response WelcomeController::handleDue(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"}))
+        return jsonError(denialStatus(request), "Admins only");
+    try {
+        json body = {{"due", model_->dueList(WelcomeLog::kLighthouseClubId)}};
+        Response r(HttpStatus::OK, body.dump());
+        r.setHeader("Content-Type", "application/json; charset=utf-8");
+        return r;
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/welcomes/due] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load new registrations");
+    }
 }
 
 Response WelcomeController::handleCreate(const Request& request) {

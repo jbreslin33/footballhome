@@ -6,6 +6,7 @@
 class WelcomeLog;
 class WelcomeMessage;
 
+// GET  /api/welcomes/due — new registrations still owed a welcome (admin)
 // POST /api/welcomes
 //   body: {person_id, channel: 'sms'|'email', contact, player_person_id?}
 //
@@ -29,4 +30,5 @@ private:
     std::unique_ptr<WelcomeLog> model_;
     std::unique_ptr<WelcomeMessage> message_;
     Response handleCreate(const Request& request);
+    Response handleDue(const Request& request);     // GET /api/welcomes/due (mig 1599)
 };

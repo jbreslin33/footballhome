@@ -141,3 +141,54 @@ void WelcomeLog::attachToRoster(std::vector<json>& unassigned, json& buckets, bo
         attach(r, targetOf(r), reg == r.end() ? json(nullptr) : *reg, latest, cutoff);
     });
 }
+
+json WelcomeLog::dueList(int clubId) {
+    json out = json::array();
+    const auto rows = db_->query(R"SQL(
+        WITH cut AS (
+            SELECT registered_on_or_after AS d FROM welcome_outreach_policies
+             WHERE club_id = $1::int ORDER BY created_at DESC, id DESC LIMIT 1),
+        reg AS (
+            SELECT m.person_id, MIN(m.la_registered_at) AS reg_at,
+                   string_agg(DISTINCT COALESCE(lp.program_name, lp.category), ' · ') AS programs,
+                   (array_agg(lp.category ORDER BY m.la_registered_at DESC))[1] AS category
+              FROM person_la_memberships m
+              JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+              JOIN cut ON m.la_registered_at >= cut.d
+             WHERE m.ended_at IS NULL
+             GROUP BY m.person_id)
+        SELECT p.id, COALESCE(p.first_name, '') AS first_name, COALESCE(p.last_name, '') AS last_name,
+               CASE r.category WHEN 'men' THEN 'mens' WHEN 'women' THEN 'womens' ELSE r.category END AS section,
+               TO_CHAR(r.reg_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') AS registered_at,
+               r.programs,
+               COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                          'person_id',   x.recipient_person_id,
+                          'name',        NULLIF(trim(COALESCE(rp.first_name, '') || ' ' || COALESCE(rp.last_name, '')), ''),
+                          'phone',       fh_recipient_phone(x.recipient_person_id, p.id),
+                          'email',       fh_recipient_email(x.recipient_person_id, p.id),
+                          'is_guardian', x.is_guardian) ORDER BY x.ord)
+                           FROM fh_message_recipients(p.id) x
+                           JOIN persons rp ON rp.id = x.recipient_person_id), '[]'::jsonb)::text AS recipients
+          FROM reg r
+          JOIN persons p ON p.id = r.person_id
+         WHERE NOT EXISTS (
+                SELECT 1 FROM person_welcomes w
+                 WHERE w.person_id = p.id OR w.player_person_id = p.id
+                    OR w.person_id IN (SELECT y.recipient_person_id FROM fh_message_recipients(p.id) y))
+         ORDER BY r.reg_at DESC, p.id
+    )SQL", {std::to_string(clubId)});
+    for (const auto& r : rows) {
+        json recips = json::array();
+        try { recips = json::parse(r["recipients"].c_str()); } catch (...) {}
+        out.push_back({
+            {"person_id",     r["id"].as<long long>()},
+            {"first_name",    r["first_name"].c_str()},
+            {"last_name",     r["last_name"].c_str()},
+            {"section",       r["section"].is_null() ? "" : r["section"].c_str()},
+            {"registered_at", r["registered_at"].is_null() ? "" : r["registered_at"].c_str()},
+            {"programs",      r["programs"].is_null() ? "" : r["programs"].c_str()},
+            {"recipients",    recips},
+        });
+    }
+    return out;
+}

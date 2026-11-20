@@ -189,11 +189,18 @@
 #                     becomes a lie — migrate the caller, don't widen the
 #                     list.  (Added because 30780b40 landed without an
 #                     entry and `make deploy` refused to run.)
+#   WelcomeLog      — dueList() (mig 1599, 2026-11-20) reads
+#                     person_la_memberships for the band's 👋 Welcome box.
+#                     Only caller: WelcomeController::handleDue, registered
+#                     through laGet(dynamic → allLaProgramIds() for admins),
+#                     so every program has synced before the query fires.
+#                     Give dueList() an unsynced caller and this entry
+#                     becomes a lie.
 #
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras|CashFlow)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras|CashFlow|WelcomeLog)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 
