@@ -11550,3 +11550,28 @@ kick is the taker's shot with nobody else on it since. Same seeds as G5.184's ca
 Next: the open-play shot from 18-25 m against too few men goal-side — the block's retreat into the box when the ball is
 at the edge, and the block itself (a man in the lane closing the shot). Then the corner delivery header.
 Goldens unchanged; tests 23/23, lint clean.
+
+### 8.292 G5.186 — the crowd at our releases from range, not the shot choice (measured; no game change)
+
+From §8.291's "next": our 18-25 m shots face 3 men goal-side (real 6) and are blocked half as often. Three new cuts:
+
+1. **GOAL-SIDE BY THE BALL'S CELL** (`benchmarks_tracking_goalside.py`, DFL 5 Hz; harness the same). The radial band hid
+   where the ball is: a real "20 m" ball is often wide *inside* the box (ball |y| med 15.4 v ours 11.0). By metres off the
+   line × |y| (means, ours 2 seeds × 8) the block is near real — 16.5-25 central goal-side 2.6-3.6 (3.94), in the box
+   1.6-2.4 (2.47); mid 4.4-4.6 (5.21); 25-35 central 4.4-4.6 (4.54). Inside the box central is short: 1.4-1.6 (2.79).
+   By their **targets** every cell is at or over real (16.5-25 central 4.4-4.8) — the men trail them 1.5-2.3 m (CB / FB /
+   DM upfield of their spots; §8.186 found the same). Ours spend longer with the ball central in front of the box (8.6-10.5
+   s a team-match v 6.9) and in it (9.3 v 7.3), shorter in the half-spaces (9.9 v 13.4).
+2. **SHOT CHOICE** (`benchmarks_statsbomb_360_shotchoice.py`, StatsBomb 360, 300 matches, every open-play pass + shot):
+   does a pro shoot more with men in the way? **No — not from range.** Shot share of releases at 18-25 m by goal-side
+   0-1 / 2-3 / 4-5 / 6+: 24 / 15 / 17 / 19% (flat); 12-18: 67 / 44 / 34 / 31% (less, as you'd think). Real 18-25 m
+   releases just usually come with a crowd: 6+ goal-side 61%.
+3. Harness SHOT CHOICE: **ours release from 18-25 m with 6+ goal-side 17-18% (61), 2-3 31-33% (11)**; 25-35 m 6+ 51-54%
+   (82). Our shot share in every cell runs over real (18-25: 16-39 v 15-24%; 25-35: 3-13 v 1-4%); by the PL policy line
+   18-25 m 26.1% (23.4), 25-35 m 5.2% (3.1) — more central releases, so the angle bin's higher shot_p.
+
+So the 18-25 m excess is the state, not the decision: our attack reaches the zone in front of the box with the block
+beaten. SHOTS PAST THE DEFENCE puts the beating in the last 2-4 s: shots with 0-1 goal-side had a median 4 goal-side 2 s
+before and 5 at 4 s (set up by a through ball 22%, no pass 27%). Next: how the 4-5 become 0-1 — the carry through
+(carries10 1.71x real) and the ball past the DMs into the zone in front of the box.
+Goldens unchanged; tests 23/23, lint clean.

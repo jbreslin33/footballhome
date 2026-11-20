@@ -78,6 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
+    long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
     long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
     long rel_n[5] = {}, rel_shot[5] = {};
     long goal_by[ai::kWhyCount + 1] = {}, goal_own = 0;
@@ -107,6 +108,8 @@ struct Stats {
     double sl_xy[ai::kRoleCount] = {}, sl_xx[ai::kRoleCount] = {}; long sl_n[ai::kRoleCount] = {}; std::vector<double> sl_w[ai::kRoleCount][2];   // §8.189 SLIDE BY ROLE
     long xz_n[4][3] = {}, xz_c[4][3] = {}; long ar_carry = 0, ar_pass = 0, ar_pass_wide = 0, ar_within = 0; long rce_n[4] = {}, rce_ok[4] = {}, rce_role[ai::kRoleCount] = {}, rce_won_by[ai::kRoleCount + 1] = {}; std::vector<double> rce_me, rce_def, rce_gk, rce_vt; long dwl_n[ai::kWhyCount] = {}, dwl_ok[ai::kWhyCount] = {}, dwl_out[ai::kWhyCount] = {}, dwl_gk[ai::kWhyCount] = {}; std::vector<double> dwl_len[ai::kWhyCount];   // §8.191 DOWN THE LINE by kind   // §8.191 ARRIVE in the crossing zone (their line 0-18 m, |y| 14+)   // §8.188 RELEASES BY ZONE: open-play passes by origin (their line 0-6/6-18/18-30/30+ x |y| 24+/14-24/centre), crosses
     double iw_n[2][3] = {}, iw_dy[2][3] = {}, iw_dx[2][3] = {}; long iw_e[2][3] = {};   // §8.188 INWARD [carried / passed][centre / mid / wide]
+    long gc_n[3][3] = {}, gc_g[3][3] = {}, gc_box[3][3] = {}, gc_dl[3][3] = {}, gc_tg[3][3] = {}, gc_tbox[3][3] = {};   // §8.292 BY THE BALL'S CELL [m off the line][|y|]
+    std::vector<int> gsd_tbox[4], gsd_tg[4]; long gsd_ow[4][ai::kWhyCount + 1] = {}, gsd_on[4] = {};   // §8.292: by their order targets; the order of each man outside the box
     std::vector<int> gsd_dl[4], gsd_box[4]; std::vector<double> gsd_ay[4], gsd_by[4];   // §8.187: deeper than the ball, in the box, across from the ball
     long bt_n[2][2] = {}, bt_shot[2][2] = {}, bt_goal[2][2] = {};   // §8.186 IN BEHIND THEN [high][completed]
     std::vector<double> bh_gap, bh_spd, bh_vx, bh_lead, bh_t, bh_len, bh_past, bh_mtl;
@@ -1153,6 +1156,18 @@ int main(int argc, char** argv) {
                 }
                 bb_prev = bbn; pv_x = b.vel.x.toDouble(); pv_y = b.vel.y.toDouble();
             }
+            if (before && !b.owner && b.last_kicker == *before && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(*before) &&
+                !(static_cast<int>(*before) == so_taker && !so_other && so_kind != 4)) {   // §8.292 SHOT CHOICE: an open-play release (not the set kick itself)
+                const auto& p = W.player(*before);
+                const double gx2 = p.team == 0 ? hx : -hx, ds = std::hypot(gx2 - p.pos.x.toDouble(), p.pos.y.toDouble());
+                if (ds < 35) {
+                    int g = 0;
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        if (!W.isKeeper(j) && W.player(j).team != p.team && std::hypot(gx2 - W.player(j).pos.x.toDouble(), W.player(j).pos.y.toDouble()) < ds) ++g;
+                    const int cb = ds < 12 ? 0 : ds < 18 ? 1 : ds < 25 ? 2 : 3, cg = g <= 1 ? 0 : g <= 3 ? 1 : g <= 5 ? 2 : 3;
+                    ++S.sch_n[cb][cg]; S.sch_s[cb][cg] += s.lastOrders()[*before].why == ai::Why::Shoot;
+                }
+            }
             // ── a shot struck this tick, and how it ends ──────────────────
             if (before && !b.owner && b.last_kicker == *before && s.lastOrders()[*before].why == ai::Why::Shoot) {
                 const auto& p = W.player(*before);
@@ -2074,6 +2089,24 @@ int main(int argc, char** argv) {
                         if (std::fabs(gx - px) < std::fabs(gx - bx)) { ++dl; S.gsd_ay[bb].push_back(std::fabs(py - by)); }
                         if (std::fabs(gx - px) < 16.5 && std::fabs(py) < 20.16) ++bxn;
                         deep = std::min(deep, std::fabs(gx - px));
+                    }
+                    {   // §8.292: the same counts by where each is told to go (his order's target), and what the men outside the box are doing
+                        int tb = 0, tg = 0;
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (W.player(j).team != dteam || W.isKeeper(j)) continue;
+                            const auto& lo = s.lastOrders()[j];
+                            const double tx = lo.target.x.toDouble(), ty = lo.target.y.toDouble();
+                            if (std::fabs(gx - tx) < 16.5 && std::fabs(ty) < 20.16) ++tb;
+                            if (std::hypot(gx - tx, ty) < db) ++tg;
+                            const double px = W.player(j).pos.x.toDouble(), py = W.player(j).pos.y.toDouble();
+                            if (!(std::fabs(gx - px) < 16.5 && std::fabs(py) < 20.16)) { ++S.gsd_on[bb]; ++S.gsd_ow[bb][std::min(static_cast<int>(lo.why), ai::kWhyCount)]; }
+                        }
+                        S.gsd_tbox[bb].push_back(tb); S.gsd_tg[bb].push_back(tg);
+                        const double bxl = std::fabs(gx - bx), bay = std::fabs(by);
+                        if (bxl < 35) {
+                            const int cx = bxl < 16.5 ? 0 : bxl < 25 ? 1 : 2, cy = bay < 9.16 ? 0 : bay < 20.16 ? 1 : 2;
+                            ++S.gc_n[cx][cy]; S.gc_g[cx][cy] += g; S.gc_box[cx][cy] += bxn; S.gc_dl[cx][cy] += dl; S.gc_tg[cx][cy] += tg; S.gc_tbox[cx][cy] += tb;
+                        }
                     }
                     if (std::getenv("GAME_GS_TRACE") && (bb == 0 || std::getenv("GAME_GS_TRACE")[0] == 'a')) {   // §8.186: who is where (=all: every band)
                         const double sg3 = dteam == 0 ? -1.0 : 1.0;   // + toward their (dteam's) goal line
@@ -3056,6 +3089,19 @@ int main(int argc, char** argv) {
                         auto v = S.sx_bd_gs[d]; std::sort(v.begin(), v.end());
                         if (v.empty()) continue;
                         std::printf(" %s %d / %d / %d (%d / %d / %d);", bl[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rb[d][0], rb[d][1], rb[d][2]);
+                    }
+                    {   // §8.292 SHOT CHOICE — benchmarks_statsbomb_360_shotchoice.py (real StatsBomb 360 in brackets)
+                        static const double rsp[4][4] = {{88.5, 79.3, 71.1, 63.5}, {66.8, 44.0, 34.4, 30.6}, {24.1, 15.3, 16.6, 19.1}, {4.3, 1.2, 1.9, 2.0}};
+                        static const long rn[4][4] = {{1026, 1093, 515, 285}, {352, 1397, 1880, 1727}, {108, 1091, 2679, 6051}, {70, 1285, 3789, 23208}};
+                        static const char* bl2[4] = {"<12", "12-18", "18-25", "25-35"}; static const char* gl[4] = {"0-1", "2-3", "4-5", "6+"};
+                        std::printf("\n   SHOT CHOICE (open-play releases by distance x GOAL-SIDE; real StatsBomb 360 in brackets): share of the band's releases %% [shot %%]");
+                        for (int d = 0; d < 4; ++d) {
+                            long tn = 0, rt = 0; for (int g = 0; g < 4; ++g) { tn += S.sch_n[d][g]; rt += rn[d][g]; }
+                            std::printf("\n     %-5s n%ld:", bl2[d], tn);
+                            for (int g = 0; g < 4; ++g)
+                                std::printf(" %s %.0f%% (%.0f) [%.1f (%.1f)];", gl[g], 100.0 * S.sch_n[d][g] / std::max(1L, tn), 100.0 * rn[d][g] / rt,
+                                            100.0 * S.sch_s[d][g] / std::max(1L, S.sch_n[d][g]), rsp[d][g]);
+                        }
                     }
                     {   // §8.291 SHOT ORIGIN — benchmarks_statsbomb_shotorigin.py (real in brackets; penalties out of both)
                         static const char* on[5] = {"direct fk", "corner", "free kick", "throw-in", "other"};
@@ -4228,7 +4274,24 @@ int main(int argc, char** argv) {
                                 q(S.gsd_dl[d], .25), q(S.gsd_dl[d], .5), q(S.gsd_dl[d], .75), rdl[d][0], rdl[d][1], rdl[d][2],
                                 q(S.gsd_box[d], .25), q(S.gsd_box[d], .5), q(S.gsd_box[d], .75), rbx[d][0], rbx[d][1], rbx[d][2],
                                 qd(S.gsd_ay[d], .25), qd(S.gsd_ay[d], .5), qd(S.gsd_ay[d], .75), ray[d][0], ray[d][1], ray[d][2], qd(S.gsd_by[d], .5), rby[d]);
+                    std::printf("            by their targets (§8.292): goal-side %d / %d / %d, in their box %d / %d / %d | the men outside the box %.2f a frame, doing:",
+                                q(S.gsd_tg[d], .25), q(S.gsd_tg[d], .5), q(S.gsd_tg[d], .75), q(S.gsd_tbox[d], .25), q(S.gsd_tbox[d], .5), q(S.gsd_tbox[d], .75),
+                                S.gsd_on[d] / std::max(1.0, static_cast<double>(S.gsd_n[d])));
+                    for (int w = 0; w <= ai::kWhyCount; ++w)
+                        if (S.gsd_ow[d][w] * 50 >= S.gsd_on[d] && S.gsd_on[d]) std::printf(" %s %.0f%%", w < ai::kWhyCount ? ai::kWhyNames[w] : "-", 100.0 * S.gsd_ow[d][w] / S.gsd_on[d]);
+                    std::printf("\n");
                 }
+            }
+        }
+        {   // §8.292 BY THE BALL'S CELL — benchmarks_tracking_goalside.py (real DFL in brackets; within 30 m of the goal centre, as the real cut)
+            static const double rr[3][3][3] = {{{2.79, 5.49, 3.00}, {4.01, 4.48, 2.02}, {5.81, 3.89, 1.73}}, {{3.94, 2.47, 4.39}, {5.21, 2.74, 4.81}, {5.61, 2.82, 4.26}},
+                                               {{4.54, 0.92, 4.98}, {5.57, 1.75, 5.62}, {0, 0, 0}}};
+            static const char* xl[3] = {"0-16.5", "16.5-25", "25-35"}; static const char* yl[3] = {"central", "mid", "wide"};
+            std::printf("   GOAL-SIDE BY THE BALL'S CELL (m off the line x |y|; means; real DFL in brackets): s a team-match | goal-side | in their box | deeper than the ball || by their targets: goal-side | in box\n");
+            for (int x = 0; x < 3; ++x) for (int y = 0; y < 3; ++y) {
+                const double n = static_cast<double>(S.gc_n[x][y]); if (n <= 0 || (x == 2 && y == 2)) continue;
+                std::printf("     %-7s %-7s %5.1f | %.2f (%.2f) | %.2f (%.2f) | %.2f (%.2f) || %.2f | %.2f\n", xl[x], yl[y], n / 5.0 / std::max(1.0, 2.0 * matches),
+                            S.gc_g[x][y] / n, rr[x][y][0], S.gc_box[x][y] / n, rr[x][y][1], S.gc_dl[x][y] / n, rr[x][y][2], S.gc_tg[x][y] / n, S.gc_tbox[x][y] / n);
             }
         }
         {   // §8.186 IN BEHIND THEN — benchmarks_tracking_behind.py

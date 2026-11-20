@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """benchmarks_tracking_goalside.py — how many defenders stay goal-side of the ball near their goal
-(G5.85, game/DESIGN.md §8.186; G5.86 §8.187 the depth-only count, the box, the width).
+(G5.85, game/DESIGN.md §8.186; G5.86 §8.187 the depth-only count, the box, the width; G5.186 §8.292 BY THE BALL'S
+CELL — metres off the line 0-16.5 / 16.5-25 / 25-35 x |y| central <9.16 / mid 9.16-20.16 / wide 20.16+, the means,
+so a wide ball in the box doesn't pass for one 20 m out).
 
     python3 -I game/scripts/benchmarks_tracking_goalside.py <dfl dir>
 
@@ -63,7 +65,7 @@ def one(pos_path):
         # G5.86 (§8.187): deeper than the ball (depth only), in their box, and how far across from the ball the deeper men stand
         dl = [p for p in outs if abs(gx - p[0]) < abs(gx - b[0])]
         box = sum(1 for p in outs if abs(gx - p[0]) < 16.5 and abs(p[1]) < 20.16)
-        out.append((sum(db >= x for x in BANDS[:-1]), g, abs(gx - b[0]) - deep, len(dl), box, [abs(p[1] - b[1]) for p in dl], abs(b[1])))
+        out.append((sum(db >= x for x in BANDS[:-1]), g, abs(gx - b[0]) - deep, len(dl), box, [abs(p[1] - b[1]) for p in dl], abs(b[1]), abs(gx - b[0])))
     return out, 1
 
 
@@ -85,3 +87,12 @@ if __name__ == "__main__":
         d = sorted(r[3] for r in R); bx = sorted(r[4] for r in R); ay = sorted(y for r in R for y in r[5]); by = sorted(r[6] for r in R)
         print(f"        deeper than the ball p25/med/p75 {d[k // 4]} / {d[k // 2]} / {d[3 * k // 4]} | in their box {bx[k // 4]} / {bx[k // 2]} / {bx[3 * k // 4]} | "
               f"those deeper, m across from the ball {ay[len(ay) // 4]:.1f} / {ay[len(ay) // 2]:.1f} / {ay[3 * len(ay) // 4]:.1f} | ball |y| med {by[k // 2]:.1f}")
+    # G5.186 (§8.292): by the ball's cell, means — frames a team-match | goal-side | in their box | deeper than the ball
+    print("   BY THE BALL'S CELL (m off the line x |y|; means): s a team-match | goal-side | in their box | deeper than the ball")
+    XS, YS = ((0, 16.5, "0-16.5"), (16.5, 25, "16.5-25"), (25, 35, "25-35")), ((0, 9.16, "central"), (9.16, 20.16, "mid"), (20.16, 99, "wide"))
+    for x0, x1, xl in XS:
+        for y0, y1, yl in YS:
+            R = [r for r in allr if x0 <= r[7] < x1 and y0 <= r[6] < y1]
+            if not R: continue
+            k = len(R)
+            print(f"     {xl:7s} {yl:7s} {k / 5 / len(files) / 2:5.1f} | {sum(r[1] for r in R) / k:4.2f} | {sum(r[4] for r in R) / k:4.2f} | {sum(r[3] for r in R) / k:4.2f}")
