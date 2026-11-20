@@ -918,6 +918,12 @@ class EventCenterScreen extends Screen {
           : `<span style="font-size:0.8rem; font-weight:800;">${this.escapeHtml(time(ev))}</span>
              <span style="font-weight:700;">${this.escapeHtml(line(ev))}</span>
              ${EventLabels.timesLine(ev) ? `<span style="font-size:0.72rem; font-weight:700; color:#93c5fd;">${this.escapeHtml(EventLabels.timesLine(ev))}</span>` : ''}`}
+        ${(Array.isArray(ev.graphics) ? ev.graphics : []).filter(g => g && g.url).map(g =>
+          // 🖼 The event's flyer on its tile (fh_event_graphics, mig 1584 — owner
+          // 11/19 "not seeing it in cal … it should be on all for barn night. i
+          // know it will take up extra space").  Taps open the event like the tile.
+          `<img src="${this.escapeHtml(g.url)}" alt="${this.escapeHtml(g.title || '')}" loading="lazy"
+                style="display:block; width:100%; max-width:420px; height:auto; margin:4px 0; border-radius:8px;">`).join('')}
         ${EventLabels.carpoolLines(ev).map(l => `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere; text-align:left;">${this.escapeHtml(l)}</span>`).join('')}
         ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
           : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
