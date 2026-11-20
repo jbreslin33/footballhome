@@ -2210,6 +2210,8 @@ class EventScreen extends Screen {
     if (!this.ev) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     body.innerHTML = this._eventHtml();
     this._syncExtrasMenu();
+    // 🆘 a coach cover ask on this event (mig 1640) — coaches / admins only.
+    if (window.CoachCoverBanner) CoachCoverBanner.mount(body, this);
   }
 
   // The big pill row (lib/event-pills.js — Game Center's row), then the

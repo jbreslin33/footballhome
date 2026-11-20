@@ -872,6 +872,8 @@ class EventCenterScreen extends Screen {
       return `<div role="button" tabindex="0" class="btn btn-secondary ec-pick ${this._isPast(ev) ? 'ec-past' : ''}" data-ec-open="${ev.fh_event_id}"
                    ${open ? 'style="border:2px solid #f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,0.18);"' : ''}>
         ${whoChips(ev)}
+        ${ev.cover_open && !this._isPast(ev) ? `<span style="align-self:flex-start; padding:2px 8px; border-radius:999px; background:#b91c1c; color:#fff; font-size:0.72rem; font-weight:800;">${this.escapeHtml(
+          (window.MessageCopy && MessageCopy.block('coach_schedule', 'cover_card_badge')) || '🆘 Cover')}</span>` : ''}
         ${badges ? `<span style="display:flex; flex-wrap:wrap; gap:4px;">${badges}</span>` : ''}
         ${EventLabels.isGame(ev) && EventLabels.timesLine(ev)
           // A game: Arrival · Warmup · Kickoff on top, no bare start time (owner 11/18).

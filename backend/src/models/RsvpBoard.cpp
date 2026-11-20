@@ -135,6 +135,25 @@ const char* kBaseCtes = R"SQL(
                   AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
                   AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
          AND NOT (r.practice_only AND fe.kind <> 'practice')
+      UNION ALL
+      -- 🔁 Covering one event for another coach (mig 1640): owes it like its
+      -- coach, filed under the event's first board team.
+      SELECT c.person_id, ft.team_id, 1, fe.id, fe.kind, fe.opponent, fe.fh_notes, ge.starts_at, ge.ends_at
+        FROM coach_covers cc
+        JOIN coaches c ON c.id = cc.cover_coach_id
+        JOIN fh_events fe ON fe.id = cc.fh_event_id
+                         AND fe.kind IN ('practice','match','intrasquad')
+                         AND ($5 = 'all' OR ($5 = 'games') = (fe.kind IN ('match','intrasquad')))
+        JOIN LATERAL (SELECT fet.team_id FROM fh_event_teams fet JOIN tm ON tm.id = fet.team_id
+                       WHERE fet.fh_event_id = fe.id ORDER BY fet.team_id LIMIT 1) ft ON true
+        JOIN tm ON tm.id = ft.team_id
+        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+        CROSS JOIN epoch
+       WHERE cc.status = 'covered'
+         AND ($4::int = 0 OR c.person_id = $4::int)
+         AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+         AND ge.starts_at >= GREATEST(epoch.t, COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
+         AND ge.starts_at < tm.window_end
     ), expected AS MATERIALIZED (
       SELECT c.person_id, c.fh_event_id, c.kind, c.opponent,
              c.fh_notes, c.starts_at, c.ends_at,

@@ -5,9 +5,9 @@
 // cover asks.  Three pills:
 //   📅 Week        — one real week (◀ ▶): every practice and game, who is on
 //                    it, cancellations, cover asks.  🙋 asks for cover:
-//                    pick coaches, then one 💬 text per coach (sms: link —
-//                    the same `sms:<n>?&body=` form the roster boards use,
-//                    opens Messages on iPhone and Android).
+//                    pick coaches, then one 💬 text per coach — their own
+//                    sign-in link landing on the event (mig 1640), opens
+//                    Messages on iPhone and Android.
 //   🕒 By session  — the standing week, coaches on each session.
 //   👤 By coach    — each coach's sessions + weekend duty.
 // Coaches and club admins open it; only admins change assignments (tap).
@@ -16,7 +16,7 @@
 //   POST /api/coach-schedule/session   { coach_id, isodow, starts_at, on }
 //   POST /api/coach-schedule/plan      { coach_id, mode: every | call_in }
 //   POST /api/coach-schedule/cover     { fh_event_id, coach_id, ask, note }
-//   POST /api/coach-schedule/cover/<id>/take | withdraw | texted
+//   POST /api/coach-schedule/cover/<id>/take | withdraw | text (→ sms_href)
 //
 // Words: message_templates kind coach_schedule (migs 956, 1634).
 class CoachScheduleScreen extends Screen {
@@ -133,9 +133,7 @@ class CoachScheduleScreen extends Screen {
     if (a === 'ask-send') { this._sendAsk(); return; }
     if (a === 'take') { this._cover(Number(b.dataset.id), 'take'); return; }
     if (a === 'withdraw') { this._cover(Number(b.dataset.id), 'withdraw'); return; }
-    if (a === 'texted') {   // the <a href="sms:"> opens Messages; note it, don't wait
-      this._post(`/api/coach-schedule/cover/${b.dataset.id}/texted`, { coach_id: Number(b.dataset.coach) }).catch(() => {});
-    }
+    if (a === 'text') { this._text(Number(b.dataset.id), Number(b.dataset.coach)); }
   }
 
   async _run(key, fn) {
@@ -180,19 +178,33 @@ class CoachScheduleScreen extends Screen {
     });
   }
 
-  // The text for one asked coach: their own sms: link (iPhone + Android).
+  // One 💬 per asked coach.  The text is built server-side with THEIR own
+  // sign-in link (minted like every player / parent reminder, mig 1640),
+  // landing on the event; the sms: href opens Messages on iPhone + Android.
   _textLink(cover, ev, coachId) {
     const c = this._coach(coachId);
     if (!c) return '';
     if (!c.phone) return `<span style="font-size:0.72rem; opacity:0.7;">${this.escapeHtml(this._t('ask_no_phone', { first: c.first || c.name }, `${c.first}: no phone`))}</span>`;
-    const link = `${window.location.origin}/#coach-schedule/cover/${cover.id}`;
-    const body = Screen.withSmsLinkHint(this._t('cover_sms', {
-      first: c.first || c.name, event: ev.label || ev.teams || '', coach: this._first(cover.coach_id),
-      when: `${this._dateLabel(ev.day)} ${this._time(ev.starts_at)}`, link,
-    }, `Can you cover ${ev.label} ${this._dateLabel(ev.day)} ${this._time(ev.starts_at)}? ${link}`));
-    const phone = String(c.phone).replace(/[^\d+]/g, '');
-    return `<a href="sms:${this.escapeHtml(phone)}?&body=${encodeURIComponent(body)}" data-cs="texted" data-id="${cover.id}" data-coach="${c.coach_id}"
-      style="padding:6px 10px; border-radius:8px; background:#1d4ed8; color:#fff; font-size:0.74rem; font-weight:800; text-decoration:none;">${this.escapeHtml(this._t('ask_text', { first: c.first || c.name }, `💬 Text ${c.first}`))}</a>`;
+    return `<button type="button" data-cs="text" data-id="${cover.id}" data-coach="${c.coach_id}"
+      style="padding:6px 10px; border-radius:8px; border:none; background:#1d4ed8; color:#fff; font-size:0.74rem; font-weight:800; cursor:pointer;">${this.escapeHtml(this._t('ask_text', { first: c.first || c.name }, `💬 Text ${c.first}`))}${this.busy.has(`t:${cover.id}:${c.coach_id}`) ? ' …' : ''}</button>`;
+  }
+
+  async _text(coverId, coachId) {
+    const key = `t:${coverId}:${coachId}`;
+    if (this.busy.has(key)) return;
+    this.busy.add(key);
+    this.error = '';
+    this._renderBody();
+    try {
+      const r = await this._post(`/api/coach-schedule/cover/${coverId}/text`, { coach_id: coachId });
+      if (!r.sms_href) throw new Error('No text came back');
+      if (window.DesktopSms && DesktopSms.isDesktop && DesktopSms.isDesktop()) DesktopSms.open(r.sms_href);
+      else window.location.href = r.sms_href;
+    } catch (err) {
+      this.error = err.message;
+    }
+    this.busy.delete(key);
+    this._renderBody();
   }
 
   // ── render ─────────────────────────────────────────────────────────────

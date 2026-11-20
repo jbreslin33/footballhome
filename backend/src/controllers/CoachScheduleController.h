@@ -10,12 +10,13 @@
 //
 //   GET  /api/coach-schedule?week=YYYY-MM-DD  (or ?cover=<id>: that ask's week)
 //        { me, sessions, coaches, week: { start, events } }
+//   GET  /api/coach-schedule/event/<id>        { covers, past, me } — the event page's 🆘 banner (mig 1640)
 //   POST /api/coach-schedule/session          { coach_id, isodow, starts_at, on }   admin
 //   POST /api/coach-schedule/plan             { coach_id, mode: every | call_in }   admin
 //   POST /api/coach-schedule/cover            { fh_event_id, coach_id, ask: [coach_id], note }
 //   POST /api/coach-schedule/cover/<id>/take      the caller covers it (admin: { coach_id })
 //   POST /api/coach-schedule/cover/<id>/withdraw  the asker or an admin
-//   POST /api/coach-schedule/cover/<id>/texted    { coach_id } — the text was opened
+//   POST /api/coach-schedule/cover/<id>/text      { coach_id } → { sms_href }: their own sign-in link (mig 1640)
 //
 // Club admins and active coaches open it; only admins change who covers
 // which session.  A coach asks cover for themself; an admin for anyone.
@@ -28,6 +29,7 @@ private:
     bool gate(const Request& request, Caller* caller, Response* error);
 
     Response handleGet(const Request& request);
+    Response handleEventCovers(const Request& request);
     Response handleSession(const Request& request);
     Response handlePlan(const Request& request);
     Response handleCoverCreate(const Request& request);

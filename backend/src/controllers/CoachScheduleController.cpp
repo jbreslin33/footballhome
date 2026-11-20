@@ -4,6 +4,8 @@
 #include <regex>
 
 #include "../database/Database.h"
+#include "../models/MessageCopy.h"
+#include "../services/MagicLinkService.h"
 #include "../third_party/json.hpp"
 
 using nlohmann::json;
@@ -52,12 +54,13 @@ json sessionsOf(long long coachId) {
 
 void CoachScheduleController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix,                        [this](const Request& r) { return handleGet(r); });
+    router.get (prefix + "/event/:id",         [this](const Request& r) { return handleEventCovers(r); });
     router.post(prefix + "/session",           [this](const Request& r) { return handleSession(r); });
     router.post(prefix + "/plan",              [this](const Request& r) { return handlePlan(r); });
     router.post(prefix + "/cover",             [this](const Request& r) { return handleCoverCreate(r); });
     router.post(prefix + "/cover/:id/take",    [this](const Request& r) { return handleCoverAction(r); });
     router.post(prefix + "/cover/:id/withdraw",[this](const Request& r) { return handleCoverAction(r); });
-    router.post(prefix + "/cover/:id/texted",  [this](const Request& r) { return handleCoverAction(r); });
+    router.post(prefix + "/cover/:id/text",    [this](const Request& r) { return handleCoverAction(r); });
 }
 
 // Club admins and active coaches; 403 (not 401) keeps a signed-in player's session.
@@ -180,6 +183,40 @@ Response CoachScheduleController::handleGet(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "CoachScheduleController::handleGet: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the coach schedule");
+    }
+}
+
+// The cover asks on one event, for its page's banner (mig 1640): who asked,
+// who covers, and whether the caller was asked / may take it.
+Response CoachScheduleController::handleEventCovers(const Request& request) {
+    Caller me;
+    Response denied(HttpStatus::FORBIDDEN, "");
+    if (!gate(request, &me, &denied)) return denied;
+    const std::string path = request.getPath().substr(0, request.getPath().find('?'));
+    const long long eventId = idOf(path.substr(path.rfind('/') + 1));
+    if (eventId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "Which event?");
+    try {
+        auto r = Database::getInstance()->query(R"SQL(
+            SELECT COALESCE(json_agg(json_build_object(
+                     'id', cc.id, 'status', cc.status, 'coach_id', cc.coach_id,
+                     'coach', COALESCE(ap.first_name, ''), 'cover_coach_id', cc.cover_coach_id,
+                     'cover', COALESCE(cp.first_name, ''),
+                     'asked_me', EXISTS (SELECT 1 FROM coach_cover_asks a WHERE a.cover_id = cc.id AND a.coach_id = $2::int))
+                     ORDER BY cc.id), '[]')::text AS covers,
+                   bool_or(ge.ends_at < now()) AS past
+              FROM coach_covers cc
+              JOIN coaches ac ON ac.id = cc.coach_id JOIN persons ap ON ap.id = ac.person_id
+              LEFT JOIN coaches cv ON cv.id = cc.cover_coach_id LEFT JOIN persons cp ON cp.id = cv.person_id
+              JOIN fh_events fe ON fe.id = cc.fh_event_id JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+             WHERE cc.fh_event_id = $1::bigint AND cc.status <> 'withdrawn')SQL",
+            {str(eventId), str(me.coachId)});
+        return jsonOut(HttpStatus::OK, {
+            {"covers", json::parse(r[0]["covers"].c_str())},
+            {"past", !r[0]["past"].is_null() && r[0]["past"].as<bool>()},
+            {"me", {{"coach_id", me.coachId > 0 ? json(me.coachId) : json(nullptr)}, {"is_admin", me.admin}}}});
+    } catch (const std::exception& e) {
+        std::cerr << "CoachScheduleController::handleEventCovers: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the cover asks");
     }
 }
 
@@ -322,11 +359,40 @@ Response CoachScheduleController::handleCoverAction(const Request& request) {
         const long long eventId = row[0]["fh_event_id"].as<long long>(), askerId = row[0]["coach_id"].as<long long>();
         const std::string status = row[0]["status"].c_str();
 
-        if (action == "texted") {
+        // The ask's text for one asked coach: their own sign-in link (minted
+        // like every player / parent reminder), landing on the event; the
+        // words are message_templates coach_schedule/cover_sms (mig 1640).
+        if (action == "text") {
             if (!me.admin && me.coachId != askerId) return jsonError(HttpStatus::FORBIDDEN, "Not your ask.");
+            if (status != "open") return jsonError(HttpStatus::CONFLICT, "That ask is no longer open.");
+            auto who = db->query(R"SQL(
+                SELECT c.person_id, COALESCE(p.first_name, '') AS first,
+                       fh_recipient_phone(c.person_id, c.person_id) AS phone,
+                       (SELECT COALESCE(ap.first_name, '') FROM coaches ac JOIN persons ap ON ap.id = ac.person_id WHERE ac.id = $3::int) AS asker,
+                       regexp_replace(COALESCE(ge.summary, ''), '^\s*Soccer\s+', '', 'i') AS event,
+                       to_char(ge.starts_at AT TIME ZONE 'America/New_York', 'Dy Mon FMDD FMHH12:MI AM') AS at
+                  FROM coach_cover_asks a
+                  JOIN coaches c ON c.id = a.coach_id
+                  JOIN persons p ON p.id = c.person_id
+                  JOIN fh_events fe ON fe.id = $4::bigint
+                  JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                 WHERE a.cover_id = $1::bigint AND a.coach_id = $2::int)SQL",
+                {str(coverId), str(bodyCoach), str(askerId), str(eventId)});
+            if (who.empty()) return jsonError(HttpStatus::NOT_FOUND, "That coach was not asked.");
+            if (who[0]["phone"].is_null()) return jsonError(HttpStatus::BAD_REQUEST, "No phone on file for that coach.");
+            const std::string phone = who[0]["phone"].c_str();
+            const auto minted = MagicLinkService::mint(who[0]["person_id"].as<long long>(), "sms", phone, me.userId,
+                                                       0, 0, "event/" + str(eventId));
+            MessageCopy copy;
+            const auto sms = copy.render("coach_schedule", "cover_sms", {
+                {"first", who[0]["first"].c_str()}, {"event", who[0]["event"].c_str()},
+                {"when", who[0]["at"].c_str()}, {"coach", who[0]["asker"].c_str()}, {"link", minted.url}});
+            if (!sms.ok()) return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "cover_sms words missing (mig 1634)");
             db->query("UPDATE coach_cover_asks SET texted_at = now() WHERE cover_id = $1::bigint AND coach_id = $2::int",
                       {str(coverId), str(bodyCoach)});
-            return jsonOut(HttpStatus::OK, {{"ok", true}});
+            json out = {{"ok", true}};
+            copy.addComposeHrefs(out, "sms", phone, "", "", sms.body);
+            return jsonOut(HttpStatus::OK, out);
         }
         if (action == "take") {
             const long long taker = (me.admin && bodyCoach > 0) ? bodyCoach : me.coachId;
@@ -337,17 +403,7 @@ Response CoachScheduleController::handleCoverAction(const Request& request) {
                 UPDATE coach_covers SET status = 'covered', cover_coach_id = $2::int, covered_at = now(), covered_by_user_id = $3::int
                  WHERE id = $1::bigint AND status = 'open' RETURNING id)SQL", {str(coverId), str(taker), str(me.userId)});
             if (up.empty()) return jsonError(HttpStatus::CONFLICT, "Someone already took it.");
-            // Not a coach of the event's teams → an invite, so it is on their calendar.
-            db->query(R"SQL(
-                INSERT INTO event_person_sees (fh_event_id, person_id, sees, set_by_user_id, note)
-                SELECT $1::bigint, c.person_id, true, $3::int, 'coach cover #' || $4
-                  FROM coaches c
-                 WHERE c.id = $2::int
-                   AND NOT EXISTS (SELECT 1 FROM fh_event_teams fet
-                                     JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
-                                    WHERE fet.fh_event_id = $1::bigint AND tc.coach_id = c.id)
-                ON CONFLICT (fh_event_id, person_id) DO NOTHING)SQL",
-                {str(eventId), str(taker), str(me.userId), str(coverId)});
+            // A coach on that event now (fh_event_covering, mig 1640) — no invite row.
             return jsonOut(HttpStatus::OK, {{"ok", true}});
         }
         if (action == "withdraw") {

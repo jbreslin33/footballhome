@@ -497,7 +497,9 @@ std::optional<Response> resolveRsvpTarget(Database* db,
         // play-down the coach explicitly invited may RSVP like a
         // rostered player. Age-eligibility alone (fh_event_callups)
         // no longer opens the door — owner, 2026-09-12/13.
-        "  OR fh_event_invited($1::bigint, $3::int)) AS target_on_roster, "
+        "  OR fh_event_invited($1::bigint, $3::int)"
+        // 🔁 Covering it for another coach (mig 1640) — a coach on it.
+        "  OR fh_event_covering($1::bigint, $3::int)) AS target_on_roster, "
         // ⛔ Suspended for this game (mig 1077): sees it, cannot answer it —
         // nobody answers for him, admins included.
         "  fh_event_suspension($1::bigint, $3::int) AS suspension",
@@ -1025,6 +1027,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     -- explicit invite (fh_event_invites, migration 355)
                     -- is the only way in for a call-up or play-down.
                     OR fh_event_invited(fe.id, $1::int)
+                    OR fh_event_covering(fe.id, $1::int)   -- 🔁 mig 1640: covering it
+                    OR fh_event_cover_asked(fe.id, $1::int)   -- 🆘 mig 1640: asked to cover it (the text's link opens it)
                 ) AS eligible,
                 -- `eligible` without the admin pass: the caller is on this
                 -- event themselves (rostered player, its coach, or invited).
@@ -1060,6 +1064,8 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                           )
                     )
                     OR fh_event_invited(fe.id, $1::int)
+                    OR fh_event_covering(fe.id, $1::int)   -- 🔁 mig 1640: covering it
+                    OR fh_event_cover_asked(fe.id, $1::int)   -- 🆘 mig 1640: asked to cover it — on their calendar with the badge
                     -- Club staff (migration 430, owner 2026-09-25): full-
                     -- time staff see every team's events on their own
                     -- page without a coach row per team.  Admin level is
@@ -1080,6 +1086,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                         WHERE fet.fh_event_id = fe.id AND co.person_id = $1::int
                           AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)
                     ) THEN 'coach'
+                    WHEN fh_event_covering(fe.id, $1::int) THEN 'coach'   -- 🔁 mig 1640
                     WHEN EXISTS (
                         SELECT 1 FROM fh_event_teams fet
                         JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
@@ -1530,17 +1537,29 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                                WHERE person_id = p.id
                                                                ORDER BY is_primary DESC, id ASC LIMIT 1),
                                                              p.parent_person_id
-                                                        FROM fh_event_teams fet
-                                                        JOIN team_coaches tc
-                                                            ON tc.team_id = fet.team_id
-                                                           AND tc.ended_at IS NULL
-                                                        JOIN coaches co ON co.id = tc.coach_id
-                                                        JOIN persons p ON p.id = co.person_id
+                                                        FROM (
+                                                            SELECT co.person_id
+                                                              FROM fh_event_teams fet
+                                                              JOIN team_coaches tc
+                                                                  ON tc.team_id = fet.team_id
+                                                                 AND tc.ended_at IS NULL
+                                                              JOIN coaches co ON co.id = tc.coach_id
+                                                             WHERE fet.fh_event_id = fe.id
+                                                               AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)   -- mig 955
+                                                            UNION ALL
+                                                            -- 🔁 covering it for another coach (mig 1640)
+                                                            SELECT co.person_id
+                                                              FROM coach_covers cc
+                                                              JOIN coaches co ON co.id = cc.cover_coach_id
+                                                             WHERE cc.fh_event_id = fe.id AND cc.status = 'covered'
+                                                               AND NOT EXISTS (SELECT 1 FROM fh_event_teams fet3
+                                                                                 JOIN team_coaches tc3 ON tc3.team_id = fet3.team_id AND tc3.ended_at IS NULL
+                                                                                WHERE fet3.fh_event_id = fe.id AND tc3.coach_id = co.id)
+                                                        ) ec
+                                                        JOIN persons p ON p.id = ec.person_id
                                                         LEFT JOIN fh_event_rsvps er
                                                             ON er.fh_event_id = fe.id
                                                          AND er.person_id   = p.id
-                                                     WHERE fet.fh_event_id = fe.id
-                                    AND NOT fh_coach_off_schedule(p.id, tc.team_id, fe.id)   -- mig 955
 
                                                         UNION ALL
 
@@ -1704,6 +1723,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                               )
                         )
                         OR fh_event_invited(fe.id, $1::int)
+                        OR fh_event_covering(fe.id, $1::int)   -- 🔁 mig 1640
                     )
                 END AS my_rsvp_eligible,
                 -- 💸 The fine for leaving THIS event unanswered (owner 11/18
@@ -1803,7 +1823,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                      WHERE fe2.id = base.fh_event_id
                        AND base.my_role IN ('coach', 'staff')
                        AND base.kind = 'practice'
-                       AND lead.mins IS NOT NULL) AS coach_arrival_at
+                       AND lead.mins IS NOT NULL) AS coach_arrival_at,
+                   -- 🆘 an open coach cover ask on it (mig 1640): the card's
+                   -- badge for coach/admin viewers, ✋ on the event page.
+                   (base.viewer_tier IN ('coach', 'admin') OR fh_event_cover_asked(base.fh_event_id, $1::int))
+                     AND EXISTS (SELECT 1 FROM coach_covers cc
+                                  WHERE cc.fh_event_id = base.fh_event_id AND cc.status = 'open') AS cover_open
             FROM base
             WHERE $1::int = 0 OR base.eligible
                OR base.guardian_children IS NOT NULL
@@ -1933,6 +1958,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["is_mine"]           = row["is_mine"].as<bool>();
             ev["my_role"]           = textOrNull(row, "my_role");
             ev["viewer_tier"]       = textOrNull(row, "viewer_tier");
+            ev["cover_open"]        = !row["cover_open"].is_null() && row["cover_open"].as<bool>();   // 🆘 mig 1640
             ev["my_suspension"]       = textOrNull(row, "my_suspension");
             ev["my_suspension_until"] = textOrNull(row, "my_suspension_until");
             if (row["my_callup"].is_null()) ev["my_callup"] = nullptr;
@@ -2754,6 +2780,16 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             "         WHERE fet.fh_event_id = $1::bigint "
             "          AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id) "
             "        UNION ALL "
+            // 🔁 Covering it for another coach (mig 1640) — checked in as a coach.
+            "        SELECT p.id, p.first_name, p.last_name, true "
+            "          FROM coach_covers cc "
+            "          JOIN coaches co ON co.id = cc.cover_coach_id "
+            "          JOIN persons p ON p.id = co.person_id "
+            "         WHERE cc.fh_event_id = $1::bigint AND cc.status = 'covered' "
+            "           AND NOT EXISTS (SELECT 1 FROM fh_event_teams fet3 "
+            "                             JOIN team_coaches tc3 ON tc3.team_id = fet3.team_id AND tc3.ended_at IS NULL "
+            "                            WHERE fet3.fh_event_id = $1::bigint AND tc3.coach_id = co.id) "
+            "        UNION ALL "
             // Invited call-ups / play-downs (migration 355) show up for check-in too.
             "        SELECT p.id, p.first_name, p.last_name, false "
             "          FROM fh_event_invites i "
@@ -3077,6 +3113,13 @@ Response CalendarController::handleGetEventSides(const Request& request) {
                       JOIN persons p ON p.id = co.person_id
                      WHERE fet.fh_event_id = $1::bigint
                        AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id)
+                    UNION ALL
+                    -- 🔁 covering it for another coach (mig 1640)
+                    SELECT p.id, p.first_name, p.last_name, true
+                      FROM coach_covers cc
+                      JOIN coaches co ON co.id = cc.cover_coach_id
+                      JOIN persons p ON p.id = co.person_id
+                     WHERE cc.fh_event_id = $1::bigint AND cc.status = 'covered'
                     UNION ALL
                     SELECT p.id, p.first_name, p.last_name, false
                       FROM fh_event_invites i
