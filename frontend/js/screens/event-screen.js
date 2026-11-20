@@ -308,10 +308,15 @@ class EventScreen extends Screen {
     const inactiveOnly = inactive.filter(r => !r.standby);
     const staff = this.viewer.eventSection('inactive') || this.viewer.eventSection('not_chasing');
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
+      // 🩹 Injured for everyone, on every event's graphic (owner 11/20 "we need
+      // to have injured players list on the graphic for all events", mig 1642):
+      // no answer of their own → here; Going / Not going → that list for this
+      // event only; marked Present / Late → the injury ends (DB trigger).
+      // … at the bottom, under every other list (owner 11/20 "injured should be bottom right?")
       + row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd')
-      + (staff ? row(out.injured.filter(r => !cameIds.has(Number(r.person_id))), 'sec_injured', '🩹 Injured', '#fda4af')
-               + row(out.suspended, 'sec_suspended_card', '⛔ Suspended', '#fca5a5')
-               + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');
+      + (staff ? row(out.suspended, 'sec_suspended_card', '⛔ Suspended', '#fca5a5')
+               + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '')
+      + row(out.injured.filter(r => !cameIds.has(Number(r.person_id))), 'sec_injured', '🩹 Injured', '#fda4af');
   }
 
 

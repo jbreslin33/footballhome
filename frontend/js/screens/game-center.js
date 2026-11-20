@@ -2145,6 +2145,9 @@ class GameCenterScreen extends EventScreen {
     // (owner 11/18 "also what about not assigned yet. we need them on graphic").
     this._rsvpOut = { unplaced: [...unassignedGoing], ineligible: [...unassignedIneligible],
                       noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing],
+                      // 🩹 injured with no answer of their own, for everyone (mig 1642):
+                      // Going / Not going puts them in that list for this game only
+                      injured: [...unassignedInjured],
                       // 👋 coaches only on the graphic (players never see the row)
                       notChasing: this.isCoach ? [...unassignedInactive] : [],
                       // 🪑 everyone sees who is a Reserve (owner 11/19 "show reserves
@@ -2910,7 +2913,12 @@ class GameCenterScreen extends EventScreen {
   _isInjured(playerId) {
     const personId = this._personIdFor(playerId);
     const mine = personId && this.health && this.health.people[personId];
-    return !!(mine && mine.label);
+    if (mine && mine.label) return true;
+    // Everyone sees who is injured (owner 11/20 "we need to have injured
+    // players list on the graphic for all events", mig 1642): players do not
+    // load the health board, so read the event's own row (rsvps[].injury).
+    const r = personId && this.ev && Array.isArray(this.ev.rsvps) ? this.ev.rsvps.find(x => x && Number(x.person_id) === Number(personId)) : null;
+    return !!(r && r.injury);
   }
 
   _injuryChip(playerId) {
@@ -4187,7 +4195,9 @@ class GameCenterScreen extends EventScreen {
                            outRow(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171'),
                            outRow(out.notChasing || [], 'sec_inactive', '💤 Inactive', '#94a3b8'),
                            outRow(out.reserves || [], 'sec_standby', '🪑 Reserves', '#93c5fd'),
-                           outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
+                           outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6'),
+                           // 🩹 at the bottom, under every other list (owner 11/20)
+                           outRow(out.injured || [], 'sec_injured', '🩹 Injured', '#fda4af')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").
     // 📇 CONTACT under it for staff (EventScreen._contactPillHtml, owner 11/20).
