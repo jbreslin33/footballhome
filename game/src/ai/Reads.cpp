@@ -89,6 +89,8 @@ Fixed64 rangeFor(const core::PlayerSkill& lv, Fixed64 max_m) {
 void Reads::configure(const core::ModelParams& p) {
     // physics.receive.* (G5.22) — the numbers concept.meet-the-pass carried.
     horizon_ticks_ = p.integer("physics.receive.horizon_ticks", p.integer("concept.meet-the-pass.horizon_ticks", 90));
+    roll_stride_ = p.integer("physics.receive.roll_stride", 3);   // G5.203: a rolling ball read every Nth tick (no row = 3)
+    if (roll_stride_ < 1) roll_stride_ = 1;
     early_s_ = p.fixed("physics.receive.early_s", p.milli("concept.meet-the-pass.early_s", 250));
     on_line_m_ = p.fixed("physics.receive.on_line_m", p.milli("concept.meet-the-pass.on_line_m", 250));
     read_header_ = p.integer("physics.receive.read_header", p.integer("concept.meet-the-pass.read_header", 0));
@@ -181,7 +183,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
         }
         if (math::fx_abs(pos.x) > half_x_ || math::fx_abs(pos.y) > half_y_) break;  // out of play
         const bool rolling = pos.z.raw == 0 && vel.z.raw == 0;
-        if (rolling && k % 3 != 0) continue;  // a rolling ball: every 3rd tick is plenty
+        if (rolling && k % roll_stride_ != 0) continue;  // a rolling ball: every 3rd tick (G5.203: physics.receive.roll_stride)
         const Fixed64 sp2 = vel.x * vel.x + vel.y * vel.y;
         const Fixed64 t = core::kTickDt * Fixed64::fromInt(k);
         for (SlotIndex i = 0; i < n && i < 64; ++i) {

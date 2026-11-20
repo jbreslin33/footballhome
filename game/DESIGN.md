@@ -11899,3 +11899,32 @@ goals 2.06 → 2.14, card 11 / 8 / 14 → 9 / 7 / 17. Not shipped. **The lost pa
 gets there sooner than `Reads::race` says near our goal — charged down 3-5 m off the passer 4.0% (1.9), the band the body
 rule (§8.306) doesn't reach. Next: the race read's error on our own-third passes (read won v lost, by the cutter's
 distance and pace at the kick). Tests 23/23, lint clean; behaviour unchanged.
+
+### 8.309 G5.203 — the race read steps a rolling ball every tick (mig 1637; shipped)
+
+From §8.308. OWN-THIRD PASS READ (harness): ground passes from our third to a man 5 m+ off, `Reads::race` run at the
+decision (the passer's `passSafe` on the man it is for) and again on the ball as kicked; kept | lost a team-match, seeds
+1000-4000 × 8, G5.200:
+
+| read at the decision / as kicked | kept | lost | lost % |
+|---|---|---|---|
+| ours / ours | 62.5-65.3 | 0.38-1.44 | 0.6-2.2 |
+| ours / theirs (the kick isn't the pass he chose) | 1.1-2.3 | 0.44-0.88 | 28-33 |
+| theirs / ours | 1.7-2.1 | 0.38-0.81 | 15-28 |
+| theirs / theirs (the risk taken) | 2.7-4.4 | 0.88-1.75 | 22-37 |
+
+~3.5 lost a team-match, three near-equal parts: the read wrong (~1.0), the kick off the chosen pass (~0.7), the risk
+taken (~1.9). Lost though read ours: the read had **the cutter never reaching** it 10-17 of each seed's (late by
+≤ 0.1 s 3-14). Not the 20 m/s capture cap (3 of 53 kicked 20+ m/s); 28 of 53 deflected on the way (`World::deflectedTick`,
+harness accessor) — no read sees that. The 25 clean: 20 lost inside 1.5 s, the receiver not read there first; the 3 s
+horizon 2.
+
+**Cause**: `Reads::race` looked at a rolling ball every 3rd tick — 1.2-2 m between looks at 12-20 m/s — while World
+captures every tick. A man 0.3-0.6 m off the line (inside his reaction only `react_body_m`, §8.306) fell between two
+looks. **Change**: `physics.receive.roll_stride` (no row = 3; row 1). Seeds 1000-4000 × 8: clean never-reaching 25 → 12;
+own-third losses unchanged (read ours / ours 0.81-1.12 lost; total ~3.5); goals 2.06 → 1.95; card 11 / 8 / 14 →
+13 / 4 / 16 (free kicks, goal kicks, tackles, take-ons, on target ok; off target 40.5 → 48.3% (38.0) and shots <12 m
+27.3 → 25.1% (30.6) OFF; blocked 19.9 → 16.9% (29.1)). Correct read, shipped (`card_G5.203.txt`).
+
+Next: off target up 8 points — the shooters' lane read now sees the bodies it missed and the shot goes wide of them?
+Then the kick off the chosen pass (28-33% lost) and the risk taken from our third. Tests 23/23, lint clean.

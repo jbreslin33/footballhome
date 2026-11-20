@@ -160,6 +160,7 @@ public:
     struct CarryDiag { long n = 0, chase = 0, wfull = 0, steps = 0, contact = 0; math::Fixed64 wish{}, after{}, desire{}, gait{}, top{}, vw{}, v0{}, v1{}, ang{}; long vb[8] = {}, vwb[8] = {}; };   // sums, Fixed64 (no floats in core, §9; a match's carry ticks × ≤10 stays far inside its range)
     const CarryDiag& carryDiag() const noexcept { return carry_diag_; }
     std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
+    std::uint64_t deflectedTick() const noexcept { return deflected_tick_; }   // G5.203: last deflection (harness)
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
     // G5.79 (§8.180): kicks off a plant foot. Each player's strong foot (0 = right, 1 = left) and his
     // weak-foot habit; the foot of his last kick (on the wire); and the kicks that waited for a plant.

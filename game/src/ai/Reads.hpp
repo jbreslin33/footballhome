@@ -82,6 +82,7 @@ private:
     math::Fixed64 half_x_, half_y_;
     // physics.receive.* (were concept.meet-the-pass.*; same numbers).
     int horizon_ticks_ = 90;
+    int roll_stride_ = 3;
     math::Fixed64 early_s_ = math::Fixed64::fromFraction(1, 4);
     math::Fixed64 on_line_m_ = math::Fixed64::fromFraction(1, 4);
     // G5.11: the race reads the head-height point of a dropping ball.
