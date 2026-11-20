@@ -189,6 +189,34 @@ const char* kBaseCtes = R"SQL(
                   AND extract(isodow FROM ge.starts_at AT TIME ZONE tm.tzname) BETWEEN 1 AND 5
                   AND now() >= ge.starts_at - make_interval(days => tm.notice_days::int)))
          AND NOT fh_event_suspended(fe.id, i.person_id)   -- ⛔ mig 1077
+         -- 🪑 mig 1607: seeing the game is not owing an answer — an
+         -- invitee owes one once called up / reminded for this event (or
+         -- once he answers, so his answer counts).  Till then Remind all
+         -- and the tiles leave him in Reserves.
+         AND (fh_event_asked(fe.id, i.person_id)
+              OR EXISTS (SELECT 1 FROM fh_event_rsvps ar WHERE ar.fh_event_id = fe.id AND ar.person_id = i.person_id))
+      UNION
+      -- 🪑 A Reserve / Inactive on the event's team who was called up or
+      -- reminded for it (mig 1607) owes an answer for that one event.
+      SELECT DISTINCT tp.person_id, fe.id, fe.kind, fe.opponent,
+             fe.fh_notes, ge.starts_at, ge.ends_at, 2 AS role_rank
+        FROM team_persons tp
+        JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND NOT fh_squad_owes_practice(ss.id, tp.team_id)
+        JOIN tm ON tm.id = tp.team_id
+        JOIN fh_event_teams fet ON fet.team_id = tp.team_id
+        JOIN fh_events fe ON fe.id = fet.fh_event_id
+                         AND fe.kind IN ('practice','match','intrasquad')
+                         AND ($5 = 'all' OR ($5 = 'games') = (fe.kind IN ('match','intrasquad')))
+        JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+        CROSS JOIN epoch
+       WHERE tp.removed_at IS NULL
+         AND ($4::int = 0 OR tp.person_id = $4::int)
+         AND ($1 <> 'G' OR EXISTS (SELECT 1 FROM girl g WHERE g.person_id = tp.person_id))
+         AND ge.deleted_at IS NULL AND ge.status IS DISTINCT FROM 'cancelled'
+         AND ge.starts_at >= GREATEST(epoch.t, COALESCE(NULLIF($2,'')::timestamptz, '-infinity'))
+         AND ge.starts_at > now() - interval '1 day'
+         AND fh_event_asked(fe.id, tp.person_id)
+         AND NOT fh_event_suspended(fe.id, tp.person_id)
     ), expected_roles AS (
       -- The role on each event, and whether this person wears more than
       -- one hat across the window (then every line names the hat, in the

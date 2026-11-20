@@ -1112,6 +1112,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 -- {state: open|requested|declined, request_id, from} | NULL.
                 CASE WHEN fe.kind = 'match' AND $1::int > 0
                      THEN fh_event_callin(fe.id, $1::int)::text END AS my_callin,
+                -- 🪑 mig 1607: the viewer is a Reserve for this event, not
+                -- asked yet — may answer, owes nothing (the band skips it).
+                ($1::int > 0 AND fh_event_reserve_waiting(fe.id, $1::int)) AS my_reserve_waiting,
                 -- ⛔ Suspended for this game (mig 1077): the card shows it
                 -- with no Go / No.  'league' | 'club' | NULL.
                 fh_event_suspension(fe.id, $1::int) AS my_suspension,
@@ -1492,6 +1495,9 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                        -- so never in No response — listed only
                                                        -- once he answers (owner 2026-11-03).
                                                        AND (er.response IS NOT NULL
+                                                            -- 🎟 called up / reminded for THIS event (mig 1607):
+                                                            -- on the list → No response until he answers.
+                                                            OR fh_event_asked(fe.id, p.id)
                                                             OR NOT EXISTS (SELECT 1 FROM squad_statuses ss
                                                                             WHERE ss.id = tp.squad_status_id
                                                                               AND NOT fh_squad_owes_practice(ss.id, tp.team_id)))
@@ -1601,6 +1607,11 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                          AND er.person_id   = p.id
                                                        WHERE i.fh_event_id = fe.id
                                                          AND i.revoked_at IS NULL
+                                                         -- 🪑 Seeing the game is not being asked (mig 1607): an
+                                                         -- invitee is on the list once called up / reminded for
+                                                         -- this event, or once he answers — till then the
+                                                         -- Reserves fold (inactive_json) holds him.
+                                                         AND (er.response IS NOT NULL OR fh_event_asked(fe.id, p.id))
                                                     ) combined
                                                  -- Coaching only (mig 688) keeps the coach row; otherwise the player row.
                                                  ORDER BY combined.person_id,
@@ -1640,25 +1651,29 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                'standby',    EXISTS (SELECT 1 FROM fh_event_teams fet
                                                        JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
                                                        JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code = 'standby'
-                                                      WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id),
+                                                      WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id)
+                                             -- seeing the game without a Regular spot = a Reserve too (mig 1607)
+                                             OR fh_event_invited(fe.id, p.id),
+                               -- the team he would come up from (league list / invite), for the card
+                               'callup_from', (SELECT ft.name FROM fh_event_invites i JOIN teams ft ON ft.id = i.from_team_id
+                                                WHERE i.fh_event_id = fe.id AND i.person_id = p.id AND i.revoked_at IS NULL
+                                                ORDER BY i.created_at LIMIT 1),
                                'phone',      fh_recipient_phone(p.id, p.id),
                                'email',      fh_recipient_email(p.id, p.id))
                            ORDER BY p.last_name, p.first_name, p.id)
                       FROM persons p
                       LEFT JOIN fh_event_rsvps er ON er.fh_event_id = fe.id AND er.person_id = p.id
+                     -- 🪑 mig 1607: Reserve/Inactive rows on the event's teams AND
+                     -- everyone who only sees it (invites), until asked for it.
                      WHERE p.id IN (SELECT tp.person_id
                                       FROM fh_event_teams fet
                                       JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
                                       JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code IN ('inactive', 'standby')
-                                     WHERE fet.fh_event_id = fe.id)
-                       AND NOT EXISTS (SELECT 1
-                                         FROM fh_event_teams fet
-                                         JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL
-                                         LEFT JOIN squad_statuses ss ON ss.id = tp.squad_status_id
-                                        WHERE fet.fh_event_id = fe.id AND tp.person_id = p.id
-                                          AND (ss.code IS NULL OR ss.code NOT IN ('inactive', 'standby')))
-                       AND NOT EXISTS (SELECT 1 FROM fh_event_invites i
-                                        WHERE i.fh_event_id = fe.id AND i.person_id = p.id AND i.revoked_at IS NULL)
+                                     WHERE fet.fh_event_id = fe.id
+                                    UNION
+                                    SELECT i.person_id FROM fh_event_invites i
+                                     WHERE i.fh_event_id = fe.id AND i.revoked_at IS NULL)
+                       AND fh_event_reserve_waiting(fe.id, p.id)
                        AND er.response IS DISTINCT FROM 'yes'
                 ), '[]'::jsonb) END AS inactive_json,
                 CASE
@@ -1910,6 +1925,7 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
             ev["my_arrive_label"]   = textOrNull(row, "my_arrive_label");
             ev["my_leave_label"]    = textOrNull(row, "my_leave_label");
             ev["my_rsvp_eligible"]  = boolOrNull(row, "my_rsvp_eligible");
+            ev["my_reserve_waiting"] = boolOrNull(row, "my_reserve_waiting");
             if (row["my_rsvp_fine_usd"].is_null()) ev["my_rsvp_fine_usd"] = nullptr;
             else ev["my_rsvp_fine_usd"] = row["my_rsvp_fine_usd"].as<double>();
             // The viewer's + their kids' event jobs (mig 625) — [] when
@@ -3696,7 +3712,12 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
             "SELECT p.first_name, p.last_name, p.parent_person_id, "
             "       c.from_team_id, c.from_team_name, "
             "       i.from_team_id AS inv_from_team_id, ft.name AS inv_from_team_name, "
-            "       (c.person_id IS NOT NULL) AS is_candidate, (i.id IS NOT NULL) AS already "
+            "       (c.person_id IS NOT NULL) AS is_candidate, (i.id IS NOT NULL) AS already, "
+            // 🪑 mig 1607: a Reserve / Inactive on the event's own team is called up the same way.
+            "       EXISTS (SELECT 1 FROM fh_event_teams fet "
+            "                 JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL "
+            "                 JOIN squad_statuses ss ON ss.id = tp.squad_status_id AND ss.code IN ('inactive', 'standby') "
+            "                WHERE fet.fh_event_id = $1::bigint AND tp.person_id = p.id) AS on_reserve "
             "  FROM persons p "
             "  LEFT JOIN fh_event_invite_candidates($1::bigint) c ON c.person_id = p.id "
             "  LEFT JOIN fh_event_invites i ON i.fh_event_id = $1::bigint AND i.person_id = p.id AND i.revoked_at IS NULL "
@@ -3707,7 +3728,8 @@ Response CalendarController::handlePostEventInvite(const Request& request) {
         const auto& w = who[0];
         const bool isCandidate = w["is_candidate"].as<bool>();
         const bool already     = w["already"].as<bool>();
-        if (!isCandidate && !already) {
+        const bool onReserve   = w["on_reserve"].as<bool>();
+        if (!isCandidate && !already && !onReserve) {
             return jsonError(HttpStatus::FORBIDDEN,
                              "That player is not eligible to be invited to this game "
                              "(rostered already, wrong age or program, or another section).");

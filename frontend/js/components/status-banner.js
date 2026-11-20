@@ -485,9 +485,11 @@
         if (ev.my_suspension) suspended++;
         if (ev.rsvps_open_now === false) continue;   // not open yet — nothing to answer
         const who = [];   // [{ id: 0 = me | child person_id, name }]
-        if (ev.my_rsvp_eligible === true && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no') who.push({ id: 0, name: '' });
+        // 🪑 mig 1607: a Reserve not yet called up for this event owes nothing (may still answer).
+        const waiting = new Set((Array.isArray(ev.inactive) ? ev.inactive : []).map(x => x && Number(x.person_id)));
+        if (ev.my_rsvp_eligible === true && !ev.my_suspension && !ev.my_callin && !ev.my_reserve_waiting && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no') who.push({ id: 0, name: '' });
         for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) {
-          if (!c || !c.person_id || c.suspension) continue;
+          if (!c || !c.person_id || c.suspension || waiting.has(Number(c.person_id))) continue;
           const r = (Array.isArray(ev.rsvps) ? ev.rsvps : []).find(x => x && Number(x.person_id) === Number(c.person_id));
           if (!r || (r.response !== 'yes' && r.response !== 'no')) who.push({ id: Number(c.person_id), name: String(c.name || '').split(' ')[0] || 'Your player' });
         }

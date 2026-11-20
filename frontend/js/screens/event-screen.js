@@ -1097,10 +1097,10 @@ class EventScreen extends Screen {
     if (!id || !this.ev || this._isPast(this.ev)) return null;
     const off = (Array.isArray(this.ev.inactive) ? this.ev.inactive : []).find(x => x && Number(x.person_id) === id);
     if (off && off.response !== 'yes') {
-      const cands = this.invites && Array.isArray(this.invites.candidates) ? this.invites.candidates : [];
-      if (cands.some(c => Number(c.person_id) === id)) return 'callup';
-      // 🪑 Reserve (mig 1530): sees every event and can answer any time, but
-      // is never reminded — so it's the 📣 Ask Reserves words, to him alone.
+      // 🪑 mig 1607 (owner 11/20 "if 'reminding' a reserve … say we are
+      // calling them up"): a Reserve not yet asked gets the 🎟 Call-up —
+      // sending it is the ask, and he moves to No response for this event.
+      if (this._canInvite()) return 'callup';
       return off.standby ? 'ask' : null;
     }
     const r = (Array.isArray(this.ev.rsvps) ? this.ev.rsvps : []).find(x => x && Number(x.person_id) === id);
