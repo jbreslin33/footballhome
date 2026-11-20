@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 final class Api {
     static final String ROOT = "https://footballhome.org/api";
     static final String BASE = ROOT + "/phone-relay";
-    static final String VERSION = "1.4";
+    static final String VERSION = "1.5";
     private static final String PREFS = "fh_texter";
 
     static final class Result {

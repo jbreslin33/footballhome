@@ -590,17 +590,28 @@ Response PhoneRelayController::handleDeviceNext(const Request& request) {
                   "   AND t.created_at < now() - make_interval(mins => p.expire_minutes)", {dev});
         db->query("UPDATE phone_relay_texts SET status = 'failed', error = 'the phone never confirmed it' "
                   " WHERE device_id = $1::int AND status = 'sending' AND claimed_at < now() - interval '10 minutes'", {dev});
+        // ⬆ v1.5 one-tap update (mig 1619): an older app hears about the latest build.
+        json update = nullptr;
+        const long long have = num(body, "app_version_code");
+        if (have > 0) {
+            auto u = db->query("SELECT version_code, version_name, apk_url FROM phone_app_releases "
+                               " ORDER BY version_code DESC LIMIT 1");
+            if (!u.empty() && u[0]["version_code"].as<long long>() > have)
+                update = {{"version_code", u[0]["version_code"].as<long long>()},
+                          {"version_name", u[0]["version_name"].c_str()}, {"url", u[0]["apk_url"].c_str()}};
+        }
         if (!db->query("SELECT 1 FROM phone_relay_texts WHERE device_id = $1::int AND status = 'sending' LIMIT 1", {dev}).empty())
-            return jsonOut(HttpStatus::OK, {{"text", nullptr}});
+            return jsonOut(HttpStatus::OK, {{"text", nullptr}, {"update", update}});
         auto r = db->query(
             "UPDATE phone_relay_texts SET status = 'sending', claimed_at = now() "
             " WHERE id = (SELECT id FROM phone_relay_texts WHERE device_id = $1::int AND status = 'queued' "
             "              AND not_before <= now() ORDER BY not_before, id LIMIT 1 FOR UPDATE SKIP LOCKED) "
             "RETURNING id, to_phone, body", {dev});
-        if (r.empty()) return jsonOut(HttpStatus::OK, {{"text", nullptr}});
+        if (r.empty()) return jsonOut(HttpStatus::OK, {{"text", nullptr}, {"update", update}});
         return jsonOut(HttpStatus::OK, {{"text", {{"id", r[0]["id"].as<long long>()},
                                                   {"to", r[0]["to_phone"].c_str()},
-                                                  {"body", r[0]["body"].c_str()}}}});
+                                                  {"body", r[0]["body"].c_str()}}},
+                                        {"update", update}});
     } catch (const std::exception& e) {
         std::cerr << "PhoneRelayController::handleDeviceNext: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not check for texts");

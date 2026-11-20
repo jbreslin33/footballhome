@@ -32,7 +32,7 @@ import java.util.List;
 public class MainActivity extends Activity {
     private TextView status;
     private EditText code;
-    private Button pair, battery, reconnect, settings, unpair, contactsAllow, contactsAccount;
+    private Button pair, battery, reconnect, settings, unpair, contactsAllow, contactsAccount, update;
     private TextView contactsStatus;
     // While this screen is open the status line re-reads the service's
     // last check-in every 2 seconds, so "on and working" is live.
@@ -60,6 +60,11 @@ public class MainActivity extends Activity {
                 + "Keep this phone on and online.");
         about.setPadding(0, dp(6), 0, dp(14));
         col.addView(about);
+
+        // ⬆ v1.5: a newer build → one button (and the notification opens here).
+        update = button("⬆ Update", "#7C3AED");
+        update.setOnClickListener(v -> status.setText(Updater.start(this)));
+        col.addView(update);
 
         status = new TextView(this);
         status.setTextSize(17);
@@ -130,8 +135,19 @@ public class MainActivity extends Activity {
         askPermissions();
     }
 
+    @Override protected void onNewIntent(Intent i) {
+        super.onNewIntent(i);
+        setIntent(i);
+    }
+
     @Override protected void onResume() {
         super.onResume();
+        // Opened from "Update available": start it straight away.
+        if (getIntent() != null && getIntent().getBooleanExtra("update", false)) {
+            getIntent().removeExtra("update");
+            Api.prefs(this).edit().remove("update_trouble").apply();
+            status.setText(Updater.start(this));
+        }
         refresh();
         if (Api.paired(this) && hasSms()) RelayService.start(this);
         tick.postDelayed(ticker, 2000);
@@ -176,6 +192,11 @@ public class MainActivity extends Activity {
         reconnect.setVisibility(paired && hasSms() ? android.view.View.VISIBLE : android.view.View.GONE);
         settings.setText(hasSms() ? "Data settings" : "SMS settings");
         refreshContacts(paired);
+        boolean up = Updater.available(this);
+        update.setVisibility(up ? android.view.View.VISIBLE : android.view.View.GONE);
+        update.setText("⬆ Update to " + Updater.name(this) + " — tap, then Install");
+        String upTrouble = Api.prefs(this).getString("update_trouble", "");
+        if (up && !upTrouble.isEmpty()) update.setText("⬆ Update to " + Updater.name(this) + " (last try: " + upTrouble + ")");
         PowerManager pm = getSystemService(PowerManager.class);
         boolean free = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         battery.setVisibility(free ? android.view.View.GONE : android.view.View.VISIBLE);

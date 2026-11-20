@@ -160,7 +160,8 @@ public class RelayService extends Service {
     private void poll() {
         if (!running) return;
         try {
-            JSONObject hello = new JSONObject().put("app_version", Api.VERSION);
+            JSONObject hello = new JSONObject().put("app_version", Api.VERSION)
+                    .put("app_version_code", Updater.myCode(this));   // v1.5 ⬆ one-tap update
             Api.Result r = Api.post(this, "/device/next", hello);
             if (r.status == 401) {
                 // Unpaired from the website (or a bad token): stop asking.
@@ -171,6 +172,8 @@ public class RelayService extends Service {
                 return;
             }
             if (r.ok()) checkedIn(); else trouble(r.error());
+            JSONObject up = r.ok() ? r.body.optJSONObject("update") : null;
+            if (up != null) Updater.offered(this, up.optLong("version_code"), up.optString("version_name"), up.optString("url"));
             JSONObject text = r.ok() ? r.body.optJSONObject("text") : null;
             if (text != null) send(text.getLong("id"), text.getString("to"), text.getString("body"));
         } catch (Exception e) {
