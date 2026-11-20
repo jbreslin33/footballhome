@@ -11973,3 +11973,24 @@ regains alone), seeds 1000-4000 × 8:
 [FH coaching: no risks at the back] — half the loss excess gone; shipped at 0.05 (`card_G5.205.txt`). The regains near
 their box barely move (6.3 → 5.7, real ~1.9): the losing side's last touch (seed 1000) pass 3.3, clearance 1.0, header
 pass 0.25, ball forward 0.4 — **next: the clearances and the short / lofted passes it doesn't cover**. Tests 23/23.
+
+### 8.312 G5.206 — no-pass shots past the defence are regains shot at once (measured; no game change)
+
+From §8.311, item 2 on one ruler — the shot. New `scripts/benchmarks_statsbomb_nopass.py`: open-play shots with no key
+pass, by how the shooter came to have it (rebound / off their clearance, block or keeper / regain within 5 s / his
+dribble / other). Harness §8.312 the same order (rebound = our shot within 5 s; clearance = their `Why::Clear` within
+3 s; deflection = `World::deflectedTick` within 3 s; regain = the possession began in open play within 5 s). Seeds
+1000-4000 × 8, G5.205, a team-match (StatsBomb):
+
+| 0-1 goal-side | ours | real |
+|---|---|---|
+| rebound | 0.30 | 0.136 |
+| off their clearance / deflection / block / keeper | 0.08 + 0.19 | 0.062 |
+| **regain, shot within 5 s** | **0.46** | **0.009** |
+| other | 0.16 | 0.08 |
+| all | 1.18 | 0.29 |
+
+With 2+ goal-side ours 1.5 (2.66) — fewer, so it is not that we take no-pass shots; we take them with the defence gone.
+The regains (second run): won 0-18 m off the goal attacked ~0.20 (their pass cut out 0.14, clearance 0.05), 18-35 ~0.12,
+35+ ~0.13. **Their pass cut out in their own box, shot at once with 0-1 goal-side** — real own-box ground passes 11.85 a
+team-match, lost 0.39 (§8.311). Next: our own-box passes, by zone, against that line. Harness only; tests 23/23.
