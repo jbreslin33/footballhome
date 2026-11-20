@@ -89,7 +89,11 @@ class ProrateDuePanel {
                 `Prorate ${money(pr.amount)} — ${pr.daysRemain} of ${pr.cycleDays} days, ${money(paid)} paid`);
     const monthly = window.MessageCopy && MessageCopy.duesPolicy && MessageCopy.duesPolicy.monthlyDuesUsd;
     if (!Number.isFinite(monthly)) return '';
-    return cp('prorate_full', { amount: money(Math.max(0, monthly - paid)) }, `Full month ${money(Math.max(0, monthly - paid))} — first cycle already over`);
+    // Anything but the full $35 is a prorate (owner 11/20 "34 is not a full
+    // month its a prorate"; mig 1614): signed up before the bill day, owes
+    // the straight $35 with what was paid counted toward it.
+    const owed = money(Math.max(0, monthly - paid));
+    return cp('prorate_full', { amount: owed, monthly: money(monthly), paid: money(paid) }, `Prorate ${owed} — ${money(monthly)} less ${money(paid)} paid (signed up before the bill day)`);
   }
 
   render() {
