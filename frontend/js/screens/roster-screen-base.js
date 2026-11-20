@@ -1230,6 +1230,7 @@ class RosterScreenBase extends Screen {
   //   (on it, not on the top team) are a second pitch, closed by default.
   // Words: roster_sheet tc_* (mig 1521); the rows reuse the cards' own.
   renderTeamCards(data, cols) {
+    this._tcCols = cols;
     const esc = RosterScreenBase.escapeHtml;
     const copy = (tier, tokens, fb) => (window.MessageCopy && MessageCopy.block('roster_sheet', tier, tokens || {})) || fb;
     const ec = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
@@ -2778,11 +2779,25 @@ class RosterScreenBase extends Screen {
           teams: c.teams ? `<div style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
               ${label ? `<div style="font-size:0.75rem; font-weight:800; opacity:0.75;">${this.escape(RosterScreenBase.dropClubName(label))}</div>` : ''}
               ${c.teams}</div>` : '',
-          contact: c.contact,
+          contact: c.contact || this._sheetContactHtml(c),
         };
       },
       onChange: () => { if (typeof this.load === 'function') this.load({ quiet: true }); },
     });
+  }
+
+  // 📇 Contact for a graphic team-card box (owner 11/20 "a bunch of guys
+  // are showing [no email or phone]" — clicked from #teams Graphic): the
+  // box stores no contact, so draw the board's own list card once and keep
+  // its CONTACT button — same recipients (youth → parents), same popup.
+  _sheetContactHtml(c) {
+    if (!c || !c.player || typeof this.renderPlayer !== 'function') return '';
+    if (c.contactBuilt != null) return c.contactBuilt;
+    this._capturedContact = '';
+    try { this.renderPlayer(c.player, this._tcCols || [], c.col, 0); } catch (e) { /* card draw failed: empty tab */ }
+    c.contactBuilt = this._capturedContact || '';
+    this._capturedContact = null;
+    return c.contactBuilt;
   }
 
   // The board re-rendered (a save reloads it): the open sheet redraws
@@ -2922,6 +2937,7 @@ class RosterScreenBase extends Screen {
     // the column tallies that count those selects are unaffected.
     // Same <details> popover as the move control, so the shared
     // outside-click closer (installMoveDropdownOutsideClose) shuts it.
+    if (this._capturedContact === '') this._capturedContact = contactHtml || '';
     const menuItems = `${rosterSelectHtml}${statusSelectHtml}${roleSelectHtml}${viewButtonHtml}${contactHtml}`.trim();
     const actionsMenu = menuItems
       ? `

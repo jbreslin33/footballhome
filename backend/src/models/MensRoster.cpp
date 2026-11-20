@@ -733,7 +733,19 @@ MensRoster::Result MensRoster::run(bool includeAll,
                 "       tp.person_id, p.first_name, p.last_name, "
                 "       TO_CHAR(p.birth_date, 'YYYY-MM-DD') AS birth_date, "
                 "       p.la_user_id AS la_user_id, "
-                "       lp.category AS la_home_category "
+                "       lp.category AS la_home_category, "
+                // Contact from FH's own rows (owner 11/20 "why does asif have
+                // no email or phone on file" / "a bunch of guys are showing
+                // that"): his own first, else his primary guardian's (a youth
+                // call-up registered on LA as a child).
+                "       COALESCE((SELECT e.email FROM person_emails e WHERE e.person_id = p.id "
+                "                  ORDER BY e.is_primary DESC, e.created_at DESC LIMIT 1), "
+                "                (SELECT e.email FROM person_emails e WHERE e.person_id = p.parent_person_id "
+                "                  ORDER BY e.is_primary DESC, e.created_at DESC LIMIT 1)) AS email, "
+                "       COALESCE((SELECT f.phone_number FROM person_phones f WHERE f.person_id = p.id "
+                "                  ORDER BY f.is_primary DESC, f.created_at DESC LIMIT 1), "
+                "                (SELECT f.phone_number FROM person_phones f WHERE f.person_id = p.parent_person_id "
+                "                  ORDER BY f.is_primary DESC, f.created_at DESC LIMIT 1)) AS phone "
                 "  FROM team_persons tp "
                 "  JOIN persons p ON p.id = tp.person_id "
                 "  LEFT JOIN person_la_memberships plm "
@@ -773,8 +785,8 @@ MensRoster::Result MensRoster::run(bool includeAll,
                     p["ageGroup"] = ag.empty() ? json(nullptr) : json(ag);
                 }
                 p["gender"]                 = std::string("Male");
-                p["email"]                  = nullptr;
-                p["phone"]                  = nullptr;
+                p["email"]                  = row["email"].is_null() ? json(nullptr) : json(row["email"].c_str());
+                p["phone"]                  = row["phone"].is_null() ? json(nullptr) : json(row["phone"].c_str());
                 p["paymentStatus"]          = nullptr;
                 p["outstandingBalance"]     = nullptr;
                 p["registrationStatus"]     = nullptr;
