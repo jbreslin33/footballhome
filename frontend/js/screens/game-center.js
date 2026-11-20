@@ -1066,10 +1066,6 @@ class GameCenterScreen extends EventScreen {
       if (postBtn) { this._onPostAction(postBtn); return; }
       const remindOne = e.target.closest('[data-gc-remind]');
       if (remindOne && this.isCoach && !remindOne.disabled) { this._remindPlayer(remindOne); return; }
-      const callinBtn = e.target.closest('[data-callin]');
-      if (callinBtn && !callinBtn.disabled) { this._sendMyCallin(callinBtn); return; }
-      const callinDecide = e.target.closest('[data-ec-callin]');
-      if (callinDecide && !callinDecide.disabled) { this._decideCallin(Number(callinDecide.dataset.ecCallin), callinDecide.dataset.decision); return; }
       const availBtn = e.target.closest('[data-gc-avail]');
       if (availBtn && !availBtn.disabled) { this._setMyAvailability(availBtn); return; }
       const eligBtn = e.target.closest('[data-elig-rsvp]');
@@ -2239,7 +2235,6 @@ class GameCenterScreen extends EventScreen {
       if (!this.viewer.eventLineupDrafts) this.lineupView = 'official';
       head.innerHTML = top + (lineupPill && this.viewer.eventLineupDrafts ? this._draftBarHtml() : '')
         + (this._hasTextView() && !this._textViewOn() ? '' : this._unplacedTopHtml())   // graphic-first: the card's ⚠️ row says it
-        + `<div data-gc-callins>${this._callinsHtml()}</div>`
         + this._duesAlternateStripHtml()
         + this._renderCard('top', this.pill) + (this.lineupView === 'official' ? this._pillToolsHtml(this.pill, byZone) + this._postButtonHtml() : '');
       box.innerHTML = bodyHtml;
@@ -2535,7 +2530,7 @@ class GameCenterScreen extends EventScreen {
       if (!cand) return '';
       return SectionContact.callupButton(this, this._fhEventId(), cand, {
         section: this.ev && this.ev.category,
-        label: (window.MessageCopy && MessageCopy.block('contact_popup', 'callin_button')) || '🎟 CALL IN',
+        label: (window.MessageCopy && MessageCopy.block('contact_popup', 'callin_button')) || '🎟 CALL UP',
         onSent: () => this._loadInvites().then(() => this._render()),
       });
     };
@@ -2771,12 +2766,6 @@ class GameCenterScreen extends EventScreen {
     return true;
   }
 
-  // Coach: accepted = invited → refresh the event + invites the squad draws from.
-  async _afterCallinAccept() {
-    await Promise.all([this._refreshEvent(), this._loadInvites()]);
-    this._render();
-  }
-
   // The details roster (coach-only) is what knows a card's person.
   // ⋯ sheet: the RSVP row when there is one, else the roster's name (a
   // player on the lineup who never answered).
@@ -2986,15 +2975,6 @@ class GameCenterScreen extends EventScreen {
   // for adults the section's other squads.  An invite row is the ONLY way
   // a call-up sees the game on their page (never tag the younger team).
   _fhEventId() { return (this.ev && this.ev.match_id === this.matchId && this.ev.fh_event_id) || (this.matchDetails && this.matchDetails.fh_event_id) || null; }
-  // 🙋 The EventScreen call-in box (mig 1265), for this game: loads once
-  // per game for its coaches / admins (the API says can_decide).
-  _callinEventId() { return this._fhEventId(); }
-  _callinsHtml() {
-    const id = this._callinEventId();
-    if (!id || !this._staffView()) return '';
-    if (this._callinsFor !== id) { this._callinsFor = id; this.callins = null; this._loadCallins(); }
-    return super._callinsHtml();
-  }
 
   // ✅ Attendance on game cards (owner 11/7: "we should be able to take
   // attendance from event center … for games and practices"): the same

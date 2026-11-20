@@ -62,7 +62,7 @@
 
   // Every answerable row on one event: [{ personId (0 = you), name, response }].
   function rowsOf(ev) {
-    if (isPast(ev) || ev.rsvps_open_now === false || ev.my_callin || ev.status === 'cancelled') return [];
+    if (isPast(ev) || ev.rsvps_open_now === false || ev.status === 'cancelled') return [];
     const rows = [];
     if (ev.my_rsvp_eligible === true && !ev.my_suspension) rows.push({ personId: 0, name: '', response: ev.my_rsvp || null });
     const rsvps = Array.isArray(ev.rsvps) ? ev.rsvps : [];

@@ -744,7 +744,7 @@ class EventCenterScreen extends Screen {
       if (!household) return '';
       const out = [];
       // Me only where you answer (a coach is "on" nearly everything).
-      if (ev.my_rsvp_eligible === true || ev.my_suspension || ev.my_callin) out.push(whoChip(0, cp('person_me', {}, 'Me')));
+      if (ev.my_rsvp_eligible === true || ev.my_suspension) out.push(whoChip(0, cp('person_me', {}, 'Me')));
       for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : []))
         if (c && c.person_id) out.push(whoChip(Number(c.person_id), String(c.name || '').split(' ')[0] || 'Your player'));
       return out.length ? `<span style="display:flex; flex-wrap:wrap; gap:3px;">${out.join('')}</span>` : '';
@@ -825,7 +825,7 @@ class EventCenterScreen extends Screen {
     // answer and nobody has.  my_rsvp_fine_usd = the fine if it stays so.
     const money = (n) => `$${Number(n).toFixed(2).replace(/\.00$/, '')}`;
     const meOpen = (ev) => ev.fh_event_id != null && !this._isPast(ev) && ev.my_rsvp_eligible === true
-      && !ev.my_suspension && !ev.my_callin && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no';
+      && !ev.my_suspension && !ev.my_reserve_waiting && ev.my_rsvp !== 'yes' && ev.my_rsvp !== 'no';   // 🪑 mig 1607: a waiting Reserve owes nothing
     const kidsOpen = (ev) => ev.fh_event_id == null || this._isPast(ev) ? []
       : (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])
           .filter(c => c && c.person_id && !c.suspension && !['yes', 'no'].includes(this._childResponse(ev, Number(c.person_id))));
@@ -881,14 +881,6 @@ class EventCenterScreen extends Screen {
         if (ev.my_suspension) {
           out += `<span style="font-size:0.72rem; font-weight:800; color:#fca5a5;">${this.escapeHtml(
             (window.MessageCopy && MessageCopy.block('suspended', 'chip')) || '⛔ SUSPENDED')}</span>`;
-        } else if (ev.my_callin && window.CallIn) {
-          // 🙋 Call-in (mig 1265): no Go / No — the chip and where it stands;
-          // the request itself is on the event page.
-          const c = ev.my_callin;
-          const say = c.state === 'requested' ? CallIn.copy('requested', '🙋 Call-in requested — the coach will let you know.', { from: c.from || '' })
-            : c.state === 'declined' ? CallIn.copy('declined', 'Not this week — thanks for putting your hand up.', { from: c.from || '' })
-            : CallIn.copy('note', 'Want in for this one? Put your hand up and the coach will let you know.', { from: c.from || '' });
-          out += `<span style="font-size:0.72rem; font-weight:700; white-space:normal; text-align:left;">${CallIn.chipHtml(c)}${this.escapeHtml(say)}</span>`;
         } else if (ev.my_rsvp_eligible === true) {
           const r = ev.my_rsvp;
           out += answerRow(0, r, r === 'yes' ? ['me_status_yes', "✓ You're going", '#22c55e']

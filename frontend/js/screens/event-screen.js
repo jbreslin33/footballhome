@@ -635,7 +635,6 @@ class EventScreen extends Screen {
     this.att = null;
     this.seeAs = null;        // 👀 See as: 'player' | 'coach' | null — per open event
     this.invites = null;
-    this.callins = null;      // 🙋 call-in requests (mig 1265) — staff, games only
     this.reminders = null;    // person_id → {sms, email, total} — who was reminded this week (mig 739)
     this.remindNote = {};     // person_id → last send error, shown on their row
     this.groupNote = '';      // the 📣 bar's result line (html)
@@ -1216,85 +1215,11 @@ class EventScreen extends Screen {
                    roster: new Map((body.roster || []).map(r => [r.person_id, r])) };
       // 🎟 Invites sit under All Players — load them with it.
       if (this.pill === 'players' && this._canInvite() && !this.invites) this._loadInvites();
-      if (viewer.canInvite() && this.ev.kind === 'match') this._loadCallins();
     } catch (err) {
       console.error('[event] attendance load failed:', err);
       this.att = { viewer: new PlayerViewer(), roster: new Map() };
     }
     this._render();
-  }
-
-  // 🙋 Call-in requests (mig 1265): Liga 1 players asking in to this game.
-  _callinEventId() { return (this.ev && this.ev.fh_event_id) || null; }
-  async _loadCallins() {
-    const id = this._callinEventId();
-    if (!id) return;
-    try {
-      const body = await this._json(`/api/calendar/events/${id}/callins`);
-      if (this._callinEventId() !== id) return;
-      this.callins = body && body.can_decide ? (body.requests || []) : null;
-    } catch (err) {
-      console.error('[event] call-in load failed:', err);
-      this.callins = null;
-    }
-    this._render();
-  }
-
-  // Accept = invited (he gets Go / No, lands in No Response; nothing sent);
-  // decline = not this week; undo = back to waiting.
-  async _decideCallin(requestId, decision) {
-    const key = `callin:${requestId}`;
-    if (this.saving.has(key)) return;
-    this.saving.add(key);
-    this._render();
-    const id = this._callinEventId();
-    try {
-      await this._json(`/api/calendar/events/${id}/callins`, {
-        method: 'POST', body: JSON.stringify({ request_id: requestId, decision }),
-      });
-      await Promise.all([this._loadCallins(), decision === 'accept' ? this._afterCallinAccept(id) : null]);
-    } catch (err) {
-      this._saveFailed(err, `Could not save: ${err.message}`);
-    } finally {
-      this.saving.delete(key);
-      this._render();
-    }
-  }
-
-  // Accepted = a new invite: reload what shows the squad (Game Center
-  // overrides — it draws from its own feed).
-  _afterCallinAccept(id) { return this._loadEvent(id); }
-
-  _callinsHtml() {
-    const list = Array.isArray(this.callins) ? this.callins : [];
-    if (!list.length) return '';
-    const c = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.has && MessageCopy.has('callin', tier))
-      ? MessageCopy.block('callin', tier, tokens) : fb;
-    const open = list.filter(r => !r.decision);
-    const declined = list.filter(r => r.decision === 'declined');
-    const B = 'font-size:0.8rem; font-weight:700; color:#0f172a; padding:4px 9px; border-radius:999px; border:none; cursor:pointer;';
-    const row = (r, actions) => {
-      const name = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Unknown';
-      const busy = this.saving.has(`callin:${r.request_id}`) ? 'disabled' : '';
-      return `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:6px 0; border-top:1px solid var(--border-color, #374151);">
-          <span style="flex:1; min-width:150px; font-weight:700;">${this.escapeHtml(name)}
-            ${r.from_team ? `<span style="font-size:0.7rem; opacity:0.7; font-weight:600;"> · ${this.escapeHtml(r.from_team)}</span>` : ''}
-            ${r.on_list ? '' : `<span style="font-size:0.68rem; color:#fbbf24; font-weight:800; margin-left:4px;">${this.escapeHtml(c('off_list', '⚠ not on the APSL list'))}</span>`}</span>
-          ${actions(busy)}
-        </div>`;
-    };
-    const openHtml = open.map(r => row(r, (busy) => `
-        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="accept" ${busy} style="${B} background:#22c55e;">${this.escapeHtml(c('accept', '✓ Accept'))}</button>
-        <button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="decline" ${busy} style="${B} background:#475569; color:#e2e8f0;">${this.escapeHtml(c('decline', 'Not this week'))}</button>`)).join('');
-    const declinedHtml = declined.length ? `
-        <div style="font-size:0.72rem; opacity:0.7; margin-top:8px; font-weight:700;">${this.escapeHtml(c('declined_title', `Not this week (${declined.length})`, { n: declined.length }))}</div>
-        ${declined.map(r => row(r, (busy) => `<button type="button" class="ec-send" data-ec-callin="${r.request_id}" data-decision="undo" ${busy} style="${B} background:#334155; color:#e2e8f0;">${this.escapeHtml(c('undo_decline', 'Undo'))}</button>`)).join('')}` : '';
-    // Rolled up like every pill (owner 11/11); the open count is on the summary.
-    return `<details class="ec-box" data-ec-fold="callins" ${this.foldOpen('callins') ? 'open' : ''} style="border:1px solid #38bdf8; border-radius:10px; padding:12px; margin-bottom:12px; background:rgba(15,23,42,0.6);">
-        <summary style="cursor:pointer; font-weight:800; color:#7dd3fc;">${this.escapeHtml(c('staff_title', `🙋 CALL-IN REQUESTS (${open.length})`, { n: open.length }))}</summary>
-        <div style="font-size:0.72rem; opacity:0.75; margin:2px 0 6px;">${this.escapeHtml(c('staff_note', 'Accept = invited: Go / No shows for him and he sits in No Response until he answers. No text is sent.'))}</div>
-        ${openHtml}${declinedHtml}
-      </details>`;
   }
 
   async _loadInvites() {
@@ -1996,9 +1921,8 @@ class EventScreen extends Screen {
         this.syncHash();
         return;
       }
-      // Your answer box (every event) — Going / Not Going, 🙋 call-in.
+      // Your answer box (every event) — Going / Not Going.
       if ((el = t('[data-gc-avail]')) && !el.disabled) { this._setMyAvailability(el); return; }
-      if ((el = t('[data-callin]')) && !el.disabled) { this._sendMyCallin(el); return; }
       if (this._playersPaneClick(t)) return;
       if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
       this.onClick(t, e);
@@ -2012,7 +1936,6 @@ class EventScreen extends Screen {
     let el;
     if ((el = t('[data-ec-jobs]'))) { this.navigation.goTo('jobs', { eventId: this.ev.fh_event_id }); return true; }
     if ((el = t('[data-ec-draft-open]'))) { this._panelDraftOpen(Number(el.dataset.ecDraftOpen)); return true; }
-    if ((el = t('[data-ec-callin]'))) { this._decideCallin(Number(el.dataset.ecCallin), el.dataset.decision); return true; }
     if ((el = t('[data-ec-mark-all]'))) {
       this._markAllPresent(el.dataset.ecMarkAll.split(',').map(Number).filter(Boolean));
       return true;
@@ -2333,8 +2256,6 @@ class EventScreen extends Screen {
   }
 
   _myAvailabilityHtml() {
-    const callin = this._myCallinHtml();
-    if (callin) return callin;
     const mine = this._myAvailabilityRows();
     if (!mine || !mine.rows.length) return '';
     const { ev, rows } = mine;
@@ -2373,41 +2294,6 @@ class EventScreen extends Screen {
           </div>`).join('')}
         <div data-gc-avail-msg style="font-size:0.72rem; opacity:0.75; ${closed ? '' : 'display:none;'}">${this.escapeHtml(closed)}</div>
       </div>`;
-  }
-
-  // 🙋 Call-in (mig 1265, components/call-in.js): a Liga 1 player on the
-  // APSL game asks in here, the same as on #my, and is told what to do
-  // with his two games that day.
-  _myCallinHtml() {
-    const ev = this._myAvailEvent();
-    if (!ev || !ev.my_callin || !window.CallIn) return '';
-    if (!this.callinDrive && !this._callinDriveAsked) {
-      this._callinDriveAsked = true;
-      CallIn.loadDrive(this.auth).then(d => { this.callinDrive = d; this._paintMyAvailability(); });
-    }
-    const end = new Date(ev.ends_at || ev.starts_at).getTime() + (ev.ends_at ? 0 : 2 * 60 * 60 * 1000);
-    const past = end < Date.now();
-    return `
-      <div style="margin:0 0 12px; padding:10px 12px; border-radius:10px; border:1px solid #38bdf8; background:rgba(15,23,42,0.6);">
-        <div style="font-size:0.7rem; font-weight:800; letter-spacing:0.05em; opacity:0.7; margin-bottom:4px;">${CallIn.chipHtml(ev.my_callin)}YOUR CALL-IN FOR THIS GAME</div>
-        ${CallIn.panelHtml(ev, this._myAvailEvents(), this.callinDrive, { saving: !!this._callinSaving, past })}
-      </div>`;
-  }
-
-  async _sendMyCallin(btn) {
-    const ev = this._myAvailEvent();
-    if (!ev || this._callinSaving) return;
-    if (this._viewAsReadOnly()) { this._availMsg(this._viewAsReadOnly()); return; }
-    this._callinSaving = true;
-    this._paintMyAvailability();
-    try {
-      ev.my_callin = await CallIn.send(this.auth, Number(btn.dataset.fhEventId), btn.dataset.callin);
-    } catch (err) {
-      alert(`Could not save: ${err.message}`);
-    } finally {
-      this._callinSaving = false;
-      this._paintMyAvailability();
-    }
   }
 
   // A line under Your availability (the same slot a failed save uses).
@@ -2523,7 +2409,7 @@ class EventScreen extends Screen {
       const tier = b.dir === 'up' ? 'chip_callup_up' : b.dir === 'down' ? 'chip_callup_down' : 'chip_invited';
       const from = b.from || r.callup_from || '';
       const text = (window.MessageCopy && MessageCopy.block('event_center', tier, { from }))
-        || `🎟 INVITED${from ? ' · ' + from : ''}`;
+        || `🎟 Called up${from ? ' · ' + from : ''}`;
       return `<span title="Invited${r.callup_from ? ' from ' + this.escapeHtml(r.callup_from) : ''}"
                style="margin-left:6px; padding:0 6px; border-radius:999px; background:rgba(245,158,11,0.18);
                       border:1px solid rgba(245,158,11,0.55); color:#fcd34d; font-size:0.62rem; font-weight:800; white-space:nowrap;">${this.escapeHtml(text)}</span>`;
@@ -2591,19 +2477,7 @@ class EventScreen extends Screen {
       };
       return `<span style="display:inline-flex; gap:4px;">${b('yes', '✓', '#22c55e')}${b('no', '✗', '#ef4444')}</span>`;
     };
-    // 🎟 CALL IN on a 💤 Inactive card of a game (mig 1076): the 📇 popup
-    // with the call-up preselected; sending it invites him into No Response.
-    const callInBtn = (r) => {
-      if (!canContact || !open || this.ev.kind !== 'match' || !window.SectionContact || !this.invites || !this.invites.candidates) return '';
-      const cand = this.invites.candidates.find(c => Number(c.person_id) === Number(r.person_id));
-      if (!cand) return '';
-      return `<div style="margin-top:6px;">${SectionContact.callupButton(this, this.ev.fh_event_id, cand, {
-        section: this.ev && this.ev.category,
-        label: (window.MessageCopy && MessageCopy.block('contact_popup', 'callin_button')) || '🎟 CALL IN',
-        onSent: () => Promise.all([this._loadInvites(), this._loadEvent(this.ev.fh_event_id)]),
-      })}</div>`;
-    };
-    const card = (r, { remind = false, sides = false, callIn = false } = {}) => {
+    const card = (r, { remind = false, sides = false, callIn = false } = {}) => {   // callIn: a 💤 card — its 📇 Contact preselects 🎟 Call up (mig 1607)
       const err = this.rsvpNote[r.person_id];
       return this.cardHtml({
         attrs: `data-person-row="${r.person_id}"`,
@@ -2618,7 +2492,7 @@ class EventScreen extends Screen {
           ${err ? `<div style="font-size:0.72rem; color:#f87171; margin-top:4px;">${this.escapeHtml(err)}</div>` : ''}
           ${window.PersonStanding && this.viewer.eventCardStanding ? PersonStanding.html(r.person_id) : ''}
           ${canContact ? this._contactLineHtml(r, remind && canRemind, callIn) : ''}
-          ${callIn ? callInBtn(r) : ''}`,
+          `,
       });
     };
     const grid = (list, opts) => this.cardGridHtml(list.map(r => card(r, opts)));
@@ -2760,7 +2634,6 @@ class EventScreen extends Screen {
       ${everyone ? `<div style="margin:0 0 var(--space-2);"><div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:0 0 4px;">${L('group_all', '👥 Everyone')}</div>${everyone}</div>` : ''}
       ${presentTally()}
       ${split ? unplacedHtml() : ''}
-      ${this._callinsHtml()}
       ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
       ${V('going') ? (roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
       ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
