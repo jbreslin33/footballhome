@@ -11769,3 +11769,14 @@ after the race read, chosen — and the ball-into-space gates by zone. Seeds 100
 Next: where the space ball aims — one fixed spot a zone (band middle, `space_wide_y`) is reached by theirs first two times
 in three; real channel balls go ahead of a runner on his line (G5.27's in-behind lead), not to a zone's centre. Tests
 23/23, lint clean; behaviour unchanged.
+
+### 8.301 G5.195 — the space ball ahead of a runner: trial, not shipped
+
+From §8.300's "next". `physics.space.lead_s` (code, off): for an empty zone ahead the ball into space may go to a mate's
+spot lead_s on (on his line) that lands in the zone, whichever spot (that or the zone's middle) our first man beats theirs
+to by most. Trial 1.5 s, seeds 1000-4000 × 8 against G5.193 (real): theirs first still 64% of 18-35 wide tries (66),
+passes into 18-35 wide from 35-52 centre 6.1% (11.8), from 35-52 wide 10.0% (18.1; was 13.4); crosses 5.42 → 5.23,
+corners 3.08 → 2.95, goals 1.92 → 2.03; card 11 / 7 / 15 → 10 / 6 / 17. Runs ~40% slower (a run read per mate per zone).
+Not shipped; off in code. With §8.300: where theirs reach the channel first a better aim doesn't help, and playing it
+anyway opens goals — the gap is theirs covering the channel (their FB / wide man's depth against our ball 35-52 m out),
+not our aim. Tests 23/23, lint clean; behaviour unchanged.

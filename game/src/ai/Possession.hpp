@@ -116,6 +116,7 @@ struct PossessionParams {
     // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
+    math::Fixed64 space_lead_s{};   // G5.195 (§8.301): aim the ball into space ahead of a runner, his spot this far on; 0 = the zone's middle
     bool space_contest = false;   // G5.194 (§8.300): a ball into space theirs reach first stays in at space_risk (else dropped)
     bool edge_own = false;   // G5.193 (§8.299): the edge also turns him back off his own goal line
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off

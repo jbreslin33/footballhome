@@ -595,7 +595,33 @@ public:
                 const bool wide = ez % 2 == 1;
                 const bool cross = ez == 0 && oz % 2 == 1;
                 const Fixed64 dep = ez == 0 ? P.cross_depth_m : Fixed64::fromInt(kMid[ez / 2]);
-                const Vec2 at{(hx - dep) * v.sg, wide ? side * P.space_wide_y : Fixed64::zero()};
+                Vec2 at{(hx - dep) * v.sg, wide ? side * P.space_wide_y : Fixed64::zero()};
+                // G5.195 (§8.301): with space_lead_s, the ball goes ahead of a runner on his line, not to the zone's middle —
+                // each mate's spot space_lead_s on that lands in the zone is a candidate; the one he beats theirs to by most.
+                if (P.space_lead_s.raw > 0 && !cross) {
+                    auto margin = [&](const Vec2& a) {
+                        int bn = 1000, tn = 1000;
+                        for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                            if (j == v.slot || w.isKeeper(j)) continue;
+                            const bool ours = c.team_of_slot[j] == v.team;
+                            const Fixed64 run = math::length(Vec2{a.x - w.player(j).pos.x, a.y - w.player(j).pos.y});
+                            int n = 9;
+                            while (n < 135 && runToward(w, j, a, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
+                            if (ours) { if (n < bn) bn = n; } else if (n < tn) tn = n;
+                        }
+                        return tn - bn;
+                    };
+                    int bm = margin(at);
+                    for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
+                        if (j == v.slot || c.team_of_slot[j] != v.team || w.isKeeper(j)) continue;
+                        const auto& mj = w.player(j);
+                        const Vec2 pr{mj.pos.x + mj.vel.x * P.space_lead_s, mj.pos.y + mj.vel.y * P.space_lead_s};
+                        if (zoneOf(hx, pr, v.sg) != ez || (pr.x - sp.x) * v.sg < Fixed64::fromInt(3)) continue;
+                        if (math::fx_abs(pr.y) > w.pitchHalfY() - Fixed64::fromInt(2) || hx - pr.x * v.sg < Fixed64::fromInt(2)) continue;
+                        const int mg = margin(pr);
+                        if (mg > bm) { bm = mg; at = pr; }
+                    }
+                }
                 // G5.57: ahead of the ball (a band's middle can be behind him in his own band).
                 if ((at.x - sp.x) * v.sg < Fixed64::fromInt(3)) continue;
                 const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
@@ -1495,7 +1521,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
-    space_contest = p.fixed("physics.space.contest", 0).raw > 0;   // G5.194 (§8.300), row on
+    space_contest = p.fixed("physics.space.contest", 0).raw > 0;
+    space_lead_s = p.fixed("physics.space.lead_s", 0);   // G5.195 (§8.301), 0 = the zone's middle (G5.54)   // G5.194 (§8.300), row on
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this
     space_roll_m = p.fixed("physics.space.roll_m", 2000);             // G5.57 [FH]: dies this far past the spot
