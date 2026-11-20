@@ -2043,6 +2043,29 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                 } catch (const std::exception& ex) {
                     std::cerr << "[calendar feed] carpool summary: " << ex.what() << std::endl;
                 }
+                // 🖼 Pictures on the card (fh_event_graphics, mig 1584): public
+                // club_files only, so a plain <img> loads them.
+                try {
+                    for (auto& e : events) e["graphics"] = json::array();
+                    std::map<long long, json> byEvent;
+                    for (const auto& r : db->query(
+                             "SELECT g.fh_event_id, f.id, f.original_filename, f.title "
+                             "  FROM fh_event_graphics g JOIN club_files f ON f.id = g.club_file_id "
+                             " WHERE g.fh_event_id = ANY($1::bigint[]) AND f.visibility = 'public' "
+                             " ORDER BY g.sort_order, g.id", {ids})) {
+                        auto& arr = byEvent[r["fh_event_id"].as<long long>()];
+                        if (!arr.is_array()) arr = json::array();
+                        arr.push_back({{"url", "/api/files/dl/" + std::string(r["id"].c_str()) + "/" + r["original_filename"].c_str()},
+                                       {"title", r["title"].c_str()}});
+                    }
+                    for (auto& e : events)
+                        if (e["fh_event_id"].is_number_integer()) {
+                            auto it = byEvent.find(e["fh_event_id"].get<long long>());
+                            if (it != byEvent.end()) e["graphics"] = it->second;
+                        }
+                } catch (const std::exception& ex) {
+                    std::cerr << "[calendar feed] event graphics: " << ex.what() << std::endl;
+                }
             }
         }
 

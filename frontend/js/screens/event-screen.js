@@ -80,6 +80,7 @@ class EventScreen extends Screen {
   panels(key) {
     if (key !== 'players') return [];
     return [
+      new Panel({ key: 'event_graphics', applies: (s) => s._graphics().length > 0, html: (s) => s._graphicsHtml() }),   // 🖼 flyer (mig 1584)
       new Panel({ key: 'team_card', html: (s) => s._teamCardHtml() }),   // the graphic
       new Panel({ key: 'coming',  html: (s) => s._comingHtml(),
                   label: () => (window.MessageCopy && MessageCopy.block('event_center', 'menu_coming')) || '👥 Who\'s coming' }),
@@ -97,7 +98,17 @@ class EventScreen extends Screen {
   // the graphic, the rest in ☰).  Barn night, meeting, camp … get it as
   // is; PracticeScreen names itself PRACTICE / PICKUP and always says
   // Indoor / Outdoor.  GameCenterScreen draws its own game card.
-  graphicPanels()  { return ['team_card']; }
+  graphicPanels()  { return ['event_graphics', 'team_card']; }
+  // 🖼 Pictures on the event (fh_event_graphics, mig 1584 — owner 11/19 "put
+  // barn night graphic from insta for the cal event so players know its barn
+  // night"): each one full width atop the card, tap opens it full size.
+  _graphics() { return Array.isArray(this.ev && this.ev.graphics) ? this.ev.graphics.filter(g => g && g.url) : []; }
+  _graphicsHtml() {
+    const cap = (window.MessageCopy && MessageCopy.block('event_center', 'graphic_open')) || 'Tap to open full size';
+    return this._graphics().map(g => `<a href="${this.escapeHtml(g.url)}" target="_blank" rel="noopener" title="${this.escapeHtml(cap)}"
+        style="display:block; max-width:540px; margin:0 auto 12px;"><img src="${this.escapeHtml(g.url)}" alt="${this.escapeHtml(g.title || '')}" loading="lazy"
+        style="display:block; width:100%; height:auto; border-radius:12px; border:1px solid var(--border-color, #374151);"></a>`).join('');
+  }
   _cardKindWord() {
     const k = String((this.ev && this.ev.kind) || 'event');
     return (k === 'barn night' ? 'Barn Night' : k).toUpperCase();
