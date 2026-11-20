@@ -99,6 +99,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
         for (int a = 0; a < 4; ++a) for (int w = 0; w < 2; ++w)
             restart_play_.fk_box[a][w] = p.fixed(std::string("physics.restart.fk_box_") + kN[a] + (w ? "_wide" : "_inside"), kB[a][w]);
         restart_play_.set_shape = p.fixed("physics.restart.set_shape", 1000).raw != 0;
+        restart_play_.fk_stand = p.fixed("physics.restart.fk_stand", 1000).raw != 0;
     }
     reads_.configure(p);
     block_.configure(p);
@@ -348,6 +349,14 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (distSq(me.pos, Vec3{o.target.x, o.target.y, Fixed64::zero()}) <= Fixed64::fromInt(4))
             o.move.face = Vec2{b.x - me.pos.x, b.y - me.pos.y};
     }
+    // G5.184 (§8.290): a free kick is struck from its spot — the taker stands over it to the release (it is live at his
+    // first touch, so the on-ball choice carried it on: ours from 25-35 m out reached 0-25 m before the kick). Only
+    // "nothing on" (Why::Dribble) still carries.
+    if (restart_play_.fk_stand && world.freeKickSpell(slot) && o.why != Why::Dribble) {
+        const auto& me = world.player(slot);
+        o.move.move = Vec2{};
+        o.move.face = Vec2{o.target.x - me.pos.x, o.target.y - me.pos.y};
+    }
     dbg_anchor_[slot & 31] = o.target;
     return o;
 }
@@ -577,20 +586,28 @@ bool Brain::fkIntoBox(const World& world) const {
 // box; free kicks 18-35 m 3.9 / 5.8, 35-52 m 1.4 / 2.3, ~6 / ~9 within 25 m). Ours stood in open-play shape (corners 2.3 / 3.7,
 // free kicks ~0.5 / ~1). Each spot takes the nearest free outfielder of its side, once a restart; the rest play on as before.
 bool Brain::setPieceShape(SlotIndex slot, const World& world, Orders& out) const {
-    if (!restart_play_.set_shape) return false;
-    const std::uint8_t rt = world.restartTeam();
-    if (rt > 1 || world.isKeeper(slot)) return false;
+    if (!restart_play_.set_shape || world.isKeeper(slot)) return false;
+    std::uint8_t rt = world.restartTeam();
+    int taker = -1;
+    if (rt > 1) {   // G5.184: a free kick is live at the taker's first touch; the shape holds until he plays it
+        const auto& ow = world.ball().owner;
+        if (!ow || !world.freeKickSpell(*ow)) return false;
+        rt = setup_.team_of_slot[*ow];
+        taker = static_cast<int>(*ow);
+    }
     const core::MatchEventType k = world.restartKind();
     const bool corner = k == core::MatchEventType::Corner;
     const Vec3& sp = world.restartSpot();
     const Fixed64 end = rt == 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 d = half_x_ - sp.x * end;
     const bool fk = (k == core::MatchEventType::FreeKick || k == core::MatchEventType::Offside) && d >= Fixed64::fromInt(18) &&
-                    d < Fixed64::fromFraction(105, 2) && fkIntoBox(world);
+                    d < Fixed64::fromFraction(105, 2) &&
+                    (fkIntoBox(world) || (d < Fixed64::fromInt(25) && math::fx_abs(sp.y) < Fixed64::fromFraction(2016, 100)));   // G5.184: central within 25 m, a shot or a ball in — the wall and the box line are set
     if (!corner && !fk) return false;
-    if (static_cast<int>(slot) == restartTaker(world, rt)) return false;
+    if (taker < 0) taker = restartTaker(world, rt);
+    if (static_cast<int>(slot) == taker) return false;
     const std::uint64_t key = (static_cast<std::uint64_t>(sp.x.raw) * 0x9E3779B97F4A7C15ull ^ static_cast<std::uint64_t>(sp.y.raw)) + rt * 7 + static_cast<std::uint64_t>(k) * 131;
-    if (sps_.key != key) { sps_.key = key; buildSetPieceShape(world, corner, d); }
+    if (sps_.key != key) { sps_.key = key; buildSetPieceShape(world, rt, taker, corner, d); }
     if (!sps_.has[slot & 31]) return false;
     const auto& me = world.player(slot);
     const Vec2 at = sps_.at[slot & 31];
@@ -601,13 +618,11 @@ bool Brain::setPieceShape(SlotIndex slot, const World& world, Orders& out) const
     return true;
 }
 
-void Brain::buildSetPieceShape(const World& world, bool corner, Fixed64 d) const {
+void Brain::buildSetPieceShape(const World& world, std::uint8_t rt, int taker, bool corner, Fixed64 d) const {
     for (auto& h : sps_.has) h = 0;
-    const std::uint8_t rt = world.restartTeam();
     const Vec3& sp = world.restartSpot();
     const Fixed64 end = rt == 0 ? Fixed64::one() : -Fixed64::one();
     const Fixed64 ys = sp.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();   // the ball's side
-    const int taker = restartTaker(world, rt);
     auto pt = [&](int depth_dm, int y_dm) { return Vec2{end * (half_x_ - Fixed64::fromFraction(depth_dm, 10)), ys * Fixed64::fromFraction(y_dm, 10)}; };
     auto take = [&](Vec2 at, bool attackers) {   // the nearest free outfielder of that side
         int best = -1; Fixed64 bd{};

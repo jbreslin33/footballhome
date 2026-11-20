@@ -11489,3 +11489,34 @@ Card 7 / 7 / 19 → **8 ok / 6 off / 19 OFF** (`card_G5.183.txt`): free kicks to
 Still: free kicks from 18-35 m are a man or two short each side — the kick comes 1.0-1.3 s (median) after the taker reaches
 the ball, before the men arrive. Next: the wait before a set kick (real dead time ~32 s; ours is spent before the taker
 touches it, not with the shape set). Goldens unchanged; tests 23/23, lint clean.
+
+### 8.290 G5.184 — a free kick is struck from its spot, and the shape holds until it is (no migration; off by rows)
+
+From §8.289's "still": our free kicks into the box from 18-35 m had 2.8 / 3.5 men in their box at the kick (real 3.9 / 5.8).
+Not the wait: the referee's dead time (20-43 s) is spent with the shape set. Three holes, found in turn:
+
+1. A free kick is live at the taker's first touch (G5.2), so `setPieceShape` (keyed on `restartTeam()`) let go then, ~1.1 s
+   before the kick. Now it holds while `World::freeKickSpell(owner)` — the taker's first spell on it.
+2. The taker played on as an open-play man and **carried it**: a free kick awarded 26 m out was counted 0-25 m at the kick.
+   Logged per restart (2 matches): no free kick was *awarded* inside 25.4 m, yet the FREE KICKS line had 0.6-0.9 a team-match
+   taken "0-25 inside". Now the taker stands over it to the release (`Brain::ordersFor`, after every other order: move zero,
+   facing the target); only "nothing on" (`Why::Dribble`) still carries. `physics.restart.fk_stand` (code default 1; 0 = off).
+3. With kicks honest by spot, central free kicks within 25 m (the on-ball choice, fk_box 0) had no wall. Now every free kick
+   18-25 m out inside the box's width takes the shape (wall of 3 + the box line), shot or ball in.
+
+| fk 18-35 into the box, at the kick (ours / real) | in their box att / def | within 25 m att / def |
+|---|---|---|
+| G5.183 | 2.8 / 3.5 (3.9 / 5.8) | 4.7 / 6.1 (6.4 / 9.2) |
+| hold through the spell only | 2.4 / 2.9 | 5.2 / 6.7 |
+| + taker stands (G5.184) | 3.65 / 5.25 | 5.6 / 6.9 |
+
+Box headers from free kicks 0.74 → 1.22 (1.15 — real). FREE KICKS by spot 0-25 inside 0.75 → 0.31 (0.48), shot 30 → 40% (75);
+taker on the ball median 1.3 → 1.0 s; never kicked by the taker 4.4 → 0.5%. Still off: 35-52 m inside 3.1 a team-match (1.43)
+— where fouls are given, not this change.
+
+Card 8 / 6 / 19 → **5 ok / 8 off / 20 OFF** (`card_G5.184.txt`): mostly noise moves across the line (headed clearances 13.2 →
+14.4 to off, shots 16.0 → 14.8 to off, carries 61.6 → 59.1); **watch scored_18_25_pct 4.5 → 7.8% (3.6)** — all four seeds up
+with the taker standing (fk_stand off-runs g184: 1.6-8.5%), ~+9 goals in 32 matches, ~2σ; not the direct free kicks without a
+wall (fixed in 3., no change). A standing kick is the law; kept (feedback: a correct behaviour ships). Next: what the 18-25 m
+goals are — the second ball off a set-piece clearance to the edge, or the open-play shot — then foul location (35-52 m).
+Goldens unchanged; tests 23/23, lint clean.
