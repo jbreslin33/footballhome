@@ -1915,7 +1915,7 @@ class SocialPostCard {
           <span style="font-size:${Math.min(nameSize, 13)}px;font-weight:800;line-height:1.1;color:#fff;overflow-wrap:anywhere;min-width:0;${t.boxColor ? `color:${c};` : (t.name && t.nameStyle ? t.nameStyle : '')}">${t.name ? this.escapeHtml(t.name) : '—'}</span>
         </div>
         ${t.noteHtml || ''}
-        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : ''}style="font-size:${nameSize - 4}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.2);${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.85)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>${sub.noteHtml || ''}`).join('')}
+        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : this._tapAttr(sub.tapPersonId)}style="font-size:${nameSize - 4}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.2);${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.85)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>${sub.noteHtml || ''}`).join('')}
         ${t.badgeHtml || ''}
       </div>`;
     };
@@ -1926,7 +1926,7 @@ class SocialPostCard {
         <div style="width:${chip}px;height:${chip}px;border-radius:50%;border:2px solid #fff;box-sizing:border-box;background:${t.name ? '#1d4ed8' : 'rgba(255,255,255,0.3)'};color:${t.name ? '#facc15' : '#fff'};font-weight:800;font-size:${tall ? 17 : 22}px;line-height:${chip - 4}px;text-align:center;">${this.escapeHtml(String(t.number))}</div>
         <div style="font-size:${nameSize}px;font-weight:700;line-height:1.12;color:#fff;text-align:center;overflow-wrap:anywhere;max-width:100%;${t.name && t.nameStyle ? t.nameStyle : ''}">${t.name ? this.escapeHtml(t.name) : '—'}</div>
         ${t.noteHtml || ''}
-        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : ''}style="font-size:${nameSize - 3}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;max-width:100%;${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.8)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>${sub.noteHtml || ''}`).join('')}
+        ${(t.subs || []).map((sub, k) => `<div ${sub.moveId != null ? `data-lineup-remove-bench="${this.escapeHtml(String(sub.moveId))}" title="Move ${this.escapeHtml(sub.name)}" ` : this._tapAttr(sub.tapPersonId)}style="font-size:${nameSize - 3}px;font-weight:700;line-height:1.1;text-align:center;overflow-wrap:anywhere;max-width:100%;${sub.style || ''}color:${split && k === 0 ? '#fdba74' : 'rgba(255,255,255,0.8)'};${sub.moveId != null ? 'cursor:pointer;' : ''}"><span style="opacity:0.7;font-size:0.85em;">${k + 2}</span> ${this.escapeHtml(sub.name)}</div>${sub.noteHtml || ''}`).join('')}
         ${t.badgeHtml || ''}
       </div>`;
     const line = '<div style="flex:1;height:2px;background:rgba(255,255,255,0.35);"></div>';
@@ -1988,7 +1988,7 @@ class SocialPostCard {
       : benchBoxes
         ? `<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px;">${bench.map(p => box({
             name: `${p.firstName} ${p.lastName}`.trim(), number: p.jerseyNumber || '', noteHtml: p.noteHtml, boxColor: p.boxColor,
-            nameStyle: p.nameStyle, benchMoveId: this.rosterData && this.rosterData.editing ? p.playerId : null,
+            nameStyle: p.nameStyle, benchMoveId: this.rosterData && this.rosterData.editing ? p.playerId : null, tapPersonId: p.tapPersonId,
           }, 5, 'flex:0 0 100px;')).join('')}</div>`
         : `<div style="font-size:16px;font-weight:700;line-height:1.3;color:rgba(255,255,255,0.95);margin-top:2px;">${bench.map(p => this.benchName(p)).join(', ')}</div>`;
     const benchHtml = (bench.length || counts) ? `
@@ -2009,7 +2009,17 @@ class SocialPostCard {
   // An empty pitch spot on Game Center's live card while editing: a tap asks
   // who plays there (owner 11/18 graphic-first).  Never on the post.
   _fillAttr(t) {
-    return t && t.fillPosId != null ? `data-lineup-fill-pos="${this.escapeHtml(String(t.fillPosId))}" title="Who plays #${this.escapeHtml(String(t.number))}?" ` : '';
+    return t && t.fillPosId != null ? `data-lineup-fill-pos="${this.escapeHtml(String(t.fillPosId))}" title="Who plays #${this.escapeHtml(String(t.number))}?" ` : this._tapAttr(t && t.tapPersonId);
+  }
+
+  // Every name on Game Center's live card opens the ONE player sheet (📇
+  // Contact, remind, Activity …) for staff when it isn't a lineup move (owner
+  // 11/20 "i can't click suhaylah and angel to remind them!" → "all names
+  // need to be cickable" → "its more than just seting linuep").  Game Center
+  // passes tapPersonId only for viewers who may (EventScreen._cardTapAttr's
+  // rule); EventScreen's click handler opens the sheet.
+  _tapAttr(personId) {
+    return personId ? `data-ec-tap-person="${this.escapeHtml(String(personId))}" role="button" ` : '';
   }
 
   // Under the substitutes on Game Center's live card only (never the post):
@@ -2023,7 +2033,7 @@ class SocialPostCard {
         <span style="font-size:13px;letter-spacing:3px;color:${c};font-weight:700;text-transform:uppercase;">${this.escapeHtml(r.label)}</span>
         <div style="font-size:14px;font-weight:600;line-height:1.3;color:${c};margin-top:2px;">${r.names.map((n, i) => rd.editing && r.ids && r.ids[i] != null
           ? `<span data-lineup-remove-bench="${this.escapeHtml(String(r.ids[i]))}" title="Move ${this.escapeHtml(n)}" style="cursor:pointer;">${this.escapeHtml(n)}</span>`
-          : this.escapeHtml(n)).join(', ')}</div>
+          : r.pids && r.pids[i] ? `<span ${this._tapAttr(r.pids[i])}>${this.escapeHtml(n)}</span>` : this.escapeHtml(n)).join(', ')}</div>
       </div>`; }).join('');
   }
 
@@ -2047,7 +2057,10 @@ class SocialPostCard {
     const style = p.nameStyle || '';
     // Game Center's live note (A:1 P:1 practices, Dues:52 for admins) — never on the post.
     const note = p.noteHtml ? ` <span style="display:inline-block;vertical-align:middle;">${p.noteHtml}</span>` : '';
-    if (!(this.rosterData && this.rosterData.editing)) return (style ? `<span style="${style}">${name}</span>` : name) + note;
+    if (!(this.rosterData && this.rosterData.editing)) {
+      const tap = this._tapAttr(p.tapPersonId);
+      return (style || tap ? `<span ${tap}${style ? `style="${style}"` : ''}>${name}</span>` : name) + note;
+    }
     return `<span data-lineup-remove-bench="${this.escapeHtml(String(p.playerId))}" title="Move ${name}" style="cursor:pointer;${style}">${name}</span>${note}`;
   }
 

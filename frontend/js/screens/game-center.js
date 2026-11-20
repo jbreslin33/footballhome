@@ -1002,6 +1002,16 @@ class GameCenterScreen extends EventScreen {
     return ['club', 'super', 'marketing'].includes(role);
   }
 
+  // A name on the live card → the ONE player sheet (📇 Contact, remind,
+  // Activity …), for the viewers EventScreen._cardTapAttr lets tap (owner
+  // 11/20 "i can't click suhaylah and angel to remind them!" → "all names
+  // need to be cickable" → "we need access to their player profile with
+  // standard interface").  null = no tap (the post, a player's view).
+  _cardTapPerson(playerId) {
+    if (!this.viewer || !this.viewer.canMark()) return null;
+    return this._personIdFor(playerId) || null;
+  }
+
   _wire() {
     if (this._wired) return;
     this._wired = true;
@@ -1013,6 +1023,9 @@ class GameCenterScreen extends EventScreen {
     }, true);
     this.element.addEventListener('click', (e) => {
       if (this._sheetClick(e)) return;   // ⋯ on a card → the shared player sheet
+      // A name on the card → the player sheet (SocialPostCard._tapAttr).
+      const tapPerson = e.target.closest('[data-ec-tap-person]');
+      if (tapPerson) { this._openPersonSheet(Number(tapPerson.dataset.ecTapPerson)); return; }
       const mpBtn = e.target.closest('[data-mp-save]');
       if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
       // ✅ Attendance P/A/L/E on a game card (EventScreen._attendanceCell).
@@ -4058,6 +4071,7 @@ class GameCenterScreen extends EventScreen {
           nameStyle: live ? this._cardNameStyle(p.id) : '',
           noteHtml: live ? this._lineupNote(p.id) : '',
           boxColor: live ? this._lineupBoxColor(p.id) : null,
+          tapPersonId: live ? this._cardTapPerson(p.id) : null,
           isKeeper: !this.everyonePlays && gkPositionIds.has(this.positions.get(p.id)),
         });
       }
@@ -4087,7 +4101,7 @@ class GameCenterScreen extends EventScreen {
           const token = { number: p.jerseyNumber || '', name: p.name };
           // The practice box + mini calendar, as on a men's card (owner 11/20
           // "it shold look like men. it can even show attendance").
-          if (live) { token.noteHtml = this._lineupNote(p.id); token.boxColor = this._lineupBoxColor(p.id); }
+          if (live) { token.noteHtml = this._lineupNote(p.id); token.boxColor = this._lineupBoxColor(p.id); token.tapPersonId = this._cardTapPerson(p.id); }
           if (live && this.isCoach && this.viewMode !== 'player' && this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(p.id);
           return token;
         }));
@@ -4110,13 +4124,13 @@ class GameCenterScreen extends EventScreen {
           const token = { number: pos.sortOrder, name: occupant ? occupant.name : '' };
           // The bench players sharing this spot, 2nd first (mig 763).
           const subs = this._sharersOf(pos.id).map(id => rosterById.get(id)).filter(Boolean);
-          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: '', noteHtml: live ? this._lineupNote(r.id) : '' }));
+          if (subs.length) token.subs = subs.map(r => ({ name: r.name, moveId: editing ? r.id : null, style: '', noteHtml: live ? this._lineupNote(r.id) : '', tapPersonId: live ? this._cardTapPerson(r.id) : null }));
           if (wideIds.has(pos.id)) token.wide = true;
           if (narrowIds.has(pos.id)) token.narrow = true;
           if (chipLifts[pos.id]) token.lift = chipLifts[pos.id];
           if (chipInsets[pos.id]) token.inset = chipInsets[pos.id];
           if (live && occupant) token.nameStyle = this._cardNameStyle(occupant.id, { onPitch: true });
-          if (live && occupant) { token.noteHtml = this._lineupNote(occupant.id); token.boxColor = this._lineupBoxColor(occupant.id); }
+          if (live && occupant) { token.noteHtml = this._lineupNote(occupant.id); token.boxColor = this._lineupBoxColor(occupant.id); token.tapPersonId = this._cardTapPerson(occupant.id); }
           if (editing && !occupant) token.fillPosId = pos.id;   // tap = who plays here (_openFillSheet)
           if (editing && occupant) {
             token.removeId = occupant.id;
@@ -4147,7 +4161,8 @@ class GameCenterScreen extends EventScreen {
     // not going red, alternates powder blue"); ineligible keeps the gold.
     // ids ride along while editing: a name is a tap → the move sheet (owner 11/18 graphic-first).
     const outRow = (list, tier, fb, color) => { const l = [...list].sort(this._byLastName);
-      return { label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: l.map(p => p.name), ids: editing ? l.map(p => p.id) : null }; };
+      return { label: `${this._ecCopy(tier, fb)} (${list.length})`, color, names: l.map(p => p.name), ids: editing ? l.map(p => p.id) : null,
+               pids: l.map(p => this._cardTapPerson(p.id)) }; };
     // Order (owner 11/18): substitutes, not placed yet (+ ineligible), no response, not going, alternates.
     // ⬇ Call-downs in the squad, per cap (mig 1527, owner 11/19 "show me a
     // tally of how many bench and starters i have like that" + "warn if 3
@@ -4158,7 +4173,7 @@ class GameCenterScreen extends EventScreen {
       const ppl = t.ids.map(id => this.roster.find(r => Number(r.id) === Number(id))).filter(Boolean).sort(this._byLastName);
       return { label: over ? ((window.MessageCopy && MessageCopy.block('event_center', 'card_calldowns_over', tk)) || `⚠ ${tk.team} call-downs ${tk.n}/${tk.max} — league max is ${tk.max}`)
                            : ((window.MessageCopy && MessageCopy.block('event_center', 'card_calldowns', tk)) || `⬇ ${tk.team} call-downs ${tk.n}/${tk.max}`),
-               color: over ? '#f87171' : '#f5d442', names: ppl.map(p => p.name), ids: editing ? ppl.map(p => p.id) : null };
+               color: over ? '#f87171' : '#f5d442', names: ppl.map(p => p.name), ids: editing ? ppl.map(p => p.id) : null, pids: ppl.map(p => this._cardTapPerson(p.id)) };
     }) : [];
     const rsvpOut = out ? [...calldownRows,
                            outRow(out.unplaced || [], 'sec_unplaced', '⚠️ Going · Not placed yet', '#facc15'),
