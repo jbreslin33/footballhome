@@ -2852,7 +2852,8 @@ int main(int argc, char** argv) {
         }
         {   const auto& pd = s.brain().possession().passDiag();   // §8.284
             for (int b = 0; b < 6; ++b) { s_last_pdiag.pre[b] += pd.pre[b]; s_last_pdiag.post[b] += pd.post[b]; s_last_pdiag.n[b] += pd.n[b]; s_last_pdiag.cut[b] += pd.cut[b]; s_last_pdiag.chosen[b] += pd.chosen[b]; }
-            s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec; }
+            s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec;
+            for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
         {   // §8.225 ARRIVE (benchmarks_tracking_arrive.py): the ball inside 12 m of a goal centre, 16 m+ out within the 2 s
             // before; the defending side at -1 / 0 / +0.5 / +1 / +2 s (5 Hz frames, contiguous only)
             const int F = static_cast<int>(fl_f.size());
@@ -3426,6 +3427,18 @@ int main(int argc, char** argv) {
             std::printf("      PASS CANDIDATES BY LENGTH (our passes, ball 35-70 m off their line; %ld decisions, %.0f%% to feet): 0-10 ... 50+ m | candidates a decision | weight share before the read %% | after %% | cut by the read %% of them | chosen %%\n", pd.dec, 100.0 * ch / std::max(1L, pd.dec));
             for (int b = 0; b < 6; ++b) std::printf("        %d-%s m | %.2f | %.1f | %.1f | %.0f | %.1f\n", b * 10, b == 5 ? "" : std::to_string(b * 10 + 10).c_str(), pd.n[b] / std::max(1.0, 1.0 * pd.dec),
                                                     100.0 * pd.pre[b] / std::max(1.0, pre), 100.0 * pd.post[b] / std::max(1.0, post), 100.0 * pd.cut[b] / std::max(1L, pd.n[b]), 100.0 * pd.chosen[b] / std::max(1L, ch));
+        
+            {   // §8.300 BY DESTINATION ZONE: a mate there %, the real policy share (the zone table, averaged over decisions), weight before / after the read, chosen
+                static const char* zn[10] = {"0-18 c", "0-18 w", "18-35 c", "18-35 w", "35-52 c", "35-52 w", "52-70 c", "52-70 w", "70+ c", "70+ w"};
+                double zr = 0, zp = 0, zq = 0; long zc = 0; for (int z = 0; z < 10; ++z) { zr += pd.zreal[z]; zp += pd.zpre[z]; zq += pd.zpost[z]; zc += pd.zch[z]; }
+                std::printf("        by destination zone: a mate there %% of decisions | real policy share %% | weight before the read %% | after %% | chosen %%\n");
+                for (int z = 0; z < 10; ++z)
+                    std::printf("          %-8s %5.1f | %5.1f | %5.1f | %5.1f | %5.1f\n", zn[z], 100.0 * pd.zhas[z] / std::max(1L, pd.dec), 100.0 * pd.zreal[z] / std::max(1.0, zr),
+                                100.0 * pd.zpre[z] / std::max(1.0, zp), 100.0 * pd.zpost[z] / std::max(1.0, zq), 100.0 * pd.zch[z] / std::max(1L, zc));
+                std::printf("        ball into space by zone (empty zones ahead, ball 35-70 m out): tried %% of decisions | out of reach / no mate in time / theirs first / added %% of tried\n");
+                for (int z = 0; z < 10; ++z) if (pd.sp_try[z]) std::printf("          %-8s %5.1f | %4.0f / %4.0f / %4.0f / %4.0f\n", zn[z], 100.0 * pd.sp_try[z] / std::max(1L, pd.dec),
+                    100.0 * pd.sp_far[z] / pd.sp_try[z], 100.0 * pd.sp_late[z] / pd.sp_try[z], 100.0 * pd.sp_theirs[z] / pd.sp_try[z], 100.0 * pd.sp_add[z] / pd.sp_try[z]);
+            }
         }
         {   // §8.281 INTO THE BOX FROM WIDE (StatsBomb PL 15/16 open play, attempted: a team-match, into the box %)
             static const double rr[3][3][2] = {{{2.53, 43}, {1.11, 69}, {1.92, 86}}, {{12.01, 34}, {3.36, 52}, {4.26, 65}}, {{18.21, 15}, {5.82, 20}, {9.48, 22}}};

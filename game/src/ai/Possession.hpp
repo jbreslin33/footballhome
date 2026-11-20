@@ -116,6 +116,7 @@ struct PossessionParams {
     // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
+    bool space_contest = false;   // G5.194 (§8.300): a ball into space theirs reach first stays in at space_risk (else dropped)
     bool edge_own = false;   // G5.193 (§8.299): the edge also turns him back off his own goal line
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
     math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};
@@ -258,7 +259,9 @@ public:
     // §8.284 diag (harness only, never read by the sim): our passes with the ball 35-70 m off their line — each to-feet
     // candidate's weight by length band 0-10 … 50+ m before the race read (pre) and as offered (post, raw >> 8), how many the read
     // cut, and the band chosen.
-    struct PassDiag { std::int64_t pre[6] = {}, post[6] = {}; long n[6] = {}, cut[6] = {}, chosen[6] = {}, other = 0, dec = 0; };
+    struct PassDiag { std::int64_t pre[6] = {}, post[6] = {}; long n[6] = {}, cut[6] = {}, chosen[6] = {}, other = 0, dec = 0;
+                      std::int64_t zpre[10] = {}, zpost[10] = {}, zreal[10] = {}; long zhas[10] = {}, zch[10] = {};
+                      long sp_try[10] = {}, sp_far[10] = {}, sp_late[10] = {}, sp_theirs[10] = {}, sp_add[10] = {}; };   // §8.300 ball into space gates by zone   // §8.300 by destination zone
     const PassDiag& passDiag() const { return pdiag_; }
     PassDiag& passDiagMut() const { return pdiag_; }   // the on-ball state writes it (diag only)
     std::uint8_t spotBranch(std::uint8_t slot) const { return slot < 32 ? spot_branch_[slot] : 0; }   // §8.238 diag: 0 base / 1 drift / 2 wing / 3 lone / 8 touchline (§8.277) (harness only)

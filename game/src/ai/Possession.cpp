@@ -521,6 +521,7 @@ public:
                 auto& pd = c.poss.passDiagMut();
                 pd.pre[lb6] += wgt.raw >> 8; pd.post[lb6] += (sum - s0).raw >> 8; ++pd.n[lb6];
                 if ((sum - s0).raw < wgt.raw - (wgt.raw >> 6)) ++pd.cut[lb6];
+                pd.zpre[ez] += wgt.raw >> 8; pd.zpost[ez] += (sum - s0).raw >> 8;   // §8.300
             }
             if (is_gk) { gk_lo = nc0; gk_hi = nc; gk_w = sum - s0; sum = s0; }
             if (pb.raw <= 0) continue;
@@ -598,7 +599,8 @@ public:
                 // G5.57: ahead of the ball (a band's middle can be behind him in his own band).
                 if ((at.x - sp.x) * v.sg < Fixed64::fromInt(3)) continue;
                 const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
-                if (bd < P.pass_min_m || bd > reach) continue;
+                if (diag_mid) ++c.poss.passDiagMut().sp_try[ez];   // §8.300
+                if (bd < P.pass_min_m || bd > reach) { if (diag_mid) ++c.poss.passDiagMut().sp_far[ez]; continue; }
                 // Who gets there first (his run's ticks, 0.3 s steps to 4.5 s).
                 int best = -1, bn = 1000;
                 for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
@@ -612,10 +614,11 @@ public:
                     while (n < 135 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
                     if (n < bn) { bn = n; best = j; }
                 }
-                if (best < 0 || bn >= 135 || Fixed64::fromInt(bn) * core::kTickDt > P.space_max_s) continue;   // he must get there in time
+                if (best < 0 || bn >= 135 || Fixed64::fromInt(bn) * core::kTickDt > P.space_max_s) { if (diag_mid) ++c.poss.passDiagMut().sp_late[ez]; continue; }   // he must get there in time
                 // G5.55 (§8.156): a ground ball, before any of theirs — real balls into space go to
                 // the man who gets there first (ours went to a mate 17.8 m off it, theirs 11.5 m).
                 // A cross is struck whoever is first (real: 28% completed, 40% cleared next).
+                bool contested = false;
                 if (!cross) {
                     int tn = 1000;
                     for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
@@ -625,7 +628,9 @@ public:
                         while (n < bn + 9 && runToward(w, j, at, Fixed64::fromInt(n) * core::kTickDt) < run) n += 9;
                         if (n < tn) tn = n;
                     }
-                    if (tn < bn + P.space_margin_ticks) continue;
+                    // G5.194 (§8.300): theirs first — with space_contest it stays in at space_risk of its share (a contested
+                    // ball into the channel, as every pass the read says they win; real balls into space are 50/50s), else dropped (G5.55).
+                    if (tn < bn + P.space_margin_ticks) { if (diag_mid) ++c.poss.passDiagMut().sp_theirs[ez]; if (!P.space_contest) continue; contested = true; }
                 }
                 if (cross) {
                     const Loft lf{at, aimedCarry(me.pos, at, reach)};
@@ -648,7 +653,8 @@ public:
                 if (cm > 255) cm = 255;
                 const Loft lf{at, aimedCarry(me.pos, at, reach)};
                 const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::dieAtSpeed(Fixed64::fromInt(cm)), Fixed64::one());
-                add(Cand{best, ok ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
+                add(Cand{best, ok && !contested ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
+                if (diag_mid) ++c.poss.passDiagMut().sp_add[ez];
             }
         }
         // G5.76 (§8.177): the keeper takes his real share s of the passes actually on offer —
@@ -668,6 +674,8 @@ public:
             const Cand& ch = cand[k];
             if (diag_mid) {   // §8.284 diag: the band chosen (to feet), or another kind
                 auto& pd = c.poss.passDiagMut(); ++pd.dec;
+                for (int z = 0; z < 10; ++z) { if (in_zone[z]) ++pd.zhas[z]; pd.zreal[z] += P.pass_to[oz][z].raw >> 8; }   // §8.300
+                if (ch.j >= 0) ++pd.zch[zoneOf(hx, v2(w.player(static_cast<std::uint8_t>(ch.j)).pos), v.sg)];
                 if (!ch.behind && !ch.space && ch.j >= 0) { const Fixed64 dl = math::length(Vec2{w.player(static_cast<std::uint8_t>(ch.j)).pos.x - sp.x, w.player(static_cast<std::uint8_t>(ch.j)).pos.y - sp.y});
                     ++pd.chosen[std::min(5, static_cast<int>(dl.raw >> Fixed64::FRAC_BITS) / 10)]; } else ++pd.other;
             }
@@ -1487,6 +1495,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
+    space_contest = p.fixed("physics.space.contest", 0).raw > 0;   // G5.194 (§8.300), row on
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this
     space_roll_m = p.fixed("physics.space.roll_m", 2000);             // G5.57 [FH]: dies this far past the spot

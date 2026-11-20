@@ -11747,3 +11747,25 @@ Seeds 1000-4000 × 8, against G5.192 (real): corners carried out ~2.0 → 0.4-0.
 4.34 carried ~1.3 of these; its parries stand (off a shot 1.1-1.25). **Goals 2.28 → 1.92** (1.35). Card 9 / 7 / 17 → **11 / 7
 / 15** (`card_G5.193.txt`): scored 25+ and 12-18, on target, shots <12, penalties to ok; switches, shots 18-25 to OFF,
 take-ons, aerial duels, headed clearances to off. Ball in play 61.3%. Goldens unchanged; tests 23/23, lint clean.
+
+### 8.300 G5.194 — the wing ahead is empty in real football too; the zone's share needs a ball into space (measured + trial, not shipped)
+
+From §8.298's "next" (passes into the crossing zone 6.75 v 12.9; crosses 5-7 v 11.5 → few headed clearances → corners).
+New diag in PASS CANDIDATES (ball 35-70 m out): by destination zone — a mate there, the real policy share, weight before /
+after the race read, chosen — and the ball-into-space gates by zone. Seeds 1000 / 2000 × 8:
+
+- **A mate in the 18-35 m wide zone 26-27% of decisions; DFL (inline, 48,277 possession frames, ball 35-70 m out) 28.9%.**
+  18-35 centre 54-55 (48.7), 35-52 wide 67-68 (73.0), 0-18 wide 1.3-1.7 (0.8). Our positions are real (POSSESSION SHAPE by
+  role agrees, ball 30-50 m: WIDE 36 v 35 m off their line). The zone table's share for an empty zone (18-35 wide: real 7.7%
+  of the policy, ours 3.3-3.7% before the read) is lost unless G5.54's ball into space picks it up: StatsBomb end zones are
+  where the ball is received — a ball into the channel for a runner.
+- **Ball into space gates** (empty zones ahead): 18-35 wide tried 74% of decisions — out of reach 1%, no mate in time 12%,
+  **theirs first 66%**, added 20%; 18-35 centre theirs first 80%; 35-52 wide 83%.
+- Trial `physics.space.contest` (code, off): theirs first keeps it at `space_risk` (0.25) instead of dropping (G5.55).
+  Seeds 1000-4000 × 8 against G5.193: pass completion 81.8 → **77.65%** (77.5), crosses 5.4 → 6.1, throw-ins 16.5 → 17.5 —
+  but passes into 18-35 wide from 35-52 centre 6.5% (11.8) barely moved, corners 3.08 → 2.83, **goals 1.92 → 2.38**, card
+  11 / 7 / 15 → 11 / 5 / 17. Not shipped; the switch stays in code, off.
+
+Next: where the space ball aims — one fixed spot a zone (band middle, `space_wide_y`) is reached by theirs first two times
+in three; real channel balls go ahead of a runner on his line (G5.27's in-behind lead), not to a zone's centre. Tests
+23/23, lint clean; behaviour unchanged.
