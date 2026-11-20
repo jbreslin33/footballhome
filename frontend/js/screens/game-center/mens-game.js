@@ -4,8 +4,8 @@
 // on oop concepts" → "youth need to extend game and men need to extend game"
 // → "each extends game and adds or hides").
 //
-//   adds    the week's practice criterion on the live card: a box per player
-//           with the mini calendar + total (Starter Eligibility, migs
+//   adds    the week's practice criterion on the live card: the base game's
+//           box per player with the mini calendar, coloured by the verdict (Starter Eligibility, migs
 //           562/805/1497/1504/1505), the explanation box (why this
 //           week needs what it needs + the calendar key); the Starter
 //           Eligibility panels under the graphic (mine + everyone's)
@@ -20,8 +20,10 @@ class MensGameScreen extends GameCenterScreen {
   _hasReserves() { return true; }
 
   _practiceNoteBits(playerId) {
+    // No criterion on this game → the base game's plain strip.
+    if (this.everyonePlays) return super._practiceNoteBits(playerId);
     const out = [];
-    const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
+    const s = this.stats ? this.stats.get(Number(playerId)) : null;
     if (s) {
       const st = this._criteriaState(s);
       // P: = the week's total, attended + projected (owner 2026-11-12:
@@ -53,61 +55,14 @@ class MensGameScreen extends GameCenterScreen {
     return out;
   }
 
-  // The week as a mini calendar, no words (owner 11/18 "would it be better
-  // with a mini calendar on each box with green check mark for made it. and
-  // yellow for projected … and total at end either green or yellow or red"
-  // → "then we wouldn't need words?").  One cell per day in the week's
-  // window (barn night included), weekday letter over a mark:
-  //   ✓ green   made (marked present / late / excused)
-  //   ✓ yellow  still ahead, said Going (projected)
-  //   ✗ red     said Not going, or said Going and wasn't marked present
-  //   (blank)   no answer
-  // then the total: made + Going as one number, green made the need /
-  // yellow on pace / red short.
-  // The key is one line on the card (eligibility strip_legend).
-  _weekStripHtml(s, { made, colour, tokens }) {
-    const list = Array.isArray(s && s.practices) ? s.practices : [];
-    if (!list.length) return '';
-    const days = new Map();
-    for (const p of list) {
-      const at = new Date(p.startsAt || p.date);
-      if (isNaN(at)) continue;
-      const key = at.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
-      if (!days.has(key)) days.set(key, { at, sessions: [] });
-      days.get(key).sessions.push(p);
-    }
-    const cells = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, d]) => {
-      const ss = d.sessions;
-      const st = ss.some(p => !p.future && p.attended) ? 'made'
-        : ss.some(p => p.future && p.rsvp === 'yes') ? 'proj'
-        : ss.some(p => p.rsvp === 'no' || (!p.future && p.rsvp === 'yes')) ? 'miss' : 'none';
-      // A mark only when they answered (owner 11/18 "x or check if it was set.
-      // if it was not set at all then just make it clear blank").
-      const [mark, fg, bg] = { made: ['✓', '#052e16', '#4ade80'], proj: ['✓', '#422006', '#facc15'],
-                               miss: ['✗', '#fff', '#dc2626'], none: ['', 'transparent', 'transparent'] }[st];
-      const letter = d.at.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'America/New_York' });
-      const kinds = [...new Set(ss.map(p => p.kind).filter(Boolean))].join(', ');
-      return `<span title="${this.escapeHtml(`${d.at.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })} ${kinds}`)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px;">
-          <span style="font-size:8px; font-weight:800; opacity:0.75; line-height:1;">${this.escapeHtml(letter)}</span>
-          <span style="width:14px; height:14px; box-sizing:border-box; border-radius:3px; background:${bg}; color:${fg}; ${st === 'none' ? 'border:1px solid rgba(255,255,255,0.45);' : ''} font-size:10px; font-weight:900; line-height:14px; text-align:center;">${mark}</span>
-        </span>`;
-    }).join('');
-    // One number: made + said Going; the colour says the verdict — green made
-    // the need already, yellow the Goings would, red short (owner 11/18 "1
-    // actual and 1 projected then it says 2 but its green … 0 actual and like
-    // 3 projected it would be a 3 and it would be yellow").
-    const total = tokens.proj_total;
-    return `<span style="display:inline-flex; align-items:flex-end; gap:2px;">${cells}
-        <span style="margin-left:3px; padding:0 4px; height:14px; line-height:14px; border-radius:3px; background:${colour}; color:#0f172a; font-size:10px; font-weight:900;">${this.escapeHtml(total)}</span></span>`;
-  }
-
   // The box colour for a player on the live card (owner 11/18 "would it help
   // to get rid of player 'circle' and make a 'box' to put the info in" →
   // "practice accountability is critical to our culture … front and center
   // … so players know where they and others stand"): green made it, yellow
   // on pace (made + said Going), red short.  null = no criterion here.
   _lineupBoxColor(playerId) {
-    const s = !this.everyonePlays && this.stats ? this.stats.get(Number(playerId)) : null;
+    if (this.everyonePlays) return super._lineupBoxColor(playerId);
+    const s = this.stats ? this.stats.get(Number(playerId)) : null;
     if (!s) return null;
     const st = this._criteriaState(s);
     return st.attended >= st.needed ? '#4ade80' : st.attended + st.projected >= st.needed ? '#facc15' : '#f87171';
@@ -122,7 +77,8 @@ class MensGameScreen extends GameCenterScreen {
   // then the key to the boxes (strip_legend).  The week's facts are the
   // same on every row, so any stats row answers.
   _cardLegend() {
-    if (this.everyonePlays || !this.stats || !this.stats.size) return '';
+    if (this.everyonePlays) return super._cardLegend();
+    if (!this.stats || !this.stats.size) return '';
     const s = this.stats.values().next().value;
     const st = this._criteriaState(s);
     const tokens = Object.assign({}, st.tokens, { needed_s: st.needed === 1 ? '' : 's' });

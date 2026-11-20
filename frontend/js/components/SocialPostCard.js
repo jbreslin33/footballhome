@@ -2057,12 +2057,15 @@ class SocialPostCard {
       return this.buildImagePitch(lineup ? lineup.bench : [], crestSrc);
     }
     const lineup = this.getZoneLineup();
+    // No pitch yet (nobody Going on an everyone-plays youth game): the live
+    // card still lists – No response / ✗ Not going (owner 11/20 "the kids all
+    // star games need to work like others … it shold look like men").
     if (!lineup) {
-      if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return '';
-      return this.buildImageRoster();
+      if (!this.rosterData || !this.rosterData.players || !this.rosterData.selectedIds) return this.rsvpOutHtml();
+      return this.buildImageRoster() + this.rsvpOutHtml();
     }
     const { starters, bench } = lineup;
-    if (starters.length === 0 && bench.length === 0) return '';
+    if (starters.length === 0 && bench.length === 0) return this.rsvpOutHtml();
     const counts = this.squadCounts(starters.length, bench.length);
 
     const section = (title, list) => list.length ? `
@@ -2077,6 +2080,7 @@ class SocialPostCard {
         ${section(counts ? counts.starters : this.startersLabel(), starters)}
         ${section(counts ? counts.subs : 'SUBSTITUTES', bench)}
       </div>
+      ${this.rsvpOutHtml()}
     `;
   }
 

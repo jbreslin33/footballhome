@@ -297,11 +297,82 @@ class GameCenterEligibility {
     return `<div style="font-size:11px;font-weight:700;line-height:1.15;color:rgba(255,255,255,0.85);text-align:center;display:flex;flex-wrap:wrap;gap:1px 5px;justify-content:center;">${bits.join('')}</div>${att}`;
   }
 
-  // ── Hooks a game kind fills (MensGameScreen adds the practice week;
-  // the base game and YouthGameScreen have none) ──────────────────────
-  _practiceNoteBits(_playerId) { return []; }   // under a name on the live card
-  _lineupBoxColor(_playerId)   { return null; } // a colour → that player is drawn as a box
-  _cardLegend()                { return ''; }   // the explanation box on the card
+  // ── Hooks a game kind fills ───────────────────────────────────────
+  // Every game (youth, women, men) shows each player's recent practices as
+  // a mini calendar in his box (owner 11/20 "it shold look like men. it can
+  // even show attendance even though it doesn't have criteria. same with
+  // women" → "all youth should show practice attendance right for games?").
+  // The base draws it plain — no criterion, so a neutral total and box;
+  // MensGameScreen colours both by the week's verdict.  🌟 All-Stars games
+  // read each kid's own team's practices (mig 1615, server side).
+  _plainStripColour() { return '#e2e8f0'; }   // neutral: no criterion to colour by
+  _practiceRow(playerId) {
+    const s = this.stats ? this.stats.get(Number(playerId)) : null;
+    return s && Array.isArray(s.practices) && s.practices.length ? s : null;
+  }
+  // under a name on the live card
+  _practiceNoteBits(playerId) {
+    const s = this._practiceRow(playerId);
+    if (!s) return [];
+    const total = String((Number(s.practicesAttended) || 0) + (Number(s.practicesProjected) || 0));
+    const strip = this._weekStripHtml(s, { colour: this._plainStripColour(), tokens: { proj_total: total } });
+    return strip ? [strip] : [];
+  }
+  // a colour → that player is drawn as a box
+  _lineupBoxColor(playerId) { return this._practiceRow(playerId) ? this._plainStripColour() : null; }
+  // the key on the card (eligibility strip_legend_plain, mig 1616)
+  _cardLegend() {
+    if (!this.stats || ![...this.stats.values()].some(s => Array.isArray(s.practices) && s.practices.length)) return '';
+    return this._eligCopy('strip_legend_plain');
+  }
+
+  // The week as a mini calendar, no words (owner 11/18 "would it be better
+  // with a mini calendar on each box with green check mark for made it. and
+  // yellow for projected … and total at end either green or yellow or red"
+  // → "then we wouldn't need words?").  One cell per day in the week's
+  // window (barn night included), weekday letter over a mark:
+  //   ✓ green   made (marked present / late / excused)
+  //   ✓ yellow  still ahead, said Going (projected)
+  //   ✗ red     said Not going, or said Going and wasn't marked present
+  //   (blank)   no answer
+  // then the total: made + Going as one number, green made the need /
+  // yellow on pace / red short.
+  // The key is one line on the card (eligibility strip_legend).
+  _weekStripHtml(s, { made, colour, tokens }) {
+    const list = Array.isArray(s && s.practices) ? s.practices : [];
+    if (!list.length) return '';
+    const days = new Map();
+    for (const p of list) {
+      const at = new Date(p.startsAt || p.date);
+      if (isNaN(at)) continue;
+      const key = at.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+      if (!days.has(key)) days.set(key, { at, sessions: [] });
+      days.get(key).sessions.push(p);
+    }
+    const cells = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([, d]) => {
+      const ss = d.sessions;
+      const st = ss.some(p => !p.future && p.attended) ? 'made'
+        : ss.some(p => p.future && p.rsvp === 'yes') ? 'proj'
+        : ss.some(p => p.rsvp === 'no' || (!p.future && p.rsvp === 'yes')) ? 'miss' : 'none';
+      // A mark only when they answered (owner 11/18 "x or check if it was set.
+      // if it was not set at all then just make it clear blank").
+      const [mark, fg, bg] = { made: ['✓', '#052e16', '#4ade80'], proj: ['✓', '#422006', '#facc15'],
+                               miss: ['✗', '#fff', '#dc2626'], none: ['', 'transparent', 'transparent'] }[st];
+      const letter = d.at.toLocaleDateString('en-US', { weekday: 'narrow', timeZone: 'America/New_York' });
+      const kinds = [...new Set(ss.map(p => p.kind).filter(Boolean))].join(', ');
+      return `<span title="${this.escapeHtml(`${d.at.toLocaleDateString('en-US', { weekday: 'short', month: 'numeric', day: 'numeric', timeZone: 'America/New_York' })} ${kinds}`)}" style="display:inline-flex; flex-direction:column; align-items:center; gap:1px;">
+          <span style="font-size:8px; font-weight:800; opacity:0.75; line-height:1;">${this.escapeHtml(letter)}</span>
+          <span style="width:14px; height:14px; box-sizing:border-box; border-radius:3px; background:${bg}; color:${fg}; ${st === 'none' ? 'border:1px solid rgba(255,255,255,0.45);' : ''} font-size:10px; font-weight:900; line-height:14px; text-align:center;">${mark}</span>
+        </span>`;
+    }).join('');
+    // One number: made + said Going; the colour says the verdict — green made
+    // the need already, yellow the Goings would, red short (owner 11/18 "1
+    // actual and 1 projected then it says 2 but its green … 0 actual and like
+    // 3 projected it would be a 3 and it would be yellow").
+    const total = tokens.proj_total;
+    return `<span style="display:inline-flex; align-items:flex-end; gap:2px;">${cells}
+        <span style="margin-left:3px; padding:0 4px; height:14px; line-height:14px; border-radius:3px; background:${colour}; color:#0f172a; font-size:10px; font-weight:900;">${this.escapeHtml(total)}</span></span>`;
+  }
 
   // The verdict in words, as the name's tooltip (copy tier overall_<state>).
   _eligNameTitle(playerId) {

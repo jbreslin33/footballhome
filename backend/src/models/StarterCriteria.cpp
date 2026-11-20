@@ -23,11 +23,48 @@ const std::string& StarterCriteria::statsSql() {
                     FROM match_event me
                     CROSS JOIN LATERAL fh_starter_needed($2::int[], me.starts_at, $1::int) n
                 ),
-                win AS (
-                    SELECT w.fh_event_id, w.kind, w.starts_at, w.extended, w.cutoff,
-                           ge.location, fe.arrival_at
+                -- Rostered players, plus everyone invited to THIS game — a
+                -- ⭐ standing call-up / 🎟 call-up / ↔ call-in (James
+                -- 11/13: "why is sheldon missing his A: and P:" — Sheldon
+                -- is APSL, a standing call-up on Liga 1).  A bare 📄 paper
+                -- spot without an invite still gets no row (mig 619).
+                who AS (
+                    SELECT tp.person_id FROM team_persons tp
+                     WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
+                       AND NOT tp.invite_only
+                    UNION
+                    SELECT i.person_id FROM fh_event_invites i
+                      JOIN match_event me ON me.fh_event_id = i.fh_event_id
+                     WHERE i.revoked_at IS NULL
+                ),
+                -- A team that holds no practices of its own (🌟 All-Stars,
+                -- teams.practices_from_member_teams, mig 1615): each
+                -- player's window is his own teams' practices (owner 11/20
+                -- "the kids all star games need to work like others … it can
+                -- even show attendance").  Every other game: one shared
+                -- window, the game's teams.
+                own_teams AS (
+                    SELECT EXISTS (SELECT 1 FROM teams t WHERE t.id = ANY($2::int[]) AND t.practices_from_member_teams) AS own
+                ),
+                win_raw AS (
+                    SELECT NULL::int AS person_id, w.*
                     FROM match_event me
                     CROSS JOIN LATERAL fh_starter_window($2::int[], me.starts_at, $1::int) w
+                    WHERE NOT (SELECT own FROM own_teams)
+                    UNION ALL
+                    SELECT who.person_id, w.*
+                    FROM who CROSS JOIN match_event me
+                    CROSS JOIN LATERAL (SELECT array_agg(DISTINCT tp.team_id) AS ids
+                                          FROM team_persons tp JOIN teams t ON t.id = tp.team_id
+                                         WHERE tp.person_id = who.person_id AND tp.removed_at IS NULL
+                                           AND NOT t.practices_from_member_teams) mine
+                    CROSS JOIN LATERAL fh_starter_window(mine.ids, me.starts_at, $1::int) w
+                    WHERE (SELECT own FROM own_teams) AND mine.ids IS NOT NULL
+                ),
+                win AS (
+                    SELECT w.person_id, w.fh_event_id, w.kind, w.starts_at, w.extended, w.cutoff,
+                           ge.location, fe.arrival_at
+                    FROM win_raw w
                     JOIN fh_events fe ON fe.id = w.fh_event_id
                     JOIN gcal_events ge ON ge.id = fe.gcal_event_id
                 ),
@@ -49,36 +86,36 @@ const std::string& StarterCriteria::statsSql() {
                        (SELECT held_days FROM pol) AS held_days,
                        (SELECT missed_days FROM pol) AS missed_days,
                        (SELECT reason FROM pol) AS needed_reason,
-                       (SELECT count(*) FROM win) AS window_total,
-                       (SELECT count(*) FROM win WHERE win.starts_at < now()) AS recent_total,
+                       (SELECT count(*) FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id)) AS window_total,
+                       (SELECT count(*) FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id) AND win.starts_at < now()) AS recent_total,
                        -- Week mode counts DAYS, not sessions (mig 562): two
                        -- sessions on one Saturday are one day held/attended.
                        (SELECT CASE WHEN (SELECT week_mode FROM pol) THEN
                                (SELECT count(DISTINCT (w2.starts_at AT TIME ZONE 'America/New_York')::date) FROM win w2
-                                 WHERE w2.starts_at < now()
+                                 WHERE (w2.person_id IS NULL OR w2.person_id = pe.id) AND w2.starts_at < now()
                                    AND EXISTS (SELECT 1 FROM fh_event_attendance fea
                                                 WHERE fea.person_id = pe.id AND fea.fh_event_id = w2.fh_event_id
                                                   AND fea.status IN ('present', 'late', 'excused')))
                           ELSE
                                (SELECT count(*) FROM fh_event_attendance fea
                                  WHERE fea.person_id = pe.id
-                                   AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE win.starts_at < now())
+                                   AND fea.fh_event_id IN (SELECT fh_event_id FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id) AND win.starts_at < now())
                                    AND fea.status IN ('present', 'late', 'excused'))
                           END) AS practices_attended,
-                       (SELECT count(*) FROM win WHERE win.starts_at >= now()) AS upcoming_total,
+                       (SELECT count(*) FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id) AND win.starts_at >= now()) AS upcoming_total,
                        (SELECT CASE WHEN (SELECT week_mode FROM pol) THEN
                                (SELECT count(DISTINCT (up.starts_at AT TIME ZONE 'America/New_York')::date) FROM win up
-                                 WHERE up.starts_at >= now()
+                                 WHERE (up.person_id IS NULL OR up.person_id = pe.id) AND up.starts_at >= now()
                                    AND (SELECT r.response FROM fh_event_rsvps r
                                           WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id) = 'yes')
                           ELSE
                                (SELECT count(*) FROM win up
-                                 WHERE up.starts_at >= now()
+                                 WHERE (up.person_id IS NULL OR up.person_id = pe.id) AND up.starts_at >= now()
                                    AND (SELECT r.response FROM fh_event_rsvps r
                                           WHERE r.fh_event_id = up.fh_event_id AND r.person_id = pe.id) = 'yes')
                           END) AS practices_projected,
-                       COALESCE((SELECT bool_or(extended) FROM win), false) AS extended,
-                       (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win) AS cutoff,
+                       COALESCE((SELECT bool_or(extended) FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id)), false) AS extended,
+                       (SELECT to_char(min(cutoff) AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') FROM win WHERE (win.person_id IS NULL OR win.person_id = pe.id)) AS cutoff,
                        -- A coach who also plays and chose Coaching only (mig 688)
                        -- is not in the lineup pool: 'coaching', not 'yes'.
                        (SELECT CASE WHEN r.response = 'yes' AND r.role_choice = 'coach' THEN 'coaching' ELSE r.response END
@@ -141,19 +178,9 @@ const std::string& StarterCriteria::statsSql() {
                                             AND fea.status IN ('present', 'late', 'excused'))
                                   END
                                 ) ORDER BY pw.starts_at)
-                          FROM win pw) AS practice_pills
-                -- Rostered players, plus everyone invited to THIS game — a
-                -- ⭐ standing call-up / 🎟 call-up / ↔ call-in (James
-                -- 11/13: "why is sheldon missing his A: and P:" — Sheldon
-                -- is APSL, a standing call-up on Liga 1).  A bare 📄 paper
-                -- spot without an invite still gets no row (mig 619).
-                FROM (SELECT tp.person_id FROM team_persons tp
-                       WHERE tp.team_id = ANY($2::int[]) AND tp.removed_at IS NULL
-                         AND NOT tp.invite_only
-                      UNION
-                      SELECT i.person_id FROM fh_event_invites i
-                        JOIN match_event me ON me.fh_event_id = i.fh_event_id
-                       WHERE i.revoked_at IS NULL) who
+                          FROM win pw WHERE (pw.person_id IS NULL OR pw.person_id = pe.id)) AS practice_pills
+                -- who: rostered + invited to this game (the CTE above).
+                FROM who
                 JOIN persons pe ON pe.id = who.person_id
                 JOIN players pl ON pl.person_id = pe.id
                 WHERE ($3 = '' OR pe.id = NULLIF($3, '')::int)

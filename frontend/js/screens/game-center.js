@@ -4144,6 +4144,9 @@ class GameCenterScreen extends EventScreen {
       const lines = this._everyoneShape(byZone.starter.length).map(count =>
         byZone.starter.slice(idx, idx += count).map(p => {
           const token = { number: p.jerseyNumber || '', name: p.name };
+          // The practice box + mini calendar, as on a men's card (owner 11/20
+          // "it shold look like men. it can even show attendance").
+          if (live) { token.noteHtml = this._lineupNote(p.id); token.boxColor = this._lineupBoxColor(p.id); }
           if (live && this.isCoach && this.viewMode !== 'player' && this.showLineupStats) token.badgeHtml = this._rsvpStatusPill(p.id);
           return token;
         }));
