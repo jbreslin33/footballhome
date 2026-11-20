@@ -129,20 +129,27 @@ bool PhoneRelayController::requireSender(const Request& request, long long* pers
 
 // The app's token, from pairing, stored only as its sha256 like session
 // and magic-link tokens.  A revoked phone is refused.
-bool PhoneRelayController::requireDevice(const Request& request, long long* deviceId, Response* error) {
+bool PhoneRelayController::deviceFromRequest(const Request& request, long long* deviceId, long long* personId) {
     const std::string token = request.getHeader("X-FH-Device");
-    if (token.size() < 20) {
+    if (token.size() < 20) return false;
+    auto r = Database::getInstance()->query(
+        "SELECT id, person_id FROM phone_relay_devices WHERE token_hash = $1 AND revoked_at IS NULL",
+        {fh::crypto::sha256Hex(token)});
+    if (r.empty()) return false;
+    *deviceId = r[0]["id"].as<long long>();
+    if (personId) *personId = r[0]["person_id"].as<long long>();
+    return true;
+}
+
+bool PhoneRelayController::requireDevice(const Request& request, long long* deviceId, Response* error) {
+    if (request.getHeader("X-FH-Device").size() < 20) {
         *error = jsonError(HttpStatus::UNAUTHORIZED, "Pair this phone first.", "not_paired");
         return false;
     }
-    auto r = Database::getInstance()->query(
-        "SELECT id FROM phone_relay_devices WHERE token_hash = $1 AND revoked_at IS NULL",
-        {fh::crypto::sha256Hex(token)});
-    if (r.empty()) {
+    if (!deviceFromRequest(request, deviceId, nullptr)) {
         *error = jsonError(HttpStatus::UNAUTHORIZED, "This phone is no longer paired — pair it again.", "not_paired");
         return false;
     }
-    *deviceId = r[0]["id"].as<long long>();
     return true;
 }
 

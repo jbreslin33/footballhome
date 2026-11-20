@@ -16,8 +16,9 @@ import java.nio.charset.StandardCharsets;
 // comes from pairing and is the only credential the app holds; it lives
 // in this app's private preferences.  Call off the main thread.
 final class Api {
-    static final String BASE = "https://footballhome.org/api/phone-relay";
-    static final String VERSION = "1.3";
+    static final String ROOT = "https://footballhome.org/api";
+    static final String BASE = ROOT + "/phone-relay";
+    static final String VERSION = "1.4";
     private static final String PREFS = "fh_texter";
 
     static final class Result {
@@ -40,13 +41,16 @@ final class Api {
 
     static void forget(Context c) { prefs(c).edit().remove("token").remove("first_name").apply(); }
 
-    static Result post(Context c, String path, JSONObject body) {
+    static Result post(Context c, String path, JSONObject body) { return postUrl(c, BASE + path, body); }
+
+    // Any Football Home URL with this phone's token (v1.4: /api/contacts/device/*).
+    static Result postUrl(Context c, String url, JSONObject body) {
         HttpURLConnection conn = null;
         try {
-            conn = (HttpURLConnection) new URL(BASE + path).openConnection();
+            conn = (HttpURLConnection) new URL(url).openConnection();
             conn.setRequestMethod("POST");
             conn.setConnectTimeout(10000);
-            conn.setReadTimeout(15000);
+            conn.setReadTimeout(60000);   // a first contacts batch syncs LeagueApps first
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json");
             String token = token(c);

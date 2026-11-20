@@ -22,6 +22,10 @@ class PhoneRelayController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;
 
+    // The paired phone behind an X-FH-Device header: its id and owner, or
+    // false.  FH Assistant's other jobs (contacts, mig 1615) use it too.
+    static bool deviceFromRequest(const Request& request, long long* deviceId, long long* personId);
+
 private:
     // Signed-in club admin → their person_id, else *error.
     bool requireSender(const Request& request, long long* personId, Response* error);

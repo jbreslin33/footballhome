@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- FH Texter: sends the one text a coach clicked Send on in Football
-         Home, from this phone's number.  Nothing is ever sent on its own. -->
+    <!-- FH Assistant (was FH Texter): sends the one text a coach clicked Send
+         on in Football Home, from this phone's number — nothing is ever sent
+         on its own — and keeps the club's contacts in the phone's Google
+         account.  Same package, so it installs over FH Texter. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.SEND_SMS" />
@@ -10,6 +12,10 @@
          SecurityException without this — every send failed from 11/6. -->
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- v1.4 FH Assistant: the club's contacts into the picked Google account. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

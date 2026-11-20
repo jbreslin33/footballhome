@@ -24,8 +24,10 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 
-// Runs while FH Texter is on: checks in with Football Home every few
-// seconds and sends the one text it is handed, from this phone's SIM.
+// Runs while FH Assistant (was FH Texter) is on: checks in with Football
+// Home every few seconds and sends the one text it is handed, from this
+// phone's SIM; every 15 minutes it also brings the club's contacts into
+// the picked Google account (ContactSync, v1.4).
 // Football Home decides when a text is due (one click, one recipient,
 // spaced and capped — phone_relay_policy, mig 667); this only carries it.
 public class RelayService extends Service {
@@ -51,6 +53,13 @@ public class RelayService extends Service {
     private ConnectivityManager.NetworkCallback netWatch;
     // One poll task, so a kick never starts a second check-in loop.
     private final Runnable pollTask = this::poll;
+
+    // v1.4 FH Assistant: 👤 contacts into the picked Google account, on their
+    // own thread (a first run is ~1,800 cards) every 15 minutes.
+    static final long CONTACTS_MS = 15 * 60 * 1000;
+    private HandlerThread contactsThread;
+    private Handler contactsHandler;
+    private final Runnable contactsTask = this::syncContacts;
 
     static void start(Context c) {
         Intent i = new Intent(c, RelayService.class);
@@ -79,7 +88,7 @@ public class RelayService extends Service {
         @SuppressWarnings("deprecation")
         boolean blocked = info != null && info.getDetailedState() == NetworkInfo.DetailedState.BLOCKED;
         if (blocked || (!wifi && cm.getRestrictBackgroundStatus() == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED))
-            return "On " + on + ", but Android is blocking FH Texter's data. Tap \"Data settings\" → Mobile data → "
+            return "On " + on + ", but Android is blocking FH Assistant's data. Tap \"Data settings\" → Mobile data → "
                     + "allow background data and allow while Data saver is on.";
         return "On " + on + ".";
     }
@@ -95,6 +104,7 @@ public class RelayService extends Service {
         if (running && intent != null && ACTION_RECONNECT.equals(intent.getAction())) {
             connected = null;   // say the fresh result either way
             kick();
+            kickContacts();
         }
         if (!running) {
             running = true;
@@ -108,6 +118,10 @@ public class RelayService extends Service {
             thread.start();
             handler = new Handler(thread.getLooper());
             handler.post(pollTask);
+            contactsThread = new HandlerThread("fh-contacts");
+            contactsThread.start();
+            contactsHandler = new Handler(contactsThread.getLooper());
+            contactsHandler.postDelayed(contactsTask, 3000);
             watchNetwork();
         }
         return START_STICKY;
@@ -137,6 +151,7 @@ public class RelayService extends Service {
         if (cm != null && netWatch != null) try { cm.unregisterNetworkCallback(netWatch); } catch (Exception ignored) {}
         netWatch = null;
         if (thread != null) thread.quitSafely();
+        if (contactsThread != null) contactsThread.quitSafely();
         if (wake != null && wake.isHeld()) wake.release();
         wake = null;
         super.onDestroy();
@@ -150,7 +165,7 @@ public class RelayService extends Service {
             if (r.status == 401) {
                 // Unpaired from the website (or a bad token): stop asking.
                 Api.forget(this);
-                update("Not paired — open FH Texter to pair again");
+                update("Not paired — open FH Assistant to pair again");
                 running = false;
                 stopSelf();
                 return;
@@ -169,6 +184,22 @@ public class RelayService extends Service {
         }
     }
 
+    private void kickContacts() {
+        if (contactsHandler == null) return;
+        contactsHandler.removeCallbacks(contactsTask);
+        contactsHandler.post(contactsTask);
+    }
+
+    private void syncContacts() {
+        if (!running) return;
+        int n = ContactSync.run(this);
+        if (n > 0) update("✅ On — added or updated " + n + " contact" + (n == 1 ? "" : "s") + " " + clock(System.currentTimeMillis()));
+        if (running && contactsHandler != null) {
+            contactsHandler.removeCallbacks(contactsTask);
+            contactsHandler.postDelayed(contactsTask, CONTACTS_MS);
+        }
+    }
+
     // The app screen reads these to say "on and working" or since when not.
     private void checkedIn() {
         Api.prefs(this).edit().putLong("last_ok_at", System.currentTimeMillis()).remove("trouble").apply();
@@ -184,7 +215,7 @@ public class RelayService extends Service {
             connected = false;
             long ok = Api.prefs(this).getLong("last_ok_at", 0);
             update("⚠ Can't reach Football Home" + (ok > 0 ? " since " + clock(ok) : "") + " — " + network(this)
-                    + " Open FH Texter → Reconnect.");
+                    + " Open FH Assistant → Reconnect.");
         }
     }
 
@@ -198,15 +229,15 @@ public class RelayService extends Service {
         if (checkSelfPermission(android.Manifest.permission.SEND_SMS) != PackageManager.PERMISSION_GRANTED) {
             // v1.2: say so instead of a bare "could not send" (Android
             // re-locks SMS for sideloaded apps after a reinstall).
-            SmsResultReceiver.report(this, id, "failed", "SMS permission is off for FH Texter on the phone — open the app to fix");
-            update("⚠ Can't send — open FH Texter and allow SMS");
+            SmsResultReceiver.report(this, id, "failed", "SMS permission is off for FH Assistant on the phone — open the app to fix");
+            update("⚠ Can't send — open FH Assistant and allow SMS");
             return;
         }
         if (!MainActivity.hasPhone(this)) {
             // v1.3: without Phone, Samsung's SMS stack throws
             // "getGroupIdLevel1" on every send.
-            SmsResultReceiver.report(this, id, "failed", "Phone permission is off for FH Texter on the phone — open the app and allow it");
-            update("⚠ Can't send — open FH Texter and allow Phone");
+            SmsResultReceiver.report(this, id, "failed", "Phone permission is off for FH Assistant on the phone — open the app and allow it");
+            update("⚠ Can't send — open FH Assistant and allow Phone");
             return;
         }
         try {
@@ -233,12 +264,12 @@ public class RelayService extends Service {
     private Notification notification(String line) {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (Build.VERSION.SDK_INT >= 26 && nm != null && nm.getNotificationChannel(CHANNEL) == null)
-            nm.createNotificationChannel(new NotificationChannel(CHANNEL, "FH Texter", NotificationManager.IMPORTANCE_LOW));
+            nm.createNotificationChannel(new NotificationChannel(CHANNEL, "FH Assistant", NotificationManager.IMPORTANCE_LOW));
         PendingIntent open = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class),
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         return b.setSmallIcon(R.drawable.ic_texter)
-                .setContentTitle("FH Texter")
+                .setContentTitle("FH Assistant")
                 .setContentText(line)
                 .setOngoing(true)
                 .setContentIntent(open)

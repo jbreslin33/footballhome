@@ -32,7 +32,8 @@ import java.util.List;
 public class MainActivity extends Activity {
     private TextView status;
     private EditText code;
-    private Button pair, battery, reconnect, settings, unpair;
+    private Button pair, battery, reconnect, settings, unpair, contactsAllow, contactsAccount;
+    private TextView contactsStatus;
     // While this screen is open the status line re-reads the service's
     // last check-in every 2 seconds, so "on and working" is live.
     private final Handler tick = new Handler(Looper.getMainLooper());
@@ -48,14 +49,15 @@ public class MainActivity extends Activity {
         col.setPadding(pad, pad, pad, pad);
 
         TextView title = new TextView(this);
-        title.setText("FH Texter");
+        title.setText("FH Assistant");
         title.setTextSize(26);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         col.addView(title);
 
         TextView about = new TextView(this);
-        about.setText("Sends the texts you click Send on in Football Home, from this phone's number. "
-                + "It never sends anything on its own. Keep this phone on and online.");
+        about.setText("Sends the texts you click Send on in Football Home, from this phone's number — "
+                + "it never sends anything on its own — and keeps every club contact in your Google contacts. "
+                + "Keep this phone on and online.");
         about.setPadding(0, dp(6), 0, dp(14));
         col.addView(about);
 
@@ -77,7 +79,7 @@ public class MainActivity extends Activity {
         pair.setOnClickListener(v -> doPair());
         col.addView(pair);
 
-        battery = button("Let FH Texter run in the background", "#334155");
+        battery = button("Let FH Assistant run in the background", "#334155");
         battery.setOnClickListener(v -> askBattery());
         col.addView(battery);
 
@@ -95,6 +97,24 @@ public class MainActivity extends Activity {
         settings = button("Data settings", "#334155");
         settings.setOnClickListener(v -> openAppSettings());
         col.addView(settings);
+
+        // v1.4 👤 Contacts → Google (owner 11/20 "adds them to my phone contacts(google)").
+        TextView ch = new TextView(this);
+        ch.setText("👤 Contacts");
+        ch.setTextSize(20);
+        ch.setTypeface(Typeface.DEFAULT_BOLD);
+        ch.setPadding(0, dp(22), 0, dp(4));
+        col.addView(ch);
+        contactsStatus = new TextView(this);
+        contactsStatus.setTextSize(15);
+        col.addView(contactsStatus);
+        contactsAllow = button("Allow contacts", "#0284C7");
+        contactsAllow.setOnClickListener(v -> requestPermissions(new String[]{
+                Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS, Manifest.permission.GET_ACCOUNTS}, 2));
+        col.addView(contactsAllow);
+        contactsAccount = button("Choose Google account", "#0284C7");
+        contactsAccount.setOnClickListener(v -> chooseAccount());
+        col.addView(contactsAccount);
 
         unpair = button("Unpair this phone", "#7F1D1D");
         unpair.setOnClickListener(v -> {
@@ -147,7 +167,7 @@ public class MainActivity extends Activity {
                 status.setTextColor(Color.parseColor("#B45309"));
             }
         } else {
-            status.setText("Not paired yet. On the computer, open Football Home → a text → Set up FH Texter, then type the code here.");
+            status.setText("Not paired yet. On the computer, open Football Home → a text → Set up FH Assistant, then type the code here.");
             status.setTextColor(Color.parseColor("#B45309"));
         }
         code.setVisibility(paired ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -155,9 +175,45 @@ public class MainActivity extends Activity {
         unpair.setVisibility(paired ? android.view.View.VISIBLE : android.view.View.GONE);
         reconnect.setVisibility(paired && hasSms() ? android.view.View.VISIBLE : android.view.View.GONE);
         settings.setText(hasSms() ? "Data settings" : "SMS settings");
+        refreshContacts(paired);
         PowerManager pm = getSystemService(PowerManager.class);
         boolean free = pm != null && pm.isIgnoringBatteryOptimizations(getPackageName());
         battery.setVisibility(free ? android.view.View.GONE : android.view.View.VISIBLE);
+    }
+
+    private void refreshContacts(boolean paired) {
+        boolean perm = ContactSync.hasPermission(this);
+        String acct = ContactSync.account(this);
+        long last = Api.prefs(this).getLong("contacts_last_at", 0);
+        int n = Api.prefs(this).getInt("contacts_written", 0);
+        String trouble = Api.prefs(this).getString("contacts_trouble", "");
+        String line;
+        if (!paired) line = "Pair first — then every club contact (leads, members, parents, coaches, opponents, league people) goes into your Google contacts.";
+        else if (!perm) line = "Allow contacts so it can add the club's people to your phone. (Greyed out? Settings → Apps → FH Assistant → ⋮ → Allow restricted settings.)";
+        else if (acct.isEmpty()) line = "Pick the Google account they go into — they sync to Google Contacts and follow you to any phone.";
+        else line = "✅ Into " + acct + (last > 0 ? " — checked " + RelayService.clock(last) + ", " + n + " added or updated so far." : " — first run starting…")
+                + "\nNew leads and members come every 15 minutes." + (trouble.isEmpty() ? "" : "\n⚠ " + trouble);
+        contactsStatus.setText(line);
+        contactsStatus.setTextColor(Color.parseColor(paired && perm && !acct.isEmpty() && trouble.isEmpty() ? "#15803D" : "#B45309"));
+        contactsAllow.setVisibility(paired && !perm ? android.view.View.VISIBLE : android.view.View.GONE);
+        contactsAccount.setVisibility(paired && perm ? android.view.View.VISIBLE : android.view.View.GONE);
+        contactsAccount.setText(acct.isEmpty() ? "Choose Google account" : "Change Google account");
+    }
+
+    private void chooseAccount() {
+        Intent i = android.accounts.AccountManager.newChooseAccountIntent(null, null,
+                new String[]{ContactSync.GOOGLE}, null, null, null, null);
+        try { startActivityForResult(i, 3); } catch (Exception e) { contactsStatus.setText("Couldn't open the account picker: " + e.getMessage()); }
+    }
+
+    @Override protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != 3 || res != RESULT_OK || data == null) return;
+        String name = data.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME);
+        if (name == null || name.isEmpty()) return;
+        Api.prefs(this).edit().putString("contacts_account", name).remove("contacts_trouble").apply();
+        refresh();
+        RelayService.reconnect(this);   // run the contacts now, not in 15 minutes
     }
 
     private void doPair() {

@@ -27,19 +27,31 @@ std::vector<Contacts::Row> Contacts::list(long long userId) {
         WITH board AS (
           SELECT t.id, BTRIM(regexp_replace(COALESCE(t.label, t.name), '^[^[:alnum:]]+', '')) AS label, t.board_sort_order
             FROM teams t WHERE t.is_active AND t.board_sort_order IS NOT NULL
+        ), pickup AS (
+          -- 🏃 LA pickup members (mig 1615, owner 11/20 "all contacts …
+          -- members pickup and regular"): most are on no board team.
+          SELECT DISTINCT m.person_id,
+                 COALESCE((SELECT body FROM message_templates WHERE kind = 'contacts' AND tier = 'pickup_label' AND is_active
+                            ORDER BY sort_order, id LIMIT 1), 'Pickup') AS label
+            FROM person_la_memberships m
+            JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id AND lp.variant = 'pickup'
+           WHERE m.ended_at IS NULL
+        ), playing AS (
+          SELECT tp.person_id, b.label FROM team_persons tp JOIN board b ON b.id = tp.team_id WHERE tp.removed_at IS NULL
+          UNION
+          SELECT person_id, label FROM pickup
         ), members AS (
           SELECT p.id AS person_id, 'members' AS grp,
-                 string_agg(DISTINCT b.label, ', ') AS teams, NULL::text AS kids
-            FROM team_persons tp JOIN board b ON b.id = tp.team_id JOIN persons p ON p.id = tp.person_id
-           WHERE tp.removed_at IS NULL AND p.parent_person_id IS NULL
+                 string_agg(DISTINCT pl.label, ', ') AS teams, NULL::text AS kids
+            FROM playing pl JOIN persons p ON p.id = pl.person_id
+           WHERE p.parent_person_id IS NULL
            GROUP BY p.id
         ), parents AS (
           SELECT par.id, 'parents', NULL,
-                 string_agg(DISTINCT COALESCE(p.first_name, '') || ' (' || b.label || ')', ', ')
-            FROM team_persons tp JOIN board b ON b.id = tp.team_id
-            JOIN persons p ON p.id = tp.person_id
+                 string_agg(DISTINCT COALESCE(p.first_name, '') || ' (' || pl.label || ')', ', ')
+            FROM playing pl
+            JOIN persons p ON p.id = pl.person_id
             JOIN person_guardians g ON g.child_person_id = p.id JOIN persons par ON par.id = g.guardian_person_id
-           WHERE tp.removed_at IS NULL
            GROUP BY par.id
         ), coaches AS (
           SELECT c.person_id, 'coaches', string_agg(DISTINCT b.label, ', '), NULL

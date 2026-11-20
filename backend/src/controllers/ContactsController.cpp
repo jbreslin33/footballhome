@@ -4,6 +4,9 @@
 #include <iostream>
 #include <map>
 
+#include "PhoneRelayController.h"
+#include "../core/Crypto.h"
+#include "../database/Database.h"
 #include "../models/Contacts.h"
 #include "../models/MessageCopy.h"
 #include "../third_party/json.hpp"
@@ -91,8 +94,21 @@ bool ContactsController::gate(const Request& request, Response* error) {
 }
 
 void ContactsController::registerRoutes(Router& router, const std::string& prefix) {
-    router.get (prefix + "/summary", [this](const Request& r) { return handleSummary(r); });
-    router.post(prefix + "/export",  [this](const Request& r) { return handleExport(r); });
+    // LA → DB → render (mig 1615: the list reads LA pickup memberships).
+    laGet (router, prefix + "/summary", [](const Request&) { return Controller::allLaProgramIds(); },
+           [this](const Request& r, const LaSyncMap&) { return handleSummary(r); });
+    laPost(router, prefix + "/export",  [](const Request&) { return Controller::allLaProgramIds(); },
+           [this](const Request& r, const LaSyncMap&) { return handleExport(r); });
+    // 👤 FH Assistant (mig 1615): the paired phone pulls changed contacts in
+    // batches; only the first batch of a run ({first: true}) syncs LA.
+    laPost(router, prefix + "/device/pending",
+           [](const Request& r) {
+               bool first = false;
+               try { auto b = json::parse(r.getBody().empty() ? "{}" : r.getBody()); first = b.value("first", false); } catch (...) {}
+               return first ? Controller::allLaProgramIds() : std::vector<int>{};
+           },
+           [this](const Request& r, const LaSyncMap&) { return handleDevicePending(r); });
+    router.post(prefix + "/device/ack", [this](const Request& r) { return handleDeviceAck(r); });
 }
 
 Response ContactsController::handleSummary(const Request& request) {
@@ -167,5 +183,98 @@ Response ContactsController::handleExport(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "ContactsController::handleExport: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// ── 👤 FH Assistant contacts (mig 1615) ─────────────────────────────────
+// Owner 11/20: "make fh texter just fh assistant … an app that takes all
+// leads and members pickup and regular and adds them to my phone
+// contacts(google)" + "i just want all contacts … i dont' think we need to
+// group them".  Every #contacts row, one card per row; the phone writes
+// them into the Google account it picked and acks what it saved.  A card
+// goes again when anything on it changes (name, numbers, emails, note).
+namespace {
+json deviceCard(MessageCopy& copy, const std::string& org, const Contacts::Row& r) {
+    const std::string orgLine = r.kind == "club_contact" && !r.org.empty() ? r.org : org;
+    json c = {
+        {"uid",    "fh-" + r.kind + "-" + std::to_string(r.refId)},
+        {"first",  r.first}, {"last", r.last},
+        {"org",    orgLine}, {"title", r.role},
+        {"phones", r.phones}, {"emails", r.emails},
+        {"note",   noteFor(copy, r)},
+    };
+    c["fp"] = fh::crypto::sha256Hex(c.dump()).substr(0, 32);
+    return c;
+}
+
+// The paired phone of a club admin, else *error.
+bool adminDevice(const Request& request, long long* deviceId, Response* error) {
+    long long personId = 0;
+    if (!PhoneRelayController::deviceFromRequest(request, deviceId, &personId)) {
+        *error = jsonError(HttpStatus::UNAUTHORIZED, "This phone is not paired.");
+        return false;
+    }
+    auto ok = Database::getInstance()->query(
+        "SELECT 1 FROM users u JOIN admins a ON a.user_id = u.id JOIN admin_levels al ON al.id = a.admin_level_id "
+        " WHERE u.person_id = $1::int AND al.name IN ('club', 'super') LIMIT 1", {std::to_string(personId)});
+    if (ok.empty()) { *error = jsonError(HttpStatus::FORBIDDEN, "Contacts are for club admins' phones."); return false; }
+    return true;
+}
+}  // namespace
+
+// POST /device/pending {limit?, first?} → {contacts: [...], remaining}
+Response ContactsController::handleDevicePending(const Request& request) {
+    long long deviceId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!adminDevice(request, &deviceId, &error)) return error;
+    int limit = 200;
+    try { auto b = json::parse(request.getBody().empty() ? "{}" : request.getBody()); limit = b.value("limit", 200); } catch (...) {}
+    limit = std::max(1, std::min(limit, 500));
+    try {
+        std::map<std::string, std::string> have;
+        for (const auto& r : Database::getInstance()->query(
+                 "SELECT uid, fp FROM phone_contact_sync WHERE device_id = $1::int", {std::to_string(deviceId)}))
+            have[r["uid"].c_str()] = r["fp"].c_str();
+        MessageCopy copy;
+        const std::string org = copy.render("contacts", "org", {}).body;
+        json out = json::array();
+        int remaining = 0;
+        for (const auto& r : model_->list(0)) {
+            json c = deviceCard(copy, org, r);
+            auto it = have.find(c["uid"].get<std::string>());
+            if (it != have.end() && it->second == c["fp"].get<std::string>()) continue;
+            if (static_cast<int>(out.size()) < limit) out.push_back(std::move(c)); else ++remaining;
+        }
+        Database::getInstance()->query("UPDATE phone_relay_devices SET last_seen_at = now() WHERE id = $1::int", {std::to_string(deviceId)});
+        return jsonOut(HttpStatus::OK, {{"contacts", out}, {"remaining", remaining}});
+    } catch (const std::exception& e) {
+        std::cerr << "ContactsController::handleDevicePending: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not list contacts");
+    }
+}
+
+// POST /device/ack {done: [{uid, fp}]} — saved on the phone.
+Response ContactsController::handleDeviceAck(const Request& request) {
+    long long deviceId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!adminDevice(request, &deviceId, &error)) return error;
+    json body;
+    try { body = json::parse(request.getBody().empty() ? "{}" : request.getBody()); }
+    catch (const std::exception& e) { return jsonError(HttpStatus::BAD_REQUEST, std::string("Invalid JSON: ") + e.what()); }
+    if (!body.contains("done") || !body["done"].is_array()) return jsonError(HttpStatus::BAD_REQUEST, "done must be an array");
+    int n = 0;
+    try {
+        auto* db = Database::getInstance();
+        for (const auto& d : body["done"]) {
+            if (!d.is_object() || !d.contains("uid") || !d.contains("fp") || !d["uid"].is_string() || !d["fp"].is_string()) continue;
+            db->query("INSERT INTO phone_contact_sync (device_id, uid, fp) VALUES ($1::int, $2, $3) "
+                      "ON CONFLICT (device_id, uid) DO UPDATE SET fp = EXCLUDED.fp, synced_at = now()",
+                      {std::to_string(deviceId), d["uid"].get<std::string>().substr(0, 80), d["fp"].get<std::string>().substr(0, 64)});
+            ++n;
+        }
+        return jsonOut(HttpStatus::OK, {{"saved", n}});
+    } catch (const std::exception& e) {
+        std::cerr << "ContactsController::handleDeviceAck: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not record");
     }
 }
