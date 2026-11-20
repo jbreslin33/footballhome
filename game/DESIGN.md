@@ -11458,3 +11458,34 @@ has no caller). Still: central free kicks within 25 m shot 51% (75%).
 Next: the set-piece shape — who goes into the box for our free kicks and corners, who marks there, and the wait before the
 kick (real dead time before a free kick 32.5 s; ours the same, spent before the taker touches it). Goldens unchanged; tests
 23/23, lint clean.
+
+### 8.289 G5.183 — both sides take the set-piece shape at a corner and a free kick bound for the box (no migration; off by rows)
+
+From §8.288's "next". New `benchmarks_statsbomb360_setpiece.py` (StatsBomb Open Data 360, every men's set; freeze frame at
+the kick, kept only when the box's core is in view): outfielders in their box at a corner 5.4 attackers / 8.9 defenders, 3.5
+defenders in the six-yard box; free kick into the box from 18-35 m 3.9 / 5.8, from 35-52 m 1.4 / 2.3; within 25 m (box's
+width) 6.9 / 9.3, 6.4 / 9.2, 5.8 / 8.6. Same cut in fh-game-match as **AT THE KICK**. Ours stood in open-play shape: corners
+~2.3 / 3.7, free kicks ~0.5 / ~1.
+
+**Change:** `Brain::setPieceShape` (from `ordersFor`, before the acting state): while a corner, or a free kick 18-52 m out that
+the roll sends into the box, waits, each outfielder bar the taker may be given a spot — `buildSetPieceShape`, once a restart
+(keyed by spot, side, kind), each spot taking the nearest free outfielder of its side. Corners: three zonal defenders on the
+six-yard line, six attackers (near post, middle, far, penalty spot, 13 m, 20 m edge), a defender goal-side of each man in the
+box, one on the edge. Free kicks: a wall 9.15 m off the ball on its line to the goal's middle (3 men within 35 m, else 1),
+attackers on a line at 12.5 m (18-35) / 17.5 m (35-52), defenders a metre goal-side of them plus a cover. The rest play on as
+before. `Brain::fkIntoBox` — the into-the-box roll now hashes the restart spot (not the tick), so the shape held and the taker's
+choice (`playFreeKick`) agree. `physics.restart.set_shape` (code default 1; 0 = off).
+
+| at the kick (ours / real) | in their box att / def | def in 6-yd box | within 25 m att / def |
+|---|---|---|---|
+| corner | 5.0 / 9.1 (5.4 / 8.9) | 4.0 (3.5) | 6.1 / 9.2 (6.9 / 9.3) |
+| fk 18-35 into box | 2.8 / 3.5 (3.9 / 5.8) | — | 4.7 / 6.1 (6.4 / 9.2) |
+| fk 35-52 into box | 2.1 / 1.8 (1.4 / 2.3) | — | 5.1 / 6.2 (5.8 / 8.6) |
+
+Box headers 5.0 → 6.0 a team-match (8.56): from corners 1.35 → 1.94 (2.01), free kicks 0.27 → 0.74 (1.15).
+Card 7 / 7 / 19 → **8 ok / 6 off / 19 OFF** (`card_G5.183.txt`): free kicks to ok, offsides OFF → off (1.16 → 1.70); goals 2.83
+→ 2.66, conversion 17.8 → 16.6%, headed clearances 11.7 → 13.2 (15.8), corners 2.03 → 2.30 (5.4).
+
+Still: free kicks from 18-35 m are a man or two short each side — the kick comes 1.0-1.3 s (median) after the taker reaches
+the ball, before the men arrive. Next: the wait before a set kick (real dead time ~32 s; ours is spent before the taker
+touches it, not with the shape set). Goldens unchanged; tests 23/23, lint clean.

@@ -94,6 +94,9 @@ private:
     bool playThrow(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playCorner(core::SlotIndex slot, const core::World& world, Orders& out) const;
     bool playFreeKick(core::SlotIndex slot, const core::World& world, Orders& out) const;   // G5.182 (§8.288)
+    bool fkIntoBox(const core::World& world) const;   // G5.183: the free kick's into-the-box roll, made once at the award (its spot)
+    bool setPieceShape(core::SlotIndex slot, const core::World& world, Orders& out) const;   // G5.183 (§8.289)
+    void buildSetPieceShape(const core::World& world, bool corner, math::Fixed64 d) const;
     bool boxDelivery(core::SlotIndex slot, const core::World& world, Orders& out, math::Fixed64 end, math::Vec2 from) const;
     bool playPenalty(core::SlotIndex slot, const core::World& world, Orders& out) const;
     void penaltyPlaces(core::SlotIndex slot, const core::World& world, Orders& o) const;
@@ -138,11 +141,15 @@ private:
                       penalty_arc_m = math::Fixed64::fromFraction(915, 100),
                       drop_law_m = math::Fixed64::fromInt(4);   // §8.250 Law 8
         math::Fixed64 fk_box[4][2]{};   // G5.182 (§8.288): a free kick's share delivered into their box [0-25 / 25-35 / 35-52 / 52+ m off their line][inside / wide]
+        bool set_shape = true;   // G5.183 (§8.289): physics.restart.set_shape (0 = off)
     } restart_play_;
     bool contest_full_ = false;   // §8.256: the contester of their high ball runs flat out
     bool contest_brake_ = false;   // §8.258: ... braked to arrive on the spot
     std::uint8_t hold_team_ = 0xFF;
     std::vector<std::pair<std::uint8_t, math::Vec2>> hold_;
+    // G5.183 (§8.289): the set-piece shape of a corner / a free kick going into the box — both sides, one assignment a restart
+    struct SetPieceShape { std::uint64_t key = ~0ull; std::uint8_t has[32]{}; math::Vec2 at[32]{}; };
+    mutable SetPieceShape sps_{};
 
     // The body (G4.80 brake to arrive; G5.5 / G5.10 / G5.14 shape caps, DFL-fitted).
     math::Fixed64 arrive_decel_ = math::Fixed64::fromFraction(9, 2);

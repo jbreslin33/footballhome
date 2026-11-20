@@ -74,7 +74,7 @@ Brain::Brain(TeamSetup setup, Fixed64 pitch_half_x, Fixed64 pitch_half_y, Format
 Brain::Brain(const Brain& o)
     : setup_(o.setup_), half_x_(o.half_x_), half_y_(o.half_y_), index_in_team_(o.index_in_team_),
       match_seed_(o.match_seed_), reads_(o.reads_), block_(o.block_), poss_(o.poss_), role_of_slot_(o.role_of_slot_), lone_of_slot_(o.lone_of_slot_), phase_params_(o.phase_params_),
-      think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_),
+      think_tick_(o.think_tick_), restart_play_(o.restart_play_), hold_team_(o.hold_team_), hold_(o.hold_), sps_(o.sps_),
       arrive_decel_(o.arrive_decel_), arrive_through_(o.arrive_through_), shape_tau_(o.shape_tau_),
       shape_tau_ours_(o.shape_tau_ours_), shape_max_(o.shape_max_), defend_max_(o.defend_max_),
       shape_danger_(o.shape_danger_), wb_tuck_y_(o.wb_tuck_y_), tau_back_(o.tau_back_), run_max_(o.run_max_), run_zone_(o.run_zone_), run_tgap_(o.run_tgap_), run_tau_(o.run_tau_), shift_fwd_max_(o.shift_fwd_max_), fwd_back_max_(o.fwd_back_max_), fwd_back_roles_(o.fwd_back_roles_), shape_danger_sprint_(o.shape_danger_sprint_), theirs_shift_y_(o.theirs_shift_y_), hold_walk_m_(o.hold_walk_m_), hold_walk_mps_(o.hold_walk_mps_), hold_walk_far_m_(o.hold_walk_far_m_),
@@ -98,6 +98,7 @@ void Brain::setModelParams(const core::ModelParams& p) {
         static const char* const kN[4] = {"25", "35", "52", "far"};
         for (int a = 0; a < 4; ++a) for (int w = 0; w < 2; ++w)
             restart_play_.fk_box[a][w] = p.fixed(std::string("physics.restart.fk_box_") + kN[a] + (w ? "_wide" : "_inside"), kB[a][w]);
+        restart_play_.set_shape = p.fixed("physics.restart.set_shape", 1000).raw != 0;
     }
     reads_.configure(p);
     block_.configure(p);
@@ -326,9 +327,11 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
                 break;
             }
         if (!held) {
+            if (!setPieceShape(slot, world, o)) {
             const PlayerState* st = players_[slot & 31].machine.current();
             const auto* acting = dynamic_cast<const ActingState*>(st);
             if (!acting || !actAs(acting, slot, world, o)) actAs(DefendingBlock::holdBlockSpot(), slot, world, o);
+            }
         }
     }
     keepLawDistance(slot, world, o);
@@ -549,13 +552,104 @@ bool Brain::playFreeKick(SlotIndex slot, const World& world, Orders& out) const 
     if (!world.freeKickSpell(slot)) return false;
     const auto& me = world.player(slot);
     const Fixed64 end = setup_.team_of_slot[slot] == 0 ? Fixed64::one() : -Fixed64::one();   // the end he attacks
-    const Fixed64 d = half_x_ - me.pos.x * end;
-    const int a = d < Fixed64::fromInt(25) ? 0 : d < Fixed64::fromInt(35) ? 1 : d < Fixed64::fromFraction(105, 2) ? 2 : 3;
-    const int w = math::fx_abs(me.pos.y) >= Fixed64::fromFraction(2016, 100) ? 1 : 0;
-    const Fixed64 u = (core::detNoise(match_seed_, world.ownedAtTick(), slot, 41) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-    if (u >= restart_play_.fk_box[a][w]) return false;
+    if (!fkIntoBox(world)) return false;
     out.why = Why::TakeRestart;
     return boxDelivery(slot, world, out, end, Vec2{me.pos.x, me.pos.y});
+}
+
+// G5.183: one roll a free kick, from its spot (it stays set after the ball is live), so the shape held before it and the
+// taker's choice agree. Bands as fk_box: m off the line the awarded side attacks × inside / wide the box's width.
+bool Brain::fkIntoBox(const World& world) const {
+    const std::uint8_t team = world.restartTeam() != 0xFF ? world.restartTeam() : world.lastTouchTeam();
+    if (team > 1) return false;
+    const Vec3& sp = world.restartSpot();
+    const Fixed64 end = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 d = half_x_ - sp.x * end;
+    const int a = d < Fixed64::fromInt(25) ? 0 : d < Fixed64::fromInt(35) ? 1 : d < Fixed64::fromFraction(105, 2) ? 2 : 3;
+    const int w = math::fx_abs(sp.y) >= Fixed64::fromFraction(2016, 100) ? 1 : 0;
+    const std::uint64_t key = static_cast<std::uint64_t>(sp.x.raw) * 0x9E3779B97F4A7C15ull ^ static_cast<std::uint64_t>(sp.y.raw);
+    const Fixed64 u = (core::detNoise(match_seed_, key, team, 41) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+    return u < restart_play_.fk_box[a][w];
+}
+
+// G5.183 (§8.289): while a corner or a free kick bound for the box waits, both sides take the set-piece shape (StatsBomb 360 at
+// the kick, benchmarks_statsbomb360_setpiece.py: corners 5.4 attackers / 8.9 defenders in the box, 3.5 defenders in the six-yard
+// box; free kicks 18-35 m 3.9 / 5.8, 35-52 m 1.4 / 2.3, ~6 / ~9 within 25 m). Ours stood in open-play shape (corners 2.3 / 3.7,
+// free kicks ~0.5 / ~1). Each spot takes the nearest free outfielder of its side, once a restart; the rest play on as before.
+bool Brain::setPieceShape(SlotIndex slot, const World& world, Orders& out) const {
+    if (!restart_play_.set_shape) return false;
+    const std::uint8_t rt = world.restartTeam();
+    if (rt > 1 || world.isKeeper(slot)) return false;
+    const core::MatchEventType k = world.restartKind();
+    const bool corner = k == core::MatchEventType::Corner;
+    const Vec3& sp = world.restartSpot();
+    const Fixed64 end = rt == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 d = half_x_ - sp.x * end;
+    const bool fk = (k == core::MatchEventType::FreeKick || k == core::MatchEventType::Offside) && d >= Fixed64::fromInt(18) &&
+                    d < Fixed64::fromFraction(105, 2) && fkIntoBox(world);
+    if (!corner && !fk) return false;
+    if (static_cast<int>(slot) == restartTaker(world, rt)) return false;
+    const std::uint64_t key = (static_cast<std::uint64_t>(sp.x.raw) * 0x9E3779B97F4A7C15ull ^ static_cast<std::uint64_t>(sp.y.raw)) + rt * 7 + static_cast<std::uint64_t>(k) * 131;
+    if (sps_.key != key) { sps_.key = key; buildSetPieceShape(world, corner, d); }
+    if (!sps_.has[slot & 31]) return false;
+    const auto& me = world.player(slot);
+    const Vec2 at = sps_.at[slot & 31];
+    out.move.move = seek(me.pos, at, Fixed64::fromFraction(1, 2));
+    out.move.face = Vec2{sp.x - me.pos.x, sp.y - me.pos.y};
+    out.why = Why::Hold;
+    out.target = at;
+    return true;
+}
+
+void Brain::buildSetPieceShape(const World& world, bool corner, Fixed64 d) const {
+    for (auto& h : sps_.has) h = 0;
+    const std::uint8_t rt = world.restartTeam();
+    const Vec3& sp = world.restartSpot();
+    const Fixed64 end = rt == 0 ? Fixed64::one() : -Fixed64::one();
+    const Fixed64 ys = sp.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();   // the ball's side
+    const int taker = restartTaker(world, rt);
+    auto pt = [&](int depth_dm, int y_dm) { return Vec2{end * (half_x_ - Fixed64::fromFraction(depth_dm, 10)), ys * Fixed64::fromFraction(y_dm, 10)}; };
+    auto take = [&](Vec2 at, bool attackers) {   // the nearest free outfielder of that side
+        int best = -1; Fixed64 bd{};
+        for (SlotIndex i = 0; i < world.playerCount(); ++i) {
+            if (sps_.has[i & 31] || world.isKeeper(i) || static_cast<int>(i) == taker || (setup_.team_of_slot[i] == rt) != attackers) continue;
+            const Fixed64 q = math::lengthSquared(Vec2{world.player(i).pos.x - at.x, world.player(i).pos.y - at.y});
+            if (best < 0 || q < bd) { best = static_cast<int>(i); bd = q; }
+        }
+        if (best >= 0) { sps_.has[best & 31] = 1; sps_.at[best & 31] = at; }
+    };
+    // Spots in dm: (m off their line × 10, across × 10 toward the ball's side).
+    if (corner) {
+        static const int kA[6][2] = {{60, 20}, {80, -10}, {110, 40}, {100, -60}, {130, 0}, {200, 0}};
+        static const int kZ[3][2] = {{25, 30}, {35, 0}, {35, -30}};
+        for (const auto& z : kZ) take(pt(z[0], z[1]), false);
+        for (const auto& a : kA) take(pt(a[0], a[1]), true);
+        for (int i = 0; i < 5; ++i) take(pt(kA[i][0] - 10, kA[i][1]), false);   // goal-side of each man in the box
+        take(pt(90, 70), false);
+        return;
+    }
+    const bool near = d < Fixed64::fromInt(35);
+    // The wall: on the ball's line to the goal's middle, 9.15 m off the ball.
+    const Vec2 goal{end * half_x_, Fixed64::zero()};
+    const Vec2 dir = math::normalized(Vec2{goal.x - sp.x, goal.y - sp.y});
+    const Vec2 side{-dir.y, dir.x};
+    const Fixed64 w915 = Fixed64::fromFraction(915, 100);
+    const int walls = near ? 3 : 1;
+    for (int i = 0; i < walls; ++i) {
+        const Fixed64 off = Fixed64::fromFraction(6 * (2 * i - (walls - 1)), 10);
+        take(Vec2{sp.x + dir.x * w915 + side.x * off, sp.y + dir.y * w915 + side.y * off}, false);
+    }
+    if (near) {
+        static const int kA[6][2] = {{125, -90}, {125, -30}, {125, 30}, {125, 90}, {190, 60}, {190, -60}};
+        static const int kD[5][2] = {{120, -90}, {120, -30}, {120, 30}, {120, 90}, {80, 0}};
+        for (const auto& a : kA) take(pt(a[0], a[1]), true);
+        for (const auto& z : kD) take(pt(z[0], z[1]), false);
+    } else {
+        static const int kA[6][2] = {{175, -90}, {175, -30}, {175, 30}, {175, 90}, {125, 50}, {125, -50}};
+        static const int kD[7][2] = {{170, -120}, {170, -60}, {170, 0}, {170, 60}, {170, 120}, {120, 40}, {120, -40}};
+        for (const auto& a : kA) take(pt(a[0], a[1]), true);
+        for (const auto& z : kD) take(pt(z[0], z[1]), false);
+    }
 }
 
 // A lofted ball to the freest mate 3-14 m off their line within 12 m of the middle (else 11 m out, central) — the corner's.

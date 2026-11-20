@@ -116,6 +116,7 @@ struct Stats {
     int wps_tm = -1, wps_won = 0; long wps_k0 = 0;
     std::vector<double> fbd_a[2][3][3], fbd_o[2][3][3], fbd_a5[2][3][3];   // §8.280 FB DEPTH [near/far][ball band][age]: m ahead of the ball, off his line; ahead, those within 5 m
     long cl_n[8] = {}, cl_c[8] = {}, cl_t[8] = {}, hc_n[8] = {}, hc_c[8] = {}, hc_t[8] = {};
+    long atk_n[3] = {}; double atk_c[3][5] = {};   // §8.289 AT THE KICK [corner / fk 18-35 into box / fk 35-52 into box]: attackers, defenders in their box, defenders in the 6-yd box, attackers / defenders within 25 m (box's width)
     long bxh[6] = {}, fkb_n[8] = {}, fkb_box[8] = {}, fkb_shot[8] = {}, fkb_all = 0, fkb_lost = 0; std::vector<double> fkb_hold;   // §8.288 + FREE KICKS by spot (0-25/25-35/35-52/52+ x inside/wide): into their box / shot   // §8.288 BOX HEADERS by delivery: cross / corner / free kick / long ball / throw-in / other
     long hdr_n[10] = {}, hdr_k[10][3] = {}, hdr_nod_own[10] = {}, hdr_nod_end[10] = {};   // §8.287 HEADERS by spot (5 bands x inside/wide): kind clear / at goal / nod; a nod's next owner ours / anyone   // §8.286 foot clearances by spot; their corner / throw-in
     long bs_st[4] = {}, bs_runs[4] = {}; std::vector<int> bs_len[4];   // §8.285 BALL STATE: on a man / contested / travelling / loose (5 Hz)
@@ -766,6 +767,22 @@ int main(int argc, char** argv) {
                 kv0 = std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()); { const int kd = W.lastKickKind(*before); kkind = kd == 2 ? 3 : W.lastKickDie(*before) ? 2 : kd == 1 ? 1 : 0; }   // §8.236: 0 short / 1 ground to feet / 2 die-at / 3 lofted
                 last_kick_own = hx + W.player(*before).pos.x.toDouble() * (last_kick_team == 0 ? 1.0 : -1.0);
                 const bool fk_kick = fk_slot >= 0 && *before == fk_slot; fk_just = fk_kick; if (fk_kick) S.fkb_hold.push_back((k - fk_k) / 30.0); fk_slot = -1;
+                {   // §8.289 AT THE KICK: who is in their box when a corner or a free kick into the box is struck
+                    const double sgk = last_kick_team == 0 ? 1.0 : -1.0, d = hx - W.player(*before).pos.x.toDouble() * sgk;
+                    const auto& tg = s.lastOrders()[*before].target; const bool tbox = hx - tg.x.toDouble() * sgk < 18 && std::fabs(tg.y.toDouble()) < 20.16;
+                    const int sk = (own_set && own_rk == static_cast<int>(core::MatchEventType::Corner)) ? 0 : (fk_kick && tbox && d >= 18 && d < 35) ? 1 : (fk_kick && tbox && d >= 35 && d < 52.5) ? 2 : -1;
+                    if (sk >= 0) {
+                        ++S.atk_n[sk];
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            if (j == *before || W.isKeeper(j)) continue;
+                            const double off = hx - W.player(j).pos.x.toDouble() * sgk, ay = std::fabs(W.player(j).pos.y.toDouble());
+                            const bool att = W.player(j).team == last_kick_team;
+                            if (off < 16.5 && ay < 20.16) S.atk_c[sk][att ? 0 : 1] += 1;
+                            if (!att && off < 5.5 && ay < 9.16) S.atk_c[sk][2] += 1;
+                            if (off < 25 && ay < 20.16) S.atk_c[sk][att ? 3 : 4] += 1;
+                        }
+                    }
+                }
                 if (fk_kick) {   // §8.288 FREE KICKS by spot
                     const double sgk = last_kick_team == 0 ? 1.0 : -1.0, d = hx - W.player(*before).pos.x.toDouble() * sgk;
                     const int fb = (d < 25 ? 0 : d < 35 ? 1 : d < 52.5 ? 2 : 3) * 2 + (std::fabs(W.player(*before).pos.y.toDouble()) >= 20.16 ? 1 : 0);
@@ -3268,6 +3285,14 @@ int main(int argc, char** argv) {
             std::printf("\n");
             static const double fr[8][3] = {{0.48, 17.9, 74.7}, {0.81, 86.4, 2.3}, {0.63, 57.6, 23.8}, {0.61, 71.1, 0.2}, {1.43, 31.2, 0.1}, {1.23, 28.1, 0.0}, {4.59, 5.4, 0.0}, {2.79, 7.1, 0.0}};
             static const char* const fn[4] = {"0-25", "25-35", "35-52", "52+"};
+            {   // §8.289 AT THE KICK v StatsBomb 360 (benchmarks_statsbomb360_setpiece.py)
+                static const double rr[3][5] = {{5.4, 8.9, 3.5, 6.9, 9.3}, {3.9, 5.8, 0.0, 6.4, 9.2}, {1.4, 2.3, 0.0, 5.8, 8.6}};
+                static const char* const kn[3] = {"corner", "fk 18-35 into box", "fk 35-52 into box"};
+                std::printf("      AT THE KICK (outfielders; StatsBomb 360): n a team-match | in their box attackers, defenders | defenders in the 6-yd box | within 25 m attackers, defenders\n");
+                for (int k2 = 0; k2 < 3; ++k2) { const double n = std::max(1L, S.atk_n[k2]);
+                    std::printf("        %-18s %.2f | %.1f (%.1f), %.1f (%.1f) | %.1f (%.1f) | %.1f (%.1f), %.1f (%.1f)\n", kn[k2], S.atk_n[k2] / std::max(1.0, 2.0 * matches),
+                                S.atk_c[k2][0] / n, rr[k2][0], S.atk_c[k2][1] / n, rr[k2][1], S.atk_c[k2][2] / n, rr[k2][2], S.atk_c[k2][3] / n, rr[k2][3], S.atk_c[k2][4] / n, rr[k2][4]); }
+            }
             std::printf("      FREE KICKS by spot (m off their goal line; StatsBomb PL 15/16): a team-match | aimed into their box %% | shot %%; given %.2f a team-match, never kicked by the taker %.1f%%, taker on the ball median %.1f s\n",
                         S.fkb_all / std::max(1.0, 2.0 * matches), 100.0 * S.fkb_lost / std::max(1L, S.fkb_all), [](std::vector<double> a) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[a.size() / 2]; }(S.fkb_hold));
             for (int b = 0; b < 8; ++b) std::printf("        %-5s %-6s %.2f (%.2f) | %.1f (%.1f) | %.1f (%.1f)\n", fn[b / 2], b % 2 ? "wide" : "inside", S.fkb_n[b] / std::max(1.0, 2.0 * matches), fr[b][0],
