@@ -11795,3 +11795,24 @@ chances to dive: tackles 16.9, fouls 11.4, free kicks 11.1 (12.6). Seeds 1000-40
 
 0.9 puts the sum (fouls + tackles 32.4) on G5.147's real 32.8; headed clearances 13.9 → 14.9 to ok. Goals 1.92 / 2.17 /
 2.05 across the three runs — seed noise about ~2.0-2.2 (1.35). `card_G5.196.txt`. Goldens unchanged (row); tests 23/23.
+
+### 8.303 G5.197 — get in line of the shot (mig 1621; shipped)
+
+From §8.292 / §8.299: shots blocked 16.3% (29.1), on target 39.5 (33.0), off 44.2 (38.0) — the lane, not the block: LANE
+±1 m at the strike nobody 72-78% (28.6), nearest outfielder to the lane median 3.4 m (0.56); per man in the lane the block
+rate is real. The presser arrives beside the shooter (§8.293) and nobody else steps across.
+
+**Change** [FH coaching: get in line of the shot] (Brain::intoTheLane; `physics.block.lane_m`, code 0 = off, row 3;
+`lane_range_m` 30): their man on the ball within lane_range_m of our goal centre, a holder or marker of ours goal-side of him
+(1.5 m+ along the ball-goal line, 2 m+ short of the goal) and within lane_m of that line moves his target onto it at his
+distance along. Seeds 1000-4000 × 8, against G5.196 (real):
+
+| lane_m | blocked % | goals | conversion % | on / off target % | nearest to lane (seed 1000) | card |
+|---|---|---|---|---|---|---|
+| 0 (G5.196) | 16.3 | 2.17 | 16.3 | 39.5 / 44.2 | 3.4 m | 11 / 5 / 17 |
+| **3 (row)** | **19.5** | **1.94** | 15.5 | 38.3 / 42.2 ok | 2.83 | 11 / 6 / 16 |
+| 5 | 19.3 | 2.17 | 17.9 | 37.4 / 43.3 | 2.79 | 8 / 7 / 18 |
+
+At 3 m also shots 25+, scored 12-18, take-ons to ok; penalties 0.09 → 0.02 (OFF), headed clearances, free kicks, take-on
+success to off. 5 m pulls men from wider without more blocks. Still: the lane empty 72% of strikes (28.6) — the bodies
+aren't near enough the line to step in. `card_G5.197.txt`. Goldens unchanged (row); tests 23/23, lint clean.

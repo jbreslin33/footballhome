@@ -147,6 +147,8 @@ void Brain::setModelParams(const core::ModelParams& p) {
     carry_keep_ = p.fixed("physics.onball.carry_keep", 1000).raw > 0;   // G5.127 (§8.228): 0 = he walks at the man he'll pass to, as before
     fwd_back_roles_ = p.integer("physics.body.fwd_back_roles", 56);   // bit per Role CB FB DM AM WIDE ST; 56 = AM WIDE ST
     shape_danger_sprint_ = p.integer("physics.body.shape_danger_sprint", 0);
+    lane_m_ = p.fixed("physics.block.lane_m", 0);              // G5.197 (§8.303), 0 = off
+    lane_range_m_ = p.fixed("physics.block.lane_range_m", 30000);
     theirs_shift_y_ = p.fixed("physics.shape.theirs_shift_y", 0);
     theirs_cap_y_ = p.fixed("physics.shape.theirs_cap_y_m", 0);
     ours_shift_y_ = p.fixed("physics.shape.ours_shift_y", 0);
@@ -335,6 +337,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
             }
         }
     }
+    intoTheLane(slot, world, o);
     keepLawDistance(slot, world, o);
     outOfTheirBox(slot, world, o);
     penaltyPlaces(slot, world, o);
@@ -935,6 +938,33 @@ bool Brain::inDanger(SlotIndex slot, const World& world) const {
     const bool theirs = b.owner ? setup_.team_of_slot[*b.owner] != team : world.lastTouchTeam() != team;
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     return theirs && b.pos.x * sg + half_x_ < shape_danger_;
+}
+
+// G5.197 (§8.303): "get in line of the shot" [FH coaching]. Real shots have an outfielder a median 0.56 m off the ball-goal
+// line (StatsBomb PL 15/16 freeze frames; 1+ within 1 m 71%); ours 3.4 m (27%) — the presser arrives beside the shooter and
+// nobody else steps across. With their man on the ball within lane_range_m of our goal centre, a holder or marker of ours
+// goal-side of him and within lane_m of that line moves his target onto it, keeping his distance along it.
+void Brain::intoTheLane(SlotIndex slot, const World& world, Orders& o) const {
+    if (lane_m_.raw <= 0 || (o.why != Why::Hold && o.why != Why::Mark)) return;
+    const auto& b = world.ball();
+    if (!b.owner || world.restartTeam() != 0xFF || world.outStage() != 0 || world.isKeeper(slot)) return;
+    const std::uint8_t team = setup_.team_of_slot[slot];
+    if (setup_.team_of_slot[*b.owner] == team) return;
+    const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    const Vec2 g{-sg * half_x_, Fixed64::zero()};   // our goal centre
+    const Vec2 bp{b.pos.x, b.pos.y};
+    const Vec2 d{g.x - bp.x, g.y - bp.y};
+    const Fixed64 L = math::length(d);
+    if (L.raw <= 0 || L > lane_range_m_) return;
+    const Vec2 u{d.x / L, d.y / L};
+    const auto& me = world.player(slot);
+    const Vec2 rp{me.pos.x - bp.x, me.pos.y - bp.y};
+    const Fixed64 along = rp.x * u.x + rp.y * u.y;
+    if (along < Fixed64::fromFraction(3, 2) || along > L - Fixed64::fromInt(2)) return;   // goal-side of the ball, in front of the goal
+    const Fixed64 perp = math::fx_abs(rp.y * u.x - rp.x * u.y);
+    if (perp > lane_m_) return;
+    o.target = Vec2{bp.x + u.x * along, bp.y + u.y * along};
+    o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 4));
 }
 
 void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 lead) const {

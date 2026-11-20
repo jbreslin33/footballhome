@@ -102,6 +102,7 @@ private:
     void penaltyPlaces(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void keepLawDistance(core::SlotIndex slot, const core::World& world, Orders& o) const;
     void outOfTheirBox(core::SlotIndex slot, const core::World& world, Orders& o) const;
+    void intoTheLane(core::SlotIndex slot, const core::World& world, Orders& o) const;   // G5.197 (§8.303)
     void namePass(core::SlotIndex slot, const core::World& world, Orders& o) const;
     math::Vec2 blockLead(core::SlotIndex slot, const core::World& world, const Orders& o) const;
     void capAcross(core::SlotIndex slot, const core::World& world, Orders& o) const;
@@ -161,6 +162,9 @@ private:
     math::Fixed64 hold_walk_m_{}, hold_walk_mps_ = math::Fixed64::fromFraction(3, 2), hold_walk_far_m_{};   // G5.137 (§8.240): our ball, near his spot, ball not going forward: walk (0 = off)
     bool carry_keep_ = true;   // G5.127 (§8.228): leading a pass, the man on the ball keeps his carry — namePass re-aims the kick, not his feet
     std::int64_t shape_danger_sprint_ = 0;
+    // G5.197 (§8.303): their carrier within lane_range_m of our goal centre — a holder / marker goal-side of him within
+    // lane_m of the ball-goal line steps onto it ("get in line of the shot"); 0 = off.
+    math::Fixed64 lane_m_{}, lane_range_m_{};
     // Across (G5.7): his base's y plus the ball's y × shift, capped.
     math::Fixed64 theirs_shift_y_{}, theirs_cap_y_{}, ours_shift_y_{}, ours_cap_y_{};
     math::Fixed64 trainer_recover_m_ = math::Fixed64::fromInt(5);
