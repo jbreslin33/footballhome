@@ -78,6 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
+    long sbk[2][5] = {};   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
@@ -314,7 +315,8 @@ int main(int argc, char** argv) {
         int so_team = -1, so_kind = 4, so_taker = -1, so_prt = 0xFF; bool so_other = true, so_direct = false; long so_k = 0;
         core::MatchEventType so_prk = core::MatchEventType::Kickoff;
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
-        auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
+        long fin_k = 0;   // §8.310: the tick, for fin
+        auto fin = [&](int kd) { if (kd >= 2) { const double ts = (fin_k - shot.tick) / 30.0; ++S.sbk[shot.cell >= 0 ? 0 : 1][kd == 3 ? 4 : ts < 0.3 ? 0 : ts < 1 ? 1 : ts < 2 ? 2 : 3]; } ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         int cl_band = -1, hc_band = -1; int hc_prev = 0;
         bool fk_wait = false, fk_just = false; int fk_slot = -1; long fk_k = 0;   // §8.288 a free kick (or offside FK) pending; its taker, once on the ball
@@ -364,6 +366,7 @@ int main(int argc, char** argv) {
         int mg[2] = {0, 0}; bool ft = false, dead_skip = false;   // §8.250: goals this match (the World resets at full time); a half-time kick-off isn't a dead spell (DFL: within halves)
         const long kmax = cfg.half_length_ticks ? ticks * 2 : ticks;
         for (long k = 0; k < kmax && !ft; ++k) {
+            fin_k = k;
             const auto before = W.ball().owner;
             s.tickOnce();
             if (W.ball().owner) rc_own_k[W.player(*W.ball().owner).team & 1] = k;   // §8.252
@@ -3274,6 +3277,7 @@ int main(int argc, char** argv) {
         }
         std::printf("\n   how they ended:");
         for (int i = 0; i < 5; ++i) std::printf(" %s %.1f%%;", kOutName[i], 100.0 * S.shot_out[i] / sh);
+        { static const char* tl[5] = {"defender <0.3 s", "0.3-1 s", "1-2 s", "2+ s", "out untouched"}; for (int a = 0; a < 2; ++a) { std::printf("\n   §8.310 aimed %s target, ended:", a ? "OFF" : "on"); for (int c = 0; c < 5; ++c) std::printf(" %s %ld;", tl[c], S.sbk[a][c]); } }
         std::printf("\n   goals by the last kick before them:");
         for (int i = 0; i <= ai::kWhyCount; ++i) if (S.goal_by[i]) std::printf(" %s %ld;", i < ai::kWhyCount ? ai::kWhyNames[i] : "none", S.goal_by[i]);
         std::printf(" (own goals %ld)", S.goal_own);

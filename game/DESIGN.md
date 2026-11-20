@@ -11928,3 +11928,22 @@ own-third losses unchanged (read ours / ours 0.81-1.12 lost; total ~3.5); goals 
 
 Next: off target up 8 points — the shooters' lane read now sees the bodies it missed and the shot goes wide of them?
 Then the kick off the chosen pass (28-33% lost) and the risk taken from our third. Tests 23/23, lint clean.
+
+### 8.310 G5.204 — the off-target rise is fewer bodies at the strike (measured; no game change)
+
+From §8.309 (off target 40.5 → 48.3%). Harness §8.310 line: every shot by its aim (on / off the frame) and how it ended —
+a defender's touch by s after the strike, or out untouched. Seeds 1000-4000 × 8, `roll_stride` 3 v 1 (sums):
+
+| aimed | stride | defender < 0.3 s | 0.3-1 s | 1 s+ | out untouched |
+|---|---|---|---|---|---|
+| on | 3 | 85 | 10 | 0 | 11 |
+| on | 1 | 71 | 5 | 0 | 12 |
+| off | 3 | 79 | 3 | 0 | 346 |
+| off | 1 | 59 | 2 | 0 | 380 |
+
+Not a scoring artefact: no defender reaches a loose or wide shot after 1 s, every "blocked" is a body at the strike (as
+StatsBomb's Blocked). The aim is unchanged (aimed off 428 v 441). **Blocks fell ~20%** — the nearest outfield opponent to
+the shooter p25 / median 1.14 / 1.89 → 1.26 / 1.95 m; the blocked-with-nobody-in-the-lane share 6.7 → 2.9%. Both arms
+block far under real (17-20% v 29.1): nearest opponent to the lane median 2-3 m (0.56), nobody in it 66% (28.6). The
+stride only nudged a deficit G5.197 (§8.303) left. Next: who should be in the lane at the strike and isn't. Harness only;
+tests 23/23.
