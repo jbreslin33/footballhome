@@ -709,7 +709,7 @@ int main(int argc, char** argv) {
                     if (cl_band >= 0 && dead_why == static_cast<int>(ai::Why::Clear)) { if (kd == 4) ++S.cl_c[cl_band]; else if (kd == 2) ++S.cl_t[cl_band]; }   // §8.286
                     if (hc_band >= 0) { if (kd == 4) ++S.hc_c[hc_band]; else if (kd == 2) ++S.hc_t[hc_band]; }
                     cl_band = -1; hc_band = -1;
-                    if (kd == 3 || kd == 4) { ++S.out_by[kd - 3][dead_why]; if (std::getenv("GAME_OUT_TRACE") && dead_why != ai::kWhyCount) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); } dead_k0 = -1; dead_kind = 0; dead_skip = false;
+                    if (kd == 3 || kd == 4) { ++S.out_by[kd - 3][dead_why]; if (std::getenv("GAME_OUT_TRACE")) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); } dead_k0 = -1; dead_kind = 0; dead_skip = false;
                 }
             }
             if (dead_trace && k % 300 == 0 && W.restartTeam() != 0xFF)

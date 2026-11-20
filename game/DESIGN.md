@@ -11731,3 +11731,19 @@ clearances 13.9 → 15.1 (15.8) and aerial duels 39.0 → 41.8 (44.3) both to ok
 61.0 → 60.4%; parried now 20-55% by cell. Card 9 / 7 / 17 unchanged in count (`card_G5.192.txt`; shots 12-18 30 → 34%,
 tackles 18.0 → 16.4 to OFF; free kicks, switches to off). Goldens unchanged; tests 23/23, lint clean. Next: the wide
 final third — passes into the crossing zone 6.75 (12.9), central recycling (passes from 35-70 m central 195 v 134).
+
+### 8.299 G5.193 — a carrier never runs it over his own goal line (mig 1611; shipped — a G5.190 bug)
+
+From §8.298's corner causes: "carried out" 1.8-2.1 corners a team-match (real dispossessed 0.43 + dribble 0.23) — 0.50 at
+G5.187, 2.25 at G5.190. `GAME_OUT_TRACE` (the harness trace now prints carried-out goal kicks / corners too; kind 3 = goal
+kick, 4 = corner): our **own defenders, unpressed (nearest of theirs 9-16 m), carrying it over their own goal line at
+5-8 m/s after 4-8 s on it**, wanting to pass — G5.190's free hold kept them on it, and G5.141's edge turned a carry back
+off the touchline and *their* goal line only.
+
+**Fix** (Possession::carryDir; `physics.onball.carry_edge_own`, code off, row on): within `carry_edge_m` (3 m) of his own
+goal line his line turns back in, as the other edges do.
+
+Seeds 1000-4000 × 8, against G5.192 (real): corners carried out ~2.0 → 0.4-0.9; **corners 4.34 → 3.08** (5.4) — G5.192's
+4.34 carried ~1.3 of these; its parries stand (off a shot 1.1-1.25). **Goals 2.28 → 1.92** (1.35). Card 9 / 7 / 17 → **11 / 7
+/ 15** (`card_G5.193.txt`): scored 25+ and 12-18, on target, shots <12, penalties to ok; switches, shots 18-25 to OFF,
+take-ons, aerial duels, headed clearances to off. Ball in play 61.3%. Goldens unchanged; tests 23/23, lint clean.

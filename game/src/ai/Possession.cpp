@@ -217,6 +217,9 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         const Fixed64 hx = w.pitchHalfX(), hy = w.pitchHalfY();
         if (math::fx_abs(sp.y) > hy - P.edge_m && (dir.y * sp.y).raw > 0) dir.y = -dir.y;
         if (hx - sp.x * v.sg < P.edge_m && (dir.x * v.sg).raw > 0) dir.x = -dir.x;
+        // G5.193 (§8.299): and his own goal line — a free man on a long hold (G5.190) ran it over his own line
+        // for a corner, ~1.5 a team-match, unpressed (nearest of theirs 9-16 m).
+        if (P.edge_own && hx + sp.x * v.sg < P.edge_m && (dir.x * v.sg).raw < 0) dir.x = -dir.x;
     }
     return dir;
 }
@@ -1443,6 +1446,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
             }
         }
         edge_m = p.fixed("physics.onball.carry_edge_m", 3000);
+        edge_own = p.fixed("physics.onball.carry_edge_own", 0).raw > 0;   // G5.193 (§8.299), row on
         for (int b = 0; b < 5; ++b) for (int d = 0; d < 3; ++d)   // §8.249
             short_dir[b][d] = p.fixed("physics.pass.short_dir_" + std::to_string(b) + "_" + std::to_string(d), 1000);
         // §8.248: the rolls sit on top of the pick's own long balls (~23% / 21% 40 m+): (real - own) / (1 - own)

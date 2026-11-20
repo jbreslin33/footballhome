@@ -116,6 +116,7 @@ struct PossessionParams {
     // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
+    bool edge_own = false;   // G5.193 (§8.299): the edge also turns him back off his own goal line
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
     math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};
     // G5.188 (§8.294): a foot clearance goes out at the real share by his spot (0-6 / 6-18 / 18-35 / 35+ m off our line x
