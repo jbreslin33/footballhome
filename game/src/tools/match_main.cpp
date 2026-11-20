@@ -78,6 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
+    long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
     long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
     long rel_n[5] = {}, rel_shot[5] = {};
@@ -1159,6 +1160,16 @@ int main(int argc, char** argv) {
             if (before && !b.owner && b.last_kicker == *before && W.restartTeam() == 0xFF && W.outStage() == 0 && !W.isKeeper(*before) &&
                 !(static_cast<int>(*before) == so_taker && !so_other && so_kind != 4)) {   // §8.292 SHOT CHOICE: an open-play release (not the set kick itself)
                 const auto& p = W.player(*before);
+                {   // §8.295 FOOT RELEASES — as benchmarks_statsbomb_360 (open-play foot releases, outfield)
+                    const double own = hx + p.pos.x.toDouble() * (p.team == 0 ? 1.0 : -1.0), ay = std::fabs(p.pos.y.toDouble());
+                    const int z = own < 16.5 && ay < 20.16 ? 0 : own < 35 ? 1 : own < 70 ? 2 : 3;
+                    double dm = 99;
+                    for (std::uint8_t j = 0; j < N; ++j)
+                        if (!W.isKeeper(j) && W.player(j).team != p.team)
+                            dm = std::min(dm, std::hypot(W.player(j).pos.x.toDouble() - p.pos.x.toDouble(), W.player(j).pos.y.toDouble() - p.pos.y.toDouble()));
+                    const int nb = dm < 1.2 ? 0 : dm < 3 ? 1 : dm < 6 ? 2 : 3;
+                    ++S.fr_n[z][nb]; S.fr_c[z][nb] += s.lastOrders()[*before].why == ai::Why::Clear;
+                }
                 const double gx2 = p.team == 0 ? hx : -hx, ds = std::hypot(gx2 - p.pos.x.toDouble(), p.pos.y.toDouble());
                 if (ds < 35) {
                     int g = 0;
@@ -3089,6 +3100,18 @@ int main(int argc, char** argv) {
                         auto v = S.sx_bd_gs[d]; std::sort(v.begin(), v.end());
                         if (v.empty()) continue;
                         std::printf(" %s %d / %d / %d (%d / %d / %d);", bl[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rb[d][0], rb[d][1], rb[d][2]);
+                    }
+                    {   // §8.295 FOOT RELEASES — StatsBomb 360 (300 matches) in brackets
+                        static const double rn[4][4] = {{1.89, 5.91, 5.45, 3.21}, {6.61, 23.87, 24.07, 22.37}, {18.45, 65.71, 75.11, 59.67}, {13.11, 43.80, 35.15, 8.26}};
+                        static const double rc[4][4] = {{46.4, 37.4, 31.2, 12.7}, {5.5, 3.6, 1.7, 0.3}, {0.7, 0.4, 0.1, 0.0}, {0.1, 0.0, 0.0, 0.0}};
+                        static const char* zl[4] = {"own box", "own3", "mid", "fin3"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   FOOT RELEASES (open play, outfield; a team-match [clear %%] by nearest opponent <1.2 / 1.2-3 / 3-6 / 6+ m; real StatsBomb 360 in brackets)");
+                        for (int z = 0; z < 4; ++z) {
+                            std::printf("\n     %-8s", zl[z]);
+                            for (int n = 0; n < 4; ++n)
+                                std::printf(" %.2f (%.2f) [%.1f (%.1f)];", S.fr_n[z][n] / tmo, rn[z][n], 100.0 * S.fr_c[z][n] / std::max(1L, S.fr_n[z][n]), rc[z][n]);
+                        }
                     }
                     {   // §8.292 SHOT CHOICE — benchmarks_statsbomb_360_shotchoice.py (real StatsBomb 360 in brackets)
                         static const double rsp[4][4] = {{88.5, 79.3, 71.1, 63.5}, {66.8, 44.0, 34.4, 30.6}, {24.1, 15.3, 16.6, 19.1}, {4.3, 1.2, 1.9, 2.0}};

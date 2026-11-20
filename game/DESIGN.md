@@ -11645,3 +11645,28 @@ penalties to ok; switches, free kicks, tackles to off). Correct behaviour, real 
 (`card_G5.188.txt`). Still in play 62.6%: the rest of the outs real football gets off a defender — dispossessed 2.3,
 miscontrol 2.1, interception 1.4 throw-ins, and the clearances ours never make. Next: pressing our defenders in their
 third (the clearance count), then the dispossession / miscontrol outs. Goldens unchanged; tests 23/23, lint clean.
+
+### 8.295 G5.189 — our back line is never pressed: the high press is missing (measured; no game change)
+
+From §8.294's "next" (we clear 6.5 a team-match v 12.7). New harness line FOOT RELEASES — every open-play outfield foot
+release by zone (own box / own third / midfield / their third) × the nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+ m) and the
+clearance share — against the same cut from StatsBomb 360 (300 matches, inline in this slice's notes; own box real 16.5 a
+team-match, 31% cleared). Seeds 1000 / 2000 × 8 (real):
+
+| a team-match | <1.2 | 1.2-3 | 3-6 | 6+ |
+|---|---|---|---|---|
+| own box | 0.9-1.4 (1.89) | 1.9-2.0 (5.91) | 3.6-3.8 (5.45) | **6.3-7.2 (3.21)** |
+| own third | 3.6-3.8 (6.61) | 11.2-12.9 (23.87) | 26-28 (24.07) | **51-54 (22.37)** |
+| midfield | 18-21 (18.45) | 77-78 (65.71) | **140-143 (75.11)** | 91-95 (59.67) |
+| their third | 13-15 (13.11) | 47 (43.80) | 33-35 (35.15) | 4-5 (8.26) |
+
+- **The clearance roll is right**: share cleared per cell 40-58 / 37-58 / 23-33 / 15-16% in the own box (46 / 37 / 31 / 13).
+  We clear half as often because our defenders are free: 56% of own-third releases with nobody within 6 m (29%).
+- **It is the press, not the shape**: NEAREST DEFENDER (5 Hz, every frame) is real in every band (70+ 7.1 v 8.0 m) — the
+  forwards stand where real ones stand, but nobody steps to the back line on the ball: DFL pressures with the carrier
+  70+ m off the goal he attacks 42.1 (74.2), 35-52 130.7 (89.0). Their third is real, row for row.
+- The pass excess lives here too: midfield releases 330-335 a team-match (219), our own third 92-96 (77) — an unpressed
+  back line and midfield keep the ball moving.
+
+Next: the high press — when their back line has the ball, a second man steps to the nearest pass (cover the option), the
+presser's trigger in their third. Behaviour unchanged (seeds match G5.188's runs); goldens unchanged; tests 23/23.
