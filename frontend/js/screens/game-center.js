@@ -2153,17 +2153,21 @@ class GameCenterScreen extends EventScreen {
     // for practice and games and then a 2nd teir that we hit up if
     // desparate"): Reserves who haven't said yes, plus Regulars who never
     // answered anything, sit in one closed fold with 📣 Ask Reserves — never
-    // in No Response or Remind all.  A Reserve who says Going plays.
+    // in No Response or Remind all.  A Reserve who answers goes where a
+    // Regular would (owner 11/19 "they should be in reserve cat if they
+    // didn't respond … if they respond they go to that pending spot like
+    // regulars"): Going → ⚠️ Going · Not placed yet for the coach to place,
+    // Not going → ✗ Not going.  Only the unanswered ones sit in 🪑 Reserves.
     const isReserve = (p) => !p.callUp && p.squadStatus === 'standby';
-    const unassignedReserves = this._hasReserves()
-      ? [...unassignedNoResponse, ...unassignedNotGoing].filter(isReserve) : [];
+    const unassignedReserves = this._hasReserves() ? unassignedNoResponse.filter(isReserve) : [];
     if (unassignedReserves.length) {
       const res = new Set(unassignedReserves.map(p => p.id));
-      for (const list of [unassignedNoResponse, unassignedNotGoing])
-        list.splice(0, list.length, ...list.filter(p => !res.has(p.id)));
+      unassignedNoResponse.splice(0, unassignedNoResponse.length, ...unassignedNoResponse.filter(p => !res.has(p.id)));
     }
     if (unassignedNotChasing.length) {
-      (this._hasReserves() ? unassignedReserves : unassignedInactive).push(...unassignedNotChasing);
+      // Never answered = 🪑 Reserves on every team, never 💤 Inactive
+      // (owner 11/20 "there should be no inactive right? isn't it all reserves now for all teams?").
+      unassignedReserves.push(...unassignedNotChasing);
       unassignedNotChasing.length = 0;
     }
     unassignedReserves.sort(this._byLastName);
@@ -2188,7 +2192,9 @@ class GameCenterScreen extends EventScreen {
                       noResponse: [...unassignedNoResponse], notGoing: [...unassignedNotGoing],
                       // 👋 coaches only on the graphic (players never see the row)
                       notChasing: this.isCoach ? [...unassignedInactive] : [],
-                      reserves: this.isCoach ? [...unassignedReserves] : [] };
+                      // 🪑 everyone sees who is a Reserve (owner 11/19 "show reserves
+                      // to players view too … so everyone including them know they are possible")
+                      reserves: [...unassignedReserves] };
 
     const seeAsBar = this._gcSeeAsHtml();
 

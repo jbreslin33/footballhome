@@ -1243,11 +1243,11 @@ class RosterScreenBase extends Screen {
     const byLast = (a, b) => String(a.lastName || '').localeCompare(String(b.lastName || '')) || String(a.firstName || '').localeCompare(String(b.firstName || ''));
     const groupOf = (p) => {
       const c = this.columnCategoryOf(p);
-      // 💤 Inactive = never answered too (owner 11/19 "inactive should be same
-      // as not chasing … they are still part of club and still liga 1").
-      // Women opt out (owner 11/20 "women have no liga 1. they are tri
-      // county. all of them. all active" → "all regulars").
-      return c === 'active' && this.needsOnboard(p) && this._neverAnsweredParks() ? (this._hasReserves() ? 'standby' : 'inactive')
+      // Never answered = 🪑 Reserves on every team, never 💤 Inactive (owner
+      // 11/20 "there should be no inactive right? isn't it all reserves now
+      // for all teams?").  Women opt out — all Regulars (owner 11/20 "women
+      // have no liga 1 … all active" → "all regulars").
+      return c === 'active' && this.needsOnboard(p) && this._neverAnsweredParks() ? 'standby'
         : (c in { active: 1, injured: 1, practice_squad: 1, standby: 1, inactive: 1 } ? c : 'active');
     };
     const ids = new Set();

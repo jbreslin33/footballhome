@@ -292,17 +292,20 @@ class EventScreen extends Screen {
         </div>` : '';
     // 🪑 Reserves on the graphic too (owner 11/19 "dont hide anythng" →
     // "i cant see it on gprhic"): the event's Reserve rows (ev.inactive
-    // standby) + never-answered Regulars, as the list below has them; any
-    // other non-playing rows stay 💤 Inactive.  Staff only — players never
-    // see these rows.
+    // standby, unanswered) + never-answered Regulars, as the list below has
+    // them; any other non-playing rows stay 💤 Inactive.  🪑 Reserves for
+    // everyone (owner 11/19 "show reserves to players view too … so everyone
+    // including them know they are possible"); the rest staff only.
     const inactive = (Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : [])
       .filter(r => r && r.response !== 'yes' && !cameIds.has(Number(r.person_id)));
-    const reserves = inactive.filter(r => r.standby).concat(this._hasReserves() ? out.notChasing : []);
-    const inactiveOnly = inactive.filter(r => !r.standby).concat(this._hasReserves() ? [] : out.notChasing);
+    // Never answered = 🪑 Reserves on every team, never 💤 Inactive
+    // (owner 11/20 "there should be no inactive right? isn't it all reserves now for all teams?").
+    const reserves = inactive.filter(r => r.standby && r.response !== 'no').concat(out.notChasing);
+    const inactiveOnly = inactive.filter(r => !r.standby);
     const staff = this.viewer.eventSection('inactive') || this.viewer.eventSection('not_chasing');
     return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
-      + (staff ? row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd')
-               + row(out.injured.filter(r => !cameIds.has(Number(r.person_id))), 'sec_injured', '🩹 Injured', '#fda4af')
+      + row(reserves, 'sec_standby', '🪑 Reserves', '#93c5fd')
+      + (staff ? row(out.injured.filter(r => !cameIds.has(Number(r.person_id))), 'sec_injured', '🩹 Injured', '#fda4af')
                + row(out.suspended, 'sec_suspended_card', '⛔ Suspended', '#fca5a5')
                + row(inactiveOnly, 'sec_inactive', '💤 Inactive', '#94a3b8') : '');
   }
@@ -424,6 +427,13 @@ class EventScreen extends Screen {
     });
   }
 
+  // A 🪑 Reserve who said Not going is ✗ Not going like a Regular (owner
+  // 11/19 "they should be in reserve cat if they didn't respond"); only the
+  // unanswered stay 🪑 Reserves.  (A Going Reserve is in ev.rsvps already.)
+  _reservesSaidNo() {
+    return (Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : []).filter(r => r && r.standby && r.response === 'no');
+  }
+
   _rsvpOutLists() {
     const inactiveIds = new Set((Array.isArray(this.ev && this.ev.inactive) ? this.ev.inactive : []).map(r => r.person_id));
     const players = (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : [])
@@ -433,7 +443,7 @@ class EventScreen extends Screen {
       // 👋 never answered anything (mig 1520) → Not chasing, not No response
       noResponse: unanswered.filter(r => !EventScreen.notChasing(r)),
       notChasing: unanswered.filter(r => EventScreen.notChasing(r)),
-      notGoing:   players.filter(r => r.response === 'no'),
+      notGoing:   players.filter(r => r.response === 'no').concat(this._reservesSaidNo()),
       // 🩹 / ⛔ for the graphic (owner 11/19 "i should see all mens members"):
       // an open injury with no answer of his own; suspended for this game.
       injured:    players.filter(r => r.response !== 'yes' && r.response !== 'no' && r.injury),
@@ -2739,9 +2749,11 @@ class EventScreen extends Screen {
     const everyone = this._groupContactHtml('all', L('group_all', '👥 Everyone'), [...players, ...suspended, ...inactive]);
     // 🪑 Reserves (mig 1530, men): Reserve rows (ev.inactive standby) + Regulars
     // who never answered — one fold with 📣 Ask Reserves (your own app, BCC).
-    const reserves = inactive.filter(r => r && r.standby);
+    // Only the unanswered: a Reserve's ✗ goes to Not going (owner 11/19).
+    const reserves = inactive.filter(r => r && r.standby && r.response !== 'no');
     const inactiveOnly = inactive.filter(r => !(r && r.standby));
-    const reservesExtra = this._hasReserves() ? notChasing : [];
+    // Never answered = 🪑 Reserves on every team (owner 11/20 "there should be no inactive right? isn't it all reserves now for all teams?").
+    const reservesExtra = notChasing;
     // Which people sections this viewer gets (lib/viewer.js eventSection).
     const V = (key) => this.viewer.eventSection(key);
     return `
@@ -2754,11 +2766,11 @@ class EventScreen extends Screen {
       ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
       ${V('ineligible') ? (roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false)) : ''}
       ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
-      ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')) : ''}
+      ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no').concat(this._reservesSaidNo())) : ''}
       ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
       ${V('inactive') && (reserves.length || reservesExtra.length) ? fold('reserves', L('sec_standby', '🪑 Reserves'), reserves.concat(reservesExtra),
           { top: this._groupContactHtml('reserves', L('ask_standby_label', '📣 Ask Reserves'), reserves.filter(r => !r.response).concat(reservesExtra)) }) : ''}
-      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactiveOnly.concat(this._hasReserves() ? [] : notChasing), { callIn: true }) : ''}
+      ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactiveOnly, { callIn: true }) : ''}
       ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}
       ${V('coaches') ? coachSection() : ''}`;
   }
