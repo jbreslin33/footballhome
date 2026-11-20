@@ -11831,3 +11831,15 @@ but the shots it takes away from range come back closer and freer: **goals 1.94 
 <12 m 22.6 → 28.3%, 12-18 m 11.5 → 16.6%; blocked 19.5 → 17.0; card 11 / 6 / 16 → 9 / 5 / 19. Not shipped; off in code.
 Shooting less from range makes us more dangerous — the gap is still the defence near the box (§8.292: our releases there
 come against 2-3 men, real 6+), not the decision. Tests 23/23, lint clean; behaviour unchanged.
+
+### 8.305 G5.199 — the quick shots are second balls at their box (measured; no game change)
+
+From §8.304 ("the defence near the box"). SHOT CONTEXT by seconds since the possession began (seed 1000, G5.197): 0-5 s
+27.3% of our shots (19.6) scoring 15.3% (8.7), goal-side median 2 (5) — ~3.4 shots and ~0.5 goals a team-match against ~2.5
+and ~0.2: about half our remaining goal excess. Not the ball in behind: high ones complete more (43.5 v 35.7%) but run
+fewer (12.5 v 22.0); goals from them per match ~0.69 v ~0.85. `GAME_SHOT_TRACE` now prints where the shooter's side's
+possession began (`won x,y`) and its restart kind (`rs`, as SHOT ORIGIN). Of 59 shots inside 5 s (216 in 8 matches): 21
+won inside their 18 m and 15 at 18-35 m in open play, 14 off a restart, the rest deeper — **a clearance or block, our man
+on the second ball at their box, a shot past a defence not yet back** (median 2 goal-side, 16.5 m). Next: where our
+defenders' clearances and blocks land against real (foot clearance next touch 4.3 / 15.2 / 28.2 m upfield, StatsBomb;
+headed?) and who wins the second ball there. Harness only; behaviour unchanged.
