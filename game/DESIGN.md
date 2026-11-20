@@ -11947,3 +11947,29 @@ the shooter p25 / median 1.14 / 1.89 → 1.26 / 1.95 m; the blocked-with-nobody-
 block far under real (17-20% v 29.1): nearest opponent to the lane median 2-3 m (0.56), nobody in it 66% (28.6). The
 stride only nudged a deficit G5.197 (§8.303) left. Next: who should be in the lane at the strike and isn't. Harness only;
 tests 23/23.
+
+### 8.311 G5.205 — no risks at the back (mig 1641; shipped) — and the through-ball excess is a cut
+
+From §8.310: shots with 0-1 outfield opponents goal-side 32-45% of ours (StatsBomb 13.9), ~4.8 a team-match (1.8) — by
+the key pass: through ball ~1.25 (0.31), other pass ~1.7 (0.62), no pass ~1.3 (0.31). Taken in order.
+
+**Through balls — a cut, not a fault.** Ours = the `Why::InBehind` order; StatsBomb's = an analyst's through-ball tag. On
+one ruler (IN BEHIND, DFL, met past their line as it stood at the kick; seeds 1000-4000 × 8): shots within 10 s ~4.15 a
+team-match (4.42), goals ~0.67 (0.85) — high 12.7 (22.0) at 14% shot (6.8), flat 14.8 (15.7) at 16% (18.6). Nothing to fix.
+
+**No pass — the regain near their box.** New `scripts/benchmarks_statsbomb_ownthird.py` (open-play ground passes 5 m+ from
+the passer's own third; lost = incomplete and the next on-ball event theirs): real 48.8 a team-match, **lost 1.73 (3.5%)**
+(0-18 m 0.39, 18-35 m 1.34). Ours (OWN-THIRD PASS READ, §8.309) ~74.9, **lost 3.55 (4.8%)**. The ones the read called theirs
+(~7 a team-match, ~2 lost) are played with **2+ mates safe to feet** (harness: safe mates 0 / 1 / 2+ at the kick — 0.2 /
+0.2 / 5.0-5.3 kept): no forced pass, the weighting picks him. G5.202's `physics.pass.risk_own3` (§8.308, judged then on
+regains alone), seeds 1000-4000 × 8:
+
+| risk_own3 | own-third lost (1.73) | won within 35 m 0-18 / 18-35 (0.41 / 1.47) | goals | card |
+|---|---|---|---|---|
+| off (0.25) | 3.55 | 1.61 / 4.73 | 1.95 | 13 / 4 / 16 |
+| **0.05 (row)** | **2.53** | 1.61 / 4.09 | 2.27 | 10 / 7 / 16 |
+| 0.01 | 2.86 | 1.39 / 4.41 | 1.97 | 12 / 7 / 14 |
+
+[FH coaching: no risks at the back] — half the loss excess gone; shipped at 0.05 (`card_G5.205.txt`). The regains near
+their box barely move (6.3 → 5.7, real ~1.9): the losing side's last touch (seed 1000) pass 3.3, clearance 1.0, header
+pass 0.25, ball forward 0.4 — **next: the clearances and the short / lofted passes it doesn't cover**. Tests 23/23.
