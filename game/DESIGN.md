@@ -11780,3 +11780,18 @@ corners 3.08 → 2.95, goals 1.92 → 2.03; card 11 / 7 / 15 → 10 / 6 / 17. Ru
 Not shipped; off in code. With §8.300: where theirs reach the channel first a better aim doesn't help, and playing it
 anyway opens goals — the gap is theirs covering the channel (their FB / wide man's depth against our ball 35-52 m out),
 not our aim. Tests 23/23, lint clean; behaviour unchanged.
+
+### 8.302 G5.196 — the challenge rate refitted to the new tempo (mig 1620; shipped)
+
+G5.147 fitted `physics.press.tackle_per_s` 0.75 (code default; the presser in reach and goal-side dives at this rate) to
+StatsBomb fouls 12.5 + tackle duels 20.3 a team-match. G5.187-G5.193 (carriers at a real pace, the free hold) left fewer
+chances to dive: tackles 16.9, fouls 11.4, free kicks 11.1 (12.6). Seeds 1000-4000 × 8 against G5.193 (real):
+
+| tackle_per_s | tackles | fouls | free kicks | goals | card |
+|---|---|---|---|---|---|
+| 0.75 (G5.193) | 16.9 | 11.4 | 11.1 | 1.92 | 11 / 7 / 15 |
+| **0.9 (row)** | **19.4** ok | **13.0** ok | **11.9** ok | 2.17 | 11 / 5 / 17 |
+| 1.0 | 20.8 | 13.8 | 12.6 | 2.05 | 8 / 10 / 15 |
+
+0.9 puts the sum (fouls + tackles 32.4) on G5.147's real 32.8; headed clearances 13.9 → 14.9 to ok. Goals 1.92 / 2.17 /
+2.05 across the three runs — seed noise about ~2.0-2.2 (1.35). `card_G5.196.txt`. Goldens unchanged (row); tests 23/23.
