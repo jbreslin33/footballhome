@@ -231,7 +231,7 @@ class EventCenterScreen extends Screen {
   }
 
   // The RSVP Reminders board inside this page: its own element (filters,
-  // cards, REMIND), minus its old screen header.  Built once per visit.
+  // cards, REMIND).  Built once per visit.
   _mountBoard() {
     const host = this.find('#ec-people');
     if (!host) return;
@@ -239,8 +239,6 @@ class EventCenterScreen extends Screen {
     const prev = this.board ? this.board.resumeState() : null;
     this.board = this.board || new RsvpBoardScreen(this.navigation, this.auth);
     const el = this.board.render();
-    const head = el.querySelector('.screen-header');
-    if (head) head.remove();
     el.classList.remove('screen');
     host.replaceChildren(el);
     this.board.isMounted = true;

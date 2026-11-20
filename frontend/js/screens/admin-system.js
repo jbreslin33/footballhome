@@ -871,8 +871,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="teams-view">
-          <h2>👥 Teams Report</h2>
-          <p class="subtitle">View all teams by league and season</p>
           
           <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center;">
             <div>
@@ -1048,8 +1046,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="players-view">
-          <h2>🏃 Players Report</h2>
-          <p class="subtitle">Scraped league/opponent players by league, season, and team. Lighthouse club people live under Club Admin → People.</p>
           
           <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap;">
             <div>
@@ -1243,8 +1239,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="standings-view">
-          <h2>📊 League Standings</h2>
-          <p class="subtitle">Select a league and season to view standings</p>
           
           <div class="filter-controls" style="margin: var(--space-4) 0; display: flex; gap: var(--space-3); align-items: center;">
             <div>
@@ -1427,8 +1421,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="coverage-view">
-          <h2>📊 Match Event Coverage Report</h2>
-          <p class="subtitle">Coverage by league and source system</p>
           
           <div class="coverage-summary">
             ${data.leagues.map(league => {
@@ -1485,8 +1477,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="data-quality-view">
-          <h2>🔍 Data Quality Dashboard</h2>
-          <p class="subtitle">Identify missing data and scraping issues</p>
           
           <div class="quality-grid">
             <div class="quality-card">
@@ -1570,8 +1560,6 @@ class AdminSystemScreen extends Screen {
       
       content.innerHTML = `
         <div class="league-stats-view">
-          <h2>🏆 League Statistics</h2>
-          <p class="subtitle">Top performers and league insights</p>
           
           <div class="stats-grid">
             ${data.leagues.map(league => `
