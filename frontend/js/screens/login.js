@@ -254,7 +254,7 @@ class LoginScreen extends Screen {
     this.auth.login(username, password)
       .then(data => {
         this.navigation.context.user = data.user;
-        this.navigation.goTo(this.navigation.home());
+        this.navigation.afterLogin();   // a signed-out deep link, else home
       })
       .catch(err => {
         if (submitBtn) {

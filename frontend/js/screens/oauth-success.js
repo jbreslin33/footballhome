@@ -79,8 +79,8 @@ class OAuthSuccessScreen extends Screen {
 
       this.navigation.context.user = user;
 
-      // The dashboard for an admin, the role picker for everyone else.
-      this.navigation.goTo(this.navigation.home());
+      // Home — or the deep link opened while signed out (navigation.afterLogin).
+      this.navigation.afterLogin();
 
     } catch (err) {
       console.error('OAuth login error:', err);

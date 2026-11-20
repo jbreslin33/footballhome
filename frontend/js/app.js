@@ -405,6 +405,9 @@ class App {
       this.navigation.goTo(this.navigation.home());
     } else {
       console.log('No active session, showing login');
+      // A coach cover text opened signed out (mig 1634): land there after sign-in.
+      const coverLink = (window.location.hash || '').match(/^#coach-schedule\/cover\/(\d+)$/);
+      if (coverLink) this.navigation.stashAfterLogin('coach-schedule', { coverId: coverLink[1] });
       this.navigation.goTo('login');
     }
   }

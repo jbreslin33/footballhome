@@ -235,6 +235,33 @@ class NavigationStateMachine {
     }
   }
 
+  // A deep link opened while signed out (a coach cover text, mig 1634):
+  // remembered here, and the first sign-in within AFTER_LOGIN_MS lands
+  // there instead of home().  Read once.
+  static AFTER_LOGIN_KEY = 'fhAfterLogin';
+  static AFTER_LOGIN_MS  = 30 * 60 * 1000;
+
+  stashAfterLogin(screen, params = {}) {
+    try {
+      localStorage.setItem(NavigationStateMachine.AFTER_LOGIN_KEY, JSON.stringify({ screen, params, at: Date.now() }));
+    } catch (e) { /* storage blocked: sign-in lands home */ }
+  }
+
+  // After a sign-in: the stashed deep link when fresh, else home().
+  afterLogin() {
+    let saved = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(NavigationStateMachine.AFTER_LOGIN_KEY) || 'null');
+      localStorage.removeItem(NavigationStateMachine.AFTER_LOGIN_KEY);
+    } catch (e) { saved = null; }
+    if (saved && saved.screen && Date.now() - saved.at <= NavigationStateMachine.AFTER_LOGIN_MS
+        && this.screenManager.screens[saved.screen]) {
+      this.goTo(saved.screen, saved.params || {});
+      return;
+    }
+    this.goTo(this.home());
+  }
+
   goBack() {
     if (this.history.length === 0) {
       // Nothing behind us in this session.  Home for a signed-in user;
