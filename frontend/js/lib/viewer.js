@@ -38,8 +38,6 @@ class PlayerViewer {
   // ── the app around the screens (account level, migs 1478–1480) ──
   get showsMenuBar()      { return false; }     // top bar (lib/main-menu.js) — the Calendar is their one page
   get showsContextLine()  { return false; }     // "User · Team" (navigation.js)
-  get calendarHeader()    { return false; }     // "📅 Calendar / Tap an event…"
-  get calendarBack()      { return false; }
   get calendarKindPills() { return false; }     // Games · Practices · Pickup · All — ☰ items on the Calendar
   get calendarViews()     { return ['week']; }
   get calendarKind()      { return 'all'; }     // fixed kind, null = theirs to pick
@@ -54,17 +52,10 @@ class PlayerViewer {
   // Owner 11/18: "when they click the event i want it to look sleek and clean
   // and uncluttered".  A player gets their answer, who's going, the coaches,
   // carpool — nothing to run the event with.
-  get eventKindPills()    { return false; }       // Games · Practices · Pickup · All on an event
   // The big pill row, per kind; null = every pill the kind has.  A game: just
   // ⚔️ Starters & Bench (owner 11/18 "i see no need for anything but starters
   // and bench right now for game screen for players").
   eventPillKeys(ev)       { return ev && (ev.kind === 'match' || ev.kind === 'intrasquad') ? ['starters_bench'] : ['players']; }
-  get eventLocationLine() { return true; }        // 📍 place on its own line (tap → map), not in the subtitle
-  // An opened event (game AND practice — EventScreen, the parent of both):
-  // no header (title · times · address · HOME-11v11) — the graphic says who
-  // / when / where (owner 11/18 "do we need the info under the calender? …
-  // that should just go in grphic underneath … informational for players").
-  get eventHeader()       { return false; }
   // Everything under the graphic (🎯 match plan, 🚗 carpool, 🖨 rosters,
   // eligibility, who's coming …) lives in ☰; a pick shows that one under the
   // graphic (owner 11/18 "all the stuff under graphic sould go inside
@@ -100,7 +91,6 @@ class PlayerViewer {
   get showsCalendarButton() { return false; }
   get menuBarPages()      { return ['calendar']; }
   get homeScreens()       { return ['calendar', 'event-center', 'my', 'player-calendar']; }
-  get eventBack()         { return false; }
   // Which people sections: ✓ going, 🎟 invited and 🧑‍🏫 coaches.  Not the
   // no-response / not-going / injured / inactive / suspended / ineligible folds.
   eventSection(key)       { return ['going', 'invited', 'coaches'].includes(key); }
@@ -165,10 +155,6 @@ class CoachViewer extends PlayerViewer {
   // showsContextLine: inherited (off) — the signed-in email is already
   // under ↪ Sign out in ☰ (owner 11/18 staff calendar / event screens,
   // piece by piece: staff get the player's page, the ladder only adds tools).
-  // calendarHeader / calendarBack: inherited (off) — the lit 📅 Calendar pill
-  // says where you are, and it is the home page, so no ← Back (owner 11/18
-  // "first thing is back button. it don't need it right? also we don't need
-  // 📅 Calendar Tap an event … because you have Calendar pill highlighted").
   get calendarKindPills() { return true; }
   get calendarViews()     { return ['week', 'month']; }   // ☰ items (mig 1512)
   get calendarDatePicker() { return true; }
@@ -178,10 +164,7 @@ class CoachViewer extends PlayerViewer {
   // calendarMine: inherited (off) — 📋 Rules & fines, 🔔 Alerts and Sign out
   // are already in their ☰ (owner 11/18 staff calendar piece by piece).
   eventPillKeys()         { return null; }
-  // eventKindPills / eventLocationLine / eventBack: inherited (off) — they
-  // lived in the event header, which staff no longer get either; the menu
-  // bar's lit 📅 Calendar pill is the way home.
-  // eventHeader / eventExtrasInMenu / eventAvailOnGraphic: inherited — staff
+  // eventExtrasInMenu / eventAvailOnGraphic: inherited — staff
   // get the player's clean, graphic-first event page (owner 11/18 "admin and
   // coaches … should be the same except for financial data"); their tools
   // are extra panels, so they land in ☰ with the rest.

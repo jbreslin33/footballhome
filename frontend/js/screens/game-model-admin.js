@@ -18,13 +18,6 @@ class GameModelAdminScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-game-model-admin';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <div>
-          <h1 id="game-model-admin-title">Game Model Admin</h1>
-          <p class="subtitle" id="game-model-admin-subtitle">Build the club's U17+ game model</p>
-        </div>
-      </div>
       <div style="padding: var(--space-4); display: grid; gap: var(--space-4);">
         <div style="padding: var(--space-3); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary); color: var(--text-primary);">
           <strong>Game model structure:</strong> Main principles and their sub-principles are managed as first-class items with their own IDs.
@@ -47,14 +40,8 @@ class GameModelAdminScreen extends Screen {
     ];
     this.selectedEntity = validEntities.includes(params?.entity) ? params.entity : 'game-model';
     this.currentContext = null;
-    this.find('#game-model-admin-title').textContent = `${this.clubName} · Training`;
-    this.find('#game-model-admin-subtitle').textContent = `Build ${this.clubName}'s U17+ game model`;
     this.renderContent();
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const inlineAction = e.target.closest('[data-inline-action]');
       if (inlineAction) {
         const action = inlineAction.getAttribute('data-inline-action');

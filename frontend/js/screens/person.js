@@ -16,10 +16,8 @@
 // ──────────
 //   this.navigation.goTo('person', { leagueAppsUserId: '12345' })
 //   this.navigation.goTo('person', { personId: 42 })
-//   this.navigation.goTo('person', { personId: 42, edit: '1' })
 //
-// A `returnTo` hint lets the back button pop to the caller's screen.
-// If absent we fall back to the browser's own history.
+// A `returnTo` hint is carried on to the screens this one opens.
 class PersonScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -35,12 +33,6 @@ class PersonScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="person-title">Person</h1>
-        <p class="subtitle" id="person-subtitle">Loading profile…</p>
-      </div>
-
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
 
         <div id="person-loading" style="padding: var(--space-6); text-align:center; opacity:0.7;">
@@ -279,8 +271,6 @@ class PersonScreen extends Screen {
     `;
     this.element = div;
 
-    div.querySelector('.back-btn').addEventListener('click', () => this._goBack());
-
     // Drill-down: RSVP eligibility → RsvpEligibilityScreen (LA-user
     // scoped filter is handled by that screen; we just deep-link).
     div.querySelector('#ps-open-rsvp-admin')
@@ -345,10 +335,6 @@ class PersonScreen extends Screen {
       : null;
     this._returnTo = params?.returnTo || null;
     this._returnToParams = params?.returnToParams || null;
-    // `edit=1` is set by the shared PersonActions Edit button.  Both
-    // View and Edit land on this same Person hub; Edit remembers the
-    // operator intent as editable controls expand here.
-    this._editMode = params?.edit === '1' || params?.edit === true;
     // Starting tab — the ⋯ popup's ⤢ carries the tab it was on.
     this._tab = params?.tab || 'person';
 
@@ -357,31 +343,6 @@ class PersonScreen extends Screen {
       return;
     }
     this._load();
-  }
-
-  _goBack() {
-    // ALWAYS pop the browser history entry rather than pushing a new
-    // one onto the stack.  Pushing (via navigation.goTo) leaves a
-    // phantom /person entry directly behind the caller — so the
-    // caller's own Back button (which uses history.back / goBack)
-    // lands the operator on /person again instead of the tile that
-    // led them here (admin-club, etc.).  See members.js
-    // _snapshotHistoryState for the paired half of this contract:
-    // callers save their current filter state INTO their history
-    // entry before opening us, so the browser back-nav restores the
-    // exact view we came from.
-    //
-    // Fallback: if there is somehow no history to pop (opened via a
-    // fresh URL / new tab), fall through to the configured
-    // returnTo — that path DOES push, but it's a first-entry
-    // scenario so there's nothing to double-up.
-    if (window.history.length > 1) {
-      window.history.back();
-      return;
-    }
-    if (this._returnTo) {
-      this.navigation.goTo(this._returnTo, this._returnToParams || {});
-    }
   }
 
   async _load() {
@@ -457,14 +418,6 @@ class PersonScreen extends Screen {
     this._rsvpElig = new Set(
       (data.rsvpEligibility || []).map((e) => Number(e.teamId)).filter(Boolean)
     );
-
-    // Update the header bar.
-    this.element.querySelector('#person-title').textContent = name;
-    const laPart = data.leagueAppsUserId
-      ? `LA user ${data.leagueAppsUserId}`
-      : 'No LA alias';
-    this.element.querySelector('#person-subtitle').textContent =
-      `${laPart} · FH person #${data.personId}${this._editMode ? ' · Edit' : ''}`;
 
     // Header card.
     this._renderHeaderCard(data);
@@ -589,6 +542,8 @@ class PersonScreen extends Screen {
     }
 
     const rows = [
+      ['FH person #', data.personId != null ? String(data.personId) : '<span class="muted">—</span>'],
+      ['LA user', laUid ? this._escape(String(laUid)) : '<span class="muted">No LA alias</span>'],
       ['Birth date', this._fmtDate(p.birthDate)],
       ['FH member since', this._fmtDateTime(p.fhMemberAt)],
       ['Parent person id',

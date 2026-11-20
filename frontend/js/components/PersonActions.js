@@ -32,12 +32,6 @@
 //   showEdit       include the Edit button (default true).
 //   size           'sm' (default; matches roster chip sizing) | 'md'
 //   btnBaseStyle   extra CSS appended to each button's inline style.
-//
-// EDIT mode note
-// ──────────────
-//   PersonScreen remembers `edit=1` from the Edit button.  Both
-//   buttons land on the same Person hub; Edit signals the operator
-//   intent to change FH-owned fields as that surface grows.
 
 class PersonActions {
   static buttonsHtml(person, opts = {}) {

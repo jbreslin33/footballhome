@@ -59,11 +59,6 @@ class SmsOptInBoardScreen extends Screen {
         .tx-note { font-size:0.72rem; color:#ef4444; }
         tr.tx-done td { opacity:0.75; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="tx-title">📲 Texts</h1>
-        <p class="subtitle" id="tx-sub"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div id="tx-teams" style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-3);"></div>
         <div id="tx-body"></div>
@@ -154,7 +149,6 @@ class SmsOptInBoardScreen extends Screen {
   // ── events ──────────────────────────────────────────────────────────
   _wire() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       let el;
       if ((el = e.target.closest('[data-tx-team]'))) {
         this.teamId = Number(el.dataset.txTeam);
@@ -183,8 +177,6 @@ class SmsOptInBoardScreen extends Screen {
   }
 
   _render() {
-    const title = this.find('#tx-title'); if (title) title.textContent = this._copy('title') || '📲 Texts';
-    const sub = this.find('#tx-sub'); if (sub) sub.textContent = this._copy('subtitle');
     const teamsEl = this.find('#tx-teams');
     const body = this.find('#tx-body');
     if (!teamsEl || !body) return;

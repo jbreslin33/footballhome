@@ -34,12 +34,6 @@ class RsvpEligibilityScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🗳️ Event Access</h1>
-        <p class="subtitle" id="rsvp-elig-subtitle">Which team's events each player sees and can RSVP to</p>
-      </div>
-
       <div style="padding: var(--space-4);">
 
         <div id="rsvp-elig-sync-bar" style="margin-bottom: var(--space-3); display:flex;
@@ -141,9 +135,9 @@ class RsvpEligibilityScreen extends Screen {
     // null == "All" chip selected.
     this.categoryFilter = params?.category || null;
 
-    // Restore-state contract (paired with PersonScreen._goBack() +
-    // this._snapshotHistoryState()).  When PersonScreen navigates
-    // back to us via window.history.back() we get these params from
+    // Restore-state contract (paired with
+    // this._snapshotHistoryState()).  When the browser navigates
+    // back to us from PersonScreen we get these params from
     // the /rsvp-eligibility history entry we stamped before drilling
     // in — pre-select the exact chip + search + scroll target the
     // operator had.  One-shot: consumed on next _load().
@@ -186,10 +180,6 @@ class RsvpEligibilityScreen extends Screen {
     //    handler on the screen — cheaper than per-element listeners
     //    and survives every re-render of the card grid. ──
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       if (e.target.closest('.rsvp-elig-sync-now')) {
         this._load({ force: true });
         return;
@@ -228,8 +218,6 @@ class RsvpEligibilityScreen extends Screen {
           try { localStorage.setItem('rsvp-elig-flag-dormant', this._flagDormant ? '1' : '0'); } catch (_) {}
         }
         this._renderSortPills();
-        // _renderGroups() calls _updateSubtitle(totalShown) internally,
-        // so no explicit subtitle refresh needed here.
         this._renderGroups();
         return;
       }
@@ -559,7 +547,6 @@ class RsvpEligibilityScreen extends Screen {
       groupsEl.style.display = 'block';
       emptyEl.style.display  = 'none';
     }
-    this._updateSubtitle(totalShown);
   }
 
   _renderCard(m, groupCategory) {
@@ -630,14 +617,6 @@ class RsvpEligibilityScreen extends Screen {
         ${window.PersonActions ? `<div style="display:flex; gap:6px; margin-top: var(--space-1);">${window.PersonActions.buttonsHtml({ leagueAppsUserId: uid, personId: m.person_id, firstName: m.first_name, fullName: name }, { returnTo: 'rsvpEligibility' })}</div>` : ''}
       </div>
     `;
-  }
-
-  _updateSubtitle(count) {
-    const el = this.find('#rsvp-elig-subtitle');
-    if (!el) return;
-    const catLabel = { men:'Men', women:'Women', boys:'Boys', girls:'Girls' }[this.categoryFilter] || 'All';
-    el.textContent =
-      `${count} member${count === 1 ? '' : 's'} — ${catLabel} · click a team chip to grant/revoke RSVP eligibility, click the card to open the person profile`;
   }
 
   // Sort a member list per the current `this._sort` key.  Identical

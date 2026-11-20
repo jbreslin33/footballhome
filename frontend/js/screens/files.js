@@ -65,11 +65,6 @@ class FilesScreen extends Screen {
         .fl-ok { color:#4ade80; font-weight:700; } .fl-bad { color:#f87171; font-weight:700; }
         @media (max-width: 640px) { .fl-stage { grid-template-columns:1fr; } }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📁 Files</h1>
-        <p class="subtitle" id="fl-subtitle"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
           <button id="fl-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
@@ -89,7 +84,6 @@ class FilesScreen extends Screen {
   _wireEvents() {
     const el = this.element;
     el.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#fl-refresh')) { this.load(); return; }
       if (e.target.closest('#fl-upload-all')) { await this.uploadStaged(); return; }
       if (e.target.closest('#fl-clear')) { this.staged = []; this._renderBody(); return; }
@@ -138,8 +132,6 @@ class FilesScreen extends Screen {
       this.error = err.message || 'Failed to load.';
     }
     this.loading = false;
-    const sub = this.find('#fl-subtitle');
-    if (sub) sub.textContent = this._copy('subtitle');
     this._renderBody();
   }
 

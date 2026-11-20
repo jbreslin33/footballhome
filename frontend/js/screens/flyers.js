@@ -7,12 +7,6 @@ class FlyersScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🖨️ Flyers</h1>
-        <p class="subtitle">Generate printable recruitment flyers with QR codes</p>
-      </div>
-
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <button id="create-flyer-btn" class="btn btn-primary" style="margin-bottom: var(--space-4);">➕ Create Flyer</button>
         <div id="flyers-list"></div>
@@ -54,10 +48,6 @@ class FlyersScreen extends Screen {
     this.renderFlyersList();
 
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       if (e.target.closest('#create-flyer-btn')) {
         this.openCreateFlyerForm();
         return;

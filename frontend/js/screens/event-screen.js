@@ -141,9 +141,8 @@ class EventScreen extends Screen {
     // "if we say that a player attended who was no response or not going we
     // need to put them on pitch. but show that they set not going but went").
     const came = this._cardCame();
-    // No header for a player (Viewer.eventHeader) → the card is always drawn,
-    // so when / where (and GOING / NOT GOING) are on the page with nobody going yet.
-    if (!going.length && !came.length && (!window.Viewer || Viewer.account().eventHeader)) return '';
+    // The card is always drawn, so when / where (and GOING / NOT GOING) are on
+    // the page with nobody going yet.
     const cp = (tier, fb, tokens = {}) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens))
       || fb.replace(/\{(\w+)\}/g, (m, k) => (k in tokens ? tokens[k] : m));
     const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
@@ -396,18 +395,6 @@ class EventScreen extends Screen {
     shown.querySelectorAll('details').forEach(d => { if (!d.open) d.open = true; });
     shown.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
-  // The header (title · when · where) — PlayerViewer has none on an opened
-  // event (Viewer.eventHeader): the graphic carries those lines.
-  // Hidden from the first paint too (_headerStyle), not only once the event
-  // has loaded — staff saw the old ← Back / title / where line flash while
-  // the game loaded (owner 11/18 staff event screens, piece by piece).
-  // A load error is written in the body, so nothing is lost.
-  _noEventHeader() { return !!(window.Viewer && !Viewer.account().eventHeader); }
-  _headerStyle() { return this._noEventHeader() ? ' display:none;' : ''; }
-  _applyEventHeader() {
-    const hdr = this.find('.screen-header');
-    if (hdr) hdr.style.display = this._noEventHeader() ? 'none' : '';
-  }
   // Your GOING / NOT GOING sits ON the graphic for a player (owner 11/18
   // "going or not going button should be on graphic! … graphic is the
   // focus"), above it for staff.  Same markup + data-gc-my-avail either way.
@@ -614,13 +601,6 @@ class EventScreen extends Screen {
         .ec-send[disabled] { opacity:0.5; }
         .ec-box { border:1px solid var(--border-color); border-radius:10px; background:var(--bg-secondary); padding:12px; margin-bottom:var(--space-3); }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;${this._headerStyle()}">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="ec-title">📋 Event</h1>
-        <p class="subtitle" id="ec-sub"></p>
-        <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
-        <div id="ec-kinds" style="display:contents;"></div>
-      </div>
       <div id="ec-body" style="padding: var(--space-4); max-width: 900px; margin: 0 auto;"></div>
     `;
     this.element = div;
@@ -1905,13 +1885,11 @@ class EventScreen extends Screen {
       if (cpDep) this.carpoolPanel.departureAdd(cpDep.dataset.gcCpDepAdd, cpDep.value);
     });
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (this._sheetClick(e)) return;
       const t = (sel) => e.target.closest(sel);
       let el;
       if ((el = t('[data-ec-tap-person]'))) { this._openPersonSheet(Number(el.dataset.ecTapPerson)); return; }
       if ((el = t('[data-ec-group-msg]'))) { this._onGroupMessage(el); return; }
-      if ((el = t('[data-event-kind]'))) { EventKindSwitch.go(this.navigation, el.dataset.eventKind); return; }
       if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
       if ((el = t('[data-ec-post]'))) { this._onPostAction(el); return; }
       if ((el = t('[data-ec-pill]'))) {
@@ -2181,34 +2159,10 @@ class EventScreen extends Screen {
 
   _render() {
     const body = this.find('#ec-body');
-    const title = this.find('#ec-title');
-    const sub = this.find('#ec-sub');
     if (!body) return;
-    const kinds = this.find('#ec-kinds');
-    if (kinds) {
-      const k = this.ev ? this._kindOf(this.ev) : 'all';
-      // PlayerViewer: no Games · Practices · Pickup · All on an event (lib/viewer.js).
-      kinds.innerHTML = this.viewer.eventKindPills
-        ? EventKindSwitch.html(EventKindSwitch.KINDS.includes(k) ? k : 'all', (t) => this.escapeHtml(t)) : '';
-    }
     if (this.error) { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.ev) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
-    // PlayerViewer: no ← Back — 📅 in the band takes them home (lib/viewer.js eventBack).
-    const back = this.find('.back-btn');
-    if (back) back.style.display = Viewer.account().eventBack ? '' : 'none';
-    title.textContent = `📋 ${EventLabels.title(this.ev)}`;
-    // Arrival · Warmup · Kickoff after the date (owner 11/5: every event).
-    // PlayerViewer: the place on its own line, a map link (eventLocationLine).
-    const place = EventLabels.homeSetup(this.ev) || this.ev.location;
-    if (this.viewer.eventLocationLine) {
-      sub.innerHTML = `${this.escapeHtml(EventLabels.whenLine(this.ev))}`
-        + (place ? `<br><a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}" target="_blank" rel="noopener"
-             style="color:inherit; text-decoration:underline; text-underline-offset:2px;">📍 ${this.escapeHtml(place)}</a>` : '');
-    } else {
-      sub.textContent = [EventLabels.whenLine(this.ev), place].filter(Boolean).join(' · ');
-    }
     body.innerHTML = this._eventHtml();
-    this._applyEventHeader();
     this._syncExtrasMenu();
   }
 

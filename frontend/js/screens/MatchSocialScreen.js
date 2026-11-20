@@ -5,12 +5,6 @@ class MatchSocialScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-match-social';
     div.innerHTML = `
-      <div class="screen-header">
-        <button id="back-btn" class="btn btn-secondary">← Back</button>
-        <h1>📱 Social Media Calendar</h1>
-        <p class="subtitle">All upcoming posts across matches</p>
-      </div>
-
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <!-- Schedule template link -->
         <div class="card" style="margin-bottom: var(--space-4); padding: var(--space-3); display: flex; align-items: center; justify-content: space-between;">
@@ -44,11 +38,6 @@ class MatchSocialScreen extends Screen {
     this.loadCalendar();
 
     this.element.addEventListener('click', (e) => {
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-
       if (e.target.id === 'schedule-settings-btn' || e.target.closest('#schedule-settings-btn')) {
         this.navigation.goTo('social-schedule', { team: this.team });
         return;

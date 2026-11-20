@@ -92,7 +92,7 @@ class DashboardScreen extends Screen {
         .db-note { opacity:0.7; font-size:0.82rem; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <div style="flex:1;"><h1 style="margin:0;" id="db-title">📊 Dashboard</h1><div id="db-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <span style="flex:1;"></span>
         <button class="btn btn-secondary" id="db-refresh" style="padding:6px 12px; font-size:0.9rem;">🔄</button>
       </div>
       <div class="screen-content" style="max-width:1300px; margin:0 auto;">
@@ -155,10 +155,6 @@ class DashboardScreen extends Screen {
 
   async onEnter() {
     if (window.MessageCopy && typeof MessageCopy.load === 'function') { try { await MessageCopy.load(this.auth); } catch (_) { /* fallbacks */ } }
-    const t = this.find('#db-title'), s = this.find('#db-sub'), b = this.find('#db-tools');
-    if (t) t.textContent = this._t('title', '📊 Dashboard');
-    if (s) s.textContent = this._t('subtitle', 'Live from the same boards each cell opens. Tap a cell.');
-    if (b) b.textContent = this._t('all_tools', '🧭 All tools');
     document.addEventListener('visibilitychange', this._onVisible);
     this.timer = setInterval(() => { if (this.isMounted && document.visibilityState === 'visible') this.load(); }, DashboardScreen.REFRESH_MS);
     this.load();

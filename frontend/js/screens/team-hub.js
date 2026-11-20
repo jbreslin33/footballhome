@@ -59,8 +59,7 @@ class TeamHubScreen extends Screen {
       </style>
 
       <div class="screen-header" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);">
-        <button class="btn btn-secondary btn-sm" data-action="back">← Back</button>
-        <h1 id="th-team-title" style="margin:0;font-size:1.5rem;">Team Hub</h1>
+        <h1 id="th-team-title" style="margin:0;font-size:1.5rem;"></h1>
         <span style="flex:1"></span>
         <span id="th-state-badge" class="th-state-badge" style="font-size:0.85rem;padding:4px 10px;border-radius:9999px;background:rgba(148,163,184,0.2);color:#cbd5e1;">…</span>
       </div>
@@ -136,7 +135,7 @@ class TeamHubScreen extends Screen {
 
     const team = this.navigation.context.team;
     const titleEl = this.find('#th-team-title');
-    if (titleEl) titleEl.textContent = team?.name ? `${team.name} — Hub` : 'Team Hub';
+    if (titleEl) titleEl.textContent = team?.name || '';  // the team's own name; the menu pill names the page
 
     this._wireEvents();
     this._loadAll();
@@ -148,10 +147,6 @@ class TeamHubScreen extends Screen {
 
   _wireEvents() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('[data-action="back"]')) {
-        this.navigation.goBack();
-        return;
-      }
       // Take-attendance button removed 2026-07-17 with the pickup-RSVP
       // rip — attendance now lives on the CalendarScreen event detail
       // (backed by fh_event_rsvps).  Any lingering [data-attendance-open]

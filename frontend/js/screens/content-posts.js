@@ -49,11 +49,6 @@ class ContentPostsScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">\u2190 Back</button>
-        <h1>\ud83d\udcf7 Content Posts</h1>
-        <p class="subtitle">Upload photos & videos for Instagram</p>
-      </div>
       <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
       <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="content-posts-area" style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
@@ -74,10 +69,6 @@ class ContentPostsScreen extends Screen {
 
   onEnter() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const publishBtn = e.target.closest('.publish-content-btn');
       if (publishBtn) {
         this.publishPost(parseInt(publishBtn.dataset.id));

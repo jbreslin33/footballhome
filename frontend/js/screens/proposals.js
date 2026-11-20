@@ -34,13 +34,8 @@ class ProposalsScreen extends Screen {
         .prp-table td { padding:6px 8px; text-align:left; border-top:1px solid var(--border-color, #374151); vertical-align:top; }
         .prp-note { opacity:0.7; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="prp-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="prp-title"></h1><div id="prp-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content"><div class="prp-wrap" id="prp-body"></div></div>`;
     this.element = div;
-    div.querySelector('#prp-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#prp-body').addEventListener('click', (e) => {
       const item = e.target.closest('[data-proposal]');
       if (!item) return;
@@ -77,8 +72,6 @@ class ProposalsScreen extends Screen {
   }
 
   async _list(body) {
-    this.find('#prp-title').textContent = this._copy('title');
-    this.find('#prp-sub').textContent = this._copy('subtitle');
     const { proposals = [] } = await this._get('/api/proposals');
     if (!proposals.length) { body.innerHTML = `<div class="prp-card prp-note">${this._esc(this._copy('empty'))}</div>`; return; }
     body.innerHTML = proposals.map(p => `
@@ -96,15 +89,16 @@ class ProposalsScreen extends Screen {
     let p;
     try { ({ proposal: p } = await this._get(`/api/proposals/${encodeURIComponent(this.code)}`)); }
     catch (err) {
-      this.find('#prp-title').textContent = this._copy('title');
-      this.find('#prp-sub').textContent = '';
       body.innerHTML = `<div class="prp-card prp-note">${this._esc(this._copy('missing'))}</div>`;
       return;
     }
     if (p.screen) { this.navigation.goTo(p.screen); return; }
-    this.find('#prp-title').textContent = `${p.icon} ${p.title}`;
-    this.find('#prp-sub').textContent = `${p.status.icon} ${p.status.label} · ${this._copy('as_of')} ${this._date(p.asOf)}`;
-    body.innerHTML = p.sections.map(s =>
+    // The proposal's own title + status head its page (the list has none —
+    // the lit menu pill names #proposals).
+    body.innerHTML = `
+      <h1 style="margin:0;">${this._esc(p.icon)} ${this._esc(p.title)}</h1>
+      <div class="prp-meta" style="margin:4px 0 var(--space-3);"><span class="prp-pill">${this._esc(p.status.icon)} ${this._esc(p.status.label)}</span><span>${this._esc(this._copy('as_of'))} ${this._esc(this._date(p.asOf))}</span></div>`
+      + p.sections.map(s =>
       `<div class="prp-card"><div class="prp-head">${this._esc(s.heading)}</div>${this._body(s.body)}</div>`).join('');
   }
 

@@ -71,11 +71,6 @@ class PromotionalPostsScreen extends Screen {
   render() {
     const div = document.createElement('div');
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📢 Promotional Posts</h1>
-        <p class="subtitle">Lighthouse 1893 Instagram promotional posts</p>
-      </div>
       <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
       <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="promo-area" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
@@ -103,11 +98,6 @@ class PromotionalPostsScreen extends Screen {
 
   onEnter(params) {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        if (this.editing) { this.editing = null; this.renderArea(); }
-        else this.navigation.goBack();
-        return;
-      }
       const createBtn = e.target.closest('.create-btn');
       if (createBtn) {
         this.overlayOptions.forEach(o => o.pos = this._defaultOverlayPositions[o.key] ?? null);

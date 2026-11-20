@@ -44,12 +44,6 @@ class BoysRosterScreen extends RosterScreenBase {
         .br-card.br-drop-after            { box-shadow: 0  3px 0 0 #10b981 inset; }
         .br-drop-zone.br-drop-empty       { box-shadow: 0 0 0 2px #10b981 inset; border-radius: 4px; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Boys Teams</h1>
-        <p class="subtitle">Live from LeagueApps — Boys + Girls Club (girls surfaced too; girls play on boys teams for now)</p>
-      </div>
-
       <div style="padding: var(--space-2) 0;">
         <div id="br-banner" style="margin: 0 var(--space-2) var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="br-banner-icon" style="font-size: 16px;">⏳</span>
@@ -69,7 +63,6 @@ class BoysRosterScreen extends RosterScreenBase {
     RosterScreenBase.installMoveDropdownOutsideClose();
     this.wireMessageButtons();
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#br-refresh')) return this.load({ refreshLa: true });
       // ✅/📄/🩹/⭐/🌐/👀 column pills — shared with every roster board
       // (RosterScreenBase.handleRosterPillClicks, 2026-10-22).

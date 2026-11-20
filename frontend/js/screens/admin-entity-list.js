@@ -5,12 +5,6 @@ class AdminEntityListScreen extends Screen {
     div.className = 'screen screen-admin-entity-list';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="entity-list-title">Select Entity</h1>
-        <p class="subtitle" id="entity-list-subtitle"></p>
-      </div>
-      
       <div style="padding: var(--space-4);">
         <div id="entity-list"></div>
       </div>
@@ -28,30 +22,10 @@ class AdminEntityListScreen extends Screen {
       return;
     }
     
-    // Set title based on level type. Only 'club' can ever reach this
-    // screen — /api/auth/admin/contexts never emits sport_division/
-    // league/conference/division/team (see admin-level-selection.js's
-    // navigateToAdminScreen comment); those branches were removed rather
-    // than left dead pointing at unregistered screens.
-    const levelConfig = {
-      club: { icon: '🏢', label: 'Clubs', singular: 'Club' },
-    };
-    
-    const config = levelConfig[this.levelType];
-    if (config) {
-      this.find('#entity-list-title').textContent = `Select ${config.singular}`;
-      this.find('#entity-list-subtitle').textContent = `Choose a ${config.singular.toLowerCase()} to administer`;
-    }
-    
     this.loadEntities();
     
     // Handle navigation
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
       const entityBtn = e.target.closest('.entity-option');
       if (entityBtn) {
         const entityId = entityBtn.getAttribute('data-entity-id');

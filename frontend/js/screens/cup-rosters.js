@@ -113,8 +113,7 @@ class CupRostersScreen extends Screen {
         @media print { .cr-ss .chrome { display:none !important; } }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="cr-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="cr-title">🏆 Cup Rosters</h1><div id="cr-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <span style="flex:1;"></span>
         <button class="btn btn-primary" id="cr-new" style="padding:6px 12px; font-size:0.9rem;">+ New sheet</button>
         <button class="btn btn-secondary" id="cr-blank" style="padding:6px 12px; font-size:0.9rem;">🖨 Blank form</button>
       </div>
@@ -122,7 +121,6 @@ class CupRostersScreen extends Screen {
         <div id="cr-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#cr-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#cr-new').addEventListener('click', () => this.newSheet());
     div.querySelector('#cr-blank').addEventListener('click', () => this.printBlank());
     div.addEventListener('click', (e) => {
@@ -147,9 +145,7 @@ class CupRostersScreen extends Screen {
 
   async onEnter(params) {
     if (window.MessageCopy && typeof MessageCopy.load === 'function') { try { await MessageCopy.load(this.auth); } catch (_) {} }
-    const t = this.find('#cr-title'), s = this.find('#cr-sub'), n = this.find('#cr-new'), b = this.find('#cr-blank');
-    if (t) t.textContent = this._t('title', '🏆 Cup Rosters');
-    if (s) s.textContent = this._t('subtitle', "The cup roster forms, filled from the men's rosters.");
+    const n = this.find('#cr-new'), b = this.find('#cr-blank');
     if (n) n.textContent = this._t('new', '+ New sheet');
     if (b) b.textContent = this._t('blank', '🖨 Blank form');
     await this.load();

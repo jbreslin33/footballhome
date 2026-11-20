@@ -56,11 +56,6 @@ class LeagueSchedulesScreen extends Screen {
         .ls-hint { font-size:0.8rem; opacity:0.7; margin:4px 0 10px; }
         @media (max-width: 600px) { .ls-row { flex-wrap:wrap; } .ls-grid { grid-template-columns:1fr; } }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="ls-title">🗓 League Schedules</h1>
-        <p class="subtitle" id="ls-sub"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 760px; margin: 0 auto;">
         <div id="ls-body"></div>
       </div>
@@ -74,11 +69,7 @@ class LeagueSchedulesScreen extends Screen {
     this.flash = ''; this.error = null; this.editId = 0; this.confirmDelete = 0;
     this._renderBody();
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
-    Promise.resolve(copyReady).then(() => {
-      const t = this.find('#ls-title'); if (t && this._copy('title')) t.textContent = this._copy('title');
-      const s = this.find('#ls-sub'); if (s) s.textContent = this._copy('subtitle');
-      this._renderBody();
-    });
+    Promise.resolve(copyReady).then(() => this._renderBody());
     this._load();
   }
 
@@ -131,7 +122,6 @@ class LeagueSchedulesScreen extends Screen {
   _wire() {
     const el = this.element;
     el.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const edit = e.target.closest('[data-edit]');
       if (edit) { this.editId = Number(edit.dataset.edit); this.confirmDelete = 0; this._renderBody(); return; }
       if (e.target.closest('#ls-add')) { this.editId = -1; this.confirmDelete = 0; this._renderBody(); return; }

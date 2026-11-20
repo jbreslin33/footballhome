@@ -15,22 +15,7 @@ const EventKindSwitch = {
     return (window.MessageCopy && MessageCopy.block('event_center', 'pill_' + kind)) || EventKindSwitch.FALLBACK[kind];
   },
 
-  title() {
-    return (window.MessageCopy && MessageCopy.block('event_center', 'title')) || '📅 Calendar';
-  },
-
-  // active: 'match' on Game Center, the list's kind on the event screen.
-  html(active, escapeHtml) {
-    const esc = escapeHtml || ((s) => String(s));
-    return `<div role="tablist" aria-label="Event type"
-                 style="flex:1 0 100%; min-width:0; display:flex; gap:6px; overflow-x:auto; margin-top:6px;">
-      ${EventKindSwitch.KINDS.map(k => `<button type="button" role="tab" aria-selected="${k === active}" data-event-kind="${k}"
-          class="btn ${k === active ? 'btn-primary' : 'btn-secondary'}"
-          style="flex:0 0 auto; font-size:0.8rem; padding:6px 12px; white-space:nowrap;">${esc(EventKindSwitch.label(k))}</button>`).join('')}
-    </div>`;
-  },
-
-  // A tap on the strip: Event Center's week calendar filled with that kind
+  // Event Center's week calendar filled with that kind
   // (owner 2026-10-27: "cal with pills to populate cal") — games too; a
   // game tapped there opens Game Center.
   go(navigation, kind) {

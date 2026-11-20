@@ -5,16 +5,10 @@ class SocialScheduleScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-social-schedule';
     div.innerHTML = `
-      <div class="screen-header">
-        <button id="back-btn" class="btn btn-secondary">← Back</button>
-        <h1>⏱️ Social Posting Schedule</h1>
-        <p class="subtitle" id="team-name"></p>
-      </div>
-
       <div class="schedule-container" style="padding: var(--space-4); max-width: 700px; margin: 0 auto;">
         <div class="card" style="margin-bottom: var(--space-4); padding: var(--space-4);">
           <p style="opacity: 0.7; line-height: 1.6;">
-            Set a default posting schedule for <strong>all matches</strong>. When you click "Apply Schedule" on a match,
+            Set a default posting schedule for <strong>all <span id="team-name"></span> matches</strong>. When you click "Apply Schedule" on a match,
             these times will be used to auto-schedule each post type relative to match day.
           </p>
         </div>
@@ -35,18 +29,13 @@ class SocialScheduleScreen extends Screen {
       return;
     }
 
-    this.find('#team-name').textContent = this.team.name || 'Team Schedule';
+    this.find('#team-name').textContent = this.team.name || '';
     this.loadSchedule();
     this.setupEventListeners();
   }
 
   setupEventListeners() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-
       const saveBtn = e.target.closest('[data-action="save-template"]');
       if (saveBtn) {
         const postTypeId = parseInt(saveBtn.dataset.postTypeId);

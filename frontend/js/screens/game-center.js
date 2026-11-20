@@ -681,17 +681,6 @@ class GameCenterScreen extends EventScreen {
         .screen-game-center .ec-att { width:26px; height:26px; padding:0; border-radius:50%; line-height:1; font-size:0.75rem; font-weight:800; cursor:pointer; }
         .screen-game-center .ec-att[disabled] { opacity:0.5; cursor:wait; }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;${this._headerStyle()}">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="gc-title">📋 Event Center</h1>
-        <p class="subtitle" id="gl-subtitle">Loading…</p>
-        <!-- HOME-7v7 / HOME-11v11 when the game is on the field we prep (mig 780). -->
-        <div id="gc-home-setup"></div>
-        <!-- Event Center's type pills (lib/event-kind-switch.js) — Games lit;
-             the other kinds open the event screen.  Staff doors only: the
-             #my player view stays a plain game page. -->
-        <div id="gc-kinds" style="display:contents;"></div>
-      </div>
       <!-- Three stacked regions. #gl-head (pills, the card, that post's
            tools, the Post button) and #gl-body (lineup editor) are
            rewritten wholesale by _render() on every zone toggle.
@@ -788,24 +777,8 @@ class GameCenterScreen extends EventScreen {
     this._scoreMsg = '';
     this._detailsMsg = '';
     this._wire();
-    this._paintKinds();
     this._bootstrap();
     this._startLivePoll();
-  }
-
-  // Games is one pill of Event Center (owner 2026-10-26).  The #my door
-  // (view:'player') keeps the plain Game Center title and no strip.
-  _paintKinds() {
-    const strip = this.find('#gc-kinds');
-    const title = this.find('#gc-title');
-    if (title) title.textContent = this._headTitle();
-    // PlayerViewer: no Games · Practices · Pickup · All on an event (lib/viewer.js
-    // eventKindPills; owner 11/18 "they don't need the pills … on practice or games").
-    if (this.playerOnly || !window.EventKindSwitch || !this.viewer.eventKindPills) {
-      if (strip) strip.innerHTML = '';
-      return;
-    }
-    if (strip) strip.innerHTML = EventKindSwitch.html('match', (t) => this.escapeHtml(t));
   }
 
   // postType is the deep link ("open Game Center on the Match Result
@@ -1039,21 +1012,12 @@ class GameCenterScreen extends EventScreen {
       if (d) this.folds.set(d.dataset.ecFold, d.open);
     }, true);
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       if (this._sheetClick(e)) return;   // ⋯ on a card → the shared player sheet
       const mpBtn = e.target.closest('[data-mp-save]');
       if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
       // ✅ Attendance P/A/L/E on a game card (EventScreen._attendanceCell).
       const attBtn = e.target.closest('[data-ec-att]');
       if (attBtn) { this._markAttendance(Number(attBtn.dataset.personId), attBtn.dataset.ecAtt, attBtn.dataset.active === '1'); return; }
-      const kind = e.target.closest('[data-event-kind]');
-      if (kind) {
-        EventKindSwitch.go(this.navigation, kind.getAttribute('data-event-kind'));
-        return;
-      }
       // Lineup version bar (Official | My draft | … | Compare) and Make official are buttons: click, not change.
       const viewBtn = e.target.closest('[data-lineup-view]');
       if (viewBtn) { this._applyView(viewBtn.getAttribute('data-lineup-view')); return; }
@@ -1361,14 +1325,12 @@ class GameCenterScreen extends EventScreen {
   }
 
   async _bootstrap() {
-    const sub = this.find('#gl-subtitle');
     // No game named (an old 🏟️ Game Center tile door, a saved return with
     // no match): the 📅 Calendar is the picker now (owner 11/16).
     if (!this.matchId) {
       setTimeout(() => EventKindSwitch.go(this.navigation, 'match'), 0);
       return;
     }
-    if (sub) sub.textContent = this._headSub();
     this._refreshEvent();
     // Copy rows (dues flag, migration 416) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).catch(() => {});
@@ -1965,8 +1927,6 @@ class GameCenterScreen extends EventScreen {
       if (!body || !body.event || matchId !== this.matchId) return false;
       const before = this.ev ? JSON.stringify((this.ev.rsvps || []).map(r => [r.person_id, r.response, r.arrive_label, r.leave_label])) : null;
       this.ev = body.event;
-      const sub = this.find('#gl-subtitle'); if (sub) sub.textContent = this._headSub();
-      const ttl = this.find('#gc-title'); if (ttl) ttl.textContent = this._headTitle();
       this._syncHash();
       this._paintMyAvailability();
       return before !== JSON.stringify((this.ev.rsvps || []).map(r => [r.person_id, r.response, r.arrive_label, r.leave_label]));
@@ -1976,31 +1936,12 @@ class GameCenterScreen extends EventScreen {
     }
   }
 
-  // The header under the title: game · date · Arrival · Warmup · Kickoff
-  // (owner 11/5: times on every event in Event Center — a game opens here).
-  // The same header as every Event Center event (EventScreen._render):
-  // title = what it is, sub = when · arrival/warmup/kickoff · where.
-  _headSub() {
-    if (!this.ev) return [this.title, this.when].filter(Boolean).join(' · ') || 'Loading…';
-    return [EventLabels.whenLine(this.ev), this.ev.location].filter(Boolean).join(' · ');   // a game: Arrival · Warmup · Kickoff first
-  }
-  _headTitle() {
-    return this.ev ? `📋 ${EventLabels.title(this.ev)}` : (window.EventKindSwitch ? EventKindSwitch.title() : '📋 Event Center');
-  }
-
   _render() {
-    this._paintKinds();
     // The lit pill must be one this viewer has (a player: ⚔️ Starters & Bench).
     if (this.ev) { const ps = this.pills(this.ev); if (ps.length && !ps.some(p => p.key === this.pill)) this.pill = ps[0].key; }
-    // PlayerViewer: no ← Back — 📅 in the band takes them home (lib/viewer.js eventBack).
-    const back = this.find('.back-btn');
-    if (back) back.style.display = !window.Viewer || Viewer.account().eventBack ? '' : 'none';   // the viewer is known once the game has loaded (coach pills back, player none)
     const box = this.find('#gl-body');
     const head = this.find('#gl-head');
     if (!box || !head) return;
-    this._applyEventHeader();   // EventScreen: PlayerViewer has none — its lines are on the card
-    const setup = this.find('#gc-home-setup');
-    if (setup) setup.innerHTML = this.matchId ? EventLabels.homeSetupBadge(this.ev, (t) => this.escapeHtml(t)) : '';
 
     if (this.error || !this.loaded) {
       head.innerHTML = '';
@@ -4197,9 +4138,9 @@ class GameCenterScreen extends EventScreen {
     const sharedIds = pitch && !this.everyonePlays ? new Set([...this.shares.keys()].map(String)) : new Set();
     const split = this.splitSquad && !this.everyonePlays && pitch
       ? { band: this._copySplit('band'), times: this._copySplit('times') } : null;
-    // The player's header lines, on the live card under the matchup (never
-    // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11 (Viewer.eventHeader).
-    const info = live && this.ev && window.Viewer && !Viewer.account().eventHeader
+    // The when / where lines, on the live card under the matchup (never
+    // the post): Arrival · Warmup · Kickoff, 🏟 HOME-11v11.
+    const info = live && this.ev
       ? [EventLabels.timesLine(this.ev), EventLabels.homeSetup(this.ev) ? `🏟 ${EventLabels.homeSetup(this.ev)}` : ''].filter(Boolean) : [];
     const out = live && this._rsvpOut ? this._rsvpOut : null;
     // Heading colours (owner 11/18 "not placed yellow, no response orange → yellow too 11/18,

@@ -71,26 +71,13 @@ class CoachScheduleScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-coach-schedule';
     div.innerHTML = `
-      <div class="screen-header" style="padding: var(--space-3) var(--space-4);">
-        <button type="button" class="btn btn-secondary" data-cs-back>← Back</button>
-        <h1 style="margin: var(--space-2) 0 0;">${this.escapeHtml(this._t('title', {}, 'Coach Schedule'))}</h1>
-        <p style="margin: 4px 0 0; opacity: 0.8;">${this.escapeHtml(this._t('sub', {}, 'Coaches RSVP only to the practices on their days'))}</p>
-      </div>
       <div id="cs-body" style="padding: var(--space-4); max-width: 760px;"></div>`;
     this.element = div;
     div.addEventListener('click', (e) => this._onClick(e));
     return div;
   }
 
-  // The header reads the DB words once they have loaded.
-  _renderHead() {
-    const h = this.find('h1'), p = this.find('.screen-header p');
-    if (h) h.textContent = this._t('title', {}, 'Coach Schedule');
-    if (p) p.textContent = this._t('sub', {}, h ? p.textContent : '');
-  }
-
   _onClick(e) {
-    if (e.target.closest('[data-cs-back]')) { this.navigation.goBack(); return; }
     const btn = e.target.closest('[data-cs-coach]');
     if (!btn) return;
     const coachId = Number(btn.dataset.csCoach);
@@ -114,7 +101,6 @@ class CoachScheduleScreen extends Screen {
   _renderBody() {
     const body = this.find('#cs-body');
     if (!body) return;
-    this._renderHead();
     if (!this.sections) { body.innerHTML = this.error ? `<p style="color:#f87171;">${this.escapeHtml(this.error)}</p>` : '<p>Loading…</p>'; return; }
     const pill = (on) => `padding:7px 0; width:44px; border-radius:8px; font-weight:800; font-size:0.74rem; cursor:pointer;
       border:1px solid ${on ? '#22c55e' : 'rgba(255,255,255,0.2)'}; background:${on ? '#15803d' : 'transparent'}; color:${on ? '#fff' : '#cbd5e1'};`;

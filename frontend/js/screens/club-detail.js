@@ -6,9 +6,7 @@ class ClubDetailScreen extends Screen {
     
     div.innerHTML = `
       <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
         <h1 id="club-title">Club</h1>
-        <p class="subtitle" id="club-subtitle"></p>
       </div>
       
       <div id="club-content" style="padding: var(--space-3);">
@@ -33,11 +31,6 @@ class ClubDetailScreen extends Screen {
     this.loadClubDetail();
     
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
       const teamHeader = e.target.closest('.team-toggle');
       if (teamHeader) {
         const teamSection = teamHeader.closest('.team-section');
@@ -72,7 +65,6 @@ class ClubDetailScreen extends Screen {
     this.safeFetch(`/api/clubs/${this.clubId}`, (response) => {
       this.club = response.data;
       this.find('#club-title').textContent = this.club.name;
-      this.find('#club-subtitle').textContent = `${this.club.teams.length} team${this.club.teams.length !== 1 ? 's' : ''}`;
       this.renderClubDetail();
     });
   }

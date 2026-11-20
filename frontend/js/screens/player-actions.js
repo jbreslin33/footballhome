@@ -3,23 +3,12 @@ class PlayerActionsScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.clubId = null;
-    this.clubName = 'Club';
   }
 
   render() {
     const div = document.createElement('div');
     div.className = 'screen screen-player-actions';
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
-        <div style="display:flex; align-items:center; gap:var(--space-2);">
-          <button class="btn btn-secondary back-btn">← Back</button>
-          <div>
-            <h1 style="margin:0;">Player Actions</h1>
-            <p class="subtitle" style="margin:0;">Catalog of player actions by phase</p>
-          </div>
-        </div>
-      </div>
-
       <div style="padding: var(--space-4); display:grid; gap: var(--space-3);">
         <div id="player-actions-content"></div>
       </div>
@@ -30,11 +19,6 @@ class PlayerActionsScreen extends Screen {
 
   onEnter(params) {
     this.clubId = params?.clubId ?? params?.club?.id ?? null;
-    this.clubName = params?.clubName || 'Club';
-
-    this.find('.back-btn')?.addEventListener('click', () => {
-      this.navigation.goBack();
-    });
 
     this.loadStructure();
   }

@@ -19,13 +19,8 @@ class ApslHubScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="ah-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="ah-title">🔺 APSL</h1><div id="ah-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content" style="max-width:720px; margin:0 auto;"><div id="ah-body"><div class="loading">Loading…</div></div><div id="ah-gm"></div></div>`;
     this.element = div;
-    div.querySelector('#ah-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
       const t = e.target.closest('[data-go]');
       if (t) this.navigation.goTo(t.dataset.go, t.dataset.league ? { league: t.dataset.league } : {});
@@ -43,8 +38,6 @@ class ApslHubScreen extends Screen {
 
   async load() {
     if (window.MessageCopy) await MessageCopy.load(this.auth);
-    const title = this.find('#ah-title'); if (title && this._copy('hub_title')) title.textContent = this._copy('hub_title');
-    const sub = this.find('#ah-sub'); if (sub) sub.textContent = this._copy('hub_subtitle');
     this._draw(null);
     // Unasked roster moves on the messaging tile — the DB's view, no
     // league re-pull here (#apsl-messages does that before the email).
@@ -76,17 +69,12 @@ class ApslMessagesScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="am-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="am-title">✉️ APSL</h1></div>
-      </div>
       <div class="screen-content" style="max-width:720px; margin:0 auto;">
         <div id="am-moves"></div>
         <div id="am-none" style="display:none; font-size:0.85rem; opacity:0.7; text-align:center; margin-bottom:var(--space-3);"></div>
         <div id="am-contacts"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#am-back').addEventListener('click', () => this.navigation.goBack());
     return div;
   }
 
@@ -94,7 +82,6 @@ class ApslMessagesScreen extends Screen {
 
   async onEnter() {
     if (window.MessageCopy) await MessageCopy.load(this.auth);
-    const t = this.find('#am-title'); if (t && this._copy('messages_title')) t.textContent = this._copy('messages_title');
     if (window.LeagueMovesMail) {
       this._moves = this._moves || new LeagueMovesMail(this, this.find('#am-moves'));
       this._moves.onRender = (shown) => {

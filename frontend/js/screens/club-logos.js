@@ -96,11 +96,6 @@ class ClubLogosScreen extends Screen {
         .cl-url { display:grid; grid-template-columns:1fr 2fr auto; gap:8px; }
         @media (max-width: 640px) { .cl-url { grid-template-columns:1fr; } .cl-row { grid-template-columns:48px 1fr; } .cl-row > :last-child { grid-column:1 / -1; } }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🛡️ Club Logos</h1>
-        <p class="subtitle">Upload a folder of opponent crests named after the club, or capture one from a URL — every club and league logo is stored in the database and shows on Event Center. A new upload replaces the current crest; the old one stays as history.</p>
-      </div>
       <div style="padding: var(--space-4); max-width: 1000px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
           <button id="cl-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
@@ -118,7 +113,6 @@ class ClubLogosScreen extends Screen {
   _wireEvents() {
     const el = this.element;
     el.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#cl-refresh')) { this.load(); return; }
       if (e.target.closest('#cl-upload-all')) { await this.uploadStaged(); return; }
       if (e.target.closest('#cl-clear')) { this._clearStaged(); this._renderBody(); return; }

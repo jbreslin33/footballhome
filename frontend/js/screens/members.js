@@ -12,7 +12,7 @@
 //
 // Screen is used for BOTH the "Membership" and "Paused Membership" tiles
 // on admin-club — the `variant` navigation param toggles which slice is
-// shown; the title/subtitle/icon swap automatically.  An optional
+// shown.  An optional
 // `category` param (men / women / boys / girls) narrows the view to a
 // single sub-program so bulk actions (Email All → Gmail BCC) apply
 // only to that group.
@@ -21,12 +21,6 @@ class MembersScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="members-title">Membership</h1>
-        <p class="subtitle" id="members-subtitle">Members grouped by sub-program</p>
-      </div>
-
       <div style="padding: var(--space-4);">
 
         <div id="members-sync-bar" style="margin-bottom: var(--space-3); display:flex;
@@ -39,6 +33,8 @@ class MembersScreen extends Screen {
           <button class="sync-now-btn btn btn-secondary" style="padding: 4px 12px; font-size: 0.85rem;">
             🔄 Sync now
           </button>
+          <!-- live member count for the chip in view (was the page subtitle) -->
+          <span id="members-count" style="font-size:0.85rem; opacity:0.8;"></span>
         </div>
 
         <div id="members-filters" style="display:none; margin-bottom: var(--space-3);
@@ -104,13 +100,6 @@ class MembersScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
-    const peopleMode = params?.mode === 'people';
-    const title = params?.title || (peopleMode ? 'People Directory' : 'Membership');
-    const subtitle = params?.subtitle || (peopleMode
-      ? 'One Lighthouse person graph: contact, account, player, coach/admin, membership, and roster links'
-      : 'Members grouped by sub-program');
-    if (this.find('#members-title')) this.find('#members-title').textContent = title;
-    if (this.find('#members-subtitle')) this.find('#members-subtitle').textContent = subtitle;
     // Which LA sub-program is currently in focus.  `null` == no
     // program-specific selection.  Mutually exclusive with
     // `categoryFilter` — clicking a program chip clears categoryFilter
@@ -168,17 +157,12 @@ class MembersScreen extends Screen {
     this._flagNoAccount = localStorage.getItem('members-flag-no-account') === '1';
     this._flagDormant   = localStorage.getItem('members-flag-dormant')   === '1';
 
-    // Title + subtitle default to the "all clubs" view; `_updateTitle`
-    // and `_updateSubtitle` re-run after each chip click and after the
+    // The member count defaults to the "all clubs" view; `_updateCount`
+    // re-runs after each chip click and after the
     // legacy nav params resolve (see `_applyLegacyParams`).
-    this._updateTitle();
-    this._updateSubtitle();
+    this._updateCount();
 
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const bulkBtn = e.target.closest('[data-bulk]');
       if (bulkBtn) {
         this._handleBulk(bulkBtn.getAttribute('data-bulk'));
@@ -236,7 +220,7 @@ class MembersScreen extends Screen {
         this._renderSortPills();
         this._renderGroups();
         this._renderBulkBar();
-        this._updateSubtitle();
+        this._updateCount();
         return;
       }
       // Per-row "👤 Save" → download a single-entry vCard for that member.
@@ -315,7 +299,7 @@ class MembersScreen extends Screen {
       this._renderSortPills();
       if (filtersEl)  filtersEl.style.display  = 'flex';
       if (searchWrap) searchWrap.style.display = 'block';
-      this._updateSubtitle();
+      this._updateCount();
       groupsEl.style.display = 'block';
       this._renderGroups();
       this._renderBulkBar();
@@ -435,7 +419,7 @@ class MembersScreen extends Screen {
         return;
       }
 
-      this._updateSubtitle();
+      this._updateCount();
       groupsEl.style.display = 'block';
       this._renderGroups();
       this._renderBulkBar();
@@ -888,9 +872,9 @@ class MembersScreen extends Screen {
   // old category-chip name.  Redirects to the per-program renderer.
   _renderCategoryChips() { this._renderProgramChips(); }
 
-  _updateSubtitle() {
-    const subtitle = this.find('#members-subtitle');
-    if (!subtitle) return;
+  _updateCount() {
+    const countEl = this.find('#members-count');
+    if (!countEl) return;
     const groups = this._filteredGroups();
     // De-duplicate across groups so a person enrolled in both Club and
     // Pickup variants counts once in the aggregate views ("All Men",
@@ -902,35 +886,13 @@ class MembersScreen extends Screen {
     const total = seen.size;
     if (this.programId != null && groups.length === 1) {
       const g = groups[0];
-      subtitle.textContent = `${g.label || g.program_name} — ${total} member${total === 1 ? '' : 's'}`;
+      countEl.textContent = `${g.label || g.program_name} — ${total} member${total === 1 ? '' : 's'}`;
     } else if (this.categoryFilter) {
       const catLabel = ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[this.categoryFilter] || `All ${this.categoryFilter}`);
-      subtitle.textContent = `${catLabel} — ${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+      countEl.textContent = `${catLabel} — ${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
     } else {
-      subtitle.textContent = `${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
+      countEl.textContent = `${total} unique member${total === 1 ? '' : 's'} across ${groups.length} sub-program${groups.length === 1 ? '' : 's'}`;
     }
-  }
-
-  _updateTitle() {
-    const titleEl = this.find('#members-title');
-    if (!titleEl) return;
-    if (this.programId != null) {
-      const g = (this._groups || []).find(x => Number(x.program_id) === this.programId);
-      if (g) {
-        const cat = String(g.category || '').toLowerCase();
-        const emoji = ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
-        titleEl.textContent = `${emoji} ${g.label || g.program_name || 'Membership'}`;
-        return;
-      }
-    }
-    if (this.categoryFilter) {
-      const cat = this.categoryFilter;
-      const emoji = ({ men:'👨', women:'👩', boys:'👦', girls:'👧' }[cat] || '👥');
-      const label = ({ men:'All Men', women:'All Women', boys:'All Boys', girls:'All Girls' }[cat] || `All ${cat}`);
-      titleEl.textContent = `${emoji} ${label}`;
-      return;
-    }
-    titleEl.textContent = '👥 Membership';
   }
 
   _updateVariantToggle() { /* removed — the Active/Pickup toggle is gone; each sub-program is its own chip now. */ }

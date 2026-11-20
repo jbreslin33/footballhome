@@ -106,11 +106,6 @@ class RostersScreen extends Screen {
           font-weight: 700;
         }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Teams</h1>
-        <p class="subtitle" id="rs-subtitle">Every member on a team — new members land on their home team automatically</p>
-      </div>
       <div style="padding: var(--space-3) var(--space-2); display:flex; gap: var(--space-4); align-items:flex-start; flex-wrap:wrap;">
         <section class="rs-panel" style="flex: 1 1 480px; min-width: 0;">
           <h2 class="rs-panel-title" id="rs-teams-title">${(window.MessageCopy && MessageCopy.block('roster_sheet', 'board_panel_players')) || '👥 Players'}</h2>
@@ -124,16 +119,6 @@ class RostersScreen extends Screen {
       </div>
     `;
     this.element = div;
-
-    div.addEventListener('click', (e) => {
-      const back = e.target.closest('.back-btn');
-      if (back && back.closest('.screen-header')?.parentElement === div) {
-        e.preventDefault();
-        this.navigation.goBack();
-        return;
-      }
-    });
-
     return div;
   }
 
@@ -500,7 +485,7 @@ class RostersScreen extends Screen {
   }
 
   // Render a child screen into `wrap`, strip its outer .screen chrome
-  // + header (we own those), and remember it for later onLeave.
+  // (we own it), and remember it for later onLeave.
   _mountChildInto(wrap, child, label) {
     if (!wrap) return;
     try {
@@ -510,8 +495,6 @@ class RostersScreen extends Screen {
       const el = child.render();
       if (!el) throw new Error(`${label}: render() returned no element`);
       el.classList.remove('screen');
-      const childHeader = el.querySelector('.screen-header');
-      if (childHeader) childHeader.remove();
       // Apply the base-class layout policy to child too — otherwise
       // its inline max-widths / auto margins survive when mounted
       // outside ScreenManager (which does this automatically for

@@ -9,12 +9,6 @@ class ClubSelectionScreen extends Screen {
     div.className = 'screen screen-club-selection';
 
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>Select Club</h1>
-        <p class="subtitle">Choose which club to manage</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <div id="club-selection-list"></div>
       </div>
@@ -43,11 +37,6 @@ class ClubSelectionScreen extends Screen {
     }
 
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-
       const clubBtn = e.target.closest('.club-option');
       if (clubBtn && this.target) {
         this.navigation.goTo(this.target, {

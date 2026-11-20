@@ -123,13 +123,6 @@ class EventCenterScreen extends Screen {
           .ec-mchip .ec-ml, .ec-mchip .ec-mw { display:none; }
         }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="ec-title">📋 Event Center</h1>
-        <p class="subtitle" id="ec-sub"></p>
-        <!-- 🏟️ Games · 🏃 Practices · ⚽ Pickup · 📅 All (lib/event-kind-switch.js) -->
-        <div id="ec-kinds" style="display:contents;"></div>
-      </div>
       <div id="ec-stack">
         <div id="ec-mode" style="display:none; gap:var(--space-1); flex-wrap:wrap;"></div>
         <!-- admin: schedule release + field clashes (lib/calendar-ops.js) -->
@@ -182,7 +175,7 @@ class EventCenterScreen extends Screen {
     this._autoScroll = this._restoreScroll == null;
     this.error = null;
     this._render();
-    // The DB copy (title, subtitle, not-posted, now line) — cached across screens.
+    // The DB copy (not-posted, now line) — cached across screens.
     if (window.MessageCopy) MessageCopy.load(this.auth).then(() => this._render()).catch(() => {});
     this._loadEvents();
     // Pull Google Calendar in the background (GcalRefresh, 11/3) — the week
@@ -233,8 +226,6 @@ class EventCenterScreen extends Screen {
       if (sel === '#ec-mine' && !(this.viewer || Viewer.account()).calendarMine) { el.style.display = 'none'; continue; }   // lib/viewer.js
       el.style.display = (people === showInPeople) ? (sel === '#ec-ops' ? 'flex' : '') : 'none';
     }
-    const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.style.display = people ? 'none' : 'contents';
     if (people) this._mountBoard();
     if (!people) this._applyCalExtras();   // release / slideshows stay in ☰ until picked
   }
@@ -519,15 +510,8 @@ class EventCenterScreen extends Screen {
       if (el && el.value) { const [y, m, d] = el.value.split('-').map(Number); this._setWeek(new Date(y, m - 1, d)); }
     });
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const t = (sel) => e.target.closest(sel);
       let el;
-      if ((el = t('[data-event-kind]'))) {
-        this.kind = el.dataset.eventKind;
-        if (this.error) this._setWeek(this.weekStart);   // a failed load tries again
-        else this._render();
-        return;
-      }
       if ((el = t('[data-ec-category]'))) { this.category = el.dataset.ecCategory; this._render(); return; }
       if ((el = t('[data-ec-person]'))) { this.person = el.dataset.ecPerson; this._render(); return; }
       if ((el = t('[data-ec-nav]'))) { this.navigation.goTo(el.dataset.ecNav); return; }
@@ -641,32 +625,14 @@ class EventCenterScreen extends Screen {
 
   _render() {
     const body = this.find('#ec-body');
-    const title = this.find('#ec-title');
-    const sub = this.find('#ec-sub');
     if (!body) return;
-    // What this viewer gets (lib/viewer.js — PlayerViewer: no header, Back,
-    // type pills or Month; CoachViewer / AdminViewer: all of it).  The screen asks, never decides.
+    // What this viewer gets (lib/viewer.js — PlayerViewer: no Month or Mine;
+    // CoachViewer / AdminViewer: all of it).  The screen asks, never decides.
     const viewer = this.viewer = Viewer.account();
     if (viewer.calendarKind) this.kind = viewer.calendarKind;
     if (!viewer.calendarViews.includes(this.view)) this.view = viewer.calendarViews[0];
-    const back = this.find('.back-btn');
-    if (back) back.style.display = viewer.calendarBack ? '' : 'none';
-    // The heading (📅 Calendar / Tap an event…) is the viewer's call; the
-    // header row itself stays while it still carries something (the type
-    // pills for staff) — owner 11/18 "we don't need 📅 Calendar Tap an event
-    // … because you have Calendar pill highlighted".
-    if (title) title.style.display = viewer.calendarHeader ? '' : 'none';
-    if (sub) sub.style.display = viewer.calendarHeader ? '' : 'none';
-    const header = this.find('.screen-header');
-    // Games · Practices · Pickup · All are ☰ items now (_calMenuItems), not a row here.
-    if (header) header.style.display = (viewer.calendarHeader || viewer.calendarBack) ? '' : 'none';
     const mine = this.find('#ec-mine');
     if (mine && this.mode !== 'people') mine.style.display = viewer.calendarMine ? '' : 'none';   // PlayerViewer: its links are in the band's row
-    const kinds = this.find('#ec-kinds');
-    if (kinds) kinds.innerHTML = '';
-    title.textContent = EventKindSwitch.title();
-    sub.textContent = (window.MessageCopy && MessageCopy.block('event_center', 'list_sub'))
-      || 'The week — pick a type, then tap an event to open it';
     if (this.error)   { body.innerHTML = `<div class="empty-state" style="text-align:center; opacity:0.8;">${this.escapeHtml(this.error)}</div>`; return; }
     body.innerHTML = this._pickerHtml();
     this._placeScroll();

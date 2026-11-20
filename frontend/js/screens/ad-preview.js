@@ -4,12 +4,6 @@ class AdPreviewScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📱 Ad Preview</h1>
-        <p class="subtitle">Exactly what users see on Facebook & Instagram</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <div id="ap-loading" style="text-align:center; padding: var(--space-6); opacity:0.6;">Loading ads…</div>
         <div id="ap-error"   style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
@@ -29,7 +23,6 @@ class AdPreviewScreen extends Screen {
     this.filter   = 'all';
 
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn')) this.navigation.goBack();
       const hideBtn = e.target.closest('.ap-hide');
       if (hideBtn) { this.toggleHidden(hideBtn.dataset.id); return; }
       const pill = e.target.closest('.ap-pill');

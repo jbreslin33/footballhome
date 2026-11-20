@@ -38,13 +38,8 @@ class CasaHubScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="ch-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="ch-title">⚽ CASA</h1><div id="ch-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content"><div id="ch-body"><div class="loading">Loading…</div></div><div id="ch-gm"></div></div>`;
     this.element = div;
-    div.querySelector('#ch-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
       const t = e.target.closest('[data-go]');
       if (t) { this.navigation.goTo(t.dataset.go, { league: 'CASA' }); return; }
@@ -71,8 +66,6 @@ class CasaHubScreen extends Screen {
     } catch (err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
     const esc = (t) => this.escapeHtml(t);
     const from = this.data.league?.correspondence_email || '';
-    const title = this.find('#ch-title'); if (title) title.textContent = '⚽ ' + (this._copy('hub_title') || 'CASA');
-    const sub = this.find('#ch-sub'); if (sub) sub.textContent = this._copy('hub_subtitle', { from_email: from });
     const divisions = [...new Set((this.data.competitions || []).map(c => c.division_label))];
     const clubs = new Set((this.data.competitions || []).map(c => c.club_id)).size;
     const fx = this.data.fixtures || {};
@@ -133,13 +126,8 @@ class CasaContactsScreen extends Screen {
         .cs-sec { margin:var(--space-4) 0 var(--space-2); font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; opacity:0.6; }
         .cs-hint { font-size:0.8rem; opacity:0.7; margin:4px 0 8px; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="cs-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;">📇 CASA clubs & contacts</h1><div id="cs-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content" id="cs-body"></div>`;
     this.element = div;
-    div.querySelector('#cs-back').addEventListener('click', () => this.navigation.goBack());
     this._wire(div);
     return div;
   }
@@ -160,7 +148,6 @@ class CasaContactsScreen extends Screen {
       const tiers = data.tiers || [];
       if (!this.tier || !tiers.some(t => t.tier === this.tier)) this.tier = (tiers.find(t => t.tier.startsWith('all_')) || tiers[0] || {}).tier || '';
     } catch (err) { if (body) body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
-    const sub = this.find('#cs-sub'); if (sub) sub.textContent = this._copy('contacts_subtitle', { from_email: this._from() });
     this._renderBody();
   }
 
@@ -380,13 +367,8 @@ class CasaScheduleScreen extends Screen {
         .cx-table img { width:18px; height:18px; object-fit:contain; vertical-align:middle; margin-right:6px; }
         @media (max-width:520px) { .cx-game { grid-template-columns:56px 1fr auto; } }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="cx-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="cx-title">📅 CASA schedule</h1><div id="cx-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content" id="cx-body"><div class="loading">Loading…</div></div>`;
     this.element = div;
-    div.querySelector('#cx-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
       const d = e.target.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
@@ -407,9 +389,6 @@ class CasaScheduleScreen extends Screen {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       this.data = data;
     } catch (err) { if (body) body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
-    const sm = this.data.summary || {};
-    const title = this.find('#cx-title'); if (title) title.textContent = '📅 ' + (this._copy('schedule_title') || 'CASA schedule & results');
-    const sub = this.find('#cx-sub'); if (sub) sub.textContent = this._copy('schedule_subtitle', { when: sm.fresh ? 'just now' : (sm.last_fetched_at || 'never'), n: sm.n || 0 });
     this._renderBody();
   }
 
@@ -582,14 +561,12 @@ class CasaScoresScreen extends Screen {
         .cz-tag.warn { border-color:#f59e0b; background:rgba(245,158,11,0.15); }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="cz-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="cz-title">🥅 CASA scores</h1><div id="cz-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <span style="flex:1;"></span>
         <button class="cz-btn sm ghost" data-refresh>↻</button>
         <button class="cz-btn sm ghost" data-go="casa-contacts">📇</button>
       </div>
       <div class="screen-content" id="cz-body"><div class="loading">Loading…</div></div>`;
     this.element = div;
-    div.querySelector('#cz-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', async (e) => {
       const t = e.target;
       const d = t.closest('[data-division]'); if (d) { this.division = d.dataset.division; this._renderBody(); return; }
@@ -618,9 +595,6 @@ class CasaScoresScreen extends Screen {
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
       this.data = data;
     } catch (err) { if (body) body.innerHTML = `<div class="error-message">${this.escapeHtml(err.message)}</div>`; return; }
-    const sm = this.data.summary || {};
-    const title = this.find('#cz-title'); if (title) title.textContent = '🥅 ' + (this._copy('scores_title') || 'CASA scores to chase');
-    const sub = this.find('#cz-sub'); if (sub) sub.textContent = this._copy('scores_subtitle', { when: sm.fresh ? 'just now' : (sm.last_fetched_at || 'never'), n: (this.data.waiting || []).length });
     this._renderBody();
   }
 

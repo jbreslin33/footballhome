@@ -96,12 +96,6 @@ class ReportsScreen extends Screen {
         .rpt-ev { display:grid; grid-template-columns: 9rem 7rem 1fr 1fr; gap:4px 12px; font-size:0.8rem; padding:2px 0; }
         @media (max-width: 768px) { .rpt-ev { grid-template-columns: 1fr 1fr; } }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📊 Reports</h1>
-        <p class="subtitle" id="rpt-subtitle">Attendance &amp; RSVP — who answers, who shows up, who has gone quiet</p>
-      </div>
-
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
         <div id="rpt-reports" style="display:flex; gap:var(--space-2); flex-wrap:wrap; margin-bottom: var(--space-3);">
           <button class="rpt-chip on" data-report="attendance">📋 Attendance &amp; RSVP</button>
@@ -143,8 +137,6 @@ class ReportsScreen extends Screen {
 
   _wireEvents() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
-
       const rep = e.target.closest('[data-report]');
       if (rep) {
         if (rep.dataset.report === 'payments') this.navigation.goTo('tuition');

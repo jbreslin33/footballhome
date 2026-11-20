@@ -4,14 +4,6 @@ class MatchListScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-match-list';
     div.innerHTML = `
-      <div class="screen-header">
-        <button id="back-btn" class="btn btn-secondary">
-          ← Back
-        </button>
-        <h1>🏆 Match Schedule</h1>
-        <p class="subtitle">Tap a button to RSVP</p>
-      </div>
-
       <div id="leagues-sync-status"></div>
       
       <div id="match-list" class="match-cards"></div>
@@ -25,12 +17,6 @@ class MatchListScreen extends Screen {
     this.loadSyncStatus();
     
     this.element.addEventListener('click', (e) => {
-      // Back button
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
       // Stats button
       const statsBtn = e.target.closest('[data-action="stats"]');
       if (statsBtn) {

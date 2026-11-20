@@ -24,18 +24,12 @@ class TacticalScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>♟️ Tactical</h1>
-        <p class="subtitle">The game model, the weekly plan, the exercises, and the board</p>
-      </div>
       <div style="padding: var(--space-4);">
         <div id="tac-tiles" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
       </div>
     `;
     this.element = div;
     div.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const btn = e.target.closest('[data-tile]');
       if (!btn) return;
       const tile = this._tiles().find(t => t.id === btn.dataset.tile);

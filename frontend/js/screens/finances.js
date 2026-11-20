@@ -55,17 +55,12 @@ class FinancesScreen extends Screen {
         .fn-tick { font-size:0.7rem; opacity:0.75; display:block; }
         .fn-warn { color:#fbbf24; font-weight:700; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="fn-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="fn-title">📈 Finances</h1><div id="fn-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content" style="max-width:1400px; margin:0 auto;">
         <div class="fn-pills" id="fn-pills"></div>
         <div id="fn-who"></div>
         <div id="fn-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#fn-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => {
       const w = e.target.closest('[data-scope]'); if (w) { this.scope = w.dataset.scope; this._renderBody(); return; }
       const v = e.target.closest('[data-view]'); if (v) { this.view = v.dataset.view; this._renderBody(); return; }
@@ -114,8 +109,6 @@ class FinancesScreen extends Screen {
     this.err = '';
     try {
       if (window.MessageCopy) await MessageCopy.load(this.auth);
-      const title = this.find('#fn-title'); if (title) title.textContent = this._copy('title') || '📈 Finances';
-      const sub = this.find('#fn-sub'); if (sub) sub.textContent = this._copy('subtitle');
       this._renderPills();
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
       const finesP = this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);

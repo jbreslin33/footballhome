@@ -16,14 +16,12 @@ class MainMenuScreen extends Screen {
 
     
     div.innerHTML = `
-      <div class="screen-header">
-        <h1>Welcome, ${this.escapeHtml(userName)}</h1>
-        <p class="subtitle">${this.escapeHtml((window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', 'subtitle') && MessageCopy.block('main_menu', 'subtitle')) || 'Where to?')}</p>
-      </div>
-      
       <div style="padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-width: 500px; margin: 0 auto;">
         <!-- The group buttons moved to the bar on top of every page
-             (lib/main-menu.js, owner 11/16); this is 👤 Account now. -->
+             (lib/main-menu.js, owner 11/16); this is 👤 Account now.
+             The signed-in name was the old "Welcome, …" title — kept as
+             data so Logout says whose session it ends. -->
+        <div class="signed-in-as" style="text-align: center; opacity: 0.8;">👤 ${this.escapeHtml(userName)}</div>
         <button class="btn btn-text logout-btn" style="margin-top: var(--space-4);">Logout</button>
         <button class="btn btn-outline-secondary open-tactical-btn" style="margin-top: var(--space-2);">Open Tactical Board</button>
 

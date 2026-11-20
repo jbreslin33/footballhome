@@ -11,12 +11,6 @@ class AdminSystemScreen extends Screen {
     div.className = 'screen screen-admin-system';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🛡️ Super Admin Dashboard</h1>
-          <p class="subtitle">System-level administration · league/scraped data outside Club Admin</p>
-      </div>
-      
       <div class="admin-container">
         <!-- Navigation Tabs -->
         <div class="admin-tabs">
@@ -56,10 +50,6 @@ class AdminSystemScreen extends Screen {
   
   setupEventListeners() {
     this.element.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-      }
-      
       if (e.target.classList.contains('admin-tab')) {
         const view = e.target.dataset.view;
         this.switchView(view);

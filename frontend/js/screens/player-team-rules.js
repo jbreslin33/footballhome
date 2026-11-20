@@ -8,15 +8,7 @@ class PlayerTeamRulesScreen extends Screen {
     const el = document.createElement('div');
     el.className = 'screen screen-player-team-rules';
     el.innerHTML = `
-      <div class="screen-header" style="padding: 6px 10px 8px; gap: 8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn btn-secondary back-btn" style="padding: 3px 7px; line-height:1;">←</button>
-        <div>
-          <h1 style="font-size: 0.95rem; margin: 0; line-height:1;">Team Rules</h1>
-          <p class="subtitle" style="margin: 2px 0 0; font-size: 0.68rem; line-height:1;">Season expectations and selection policy</p>
-        </div>
-      </div>
-
-      <div style="padding: 0 10px 14px; line-height: 1.5;">
+      <div style="padding: 10px 10px 14px; line-height: 1.5;">
         <!-- ⚖️ Their live fines + the fine rules (FinesPanel) — owner 11/18 "even on
              team rules is where we can show live fines".  Hidden without rates. -->
         <div id="ptr-fines" hidden style="margin-bottom:10px;"></div>
@@ -132,12 +124,5 @@ class PlayerTeamRulesScreen extends Screen {
       };
       new FinesPanel(host, { fetchJson, escapeHtml: esc, auth: this.auth }).load();
     }
-    if (this._wired) return;
-    this._wired = true;
-    this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-      }
-    });
   }
 }

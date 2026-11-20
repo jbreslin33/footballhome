@@ -4,13 +4,7 @@ class MatchDetailScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-match-detail';
     div.innerHTML = `
-      <div class="screen-header">
-        <button id="back-btn" class="btn btn-secondary">
-          ← Back
-        </button>
-        <h1 id="match-title">Match Details</h1>
-      </div>
-      
+      <div id="match-title-host"></div>
       <div id="match-stats-container" class="match-stats-container"></div>
     `;
     this.element = div;
@@ -19,19 +13,14 @@ class MatchDetailScreen extends Screen {
   
   onEnter(params) {
     this.matchId = params.matchId;
-    this.matchTitle = params.matchTitle || 'Match Details';
-    
-    // Update title
-    this.find('#match-title').textContent = this.matchTitle;
-    
+    this.matchTitle = params.matchTitle || '';
+
+    // The match's own name only (no generic page title — the menu pill names the page).
+    this.find('#match-title-host').innerHTML = this.matchTitle
+      ? `<div class="screen-header"><h1>${this.escapeHtml(this.matchTitle)}</h1></div>`
+      : '';
+
     this.loadMatchPlayerStats();
-    
-    this.element.addEventListener('click', (e) => {
-      if (e.target.id === 'back-btn' || e.target.closest('#back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-    });
   }
   
   loadMatchPlayerStats() {

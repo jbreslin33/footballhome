@@ -102,12 +102,6 @@ class LeadsScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📋 Leads</h1>
-        <p class="subtitle">Interest form submissions from ads</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <div id="leads-sync-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; color: #0f172a; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="leads-sync-icon" style="font-size: 16px;">⏳</span>
@@ -144,7 +138,6 @@ class LeadsScreen extends Screen {
     this._formStatus = 'active';
 
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn')) this.navigation.goBack();
       if (e.target.closest('#leads-sync-refresh')) this.loadLeads({ force: true });
       if (e.target.closest('#leads-sync-log-toggle')) {
         const log = this.find('#leads-sync-log');

@@ -25,13 +25,8 @@ class InHouseProposalScreen extends Screen {
         .ihp-table td { padding:6px 8px; text-align:left; border-top:1px solid var(--border-color, #374151); }
         .ihp-note { opacity:0.7; font-size:0.8rem; margin-top:8px; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="ihp-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="ihp-title"></h1><div id="ihp-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
-      </div>
       <div class="screen-content"><div class="ihp-wrap" id="ihp-body"></div></div>`;
     this.element = div;
-    div.querySelector('#ihp-back').addEventListener('click', () => this.navigation.goBack());
     return div;
   }
 
@@ -43,8 +38,6 @@ class InHouseProposalScreen extends Screen {
     const user = this.navigation.context.user;
     if (!['club', 'sport_division', 'team', 'super', 'system', 'league'].includes(user?.role)) { this.navigation.goBack(); return; }
     if (window.MessageCopy) await MessageCopy.load(this.auth);
-    this.find('#ihp-title').textContent = this._copy('title');
-    this.find('#ihp-sub').textContent = this._copy('subtitle');
     this.find('#ihp-body').innerHTML = [
       this._section('ask'),
       `<div class="ihp-strip">${[1, 2, 3].map(n => this._stat(n)).join('')}</div>`,

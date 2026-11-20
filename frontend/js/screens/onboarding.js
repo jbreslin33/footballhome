@@ -72,10 +72,6 @@ class OnboardingScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-onboarding';
     div.innerHTML = `
-      <div class="screen-header" style="padding: var(--space-3) var(--space-4);">
-        <h1 style="margin: var(--space-2) 0 0;">${this.escapeHtml(this._t('title', {}, '🎓 Onboarding'))}</h1>
-        <p style="margin: 4px 0 0; opacity: 0.8;">${this.escapeHtml(this._t('sub', {}, 'Volunteer → paid: clearances, ID, then pay paperwork. Tap a step to check it.'))}</p>
-      </div>
       <div id="onb-body" style="padding: 0 var(--space-4) var(--space-4); max-width: 860px;"></div>`;
     this.element = div;
     div.addEventListener('click', (e) => this._onClick(e));

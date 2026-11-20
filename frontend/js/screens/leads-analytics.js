@@ -24,12 +24,6 @@ class LeadsAnalyticsScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>📊 Leads Analytics</h1>
-        <p class="subtitle">Which touches actually turn into registrations?</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <div id="la-banner" style="margin-bottom: var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="la-banner-icon" style="font-size: 16px;">⏳</span>
@@ -63,7 +57,6 @@ class LeadsAnalyticsScreen extends Screen {
     this._spendError     = null;
 
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn'))   this.navigation.goBack();
       if (e.target.closest('#la-refresh')) this.load();
 
       const winPill = e.target.closest('[data-window]');

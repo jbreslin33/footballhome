@@ -70,12 +70,6 @@ class MensRosterScreen extends RosterScreenBase {
         .mr-card.mr-drop-after            { box-shadow: 0  3px 0 0 #10b981 inset; }
         .mr-drop-zone.mr-drop-empty       { box-shadow: 0 0 0 2px #10b981 inset; border-radius: 4px; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎽 Mens Teams</h1>
-        <p class="subtitle">Live from LeagueApps — dues-aware team selection with per-team overdue counts</p>
-      </div>
-
       <div style="padding: var(--space-2) 0;">
         <div id="mr-banner" style="margin: 0 var(--space-2) var(--space-3); padding: var(--space-3); border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0; display:flex; align-items:center; gap: var(--space-3); flex-wrap: wrap; font-size: 14px;">
           <span id="mr-banner-icon" style="font-size: 16px;">⏳</span>
@@ -95,7 +89,6 @@ class MensRosterScreen extends RosterScreenBase {
     RosterScreenBase.installMoveDropdownOutsideClose();
     this.wireMessageButtons();
     this.element.addEventListener('click', e => {
-      if (e.target.closest('.back-btn')) return this.navigation.goBack();
       if (e.target.closest('#mr-refresh')) return this.load({ refreshLa: true });
       const moveOpt = e.target.closest('.roster-move-option');
       if (moveOpt) return this.onMoveOptionClick(moveOpt);

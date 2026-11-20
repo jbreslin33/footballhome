@@ -5,12 +5,6 @@ class AdminLevelSelectionScreen extends Screen {
     div.className = 'screen screen-admin-level-selection';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>Administration</h1>
-        <p class="subtitle">Select admin level</p>
-      </div>
-      
       <div style="padding: var(--space-4);">
         <div id="level-list"></div>
       </div>
@@ -24,11 +18,6 @@ class AdminLevelSelectionScreen extends Screen {
     
     // Handle navigation
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
       const levelBtn = e.target.closest('.level-option');
       if (levelBtn) {
         const levelType = levelBtn.getAttribute('data-level-type');

@@ -33,11 +33,6 @@ class HolidayPostsScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-holiday-posts';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🎉 Holiday Posts</h1>
-        <p class="subtitle">Lighthouse 1893 Instagram holiday posts</p>
-      </div>
       <!-- 🤝 Collaborators (mig 1183): ticked by default, applies to every post published here. -->
       <div class="collab-host" style="padding: 0 var(--space-4); max-width: 900px; margin: 0 auto;"></div>
       <div id="holiday-list" style="padding: var(--space-4); max-width: 800px; margin: 0 auto;">
@@ -58,10 +53,6 @@ class HolidayPostsScreen extends Screen {
 
   onEnter(params) {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const publishBtn = e.target.closest('.publish-btn');
       if (publishBtn) {
         const idx = parseInt(publishBtn.dataset.idx);

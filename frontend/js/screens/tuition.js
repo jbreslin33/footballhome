@@ -49,12 +49,6 @@ class TuitionScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>💳 Tuition</h1>
-        <p class="subtitle">Player dues from LeagueApps — synced on every load</p>
-      </div>
-
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
         <!-- Summary + Projections lived here for a day (mig 489); they are
              on #finances since mig 490 so billing stays clean. -->
@@ -156,7 +150,6 @@ class TuitionScreen extends Screen {
     this.paintViewButtons();
 
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) return this.navigation.goBack();
       // ⋯ / banner / injury chip → the player sheet (mig 1235).
       const sheetBtn = e.target.closest('[data-player-sheet]');
       if (sheetBtn) { this.openPlayerSheet(sheetBtn.getAttribute('data-player-sheet'), sheetBtn.getAttribute('data-sheet-tab')); return; }
@@ -2982,7 +2975,7 @@ class TuitionScreen extends Screen {
   // Rewrite the current /payments browser history entry so its
   // stored `params` capture the operator's live tab + view + search
   // state.  Called immediately before pushing /person onto history —
-  // pairs with PersonScreen._goBack()'s plain window.history.back()
+  // pairs with the browser's plain window.history.back()
   // to make back-nav land on the exact filtered payments view we
   // came from, not the initial-entry defaults.
   _snapshotHistoryState() {

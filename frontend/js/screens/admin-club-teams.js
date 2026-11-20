@@ -14,8 +14,6 @@ class AdminClubTeamsScreen extends Screen {
     div.className = 'screen screen-admin-club-teams';
     div.innerHTML = `
       <div class="screen-header" style="display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);">
-        <button class="btn btn-secondary btn-sm back-btn">← Back</button>
-        <h1 id="act-title" style="margin:0;font-size:1.15rem;">Teams</h1>
         <span style="flex:1"></span>
         <span id="act-count" style="font-size:0.78rem;color:var(--text-muted);"></span>
       </div>
@@ -56,19 +54,12 @@ class AdminClubTeamsScreen extends Screen {
     this._status = 'active';
     this._search = '';
 
-    const title = this.find('#act-title');
-    if (title) title.textContent = `${this.clubName} — Teams`;
-
     this._wireEvents();
     this._loadTeams();
   }
 
   _wireEvents() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const pill = e.target.closest('.act-gender-pill');
       if (pill) {
         this._filter = pill.dataset.gender;

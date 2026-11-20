@@ -5,12 +5,6 @@ class ClubDirectoryScreen extends Screen {
     div.className = 'screen screen-club-directory';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>Club Directory</h1>
-        <p class="subtitle">All registered clubs</p>
-      </div>
-      
       <div style="padding: var(--space-3);">
         <div style="margin-bottom: var(--space-3);">
           <input type="text" id="club-search" placeholder="Search clubs..." 
@@ -32,11 +26,6 @@ class ClubDirectoryScreen extends Screen {
     this.loadClubs();
     
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-      
       const clubCard = e.target.closest('.club-card');
       if (clubCard) {
         const clubId = clubCard.dataset.clubId;

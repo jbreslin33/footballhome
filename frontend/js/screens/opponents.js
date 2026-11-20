@@ -68,16 +68,8 @@ class OpponentsScreen extends Screen {
         .op-hint { font-size:0.8rem; opacity:0.7; margin:4px 0 8px; }
         .op-top { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:8px 0; }
       </style>
-      <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="op-back">← Back</button>
-        <div style="flex:1;">
-          <h1 style="margin:0;">📇 Opponents</h1>
-          <div id="op-subtitle" style="font-size:0.85rem; opacity:0.75;"></div>
-        </div>
-      </div>
       <div class="screen-content" id="op-body"></div>`;
     this.element = div;
-    div.querySelector('#op-back').addEventListener('click', () => this.navigation.goBack());
     this._wire(div);
     return div;
   }
@@ -114,7 +106,6 @@ class OpponentsScreen extends Screen {
       if (!this.league || (this.league !== '__prospects' && !leagues.includes(this.league))) { this.league = leagues[0] || ''; this.division = ''; }
     } catch (err) { this.board = null; this.error = err.message || 'Failed to load.'; }
     this.loading = false;
-    const sub = this.find('#op-subtitle'); if (sub) sub.textContent = this._copy('subtitle');
     this._renderBody();
     if (this.focusClub) { const el = this.find(`[data-club-card="${this.focusClub}"]`); if (el) el.scrollIntoView({ block: 'center' }); }
   }

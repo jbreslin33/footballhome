@@ -76,11 +76,6 @@ class SecurityScreen extends Screen {
         .lk-note { width:100%; box-sizing:border-box; margin-top:8px; padding:8px; border-radius:8px;
                    border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🔐 Security</h1>
-        <p class="subtitle">After the last event at a Lighthouse site, upload a photo of the locked gate — otherwise Football Home starts calling shortly after it ends</p>
-      </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
           <button id="lk-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
@@ -101,7 +96,6 @@ class SecurityScreen extends Screen {
       if (input && input.files && input.files[0]) await this.upload(Number(input.dataset.upload), input.files[0]);
     });
     this.element.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#lk-refresh')) { this.load(); return; }
       const testBtn = e.target.closest('[data-test]');
       if (testBtn) { await this.test(testBtn.dataset.test); return; }

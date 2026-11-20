@@ -53,11 +53,6 @@ class AwardsScreen extends Screen {
         .aw-send { padding:6px 12px; border-radius:8px; cursor:pointer; font-weight:700; font-size:0.8rem; min-height:0;
                    border:1px solid var(--primary-color); background:var(--primary-color); color:#fff; }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="aw-title">🏅 Awards</h1>
-        <p class="subtitle" id="aw-sub"></p>
-      </div>
       <div id="aw-body" style="padding: var(--space-4); max-width: 1100px; margin: 0 auto;"></div>
     `;
     this.element = div;
@@ -112,7 +107,6 @@ class AwardsScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       const t = (sel) => e.target.closest(sel);
       let el;
-      if (t('.back-btn')) { this.navigation.goBack(); return; }
       if ((el = t('[data-aw-term]')))    { this.term = el.dataset.awTerm; this._load(); return; }
       if ((el = t('[data-aw-year]')))    { this.year = Number(this.year) + Number(el.dataset.awYear); this._load(); return; }
       if ((el = t('[data-aw-section]'))) { this.section = el.dataset.awSection; this._render(); return; }
@@ -234,8 +228,6 @@ class AwardsScreen extends Screen {
   _render() {
     const body = this.find('#aw-body');
     if (!body) return;
-    this.find('#aw-title').textContent = this._copy('title', {}, '🏅 Awards');
-    this.find('#aw-sub').textContent = this._copy('sub2', {}, 'Each award has slots per team — 💡 = suggested from attendance, tap to give it');
     if (this.error && !this.board) { body.innerHTML = `<div class="empty-state">${this.escapeHtml(this.error)}</div>`; return; }
     if (!this.board) { body.innerHTML = `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`; return; }
     const esc = (s) => this.escapeHtml(String(s ?? ''));

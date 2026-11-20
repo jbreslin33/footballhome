@@ -32,23 +32,18 @@ class FilmScreen extends Screen {
         .fl-watch:hover { background:var(--primary-color, #2563eb); color:#fff; }
       </style>
       <div class="screen-header" style="display:flex; align-items:center; gap:var(--space-3);">
-        <button class="btn btn-secondary" id="fl-back">← Back</button>
-        <div style="flex:1;"><h1 style="margin:0;" id="fl-title">🎥 Game film</h1><div id="fl-sub" style="font-size:0.85rem; opacity:0.75;"></div></div>
+        <span style="flex:1;"></span>
         <button class="btn btn-secondary" id="fl-refresh" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
       </div>
       <div class="screen-content" style="max-width:860px; margin:0 auto;">
         <div id="fl-body"><div class="loading">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('#fl-back').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#fl-refresh').addEventListener('click', () => this.load());
     return div;
   }
 
   onEnter() {
-    const t = this.find('#fl-title'), s = this.find('#fl-sub');
-    if (t) t.textContent = this._copy('title') || '🎥 Game film';
-    if (s) s.textContent = this._copy('subtitle');
     this.load();
   }
 

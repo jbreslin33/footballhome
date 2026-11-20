@@ -43,11 +43,6 @@ class ContactsScreen extends Screen {
         .ct-msg { margin-top:var(--space-3); font-weight:600; }
         .ct-msg.bad { color:#ef4444; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="ct-title">📇 Contacts</h1>
-        <p class="subtitle" id="ct-sub"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 760px; margin: 0 auto;">
         <div id="ct-body"></div>
       </div>
@@ -135,7 +130,6 @@ class ContactsScreen extends Screen {
 
   _wire() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       let el;
       if ((el = e.target.closest('[data-ct-group]'))) {
         const g = el.dataset.ctGroup;
@@ -148,8 +142,6 @@ class ContactsScreen extends Screen {
   }
 
   _render() {
-    const title = this.find('#ct-title'); if (title) title.textContent = this._copy('title') || '📇 Contacts';
-    const sub = this.find('#ct-sub'); if (sub) sub.textContent = this._copy('subtitle');
     const body = this.find('#ct-body');
     if (!body) return;
     const msg = (text) => `<div class="empty-state" style="text-align:center; opacity:0.75; padding:var(--space-6);">${this.escapeHtml(text)}</div>`;

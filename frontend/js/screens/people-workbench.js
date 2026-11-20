@@ -16,12 +16,6 @@ class PeopleWorkbenchScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="people-workbench-title">People Directory</h1>
-        <p class="subtitle" id="people-workbench-subtitle">Lighthouse person graph</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <p id="people-workbench-description" style="opacity: 0.75; margin: 0 0 var(--space-3);">
           One row per Lighthouse person with account, player, staff, roster, and RSVP links.
@@ -65,9 +59,6 @@ class PeopleWorkbenchScreen extends Screen {
     this._searchTimer = null;
 
     const meta = this._viewMeta(this.view);
-    this.find('#people-workbench-title').textContent = params?.title || meta.title;
-    this.find('#people-workbench-subtitle').textContent =
-      params?.subtitle || `${this.clubName} · person graph`;
     this.find('#people-workbench-description').textContent =
       params?.description || meta.description;
 
@@ -85,27 +76,21 @@ class PeopleWorkbenchScreen extends Screen {
   _viewMeta(view) {
     const map = {
       directory: {
-        title: 'People Directory',
         description: 'One Lighthouse person per row: contact, account, player, staff, membership, roster, and RSVP.',
       },
       accounts: {
-        title: 'Accounts',
         description: 'Login users connected to Lighthouse persons — sign-in state and activity.',
       },
       players: {
-        title: 'Players',
         description: 'Lighthouse player records linked to persons (not scraped opponent-only players).',
       },
       staff: {
-        title: 'Coaches & Admins',
         description: 'Coach, team admin, and club admin assignments on Lighthouse people.',
       },
       duplicates: {
-        title: 'Duplicates / Merges',
         description: 'Grouped by shared email or name+DOB. Keep one person and drop the other; reverse from the person profile.',
       },
       'data-issues': {
-        title: 'Data Issues',
         description: 'Missing contacts, accounts, LA aliases, roster assignments, or RSVP eligibility.',
       },
     };
@@ -114,15 +99,10 @@ class PeopleWorkbenchScreen extends Screen {
 
   _bindEvents() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
       const lens = e.target.closest('[data-lens]');
       if (lens) {
         this.view = this._normalizeView(lens.getAttribute('data-lens'));
         const meta = this._viewMeta(this.view);
-        this.find('#people-workbench-title').textContent = meta.title;
         this.find('#people-workbench-description').textContent = meta.description;
         this._renderLensBar();
         this._load();
@@ -156,8 +136,6 @@ class PeopleWorkbenchScreen extends Screen {
             clubId: this.clubId,
             clubName: this.clubName,
             view: this.view,
-            title: this.find('#people-workbench-title')?.textContent,
-            subtitle: this.find('#people-workbench-subtitle')?.textContent,
             description: this.find('#people-workbench-description')?.textContent,
           },
         };

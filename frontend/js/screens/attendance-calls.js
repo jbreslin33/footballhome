@@ -48,11 +48,6 @@ class AttendanceCallsScreen extends Screen {
         .ac-round { border-top:1px solid var(--border-color); padding:6px 0; }
         .ac-person { display:flex; gap:8px; align-items:center; font-size:0.84rem; padding:2px 0 2px 10px; flex-wrap:wrap; }
       </style>
-      <div class="screen-header" style="flex-wrap:wrap;">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="ac-title">📞 Attendance Calls</h1>
-        <p class="subtitle" id="ac-sub"></p>
-      </div>
       <div id="ac-body" style="padding: var(--space-4); max-width: 900px; margin: 0 auto;"></div>
     `;
     this.element = div;
@@ -83,7 +78,6 @@ class AttendanceCallsScreen extends Screen {
 
   _wire() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const d = e.target.closest('[data-ac-days]');
       if (d) { this.days = Number(d.dataset.acDays); this.data = null; this._render(); this._load(); return; }
       const s = e.target.closest('[data-ac-section]');
@@ -101,8 +95,6 @@ class AttendanceCallsScreen extends Screen {
 
   _render() {
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
-    const title = this.find('#ac-title'); if (title) title.textContent = this._c('title', {}, '📞 Attendance Calls');
-    const sub = this.find('#ac-sub'); if (sub) sub.textContent = this._c('subtitle', {}, '');
     const body = this.find('#ac-body');
     if (!body) return;
     const pills = `

@@ -32,12 +32,9 @@ class TacticalLiveScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>♟️ <span data-tl-title>Live Tactical Board</span></h1>
-        <p class="subtitle" data-tl-sub></p>
-      </div>
       <div style="padding: var(--space-3); max-width: 560px; margin: 0 auto;">
+        <!-- The open board's team + title, the drag hint, whose piece a tap hit. -->
+        <p data-tl-status style="margin:0 0 var(--space-2); font-size:0.85rem; opacity:0.8;"></p>
         <div data-tl-staff hidden style="display:flex; gap:var(--space-2); flex-wrap:wrap; align-items:center; margin-bottom:var(--space-2);"></div>
         <div data-tl-empty hidden style="padding: var(--space-4); text-align:center; opacity:0.8;"></div>
         <div data-tl-pitchwrap hidden>
@@ -67,7 +64,6 @@ class TacticalLiveScreen extends Screen {
     this.element = div;
 
     div.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       const start = e.target.closest('[data-tl-start]');
       if (start) { this._startBoard(); return; }
       const close = e.target.closest('[data-tl-close]');
@@ -143,9 +139,7 @@ class TacticalLiveScreen extends Screen {
 
   // ── Rendering ────────────────────────────────────────────────────────
   _renderBoard() {
-    const titleEl = this.find('[data-tl-title]');
-    if (titleEl) titleEl.textContent = this._copy('title') || 'Live Tactical Board';
-    const sub = this.find('[data-tl-sub]');
+    const sub = this.find('[data-tl-status]');
     const empty = this.find('[data-tl-empty]');
     const wrap = this.find('[data-tl-pitchwrap]');
     const staff = this.find('[data-tl-staff]');
@@ -232,7 +226,7 @@ class TacticalLiveScreen extends Screen {
     if (!p) return;
     if (!this._canDrag(p)) {
       // Tap on someone else's piece: say whose it is (copy from the DB).
-      const sub = this.find('[data-tl-sub]');
+      const sub = this.find('[data-tl-status]');
       if (sub && p.kind === 'player') sub.textContent = (this._copy('not_yours', { name: p.label }) || `Only ${p.label} can move that piece.`);
       return;
     }

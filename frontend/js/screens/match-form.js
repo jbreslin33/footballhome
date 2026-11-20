@@ -11,11 +11,6 @@ class MatchFormScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-match-form';
     div.innerHTML = `
-      <div class="screen-header">
-        <h1 id="form-title">🏆 Create Match</h1>
-        <p class="subtitle">Fill in the match details below</p>
-      </div>
-      
       <div class="card" style="max-width: 600px; margin: var(--space-4) auto;">
         <form id="match-form">
           <div class="form-group">
@@ -101,7 +96,6 @@ class MatchFormScreen extends Screen {
     
     // Update UI based on mode
     if (this.mode === 'edit') {
-      this.find('#form-title').textContent = '🏆 Edit Match';
       this.find('#submit-btn').textContent = 'Save Changes';
       // Load venues and teams first, then load match data
       Promise.all([

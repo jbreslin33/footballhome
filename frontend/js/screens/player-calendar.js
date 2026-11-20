@@ -1,7 +1,6 @@
 // PlayerCalendarScreen — 👥 Players: simplified player-only roster view
-// (👤 Mine → Players).  Not a calendar — the name is history; its heading is
-// the same DB word as the link that opens it (event_center link_players,
-// owner 11/16 one-page clean-up: "player-calendar" read like a 2nd calendar).
+// (👤 Mine → Players).  Not a calendar — the name is history (owner 11/16
+// one-page clean-up: "player-calendar" read like a 2nd calendar).
 // Read-only, no contact actions, no unassigned bucket, and only the
 // APSL / Liga 1 columns are shown.
 class PlayerCalendarScreen extends Screen {
@@ -16,15 +15,7 @@ class PlayerCalendarScreen extends Screen {
     const el = document.createElement('div');
     el.className = 'screen screen-player-calendar';
     el.innerHTML = `
-      <div class="screen-header" style="padding: 6px 10px 8px; gap: 8px; align-items:center; flex-wrap:wrap;">
-        <button class="btn btn-secondary back-btn" style="padding: 3px 7px; line-height:1;">←</button>
-        <div>
-          <h1 style="font-size: 0.95rem; margin: 0; line-height:1;" id="pc-title">Players</h1>
-          <p class="subtitle" id="pc-subtitle" style="margin: 2px 0 0; font-size: 0.68rem; line-height:1;">Loading roster…</p>
-        </div>
-      </div>
-
-      <div style="padding: 0 10px 10px;">
+      <div style="padding: 10px;">
         <div id="pc-loading" style="text-align:center; padding: var(--space-6); opacity:0.7;">Loading…</div>
         <div id="pc-error" style="display:none; color: var(--color-error); padding: var(--space-4); text-align:center;"></div>
         <div id="pc-list" style="display:none;"></div>
@@ -35,14 +26,6 @@ class PlayerCalendarScreen extends Screen {
   }
 
   onEnter() {
-    const title = this.find('#pc-title');
-    const word = window.MessageCopy && MessageCopy.block('event_center', 'link_players');
-    if (title && word) title.textContent = word;
-    this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-      }
-    });
     this.load();
   }
 
@@ -92,7 +75,7 @@ class PlayerCalendarScreen extends Screen {
       return `
         <section style="margin-bottom: 10px; background: var(--bg-secondary); border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden;">
           <div style="padding: 8px 10px; border-bottom: 1px solid var(--color-border); background: rgba(255,255,255,0.03); font-weight: 700; font-size: 0.82rem;">
-            ${this._escape(col.label || `Team ${col.teamId}`)}
+            ${this._escape(col.label || `Team ${col.teamId}`)} · ${players.length}
           </div>
           <div style="display:flex; flex-direction:column; gap: 6px; padding: 8px 10px;">
             ${rows || '<div style="opacity:0.55; font-size:0.8rem;">No players</div>'}
@@ -103,10 +86,6 @@ class PlayerCalendarScreen extends Screen {
 
     listEl.innerHTML = html;
     listEl.style.display = '';
-    const subtitle = this.find('#pc-subtitle');
-    if (subtitle) {
-      subtitle.textContent = `${(data.total || 0)} players · APSL + Liga 1`;
-    }
   }
 
   renderPlayer(p) {

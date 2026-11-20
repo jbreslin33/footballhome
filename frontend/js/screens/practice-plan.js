@@ -3,7 +3,6 @@ class PracticePlanScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.clubId = null;
-    this.clubName = 'Club';
     this.selectedDayKey = null;
     this.days = [];
     this.practices = [];
@@ -18,16 +17,6 @@ class PracticePlanScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-practice-plan';
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
-        <div style="display:flex; align-items:center; gap:var(--space-2);">
-          <button class="btn btn-secondary back-btn">← Back</button>
-          <div>
-            <h1 id="practice-plan-title" style="margin:0;">Practice Plans</h1>
-            <p id="practice-plan-subtitle" class="subtitle" style="margin:0;">Edit practice sessions and exercises for each day</p>
-          </div>
-        </div>
-      </div>
-
       <div style="padding: var(--space-4); display:grid; gap: var(--space-3);">
         <div id="practice-plan-content" style="display:grid; gap: var(--space-3);"></div>
       </div>
@@ -39,14 +28,7 @@ class PracticePlanScreen extends Screen {
   onEnter(params) {
     const requestedClubId = params?.clubId ?? params?.club?.id ?? 134;
     this.clubId = Number.isFinite(Number(requestedClubId)) ? Number(requestedClubId) : 134;
-    this.clubName = params?.clubName || (this.clubId === 134 ? 'Lighthouse' : 'Club');
     this.selectedDayKey = null;
-
-    this.find('#practice-plan-title').textContent = `${this.clubName} · Practice Plans`;
-
-    this.find('.back-btn')?.addEventListener('click', () => {
-      this.navigation.goBack();
-    });
 
     this.loadPlan();
   }

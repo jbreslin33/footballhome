@@ -200,11 +200,6 @@ class RsvpBoardScreen extends Screen {
         .rb-bulk a.rb-btn { text-decoration:none; display:inline-block; }
         .rb-pill { display:inline-block; padding:1px 8px; border-radius:999px; font-size:0.7rem; font-weight:700; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>✅ RSVP Reminders</h1>
-        <p class="subtitle">Who owes an answer — players, coaches and staff — remind them with their unanswered events and a sign-in link</p>
-      </div>
       <div style="padding: var(--space-4); max-width: 1500px; margin: 0 auto;">
         <!-- One labelled row per pill group (owner 2026-09-22: "all time
              frames in own section and clubs Men, boys etc in own section
@@ -276,7 +271,6 @@ class RsvpBoardScreen extends Screen {
 
   _wireEvents() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       // ⋯ → the shared player sheet (owner 2026-11-11), on 📅 Activity.
       const sheetBtn = e.target.closest('[data-player-sheet]');
       if (sheetBtn && !sheetBtn.closest('.player-sheet')) { this._openSheet(Number(sheetBtn.dataset.playerSheet), sheetBtn.dataset.sheetTab || 'activity'); return; }

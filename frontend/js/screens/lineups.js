@@ -47,12 +47,6 @@ class LineupsScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-lineups';
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🧩 Lineup</h1>
-        <p class="subtitle">Pick starters &amp; bench across every team's next match in one place.</p>
-      </div>
-
       <div id="lineups-toolbar" style="
         padding: var(--space-3) var(--space-4);
         border-bottom: 1px solid var(--border-color);
@@ -94,17 +88,6 @@ class LineupsScreen extends Screen {
     this.matchType = (mt === 'practice' || mt === 'pickup') ? mt : 'game';
     this.division  = params?.division  || null;   // future: 'apsl' | 'liga1' | 'liga2' | 'tricounty'
     this.ageGroup  = params?.ageGroup  || null;   // future: 'u8' | 'u10' | 'u12'
-    // Update header copy to reflect the chosen gender + match type.
-    const h1 = this.element.querySelector('.screen-header h1');
-    if (h1) {
-      const genderLabel = this.gender === 'womens' ? 'Women’s' : 'Men’s';
-      const typeLabel = this.matchType === 'practice'
-        ? '🏃 ' + genderLabel + ' Practice Dashboard'
-        : this.matchType === 'pickup'
-          ? '⚡ ' + genderLabel + ' Pickup Dashboard'
-          : '🧩 ' + genderLabel + ' Lineup';
-      h1.textContent = typeLabel;
-    }
     this.hiddenTeams = this._loadHiddenTeams();
 
     if (!this._listenersAttached) {
@@ -211,9 +194,6 @@ class LineupsScreen extends Screen {
     });
 
     this.element.addEventListener('click', (e) => {
-      const back = e.target.closest('.back-btn');
-      if (back) { this.navigation.goBack(); return; }
-
       // Cross-team assignment (Unassigned column pills)
       const assignBtn = e.target.closest('[data-mens-assign]');
       if (assignBtn) {

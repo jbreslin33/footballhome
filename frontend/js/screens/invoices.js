@@ -183,11 +183,6 @@ class InvoicesScreen extends Screen {
         .inv-preview-wrap .inv-scale { transform-origin:top left; }
           .inv-sheet .sh-title { font-size:24pt; } .inv-sheet .sh-row { grid-template-columns:0.9in 1fr; } }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>🧾 Invoices</h1>
-        <p class="subtitle" id="iv-subtitle"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 980px; margin: 0 auto;">
         <div style="display:flex; justify-content:flex-end; margin-bottom:var(--space-2);">
           <button id="iv-refresh" class="btn btn-secondary" style="padding:4px 12px; font-size:0.85rem;">🔄 Refresh</button>
@@ -232,8 +227,6 @@ class InvoicesScreen extends Screen {
       this.error = err.message || 'Failed to load.';
     }
     this.loading = false;
-    const sub = this.find('#iv-subtitle');
-    if (sub) sub.textContent = this._copy('subtitle');
     this._renderBody();
   }
 
@@ -669,7 +662,6 @@ class InvoicesScreen extends Screen {
   _wireEvents() {
     const el = this.element;
     el.addEventListener('click', async (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       if (e.target.closest('#iv-refresh')) { this.load(); return; }
       const pill = e.target.closest('[data-issuer]');
       if (pill) {

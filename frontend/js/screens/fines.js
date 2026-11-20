@@ -63,11 +63,6 @@ class FinesScreen extends Screen {
         .fi-table td { padding:6px 10px; border-bottom:1px solid var(--border-color, #374151); vertical-align:top; }
         .fi-btn { min-width:0; min-height:0; padding:3px 9px; border-radius:6px; cursor:pointer; font-weight:700; font-size:0.75rem; background:#1e293b; color:#e2e8f0; border:1px solid #475569; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="fi-title">💸 Fines</h1>
-        <p class="subtitle" id="fi-sub"></p>
-      </div>
       <div style="padding: var(--space-4); max-width: 1400px; margin: 0 auto;">
         <div id="fi-stats" style="${MoneyBoard.STATS_STYLE}"><div style="opacity:0.7;">📊 Stats — loading…</div></div>
         <div id="fi-filters" style="margin-bottom: var(--space-3);"></div>
@@ -81,16 +76,12 @@ class FinesScreen extends Screen {
         <div id="fi-body"><div style="text-align:center; padding: var(--space-4); opacity:0.6;">Loading…</div></div>
       </div>`;
     this.element = div;
-    div.querySelector('.back-btn').addEventListener('click', () => this.navigation.goBack());
     div.querySelector('#fi-search').addEventListener('input', (e) => { this.search = e.target.value.trim().toLowerCase(); this._renderBody(); });
     div.addEventListener('click', (e) => this._onClick(e));
     return div;
   }
 
   onEnter() {
-    const t = this.find('#fi-title'), s = this.find('#fi-sub');
-    if (t) t.textContent = this._w('title', '💸 Fines');
-    if (s) s.textContent = this._copy('subtitle');
     MoneyBoard.sectionPills(this, this.find('#fi-filters'), this.tab, (id) => { this.tab = id; this._renderAll(); });
     this._renderViews();
     this.load();

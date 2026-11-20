@@ -17,11 +17,7 @@ class GameModelScreen extends Screen {
     div.className = 'screen screen-game-model';
 
     div.innerHTML = `
-      <div class="screen-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
-        <div style="display:flex; align-items:center; gap:var(--space-2);">
-          <button class="btn btn-secondary back-btn">← Back</button>
-          <h1 style="margin:0;">Game Model</h1>
-        </div>
+      <div class="screen-header" style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
         <button class="btn btn-primary edit-game-model-btn">Edit Game Model</button>
       </div>
 
@@ -44,9 +40,6 @@ class GameModelScreen extends Screen {
     this.showSubPrinciples = true;
     this.showPlayerActionItems = true;
 
-    this.find('.back-btn')?.addEventListener('click', () => {
-      this.navigation.goBack();
-    });
 
     this.find('.edit-game-model-btn')?.addEventListener('click', () => {
       this.navigation.goTo('game-model-admin', {

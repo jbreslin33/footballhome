@@ -99,17 +99,9 @@ class JobsScreen extends Screen {
         .jb-ghost { font-size:0.72rem; opacity:0.6; }
         .jb-src { font-size:0.68rem; opacity:0.55; }
       </style>
-      <div class="screen-header" style="padding: var(--space-3) var(--space-4);">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <button class="btn btn-secondary" id="jb-back">← Back</button>
-          <h1 style="margin:0;">🧹 Jobs</h1>
-          <p class="subtitle" style="margin:0;">Auto-assigned from who's going — everything counts DONE unless flagged</p>
-        </div>
-      </div>
-      <div id="jb-body" style="padding: 0 var(--space-4) var(--space-4); max-width: 900px;">Loading…</div>
+      <div id="jb-body" style="padding: var(--space-3) var(--space-4) var(--space-4); max-width: 900px;">Loading…</div>
     `;
     this.element = div;
-    div.querySelector('#jb-back').addEventListener('click', () => this.navigation.goBack());
     div.addEventListener('click', (e) => this._onClick(e));
     div.addEventListener('change', (e) => this._onChange(e));
     return div;

@@ -49,11 +49,6 @@ class KitBoardScreen extends Screen {
         .kit-check { width:22px; height:22px; cursor:pointer; }
         .kit-status { font-size:0.68rem; opacity:0.6; margin-left:6px; }
       </style>
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>👕 Uniforms &amp; Kit</h1>
-        <p class="subtitle">Assign numbers, tick off what each player has received</p>
-      </div>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
         <div id="kit-teams" style="display:flex; gap:var(--space-1); flex-wrap:wrap; margin-bottom:var(--space-3);"></div>
         <div id="kit-body"></div>
@@ -166,7 +161,6 @@ class KitBoardScreen extends Screen {
   // ── events ──────────────────────────────────────────────────────────
   _wire() {
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) { this.navigation.goBack(); return; }
       let el;
       if ((el = e.target.closest('[data-kit-team]'))) {
         this.teamId = Number(el.dataset.kitTeam);

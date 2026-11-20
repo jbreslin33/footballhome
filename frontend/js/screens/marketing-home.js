@@ -10,12 +10,6 @@ class MarketingHomeScreen extends Screen {
     div.className = 'screen screen-marketing-home';
 
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1>Marketing</h1>
-        <p class="subtitle">Leads and outbound communications</p>
-      </div>
-
       <div style="padding: var(--space-4);">
         <h3 style="margin-bottom: var(--space-2); opacity: 0.9;">🎯 Recruitment</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -108,11 +102,6 @@ class MarketingHomeScreen extends Screen {
     this._dashTiles = [...recruitmentTiles, ...communicationGroups.flatMap(g => g.tiles)];
 
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-
       const subNavBtn = e.target.closest('.sub-nav-btn');
       if (subNavBtn) {
         const section = subNavBtn.getAttribute('data-section');

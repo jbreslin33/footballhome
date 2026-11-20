@@ -8,12 +8,6 @@ class AdminClubScreen extends Screen {
     div.className = 'screen screen-admin-club';
     
     div.innerHTML = `
-      <div class="screen-header">
-        <button class="btn btn-secondary back-btn">← Back</button>
-        <h1 id="club-title">Club Administration</h1>
-        <p class="subtitle" id="club-subtitle">Club-level admin features</p>
-      </div>
-      
       <div style="padding: var(--space-4);">
         <div style="background: var(--bg-secondary); border-radius: var(--radius-lg); padding: var(--space-4); text-align: center; margin-bottom: var(--space-4);">
           <span style="font-size: 3rem; display: block; margin-bottom: var(--space-2);">🏢</span>
@@ -81,9 +75,7 @@ class AdminClubScreen extends Screen {
     this.clubId = params?.clubId;
     this.clubName = params?.clubName || 'Club';
     
-    this.find('#club-title').textContent = this.clubName;
     this.find('#club-name-display').textContent = this.clubName;
-    this.find('#club-subtitle').textContent = `Manage ${this.clubName}`;
     
     this.renderSubNavigation();
 
@@ -100,11 +92,6 @@ class AdminClubScreen extends Screen {
     }
     
     this.element.addEventListener('click', (e) => {
-      if (e.target.closest('.back-btn')) {
-        this.navigation.goBack();
-        return;
-      }
-
       const subNavBtn = e.target.closest('.sub-nav-btn');
       if (subNavBtn) {
         const section = subNavBtn.getAttribute('data-section');
@@ -614,38 +601,26 @@ class AdminClubScreen extends Screen {
         ['accounts', 'player-records', 'staff-records', 'person-duplicates', 'person-data-issues'].includes(section)) {
       const viewMap = {
         'people-directory': {
-          title: 'People Directory',
-          subtitle: 'Lighthouse person graph',
           description: 'One row per Lighthouse person with account, player, staff, roster, and RSVP links.',
           action: 'directory',
         },
         accounts: {
-          title: 'Accounts',
-          subtitle: 'Login users linked to Lighthouse persons',
           description: 'Review account ownership, sign-in state, and activity on Lighthouse people.',
           action: 'accounts',
         },
         'player-records': {
-          title: 'Players',
-          subtitle: 'Lighthouse player records',
           description: 'Player rows linked to Lighthouse persons — not scraped opponent-only players.',
           action: 'players',
         },
         'staff-records': {
-          title: 'Coaches & Admins',
-          subtitle: 'Staff roles on Lighthouse people',
           description: 'Coach, team admin, and club admin assignments derived from persons.',
           action: 'staff',
         },
         'person-duplicates': {
-          title: 'Duplicates / Merges',
-          subtitle: 'Duplicate signals and merge history',
           description: 'Shared emails, matching name+DOB, split identities (a sign-in with no team beside a roster spot with no sign-in), and people touched by merges.',
           action: 'duplicates',
         },
         'person-data-issues': {
-          title: 'Data Issues',
-          subtitle: 'Broken person-graph links',
           description: 'Missing contact, account, LA alias, roster assignment, or RSVP eligibility.',
           action: 'data-issues',
         },
@@ -655,8 +630,6 @@ class AdminClubScreen extends Screen {
         clubId: this.clubId,
         clubName: this.clubName,
         view: view.action,
-        title: view.title,
-        subtitle: view.subtitle,
         description: view.description,
       });
       return;
