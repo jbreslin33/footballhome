@@ -1026,6 +1026,11 @@ class GameCenterScreen extends EventScreen {
       // A name on the card → the player sheet (SocialPostCard._tapAttr).
       const tapPerson = e.target.closest('[data-ec-tap-person]');
       if (tapPerson) { this._openPersonSheet(Number(tapPerson.dataset.ecTapPerson)); return; }
+      // 📇 CONTACT on the card and its group 💬 / ✉ (EventScreen._contactPillHtml).
+      const contactPill = e.target.closest('[data-ec-contact-pill]');
+      if (contactPill) { this._contactOpen = !this._contactOpen; this._render(); return; }
+      const groupMsg = e.target.closest('[data-ec-group-msg]');
+      if (groupMsg) { this._onGroupMessage(groupMsg); return; }
       const mpBtn = e.target.closest('[data-mp-save]');
       if (mpBtn) { this.matchPlanPanel.click(mpBtn); return; }
       // ✅ Attendance P/A/L/E on a game card (EventScreen._attendanceCell).
@@ -4185,7 +4190,8 @@ class GameCenterScreen extends EventScreen {
                            outRow(byZone.alternate || [], 'card_alternates', '🔁 Alternates', '#b0e0e6')].filter(r => r.names.length) : [];
     // GOING / NOT GOING on the live card for a player (owner 11/18 "going or
     // not going button should be on graphic! … graphic is the focus").
-    const availHtml = live && this._availOnGraphic() ? this._myAvailBlockHtml() : '';
+    // 📇 CONTACT under it for staff (EventScreen._contactPillHtml, owner 11/20).
+    const availHtml = live ? (this._availOnGraphic() ? this._myAvailBlockHtml() : '') + this._contactPillHtml() : '';
     // The key to the boxes' mini calendars (eligibility strip_legend, mig 1505).
     const legend = live ? this._cardLegend() : '';
     return { players, selectedIds, zones, fieldSize: this.fieldSize, pitch, editing, live, title, sharedIds, split, info, rsvpOut, availHtml, legend };

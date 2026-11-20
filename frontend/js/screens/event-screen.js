@@ -213,6 +213,7 @@ class EventScreen extends Screen {
         <div style="font-size:12px; text-transform:uppercase; letter-spacing:5px; font-weight:700; margin-bottom:8px;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: this._cardKindWord() }))}</div>
         <div style="font-size:15px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.95); margin-bottom:6px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''}${this._cardSetting() ? ` · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}` : ''}</div>
         ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
+        ${this._contactPillHtml()}
         ${pitch}
         <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
         ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${cp('card_coaches', 'Coaches: {names}', { names: '\u0000' }).split('\u0000').map(esc).join(coaches.map(r => `<span ${tap(r)}>${esc(short(r))}</span>`).join(', '))}</div>` : ''}
@@ -400,6 +401,46 @@ class EventScreen extends Screen {
   // focus"), above it for staff.  Same markup + data-gc-my-avail either way.
   _availOnGraphic() { return !!(this.ev && window.Viewer && Viewer.account().eventAvailOnGraphic); }
   _myAvailBlockHtml() { return `<div data-gc-my-avail>${this._myAvailabilityHtml()}</div>`; }
+
+  // 📇 CONTACT on the graphic of every event, games included (owner 11/20
+  // "there should be a contact pill on all games and events" … "on the
+  // grapic").  Staff only (viewer.canContact).  A tap opens the groups
+  // under it — Everyone / Going / No response / Not going / Coaches — each
+  // with the same 💬 / ✉ group composer the 👥 sections use
+  // (_groupContactHtml → BulkMessageComposer, opening on the event's line).
+  _contactGroups() {
+    const ev = this.ev || {};
+    const inactive = Array.isArray(ev.inactive) ? ev.inactive : [];
+    const inactiveIds = new Set(inactive.map(r => r.person_id));
+    const rsvps = (Array.isArray(ev.rsvps) ? ev.rsvps : [])
+      .filter(r => r && (r.is_coach || r.response === 'yes' || !inactiveIds.has(r.person_id)));
+    const players = rsvps.filter(r => !r.is_coach);
+    const L = (tier, fb) => (window.MessageCopy && MessageCopy.block('event_center', tier)) || fb;
+    return [
+      ['contact:all', L('group_all', '👥 Everyone'), players.concat(inactive)],
+      ['contact:going', L('sec_going', '✓ Going'), players.filter(r => r.response === 'yes')],
+      ['contact:noresp', L('sec_noresp', '– No response'),
+        players.filter(r => r.response !== 'yes' && r.response !== 'no' && !r.injury && !r.suspension && !EventScreen.notChasing(r))],
+      ['contact:notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no')],
+      ['contact:coaches', L('sec_coaches', '🧑‍🏫 Coaches'), rsvps.filter(r => r.is_coach)],
+    ];
+  }
+  _contactPillHtml() {
+    if (!this.ev || !this.viewer.canContact()) return '';
+    const word = (window.MessageCopy && MessageCopy.block('contact_popup', 'button')) || 'CONTACT';
+    const open = !!this._contactOpen;
+    const rows = open ? this._contactGroups().map(([key, label, list]) => {
+      const h = this._groupContactHtml(key, label, list);
+      return h ? `<div style="font-size:0.74rem; font-weight:800; margin:6px 0 2px;">${this.escapeHtml(label)}</div>${h}` : '';
+    }).join('') : '';
+    return `<div style="width:100%; margin:2px 0 8px; display:flex; flex-direction:column; align-items:center;">
+        <button type="button" data-ec-contact-pill aria-expanded="${open}"
+                style="padding:6px 16px; border-radius:999px; font-weight:800; font-size:13px; cursor:pointer;
+                       border:2px solid #f5d442; color:${open ? '#0033a0' : '#fff'}; background:${open ? '#f5d442' : 'transparent'};">📇 ${this.escapeHtml(word)}</button>
+        ${rows ? `<div style="max-width:100%; text-align:left; margin-top:6px; padding:4px 10px 6px;
+                              border-radius:8px; background:rgba(0,0,0,0.25);">${rows}</div>` : ''}
+      </div>`;
+  }
 
   // Who answered what, for a graphic's lists (the same cut as the 👥
   // sections: coaches, suspended, inactive and injured out).
@@ -1890,6 +1931,7 @@ class EventScreen extends Screen {
       let el;
       if ((el = t('[data-ec-tap-person]'))) { this._openPersonSheet(Number(el.dataset.ecTapPerson)); return; }
       if ((el = t('[data-ec-group-msg]'))) { this._onGroupMessage(el); return; }
+      if ((el = t('[data-ec-contact-pill]'))) { this._contactOpen = !this._contactOpen; this._render(); return; }
       if ((el = t('[data-ec-see-as]'))) { this.seeAs = el.dataset.ecSeeAs || null; this._render(); return; }
       if ((el = t('[data-ec-post]'))) { this._onPostAction(el); return; }
       if ((el = t('[data-ec-pill]'))) {
