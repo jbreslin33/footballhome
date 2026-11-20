@@ -837,7 +837,8 @@ class EventCenterScreen extends Screen {
       // Players only — coaches never in a player total (owner 2026-10-06).
       // The feed's roster already honours call-up gates and paper spots;
       // a yes from over the dues line (migration 416) is counted apart.
-      // 💤 Inactive (mig 945): their own count, never in the others.
+      // 🪑 Reserves (ev.inactive = unanswered Reserves since mig 1530; mig
+      // 1605 relabelled the tile): their own count, never in the others.
       const inactive = Array.isArray(ev.inactive) ? ev.inactive.length : 0;
       const inactiveIds = new Set((ev.inactive || []).map(r => r.person_id));
       const players = (Array.isArray(ev.rsvps) ? ev.rsvps : [])
@@ -940,7 +941,7 @@ class EventCenterScreen extends Screen {
           ${count('tile_noresp', noResp, `– ${noResp} no response`, '#eab308')}
           ${count('tile_notgoing', notGoing, `✗ ${notGoing} not going`, '#dc2626')}
           ${ineligible && rosterCounts ? count('tile_ineligible', ineligible, `⛔ ${ineligible} ineligible`, '#dc2626') : ''}
-          ${inactive && rosterCounts ? count('tile_inactive', inactive, `💤 ${inactive} inactive`, '#94a3b8') : ''}
+          ${inactive && rosterCounts ? count('tile_inactive', inactive, `🪑 ${inactive} reserves`, '#94a3b8') : ''}
         </span>
         ${posted(ev) ? '' : `<span style="font-size:0.7rem; color:#f59e0b;">${this.escapeHtml(cp('not_posted', {}, 'not posted yet'))}</span>`}
         ${tagIssues(ev)}

@@ -401,6 +401,11 @@ class BoysRosterScreen extends RosterScreenBase {
     // has exactly one column, nothing to focus down to).
     const showFocusPills = this.columnScope !== 'unassigned' && cols.length > 1;
     const visibleCols = this.focusedCols(cols);
+    // Team view: 🗂 Graphic = the same game-style team cards the men's board
+    // draws (owner 11/20 "why is women cards diff then mens on graphic? …
+    // we need yuouth like men"), ☰ List = the columns.
+    const teamCards = this.boardView === 'team' && this.columnScope !== 'unassigned' && this.teamLayout === 'graphic'
+      ? this.renderTeamCards(data, cols) : '';
 
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:var(--space-2); flex-wrap:wrap; margin: 0 var(--space-2) var(--space-3); padding:var(--space-2) var(--space-3); background:var(--bg-secondary); border-radius:var(--radius-md);">
@@ -436,11 +441,12 @@ class BoysRosterScreen extends RosterScreenBase {
         ${this.renderBoardMessageButtons(data, cols)}
       </div>
 
-      <div style="padding: 0 var(--space-2) var(--space-2);">
+      ${teamCards}
+      ${teamCards ? '' : `      <div style="padding: 0 var(--space-2) var(--space-2);">
         <div style="${this.gridStyleFor(visibleCols.length)}">
           ${visibleCols.map(c => this.renderColumn(c, data)).join('')}
         </div>
-      </div>
+      </div>`}
     `;
   }
 
