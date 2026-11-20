@@ -196,11 +196,13 @@
 #                     so every program has synced before the query fires.
 #                     Give dueList() an unsynced caller and this entry
 #                     becomes a lie.
+#   ProrateLog      — same shape (mig 1603): only caller ProrateController::
+#                     handleDue, laGet(dynamic → allLaProgramIds()).
 #
 # NOT allowlisted (they must contain a valid entry-point token in the
 # translation unit — the lint verifies this every run):
 #   (none currently)
-allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras|CashFlow|WelcomeLog)|backend/src/core/Controller|backend/src/controllers/MyController)'
+allowlist_regex='^(backend/src/services/LaProgramSync|backend/src/models/(PersonLinker|LaPool|Team|PersonPayments|MensRoster|BoysRoster|YouthRoster|WomensRoster|Lead|PickupMembership|PersonMerge|RsvpBoard|WelcomeMessage|RosterBoardExtras|CashFlow|WelcomeLog|ProrateLog)|backend/src/core/Controller|backend/src/controllers/MyController)'
 
 set -euo pipefail
 

@@ -60,6 +60,7 @@ set(SOURCES
     src/models/PersonActivity.cpp
     src/models/PersonFines.cpp
     src/models/WelcomeLog.cpp
+    src/models/ProrateLog.cpp
     src/models/WelcomeMessage.cpp
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
@@ -148,6 +149,7 @@ set(SOURCES
     src/controllers/PersonBillingController.cpp
     src/controllers/PayReminderLogController.cpp
     src/controllers/WelcomeController.cpp
+    src/controllers/ProrateController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
     src/controllers/PersonSeesController.cpp

@@ -41,6 +41,7 @@
 #include "controllers/PersonBillingController.h"
 #include "controllers/PayReminderLogController.h"
 #include "controllers/WelcomeController.h"
+#include "controllers/ProrateController.h"
 #include "controllers/RsvpBoardController.h"
 #include "controllers/PersonHealthController.h"
 #include "controllers/PersonTeamsController.h"
@@ -150,6 +151,7 @@ private:
     std::shared_ptr<PersonBillingController> person_billing_controller_;
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<WelcomeController> welcome_controller_;
+    std::shared_ptr<ProrateController> prorate_controller_;
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
     std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<PersonTeamsController> person_teams_controller_;
@@ -267,6 +269,7 @@ public:
         person_billing_controller_ = std::make_shared<PersonBillingController>();
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         welcome_controller_ = std::make_shared<WelcomeController>();
+        prorate_controller_ = std::make_shared<ProrateController>();
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
         person_health_controller_ = std::make_shared<PersonHealthController>();
         person_teams_controller_ = std::make_shared<PersonTeamsController>();
@@ -611,6 +614,8 @@ private:
         router_.useController("/api/pay-reminder-log", pay_reminder_log_controller_);
         // Roster-card WELCOME button (owner 2026-09-06): magic link + person_welcomes row.
         router_.useController("/api/welcomes", welcome_controller_);
+        // 💵 band Prorate box (mig 1603): new members billed only the $1 fee.
+        router_.useController("/api/prorates", prorate_controller_);
         // #rsvps board (owner 2026-09-17): RSVP standing per player + tracked reminders.
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
         // Health dropdown on the #teams cards (owner 2026-10-02, mig 510): injuries excuse RSVPs + fines.
