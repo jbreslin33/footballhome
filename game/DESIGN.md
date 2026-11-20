@@ -11520,3 +11520,33 @@ with the taker standing (fk_stand off-runs g184: 1.6-8.5%), ~+9 goals in 32 matc
 wall (fixed in 3., no change). A standing kick is the law; kept (feedback: a correct behaviour ships). Next: what the 18-25 m
 goals are — the second ball off a set-piece clearance to the edge, or the open-play shot — then foul location (35-52 m).
 Goldens unchanged; tests 23/23, lint clean.
+
+### 8.291 G5.185 — the 18-25 m goals are open play; set pieces make too few shots (measured; no game change)
+
+From §8.290's "next": what are the 18-25 m goals (scored 7.8% v 3.6)? New `benchmarks_statsbomb_shotorigin.py` (PL 15/16,
+penalties out): every shot by distance band × the restart that began its possession — **direct fk** (StatsBomb shot type
+Free Kick), **corner / free kick / throw-in** (play_pattern From …; a possession runs until the other side has the ball),
+**other** (regular play, counter, goal kick, keeper, kick-off) — and the median seconds from the possession's first event.
+Harness line SHOT ORIGIN, keyed the same way: the possession ends when the other side has a man on the ball; a direct free
+kick is the taker's shot with nobody else on it since. Same seeds as G5.184's card: the JSON is byte-identical (harness only).
+
+| a team-match [goal %], <12 / 12-18 / 18-25 / 25+ | real | ours (4 × 8) |
+|---|---|---|
+| direct fk | – / – / 0.30 [6.2] / 0.23 [6.3]; 0.53 | 0.00 / 0.04 / 0.06 / 0.03; 0.14, no goals |
+| corner | 1.32 [11.6] / 0.33 / 0.40 / 0.14; 2.20, median 3.5 s | 0.09 / 0.06 / 0.04 / 0.03; 0.23, median 8-16 s |
+| free kick | 0.61 / 0.53 / 0.51 [3.9] / 0.23; 1.88 | 0.20 / 0.59 / 0.28 [11] / 0.27; 1.34 |
+| throw-in | 0.65 / 0.69 / 0.74 [3.5] / 0.36; 2.44 | 0.47 / 0.66 / 0.56 [5.5] / 0.33; 2.01 |
+| other | 1.37 [22.9] / 1.86 [10.5] / 1.92 [3.3] / 0.72 [1.1]; 5.88 | 2.99 [25.1] / 3.28 [12.8] / 3.08 [8.1] / 1.59 [2.9]; 10.94 |
+
+- **The 18-25 m goals are open play**: 16 of the 20 (80%; real 45%) — 3.08 shots a team-match (1.92) scoring 8.1% (3.3),
+  every seed 7.5-8.9%. Not the second ball off a set piece (free kick + throw-in phases 4 goals; corner phase none).
+- **Why they score:** at 18-25 m ours have median 3 outfield men goal-side (real 6); blocked 17% (real 30-40% by
+  goal-side) — the card's blocked_pct 13.8 v 29.1. Pooled 18-25 by goal-side: 0-1 12% (15.4), 2-3 7.8% (5.2), 4+ 5.9% (3.0).
+  Fewer bodies between the ball and goal, and the bodies there block half as often.
+- **Set pieces make too few shots:** corner-phase shots 0.23 v 2.20 (0.10 a corner v 0.41; corners themselves 2.25 v
+  5.4), and they come late (8-16 s v 3.5 — never the header off the delivery); direct free kicks 0.14 v 0.53.
+- Open play overall 10.9 v 5.9 a team-match: our shot count's excess (14.8 v 13.0) is all open play, set pieces under.
+
+Next: the open-play shot from 18-25 m against too few men goal-side — the block's retreat into the box when the ball is
+at the edge, and the block itself (a man in the lane closing the shot). Then the corner delivery header.
+Goldens unchanged; tests 23/23, lint clean.

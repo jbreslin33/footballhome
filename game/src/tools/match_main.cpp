@@ -78,6 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
+    long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
     long rel_n[5] = {}, rel_shot[5] = {};
     long goal_by[ai::kWhyCount + 1] = {}, goal_own = 0;
     std::vector<double> near_band[5]; long near_n[5] = {}, near_gs[5] = {};
@@ -297,7 +298,12 @@ int main(int argc, char** argv) {
         int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4, orig = 4; } shot;
+        // §8.291 SHOT ORIGIN: the side's possession (ends when the other side has a man on the ball, as StatsBomb's) and the
+        // restart that began it — 1 corner, 2 free kick (offside's too), 3 throw-in, 4 other, 5 penalty; its taker, and whether
+        // anyone else has had the ball since (a direct free kick = the taker's shot, nobody else on it)
+        int so_team = -1, so_kind = 4, so_taker = -1, so_prt = 0xFF; bool so_other = true, so_direct = false; long so_k = 0;
+        core::MatchEventType so_prk = core::MatchEventType::Kickoff;
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
         auto fin = [&](int kd) { ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
@@ -352,6 +358,21 @@ int main(int argc, char** argv) {
             const auto before = W.ball().owner;
             s.tickOnce();
             if (W.ball().owner) rc_own_k[W.player(*W.ball().owner).team & 1] = k;   // §8.252
+            {   // §8.291 SHOT ORIGIN: the possession and its restart
+                const int rt = W.restartTeam();
+                const auto& bo = W.ball();
+                if (so_prt != 0xFF && rt == 0xFF) {   // the restart is taken
+                    using MT = core::MatchEventType;
+                    so_team = so_prt; so_k = static_cast<long>(k); so_other = false; so_direct = so_prk == MT::FreeKick;
+                    so_kind = so_prk == MT::Corner ? 1 : (so_prk == MT::FreeKick || so_prk == MT::Offside) ? 2 : so_prk == MT::ThrowIn ? 3 : so_prk == MT::Penalty ? 5 : 4;
+                    so_taker = bo.owner ? static_cast<int>(*bo.owner) : (bo.last_kicker != 0xFF ? static_cast<int>(bo.last_kicker) : -1);
+                } else if (rt == 0xFF && bo.owner) {
+                    const int o = *bo.owner, ot = W.player(*bo.owner).team;
+                    if (ot != so_team) { so_team = ot; so_kind = 4; so_taker = -1; so_k = static_cast<long>(k); so_other = true; }
+                    else if (o != so_taker) so_other = true;
+                }
+                so_prt = rt; if (rt != 0xFF) so_prk = W.restartKind();
+            }
             if (std::getenv("GAME_CHARGE_TRACE")) {   // §8.271: each charged-down kick — why, pace, aim, the man who touched it
                 static long ck_k = -1; static int ck_why = 0, ck_kicker = -1, ck_ft = 0; static double ck_x = 0, ck_y = 0, ck_vx = 0, ck_vy = 0, ck_vz = 0, ck_tx = 0, ck_ty = 0;
                 static double ck_ox[32], ck_oy[32]; static long ck_prev = 0;
@@ -624,7 +645,7 @@ int main(int argc, char** argv) {
                     if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
                     ++S.goal_by[last_kick_why];
                     if (shot.on && shot.team == e.team) {
-                        ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1];
+                        ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1]; ++S.so_g[shot.orig][shot.band];
                         ++S.sx_gs_g[shot.gsk]; ++S.sx_tb_g[shot.tb]; fin(0);
                         if (shot.gap >= 0) ++S.sc_n[shot.band][shot.gap];
                         shot.on = false;
@@ -1137,6 +1158,12 @@ int main(int argc, char** argv) {
                 const auto& p = W.player(*before);
                 const double gx = (p.team == 0 ? hx : -hx) - p.pos.x.toDouble(), gy = p.pos.y.toDouble();
                 shot = Shot{true, p.team, distBand(std::hypot(gx, gy)), k};
+                {   // §8.291 SHOT ORIGIN
+                    const bool mine = so_team == static_cast<int>(p.team);
+                    const bool taker = mine && !so_other && so_taker == static_cast<int>(*before);
+                    shot.orig = !mine ? 4 : taker && so_kind == 5 ? 5 : taker && so_direct ? 0 : so_kind == 5 ? 4 : so_kind;
+                    ++S.so_n[shot.orig][shot.band]; S.so_dt[shot.orig].push_back(mine ? (static_cast<long>(k) - so_k) / 30.0 : 0.0);
+                }
                 bt_shotk[p.team].push_back(static_cast<long>(k));
                 {   // §8.186 SHOT CONTEXT: outfield opponents nearer their goal centre than him; s since his side's possession began
                     const double gx2 = p.team == 0 ? hx : -hx, ds = std::hypot(gx2 - p.pos.x.toDouble(), p.pos.y.toDouble());
@@ -3029,6 +3056,23 @@ int main(int argc, char** argv) {
                         auto v = S.sx_bd_gs[d]; std::sort(v.begin(), v.end());
                         if (v.empty()) continue;
                         std::printf(" %s %d / %d / %d (%d / %d / %d);", bl[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rb[d][0], rb[d][1], rb[d][2]);
+                    }
+                    {   // §8.291 SHOT ORIGIN — benchmarks_statsbomb_shotorigin.py (real in brackets; penalties out of both)
+                        static const char* on[5] = {"direct fk", "corner", "free kick", "throw-in", "other"};
+                        static const double rn[5][4] = {{0, 0, 0.30, 0.23}, {1.32, 0.33, 0.40, 0.14}, {0.61, 0.53, 0.51, 0.23}, {0.65, 0.69, 0.74, 0.36}, {1.37, 1.86, 1.92, 0.72}};
+                        static const double rg[5][4] = {{0, 0, 6.2, 6.3}, {11.6, 6.3, 3.0, 2.8}, {18.2, 7.2, 3.9, 0.6}, {20.5, 9.0, 3.5, 1.8}, {22.9, 10.5, 3.3, 1.1}};
+                        static const double rmed[5] = {0.0, 3.5, 10.1, 18.2, 19.2};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   SHOT ORIGIN (the possession's restart; real StatsBomb PL 15/16 in brackets): shots a team-match [goal %%] by band <12 / 12-18 / 18-25 / 25+ | median s since it began");
+                        for (int o = 0; o < 5; ++o) {
+                            std::printf("\n     %-9s", on[o]);
+                            for (int d = 0; d < 4; ++d)
+                                std::printf(" %.2f (%.2f) [%.1f (%.1f)];", S.so_n[o][d] / tmo, rn[o][d], 100.0 * S.so_g[o][d] / std::max(1L, S.so_n[o][d]), rg[o][d]);
+                            auto v = S.so_dt[o]; std::sort(v.begin(), v.end());
+                            std::printf(" | %.1f (%.1f)", v.empty() ? 0.0 : v[v.size() / 2], rmed[o]);
+                        }
+                        long pn = 0, pg = 0; for (int d = 0; d < 4; ++d) { pn += S.so_n[5][d]; pg += S.so_g[5][d]; }
+                        std::printf("\n     penalties taken %.2f, scored %ld of %ld", pn / tmo, pg, pn);
                     }
                 }
             }
