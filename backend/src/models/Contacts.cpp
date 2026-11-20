@@ -71,10 +71,17 @@ std::vector<Contacts::Row> Contacts::list(long long userId) {
                    WHERE pe2.person_id = p.id AND pe2.teams IS NOT NULL) AS teams,
                  string_agg(pe.kids, ', ')  FILTER (WHERE pe.kids  IS NOT NULL) AS kids,
                  NULL::text AS org, NULL::text AS role, NULL::text AS since,
-                 COALESCE((SELECT array_agg(DISTINCT x.phone_number ORDER BY x.phone_number)
-                             FROM person_phones x WHERE x.person_id = p.id AND COALESCE(x.phone_number, '') <> ''), '{}'::text[]) AS phones,
-                 COALESCE((SELECT array_agg(DISTINCT lower(e.email) ORDER BY lower(e.email))
-                             FROM person_emails e WHERE e.person_id = p.id AND COALESCE(e.email, '') <> ''), '{}'::text[]) AS emails
+                 -- Main (is_primary) first, then A→Z: FH Assistant makes the
+                 -- first one the phone's default (owner 11/20 "change asif
+                 -- contact to his main via fh assistant").
+                 COALESCE((SELECT array_agg(v ORDER BY pri DESC, v) FROM (
+                             SELECT x.phone_number AS v, bool_or(x.is_primary) AS pri
+                               FROM person_phones x WHERE x.person_id = p.id AND COALESCE(x.phone_number, '') <> ''
+                              GROUP BY x.phone_number) s), '{}'::text[]) AS phones,
+                 COALESCE((SELECT array_agg(v ORDER BY pri DESC, v) FROM (
+                             SELECT lower(e.email) AS v, bool_or(e.is_primary) AS pri
+                               FROM person_emails e WHERE e.person_id = p.id AND COALESCE(e.email, '') <> ''
+                              GROUP BY lower(e.email)) s), '{}'::text[]) AS emails
             FROM people pe JOIN persons p ON p.id = pe.person_id
            GROUP BY p.id, p.first_name, p.last_name
         ), lead_rows AS (
@@ -99,11 +106,14 @@ std::vector<Contacts::Row> Contacts::list(long long userId) {
         SELECT r.kind, r.ref_id, r.groups::text AS groups, r.first, COALESCE(r.last, '') AS last,
                r.teams, r.kids, r.org, r.role, r.since,
                r.phones::text AS phones, r.emails::text AS emails,
-               md5(array_to_string(r.phones, '|') || '#' || array_to_string(r.emails, '|')) AS fingerprint,
+               f.fp AS fingerprint,
                CASE WHEN x.fingerprint IS NULL THEN 'new'
-                    WHEN x.fingerprint <> md5(array_to_string(r.phones, '|') || '#' || array_to_string(r.emails, '|')) THEN 'changed'
+                    WHEN x.fingerprint <> f.fp THEN 'changed'
                     ELSE 'done' END AS state
           FROM all_rows r
+          -- Export state ignores order (main-first must not mark rows changed).
+          CROSS JOIN LATERAL (SELECT md5(COALESCE((SELECT string_agg(v, '|' ORDER BY v) FROM unnest(r.phones) v), '') || '#' ||
+                                         COALESCE((SELECT string_agg(v, '|' ORDER BY v) FROM unnest(r.emails) v), '')) AS fp) f
           LEFT JOIN LATERAL (SELECT ce.fingerprint FROM contact_exports ce
                               WHERE ce.exported_by_user_id = $1::int AND ce.kind = r.kind AND ce.ref_id = r.ref_id
                               ORDER BY ce.exported_at DESC LIMIT 1) x ON true

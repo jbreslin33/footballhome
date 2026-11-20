@@ -62,7 +62,7 @@ final class ContactSync {
         int written = 0;
         try {
             for (int i = 0; i < MAX_BATCHES; i++) {
-                JSONObject ask = new JSONObject().put("limit", BATCH).put("first", i == 0);
+                JSONObject ask = new JSONObject().put("limit", BATCH).put("first", i == 0).put("mains", true);
                 Api.Result r = Api.postUrl(c, Api.ROOT + "/contacts/device/pending", ask);
                 if (!r.ok()) { p.edit().putString("contacts_trouble", r.error()).apply(); return written > 0 ? written : -1; }
                 JSONArray cards = r.body.optJSONArray("contacts");
@@ -147,19 +147,27 @@ final class ContactSync {
             if (!card.optString("note").isEmpty())
                 ops.add(row(raw).withValue(Data.MIMETYPE, Note.CONTENT_ITEM_TYPE).withValue(Note.NOTE, card.optString("note")).build());
         }
+        // 1.6: the server lists the main number / email first; on a contact
+        // we own, that one becomes the default (owner 11/20 "change asif
+        // contact to his main via fh assistant").
+        boolean mains = full && card.optBoolean("main_first", false);
         JSONArray phones = card.optJSONArray("phones");
         for (int i = 0; phones != null && i < phones.length(); i++) {
             String n = phones.getString(i);
             if (havePhones != null && (havePhones.contains(n) || havePhones.contains(digits(n)))) continue;
-            ops.add(row(raw).withValue(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
-                    .withValue(Phone.NUMBER, n).withValue(Phone.TYPE, Phone.TYPE_MOBILE).build());
+            ContentProviderOperation.Builder b = row(raw).withValue(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
+                    .withValue(Phone.NUMBER, n).withValue(Phone.TYPE, Phone.TYPE_MOBILE);
+            if (mains && i == 0) b.withValue(Data.IS_PRIMARY, 1).withValue(Data.IS_SUPER_PRIMARY, 1);
+            ops.add(b.build());
         }
         JSONArray emails = card.optJSONArray("emails");
         for (int i = 0; emails != null && i < emails.length(); i++) {
             String e = emails.getString(i);
             if (haveEmails != null && haveEmails.contains(e.toLowerCase())) continue;
-            ops.add(row(raw).withValue(Data.MIMETYPE, Email.CONTENT_ITEM_TYPE)
-                    .withValue(Email.ADDRESS, e).withValue(Email.TYPE, Email.TYPE_OTHER).build());
+            ContentProviderOperation.Builder b = row(raw).withValue(Data.MIMETYPE, Email.CONTENT_ITEM_TYPE)
+                    .withValue(Email.ADDRESS, e).withValue(Email.TYPE, Email.TYPE_OTHER);
+            if (mains && i == 0) b.withValue(Data.IS_PRIMARY, 1).withValue(Data.IS_SUPER_PRIMARY, 1);
+            ops.add(b.build());
         }
     }
 

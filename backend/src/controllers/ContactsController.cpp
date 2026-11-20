@@ -194,7 +194,11 @@ Response ContactsController::handleExport(const Request& request) {
 // them into the Google account it picked and acks what it saved.  A card
 // goes again when anything on it changes (name, numbers, emails, note).
 namespace {
-json deviceCard(MessageCopy& copy, const std::string& org, const Contacts::Row& r) {
+// mains: the phone (FH Assistant ≥1.6) marks phones[0] / emails[0] as the
+// contact's default.  Only cards with a choice carry the flag, so the
+// upgrade rewrites just those (owner 11/20 "change asif contact to his main
+// via fh assistant").
+json deviceCard(MessageCopy& copy, const std::string& org, const Contacts::Row& r, bool mains) {
     const std::string orgLine = r.kind == "club_contact" && !r.org.empty() ? r.org : org;
     json c = {
         {"uid",    "fh-" + r.kind + "-" + std::to_string(r.refId)},
@@ -203,6 +207,7 @@ json deviceCard(MessageCopy& copy, const std::string& org, const Contacts::Row& 
         {"phones", r.phones}, {"emails", r.emails},
         {"note",   noteFor(copy, r)},
     };
+    if (mains && (r.phones.size() > 1 || r.emails.size() > 1)) c["main_first"] = true;
     c["fp"] = fh::crypto::sha256Hex(c.dump()).substr(0, 32);
     return c;
 }
@@ -228,7 +233,12 @@ Response ContactsController::handleDevicePending(const Request& request) {
     Response error(HttpStatus::OK, "");
     if (!adminDevice(request, &deviceId, &error)) return error;
     int limit = 200;
-    try { auto b = json::parse(request.getBody().empty() ? "{}" : request.getBody()); limit = b.value("limit", 200); } catch (...) {}
+    bool mains = false;
+    try {
+        auto b = json::parse(request.getBody().empty() ? "{}" : request.getBody());
+        limit = b.value("limit", 200);
+        mains = b.value("mains", false);
+    } catch (...) {}
     limit = std::max(1, std::min(limit, 500));
     try {
         std::map<std::string, std::string> have;
@@ -240,7 +250,7 @@ Response ContactsController::handleDevicePending(const Request& request) {
         json out = json::array();
         int remaining = 0;
         for (const auto& r : model_->list(0)) {
-            json c = deviceCard(copy, org, r);
+            json c = deviceCard(copy, org, r, mains);
             auto it = have.find(c["uid"].get<std::string>());
             if (it != have.end() && it->second == c["fp"].get<std::string>()) continue;
             if (static_cast<int>(out.size()) < limit) out.push_back(std::move(c)); else ++remaining;
