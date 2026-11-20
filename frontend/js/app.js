@@ -174,7 +174,7 @@ class App {
     this.screenManager.register('reports', this.screens.reports);
     // Jobs (#jobs, mig 625) — auto-assigned event jobs, default-done. See screens/jobs.js.
     this.screenManager.register('jobs', this.screens.jobs);
-    // Coach Schedule (#coach-schedule, mig 955) — the days each coach RSVPs to.
+    // Coach Schedule (#coach-schedule, migs 955 / 1634) — sessions each coach covers, weekend duty, cover asks.
     this.screenManager.register('coach-schedule', this.screens.coachSchedule);
     // 🎓 Onboarding (#onboarding, mig 1526) — the volunteer → paid path.
     this.screenManager.register('onboarding', this.screens.onboarding);
@@ -367,6 +367,13 @@ class App {
       const personLink = (window.location.hash || '').match(/^#person\/(\d+)(?:\/([a-z]+))?$/);
       if (personLink) {
         this.navigation.goTo('person', { personId: personLink[1], entity: personLink[2] ? `${personLink[1]}/${personLink[2]}` : personLink[1], tab: personLink[2] || null });
+        return;
+      }
+      // 🙋 A coach cover ask's text — #coach-schedule/cover/<id> (mig 1634)
+      // opens the week holding that ask.
+      const coverLink = (window.location.hash || '').match(/^#coach-schedule\/cover\/(\d+)$/);
+      if (coverLink) {
+        this.navigation.goTo('coach-schedule', { coverId: coverLink[1] });
         return;
       }
       // 📑 #proposals or #proposals/<code> (mig 1572).
