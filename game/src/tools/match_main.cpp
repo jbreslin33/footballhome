@@ -79,6 +79,7 @@ struct Stats {
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
+    long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {};   // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
     long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
     long rel_n[5] = {}, rel_shot[5] = {};
@@ -303,10 +304,11 @@ int main(int argc, char** argv) {
         int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4, orig = 4; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4, orig = 4, pwq = -1; } shot;
         // §8.291 SHOT ORIGIN: the side's possession (ends when the other side has a man on the ball, as StatsBomb's) and the
         // restart that began it — 1 corner, 2 free kick (offside's too), 3 throw-in, 4 other, 5 penalty; its taker, and whether
         // anyone else has had the ball since (a direct free kick = the taker's shot, nobody else on it)
+        int so_zone = 2;   // §8.307
         int so_team = -1, so_kind = 4, so_taker = -1, so_prt = 0xFF; bool so_other = true, so_direct = false; long so_k = 0;
         core::MatchEventType so_prk = core::MatchEventType::Kickoff;
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
@@ -373,7 +375,9 @@ int main(int argc, char** argv) {
                     so_taker = bo.owner ? static_cast<int>(*bo.owner) : (bo.last_kicker != 0xFF ? static_cast<int>(bo.last_kicker) : -1);
                 } else if (rt == 0xFF && bo.owner) {
                     const int o = *bo.owner, ot = W.player(*bo.owner).team;
-                    if (ot != so_team) { so_team = ot; so_kind = 4; so_taker = -1; so_k = static_cast<long>(k); so_other = true; }
+                    if (ot != so_team) { so_team = ot; so_kind = 4; so_taker = -1; so_k = static_cast<long>(k); so_other = true;
+                        const double gxa = ot == 0 ? hx : -hx, xo = std::fabs(gxa - bo.pos.x.toDouble());   // §8.307
+                        so_zone = xo < 18 ? 0 : xo < 35 ? 1 : 2; ++S.pwz_n[so_zone]; }
                     else if (o != so_taker) so_other = true;
                 }
                 so_prt = rt; if (rt != 0xFF) so_prk = W.restartKind();
@@ -650,7 +654,7 @@ int main(int argc, char** argv) {
                     if (last_kick_team >= 0 && last_kick_team != e.team) ++S.goal_own;
                     ++S.goal_by[last_kick_why];
                     if (shot.on && shot.team == e.team) {
-                        ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1]; ++S.so_g[shot.orig][shot.band];
+                        ++S.shot_out[0]; ++S.band_goal[shot.band]; ++S.pc_g[shot.cell + 1]; ++S.so_g[shot.orig][shot.band]; if (shot.pwq >= 0) ++S.pwz_g[shot.pwq];
                         ++S.sx_gs_g[shot.gsk]; ++S.sx_tb_g[shot.tb]; fin(0);
                         if (shot.gap >= 0) ++S.sc_n[shot.band][shot.gap];
                         shot.on = false;
@@ -1190,6 +1194,8 @@ int main(int argc, char** argv) {
                     const bool taker = mine && !so_other && so_taker == static_cast<int>(*before);
                     shot.orig = !mine ? 4 : taker && so_kind == 5 ? 5 : taker && so_direct ? 0 : so_kind == 5 ? 4 : so_kind;
                     ++S.so_n[shot.orig][shot.band]; S.so_dt[shot.orig].push_back(mine ? (static_cast<long>(k) - so_k) / 30.0 : 0.0);
+                    shot.pwq = (mine && so_kind == 4 && static_cast<long>(k) - so_k < 150) ? so_zone : -1;   // §8.307
+                    if (shot.pwq >= 0) ++S.pwz_q[shot.pwq];
                 }
                 bt_shotk[p.team].push_back(static_cast<long>(k));
                 {   // §8.186 SHOT CONTEXT: outfield opponents nearer their goal centre than him; s since his side's possession began
@@ -1220,7 +1226,7 @@ int main(int argc, char** argv) {
                         if (W.isKeeper(j) && W.player(j).team != p.team) S.fn_gk[shot.band][shot.gg].push_back(hx - std::fabs(W.player(j).pos.x.toDouble()));
                     if (std::getenv("GAME_SHOT_TRACE")) {   // §8.186: every opponent at the strike (x = metres off their goal line)
                         const double sg3 = p.team == 0 ? 1.0 : -1.0;
-                        std::fprintf(stderr, "shot m%d k%ld t%.1fs won %.1f,%.1f rs %d prev %d from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, hx - rc_bx * sg3, rc_by, so_kind, rc_prev, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
+                        std::fprintf(stderr, "shot m%d k%ld t%.1fs tp %.1f won %.1f,%.1f rs %d prev %d from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, so_team == static_cast<int>(p.team) ? (static_cast<long>(k) - so_k) / 30.0 : -1.0, hx - rc_bx * sg3, rc_by, so_kind, rc_prev, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
                         for (std::uint8_t j = 0; j < N; ++j) {
                             if (W.player(j).team == p.team) continue;
                             std::fprintf(stderr, " %s%d:%.1f,%.1f %s", W.isKeeper(j) ? "GK" : "", role(j), hx - W.player(j).pos.x.toDouble() * sg3, W.player(j).pos.y.toDouble(),
@@ -3109,6 +3115,13 @@ int main(int argc, char** argv) {
                         auto v = S.sx_bd_gs[d]; std::sort(v.begin(), v.end());
                         if (v.empty()) continue;
                         std::printf(" %s %d / %d / %d (%d / %d / %d);", bl[d], v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4], rb[d][0], rb[d][1], rb[d][2]);
+                    }
+                    {   // §8.307 POSSESSIONS WON — benchmarks_statsbomb_quickshots.py (real StatsBomb PL 15/16 in brackets)
+                        static const double rp[3] = {0.41, 1.47, 40.45}, rq[3] = {0.05, 0.12, 0.10}, rg[3] = {0.004, 0.005, 0.017};
+                        static const char* zl[3] = {"0-18", "18-35", "35+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   POSSESSIONS WON in open play (the other side had a man on it; m off the goal attacked) a team-match | shots within 5 s | goals (real StatsBomb PL 15/16):");
+                        for (int z = 0; z < 3; ++z) std::printf(" %s %.2f (%.2f) | %.2f (%.2f) | %.3f (%.3f);", zl[z], S.pwz_n[z] / tmo, rp[z], S.pwz_q[z] / tmo, rq[z], S.pwz_g[z] / tmo, rg[z]);
                     }
                     {   // §8.295 FOOT RELEASES — StatsBomb 360 (300 matches) in brackets
                         static const double rn[4][4] = {{1.89, 5.91, 5.45, 3.21}, {6.61, 23.87, 24.07, 22.37}, {18.45, 65.71, 75.11, 59.67}, {13.11, 43.80, 35.15, 8.26}};

@@ -11862,3 +11862,25 @@ Seeds 1000-4000 × 8 against G5.197 (real): charged down by band 8.5 / 6.6 / 5.4
 <12, penalties to ok; shots 18-25, goal kicks, tackles to off); goals 1.94 → 2.06 (noise band ~1.9-2.2); corners 3.00 →
 3.20; quick shots 0-5 s 29.6% (19.6) — the second balls mostly come from elsewhere. `card_G5.200.txt`. Goldens
 unchanged (row); tests 23/23, lint clean.
+
+### 8.307 G5.201 — open-play quick shots run ~10× real: won near their box, shot at once (measured; no game change)
+
+From §8.305-§8.306. First a cut check: SHOT CONTEXT's "since the possession began" keys on the last touch's side (a
+deflection starts one), StatsBomb's on control. `GAME_SHOT_TRACE` now prints both (`t` / `tp`, the latter SHOT ORIGIN's
+possession: it ends when the other side has a man on the ball): 0-5 s 29.1% / 28.6% of our shots — not the cut.
+
+New `benchmarks_statsbomb_quickshots.py` (PL 15/16; open play — possessions begun at a restart out): possessions by where
+their first event was and how; open-play shots within 5 s of it. New harness line POSSESSIONS WON (same cut; seed 1000,
+G5.200; a team-match, real in brackets):
+
+| won, m off the goal attacked | possessions | shots within 5 s | goals |
+|---|---|---|---|
+| 0-18 | 1.44 (0.41) | **0.88 (0.05)** | 0.125 (0.004) |
+| 18-35 | 3.88 (1.47) | 0.81 (0.12) | 0.125 (0.005) |
+| 35+ | 68.3 (40.5) | 0.81 (0.10) | 0.062 (0.017) |
+
+**~0.31 goals a team-match from open-play quick shots, real ~0.026 — about 0.29 of our ~0.7 excess.** Two parts: we win
+it near their box 2.6-3.5× as often, and shoot inside 5 s of winning it in their box 61% (12). The real 19.6% "0-5 s"
+share of shots (§8.186) is nearly all restarts (corner-phase shots, median 3.5 s); open-play quick shots are rare.
+Next: who wins those balls near their box (the losing side's last touch: our defenders' passes 16 of 40, blocks 10,
+headers 4, balls forward 6) and why a man regaining there shoots so fast — real ones meet a crowd. Harness only.
