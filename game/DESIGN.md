@@ -11843,3 +11843,22 @@ won inside their 18 m and 15 at 18-35 m in open play, 14 off a restart, the rest
 on the second ball at their box, a shot past a defence not yet back** (median 2 goal-side, 16.5 m). Next: where our
 defenders' clearances and blocks land against real (foot clearance next touch 4.3 / 15.2 / 28.2 m upfield, StatsBomb;
 headed?) and who wins the second ball there. Harness only; behaviour unchanged.
+
+### 8.306 G5.200 — a kick inside his reaction hits a body 0.6 m wide (mig 1627; shipped)
+
+From §8.305. `GAME_SHOT_TRACE` now also prints the losing side's last touch before the possession changed (`prev`: 1 header
+clear, 2 header pass, 3 body block, 10 + why a kick by its order). Of 36 quick open-play regains at their box (seed 1000,
+G5.197): **14 our defenders' pass** cut out, 7 a body block, 5 a headed pass, 3 a headed clearance, 3 a ball in behind, 2 a
+foot clearance. Own-third short passes complete back 87% (96), lateral 87 (91); PASSES CHARGED DOWN still ~2× real
+(28.7 a team-match, 12.0) — by the passer's nearest at the kick 0-1 / 1-2 / 2-3 / 3-5 / 5+ m: 19.8 / 10.8 / 8.5 / 4.2 / 1.3%
+(StatsBomb 360 10.2 / 6.6 / 3.7 / 1.9 / 0.4).
+
+G5.165 gave their kick inside a man's reaction only his body — `kPlayerRadius` 0.45 m, the collision radius: a block 0.9 m
+wide. A man's legs and trunk square to a ground pass are ~0.5-0.6 m [FH]. **Change**: `physics.ball.react_body_m` (code 0
+= kPlayerRadius; row 0.3) — World capture and `Reads::race` alike (`World::reactBody`).
+
+Seeds 1000-4000 × 8 against G5.197 (real): charged down by band 8.5 / 6.6 / 5.4 / 4.0 / 1.6% — 0-2 m now real, 3 m+ still
+2-4× (not bodies: their first touch inside 0.4 s / 8 m); card 11 / 6 / 16 → **11 / 8 / 14** (shots <12 24 → 27%, scored
+<12, penalties to ok; shots 18-25, goal kicks, tackles to off); goals 1.94 → 2.06 (noise band ~1.9-2.2); corners 3.00 →
+3.20; quick shots 0-5 s 29.6% (19.6) — the second balls mostly come from elsewhere. `card_G5.200.txt`. Goldens
+unchanged (row); tests 23/23, lint clean.

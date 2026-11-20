@@ -190,6 +190,7 @@ public:
     int headersClear(int team) const { return headers_clear_[team]; }
     int bodyBlocks(int team) const { return body_blocks_[team]; }   // G5.9: by the blocking team
     bool reactReach() const { return react_reach_; }   // G5.165
+    math::Fixed64 reactBody() const { return react_body_m_.raw > 0 ? react_body_m_ : kPlayerRadius; }   // G5.200 (§8.306)
     bool lastBlockShot() const { return block_was_shot_; }   // G5.164: the last body block stopped a shot
     struct ChargeDiag { long kicks = 0, kept = 0, loose = 0; long by_kicks[4][5] = {}, by_kept[4][5] = {}, by_loose[4][5] = {}; long tl[4] = {}, gl[4] = {}, rtl[4] = {}; long widest[2][4] = {}, rtl0_from[4] = {}; };   // G5.167: widest mate at the kick [near/far side][band]; a pass met 0-5 m off the touchline, where its man stood at the kick   // rtl: a mate's kick received, by m off the touchline   // tl / gl: kicks by m off the touchline 0-5/5-10/10-20/20+, off the goal line it attacks 0-18/18-35/35-70/70+   // [act][their nearest at the kick: 0-1 / 1-2 / 2-3 / 3-5 / 5+ m]   // G5.165: open-play non-shot kicks; their touch in its first 0.4 s / 8 m
     const ChargeDiag& chargeDiag() const { return charge_; }
@@ -349,6 +350,7 @@ private:
     math::Fixed64 aerial_clear_up_{}, aerial_clear_behind_[2][2]{};
     math::Fixed64 aerial_pass_share_[5][2]{}, aerial_pass_err_{}, aerial_pass_err_duel_{}, aerial_pass_reach_{}, aerial_clear_range_{};   // G5.181 (§8.287): a headed pass's share by spot, aim error, reach   // G5.180 (§8.286): a headed clearance's pull upfield; its glance behind [0-6 / 6-18 m][inside / wide the box]
     math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{}, clear_err_{}, block_turn_{}, block_keep_{};
+    math::Fixed64 react_body_m_{};   // G5.200 (§8.306): the body's reach to a kick inside his reaction (0 = kPlayerRadius)
     int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {}, headers_pass_[2] = {}, body_blocks_[2] = {};
     BallState ball_;
     math::Fixed64 half_x_{}, half_y_{};

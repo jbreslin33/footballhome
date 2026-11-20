@@ -994,7 +994,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         if (react_reach_ && !gk && flight_tick_ == kick_tick_ && ball_.last_kicker < players_.size() &&
             players_[ball_.last_kicker].team != players_[i].team) {
             const Fixed64 react = body(i).reaction() + Fixed64::fromInt(skillOf(i).perception_delay_ticks) * kTickDt;
-            if (Fixed64::fromInt(static_cast<std::int64_t>(clock_.tick() - kick_tick_)) * kTickDt < react) { reach = kPlayerRadius; body_i = true; }
+            if (Fixed64::fromInt(static_cast<std::int64_t>(clock_.tick() - kick_tick_)) * kTickDt < react) { reach = reactBody(); body_i = true; }
         }
         const Fixed64 reach_z = gk ? kKeeperReachZ : kOutfieldReachZ;   // G4.94: to the chest
         if (ball_.pos.z > reach_z) continue;
@@ -1464,6 +1464,7 @@ void World::configureAerial(const ModelParams& p) {
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
     react_reach_ = p.fixed("physics.ball.react_reach", 1000).raw > 0;   // G5.165 (§8.271)
+    react_body_m_ = p.fixed("physics.ball.react_body_m", 0);   // G5.200 (§8.306), 0 = kPlayerRadius
     block_unread_ticks_ = static_cast<std::uint64_t>(std::max<std::int64_t>(0, p.milli("physics.block.unread_s", 500) * 30 / 1000));   // G5.164 (§8.270)
     {   // G5.163 (§8.269): StatsBomb PL 2015/16 blocked shots / passes, the turn's bins (permille)
         block_turn_real_ = p.fixed("physics.block.turn_real", 1000).raw > 0;

@@ -286,6 +286,7 @@ int main(int argc, char** argv) {
         const std::uint8_t N = W.playerCount();
         // §8.143: the brain's role (formation role name, then number) — by number a "ten" in an 8 shirt was a DM here
         auto role = [&](std::uint8_t j) { return static_cast<int>(s.brain().roleOf(j)); };
+        int lt_kind[2] = {0, 0}, lt_hc[2] = {0, 0}, lt_hp[2] = {0, 0}, lt_bb[2] = {0, 0}, rc_prev = -1;   // §8.306: each side's last touch kind; the losing side's at the change
         int rc_team = -1; long rc_k = 0; double rc_bx = 0, rc_by = 0;   // the last touch's side, and since when; where (§8.305)
         bool hb_rose = false; double hb_pz = 0; struct HbP { long k; int po, z; }; std::vector<HbP> hb_p;   // §8.172: high balls coming down
         long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
@@ -1219,7 +1220,7 @@ int main(int argc, char** argv) {
                         if (W.isKeeper(j) && W.player(j).team != p.team) S.fn_gk[shot.band][shot.gg].push_back(hx - std::fabs(W.player(j).pos.x.toDouble()));
                     if (std::getenv("GAME_SHOT_TRACE")) {   // §8.186: every opponent at the strike (x = metres off their goal line)
                         const double sg3 = p.team == 0 ? 1.0 : -1.0;
-                        std::fprintf(stderr, "shot m%d k%ld t%.1fs won %.1f,%.1f rs %d from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, hx - rc_bx * sg3, rc_by, so_kind, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
+                        std::fprintf(stderr, "shot m%d k%ld t%.1fs won %.1f,%.1f rs %d prev %d from %.1f,%.1f d %.1f gs %d |", m, static_cast<long>(k), t, hx - rc_bx * sg3, rc_by, so_kind, rc_prev, hx - p.pos.x.toDouble() * sg3, p.pos.y.toDouble(), ds, g);
                         for (std::uint8_t j = 0; j < N; ++j) {
                             if (W.player(j).team == p.team) continue;
                             std::fprintf(stderr, " %s%d:%.1f,%.1f %s", W.isKeeper(j) ? "GK" : "", role(j), hx - W.player(j).pos.x.toDouble() * sg3, W.player(j).pos.y.toDouble(),
@@ -1915,6 +1916,13 @@ int main(int argc, char** argv) {
                 }
                 hb_pz = bz;
             }
+            for (int t = 0; t < 2; ++t) {   // §8.306: 1 header clear, 2 header pass, 3 body block, 10+why a kick by its order
+                if (W.headersClear(t) != lt_hc[t]) { lt_hc[t] = W.headersClear(t); lt_kind[t] = 1; }
+                if (W.headersPass(t) != lt_hp[t]) { lt_hp[t] = W.headersPass(t); lt_kind[t] = 2; }
+                if (W.bodyBlocks(t) != lt_bb[t]) { lt_bb[t] = W.bodyBlocks(t); lt_kind[t] = 3; }
+            }
+            if (before && !b.owner && b.last_kicker == *before) lt_kind[W.player(*before).team & 1] = 10 + static_cast<int>(s.lastOrders()[*before].why);
+            if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team && rc_team >= 0) rc_prev = lt_kind[rc_team & 1];
             if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team) { rc_team = W.lastTouchTeam(); rc_k = static_cast<long>(k); rc_bx = W.ball().pos.x.toDouble(); rc_by = W.ball().pos.y.toDouble(); }
             if (W.outStage() != 0 || W.restartTeam() != 0xFF) dead_last = static_cast<long>(k);   // §8.162
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
