@@ -59,6 +59,10 @@ struct PossessionParams {
     // 0.25-0.5, 0.5+ rad). StatsBomb PL 2015/16 open play
     // (benchmarks_statsbomb_shots.py SHOT POLICY); none past 35 m.
     math::Fixed64 shot_p[4][3]{};
+    // G5.198 (§8.304): shot_p x this by the goal-side crowd (0-1 / 2-3 / 4-5 / 6+ outfielders nearer the goal centre) —
+    // StatsBomb 360 P(shot) in the cell over its (distance, angle) share (benchmarks_statsbomb_360_shotpolicy.py). crowd off = 1.
+    bool shot_crowd = false;
+    math::Fixed64 shot_crowd_k[4][3][4]{};
     // The pass policy (G5.25): from each origin zone (their line 0-18 / 18-35 /
     // 35-52 / 52-70 / 70+ m × centre |y| < 20.16 or wide), the share of real
     // passes ending in each zone, and the share lofted / crossed — StatsBomb PL

@@ -254,7 +254,15 @@ public:
                 const int ab = ang < Fixed64::fromFraction(1, 4) ? 0 : ang < Fixed64::fromFraction(1, 2) ? 1 : 2;
                 const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 40) + Fixed64::one()) *
                                   Fixed64::fromFraction(1, 2);
-                if (u < P.shot_p[db][ab]) {
+                Fixed64 sp_eff = P.shot_p[db][ab];
+                if (P.shot_crowd) {   // G5.198 (§8.304): who's in the way — outfielders of theirs nearer the goal centre than him
+                    int g = 0;
+                    for (std::uint8_t q = 0; q < w.playerCount(); ++q)
+                        if (c.team_of_slot[q] != v.team && !w.isKeeper(q) &&
+                            math::length(Vec2{goal.x - w.player(q).pos.x, goal.y - w.player(q).pos.y}) < dgoal) ++g;
+                    sp_eff = sp_eff * P.shot_crowd_k[db][ab][g <= 1 ? 0 : g <= 3 ? 1 : g <= 5 ? 2 : 3];
+                }
+                if (u < sp_eff) {
                     // G5.37 (§8.135): where it goes is drawn from where real shots
                     // from this distance went (on target, wide, over), one draw for
                     // the spell — the kick then has to get there past the keeper
@@ -1365,8 +1373,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
     // The shot policy, StatsBomb PL 2015/16 open play (permille).
     static const int kShotP[4][3] = {{293, 778, 922}, {82, 610, 675}, {66, 358, 0}, {18, 183, 0}};
     for (int d = 0; d < 4; ++d)
-        for (int a = 0; a < 3; ++a)
+        for (int a = 0; a < 3; ++a) {
             shot_p[d][a] = p.fixed(("physics.shot.p_" + std::to_string(d) + "_" + std::to_string(a)).c_str(), kShotP[d][a]);
+            {   // G5.198 (§8.304): StatsBomb 360 crowd table (permille P(shot)); the multiplier = cell / the (d, a) share
+                static const int kC[4][3][4] = {{{210, 205, 137, 250}, {804, 717, 707, 642}, {898, 870, 840, 714}},
+                                                {{62, 90, 50, 58}, {673, 520, 497, 497}, {702, 639, 632, 551}},
+                                                {{45, 49, 30, 49}, {240, 180, 239, 321}, {0, 0, 0, 0}},
+                                                {{35, 8, 10, 11}, {107, 25, 73, 132}, {0, 0, 0, 0}}};
+                static const int kAll[4][3] = {{210, 719, 865}, {62, 518, 635}, {45, 274, 0}, {11, 107, 0}};
+                for (int g = 0; g < 4; ++g)
+                    shot_crowd_k[d][a][g] = kAll[d][a] > 0 ? Fixed64::fromFraction(kC[d][a][g], kAll[d][a]) : Fixed64::one();
+            }
+        }
     // On-ball starting numbers [FH] — to be fitted to StatsBomb PL 2015/16
     // (crosses, pass length and direction a team-match).
     // The pass policy, StatsBomb PL 2015/16 open play (per mille of the origin zone's passes).
@@ -1521,6 +1539,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
+    shot_crowd = p.fixed("physics.shot.crowd", 0).raw > 0;   // G5.198 (§8.304), row on
     space_contest = p.fixed("physics.space.contest", 0).raw > 0;
     space_lead_s = p.fixed("physics.space.lead_s", 0);   // G5.195 (§8.301), 0 = the zone's middle (G5.54)   // G5.194 (§8.300), row on
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win

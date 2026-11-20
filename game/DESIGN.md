@@ -11816,3 +11816,18 @@ distance along. Seeds 1000-4000 × 8, against G5.196 (real):
 At 3 m also shots 25+, scored 12-18, take-ons to ok; penalties 0.09 → 0.02 (OFF), headed clearances, free kicks, take-on
 success to off. 5 m pulls men from wider without more blocks. Still: the lane empty 72% of strikes (28.6) — the bodies
 aren't near enough the line to step in. `card_G5.197.txt`. Goldens unchanged (row); tests 23/23, lint clean.
+
+### 8.304 G5.198 — the shot policy by the crowd in the way: trial, not shipped
+
+From §8.303: SHOT CHOICE by goal-side, ours v StatsBomb 360 — 12-18 m with 2-3 goal-side 72.5% shots (44.0), 18-25 m 42.0
+(15.3), 25-35 m 7.8 (1.2). New `benchmarks_statsbomb_360_shotpolicy.py`: P(shot | release) by distance × goal angle (as
+shot_p) × goal-side 0-1 / 2-3 / 4-5 / 6+ (300 matches). Within an angle bin the crowd moves it most from range: 18-25 m,
+angle 0.25-0.5: 24 / 18 / 24 / 32%; 25-35 m: 11 / 2.5 / 7 / 13% — an open man out there carries or passes; into a packed
+block the shot is the outlet. 360's shares run under PL 15/16's by angle (18-25 a1 27.4 v 35.8), so `physics.shot.crowd`
+(code, off) multiplies PL's shot_p by the 360 cell over its (distance, angle) share.
+
+Trial, seeds 1000-4000 × 8 against G5.197 (real): SHOT CHOICE nearer at range (18-25 m 20 / 20 / 27%, real 15 / 17 / 19) —
+but the shots it takes away from range come back closer and freer: **goals 1.94 → 2.31**, conversion 15.5 → 18.8%, scored
+<12 m 22.6 → 28.3%, 12-18 m 11.5 → 16.6%; blocked 19.5 → 17.0; card 11 / 6 / 16 → 9 / 5 / 19. Not shipped; off in code.
+Shooting less from range makes us more dangerous — the gap is still the defence near the box (§8.292: our releases there
+come against 2-3 men, real 6+), not the decision. Tests 23/23, lint clean; behaviour unchanged.
