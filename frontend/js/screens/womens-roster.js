@@ -23,6 +23,10 @@ class WomensRosterScreen extends RosterScreenBase {
   // Every Tri County woman is a regular on the team cards — never answering
   // an RSVP doesn't park her in 💤 Inactive (owner 11/20 "all regulars").
   _neverAnsweredParks() { return false; }
+  // Same Team-pill choices as men — ✅ Regular / 🪑 Reserves (owner 11/20
+  // "women have no reserves yet but keep it there same as men etc"; the
+  // standby section rule is mig 1598).
+  _hasReserves() { return true; }
 
   render() {
     const div = document.createElement('div');
