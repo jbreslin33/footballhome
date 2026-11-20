@@ -1245,7 +1245,9 @@ class RosterScreenBase extends Screen {
       const c = this.columnCategoryOf(p);
       // 💤 Inactive = never answered too (owner 11/19 "inactive should be same
       // as not chasing … they are still part of club and still liga 1").
-      return c === 'active' && this.needsOnboard(p) ? (this._hasReserves() ? 'standby' : 'inactive')
+      // Women opt out (owner 11/20 "women have no liga 1. they are tri
+      // county. all of them. all active" → "all regulars").
+      return c === 'active' && this.needsOnboard(p) && this._neverAnsweredParks() ? (this._hasReserves() ? 'standby' : 'inactive')
         : (c in { active: 1, injured: 1, practice_squad: 1, standby: 1, inactive: 1 } ? c : 'active');
     };
     const ids = new Set();
@@ -1423,6 +1425,10 @@ class RosterScreenBase extends Screen {
 
   // 🪑 Regulars / Reserves (mig 1530) — the men's board turns it on.
   _hasReserves() { return false; }
+
+  // Team cards: does a never-answered regular drop to 🪑 Reserves / 💤
+  // Inactive?  Men + youth yes (11/19); WomensRosterScreen says no.
+  _neverAnsweredParks() { return true; }
 
   // League rule breaks between the official lists (roster_team_rules, mig
   // 820) for one person → [{ teamId, why }].  On team T's list and T

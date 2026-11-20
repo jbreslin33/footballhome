@@ -20,6 +20,10 @@ class WomensRosterScreen extends RosterScreenBase {
   // "we really don't need to show youth stuff on the mens page").
   seesSections() { return ['womens']; }
 
+  // Every Tri County woman is a regular on the team cards — never answering
+  // an RSVP doesn't park her in 💤 Inactive (owner 11/20 "all regulars").
+  _neverAnsweredParks() { return false; }
+
   render() {
     const div = document.createElement('div');
     div.className = 'screen';
