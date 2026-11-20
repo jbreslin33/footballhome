@@ -11711,3 +11711,23 @@ third releases 3-6 m 39.6 → 22.5 (24.1), 6+ 18.6 → 30.6 (22.4) — the sprea
 (34.6) and the card 9 / 7 / 17 → 6 / 10 / 17 (scored <12 20 → 25%, tackles 18.0 → 17.1, shots 12-18 30 → 33%). Midfield
 releases with their nearest 3-6 m stay 139 (75) — there before G5.190 (140 at G5.189): a mole of its own. Not shipped;
 the knots stay in code, off. Tests 23/23, lint clean.
+
+### 8.298 G5.192 — the keeper parries most of what he saves (mig 1608; shipped)
+
+From §8.296's in-play share (61.0 v 55.2) — too few restarts: throw-ins 17.5 (23.1), corners 3.50 (5.4). Not stoppages:
+G5.146's referee stops and added time are in, and dead time per restart is real (throw-in median 13.8 s v 13.8, corner
+32.1 v 32.8). Corners by cause: off a shot or a save ours 0.38 a team-match, real 0.92 + 0.60. BY AIMED CELL showed why:
+our keeper **held every shot under his control speed** (parried 0-3% of the saves in most cells).
+
+Real (StatsBomb PL 15/16 Goal Keeper "Shot Saved" events, 2.95 a team-match): held 39.5%, touched out 22.8, in play 30.0
+(danger 17.6 / safe 12.4), saved twice 7.7 — a pro keeper parries ~60% of his saves, ~38% of those behind.
+
+**Change** (World; `physics.keeper.parry_share`, code 0 = off, row 0.6; `parry_out_share` 0.38): a shot (6+ m/s) he would
+hold is parried at parry_share — pushed behind his line 1-7 m wide of the post at parry_out_share of those, else away
+into play as G4.14's parry (±60°, never back toward goal).
+
+Seeds 1000-4000 × 8, against G5.190 (real): corners 3.50 → **4.34** (5.4), off a shot / save 0.38 → 1.12 (1.52); headed
+clearances 13.9 → 15.1 (15.8) and aerial duels 39.0 → 41.8 (44.3) both to ok; goals 2.20 → 2.28 (rebounds), ball in play
+61.0 → 60.4%; parried now 20-55% by cell. Card 9 / 7 / 17 unchanged in count (`card_G5.192.txt`; shots 12-18 30 → 34%,
+tackles 18.0 → 16.4 to OFF; free kicks, switches to off). Goldens unchanged; tests 23/23, lint clean. Next: the wide
+final third — passes into the crossing zone 6.75 (12.9), central recycling (passes from 35-70 m central 195 v 134).

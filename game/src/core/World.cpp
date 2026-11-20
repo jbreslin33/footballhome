@@ -1098,6 +1098,39 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             squirm = (r2 + Fixed64::one()) < Fixed64::fromFraction(2, 3);
         }
     }
+    // G5.192 (§8.298): a real keeper holds 40% of the shots he saves (StatsBomb PL 15/16 Goal Keeper saves 2.95 a
+    // team-match: held 39.5%, touched out 22.8, in play 30.0, saved twice 7.7). Ours held all he could control: a shot he
+    // would hold is parried at parry_share — pushed behind his line wide of the post at parry_out of those, else away
+    // into play as a fumble's parry.
+    bool parry_out = false;
+    if (keeper_[best] && !fumbled && keeper_parry_share_.raw > 0 && flight_tick_ == shot_flight_tick_ &&
+        planar_speed_sq > Fixed64::fromInt(36)) {
+        const Fixed64 r = (detNoise(match_seed_, clock_.tick(), best, 94) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (r < keeper_parry_share_) {
+            const Fixed64 r2 = (detNoise(match_seed_, clock_.tick(), best, 95) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+            if (r2 < keeper_parry_out_) parry_out = true;
+            else fumbled = true;   // the in-play parry: away from goal, as G4.14
+        }
+    }
+    if (parry_out) {
+        const Fixed64 gx = players_[best].team == 0 ? -half_x_ : half_x_;   // his own goal line
+        const Fixed64 side = ball_.pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+        const Fixed64 u = (detNoise(match_seed_, clock_.tick(), best, 96) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        const Vec2 at{gx + (players_[best].team == 0 ? -Fixed64::fromInt(2) : Fixed64::fromInt(2)), side * (Fixed64::fromFraction(366, 100) + Fixed64::one() + Fixed64::fromInt(6) * u)};
+        const Vec2 dir = math::normalized(Vec2{at.x - ball_.pos.x, at.y - ball_.pos.y});
+        const Fixed64 sp = math::fx_sqrt(planar_speed_sq) * kBobbleKeep;
+        ball_.spin = false;
+        ball_.vel = Vec3{dir.x * sp, dir.y * sp, Fixed64::zero()};
+        ball_.pos.z = Fixed64::zero();
+        ball_.last_kicker = best;
+        ball_.pass_to = 0xFF;
+        ball_.kicker_lockout = kBobbleLockoutTicks;
+        bad_touch_slot_ = best;
+        bad_touch_tick_ = clock_.tick();
+        flight_tick_ = clock_.tick();
+        touchedBy(players_[best].team, true);
+        return;   // still nobody's ball — out behind for a corner
+    }
     // Reaction touch (G4.82): an outfielder stepping across THEIR kick while
     // it still travels (3 m/s+) keeps it intercept_control_pct of the time;
     // otherwise it comes off him loose — it was 100% clean, and passes were
@@ -1407,6 +1440,8 @@ void World::configureAerial(const ModelParams& p) {
     aerial_goal_err_ = p.fixed("physics.aerial.goal_err_deg", 45000);
     aerial_goal_err_duel_ = p.fixed("physics.aerial.goal_err_duel_deg", 80000);
     aerial_clear_err_ = p.fixed("physics.aerial.clear_err_deg", 40000);
+    keeper_parry_share_ = p.fixed("physics.keeper.parry_share", 0);   // G5.192 (§8.298), 0 = off
+    keeper_parry_out_ = p.fixed("physics.keeper.parry_out_share", 380);
     // G5.180 (§8.286): real headed clearances (StatsBomb PL 15/16, benchmarks_statsbomb_clearcorner.py) go behind for a corner
     // 16% from inside the 6 m (box's width), 5% at 6-18 m; wide 11 / 3. Ours never did: the header went radially away from
     // the goal's centre (± clear_err), so from wide it ran at the touchline (throw-in 83-96% v 37-50% of real clearances).

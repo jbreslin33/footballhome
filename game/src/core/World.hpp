@@ -394,6 +394,9 @@ private:
     std::uint64_t bad_touch_tick_ = 0;
     std::uint64_t flight_tick_ = 0;
     std::uint64_t shot_flight_tick_ = ~std::uint64_t{0};   // G5.163: the flight_tick_ of the last shot
+    // G5.192 (§8.298): a keeper's save of a shot he would hold is parried at parry_share (StatsBomb PL 15/16: 60% of
+    // saves not held), parry_out_share of those pushed behind (touched out 22.8% of saves); 0 = off.
+    math::Fixed64 keeper_parry_share_{}, keeper_parry_out_{};
     bool block_turn_real_ = false; math::Fixed64 block_turn_p_[2][4]{};   // G5.163 (§8.269)
     void deflectOffBody(SlotIndex blocker);   // G5.165: the body block, from the sweep or a ball he hadn't reacted to
     bool block_was_shot_ = false;
