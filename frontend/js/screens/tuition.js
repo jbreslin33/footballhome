@@ -275,16 +275,19 @@ class TuitionScreen extends Screen {
   _ledgerFor(keys) {
     const lg = this.ledger; if (!lg || !lg.start) return null;
     const cat = { mens: 'men', womens: 'women', boys: 'boys', girls: 'girls' };
-    const byMonth = {}; let pending = 0;
+    const byMonth = {}, feeByMonth = {}; let pending = 0;
     for (const k of keys) for (const [ym, v] of Object.entries((lg.sections || {})[cat[k]] || {})) {
       byMonth[ym] = (byMonth[ym] || 0) + Number(v.amount || 0); pending += Number(v.pending || 0);
+      feeByMonth[ym] = (feeByMonth[ym] || 0) + Number(v.fee || 0);   // what LeagueApps kept (mig 1636)
     }
     const startYm = String(lg.start).slice(0, 7), nowYm = lg.now_ym;
     const closed = []; { let [y, m] = startYm.split('-').map(Number); for (let i = 0; i < 24; i++) { const ym = `${y}-${String(m).padStart(2, '0')}`; if (ym >= nowYm) break; closed.push(ym); m++; if (m > 12) { m = 1; y++; } } }
     const last = closed.slice(-3);
     const collected = Object.values(byMonth).reduce((a, v) => a + v, 0);
-    return { collected, thisMonth: byMonth[nowYm] || 0, avg: last.length ? last.reduce((a, ym) => a + (byMonth[ym] || 0), 0) / last.length : (byMonth[nowYm] || 0),
-             months: last.length, last, pending, byMonth, startYm, nowYm, start: lg.start };
+    const avgOf = (by) => last.length ? last.reduce((a, ym) => a + (by[ym] || 0), 0) / last.length : (by[nowYm] || 0);
+    return { collected, thisMonth: byMonth[nowYm] || 0, avg: avgOf(byMonth),
+             fees: { collected: Object.values(feeByMonth).reduce((a, v) => a + v, 0), thisMonth: feeByMonth[nowYm] || 0, avg: avgOf(feeByMonth) },
+             months: last.length, last, pending, byMonth, feeByMonth, startYm, nowYm, start: lg.start };
   }
 
   // 🧾 Fines part of the money (mig 1294, lib/fines-collected.js): the
@@ -2835,6 +2838,10 @@ class TuitionScreen extends Screen {
               cell(L('split_fines', '🧾 Fines'), this.fmtMoney(fm[this.month] || 0), '#fde68a'),
             ] : []),
             cell(L('month_collected', '💰 Collected'), this.fmtMoney(ms.collected), '#86efac', 'Payments that month, less refunds (club time)'),
+            ...(lgm && this.month >= lgm.startYm ? [
+              cell(L('split_la_fees', '➖ LeagueApps fees'), this.fmtMoney(lgm.feeByMonth[this.month] || 0), '#fca5a5'),
+              cell(L('split_after_fees', '🏦 After fees'), this.fmtMoney(ms.collected - (lgm.feeByMonth[this.month] || 0)), '#86efac'),
+            ] : []),
             cell(L('month_refunds', 'Refunds'), this.fmtMoney(ms.refunds), '#fca5a5'),
             cell(L('month_payments', 'Payments'), ms.payments),
           ] },
@@ -2883,17 +2890,21 @@ class TuitionScreen extends Screen {
     const fSum = (yms) => yms.reduce((a, ym) => a + Number((fm || {})[ym] || 0), 0);
     const f = ok ? { collected: Object.keys(fm).filter(ym => ym >= lg.startYm).reduce((a, ym) => a + Number(fm[ym] || 0), 0),
                      thisMonth: Number(fm[lg.nowYm] || 0), avg: lg.last.length ? fSum(lg.last) / lg.last.length : Number(fm[lg.nowYm] || 0) } : null;
-    const row = (title, total, fines) => ({ title, cells: [
+    // … then what LeagueApps kept comes off (mig 1636; owner 11/20 "total
+    // paid then the la fees coming off"): Total − LeagueApps fees = After fees
+    const row = (title, total, fines, fee) => ({ title, cells: [
       cell(L('split_tuition', '🎓 Tuition'), ok ? this.fmtMoney(total - fines) : wait, '#86efac'),
       cell(L('split_fines', '🧾 Fines'), ok ? this.fmtMoney(fines) : wait, '#fde68a'),
       cell(L('split_total', '💰 Total'), ok ? this.fmtMoney(total) : wait, '#86efac'),
+      cell(L('split_la_fees', '➖ LeagueApps fees'), lg ? this.fmtMoney(fee) : wait, '#fca5a5'),
+      cell(L('split_after_fees', '🏦 After fees'), lg ? this.fmtMoney(total - fee) : wait, '#86efac'),
     ] });
     const start = lg ? new Date(`${lg.start}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
     const mo = String(lg ? lg.months : 0);
     return [
-      row(L('split_row_collected', `MONEY IN · SINCE ${start}`, { start }), lg ? lg.collected : 0, f ? f.collected : 0),
-      row(L('split_row_month', 'MONEY IN · THIS MONTH'), lg ? lg.thisMonth : 0, f ? f.thisMonth : 0),
-      row(L('split_row_avg', `MONEY IN · AVG / MONTH (last ${mo} finished)`, { months: mo }), lg ? lg.avg : 0, f ? f.avg : 0),
+      row(L('split_row_collected', `MONEY IN · SINCE ${start}`, { start }), lg ? lg.collected : 0, f ? f.collected : 0, lg ? lg.fees.collected : 0),
+      row(L('split_row_month', 'MONEY IN · THIS MONTH'), lg ? lg.thisMonth : 0, f ? f.thisMonth : 0, lg ? lg.fees.thisMonth : 0),
+      row(L('split_row_avg', `MONEY IN · AVG / MONTH (last ${mo} finished)`, { months: mo }), lg ? lg.avg : 0, f ? f.avg : 0, lg ? lg.fees.avg : 0),
       ...(lg && lg.pending > 0.005 ? [{ title: L('split_row_pending', 'BANK PAYMENTS NOT DEPOSITED YET'),
         cells: [cell(L('split_pending', '⏳ Pending'), this.fmtMoney(lg.pending), '#fde68a')] }] : []),
     ];

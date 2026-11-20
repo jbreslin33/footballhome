@@ -16,7 +16,10 @@ json DuesLedger::byMonth(int clubId) {
         SELECT lp.category, to_char(pp.paid_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym,
                COALESCE(SUM(CASE WHEN pp.txn_type IN ('Refund', 'Partial Refund') THEN -pp.amount ELSE pp.amount END)
                         FILTER (WHERE pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId'), 0)::float8 AS amount,
-               COALESCE(SUM(pp.amount) FILTER (WHERE pp.txn_type = 'Bank' AND NOT (pp.raw ? 'bankTransferId')), 0)::float8 AS pending
+               COALESCE(SUM(pp.amount) FILTER (WHERE pp.txn_type = 'Bank' AND NOT (pp.raw ? 'bankTransferId')), 0)::float8 AS pending,
+               -- what LeagueApps kept of the approved money (mig 1636): before fees less after fees, refunds give theirs back
+               COALESCE(SUM(CASE WHEN pp.txn_type IN ('Refund', 'Partial Refund') THEN -1 ELSE 1 END * (pp.amount - COALESCE(pp.net_amount, pp.amount)))
+                        FILTER (WHERE pp.txn_type <> 'Bank' OR pp.raw ? 'bankTransferId'), 0)::float8 AS fee
           FROM person_payments pp
           JOIN leagueapps_programs lp ON lp.program_id = pp.la_program_id
           JOIN la_soccer_programs s ON s.la_program_id = pp.la_program_id AND s.counts_in
@@ -27,7 +30,7 @@ json DuesLedger::byMonth(int clubId) {
                                    AND twin.txn_type = pp.txn_type AND twin.amount = pp.amount
                                    AND twin.raw->>'bankTransferId' IS NOT NULL))
          GROUP BY 1, 2 ORDER BY 1, 2)SQL", {out["start"].get<std::string>()})) {
-        out["sections"][r["category"].c_str()][r["ym"].c_str()] = {{"amount", r["amount"].as<double>()}, {"pending", r["pending"].as<double>()}};
+        out["sections"][r["category"].c_str()][r["ym"].c_str()] = {{"amount", r["amount"].as<double>()}, {"pending", r["pending"].as<double>()}, {"fee", r["fee"].as<double>()}};
     }
     return out;
 }
