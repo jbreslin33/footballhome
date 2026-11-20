@@ -2049,14 +2049,15 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                     for (auto& e : events) e["graphics"] = json::array();
                     std::map<long long, json> byEvent;
                     for (const auto& r : db->query(
-                             "SELECT g.fh_event_id, f.id, f.original_filename, f.title "
+                             "SELECT g.fh_event_id, f.id, f.original_filename, f.title, g.link_url "
                              "  FROM fh_event_graphics g JOIN club_files f ON f.id = g.club_file_id "
                              " WHERE g.fh_event_id = ANY($1::bigint[]) AND f.visibility = 'public' "
                              " ORDER BY g.sort_order, g.id", {ids})) {
                         auto& arr = byEvent[r["fh_event_id"].as<long long>()];
                         if (!arr.is_array()) arr = json::array();
                         arr.push_back({{"url", "/api/files/dl/" + std::string(r["id"].c_str()) + "/" + r["original_filename"].c_str()},
-                                       {"title", r["title"].c_str()}});
+                                       {"title", r["title"].c_str()},
+                                       {"link", r["link_url"].is_null() ? json(nullptr) : json(r["link_url"].c_str())}});
                     }
                     for (auto& e : events)
                         if (e["fh_event_id"].is_number_integer()) {

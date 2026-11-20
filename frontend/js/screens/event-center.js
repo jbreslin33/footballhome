@@ -565,6 +565,8 @@ class EventCenterScreen extends Screen {
         if (ev && ev.html_link) window.open(ev.html_link, '_blank', 'noopener');
         return;
       }
+      // 🎟 A linked flyer on a tile (mig 1594): the link opens, not the event.
+      if (t('[data-ec-link]')) return;
       // ✓ / ✗ on a tile answers for YOU without opening it (owner
       // 2026-11-06) — checked before the tile's own open.
       if ((el = t('[data-ec-my-rsvp]'))) {
@@ -892,7 +894,10 @@ class EventCenterScreen extends Screen {
             : r === 'no' ? ['me_status_no', "✗ You're not going", '#ef4444']
             : ev.my_rsvp_fine_usd > 0
               ? ['me_status_none_fine', `⚠️ Set your availability — ${money(ev.my_rsvp_fine_usd)} fine if you don't`, '#f59e0b']
-              : ['me_status_none', '⚠️ Set your availability — the coach is counting on it', '#f59e0b'],
+              // A kind can word its own ask (mig 1595 — Barn Night: owner 11/19
+              // "don't put set your avail the coach is counting on it lol").
+              : (kt => window.MessageCopy && MessageCopy.has && MessageCopy.has('event_center', kt) ? [kt, '', '#f59e0b'] : null)(`me_status_none_${String(ev.kind || '').replace(/\W+/g, '_')}`)
+                || ['me_status_none', '⚠️ Set your availability — the coach is counting on it', '#f59e0b'],
             { amount: ev.my_rsvp_fine_usd > 0 ? money(ev.my_rsvp_fine_usd) : '' });
         }
         for (const c of (Array.isArray(ev.guardian_targets) ? ev.guardian_targets : [])) {
@@ -922,8 +927,11 @@ class EventCenterScreen extends Screen {
           // 🖼 The event's flyer on its tile (fh_event_graphics, mig 1584 — owner
           // 11/19 "not seeing it in cal … it should be on all for barn night. i
           // know it will take up extra space").  Taps open the event like the tile.
+          // A linked flyer (mig 1594 — Barn Night tickets) opens its link instead.
+          (img => g.link ? `<a href="${this.escapeHtml(g.link)}" target="_blank" rel="noopener" data-ec-link
+                title="${this.escapeHtml(cp('graphic_link', {}, 'Tap for tickets'))}" style="display:block; width:100%;">${img}</a>` : img)(
           `<img src="${this.escapeHtml(g.url)}" alt="${this.escapeHtml(g.title || '')}" loading="lazy"
-                style="display:block; width:100%; max-width:420px; height:auto; margin:4px 0; border-radius:8px;">`).join('')}
+                style="display:block; width:100%; max-width:420px; height:auto; margin:4px 0; border-radius:8px;">`)).join('')}
         ${EventLabels.carpoolLines(ev).map(l => `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere; text-align:left;">${this.escapeHtml(l)}</span>`).join('')}
         ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
           : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}

@@ -104,8 +104,10 @@ class EventScreen extends Screen {
   // night"): each one full width atop the card, tap opens it full size.
   _graphics() { return Array.isArray(this.ev && this.ev.graphics) ? this.ev.graphics.filter(g => g && g.url) : []; }
   _graphicsHtml() {
-    const cap = (window.MessageCopy && MessageCopy.block('event_center', 'graphic_open')) || 'Tap to open full size';
-    return this._graphics().map(g => `<a href="${this.escapeHtml(g.url)}" target="_blank" rel="noopener" title="${this.escapeHtml(cap)}"
+    const cp = (t, fb) => (window.MessageCopy && MessageCopy.block('event_center', t)) || fb;
+    // A linked graphic (mig 1594 — Barn Night tickets) opens its link; else the picture full size.
+    return this._graphics().map(g => `<a href="${this.escapeHtml(g.link || g.url)}" target="_blank" rel="noopener"
+        title="${this.escapeHtml(g.link ? cp('graphic_link', 'Tap for tickets') : cp('graphic_open', 'Tap to open full size'))}"
         style="display:block; max-width:540px; margin:0 auto 12px;"><img src="${this.escapeHtml(g.url)}" alt="${this.escapeHtml(g.title || '')}" loading="lazy"
         style="display:block; width:100%; height:auto; border-radius:12px; border:1px solid var(--border-color, #374151);"></a>`).join('');
   }
