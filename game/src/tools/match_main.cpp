@@ -79,7 +79,8 @@ struct Stats {
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
-    long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {};   // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
+    long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
+   // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
     long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
     long rel_n[5] = {}, rel_shot[5] = {};
@@ -377,7 +378,13 @@ int main(int argc, char** argv) {
                     const int o = *bo.owner, ot = W.player(*bo.owner).team;
                     if (ot != so_team) { so_team = ot; so_kind = 4; so_taker = -1; so_k = static_cast<long>(k); so_other = true;
                         const double gxa = ot == 0 ? hx : -hx, xo = std::fabs(gxa - bo.pos.x.toDouble());   // §8.307
-                        so_zone = xo < 18 ? 0 : xo < 35 ? 1 : 2; ++S.pwz_n[so_zone]; }
+                        so_zone = xo < 18 ? 0 : xo < 35 ? 1 : 2; ++S.pwz_n[so_zone];
+                        if (so_zone < 2) {   // §8.308: the losing side's last touch (lt_kind: 1 head clear, 2 head pass, 3 block, 10+why a kick)
+                            const int lk = lt_kind[(ot ^ 1) & 1];
+                            const int c6 = lk == 10 + static_cast<int>(ai::Why::Pass) ? 0 : (lk == 1 || lk == 10 + static_cast<int>(ai::Why::Clear)) ? 1 : lk == 3 ? 2 : lk == 2 ? 3
+                                         : (lk == 10 + static_cast<int>(ai::Why::InBehind) || lk == 10 + static_cast<int>(ai::Why::IntoSpace)) ? 4 : 5;
+                            ++S.pwz_k[so_zone][c6];
+                        } }
                     else if (o != so_taker) so_other = true;
                 }
                 so_prt = rt; if (rt != 0xFF) so_prk = W.restartKind();
@@ -3122,6 +3129,8 @@ int main(int argc, char** argv) {
                         const double tmo = std::max(1.0, 2.0 * matches);
                         std::printf("\n   POSSESSIONS WON in open play (the other side had a man on it; m off the goal attacked) a team-match | shots within 5 s | goals (real StatsBomb PL 15/16):");
                         for (int z = 0; z < 3; ++z) std::printf(" %s %.2f (%.2f) | %.2f (%.2f) | %.3f (%.3f);", zl[z], S.pwz_n[z] / tmo, rp[z], S.pwz_q[z] / tmo, rq[z], S.pwz_g[z] / tmo, rg[z]);
+                        static const char* kl[6] = {"pass", "clearance", "block", "header pass", "ball forward", "other"};
+                        for (int z = 0; z < 2; ++z) { std::printf("\n     won %s by the losing side's last touch, a team-match:", zl[z]); for (int c6 = 0; c6 < 6; ++c6) std::printf(" %s %.2f;", kl[c6], S.pwz_k[z][c6] / tmo); }
                     }
                     {   // §8.295 FOOT RELEASES — StatsBomb 360 (300 matches) in brackets
                         static const double rn[4][4] = {{1.89, 5.91, 5.45, 3.21}, {6.61, 23.87, 24.07, 22.37}, {18.45, 65.71, 75.11, 59.67}, {13.11, 43.80, 35.15, 8.26}};

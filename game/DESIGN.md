@@ -11884,3 +11884,18 @@ it near their box 2.6-3.5× as often, and shoot inside 5 s of winning it in thei
 share of shots (§8.186) is nearly all restarts (corner-phase shots, median 3.5 s); open-play quick shots are rare.
 Next: who wins those balls near their box (the losing side's last touch: our defenders' passes 16 of 40, blocks 10,
 headers 4, balls forward 6) and why a man regaining there shoots so fast — real ones meet a crowd. Harness only.
+
+### 8.308 G5.202 — the near-box regains are our defenders' passes the read called safe (measured + trial, not shipped)
+
+From §8.307. POSSESSIONS WON now splits the 0-18 / 18-35 m regains by the losing side's last touch (seeds 1000 / 2000,
+G5.200, a team-match): won 0-18 m off their **pass 0.81-1.38**, clearance 0.31-0.38, block 0.12, header pass 0-0.06, ball
+forward 0.06-0.25; won 18-35 m off their **pass 2.69-2.88**, clearance 0.56, block 0-0.06, header pass 0.19-0.25, ball
+forward 0.25-0.38. Real possessions of any kind begun within 35 m of the goal attacked: ~1.9. Not G5.190's free hold or
+G5.187's pace: with both off (seed 1000) 1.75-2.69 / 4.2-4.6 — older than both.
+
+Trial `physics.pass.risk_own3` (code, off): from our own third a pass the race read says they win at 0.05 of its share,
+not risk_weight's 0.25 [FH: no risks at the back]. Seeds 1000-4000 × 8: regains unchanged (0-18 1.38, 18-35 3.8-4.75),
+goals 2.06 → 2.14, card 11 / 8 / 14 → 9 / 7 / 17. Not shipped. **The lost passes are ones the read calls ours**: their man
+gets there sooner than `Reads::race` says near our goal — charged down 3-5 m off the passer 4.0% (1.9), the band the body
+rule (§8.306) doesn't reach. Next: the race read's error on our own-third passes (read won v lost, by the cutter's
+distance and pace at the kick). Tests 23/23, lint clean; behaviour unchanged.

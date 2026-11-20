@@ -423,6 +423,9 @@ public:
                 zsum_hi[wingIx(ez, to)] += pick_hi[j];
             }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
+        // G5.202 (§8.308): in our own third a pass the race read says they win is played at risk_own3, not risk_weight
+        // [FH coaching: no risks at the back] — our defenders' passes there were cut out ~3x real (POSSESSIONS WON).
+        const Fixed64 rw = P.risk_own3.raw > 0 && own_end < Fixed64::fromInt(35) ? P.risk_own3 : P.risk_weight;
         Cand cand[64]; int nc = 0; Fixed64 sum{};
         const Fixed64 reach = rangeFor(w.skillOf(v.slot), Fixed64::fromInt(50));
         // Their offside line (Law 11): the second-last of theirs, or halfway, or the ball.
@@ -498,7 +501,7 @@ public:
                 const int dir = fwd * Fixed64::fromInt(2) > d ? 0 : fwd * Fixed64::fromInt(2) < -d ? 2 : 1;
                 const Fixed64 ph = P.highShare(own_end, d, dir);
                 Fixed64 gw = wgt * (Fixed64::one() - ph);
-                if (!gsafe) gw = gw * P.risk_weight;
+                if (!gsafe) gw = gw * rw;
                 add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
                 if (ph.raw > 0 && d <= reach) {
                     const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
@@ -521,7 +524,7 @@ public:
                         // Real passes fail 21% of the time: a pass the read says they
                         // win is still tried, at risk_weight of its share (fitted to
                         // the real 79.1% completion, StatsBomb PL 2015/16).
-                        add(Cand{j, wgt * P.risk_weight, false, Loft{}, false, to, 0});
+                        add(Cand{j, wgt * rw, false, Loft{}, false, to, 0});
                 }
             }
             if (diag_mid && !is_gk && wgt.raw > 0) {   // §8.284 diag
@@ -1537,6 +1540,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     spread_k = p.fixed("physics.support.spread_k", 800);
     spread_max_m = p.fixed("physics.support.spread_max_m", 6000);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
+    risk_own3 = p.fixed("physics.pass.risk_own3", 0);   // G5.202 (§8.308), 0 = risk_weight everywhere
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
     shot_crowd = p.fixed("physics.shot.crowd", 0).raw > 0;   // G5.198 (§8.304), row on
