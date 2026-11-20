@@ -67,7 +67,10 @@ class WelcomeDuePanel {
     if (!p || !window.ContactPopup || !window.SectionContact) return;
     const recipients = this.recipientsOf(p);
     const parent = recipients.find(r => r.personId !== personId);
-    const screen = { auth: this.ctx.auth };
+    // A Screen (its Gmail / sms compose helpers) carrying the band's auth — the
+    // popup sends through screen.openGmailCompose etc. (11/20 "screen.openGmailCompose
+    // is not a function" with a bare {auth}).
+    const screen = Object.assign(Object.create(Screen.prototype), { auth: this.ctx.auth });
     ContactPopup.open({
       key: `welcome-due:${personId}`, screen, recipients,
       messages: SectionContact.messages(p.section, {
