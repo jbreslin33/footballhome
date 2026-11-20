@@ -11701,3 +11701,13 @@ Worse on the card: aerial duels 43.8 → 39.0 (44.3), switches 9.9 → 9.0 (10.7
 — fewer balls, fewer contests. `card_G5.190.txt`. Next: the trigger as a draw (where a real man lets it go by his nearest
 opponent, StatsBomb 360), then the in-play share (61.0 v 55.2) — the dispossession / miscontrol outs. Goldens unchanged;
 tests 23/23, lint clean.
+
+### 8.297 G5.191 — the hold's trigger as a draw: trial, not shipped
+
+From §8.296's "next": releases bunched at the fixed 6 m ring. `physics.tempo.free_hold_q{0..4}_m` (code, off by default:
+q0 0 = the fixed `free_hold_m`): his trigger one draw a spell on knots. Trial 2 / 4 / 6 / 8 / 11 m (seeds 1000-4000 × 8,
+against G5.190; real): passes a minute 8.27 → 8.37 (8.23), spells 12.10 → 12.28 (12.15), passes 482 → 473 (434); own
+third releases 3-6 m 39.6 → 22.5 (24.1), 6+ 18.6 → 30.6 (22.4) — the spread nearer real; but carries 10 m+ 45.4 → 50.5
+(34.6) and the card 9 / 7 / 17 → 6 / 10 / 17 (scored <12 20 → 25%, tackles 18.0 → 17.1, shots 12-18 30 → 33%). Midfield
+releases with their nearest 3-6 m stay 139 (75) — there before G5.190 (140 at G5.189): a mole of its own. Not shipped;
+the knots stay in code, off. Tests 23/23, lint clean.

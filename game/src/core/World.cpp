@@ -479,10 +479,16 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             clock_.tick() < hold_until_tick_ + static_cast<std::uint64_t>((free_hold_max_s_ * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS)) {
             const Fixed64 own_d = players_[kicker].team == 0 ? half_x_ + o.pos.x : half_x_ - o.pos.x;
             if (own_d < free_hold_own_m_) {
+                Fixed64 r = free_hold_m_;
+                if (free_hold_q_[0].raw > 0) {   // G5.191 (§8.297): his trigger for the spell, one draw on the knots
+                    const Fixed64 u = (detNoise(match_seed_, owned_at_tick_, kicker, 93) + Fixed64::one()) * Fixed64::fromInt(2);   // 0..4
+                    const int qi = std::min(3, static_cast<int>(u.raw >> Fixed64::FRAC_BITS));
+                    r = free_hold_q_[qi] + (free_hold_q_[qi + 1] - free_hold_q_[qi]) * (u - Fixed64::fromInt(qi));
+                }
                 bool free = true;
                 for (SlotIndex i = 0; i < players_.size() && free; ++i)
                     if (players_[i].team != players_[kicker].team &&
-                        math::lengthSquared(Vec2{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y}) < free_hold_m_ * free_hold_m_) free = false;
+                        math::lengthSquared(Vec2{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y}) < r * r) free = false;
                 if (free) hold_it = true;
             }
         }
@@ -1465,6 +1471,7 @@ void World::configureTempo(const ModelParams& p) {
     free_hold_m_ = p.fixed("physics.tempo.free_hold_m", 0);          // G5.190 (§8.296), 0 = off
     free_hold_own_m_ = p.fixed("physics.tempo.free_hold_own_m", 52500);
     free_hold_max_s_ = p.fixed("physics.tempo.free_hold_max_s", 3000);
+    for (int i = 0; i < 5; ++i) free_hold_q_[i] = p.fixed("physics.tempo.free_hold_q" + std::to_string(i) + "_m", 0);   // G5.191 (§8.297)
 }
 
 void World::configureDribble(const ModelParams& p) {
