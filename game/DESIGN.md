@@ -12015,3 +12015,24 @@ both). So §8.312's regains in their box are not made by more losses. What is no
 the goal attacked ~1.6 a team-match → a shot inside 5 s 55% (real 0.41 → 12%, §8.307); with 0-1 goal-side 0.46
 (0.009). **Next (item 3): the side that lost it — who gets back goal-side in the 2-5 s after a loss near its own goal.**
 Harness only; tests 23/23.
+
+### 8.314 G5.208 — after a build-up loss our goal is open: ~3 goal-side, real ~6.7 (measured; no game change)
+
+Item 3 (§8.310): the defence gone at the strike. New `scripts/benchmarks_tracking_lossgoalside.py` (DFL, 5 Hz; a loss =
+the possession flag flips with the ball within 35 m of the loser's goal line): the loser's outfielders nearer its goal
+centre than the ball at 0 / 1 / 2 / 3 / 5 s while the other side keeps it, by the loser's spell before it (held < 3 s =
+a scramble, 3 s+ = build-up). Harness LOSS THEN GOAL-SIDE the same (last-touch side on 5 Hz frames). Seeds 1000-4000 × 8,
+G5.205, means of the seeds at the loss:
+
+| loss | a team-match | goal-side at 0 s | 0-1 goal-side | at 5 s |
+|---|---|---|---|---|
+| 0-18, held < 3 s | 3.2 (10.6) | 3.0 (7.13) | 37% (8) | ~4.9 (8.07) |
+| 0-18, held 3 s+ | 0.7 (3.3) | 1.6 (6.78) | 65% (4) | — (5.79) |
+| 18-35, held < 3 s | 7.1 (15.4) | 6.2 (6.86) | 5.5% (1) | 6.4 (7.44) |
+| **18-35, held 3 s+** | 3.0 (7.1) | **3.2 (6.67)** | **26% (3)** | 5.6 (6.70) |
+
+A real side building out of its own third keeps ~6.7 of 10 between the ball and its goal; ours ~3 — lose it there and the
+goal is open (§8.312: the regain shot at once with 0-1 goal-side, 0.46 v 0.009). Not the line's depth: §8.172 the line
+at a loss 13.6 m off its goal (12.9). The shape around it: FBs 6.6 m behind the ball (12.6) and 8.4 m off the touchline
+(13.0); receivers' CB 12.1 m off the centre line (16.6), DM/CM 8.7 (13.5). Next: goal-side at the loss by role, ours v DFL.
+Harness only; tests 23/23.
