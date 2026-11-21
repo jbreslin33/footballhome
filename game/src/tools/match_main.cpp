@@ -81,6 +81,7 @@ struct Stats {
     long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {}; long lr_cnt = 0, lr_n[6] = {}, lr_g[6] = {}; std::vector<double> lr_m[6], lr_y[6], lr_b[6], lr_bm, lr_by;   // §8.315 LOSS ROLES   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
+    long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
    // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
@@ -294,6 +295,7 @@ int main(int argc, char** argv) {
         int lt_kind[2] = {0, 0}, lt_hc[2] = {0, 0}, lt_hp[2] = {0, 0}, lt_bb[2] = {0, 0}, rc_prev = -1;   // §8.306: each side's last touch kind; the losing side's at the change
         long lr_k[2] = {-999, -999}; int lr_why[2] = {-1, -1};   // §8.312 each side's last release
         int rc_team = -1; long rc_k = 0; double rc_bx = 0, rc_by = 0;   // the last touch's side, and since when; where (§8.305)
+        long lb_live0 = -1; struct LbP { long k; int team, band; }; std::vector<LbP> lb_p;   // §8.317
         bool hb_rose = false; double hb_pz = 0; struct HbP { long k; int po, z; }; std::vector<HbP> hb_p;   // §8.172: high balls coming down
         long hl_k = -1; double hl_x[32] = {}, hl_y[32] = {};   // §8.185: every man at the launch
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; int what = 0; } lf;   // §8.185 LOFT FLIGHT
@@ -1859,6 +1861,11 @@ int main(int argc, char** argv) {
                     const bool lost = W.lastTouchTeam() == (hb_p[i].po ^ 1);
                     if (lost || kk - hb_p[i].k >= 90) { if (lost) ++S.hb_lost[hb_p[i].z]; hb_p.erase(hb_p.begin() + static_cast<long>(i)); } else ++i;
                 }
+                if (!live) lb_live0 = -1; else if (lb_live0 < 0) lb_live0 = kk;   // §8.317: in play since
+                for (std::size_t i = 0; i < lb_p.size();) {
+                    const bool lost = W.lastTouchTeam() == (lb_p[i].team ^ 1);
+                    if (lost || kk - lb_p[i].k >= 90) { if (lost) { ++S.lb_lost[lb_p[i].band]; ++S.lb_lost[3]; } lb_p.erase(lb_p.begin() + static_cast<long>(i)); } else ++i;
+                }
                 if (!live || bz < 0.5) hb_rose = false;
                 if (live && bz < 0.5) { hl_k = kk; for (std::uint8_t j = 0; j < N && j < 32; ++j) { hl_x[j] = W.player(j).pos.x.toDouble(); hl_y[j] = W.player(j).pos.y.toDouble(); } }   // §8.185 the launch
                 if (!live) { hl_k = -1; hl_f.clear(); }   // a dead ball: no launch (a throw-in is never launched from the ground)
@@ -1896,7 +1903,37 @@ int main(int argc, char** argv) {
                     } else if (b.owner || b.last_kicker != lf.kicker) close(true);
                     else {
                         lf.pk = std::max(lf.pk, bz);
-                        if (lf.down < 0 && b.vel.z.raw < 0 && bz <= 2.4) lf.down = (kk - lf.k0) / 30.0;
+                        if (lf.down < 0 && b.vel.z.raw < 0 && bz <= 2.4) {
+                            lf.down = (kk - lf.k0) / 30.0;
+                            // §8.317 LONG BALL FROM THE BACK (benchmarks_tracking_longball.py): high, launched within 35 m of the kicker's
+                            // goal with the ball in play 2 s+, not by a keeper, 30 m+ from the launch to here
+                            const double carry = std::hypot(bx3 - lf.x0, by3 - lf.y0);
+                            if (lf.pk >= 4.0 && carry >= 30 && lf.kicker < N && !W.isKeeper(lf.kicker) && lb_live0 >= 0 && lf.k0 - lb_live0 >= 60 && hl_k >= 0) {
+                                const int tm = W.player(lf.kicker).team; const double sg = tm == 0 ? 1.0 : -1.0;
+                                if (hx + lf.x0 * sg < 35) {
+                                    int pa = -1, pd = -1; double da = 99, dd = 99, c[4] = {};
+                                    for (std::uint8_t j = 0; j < N && j < 32; ++j) {
+                                        if (W.isKeeper(j)) continue;
+                                        const bool ours = W.player(j).team == tm;
+                                        const double d = std::hypot(W.player(j).pos.x.toDouble() - bx3, W.player(j).pos.y.toDouble() - by3), d0 = std::hypot(hl_x[j] - bx3, hl_y[j] - by3);
+                                        if (ours) { if (d < da) { da = d; pa = j; } } else if (d < dd) { dd = d; pd = j; }
+                                        if (d0 < 10) ++c[ours ? 0 : 1]; if (d < 10) ++c[ours ? 2 : 3];
+                                    }
+                                    const int band = carry < 40 ? 0 : carry < 50 ? 1 : 2;
+                                    int m0 = -1; double m0d = 1e9;   // the kicker's-side man nearest the drop at the launch (3 m+ off the ball then)
+                                    for (std::uint8_t j = 0; j < N && j < 32; ++j) if (!W.isKeeper(j) && W.player(j).team == tm && std::hypot(hl_x[j] - lf.x0, hl_y[j] - lf.y0) >= 3) {
+                                        const double d0 = std::hypot(hl_x[j] - bx3, hl_y[j] - by3); if (d0 < m0d) { m0d = d0; m0 = j; } }
+                                    for (int bi : {band, 3}) {
+                                        ++S.lb_n[bi]; S.lb_a[bi].push_back(da); S.lb_d[bi].push_back(dd); S.lb_o2[bi] += dd < 2; S.lb_both[bi] += da < 2 && dd < 2; S.lb_none[bi] += da >= 3 && dd >= 3;
+                                        if (pa >= 0) S.lb_la[bi].push_back(std::hypot(hl_x[pa] - bx3, hl_y[pa] - by3)); if (pd >= 0) S.lb_ld[bi].push_back(std::hypot(hl_x[pd] - bx3, hl_y[pd] - by3));
+                                        for (int q = 0; q < 4; ++q) S.lb_c[bi][q] += c[q];
+                                        if (m0 >= 0) { S.lb_od[bi].push_back(m0d); S.lb_ox[bi].push_back((bx3 - hl_x[m0]) * sg); S.lb_oy[bi].push_back(std::fabs(by3 - hl_y[m0])); }
+                                        S.lb_own[bi].push_back(hx + bx3 * sg); S.lb_ay[bi].push_back(std::fabs(by3)); S.lb_fl[bi].push_back(lf.down);
+                                    }
+                                    lb_p.push_back(LbP{kk, tm, band});
+                                }
+                            }
+                        }
                         if (bz < 0.5) { lf.lx = bx3; lf.ly = by3; close(false); }
                     }
                     if (lf.on) { lf.lx = bx3; lf.ly = by3; }
@@ -4337,6 +4374,22 @@ int main(int argc, char** argv) {
                             static const char* rn3[3] = {"CB", "FB", "DM/CM"};
                             for (int r = 0; r < 3; ++r) { std::printf("\n          %-5s", rn3[r]);
                                 for (int bb = 0; bb < 5; ++bb) { const double n = std::max(1L, S.mf_cn[r][bb]); std::printf(" %4.1f (%3.1f) %4.1f%% (%4.1f) |", md2(S.mf_cb[r][bb]), rCd[r][bb], 100 * S.mf_c3[r][bb] / n, rC3[r][bb]); } }
+                        }
+                        {   // §8.317 — real: benchmarks_tracking_longball.py (DFL, 7 matches, 120 balls)
+                            static const double R[4][16] = {{5.64, 2.4, 1.9, 50.6, 34.2, 24.1, 70.9, 9.9, 9.7, 0.75, 0.80, 1.47, 1.95, 46.9, 16.1, 2.32}, {2.07, 4.1, 1.9, 51.7, 27.6, 31.0, 79.3, 13.8, 11.9, 0.41, 0.62, 1.17, 1.86, 61.0, 15.1, 2.80},
+                                                            {0.86, 2.1, 1.5, 66.7, 41.7, 16.7, 75.0, 17.9, 15.2, 0.25, 0.17, 1.33, 1.92, 70.0, 22.9, 3.48}, {8.57, 2.6, 1.9, 52.5, 33.3, 25.0, 73.3, 12.0, 10.4, 0.62, 0.69, 1.38, 1.93, 53.2, 16.1, 2.56}};
+                            static const char* bn[4] = {"30-40", "40-50", "50+", "all"};
+                            static const char* RO[4] = {"5.3/9.3/16.3 | +3.7 (-2.8, +10.3), 46%, 15% | 4.2", "8.7/12.6/16.1 | +8.8 (+4.3, +13.5), 72%, 3% | 4.7", "11.3/16.9/20.7 | +15.9 (+9.5, +20.6), 83%, 8% | 1.4", "6.0/10.9/16.7 | +6.2 (-0.6, +13.2), 56%, 12% | 4.2"};
+                            auto md = [](std::vector<double> a) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[a.size() / 2]; };
+                            std::printf("\n        §8.317 LONG BALL FROM THE BACK (high, launched within 35 m of the kicker's goal in open play, outfield, 30 m+ to the drop; real DFL in brackets), by carry: a team-match | nearest of the kicker's side med | of the other side med | other side within 2 m %% | both %% | nobody within 3 m %% | other side touches it within 3 s %% | at the launch, off the drop: his man, their man | within 10 m of the drop at the launch ours / theirs, at the drop ours / theirs | drop m off the kicker's goal, |y| | flight s");
+                            for (int i = 0; i < 4; ++i) { const double n = std::max(1L, S.lb_n[i]); const double* r = R[i];
+                                std::printf("\n          %-6s %5.2f (%.2f) | %4.1f (%.1f) | %4.1f (%.1f) | %4.1f (%.1f) | %4.1f (%.1f) | %4.1f (%.1f) | %4.1f (%.1f) | %4.1f (%.1f), %4.1f (%.1f) | %.2f (%.2f) / %.2f (%.2f), %.2f (%.2f) / %.2f (%.2f) | %4.1f (%.1f), %4.1f (%.1f) | %.2f (%.2f)",
+                                            bn[i], S.lb_n[i] / std::max(1.0, 2.0 * matches), r[0], md(S.lb_a[i]), r[1], md(S.lb_d[i]), r[2], 100.0 * S.lb_o2[i] / n, r[3], 100.0 * S.lb_both[i] / n, r[4], 100.0 * S.lb_none[i] / n, r[5], 100.0 * S.lb_lost[i] / n, r[6],
+                                            md(S.lb_la[i]), r[7], md(S.lb_ld[i]), r[8], S.lb_c[i][0] / n, r[9], S.lb_c[i][1] / n, r[10], S.lb_c[i][2] / n, r[11], S.lb_c[i][3] / n, r[12], md(S.lb_own[i]), r[13], md(S.lb_ay[i]), r[14], md(S.lb_fl[i]), r[15]);
+                                auto qq = [](std::vector<double> a, double f) { if (a.empty()) return -1.0; std::sort(a.begin(), a.end()); return a[std::min(a.size() - 1, static_cast<std::size_t>(f * a.size()))]; };
+                                long f5 = 0, s5 = 0; for (double x : S.lb_ox[i]) { f5 += x >= 5; s5 += x <= -5; } const double no = std::max<std::size_t>(1, S.lb_ox[i].size());
+                                std::printf("\n              the drop off the kicker's-side man nearest it at the launch: m p25/med/p75 %.1f/%.1f/%.1f | on toward their goal med %+.1f (p25 %+.1f, p75 %+.1f), 5 m+ beyond him %.0f%%, 5 m+ short %.0f%% | across med %.1f  (real %s)",
+                                            qq(S.lb_od[i], .25), qq(S.lb_od[i], .5), qq(S.lb_od[i], .75), qq(S.lb_ox[i], .5), qq(S.lb_ox[i], .25), qq(S.lb_ox[i], .75), 100.0 * f5 / no, 100.0 * s5 / no, qq(S.lb_oy[i], .5), RO[i]); }
                         }
                         std::printf("\n        HIGH BALLS COMING DOWN through 2.4 m in open play (benchmarks_tracking_aerial.py, real DFL in brackets), by m off the kicker's own goal: a team-match | nearest of the kicker's side med | of the other side med | both within 2 m %% | other side within 2 m %% | nobody within 3 m %% | other side touches it within 3 s %%");
                         for (int z = 0; z < 3; ++z) if (S.hb_n[z]) {

@@ -12106,3 +12106,39 @@ Long balls still complete above real at 1 (40-50 m 21-50% not completed v 58-70)
 any more but what happens under the ball. Shipped (mig 1645, `card_G5.210.txt`). Also `physics.diag.lo_m / hi_m`: the
 §8.284 pass diag's band (diag only). Next: the 40 m+ high ball from the back — who is under it, ours v DFL (real ones are
 lost 70-85%), and the short ball inside our own box (11 v 7.7 a team-match). Tests 23/23.
+
+### 8.317 G5.211 — the long ball from the back lands beyond the man, not on him (measured; no game change)
+
+From §8.316: at `high_risk_weight` 1 our 40 m+ balls from the back still complete above real. New
+`scripts/benchmarks_tracking_longball.py` (DFL, 7 matches, 120 balls — thin): a high ball (rose past 4 m) launched within
+35 m of the kicker's goal, the ball in play 2 s+ before it, no keeper at it, 30 m+ to where it comes down through 2.4 m.
+Harness §8.317 LONG BALL FROM THE BACK the same. Seeds 1000-4000 × 8, G5.210, all carries (DFL in brackets):
+
+| as it comes down | ours | real |
+|---|---|---|
+| a team-match | 7.0 | 8.57 |
+| nearest of the kicker's side / of the other side, med m | 1.3 / 1.6 | 2.6 / 1.9 |
+| other side within 2 m / both / nobody within 3 m | 64 / 51 / 5% | 52.5 / 33.3 / 25.0% |
+| other side has it within 3 s | 63% | 73.3% |
+| those two men at the launch, off the drop: his / theirs | 6.9 / 7.3 | 12.0 / 10.4 |
+| outfielders within 10 m of the drop at the launch, ours / theirs | 1.10 / 1.31 | 0.62 / 0.69 |
+| … at the drop | 1.34 / 2.09 | 1.38 / 1.93 |
+| drop \|y\| med | 11.6 | 16.1 |
+
+And the drop off the kicker's-side man nearest it **at the launch** (3 m+ off the kicker):
+
+| | ours | real 30-40 / 40-50 / 50+ / all |
+|---|---|---|
+| m off him, med | 6.4 | 9.3 / 12.6 / 16.9 / 10.9 |
+| on toward their goal, med | -0.6 | +3.7 / +8.8 / +15.9 / +6.2 |
+| 5 m+ beyond him / 5 m+ short | 20 / 26% | 46 / 15, 72 / 3, 83 / 8, 56 / 12% |
+| across, med | 2.9 | 4.2 / 4.7 / 1.4 / 4.2 |
+
+Ours is a pass to feet in the air: aimed at where a man stands, it comes down on him (1.3 m, a duel half the time, the
+empty drop 5%). The real one is hit **beyond** the man — over him, onto his run or into the channel — the longer the
+further (16 m past him at 50 m+); nobody is within 3 m a quarter of the time, the men under it arrive (0.6-0.7 a side
+within 10 m at the launch, 1.4 / 1.9 at the drop) and the defence, facing it, has it 73%. DFL can't tell a pass from a
+foot clearance, so a passes-only check: `scripts/benchmarks_statsbomb_360_longball.py` (StatsBomb 360 freeze frames, the
+end in view — 15% of such passes, the ones into open space: completed 72%, nearest opponent 16.6 m): the end 8.4 m off
+the nearest mate at the kick, **+2.4 m beyond him** (32% 5 m+ beyond, 12% short), 5.3 across. Same direction, smaller.
+Next: the long ball's aim — beyond the man by its carry — and the same ruler again. Harness only; tests 23/23.
