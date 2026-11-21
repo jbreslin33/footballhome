@@ -10,7 +10,7 @@
 //
 //   GET  /api/coach-schedule?week=YYYY-MM-DD  (or ?cover=<id>: that ask's week)
 //        { me, sessions, coaches, week: { start, events } }
-//   GET  /api/coach-schedule/event/<id>        { covers, past, me } — the event page's 🆘 banner (mig 1640)
+//   GET  /api/coach-schedule/event/<id>        { covers, past, me, me_on, coaches } — the event page's 🆘 strip + 🙋 ask (migs 1640/1643)
 //   POST /api/coach-schedule/session          { coach_id, isodow, starts_at, on }   admin
 //   POST /api/coach-schedule/plan             { coach_id, mode: every | call_in }   admin
 //   POST /api/coach-schedule/cover            { fh_event_id, coach_id, ask: [coach_id], note }
@@ -18,8 +18,8 @@
 //   POST /api/coach-schedule/cover/<id>/withdraw  the asker or an admin
 //   POST /api/coach-schedule/cover/<id>/text      { coach_id } → { sms_href }: their own sign-in link (mig 1640)
 //
-// Club admins and active coaches open it; only admins change who covers
-// which session.  A coach asks cover for themself; an admin for anyone.
+// #coach-schedule is the owner's screen (menu: admin); coaches use the
+// event / cover endpoints from their calendar.  Only admins change sessions.  A coach asks cover for themself; an admin for anyone.
 class CoachScheduleController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;

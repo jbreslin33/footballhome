@@ -1547,14 +1547,12 @@ Response CalendarController::upcomingResponse(const Request& request, long long 
                                                              WHERE fet.fh_event_id = fe.id
                                                                AND NOT fh_coach_off_schedule(co.person_id, tc.team_id, fe.id)   -- mig 955
                                                             UNION ALL
-                                                            -- 🔁 covering it for another coach (mig 1640)
-                                                            SELECT co.person_id
-                                                              FROM coach_covers cc
-                                                              JOIN coaches co ON co.id = cc.cover_coach_id
-                                                             WHERE cc.fh_event_id = fe.id AND cc.status = 'covered'
-                                                               AND NOT EXISTS (SELECT 1 FROM fh_event_teams fet3
+                                                            -- 🔁 covering it / 🟢 its slot is their session (migs 1640, 1643)
+                                                            SELECT xc.person_id
+                                                              FROM fh_event_extra_coaches(fe.id) xc
+                                                             WHERE NOT EXISTS (SELECT 1 FROM fh_event_teams fet3
                                                                                  JOIN team_coaches tc3 ON tc3.team_id = fet3.team_id AND tc3.ended_at IS NULL
-                                                                                WHERE fet3.fh_event_id = fe.id AND tc3.coach_id = co.id)
+                                                                                WHERE fet3.fh_event_id = fe.id AND tc3.coach_id = xc.coach_id)
                                                         ) ec
                                                         JOIN persons p ON p.id = ec.person_id
                                                         LEFT JOIN fh_event_rsvps er
@@ -2780,15 +2778,13 @@ Response CalendarController::handleGetEventAttendance(const Request& request) {
             "         WHERE fet.fh_event_id = $1::bigint "
             "          AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id) "
             "        UNION ALL "
-            // 🔁 Covering it for another coach (mig 1640) — checked in as a coach.
+            // 🔁 Covering it / 🟢 its slot is their session (migs 1640, 1643) — checked in as a coach.
             "        SELECT p.id, p.first_name, p.last_name, true "
-            "          FROM coach_covers cc "
-            "          JOIN coaches co ON co.id = cc.cover_coach_id "
-            "          JOIN persons p ON p.id = co.person_id "
-            "         WHERE cc.fh_event_id = $1::bigint AND cc.status = 'covered' "
-            "           AND NOT EXISTS (SELECT 1 FROM fh_event_teams fet3 "
+            "          FROM fh_event_extra_coaches($1::bigint) xc "
+            "          JOIN persons p ON p.id = xc.person_id "
+            "         WHERE NOT EXISTS (SELECT 1 FROM fh_event_teams fet3 "
             "                             JOIN team_coaches tc3 ON tc3.team_id = fet3.team_id AND tc3.ended_at IS NULL "
-            "                            WHERE fet3.fh_event_id = $1::bigint AND tc3.coach_id = co.id) "
+            "                            WHERE fet3.fh_event_id = $1::bigint AND tc3.coach_id = xc.coach_id) "
             "        UNION ALL "
             // Invited call-ups / play-downs (migration 355) show up for check-in too.
             "        SELECT p.id, p.first_name, p.last_name, false "
@@ -3114,12 +3110,10 @@ Response CalendarController::handleGetEventSides(const Request& request) {
                      WHERE fet.fh_event_id = $1::bigint
                        AND NOT fh_coach_off_schedule(p.id, tc.team_id, fet.fh_event_id)
                     UNION ALL
-                    -- 🔁 covering it for another coach (mig 1640)
+                    -- 🔁 covering it / 🟢 its slot is their session (migs 1640, 1643)
                     SELECT p.id, p.first_name, p.last_name, true
-                      FROM coach_covers cc
-                      JOIN coaches co ON co.id = cc.cover_coach_id
-                      JOIN persons p ON p.id = co.person_id
-                     WHERE cc.fh_event_id = $1::bigint AND cc.status = 'covered'
+                      FROM fh_event_extra_coaches($1::bigint) xc
+                      JOIN persons p ON p.id = xc.person_id
                     UNION ALL
                     SELECT p.id, p.first_name, p.last_name, false
                       FROM fh_event_invites i

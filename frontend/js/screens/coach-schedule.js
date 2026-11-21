@@ -87,10 +87,11 @@ class CoachScheduleScreen extends Screen {
     if (Number.isNaN(h)) return hhmm || '';
     return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')}${h < 12 ? 'a' : 'p'}`;
   }
-  // Is this coach expected at this standing session?
+  // This coach on this standing session?  'on' (their session), 'every'
+  // (no plan yet: every session of their teams), 'off'.  Any session may be
+  // theirs, whatever its teams (mig 1643).
   _onSession(c, s) {
-    if (!(s.team_ids || []).some(t => (c.team_ids || []).includes(t))) return null;   // not their teams
-    if (!c.has_plan) return 'every';
+    if (!c.has_plan) return (s.team_ids || []).some(t => (c.team_ids || []).includes(t)) ? 'every' : 'off';
     return c.sessions.some(x => x.isodow === s.isodow && x.starts_at === s.starts_at) ? 'on' : 'off';
   }
   _planText(c) {
@@ -223,11 +224,18 @@ class CoachScheduleScreen extends Screen {
       ${view}`;
   }
 
-  _chip(text, { on = true, mine = false, dim = false, attrs = '' } = {}) {
-    const bg = on ? (dim ? 'rgba(34,197,94,0.25)' : '#15803d') : 'transparent';
+  // 🟢 on · 🟡 asked to fill in · 🔴 not (owner 11/20).  'every' = green,
+  // a coach on every session of their teams (no plan yet).
+  _chip(text, { state = 'on', mine = false, attrs = '' } = {}) {
+    const look = {
+      on:    ['#15803d', '#22c55e', '#fff'],
+      every: ['#15803d', '#22c55e', '#fff'],
+      ask:   ['#a16207', '#facc15', '#fff'],
+      off:   ['rgba(127,29,29,0.55)', '#ef4444', '#fecaca'],
+    }[state] || ['transparent', 'rgba(255,255,255,0.2)', '#94a3b8'];
     const tag = attrs ? 'button type="button"' : 'span';
     return `<${tag} ${attrs} style="display:inline-block; padding:5px 9px; border-radius:8px; font-size:0.74rem; font-weight:700; ${attrs ? 'cursor:pointer;' : ''}
-      border:1px solid ${mine ? '#fbbf24' : on ? '#22c55e' : 'rgba(255,255,255,0.2)'}; background:${bg}; color:${on ? '#fff' : '#94a3b8'};">${this.escapeHtml(text)}</${tag.split(' ')[0]}>`;
+      border:${mine ? '2px solid #fbbf24' : `1px solid ${look[1]}`}; background:${look[0]}; color:${look[2]};">${this.escapeHtml(text)}</${tag.split(' ')[0]}>`;
   }
 
   _card(inner, extra = '') {
@@ -257,12 +265,17 @@ class CoachScheduleScreen extends Screen {
     const live = !ev.cancelled && !ev.past;
     const covers = ev.covers || [];
     const liveCover = (cid) => covers.find(c => c.coach_id === cid);
-    const chips = (ev.coach_ids || []).map(cid => {
+    // Every coach: 🟢 on it, 🟡 asked to fill in / sub (an open ask), 🔴 not.
+    const onIds = new Set(ev.coach_ids || []);
+    const askedIds = new Set(covers.filter(c => c.status === 'open').flatMap(c => c.asked || []));
+    const chips = (this.data.coaches || []).map(c => {
+      const cid = c.coach_id;
       const mine = cid === me.coach_id;
-      const canAsk = live && (mine || me.is_admin) && !liveCover(cid);
-      const covering = covers.find(c => c.status === 'covered' && c.cover_coach_id === cid);
-      const label = `${this._first(cid)}${covering ? ' 🔁' : ''}${canAsk ? ` · ${this._t('ask_cover', {}, '🙋 Cover')}` : ''}`;
-      return this._chip(label, { mine, attrs: canAsk ? `data-cs="ask" data-ev="${ev.fh_event_id}" data-coach="${cid}"` : '' });
+      const state = onIds.has(cid) ? 'on' : askedIds.has(cid) ? 'ask' : 'off';
+      const canAsk = state === 'on' && live && (mine || me.is_admin) && !liveCover(cid);
+      const covering = covers.find(x => x.status === 'covered' && x.cover_coach_id === cid);
+      const label = `${c.first || c.name}${covering ? ' 🔁' : ''}${canAsk ? ` · ${this._t('ask_cover', {}, '🙋 Cover')}` : ''}`;
+      return this._chip(label, { state, mine, attrs: canAsk ? `data-cs="ask" data-ev="${ev.fh_event_id}" data-coach="${cid}"` : '' });
     }).join(' ');
     const none = !ev.cancelled && !(ev.coach_ids || []).length
       ? `<span style="color:#f87171; font-weight:800; font-size:0.78rem;">⚠ ${this.escapeHtml(this._t('no_coach', {}, 'No coach'))}</span>` : '';
@@ -303,7 +316,7 @@ class CoachScheduleScreen extends Screen {
   _askSheet(ev) {
     const ask = this.ask;
     const others = (this.data.coaches || []).filter(c => c.coach_id !== ask.coachId);
-    const picks = others.map(c => this._chip(c.name, { on: ask.picked.has(c.coach_id), attrs: `data-cs="pick" data-coach="${c.coach_id}"` })).join(' ');
+    const picks = others.map(c => this._chip(c.name, { state: ask.picked.has(c.coach_id) ? 'on' : 'none', attrs: `data-cs="pick" data-coach="${c.coach_id}"` })).join(' ');
     const title = this._t('ask_title', { coach: this._first(ask.coachId), event: `${ev.label || ''} ${this._time(ev.starts_at)}` }, `Who could cover ${this._first(ask.coachId)}?`);
     return `<div style="margin-top:8px; padding:10px; border-radius:8px; border:1px solid #fbbf24;">
       <div style="font-size:0.8rem; font-weight:800; margin-bottom:6px;">${this.escapeHtml(title)}</div>
@@ -318,16 +331,17 @@ class CoachScheduleScreen extends Screen {
     let dow = 0;
     for (const s of this.data.sessions || []) {
       if (s.isodow !== dow) { dow = s.isodow; out += `<h2 style="font-size:1rem; margin:14px 0 6px;">${this.escapeHtml(this._day(dow))}</h2>`; }
+      const onCount = (this.data.coaches || []).filter(c => this._onSession(c, s) !== 'off').length;
       const chips = (this.data.coaches || []).map(c => {
         const st = this._onSession(c, s);
-        if (!st || (st === 'off' && !me.is_admin)) return '';
         const attrs = me.is_admin ? `data-cs="session" data-coach="${c.coach_id}" data-dow="${s.isodow}" data-start="${s.starts_at}" data-on="${st === 'off' ? 1 : 0}"` : '';
-        return this._chip(`${c.first || c.name}${st === 'every' ? ' ∞' : ''}`, { on: st !== 'off', dim: st === 'every', mine: c.coach_id === me.coach_id, attrs });
+        return this._chip(`${c.first || c.name}${this.busy.has(`s:${c.coach_id}`) ? ' …' : ''}`, { state: st, mine: c.coach_id === me.coach_id, attrs });
       }).join(' ');
       out += this._card(`
         <b>${this.escapeHtml(this._time(s.starts_at))}–${this.escapeHtml(this._time(s.ends_at))} ${this.escapeHtml(s.label || '')}</b>
         <div style="font-size:0.74rem; opacity:0.7; margin:2px 0 6px;">${this.escapeHtml(s.teams || '')}</div>
-        <div style="display:flex; gap:4px; flex-wrap:wrap;">${chips || `<span style="color:#f87171; font-weight:800; font-size:0.78rem;">⚠ ${this.escapeHtml(this._t('no_coach', {}, 'No coach'))}</span>`}</div>`);
+        <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">${chips}
+          ${onCount ? '' : `<span style="color:#f87171; font-weight:800; font-size:0.78rem;">⚠ ${this.escapeHtml(this._t('no_coach', {}, 'No coach'))}</span>`}</div>`);
     }
     return out;
   }
@@ -341,12 +355,10 @@ class CoachScheduleScreen extends Screen {
     let out = `<p style="font-size:0.8rem; opacity:0.8; margin:0 0 10px;">${this.escapeHtml(this._t('coach_hint', {}, 'Tap a session to add or drop it.'))}</p>
       <p style="font-size:0.74rem; opacity:0.7; margin:0 0 10px;">${this.escapeHtml(this._t('call_in_hint', {}, ''))}</p>`;
     for (const c of coaches) {
-      const mine = sessions.filter(s => this._onSession(c, s));
-      const pills = mine.map(s => {
+      const pills = sessions.map(s => {
         const st = this._onSession(c, s);
         const attrs = me.is_admin ? `data-cs="session" data-coach="${c.coach_id}" data-dow="${s.isodow}" data-start="${s.starts_at}" data-on="${st === 'off' ? 1 : 0}"` : '';
-        if (!me.is_admin && st === 'off') return '';
-        return this._chip(`${this._day(s.isodow)} ${this._time(s.starts_at)}`, { on: st !== 'off', dim: st === 'every', attrs });
+        return this._chip(`${this._day(s.isodow)} ${this._time(s.starts_at)}`, { state: st, attrs });
       }).join(' ');
       // plan sessions the calendar no longer has
       const gone = c.has_plan ? c.sessions.filter(x => !sessions.some(s => s.isodow === x.isodow && s.starts_at === x.starts_at)) : [];

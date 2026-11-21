@@ -167,8 +167,8 @@ Response CoachScheduleController::handleGet(const Request& request) {
                          WHERE fet.fh_event_id = ev.id
                            AND NOT fh_coach_off_schedule(c.person_id, tc.team_id, ev.id)
                         UNION
-                        SELECT cc.cover_coach_id FROM coach_covers cc
-                         WHERE cc.fh_event_id = ev.id AND cc.status = 'covered') x),
+                        -- covering it / its slot is their session (migs 1640, 1643)
+                        SELECT xc.coach_id FROM fh_event_extra_coaches(ev.id) xc) x),
                     'covers', (SELECT COALESCE(json_agg(json_build_object(
                                    'id', cc.id, 'coach_id', cc.coach_id, 'status', cc.status,
                                    'cover_coach_id', cc.cover_coach_id, 'note', cc.note,
@@ -201,7 +201,11 @@ Response CoachScheduleController::handleEventCovers(const Request& request) {
                      'id', cc.id, 'status', cc.status, 'coach_id', cc.coach_id,
                      'coach', COALESCE(ap.first_name, ''), 'cover_coach_id', cc.cover_coach_id,
                      'cover', COALESCE(cp.first_name, ''),
-                     'asked_me', EXISTS (SELECT 1 FROM coach_cover_asks a WHERE a.cover_id = cc.id AND a.coach_id = $2::int))
+                     'asked_me', EXISTS (SELECT 1 FROM coach_cover_asks a WHERE a.cover_id = cc.id AND a.coach_id = $2::int),
+                     'asked', (SELECT COALESCE(json_agg(json_build_object('coach_id', a.coach_id, 'first', qp.first_name,
+                                                   'texted', a.texted_at IS NOT NULL) ORDER BY qp.first_name), '[]')
+                                 FROM coach_cover_asks a JOIN coaches q ON q.id = a.coach_id JOIN persons qp ON qp.id = q.person_id
+                                WHERE a.cover_id = cc.id))
                      ORDER BY cc.id), '[]')::text AS covers,
                    bool_or(ge.ends_at < now()) AS past
               FROM coach_covers cc
@@ -210,9 +214,32 @@ Response CoachScheduleController::handleEventCovers(const Request& request) {
               JOIN fh_events fe ON fe.id = cc.fh_event_id JOIN gcal_events ge ON ge.id = fe.gcal_event_id
              WHERE cc.fh_event_id = $1::bigint AND cc.status <> 'withdrawn')SQL",
             {str(eventId), str(me.coachId)});
+        // Asking from the event page (owner 11/20 "the coaches can request
+        // sub from their cal"): is the caller a coach on it, and who to ask.
+        auto ctx = Database::getInstance()->query(R"SQL(
+            SELECT (SELECT ge.ends_at < now() FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id
+                     WHERE fe.id = $1::bigint) AS past,
+                   EXISTS (SELECT 1 FROM coaches c
+                            WHERE c.id = $2::int
+                              AND (EXISTS (SELECT 1 FROM fh_event_teams fet
+                                             JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL
+                                            WHERE fet.fh_event_id = $1::bigint AND tc.coach_id = c.id
+                                              AND NOT fh_coach_off_schedule(c.person_id, tc.team_id, $1::bigint))
+                                   OR fh_event_covering($1::bigint, c.person_id))) AS me_on,
+                   (SELECT COALESCE(json_agg(json_build_object('coach_id', c.id, 'first', p.first_name,
+                                     'name', BTRIM(COALESCE(p.first_name, '') || ' ' || COALESCE(p.last_name, '')),
+                                     'has_phone', fh_recipient_phone(p.id, p.id) IS NOT NULL)
+                                     ORDER BY p.first_name, p.last_name), '[]')
+                      FROM coaches c JOIN persons p ON p.id = c.person_id
+                     WHERE c.id <> $2::int
+                       AND EXISTS (SELECT 1 FROM team_coaches tc JOIN teams t ON t.id = tc.team_id AND t.is_active
+                                    WHERE tc.coach_id = c.id AND tc.ended_at IS NULL))::text AS coaches)SQL",
+            {str(eventId), str(me.coachId)});
         return jsonOut(HttpStatus::OK, {
             {"covers", json::parse(r[0]["covers"].c_str())},
-            {"past", !r[0]["past"].is_null() && r[0]["past"].as<bool>()},
+            {"past", !ctx[0]["past"].is_null() && ctx[0]["past"].as<bool>()},
+            {"me_on", ctx[0]["me_on"].as<bool>()},
+            {"coaches", json::parse(ctx[0]["coaches"].c_str())},
             {"me", {{"coach_id", me.coachId > 0 ? json(me.coachId) : json(nullptr)}, {"is_admin", me.admin}}}});
     } catch (const std::exception& e) {
         std::cerr << "CoachScheduleController::handleEventCovers: " << e.what() << std::endl;
@@ -243,7 +270,9 @@ Response CoachScheduleController::handleSession(const Request& request) {
         auto* db = Database::getInstance();
         const auto plan = db->query("SELECT 1 FROM coach_session_plans WHERE coach_id = $1::int", {str(coachId)});
         if (plan.empty()) {
-            if (on) return jsonOut(HttpStatus::OK, sessionsOf(coachId));   // already on every practice
+            // Their plan starts as what they have now (every session of their
+            // teams), then this tap changes one: on adds a session of other
+            // teams (mig 1643), off drops one.
             db->query(R"SQL(
                 WITH p AS (INSERT INTO coach_session_plans (coach_id) VALUES ($1::int)
                            ON CONFLICT (coach_id) DO NOTHING RETURNING coach_id)
