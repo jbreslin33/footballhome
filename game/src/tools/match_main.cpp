@@ -78,7 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
-    long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {};   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
+    long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {}; long lr_cnt = 0, lr_n[6] = {}, lr_g[6] = {}; std::vector<double> lr_m[6], lr_y[6], lr_b[6], lr_bm, lr_by;   // §8.315 LOSS ROLES   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
@@ -2950,6 +2950,16 @@ int main(int argc, char** argv) {
                 const int lo = f.a ^ 1; const double gx = lo == 0 ? -hx : hx, m = std::fabs(gx - f.bx);
                 if (m >= 35) continue;
                 const int z = (m < 18 ? 0 : 1) + (age * 0.2 >= 3 ? 2 : 0); ++S.lgs_n[z];
+                if (z >= 2) {   // §8.315 LOSS ROLES (benchmarks_tracking_lossroles.py): a build-up loss, each outfielder by role
+                    const double db0 = std::hypot(gx - f.bx, f.by); ++S.lr_cnt; S.lr_bm.push_back(m); S.lr_by.push_back(std::fabs(f.by));
+                    for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
+                        if (W.player(p2).team != lo || W.isKeeper(p2)) continue;
+                        const int r = role(p2); if (r < 0 || r > 5) continue;
+                        const double pm = std::fabs(gx - f.x[p2]);
+                        ++S.lr_n[r]; S.lr_g[r] += std::hypot(gx - f.x[p2], f.y[p2]) < db0;
+                        S.lr_m[r].push_back(pm); S.lr_y[r].push_back(std::fabs(f.y[p2])); S.lr_b[r].push_back(m - pm);
+                    }
+                }
                 for (int j = 0; j < 5; ++j) {
                     const int q = i + at[j]; if (q >= F) break;
                     bool held = true; for (int r = i; r <= q; ++r) if (fl_f[r].a != f.a || fl_f[r].k != f.k + 6L * (r - i)) { held = false; break; }
@@ -3331,6 +3341,11 @@ int main(int argc, char** argv) {
             std::printf("\n   §8.314 LOSS THEN GOAL-SIDE (a loss within 35 m of the loser's line; its outfielders goal-side of the ball at 0 / 1 / 2 / 3 / 5 s, mean (%% with 0-1); real DFL in brackets):");
             for (int z = 0; z < 4; ++z) { std::printf("\n     %s %.2f a team-match (%.2f):", zn[z], S.lgs_n[z] / tmo, rn[z]); static const char* tl[5] = {"0", "1", "2", "3", "5"};
                 for (int j = 0; j < 5; ++j) std::printf(" %s s %.2f (%.0f%%) [%.2f (%d%%)];", tl[j], S.lgs_g[z][j] / std::max(1L, S.lgs_k[z][j]), 100.0 * S.lgs_le1[z][j] / std::max(1L, S.lgs_k[z][j]), rg[z][j], rl[z][j]); } }
+        {   const double tmo = std::max(1.0, 2.0 * matches); auto md2 = [](std::vector<double> v) { if (v.empty()) return 0.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
+            static const double rg[6] = {93.0, 79.2, 68.5, 43.4, 42.6, 17.6}, rm[6] = {15.0, 18.3, 23.1, 34.3, 32.0, 48.4}, ry[6] = {8.0, 12.2, 12.4, 11.5, 13.9, 11.9}, rb[6] = {7.8, 4.4, -0.6, -11.6, -8.5, -22.6};
+            std::printf("\n   §8.315 LOSS ROLES (build-up losses, held 3 s+, within 35 m of the loser's line; real DFL in brackets): %.2f a team-match (8.29); ball m off the line med %.1f (25.7), |y| med %.1f (23.7)", S.lr_cnt / tmo, md2(S.lr_bm), md2(S.lr_by));
+            std::printf("\n     role: goal-side %% | m off his line med | |y| med | m behind the ball med");
+            for (int r = 0; r < 6; ++r) if (S.lr_n[r]) std::printf("\n     %-6s %5.1f (%4.1f) | %5.1f (%4.1f) | %5.1f (%4.1f) | %+5.1f (%+5.1f)  n %ld", kRoleName[r], 100.0 * S.lr_g[r] / S.lr_n[r], rg[r], md2(S.lr_m[r]), rm[r], md2(S.lr_y[r]), ry[r], md2(S.lr_b[r]), rb[r], S.lr_n[r]); }
         { static const char* nl[5] = {"rebound (our shot <5 s)", "off their clearance <3 s", "off a deflection / block / keeper <3 s", "regain <5 s", "other"}; const double tmo = std::max(1.0, 2.0 * matches);
           { static const char* zl[3] = {"0-18", "18-35", "35+"}; static const char* kl[7] = {"pass", "clearance", "block", "header pass", "ball forward", "other", "-"}; std::printf("\n   §8.312 regain <5 s, 0-1 goal-side, a team-match, where won (m off the goal attacked) / off their:"); for (int z = 0; z < 3; ++z) { std::printf(" %s:", zl[z]); for (int c = 0; c < 7; ++c) if (S.np_rz[z][c]) std::printf(" %s %.2f", kl[c], S.np_rz[z][c] / tmo); std::printf(";"); } }
           for (int a = 0; a < 2; ++a) { std::printf("\n   §8.312 NO-PASS shots, goal-side %s, a team-match (StatsBomb 0-1: rebound 0.136, clearance/block/keeper 0.062, regain 0.009, other 0.08; 2+: 0.507 / 0.978 / 0.130 / 1.04):", a ? "2+" : "0-1"); for (int c = 0; c < 5; ++c) std::printf(" %s %.2f;", nl[c], S.np_k[a][c] / tmo); } }

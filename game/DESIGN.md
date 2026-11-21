@@ -12036,3 +12036,26 @@ goal is open (§8.312: the regain shot at once with 0-1 goal-side, 0.46 v 0.009)
 at a loss 13.6 m off its goal (12.9). The shape around it: FBs 6.6 m behind the ball (12.6) and 8.4 m off the touchline
 (13.0); receivers' CB 12.1 m off the centre line (16.6), DM/CM 8.7 (13.5). Next: goal-side at the loss by role, ours v DFL.
 Harness only; tests 23/23.
+
+### 8.315 G5.209 — our build-up losses are in the middle, with the shape stretched (measured; no game change)
+
+From §8.314, by role. New `scripts/benchmarks_tracking_lossroles.py` (DFL; roles by PlayingPosition as
+benchmarks_tracking_runs.py): build-up losses (held 3 s+) within 35 m of the loser's line, each outfielder at the
+winner's first frame. Harness LOSS ROLES the same (seeds 1000 / 3000 × 8, G5.205; real DFL in brackets):
+
+| role | goal-side % | m off his line | \|y\| | m behind the ball |
+|---|---|---|---|---|
+| CB | 66-69 (93.0) | 20-22 (15.0) | 12 (8.0) | +2-4 (+7.8) |
+| FB | 24-30 (79.2) | 30 (18.3) | 26-28 (12.2) | -1.5 to -3.3 (+4.4) |
+| DM/CM | 37 (68.5) | 31-32 (23.1) | 7-8 (12.4) | -6 to -7 (-0.6) |
+| AM | 8-16 (43.4) | 45-46 (34.3) | 9 (11.5) | -18 to -23 (-11.6) |
+| WIDE | 7-15 (42.6) | 43-44 (32.0) | 17-18 (13.9) | -17 to -19 (-8.5) |
+| ST | 4 (17.6) | 55 (48.4) | 6 (11.9) | -28 to -29 (-22.6) |
+
+Ball at the loss: m off the line 24-28 (25.7), **|y| 11-13 (23.7)**; 3.6-4.6 a team-match (8.29). Real sides lose a
+build-up by a touchline with the side shifted across and compact (every role within 8-14 m of the centre line, CBs 8 m
+behind the ball); ours lose it **in the middle** with the in-possession shape still stretched — every role 6-12 m
+higher, FBs on their touchlines 11 m higher. Our average in-possession spots are DFL-fitted (§8.274-8.280: the spot table,
+touchline rolls, FB depth): it is not the shape but **where the build-up goes and where it breaks** — §8.313's ground passes
+inside our own box 2.6× real. Next: the own-third pass direction — central v wide, by origin — against StatsBomb.
+Harness only; tests 23/23.
