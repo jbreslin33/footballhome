@@ -81,6 +81,7 @@ struct Stats {
     long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {}; long lr_cnt = 0, lr_n[6] = {}, lr_g[6] = {}; std::vector<double> lr_m[6], lr_y[6], lr_b[6], lr_bm, lr_by;   // §8.315 LOSS ROLES   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
+    long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
    // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
@@ -1403,6 +1404,16 @@ int main(int argc, char** argv) {
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
+                if (hx + rel.x * sg < 35) {   // §8.316 OWN-THIRD PASS DIRECTION (benchmarks_statsbomb_ownthird_dir.py)
+                    const double d = std::hypot(ex - rel.x, ey - rel.y), o0 = hx + rel.x * sg, tl = hx - ex * sg;
+                    if (d >= 5) {
+                        const int o = W.isKeeper(static_cast<std::uint8_t>(rel.p)) ? 4 : (o0 < 18 ? 0 : 2) + (std::fabs(rel.y) < 20.16 ? 0 : 1);
+                        const int z = (tl >= 87 ? 0 : tl >= 70 ? 1 : tl >= 52 ? 2 : tl >= 35 ? 3 : 4) * 2 + (std::fabs(ey) < 20.16 ? 0 : 1);
+                        const int lb = d < 10 ? 0 : std::min(5, static_cast<int>(d / 10));
+                        const bool hi = mk.p == rel.p && mk.peak >= 1.5;
+                        ++S.od_n[o]; ++S.od_z[o][z][0]; S.od_z[o][z][1] += hi; S.od_z[o][z][2] += !ok; ++S.od_l[o][lb][0]; S.od_l[o][lb][1] += hi; S.od_l[o][lb][2] += !ok;
+                    }
+                }
                 {   // §8.264 PASSES UNDER PRESSURE: StatsBomb's flag by the passer's nearest opponent, from the 360 frames
                     // (benchmarks_statsbomb_360_pressure.py, 261k passes, 8 men's competitions), permille by bin
                     static const double kEdge[13] = {0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 7, 8, 1e9};
@@ -3249,6 +3260,28 @@ int main(int argc, char** argv) {
                         std::printf("\n     the clean ones, lost after <1.5 / 1.5-3 / 3+ s (read horizon 3 s), receiver not | read there first:"); for (int c = 0; c < 3; ++c) std::printf(" %ld | %ld;", S.or_nc[c][0], S.or_nc[c][1]);
                         std::printf("\n     cutter read late by:"); for (int c = 0; c < 4; ++c) std::printf(" %s %ld;", el[c], S.or_rw[0][c]);
                         std::printf(" our first read early by:"); for (int c = 0; c < 4; ++c) std::printf(" %s %ld;", el[c], S.or_rw[1][c]);
+                    }
+                    {   // §8.316 OWN-THIRD PASS DIRECTION — real: benchmarks_statsbomb_ownthird_dir.py (StatsBomb PL 15/16)
+                        static const double R[5][49] = {
+                            {7.66, 23.5, 4, 4, 8.7, 18, 33, 26.5, 14, 15, 13.2, 27, 25, 11.6, 77, 53, 8.7, 75, 55, 3.8, 95, 81, 2.6, 95, 83, 0.7, 98, 90, 0.8, 98, 87, 16.6, 5, 7, 38.4, 9, 11, 19.4, 33, 33, 13.2, 78, 55, 7.3, 92, 70, 5.1, 97, 82},
+                            {6.83, 17.2, 1, 1, 15.6, 9, 26, 7.8, 19, 18, 22.0, 30, 38, 8.2, 87, 57, 17.1, 77, 60, 4.9, 96, 79, 5.5, 96, 77, 1.0, 98, 87, 0.8, 95, 98, 17.4, 7, 19, 30.4, 12, 20, 19.9, 40, 36, 14.5, 83, 60, 11.3, 94, 69, 6.5, 97, 85},
+                            {38.01, 11.5, 2, 1, 0.8, 11, 9, 30.4, 4, 4, 9.4, 7, 6, 23.6, 14, 15, 13.6, 13, 10, 4.2, 74, 61, 2.9, 64, 46, 2.2, 94, 82, 1.6, 94, 66, 15.2, 6, 7, 42.8, 6, 7, 27.3, 11, 10, 8.1, 43, 31, 3.6, 82, 58, 2.9, 94, 74},
+                            {19.30, 11.3, 2, 0, 3.4, 3, 3, 18.4, 4, 3, 15.4, 7, 12, 10.8, 23, 19, 21.9, 23, 26, 4.8, 82, 63, 7.8, 72, 58, 3.0, 96, 85, 3.3, 94, 78, 20.3, 6, 11, 37.5, 9, 12, 20.3, 23, 20, 11.7, 54, 38, 5.9, 88, 69, 4.3, 94, 76},
+                            {18.05, 6.4, 1, 1, 2.7, 11, 9, 22.6, 3, 1, 10.5, 18, 8, 7.5, 77, 49, 8.0, 75, 38, 19.2, 99, 68, 8.7, 98, 58, 10.4, 99, 76, 3.9, 99, 70, 2.6, 2, 3, 19.4, 1, 1, 16.9, 7, 3, 9.1, 49, 26, 15.4, 93, 55, 36.6, 99, 69}};
+                        static const char* on[5] = {"outfield 0-18 inside", "outfield 0-18 wide", "outfield 18-35 inside", "outfield 18-35 wide", "keeper"};
+                        static const char* zn[10] = {"87+ c", "87+ w", "70-87 c", "70-87 w", "52-70 c", "52-70 w", "35-52 c", "35-52 w", "0-35 c", "0-35 w"};
+                        static const char* ln[6] = {"5-10", "10-20", "20-30", "30-40", "40-50", "50+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.316 OWN-THIRD PASS DIRECTION (open play, 5 m+, by the passer's spot; StatsBomb PL 15/16 in brackets): share %% | high %% | not completed %%");
+                        for (int o = 0; o < 5; ++o) {
+                            const double n = std::max(1L, S.od_n[o]);
+                            std::printf("\n     %s: %.2f a team-match (%.2f) — by end zone, m off THEIR line:", on[o], S.od_n[o] / tmo, R[o][0]);
+                            for (int z = 0; z < 10; ++z) { const double k = std::max(1L, S.od_z[o][z][0]);
+                                std::printf("\n       %-8s %5.1f (%4.1f) | %3.0f (%3.0f) | %3.0f (%3.0f)", zn[z], 100.0 * S.od_z[o][z][0] / n, R[o][1 + 3 * z], 100.0 * S.od_z[o][z][1] / k, R[o][2 + 3 * z], 100.0 * S.od_z[o][z][2] / k, R[o][3 + 3 * z]); }
+                            std::printf("\n       by length m:");
+                            for (int b = 0; b < 6; ++b) { const double k = std::max(1L, S.od_l[o][b][0]);
+                                std::printf("\n       %-8s %5.1f (%4.1f) | %3.0f (%3.0f) | %3.0f (%3.0f)", ln[b], 100.0 * S.od_l[o][b][0] / n, R[o][31 + 3 * b], 100.0 * S.od_l[o][b][1] / k, R[o][32 + 3 * b], 100.0 * S.od_l[o][b][2] / k, R[o][33 + 3 * b]); }
+                        }
                     }
                     {   // §8.295 FOOT RELEASES — StatsBomb 360 (300 matches) in brackets
                         static const double rn[4][4] = {{1.89, 5.91, 5.45, 3.21}, {6.61, 23.87, 24.07, 22.37}, {18.45, 65.71, 75.11, 59.67}, {13.11, 43.80, 35.15, 8.26}};

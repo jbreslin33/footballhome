@@ -12059,3 +12059,50 @@ higher, FBs on their touchlines 11 m higher. Our average in-possession spots are
 touchline rolls, FB depth): it is not the shape but **where the build-up goes and where it breaks** — §8.313's ground passes
 inside our own box 2.6× real. Next: the own-third pass direction — central v wide, by origin — against StatsBomb.
 Harness only; tests 23/23.
+
+### 8.316 G5.210 — real sides go long from the back and lose it upfield; high balls are contests (mig 1645; shipped)
+
+From §8.315. New `scripts/benchmarks_statsbomb_ownthird_dir.py` (StatsBomb PL 15/16, 380 matches): open-play passes of
+5 m+ from the passer's own third, not headed, by his spot (outfield 0-18 / 18-35 m × inside / wide; keeper) → the zone
+it ends in (m off their line × inside / wide) and its length: share, high %, not completed % (Incomplete + Out). Harness
+§8.316 OWN-THIRD PASS DIRECTION the same (end = the next touch or where it went out; high = peak 1.5 m+). Outfield, a
+team-match, seeds 1000-4000 × 8 (G5.205 code):
+
+| own-third passes 5 m+ | ours | real |
+|---|---|---|
+| all / not completed | 77.3 / 6.8 (9%) | 71.8 / 14.4 (20%) |
+| not completed, ending beyond our third / inside it | 4.4 / 2.35 | 11.4 / 3.03 |
+| ending in our own third, central (87+ c, 70-87 c) | 39.5 | 27.2 |
+| ending past halfway (0-52 m off their line) | 4.3 | 9.2 |
+| high | 10.3 | 16.2 |
+| 50 m+ | 0.96 | 2.77 |
+| 20-40 m: not completed | 2.7 of 24.9 | 5.8 of 24.5 |
+
+The direction by zone is near real cell for cell (the policy is StatsBomb's); the miss is the **long ball**. A real
+defender hits it high into a contest and loses it more often than not — 30-40 m from his own box 78-83% high, 55-60% not
+completed; 50 m+ 82-85% not completed — and the loss lands 35-70 m from his goal with his side behind it. Ours kept the
+long balls the race read called safe (30-40 m 13-25% not completed, 36-48% high from the box) and played the rest short
+and central: from 0-18 inside 11.6 a team-match (7.66), 38% ending in our own box centre (23.5). Losses inside our own
+third are not above real (2.35 v 3.03; central 1.31 v 1.10) — §8.313 again: what is unreal is how much of the build-up
+stays there.
+
+**The mechanism.** G5.73 (§8.174): "the race read sets each mode's risk, never the mode" — but a high ball read theirs
+was still cut to `high_risk_weight` 0.6 of its share, so the read did pick which high balls were played; and no pass was
+aimed past 50 m (`reach`), 5 m short of the kick range. Trial `high_risk_weight` 1 + new `physics.pass.reach_max_m` 55
+(seeds 1000-4000 × 8):
+
+| | 0.6 / 50 | **1 / 55 (rows)** | real |
+|---|---|---|---|
+| not completed (beyond our third) | 6.8 (4.4) | 8.2 (6.1) | 14.4 (11.4) |
+| high / 50 m+ | 10.3 / 0.96 | 13.4 / 1.64 | 16.2 / 2.77 |
+| ending in our own third, central | 39.5 | 36.1 | 27.2 |
+| won within 18 m of the goal attacked → shot in 5 s | 1.59 → 0.84 | 1.19 → 0.53 | 0.41 → 0.05 |
+| aerial duels a match | 40.1 | 49.8 | 44.3 |
+| passes / completed % / switches | 471 / 82.2 / 8.9 | 461 / 80.8 / 10.9 | 434 / 77.5 / 10.7 |
+| card | 10 / 7 / 16 | 10 / 8 / 15 | |
+
+Every own-third line moves toward real and the near-goal regains fall a quarter; aerial duels pass real (40 → 50, 44.3).
+Long balls still complete above real at 1 (40-50 m 21-50% not completed v 58-70) — the excess is not the read's choice
+any more but what happens under the ball. Shipped (mig 1645, `card_G5.210.txt`). Also `physics.diag.lo_m / hi_m`: the
+§8.284 pass diag's band (diag only). Next: the 40 m+ high ball from the back — who is under it, ours v DFL (real ones are
+lost 70-85%), and the short ball inside our own box (11 v 7.7 a team-match). Tests 23/23.

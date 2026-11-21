@@ -120,6 +120,8 @@ struct PossessionParams {
     // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
+    math::Fixed64 reach_max{math::Fixed64::fromInt(50)};   // G5.210: the longest pass he aims, m (no row = 50; capped by his kick range)
+    math::Fixed64 diag_lo{math::Fixed64::fromInt(35)}, diag_hi{math::Fixed64::fromInt(70)};   // G5.210: the §8.284 pass diag's band, m off their line (diag only)
     math::Fixed64 risk_own3{};   // G5.202 (§8.308): risk_weight for passes from our own third (0 = risk_weight)
     math::Fixed64 space_lead_s{};   // G5.195 (§8.301): aim the ball into space ahead of a runner, his spot this far on; 0 = the zone's middle
     bool space_contest = false;   // G5.194 (§8.300): a ball into space theirs reach first stays in at space_risk (else dropped)
