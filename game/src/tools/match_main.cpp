@@ -81,7 +81,7 @@ struct Stats {
     long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {};   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
-    long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
+    long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
    // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
     long so_n[6][4] = {}, so_g[6][4] = {}; std::vector<double> so_dt[6];   // §8.291 SHOT ORIGIN [direct fk / corner / free kick / throw-in / other / penalty][band]
@@ -300,7 +300,7 @@ int main(int argc, char** argv) {
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
         struct FlF { long k; float x[32], y[32], bx, by, bz; int a = 0; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
         struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0, z = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1; struct RoM { int r, b; bool fr; double m, nd; }; std::vector<RoM> ro_stage; int ro_z = 0;   /* §8.205 */  /* §8.202 */ long bt_prev = -1; int bt_side = -1, bt_band = -1, bt_n = 0;  /* §8.203 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
-        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; bool o3 = false, oraced = false; int okr = -1, oak = -1, ons = 0; double ov = 0; std::uint64_t olt = 0; long ot[32] = {}; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
+        struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; bool o3 = false, oraced = false; int okr = -1, oak = -1, ons = 0, oz = 1; double ov = 0; std::uint64_t olt = 0; long ot[32] = {}; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
         bool pen_on = false; long pen_k = -1;   // §8.140: a penalty awarded / kicked at
         double sl_b[32] = {}, sl_y[32] = {}, sl_bb[32] = {}, sl_by[32] = {}; long sl_c[32] = {};   // §8.189 per man this match
@@ -1640,7 +1640,8 @@ int main(int argc, char** argv) {
                             }
                         }
                         mk.o3 = false; mk.oraced = false; mk.okr = -1; mk.oak = -1;
-                        if (mk.on && mk.to >= 0 && hx + W.player(owner).pos.x.toDouble() * (owner_team == 0 ? 1.0 : -1.0) < 35) {   // §8.309: the decision's read, at the kick, on the man it is for
+                        if (mk.on && mk.to >= 0 && hx + W.player(owner).pos.x.toDouble() * (owner_team == 0 ? 1.0 : -1.0) < 35) {
+                            mk.oz = hx + W.player(owner).pos.x.toDouble() * (owner_team == 0 ? 1.0 : -1.0) < 18 ? 0 : 1;   // §8.313   // §8.309: the decision's read, at the kick, on the man it is for
                             const math::Vec2 sp{W.player(owner).pos.x, W.player(owner).pos.y}, to{W.player(static_cast<std::uint8_t>(mk.to)).pos.x, W.player(static_cast<std::uint8_t>(mk.to)).pos.y};
                             const math::Fixed64 d = math::length(math::Vec2{to.x - sp.x, to.y - sp.y});
                             if (d >= math::Fixed64::fromInt(5)) { mk.o3 = true; mk.okr = rd.passSafe(W, owner, sp, to, core::weightedPassSpeed(d), math::Fixed64::one()) ? 1 : 0; 
@@ -1708,8 +1709,12 @@ int main(int argc, char** argv) {
                                          std::hypot(q.pos.x.toDouble() - mk.x[own], q.pos.y.toDouble() - mk.y[own]), std::hypot(b.vel.x.toDouble(), b.vel.y.toDouble()),
                                          std::hypot(mk.vx[own], mk.vy[own]), std::hypot(mk.vx[mk.to], mk.vy[mk.to]), mk.pt[own], mk.pt[mk.to], [&]{ long b = -1; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team == mk.team && j != mk.p && mk.pt[j] >= 0 && (b < 0 || mk.pt[j] < b)) b = mk.pt[j]; return b; }(), static_cast<long>(k) - mk.k0);
                         }
+                        if (mk.on && mk.p == rel.p && mk.o3 && mk.oz == 0 && !rel.set && !W.isKeeper(static_cast<std::uint8_t>(mk.p)) && (mate || (q.team != mk.team && !W.isKeeper(static_cast<std::uint8_t>(own)))))   // §8.313 own 0-18, outfield: height x width
+                            ++S.or_zw[mk.peak < 1.5 ? 0 : 1][std::fabs(mk.y[mk.p]) < 20.16 ? 0 : 1][mate ? 0 : 1];
                         if (mk.on && mk.p == rel.p && mk.o3 && mk.oraced && mk.okr >= 0 && mk.peak < 1.5 && !rel.set && (mate || (q.team != mk.team && !W.isKeeper(static_cast<std::uint8_t>(own))))) {   // §8.309 OWN-THIRD PASS READ
                             ++S.or_n[mk.okr][mk.oak][mate ? 0 : 1];
+                            ++S.or_z[mk.oz][mate ? 0 : 1];
+                            if (mk.oz == 0) ++S.or_zk[W.isKeeper(static_cast<std::uint8_t>(mk.p)) ? 0 : 1][mate ? 0 : 1];
                             if (mk.okr == 0) ++S.or_ns[std::min(2, mk.ons)][mate ? 0 : 1];
                             if (!mate && own < 32) {
                                 const double cd = std::hypot(mk.x[own] - mk.x[mk.p], mk.y[own] - mk.y[mk.p]), cv = std::hypot(mk.vx[own], mk.vy[own]);
@@ -3202,6 +3207,9 @@ int main(int argc, char** argv) {
                             std::printf(" his pace m/s:"); for (int c = 0; c < 4; ++c) std::printf(" %s %.2f;", vl[c], S.or_cv[a][c] / tmo);
                         }
                         static const char* wl[4] = {"read he couldn't reach it", "read him 0.2 s+ later", "read our man first (ours didn't get there)", "other"};
+                        std::printf("\n     by the passer's m off his line (real StatsBomb: 0-18 11.85 a team-match, lost 0.39; 18-35 36.98, lost 1.34): 0-18 %.2f, lost %.2f; 18-35 %.2f, lost %.2f;", (S.or_z[0][0] + S.or_z[0][1]) / tmo, S.or_z[0][1] / tmo, (S.or_z[1][0] + S.or_z[1][1]) / tmo, S.or_z[1][1] / tmo);
+                        std::printf("\n     0-18 by the passer (real: keeper 6.12, lost 0.04; outfield 5.72, lost 0.35): keeper %.2f, lost %.2f; outfield %.2f, lost %.2f;", (S.or_zk[0][0] + S.or_zk[0][1]) / tmo, S.or_zk[0][1] / tmo, (S.or_zk[1][0] + S.or_zk[1][1]) / tmo, S.or_zk[1][1] / tmo);
+                        std::printf("\n     0-18 outfield by height x width (real ground+low inside 3.52 / wide 3.25; high inside 1.93 / wide 2.57): ground inside %.2f (lost %.2f), wide %.2f (lost %.2f); high inside %.2f (lost %.2f), wide %.2f (lost %.2f);", (S.or_zw[0][0][0] + S.or_zw[0][0][1]) / tmo, S.or_zw[0][0][1] / tmo, (S.or_zw[0][1][0] + S.or_zw[0][1][1]) / tmo, S.or_zw[0][1][1] / tmo, (S.or_zw[1][0][0] + S.or_zw[1][0][1]) / tmo, S.or_zw[1][0][1] / tmo, (S.or_zw[1][1][0] + S.or_zw[1][1][1]) / tmo, S.or_zw[1][1][1] / tmo);
                         std::printf("\n     read theirs at the decision — mates safe to feet 0 / 1 / 2+: kept | lost a team-match:"); for (int c = 0; c < 3; ++c) std::printf(" %.2f | %.2f;", S.or_ns[c][0] / tmo, S.or_ns[c][1] / tmo);
                         std::printf("\n     lost, read OURS — why:"); for (int c = 0; c < 4; ++c) std::printf(" %s %.2f;", wl[c], S.or_why[c] / tmo);
                         static const char* el[4] = {"<=0.1 s", "0.1-0.5 s", "0.5 s+", "never"};

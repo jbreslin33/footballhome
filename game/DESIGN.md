@@ -11994,3 +11994,24 @@ With 2+ goal-side ours 1.5 (2.66) — fewer, so it is not that we take no-pass s
 The regains (second run): won 0-18 m off the goal attacked ~0.20 (their pass cut out 0.14, clearance 0.05), 18-35 ~0.12,
 35+ ~0.13. **Their pass cut out in their own box, shot at once with 0-1 goal-side** — real own-box ground passes 11.85 a
 team-match, lost 0.39 (§8.311). Next: our own-box passes, by zone, against that line. Harness only; tests 23/23.
+
+### 8.313 G5.207 — own-box passing loses at a real rate; the regain's shot is the fault (measured; no game change)
+
+From §8.312. Harness OWN-THIRD PASS READ now by the passer's metres off his line, keeper / outfield, and (0-18 m,
+outfield) height × width (inside |y| < 20.16 m). StatsBomb counted the same (open play, 5 m+; lost = incomplete and the
+next on-ball event theirs; "ground" = Ground + Low Pass). Seeds 1000-4000 × 8, G5.205, a team-match:
+
+| own 0-18 m | ours | lost | real | lost |
+|---|---|---|---|---|
+| keeper, ground | 6.2 | 0.19 | 6.12 | 0.04 |
+| outfield ground, inside | **9.2** | 0.47 | 3.53 | 0.27 (8%) |
+| outfield ground, wide | 4.5 | 0.24 | 3.25 | 0.41 (13%) |
+| outfield high, inside | 2.1 | 0.83 | 1.93 | 0.89 (46%) |
+| outfield high, wide | 1.0 | 0.42 | 2.57 | 1.19 (46%) |
+
+18-35 m: ours ~53.7, lost 1.64 (3.1%); real ground 36.98, lost 1.34 (3.6%). Our men inside their own box pass on the floor
+2.6× as often (real ones lift it wide or clear), but **the losses are near real** (~0.9 v ~0.7 ground; high 46% real
+both). So §8.312's regains in their box are not made by more losses. What is not real is what follows: won 0-18 m off
+the goal attacked ~1.6 a team-match → a shot inside 5 s 55% (real 0.41 → 12%, §8.307); with 0-1 goal-side 0.46
+(0.009). **Next (item 3): the side that lost it — who gets back goal-side in the 2-5 s after a loss near its own goal.**
+Harness only; tests 23/23.
