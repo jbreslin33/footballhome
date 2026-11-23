@@ -85,6 +85,7 @@ struct Stats {
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
     long nk_n[5] = {};   // §8.335 releases that were no kick, by who has it next (the man himself / their outfielder / their keeper / out / a mate)
     long sf_why[32] = {}, sf_defl[2] = {}, sf_n = 0; std::vector<double> sf_s, sf_d, sf_md;   // §8.335 a pass the kicker has next himself: by his order, deflected or not, s after, m from the kick, the ball's furthest m from him
+    long fw_n[4][2][4] = {}, fw_bad[4][2][4] = {};   // §8.336 FORWARD PASSES [band][ground / high][<10, 10-20, 20-30, 30+]
     long ml_who[4][2][5] = {};   // §8.335 not completed, ending under 10 m / beyond: who has it next
     long mr_n[5][2][2][2] = {}, mr_cd[5][5] = {}, mr_cv[5][4] = {}, mr_end[5][2] = {}, mr_len[5][3] = {}; std::vector<double> mr_off[5], mr_along[5];   // §8.334 PASS READ BY BAND
     long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
@@ -1432,6 +1433,7 @@ int main(int argc, char** argv) {
                         const bool hi = mk.p == rel.p && mk.peak >= 1.5;
                         for (const int k : {0, hi ? 2 : 1, d < 10 ? 3 : d < 20 ? 4 : d < 30 ? 5 : 6, dx >= std::fabs(dy) ? 7 : -dx >= std::fabs(dy) ? 9 : 8}) { ++S.ml_n[b][k]; S.ml_bad[b][k] += !ok; }
                         if (!ok) ++S.ml_who[b][d < 10 ? 0 : 1][ep_who];
+                        if (dx >= std::fabs(dy)) { const int l4 = d < 10 ? 0 : d < 20 ? 1 : d < 30 ? 2 : 3; ++S.fw_n[b][hi ? 1 : 0][l4]; S.fw_bad[b][hi ? 1 : 0][l4] += !ok; }   // §8.336
                     }
                 }
                 if (hx + rel.x * sg < 35) {   // §8.316 OWN-THIRD PASS DIRECTION (benchmarks_statsbomb_ownthird_dir.py)
@@ -3490,6 +3492,21 @@ int main(int argc, char** argv) {
                             const double on = S.bt_on[z] / 5.0 / tmo, tr = S.bt_tr[z] / 5.0 / tmo, k = std::max(1L, S.bt_k[z]);
                             std::printf("\n     %-6s %6.1f (%6.1f) | %6.1f (%6.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %.2f (%.2f) | %4.1f (%4.1f) || %.1f (%.1f) / %.1f (%.1f) | %.1f (%.1f)", zn5[z], on, R[z][0], tr, R[z][1], 100.0 * on / std::max(1e-9, on + tr), R[z][2],
                                         S.bt_k[z] / tmo, R[z][3], S.bt_ks[z] / 5.0 / k, R[z][4], 100.0 * S.bt_k3[z] / k, R[z][5], med(S.bt_bo[z]), R[z][6], med(S.bt_bt[z]), R[z][7], med(S.bt_ms[z]), R[z][8]);
+                        }
+                    }
+                    {   // §8.336 FORWARD PASSES — real: benchmarks_statsbomb_midloss.py (StatsBomb PL 15/16)
+                        static const double R[4][16] = {
+                            {6.97, 2.38, 7.94, 1.55, 2.04, 0.74, 0.24, 0.16, 0.54, 0.36, 0.93, 0.59, 0.85, 0.55, 0.35, 0.28},
+                            {8.02, 2.12, 12.65, 2.11, 3.42, 0.98, 1.47, 0.80, 0.77, 0.42, 1.66, 0.99, 1.64, 1.05, 2.75, 1.76},
+                            {7.23, 1.72, 12.81, 1.62, 4.07, 0.86, 1.41, 0.69, 0.80, 0.41, 1.89, 1.08, 2.19, 1.39, 7.01, 4.82},
+                            {6.58, 2.00, 11.64, 1.29, 4.37, 0.85, 1.66, 0.66, 0.68, 0.39, 1.58, 0.79, 2.67, 1.51, 18.80, 12.90}};
+                        static const char* bn4[4] = {"18-35", "35-52", "52-70", "70+"}; static const char* l4n[4] = {"<10", "10-20", "20-30", "30+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.336 FORWARD PASSES (open play, within 45 deg of their goal, by the kick's m off the line attacked; StatsBomb PL 15/16 in brackets): tried / not completed a team-match");
+                        for (int b = 0; b < 4; ++b) {
+                            std::printf("\n     %-6s", bn4[b]);
+                            for (int h = 0; h < 2; ++h) for (int l = 0; l < 4; ++l)
+                                std::printf(" %s %s %.2f (%.2f) / %.2f (%.2f);", h ? "high" : "ground", l4n[l], S.fw_n[b][h][l] / tmo, R[b][8 * h + 2 * l], S.fw_bad[b][h][l] / tmo, R[b][8 * h + 2 * l + 1]);
                         }
                     }
                     {   // §8.335 a pass its kicker has next himself

@@ -12624,3 +12624,27 @@ midfield's short square ball is still +46 and +23 back; and the forward pass —
 little less and **comes off far too often**, from our own third most of all (9 fewer lost a team-match), then midfield
 (8). Next: the forward pass that fails in real football and not in ours — by length and height from the own third and
 midfield (StatsBomb), ours beside it. Harness only; tests 23/23.
+
+### 8.335 G5.229 — the forward pass we don't lose is the long high one (measured; no game change)
+
+From §8.334 (forward passes fail 23% v 33 in midfield, 28% v 42 from our own third). `benchmarks_statsbomb_midloss.py`
++ harness §8.336 FORWARD PASSES: open-play passes within 45° of their goal by the kick's band off the line attacked ×
+ground / high × length. Seeds 1000-4000 × 8, G5.225 on the corrected ruler — tried / not completed a team-match, real
+in brackets:
+
+| from | ground <10 | ground 10-20 | ground 20-30 | ground 30+ | high 10-20 | high 20-30 | high 30+ |
+|---|---|---|---|---|---|---|---|
+| 18-35 | 5.5 / 2.1 (7.0 / 2.4) | 5.0 / 1.4 (7.9 / 1.6) | 1.9 / 0.8 (2.0 / 0.7) | 0.7 / 0.4 (0.2 / 0.2) | 1.1 / 0.6 (0.9 / 0.6) | 1.0 / 0.6 (0.9 / 0.6) | 0.1 / 0.1 (0.4 / 0.3) |
+| 35-52 | 9.1 / 2.7 (8.0 / 2.1) | 11.1 / 2.0 (12.7 / 2.1) | 3.1 / 0.8 (3.4 / 1.0) | 1.7 / 0.7 (1.5 / 0.8) | 1.4 / 0.5 (1.7 / 1.0) | 1.6 / 0.7 (1.6 / 1.1) | 1.1 / 0.5 (2.8 / 1.8) |
+| 52-70 | 9.6 / 2.1 (7.2 / 1.7) | 13.3 / 1.0 (12.8 / 1.6) | 4.0 / 0.5 (4.1 / 0.9) | 1.8 / 0.5 (1.4 / 0.7) | 1.7 / 0.5 (1.9 / 1.1) | 1.7 / 1.0 (2.2 / 1.4) | 2.0 / 1.0 (7.0 / 4.8) |
+| 70+ | 5.5 / 1.0 (6.6 / 2.0) | 9.4 / 0.5 (11.6 / 1.3) | 4.9 / 0.4 (4.4 / 0.9) | 1.8 / 0.2 (1.7 / 0.7) | 1.4 / 0.6 (1.6 / 0.8) | 3.3 / 1.3 (2.7 / 1.5) | 14.1 / 7.4 (18.8 / 12.9) |
+
+The ground forward pass from 18-52 m is real. Three cells carry the gap:
+- **the high ball of 30 m+**: ours 17.3 tried / 9.0 lost a team-match, real 28.9 / 19.8 — from our own third 14.1 v
+  18.8 and 52% lost v 69; from the band beyond it (52-70 m) **2.0 v 7.0**: ours stops hitting it once out of the third.
+- the high ball of 10-30 m from 35-70 m: tried as often (6.4 v 7.4), lost 2.7 v 4.6 (31-58% v 57-64).
+- the ground forward pass from our own third: lost 2.1 v 4.8 (6-18% v 11-40) — real ones are pressed into it.
+
+That is ~16 passes a team-match real sides lose and ours does not: 3.6 of the 8 points of completion. Next: the high
+share for a forward pass of 30 m+ from 35-52 m off our own line (the 52-70 band) against StatsBomb, then why a high
+ball of ours finds its man (who is under it — §8.317's ruler on the midfield ball). Harness only; tests 23/23.

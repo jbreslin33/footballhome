@@ -39,6 +39,7 @@ for f in files:
             ln = "<10" if d < 10 else "10-20" if d < 20 else "20-30" if d < 30 else "30+"
             dr = "fwd" if dx >= abs(dy) else "back" if -dx >= abs(dy) else "square"
             for k in ("all", hi, ln, dr): C[(b, k, "n")] += 1; C[(b, k, "bad")] += bad
+            if dr == "fwd": C[(b, "F", hi, ln, "n")] += 1; C[(b, "F", hi, ln, "bad")] += bad   # G5.229 (§8.336): the forward pass by height x length
         elif t in ("Dispossessed", "Miscontrol"): C[(b, t)] += 1
         elif t == "Dribble" and e["dribble"]["outcome"]["name"] == "Incomplete": C[(b, "takeon lost")] += 1
 tm = 2 * len(files)
@@ -47,6 +48,13 @@ KS = ("all", "ground", "high", "<10", "10-20", "20-30", "30+", "fwd", "square", 
 for b, bn in enumerate(BN):
     print(f"  {bn}: passes tried / not completed [%] — " + "; ".join(f"{k} {C[(b, k, 'n')] / tm:.1f} / {C[(b, k, 'bad')] / tm:.2f} [{100 * C[(b, k, 'bad')] / max(1, C[(b, k, 'n')]):.0f}]" for k in KS)
           + f" || dispossessed {C[(b, 'Dispossessed')] / tm:.2f}, miscontrol {C[(b, 'Miscontrol')] / tm:.2f}, take-on lost {C[(b, 'takeon lost')] / tm:.2f}")
+print("FORWARD PASSES by height x length (G5.229): tried / not completed a team-match [%]")
+LN = ("<10", "10-20", "20-30", "30+")
+for b, bn in enumerate(BN):
+    print(f"  {bn}: " + "; ".join(f"{h} {l} {C[(b, 'F', h, l, 'n')] / tm:.2f} / {C[(b, 'F', h, l, 'bad')] / tm:.2f} [{100 * C[(b, 'F', h, l, 'bad')] / max(1, C[(b, 'F', h, l, 'n')]):.0f}]" for h in ("ground", "high") for l in LN))
+print("C++ forward rows {ground x 4 lengths (tried, bad), high x 4}:")
+for b in range(4):
+    print("  {" + ", ".join(f"{C[(b, 'F', h, l, 'n')] / tm:.2f}, {C[(b, 'F', h, l, 'bad')] / tm:.2f}" for h in ("ground", "high") for l in LN) + "},")
 print("C++ rows {then tried, not completed x 10 kinds; dispossessed, miscontrol, take-on lost}:")
 for b in range(4):
     print("  {" + ", ".join([f"{C[(b, k, 'n')] / tm:.1f}, {C[(b, k, 'bad')] / tm:.2f}" for k in KS] + [f"{C[(b, 'Dispossessed')] / tm:.2f}", f"{C[(b, 'Miscontrol')] / tm:.2f}", f"{C[(b, 'takeon lost')] / tm:.2f}"]) + "},")
