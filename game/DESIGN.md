@@ -12307,3 +12307,34 @@ A real side goes after a full-back or centre-back with the ball by his own touch
 25 m+ behind the ball, the line 4.4 m deeper — the three men up that side of §8.321, and the scorecard's passes under
 pressure (12.4% v 17.0). Next: who of the defending side goes to the deep wide ball — the press there by role (DFL) —
 and the line's height with the ball in the attackers' own third. Harness only; tests 23/23.
+
+### 8.324 G5.218 — a deep ball is closed by the touchline, left in the middle; and the whole block is a few metres too deep on it (measured; a stand-off split built, not shipped)
+
+From §8.323. `benchmarks_tracking_deepwide.py` + harness gain DEEP BALL, CENTRE v WIDE and THE OTHER SIDE BY ROLE
+(the defending side on a deep wide frame, by DFL role). Seeds 1000-4000 × 8, G5.216 (DFL in brackets):
+
+| the ball within 35 m of the attackers' line | in the middle | by a touchline |
+|---|---|---|
+| the other side's nearest man to it, p25 / med / p75 m | 4.9 / 7.8 / 11.1 (4.9 / 8.9 / 13.5) | 5.0 / 8.1 / 11.3 (2.9 / 5.3 / 8.8) |
+| its men under 10 m on from the ball | 2.28 (2.23) | 2.39 (3.61) |
+| its last man, m off his own line | 43.1 (45.2) | 42.7 (47.2) |
+
+| by a touchline, by role | men a frame | under 10 m on % | m from the ball | m on from the ball | across (ball's side +) |
+|---|---|---|---|---|---|
+| CB | 2.06 (2.22) | 1 (6) | 39.3 (38.7) | 35.6 (33.0) | +12.1 (+9.6) |
+| FB | 2.00 (1.61) | 14 (15) | 39.4 (36.0) | 29.7 (26.2) | +11.1 (+12.3) |
+| DM/CM | 2.30 (2.05) | 9 (26) | 29.8 (25.5) | 25.1 (18.3) | +13.2 (+13.4) |
+| AM | 0.76 (0.70) | 49 (65) | 19.4 (18.6) | 10.3 (5.9) | +14.2 (+12.4) |
+| WIDE | 1.87 (1.96) | 46 (53) | 28.4 (23.7) | 11.3 (9.0) | +6.2 (+11.2) |
+| ST | 1.00 (1.42) | 66 (85) | 16.6 (18.8) | 6.3 (1.1) | +14.7 (+10.2) |
+
+Real sides treat the two balls differently — in the middle the nearest man stands 9 m off and 2.2 men are round it; by
+the touchline 5 m and 3.6 — and ours treats them the same (8 m, 2.3-2.4). By role every line of ours is 2-7 m deeper
+behind a deep wide ball: the strikers 5 m (real ones stand level with it), the midfield 7 m, the back line 3 m; and
+our wide men come across half as far (+6 v +11).
+
+Tried first: `physics.press.stand_off_deep_{c,w}_{p25,p50,p75}` — the presser's stand-off for a ball 70 m+ off our line
+split middle / touchline at the real quartiles (the band's one row, 3.7 / 8.0 / 13.3, is the two blended). Nearest man
+by the touchline 8.2 → 7.1 m only (he is one man, and has to get there), men round it 2.39 → 2.55, passes under
+pressure 12.3 → 12.7% (17.0), card 12 / 8 / 13 → 9 / 7 / 17. Not shipped; the rows stay unset (no row = the band's
+row). The closeness is the block's, not the presser's. Next: the block's height by role on a deep wide ball. Tests 23/23.

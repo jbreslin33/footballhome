@@ -30,6 +30,7 @@ struct BlockParams {
     // our line (0-18 / 18-35 / 35-52 / 52-70 / 70+), the real nearest defender's
     // p25 / median / p75 — DFL (benchmarks_tracking_press.py); one roll a spell.
     math::Fixed64 stand_off[5][3]{};
+    math::Fixed64 stand_off_deep[2][3]{};           // G5.218 (§8.324): the 70+ band split — ball in the middle / by a touchline (0 = the band's row)
     math::Fixed64 switch_m{};                       // a new presser / chaser must be this much nearer
     math::Fixed64 tackle_per_s{};                   // in reach and goal-side: chance a second he dives
     // G5.41 (§8.141): the back pair is never flat — by the ball's band, the real

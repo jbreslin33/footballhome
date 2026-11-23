@@ -64,7 +64,15 @@ def one(pos_path):
         if b is None: continue
         t = b[2]; sg = own[(k[0], t)]
         bm = half - sg * b[0]
-        if bm >= 35 or abs(b[1]) < 20.16: continue
+        if bm >= 35: continue
+        if abs(b[1]) < 20.16:   # G5.218 (§8.324): the same deep ball in the middle — the other side's nearest man, last man, men round it
+            c["cn"] += 1; near = 99.0; deep = 0.0
+            for pid, p in pl[k].items():
+                if pid in keepers or who.get(pid) != 1 - t: continue
+                pm = half - sg * p[0]
+                near = min(near, math.hypot(p[0] - b[0], p[1] - b[1])); deep = max(deep, pm); c["cdn0"] += pm - bm < 10
+            L["cnear"].append(near); L["cdeep"].append(length - deep)
+            continue
         ys = 1 if b[1] >= 0 else -1
         c["n"] += 1; best = {}; tg = [0, 0]
         dn = [0, 0, 0, 0]; near = 99.0; deep = 0.0   # the other side: within 10 / 10-25 / 25-40 / 40+ m on from the ball; nearest to it; its last man
@@ -74,6 +82,9 @@ def one(pos_path):
             if on >= 25 and ye >= 7: tg[0 if who[pid] == t else 1] += 1
             if who[pid] != t:
                 dn[0 if on < 10 else 1 if on < 25 else 2 if on < 40 else 3] += 1
+                rr = ROLE.get(pos_of.get(pid))
+                if rr is not None:
+                    c[f"dr{rr}"] += 1; c[f"dr{rr}_n"] += on < 10; L[f"drd{rr}"].append(math.hypot(p[0] - b[0], p[1] - b[1])); L[f"dro{rr}"].append(on); L[f"dry{rr}"].append(ye)
                 near = min(near, math.hypot(p[0] - b[0], p[1] - b[1])); deep = max(deep, pm)
                 continue
             r = ROLE.get(pos_of.get(pid))
@@ -100,6 +111,13 @@ if __name__ == "__main__":
     print(f"  TARGETS UP THE LINE (25 m+ on from the ball, on its side of the pitch, across 7+): ours mean {c['t0'] / n:.2f}, none {100 * c['none'] / n:.1f}% | theirs mean {c['t1'] / n:.2f}")
     print(f"  THE OTHER SIDE'S BLOCK: outfielders by m on from the ball (toward their own goal) <10 / 10-25 / 25-40 / 40+: {c['dn0'] / n:.2f} / {c['dn1'] / n:.2f} / {c['dn2'] / n:.2f} / {c['dn3'] / n:.2f} "
           f"| its nearest man to the ball med {md(L['near']):.1f} m | its last man: m off its own goal line med {md(L['deep']):.1f}, m on from the ball med {md(L['gap']):.1f}")
+    print("  THE OTHER SIDE BY ROLE (deep wide ball): men a frame | of them under 10 m on from the ball % | m from the ball med | m on from the ball med | across (ball's side +) med")
+    for r, nm in enumerate(("CB", "FB", "DM/CM", "AM", "WIDE", "ST")):
+        k = max(1, c[f"dr{r}"])
+        print(f"    {nm:6s} {c[f'dr{r}'] / n:.2f} | {100 * c[f'dr{r}_n'] / k:5.1f} | {md(L[f'drd{r}']):5.1f} | {md(L[f'dro{r}']):5.1f} | {md(L[f'dry{r}']):+5.1f}")
+    q = lambda v, f: sorted(v)[int(f * len(v))] if v else float("nan")
+    print(f"  DEEP BALL, CENTRE v WIDE — the other side's nearest man to the ball p25/med/p75: centre {q(L['cnear'], .25):.1f}/{q(L['cnear'], .5):.1f}/{q(L['cnear'], .75):.1f} | wide {q(L['near'], .25):.1f}/{q(L['near'], .5):.1f}/{q(L['near'], .75):.1f} "
+          f"|| its men under 10 m on from the ball: centre {c['cdn0'] / max(1, c['cn']):.2f} | wide {c['dn0'] / n:.2f} || its last man m off its own line med: centre {md(L['cdeep']):.1f} | wide {md(L['deep']):.1f} || s a team-match centre {c['cn'] / 5 / (2 * len(files)):.1f}")
     for r, nm in ((5, "ST"), (4, "WIDE")):
         k = max(1, c[f"r{r}"])
         print(f"  the {nm} nearest the ball's touchline: his wing {100 * c[f'l{r}_0'] / k:.1f} | his channel {100 * c[f'l{r}_1'] / k:.1f} | centre {100 * c[f'l{r}_2'] / k:.1f} | far channel {100 * c[f'l{r}_3'] / k:.1f} | far wing {100 * c[f'l{r}_4'] / k:.1f} "

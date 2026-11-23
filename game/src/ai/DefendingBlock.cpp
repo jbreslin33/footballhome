@@ -89,7 +89,11 @@ public:
         const Fixed64 off_line = c.world.pitchHalfX() + (flight ? crp.x : ball.pos.x) * v.sg;   // ball metres off our line
         const int band = off_line < Fixed64::fromInt(18) ? 0 : off_line < Fixed64::fromInt(35) ? 1
                        : off_line < Fixed64::fromInt(52) ? 2 : off_line < Fixed64::fromInt(70) ? 3 : 4;
-        const auto& q = c.block.params().stand_off[band];
+        // G5.218 (§8.324): their ball 70 m+ off our line — a real side closes it by the touchline (nearest man p25 / med /
+        // p75 2.9 / 5.3 / 8.8 m) and stands off it in the middle (4.9 / 8.9 / 13.5), DFL benchmarks_tracking_deepwide.py;
+        // the one row for the band (3.7 / 8.0 / 13.3) was the two blended. Rows physics.press.stand_off_deep_{c,w}_*; none = the band's.
+        const int dw = band == 4 ? (math::fx_abs(flight ? crp.y : ball.pos.y) >= Fixed64::fromFraction(2016, 100) ? 1 : 0) : -1;
+        const auto& q = dw >= 0 && c.block.params().stand_off_deep[dw][1].raw > 0 ? c.block.params().stand_off_deep[dw] : c.block.params().stand_off[band];
         const Fixed64 u = (core::detNoise(v.match_seed, c.world.ownedAtTick(), v.slot, 30) + Fixed64::one()) *
                           Fixed64::fromFraction(1, 2);   // [0, 1): p25 … p75
         const Fixed64 off = u < Fixed64::fromFraction(1, 2) ? q[0] + (q[1] - q[0]) * u * 2
@@ -186,6 +190,8 @@ void BlockParams::configure(const core::ModelParams& p) {
     for (int b = 0; b < 5; ++b)
         for (int k = 0; k < 3; ++k)
             stand_off[b][k] = p.fixed((std::string("physics.press.stand_off_") + std::to_string(b) + "_" + kQ[k]).c_str(), kOff[b][k]);
+    for (int w = 0; w < 2; ++w)   // G5.218 (§8.324): 0 = no row = the 70+ band's
+        for (int k = 0; k < 3; ++k) stand_off_deep[w][k] = p.fixed((std::string("physics.press.stand_off_deep_") + (w ? "w_" : "c_") + kQ[k]).c_str(), 0);
     // Real (DFL, benchmarks_tracking_cover.py): the two CBs' depth gap by the ball's band, mm.
     static const int kStagger[kBandCount] = {3200, 2800, 2800, 2800, 3000, 2800, 2800, 2900, 2800, 3700};
     for (int b = 0; b < kBandCount; ++b)
