@@ -414,6 +414,7 @@ private:
     math::Fixed64 carry_pace_free_m_{};   // §8.239              // G5.131 (§8.232): his pace for the spell, drawn at the receipt
     math::Fixed64 carry_pace_{};              // m/s; 0 = carry_share as before
     math::Fixed64 carry_pace_gain_{};
+    math::Fixed64 carry_pace_own3_{}, carry_pace_own_mid_{};   // G5.225 (§8.331): his drawn pace x this within 35 m / 35-52.5 m of his own goal line (0 or 1 = off)
     math::Fixed64 carryShare(SlotIndex slot) const;
     bool hold_on_ = false;
     // G5.126 (§8.227): the hold's one-touch slice is played first time — no control touch, the plant

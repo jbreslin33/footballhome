@@ -12510,3 +12510,24 @@ while the block is drawn; ours is carried out of the third and then held in the 
 stints v 60. The stint's length inside their half is real (0.81, 1.20 v 0.80, 1.26). Next: the man on the ball in our
 own half — carry v pass by band and by pressure, the carry's speed and length (DFL stints + StatsBomb carries) — ours
 beside it, then the hold / carry rows for 52-70 and 70+. Harness only; tests 23/23.
+
+### 8.331 G5.225 — the carrier is slow near his own goal (mig 1725; shipped) — and it is not what empties the back
+
+From §8.330. The cause of the carry out of the back is G5.190's free hold (§8.296: a free man in his own half keeps
+it until an opponent is within 6 m, up to 3 s more) — he waits on the run, at a pace drawn from every real spell
+wherever he is. `World::carryShare`: his drawn pace × `physics.tempo.carry_pace_own3` within 35 m of his own goal line,
+× `carry_pace_own_mid` the next 17.5 m (rows 0.64 / 0.93 = real / ours of §8.330's "the man's m/s"; 1 = off). Seeds
+1000-4000 × 8 (DFL in brackets):
+
+| band | s on a man | stints | mean s | the man's m/s |
+|---|---|---|---|---|
+| 70+ (his own third) | 274 → 290 (324) | 174 → 179 (228) | 1.60 → 1.64 (1.52) | 3.3 → 2.8 (2.1) |
+| 52-70 | 362 → 365 (221) | 217 → 219 (172) | 1.79 → 1.78 (1.29) | 3.0 → 2.9 (2.8) |
+| 35-52 | 260 → 255 (162) | 186 → 183 (139) | 1.39 → 1.38 (1.18) | 3.1 → 3.0 (3.2) |
+
+Carries of 10 m+ 42.1 → 38.3 a team-match (34.6; OFF → off); passes a minute 8.23 (8.23). Card 11 / 8 / 14 → 9 / 11 / 13
+(`card_G5.225.txt`) — the other status changes are the scored-by-distance lines moving inside their spread. Shipped as
+the real pace. But the midfield surplus does not move: slowing him is not what keeps the ball at the back. Stints in
+all are real (704 v 689 a team-match); it is where they are — 49 fewer in our own third, 91 more in 35-70 m, 25 fewer
+in their last 18. Next: from a stint in our own third, where the next stint is (same band / the next / beyond) and
+how (pass on the ground, in the air, carried) — DFL beside ours — the ball's way out of the back. Tests 23/23.

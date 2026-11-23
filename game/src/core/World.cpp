@@ -1495,6 +1495,8 @@ void World::configureTempo(const ModelParams& p) {
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
     carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band
     carry_pace_gain_ = p.fixed("physics.tempo.carry_pace_gain", 4000);
+    carry_pace_own3_ = p.fixed("physics.tempo.carry_pace_own3", 1000);       // G5.225 (§8.331)
+    carry_pace_own_mid_ = p.fixed("physics.tempo.carry_pace_own_mid", 1000);
     hold_on_ = hold_under1_.raw > 0 && hold_under2_ > hold_under1_ && hold_under4_ > hold_under2_;
     one_touch_first_ = p.fixed("physics.tempo.one_touch_first", 1000).raw > 0;   // G5.126 (§8.227)
     hold_one_ = p.fixed("physics.tempo.hold_one_touch", 0);        // G5.18 (§8.115)
@@ -1913,7 +1915,14 @@ math::Fixed64 World::carryShare(SlotIndex slot) const {
     // (gain carry_pace_gain, 4 [FH]; 10 settled no faster — the cap is elsewhere, §8.232).
     const auto& p = players_[slot];
     const Fixed64 v = math::length(Vec2{p.vel.x, p.vel.y});
-    Fixed64 s = (carry_pace_ + carry_pace_gain_ * (carry_pace_ - v)) / top;
+    // G5.225 (§8.331): the pace is drawn from every real spell, but a real man on the ball near his own goal hardly moves
+    // (DFL BAND TIME, his own speed med: 2.1 m/s within 35 m of his line, 2.8 the next 17.5 m, 3.2-3.8 beyond; ours 3.3 /
+    // 3.0) — it is played across the back, not run out of it. His pace x a row by where he is.
+    Fixed64 pace = carry_pace_;
+    {   const Fixed64 own_d = p.team == 0 ? half_x_ + p.pos.x : half_x_ - p.pos.x;
+        if (own_d < Fixed64::fromInt(35)) { if (carry_pace_own3_.raw > 0) pace = pace * carry_pace_own3_; }
+        else if (own_d < Fixed64::fromFraction(525, 10)) { if (carry_pace_own_mid_.raw > 0) pace = pace * carry_pace_own_mid_; } }
+    Fixed64 s = (pace + carry_pace_gain_ * (pace - v)) / top;
     if (s.raw < 0) s = Fixed64::zero();
     return s < carry_share_ ? s : carry_share_;
 }
