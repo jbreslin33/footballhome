@@ -190,6 +190,7 @@ void BlockParams::configure(const core::ModelParams& p) {
     for (int b = 0; b < 5; ++b)
         for (int k = 0; k < 3; ++k)
             stand_off[b][k] = p.fixed((std::string("physics.press.stand_off_") + std::to_string(b) + "_" + kQ[k]).c_str(), kOff[b][k]);
+    for (int r = 0; r < kRoleCount; ++r) wide_up[r] = p.fixed((std::string("physics.block.wide_up_") + kRoleKey[r]).c_str(), 0);   // G5.219 (§8.325)
     for (int w = 0; w < 2; ++w)   // G5.218 (§8.324): 0 = no row = the 70+ band's
         for (int k = 0; k < 3; ++k) stand_off_deep[w][k] = p.fixed((std::string("physics.press.stand_off_deep_") + (w ? "w_" : "c_") + kQ[k]).c_str(), 0);
     // Real (DFL, benchmarks_tracking_cover.py): the two CBs' depth gap by the ball's band, mm.
@@ -448,6 +449,20 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         const Fixed64 n15 = Fixed64::fromInt(15), n25 = Fixed64::fromInt(25);
         x += off_line <= n15 ? near : off_line >= n25 ? far : near + (far - near) * (off_line - n15) / (n25 - n15);
         if (x < Fixed64::one()) x = Fixed64::one();
+    }
+    {   // G5.219 (§8.325): their ball deep in their own third and by a touchline — a real block steps up on it (the spot
+        // table is by the ball's depth alone): by role, metres higher (DFL benchmarks_tracking_deepwide.py THE OTHER
+        // SIDE BY ROLE v ours). Full from 70 m off our line and 20.16 m off the centre line, faded in over the 5 m and
+        // the 8 m before [FH]. Rows physics.block.wide_up_<role>; none = 0.
+        const Fixed64 up = params_.wide_up[static_cast<int>(v.role)];
+        const Fixed64 ay = math::fx_abs(world.ball().pos.y);
+        const Fixed64 d0 = Fixed64::fromInt(65), y0 = Fixed64::fromFraction(1216, 100);
+        if (up.raw != 0 && off_line > d0 && ay > y0) {
+            Fixed64 fd = (off_line - d0) / Fixed64::fromInt(5), fy = (ay - y0) / Fixed64::fromInt(8);
+            if (fd > Fixed64::one()) fd = Fixed64::one();
+            if (fy > Fixed64::one()) fy = Fixed64::one();
+            x += up * fd * fy;
+        }
     }
     Vec2 at{(x - hx) * v.sg, v.across_def};
     if (params_.gs_r.raw > 0) {   // G5.85 (§8.186): ball near our goal — between it and the goal

@@ -12338,3 +12338,31 @@ split middle / touchline at the real quartiles (the band's one row, 3.7 / 8.0 / 
 by the touchline 8.2 → 7.1 m only (he is one man, and has to get there), men round it 2.39 → 2.55, passes under
 pressure 12.3 → 12.7% (17.0), card 12 / 8 / 13 → 9 / 7 / 17. Not shipped; the rows stay unset (no row = the band's
 row). The closeness is the block's, not the presser's. Next: the block's height by role on a deep wide ball. Tests 23/23.
+
+### 8.325 G5.219 — the block steps up on a deep wide ball (mig 1690; shipped)
+
+From §8.324. `DefendingBlock::spot`: their ball 70 m+ off our line and 20.16 m+ off the centre line — each role's spot
+`physics.block.wide_up_<role>` metres higher (the spot table is by the ball's depth alone; a real block steps up when
+that ball is by a touchline), faded in over the 5 m of depth and the 8 m of width before so nobody jumps. Rows = the
+§8.324 gaps, real − ours: ST 5.2, AM 4.4, WIDE 2.3, DM/CM 6.8, FB 3.5, CB 2.6. Seeds 1000-4000 × 8 (DFL in brackets):
+
+| the other side on a deep wide ball | G5.216 | rows (trial 1) | rows + the gap left (trial 2) | real |
+|---|---|---|---|---|
+| m on from the ball: ST / AM / WIDE | 6.3 / 10.3 / 11.3 | 4.7 / 7.8 / 10.2 | 3.5 / 8.2 / 10.0 | 1.1 / 5.9 / 9.0 |
+| … DM-CM / FB / CB | 25.1 / 29.7 / 35.6 | 21.4 / 27.6 / 33.9 | 20.3 / 27.1 / 33.8 | 18.3 / 26.2 / 33.0 |
+| men under 10 m on from the ball | 2.39 | 2.63 | 2.75 | 3.61 |
+| its last man, m off his own line | 42.7 | 44.0 | 45.2 | 47.2 |
+| nearest man to the ball, med | 8.1 | 8.3 | 7.9 | 5.3 |
+| the wide kicker's long ball: his wing % [not completed] | 46 [61] | 50 [67] | 49 [48] | 51 [72] |
+| pass completion / passes under pressure % | 81.0 / 12.3 | 80.5 / 12.4 | 80.6 / 12.6 | 77.5 / 17.0 |
+| goals a team-match | 2.05 | 2.16 | 2.53 | 1.35 |
+| card | 12 / 8 / 13 | 11 / 8 / 14 | 11 / 9 / 13 | |
+
+The lines move about a third of the rows — a deep wide spell is short and the men are on their way. Trial 2 (rows +
+the gap left: ST 8.8, AM 6.3, WIDE 3.5, DM 9.9, FB 4.9, CB 3.5) bought ~1 m more and goals 2.53 in every seed: a block
+asked to be further up than it can get is a block out of shape when the ball comes through. Trial 1 shipped (mig 1690,
+`card_G5.219.txt`). Still open on this ball: the nearest man (8.3 v 5.3 m) and the men round it (2.6 v 3.6) — real
+strikers stand level with the ball and ours arrive late; our wide men come across half as far (+6.8 v +11.2 m); and
+the goals a higher block gives up (2.05 → 2.16) are the conversion fault of §8.313 again (15-17% v 10), not this
+slice's. Next: how fast a real block gets up to a deep wide ball — its men's speed and the lag behind the ball (DFL)
+— ours beside it. Tests 23/23.
