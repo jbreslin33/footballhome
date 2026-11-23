@@ -12366,3 +12366,36 @@ strikers stand level with the ball and ours arrive late; our wide men come acros
 the goals a higher block gives up (2.05 → 2.16) are the conversion fault of §8.313 again (15-17% v 10), not this
 slice's. Next: how fast a real block gets up to a deep wide ball — its men's speed and the lag behind the ball (DFL)
 — ours beside it. Tests 23/23.
+
+### 8.326 G5.220 — a real block squeezes up the longer the ball stays deep and wide; ours falls away from it (measured; no game change)
+
+From §8.325 (the lines moved a third of the rows). `benchmarks_tracking_deepwide.py` + harness gain BY THE SPELL'S AGE
+(seconds the ball has been deep and wide: the same side, contiguous 5 Hz frames) and THE DEEP BALL IN THE MIDDLE by
+role. Seeds 1000-4000 × 8, G5.219 (DFL in brackets):
+
+| s the ball has been deep and wide | 0-2 | 2-5 | 5+ |
+|---|---|---|---|
+| share of frames % | 64 (69) | 28 (26) | 8 (5) |
+| the other side's men under 10 m on from the ball | 2.90 (3.57) | 2.29 (3.63) | 1.72 (4.08) |
+| its nearest man, med m | 8.3 (5.8) | 8.2 (4.5) | 8.9 (4.0) |
+| its last man, m off its own line | 44.3 (47.0) | 43.6 (47.3) | 44.1 (49.4) |
+| m on from the ball: CB | 33.2 (32.9) | 35.8 (33.6) | 38.9 (31.4) |
+| FB | 26.4 (26.2) | 29.4 (26.5) | 33.1 (23.4) |
+| DM/CM | 21.0 (18.5) | 23.0 (18.4) | 26.3 (16.0) |
+| AM | 7.7 (6.5) | 9.3 (5.1) | 10.5 (-1.1) |
+| WIDE | 9.5 (9.2) | 11.7 (8.4) | 14.0 (7.8) |
+| ST | 4.2 (1.5) | 6.4 (0.5) | 8.7 (-2.4) |
+
+| m off its own line, by role | CB | FB | DM/CM | AM | WIDE | ST |
+|---|---|---|---|---|---|---|
+| deep ball in the middle | 45.5 (46.6) | 50.6 (50.0) | 57.0 (59.3) | 71.4 (71.7) | 68.3 (68.3) | 76.5 (78.3) |
+| by a touchline | 46.3 (48.7) | 52.0 (55.0) | 59.0 (63.8) | 72.7 (76.4) | 69.1 (73.3) | 76.4 (82.5) |
+
+A real block does not arrive at this ball — it is there in the first 2 s (3.6 men round it, the strikers 1.5 m on) —
+and then it **squeezes**: by 5 s the strikers and the AM are past the ball, the back four 2-3 m further up, 4.1 men
+round it. Ours starts near real (with §8.325's rows the back four match in the first 2 s) and then falls away: every
+line 5 m further off the ball by 5 s, 1.7 men round it. Its last man does not move (44 m) — the ball goes back toward
+its own goal and our block does not follow it. On the deep ball in the middle ours is within 2 m by role. So the fault
+on this ball is in time: the block's spot does not chase a ball that is being worked backwards. Next: ours by the
+spell's age — each man's spot against where he stands, and the ball's depth — to see whether the spots recede or the
+men are short of them. Harness only; tests 23/23.

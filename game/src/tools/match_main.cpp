@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long da_n[3] = {}, da_d[3] = {}; std::vector<double> da_near[3], da_deep[3], da_ro[3][6], dc_ro[6], dc_rm[6], dw_rm[6];   // §8.326 by the spell's age; the deep ball in the middle by role
     long dr_n[6] = {}, dr_k[6] = {}; std::vector<double> dr_d[6], dr_o[6], dr_y[6];   // §8.325 the other side by role on a deep wide ball
     long dc_n = 0, dc_dn0 = 0; std::vector<double> dc_near, dc_deep;   // §8.324 the same deep ball in the middle
     long dw_dn[4] = {}; std::vector<double> dw_near, dw_deep, dw_gap;   // §8.323 the other side's block on a deep wide ball
@@ -2999,8 +3000,12 @@ int main(int argc, char** argv) {
             for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
         {   // §8.321 DEEP WIDE BALL (benchmarks_tracking_deepwide.py): the side in possession has the ball within 35 m of its own
             // line and 20.16 m+ off the centre line; who is up the line, and the striker / wide man nearest that touchline
+            int dwa = 0; long dwk = -100; int dwt = -1;   // §8.326: frames this deep wide spell has run
             for (const auto& f : fl_f) {
                 const int t = f.a; const double gx = t == 0 ? -hx : hx, bm = std::fabs(gx - f.bx);
+                {   const bool dwf = bm < 35 && std::fabs(f.by) >= 20.16;
+                    dwa = dwf && dwt == t && f.k == dwk + 6 ? dwa + 1 : 0;
+                    if (dwf) { dwk = f.k; dwt = t; } else dwt = -1; }
                 if (bm >= 35) continue;
                 if (std::fabs(f.by) < 20.16) {   // §8.324
                     ++S.dc_n; double nd = 99, dm = 0;
@@ -3008,6 +3013,7 @@ int main(int argc, char** argv) {
                         if (W.isKeeper(p2) || W.player(p2).team == t) continue;
                         const double pm = std::fabs(gx - f.x[p2]);
                         nd = std::min(nd, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); dm = std::max(dm, pm); S.dc_dn0 += pm - bm < 10;
+                        { const int rr = role(p2); if (rr >= 0 && rr <= 5) { S.dc_ro[rr].push_back(pm - bm); S.dc_rm[rr].push_back(2 * hx - pm); } }
                     }
                     S.dc_near.push_back(nd); S.dc_deep.push_back(2 * hx - dm);
                     continue;
@@ -3020,14 +3026,15 @@ int main(int argc, char** argv) {
                     const bool us = W.player(p2).team == t; const double ugx = us ? gx : -gx;
                     const double ye = f.y[p2] * ys, pm = std::fabs(gx - f.x[p2]), on = pm - bm; (void)ugx;
                     if (on >= 25 && ye >= 7) ++tg[us ? 0 : 1];
-                    if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { ++S.dr_n[rr]; S.dr_k[rr] += on < 10; S.dr_d[rr].push_back(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by)); S.dr_o[rr].push_back(on); S.dr_y[rr].push_back(ye); } }
-                    if (!us) { ++S.dw_dn[on < 10 ? 0 : on < 25 ? 1 : on < 40 ? 2 : 3]; nearD = std::min(nearD, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); deepM = std::max(deepM, pm); continue; }
+                    if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { S.da_ro[dwa < 10 ? 0 : dwa < 25 ? 1 : 2][rr].push_back(on); S.dw_rm[rr].push_back(2 * hx - pm); ++S.dr_n[rr]; S.dr_k[rr] += on < 10; S.dr_d[rr].push_back(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by)); S.dr_o[rr].push_back(on); S.dr_y[rr].push_back(ye); } }
+                    if (!us) { ++S.dw_dn[on < 10 ? 0 : on < 25 ? 1 : on < 40 ? 2 : 3]; if (on < 10) ++S.da_d[dwa < 10 ? 0 : dwa < 25 ? 1 : 2]; nearD = std::min(nearD, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); deepM = std::max(deepM, pm); continue; }
                     const int r = role(p2); if (r != 4 && r != 5) continue;
                     const int q = r == 5 ? 0 : 1;
                     if (!has[q] || ye > by_[q]) { has[q] = true; by_[q] = ye; bm_[q] = pm; bo_[q] = on; }
                 }
                 S.dw_t[0] += tg[0]; S.dw_t[1] += tg[1]; S.dw_none += tg[0] == 0;
                 S.dw_near.push_back(nearD); S.dw_deep.push_back(2 * hx - deepM); S.dw_gap.push_back(deepM - bm);
+                { const int ab = dwa < 10 ? 0 : dwa < 25 ? 1 : 2; ++S.da_n[ab]; S.da_near[ab].push_back(nearD); S.da_deep[ab].push_back(2 * hx - deepM); }
                 for (int q = 0; q < 2; ++q) if (has[q]) {
                     const double ye = by_[q]; ++S.dw_r[q]; ++S.dw_l[q][ye >= 20.16 ? 0 : ye >= 7 ? 1 : ye > -7 ? 2 : ye > -20.16 ? 3 : 4];
                     S.dw_y[q].push_back(ye); S.dw_m[q].push_back(bm_[q]); S.dw_o[q].push_back(bo_[q]);
@@ -3380,6 +3387,20 @@ int main(int argc, char** argv) {
                         {   auto qt = [](std::vector<double> v, double fq) { if (v.empty()) return -1.0; std::sort(v.begin(), v.end()); return v[static_cast<std::size_t>(fq * v.size())]; };
                             std::printf("\n     §8.324 deep ball, centre v wide — the other side's nearest man to the ball p25/med/p75: centre %.1f/%.1f/%.1f (4.9/8.9/13.5) | wide %.1f/%.1f/%.1f (2.9/5.3/8.8) || its men under 10 m on from the ball: centre %.2f (2.23) | wide %.2f (3.61) || its last man m off its own line med: centre %.1f (45.2) | wide %.1f (47.2) || s a team-match centre %.1f (402.3)",
                                         qt(S.dc_near, .25), qt(S.dc_near, .5), qt(S.dc_near, .75), qt(S.dw_near, .25), qt(S.dw_near, .5), qt(S.dw_near, .75), S.dc_dn0 / std::max(1.0, static_cast<double>(S.dc_n)), S.dw_dn[0] / n, med(S.dc_deep), med(S.dw_deep), S.dc_n / 5.0 / tmo); }
+                        {   // §8.326 — real: benchmarks_tracking_deepwide.py BY THE SPELL'S AGE / DEEP BALL IN THE MIDDLE
+                            static const double RA[3][10] = {{69.0, 3.57, 5.8, 47.0, 32.9, 26.2, 18.5, 6.5, 9.2, 1.5}, {26.2, 3.63, 4.5, 47.3, 33.6, 26.5, 18.4, 5.1, 8.4, 0.5}, {4.8, 4.08, 4.0, 49.4, 31.4, 23.4, 16.0, -1.1, 7.8, -2.4}};
+                            static const char* an[3] = {"0-2", "2-5", "5+"};
+                            std::printf("\n     §8.326 by the spell's age (s the ball has been deep and wide): share of frames %% | the other side's men under 10 m on | nearest man med | last man m off its line med | m on from the ball med by role CB FB DM/CM AM WIDE ST");
+                            for (int ab = 0; ab < 3; ++ab) {
+                                const double k = std::max(1L, S.da_n[ab]);
+                                std::printf("\n       %-4s %4.1f (%4.1f) | %.2f (%.2f) | %4.1f (%4.1f) | %4.1f (%4.1f) |", an[ab], 100.0 * S.da_n[ab] / n, RA[ab][0], S.da_d[ab] / k, RA[ab][1], med(S.da_near[ab]), RA[ab][2], med(S.da_deep[ab]), RA[ab][3]);
+                                for (int r = 0; r < 6; ++r) std::printf(" %5.1f (%5.1f)", med(S.da_ro[ab][r]), RA[ab][4 + r]);
+                            }
+                            std::printf("\n     §8.326 the deep ball in the middle, the other side by role CB FB DM/CM AM WIDE ST: m on from the ball med");
+                            for (int r = 0; r < 6; ++r) std::printf(" %5.1f", med(S.dc_ro[r]));
+                            std::printf(" | m off its own line med"); for (int r = 0; r < 6; ++r) std::printf(" %5.1f", med(S.dc_rm[r]));
+                            std::printf(" || by a touchline, m off its own line med"); for (int r = 0; r < 6; ++r) std::printf(" %5.1f", med(S.dw_rm[r]));
+                        }
                         {   // §8.325 — real: benchmarks_tracking_deepwide.py THE OTHER SIDE BY ROLE
                             static const double RR[6][5] = {{2.22, 5.9, 38.7, 33.0, 9.6}, {1.61, 15.3, 36.0, 26.2, 12.3}, {2.05, 26.0, 25.5, 18.3, 13.4}, {0.70, 65.2, 18.6, 5.9, 12.4}, {1.96, 53.1, 23.7, 9.0, 11.2}, {1.42, 85.1, 18.8, 1.1, 10.2}};
                             static const char* rn6[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};

@@ -60,7 +60,12 @@ def one(pos_path):
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
     c = collections.Counter(); L = collections.defaultdict(list)
-    for k, b in ball.items():
+    age = 0; prev = None   # G5.220 (§8.326): 5 Hz frames this deep wide spell has run (same side, contiguous)
+    for k in sorted(ball):
+        b = ball[k]
+        dwf = b is not None and half - own[(k[0], b[2])] * b[0] < 35 and abs(b[1]) >= 20.16
+        age = age + 1 if (dwf and prev is not None and prev[0] == k[0] and k[1] - prev[1] == 5 and prev[2] == b[2]) else 0
+        prev = (k[0], k[1], b[2]) if dwf else None
         if b is None: continue
         t = b[2]; sg = own[(k[0], t)]
         bm = half - sg * b[0]
@@ -71,6 +76,8 @@ def one(pos_path):
                 if pid in keepers or who.get(pid) != 1 - t: continue
                 pm = half - sg * p[0]
                 near = min(near, math.hypot(p[0] - b[0], p[1] - b[1])); deep = max(deep, pm); c["cdn0"] += pm - bm < 10
+                rr = ROLE.get(pos_of.get(pid))
+                if rr is not None: L[f"cro{rr}"].append(pm - bm); L[f"crm{rr}"].append(length - pm)
             L["cnear"].append(near); L["cdeep"].append(length - deep)
             continue
         ys = 1 if b[1] >= 0 else -1
@@ -84,6 +91,8 @@ def one(pos_path):
                 dn[0 if on < 10 else 1 if on < 25 else 2 if on < 40 else 3] += 1
                 rr = ROLE.get(pos_of.get(pid))
                 if rr is not None:
+                    L[f"aro{rr}_{0 if age < 10 else 1 if age < 25 else 2}"].append(on)
+                    L[f"wrm{rr}"].append(length - pm)
                     c[f"dr{rr}"] += 1; c[f"dr{rr}_n"] += on < 10; L[f"drd{rr}"].append(math.hypot(p[0] - b[0], p[1] - b[1])); L[f"dro{rr}"].append(on); L[f"dry{rr}"].append(ye)
                 near = min(near, math.hypot(p[0] - b[0], p[1] - b[1])); deep = max(deep, pm)
                 continue
@@ -91,6 +100,8 @@ def one(pos_path):
             if r in (4, 5) and (r not in best or ye > best[r][0]): best[r] = (ye, pm, on)
         c["t0"] += tg[0]; c["t1"] += tg[1]; c["none"] += tg[0] == 0
         for q in range(4): c[f"dn{q}"] += dn[q]
+        ab = 0 if age < 10 else 1 if age < 25 else 2
+        c[f"an{ab}"] += 1; c[f"ad{ab}"] += dn[0]; L[f"anear{ab}"].append(near); L[f"adeep{ab}"].append(length - deep)
         L["near"].append(near); L["deep"].append(length - deep); L["gap"].append(deep - bm)
         for r, (ye, pm, on) in best.items():
             c[f"r{r}"] += 1; c[f"l{r}_{lane(ye)}"] += 1
@@ -115,6 +126,11 @@ if __name__ == "__main__":
     for r, nm in enumerate(("CB", "FB", "DM/CM", "AM", "WIDE", "ST")):
         k = max(1, c[f"dr{r}"])
         print(f"    {nm:6s} {c[f'dr{r}'] / n:.2f} | {100 * c[f'dr{r}_n'] / k:5.1f} | {md(L[f'drd{r}']):5.1f} | {md(L[f'dro{r}']):5.1f} | {md(L[f'dry{r}']):+5.1f}")
+    print("  BY THE SPELL'S AGE (s the ball has been deep and wide) 0-2 / 2-5 / 5+: share of frames % | the other side's men under 10 m on | nearest man med | last man m off its line med | m on from the ball med by role CB FB DM/CM AM WIDE ST")
+    for ab, nm in enumerate(("0-2", "2-5", "5+")):
+        print(f"    {nm:4s} {100 * c[f'an{ab}'] / n:4.1f} | {c[f'ad{ab}'] / max(1, c[f'an{ab}']):.2f} | {md(L[f'anear{ab}']):4.1f} | {md(L[f'adeep{ab}']):4.1f} | " + " ".join(f"{md(L[f'aro{r}_{ab}']):5.1f}" for r in range(6)))
+    print("  DEEP BALL IN THE MIDDLE, the other side by role CB FB DM/CM AM WIDE ST: m on from the ball med " + " ".join(f"{md(L[f'cro{r}']):5.1f}" for r in range(6))
+          + " | m off its own line med " + " ".join(f"{md(L[f'crm{r}']):5.1f}" for r in range(6)) + " || by a touchline, m off its own line med " + " ".join(f"{md(L[f'wrm{r}']):5.1f}" for r in range(6)))
     q = lambda v, f: sorted(v)[int(f * len(v))] if v else float("nan")
     print(f"  DEEP BALL, CENTRE v WIDE — the other side's nearest man to the ball p25/med/p75: centre {q(L['cnear'], .25):.1f}/{q(L['cnear'], .5):.1f}/{q(L['cnear'], .75):.1f} | wide {q(L['near'], .25):.1f}/{q(L['near'], .5):.1f}/{q(L['near'], .75):.1f} "
           f"|| its men under 10 m on from the ball: centre {c['cdn0'] / max(1, c['cn']):.2f} | wide {c['dn0'] / n:.2f} || its last man m off its own line med: centre {md(L['cdeep']):.1f} | wide {md(L['deep']):.1f} || s a team-match centre {c['cn'] / 5 / (2 * len(files)):.1f}")
