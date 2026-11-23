@@ -12263,3 +12263,27 @@ the G5.89 drift (§8.190) sends him there only with the ball 35-70 m off their l
 men up that side, not two** (2.97 v 1.80): a real block steps up on a deep wide ball, ours waits behind it — why our
 long ball down the side finds two opponents under it and still completes above real is next after the striker. Next:
 the striker's drift to the ball's wing with the ball deep and wide, at the real share. Harness only; tests 23/23.
+
+### 8.322 G5.216 — the striker pulls out to the wing on a deep wide ball (mig 1671; shipped)
+
+From §8.321. `Possession.cpp` (support spot, before the G5.89 drift): with the ball within 35 m of our own line and
+20.16 m+ off the centre line a striker rolls once a spell (`physics.drift.deep_st_p`, 0 = off) to go to the real spot
+of the striker in that wing — 24.2 m off the centre line on the ball's side, 57.5 m off their goal line
+(`deep_st_y` / `deep_st_m`, DFL). A deep wide spell is short and he has ~15 m to cross, so the frame share comes out
+well under the roll. Seeds 1000-4000 × 8, ruler of §8.321 (DFL in brackets):
+
+| the ST nearest the ball's touchline | G5.214 | roll 0.5 | roll 1 | real |
+|---|---|---|---|---|
+| his wing / his channel / centre | 4 / 57 / 38% | 11.5 / 55 / 32% | 18.7 / 53 / 28% | 26 / 39 / 30% |
+| across med | +8.7 | +9.3 | +11.5 | +11.7 |
+| our men up the line, mean / none | 1.10 / 38% | 0.98 / 40% | 1.18 / 36% | 1.16 / 36% |
+| the wide kicker's long ball: a team-match / his wing | 3.80 / 44% | 3.42 / 46% | 3.94 / 46% | 4.98 / 51% |
+| throw-ins / goals / offsides a team-match | 17.5 / 1.95 / 1.58 | 17.9 / 2.12 / 1.08 | 18.2 / 2.05 / 1.28 | 23.1 / 1.35 / 1.96 |
+| card | 12 / 6 / 15 | 13 / 6 / 14 | 12 / 8 / 13 | |
+
+Row 1 (always): his median across and his centre share are real; the wing share is still 7 points short (he is on his
+way), the channel over by the same. The long ball down the side barely notices (his wing 44 → 46%, not completed
+unchanged) — the striker was not what held it back. What is left on that ball is on the other side of it: **three
+opponents up that side where a real block has 1.8** (§8.321) — theirs sit under the drop and ours still completes
+(not completed 41-61% v 72). Shipped (mig 1671, `card_G5.216.txt`). Next: where the other side's block stands on a
+deep wide ball — its line's height and the men up the ball's side, DFL v ours. Tests 23/23.

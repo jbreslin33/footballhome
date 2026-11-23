@@ -1636,6 +1636,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
             drift_tl[z][r][t] = p.fixed(k + "_m", kTl[z][r][t]);
             drift_y[z][r][t] = p.fixed(k + "_y", kY[z][r][t]);
         }
+        drift_deep_p = p.fixed("physics.drift.deep_st_p", 0);   // G5.216 (§8.322)
+        drift_deep_tl = p.fixed("physics.drift.deep_st_m", 57500); drift_deep_y = p.fixed("physics.drift.deep_st_y", 24200);
         drift_on = p.fixed("physics.drift.on", 1000).raw > 0;
     }
     {   // G5.125 (§8.226): DFL benchmarks_tracking_wingmates.py, the ball wide (|y| 20.16+) 18-35 / 35-52 m off their
@@ -1827,6 +1829,19 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
     // G5.89 (§8.190): the striker / AM's drift into their wide channel on the ball's side — real
     // ones stand there 4-13% of the time with the ball 35-70 m out (ours: ST 0-3%, AM never). One
     // roll a man a spell a ball zone, against the real share; he takes the real spot. [FH, DFL]
+    // G5.216 (§8.322): and with the ball deep and wide (within 35 m of our line, 20.16 m+ off the centre line) the striker
+    // pulls out to that wing — the real one nearest that touchline is in the wing lane 26% of such frames (ours 4%), at
+    // 24.2 m off the centre line and 57.5 m off their line (DFL, benchmarks_tracking_deepwide.py): the target of the long
+    // ball down the side (StatsBomb: aimed at a striker 52%). One roll a striker a spell. physics.drift.deep_st_p 0 = off.
+    if (params_.drift_on && params_.drift_deep_p.raw > 0 && v.role_ours == Role::ST && off_their >= Fixed64::fromInt(70)
+        && math::fx_abs(world.ball().pos.y) >= Fixed64::fromFraction(2016, 100)) {
+        const Fixed64 u = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 83) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+        if (u < params_.drift_deep_p) {
+            const Fixed64 side = world.ball().pos.y.raw >= 0 ? Fixed64::one() : -Fixed64::one();
+            if (v.slot < 32) spot_branch_[v.slot] = 1;
+            return Vec2{(hx - params_.drift_deep_tl) * v.sg, side * params_.drift_deep_y};
+        }
+    }
     if (params_.drift_on && (v.role_ours == Role::ST || v.role_ours == Role::AM)) {
         const Fixed64 by = world.ball().pos.y;
         const bool wide = math::fx_abs(by) >= Fixed64::fromFraction(2016, 100);
