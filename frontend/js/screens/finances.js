@@ -149,11 +149,13 @@ class FinancesScreen extends Screen {
   _scopeOk(code) { const set = this._inScope(); return !set || set.has(code || 'club'); }
   _whoPillsHtml() {
     const esc = (t) => this.escapeHtml(t), scopes = (this.flow || {}).scopes || [], scope = this.scope;
-    const picked = scopes.find(sc => sc.code === scope), top = picked ? (picked.parent || picked.code) : null;
-    const kids = top ? scopes.filter(sc => sc.parent === top) : [];
+    // the picked pill and everything above it; one row of pills under each
+    // (mig 1751: Men's › Cups › each cup competition)
+    const chain = []; for (let c = scopes.find(sc => sc.code === scope), i = 0; c && i < 10; c = scopes.find(sc => sc.code === c.parent), i++) chain.unshift(c.code);
     const pill = (code, label, on) => `<button class="fn-pill ${on ? 'on' : ''}" data-scope="${esc(code)}">${esc(label)}</button>`;
-    return `<div class="fn-pills">${pill('all', this._copy('pill_all') || 'All', scope === 'all')}${scopes.filter(sc => !sc.parent).map(sc => pill(sc.code, sc.label, sc.code === top)).join('')}</div>
-      ${kids.length ? `<div class="fn-pills sub">${kids.map(sc => pill(sc.code, sc.label, sc.code === scope)).join('')}</div>` : ''}`;
+    const row = (of) => { const kids = scopes.filter(sc => sc.parent === of); return kids.length ? `<div class="fn-pills sub">${kids.map(sc => pill(sc.code, sc.label, chain.includes(sc.code))).join('')}</div>` : ''; };
+    return `<div class="fn-pills">${pill('all', this._copy('pill_all') || 'All', scope === 'all')}${scopes.filter(sc => !sc.parent).map(sc => pill(sc.code, sc.label, chain[0] === sc.code)).join('')}</div>
+      ${chain.map(row).join('')}`;
   }
 
   _renderPills() {
@@ -307,7 +309,9 @@ class FinancesScreen extends Screen {
     const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
     const coachingLabel = this._copy('coaching_label') || 'Coaching';
     const items = [];   // { category, category_label, label, detail, unit, amount, assumed, note }
-    for (const l of lines) items.push({ category: l.category, category_label: l.category_label, label: `${l.short_label || l.team} — ${l.label}`,
+    // a competition of its own (mig 1751: each cup) is named by its competition, a team's by the team
+    const compOf = (l) => { const sc = scopes0.find(x => x.code === l.scope); return sc && !sc.team_id && !sc.section_code && sc.parent ? sc.label : (l.short_label || l.team); };
+    for (const l of lines) items.push({ category: l.category, category_label: l.category_label, label: `${compOf(l)} — ${l.label}`,
       detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, unit: `${l.unit_label || ''}${l.team_count == null ? '' : ` × ${this._copy('plan_team_count') || 'teams'}`}`,
       amount: Number(l.amount), assumed: l.is_assumed, note: l.note });
     for (const b of general) items.push({ category: b.category, category_label: b.category_label, label: b.section ? `${b.section} — ${b.label}` : b.label,
@@ -1122,13 +1126,12 @@ class FinancesScreen extends Screen {
       const b = map.get(scope); if (!b.blocks.has(blockKey)) b.blocks.set(blockKey, { label: blockLabel, lines: [] });
       b.blocks.get(blockKey).lines.push(line);
     };
-    // team fee plans: one block per entry's league for Cups, else one per team
+    // team fee plans: one band per competition (mig 1751: each cup is its own)
     for (const l of (x.plan || []).filter(l => l.budget_year === year && mens.has(l.scope) && l.category !== 'bonds')) {
       const line = { label: l.scope === 'apsl' && l.short_label && l.short_label !== 'APSL' ? `${l.short_label} — ${l.label}` : l.label, detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, amount: Number(l.amount || 0), assumed: l.is_assumed, note: l.note, by: planBy(l) };
-      const block = l.scope === 'cups' ? `cup:${l.league}` : l.scope;
-      const label = l.scope === 'cups' ? l.league : scopeLabel(l.scope);
+      const block = l.scope, label = scopeLabel(l.scope);
       // a later year's game coaching sits on the plans: into the Coaching band
-      if (l.fee_kind === 'game_coaching' && !l.is_option) put(bands, 'coaching', 'coaching', this._copy('pm_coaching') || 'Coaching', { ...line, coach: 'games', label: this._copy('plan_game_coaching', { label: l.scope === 'cups' ? l.league : scopeLabel(l.scope) }) || `Game coaching — ${scopeLabel(l.scope)}` });
+      if (l.fee_kind === 'game_coaching' && !l.is_option) put(bands, 'coaching', 'coaching', this._copy('pm_coaching') || 'Coaching', { ...line, coach: 'games', label: this._copy('plan_game_coaching', { label: scopeLabel(l.scope) }) || `Game coaching — ${scopeLabel(l.scope)}` });
       else put(l.is_option ? options : bands, l.scope, block, label, line);
     }
     // budget lines under Men's (kits, practice coaching …): their own scope's band
@@ -1306,7 +1309,7 @@ class FinancesScreen extends Screen {
     const costsNoFee = outTotal.tot - laFees.tot;
     const needPre = gross(costsNoFee - casaV.tot), needPost = gross(costsNoFee - casaV.tot - grantV.tot);
     const colors = { coaching: '#f97316', apsl: '#3b82f6', liga1: '#22c55e', u23: '#a855f7', cups: '#f59e0b', liga2: '#14b8a6', temple7s: '#ec4899', mens: '#94a3b8', share: '#64748b', in: '#22c55e' };
-    const col = (code) => colors[code] || '#94a3b8';
+    const col = (code) => colors[code] || colors[((((this.flow || {}).scopes) || []).find(sc => sc.code === code) || {}).parent] || '#94a3b8';
     const pm = (t) => N > 0 && Math.abs(t) >= 0.5 ? `${M0(perMan(t, N))}` : '';
     const nCols = 3 + (yearView ? 1 : cols.length) + (multi ? 1 : 0);
     // the money cells of a row: one per column, then the Total when several
