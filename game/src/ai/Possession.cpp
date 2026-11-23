@@ -528,6 +528,17 @@ public:
                     Fixed64 hw = wgt;
                     if (P.mark_hi_on && j < 32 && pick[j].raw > 0 && zsum_hi[wi].raw > 0)
                         hw = wgt * (pick_hi[j] / zsum_hi[wi]) / (pick[j] / zsum[wi]);
+                    // G5.214 (§8.320): the long ball from the back goes down the kicker's own side — real wide men end 84% of
+                    // theirs in their own wing or channel (StatsBomb PL 15/16, benchmarks_statsbomb_longball_across.py); a lift
+                    // by where he stands across the pitch (centre |y| < 10 / half / wide 20.16+) x the lane the aim is in,
+                    // signed to his side (his wing / his channel / centre +-7 / far channel / far wing). Rows; 1 = off.
+                    if (own_end < Fixed64::fromInt(35) && d >= Fixed64::fromInt(30)) {
+                        const Fixed64 ay0 = math::fx_abs(sp.y), ye = sp.y.raw >= 0 ? lf.at.y : -lf.at.y;
+                        const Fixed64 wl = Fixed64::fromFraction(2016, 100), cl = Fixed64::fromInt(7);
+                        const int kb = ay0 < Fixed64::fromInt(10) ? 0 : ay0 < wl ? 1 : 2;
+                        const int ln = ye >= wl ? 0 : ye >= cl ? 1 : ye > -cl ? 2 : ye > -wl ? 3 : 4;
+                        hw = hw * P.long_lane[kb][ln];
+                    }
                     add(Cand{j, lsafe ? hw * ph : hw * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
             } else if (wgt.raw > 0) {
@@ -1559,6 +1570,8 @@ void PossessionParams::configure(const core::ModelParams& p) {
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     risk_own3 = p.fixed("physics.pass.risk_own3", 0);   // G5.202 (§8.308), 0 = risk_weight everywhere
     long_beyond = p.fixed("physics.pass.long_beyond", 0);   // G5.212 (§8.318)
+    for (int b = 0; b < 3; ++b)   // G5.214 (§8.320)
+        for (int l = 0; l < 5; ++l) long_lane[b][l] = p.fixed("physics.pass.long_lane_" + std::to_string(b) + "_" + std::to_string(l), 1000);
     reach_max = p.fixed("physics.pass.reach_max_m", 50000);   // G5.210 (§8.316): row 55 (mig 1645)
     diag_lo = p.fixed("physics.diag.lo_m", 35000); diag_hi = p.fixed("physics.diag.hi_m", 70000);   // G5.210: the §8.284 diag's band (no behaviour)
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.210 (§8.316): row 1 (mig 1645) — own-third long balls completed ~2x real at 0.6. G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail

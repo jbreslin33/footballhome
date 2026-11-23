@@ -120,6 +120,9 @@ struct PossessionParams {
     // G5.145 (§8.249): a pass under 20 m x this by the passer's band off their line (0-18 ... 70+) and its direction
     // (forward / lateral / back, 45 deg cones); 1 = off. Fitted to StatsBomb SHORT PASSES.
     math::Fixed64 short_dir[5][3]{};
+    // G5.214 (§8.320): a 30 m+ high pass from our own third x this by the kicker's spot across (centre / half / wide) and the
+    // lane its aim is in on his side (his wing / his channel / centre / far channel / far wing); 1 = off. Fitted to StatsBomb LONG PASS ACROSS.
+    math::Fixed64 long_lane[3][5]{};
     math::Fixed64 long_beyond{};   // G5.212 (§8.318): a 30 m+ high ball from our own third lands beyond the man by the real offsets x this (0 = to the man)
     math::Fixed64 reach_max{math::Fixed64::fromInt(50)};   // G5.210: the longest pass he aims, m (no row = 50; capped by his kick range)
     math::Fixed64 diag_lo{math::Fixed64::fromInt(35)}, diag_hi{math::Fixed64::fromInt(70)};   // G5.210: the §8.284 pass diag's band, m off their line (diag only)

@@ -12208,3 +12208,34 @@ fewer (3.2 v 5.0), and his go inside (centre lane 36% v 11, his side 44% v 84), 
 34-40% v 67-72). The real long ball from the back is the ball down the line: the safe side (a miss is a throw-in up
 the pitch, not a counter through the middle) and the low-percentage one. Next: the wide man's long ball goes down his
 own side — the aim's lane by the kicker's spot — and the same ruler. Harness only; tests 23/23.
+
+### 8.320 G5.214 — the long ball from the back goes down the kicker's own side (mig 1663; shipped)
+
+From §8.319. `Possession.cpp`: a high pass of 30 m+ from within 35 m of our own goal × `physics.pass.long_lane_<k>_<l>`
+— by where the kicker stands across the pitch (k: centre |y| < 10 / half / wide 20.16+) and the lane its aim is in,
+signed to his side (l: his wing / his channel / centre ±7 / far channel / far wing); 1 = off. The lane is the aim's
+after §8.318's move beyond the man. Fitted in two rounds of real / ours on the §8.319 ruler (volume folded in):
+
+| kicker | his wing | his channel | centre | far channel | far wing |
+|---|---|---|---|---|---|
+| centre | 0.50 | 0.65 | 0.31 | 0.27 | 0.41 |
+| half | 6.2 | 2.6 | 0.78 | 0.38 | 0.74 |
+| wide | 7.9 | 4.0 | 0.45 | 0.155 | 0.32 |
+
+Seeds 1000-4000 × 8 — share % [not completed %], StatsBomb PL 15/16 in brackets:
+
+| kicker | a team-match | end \|y\| med | his wing | his channel | centre | far channel | far wing |
+|---|---|---|---|---|---|---|---|
+| centre | 3.58 → 2.00 (1.93) | 15.8 → 17.6 (18.8) | 22 (28) [46 (64)] | 26 (21) [55 (71)] | 18 (18) [58 (73)] | 16 (14) [58 (75)] | 19 (19) [56 (45)] |
+| half | 2.48 → 2.98 (3.27) | 14.7 → 19.0 (18.5) | 38 (34) [57 (72)] | 21 (29) [63 (73)] | 21 (17) [42 (72)] | 12 (10) [47 (55)] | 9 (10) [63 (35)] |
+| wide | 3.23 → 3.80 (4.98) | 12.1 → 18.9 (21.0) | 44 (51) [59 (72)] | 33 (33) [48 (72)] | 18 (11) [42 (67)] | 4 (3) [50 (49)] | 2 (2) [31 (30)] |
+| 50+ m | 2.94 → 2.94 (2.64) | 11.3 → 18.9 (19.9) | 32 (34) | 30 (28) | 16 (13) | 10 (9) | 12 (15) |
+
+The wide man's long ball stays on his side 44 → 77% (84). Card 10 / 7 / 16 → 12 / 6 / 15 (`card_G5.214.txt`): switches
+11.55 → 10.44 (10.69), goals from 25 m+ and inside 12 m back inside real, goals 1.98 → 1.95, corners 3.06 → 3.14,
+throw-ins 16.8 → 17.5 (23.1). Open: lifts of 6-8 on the wide man's own wing still leave it short (44 v 51%, his volume
+3.8 v 5.0) — a weight cannot aim at a man who is not there. Who the real one is for (StatsBomb, the wide kicker's ball
+to his own wing or channel, 4.2 a team-match): hit by a full-back 46% / a centre-back 36%, aimed at a **striker** 52%,
+a winger or wide midfielder 15%, a central midfielder 8%; it ends 61 m up the pitch (p25-p75 51-71). And ours on his
+side still complete more (not completed 48-59% v 72). Next: the striker in the ball-side channel when his full-back or
+centre-back has it deep and wide — where real strikers stand then (DFL), ours beside it. Tests 23/23.
