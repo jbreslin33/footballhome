@@ -12239,3 +12239,27 @@ to his own wing or channel, 4.2 a team-match): hit by a full-back 46% / a centre
 a winger or wide midfielder 15%, a central midfielder 8%; it ends 61 m up the pitch (p25-p75 51-71). And ours on his
 side still complete more (not completed 48-59% v 72). Next: the striker in the ball-side channel when his full-back or
 centre-back has it deep and wide — where real strikers stand then (DFL), ours beside it. Tests 23/23.
+
+### 8.321 G5.215 — with the ball deep and wide, the real striker pulls out to that wing a quarter of the time; ours never does (measured; no game change)
+
+From §8.320 (the down-the-line ball is aimed at a striker 52%). New `scripts/benchmarks_tracking_deepwide.py` (DFL, 7
+matches, roles by PlayingPosition): every 5 Hz frame in which the side in possession has the ball within 35 m of its
+own line and 20.16 m+ off the centre line; every man signed to the ball's side. Harness §8.321 DEEP WIDE BALL the
+same. Seeds 1000-4000 × 8, G5.214 (DFL in brackets):
+
+| | ours | real |
+|---|---|---|
+| s a team-match | 115 | 149 |
+| our outfielders up the line (25 m+ on from the ball, on its side, across 7+): mean / none | 1.10 / 38% | 1.16 / 36% |
+| the other side's there, mean | 2.97 | 1.80 |
+| the ST nearest the ball's touchline: his wing / his channel / centre / far | 4 / 57 / 38 / 1% | 26 / 39 / 30 / 4% |
+| … across med, m off his own line, m on from the ball | +8.7, 55.0, 30.7 | +11.7, 54.1, 30.5 |
+| the WIDE man nearest it: his wing / his channel / centre | 86 / 14 / 1% | 71 / 23 / 5% |
+| … across med, m off his own line, m on from the ball | +25.8, 43.9, 19.7 | +25.3, 44.0, 20.5 |
+
+The count up the line is real and so is the wide man. Two faults. **Our striker never goes out to the wing** (4% v
+26; in his wing the real one stands 24.2 m off the centre line, 57.5 m off their goal line, the ball 24 m off ours) —
+the G5.89 drift (§8.190) sends him there only with the ball 35-70 m off their line. And **the other side has three
+men up that side, not two** (2.97 v 1.80): a real block steps up on a deep wide ball, ours waits behind it — why our
+long ball down the side finds two opponents under it and still completes above real is next after the striker. Next:
+the striker's drift to the ball's wing with the ball deep and wide, at the real share. Harness only; tests 23/23.

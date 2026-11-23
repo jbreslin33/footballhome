@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long dw_n = 0, dw_t[2] = {}, dw_none = 0, dw_r[2] = {}, dw_l[2][5] = {}; std::vector<double> dw_y[2], dw_m[2], dw_o[2];   // §8.321 DEEP WIDE BALL [ST / WIDE]
     long la_n[6] = {}, la_c[6][5][2] = {}; std::vector<double> la_ay[6], la_dx[6];   // §8.319 LONG PASS ACROSS: [kicker centre / half / wide / 30-40 / 40-50 / 50+][lane][n, not completed]
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
    // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
@@ -2993,6 +2994,30 @@ int main(int argc, char** argv) {
             for (int b = 0; b < 6; ++b) { s_last_pdiag.pre[b] += pd.pre[b]; s_last_pdiag.post[b] += pd.post[b]; s_last_pdiag.n[b] += pd.n[b]; s_last_pdiag.cut[b] += pd.cut[b]; s_last_pdiag.chosen[b] += pd.chosen[b]; }
             s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec;
             for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
+        {   // §8.321 DEEP WIDE BALL (benchmarks_tracking_deepwide.py): the side in possession has the ball within 35 m of its own
+            // line and 20.16 m+ off the centre line; who is up the line, and the striker / wide man nearest that touchline
+            for (const auto& f : fl_f) {
+                const int t = f.a; const double gx = t == 0 ? -hx : hx, bm = std::fabs(gx - f.bx);
+                if (bm >= 35 || std::fabs(f.by) < 20.16) continue;
+                const double ys = f.by >= 0 ? 1.0 : -1.0;
+                ++S.dw_n; int tg[2] = {0, 0}; bool has[2] = {false, false}; double by_[2] = {}, bm_[2] = {}, bo_[2] = {};
+                for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
+                    if (W.isKeeper(p2)) continue;
+                    const bool us = W.player(p2).team == t; const double ugx = us ? gx : -gx;
+                    const double ye = f.y[p2] * ys, pm = std::fabs(gx - f.x[p2]), on = pm - bm; (void)ugx;
+                    if (on >= 25 && ye >= 7) ++tg[us ? 0 : 1];
+                    if (!us) continue;
+                    const int r = role(p2); if (r != 4 && r != 5) continue;
+                    const int q = r == 5 ? 0 : 1;
+                    if (!has[q] || ye > by_[q]) { has[q] = true; by_[q] = ye; bm_[q] = pm; bo_[q] = on; }
+                }
+                S.dw_t[0] += tg[0]; S.dw_t[1] += tg[1]; S.dw_none += tg[0] == 0;
+                for (int q = 0; q < 2; ++q) if (has[q]) {
+                    const double ye = by_[q]; ++S.dw_r[q]; ++S.dw_l[q][ye >= 20.16 ? 0 : ye >= 7 ? 1 : ye > -7 ? 2 : ye > -20.16 ? 3 : 4];
+                    S.dw_y[q].push_back(ye); S.dw_m[q].push_back(bm_[q]); S.dw_o[q].push_back(bo_[q]);
+                }
+            }
+        }
         {   // §8.314 LOSS THEN GOAL-SIDE (benchmarks_tracking_lossgoalside.py): a loss within 35 m of the loser's line; its
             // outfielders goal-side of the ball at 0 / 1 / 2 / 3 / 5 s while the other side keeps it (5 Hz, contiguous)
             const int F = static_cast<int>(fl_f.size()); static const int at[5] = {0, 5, 10, 15, 25};
@@ -3325,6 +3350,20 @@ int main(int argc, char** argv) {
                             std::printf("\n       by length m:");
                             for (int b = 0; b < 6; ++b) { const double k = std::max(1L, S.od_l[o][b][0]);
                                 std::printf("\n       %-8s %5.1f (%4.1f) | %3.0f (%3.0f) | %3.0f (%3.0f)", ln[b], 100.0 * S.od_l[o][b][0] / n, R[o][31 + 3 * b], 100.0 * S.od_l[o][b][1] / k, R[o][32 + 3 * b], 100.0 * S.od_l[o][b][2] / k, R[o][33 + 3 * b]); }
+                        }
+                    }
+                    {   // §8.321 DEEP WIDE BALL — real: benchmarks_tracking_deepwide.py (DFL, 7 matches)
+                        static const double R[2][8] = {{26.1, 39.3, 30.3, 3.9, 0.3, 11.7, 54.1, 30.5}, {70.6, 23.0, 4.6, 1.7, 0.2, 25.3, 44.0, 20.5}};
+                        static const char* rn[2] = {"ST", "WIDE"};
+                        const double n = std::max(1L, S.dw_n), tmo = std::max(1.0, 2.0 * matches);
+                        auto med = [](std::vector<double> v) { if (v.empty()) return -1.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
+                        std::printf("\n   §8.321 DEEP WIDE BALL (in possession, the ball within 35 m of our line and 20.16 m+ off the centre line; real DFL in brackets): %.1f s a team-match (149.4)", S.dw_n / 5.0 / tmo);
+                        std::printf("\n     targets up the line (25 m+ on from the ball, on its side, across 7+): ours mean %.2f (1.16), none %.1f%% (35.7) | theirs mean %.2f (1.80)", S.dw_t[0] / n, 100.0 * S.dw_none / n, S.dw_t[1] / n);
+                        for (int q = 0; q < 2; ++q) {
+                            const double k = std::max(1L, S.dw_r[q]);
+                            std::printf("\n     the %s nearest the ball's touchline: his wing %.1f (%.1f) | his channel %.1f (%.1f) | centre %.1f (%.1f) | far channel %.1f (%.1f) | far wing %.1f (%.1f) | across med %+.1f (%+.1f) | m off his line med %.1f (%.1f) | m on from the ball med %.1f (%.1f)  (frames with one %.0f%%)",
+                                        rn[q], 100.0 * S.dw_l[q][0] / k, R[q][0], 100.0 * S.dw_l[q][1] / k, R[q][1], 100.0 * S.dw_l[q][2] / k, R[q][2], 100.0 * S.dw_l[q][3] / k, R[q][3], 100.0 * S.dw_l[q][4] / k, R[q][4],
+                                        med(S.dw_y[q]), R[q][5], med(S.dw_m[q]), R[q][6], med(S.dw_o[q]), R[q][7], 100.0 * S.dw_r[q] / n);
                         }
                     }
                     {   // §8.319 LONG PASS ACROSS — real: benchmarks_statsbomb_longball_across.py (StatsBomb PL 15/16)
