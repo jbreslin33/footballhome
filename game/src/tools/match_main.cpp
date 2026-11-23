@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
     std::vector<double> dx_n[6], dx_f[6], dx_1[6], dx_w, dx_c; long dx_p[6] = {};   // §8.328 the other side across on a deep wide ball: a role's pair near / far, a lone man; the outfield's width, mean
@@ -3006,10 +3007,11 @@ int main(int argc, char** argv) {
         {   // §8.330 BAND TIME (benchmarks_tracking_bandtime.py): each in-play 5 Hz frame on a man (one of the side in possession
             // within 2 m of the ball) or travelling, by the ball's band off the line that side attacks; stints = the same man, contiguous
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
+            int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
             auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; } st_man = -1; };
             for (const auto& f : fl_f) {
                 const bool cont = pv && f.k == pv->k + 6;
-                if (!cont) close();
+                if (!cont) { close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; la_t = -1; } }
                 const int t = f.a; const double ax = t == 0 ? hx : -hx, tl = std::fabs(ax - f.bx);
                 const int z = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
                 int man = -1; double mdd = 2.0;
@@ -3021,8 +3023,14 @@ int main(int argc, char** argv) {
                 const double bs = cont ? std::hypot(f.bx - pv->bx, f.by - pv->by) * 5 : -1;
                 if (man >= 0) {
                     ++S.bt_on[z]; if (bs >= 0) { S.bt_bo[z].push_back(bs); S.bt_ms[z].push_back(std::hypot(f.x[man] - pv->x[man], f.y[man] - pv->y[man]) * 5); }
-                    if (st_man == man && cont) ++st_n; else { close(); st_man = man; st_z = z; st_n = 1; }
-                } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); }
+                    if (st_man == man && cont) ++st_n;
+                    else {
+                        close(); st_man = man; st_z = z; st_n = 1;
+                        if (la_t >= 0) { ++S.nx_n[la_z];
+                            if (la_t != t) ++S.nx_lost[la_z]; else { ++S.nx_to[la_z][z]; S.nx_air[la_z][z] += zmax >= 2.0; S.nx_d[la_z].push_back(la_tl - tl); } }
+                    }
+                    la_t = t; la_z = z; la_tl = tl; zmax = 0;
+                } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); zmax = std::max(zmax, static_cast<double>(f.bz)); }
                 pv = &f;
             }
             close();
@@ -3444,6 +3452,21 @@ int main(int argc, char** argv) {
                             const double on = S.bt_on[z] / 5.0 / tmo, tr = S.bt_tr[z] / 5.0 / tmo, k = std::max(1L, S.bt_k[z]);
                             std::printf("\n     %-6s %6.1f (%6.1f) | %6.1f (%6.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %.2f (%.2f) | %4.1f (%4.1f) || %.1f (%.1f) / %.1f (%.1f) | %.1f (%.1f)", zn5[z], on, R[z][0], tr, R[z][1], 100.0 * on / std::max(1e-9, on + tr), R[z][2],
                                         S.bt_k[z] / tmo, R[z][3], S.bt_ks[z] / 5.0 / k, R[z][4], 100.0 * S.bt_k3[z] / k, R[z][5], med(S.bt_bo[z]), R[z][6], med(S.bt_bt[z]), R[z][7], med(S.bt_ms[z]), R[z][8]);
+                        }
+                    }
+                    {   // §8.332 NEXT STINT — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
+                        static const double R[5][14] = {{69.1, 41.7, 5.8, 0.1, 0.1, 0.0, 35.6, 26.8, 100.0, 100.0, 0.0, 37.2, 15.1, 0.0}, {94.3, 16.3, 36.3, 7.2, 0.2, 0.2, 38.6, 16.7, 10.5, 33.3, 100.0, 32.1, 7.7, 3.1},
+                                                        {137.1, 0.9, 16.8, 41.4, 10.8, 0.7, 72.2, 37.6, 18.5, 15.0, 28.6, 23.6, 5.8, 1.9}, {170.7, 0.3, 2.8, 19.1, 44.2, 11.3, 71.4, 86.4, 41.2, 15.7, 9.3, 18.3, 4.1, 2.6},
+                                                        {218.5, 0.0, 0.5, 3.8, 16.2, 57.0, 100.0, 100.0, 95.7, 45.9, 14.7, 14.3, 8.1, 3.8}};
+                        static const char* zn5[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        auto med = [](std::vector<double> v) { if (v.empty()) return -1.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
+                        std::printf("\n   §8.332 NEXT STINT (from a stint ending in a band, the next stint; real DFL in brackets): the same side's in 0-18 / 18-35 / 35-52 / 52-70 / 70+ %% [in the air %%] | the other side's %% | play stopped %% || stints a team-match | the ball's m on, same side med");
+                        for (int z = 0; z < 5; ++z) {
+                            const double n = std::max(1L, S.nx_n[z]);
+                            std::printf("\n     %-6s", zn5[z]);
+                            for (int q = 0; q < 5; ++q) std::printf(" %4.1f (%4.1f) [%2.0f (%2.0f)] ", 100.0 * S.nx_to[z][q] / n, R[z][1 + q], 100.0 * S.nx_air[z][q] / std::max(1L, S.nx_to[z][q]), R[z][6 + q]);
+                            std::printf("| %4.1f (%4.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %+.1f (%+.1f)", 100.0 * S.nx_lost[z] / n, R[z][11], 100.0 * S.nx_dead[z] / n, R[z][12], S.nx_n[z] / tmo, R[z][0], med(S.nx_d[z]), R[z][13]);
                         }
                     }
                     {   // §8.329 THE CHANNEL AHEAD — real: benchmarks_tracking_channel.py (DFL, 7 matches)

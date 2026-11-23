@@ -12531,3 +12531,25 @@ the real pace. But the midfield surplus does not move: slowing him is not what k
 all are real (704 v 689 a team-match); it is where they are — 49 fewer in our own third, 91 more in 35-70 m, 25 fewer
 in their last 18. Next: from a stint in our own third, where the next stint is (same band / the next / beyond) and
 how (pass on the ground, in the air, carried) — DFL beside ours — the ball's way out of the back. Tests 23/23.
+
+### 8.332 G5.226 — out of our own third we move the ball like a real side; in midfield we keep it too safely (measured; no game change)
+
+From §8.331. `benchmarks_tracking_bandtime.py` + harness gain NEXT STINT: from a stint (§8.330) ending in a band, the
+next stint — the same side's by band (in the air = the ball rose past 2 m between), the other side's, or play stopped
+first. Seeds 1000-4000 × 8, G5.225 (DFL in brackets):
+
+| from (m off the line attacked) | same band | one band on | one band back | the other side's | play stopped | stints a team-match |
+|---|---|---|---|---|---|---|
+| 70+ | 57.9 (57.0) | 17.0 (16.2) | – | 11.7 (14.3) | 8.1 (8.1) | 168 (219) |
+| 52-70 | 55.4 (44.2) | 14.9 (19.1) | 10.7 (11.3) | 12.3 (18.3) | 5.0 (4.1) | 208 (171) |
+| 35-52 | 50.8 (41.4) | 12.5 (16.8) | 13.6 (10.8) | 16.2 (23.6) | 5.6 (5.8) | 187 (137) |
+| 18-35 | 41.7 (36.3) | 11.2 (16.3) | 13.3 (7.2) | 25.2 (32.1) | 7.8 (7.7) | 96 (94) |
+| 0-18 | 33.7 (41.7) | – | 8.7 (5.8) | 36.2 (37.2) | 20.7 (15.1) | 44 (69) |
+
+The way out of our own third is real in every cell (so §8.331's "what empties the back" was the wrong question: fewer
+stints start there because the other side loses it there less). The fault is the three bands after it: the next
+stint is ours in the same band 10 points more often (52-70, 35-52), one band on 4-5 points less, the other side's 6-8
+points less; from 18-35 m it comes back out twice as often (13.3 v 7.2%). A real side in midfield tries to go on and
+loses it; ours keeps it — the chain's fixed point is the midfield (§8.330's 622 s v 383) and pass completion 81.2% v
+77.5. Next: the pass the race read says they win, from midfield — tried at `risk_weight` 0.25 of its share
+(§8.316 did the high ball) — its real share. Harness only; tests 23/23.
