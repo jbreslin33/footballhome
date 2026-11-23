@@ -23,7 +23,8 @@
 //
 // Wording: message_templates kind 'finances'.
 class FinancesScreen extends Screen {
-  constructor(navigation, auth) { super(navigation, auth); this.summary = null; this.expenses = null; this.flow = null; this.view = 'plan'; this.err = ''; this.expanded = new Set(); this.scope = 'all'; }
+  // only = one view as a page of its own, no report pills (#groups, mig 1753)
+  constructor(navigation, auth, only = '') { super(navigation, auth); this.only = only; this.summary = null; this.expenses = null; this.flow = null; this.view = only || 'plan'; this.err = ''; this.expanded = new Set(); this.scope = 'all'; }
 
   render() {
     const div = document.createElement('div');
@@ -67,6 +68,9 @@ class FinancesScreen extends Screen {
       const yp = e.target.closest('[data-plan-year]'); if (yp) { this.planYear = yp.dataset.planYear; this._renderBody(); return; }
       // 🧮 Program budgets (mig 1639): program pill → its sub pills; a "paid for by" chip adds / drops a payer
       const bpay = e.target.closest('[data-pb-pay]'); if (bpay) { this._pbSaveTeam(Number(bpay.dataset.pbPay), bpay.dataset.program, bpay.dataset.on !== '1'); return; }
+      const ct = e.target.closest('[data-cp-top]'); if (ct) { this.cpTop = ct.dataset.cpTop; this.cpComp = ''; this._renderBody(); return; }
+      const cc = e.target.closest('[data-cp-comp]'); if (cc) { this.cpComp = cc.dataset.cpComp; this._renderBody(); return; }
+      const cy = e.target.closest('[data-cp-year]'); if (cy) { this.cpYear = cy.dataset.cpYear; this._renderBody(); return; }
       const bp = e.target.closest('[data-pb-prog]'); if (bp) { this.pbProg = bp.dataset.pbProg; this.pbSub = 'all'; this._renderBody(); return; }
       const bs = e.target.closest('[data-pb-sub]'); if (bs) { this.pbSub = bs.dataset.pbSub; this._renderBody(); return; }
       if (e.target.closest('[data-pb-on]')) return;   // a tick saves on change
@@ -119,15 +123,16 @@ class FinancesScreen extends Screen {
     try {
       if (window.MessageCopy) await MessageCopy.load(this.auth);
       this._renderPills();
+      // A page of its own loads only what it reads: #groups = the programs
+      // alone (_loadPrograms, from its view); #competitions = the plan lines
+      // and the scopes.  #finances reads all three + the fines board.
+      const need = this.only === 'groups' ? [] : this.only === 'competitions' ? ['expenses', 'cash-flow'] : ['summary', 'expenses', 'cash-flow'];
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
-      const finesP = this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
-      const [s, x, f] = await Promise.all(['summary', 'expenses', 'cash-flow'].map(p => this.auth.fetch(`/api/finances/${p}`)));
+      const finesP = this.only ? null : this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
+      const got = await Promise.all(need.map(async p => { const r = await this.auth.fetch(`/api/finances/${p}`), j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; }));
       this.finesBoard = await finesP;
-      const sj = await s.json().catch(() => ({})), xj = await x.json().catch(() => ({})), fj = await f.json().catch(() => ({}));
-      if (!s.ok) throw new Error(sj.error || `HTTP ${s.status}`);
-      if (!x.ok) throw new Error(xj.error || `HTTP ${x.status}`);
-      if (!f.ok) throw new Error(fj.error || `HTTP ${f.status}`);
-      this.summary = sj; this.expenses = xj; this.flow = fj;
+      const by = Object.fromEntries(need.map((p, i) => [p, got[i]]));
+      this.summary = by.summary || {}; this.expenses = by.expenses || {}; this.flow = by['cash-flow'] || {};
     } catch (err) { this.err = err.message; }
     this._renderBody();
   }
@@ -160,6 +165,7 @@ class FinancesScreen extends Screen {
 
   _renderPills() {
     const el = this.find('#fn-pills'); if (!el) return;
+    if (this.only) { el.innerHTML = ''; return; }
     const pills = [['position', this._copy('pill_position') || 'Statement of Financial Position'], ['activities', this._copy('pill_activities') || 'Statement of Activities'],
                    ['plan', this._copy('pill_plan') || 'Operating Budget'], ['variance', this._copy('pill_variance') || 'Budget vs Actual'], ['forecast', this._copy('pill_forecast') || 'Cash Flow Forecast'],
                    ['programs', this._copy('pill_programs') || '🧩 Programs'], ['budgets', this._copy('pill_budgets') || '🧮 Program budgets'], ['capacity', this._copy('pill_capacity') || '👥 Full capacity']];
@@ -173,7 +179,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'groups' ? this._pbHtml(true) : v === 'competitions' ? this._competitionsHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
   }
 
   // ── shared bits ──
@@ -683,6 +689,105 @@ class FinancesScreen extends Screen {
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       ${headline}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map((c, i) => `<th>${esc(this._copy(c) || colDefault[i])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
   }
+  // ── 🏆 Competitions (#competitions, mig 1754; owner 11/23 "call it a
+  // competition … this is where we gather facts … then u can roll them up as
+  // mens ref fees league/tourny fees").  One pill per paying side (Men's,
+  // Women's, Youth), under it one pill per competition it enters and a Total;
+  // a last Total = the club.  A competition = one budget scope in one league
+  // (APSL + its reserves list; U12 in each of its leagues).  Its page: the
+  // facts (price × how many, roster size, players the fee includes), the
+  // estimates (a price or a count that is assumed), the total, the league
+  // payments.  Read-only: every number is a team_fee_plan_lines row
+  // (expenses.plan) — no maths beyond adding them up.  Options are shown,
+  // never added in.
+  _competitionsHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2, C = (k, fb, tok) => this._copy(k, tok) || fb;
+    const x = this.expenses || {}, scopes = (this.flow || {}).scopes || [], thisYear = ((this.flow || {}).year || {}).label || '';
+    const years = [...new Set((x.plan || []).map(l => l.budget_year).filter(Boolean))].sort();
+    const year = years.includes(this.cpYear) ? this.cpYear : (years.includes(thisYear) ? thisYear : years[0]);
+    if (!year) return `<div class="fn-card"><div class="fn-note">${esc(C('cp_none', 'No competitions entered yet.'))}</div></div>`;
+    const sc = (code) => scopes.find(s => s.code === code) || {};
+    const topOf = (code) => { let c = code; for (let i = 0; i < 10 && sc(c).parent; i++) c = sc(c).parent; return c; };
+    const rankOf = (code) => { const i = scopes.findIndex(s => s.code === code); return i < 0 ? 999 : i; };
+    const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
+    // the competitions of the year
+    const comps = new Map();
+    for (const l of (x.plan || []).filter(l => l.budget_year === year && l.scope !== 'club')) {
+      // one competition = one scope in one league season (youth: fall, winter and spring are three)
+      const key = `${l.scope}|${l.league}|${l.season}`;
+      if (!comps.has(key)) comps.set(key, { key, scope: l.scope, league: l.league, season: l.season, from: l.season_start, to: l.season_end, top: topOf(l.scope), lines: [], option: true });
+      const c = comps.get(key); c.lines.push(l); if (!l.is_option) c.option = false;
+    }
+    const all = [...comps.values()].sort((a, b) => rankOf(a.scope) - rankOf(b.scope) || String(a.from).localeCompare(String(b.from)) || a.league.localeCompare(b.league));
+    // Game coaching, this year (a later year's is already on the plans): the
+    // coaching policies count games per TEAM and season — each policy season
+    // goes to the competition of that team it overlaps most; a tie is shared.
+    if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && Number(p.rate) > 0)) for (const se of (p.seasons || [])) {
+      const games = Number(se.expected || 0); if (!games) continue;
+      const days = (c) => Math.max(0, (Math.min(Date.parse(se.ends_on), Date.parse(c.to)) - Math.max(Date.parse(se.starts_on), Date.parse(c.from))) / 864e5 + 1);
+      const mine = all.filter(c => !c.option && (c.scope === p.team_scope || sc(c.scope).parent === p.team_scope) && days(c) > 0);
+      const best = Math.max(0, ...mine.map(days)), hit = mine.filter(c => days(c) === best);
+      for (const c of hit) c.lines.push({ category: 'labor', label: C('cp_game_coaching', 'Game coaching'), rate: Number(p.rate), quantity: games / hit.length, amount: Number(p.rate) * games / hit.length,
+        unit_label: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) || '', is_assumed: !!se.is_assumed || hit.length > 1, season: c.season,
+        note: [p.note, hit.length > 1 ? C('cp_coach_split', `coaching games are counted per team, shared evenly between its ${hit.length} competitions here`, { n: hit.length }) : ''].filter(Boolean).join(' — ') });
+    }
+    for (const c of all) {
+      c.label = all.filter(o => o.scope === c.scope).length > 1 ? `${sc(c.scope).label || c.scope} — ${c.season}` : (sc(c.scope).label || c.league);
+      c.cost = c.lines.filter(l => l.category !== 'bonds');
+      c.total = c.cost.reduce((a, l) => a + Number(l.amount || 0), 0);
+    }
+    if (!all.length) return `<div class="fn-card"><div class="fn-note">${esc(C('cp_none', 'No competitions entered yet.'))}</div></div>`;
+    const tops = [...new Set(all.map(c => c.top))].sort((a, b) => rankOf(a) - rankOf(b));
+    const top = this.cpTop === 'total' || tops.includes(this.cpTop) ? this.cpTop : tops[0];
+    const mine = all.filter(c => c.top === top);
+    const comp = top === 'total' ? 'total' : (this.cpComp === 'total' || mine.some(c => c.key === this.cpComp) ? this.cpComp : (mine[0] || {}).key);
+    const totalLabel = C('pb_total', 'Total'), optTag = C('cp_option', 'option');
+    const pill = (attr, code, label, on, dim) => `<button class="fn-pill ${on ? 'on' : ''} ${dim ? 'fn-dim' : ''}" ${attr}="${esc(code)}">${esc(label)}</button>`;
+    const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => pill('data-cp-year', y, y, y === year)).join('')}</div>`;
+    const topBar = `<div class="fn-pills">${tops.map(t => pill('data-cp-top', t, sc(t).label || t, t === top)).join('')}${pill('data-cp-top', 'total', totalLabel, top === 'total')}</div>`;
+    const subBar = top === 'total' ? '' : `<div class="fn-pills sub">${mine.map(c => pill('data-cp-comp', c.key, c.option ? `${c.label} (${optTag})` : c.label, c.key === comp, c.option)).join('')}${pill('data-cp-comp', 'total', totalLabel, comp === 'total')}</div>`;
+    const catName = (l) => l.category === 'labor' ? (this._copy('coaching_label') || 'Coaching') : String(l.category_label || l.category).replace(/:\s*$/, '');
+    const head = `<div class="fn-card"><div class="fn-title">${esc(C('cp_title', 'Competitions'))} · ${esc(year)}</div>
+      <div class="fn-note">${esc(C('cp_note', 'What each competition costs. A price or a count the league or vendor has set is a fact; one we are guessing is an estimate. The total is always worked out, never typed.'))}</div>${yearBar}${topBar}${subBar}`;
+    // Total: kinds of cost down, competitions (or paying sides) across; options left out
+    if (comp === 'total') {
+      const inPlay = (top === 'total' ? all : mine).filter(c => !c.option);
+      const cols = top === 'total' ? tops.map(t => ({ label: sc(t).label || t, lines: inPlay.filter(c => c.top === t).flatMap(c => c.cost) })) : inPlay.map(c => ({ label: c.label, lines: c.cost }));
+      const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean);
+      const cats = new Map(); for (const col of cols) for (const l of col.lines) if (!cats.has(l.category)) cats.set(l.category, catName(l));
+      const catList = [...cats.entries()].sort((a, b) => (order.indexOf(a[0]) < 0 ? 500 : order.indexOf(a[0])) - (order.indexOf(b[0]) < 0 ? 500 : order.indexOf(b[0])));
+      const sum = (lines, cat) => lines.filter(l => !cat || l.category === cat).reduce((a, l) => a + Number(l.amount || 0), 0);
+      const cell = (v, cls = '') => `<td class="${cls}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
+      const everything = cols.flatMap(col => col.lines);
+      const rows = catList.map(([code, label]) => `<tr><td>${esc(label)}</td>${cols.map(col => cell(sum(col.lines, code))).join('')}${cell(sum(everything, code), 'fn-out')}</tr>`).join('');
+      const skipped = (top === 'total' ? all : mine).filter(c => c.option).map(c => `${c.label} ${M0(c.total)}`);
+      return `${head}<div class="fn-title" style="margin-top:6px;">${esc(top === 'total' ? C('cp_total_club', 'Every competition, by kind of cost') : C('cp_total_side', `${sc(top).label || top} — every competition, by kind of cost`, { side: sc(top).label || top }))}</div>
+        <div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(C('cp_col_kind', 'Kind of cost'))}</th>${cols.map(col => `<th>${esc(col.label)}</th>`).join('')}<th>${esc(totalLabel)}</th></tr></thead>
+        <tbody>${rows}<tr class="sum"><td>${esc(totalLabel)}</td>${cols.map(col => cell(sum(col.lines))).join('')}${cell(sum(everything), 'fn-out')}</tr></tbody></table></div>
+        ${skipped.length ? `<div class="fn-note">${esc(C('cp_options_out', `Not added in (options): ${skipped.join(' · ')}`, { list: skipped.join(' · ') }))}</div>` : ''}</div>`;
+    }
+    // one competition
+    const c = mine.find(o => o.key === comp); if (!c) return `${head}</div>`;
+    const seasons = [...new Set(c.lines.map(l => l.season))].join(' · ');
+    const rosters = [...new Map(c.lines.filter(l => l.max_roster).map(l => [l.team_id, `${l.short_label || l.team} ${l.max_roster}`])).values()];
+    const included = c.lines.filter(l => Number(l.players_included) > 0).map(l => `${qty(l.players_included)} — ${l.label}`);
+    const bits = [`${c.league} ${seasons}`, C('cp_paid_by', `paid for by ${sc(c.top).label || c.top}`, { side: sc(c.top).label || c.top })];
+    if (c.option) bits.push(C('cp_option_note', 'an option — not in the budget'));
+    const fact = (label, value) => value ? `<tr><td>${esc(label)}</td><td colspan="5" style="text-align:left;">${esc(value)}</td></tr>` : '';
+    const lineRow = (l) => `<tr><td>${esc(l.team_id && c.lines.some(o => o.team_id !== l.team_id) ? `${l.short_label || l.team} — ${l.label}` : l.label)}${l.category === 'bonds' ? ` <span class="fn-dim">${esc(C('cp_refundable', '(refundable, not a cost)'))}</span>` : ''}</td>
+      <td>${M2(l.rate)}</td><td style="text-align:left;">${esc(l.unit_label || '')}</td><td>${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}</td><td class="fn-out">${M0(l.amount)}</td>
+      <td style="text-align:left; white-space:normal;" class="fn-note">${esc(l.note || '')}</td></tr>`;
+    const th = `<tr><th>${esc(C('cp_col_what', 'What'))}</th><th>${esc(C('cp_col_price', 'Price'))}</th><th>${esc(C('cp_col_per', 'Per'))}</th><th>${esc(C('cp_col_count', 'How many'))}</th><th>${esc(C('cp_col_amount', 'Amount'))}</th><th>${esc(C('cp_col_note', 'Note'))}</th></tr>`;
+    const block = (title, lines) => lines.length ? `<tr class="subtotal"><td colspan="4">${esc(title)}</td><td>${M0(lines.filter(l => l.category !== 'bonds').reduce((a, l) => a + Number(l.amount || 0), 0))}</td><td></td></tr>${lines.map(lineRow).join('')}` : '';
+    const facts = c.lines.filter(l => !l.is_assumed), guesses = c.lines.filter(l => l.is_assumed);
+    const pays = year === thisYear ? (x.plan_cash || []).filter(r => r.scope === c.scope && r.payments_of && r.hint) : [];
+    return `${head}<div class="fn-title" style="margin-top:6px;">${esc(c.label)} <span class="fn-note" style="font-weight:400;">${esc(bits.join(' · '))}</span></div>
+      <div style="overflow-x:auto;"><table class="fn-table"><thead>${th}</thead><tbody>
+        ${fact(C('cp_roster', 'Roster size'), rosters.join(' · '))}${fact(C('cp_included', 'Players the entry fee includes'), included.join(' · '))}
+        ${block(C('cp_facts', 'Facts — set by the league or vendor'), facts)}${block(C('cp_estimates', 'Estimates — a price or a count we are guessing'), guesses)}
+        <tr class="sum"><td colspan="4">${esc(totalLabel)}</td><td>${M0(c.total)}</td><td></td></tr></tbody></table></div>
+      ${pays.length ? `<div class="fn-title" style="margin-top:10px;">${esc(C('cp_payments', 'Payments to the league'))}</div><div class="fn-note" style="white-space:pre-line;">${esc(pays.map(r => r.hint).join('\n'))}</div>` : ''}</div>`;
+  }
   // ── 🧮 Program budgets (mig 1639; owner 11/20 "a pill for each program to
   // figure out budget. then on that pill we can have sub pills for 'inner'
   // club wide like boys/girls club wide or mens club wide. then also club wide
@@ -731,7 +836,12 @@ class FinancesScreen extends Screen {
     } catch (e) { this.pgMsg = e.message; }
     this._pgBusy = false; this._renderBody();
   }
-  _pbHtml() {
+  // dues = true is the 👥 Groups page (#groups, mig 1753; owner 11/23 "groups
+  // is total focused on money coming in from groups … or not coming in like
+  // dead beats … member dues based … no grants etc"): the same groups, their
+  // MEMBERS card only — who pays, who owes and doesn't, tuition month by
+  // month — and a Total pill that adds the groups up.  No costs, no grants.
+  _pbHtml(dues = false) {
     const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, C = (k, fb, tok) => this._copy(k, tok) || fb;
     if (this.pgErr) return `<div class="error-message">${esc(this.pgErr)}</div>`;
     this.pgScenario = 'expected'; this.programs = (this.programsBy || {}).expected || null;
@@ -739,6 +849,43 @@ class FinancesScreen extends Screen {
     const pg = this.programs, years = pg.years || [], year = this._pgYearNow(), b = pg.budgets[year]; if (!b) return '';
     const ss = b.seasons, progs = pg.programs || [];
     const money = (code) => ss.some(se => (((b.programs[code] || {})[se.code] || {}).parts || []).length);
+    // 👥 Groups: Men's · Women's · Youth · Total, the ages as pills under Youth (owner 11/23: "men, women,
+    // youth … the youth can expand to pills underneath … youth will give youth totals unless we select a
+    // single youth group").  🧮 Program budgets: every program in one row.
+    const pillOf = (code, label, on, dim) => `<button class="fn-pill ${on ? 'on' : ''} ${dim ? 'fn-dim' : ''}" data-pb-prog="${esc(code)}">${esc(label)}</button>`;
+    const youthProgs = progs.filter(x => x.kind === 'youth');
+    const progBarOf = (on) => {
+      if (!dues) return `<div class="fn-pills">${progs.map(x => pillOf(x.code, x.label, x.code === on, !money(x.code))).join('')}</div>`;
+      const inYouth = on === 'youth' || youthProgs.some(x => x.code === on);
+      return `<div class="fn-pills">${progs.filter(x => x.kind !== 'youth').map(x => pillOf(x.code, x.label, x.code === on, !money(x.code))).join('')}${youthProgs.length ? pillOf('youth', C('pg_youth_total', 'Youth'), inYouth) : ''}${pillOf('total', C('pb_total', 'Total'), on === 'total')}</div>
+        ${inYouth ? `<div class="fn-pills sub">${youthProgs.map(x => pillOf(x.code, x.label, x.code === on, !money(x.code))).join('')}</div>` : ''}`;
+    };
+    const title = dues ? C('gr_title', 'Groups') : C('pb_title', 'Program budgets');
+    const yearBar0 = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-pg-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
+    // Total = Men's, Women's, Youth and the club (one pool); Youth = each age and the youth total
+    if (dues && (this.pbProg === 'total' || this.pbProg === 'youth')) {
+      const all = this.pbProg === 'total', Z = () => ({ paid: 0, behind: 0, free: 0, all: 0, tuition: 0 }), sum = Z(), youth = Z();
+      const td = (v) => `<td>${Math.round(v) || '<span class="fn-dim">–</span>'}</td>`;
+      const tr = (label, t, cls) => `<tr class="${cls}"><td>${esc(label)}</td>${td(t.paid)}${td(t.behind)}${td(t.free)}${td(t.all)}<td class="fn-in">${Math.abs(t.tuition) >= 0.5 ? M0(t.tuition) : '<span class="fn-dim">–</span>'}</td></tr>`;
+      const of = (x) => {
+        const G = b.programs[x.code] || {}, plan = ss.filter(se => !se.real).map(se => G[se.code] || {}), mn = (plan[plan.length - 1] || {}).members_now || {};
+        const mo = Number((((pg.settings || {}).monthly || {})[x.kind]) || 0);
+        return { paid: Number(mn.paid_now || 0), behind: Number(mn.owing || 0) - Number(mn.paid_now || 0), free: Number(mn.free || 0), all: Number(mn.all || 0),
+          tuition: ss.reduce((a, se) => a + (se.real ? ((G[se.code] || {}).months_real || []).reduce((c, m) => c + Number(m.tuition || 0), 0)
+            : ((G[se.code] || {}).months || []).reduce((c, m) => c + Number(m.players || 0) * Number((G[se.code] || {}).collect_pct ?? 100) / 100 * mo, 0)), 0) };
+      };
+      let rows = '';
+      for (const x of progs) {
+        const t = of(x);
+        for (const k of Object.keys(t)) { sum[k] += t[k]; if (x.kind === 'youth') youth[k] += t[k]; }
+        if (all ? x.kind !== 'youth' : x.kind === 'youth') rows += tr(x.label, t, 'item');
+      }
+      if (all && youthProgs.length) rows += tr(C('pg_youth_total', 'Youth'), youth, 'item');
+      rows += all ? tr(C('pb_total', 'Total'), sum, 'sum') : tr(C('pg_youth_total', 'Youth'), youth, 'sum');
+      return `<div class="fn-card"><div class="fn-title">${esc(title)} · ${esc(year)}</div><div class="fn-note">${esc(C('gr_note', 'Member dues by group: who is paying and who is not. Every member is in one group only.'))}</div>${yearBar0}${progBarOf(this.pbProg)}
+        <div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(C('gr_col_group', 'Group'))}</th><th>${esc(C('gr_col_paid', 'Paying now'))}</th><th>${esc(C('gr_col_behind', 'Owe, not paying'))}</th><th>${esc(C('gr_col_free', "Don't pay"))}</th><th>${esc(C('gr_col_all', 'All members'))}</th><th>${esc(C('gr_col_tuition', 'Tuition for the year'))}</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>`;
+    }
     if (!progs.some(x => x.code === this.pbProg)) this.pbProg = (progs.find(x => money(x.code)) || progs[0] || {}).code;
     const p = progs.find(x => x.code === this.pbProg); if (!p) return '';
     this.pgProg = p.code;   // the plan grid's saves go to the open program
@@ -748,16 +895,19 @@ class FinancesScreen extends Screen {
     // its teams — not the age roster that carries the program's own name unless it has costs
     const teams = (pg.teams || []).filter(t => (t.programs || []).includes(p.code) && (t.label !== p.label || parts.some(l => l.level === 'team' && l.team === t.id)));
     const section = (parts.find(l => l.bucket === 'section') || {}).src || (p.kind === 'youth' ? C('pg_youth_total', 'Youth') : p.label);
-    const subs = [['all', C('pb_sub_all', 'Overview')], ['own', C('pb_sub_own', `${p.label} only`, { program: p.label })],
-      ...teams.map(t => [`team:${t.id}`, t.label]),
+    // sub pills = the shared things only; the group's own lines and the teams it plays in are blocks of the
+    // Overview, never pills (owner 11/23: "groups … just 'human' groups"; each competition's facts are on #competitions)
+    const subs = [['all', C('pb_sub_all', 'Overview')],
       ...(parts.some(l => l.bucket === 'coach') ? [['coach', C('pb_sub_coach', '🧑‍🏫 Shared coaches')]] : []),
       ['section', C('pb_sub_section', `${section}-wide`, { section })], ['club', C('pb_sub_club', 'Club-wide share')], ['grant', C('pb_sub_grant', 'Grants')]];
     if (!subs.some(([k]) => k === this.pbSub)) this.pbSub = 'all';
-    const sub = this.pbSub, subLabel = (subs.find(([k]) => k === sub) || [])[1] || '';
+    const sub = dues ? 'all' : this.pbSub, subLabel = (subs.find(([k]) => k === sub) || [])[1] || '';
     const sumOf = (list) => list.reduce((a, l) => a + Number(l.amount || 0), 0);
     const cell = (v, cls) => `<td class="${cls || ''}">${Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>'}</td>`;
     const players = ss.reduce((a, se) => Math.max(a, Number((P[se.code] || {}).players || 0)), 0);
     const progLabel = (code) => (progs.find(x => x.code === code) || {}).label || code;
+    const teamLabel = (l) => l.level === 'team' ? ((teams.find(t => t.id === l.team) || {}).label || '') : '';
+    const named = (l) => { const t = teamLabel(l), n = this._pbLineLabel(l); return t ? `${t} — ${n}` : n; };
     // a line's workings: Map detail → Set of season labels. When the seasons
     // differ, each is named ("Winter: 57 × $35 × 3 · Spring: 56 × …") — owner
     // 11/23: the bare formulas side by side were confusing.
@@ -795,31 +945,33 @@ class FinancesScreen extends Screen {
       const lines = new Map();   // key → { key, bucket, label, detail, computed, sign }
       const put = (bucket, id, label, detail, amount, sign, se) => {
         const key = `${bucket}|${id}`;
-        if (!lines.has(key)) lines.set(key, { key, bucket, label, details: new Map(), computed: 0, sign });
+        // key keeps the team (saved ticks / typed numbers stay put); show = the block it is listed in
+        if (!lines.has(key)) lines.set(key, { key, bucket, show: bucket.startsWith('team:') ? 'comp' : bucket, label, details: new Map(), computed: 0, sign });
         const r = lines.get(key); r.computed += Number(amount || 0); addDetail(r.details, detail, se);
       };
       for (const l of parts) {
         if (hours.length && l.category === 'labor' && (l.group === 'own' || l.group === 'shared')) continue;   // coaching comes from the hours
         const bucket = l.bucket === 'coach' ? 'coach' : l.bucket;
-        put(bucket, [l.group, l.category, l.key, l.label, l.src].join('|'), this._pbLineLabel(l), isDues(l) && duesText ? duesText : l.detail, l.amount, l.bucket === 'in' || l.bucket === 'grant' ? 1 : -1, isDues(l) && duesText ? '' : l.se);
+        put(bucket, [l.group, l.category, l.key, l.label, l.src].join('|'), named(l), isDues(l) && duesText ? duesText : l.detail, l.amount, l.bucket === 'in' || l.bucket === 'grant' ? 1 : -1, isDues(l) && duesText ? '' : l.se);
       }
       const hrs = (h) => C('pb_hours_detail', `${h.hours} h in ${h.days} days → ${Math.round(h.year_hours)} h a year × $${h.rate}`, { hours: h.hours, days: h.days, year: Math.round(h.year_hours), rate: h.rate });
       for (const h of hours) put('coach', `${h.kind}|${h.team}|${h.coach}`,
         h.kind === 'game' ? C('pb_coach_games', `Games — ${h.team} (${h.coach})`, { team: h.team, coach: h.coach }) : C('pb_coach_practice', `Practice (${h.coach})`, { coach: h.coach }), hrs(h), h.amount, -1);
       const blockOff = (k) => (adj[`b|${k}`] || {}).on === false;
-      const eff = (r) => { const a = adj[r.key] || {}; return blockOff(r.bucket) || a.on === false ? 0 : (a.amount != null ? Number(a.amount) : r.computed); };
+      const eff = (r) => { const a = adj[r.key] || {}; return blockOff(r.bucket) || blockOff(r.show) || a.on === false ? 0 : (a.amount != null ? Number(a.amount) : r.computed); };
       // coaching: practice first, then the games by team; every other block biggest first
-      const of = (k) => [...lines.values()].filter(r => r.bucket === k).sort((x, y) => k === 'coach' && hours.length
+      const of = (k) => [...lines.values()].filter(r => r.show === k).sort((x, y) => k === 'coach' && hours.length
         ? (x.key.includes('|practice|') ? 0 : 1) - (y.key.includes('|practice|') ? 0 : 1) || x.label.localeCompare(y.label) : Math.abs(y.computed) - Math.abs(x.computed));
       const tick = (key, on, title) => `<input type="checkbox" data-pb-on="${esc(key)}" ${on ? 'checked' : ''} title="${esc(title)}" style="width:16px; height:16px; cursor:pointer;">`;
       this.pbOpen = this.pbOpen instanceof Set ? this.pbOpen : new Set();
       const block = (k, label, cls) => {
-        const rows = of(k); if (!rows.length && !k.startsWith('team:')) return { html: '', total: 0, computed: 0 };
+        const rows = of(k); if (!rows.length) return { html: '', total: 0, computed: 0 };
         const open = this.pbOpen.has(k), off = blockOff(k), total = rows.reduce((a, r) => a + eff(r), 0), computed = rows.reduce((a, r) => a + r.computed, 0);
         const head = `<tr class="cat ${open ? 'open' : ''}" style="${off ? 'opacity:0.45;' : ''}"><td style="width:22px;">${tick(`b|${k}`, !off, label)}</td>
           <td data-pb-fold="${esc(k)}" style="cursor:pointer;">${esc(label)}</td><td class="${cls}" style="font-weight:700;">${Math.abs(total) >= 0.5 ? M0(total) : '<span class="fn-dim">–</span>'}</td></tr>`;
-        const body = !open ? '' : rows.map(r => { const a = adj[r.key] || {}, on = a.on !== false && !off;
-          return `<tr class="item" style="${on ? '' : 'opacity:0.45; text-decoration:line-through;'}"><td>${tick(r.key, a.on !== false, r.label)}</td>
+        // a team switched off as a whole (b|team:<id>, e.g. an option) shows unticked; its tick switches the team back on
+        const body = !open ? '' : rows.map(r => { const a = adj[r.key] || {}, teamOff = r.show !== r.bucket && blockOff(r.bucket), on = a.on !== false && !off && !teamOff;
+          return `<tr class="item" style="${on ? '' : 'opacity:0.45; text-decoration:line-through;'}"><td>${tick(teamOff ? `b|${r.bucket}` : r.key, !teamOff && a.on !== false, r.label)}</td>
             <td style="white-space:normal;">${esc(r.label)}${r.details.size ? `<span class="fn-tick">${esc(detailText(r.details))}</span>` : ''}</td>
             <td><input class="pg-in" type="text" inputmode="numeric" autocomplete="off" data-pg-dec="" data-pb-amt="${esc(r.key)}" value="${a.amount != null ? Math.round(a.amount) : ''}" placeholder="${Math.round(r.computed)}"
               style="width:6em; padding:2px 4px; text-align:right; background:transparent; color:inherit; border:1px solid var(--border-color, #374151); border-radius:4px;"></td></tr>`; }).join('');
@@ -891,27 +1043,36 @@ class FinancesScreen extends Screen {
           ${lived.length ? `<div class="fn-dim" style="font-size:0.72rem; margin-top:2px;">${esc(C('pb_m_months_note', 'Real = members at the end of the month, people whose tuition landed in it, and what they paid. * this month so far. Plan = your numbers above.'))}</div>` : ''}` : ''}
         </div>`;
       }
+      if (!dues) {
       const mIn = block('in', C('pb_row_in', 'MONEY IN'), 'fn-in');
       rows += mIn.html + group(C('pb_row_out', 'MONEY OUT'));
       let out = 0, outWas = 0;
       const coachLabel = C('pb_sub_coaching', '🧑‍🏫 Coaching');
-      for (const [k, label] of [...subs.filter(([k]) => !['all', 'grant', 'coach'].includes(k)).slice(0, 1 + teams.length), ['coach', coachLabel], ...subs.filter(([k]) => ['section', 'club'].includes(k))]) {
+      for (const [k, label] of [['own', C('pg_col_direct', 'Own costs')], ['comp', C('pb_sub_comp', '🏆 Competitions')], ['coach', coachLabel], ...subs.filter(([k]) => ['section', 'club'].includes(k))]) {
         const bl = block(k, label, 'fn-out'); rows += bl.html; out += bl.total; outWas += bl.computed;
       }
       const pre = mIn.total - out, preWas = mIn.computed - outWas;
       rows += balance(C('pg_gp_before', 'BALANCE BEFORE GRANT'), pre, preWas, true);
       const gr = block('grant', C('pb_sub_grant', 'Grants'), 'fn-in');
       if (gr.html) rows += gr.html + balance(C('pm_post_grant', 'BALANCE AFTER GRANT'), pre + gr.total, preWas + gr.computed, false);
+      // each team it plays in: who pays for it (tap a group to add / drop it)
+      let payers = '';
+      {
+        const same = progs.filter(x => x.kind === p.kind);
+        if (same.length > 1) payers = teams.map(t => `<div class="fn-note" style="margin:6px 0;"><span style="font-weight:700;">${esc(t.label)} — ${esc(C('pb_paid_by', 'Paid for by'))}</span> <span class="fn-dim">${esc(C('pb_paid_by_hint', '(tap a program to add or drop it)'))}</span>
+          <div class="fn-pills" style="margin:4px 0 0;">${same.map(x => { const on = (t.programs || []).includes(x.code); return `<button class="fn-pill ${on ? 'on' : ''}" style="padding:3px 10px; font-size:0.78rem;" data-pb-pay="${t.id}" data-program="${esc(x.code)}" data-on="${on ? '1' : '0'}">${esc(x.label)}</button>`; }).join('')}</div></div>`).join('');
+      }
       const changed = Object.keys(adj).length;
       body = `<div class="fn-note">${esc(C('pb_edit', 'The whole year. Untick a line to take it out of the totals; type a number to use yours instead of the worked-out one (grey).'))}${changed ? ` <span class="fn-warn">${esc(C('pb_changed', `${changed} changed from the worked-out budget`, { n: changed }))}</span>` : ''}</div>
         ${membersHtml}
-        <div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th></th><th style="text-align:left;">${esc(C('pb_col_line', 'Line'))}</th><th>${esc(year)}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        <div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th></th><th style="text-align:left;">${esc(C('pb_col_line', 'Line'))}</th><th>${esc(year)}</th></tr></thead><tbody>${rows}</tbody></table></div>${payers}`;
+      } else body = membersHtml || `<div class="fn-note">${esc(C('gr_none', 'No members expected.'))}</div>`;
     } else {
       // one sub pill: each line with the whole cost, who shares it, and this program's part
       const list = parts.filter(l => l.bucket === sub || (sub === 'club' && l.key === 'casa'));
       const lines = new Map();
       for (const l of list) {
-        const k = [l.group, l.category, l.key, l.label, l.src].join('|');
+        const k = [l.bucket, l.group, l.category, l.key, l.label, l.src].join('|');
         if (!lines.has(k)) lines.set(k, { l, amount: 0, whole: 0, with: new Set(), details: new Map(), assumed: false });
         const r = lines.get(k); r.amount += Number(l.amount || 0); r.whole += Number(l.whole || 0); (l.with || []).forEach(c => r.with.add(c)); if (isDues(l) && duesText) addDetail(r.details, duesText, ''); else addDetail(r.details, l.detail, l.se); if (l.assumed) r.assumed = true;
       }
@@ -919,26 +1080,19 @@ class FinancesScreen extends Screen {
       const rows = [...lines.values()].sort((a, c) => Math.abs(c.amount) - Math.abs(a.amount)).map(r => {
         const isIn = r.l.group !== 'own' && r.l.group !== 'shared', cls = isIn ? 'fn-in' : 'fn-out';
         const withL = order.filter(c => r.with.has(c)).map(progLabel), pct = Math.abs(r.whole) >= 0.5 ? Math.round(100 * r.amount / r.whole) : 100;
-        return `<tr class="item"><td style="white-space:normal;">${esc(this._pbLineLabel(r.l))}${r.assumed ? '*' : ''}${r.details.size ? `<span class="fn-tick">${esc(detailText(r.details))}</span>` : ''}</td>
+        return `<tr class="item"><td style="white-space:normal;">${esc(named(r.l))}${r.assumed ? '*' : ''}${r.details.size ? `<span class="fn-tick">${esc(detailText(r.details))}</span>` : ''}</td>
           ${cell(r.whole, cls)}<td style="text-align:left; white-space:normal;">${withL.length > 1 ? esc(withL.join(' · ')) : `<span class="fn-dim">${esc(withL[0] || p.label)}</span>`}</td>
           <td>${pct}%</td>${cell(r.amount, cls)}</tr>`; }).join('');
       const total = list.reduce((a, l) => a + (l.group === 'own' || l.group === 'shared' ? -1 : 1) * Number(l.amount || 0), 0);
-      // a team: who pays for it (tap a program to add / drop it)
-      let payers = '';
-      if (sub.startsWith('team:')) {
-        const t = teams.find(x => `team:${x.id}` === sub), same = progs.filter(x => x.kind === p.kind);
-        if (t && same.length > 1) payers = `<div class="fn-note" style="margin:6px 0;"><span style="font-weight:700;">${esc(C('pb_paid_by', 'Paid for by'))}</span> <span class="fn-dim">${esc(C('pb_paid_by_hint', '(tap a program to add or drop it)'))}</span>
-          <div class="fn-pills" style="margin:4px 0 0;">${same.map(x => { const on = (t.programs || []).includes(x.code); return `<button class="fn-pill ${on ? 'on' : ''}" style="padding:3px 10px; font-size:0.78rem;" data-pb-pay="${t.id}" data-program="${esc(x.code)}" data-on="${on ? '1' : '0'}">${esc(x.label)}</button>`; }).join('')}</div></div>`;
-      }
-      body = `${payers}${rows ? `<div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(subLabel)}</th><th>${esc(C('pb_col_whole', 'Whole cost'))}</th><th style="text-align:left;">${esc(C('pb_col_with', 'Shared by'))}</th><th></th><th>${esc(C('pb_col_share', `${p.label} pays`, { program: p.label }))}</th></tr></thead>
+      body = `${rows ? `<div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(subLabel)}</th><th>${esc(C('pb_col_whole', 'Whole cost'))}</th><th style="text-align:left;">${esc(C('pb_col_with', 'Shared by'))}</th><th></th><th>${esc(C('pb_col_share', `${p.label} pays`, { program: p.label }))}</th></tr></thead>
         <tbody>${rows}<tr class="sum"><td colspan="4">${esc(C('col_total', 'Total'))}</td>${cell(Math.abs(total), total < 0 ? 'fn-out' : 'fn-in')}</tr></tbody></table></div>` : `<div class="fn-note">${esc(C('pb_no_costs', 'Nothing here yet.'))}</div>`}`;
     }
     const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-pg-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
-    const progBar = `<div class="fn-pills">${progs.map(x => `<button class="fn-pill ${x.code === p.code ? 'on' : ''} ${money(x.code) ? '' : 'fn-dim'}" data-pb-prog="${esc(x.code)}">${esc(x.label)}</button>`).join('')}</div>`;
-    const subBar = `<div class="fn-pills sub">${subs.map(([k, l]) => `<button class="fn-pill ${k === sub ? 'on' : ''}" data-pb-sub="${esc(k)}">${esc(l)}</button>`).join('')}</div>`;
-    return `<div class="fn-card"><div class="fn-title">${esc(C('pb_title', 'Program budgets'))} · ${esc(year)}</div>
-      <div class="fn-note">${esc(C('pb_note', 'One budget per program. Every player is counted once, in their own age group.'))}</div>${yearBar}${progBar}${subBar}
-      <div class="fn-title" style="margin-top:6px;">${esc(p.label)} · ${esc(subLabel)} <span class="fn-note" style="font-weight:400;">${esc(C('pb_players', `${players} paying players, counted once`, { n: players }))}</span></div>
+    const progBar = progBarOf(p.code);
+    const subBar = dues ? '' : `<div class="fn-pills sub">${subs.map(([k, l]) => `<button class="fn-pill ${k === sub ? 'on' : ''}" data-pb-sub="${esc(k)}">${esc(l)}</button>`).join('')}</div>`;
+    return `<div class="fn-card"><div class="fn-title">${esc(title)} · ${esc(year)}</div>
+      <div class="fn-note">${esc(dues ? C('gr_note', 'Member dues by group: who is paying and who is not. Every member is in one group only.') : C('pb_note', 'One budget per program. Every player is counted once, in their own age group.'))}</div>${yearBar}${progBar}${subBar}
+      <div class="fn-title" style="margin-top:6px;">${esc(p.label)}${dues ? '' : ` · ${esc(subLabel)}`} <span class="fn-note" style="font-weight:400;">${esc(C('pb_players', `${players} paying players, counted once`, { n: players }))}</span></div>
       ${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}${body}</div>`;
   }
   // 🧑‍🏫 Coaches for the year (mig 1491): CoachingPlanTable shows what the

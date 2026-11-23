@@ -79,6 +79,8 @@ class App {
       casaSchedule: new CasaScheduleScreen(this.navigation, this.auth),
       casaScores: new CasaScoresScreen(this.navigation, this.auth),
       finances: new FinancesScreen(this.navigation, this.auth),
+      groups: new FinancesScreen(this.navigation, this.auth, 'groups'),
+      competitions: new FinancesScreen(this.navigation, this.auth, 'competitions'),
       inHouseProposal: new InHouseProposalScreen(this.navigation, this.auth),
       proposals: new ProposalsScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
@@ -210,6 +212,10 @@ class App {
     this.screenManager.register('casa-scores', this.screens.casaScores);
     // #finances (mig 489/490): summary, revenue and expense projections — billing stays on #payments.
     this.screenManager.register('finances', this.screens.finances);
+    // #groups (mig 1753): the paying groups, one pill each + Total — member dues only (who pays, who doesn't).
+    this.screenManager.register('groups', this.screens.groups);
+    // #competitions (mig 1754): what each competition costs — facts, estimates, total.
+    this.screenManager.register('competitions', this.screens.competitions);
     // #cash-flow (mig 882): soccer money in from LeagueApps against invoices out.
     // #in-house-proposal (mig 900): the case for youth in-house.
     this.screenManager.register('in-house-proposal', this.screens.inHouseProposal);
