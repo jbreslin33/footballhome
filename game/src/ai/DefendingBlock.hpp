@@ -30,6 +30,8 @@ struct BlockParams {
     // our line (0-18 / 18-35 / 35-52 / 52-70 / 70+), the real nearest defender's
     // p25 / median / p75 — DFL (benchmarks_tracking_press.py); one roll a spell.
     math::Fixed64 stand_off[5][3]{};
+    // G5.221 (§8.327): and it squeezes — while their ball stays there the spot climbs this many m a second, by role, for squeeze_max_s
+    math::Fixed64 squeeze[kRoleCount]{}, squeeze_max_s{};
     math::Fixed64 wide_up[kRoleCount]{};            // G5.219 (§8.325): their ball 70 m+ off our line and by a touchline — the block's spot this much higher, by role (m)
     math::Fixed64 stand_off_deep[2][3]{};           // G5.218 (§8.324): the 70+ band split — ball in the middle / by a touchline (0 = the band's row)
     math::Fixed64 switch_m{};                       // a new presser / chaser must be this much nearer
@@ -86,7 +88,7 @@ public:
     // their man meets it (pressFlight true, pressAt the meet point) so he is on him as it arrives.
     bool pressFlight(std::uint8_t team) const { return press_flight_[team & 1]; }
     math::Vec2 pressAt(std::uint8_t team) const { return press_at_[team & 1]; }
-    void reset() { for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; }
+    void reset() { for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; dw_since_[0] = dw_since_[1] = 0; }
 
     // G5.72: after assign — each defender's block spot (by slot) and whether his role marks (CB/FB/DM).
     void assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
@@ -117,6 +119,7 @@ private:
     int other_cb_[2] = {-1, -1};
     std::uint64_t their_won_[2] = {0, 0};   // G5.52: the tick their live spell began (by the defending team)
     bool their_had_[2] = {false, false};
+    std::uint64_t dw_since_[2] = {0, 0};    // G5.221 (§8.327): the tick their ball became deep and wide (by the defending team); 0 = it is not
 };
 
 }  // namespace fh::game::ai

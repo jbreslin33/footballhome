@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    std::vector<double> dg_bm[3], dg_gap[3][6]; long dg_why[3][6][2] = {};   // §8.327 by the spell's age: the ball's m off the attackers' line; by role his order's target depth minus his own (+ = his spot is further up); hold-shape orders / all
     long da_n[3] = {}, da_d[3] = {}; std::vector<double> da_near[3], da_deep[3], da_ro[3][6], dc_ro[6], dc_rm[6], dw_rm[6];   // §8.326 by the spell's age; the deep ball in the middle by role
     long dr_n[6] = {}, dr_k[6] = {}; std::vector<double> dr_d[6], dr_o[6], dr_y[6];   // §8.325 the other side by role on a deep wide ball
     long dc_n = 0, dc_dn0 = 0; std::vector<double> dc_near, dc_deep;   // §8.324 the same deep ball in the middle
@@ -307,7 +308,7 @@ int main(int argc, char** argv) {
         struct Lf { bool on = false; long k0 = 0; int kicker = -1; double x0 = 0, y0 = 0, pk = 0, down = -1, ang = 0, v = 0, lz = 0, lx = 0, ly = 0; int what = 0; } lf;   // §8.185 LOFT FLIGHT
         struct HlF { long k; float x[32], y[32], tx[32], ty[32], v[32]; std::uint8_t why[32], bj[32]; float cax[2], cay[2]; }; std::vector<HlF> hl_f;   // §8.185 the flight, 5 Hz
         long tn_k = -1; int tn_a = -1; double tn_bb = 0, tn_L = 0, tn_fw = 1e9, tn_du = 0; long tp_k = -1; int tp_w = -1, tp_z = 0, tp_b5 = 0; double tp_L = 0, tp_du = 0; long ws_k = -1, ws_last = -1; int ws_a = -1, ws_z = 0; double ws_b = 0, ws_f3 = 1e9, ws_f6 = 1e9; double pb_x[2] = {}, pb_y[2] = {}, pb_z = 0; long pb_k = -1; int tp_kind = 0, tp_ab = 0; long ct_prev = -1, ct_since = -1, ct_ck = -1, ct_won = -1; int ct_side = -1, ct_cand = -1;
-        struct FlF { long k; float x[32], y[32], bx, by, bz; int a = 0; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
+        struct FlF { long k; float x[32], y[32], tx[32], bx, by, bz; int a = 0; unsigned char why[32]; }; std::vector<FlF> fl_f;   // §8.217 every live 5 Hz frame this match
         struct ShSp { int pid = -1, team = -1, n = 0, o0 = 0, o1 = 0, z = 0; long k0 = 0, k1 = 0; double x0 = 0, y0 = 0, x1 = 0, y1 = 0; }; ShSp sh_run, sh_pend; long sh_prev = -1; struct RoM { int r, b; bool fr; double m, nd; }; std::vector<RoM> ro_stage; int ro_z = 0;   /* §8.205 */  /* §8.202 */ long bt_prev = -1; int bt_side = -1, bt_band = -1, bt_n = 0;  /* §8.203 */ long rw_k = -1, rw_last = -1; int rw_a = -1, rw_b = 0, rw_kd = 0, rw_b1 = -1;   // §8.172 (tp_: a loss pending its winner keeping it 2 s): the last 5 Hz frame's possession side, ball, line
         struct Mk { bool on = false; int p = -1, team = -1, to = -1; long k0 = 0; int why[32] = {}; double vx[32] = {}, vy[32] = {}; bool raced = false; long pt[32] = {}; int nsafe = 0, csafe = -1, nmates = 0, tf = -1, lb = 0, opt = 0; bool o3 = false, oraced = false; int okr = -1, oak = -1, ons = 0, oz = 1; double ov = 0; std::uint64_t olt = 0; long ot[32] = {}; double mg = -9; double peak = 0, x[32] = {}, y[32] = {}; } mk;   // §8.173: every man where he stood at the release
         struct Bt { int team; long k0; bool high, ok; }; std::vector<Bt> bt_rec; std::vector<long> bt_shotk[2], bt_goalk[2];   // §8.186
@@ -2066,7 +2067,8 @@ int main(int argc, char** argv) {
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
             {   // §8.217 THE PASS IN FLIGHT: keep the frame; read at the match's end (benchmarks_tracking_flight.py)
                 FlF f; f.k = static_cast<long>(k); f.bx = static_cast<float>(b.pos.x.toDouble()); f.by = static_cast<float>(b.pos.y.toDouble()); f.bz = static_cast<float>(b.pos.z.toDouble()); f.a = a;
-                for (std::uint8_t j = 0; j < N && j < 32; ++j) { f.x[j] = static_cast<float>(W.player(j).pos.x.toDouble()); f.y[j] = static_cast<float>(W.player(j).pos.y.toDouble()); }
+                for (std::uint8_t j = 0; j < N && j < 32; ++j) { f.x[j] = static_cast<float>(W.player(j).pos.x.toDouble()); f.y[j] = static_cast<float>(W.player(j).pos.y.toDouble());
+                    f.tx[j] = static_cast<float>(s.lastOrders()[j].target.x.toDouble()); f.why[j] = static_cast<unsigned char>(s.lastOrders()[j].why); }   // §8.327
                 fl_f.push_back(f);
             }
             {   // §8.204 POSSESSION WIDTH (benchmarks_tracking_posswidth.py): the side on it, each role's pair across / deep
@@ -3026,6 +3028,7 @@ int main(int argc, char** argv) {
                     const bool us = W.player(p2).team == t; const double ugx = us ? gx : -gx;
                     const double ye = f.y[p2] * ys, pm = std::fabs(gx - f.x[p2]), on = pm - bm; (void)ugx;
                     if (on >= 25 && ye >= 7) ++tg[us ? 0 : 1];
+                    if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { const int ab = dwa < 10 ? 0 : dwa < 25 ? 1 : 2; S.dg_gap[ab][rr].push_back(std::fabs(-gx - f.tx[p2]) - std::fabs(-gx - f.x[p2])); ++S.dg_why[ab][rr][1]; S.dg_why[ab][rr][0] += f.why[p2] == static_cast<unsigned char>(ai::Why::Hold); } }
                     if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { S.da_ro[dwa < 10 ? 0 : dwa < 25 ? 1 : 2][rr].push_back(on); S.dw_rm[rr].push_back(2 * hx - pm); ++S.dr_n[rr]; S.dr_k[rr] += on < 10; S.dr_d[rr].push_back(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by)); S.dr_o[rr].push_back(on); S.dr_y[rr].push_back(ye); } }
                     if (!us) { ++S.dw_dn[on < 10 ? 0 : on < 25 ? 1 : on < 40 ? 2 : 3]; if (on < 10) ++S.da_d[dwa < 10 ? 0 : dwa < 25 ? 1 : 2]; nearD = std::min(nearD, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); deepM = std::max(deepM, pm); continue; }
                     const int r = role(p2); if (r != 4 && r != 5) continue;
@@ -3034,6 +3037,7 @@ int main(int argc, char** argv) {
                 }
                 S.dw_t[0] += tg[0]; S.dw_t[1] += tg[1]; S.dw_none += tg[0] == 0;
                 S.dw_near.push_back(nearD); S.dw_deep.push_back(2 * hx - deepM); S.dw_gap.push_back(deepM - bm);
+                S.dg_bm[dwa < 10 ? 0 : dwa < 25 ? 1 : 2].push_back(bm);
                 { const int ab = dwa < 10 ? 0 : dwa < 25 ? 1 : 2; ++S.da_n[ab]; S.da_near[ab].push_back(nearD); S.da_deep[ab].push_back(2 * hx - deepM); }
                 for (int q = 0; q < 2; ++q) if (has[q]) {
                     const double ye = by_[q]; ++S.dw_r[q]; ++S.dw_l[q][ye >= 20.16 ? 0 : ye >= 7 ? 1 : ye > -7 ? 2 : ye > -20.16 ? 3 : 4];
@@ -3395,6 +3399,11 @@ int main(int argc, char** argv) {
                                 const double k = std::max(1L, S.da_n[ab]);
                                 std::printf("\n       %-4s %4.1f (%4.1f) | %.2f (%.2f) | %4.1f (%4.1f) | %4.1f (%4.1f) |", an[ab], 100.0 * S.da_n[ab] / n, RA[ab][0], S.da_d[ab] / k, RA[ab][1], med(S.da_near[ab]), RA[ab][2], med(S.da_deep[ab]), RA[ab][3]);
                                 for (int r = 0; r < 6; ++r) std::printf(" %5.1f (%5.1f)", med(S.da_ro[ab][r]), RA[ab][4 + r]);
+                            }
+                            std::printf("\n     §8.327 ours by the spell's age: the ball's m off the attackers' line med | by role CB FB DM/CM AM WIDE ST: his order's spot further up than he is, m med [holding shape %%]");
+                            for (int ab = 0; ab < 3; ++ab) {
+                                std::printf("\n       %-4s %4.1f |", an[ab], med(S.dg_bm[ab]));
+                                for (int r = 0; r < 6; ++r) std::printf(" %+5.1f [%2.0f]", med(S.dg_gap[ab][r]), 100.0 * S.dg_why[ab][r][0] / std::max(1L, S.dg_why[ab][r][1]));
                             }
                             std::printf("\n     §8.326 the deep ball in the middle, the other side by role CB FB DM/CM AM WIDE ST: m on from the ball med");
                             for (int r = 0; r < 6; ++r) std::printf(" %5.1f", med(S.dc_ro[r]));

@@ -101,7 +101,7 @@ def one(pos_path):
         c["t0"] += tg[0]; c["t1"] += tg[1]; c["none"] += tg[0] == 0
         for q in range(4): c[f"dn{q}"] += dn[q]
         ab = 0 if age < 10 else 1 if age < 25 else 2
-        c[f"an{ab}"] += 1; c[f"ad{ab}"] += dn[0]; L[f"anear{ab}"].append(near); L[f"adeep{ab}"].append(length - deep)
+        c[f"an{ab}"] += 1; c[f"ad{ab}"] += dn[0]; L[f"abm{ab}"].append(bm); L[f"anear{ab}"].append(near); L[f"adeep{ab}"].append(length - deep)
         L["near"].append(near); L["deep"].append(length - deep); L["gap"].append(deep - bm)
         for r, (ye, pm, on) in best.items():
             c[f"r{r}"] += 1; c[f"l{r}_{lane(ye)}"] += 1
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         print(f"    {nm:6s} {c[f'dr{r}'] / n:.2f} | {100 * c[f'dr{r}_n'] / k:5.1f} | {md(L[f'drd{r}']):5.1f} | {md(L[f'dro{r}']):5.1f} | {md(L[f'dry{r}']):+5.1f}")
     print("  BY THE SPELL'S AGE (s the ball has been deep and wide) 0-2 / 2-5 / 5+: share of frames % | the other side's men under 10 m on | nearest man med | last man m off its line med | m on from the ball med by role CB FB DM/CM AM WIDE ST")
     for ab, nm in enumerate(("0-2", "2-5", "5+")):
-        print(f"    {nm:4s} {100 * c[f'an{ab}'] / n:4.1f} | {c[f'ad{ab}'] / max(1, c[f'an{ab}']):.2f} | {md(L[f'anear{ab}']):4.1f} | {md(L[f'adeep{ab}']):4.1f} | " + " ".join(f"{md(L[f'aro{r}_{ab}']):5.1f}" for r in range(6)))
+        print(f"    {nm:4s} {100 * c[f'an{ab}'] / n:4.1f} | {c[f'ad{ab}'] / max(1, c[f'an{ab}']):.2f} | {md(L[f'anear{ab}']):4.1f} | {md(L[f'adeep{ab}']):4.1f} | ball {md(L[f'abm{ab}']):4.1f} m off the attackers' line | " + " ".join(f"{md(L[f'aro{r}_{ab}']):5.1f}" for r in range(6)))
     print("  DEEP BALL IN THE MIDDLE, the other side by role CB FB DM/CM AM WIDE ST: m on from the ball med " + " ".join(f"{md(L[f'cro{r}']):5.1f}" for r in range(6))
           + " | m off its own line med " + " ".join(f"{md(L[f'crm{r}']):5.1f}" for r in range(6)) + " || by a touchline, m off its own line med " + " ".join(f"{md(L[f'wrm{r}']):5.1f}" for r in range(6)))
     q = lambda v, f: sorted(v)[int(f * len(v))] if v else float("nan")

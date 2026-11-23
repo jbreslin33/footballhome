@@ -12399,3 +12399,36 @@ its own goal and our block does not follow it. On the deep ball in the middle ou
 on this ball is in time: the block's spot does not chase a ball that is being worked backwards. Next: ours by the
 spell's age — each man's spot against where he stands, and the ball's depth — to see whether the spots recede or the
 men are short of them. Harness only; tests 23/23.
+
+### 8.327 G5.221 — the block squeezes while the ball stays deep and wide (mig 1701; shipped)
+
+From §8.326. Why ours fell away — harness §8.327 (each man's order's spot against where he stands, by the spell's
+age): the men are **on their spots** (gap 0 ± 1 m in every role at every age), and the ball is worked back 6 m over
+the spell (27.4 → 24.4 → 21.4 m off the attackers' line; real 24.4 → 23.2 → 22.1). The spot is a table by the ball's
+depth and follows it at about half a metre a metre; a real block comes **up** as the ball goes back — m off its own
+line at 0-2 / 2-5 / 5+ s, DFL: CB 47.7 / 48.2 / 51.5, FB 54.4 / 55.3 / 59.5, DM-CM 62.1 / 63.4 / 66.9, AM 74.1 / 76.7 /
+84.0, WIDE 71.4 / 73.4 / 75.1, ST 79.1 / 81.3 / 85.3 (ours: CB 44.5 throughout).
+
+`DefendingBlock`: the tick their ball became deep (70 m+ off our line) and by a touchline (20.16 m+), by defending
+team (`dw_since_`, cleared the tick it is not); each role's spot climbs `physics.block.squeeze_<role>` m a second while
+it stays there, for `squeeze_max_s`. Rows from the three real points: CB 0.5, FB 0.7, DM 0.7, AM 1.4, WIDE 0.7, ST 1.0
+m/s, 7 s. Seeds 1000-4000 × 8 (DFL in brackets):
+
+| s the ball has been deep and wide | 0-2 | 2-5 | 5+ |
+|---|---|---|---|
+| men under 10 m on from the ball: G5.219 → G5.221 | 2.90 → 2.95 (3.57) | 2.29 → 2.46 (3.63) | 1.72 → 2.59 (4.08) |
+| nearest man, m | 8.3 → 8.0 (5.8) | 8.2 → 7.6 (4.5) | 8.9 → 7.2 (4.0) |
+| last man, m off its own line | 44.3 → 45.0 (47.0) | 43.6 → 45.4 (47.3) | 44.1 → 46.5 (49.4) |
+| ST, m on from the ball | 4.2 → 3.8 (1.5) | 6.4 → 5.8 (0.5) | 8.7 → 3.7 (-2.4) |
+| AM | 7.7 → 7.7 (6.5) | 9.3 → 8.4 (5.1) | 10.5 → 6.9 (-1.1) |
+| DM/CM | 21.0 → 20.5 (18.5) | 23.0 → 21.8 (18.4) | 26.3 → 21.5 (16.0) |
+| CB | 33.2 → 32.9 (32.9) | 35.8 → 34.6 (33.6) | 38.9 → 35.4 (31.4) |
+
+The fall-away is gone: ours now holds its distance off the ball where the real one closes it — half of the fault. The
+AM is the one man short of his spot now (+2.3 / +3.8 m at 2-5 / 5+ s): 1.4 m/s is more than his hold walk gives.
+Card 11 / 8 / 14 → 11 / 8 / 14 (`card_G5.221.txt`); the wide man's long ball his wing 52% (51); goals 2.05 (G5.216) →
+2.16 (G5.219) → 2.28 a team-match (1.35), conversion 17.7% (10.0) — three slices of a higher block, three small rises.
+Shipped (mig 1701) as the correct shape; the goals it gives up are the next thing to read, not a reason to hold the
+block low. The real 5 s+ bin is thin (4.8% of frames, 7 matches). Still open: the attackers work the ball back 6 m
+(real 2.3) on this ball. Next: what a high block concedes — the goals after a ball from the attackers' own third, by
+how the ball got through (over, round, through) v StatsBomb. Tests 23/23.

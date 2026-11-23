@@ -191,6 +191,8 @@ void BlockParams::configure(const core::ModelParams& p) {
         for (int k = 0; k < 3; ++k)
             stand_off[b][k] = p.fixed((std::string("physics.press.stand_off_") + std::to_string(b) + "_" + kQ[k]).c_str(), kOff[b][k]);
     for (int r = 0; r < kRoleCount; ++r) wide_up[r] = p.fixed((std::string("physics.block.wide_up_") + kRoleKey[r]).c_str(), 0);   // G5.219 (§8.325)
+    for (int r = 0; r < kRoleCount; ++r) squeeze[r] = p.fixed((std::string("physics.block.squeeze_") + kRoleKey[r]).c_str(), 0);   // G5.221 (§8.327), m/s
+    squeeze_max_s = p.fixed("physics.block.squeeze_max_s", 7000);
     for (int w = 0; w < 2; ++w)   // G5.218 (§8.324): 0 = no row = the 70+ band's
         for (int k = 0; k < 3; ++k) stand_off_deep[w][k] = p.fixed((std::string("physics.press.stand_off_deep_") + (w ? "w_" : "c_") + kQ[k]).c_str(), 0);
     // Real (DFL, benchmarks_tracking_cover.py): the two CBs' depth gap by the ball's band, mm.
@@ -232,6 +234,10 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
                             world.restartTeam() == 0xFF && world.outStage() == 0;
         if (theirs && !their_had_[team & 1]) their_won_[team & 1] = world.tickCount();
         their_had_[team & 1] = theirs;
+        // G5.221 (§8.327): since when their ball has been deep (70 m+ off our line) and by a touchline (20.16 m+)
+        const Fixed64 sgd = team == 0 ? Fixed64::one() : -Fixed64::one();
+        const bool dw = theirs && world.pitchHalfX() + ball.pos.x * sgd >= Fixed64::fromInt(70) && math::fx_abs(ball.pos.y) >= Fixed64::fromFraction(2016, 100);
+        if (!dw) dw_since_[team & 1] = 0; else if (dw_since_[team & 1] == 0) dw_since_[team & 1] = world.tickCount() ? world.tickCount() : 1;
     }
     // The nearest outfielder to the ball, held until another is switch_m nearer.
     auto nearest = [&](int held) {
@@ -462,6 +468,15 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
             if (fd > Fixed64::one()) fd = Fixed64::one();
             if (fy > Fixed64::one()) fy = Fixed64::one();
             x += up * fd * fy;
+        }
+        // G5.221 (§8.327): and squeezes while it stays there — DFL by the spell's age (benchmarks_tracking_deepwide.py): the real
+        // lines climb 0.5-1.4 m/s over the first ~7 s (CB 47.7 → 51.5 m off their line, ST 79.1 → 85.3). Rows; none = 0.
+        const Fixed64 sq = params_.squeeze[static_cast<int>(v.role)];
+        const std::uint64_t t0 = dw_since_[v.team & 1];
+        if (sq.raw != 0 && t0 != 0 && world.tickCount() > t0) {
+            Fixed64 age = Fixed64::fromInt(static_cast<std::int64_t>(world.tickCount() - t0)) * core::kTickDt;
+            if (age > params_.squeeze_max_s) age = params_.squeeze_max_s;
+            x += sq * age;
         }
     }
     Vec2 at{(x - hx) * v.sg, v.across_def};
