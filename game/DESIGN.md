@@ -12662,7 +12662,7 @@ Two trials on the corrected ruler (seeds 1000-4000 × 8, against G5.225 / `card_
 |---|---|---|---|---|---|
 | forward high 30 m+, tried / not completed | 17.3 / 9.0 | 17.9 / 9.6 | 41.9 / 26.6 | 30.9 / 18.8 | 28.9 / 19.8 |
 | … from 70+ / 52-70 / 35-52 m, tried | 14.1 / 2.0 / 1.1 | 15.1 / 1.7 / 0.9 | 25.4 / 9.7 / 5.4 | 19.7 / 6.4 / 3.8 | 18.8 / 7.0 / 2.8 |
-| forward ground, tried / not completed | 107 / 22 | 110 / 33.9 | 66 / 14.0 | 74 / 15.5 | 92.5 / 20.5 |
+| forward ground, tried / not completed | 88 / 16.9 | 110 / 33.9 | 66 / 14.0 | 74 / 15.5 | 92.5 / 20.5 |
 | passes / completion % | 446 / 85.4 | 444 / 81.2 | 387 / 77.3 | 407 / 81.0 | 434 / 77.5 |
 | next stint the other side's, from 35-52 / 52-70 m % | 16.2 / 12.3 | 20.1 / 14.1 | 21.8 / 15.9 | 19.0 / 14.9 | 23.6 / 18.3 |
 | ball 35-70 m, s a team-match | 930 | 930 | 836 | 866 | 690 |
