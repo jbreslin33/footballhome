@@ -21,6 +21,8 @@ bool ProposalsController::gate(const Request& request, Response* error) {
 }
 
 void ProposalsController::registerRoutes(Router& router, const std::string& prefix) {
+    router.get(prefix + "/public/:code", [this](const Request& r) { return handlePublic(r); });
+    router.post(prefix + "/recipients/:id", [this](const Request& r) { return handleRecipientEmail(r); });
     router.get(prefix,            [this](const Request& r) { return handleList(r); });
     router.get(prefix + "/:code", [this](const Request& r) { return handleOne(r); });
 }
@@ -42,9 +44,45 @@ Response ProposalsController::handleOne(const Request& request) {
     try {
         json p = Proposals::one(code);
         if (p.is_null()) return jsonError(HttpStatus::NOT_FOUND, "No such proposal");
-        return jsonOut(HttpStatus::OK, {{"proposal", p}});
+        return jsonOut(HttpStatus::OK, {{"proposal", p}, {"recipients", Proposals::recipients()}});
     } catch (const std::exception& e) {
         std::cerr << "[ProposalsController::one] " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the proposal");
+    }
+}
+
+// No login: the standalone page /proposals/#<code> shows a proposal flagged
+// is_public to anyone who has its link.  The page wording rides along.
+Response ProposalsController::handlePublic(const Request& request) {
+    const std::string path = request.getPath();
+    const std::string code = path.substr(path.find_last_of('/') + 1);
+    try {
+        json copy = Proposals::copy();
+        json p = Proposals::onePublic(code);
+        if (p.is_null()) return jsonOut(HttpStatus::NOT_FOUND, {{"error", copy.value("public_missing", "")}, {"copy", copy}});
+        return jsonOut(HttpStatus::OK, {{"proposal", p}, {"copy", copy}});
+    } catch (const std::exception& e) {
+        std::cerr << "[ProposalsController::public] " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the proposal");
+    }
+}
+
+// POST /api/proposals/recipients/:id  { email }  — club admins set (or clear)
+// the address a proposal is emailed to.
+Response ProposalsController::handleRecipientEmail(const Request& request) {
+    Response denied; if (!gate(request, &denied)) return denied;
+    const std::string path = request.getPath();
+    try {
+        const int id = std::stoi(path.substr(path.find_last_of('/') + 1));
+        json body = request.getBody().empty() ? json::object() : json::parse(request.getBody());
+        const std::string email = body.is_object() ? body.value("email", std::string()) : std::string();
+        if (!email.empty() && (email.find('@') == std::string::npos || email.find(' ') != std::string::npos)) {
+            return jsonError(HttpStatus::BAD_REQUEST, "That is not an email address.");
+        }
+        if (!Proposals::setRecipientEmail(id, email)) return jsonError(HttpStatus::NOT_FOUND, "No such recipient");
+        return jsonOut(HttpStatus::OK, {{"recipients", Proposals::recipients()}});
+    } catch (const std::exception& e) {
+        std::cerr << "[ProposalsController::recipientEmail] " << e.what() << std::endl;
+        return jsonError(HttpStatus::BAD_REQUEST, "Could not save the email address");
     }
 }

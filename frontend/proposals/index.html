@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Proposal</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!--
+    The standalone public page for one proposal (mig 1713): nginx serves this
+    folder at /proposals/, and the proposal's code rides in the hash,
+    /proposals/#<code>.  No app, no menu, no sign-in.  It reads
+    GET /api/proposals/public/<code>, which answers only for a proposal
+    flagged proposals.is_public, and draws it with the same text → HTML
+    rules as the in-app page (js/lib/proposal-body.js).  Wording comes with
+    the answer (message_templates kind 'proposals').  Prints cleanly.
+  -->
+  <style>
+    body { margin: 0; background: #f8fafc; color: #0f172a; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+    h1 { margin: 0 0 4px; font-size: 28px; }
+    .meta { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+    section { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+    h2 { margin: 0 0 10px; font-size: 19px; }
+    p { margin: 0 0 10px; }
+    ul { margin: 0 0 10px; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: #1d4ed8; }
+    .prp-scroll { overflow-x: auto; margin-bottom: 10px; }
+    .prp-table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    .prp-table th { text-align: left; padding: 6px 8px; color: #475569; font-weight: 600; border-bottom: 2px solid #cbd5e1; }
+    .prp-table td { text-align: left; padding: 6px 8px; border-top: 1px solid #e2e8f0; vertical-align: top; }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      section { border: 0; padding: 0; break-inside: auto; }
+      .prp-table { font-size: 11px; }
+      tr { break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main id="page"></main>
+  <script src="/js/lib/proposal-body.js?v=20261123-public"></script>
+  <script>
+    (async function () {
+      const page = document.getElementById('page');
+      const code = decodeURIComponent(location.hash.replace(/^#/, ''));
+      let data = {};
+      try {
+        const res = await fetch(`/api/proposals/public/${encodeURIComponent(code)}`, { cache: 'no-store' });
+        data = await res.json();
+      } catch (err) { data = {}; }
+      const p = data.proposal;
+      if (!p) { page.innerHTML = `<section>${ProposalBody.esc(data.error || '')}</section>`; return; }
+      document.title = p.title;
+      page.innerHTML = `<h1>${ProposalBody.esc(p.title)}</h1>
+        <div class="meta">${ProposalBody.esc((data.copy || {}).as_of || '')} ${ProposalBody.esc(ProposalBody.date(p.asOf))}</div>`
+        + p.sections.map(s => `<section><h2>${ProposalBody.esc(s.heading)}</h2>${ProposalBody.html(s.body)}</section>`).join('');
+    })();
+    window.addEventListener('hashchange', () => location.reload());
+  </script>
+</body>
+</html>
