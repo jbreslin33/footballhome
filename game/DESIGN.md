@@ -12432,3 +12432,28 @@ Shipped (mig 1701) as the correct shape; the goals it gives up are the next thin
 block low. The real 5 s+ bin is thin (4.8% of frames, 7 matches). Still open: the attackers work the ball back 6 m
 (real 2.3) on this ball. Next: what a high block concedes — the goals after a ball from the attackers' own third, by
 how the ball got through (over, round, through) v StatsBomb. Tests 23/23.
+
+### 8.328 G5.222 — across the pitch the block on a deep wide ball is near real (measured; no game change)
+
+From §8.324 (by role, pooled: our wide men across +6 v +11). `benchmarks_tracking_deepwide.py` + harness gain THE
+OTHER SIDE ACROSS: on a deep wide frame the defending side's men signed to the ball's side (its touchline = +34), a
+role's pair split into the ball-side man and the far man, a lone man of a role on his own; the outfield's width (its
+two widest men) and mean. Seeds 1000-4000 × 8, G5.221 (DFL in brackets):
+
+| | ball-side man | far man |
+|---|---|---|
+| CB pair | +17.7 (+16.2) | +6.3 (+3.0) |
+| FB pair | +28.2 (+26.2) | -6.0 (-10.5) |
+| DM/CM pair | +19.0 (+17.6) | +8.3 (+7.8) |
+| WIDE pair | +27.2 (+25.4) | -5.4 (-6.0) |
+| lone AM / lone ST | +14.4 (+12.4) / +14.5 (+9.5) | |
+| the outfield's width | 36.2 (39.8) | |
+
+The pooled figure misled: a real side has a WIDE pair in 86% of these frames and ours in 96%, so the pooled medians
+compared different mixes. Pair by pair ours is within 2 m of real, shifted a touch more to the ball (1-2 m). Two small
+faults: the far full-back tucks in 4.5 m more than a real one (who keeps the far side, -10.5), which is the 3.6 m of
+width; and a lone striker stands 5 m nearer the ball's side. Not taken up — small against the rest of the card. Also
+corrected here: §8.327 read goals 2.05 → 2.16 → 2.28 as three rises with the block; a run is 64 team-matches (goals a
+team-match ± ~0.2), and the near-goal regains did not move (possessions won 18-35 m off the goal attacked 4.7 → 4.7,
+shots within 5 s of them 0.66 → 0.90 of 13) — no cost to the block is shown. Next: back to the card's largest misses
+with clean cuts — crosses 0.53×, corners 0.50× (§8.281: the ball into their wide final third). Harness only; tests 23/23.

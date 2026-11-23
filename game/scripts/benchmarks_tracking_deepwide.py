@@ -82,6 +82,7 @@ def one(pos_path):
             continue
         ys = 1 if b[1] >= 0 else -1
         c["n"] += 1; best = {}; tg = [0, 0]
+        pr = collections.defaultdict(list)   # G5.222 (§8.328): the other side's men across, by role
         dn = [0, 0, 0, 0]; near = 99.0; deep = 0.0   # the other side: within 10 / 10-25 / 25-40 / 40+ m on from the ball; nearest to it; its last man
         for pid, p in pl[k].items():
             if pid in keepers or pid not in who: continue
@@ -90,6 +91,7 @@ def one(pos_path):
             if who[pid] != t:
                 dn[0 if on < 10 else 1 if on < 25 else 2 if on < 40 else 3] += 1
                 rr = ROLE.get(pos_of.get(pid))
+                if rr is not None: pr[rr].append(ye)
                 if rr is not None:
                     L[f"aro{rr}_{0 if age < 10 else 1 if age < 25 else 2}"].append(on)
                     L[f"wrm{rr}"].append(length - pm)
@@ -100,6 +102,11 @@ def one(pos_path):
             if r in (4, 5) and (r not in best or ye > best[r][0]): best[r] = (ye, pm, on)
         c["t0"] += tg[0]; c["t1"] += tg[1]; c["none"] += tg[0] == 0
         for q in range(4): c[f"dn{q}"] += dn[q]
+        for rr, ys_ in pr.items():
+            if len(ys_) == 2: L[f"pn{rr}"].append(max(ys_)); L[f"pf{rr}"].append(min(ys_))
+            elif len(ys_) == 1: L[f"p1{rr}"].append(ys_[0])
+        allm = sorted(y for v_ in pr.values() for y in v_)
+        if len(allm) >= 8: L["allw"].append(allm[-1] - allm[0]); L["allc"].append(sum(allm) / len(allm))
         ab = 0 if age < 10 else 1 if age < 25 else 2
         c[f"an{ab}"] += 1; c[f"ad{ab}"] += dn[0]; L[f"abm{ab}"].append(bm); L[f"anear{ab}"].append(near); L[f"adeep{ab}"].append(length - deep)
         L["near"].append(near); L["deep"].append(length - deep); L["gap"].append(deep - bm)
@@ -131,6 +138,9 @@ if __name__ == "__main__":
         print(f"    {nm:4s} {100 * c[f'an{ab}'] / n:4.1f} | {c[f'ad{ab}'] / max(1, c[f'an{ab}']):.2f} | {md(L[f'anear{ab}']):4.1f} | {md(L[f'adeep{ab}']):4.1f} | ball {md(L[f'abm{ab}']):4.1f} m off the attackers' line | " + " ".join(f"{md(L[f'aro{r}_{ab}']):5.1f}" for r in range(6)))
     print("  DEEP BALL IN THE MIDDLE, the other side by role CB FB DM/CM AM WIDE ST: m on from the ball med " + " ".join(f"{md(L[f'cro{r}']):5.1f}" for r in range(6))
           + " | m off its own line med " + " ".join(f"{md(L[f'crm{r}']):5.1f}" for r in range(6)) + " || by a touchline, m off its own line med " + " ".join(f"{md(L[f'wrm{r}']):5.1f}" for r in range(6)))
+    print("  THE OTHER SIDE ACROSS (deep wide ball; the ball's touchline = +34): a role's pair, the ball-side man / the far man med; a lone man med — " + "; ".join(
+        f"{nm} {md(L[f'pn{r}']):+.1f} / {md(L[f'pf{r}']):+.1f} (pairs {len(L[f'pn{r}']) / n:.2f}), lone {md(L[f'p1{r}']):+.1f}" for r, nm in enumerate(("CB", "FB", "DM/CM", "AM", "WIDE", "ST")))
+          + f" || the outfield's width (its two widest men) med {md(L['allw']):.1f}, its mean across med {md(L['allc']):+.1f}")
     q = lambda v, f: sorted(v)[int(f * len(v))] if v else float("nan")
     print(f"  DEEP BALL, CENTRE v WIDE — the other side's nearest man to the ball p25/med/p75: centre {q(L['cnear'], .25):.1f}/{q(L['cnear'], .5):.1f}/{q(L['cnear'], .75):.1f} | wide {q(L['near'], .25):.1f}/{q(L['near'], .5):.1f}/{q(L['near'], .75):.1f} "
           f"|| its men under 10 m on from the ball: centre {c['cdn0'] / max(1, c['cn']):.2f} | wide {c['dn0'] / n:.2f} || its last man m off its own line med: centre {md(L['cdeep']):.1f} | wide {md(L['deep']):.1f} || s a team-match centre {c['cn'] / 5 / (2 * len(files)):.1f}")

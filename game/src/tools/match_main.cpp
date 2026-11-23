@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    std::vector<double> dx_n[6], dx_f[6], dx_1[6], dx_w, dx_c; long dx_p[6] = {};   // §8.328 the other side across on a deep wide ball: a role's pair near / far, a lone man; the outfield's width, mean
     std::vector<double> dg_bm[3], dg_gap[3][6]; long dg_why[3][6][2] = {};   // §8.327 by the spell's age: the ball's m off the attackers' line; by role his order's target depth minus his own (+ = his spot is further up); hold-shape orders / all
     long da_n[3] = {}, da_d[3] = {}; std::vector<double> da_near[3], da_deep[3], da_ro[3][6], dc_ro[6], dc_rm[6], dw_rm[6];   // §8.326 by the spell's age; the deep ball in the middle by role
     long dr_n[6] = {}, dr_k[6] = {}; std::vector<double> dr_d[6], dr_o[6], dr_y[6];   // §8.325 the other side by role on a deep wide ball
@@ -3023,11 +3024,13 @@ int main(int argc, char** argv) {
                 const double ys = f.by >= 0 ? 1.0 : -1.0;
                 ++S.dw_n; int tg[2] = {0, 0}; bool has[2] = {false, false}; double by_[2] = {}, bm_[2] = {}, bo_[2] = {};
                 double nearD = 99, deepM = 0;   // §8.323
+                std::vector<double> prr[6]; std::vector<double> ally;   // §8.328
                 for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
                     if (W.isKeeper(p2)) continue;
                     const bool us = W.player(p2).team == t; const double ugx = us ? gx : -gx;
                     const double ye = f.y[p2] * ys, pm = std::fabs(gx - f.x[p2]), on = pm - bm; (void)ugx;
                     if (on >= 25 && ye >= 7) ++tg[us ? 0 : 1];
+                    if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { prr[rr].push_back(ye); ally.push_back(ye); } }
                     if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { const int ab = dwa < 10 ? 0 : dwa < 25 ? 1 : 2; S.dg_gap[ab][rr].push_back(std::fabs(-gx - f.tx[p2]) - std::fabs(-gx - f.x[p2])); ++S.dg_why[ab][rr][1]; S.dg_why[ab][rr][0] += f.why[p2] == static_cast<unsigned char>(ai::Why::Hold); } }
                     if (!us) { const int rr = role(p2); if (rr >= 0 && rr <= 5) { S.da_ro[dwa < 10 ? 0 : dwa < 25 ? 1 : 2][rr].push_back(on); S.dw_rm[rr].push_back(2 * hx - pm); ++S.dr_n[rr]; S.dr_k[rr] += on < 10; S.dr_d[rr].push_back(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by)); S.dr_o[rr].push_back(on); S.dr_y[rr].push_back(ye); } }
                     if (!us) { ++S.dw_dn[on < 10 ? 0 : on < 25 ? 1 : on < 40 ? 2 : 3]; if (on < 10) ++S.da_d[dwa < 10 ? 0 : dwa < 25 ? 1 : 2]; nearD = std::min(nearD, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); deepM = std::max(deepM, pm); continue; }
@@ -3036,6 +3039,11 @@ int main(int argc, char** argv) {
                     if (!has[q] || ye > by_[q]) { has[q] = true; by_[q] = ye; bm_[q] = pm; bo_[q] = on; }
                 }
                 S.dw_t[0] += tg[0]; S.dw_t[1] += tg[1]; S.dw_none += tg[0] == 0;
+                for (int rr = 0; rr < 6; ++rr) {
+                    if (prr[rr].size() == 2) { S.dx_n[rr].push_back(std::max(prr[rr][0], prr[rr][1])); S.dx_f[rr].push_back(std::min(prr[rr][0], prr[rr][1])); ++S.dx_p[rr]; }
+                    else if (prr[rr].size() == 1) S.dx_1[rr].push_back(prr[rr][0]);
+                }
+                if (ally.size() >= 8) { std::sort(ally.begin(), ally.end()); double sm = 0; for (double q2 : ally) sm += q2; S.dx_w.push_back(ally.back() - ally.front()); S.dx_c.push_back(sm / ally.size()); }
                 S.dw_near.push_back(nearD); S.dw_deep.push_back(2 * hx - deepM); S.dw_gap.push_back(deepM - bm);
                 S.dg_bm[dwa < 10 ? 0 : dwa < 25 ? 1 : 2].push_back(bm);
                 { const int ab = dwa < 10 ? 0 : dwa < 25 ? 1 : 2; ++S.da_n[ab]; S.da_near[ab].push_back(nearD); S.da_deep[ab].push_back(2 * hx - deepM); }
@@ -3400,6 +3408,9 @@ int main(int argc, char** argv) {
                                 std::printf("\n       %-4s %4.1f (%4.1f) | %.2f (%.2f) | %4.1f (%4.1f) | %4.1f (%4.1f) |", an[ab], 100.0 * S.da_n[ab] / n, RA[ab][0], S.da_d[ab] / k, RA[ab][1], med(S.da_near[ab]), RA[ab][2], med(S.da_deep[ab]), RA[ab][3]);
                                 for (int r = 0; r < 6; ++r) std::printf(" %5.1f (%5.1f)", med(S.da_ro[ab][r]), RA[ab][4 + r]);
                             }
+                            std::printf("\n     §8.328 the other side across (the ball's touchline = +34): a role's pair, the ball-side man / the far man med (pairs a frame); a lone man med —");
+                            for (int r = 0; r < 6; ++r) std::printf(" %s %+.1f / %+.1f (%.2f), lone %+.1f;", r == 0 ? "CB" : r == 1 ? "FB" : r == 2 ? "DM/CM" : r == 3 ? "AM" : r == 4 ? "WIDE" : "ST", med(S.dx_n[r]), med(S.dx_f[r]), S.dx_p[r] / n, med(S.dx_1[r]));
+                            std::printf(" || the outfield's width med %.1f, its mean across med %+.1f", med(S.dx_w), med(S.dx_c));
                             std::printf("\n     §8.327 ours by the spell's age: the ball's m off the attackers' line med | by role CB FB DM/CM AM WIDE ST: his order's spot further up than he is, m med [holding shape %%]");
                             for (int ab = 0; ab < 3; ++ab) {
                                 std::printf("\n       %-4s %4.1f |", an[ab], med(S.dg_bm[ab]));
