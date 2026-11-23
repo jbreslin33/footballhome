@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
     std::vector<double> dx_n[6], dx_f[6], dx_1[6], dx_w, dx_c; long dx_p[6] = {};   // §8.328 the other side across on a deep wide ball: a role's pair near / far, a lone man; the outfield's width, mean
     std::vector<double> dg_bm[3], dg_gap[3][6]; long dg_why[3][6][2] = {};   // §8.327 by the spell's age: the ball's m off the attackers' line; by role his order's target depth minus his own (+ = his spot is further up); hold-shape orders / all
     long da_n[3] = {}, da_d[3] = {}; std::vector<double> da_near[3], da_deep[3], da_ro[3][6], dc_ro[6], dc_rm[6], dw_rm[6];   // §8.326 by the spell's age; the deep ball in the middle by role
@@ -3001,6 +3002,26 @@ int main(int argc, char** argv) {
             for (int b = 0; b < 6; ++b) { s_last_pdiag.pre[b] += pd.pre[b]; s_last_pdiag.post[b] += pd.post[b]; s_last_pdiag.n[b] += pd.n[b]; s_last_pdiag.cut[b] += pd.cut[b]; s_last_pdiag.chosen[b] += pd.chosen[b]; }
             s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec;
             for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
+        {   // §8.329 THE CHANNEL AHEAD (benchmarks_tracking_channel.py): the side in possession has the ball 35-52 m off the line it
+            // attacks; the ball-side wide zone 18-35 m off that line and its spot (26.5 m, across +27) — who is in it, who is nearer
+            for (const auto& f : fl_f) {
+                const int t = f.a; const double ax = t == 0 ? hx : -hx, tl = std::fabs(ax - f.bx);
+                if (tl < 35 || tl >= 52) continue;
+                const int w = std::fabs(f.by) >= 20.16 ? 1 : 0; const double ys = f.by >= 0 ? 1.0 : -1.0;
+                ++S.cha_n[w]; int cnt[2] = {0, 0}; double nd[2] = {99, 99}; int nr = -1; double nrm = 0;
+                for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
+                    if (W.isKeeper(p2)) continue;
+                    const bool us = W.player(p2).team == t; const double ptl = std::fabs(ax - f.x[p2]), ye = f.y[p2] * ys;
+                    if (ptl >= 18 && ptl < 35 && ye >= 20.16) ++cnt[us ? 0 : 1];
+                    const double d = std::hypot(ptl - 26.5, ye - 27);
+                    if (d < nd[us ? 0 : 1]) { nd[us ? 0 : 1] = d; if (!us) { nr = role(p2); nrm = ptl; } }
+                }
+                S.cha_a[w] += cnt[0]; S.cha_d[w] += cnt[1]; S.cha_a0[w] += cnt[0] == 0; S.cha_d0[w] += cnt[1] == 0;
+                S.cha_na[w].push_back(nd[0]); S.cha_nd[w].push_back(nd[1]);
+                S.cha_on[w] += nd[0] < nd[1]; S.cha_o3[w] += nd[0] + 3 <= nd[1]; S.cha_t3[w] += nd[1] + 3 <= nd[0];
+                if (nr >= 0 && nr <= 5) { ++S.cha_r[w][nr]; S.cha_rm[w][nr].push_back(nrm); }
+            }
+        }
         {   // §8.321 DEEP WIDE BALL (benchmarks_tracking_deepwide.py): the side in possession has the ball within 35 m of its own
             // line and 20.16 m+ off the centre line; who is up the line, and the striker / wide man nearest that touchline
             int dwa = 0; long dwk = -100; int dwt = -1;   // §8.326: frames this deep wide spell has run
@@ -3385,6 +3406,22 @@ int main(int argc, char** argv) {
                             std::printf("\n       by length m:");
                             for (int b = 0; b < 6; ++b) { const double k = std::max(1L, S.od_l[o][b][0]);
                                 std::printf("\n       %-8s %5.1f (%4.1f) | %3.0f (%3.0f) | %3.0f (%3.0f)", ln[b], 100.0 * S.od_l[o][b][0] / n, R[o][31 + 3 * b], 100.0 * S.od_l[o][b][1] / k, R[o][32 + 3 * b], 100.0 * S.od_l[o][b][2] / k, R[o][33 + 3 * b]); }
+                        }
+                    }
+                    {   // §8.329 THE CHANNEL AHEAD — real: benchmarks_tracking_channel.py (DFL, 7 matches)
+                        static const double R[2][10] = {{147.86, 0.42, 65.00, 0.38, 69.17, 12.38, 11.50, 35.66, 15.11, 33.41}, {146.44, 0.59, 55.40, 0.87, 41.17, 9.89, 7.47, 17.78, 3.51, 40.33}};
+                        static const double RR[2][6][2] = {{{24, 35.7}, {48, 31.4}, {8, 32.5}, {1, 30.0}, {18, 29.8}, {1, 26.9}}, {{38, 32.8}, {37, 30.9}, {11, 30.3}, {1, 30.2}, {12, 30.7}, {1, 31.6}}};
+                        static const char* wn[2] = {"ball in the middle", "ball wide"}; static const char* rn6[6] = {"CB", "FB", "DM/CM", "AM", "WIDE", "ST"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        auto med = [](std::vector<double> v) { if (v.empty()) return -1.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
+                        std::printf("\n   §8.329 THE CHANNEL AHEAD (in possession, the ball 35-52 m off the line attacked; the channel = 18-35 m off it, across 20.16+ on the ball's side; the spot = 26.5 m, +27; real DFL in brackets)");
+                        for (int w = 0; w < 2; ++w) {
+                            const double n = std::max(1L, S.cha_n[w]);
+                            std::printf("\n     %s: %.1f s a team-match (%.1f) | in the channel: ours %.2f (%.2f), none %.1f%% (%.1f); theirs %.2f (%.2f), none %.1f%% (%.1f) | the spot: our nearest med %.1f m (%.1f), their nearest %.1f (%.1f); ours nearer %.1f%% (%.1f), ours by 3 m+ %.1f%% (%.1f), theirs by 3 m+ %.1f%% (%.1f)",
+                                        wn[w], S.cha_n[w] / 5.0 / tmo, R[w][0], S.cha_a[w] / n, R[w][1], 100.0 * S.cha_a0[w] / n, R[w][2], S.cha_d[w] / n, R[w][3], 100.0 * S.cha_d0[w] / n, R[w][4], med(S.cha_na[w]), R[w][5], med(S.cha_nd[w]), R[w][6],
+                                        100.0 * S.cha_on[w] / n, R[w][7], 100.0 * S.cha_o3[w] / n, R[w][8], 100.0 * S.cha_t3[w] / n, R[w][9]);
+                            std::printf("\n        their nearest man to the spot, by role: share %% [m off the line attacked med] —");
+                            for (int r = 0; r < 6; ++r) std::printf(" %s %.0f (%.0f) [%.1f (%.1f)];", rn6[r], 100.0 * S.cha_r[w][r] / n, RR[w][r][0], med(S.cha_rm[w][r]), RR[w][r][1]);
                         }
                     }
                     {   // §8.321 DEEP WIDE BALL — real: benchmarks_tracking_deepwide.py (DFL, 7 matches)

@@ -12457,3 +12457,32 @@ corrected here: §8.327 read goals 2.05 → 2.16 → 2.28 as three rises with th
 team-match ± ~0.2), and the near-goal regains did not move (possessions won 18-35 m off the goal attacked 4.7 → 4.7,
 shots within 5 s of them 0.66 → 0.90 of 13) — no cost to the block is shown. Next: back to the card's largest misses
 with clean cuts — crosses 0.53×, corners 0.50× (§8.281: the ball into their wide final third). Harness only; tests 23/23.
+
+### 8.329 G5.223 — the channel ahead: theirs hold it a little more than real; the larger miss is the time our ball spends in the middle (measured; no game change)
+
+From §8.301 ("the gap is theirs covering the channel") by way of §8.328. New `scripts/benchmarks_tracking_channel.py`
+(DFL, 7 matches) + harness §8.329 THE CHANNEL AHEAD: the side in possession has the ball 35-52 m off the line it
+attacks; the channel = the ball-side wide zone 18-35 m off that line (across 20.16+), its spot 26.5 m / +27. Seeds
+1000-4000 × 8, G5.221 (DFL in brackets):
+
+| | ball in the middle | ball wide |
+|---|---|---|
+| s a team-match | 271 (148) | 145 (146) |
+| ours in the channel: mean / none | 0.31 (0.42) / 74% (65) | 0.51 (0.59) / 63% (55) |
+| theirs in it: mean / none | 0.43 (0.38) / 67% (69) | 1.17 (0.87) / 36% (41) |
+| the spot: our nearest / their nearest, med m | 13.9 (12.4) / 10.9 (11.5) | 11.1 (9.9) / 6.8 (7.5) |
+| ours nearer / ours by 3 m+ / theirs by 3 m+ | 31 (36) / 12 (15) / 46% (33) | 20 (18) / 4 (4) / 48% (40) |
+| their nearest man is a FB / CB / WIDE | 69 (48) / 16 (24) / 12% (18) | 50 (37) / 38 (38) / 4% (12) |
+
+In real football too the channel is empty two frames in three and the defence is the nearer side to it — it lies
+behind their line (their nearest man 31-36 m off the line attacked; ours within 1-2 m of that). Ours differs by a
+step, not a kind: our nearest man is 1.2-1.5 m further off the spot, theirs 0.6-0.7 m nearer, theirs clearly first
+46-48% v 33-40. That is some of §8.300's "theirs first 66%", not the bulk of crosses 0.53×.
+
+The large figure is the first row: **the ball in the middle 35-52 m out for 271 s a team-match v 148.** WHERE THE BALL
+LIVES (DFL, s a team-match by m off the line attacked, ours v real): 0-18 82 v 131, 18-35 207 v 208, 35-52 406 v 294,
+52-70 556 v 395, 70+ 423 v 552. Visits to the middle bands are as many as real (140 v 132, 159 v 151) but each lasts
+longer (med 2.0-2.2 s v 1.6), ends lost less (23 v 27%, 15.5 v 21) and goes back more (24.5 v 18.4%); the ball is in
+their last 18 m for 82 s v 131 — where crosses, corners and blocked shots come from. Next: a midfield visit by how it
+is spent — on a man's foot, in passes within the band (count, length, direction) — ours v DFL / StatsBomb, to find
+what the extra 270 s are. Harness only; tests 23/23.
