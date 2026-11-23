@@ -2105,8 +2105,16 @@ class EventScreen extends Screen {
     const scope = (window.MessageCopy && MessageCopy.block('event_center', 'group_scope', { group: plain, event: what })) || `${plain} — ${what}`;
     const subject = (window.MessageCopy && MessageCopy.block('event_center', 'group_subject', { event: what })) || what;
     const ask = el.dataset.ecGroupMsg === 'reserves';   // 📣 Ask Reserves (mig 1530)
-    const body = (ask && window.MessageCopy && MessageCopy.block('event_center', 'ask_standby_body', { event: what, where }))
-      || (window.MessageCopy && MessageCopy.block('event_center', 'group_body', { event: what, where })) || `${what}${where ? ` @ ${where}` : ''}\n`;
+    // Every group message says where to answer (owner 11/23 "doesnt tell
+    // them to goto fh and set rsvp … this needs universal fixing", mig
+    // 1738): a group can't carry anyone's own sign-in link, so {link} is
+    // this event on footballhome.org; the – No response group opens with
+    // the RSVP ask itself (group_body_noresp).
+    const link = this.eventId() ? `${location.origin}/#event/${this.eventId()}` : location.origin;
+    const mc = (tier) => window.MessageCopy && MessageCopy.block('event_center', tier, { event: what, where, link });
+    const noresp = el.dataset.ecGroupMsg === 'contact:noresp' || plain === String(mc('sec_noresp') || '– No response');
+    const body = (ask && mc('ask_standby_body')) || (noresp && mc('group_body_noresp'))
+      || mc('group_body') || `${what}${where ? ` @ ${where}` : ''}\n${link}\n`;
     BulkMessageComposer.open({ screen: this, kind, info, entry: { scope, preset: { label: '', subject, body } },
       onSent: (n) => {
         el.textContent = `✓ ${n}`;

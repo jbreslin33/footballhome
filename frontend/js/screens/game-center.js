@@ -3648,7 +3648,7 @@ class GameCenterScreen extends EventScreen {
       screen: this, kind, info,
       entry: { scope: cp('sec_standby', {}) || '🪑 Reserves',
                preset: { label: '', subject: cp('ask_standby_subject', { event }) || `Can you make it? ${event}`,
-                         body: cp('ask_standby_body', { event, where }) || `We're short for ${event}. Can you make it?` } },
+                         body: cp('ask_standby_body', { event, where, link: this.eventId() ? `${location.origin}/#event/${this.eventId()}` : location.origin }) || `We're short for ${event}. Can you make it?` } },
       onSent: (n) => { this._toast(`✓ ${n}`); this._logAsk(kind, this._askReservesPeople()); },
     });
   }
@@ -3678,7 +3678,8 @@ class GameCenterScreen extends EventScreen {
     // The box opens naming this game (game_message body, mig 1470; owner
     // 11/18 "should mention the event in particular", no link).
     const where = (this.ev && window.EventLabels && (EventLabels.homeSetup(this.ev) || this.ev.location)) || '';
-    const body = this._copyGm('body', { game, where }) || `${game}\n`;
+    const link = this.eventId() ? `${location.origin}/#event/${this.eventId()}` : location.origin;   // where to answer (mig 1738)
+    const body = this._copyGm('body', { game, where, link }) || `${game}\n${link}\n`;
     BulkMessageComposer.open({
       screen: this, kind, info,
       entry: { scope, preset: { label: '', subject, body } },
