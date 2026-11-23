@@ -12,13 +12,16 @@
     GET /api/proposals/public/<code>, which answers only for a proposal
     flagged proposals.is_public, and draws it with the same text → HTML
     rules as the in-app page (js/lib/proposal-body.js).  Wording comes with
-    the answer (message_templates kind 'proposals').  Prints cleanly.
+    the answer (message_templates kind 'proposals').  Prints cleanly; its PDF,
+    /proposals/<code>.pdf, is that print, remade by scripts/proposal-pdf.sh
+    whenever the proposal changes, and linked up top (hidden in the print).
   -->
   <style>
     body { margin: 0; background: #f8fafc; color: #0f172a; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     main { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
     h1 { margin: 0 0 4px; font-size: 28px; }
-    .meta { color: #64748b; font-size: 14px; margin-bottom: 20px; }
+    .meta { color: #64748b; font-size: 14px; margin-bottom: 20px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+    .pdf { border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 12px; text-decoration: none; font-weight: 600; }
     section { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
     h2 { margin: 0 0 10px; font-size: 19px; }
     p { margin: 0 0 10px; }
@@ -36,12 +39,13 @@
       .prp-table { font-size: 11px; }
       tr { break-inside: avoid; }
       a { color: inherit; text-decoration: none; }
+      .pdf { display: none; }
     }
   </style>
 </head>
 <body>
   <main id="page"></main>
-  <script src="/js/lib/proposal-body.js?v=20261123-public"></script>
+  <script src="/js/lib/proposal-body.js?v=20261123-pdf"></script>
   <script>
     (async function () {
       const page = document.getElementById('page');
@@ -55,8 +59,15 @@
       if (!p) { page.innerHTML = `<section>${ProposalBody.esc(data.error || '')}</section>`; return; }
       document.title = p.title;
       page.innerHTML = `<h1>${ProposalBody.esc(p.title)}</h1>
-        <div class="meta">${ProposalBody.esc((data.copy || {}).as_of || '')} ${ProposalBody.esc(ProposalBody.date(p.asOf))}</div>`
+        <div class="meta"><span>${ProposalBody.esc((data.copy || {}).as_of || '')} ${ProposalBody.esc(ProposalBody.date(p.asOf))}</span><a class="pdf" id="pdf" hidden></a></div>`
         + p.sections.map(s => `<section><h2>${ProposalBody.esc(s.heading)}</h2>${ProposalBody.html(s.body)}</section>`).join('');
+      // The PDF of this page (scripts/proposal-pdf.sh), once it exists.
+      if (await ProposalBody.hasPdf(code)) {
+        const link = document.getElementById('pdf');
+        link.href = ProposalBody.pdfUrl(code);
+        link.textContent = (data.copy || {}).pdf_download || '';
+        link.hidden = false;
+      }
     })();
     window.addEventListener('hashchange', () => location.reload());
   </script>

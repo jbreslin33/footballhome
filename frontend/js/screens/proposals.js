@@ -7,7 +7,8 @@
 //
 // A proposal flagged public (proposals.is_public, mig 1713) shows its public
 // link up top with a copy button: the standalone page /proposals/#<code>
-// that anyone can open, drawn by proposals/index.html.  The text → HTML
+// that anyone can open, drawn by proposals/index.html, and under it the
+// link to that page's PDF (/proposals/<code>.pdf, scripts/proposal-pdf.sh).  The text → HTML
 // rules live in lib/proposal-body.js, shared with that page.
 class ProposalsScreen extends Screen {
   render() {
@@ -119,6 +120,7 @@ class ProposalsScreen extends Screen {
       + (p.isPublic ? this._share(p.code) + `<div class="prp-card prp-mail" id="prp-mail">${this._mail()}</div>` : '')
       + p.sections.map(s =>
       `<div class="prp-card"><div class="prp-head">${this._esc(s.heading)}</div>${ProposalBody.html(s.body)}</div>`).join('');
+    if (p.isPublic) this._pdf(p.code);
   }
 
   // The public link, to copy and send.
@@ -126,7 +128,20 @@ class ProposalsScreen extends Screen {
     const url = ProposalBody.publicUrl(code);
     return `<div class="prp-card prp-share"><strong>${this._esc(this._copy('public_link'))}</strong>
       <a href="${this._esc(url)}" target="_blank" rel="noopener">${this._esc(url)}</a>
-      <button type="button" data-copy-link="${this._esc(url)}">${this._esc(this._copy('copy_link'))}</button></div>`;
+      <button type="button" data-copy-link="${this._esc(url)}">${this._esc(this._copy('copy_link'))}</button></div>
+      <div class="prp-card prp-share" id="prp-pdf" hidden></div>`;
+  }
+
+  // The PDF link, once scripts/proposal-pdf.sh has made the file.
+  async _pdf(code) {
+    if (!(await ProposalBody.hasPdf(code)) || this.code !== code) return;
+    const url = ProposalBody.pdfUrl(code);
+    const box = this.find('#prp-pdf');
+    if (!box) return;
+    box.innerHTML = `<strong>${this._esc(this._copy('pdf_link'))}</strong>
+      <a href="${this._esc(url)}" target="_blank" rel="noopener">${this._esc(url)}</a>
+      <button type="button" data-copy-link="${this._esc(url)}">${this._esc(this._copy('copy_link'))}</button>`;
+    box.hidden = false;
   }
 
   // Who to email: a tick-box each (ticked when they have an address), an

@@ -47,5 +47,16 @@ class ProposalBody {
 
   // The link anyone can open for a proposal flagged public.
   static publicUrl(code) { return `${location.origin}/proposals/#${encodeURIComponent(code)}`; }
+
+  // The PDF of that page, remade by scripts/proposal-pdf.sh whenever the
+  // proposal changes.  hasPdf() says whether one is there yet (a missing
+  // file falls through to the app's HTML, so the type is what tells).
+  static pdfUrl(code) { return `${location.origin}/proposals/${encodeURIComponent(code)}.pdf`; }
+  static async hasPdf(code) {
+    try {
+      const res = await fetch(ProposalBody.pdfUrl(code), { method: 'HEAD', cache: 'no-store' });
+      return res.ok && (res.headers.get('Content-Type') || '').includes('pdf');
+    } catch (err) { return false; }
+  }
 }
 window.ProposalBody = ProposalBody;
