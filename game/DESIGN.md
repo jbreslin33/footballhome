@@ -12648,3 +12648,36 @@ The ground forward pass from 18-52 m is real. Three cells carry the gap:
 That is ~16 passes a team-match real sides lose and ours does not: 3.6 of the 8 points of completion. Next: the high
 share for a forward pass of 30 m+ from 35-52 m off our own line (the 52-70 band) against StatsBomb, then why a high
 ball of ours finds its man (who is under it — §8.317's ruler on the midfield ball). Harness only; tests 23/23.
+
+### 8.336 G5.230 — the long ball into space goes in the air (mig 1749; shipped)
+
+From §8.335 (the high forward ball of 30 m+: ours 17.3 tried / 9.0 lost a team-match, real 28.9 / 19.8). PASS
+CANDIDATES says where they are missing: from midfield a real side sends 18.9% of its passes to the last 35 m, ours
+10.7 — a mate stands in those zones in 5-53% of decisions, and the zone's share with nobody in it falls to G5.54's
+ball into space, which was **always a ground ball and dropped when theirs were nearer** (66%, §8.300).
+
+Two trials on the corrected ruler (seeds 1000-4000 × 8, against G5.225 / `card_G5.228.txt`):
+
+| | G5.225 | `space.contest` 1 (§8.300's switch) | `space.high` 1 | `space.high` 0.45 (shipped) | real |
+|---|---|---|---|---|---|
+| forward high 30 m+, tried / not completed | 17.3 / 9.0 | 17.9 / 9.6 | 41.9 / 26.6 | 30.9 / 18.8 | 28.9 / 19.8 |
+| … from 70+ / 52-70 / 35-52 m, tried | 14.1 / 2.0 / 1.1 | 15.1 / 1.7 / 0.9 | 25.4 / 9.7 / 5.4 | 19.7 / 6.4 / 3.8 | 18.8 / 7.0 / 2.8 |
+| forward ground, tried / not completed | 107 / 22 | 110 / 33.9 | 66 / 14.0 | 74 / 15.5 | 92.5 / 20.5 |
+| passes / completion % | 446 / 85.4 | 444 / 81.2 | 387 / 77.3 | 407 / 81.0 | 434 / 77.5 |
+| next stint the other side's, from 35-52 / 52-70 m % | 16.2 / 12.3 | 20.1 / 14.1 | 21.8 / 15.9 | 19.0 / 14.9 | 23.6 / 18.3 |
+| ball 35-70 m, s a team-match | 930 | 930 | 836 | 866 | 690 |
+| throw-ins / carries 10 m+ | 17.0 / 38.3 | 17.0 / 39.7 | 22.5 / 32.6 | 20.0 / 34.9 | 23.1 / 34.6 |
+| goals | 2.34 | 2.09 | 2.64 | 2.31 | 1.35 |
+| card | 9 / 11 / 13 | 12 / 8 / 13 | 11 / 6 / 16 | 10 / 9 / 14 | |
+
+`space.contest` (the ground ball kept when theirs are first) makes the totals real with the wrong ball: it is the
+ground forward pass that is then lost (33.9 v 20.5) and the long high one stays at 17.9. **Change** (`Possession.cpp`,
+the ball-into-space block): the ball goes high at `highShare(own_end, length, direction)` — the table every pass to a
+man uses — × `physics.space.high`; the high one is added whoever is first to the spot (a high ball is a contest by
+nature, §8.316; `high_risk_weight` if the loft read says theirs), the ground one keeps G5.55's gate at the rest of the
+share. At 1 it is played at every chance (1.45× real, passes 387, goals 2.64); 0.45 lands it: 30.9 tried / 18.8 not
+completed, right in each band. Shipped (`card_G5.230.txt`): completion 85.4 → 81.0%, carries of 10 m+ to ok, throw-ins
+OFF → off, goals unchanged; passes 407 (the ground forward pass now 74 v 92.5 — the high ball took some of its share;
+`space.contest` stays off). Open: completion still 3.5 points over (the high ball of 10-30 m from midfield, the ground
+forward pass from our own third — §8.335); the ball still 866 s in midfield (690). Next: the same forward-pass ruler
+after this, then the ground forward pass from our own third (lost 1.6 v 4.8). Tests 23/23.

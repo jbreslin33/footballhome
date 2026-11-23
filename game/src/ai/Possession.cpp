@@ -683,7 +683,7 @@ public:
                 // G5.55 (§8.156): a ground ball, before any of theirs — real balls into space go to
                 // the man who gets there first (ours went to a mate 17.8 m off it, theirs 11.5 m).
                 // A cross is struck whoever is first (real: 28% completed, 40% cleared next).
-                bool contested = false;
+                bool contested = false, theirs_first = false;
                 if (!cross) {
                     int tn = 1000;
                     for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
@@ -695,8 +695,26 @@ public:
                     }
                     // G5.194 (§8.300): theirs first — with space_contest it stays in at space_risk of its share (a contested
                     // ball into the channel, as every pass the read says they win; real balls into space are 50/50s), else dropped (G5.55).
-                    if (tn < bn + P.space_margin_ticks) { if (diag_mid) ++c.poss.passDiagMut().sp_theirs[ez]; if (!P.space_contest) continue; contested = true; }
+                    if (tn < bn + P.space_margin_ticks) { if (diag_mid) ++c.poss.passDiagMut().sp_theirs[ez]; theirs_first = true; contested = P.space_contest; }
                 }
+                // G5.230 (§8.336): the ball into an empty zone goes in the air at the real high share for its length and
+                // direction (highShare — the table every pass to a man uses); before it was always a die-at ground ball, and
+                // real sides' long forward balls are high (StatsBomb forward 30 m+: 28.9 a team-match high v 4.8 ground; ours
+                // 17.3 / 5.9). A high ball is a contest by nature (§8.316): it is not dropped when theirs get there first —
+                // only the ground one keeps G5.55's gate. x physics.space.high of its share (0 = off): played at every chance it ran 1.45x real.
+                Fixed64 wg = wz;
+                if (!cross && P.space_high.raw > 0) {
+                    const Fixed64 fwd = (at.x - sp.x) * v.sg;
+                    const int dir = fwd * Fixed64::fromInt(2) > bd ? 0 : fwd * Fixed64::fromInt(2) < -bd ? 2 : 1;
+                    const Fixed64 ph = P.highShare(own_end, bd, dir);
+                    if (ph.raw > 0) {
+                        const Loft lh{at, aimedCarry(me.pos, at, reach)};
+                        const bool ls = c.reads.loftSafe(w, v.slot, sp, lh.at, lh.carry_m, Fixed64::one());
+                        add(Cand{best, (ls ? wz * ph : wz * ph * P.high_risk) * P.space_high, true, lh, true, at, 0, false, true});
+                        wg = wz * (Fixed64::one() - ph);
+                    }
+                }
+                if (!cross && theirs_first && !P.space_contest) continue;   // G5.55: the ground ball, only when ours is first
                 if (cross) {
                     const Loft lf{at, aimedCarry(me.pos, at, reach)};
                     const bool ok = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
@@ -718,7 +736,7 @@ public:
                 if (cm > 255) cm = 255;
                 const Loft lf{at, aimedCarry(me.pos, at, reach)};
                 const bool ok = c.reads.passSafe(w, v.slot, sp, at, core::dieAtSpeed(Fixed64::fromInt(cm)), Fixed64::one());
-                add(Cand{best, ok && !contested ? wz : wz * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
+                add(Cand{best, ok && !contested ? wg : wg * P.space_risk, false, lf, true, at, static_cast<std::uint8_t>(cm), false, true});
                 if (diag_mid) ++c.poss.passDiagMut().sp_add[ez];
             }
         }
@@ -1578,6 +1596,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     space_on = p.fixed("physics.space.on", 1000).raw > 0;               // G5.54
     shot_crowd = p.fixed("physics.shot.crowd", 0).raw > 0;   // G5.198 (§8.304), row on
     space_contest = p.fixed("physics.space.contest", 0).raw > 0;
+    space_high = p.fixed("physics.space.high", 0);   // G5.230 (§8.336): 0 = off
     space_lead_s = p.fixed("physics.space.lead_s", 0);   // G5.195 (§8.301), 0 = the zone's middle (G5.54)   // G5.194 (§8.300), row on
     space_risk = p.fixed("physics.space.risk_weight", 250);           // G5.54: one the race read says they win
     space_margin_ticks = static_cast<int>(p.fixed("physics.space.margin_s", 0).raw * 30 >> Fixed64::FRAC_BITS);   // G5.55: ours first by at least this

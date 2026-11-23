@@ -129,6 +129,7 @@ struct PossessionParams {
     math::Fixed64 risk_own3{};   // G5.202 (§8.308): risk_weight for passes from our own third (0 = risk_weight)
     math::Fixed64 space_lead_s{};   // G5.195 (§8.301): aim the ball into space ahead of a runner, his spot this far on; 0 = the zone's middle
     bool space_contest = false;   // G5.194 (§8.300): a ball into space theirs reach first stays in at space_risk (else dropped)
+    math::Fixed64 space_high{};   // G5.230 (§8.336): the ball into an empty zone goes high at the real share for its length; the high one is played whoever is first
     bool edge_own = false;   // G5.193 (§8.299): the edge also turns him back off his own goal line
     math::Fixed64 edge_m{};   // G5.141 (§8.245): any carry line turns back in within this of the touchline / their goal line (3 m); 0 = off
     math::Fixed64 clear_rate[4][4]{}, clear_touch_y{}, clear_len_q[5]{};
