@@ -162,6 +162,44 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             if (r["pid"].is_null()) continue;
             heads[(int)k][r["pid"].as<int>()] = {r["active"].as<int>(), r["paying"].as<int>()};
         }
+    // 👥 Members today, per program (mig 1656; owner 11/23 "members is key here
+    // and we need a good section for it"): everyone active, who owes tuition,
+    // who of those has paid this month, who is on a league roster, and the
+    // ones who don't pay (volunteers, injured, free in LeagueApps).
+    // Paid up / overdue / injured are the Tuition page's own statuses (next_due_at
+    // ahead = current; a current injury = its own 🩹 group), so the two pages agree.
+    struct Members { int all = 0, owing = 0, paidNow = 0, overdue = 0, injured = 0, owingRostered = 0, free = 0, volunteers = 0, freeRostered = 0; };
+    std::map<int, Members> membersNow;
+    for (const auto& r : db->query(R"SQL(
+            WITH act AS (
+                SELECT DISTINCT ON (lp.category, m.person_id) lp.category, m.person_id, m.la_payment_status, m.next_due_at
+                  FROM person_la_memberships m JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id
+                 WHERE m.ended_at IS NULL AND lp.variant = 'active'
+                 ORDER BY lp.category, m.person_id, m.la_registered_at DESC NULLS LAST),
+            inj AS (
+                SELECT DISTINCT i.person_id FROM person_injuries i JOIN health_statuses h ON h.id = i.health_status_id AND h.is_injured
+                 WHERE i.starts_at <= now() AND (i.ends_at IS NULL OR i.ends_at > now())),
+            ros AS (
+                SELECT DISTINCT tp.person_id FROM team_persons tp JOIN roster_statuses rs ON rs.id = tp.roster_status_id AND rs.counts_as_on_roster
+                 WHERE tp.removed_at IS NULL),
+            m AS (
+                SELECT fh_finance_program($1::int, a.category, p.birth_date, 0) AS pid, a.person_id,
+                       (a.la_payment_status <> 'NA_FREE' AND fh_dues_free_reason(a.person_id) IS NULL) AS owes,
+                       fh_is_volunteer(a.person_id) AS vol, a.person_id IN (SELECT person_id FROM inj) AS hurt,
+                       COALESCE(a.next_due_at > now(), false) AS paid_up
+                  FROM act a JOIN persons p ON p.id = a.person_id)
+            SELECT m.pid, COUNT(*) AS members, COUNT(*) FILTER (WHERE owes) AS owing,
+                   COUNT(*) FILTER (WHERE owes AND NOT hurt AND paid_up) AS paid_now,
+                   COUNT(*) FILTER (WHERE owes AND NOT hurt AND NOT paid_up) AS overdue,
+                   COUNT(*) FILTER (WHERE owes AND hurt) AS injured,
+                   COUNT(*) FILTER (WHERE owes AND m.person_id IN (SELECT person_id FROM ros)) AS owing_rostered,
+                   COUNT(*) FILTER (WHERE NOT owes) AS free, COUNT(*) FILTER (WHERE NOT owes AND vol) AS volunteers,
+                   COUNT(*) FILTER (WHERE NOT owes AND m.person_id IN (SELECT person_id FROM ros)) AS free_rostered
+              FROM m WHERE m.pid IS NOT NULL GROUP BY 1)SQL", {club})) {
+        Members m; m.all = r["members"].as<int>(); m.owing = r["owing"].as<int>(); m.paidNow = r["paid_now"].as<int>(); m.overdue = r["overdue"].as<int>(); m.injured = r["injured"].as<int>(); m.owingRostered = r["owing_rostered"].as<int>();
+        m.free = r["free"].as<int>(); m.volunteers = r["volunteers"].as<int>(); m.freeRostered = r["free_rostered"].as<int>();
+        membersNow[r["pid"].as<int>()] = m;
+    }
     // Practice hours a week per program: the calendar's next whole weeks, the
     // busiest of its teams (as the old Full capacity did: a session that also carries a
     // men's team counts for the men only)
@@ -278,6 +316,33 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         auto& c = realDues[pid][str(r, "ym")]; c.first += num(r, "gross"); c.second += num(r, "fee");
     }
 
+    // 👥 the year so far, month by month (owner 11/23 "show month by month of
+    // since aug … with accurate number of paying members … full 12 month"):
+    // members at each month's end (LeagueApps membership dates) and the
+    // people whose tuition landed in the month.
+    struct MonthReal { int members = 0, payers = 0; };
+    std::map<int, std::map<std::string, MonthReal>> realMonths;   // program → ym
+    for (const auto& r : db->query(R"SQL(
+            WITH y AS (SELECT y.starts_on FROM cash_flow_policies c JOIN budget_years y ON y.id = c.budget_year_id WHERE c.club_id = $1::int),
+            me AS (SELECT to_char(d, 'YYYY-MM') AS ym, ((d + interval '1 month')::timestamp AT TIME ZONE 'America/New_York') AS e
+                     FROM y, generate_series(date_trunc('month', y.starts_on::timestamp), date_trunc('month', now() AT TIME ZONE 'America/New_York'), interval '1 month') d)
+            SELECT me.ym, fh_finance_program($1::int, lp.category, p.birth_date, 0) AS pid, COUNT(DISTINCT m.person_id) AS n
+              FROM me JOIN person_la_memberships m ON COALESCE(m.la_registered_at, m.joined_at) < me.e AND (m.ended_at IS NULL OR m.ended_at >= me.e)
+              JOIN leagueapps_programs lp ON lp.program_id = m.la_program_id AND lp.variant = 'active'
+              JOIN persons p ON p.id = m.person_id
+             GROUP BY 1, 2)SQL", {club}))
+        if (!r["pid"].is_null()) realMonths[r["pid"].as<int>()][str(r, "ym")].members = r["n"].as<int>();
+    for (const auto& r : db->query(std::string(
+            "SELECT t.pid, t.ym, COUNT(*) AS n FROM ("
+            "  SELECT fh_finance_program($1::int, lp.category, pn.birth_date) AS pid, pn.id AS person, "
+            "         to_char(pp.paid_at AT TIME ZONE 'America/New_York', 'YYYY-MM') AS ym, SUM(") + kGross + ") AS g "
+            "    FROM person_payments pp JOIN leagueapps_programs lp ON lp.program_id = pp.la_program_id "
+            "    JOIN persons pn ON pn.id = fh_payment_person(pp.la_registration_id, pp.la_user_id) "
+            + kCounted + " AND " + kApproved +
+            "     AND (pp.paid_at AT TIME ZONE 'America/New_York')::date >= (SELECT y.starts_on FROM cash_flow_policies c JOIN budget_years y ON y.id = c.budget_year_id WHERE c.club_id = $1::int) "
+            "   GROUP BY 1, 2, 3) t WHERE t.g > 0 AND t.pid IS NOT NULL GROUP BY 1, 2", {club}))
+        realMonths[r["pid"].as<int>()][str(r, "ym")].payers = r["n"].as<int>();
+
     // Reality (feedback: projections from what really came in): the share of
     // dues actually collected over the last 3 closed months, per kind —
     // collected ÷ (today's paying players × dues × 3). A plan season's
@@ -342,7 +407,7 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         rentalByYm[str(r, "ym")] += num(r, "amt");
 
     // plans + entries
-    struct Plan { bool has = false; int players = -1, teams = -1, games = 0; double ph = -1, weeks = -1, hpg = 0, rate = -1; bool paid = true; std::string note; };
+    struct Plan { bool has = false; int players = -1, teams = -1, games = 0; double ph = -1, weeks = -1, hpg = 0, rate = -1, grow = 0, collect = -1; int nonPaying = -1, nonPayingRostered = -1, payingOff = -1; bool paid = true, hasGrow = false; std::string note; };
     std::map<std::tuple<int, int, int>, Plan> plans;
     for (const auto& r : db->query("SELECT * FROM program_season_plans")) {
         Plan p; p.has = true;
@@ -350,6 +415,11 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
         p.ph = r["practice_hours_week"].is_null() ? -1 : num(r, "practice_hours_week"); p.weeks = r["practice_weeks"].is_null() ? -1 : num(r, "practice_weeks");
         p.games = r["games"].as<int>(); p.hpg = num(r, "hours_per_game"); p.paid = r["coach_paid"].as<bool>();
         p.rate = r["coach_rate"].is_null() ? -1 : num(r, "coach_rate"); p.note = str(r, "note");
+        p.hasGrow = !r["new_players_month"].is_null(); p.grow = p.hasGrow ? num(r, "new_players_month") : 0;
+        p.collect = r["collect_pct"].is_null() ? -1 : num(r, "collect_pct");
+        p.nonPaying = r["non_paying"].is_null() ? -1 : r["non_paying"].as<int>();
+        p.nonPayingRostered = r["non_paying_on_roster"].is_null() ? -1 : r["non_paying_on_roster"].as<int>();
+        p.payingOff = r["paying_off_roster"].is_null() ? -1 : r["paying_off_roster"].as<int>();
         plans[{r["program_id"].as<int>(), r["budget_year_id"].as<int>(), r["season_id"].as<int>()}] = p;
     }
     struct Entry { int leagueSeason; std::string band, league, seasonName; int teams; };
@@ -407,8 +477,18 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
     // youth and adults; a later year moves today's kids up an age (heads[yi]).
     // Typed boxes still win; 👥 Full capacity still fills every team.
     // Replaces 11/16 youth "full paid roster" and 11/17 adults "only grow".
+    // Membership grows by the month (mig 1650; owner 11/23 "its a membership …
+    // do it by year/month … a way to project to get more members each month …
+    // even go over 70 … they are 'reserves'"): a plan season's
+    // new_players_month is added every month, running on through the year and
+    // into the next (a later year with typed players starts from those).  Only
+    // the dues follow it — teams, coaching and the shared-cost split stay on
+    // the season's players, so members past a full roster add no cost.
+    std::map<int, double> grownBefore, grownYear;   // program → members added before this year / so far in it
     for (size_t yi = 0; yi < years.size(); ++yi) {
         const Year& Y = years[yi];
+        for (auto& [pid, g] : grownYear) grownBefore[pid] += g;
+        grownYear.clear();
         out["years"].push_back(Y.label);
         if (Y.thisYear) out["this_year"] = Y.label;
         json yj = {{"seasons", json::array()}, {"programs", json::object()}};
@@ -448,7 +528,8 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
             for (const auto& p : programs) {
                 const auto h = hk.count(p.id) ? hk.at(p.id) : std::pair<int, int>{0, 0};
                 const Plan pl = plans.count({p.id, Y.id, S.id}) ? plans[{p.id, Y.id, S.id}] : Plan{};
-                const double rate0 = p.paysDues && collectRate.count(p.kind) ? collectRate[p.kind] : 1.0;
+                const double rateLive = p.paysDues && collectRate.count(p.kind) ? collectRate[p.kind] : 1.0;
+                const double rate0 = !isReal && p.paysDues && pl.collect >= 0 ? pl.collect / 100.0 : rateLive;   // his own share who pay (mig 1656)
                 const int heads0 = p.paysDues ? h.second : h.first;
                 const int cap = std::max(1, p.capacity);
                 const int defPlayers = heads0;
@@ -466,6 +547,40 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                                        {"practice_weeks", round2(weeks)}, {"practice_weeks_set", pl.weeks >= 0},
                                        {"games", pl.games}, {"hours_per_game", pl.hpg}, {"coach_paid", pl.paid}, {"coach_rate", rate}, {"coach_rate_set", pl.rate >= 0},
                                        {"capacity", p.capacity}, {"note", pl.note}};
+                // members month by month (plan seasons): the season's players + the growth so far
+                json byMonth = json::array(); double headMonths = 0;
+                if (!isReal) {
+                    const double g = full ? 0.0 : pl.grow;
+                    for (const auto& ym : months) {
+                        grownYear[p.id] += g;
+                        const double n = std::max(0.0, players + grownYear[p.id] + (pl.players >= 0 || full ? 0.0 : grownBefore[p.id]));
+                        byMonth.push_back({{"ym", ym}, {"players", round2(n)}}); headMonths += n;
+                    }
+                }
+                meta[(int)si][p.id]["months"] = byMonth; meta[(int)si][p.id]["head_months"] = headMonths;
+                if (isReal && yi == 0) {   // the months already lived: real members, payers, tuition
+                    json lived = json::array();
+                    for (const auto& ym : months) {
+                        if (ym > nowYm) continue;
+                        const MonthReal mr = realMonths.count(p.id) && realMonths[p.id].count(ym) ? realMonths[p.id][ym] : MonthReal{};
+                        const double g = realDues.count(p.id) && realDues[p.id].count(ym) ? realDues[p.id][ym].first : 0.0;
+                        lived.push_back({{"ym", ym}, {"members", mr.members}, {"paying", mr.payers}, {"tuition", round2(g)}, {"current", ym == nowYm}});
+                    }
+                    meta[(int)si][p.id]["months_real"] = lived;
+                }
+                {   // 👥 the Members section: today's counts + his own numbers (NULL = today's)
+                    const Members mb = membersNow.count(p.id) ? membersNow[p.id] : Members{};
+                    json& mj = meta[(int)si][p.id];
+                    mj["members_now"] = {{"all", mb.all}, {"owing", mb.owing}, {"paid_now", mb.paidNow}, {"overdue", mb.overdue}, {"injured", mb.injured}, {"owing_rostered", mb.owingRostered},
+                                         {"free", mb.free}, {"volunteers", mb.volunteers}, {"free_rostered", mb.freeRostered}};
+                    const bool on = !isReal;
+                    mj["collect_pct"] = std::round(1000 * rate0) / 10; mj["collect_pct_default"] = std::round(100 * rateLive); mj["collect_pct_set"] = on && pl.collect >= 0;
+                    mj["non_paying_default"] = mb.free; mj["non_paying"] = on && pl.nonPaying >= 0 ? pl.nonPaying : mb.free; mj["non_paying_set"] = on && pl.nonPaying >= 0;
+                    mj["non_paying_on_roster_default"] = mb.freeRostered; mj["non_paying_on_roster"] = on && pl.nonPayingRostered >= 0 ? pl.nonPayingRostered : mb.freeRostered; mj["non_paying_on_roster_set"] = on && pl.nonPayingRostered >= 0;
+                    const int offDef = std::max(0, mb.owing - mb.owingRostered);
+                    mj["paying_off_roster_default"] = offDef; mj["paying_off_roster"] = on && pl.payingOff >= 0 ? pl.payingOff : offDef; mj["paying_off_roster_set"] = on && pl.payingOff >= 0;
+                }
+                meta[(int)si][p.id]["new_players_month"] = pl.grow; meta[(int)si][p.id]["new_players_month_set"] = !isReal && pl.hasGrow;
             }
 
             if (isReal) {
@@ -497,16 +612,19 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                     const json& m = meta[(int)si][p.id];
                     const int players = m["players"], teams = m["teams"];
                     auto& lines = L[(int)si][p.id];
-                    // dues: players × monthly × months
-                    if (p.paysDues && players > 0) {
+                    // dues: each month's members × monthly (mig 1650: they can grow)
+                    const double headMonths = m.value("head_months", 0.0);
+                    if (p.paysDues && headMonths > 0) {
                         const double mo = monthly.count(p.kind) ? monthly[p.kind] : 0.0;
                         // reality rule: the headcount stays whole, the money
                         // is what actually gets collected (last 3 months' share)
                         const double cr = m.value("collect_rate", 1.0);
-                        const double dues = players * mo * months.size() * cr;
-                        char d[128];
-                        if (cr < 0.995) std::snprintf(d, sizeof d, "%d × $%.0f × %zu × %.0f%% collected", players, mo, months.size(), 100 * cr);
-                        else std::snprintf(d, sizeof d, "%d × $%.0f × %zu", players, mo, months.size());
+                        const double dues = headMonths * mo * cr;
+                        const double first = m["months"].front()["players"].get<double>(), last = m["months"].back()["players"].get<double>();
+                        char who[48], d[160];
+                        if (std::fabs(first - last) < 0.05) std::snprintf(who, sizeof who, "%.0f", first); else std::snprintf(who, sizeof who, "%.0f → %.0f", first, last);
+                        if (cr < 0.995) std::snprintf(d, sizeof d, "%s × $%.0f × %zu × %.0f%% collected", who, mo, months.size(), 100 * cr);
+                        else std::snprintf(d, sizeof d, "%s × $%.0f × %zu", who, mo, months.size());
                         lines.push_back({"dues", "dues", "dues", "", d, dues, true});
                         if (feeRatio > 0) { char f[64]; std::snprintf(f, sizeof f, "%.1f%%", 100 * feeRatio); lines.push_back({"own", "la_fees", "la_fees", "", f, dues * feeRatio, false}); }
                     }
@@ -650,6 +768,64 @@ json ProgramBudget::build(int clubId, const std::string& scenario) {
                 split((int)si, allPaying((int)si), awardsFree[Y.label] * months.size() / 12.0, at({"support", "awards", "awards", "", "", 0, true}, "grant", ""));
             }
 
+        // 🧑‍🏫 Coach pay from the hours really worked (mig 1644; owner 11/20
+        // "for coach pay just look at my current hours for coaching and
+        // project. but separate practice from games and have games listed
+        // by team then a total"): this year's invoice shifts on a practice
+        // or a game, per coach — hours so far × (365 ÷ days since that
+        // coach's first shift) × his rate.  An event's hours are shared by
+        // the programs of its teams, by paying players; a game is listed
+        // under its team.  Shifts on no event (other duties) are not coaching.
+        if (Y.thisYear) {
+            std::map<int, double> wYear; for (auto& [si, byP] : payW) for (auto& [pid, w] : byP) wYear[pid] += w;
+            struct CH { std::string kind, coach, team; double hours = 0, yearHours = 0, rate = 0, amount = 0; int days = 0; };
+            std::map<int, std::map<std::tuple<std::string, std::string, std::string>, CH>> byProg;
+            for (const auto& r : db->query(R"SQL(
+                WITH sh AS (
+                    SELECT i.issuer_id, e.kind, s.work_date,
+                           ARRAY(SELECT et.team_id FROM fh_event_teams et WHERE et.fh_event_id = e.id ORDER BY 1) AS teams,
+                           COALESCE(NULLIF(s.hours, 0), EXTRACT(epoch FROM (s.end_at - s.start_at)) / 3600.0
+                                    + CASE WHEN s.end_at <= s.start_at THEN 24 ELSE 0 END) AS hours
+                      FROM invoice_work_shifts s JOIN invoices i ON i.id = s.invoice_id JOIN fh_events e ON e.id = s.fh_event_id
+                      JOIN cash_flow_policies cp ON cp.club_id = $1::int JOIN budget_years y ON y.id = cp.budget_year_id
+                     WHERE e.kind IN ('practice', 'match') AND s.work_date BETWEEN y.starts_on AND (now() AT TIME ZONE 'America/New_York')::date)
+                SELECT sh.issuer_id, COALESCE(NULLIF(BTRIM(pn.first_name || ' ' || pn.last_name), ''), ii.payable_to) AS coach, ii.hourly_rate::float8 AS rate,
+                       CASE WHEN sh.kind = 'match' THEN 'game' ELSE 'practice' END AS kind, sh.teams::text AS teams,
+                       (SELECT t.name FROM teams t WHERE t.id = sh.teams[1]) AS team_name,
+                       SUM(sh.hours)::float8 AS hours,
+                       ((now() AT TIME ZONE 'America/New_York')::date - MIN(MIN(sh.work_date)) OVER (PARTITION BY sh.issuer_id) + 1)::int AS days
+                  FROM sh JOIN invoice_issuers ii ON ii.id = sh.issuer_id LEFT JOIN persons pn ON pn.id = ii.person_id
+                 GROUP BY 1, 2, 3, 4, 5, 6)SQL", {club})) {
+                std::vector<int> tids; { std::string cur; for (char ch : std::string(r["teams"].c_str())) { if (ch >= '0' && ch <= '9') cur += ch; else if (!cur.empty()) { tids.push_back(std::stoi(cur)); cur.clear(); } } }
+                std::vector<int> ids;
+                for (const auto& p : programs) for (int t : p.teams) if (std::find(tids.begin(), tids.end(), t) != tids.end()) { ids.push_back(p.id); break; }
+                if (ids.empty()) continue;
+                const double hours = num(r, "hours"), rate = num(r, "rate"); const int days = std::max(1, r["days"].as<int>());
+                const std::string kind = str(r, "kind");
+                const std::string team = kind == "game" ? (!tids.empty() && teamLabel.count(tids[0]) ? teamLabel[tids[0]] : str(r, "team_name")) : std::string{};
+                double w = 0; for (int id : ids) w += wYear[id];
+                for (int id : ids) {
+                    const double share = w > 0 ? wYear[id] / w : 1.0 / ids.size(); if (share <= 0) continue;
+                    CH& c = byProg[id][std::make_tuple(kind, team, str(r, "coach"))];
+                    c.kind = kind; c.coach = str(r, "coach"); c.team = team; c.rate = rate; c.days = days;
+                    c.hours += hours * share; c.yearHours += hours * share * 365.0 / days; c.amount += hours * share * 365.0 / days * rate;
+                }
+            }
+            yj["coach_hours"] = json::object();
+            for (const auto& p : programs) {
+                json arr = json::array();
+                if (byProg.count(p.id)) for (const auto& [k, c] : byProg[p.id]) if (c.amount >= 0.5)
+                    arr.push_back({{"kind", c.kind}, {"coach", c.coach}, {"team", c.team}, {"hours", round2(c.hours)}, {"days", c.days},
+                                   {"year_hours", round2(c.yearHours)}, {"rate", c.rate}, {"amount", round2(c.amount)}});
+                yj["coach_hours"][p.code] = arr;
+            }
+        }
+        // what the owner changed on 🧮 Program budgets (mig 1644): line → {on, amount}
+        yj["adjust"] = json::object();
+        for (const auto& r : db->query("SELECT fp.code, a.line_key, a.is_on, a.amount_usd::float8 AS amount FROM program_budget_adjustments a "
+                                       "  JOIN finance_programs fp ON fp.id = a.program_id WHERE a.budget_year_id = $1::int AND fp.club_id = $2::int", {std::to_string(Y.id), club}))
+            yj["adjust"][str(r, "code")][str(r, "line_key")] = {{"on", r["is_on"].as<bool>()}, {"amount", r["amount"].is_null() ? json(nullptr) : json(r["amount"].as<double>())}};
+
         // out: program → season → {meta, lines}
         for (const auto& p : programs) {
             json pj = json::object();
@@ -727,7 +903,9 @@ void ProgramBudget::savePlan(int clubId, const std::string& program, const std::
     static const Col cols[] = {
         {"players", 'i', true, 0, 500}, {"teams", 'i', true, 0, 20}, {"practice_hours_week", 'n', true, 0, 40},
         {"practice_weeks", 'n', true, 0, 30}, {"games", 'i', false, 0, 60}, {"hours_per_game", 'n', false, 0, 6},
-        {"coach_paid", 'b', false, 0, 0}, {"coach_rate", 'n', true, 0, 200}, {"note", 't', true, 0, 0}};
+        {"coach_paid", 'b', false, 0, 0}, {"coach_rate", 'n', true, 0, 200}, {"note", 't', true, 0, 0},
+        {"new_players_month", 'n', true, -20, 50}, {"collect_pct", 'n', true, 0, 100},
+        {"non_paying", 'i', true, 0, 500}, {"non_paying_on_roster", 'i', true, 0, 500}, {"paying_off_roster", 'i', true, 0, 500}};
     std::vector<std::pair<std::string, std::string>> sets;   // column, value ('' = NULL)
     for (auto it = fields.begin(); it != fields.end(); ++it) {
         const Col* c = nullptr; for (const auto& x : cols) if (it.key() == x.name) c = &x;
@@ -755,7 +933,7 @@ void ProgramBudget::savePlan(int clubId, const std::string& program, const std::
                   {std::to_string(t.program), std::to_string(t.year), std::to_string(sid)});
         for (const auto& [col, val] : sets)
             db->query("UPDATE program_season_plans SET " + col + " = NULLIF($1, '')::" +
-                      (col == "coach_paid" ? "boolean" : col == "note" ? "text" : (col == "players" || col == "teams" || col == "games") ? "integer" : "numeric") +
+                      (col == "coach_paid" ? "boolean" : col == "note" ? "text" : (col == "players" || col == "teams" || col == "games" || col == "non_paying" || col == "non_paying_on_roster" || col == "paying_off_roster") ? "integer" : "numeric") +
                       ", updated_at = now(), updated_by_user_id = NULLIF($2, '')::int "
                       " WHERE program_id = $3::int AND budget_year_id = $4::int AND season_id = $5::int",
                       {val, uid, std::to_string(t.program), std::to_string(t.year), std::to_string(sid)});
@@ -797,4 +975,33 @@ void ProgramBudget::saveTeamProgram(int clubId, int teamId, const std::string& p
         if (mine && all <= 1) throw std::invalid_argument("A team needs at least one program paying for it.");
         db->query("DELETE FROM finance_program_teams WHERE program_id = $1::int AND team_id = $2::int", {pid, tid});
     }
+}
+
+// 🧮 One line of a program's year, as the owner wants it (mig 1644): off and /
+// or his own amount.  fields {on: bool, amount: number | null}; a line that is
+// on with no amount of his own has no row (= the worked-out number).
+void ProgramBudget::saveLine(int clubId, const std::string& program, const std::string& year, const std::string& key, const json& fields, long long userId) {
+    auto* db = Database::getInstance();
+    if (key.empty() || key.size() > 400) throw std::invalid_argument("Which line?");
+    auto p = db->query("SELECT id FROM finance_programs WHERE club_id = $1::int AND code = $2 AND is_active", {std::to_string(clubId), program});
+    if (p.empty()) throw std::invalid_argument("Which program?");
+    auto y = db->query("SELECT id FROM budget_years WHERE club_id = $1::int AND label = $2", {std::to_string(clubId), year});
+    if (y.empty()) throw std::invalid_argument("Which year?");
+    const std::string pid = std::to_string(p[0]["id"].as<int>()), yid = std::to_string(y[0]["id"].as<int>());
+    auto cur = db->query("SELECT is_on, amount_usd::float8 AS amount FROM program_budget_adjustments WHERE program_id = $1::int AND budget_year_id = $2::int AND line_key = $3", {pid, yid, key});
+    bool on = cur.empty() ? true : cur[0]["is_on"].as<bool>();
+    bool hasAmount = !cur.empty() && !cur[0]["amount"].is_null();
+    double amount = hasAmount ? cur[0]["amount"].as<double>() : 0.0;
+    if (fields.contains("on")) { if (!fields["on"].is_boolean()) throw std::invalid_argument("On is yes / no."); on = fields["on"].get<bool>(); }
+    if (fields.contains("amount")) {
+        if (fields["amount"].is_null()) hasAmount = false;
+        else if (!fields["amount"].is_number()) throw std::invalid_argument("The amount is a number.");
+        else { amount = fields["amount"].get<double>(); hasAmount = true; if (amount < 0 || amount > 10000000) throw std::invalid_argument("The amount must be between 0 and 10,000,000."); }
+    }
+    if (on && !hasAmount) { db->query("DELETE FROM program_budget_adjustments WHERE program_id = $1::int AND budget_year_id = $2::int AND line_key = $3", {pid, yid, key}); return; }
+    char b[32]; std::snprintf(b, sizeof b, "%.2f", amount);
+    db->query("INSERT INTO program_budget_adjustments (program_id, budget_year_id, line_key, is_on, amount_usd, updated_by_user_id) "
+              "VALUES ($1::int, $2::int, $3, $4::boolean, NULLIF($5, '')::numeric, NULLIF($6, '')::int) "
+              "ON CONFLICT (program_id, budget_year_id, line_key) DO UPDATE SET is_on = EXCLUDED.is_on, amount_usd = EXCLUDED.amount_usd, updated_at = now(), updated_by_user_id = EXCLUDED.updated_by_user_id",
+              {pid, yid, key, on ? "true" : "false", hasAmount ? std::string(b) : std::string{}, userId > 0 ? std::to_string(userId) : std::string{}});
 }

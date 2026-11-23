@@ -153,3 +153,100 @@ Page: `FinancesScreen._pbHtml` (pill `budgets`). Same model, same numbers as
   two differ a little (11/20: before grant −$16,042 here vs −$16,289 there).
 - Open: costs are still edited where they live (budget lines, team fee plans,
   coach schedule) — only the plan grid and "Paid for by" are editable here.
+
+### The full year, editable (mig 1644, 11/20)
+
+Owner: *"its program based not 'season' inside year based"* → *"show me it
+simply for full year with ability to turn things on or off or edit numbers"*
+→ *"for coach pay just look at my current hours for coaching and project. but
+separate practice from games and have games listed by team then a total"* →
+*"allow for it to be rolled minimized so it just shows coaching total … do
+that for all items"*. Men's first; every program runs the same code.
+
+- **Overview = one year column.** One block per sub pill, rolled up to its
+  total; tap the name for its lines. Seasons are gone from this page (they are
+  fixed month blocks, not when a program really changes); 🧩 Programs keeps them.
+- **Tick + number on every block and line.** `program_budget_adjustments`
+  (program, year, `line_key`, `is_on`, `amount_usd`); no row = worked out, on.
+  `POST /api/finances/program-line {program, year, key, on?, amount?}`;
+  `build()` answers them as `budgets[year].adjust[program]`. Page only: the
+  standard reports, 🧩 Programs and the other programs' shares never read them.
+  A balance that differs from the worked-out one says so.
+- **🧑‍🏫 Coaching this year = hours really worked, projected**
+  (`budgets[year].coach_hours[program]`): invoice shifts on a practice or a
+  game since Aug 1, per coach — hours × 365 ÷ days since that coach's first
+  shift × his rate. An event's hours are shared by the programs of its teams,
+  by paying players; a game sits under its team. Practice first, then games by
+  team, block total. The model's own labor lines (paid so far, coaching plan)
+  are left out of the page when hours exist. Shifts on no event (other duties)
+  are not counted. A straight-line projection: games are not spread evenly
+  over a year, so type your own number where it reads wrong.
+
+### Membership grows by the month (mig 1650, 11/23)
+
+Owner: *"there is no reason to break it by season because its a membership. i
+think better to do it by year/month … most of what we have is a fixed cost but
+membership should grow … a way to project to get more members each month? with
+possibly even go over 70 as that means we just don't put them on roster they
+are 'reserves'"*.
+
+- `program_season_plans.new_players_month` (NULL = none). The Overview's
+  **New members a month** box sets every plan season of the year
+  (`/program-plan`, season `all`).
+- Each plan month's members = the season's players + the members added so far
+  (running through the year and into the next; a later year with typed
+  players starts from those). `build()` answers them as `months` per
+  program-season; dues = Σ month members × monthly dues × collected share.
+- **Only the dues move.** Teams, coaching and the shared-cost split stay on
+  the season's players, and nothing caps the count — members past a full
+  roster are money in with no cost.
+- The dues line on 🧮 Program budgets is one year line, first plan month →
+  last (`pb_dues_grow` / `pb_dues_flat`), not one formula per season. Other
+  lines whose seasons differ name each season.
+
+### 👥 MEMBERS section (mig 1656, 11/23)
+
+Owner: *"members is key here and we need a good section for it. the rest is
+like i said pretty fixed"*; *"show the current paying percent of members and
+then we can use that to inform but there should be place for volunteers"*;
+*"not all paying members will be on a roster"*.
+
+Top of the Overview, per program. `build()` answers today's counts as
+`members_now` (all / owing / paid_now / owing_rostered / free / volunteers /
+free_rostered; on a roster = any live `team_persons` row whose status
+`counts_as_on_roster`) and his own numbers, saved through `/program-plan`
+(season `all`) on `program_season_plans`; NULL = today's count, shown grey:
+
+- Members who owe tuition (`players`) and New members a month — move the dues.
+- Share of them who pay (`collect_pct`) — moves the dues; live = last 3 closed
+  months; the note shows who has paid so far this month.
+- Volunteers and others who don't pay (`non_paying`), how many of them hold a
+  roster spot (`non_paying_on_roster`), members who owe but hold none
+  (`paying_off_roster`) — head count only, no money.
+- **By the end of the year's last month:** all members, on a roster of
+  teams × roster size, spots open or the overflow (reserves), and how many
+  have no roster spot. New members are assumed to take a spot until it is full.
+
+**As a card (mig 1668, 11/23)** — owner: *"we need the members section
+better … it needs to be more clear"*; *"according to tuition page there are
+43 current. 8 vols, 10 overdue"*. Above the money table, three parts: TODAY
+beside BY THE END OF <month> (paying, owe and not paying, don't pay, all
+members, on a roster, no roster spot); YOUR NUMBERS as labelled boxes (each
+says whether it moves the money or is head count only); MONTH BY MONTH (all
+members, paying, tuition, year total). TODAY uses the Tuition page's own
+statuses — `next_due_at` ahead = paying, a current injury = injured, the rest
+overdue — so the two pages count the same people. One difference: a boy too
+old for U16 counts in Men's here (payer → program by age), so Men's
+volunteers can read one higher than the Tuition page's Men tab.
+
+### The whole year, month by month (mig 1707)
+
+The card's MONTH BY MONTH grid runs the full budget year. Months already
+lived are **REAL** (`months_real` on each real season, from
+`ProgramBudget::build`): members = people with a LeagueApps membership open
+at the month's end, paying = people whose approved tuition landed in the
+month (net of refunds), tuition = what they paid. The current month is
+marked `*` (so far). The rest are **PLAN** months from the boxes above.
+"Paying" in a real month counts payments in that month, so it can differ by
+one or two from TODAY's "current on tuition" (someone who paid ahead is
+current without paying this month).

@@ -48,4 +48,10 @@ public:
     // (each line by where it sits: program / team / coach / section / club /
     // grant, with the whole cost and the programs sharing it) and "teams".
     static void saveTeamProgram(int clubId, int teamId, const std::string& program, bool on);
+    // 🧮 the full year, editable (mig 1644): one line of a program's year off /
+    // on, or with the owner's own amount ({on, amount}); page-only — never the
+    // standard reports.  build() answers them as budgets[year].adjust, and
+    // this year's coach pay projected from the hours worked (coach_hours).
+    static void saveLine(int clubId, const std::string& program, const std::string& year, const std::string& key,
+                         const nlohmann::json& fields, long long userId);
 };

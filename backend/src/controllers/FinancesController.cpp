@@ -92,6 +92,22 @@ void FinancesController::registerRoutes(Router& router, const std::string& prefi
             } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
             catch (const std::exception& e) { std::cerr << "[finances program team] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the change."); }
         });
+    // 🧮 one line of a program's year off / on / its own amount (mig 1644):
+    // { program, year, key, on?, amount? } → the programs again
+    laPost(router, prefix + "/program-line", {mensProgramId_, womensProgramId_, boysProgramId_, girlsProgramId_},
+        [this](const Request& r, const LaSyncMap&) {
+            Response denied; if (!gate(r, &denied)) return denied;
+            try {
+                const json b = r.getBody().empty() ? json::object() : json::parse(r.getBody());
+                json fields = json::object();
+                if (b.contains("on")) fields["on"] = b["on"];
+                if (b.contains("amount")) fields["amount"] = b["amount"];
+                if (fields.empty()) return jsonError(HttpStatus::BAD_REQUEST, "What changes?");
+                ProgramBudget::saveLine(WelcomeLog::kLighthouseClubId, b.value("program", ""), b.value("year", ""), b.value("key", ""), fields, bearerUserId(r));
+                return jsonOut(HttpStatus::OK, ProgramBudget::build(WelcomeLog::kLighthouseClubId, "expected"));
+            } catch (const std::invalid_argument& e) { return jsonError(HttpStatus::BAD_REQUEST, e.what()); }
+            catch (const std::exception& e) { std::cerr << "[finances program line] " << e.what() << std::endl; return jsonError(HttpStatus::BAD_REQUEST, "Could not save the change."); }
+        });
     // 🧑‍🏫 Coaching plan (mig 1491): every paid coach's hours and money per
     // season, from the normalized schedule — ?year=2026-27 ("" = this year).
     router.get(prefix + "/coaching", [this](const Request& r) { return handleCoaching(r); });
