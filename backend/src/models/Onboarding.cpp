@@ -29,12 +29,18 @@ const char* kStepsSql = R"SQL(
                 WHEN ps.verified_at IS NOT NULL THEN 'renew'
                 WHEN ps.sent_at IS NOT NULL THEN 'sent'
                 ELSE 'todo' END AS state,
-           (s.stage = 'volunteer' OR po.track = 'paid') AS required
-      FROM person_onboarding po
+           (s.stage IN ('player', 'volunteer') OR po.track = 'paid') AS required
+      FROM onboarding_people po
       JOIN persons p ON p.id = po.person_id
      CROSS JOIN onboarding_steps s
       LEFT JOIN person_onboarding_steps ps ON ps.person_id = po.person_id AND ps.step_code = s.code
      WHERE s.is_active AND ($1::int = 0 OR po.person_id = $1::int)
+       -- a 'player' step (SafeSport, mig 1740) is for players of a covered
+       -- section, old enough; the staff steps for people on a staff track
+       AND CASE WHEN s.stage = 'player'
+                THEN po.is_player AND (s.min_age IS NULL OR p.birth_date IS NULL
+                                       OR p.birth_date <= (now() AT TIME ZONE 'America/New_York')::date - make_interval(years => s.min_age))
+                ELSE po.track <> 'player' END
      ORDER BY p.first_name, p.last_name, po.person_id, s.sort_order, s.code
 )SQL";
 
@@ -80,7 +86,8 @@ bool stepExists(Database* db, const std::string& code) {
     return !db->query("SELECT 1 FROM onboarding_steps WHERE code = $1 AND is_active", {code}).empty();
 }
 bool onPath(Database* db, long long personId) {
-    return !db->query("SELECT 1 FROM person_onboarding WHERE person_id = $1::int", {std::to_string(personId)}).empty();
+    // staff tracks + every player of a covered section (onboarding_people, mig 1740)
+    return !db->query("SELECT 1 FROM onboarding_people WHERE person_id = $1::int", {std::to_string(personId)}).empty();
 }
 
 }  // namespace

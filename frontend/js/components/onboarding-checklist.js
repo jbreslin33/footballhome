@@ -196,7 +196,7 @@ class OnboardingChecklist {
     const paid = d.track === 'paid';
     const steps = Array.isArray(d.steps) ? d.steps : [];
     // The focus: the step the person opened, else the first one still to do.
-    const liveSteps = steps.filter(s => s.stage === 'volunteer' || paid);
+    const liveSteps = steps.filter(s => s.stage === 'player' || s.stage === 'volunteer' || paid);
     const firstTodo = liveSteps.find(s => s.state === 'todo' || s.state === 'renew');
     const focus = (this.open && liveSteps.some(s => s.code === this.open && s.state !== 'done')) ? this.open : (firstTodo ? firstTodo.code : null);
     const stageDone = (key) => steps.filter(s => s.stage === key).every(s => s.state === 'sent' || s.state === 'done');
@@ -244,7 +244,7 @@ class OnboardingChecklist {
             <span style="flex:1; min-width:160px; font-weight:800; font-size:0.9rem;"><span style="opacity:0.6;">${n}.</span> ${esc(s.label)}</span>
             ${live ? `${OnboardingChecklist.stateHtml(s.state, esc)}${exp}` : ''}
           </div>
-          ${(s.how || cost) && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.88; line-height:1.35;">${cost ? `<b>${esc(cost)}</b>${s.how ? ' · ' : ''}` : ''}${esc(s.how || '')}</div>` : ''}
+          ${(s.how || cost) && s.state !== 'done' ? `<div style="font-size:0.8rem; opacity:0.88; line-height:1.35; white-space:pre-line;">${cost ? `<b>${esc(cost)}</b>${s.how ? ' · ' : ''}` : ''}${esc(s.how || '')}</div>` : ''}
           ${s.note && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#fca5a5; font-weight:700;">${esc(s.note)}</div>` : ''}
           ${s.submitted_at && s.state !== 'done' ? `<div style="font-size:0.8rem; color:#4ade80; font-weight:700;">${esc(t('nsor_sent_line', { when: new Date(s.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) }, '✉️ Sent to the state {when} — your letter comes by email in about 14 days. Upload it here.'))}</div>` : ''}
           ${live ? OnboardingChecklist.filesHtml(files, esc, { removable: s.state !== 'done' }) : ''}
@@ -253,11 +253,15 @@ class OnboardingChecklist {
     };
     const stage = (key, list, live, sub, start) => !list.length ? '' : `
         <div style="margin-top:10px;">
-          <div style="font-weight:900; font-size:0.92rem; color:#f5d442;">${esc(t(`stage_${key}`, {}, key === 'paid' ? '💵 Step 2 · Ready to be paid' : '🙋 Step 1 · Cleared to volunteer'))}</div>
+          <div style="font-weight:900; font-size:0.92rem; color:#f5d442;">${esc(t(`stage_${key}`, {}, key === 'paid' ? '💵 Step 2 · Ready to be paid' : key === 'player' ? '⚽ Player · SafeSport' : '🙋 Step 1 · Cleared to volunteer'))}</div>
           ${sub ? `<div style="font-size:0.78rem; opacity:0.8; margin-top:1px;">${esc(sub)}</div>` : ''}
           ${live && stageDone(key) && list.some(s => s.state !== 'done') ? `<div style="margin-top:6px; padding:8px 10px; border-radius:8px; background:rgba(34,197,94,0.15); border:1px solid rgba(34,197,94,0.5); font-size:0.82rem; font-weight:700;">${esc(t(`${key}_done`, {}, key === 'paid' ? '🎉 Pay paperwork done! The club sends it to HR.' : "🎉 Clearances done! The club checks them and sends them to compliance. You're cleared once they're ✅."))}</div>` : ''}
           <div style="display:flex; flex-direction:column; gap:6px; margin-top:6px;">${list.map((s, i) => row(s, live, start + i + 1)).join('')}</div>
         </div>`;
+    // ⚽ what every player of the section owes (SafeSport, mig 1740) — first,
+    // and the whole list for someone who is only a player.
+    const ply = steps.filter(s => s.stage === 'player');
+    const playerOnly = d.track === 'player';
     const vol = steps.filter(s => s.stage === 'volunteer');
     const pay = steps.filter(s => s.stage === 'paid');
     // Uploaded counts as done for the volunteer (owner 11/19 "should fh check it off when uploaded?").
@@ -270,10 +274,12 @@ class OnboardingChecklist {
         <span style="font-weight:900; font-size:0.85rem; white-space:nowrap;">${esc(t('my_progress', { done, total }, '{done} of {total} done'))}</span>
       </div>
       <div style="font-size:0.82rem; line-height:1.4; padding:7px 10px; border-radius:8px; background:rgba(29,78,216,0.18); border:1px solid rgba(96,165,250,0.35); margin-bottom:8px;">${esc(t('how_it_works', {}, 'For each step: do it, then tap 📎 Upload to add a photo or PDF. The club checks it and it turns ✅.'))}</div>
-      <div style="font-size:0.85rem; line-height:1.4; opacity:0.92;">${esc(paid ? t('intro_paid', {}, 'Finish every step so the club can pay you.')
+      <div style="font-size:0.85rem; line-height:1.4; opacity:0.92;">${esc(playerOnly ? t('intro_player', {}, "One thing every men's player has to do: SafeSport training. Take the course, upload your certificate, done.")
+        : paid ? t('intro_paid', {}, 'Finish every step so the club can pay you.')
         : t('intro_volunteer', {}, "Step 1 clears you to coach and volunteer with our kids. Step 2 is the paperwork for a paid role — finish step 1 and you're ready when one opens."))}</div>
-      ${stage('volunteer', vol, true, '', 0)}
-      ${stage('paid', pay, paid, paid ? '' : t('stage_paid_next', {}, 'Next, when the club offers you a paid role'), vol.length)}
+      ${stage('player', ply, true, '', 0)}
+      ${stage('volunteer', vol, true, '', ply.length)}
+      ${stage('paid', pay, paid, paid ? '' : t('stage_paid_next', {}, 'Next, when the club offers you a paid role'), ply.length + vol.length)}
       ${this.err ? `<div style="margin-top:8px; font-size:0.8rem; color:#fca5a5;">${esc(this.err)}</div>` : ''}
       <div style="margin-top:12px; font-size:0.78rem; opacity:0.75;">${esc(t('questions', {}, 'Questions or need help with a clearance? Message the club.'))}</div>`;
   }

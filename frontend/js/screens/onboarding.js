@@ -185,7 +185,10 @@ class OnboardingScreen extends Screen {
     }
     const people = this.data.people || [];
     const vol = people.filter(p => p.track === 'volunteer'), paid = people.filter(p => p.track === 'paid');
-    const list = this.pill === 'paid' ? paid : vol;
+    // ⚽ Players (mig 1740): everyone who owes a player step (SafeSport) —
+    // derived from the rosters, so no add / move / remove here.
+    const players = people.filter(p => (p.steps || []).some(s => s.stage === 'player'));
+    const list = this.pill === 'player' ? players : this.pill === 'paid' ? paid : vol;
     const pill = (key, tier, fb, n) => `<button type="button" class="btn ${this.pill === key ? 'btn-primary' : 'btn-secondary'}" data-onb-pill="${key}" style="min-height:0; padding:6px 14px; border-radius:999px;">${esc(this._t(tier, { n }, fb))}</button>`;
     // Who still has the most to do first; complete people last.
     const order = [...list].sort((a, b) => (b.left - a.left) || ((a.done === a.total) - (b.done === b.total)) || String(a.name).localeCompare(String(b.name)));
@@ -193,17 +196,22 @@ class OnboardingScreen extends Screen {
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin:var(--space-2) 0 var(--space-3);">
         ${pill('volunteer', 'pill_volunteer', '🙋 Volunteers ({n})', vol.length)}
         ${pill('paid', 'pill_paid', '💵 Paid ({n})', paid.length)}
+        ${players.length ? pill('player', 'pill_player', '⚽ Players ({n})', players.length) : ''}
       </div>
+      ${this.pill === 'player' ? `<p style="font-size:0.82rem; opacity:0.8; margin:0 0 8px;">${esc(this._t('player_note', {}, "Every men's player 18 or older, automatically. Uploaded = 🟡; tap the chip to see the certificate and mark it ✅ Checked."))}</p>` : ''}
       ${this.error ? `<p style="color:#ef4444; margin:0 0 8px;">${esc(this.error)}</p>` : ''}
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${order.length ? order.map(p => this._card(p, esc)).join('') : `<p style="opacity:0.7;">${esc(this._t('empty', {}, 'Nobody here yet.'))}</p>`}
       </div>
-      ${this._addHtml(esc)}
+      ${this.pill === 'player' ? '' : this._addHtml(esc)}
       ${this.data.policy && this.data.policy.purge_days ? `<p style="font-size:0.78rem; opacity:0.65; margin-top:var(--space-3);">${esc(this._t('files_purge', { days: this.data.policy.purge_days }, 'Files are deleted {days} days after they go to compliance — only the ticks stay.'))}</p>` : ''}`;
   }
 
   _card(p, esc) {
-    const steps = p.steps || [];
+    const asPlayer = this.pill === 'player';
+    // On ⚽ Players the card is the player steps only, with its own tally.
+    const steps = (p.steps || []).filter(s => asPlayer ? s.stage === 'player' : true);
+    if (asPlayer) p = { ...p, total: steps.length, done: steps.filter(s => s.state === 'done').length, left: steps.filter(s => s.state === 'todo' || s.state === 'renew').length, note: '' };
     const complete = p.total > 0 && p.done === p.total;
     const colour = { todo: '#9ca3af', sent: '#facc15', done: '#22c55e', renew: '#ef4444' };
     const icon = { todo: '⬜', sent: '🟡', done: '✅', renew: '⛔' };
@@ -243,8 +251,8 @@ class OnboardingScreen extends Screen {
         ${p.note ? `<div style="font-size:0.78rem; opacity:0.75; margin-top:2px;">${esc(p.note)}</div>` : ''}
         <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;">${steps.map(chip).join('')}</div>
         ${actions}
-        ${this._sendHtml(p, esc)}
-        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px;">
+        ${asPlayer ? '' : this._sendHtml(p, esc)}
+        <div style="display:${asPlayer ? 'none' : 'flex'}; gap:6px; flex-wrap:wrap; margin-top:8px;">
           ${move}
           <button type="button" class="btn btn-secondary" data-onb-track="" data-pid="${p.person_id}" style="min-height:0; padding:5px 10px; font-size:0.8rem; opacity:0.75;">${esc(this._t('act_remove', {}, 'Remove from onboarding'))}</button>
         </div>
@@ -260,6 +268,7 @@ class OnboardingScreen extends Screen {
     const when = (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const rows = (this.data.stages || []).map(st => {
       const steps = (p.steps || []).filter(s => s.stage === st.stage);
+      if (st.stage === 'player') return '';   // a certificate stays with the club (mig 1740)
       if (st.stage === 'paid' && p.track !== 'paid') return '';
       const files = steps.reduce((l, s) => l.concat(s.files || []), []);
       const sentAt = p.sends && p.sends[st.stage];
