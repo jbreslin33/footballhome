@@ -88,7 +88,11 @@ def one(pos_path):
                     else:
                         c[f"x{fz}_{z}"] += 1; air = zmax >= 2.0; c[f"xa{fz}_{z}"] += air
                         L[f"xg{fz}_{z}"].append(gapn / 5); L[f"xd{fz}"].append(last[2] - tl)
-            last = (t, z, tl); zmax = 0.0; gapn = 0
+                        if gapn >= 1:   # G5.231 (§8.337) PASS PACE: a ball that travelled between two mates — m between the two touches / s
+                            d2 = math.hypot(b[0] - last[3], b[1] - last[4]); tt = (gapn + 1) / 5
+                            lb = None if d2 < 5 else 0 if d2 < 10 else 1 if d2 < 20 else 2 if d2 < 30 else 3
+                            if lb is not None: hh = 0 if zmax < 1.0 else 1; L[f"pp{hh}_{lb}"].append(d2 / tt); L[f"pt{hh}_{lb}"].append(tt)
+            last = (t, z, tl, b[0], b[1]); zmax = 0.0; gapn = 0
         else:
             zmax = max(zmax, b[3]); gapn += 1
         if man is None:
@@ -122,6 +126,11 @@ if __name__ == "__main__":
         r = [c[f"x{z}"] / tm] + [100 * c[f"x{z}_{q}"] / n for q in range(5)] + [100 * c[f"xa{z}_{q}"] / max(1, c[f"x{z}_{q}"]) for q in range(5)] + [100 * c[f"x{z}_lost"] / n, 100 * c[f"x{z}_dead"] / n, md(L[f"xd{z}"])]
         xrows.append(r)
         print(f"  {nm:6s} " + "  ".join(f"{r[1 + q]:4.1f} [{r[6 + q]:2.0f}]" for q in range(5)) + f" | {r[11]:4.1f} | {r[12]:4.1f} || {r[0]:6.1f} | {r[13]:+.1f}")
+    print("  PASS PACE (G5.231) — a ball that travelled between two mates' touches (5 Hz): m between them / s, by length 5-10 / 10-20 / 20-30 / 30+ m: med m/s [p25-p75] (n a team-match), flight s med")
+    q = lambda v, f: sorted(v)[int(f * len(v))] if v else float("nan")
+    for hh, hn in ((0, "ground (under 1 m)"), (1, "off the ground")):
+        print(f"    {hn}: " + "; ".join(f"{q(L[f'pp{hh}_{lb}'], .5):.1f} [{q(L[f'pp{hh}_{lb}'], .25):.1f}-{q(L[f'pp{hh}_{lb}'], .75):.1f}] ({len(L[f'pp{hh}_{lb}']) / tm:.1f}), {q(L[f'pt{hh}_{lb}'], .5):.1f} s" for lb in range(4)))
+    print("  C++ pace rows {med, p25, p75, n, s} x 4 lengths, ground then air: " + "; ".join("{" + ", ".join(f"{q(L[f'pp{hh}_{lb}'], .5):.1f}, {q(L[f'pp{hh}_{lb}'], .25):.1f}, {q(L[f'pp{hh}_{lb}'], .75):.1f}, {len(L[f'pp{hh}_{lb}']) / tm:.1f}, {q(L[f'pt{hh}_{lb}'], .5):.1f}" for lb in range(4)) + "}" for hh in (0, 1)))
     print("C++ next-stint rows:")
     for r in xrows: print("  {" + ", ".join(f"{x:.1f}" for x in r) + "},")
     print("C++ rows:")

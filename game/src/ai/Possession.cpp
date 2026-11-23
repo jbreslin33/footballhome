@@ -492,7 +492,7 @@ public:
             // stayed on the ground (19-35% high, real 77-90%).
             const bool box_ball = ez == 0 && oz != 0;
             if (wgt.raw > 0 && P.high_on && !box_ball) {
-                const bool gsafe = c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one());
+                const bool gsafe = c.reads.passSafe(w, v.slot, sp, to, w.passSpeed(d), Fixed64::one());
                 // Past his range the high share is not his to play, and is not handed to the ground:
                 // nobody drives a 55 m pass along the floor (real 50+ m passes 87-98% high).
                 // G5.75 (§8.176): and its direction — real 30-40 m passes from our third go high 73%
@@ -542,7 +542,7 @@ public:
                     add(Cand{j, lsafe ? hw * ph : hw * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
             } else if (wgt.raw > 0) {
-                if (c.reads.passSafe(w, v.slot, sp, to, core::weightedPassSpeed(d), Fixed64::one())) {
+                if (c.reads.passSafe(w, v.slot, sp, to, w.passSpeed(d), Fixed64::one())) {
                     add(Cand{j, wgt, false, Loft{}, false, to, 0});
                 } else {
                     const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
@@ -591,8 +591,9 @@ public:
             std::int64_t cm = ((v0 - core::kPassArriveSpeed) / per_m).raw >> Fixed64::FRAC_BITS;
             if (cm < 1) cm = 1;
             if (cm > 255) cm = 255;
+            for (const Fixed64 vt = core::weightedPassSpeed(Fixed64::fromInt(cm)); cm < 255 && w.passSpeed(Fixed64::fromInt(cm)) < vt;) ++cm;   // G5.232: under the softer short law, the same strike
             const std::uint8_t carry = static_cast<std::uint8_t>(cm);
-            const Fixed64 vg = core::weightedPassSpeed(Fixed64::fromInt(cm));
+            const Fixed64 vg = w.passSpeed(Fixed64::fromInt(cm));
             const Loft lf{at, aimedCarry(me.pos, at, reach)};
             Fixed64 bw = w0 * pb;
             if (P.behind_lift_on) {   // G5.91 (§8.192): to the man already running at their goal

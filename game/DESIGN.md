@@ -12681,3 +12681,55 @@ OFF → off, goals unchanged; passes 407 (the ground forward pass now 74 v 92.5 
 `space.contest` stays off). Open: completion still 3.5 points over (the high ball of 10-30 m from midfield, the ground
 forward pass from our own third — §8.335); the ball still 866 s in midfield (690). Next: the same forward-pass ruler
 after this, then the ground forward pass from our own third (lost 1.6 v 4.8). Tests 23/23.
+
+### 8.337 G5.231 — pass pace: ours is real from 10 m out; the short pass is hit too firm, the long high ball hangs (measured; no game change)
+
+From §8.336's open completion gap. `benchmarks_tracking_bandtime.py` PASS PACE + harness §8.337 PASS PACE: a ball
+that travelled between two mates' touches (5 Hz, the BAND TIME stints), metres between the two touches / seconds, by
+length and whether it rose past 1 m. DFL 7 matches v seeds 1000-4000 × 8 on G5.230 — median m/s [p25-p75], passes a
+team-match:
+
+| | 5-10 m | 10-20 m | 20-30 m | 30 m+ |
+|---|---|---|---|---|
+| ground, real | 9.3 [7.4-11.1], 77.8 | 11.6 [9.9-13.5], 121.2 | 13.4 [11.6-15.3], 46.1 | 13.2 [11.6-14.8], 7.2 |
+| ground, ours | 10.8 [10.2-11.4], 110.9 | 11.9 [11.2-12.6], 122.2 | 13.2 [12.6-13.8], 31.4 | 12.0 [11.4-12.6], 6.5 |
+| off the ground, real | 9.4 [7.0-12.4], 42.4 | 11.6 [8.7-14.6], 42.4 | 14.9 [12.4-18.1], 22.8 | 16.4 [14.3-18.1], 26.5 |
+| off the ground, ours | 10.1 [8.3-13.4], 24.7 | 12.2 [10.1-14.0], 51.4 | 13.4 [10.4-15.4], 27.5 | 14.5 [11.6-16.6], 24.8 |
+
+- The ground pass of 10-30 m is real in the middle. **The short one is 1.5 m/s too firm** — the harness's 30 Hz
+  kick → touch ruler agrees: under 10 m 0.80 s v 0.88-0.92, 10-20 m 1.27 v 1.32-1.36, 20-30 m 1.92 v 1.80-1.88. Every
+  ground pass of ours is struck to arrive at 9 m/s (`weightedPassSpeed`); the real short one arrives softer.
+- **Ours are all one weight**: the quartiles sit 1.2-1.4 m/s apart, real ones 3.6-3.7. Not chased here — a real spread
+  is a choice by situation (the lane, the receiver's space), and a random one would be a shortcut.
+- **The long high ball hangs**: 30 m+ 14.5 v 16.4 m/s (2.8 s v 2.4 touch to touch); 20-30 m 13.4 v 14.9. The landing
+  times are DFL's own (§8.259-8.260), so the 0.4 s is after the drop: what the receiver does with it. Open.
+- Counts: ground 5-10 m 111 v 78 (the short square and back ball, §8.333), ground 20-30 m 31 v 46.
+
+The 5 Hz ruler is coarse under 10 m (a 0.8 s pass is four frames); the 30 Hz kick → touch line is the one to fit
+to. Harness only; tests 23/23. Next: the short pass at its real weight.
+
+### 8.338 G5.232 — a short ground pass arrives softer (mig 1756; shipped)
+
+From §8.337. **Change**: `World::passArrive(d)` / `World::passSpeed(d)` replace the free `weightedPassSpeed` at every
+strike and read (the kick, the brain's lead, `passSafe`, the ball ahead of a runner, the harness): a ground pass
+arrives at `physics.pass.arrive_short` at 5 m and under, rising evenly to 9 m/s at `physics.pass.arrive_full_m`. No
+rows = 9 m/s for every length (the old law, byte for byte — checked on seed 1000). 6 m/s / 20 m, seeds 1000-4000 × 8:
+
+| | G5.230 | G5.232 | real |
+|---|---|---|---|
+| kick → touch, under 10 / 10-20 / 20-30 m, s | 0.80 / 1.27 / 1.92 | 0.90 / 1.34 / 1.91 | 0.88-0.92 / 1.32-1.36 / 1.80-1.88 |
+| 5 Hz pace, ground 5-10 m, m/s | 10.8 [10.2-11.4] | 9.1 [8.4-9.8] | 9.3 [7.4-11.1] |
+| 5 Hz pace, ground 10-20 m | 11.9 [11.2-12.6] | 11.2 [10.3-12.4] | 11.6 [9.9-13.5] |
+| nearest of theirs closes while it travels, m (over s) | 1.22 (1.12) | 1.41 (1.20) | 2.32 (1.28) |
+| take-ons | 14.2 | 15.6 | 18.05 |
+| passes / completion % | 407 / 81.0 | 407 / 80.9 | 434 / 77.5 |
+| goals | 2.31 | 2.31 | 1.35 |
+| card | 10 / 9 / 14 | 9 / 12 / 12 | |
+
+The short pass now travels at its real pace; passes, completion and goals do not move — pace is not what keeps our
+completion 3.5 points over. The card's other moves are inside run noise (§8.328: 64 team-matches ≈ ±0.2 goals; an
+accidental 1 m change to the led ball's carry moved the card as much). Shipped as the correct behaviour
+(`card_G5.232.txt`). Two first arms were void — `GAME_PARAMS` takes the value in units, not thousandths. Open: theirs
+still close 1.4 m on a travelling pass v 2.3 (the press's start, not the ball's pace); the one-weight spread and the
+hanging long ball (§8.337). Next: the ground forward pass from our own third (lost 1.6 v 4.8, §8.335) — who is on the
+receiver at the touch, DFL v ours. Tests 23/23.

@@ -142,6 +142,12 @@ public:
     math::Fixed64 keeperShotReach() const noexcept { return keeper_shot_reach_.raw > 0 ? keeper_shot_reach_ : keeper_reach_; }
     math::Fixed64 shotLift(math::Fixed64 v, math::Fixed64 d, math::Fixed64 h) const;
     const BallFlight& ballFlight() const noexcept { return ball_flight_; }
+    // G5.232 (§8.338): the speed a ground pass to a man d metres away ARRIVES at, and the strike that
+    // gets it there. A real short pass is played softer (DFL touch-to-touch pace 9.3 / 11.6 / 13.4 m/s
+    // at 5-10 / 10-20 / 20-30 m; one 9 m/s arrival gave 10.8 / 11.9 / 13.2): physics.pass.arrive_short
+    // at 5 m and under, rising evenly to kPassArriveSpeed at physics.pass.arrive_full_m. No row = 9 flat.
+    math::Fixed64 passArrive(math::Fixed64 d) const;
+    math::Fixed64 passSpeed(math::Fixed64 d) const;
     // G5.155 (§8.260): the flight level of the loft kicker would strike now (BallFlight::kLevels
     // equal shares, one roll his spell on the ball: what his reads and the kick both use).
     int loftLevel(SlotIndex kicker) const;
@@ -335,6 +341,7 @@ private:
     std::vector<bool>        keeper_;
     Locomotion loco_;
     BallFlight ball_flight_;
+    math::Fixed64 arrive_short_ = kPassArriveSpeed, arrive_full_m_ = math::Fixed64::fromInt(15);   // G5.232
     math::Fixed64 foul_p_area_{};   // G5.40: the share of challenges in his own area that are fouls (Law 14)
     math::Fixed64 keeper_reach_ = kKeeperReach;
     math::Fixed64 keeper_shot_reach_{};

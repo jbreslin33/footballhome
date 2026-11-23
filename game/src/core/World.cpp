@@ -80,6 +80,8 @@ std::uint8_t World::chooseFoot(SlotIndex s) const {
 }
 
 void World::configureKicks(const ModelParams& p) {
+    arrive_short_ = p.fixed("physics.pass.arrive_short", 9000);   // G5.232 (§8.338)
+    arrive_full_m_ = p.fixed("physics.pass.arrive_full_m", 15000);
     kicks_on_ = p.fixed("physics.kick.plant_on", 1000).raw > 0;
     kick_reach_ = p.fixed("physics.kick.reach_m", 1000);
     weak_deg_ = p.fixed("physics.kick.weak_deg", 3000);
@@ -626,7 +628,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 ball_.vel = Vec3{dir.x * v, dir.y * v, v * kLoftLaunchRatio};
             } else if (act == Action::GroundKick) {
                 const Fixed64 v = (carry_m_[kicker] > 0 ? (die_[kicker] ? dieAtSpeed(Fixed64::fromInt(carry_m_[kicker]))
-                                                                        : weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker])))
+                                                                        : passSpeed(Fixed64::fromInt(carry_m_[kicker])))
                                                         : kGroundKickSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (act == Action::Shot) {
@@ -648,7 +650,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                 if (has_aim_[kicker] && aim_z_[kicker].raw > 0)
                     ball_.vel.z = shotLift(v, math::length(Vec2{aim_[kicker].x - o.pos.x, aim_[kicker].y - o.pos.y}), aim_z_[kicker]);
             } else if (act == Action::ShortPass) {
-                const Fixed64 v = (carry_m_[kicker] > 0 ? weightedPassSpeed(Fixed64::fromInt(carry_m_[kicker]))
+                const Fixed64 v = (carry_m_[kicker] > 0 ? passSpeed(Fixed64::fromInt(carry_m_[kicker]))
                                                         : kShortPassSpeed) * power_scale;
                 ball_.vel = Vec3{dir.x * v, dir.y * v, Fixed64::zero()};
             } else if (carry_m_[kicker] > 0) {
@@ -1583,6 +1585,19 @@ std::uint32_t World::deadRoll(Fixed64 lo, Fixed64 hi, std::uint8_t salt) const {
     const Fixed64 u = (detNoise(match_seed_, clock_.tick(), salt, 61) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
     const Fixed64 s = lo + (hi - lo) * u;
     return static_cast<std::uint32_t>((s * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS);
+}
+
+Fixed64 World::passArrive(Fixed64 d) const {
+    const Fixed64 lo = Fixed64::fromInt(5);
+    if (arrive_short_ >= kPassArriveSpeed || d >= arrive_full_m_ || arrive_full_m_ <= lo) return kPassArriveSpeed;
+    if (d <= lo) return arrive_short_;
+    return arrive_short_ + (kPassArriveSpeed - arrive_short_) * (d - lo) / (arrive_full_m_ - lo);
+}
+
+Fixed64 World::passSpeed(Fixed64 d) const {
+    const Fixed64 v = passArrive(d) + (Fixed64::one() - kBallRollDecayPerTick) * Fixed64::fromInt(30) * d;
+    const Fixed64 cap = Fixed64::fromInt(20);
+    return v > cap ? cap : v;
 }
 
 int World::loftLevel(SlotIndex kicker) const {

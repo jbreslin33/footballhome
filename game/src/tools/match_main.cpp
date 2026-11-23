@@ -89,6 +89,7 @@ struct Stats {
     long ml_who[4][2][5] = {};   // §8.335 not completed, ending under 10 m / beyond: who has it next
     long mr_n[5][2][2][2] = {}, mr_cd[5][5] = {}, mr_cv[5][4] = {}, mr_end[5][2] = {}, mr_len[5][3] = {}; std::vector<double> mr_off[5], mr_along[5];   // §8.334 PASS READ BY BAND
     long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
+    std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
@@ -1696,13 +1697,13 @@ int main(int argc, char** argv) {
                             mk.oz = hx + W.player(owner).pos.x.toDouble() * (owner_team == 0 ? 1.0 : -1.0) < 18 ? 0 : 1;   // §8.313   // §8.309: the decision's read, at the kick, on the man it is for
                             const math::Vec2 sp{W.player(owner).pos.x, W.player(owner).pos.y}, to{W.player(static_cast<std::uint8_t>(mk.to)).pos.x, W.player(static_cast<std::uint8_t>(mk.to)).pos.y};
                             const math::Fixed64 d = math::length(math::Vec2{to.x - sp.x, to.y - sp.y});
-                            if (d >= math::Fixed64::fromInt(5)) { mk.o3 = true; mk.okr = rd.passSafe(W, owner, sp, to, core::weightedPassSpeed(d), math::Fixed64::one()) ? 1 : 0; 
+                            if (d >= math::Fixed64::fromInt(5)) { mk.o3 = true; mk.okr = rd.passSafe(W, owner, sp, to, W.passSpeed(d), math::Fixed64::one()) ? 1 : 0; 
                                 mk.ons = 0;   // §8.311: when the read says theirs, how many mates 5 m+ off read safe to feet
                                 if (mk.okr == 0) for (std::uint8_t j = 0; j < N; ++j) {
                                     if (j == owner || W.player(j).team != owner_team || W.isKeeper(j)) continue;
                                     const math::Vec2 tj{W.player(j).pos.x, W.player(j).pos.y};
                                     const math::Fixed64 dj = math::length(math::Vec2{tj.x - sp.x, tj.y - sp.y});
-                                    if (dj >= math::Fixed64::fromInt(5) && rd.passSafe(W, owner, sp, tj, core::weightedPassSpeed(dj), math::Fixed64::one())) ++mk.ons;
+                                    if (dj >= math::Fixed64::fromInt(5) && rd.passSafe(W, owner, sp, tj, W.passSpeed(dj), math::Fixed64::one())) ++mk.ons;
                                 }
                             }
                         }
@@ -1713,7 +1714,7 @@ int main(int argc, char** argv) {
                                 const math::Vec2 to{W.player(j).pos.x, W.player(j).pos.y};
                                 const math::Fixed64 d = math::length(math::Vec2{to.x - sp.x, to.y - sp.y});
                                 if (d < math::Fixed64::fromInt(5)) continue;
-                                const bool ok = rd.passSafe(W, owner, sp, to, core::weightedPassSpeed(d), math::Fixed64::one());
+                                const bool ok = rd.passSafe(W, owner, sp, to, W.passSpeed(d), math::Fixed64::one());
                                 ++mk.nmates; mk.nsafe += ok; if (j == mk.to) mk.csafe = ok;
                             }
                         }
@@ -3047,6 +3048,7 @@ int main(int argc, char** argv) {
         {   // §8.330 BAND TIME (benchmarks_tracking_bandtime.py): each in-play 5 Hz frame on a man (one of the side in possession
             // within 2 m of the ball) or travelling, by the ball's band off the line that side attacks; stints = the same man, contiguous
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
+            double la_bx = 0, la_by = 0; int gapn = 0;   // §8.337
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
             auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; } st_man = -1; };
             for (const auto& f : fl_f) {
@@ -3067,10 +3069,12 @@ int main(int argc, char** argv) {
                     else {
                         close(); st_man = man; st_z = z; st_n = 1;
                         if (la_t >= 0) { ++S.nx_n[la_z];
-                            if (la_t != t) ++S.nx_lost[la_z]; else { ++S.nx_to[la_z][z]; S.nx_air[la_z][z] += zmax >= 2.0; S.nx_d[la_z].push_back(la_tl - tl); } }
+                            if (la_t != t) ++S.nx_lost[la_z]; else { ++S.nx_to[la_z][z]; S.nx_air[la_z][z] += zmax >= 2.0; S.nx_d[la_z].push_back(la_tl - tl);
+                                if (gapn >= 1) { const double d2 = std::hypot(f.bx - la_bx, f.by - la_by), tt = (gapn + 1) / 5.0;   // §8.337 PASS PACE
+                                    if (d2 >= 5) { const int lb = d2 < 10 ? 0 : d2 < 20 ? 1 : d2 < 30 ? 2 : 3, hh = zmax < 1.0 ? 0 : 1; S.pc_v[hh][lb].push_back(d2 / tt); S.pc_t[hh][lb].push_back(tt); } } } }
                     }
-                    la_t = t; la_z = z; la_tl = tl; zmax = 0;
-                } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); zmax = std::max(zmax, static_cast<double>(f.bz)); }
+                    la_t = t; la_z = z; la_tl = tl; zmax = 0; la_bx = f.bx; la_by = f.by; gapn = 0;
+                } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); zmax = std::max(zmax, static_cast<double>(f.bz)); ++gapn; }
                 pv = &f;
             }
             close();
@@ -3559,6 +3563,18 @@ int main(int argc, char** argv) {
                             std::printf("\n     %-6s", zn5[z]);
                             for (int q = 0; q < 5; ++q) std::printf(" %4.1f (%4.1f) [%2.0f (%2.0f)] ", 100.0 * S.nx_to[z][q] / n, R[z][1 + q], 100.0 * S.nx_air[z][q] / std::max(1L, S.nx_to[z][q]), R[z][6 + q]);
                             std::printf("| %4.1f (%4.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %+.1f (%+.1f)", 100.0 * S.nx_lost[z] / n, R[z][11], 100.0 * S.nx_dead[z] / n, R[z][12], S.nx_n[z] / tmo, R[z][0], med(S.nx_d[z]), R[z][13]);
+                        }
+                    }
+                    {   // §8.337 PASS PACE — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
+                        static const double R[2][20] = {{9.3, 7.4, 11.1, 77.8, 0.8, 11.6, 9.9, 13.5, 121.2, 1.2, 13.4, 11.6, 15.3, 46.1, 1.8, 13.2, 11.6, 14.8, 7.2, 2.6}, {9.4, 7.0, 12.4, 42.4, 0.8, 11.6, 8.7, 14.6, 42.4, 1.2, 14.9, 12.4, 18.1, 22.8, 1.6, 16.4, 14.3, 18.1, 26.5, 2.4}};
+                        static const char* ln4[4] = {"5-10", "10-20", "20-30", "30+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        auto qt = [](std::vector<double> v, double fq) { if (v.empty()) return -1.0; std::sort(v.begin(), v.end()); return v[static_cast<std::size_t>(fq * v.size())]; };
+                        std::printf("\n   §8.337 PASS PACE (a ball that travelled between two mates' touches, 5 Hz: m between them / s; real DFL in brackets): med m/s [p25-p75] | a team-match | flight s med");
+                        for (int hh = 0; hh < 2; ++hh) {
+                            std::printf("\n     %s:", hh ? "off the ground" : "ground (under 1 m)");
+                            for (int lb = 0; lb < 4; ++lb) std::printf(" %s m %.1f (%.1f) [%.1f-%.1f (%.1f-%.1f)] | %.1f (%.1f) | %.1f (%.1f);", ln4[lb], qt(S.pc_v[hh][lb], .5), R[hh][5 * lb], qt(S.pc_v[hh][lb], .25), qt(S.pc_v[hh][lb], .75), R[hh][5 * lb + 1], R[hh][5 * lb + 2],
+                                                               S.pc_v[hh][lb].size() / tmo, R[hh][5 * lb + 3], qt(S.pc_t[hh][lb], .5), R[hh][5 * lb + 4]);
                         }
                     }
                     {   // §8.329 THE CHANNEL AHEAD — real: benchmarks_tracking_channel.py (DFL, 7 matches)

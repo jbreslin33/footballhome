@@ -790,7 +790,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
                 Vec2 at{mate.pos.x, mate.pos.y};
                 for (int k = 0; k < 2; ++k) {
                     const Fixed64 d = math::length(Vec2{at.x - p.x, at.y - p.y});
-                    const Fixed64 v0 = core::weightedPassSpeed(d), va = core::kPassArriveSpeed;
+                    const Fixed64 v0 = world.passSpeed(d), va = world.passArrive(d);
                     const Fixed64 vm = (v0 + va) / 2;
                     const Fixed64 t = d / 6 * (Fixed64::one() / v0 + Fixed64::fromInt(4) / vm + Fixed64::one() / va);
                     Vec2 lead{mate.vel.x * t, mate.vel.y * t};
@@ -806,7 +806,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
                 // reads (G4.82): unsafe led, he plays the ball he checked.
                 const Vec2 from{p.x, p.y};
                 if (reads_.passSafe(world, slot, from, at,
-                             core::weightedPassSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
+                             world.passSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
                     o.target = at;
                     // G5.127 (§8.228): on the ball, his feet stay on OnBall's carry until the release —
                     // walking at the man he'll pass to took 39% of a free middle-third carrier's ticks
