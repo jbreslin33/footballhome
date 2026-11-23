@@ -12585,3 +12585,42 @@ midfield stints seen from the pass. Per stint ours goes forward 17.7% v 22.5: th
 touches. New here: **our pass under 10 m fails 26% of the time (real 16)** — 24 a team-match in midfield v 8.7 — while
 10-20 m is real (7.4% v 9.1). Next: the pass under 10 m that is not completed — what stops it (a body in the way, the
 receiver's touch, their man's foot) and who has it next. Harness only; tests 23/23.
+
+### 8.334 G5.228 — a touch that got away was being counted as a pass: the harness fixed; passes 446, completion 85.4% (harness only; §8.333 corrected)
+
+From §8.333 ("our pass under 10 m fails 26%"). Two rulers and a fault.
+
+**PASS READ BY BAND** (harness §8.334; §8.309's own-third read on every band: ground passes to a man 5 m+ off, the
+race read at the kick / on the ball as kicked, kept | lost to their outfielder; the cutter's metres off the passer,
+his pace, where he stood against the pass's line). Seeds 1000-4000 × 8, G5.225, a team-match: own third kept 67.0 /
+lost 3.1 (4.4%), 52-70 m 123.7 / 6.8 (5.2%), 35-52 100.2 / 9.7 (8.8%), 18-35 39.0 / 7.5 (16.2%), 0-18 8.4 / 2.6
+(23.3%). In midfield 16.5 lost v StatsBomb's 17.4 ground passes not completed there — real, not 34. Of the lost, the
+read had called 45-55% theirs both times; the cutter stood 12 m+ off the passer in 45%, two thirds of the way along
+the pass's line and 1.6-1.9 m off it — the receiver's man, not the passer's.
+
+**Who has it next** (harness §8.335) on §8.333's "not completed": ending under 10 m in midfield — the kicker himself
+12.9 a team-match, their outfielder 8.8, out 2.4. The kicker-himself ones, all bands: 21.5 a team-match, 16.2 untouched
+by anyone, **0.5 m from the "kick"**, his order Pass in 18.4.
+
+**The fault**: the harness opened a release whenever a man's ownership ended and called it a pass by his order —
+kick or no kick. A touch that ran off his foot and came back (a carry's touch, a poke) was a pass, and not a completed
+one. **Fixed**: a release is a pass only if it left him by a kick (`rel.kick`: the ball's last kicker, that tick);
+the rest are counted apart (RELEASES THAT WERE NO KICK: next the man himself 17.1 / out of play 5.2 / their outfielder
+0.7 / a mate 0.5 a team-match — StatsBomb's carries, miscontrols and dispossessions, not passes). Same game, the
+corrected ruler (`card_G5.228.txt`, the baseline from here; 9 / 11 / 13 unchanged in count):
+
+| | old ruler | corrected | real |
+|---|---|---|---|
+| passes a team-match | 469 | 446 | 434 |
+| pass completion % | 81.2 | 85.4 | 77.5 |
+| passes under pressure % | 12.2 | 11.5 | 17.0 |
+
+Every slice since the release ruler was written read ~21 phantom incomplete passes a team-match; completion was
+flattered by 4 points. §8.333 corrected, MIDFIELD LOSSES 35-70 m on the fixed ruler (real in brackets): all 275.8
+tried / 32.7 not completed (212.3 / 32.5); **forward 64.2 / 15.0 (69.8 / 22.8) — ours fails 23%, real 33**; square
+154.7 / 15.1 (108.3 / 8.5); back 57.0 / 2.7 (34.3 / 1.3); under 10 m 79.7 / 11.2 (55.3 / 8.7). From our own third:
+forward 40.5 / 11.4 (48.0 / 20.4) — 28% v 42; all 94.7 / 14.9 (94.2 / 23.2). So: the volume is 3% over, not 8; the
+midfield's short square ball is still +46 and +23 back; and the forward pass — §8.333 called it real — is tried a
+little less and **comes off far too often**, from our own third most of all (9 fewer lost a team-match), then midfield
+(8). Next: the forward pass that fails in real football and not in ours — by length and height from the own third and
+midfield (StatsBomb), ours beside it. Harness only; tests 23/23.
