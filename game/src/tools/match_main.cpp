@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long la_n[6] = {}, la_c[6][5][2] = {}; std::vector<double> la_ay[6], la_dx[6];   // §8.319 LONG PASS ACROSS: [kicker centre / half / wide / 30-40 / 40-50 / 50+][lane][n, not completed]
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
    // §8.307 POSSESSIONS WON in open play by m off the goal attacked 0-18 / 18-35 / 35+; quick shots (5 s); goals
     long sch_n[4][4] = {}, sch_s[4][4] = {};   // §8.292 SHOT CHOICE: open-play releases by band (<12 / 12-18 / 18-25 / 25-35) x goal-side (0-1 / 2-3 / 4-5 / 6+), shots
@@ -1414,6 +1415,12 @@ int main(int argc, char** argv) {
                         const int lb = d < 10 ? 0 : std::min(5, static_cast<int>(d / 10));
                         const bool hi = mk.p == rel.p && mk.peak >= 1.5;
                         ++S.od_n[o]; ++S.od_z[o][z][0]; S.od_z[o][z][1] += hi; S.od_z[o][z][2] += !ok; ++S.od_l[o][lb][0]; S.od_l[o][lb][1] += hi; S.od_l[o][lb][2] += !ok;
+                        if (o != 4 && hi && d >= 30) {   // §8.319 LONG PASS ACROSS (benchmarks_statsbomb_longball_across.py): the end's lane, signed to the kicker's side
+                            const double ye = ey * (rel.y >= 0 ? 1.0 : -1.0), ay0 = std::fabs(rel.y);
+                            const int lane = ye >= 20.16 ? 0 : ye >= 7 ? 1 : ye > -7 ? 2 : ye > -20.16 ? 3 : 4;
+                            for (const int q : {ay0 < 10 ? 0 : ay0 < 20.16 ? 1 : 2, d < 40 ? 3 : d < 50 ? 4 : 5}) {
+                                ++S.la_n[q]; ++S.la_c[q][lane][0]; S.la_c[q][lane][1] += !ok; S.la_ay[q].push_back(std::fabs(ey)); S.la_dx[q].push_back((ex - rel.x) * sg); }
+                        }
                     }
                 }
                 {   // §8.264 PASSES UNDER PRESSURE: StatsBomb's flag by the passer's nearest opponent, from the 360 frames
@@ -3318,6 +3325,26 @@ int main(int argc, char** argv) {
                             std::printf("\n       by length m:");
                             for (int b = 0; b < 6; ++b) { const double k = std::max(1L, S.od_l[o][b][0]);
                                 std::printf("\n       %-8s %5.1f (%4.1f) | %3.0f (%3.0f) | %3.0f (%3.0f)", ln[b], 100.0 * S.od_l[o][b][0] / n, R[o][31 + 3 * b], 100.0 * S.od_l[o][b][1] / k, R[o][32 + 3 * b], 100.0 * S.od_l[o][b][2] / k, R[o][33 + 3 * b]); }
+                        }
+                    }
+                    {   // §8.319 LONG PASS ACROSS — real: benchmarks_statsbomb_longball_across.py (StatsBomb PL 15/16)
+                        static const double R[6][13] = {
+                            {1.93, 18.8, 37.4, 27.7, 64, 21.1, 71, 18.1, 73, 14.0, 75, 19.1, 45},
+                            {3.27, 18.5, 38.9, 34.5, 72, 29.0, 73, 16.9, 72, 9.7, 55, 10.0, 35},
+                            {4.98, 21.0, 39.8, 50.8, 72, 32.6, 72, 10.8, 67, 3.4, 49, 2.4, 30},
+                            {4.16, 20.2, 32.7, 46.8, 64, 29.1, 62, 14.9, 60, 6.0, 46, 3.2, 19},
+                            {3.38, 19.6, 42.0, 39.9, 75, 30.2, 74, 13.8, 72, 7.9, 61, 8.1, 26},
+                            {2.64, 19.9, 53.9, 34.0, 79, 28.3, 87, 13.4, 88, 9.0, 76, 15.3, 54}};
+                        static const char* on[6] = {"kicker centre", "kicker half", "kicker wide", "30-40 m", "40-50 m", "50+ m"};
+                        static const char* ln[5] = {"his wing", "his channel", "centre", "far channel", "far wing"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        auto med = [](std::vector<double> v) { if (v.empty()) return -1.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
+                        std::printf("\n   §8.319 LONG PASS ACROSS (open play, outfield, own third, high, 30 m+; StatsBomb PL 15/16 in brackets): a team-match | end |y| med | on up the pitch med | by the end's lane on the kicker's side of the pitch: share %% [not completed %%]");
+                        for (int o = 0; o < 6; ++o) {
+                            const double n = std::max(1L, S.la_n[o]);
+                            std::printf("\n     %-14s %5.2f (%4.2f) | %4.1f (%4.1f) | %4.1f (%4.1f) |", on[o], S.la_n[o] / tmo, R[o][0], med(S.la_ay[o]), R[o][1], med(S.la_dx[o]), R[o][2]);
+                            for (int l = 0; l < 5; ++l)
+                                std::printf("  %s %4.1f (%4.1f) [%2.0f (%2.0f)]", ln[l], 100.0 * S.la_c[o][l][0] / n, R[o][3 + 2 * l], 100.0 * S.la_c[o][l][1] / std::max(1L, S.la_c[o][l][0]), R[o][4 + 2 * l]);
                         }
                     }
                     {   // §8.295 FOOT RELEASES — StatsBomb 360 (300 matches) in brackets

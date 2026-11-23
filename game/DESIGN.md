@@ -12183,3 +12183,28 @@ central (\|y\| 11.5 v 16.1 — real long balls go to the channels), too many men
 have swapped (30-40 m 2.6 v 5.6; 50 m+ 1.9 v 0.86 on DFL — though StatsBomb has 2.77 passes of 50 m+ from the own
 third, so the DFL cut is the thin one). Shipped (mig 1649, `card_G5.212.txt`). Next: where the long ball from the back
 is aimed across the pitch — channel v centre, by the kicker's spot — on DFL and StatsBomb. Tests 23/23.
+
+### 8.319 G5.213 — real long balls from the back go down the kicker's own side; ours go inside (measured; no game change)
+
+From §8.318 (the drop too central). New `scripts/benchmarks_statsbomb_longball_across.py` (StatsBomb PL 15/16, 380
+matches): open-play high passes of 30 m+ by an outfielder from his own third, by where he stands across the pitch
+(centre |y| < 10, half 10-20.16, wide 20.16+) → the lane the pass ends in, signed to his side (his wing 20.16+, his
+channel 7-20.16, centre ±7, far channel, far wing), share and not completed %. Harness §8.319 LONG PASS ACROSS the same
+(high = peak 1.5 m+, as §8.316). Seeds 1000-4000 × 8, G5.212 — share % [not completed %], real in brackets:
+
+| kicker | a team-match | end \|y\| med | his wing | his channel | centre | far channel | far wing |
+|---|---|---|---|---|---|---|---|
+| centre | 3.58 (1.93) | 15.8 (18.8) | 21 (28) [62 (64)] | 13 (21) [52 (71)] | 25 (18) [36 (73)] | 20 (14) [45 (75)] | 21 (19) [42 (45)] |
+| half | 2.48 (3.27) | 14.7 (18.5) | 13 (34) [49 (72)] | 18 (29) [61 (73)] | 26 (17) [56 (72)] | 24 (10) [40 (55)] | 19 (10) [56 (35)] |
+| wide | 3.23 (4.98) | 12.1 (21.0) | 24 (51) [54 (72)] | 20 (33) [34 (72)] | 36 (11) [40 (67)] | 14 (3) [34 (49)] | 6 (2) [36 (30)] |
+| 30-40 m | 3.61 (4.16) | 14.4 (20.2) | 28 (47) | 17 (29) | 30 (15) | 15 (6) | 9 (3) |
+| 40-50 m | 2.75 (3.38) | 15.4 (19.6) | 22 (40) | 22 (30) | 22 (14) | 20 (8) | 14 (8) |
+| 50+ m | 2.94 (2.64) | 11.3 (19.9) | 9 (34) | 12 (28) | 35 (13) | 20 (9) | 23 (15) |
+
+The volume is near real (9.3 v 10.2 a team-match) but not the kicker nor the lane. Real: half of them are hit by a
+wide man (a full-back) and 84% of his stay on his side — down the line or into his channel — where 72% are not
+completed; even the 50 m+ ball ends on his side 62%. Ours: the centre-backs hit more of them (3.6 v 1.9), the wide man
+fewer (3.2 v 5.0), and his go inside (centre lane 36% v 11, his side 44% v 84), where they complete (not completed
+34-40% v 67-72). The real long ball from the back is the ball down the line: the safe side (a miss is a throw-in up
+the pitch, not a counter through the middle) and the low-percentage one. Next: the wide man's long ball goes down his
+own side — the aim's lane by the kicker's spot — and the same ruler. Harness only; tests 23/23.
