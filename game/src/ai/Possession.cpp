@@ -504,7 +504,24 @@ public:
                 if (!gsafe) gw = gw * rw;
                 add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
                 if (ph.raw > 0 && d <= reach) {
-                    const Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
+                    Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
+                    // G5.212 (§8.318): the long ball from the back is hit beyond the man, not onto him — the drop off the
+                    // mate nearest it at the launch, DFL (benchmarks_tracking_longball.py) by carry 30-40 / 40-50 / 50+ m:
+                    // on toward their goal p25 / med / p75 -2.8 / +3.7 / +10.3, +4.3 / +8.8 / +13.5, +9.5 / +15.9 / +20.6;
+                    // across med 4.2 / 4.7 / 1.4. One roll a spell; x physics.pass.long_beyond (0 = to the man).
+                    if (P.long_beyond.raw > 0 && own_end < Fixed64::fromInt(35) && d >= Fixed64::fromInt(30)) {
+                        static const int kQ[3][3] = {{-28, 37, 103}, {43, 88, 135}, {95, 159, 206}};   // dm
+                        static const int kA[3] = {42, 47, 14};
+                        const int lb3 = d < Fixed64::fromInt(40) ? 0 : d < Fixed64::fromInt(50) ? 1 : 2;
+                        const Fixed64 uq = core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 96) * Fixed64::fromInt(2);   // -2..2: quartiles at -1, 0, +1
+                        const Fixed64 med = Fixed64::fromFraction(kQ[lb3][1], 10);
+                        const Fixed64 fwd_m = uq.raw < 0 ? med + (med - Fixed64::fromFraction(kQ[lb3][0], 10)) * uq : med + (Fixed64::fromFraction(kQ[lb3][2], 10) - med) * uq;
+                        const Fixed64 acr_m = core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 97) * Fixed64::fromFraction(kA[lb3] * 2, 10);
+                        Vec2 at{lf.at.x + fwd_m * P.long_beyond * v.sg, lf.at.y + acr_m * P.long_beyond};
+                        const Fixed64 xc = hx - Fixed64::fromInt(3), yc = w.pitchHalfY() - Fixed64::fromInt(2);
+                        if (at.x > xc) at.x = xc; if (at.x < -xc) at.x = -xc; if (at.y > yc) at.y = yc; if (at.y < -yc) at.y = -yc;
+                        lf = Loft{at, aimedCarry(me.pos, at, reach)};
+                    }
                     const bool lsafe = c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
                     // G5.157 (§8.262): his share of the zone's high passes is the high split, not the flat one —
                     // real high balls go to a marked man near as often as a free one (DFL lift 0.5-0.7 v 0.2-0.4).
@@ -1541,6 +1558,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     spread_max_m = p.fixed("physics.support.spread_max_m", 6000);
     risk_weight = p.fixed("physics.pass.risk_weight", 250);
     risk_own3 = p.fixed("physics.pass.risk_own3", 0);   // G5.202 (§8.308), 0 = risk_weight everywhere
+    long_beyond = p.fixed("physics.pass.long_beyond", 0);   // G5.212 (§8.318)
     reach_max = p.fixed("physics.pass.reach_max_m", 50000);   // G5.210 (§8.316): row 55 (mig 1645)
     diag_lo = p.fixed("physics.diag.lo_m", 35000); diag_hi = p.fixed("physics.diag.hi_m", 70000);   // G5.210: the §8.284 diag's band (no behaviour)
     high_risk = p.fixed("physics.pass.high_risk_weight", 600);   // G5.210 (§8.316): row 1 (mig 1645) — own-third long balls completed ~2x real at 0.6. G5.73 fit: 0.25 / 0.6 / 1.0 → aerial duels 29.8 / 40.8 / 55.1 a match (44.1); a high ball is a contest by nature (real completes 36-57%), the read does not pick the ones that fail

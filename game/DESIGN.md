@@ -12142,3 +12142,44 @@ foot clearance, so a passes-only check: `scripts/benchmarks_statsbomb_360_longba
 end in view — 15% of such passes, the ones into open space: completed 72%, nearest opponent 16.6 m): the end 8.4 m off
 the nearest mate at the kick, **+2.4 m beyond him** (32% 5 m+ beyond, 12% short), 5.3 across. Same direction, smaller.
 Next: the long ball's aim — beyond the man by its carry — and the same ruler again. Harness only; tests 23/23.
+
+### 8.318 G5.212 — the long ball from the back is aimed beyond the man (mig 1649; shipped)
+
+From §8.317. `Possession.cpp`: a high pass of 30 m+ from within 35 m of our own goal no longer aims at where the mate
+stands. Its aim moves by the real drop offset off the mate nearest it at the launch (DFL,
+`benchmarks_tracking_longball.py`), by carry 30-40 / 40-50 / 50+ m — on toward their goal p25 / med / p75
+-2.8 / +3.7 / +10.3, +4.3 / +8.8 / +13.5, +9.5 / +15.9 / +20.6 m, across ±4.2 / 4.7 / 1.4 — one roll a spell
+(`detNoise` on the spell's start, so a carrier does not re-roll his mind each tick), kept 3 m inside the goal lines and
+2 m inside the touchlines, × `physics.pass.long_beyond` (0 = to the man; row 1). The race read (`loftSafe`) judges the
+new spot. Seeds 1000-4000 × 8, ruler of §8.317 (DFL in brackets):
+
+| as it comes down | G5.211 | G5.212 | real |
+|---|---|---|---|
+| a team-match (30-40 / 40-50 / 50+) | 7.0 (3.8 / 2.9 / 0.35) | 8.4 (2.6 / 3.8 / 1.9) | 8.57 (5.64 / 2.07 / 0.86) |
+| nearest of the kicker's side / of the other side, med m | 1.3 / 1.6 | 1.7 / 1.9 | 2.6 / 1.9 |
+| other side within 2 m / both / nobody within 3 m | 64 / 51 / 5% | 54 / 39 / 7% | 52.5 / 33.3 / 25.0% |
+| other side has it within 3 s | 63% | 63% | 73.3% |
+| outfielders within 10 m of the drop at the launch, ours / theirs | 1.10 / 1.31 | 0.94 / 1.22 | 0.62 / 0.69 |
+| drop off the kicker's-side man nearest it at the launch, med m | 6.4 | 7.5 | 10.9 |
+| … on toward their goal, med (30-40 / 40-50 / 50+) | -0.6 | +2.8 (+1.9 / +3.2 / +5.2) | +6.2 (+3.7 / +8.8 / +15.9) |
+| … 5 m+ beyond him / 5 m+ short | 20 / 26% | 38 / 6% | 56 / 12% |
+| … across, med | 2.9 | 4.1 | 4.2 |
+| drop \|y\| med | 11.6 | 11.5 | 16.1 |
+
+| the match | G5.211 | G5.212 | real (PL 15/16) |
+|---|---|---|---|
+| own-third outfield passes not completed / high, a team-match | 8.3 / 13.8 | 8.6 / 14.4 | 14.4 / 16.2 |
+| … of 50 m+ (not completed) | 1.64 (0.75) | 3.04 (1.35) | 2.77 (2.14) |
+| goals / conversion % | 2.44 / 18.7 | 1.98 / 15.6 | 1.35 / 10.0 |
+| corners / crosses | 2.62 / 5.83 | 3.06 / 6.33 | 5.40 / 11.47 |
+| aerial duels a match | 49.8 | 47.4 | 44.3 |
+| card | 10 / 8 / 15 | 10 / 7 / 16 | |
+
+The duel under the ball is real now (both sides within 2 m 51 → 39%, 33.3) and the ball short of the man is gone
+(26 → 6%, 12). The ruler reads about half the offset aimed: it measures off the mate **nearest the drop** at the launch,
+and once the aim moves on, another mate (a striker ahead of the target) is often the nearer one. Still open: the drop is
+central (\|y\| 11.5 v 16.1 — real long balls go to the channels), too many men stand near it at the launch
+(0.94 / 1.22 v 0.62 / 0.69), the empty drop is rare (7 v 25%), the defence wins it less (63 v 73%), and the carries
+have swapped (30-40 m 2.6 v 5.6; 50 m+ 1.9 v 0.86 on DFL — though StatsBomb has 2.77 passes of 50 m+ from the own
+third, so the DFL cut is the thin one). Shipped (mig 1649, `card_G5.212.txt`). Next: where the long ball from the back
+is aimed across the pitch — channel v centre, by the kicker's spot — on DFL and StatsBomb. Tests 23/23.
