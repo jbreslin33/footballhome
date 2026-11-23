@@ -12553,3 +12553,35 @@ points less; from 18-35 m it comes back out twice as often (13.3 v 7.2%). A real
 loses it; ours keeps it — the chain's fixed point is the midfield (§8.330's 622 s v 383) and pass completion 81.2% v
 77.5. Next: the pass the race read says they win, from midfield — tried at `risk_weight` 0.25 of its share
 (§8.316 did the high ball) — its real share. Harness only; tests 23/23.
+
+### 8.333 G5.227 — the midfield's forward pass is real; the surplus is the short square and back ball again (measured; a risk trial not shipped)
+
+From §8.332 (midfield: kept 10 points more, lost 6-8 less).
+
+**Trial, not shipped** — `physics.pass.risk_weight` 0.25 → 0.5 (a ground pass the race read says they win, outside our
+own third, at half its share): the other side's next stint from 35-52 / 52-70 m 16.2 → 17.1% / 12.3 → 12.9 (23.6 /
+18.3), completion 81.2 → 80.8% (77.5), corners 2.61 → 2.05. Nothing: few midfield passes are read as theirs at all.
+
+**Measured** — new `scripts/benchmarks_statsbomb_midloss.py` (StatsBomb PL 15/16) + harness §8.333 MIDFIELD LOSSES:
+open-play passes by a foot by the kick's band off the line attacked, tried / not completed a team-match, by height,
+length and direction (45° cones). Seeds 1000-4000 × 8, G5.225 (real in brackets), 35-52 + 52-70 m:
+
+| | tried | not completed |
+|---|---|---|
+| all | 289 (212) | 45.7 (32.5) |
+| forward | 71.1 (69.8) | 21.8 (22.8) |
+| square | 159.4 (108.3) | 19.8 (8.5) |
+| back | 58.5 (34.3) | 4.1 (1.3) |
+| under 10 m | 92.7 (55.3) | 24.1 (8.7) |
+| 10-20 m | 132.2 (93.4) | 9.8 (8.5) |
+| 20-30 / 30+ m | 40.2 (37.7) / 23.9 (25.9) | 5.1 (5.5) / 6.6 (9.9) |
+| high | 29.0 (29.4) | 11.6 (15.1) |
+
+Real, beside the passes: dispossessed 5.5, miscontrol 6.0, take-ons lost 2.6 a team-match there. The forward pass
+from midfield is real in count and in what it loses (a real one fails one time in three); so are the passes of 20 m+
+and the high ones. The surplus is +51 square, +24 back, all under 20 m — §8.249's finding (G5.145: cut the square
+ball's share and he plays a longer square one; "the pick sets the mix, not the volume"), which is §8.330's extra
+midfield stints seen from the pass. Per stint ours goes forward 17.7% v 22.5: the same forward balls spread over more
+touches. New here: **our pass under 10 m fails 26% of the time (real 16)** — 24 a team-match in midfield v 8.7 — while
+10-20 m is real (7.4% v 9.1). Next: the pass under 10 m that is not completed — what stops it (a body in the way, the
+receiver's touch, their man's foot) and who has it next. Harness only; tests 23/23.

@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
@@ -1417,6 +1418,15 @@ int main(int argc, char** argv) {
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
                 ++S.passes;
+                {   // §8.333 MIDFIELD LOSSES (benchmarks_statsbomb_midloss.py): open-play passes by the kick's m off the line attacked
+                    const double tl = hx - rel.x * sg;
+                    if (tl >= 18) {
+                        const int b = tl < 35 ? 0 : tl < 52 ? 1 : tl < 70 ? 2 : 3;
+                        const double dx = (ex - rel.x) * sg, dy = ey - rel.y, d = std::hypot(dx, dy);
+                        const bool hi = mk.p == rel.p && mk.peak >= 1.5;
+                        for (const int k : {0, hi ? 2 : 1, d < 10 ? 3 : d < 20 ? 4 : d < 30 ? 5 : 6, dx >= std::fabs(dy) ? 7 : -dx >= std::fabs(dy) ? 9 : 8}) { ++S.ml_n[b][k]; S.ml_bad[b][k] += !ok; }
+                    }
+                }
                 if (hx + rel.x * sg < 35) {   // §8.316 OWN-THIRD PASS DIRECTION (benchmarks_statsbomb_ownthird_dir.py)
                     const double d = std::hypot(ex - rel.x, ey - rel.y), o0 = hx + rel.x * sg, tl = hx - ex * sg;
                     if (d >= 5) {
@@ -3452,6 +3462,21 @@ int main(int argc, char** argv) {
                             const double on = S.bt_on[z] / 5.0 / tmo, tr = S.bt_tr[z] / 5.0 / tmo, k = std::max(1L, S.bt_k[z]);
                             std::printf("\n     %-6s %6.1f (%6.1f) | %6.1f (%6.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %.2f (%.2f) | %4.1f (%4.1f) || %.1f (%.1f) / %.1f (%.1f) | %.1f (%.1f)", zn5[z], on, R[z][0], tr, R[z][1], 100.0 * on / std::max(1e-9, on + tr), R[z][2],
                                         S.bt_k[z] / tmo, R[z][3], S.bt_ks[z] / 5.0 / k, R[z][4], 100.0 * S.bt_k3[z] / k, R[z][5], med(S.bt_bo[z]), R[z][6], med(S.bt_bt[z]), R[z][7], med(S.bt_ms[z]), R[z][8]);
+                        }
+                    }
+                    {   // §8.333 MIDFIELD LOSSES — real: benchmarks_statsbomb_midloss.py (StatsBomb PL 15/16)
+                        static const double R[4][23] = {
+                            {70.1, 14.67, 61.4, 9.53, 8.8, 5.14, 25.8, 5.55, 30.4, 4.18, 9.5, 2.96, 4.4, 1.98, 19.9, 6.60, 38.1, 7.44, 12.1, 0.62, 3.61, 3.80, 2.07},
+                            {103.7, 15.82, 91.2, 9.83, 12.5, 5.99, 30.3, 4.88, 46.6, 4.70, 16.8, 2.73, 10.0, 3.51, 32.4, 10.23, 53.6, 4.83, 17.8, 0.76, 3.19, 3.64, 1.52},
+                            {108.6, 16.73, 91.7, 7.61, 16.9, 9.12, 25.0, 3.79, 46.8, 3.82, 20.9, 2.78, 15.9, 6.34, 37.4, 12.59, 54.7, 3.65, 16.5, 0.49, 2.34, 2.33, 1.07},
+                            {94.2, 23.22, 67.4, 6.58, 26.8, 16.64, 16.7, 3.38, 32.2, 2.82, 20.3, 2.87, 25.1, 14.16, 48.0, 20.39, 37.4, 2.62, 8.8, 0.21, 1.57, 1.13, 0.71}};
+                        static const char* bn4[4] = {"18-35", "35-52", "52-70", "70+"};
+                        static const char* kn[10] = {"all", "ground", "high", "<10", "10-20", "20-30", "30+", "fwd", "square", "back"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.333 MIDFIELD LOSSES (open-play passes by the kick's m off the line attacked; StatsBomb PL 15/16 in brackets): tried / not completed a team-match");
+                        for (int b = 0; b < 4; ++b) {
+                            std::printf("\n     %-6s", bn4[b]);
+                            for (int k = 0; k < 10; ++k) std::printf(" %s %.1f (%.1f) / %.2f (%.2f);", kn[k], S.ml_n[b][k] / tmo, R[b][2 * k], S.ml_bad[b][k] / tmo, R[b][2 * k + 1]);
                         }
                     }
                     {   // §8.332 NEXT STINT — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
