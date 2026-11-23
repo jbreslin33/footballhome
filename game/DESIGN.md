@@ -12486,3 +12486,27 @@ longer (med 2.0-2.2 s v 1.6), ends lost less (23 v 27%, 15.5 v 21) and goes back
 their last 18 m for 82 s v 131 — where crosses, corners and blocked shots come from. Next: a midfield visit by how it
 is spent — on a man's foot, in passes within the band (count, length, direction) — ours v DFL / StatsBomb, to find
 what the extra 270 s are. Harness only; tests 23/23.
+
+### 8.330 G5.224 — the extra midfield time is on the foot: ours carry out of the back and hold it in midfield (measured; no game change)
+
+From §8.329 (the ball 35-70 m off the line attacked 962 s a team-match v 690). New
+`scripts/benchmarks_tracking_bandtime.py` (DFL, 7 matches) + harness §8.330 BAND TIME: every in-play 5 Hz frame is on a
+man (one of the side in possession within 2 m of the ball — the DFL cut) or travelling, by the ball's band off the
+line that side attacks; a stint = the same man over contiguous frames. Seeds 1000-4000 × 8, G5.221 (DFL in brackets):
+
+| band | s on a man | s travelling | stints a team-match | mean s | 3 s+ % | ball m/s on a man | the man's m/s |
+|---|---|---|---|---|---|---|---|
+| 0-18 | 40 (63) | 48 (68) | 35 (60) | 0.81 (0.80) | 5 (5.5) | 5.2 (4.7) | 4.4 (3.8) |
+| 18-35 | 124 (123) | 86 (85) | 87 (90) | 1.20 (1.26) | 10 (11) | 4.7 (4.5) | 3.7 (3.6) |
+| 35-52 | 260 (162) | 156 (132) | 186 (139) | 1.39 (1.18) | 13 (10) | 4.1 (4.4) | 3.1 (3.2) |
+| 52-70 | 362 (221) | 187 (174) | 217 (172) | 1.79 (1.29) | 21 (11) | 3.8 (3.8) | 3.0 (2.8) |
+| 70+ | 274 (324) | 152 (228) | 174 (228) | 1.60 (1.52) | 20 (12.5) | 4.1 (2.9) | 3.3 (2.1) |
+
+In 35-70 m ours has the ball on a man 622 s v 383 (+239) and travelling 343 v 306 (+37): the surplus is men on the
+ball — 30% more stints there (403 v 311) and each longer (1.39 / 1.79 s v 1.18 / 1.29), the 3 s+ stint twice as common
+in 52-70. In our own third it is the other way: a real side plays more passes there (228 stints v 174, 228 s
+travelling v 152) and the man on it hardly moves (2.1 m/s, ball 2.9; ours 3.3 / 4.1) — it is passed across the back
+while the block is drawn; ours is carried out of the third and then held in the next band. Their last 18 m sees 35
+stints v 60. The stint's length inside their half is real (0.81, 1.20 v 0.80, 1.26). Next: the man on the ball in our
+own half — carry v pass by band and by pressure, the carry's speed and length (DFL stints + StatsBomb carries) — ours
+beside it, then the hold / carry rows for 52-70 and 70+. Harness only; tests 23/23.
