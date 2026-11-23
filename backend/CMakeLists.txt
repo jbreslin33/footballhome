@@ -182,6 +182,8 @@ set(SOURCES
     src/controllers/VolunteerController.cpp
     src/controllers/ProposalsController.cpp
     src/controllers/OnboardingController.cpp
+    src/controllers/LeagueEntryController.cpp
+    src/models/LeagueEntry.cpp
     src/models/VolunteerShifts.cpp
     src/models/Proposals.cpp
     src/models/Onboarding.cpp

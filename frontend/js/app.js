@@ -63,6 +63,7 @@ class App {
       jobs: new JobsScreen(this.navigation, this.auth),
       coachSchedule: new CoachScheduleScreen(this.navigation, this.auth),
       onboarding: new OnboardingScreen(this.navigation, this.auth),
+      'league-registration': new LeagueRegistrationScreen(this.navigation, this.auth),
       awards: new AwardsScreen(this.navigation, this.auth),
       attendanceCalls: new AttendanceCallsScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
@@ -178,6 +179,8 @@ class App {
     this.screenManager.register('coach-schedule', this.screens.coachSchedule);
     // 🎓 Onboarding (#onboarding, mig 1526) — the volunteer → paid path.
     this.screenManager.register('onboarding', this.screens.onboarding);
+    // 📝 League Registration (#league-registration, mig 1746) — a league entry as a checklist, forms pre-filled.
+    this.screenManager.register('league-registration', this.screens['league-registration']);
     // Awards (#awards, mig 800) — All-Stars to the league director + club awards. See screens/awards.js.
     this.screenManager.register('awards', this.screens.awards);
     // Attendance Calls (#attendance-calls, mig 1290) — every attendance call that went out. See screens/attendance-calls.js.
