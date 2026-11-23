@@ -12287,3 +12287,23 @@ unchanged) — the striker was not what held it back. What is left on that ball 
 opponents up that side where a real block has 1.8** (§8.321) — theirs sit under the drop and ours still completes
 (not completed 41-61% v 72). Shipped (mig 1671, `card_G5.216.txt`). Next: where the other side's block stands on a
 deep wide ball — its line's height and the men up the ball's side, DFL v ours. Tests 23/23.
+
+### 8.323 G5.217 — on a deep wide ball the other side presses with a man fewer and its line sits 4-5 m deeper (measured; no game change)
+
+From §8.322. `benchmarks_tracking_deepwide.py` + harness §8.321 gain THE OTHER SIDE'S BLOCK: on a deep wide frame (the
+side in possession has the ball within 35 m of its own line, 20.16 m+ off the centre line) the defending side's
+outfielders by metres on from the ball toward their own goal, its nearest man to the ball, its last outfielder. Seeds
+1000-4000 × 8, G5.216 (DFL, 7 matches, in brackets):
+
+| | ours | real |
+|---|---|---|
+| outfielders under 10 m on from the ball (level with it, or beyond it upfield) | 2.41 | 3.61 |
+| 10-25 / 25-40 / 40 m+ on | 2.94 / 3.44 / 1.21 | 2.89 / 2.67 / 0.78 |
+| its nearest man to the ball, med m | 8.2 | 5.3 |
+| its last man: m off his own goal line / m on from the ball, med | 42.8 / 37.4 | 47.2 / 34.8 |
+
+A real side goes after a full-back or centre-back with the ball by his own touchline: 3.6 men around it, one within
+5 m, the last man on the halfway line. Ours leaves it to 2.4, the nearest 8 m off, and keeps the spare man and a bit
+25 m+ behind the ball, the line 4.4 m deeper — the three men up that side of §8.321, and the scorecard's passes under
+pressure (12.4% v 17.0). Next: who of the defending side goes to the deep wide ball — the press there by role (DFL) —
+and the line's height with the ball in the attackers' own third. Harness only; tests 23/23.

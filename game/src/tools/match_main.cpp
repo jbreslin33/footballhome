@@ -83,6 +83,7 @@ struct Stats {
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
     long od_n[5] = {}, od_z[5][10][3] = {}, od_l[5][6][3] = {};   // §8.316 OWN-THIRD PASS DIRECTION: [origin][end zone / length][n, high, not completed]
+    long dw_dn[4] = {}; std::vector<double> dw_near, dw_deep, dw_gap;   // §8.323 the other side's block on a deep wide ball
     long dw_n = 0, dw_t[2] = {}, dw_none = 0, dw_r[2] = {}, dw_l[2][5] = {}; std::vector<double> dw_y[2], dw_m[2], dw_o[2];   // §8.321 DEEP WIDE BALL [ST / WIDE]
     long la_n[6] = {}, la_c[6][5][2] = {}; std::vector<double> la_ay[6], la_dx[6];   // §8.319 LONG PASS ACROSS: [kicker centre / half / wide / 30-40 / 40-50 / 50+][lane][n, not completed]
     long or_n[2][2][2] = {}, or_cd[2][5] = {}, or_cv[2][4] = {}, or_why[4] = {}, or_rw[2][4] = {}, or_nv[2][4] = {}, or_nc[3][2] = {}, or_ns[3][2] = {}, or_z[2][2] = {}, or_zk[2][2] = {}, or_zw[2][2][2] = {};   // §8.309 OWN-THIRD PASS READ: [read at kick][read as kicked][kept / lost]; lost-but-read-ours by cutter metres / pace at the kick, by why the read missed   // §8.308 won 0-18 / 18-35 by the losing side's last touch: pass / clearance (foot or head) / block / header pass / ball forward (in behind, space) / other
@@ -3001,17 +3002,19 @@ int main(int argc, char** argv) {
                 if (bm >= 35 || std::fabs(f.by) < 20.16) continue;
                 const double ys = f.by >= 0 ? 1.0 : -1.0;
                 ++S.dw_n; int tg[2] = {0, 0}; bool has[2] = {false, false}; double by_[2] = {}, bm_[2] = {}, bo_[2] = {};
+                double nearD = 99, deepM = 0;   // §8.323
                 for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
                     if (W.isKeeper(p2)) continue;
                     const bool us = W.player(p2).team == t; const double ugx = us ? gx : -gx;
                     const double ye = f.y[p2] * ys, pm = std::fabs(gx - f.x[p2]), on = pm - bm; (void)ugx;
                     if (on >= 25 && ye >= 7) ++tg[us ? 0 : 1];
-                    if (!us) continue;
+                    if (!us) { ++S.dw_dn[on < 10 ? 0 : on < 25 ? 1 : on < 40 ? 2 : 3]; nearD = std::min(nearD, static_cast<double>(std::hypot(f.x[p2] - f.bx, f.y[p2] - f.by))); deepM = std::max(deepM, pm); continue; }
                     const int r = role(p2); if (r != 4 && r != 5) continue;
                     const int q = r == 5 ? 0 : 1;
                     if (!has[q] || ye > by_[q]) { has[q] = true; by_[q] = ye; bm_[q] = pm; bo_[q] = on; }
                 }
                 S.dw_t[0] += tg[0]; S.dw_t[1] += tg[1]; S.dw_none += tg[0] == 0;
+                S.dw_near.push_back(nearD); S.dw_deep.push_back(2 * hx - deepM); S.dw_gap.push_back(deepM - bm);
                 for (int q = 0; q < 2; ++q) if (has[q]) {
                     const double ye = by_[q]; ++S.dw_r[q]; ++S.dw_l[q][ye >= 20.16 ? 0 : ye >= 7 ? 1 : ye > -7 ? 2 : ye > -20.16 ? 3 : 4];
                     S.dw_y[q].push_back(ye); S.dw_m[q].push_back(bm_[q]); S.dw_o[q].push_back(bo_[q]);
@@ -3359,6 +3362,8 @@ int main(int argc, char** argv) {
                         auto med = [](std::vector<double> v) { if (v.empty()) return -1.0; std::nth_element(v.begin(), v.begin() + v.size() / 2, v.end()); return v[v.size() / 2]; };
                         std::printf("\n   §8.321 DEEP WIDE BALL (in possession, the ball within 35 m of our line and 20.16 m+ off the centre line; real DFL in brackets): %.1f s a team-match (149.4)", S.dw_n / 5.0 / tmo);
                         std::printf("\n     targets up the line (25 m+ on from the ball, on its side, across 7+): ours mean %.2f (1.16), none %.1f%% (35.7) | theirs mean %.2f (1.80)", S.dw_t[0] / n, 100.0 * S.dw_none / n, S.dw_t[1] / n);
+                        std::printf("\n     §8.323 the other side's block: outfielders by m on from the ball (toward their own goal) <10 / 10-25 / 25-40 / 40+: %.2f / %.2f / %.2f / %.2f (3.61 / 2.89 / 2.67 / 0.78) | its nearest man to the ball med %.1f m (5.3) | its last man: m off its own goal line med %.1f (47.2), m on from the ball med %.1f (34.8)",
+                                    S.dw_dn[0] / n, S.dw_dn[1] / n, S.dw_dn[2] / n, S.dw_dn[3] / n, med(S.dw_near), med(S.dw_deep), med(S.dw_gap));
                         for (int q = 0; q < 2; ++q) {
                             const double k = std::max(1L, S.dw_r[q]);
                             std::printf("\n     the %s nearest the ball's touchline: his wing %.1f (%.1f) | his channel %.1f (%.1f) | centre %.1f (%.1f) | far channel %.1f (%.1f) | far wing %.1f (%.1f) | across med %+.1f (%+.1f) | m off his line med %.1f (%.1f) | m on from the ball med %.1f (%.1f)  (frames with one %.0f%%)",
