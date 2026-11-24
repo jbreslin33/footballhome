@@ -94,7 +94,7 @@ struct Stats {
     long orl_n[5][4] = {}, orl_bad[5][4] = {}, orl_fn[2][4] = {}, orl_fbad[2][4] = {};   // §8.343 own-third passes [GK / CB / FB / DM-CM / other][fwd ground / fwd high / square / back]; the FB's [wide / inside]
     long fbl_n = 0, fbl_line[3] = {}, fbl_ins = 0, fbl_role[6] = {}, fbl_lo3 = 0; std::vector<double> fbl_opp, fbl_ah, fbl_insd, fbl_lo;   // §8.344 FB ON THE LINE
     long fbp_n = 0, fbp_d[5] = {}, fbp_r[6] = {}, fbp_still = 0, fbp_in3 = 0; std::vector<double> fbp_d1, fbp_cl, fbp_len;   // §8.345 THE PRESS ON HIM
-    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
+    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -3091,11 +3091,13 @@ int main(int argc, char** argv) {
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
             double la_bx = 0, la_by = 0; int gapn = 0;   // §8.337
             int la_man = -1;   // §8.346: the man of the stint just ended
+            bool la_out = false; int la_wd = 0;   // §8.347: an outfield man's; wide (|y| >= 20)
+            bool la_w3 = false;   // §8.347: its last frame had the ball in that side's wide last third, an outfield man's
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
             auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; } st_man = -1; };
             for (const auto& f : fl_f) {
                 const bool cont = pv && f.k == pv->k + 6;
-                if (!cont) { close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; la_t = -1; } }
+                if (!cont) { close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; if (la_w3) { ++S.w3_n; ++S.w3_e[6]; } if (la_out) ++S.zo_n[la_z][la_wd]; la_t = -1; } }
                 const int t = f.a; const double ax = t == 0 ? hx : -hx, tl = std::fabs(ax - f.bx);
                 const int z = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
                 int man = -1; double mdd = 2.0;
@@ -3110,6 +3112,12 @@ int main(int argc, char** argv) {
                     if (st_man == man && cont) ++st_n;
                     else {
                         close(); st_man = man; st_z = z; st_n = 1;
+                        if (la_t >= 0 && la_out) { ++S.zo_n[la_z][la_wd]; S.zo_o[la_z][la_wd] += la_t != t && gapn == 0; }
+                        if (la_t >= 0 && la_w3) {   // §8.347 STINTS ENDING IN THEIR WIDE LAST THIRD (benchmarks_tracking_fbline.py)
+                            const int e = la_t != t ? (gapn == 0 ? 4 : gapn <= 5 ? 5 : 3) : la_man == man ? 2 : gapn >= 1 ? 0 : 1;
+                            ++S.w3_n; ++S.w3_e[e];
+                            if (e == 4) { const int rr = W.isKeeper(static_cast<std::uint8_t>(man)) ? 6 : role(static_cast<std::uint8_t>(man)); if (rr >= 0 && rr < 7) ++S.w3_r[rr]; }
+                        }
                         if (z == 4 && std::fabs(f.by) >= 20 && !W.isKeeper(static_cast<std::uint8_t>(man)) && role(static_cast<std::uint8_t>(man)) == 1) {   // §8.344 FB ON THE LINE (benchmarks_tracking_fbline.py)
                             const double sgf = t == 0 ? 1.0 : -1.0, side = f.by > 0 ? 1.0 : -1.0;
                             auto nopp = [&](double x, double y) { double m = 99; for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) m = std::min(m, std::hypot(f.x[q2] - x, f.y[q2] - y)); return m; };
@@ -3162,7 +3170,7 @@ int main(int argc, char** argv) {
                                 if (gapn >= 1) { const double d2 = std::hypot(f.bx - la_bx, f.by - la_by), tt = (gapn + 1) / 5.0;   // §8.337 PASS PACE
                                     if (d2 >= 5) { const int lb = d2 < 10 ? 0 : d2 < 20 ? 1 : d2 < 30 ? 2 : 3, hh = zmax < 1.0 ? 0 : 1; S.pc_v[hh][lb].push_back(d2 / tt); S.pc_t[hh][lb].push_back(tt); } } } }
                     }
-                    la_t = t; la_man = man; la_z = z; la_tl = tl; zmax = 0; la_bx = f.bx; la_by = f.by; gapn = 0;
+                    la_out = !W.isKeeper(static_cast<std::uint8_t>(man)); la_wd = std::fabs(f.by) >= 20; la_w3 = tl < 35 && std::fabs(f.by) >= 20 && !W.isKeeper(static_cast<std::uint8_t>(man)); la_t = t; la_man = man; la_z = z; la_tl = tl; zmax = 0; la_bx = f.bx; la_by = f.by; gapn = 0;
                 } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); zmax = std::max(zmax, static_cast<double>(f.bz)); ++gapn; }
                 pv = &f;
             }
@@ -3719,6 +3727,14 @@ int main(int argc, char** argv) {
                             static const char* wn[3] = {"off their man's feet", "within 1 s of their touch", "later"};
                             std::printf("\n       WON FROM THEM (a team-match, nearest opponent inside 3 m %%, that opponent the man who had it %%):");
                             for (int w = 0; w < 3; ++w) std::printf(" %s %.1f, %.0f%%, %.0f%% (%.1f, %.0f%%, %.0f%%) |", wn[w], S.fwn_n[w] / tmo, 100.0 * S.fwn_3[w] / std::max(1L, S.fwn_n[w]), 100.0 * S.fwn_s[w] / std::max(1L, S.fwn_n[w]), Wn[3 * w], Wn[3 * w + 1], Wn[3 * w + 2]); }
+                        {   static const double V[14] = {72.6, 36.5, 2.9, 3.6, 5.0, 11.4, 5.4, 7.9, 26.4, 27.7, 20.1, 5.7, 16.4, 3.8};
+                            static const char* en[7] = {"a pass to a mate", "a mate off his feet", "his own again", "theirs later", "theirs off his feet", "theirs within 1 s", "play stopped"};
+                            std::printf("\n     §8.347 STINTS ENDING IN THEIR WIDE LAST THIRD: %.1f a team-match (%.1f) | next:", S.w3_n / tmo, V[0]);
+                            for (int e = 0; e < 7; ++e) std::printf(" %s %.1f (%.1f) |", en[e], S.w3_e[e] / tmo, V[1 + e]);
+                            std::printf(" off his feet by:");
+                            static const double Z[20] = {25.1, 3.4, 47.6, 8.0, 71.2, 5.9, 76.4, 7.6, 68.9, 6.5, 44.1, 9.9, 46.7, 7.9, 65.9, 8.2, 92.9, 5.3, 102.4, 5.1};
+                            auto zline = [&]() { std::printf("\n       OFF HIS FEET BY WHERE (stints ending there a team-match, of them theirs straight off his feet; m off the line attacked 0-18 / 18-35 / 35-52 / 52-70 / 70+):");
+                                for (int w = 1; w >= 0; --w) { std::printf(" %s", w ? "wide" : "| middle"); for (int z = 0; z < 5; ++z) { const int i = (w ? 0 : 10) + 2 * z; std::printf(" %.1f, %.1f (%.1f, %.1f) /", S.zo_n[z][w] / tmo, S.zo_o[z][w] / tmo, Z[i], Z[i + 1]); } } }; for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100.0 * S.w3_r[r] / std::max(1L, S.w3_e[4]), V[8 + r]); zline(); }
                         std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
                             for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }

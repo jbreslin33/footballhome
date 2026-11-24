@@ -13018,3 +13018,44 @@ stints — and there ours differs: he takes it straight off the attacker's feet 
 off a late pass with nobody near 2.5 v 1.9 (inside 3 m 30% v 52). Their wide man does not bring the ball to him.
 Next: the full-back's 1v1 by his touchline in his own third — how often their man carries at him there, from how far,
 and how it ends (tackle / past him / pass / cross), DFL + StatsBomb v ours. Harness only; tests 24/24; card as G5.239 (10 / 9 / 14, goals 2.33).
+
+### 8.347 G5.241 — the ball taken straight off a man's feet: 42 a team-match v 68, by a touchline 13 v 31 (measured; no game change)
+
+From §8.346 (the full-back takes it off their man's feet 2.0 v 3.1). `benchmarks_tracking_fbline.py` STINTS ENDING IN
+THEIR WIDE LAST THIRD / OFF HIS FEET BY WHERE + harness §8.347: every stint of an outfield man by where its last frame
+was, and what came next — "off his feet" = the next 5 Hz frame the ball is on a man of the other side (no travelling
+frame). Seeds 1000-4000 × 8, G5.239 (DFL in brackets).
+
+Stints ending within 35 m of the line attacked and 14 m of a touchline, a team-match:
+
+| | ours | real |
+|---|---|---|
+| stints | 52.8 | 72.6 |
+| next: a pass to a mate | 28.0 | 36.5 |
+| theirs straight off his feet | **4.5** | **11.4** |
+| theirs within 1 s / later | 3.6 / 4.8 | 5.4 / 5.0 |
+| play stopped | 6.4 | 7.9 |
+| off his feet by CB / FB / DM-CM / WIDE | 26 / 42 / 14 / 13% | 26 / 28 / 20 / 16% |
+
+Everywhere — stints ending there, of them theirs straight off his feet, by m off the line attacked:
+
+| | 0-18 | 18-35 | 35-52 | 52-70 | 70+ | all |
+|---|---|---|---|---|---|---|
+| wide, ours | 16.9, 1.4 | 35.9, 3.1 | 65.8, 4.1 | 62.9, 2.9 | 47.9, 1.4 | 229, **12.9** |
+| wide, real | 25.1, 3.4 | 47.6, 8.0 | 71.2, 5.9 | 76.4, 7.6 | 68.9, 6.5 | 289, **31.4** |
+| middle, ours | 26.5, 5.2 | 49.1, 5.2 | 106.0, 8.5 | 131.8, 6.7 | 100.0, 3.2 | 413, 28.8 |
+| middle, real | 44.1, 9.9 | 46.7, 7.9 | 65.9, 8.2 | 92.9, 5.3 | 102.4, 5.1 | 352, 36.4 |
+
+By a touchline a real man on the ball has it taken off his feet 11% of his stints, ours 5.6%, in every band; in the
+middle 10% v 7%, the gap all in the two bands nearest either goal. Ours tackles at one rate wherever he is in reach
+and goal-side (`physics.press.tackle_per_s` 0.75, fitted to the match total of StatsBomb tackle duels + fouls, §8.251),
+and a won tackle pokes the ball loose (`kTacklePokeSpeed`) rather than leaving it with the tackler.
+
+The concept is on the shelf — `engage-or-contain` (game_concepts 157: "step in to win it when your cover has arrived,
+he turns his back, he is pinned on the touchline, or his touch is loose; otherwise contain and delay"), with
+`double-team` (12, "the touchline is the third defender") beside it; the engine holds neither: its presser contains at
+a rolled stand-off and tackles on a flat clock. Next (James 11/24: pick the concept off the shelf, build it as a
+capability, off by default, let data set its use): the engage cue's signature on DFL — the ball taken off a man's feet
+per second on it by his metres to the touchline, his nearest opponent's metres and whether a second defender is within
+5 m — then `engage-or-contain` as the presser's step-in (stand-off dropped when the carrier is pinned / cover has
+arrived), rate from that table. Harness only; tests 24/24; card as G5.239.

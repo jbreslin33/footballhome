@@ -21,6 +21,10 @@ the full-back, the share of pressers within 5 m of the passer, his speed (m/s ov
 pace (path / flight), the m he closed on the full-back and that per second; his speed in the last 0.2 s before the touch;
 how straight he ran (m closed / m run, runs of 1 m+); and the angle at the full-back between the presser and the
 presser's own goal, at the kick and at the touch (0 = square on the full-back's line to that goal).
+G5.241 (§8.347) STINTS ENDING IN THEIR WIDE LAST THIRD — every stint of an outfield man whose last frame has the ball
+within 35 m of the line he attacks and 14 m of a touchline: a team-match, and what came next: a mate after the ball
+travelled (a pass) | a mate straight off his feet | his own again | theirs straight off his feet (tackled; the winner's
+role) | theirs within 1 s | theirs later | play stopped.
 fh-game-match prints the same as FB ON THE LINE. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
@@ -65,10 +69,18 @@ def one(pos_path):
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
     c = collections.Counter(); L = collections.defaultdict(list)
     keys = sorted(ball); prev_man = None; prev_k = None; la = None; gap = 0
+    def wide3(l):   # the stint whose last frame is l = (k, man, t): the ball in that side's wide last third, an outfield man's
+        bl = ball[l[0]]
+        return l[1] not in keepers and half + own[(l[0][0], l[2])] * bl[0] < 35 and abs(bl[1]) >= 20
+    def zone(l):   # the band (0 = within 18 m of the line attacked … 4 = 70 m+) and wide (|y| >= 20) of the stint's last frame, outfield
+        bl = ball[l[0]]; tl = half + own[(l[0][0], l[2])] * bl[0]
+        return None if l[1] in keepers else (0 if tl < 18 else 1 if tl < 35 else 2 if tl < 52 else 3 if tl < 70 else 4, int(abs(bl[1]) >= 20))
     for k in keys:
         b = ball[k]
+        cont = b is not None and prev_k is not None and prev_k[0] == k[0] and k[1] - prev_k[1] == 5
+        if not cont and la is not None and wide3(la): c["w3"] += 1; c["w3e6"] += 1   # play stopped
+        if not cont and la is not None and zone(la): c[("zn",) + zone(la)] += 1
         if b is None: prev_man = None; prev_k = None; la = None; gap = 0; continue
-        cont = prev_k is not None and prev_k[0] == k[0] and k[1] - prev_k[1] == 5
         if not cont: la = None; gap = 0
         t = b[2]; ps = pl[k]
         man = None; md = 2.0
@@ -79,6 +91,12 @@ def one(pos_path):
         new = man is not None and not (cont and prev_man == man)
         prev_man = man; prev_k = k
         la0, gap0 = la, gap
+        if new and la0 is not None and zone(la0):
+            c[("zn",) + zone(la0)] += 1; c[("zo",) + zone(la0)] += la0[2] != t and gap0 == 0
+        if new and la0 is not None and wide3(la0):
+            e = (4 if gap0 == 0 else 5 if gap0 <= 5 else 3) if la0[2] != t else 2 if la0[1] == man else 0 if gap0 >= 1 else 1
+            c["w3"] += 1; c[f"w3e{e}"] += 1
+            if e == 4: c[f"w3r{ROLE.get(pos_of.get(man), 2) if man not in keepers else 6}"] += 1
         if man is not None: la = (k, man, t); gap = 0
         else: gap += 1
         if not new or man in keepers or pos_of.get(man) not in ROLE or ROLE[pos_of[man]] != 1: continue
@@ -173,6 +191,13 @@ if __name__ == "__main__":
     wn = ["off their man's feet", "within 1 s of their touch", "later"]
     print("  WON FROM THEM (a team-match, nearest opponent inside 3 m %, that opponent the man who had it %): " + " | ".join(f"{wn[i]} {c[f'wn{i}'] / (2 * len(files)):.1f}, {100 * c[f'wn{i}_3'] / max(1, c[f'wn{i}']):.0f}%, {100 * c[f'wn{i}_same'] / max(1, c[f'wn{i}']):.0f}%" for i in range(3)))
     print("C++ won row: {" + ", ".join(f"{x:.1f}" for i in range(3) for x in (c[f'wn{i}'] / (2 * len(files)), 100 * c[f'wn{i}_3'] / max(1, c[f'wn{i}']), 100 * c[f'wn{i}_same'] / max(1, c[f'wn{i}']))) + "}")
+    en = ["a pass to a mate", "a mate off his feet", "his own again", "theirs later", "theirs off his feet", "theirs within 1 s", "play stopped"]; tm2 = 2 * len(files)
+    print(f"  STINTS ENDING IN THEIR WIDE LAST THIRD (G5.241): {c['w3'] / tm2:.1f} a team-match | next: " + " | ".join(f"{en[i]} {c[f'w3e{i}'] / tm2:.1f}" for i in range(7))
+          + " | off his feet by: " + " ".join(f"{nm} {100 * c[f'w3r{r}'] / max(1, c['w3e4']):.0f}%" for r, nm in enumerate(NAMES)))
+    print("  OFF HIS FEET BY WHERE (stints ending there a team-match, of them theirs straight off his feet) — m off the line attacked 0-18 / 18-35 / 35-52 / 52-70 / 70+: "
+          + " | ".join(f"{nm} " + " / ".join(f"{c[('zn', z, w)] / tm2:.1f}, {c[('zo', z, w)] / tm2:.1f}" for z in range(5)) for w, nm in ((1, "wide"), (0, "middle"))))
+    print("C++ zone row: {" + ", ".join(f"{c[(kk, z, w)] / tm2:.1f}" for w in (1, 0) for z in range(5) for kk in ("zn", "zo")) + "}")
+    print("C++ wide3 row: {" + ", ".join(f"{x:.1f}" for x in [c['w3'] / tm2] + [c[f'w3e{i}'] / tm2 for i in range(7)] + [100 * c[f'w3r{r}'] / max(1, c['w3e4']) for r in range(6)]) + "}")
     print("C++ began row: {" + ", ".join(f"{x:.1f}" for i in range(5) for x in (c[f'hb{i}'] / (2 * len(files)), 100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']), md(L[f'hb{i}_d']))) + "}")
     print("C++ start row: {" + ", ".join(f"{x:.1f}" for x in [c['ps'] / (2 * len(files)), md(L['ps_len']), md(L['ps_fl']), md(L['ps_dk']), q(L['ps_dk'], .25), q(L['ps_dk'], .75)] + [100 * c[f'ps_b{i}'] / pm for i in range(4)]
           + [100 * c['ps_onp'] / pm, md(L['ps_vk']), q(L['ps_vk'], .25), q(L['ps_vk'], .75), md(L['ps_pace']), q(L['ps_pace'], .25), q(L['ps_pace'], .75), md(L['ps_cl']), q(L['ps_cl'], .25), q(L['ps_cl'], .75), md(L['ps_cls']), md(L['ps_d0']), md(L['ps_vr']), q(L['ps_vr'], .25), q(L['ps_vr'], .75)]) + ", " + ", ".join(f"{x:.2f}" for x in [md(L['ps_str']), q(L['ps_str'], .25), q(L['ps_str'], .75)]) + ", " + ", ".join(f"{x:.0f}" for x in [md(L['ps_ak']), q(L['ps_ak'], .25), q(L['ps_ak'], .75), md(L['ps_a0']), q(L['ps_a0'], .25), q(L['ps_a0'], .75)]) + "}")
