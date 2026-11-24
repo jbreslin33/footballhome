@@ -43,7 +43,24 @@ first; the player's own phone if there is no guardian).
   into empty table cells of `word/document.xml`, and zips it again
   (stored, no library). An empty value leaves the blank line in place.
 
+## Preview (mig 1816)
+
+👁 Preview on each form row draws the filled form on the page:
+`frontend/js/lib/docx-view.js` (`DocxView.render(doc)`) reads the same
+`word/document.xml` `DocxFill` just wrote and builds a white Letter page —
+paragraphs, runs, tabs, tables with their borders, inline pictures. No
+headers, footers or page breaks: it is a look at the answers, and Word
+decides the real line breaks.
+
 ## Sending
+
+✉️ Open Gmail (mig 1816) opens a compose window to `send_to_email` with the
+`league_entry` / `email` words (now `client_side`, so the page reads them)
+and saves every filled form to Downloads in the same click — a Gmail compose
+link cannot carry a file, so the forms are dragged in. Football Home does not
+know whether that email went (no `sent_at`).
+
+The second button sends from the server:
 
 ✉️ builds every form, posts them to `/send`, and the server emails them from
 the club's address to `send_to_email`, cc and Reply-To the admin who pressed

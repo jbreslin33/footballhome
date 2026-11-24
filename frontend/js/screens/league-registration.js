@@ -5,9 +5,13 @@
 // page for fh? and have these also as check list items but you pre fill them
 // for me and get them ready to be sent".
 //
-//   ✅ CHECKLIST   one row per thing the league wants: ⬇ Filled form (the
-//                  league's Word file, filled here by lib/docx-fill.js),
-//                  Blank, ✓ Done; ✉️ Email the filled forms to the league
+//   ✅ CHECKLIST   one row per thing the league wants: 👁 Preview (the
+//                  league's Word file, filled here by lib/docx-fill.js and
+//                  drawn on the page by lib/docx-view.js), ⬇ Filled form,
+//                  Blank, ✓ Done; ✉️ Open Gmail to the league (mig 1816 —
+//                  compose opens addressed and worded, the filled forms
+//                  land in Downloads to drag in: a Gmail link cannot carry
+//                  a file), or send them from Football Home
 //   🏢 THE CLUB    who signs (the soccer director) and what is owed
 //   ⚽ <team>      the team commitment form's answers — every box saves as
 //                  you leave it and the forms refill
@@ -89,6 +93,9 @@ class LeagueRegistrationScreen extends Screen {
     const t = (sel) => e.target.closest(sel);
     let el;
     if ((el = t('[data-le-done]'))) { this._post('/api/league-entries/item', { id: Number(el.dataset.leDone), done: el.dataset.on === '1' }); return; }
+    if ((el = t('[data-le-view]'))) { this._preview(Number(el.dataset.entry), Number(el.dataset.leView)); return; }
+    if ((el = t('[data-le-view-close]')) || e.target.matches('[data-le-view-back]')) { this._closePreview(); return; }
+    if ((el = t('[data-le-gmail]'))) { this._gmail(Number(el.dataset.leGmail)); return; }
     if ((el = t('[data-le-fill]'))) { this._download(Number(el.dataset.entry), Number(el.dataset.leFill)); return; }
     if ((el = t('[data-le-blank]'))) { this._downloadBlank(Number(el.dataset.entry), Number(el.dataset.leBlank)); return; }
     if ((el = t('[data-le-send]'))) { this._send(Number(el.dataset.leSend)); return; }
@@ -145,6 +152,12 @@ class LeagueRegistrationScreen extends Screen {
 
   // The league's Word file with the answers written in → { filename, blob }.
   async _filled(entry, item) {
+    const safe = (s) => String(s).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+    return { filename: `${safe(entry.club)} - ${safe(entry.title)} - ${safe(item.label)}.docx`, blob: (await this._filledDoc(entry, item)).blob() };
+  }
+
+  // … as the open document (DocxFill.Doc), for the preview and the file.
+  async _filledDoc(entry, item) {
     const doc = await DocxFill.open(await this._template(item.template_file_id));
     const S = LeagueRegistrationScreen, d = entry.director || {};
     const tm = (entry.teams || []).find(x => x.id === item.entry_team_id);
@@ -173,8 +186,7 @@ class LeagueRegistrationScreen extends Screen {
       doc.blank('TEAM', tm.team_name).blank('AGE', tm.age_group).swap('MALE or FEMALE', tm.gender === 'F' ? 'FEMALE' : 'MALE').blank('Coach', a.coach.name);
       a.roster.forEach((p, i) => doc.cellAt(0, i + 1, 1, p.name).cellAt(0, i + 1, 2, p.dob).cellAt(0, i + 1, 3, S.phone(p.phone)));
     }
-    const safe = (s) => String(s).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
-    return { filename: `${safe(entry.club)} - ${safe(entry.title)} - ${safe(item.label)}.docx`, blob: doc.blob() };
+    return doc;
   }
 
   _save(blob, filename) {
@@ -187,6 +199,56 @@ class LeagueRegistrationScreen extends Screen {
     const entry = this._entry(entryId), item = entry && entry.items.find(i => i.id === itemId);
     if (!item) return;
     try { const f = await this._filled(entry, item); this._save(f.blob, f.filename); }
+    catch (err) { this.error = err.message; this._renderBody(); }
+  }
+
+  // 👁 the filled form drawn on the page, over the screen.
+  async _preview(entryId, itemId) {
+    const entry = this._entry(entryId), item = entry && entry.items.find(i => i.id === itemId);
+    if (!item) return;
+    try {
+      const doc = await this._filledDoc(entry, item);
+      this._closePreview();
+      const back = document.createElement('div');
+      back.dataset.leViewBack = '1';
+      back.style.cssText = 'position:fixed; inset:0; z-index:5000; background:rgba(0,0,0,0.78); overflow:auto; padding:0 8px 24px;';
+      back.innerHTML = `<div style="position:sticky; top:0; z-index:1; display:flex; gap:8px; align-items:center; max-width:816px; margin:0 auto; padding:8px 0; background:rgba(0,0,0,0.78);">
+          <div style="flex:1; min-width:0; font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(item.label)}</div>
+          <button type="button" class="btn btn-secondary" data-le-fill="${item.id}" data-entry="${entry.id}" style="min-height:0; padding:5px 11px; font-size:0.8rem;">${this.escapeHtml(this._t('btn_download', {}, '⬇ Filled form'))}</button>
+          <button type="button" class="btn btn-primary" data-le-view-close="1" style="min-height:0; padding:5px 11px; font-size:0.8rem;">✕</button>
+        </div>`;
+      back.appendChild(DocxView.render(doc));
+      this.element.appendChild(back);
+      this._previewEl = back;
+      this._previewKey = (e) => { if (e.key === 'Escape') this._closePreview(); };
+      document.addEventListener('keydown', this._previewKey);
+    } catch (err) { this.error = err.message; this._renderBody(); }
+  }
+
+  _closePreview() {
+    if (this._previewEl) this._previewEl.remove();
+    if (this._previewKey) document.removeEventListener('keydown', this._previewKey);
+    this._previewEl = this._previewKey = null;
+  }
+
+  onExit() { this._closePreview(); }
+
+  // ✉️ Gmail, addressed and worded (message_templates league_entry / email —
+  // the words the server send uses).  A compose link cannot carry a file, so
+  // the filled forms are saved to Downloads in the same click, to drag in.
+  // Gmail opens first, inside the click, or the browser blocks the window.
+  async _gmail(entryId) {
+    const entry = this._entry(entryId);
+    if (!entry) return;
+    if (!entry.send_to_email) { this.error = this._t('send_nobody', {}, 'Fill in who it goes to first.'); this._renderBody(); return; }
+    const forms = entry.items.filter(i => i.template_file_id);
+    const u = (this.auth.getUser && this.auth.getUser()) || {};
+    const tokens = { club: entry.club, league_title: entry.title, to_name: String(entry.send_to_name || '').trim().split(' ')[0],
+      list: forms.map(i => `• ${i.label}`).join('\n') + '\n', sender: u.name || u.display_name || (entry.director || {}).name || '' };
+    const mail = (window.MessageCopy && MessageCopy.render('league_entry', 'email', tokens))
+      || { subject: `${entry.club} — ${entry.title} registration`, body: '' };
+    this.openGmailCompose(this.buildGmailComposeHref({ to: entry.send_to_email, subject: mail.subject, body: mail.body }));
+    try { for (const item of forms) { const f = await this._filled(entry, item); this._save(f.blob, f.filename); } }
     catch (err) { this.error = err.message; this._renderBody(); }
   }
 
@@ -246,7 +308,8 @@ class LeagueRegistrationScreen extends Screen {
             ${miss.length ? `<div style="font-size:0.78rem; color:#fbbf24; margin-top:2px;">${esc(this._t('missing', { list: miss.join(', ') }, `⚠ Still blank on the forms: ${miss.join(', ')}`))}</div>` : ''}
             ${i.kind === 'roster' ? `<div style="font-size:0.78rem; opacity:0.75; margin-top:2px;">${esc(this._t('roster_photos', {}, 'The form also wants a photo of each player in the numbered boxes — add those in Word (or by hand) before it goes in.'))}</div>` : ''}
             <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:6px;">
-              ${i.template_file_id ? `<button type="button" class="btn btn-primary" data-le-fill="${i.id}" data-entry="${en.id}" style="min-height:0; padding:5px 11px; font-size:0.8rem;">${esc(this._t('btn_download', {}, '⬇ Filled form'))}</button>
+              ${i.template_file_id ? `<button type="button" class="btn btn-primary" data-le-view="${i.id}" data-entry="${en.id}" style="min-height:0; padding:5px 11px; font-size:0.8rem;">${esc(this._t('btn_preview', {}, '👁 Preview'))}</button>
+                <button type="button" class="btn btn-secondary" data-le-fill="${i.id}" data-entry="${en.id}" style="min-height:0; padding:5px 11px; font-size:0.8rem;">${esc(this._t('btn_download', {}, '⬇ Filled form'))}</button>
                 <button type="button" class="btn btn-secondary" data-le-blank="${i.id}" data-entry="${en.id}" style="min-height:0; padding:5px 11px; font-size:0.8rem; opacity:0.8;">${esc(this._t('btn_blank', {}, 'Blank'))}</button>` : ''}
               <button type="button" class="btn btn-secondary" data-le-done="${i.id}" data-on="${i.done_at ? 0 : 1}" ${dis} style="min-height:0; padding:5px 11px; font-size:0.8rem;">${esc(i.done_at ? this._t('btn_undo', {}, '↩ Not done') : this._t('btn_done', {}, '✓ Done'))}</button>
             </div>
@@ -258,8 +321,10 @@ class LeagueRegistrationScreen extends Screen {
         ${field('Email', `<input type="email" data-le-entry-field="send_to_email" data-id="${en.id}" value="${esc(en.send_to_email)}" ${dis} style="${inputCss}">`)}
       </div>
       <div style="font-size:0.78rem; opacity:0.75; margin-top:6px;">${esc(this._t('sign_note', {}, 'The forms need a signature — print and sign, or sign in Word, before they count.'))}</div>
+      <div style="font-size:0.78rem; opacity:0.75; margin-top:4px;">${esc(this._t('gmail_note', {}, 'Open Gmail starts the email to the league and saves the filled forms to your Downloads — drag them into the email (a Gmail link cannot attach a file).'))}</div>
       <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;">
-        <button type="button" class="btn btn-primary" data-le-send="${en.id}" ${dis} style="min-height:0; padding:7px 14px;">${esc(this._t('btn_send', { name: en.send_to_name || '…' }, `✉️ Email the filled forms to ${en.send_to_name || '…'}`))}</button>
+        <button type="button" class="btn btn-primary" data-le-gmail="${en.id}" style="min-height:0; padding:7px 14px;">${esc(this._t('btn_gmail', { name: en.send_to_name || '…' }, `✉️ Open Gmail to ${en.send_to_name || '…'}`))}</button>
+        <button type="button" class="btn btn-secondary" data-le-send="${en.id}" ${dis} style="min-height:0; padding:7px 14px;">${esc(this._t('btn_send', { name: en.send_to_name || '…' }, `✉️ Email the filled forms to ${en.send_to_name || '…'}`))}</button>
         ${en.sent_at ? `<span style="font-size:0.82rem; opacity:0.85;">${esc(this._t('sent_line', { when: when(en.sent_at) }, `✉️ Sent ${when(en.sent_at)}`))}</span>` : ''}
         ${this.note ? `<span style="font-size:0.82rem; color:#22c55e;">${esc(this.note)}</span>` : ''}
       </div>`;
