@@ -722,14 +722,23 @@ class FinancesScreen extends Screen {
     // Game coaching, this year (a later year's is already on the plans): the
     // coaching policies count games per TEAM and season — each policy season
     // goes to the competition of that team it overlaps most; a tie is shared.
-    if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && Number(p.rate) > 0)) for (const se of (p.seasons || [])) {
-      const games = Number(se.expected || 0); if (!games) continue;
-      const days = (c) => Math.max(0, (Math.min(Date.parse(se.ends_on), Date.parse(c.to)) - Math.max(Date.parse(se.starts_on), Date.parse(c.from))) / 864e5 + 1);
-      const mine = all.filter(c => !c.option && (c.scope === p.team_scope || sc(c.scope).parent === p.team_scope) && days(c) > 0);
-      const best = Math.max(0, ...mine.map(days)), hit = mine.filter(c => days(c) === best);
-      for (const c of hit) c.lines.push({ category: 'labor', label: C('cp_game_coaching', 'Game coaching'), rate: Number(p.rate), quantity: games / hit.length, amount: Number(p.rate) * games / hit.length,
-        unit_label: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) || '', is_assumed: !!se.is_assumed || hit.length > 1, season: c.season,
-        note: [p.note, hit.length > 1 ? C('cp_coach_split', `coaching games are counted per team, shared evenly between its ${hit.length} competitions here`, { n: hit.length }) : ''].filter(Boolean).join(' — ') });
+    // One line per competition for the whole year ("22 games"), its seasons named in the note.
+    if (year === thisYear) for (const p of (x.ref_fees || []).filter(p => p.kind === 'coaching' && Number(p.rate) > 0)) {
+      const got = new Map();   // competition → { games, parts, assumed, split }
+      for (const se of (p.seasons || [])) {
+        const games = Number(se.expected || 0); if (!games) continue;
+        const days = (c) => Math.max(0, (Math.min(Date.parse(se.ends_on), Date.parse(c.to)) - Math.max(Date.parse(se.starts_on), Date.parse(c.from))) / 864e5 + 1);
+        const mine = all.filter(c => !c.option && (c.scope === p.team_scope || sc(c.scope).parent === p.team_scope) && days(c) > 0);
+        const best = Math.max(0, ...mine.map(days)), hit = mine.filter(c => days(c) === best);
+        for (const c of hit) {
+          if (!got.has(c)) got.set(c, { games: 0, parts: [], assumed: false, split: 0 });
+          const g = got.get(c); g.games += games / hit.length; g.parts.push(`${se.label} ${qty(games / hit.length)}${se.is_assumed ? '*' : ''}`);
+          if (se.is_assumed || hit.length > 1) g.assumed = true; g.split = Math.max(g.split, hit.length);
+        }
+      }
+      for (const [c, g] of got) c.lines.push({ category: 'labor', label: C('cp_game_coaching', 'Game coaching'), rate: Number(p.rate), quantity: g.games, amount: Number(p.rate) * g.games,
+        unit_label: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) || '', is_assumed: g.assumed, season: c.season,
+        note: [g.parts.join(' + '), p.note, g.split > 1 ? C('cp_coach_split', `coaching games are counted per team, shared evenly between its ${g.split} competitions here`, { n: g.split }) : ''].filter(Boolean).join(' — ') });
     }
     for (const c of all) {
       c.label = all.filter(o => o.scope === c.scope).length > 1 ? `${sc(c.scope).label || c.scope} — ${c.season}` : (sc(c.scope).label || c.league);
