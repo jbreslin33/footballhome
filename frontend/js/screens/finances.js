@@ -730,7 +730,11 @@ class FinancesScreen extends Screen {
     // the full rate: each section's monthly dues × 12, weighted by who owes, after the same fee share
     const monthly = (h) => Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0);
     const perFull = paying > 0 ? heads.reduce((a, h) => a + Number(h.paying || 0) * monthly(h) * 12, 0) / paying : 0;
-    const gap = Math.max(0, -before), more = perMember > 0 ? Math.ceil(gap / perMember) : 0, moreFull = perFull > 0 ? Math.ceil(gap / (perFull * (1 - feeShare))) : 0;
+    // the one cost a new member adds: a kit, once (the uniforms lines' price per new member); nothing else grows
+    const kits = (this.expenses.budget || []).filter(b => b.budget_year === m.year && b.amount_per === 'new_member' && Number(b.amount) > 0);
+    const kit = kits.length ? kits.reduce((a, b) => a + Number(b.amount), 0) / kits.length : 0;
+    const net = perMember - kit, netFull = perFull * (1 - feeShare) - kit;
+    const gap = Math.max(0, -before), more = net > 0 ? Math.ceil(gap / net) : 0, moreFull = netFull > 0 ? Math.ceil(gap / netFull) : 0;
     // who of them is paid up: the Tuition page's own statuses, per program (members_now), once loaded
     const pg = (this.programsBy || {}).expected;
     if (!pg && !this.pgErr) this._loadPrograms('expected');
@@ -738,6 +742,19 @@ class FinancesScreen extends Screen {
     if (pg) { const by = pg.budgets[pg.this_year] || { seasons: [], programs: {} };
       for (const x of pg.programs || []) { const plan = by.seasons.filter(se => !se.real).map(se => (by.programs[x.code] || {})[se.code] || {}), mn = (plan[plan.length - 1] || {}).members_now || {};
         owe += Number(mn.owing || 0); paid += Number(mn.paid_now || 0); } }
+    // the members needed, by practice slot (owner 11/23: "break it by practice slots … men, 4pm, 445, 545. so
+    // prob 26 for each"): a slot = the programs whose usual practice (the start time most of their weekly
+    // calendar sessions share) is the same; the members split evenly between the slots, whole people.
+    const slots = new Map();
+    for (const x of (pg || {}).programs || []) {
+      const n = {}; for (const sl of x.schedule || []) n[sl.start] = (n[sl.start] || 0) + 1;
+      const usual = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b))[0]; if (!usual) continue;
+      if (!slots.has(usual)) slots.set(usual, []); slots.get(usual).push(x);
+    }
+    const clock = (hm) => { const [h, mi] = hm.split(':').map(Number); return `${((h + 11) % 12) + 1}:${String(mi).padStart(2, '0')}`; };
+    const slotList = [...slots.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([start, ps]) => { const adult = ps.find(x => x.kind !== 'youth'), youth = ps.filter(x => x.kind === 'youth');
+      return { label: adult ? adult.label : `${clock(start)} ${youth[0].label}${youth.length > 1 ? '–' + youth[youth.length - 1].label : ''}` }; });
+    const split = (n) => slotList.map((g, i) => ({ ...g, n: Math.floor(n / slotList.length) + (i < n % slotList.length ? 1 : 0) })).filter(g => g.n > 0);
     const nowLine = pg && owe ? C('bl_members_now', `${owe} members owe dues now: ${paid} are paid up, ${owe - paid} are behind.`, { owe, paid, behind: owe - paid }) : C('bl_members_owe', `${paying} members owe dues now.`, { owe: paying });
     const signed = (label, v, strong, extra = '') => `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}${extra}</td>
       <td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td></tr>`;
@@ -745,7 +762,8 @@ class FinancesScreen extends Screen {
         <span class="fn-tick">${esc(C('bl_grant_left', `${M0(award - used)} of the grant not needed`, { left: M0(award - used) }))}</span>
         ${used > covers + 0.5 ? `<span class="fn-tick fn-warn">${esc(C('bl_grant_limit', `The grant may only pay for ${M0(covers)} of this year's costs (what it was given for).`, { covers: M0(covers) }))}</span>` : ''}</td>
         <td class="fn-in" style="font-weight:700;">${M0(used)}</td></tr>
-      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To need no grant: about ${more} more members at the rate dues are really coming in (${M0(perMember)} a member a year after fees) — or about ${moreFull} if every one paid the full ${M0(perFull)} a year.`, { more, per: M0(perMember), more_full: moreFull, full: M0(perFull) }))}
+      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To break even without the grant: about ${more} more members. Each brings ${M0(perMember)} a year at the rate dues are really coming in (after fees), less a ${M0(kit)} kit = ${M0(net)}; no other new costs. About ${moreFull} if every one paid the full ${M0(perFull)} a year.`, { more, per: M0(perMember), kit: M0(kit), net: M0(net), more_full: moreFull, full: M0(perFull) }))}
+          ${split(more).length ? `<span class="fn-tick">${esc(C('bl_members_split', `Spread over the practice slots that is ${split(more).map(g => `${g.n} ${g.label}`).join(' · ')}.`, { list: split(more).map(g => `${g.n} ${g.label}`).join(' · ') }))}</span>` : ''}
           <span class="fn-tick">${esc(nowLine)}</span></td></tr>`
         : gap < 0.5 ? `<tr class="item"><td colspan="2" style="padding-left:26px;" class="fn-in">${esc(C('bl_no_grant', 'The year pays for itself without the grant.'))}</td></tr>` : ''}`;
     return `<div class="fn-card"><div class="fn-title">${esc(C('bl_title', 'Balance'))} · ${esc(m.year)}</div>
