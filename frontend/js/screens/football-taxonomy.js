@@ -38,7 +38,7 @@
 //             ashould talk about and demo how its used … show the players moving and
 //             demonstrating the concept in a popup game on a loop" · "the popup game shold
 //             run the engine full"): what the engine does with it, and ▶ a popup window on
-//             the live match (/game.html?concept=<id>, js/game/client.js "Concept loop")
+//             the concept clip viewer (/concept.html?concept=<id>, js/teach/concept.js)
 //             that replays each moment a player does it.  The popup asks this page for its
 //             words (loop_* rows) by postMessage.
 //   ⚙️ C++    there is code for it — a behaviour's class or its board placement class
@@ -157,19 +157,6 @@ class FootballTaxonomyScreen extends Screen {
       else if (k === 'engine') this.engine = v;
       this._render();
     });
-    // The concept-loop popup (game.html?concept=) asks for its words when it is ready.
-    if (!this._onPopup) {
-      this._onPopup = (e) => {
-        const m = e.data || {};
-        if (e.origin !== location.origin || m.src !== 'fh-game' || m.type !== 'concept-ready' || !this.data || !e.source) return;
-        const c = this._index().concept.get(Number(m.concept));
-        if (!c) return;
-        const words = { title: c.title };
-        for (const k of ['waiting', 'unreported', 'example', 'live', 'prev', 'next', 'go_live', 'go_loop']) words[k] = this._t('loop_' + k);
-        e.source.postMessage({ src: 'fh-taxonomy', cmd: 'words', words }, location.origin);
-      };
-      window.addEventListener('message', this._onPopup);
-    }
     div.addEventListener('input', (e) => {
       if (!e.target.matches('[data-tx-search]')) return;
       this.search = e.target.value;
@@ -603,7 +590,7 @@ class FootballTaxonomyScreen extends Screen {
 
   // The popup on the live match.  It needs its opener (the words), so no 'noopener'.
   _watch(id) {
-    window.open(`/game.html?concept=${id}`, 'fh-concept-loop', 'popup=yes,width=1180,height=720');
+    window.open(`/concept.html?concept=${id}`, 'fh-concept-clips', 'popup=yes,width=1280,height=800');
   }
 
   // ── 🗄 the concept as the database holds it ────────────────────────────

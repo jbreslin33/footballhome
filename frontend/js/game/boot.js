@@ -33,7 +33,7 @@ const SCRIPTS_2D = [
   'js/game/renderer2d.js?v=20261116circ',
   'js/game/view-menu.js?v=20261124pure',   // ☰ Menu holds every control in 2D too (James 11/17)
 ];
-const CLIENT = 'js/game/client.js?v=20261124loop2';
+const CLIENT = 'js/game/client.js?v=20261124pure2';
 
 if (view === '3d') {
   const T = await import('three');

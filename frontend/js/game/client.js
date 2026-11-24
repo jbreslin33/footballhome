@@ -220,7 +220,7 @@
         el.textContent = c ? `${why} · concept ${e.concept} ${c.name}` : why;
       }
     }
-    renderer.setBrain({ entries: brainEntries, legend: brainLegend, concepts: conceptLegend, show: loopShow || brainPick });
+    renderer.setBrain({ entries: brainEntries, legend: brainLegend, concepts: conceptLegend, show: brainPick });
   }
   for (const side of brainSides) {
     side.el.addEventListener('click', (ev) => {
@@ -462,124 +462,8 @@
     updateBrainRows();
   }
 
-  // ── Concept loop (?concept=<game_concepts id>) — James 11/24, of the 🧬 Taxonomy page's
-  // 🎮 chip: "would be awesome to show the players moving and demonstrating the concept in a
-  // popup game on a loop" · "the popup game shold run the engine full" · "loop the concept
-  // wihg full engine running off and def etc".  The match is the ordinary one — both sides,
-  // the whole engine.  Each time the BRAIN feed names this concept on a man who was not
-  // playing it a moment before, the seconds around it become a clip; the picture loops the
-  // clip from the 2-minute history with only that man's brain label on, while the match
-  // runs on underneath and new examples queue up.  The engine names a concept per man only
-  // for the acts in game_engine_acts (CONCEPT_LEGEND); for any other concept there is
-  // nothing to cut on, and the page says so.
-  // It opens as a popup window from the taxonomy page (the site answers X-Frame-Options DENY,
-  // so not an iframe).  The HUD is hidden; one bar at the foot says what is looping, with
-  // ‹ › and Loop / Live.  Its words are the taxonomy page's (message_templates kind
-  // 'taxonomy', loop_*): the popup posts { src:'fh-game', type:'concept-ready' } to its
-  // opener, which answers { src:'fh-taxonomy', cmd:'words', words:{…} }.
-  const loopConcept = Number(new URLSearchParams(location.search).get('concept')) || 0;
-  const LOOP_BEFORE = 90, LOOP_AFTER = 150, LOOP_GAP = 150;   // ticks at 30 Hz: 3 s in, 5 s out, 5 s between clips
-  let loopShow = null;            // Set of the one slot whose label shows while a clip loops
-  const cloop = { clips: [], at: -1, on: true, was: new Set(), lastTo: 0, turns: 0, reported: null };
-  const loopHost = window.opener || null;
-  let loopWords = null, loopBar = null;
-  const loopFill = (text, tokens) => String(text || '').replace(/\{(\w+)\}/g, (m, k) => (tokens[k] == null ? '' : String(tokens[k])));
-  function loopPost() {   // repaint the bar
-    if (!loopBar || !loopWords) return;
-    const w = loopWords, c = cloop.clips[cloop.at], n = cloop.clips.length;
-    const line = cloop.reported === false ? w.unreported
-      : c && cloop.on ? loopFill(w.example, { player: slotName(c.slot), i: cloop.at + 1, n })
-      : !cloop.on ? loopFill(w.live, { n }) : w.waiting;
-    const b = 'border:0;border-radius:12px;padding:5px 11px;font:700 12px system-ui,sans-serif;cursor:pointer;min-width:0;min-height:0;';
-    // Examples / Live: one switch, both words always showing, the one you are on filled in (James 11/24:
-    // "loop and watch live are confusing. maybe if it was toggle and both showed").
-    const seg = (on) => (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:transparent;color:#ffcc00;');
-    loopBar.innerHTML = `<div style="font-weight:800;">${esc(w.title || '')}</div><div style="opacity:.9;margin:2px 0 6px;">${esc(line || '')}</div>` +
-      (cloop.reported === false ? '' : `<div style="display:flex;gap:6px;justify-content:center;">
-        <button type="button" data-loop="prev" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 && cloop.on ? '' : 'disabled'}>${esc(w.prev || '‹')}</button>
-        <span role="group" style="display:inline-flex;border:1px solid #ffcc00;border-radius:13px;overflow:hidden;">
-          <button type="button" data-loop="loop" aria-pressed="${cloop.on}" style="${b}border-radius:0;${seg(cloop.on)}">${esc(w.go_loop)}</button>
-          <button type="button" data-loop="live" aria-pressed="${!cloop.on}" style="${b}border-radius:0;${seg(!cloop.on)}">${esc(w.go_live)}</button>
-        </span>
-        <button type="button" data-loop="next" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 && cloop.on ? '' : 'disabled'}>${esc(w.next || '›')}</button></div>`);
-    loopBar.hidden = false;
-  }
-  function loopCmd(cmd) {
-    if (cmd === 'live') loopLive();
-    else if (cmd === 'loop') { cloop.on = true; loopPost(); }
-    else if ((cmd === 'next' || cmd === 'prev') && cloop.clips.length) {
-      cloop.on = true;
-      loopGo(Math.max(0, Math.min(cloop.clips.length - 1, cloop.at + (cmd === 'next' ? 1 : -1))));
-    }
-  }
-  function loopGo(i) {
-    cloop.at = i; cloop.turns = 0;
-    const c = cloop.clips[i];
-    loopShow = c ? new Set([c.slot]) : null;
-    if (c) renderer.replay = { tick: c.from, rate: 1, playing: true };
-    loopPost();
-  }
-  function loopLive() {
-    cloop.on = false; loopShow = null;
-    renderer.stopReplay();
-    brainEntries = brainHist.length ? brainHist[brainHist.length - 1].entries : null;
-    updateBrainRows(); paintReplayBar(); loopPost();
-  }
-  // Every BRAIN frame: a man who has just started playing the concept opens a clip.
-  function loopSee(tick, entries) {
-    const now = new Set();
-    (entries || []).forEach((e, slot) => { if (e && e.concept === loopConcept) now.add(slot); });
-    for (const slot of now) {
-      if (cloop.was.has(slot) || tick < cloop.lastTo + LOOP_GAP) continue;
-      cloop.clips.push({ slot, from: tick - LOOP_BEFORE, to: tick + LOOP_AFTER });
-      cloop.lastTo = tick + LOOP_AFTER;
-      if (cloop.clips.length > 12) { cloop.clips.shift(); if (cloop.at >= 0) cloop.at--; }
-      loopPost();
-      break;
-    }
-    cloop.was = now;
-  }
-  if (loopConcept) {
-    {   // the picture, the score and the loop bar — nothing else
-      const st = document.createElement('style');
-      st.textContent = '[data-hud], #back, .kick-btn { display: none !important; }';
-      document.head.appendChild(st);
-      loopBar = document.createElement('div');
-      loopBar.hidden = true;
-      loopBar.style.cssText = 'position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom, 0px) + 12px);transform:translateX(-50%);z-index:50;' +
-        'max-width:92vw;text-align:center;color:#fff;font:13px system-ui,sans-serif;padding:9px 14px;border-radius:14px;background:rgba(11,28,61,.86);border:1px solid rgba(255,204,0,.35);';
-      loopBar.addEventListener('click', (ev) => { const b = ev.target.closest('[data-loop]'); if (b) loopCmd(b.dataset.loop); });
-      document.body.appendChild(loopBar);
-      if (loopHost) loopHost.postMessage({ src: 'fh-game', type: 'concept-ready', concept: loopConcept }, location.origin);
-    }
-    setInterval(() => {
-      if (!cloop.on) return;
-      const span = renderer.historySpan();
-      if (!span) return;
-      // a clip older than the history is gone
-      while (cloop.clips.length && cloop.clips[0].from < span.first) { cloop.clips.shift(); cloop.at--; }
-      let c = cloop.clips[cloop.at];
-      if (!c) {   // nothing looping: start on the first clip whose seconds have all been played
-        const i = cloop.clips.findIndex((k) => k.to <= span.last);
-        if (i >= 0) loopGo(i); else if (renderer.replay) { renderer.stopReplay(); loopShow = null; loopPost(); }
-        return;
-      }
-      const rp = renderer.replay;
-      if (!rp) { loopGo(cloop.at); return; }
-      if (rp.tick >= c.to || !rp.playing) {
-        // twice round, then on to a newer example if one is ready
-        const next = cloop.clips[cloop.at + 1];
-        if (++cloop.turns >= 2 && next && next.to <= span.last) loopGo(cloop.at + 1);
-        else { rp.tick = c.from; rp.playing = true; }
-      }
-    }, 100);
-    window.addEventListener('message', (ev) => {
-      const m = ev.data || {};
-      if (ev.origin !== location.origin || m.src !== 'fh-taxonomy' || m.cmd !== 'words' || !m.words) return;
-      loopWords = m.words;
-      loopPost();
-    });
-  }
+  // The concept loop that ran here (?concept=) is its own page now — concept.html,
+  // js/teach/concept.js: this page is the match and nothing else.
 
   const net = new GameNet({
     onSpeed(pct) {
@@ -600,7 +484,6 @@
       paintMatchBar();
       paintReplayBar();
       statusEl.textContent = `match ${h.matchId}`;
-      if (loopConcept) { if (brainOn) net.brainWatch(true); else setBrainOn(true); }   // the loop cuts on the BRAIN feed
     },
     onSnapshot(s) {
       renderer.pushSnapshot(s);
@@ -626,7 +509,6 @@
       const span = renderer.historySpan();
       brainHist.push({ tick: span ? span.last : 0, entries });
       if (brainHist.length > 800) brainHist.splice(0, 100);
-      if (loopConcept && span) loopSee(span.last, entries);
       if (renderer.replay) return;   // replay shows the past, not this
       brainEntries = entries;
       updateBrainRows();
@@ -636,7 +518,6 @@
     },
     onConceptLegend(map) {
       conceptLegend = map;
-      if (loopConcept) { cloop.reported = !!map[loopConcept]; loopPost(); }
     },
     onTeamList(names) {
       teamList = names;

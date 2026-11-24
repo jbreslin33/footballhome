@@ -204,7 +204,7 @@ json TacticPlans::taxonomy() {
           'roles',      (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_roles),
           'measures',   (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_measures),
           'laws',       (SELECT json_agg(json_build_object('number', number, 'title', title, 'summary', summary) ORDER BY number) FROM game_ref_laws),
-          'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note) ORDER BY kind, sort_order)
+          'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note, 'wire', wire_index, 'parent', parent) ORDER BY kind, sort_order)
                            FROM game_engine_terms),
           'links',      (SELECT json_agg(json_build_object('from', concept_id, 'to', other_id, 'kind', kind)) FROM game_concept_links),
           'jobs',       (SELECT json_agg(json_build_object('code', code, 'concept_id', concept_id, 'label', label, 'rule', rule,
