@@ -128,7 +128,7 @@ class FinancesScreen extends Screen {
       // and the scopes.  #finances reads all three + the fines board.
       const need = this.only === 'groups' ? [] : ['competitions', 'clubwide', 'otherincome'].includes(this.only) ? ['expenses', 'cash-flow'] : ['summary', 'expenses', 'cash-flow'];
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
-      const finesP = this.only ? null : this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
+      const finesP = this.only && this.only !== 'balance' ? null : this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const got = await Promise.all(need.map(async p => { const r = await this.auth.fetch(`/api/finances/${p}`), j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; }));
       this.finesBoard = await finesP;
       const by = Object.fromEntries(need.map((p, i) => [p, got[i]]));
@@ -179,7 +179,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'groups' ? this._pbHtml(true) : v === 'competitions' ? this._competitionsHtml() : v === 'clubwide' ? this._clubWideHtml() : v === 'otherincome' ? this._otherIncomeHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'groups' ? this._pbHtml(true) : v === 'competitions' ? this._competitionsHtml() : v === 'clubwide' ? this._clubWideHtml() : v === 'otherincome' ? this._otherIncomeHtml() : v === 'balance' ? this._balanceHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
   }
 
   // ── shared bits ──
@@ -317,16 +317,17 @@ class FinancesScreen extends Screen {
     const items = [];   // { category, category_label, label, detail, unit, amount, assumed, note }
     // a competition of its own (mig 1751: each cup) is named by its competition, a team's by the team
     const compOf = (l) => { const sc = scopes0.find(x => x.code === l.scope); return sc && !sc.team_id && !sc.section_code && sc.parent ? sc.label : (l.short_label || l.team); };
-    for (const l of lines) items.push({ category: l.category, category_label: l.category_label, label: `${compOf(l)} — ${l.label}`,
+    // src = the fact page a line comes from (#balance, mig 1766): comp · club · fees
+    for (const l of lines) items.push({ src: l.scope === 'club' ? 'club' : 'comp', category: l.category, category_label: l.category_label, label: `${compOf(l)} — ${l.label}`,
       detail: `${M2(l.rate)} × ${qty(l.quantity)}${l.team_count == null ? '' : ` × ${l.team_count}`}`, unit: `${l.unit_label || ''}${l.team_count == null ? '' : ` × ${this._copy('plan_team_count') || 'teams'}`}`,
       amount: Number(l.amount), assumed: l.is_assumed, note: l.note });
-    for (const b of general) items.push({ category: b.category, category_label: b.category_label, label: b.section ? `${b.section} — ${b.label}` : b.label,
+    for (const b of general) items.push({ src: 'club', category: b.category, category_label: b.category_label, label: b.section ? `${b.section} — ${b.label}` : b.label,
       detail: `${M2(b.amount)} × ${qty(b.year_units)}`, unit: b.amount_per === 'member' ? this._copy('plan_unit_member') : b.amount_per === 'new_member' ? (this._copy('plan_unit_new_member') || 'new players') : b.amount_per === 'week' ? this._copy('plan_unit_week') : '',
       amount: Number(b.year_total || 0), assumed: b.is_assumed, note: b.note });
     // Game coaching (mig 1332): each coaching policy under the pill — games × pay per game
     for (const p of (this.expenses.ref_fees || []).filter(p => year === thisYear && p.kind === 'coaching' && this._scopeOk(p.scope) && scopes0.some(sc => sc.code === p.scope && (sc.section_code || !sc.team_id)))) {
       const games = (p.seasons || []).reduce((a, x) => a + Number(x.expected || 0), 0); if (!games) continue;
-      items.push({ category: 'labor', category_label: coachingLabel, label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`,
+      items.push({ src: 'comp', category: 'labor', category_label: coachingLabel, label: this._copy('plan_game_coaching', { label: p.label }) || `Game coaching — ${p.label}`,
         detail: `${M2(p.rate)} × ${games}`, unit: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }),
         amount: Number(p.rate) * games, assumed: (p.seasons || []).some(x => x.is_assumed), note: p.note });
     }
@@ -367,7 +368,7 @@ class FinancesScreen extends Screen {
     }
     // LeagueApps fees on the dues (mig 1386): what LA keeps, at its actual rate
     const duesBudget = revenue.filter(r => r.kind === 'dues').reduce((a, r) => a + r.amount, 0), feeRatio = this._laFeeRatio();
-    if (duesBudget > 0 && feeRatio > 0) items.push({ category: 'la_fees', category_label: this._copy('soa_la_fees') || 'LeagueApps fees', label: this._copy('soa_la_fees') || 'LeagueApps fees',
+    if (duesBudget > 0 && feeRatio > 0) items.push({ src: 'fees', category: 'la_fees', category_label: this._copy('soa_la_fees') || 'LeagueApps fees', label: this._copy('soa_la_fees') || 'LeagueApps fees',
       detail: `${M0(duesBudget)} × ${(100 * feeRatio).toFixed(1)}%`, unit: this._copy('plan_la_fees_unit') || '', amount: duesBudget * feeRatio, assumed: false });
     // Grants awarded or received = revenue with donor restrictions (restricted to
     // their purpose, or to what the label names when it has no single purpose);
@@ -398,7 +399,7 @@ class FinancesScreen extends Screen {
         detail = this._copy('plan_grant_used', { used: M0(amount), award: M0(award) }) || `${M0(amount)} of ${M0(award)}`;
         unit = award - amount > 0.5 ? (this._copy('plan_grant_left', { left: M0(award - amount) }) || `${M0(award - amount)} not used`) : '';
       }
-      revenue.push({ kind: 'award', share, receipts, purposes, award, label, detail, unit, amount, assumed: g.status !== 'received' });
+      revenue.push({ kind: 'award', grant: g.kind !== 'sponsorship', share, receipts, purposes, award, label, detail, unit, amount, assumed: g.status !== 'received' });
     }
     // Field rental income (mig 1372; owner: "CASA Rental that soccer club
     // handles so we count that as money soccer earned", "casa always pays"):
@@ -688,6 +689,59 @@ class FinancesScreen extends Screen {
       <div class="fn-note">${esc(full ? this._copy('pg_cap_note') : this._copy('pg_note'))}</div>${yearBar}
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       ${headline}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map((c, i) => `<th>${esc(this._copy(c) || colDefault[i])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
+  }
+  // ── ⚖️ Balance (#balance, mig 1766; owner 11/23 "do we need a balance for
+  // the year that pulls from all these?"): this budget year's Operating
+  // Budget model, regrouped by fact page — member dues (#groups) + other
+  // income (#other-income) less competitions (#competitions), club-wide
+  // (#club-wide) and LeagueApps' fees = the balance.  No maths of its own:
+  // it adds up _budgetModel's rows, so it always equals the Operating Budget.
+  _balanceHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, C = (k, fb, tok) => this._copy(k, tok) || fb;
+    const keep = this.scope; this.scope = 'all';
+    let m; try { m = this._budgetModel(((this.flow || {}).year || {}).label || ''); } finally { this.scope = keep; }
+    if (!m || !m.cats) return '';
+    const items = m.cats.flatMap(c => c.items.map(it => ({ ...it, cat: c.label })));
+    const sum = (list) => list.reduce((a, r) => a + Number(r.amount || 0), 0);
+    // sub-lines: one per label for money in, one per kind of cost for money out
+    const byCat = (list) => { const g = new Map(); for (const it of list) g.set(it.cat, (g.get(it.cat) || 0) + Number(it.amount || 0)); return [...g.entries()].map(([label, amount]) => ({ label, amount })); };
+    const part = (label, href, list, subs, cls) => ({ label, href, total: sum(list), subs, cls });
+    // The grant comes last (owner 11/23: "just use grant money at end as needed up to 50k to break even"):
+    // everything else first, then as much of the award as the shortfall needs.
+    const grants = m.revenue.filter(r => r.kind === 'award' && r.grant);
+    const dues = m.revenue.filter(r => r.kind === 'dues'), other = m.revenue.filter(r => r.kind !== 'dues' && !grants.includes(r));
+    const comp = items.filter(it => it.src === 'comp'), club = items.filter(it => it.src === 'club'), rest = items.filter(it => it.src !== 'comp' && it.src !== 'club');
+    const ins = [part(C('bl_dues', 'Member dues'), '#groups', dues, dues, 'fn-in'), part(C('bl_other_in', 'Other income'), '#other-income', other, other, 'fn-in')];
+    const outs = [part(C('bl_comps', 'Competitions'), '#competitions', comp, byCat(comp), 'fn-out'), part(C('bl_club', 'Club-wide'), '#club-wide', club, byCat(club), 'fn-out'),
+                  ...(rest.length ? [part(C('bl_other_out', 'Other costs'), '', rest, byCat(rest), 'fn-out')] : [])];
+    const row = (p) => `<tr><td>${p.href ? `<a href="${p.href}" style="color:inherit; font-weight:700;">${esc(p.label)} ›</a>` : `<span style="font-weight:700;">${esc(p.label)}</span>`}</td><td class="${p.cls}" style="font-weight:700;">${M0(p.total)}</td></tr>`
+      + p.subs.filter(r => Math.abs(Number(r.amount || 0)) >= 0.5).map(r => `<tr class="item"><td style="padding-left:26px; white-space:normal;">${esc(r.label)}${r.detail && !grants.includes(r) ? `<span class="fn-tick">${esc(r.detail)}</span>` : ''}</td><td>${M0(r.amount)}</td></tr>`).join('');
+    const group = (label, total, cls) => `<tr class="group"><td>${esc(label)}</td><td class="${cls}" style="font-weight:800;">${M0(total)}</td></tr>`;
+    const tin = sum(ins.map(p => ({ amount: p.total }))), tout = sum(outs.map(p => ({ amount: p.total }))), before = tin - tout;
+    const award = grants.reduce((a, g) => a + Number(g.award || 0), 0), covers = sum(grants);   // covers = this year's costs the grant may pay for
+    const used = Math.min(Math.max(0, -before), award), bal = before + used;
+    // Off the grant by members (owner 11/23: "we are trying to get off grant money by getting more members"):
+    // what a paying member brings in a full year — the dues budget less LeagueApps' fees, per paying member
+    // today — and how many more of them close the gap before the grant.
+    const paying = (this.expenses.plan_heads || []).reduce((a, h) => a + Number(h.paying || 0), 0);
+    const perMember = paying > 0 ? (sum(dues) - sum(rest.filter(it => it.category === 'la_fees'))) / paying : 0;
+    const gap = Math.max(0, -before), more = perMember > 0 ? Math.ceil(gap / perMember) : 0;
+    const signed = (label, v, strong, extra = '') => `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}${extra}</td>
+      <td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td></tr>`;
+    const grantRows = !award ? '' : `<tr><td><a href="#other-income" style="color:inherit; font-weight:700;">${esc(C('bl_grant_used', `Grant used — as needed, up to ${M0(award)}`, { award: M0(award) }))} ›</a>
+        <span class="fn-tick">${esc(C('bl_grant_left', `${M0(award - used)} of the grant not needed`, { left: M0(award - used) }))}</span>
+        ${used > covers + 0.5 ? `<span class="fn-tick fn-warn">${esc(C('bl_grant_limit', `The grant may only pay for ${M0(covers)} of this year's costs (what it was given for).`, { covers: M0(covers) }))}</span>` : ''}</td>
+        <td class="fn-in" style="font-weight:700;">${M0(used)}</td></tr>
+      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To need no grant: about ${more} more paying members (${paying} now), each bringing ${M0(perMember)} in a full year after fees.`, { more, paying, per: M0(perMember) }))}</td></tr>`
+        : gap < 0.5 ? `<tr class="item"><td colspan="2" style="padding-left:26px;" class="fn-in">${esc(C('bl_no_grant', 'The year pays for itself without the grant.'))}</td></tr>` : ''}`;
+    return `<div class="fn-card"><div class="fn-title">${esc(C('bl_title', 'Balance'))} · ${esc(m.year)}</div>
+      <div class="fn-note">${esc(C('bl_note', 'The whole year in one place: money in less money out. Each line is the total of its own page — tap it to see the facts behind it. The grant comes last, only as much as is needed to break even.'))}</div>
+      <div style="overflow-x:auto;"><table class="fn-table" style="max-width:720px;"><tbody>
+        ${group(C('bl_in', 'MONEY IN'), tin, 'fn-in')}${ins.map(row).join('')}
+        ${group(C('bl_out', 'MONEY OUT'), tout, 'fn-out')}${outs.map(row).join('')}
+        ${award ? signed(C('pg_gp_before', 'BALANCE BEFORE GRANT'), before, false) + grantRows : ''}
+        ${signed(C('bl_balance', 'BALANCE FOR THE YEAR'), bal, true, ` <span class="fn-note" style="font-weight:400;">${esc(C('bl_month', `${M0(bal / 12)} a month`, { amount: M0(bal / 12) }))}</span>`)}
+      </tbody></table></div></div>`;
   }
   // ── 💰 Other income (#other-income, mig 1765; owner 11/23 "do we add other
   // sources of income like grants and rentals?"): the money in that is not

@@ -83,6 +83,7 @@ class App {
       competitions: new FinancesScreen(this.navigation, this.auth, 'competitions'),
       clubWide: new FinancesScreen(this.navigation, this.auth, 'clubwide'),
       otherIncome: new FinancesScreen(this.navigation, this.auth, 'otherincome'),
+      balance: new FinancesScreen(this.navigation, this.auth, 'balance'),
       inHouseProposal: new InHouseProposalScreen(this.navigation, this.auth),
       proposals: new ProposalsScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
@@ -222,6 +223,8 @@ class App {
     this.screenManager.register('club-wide', this.screens.clubWide);
     // #other-income (mig 1765): money in that is not member dues — grants, sponsors, field rentals.
     this.screenManager.register('other-income', this.screens.otherIncome);
+    // #balance (mig 1766): the year in one table — dues + other income less competitions + club-wide.
+    this.screenManager.register('balance', this.screens.balance);
     // #cash-flow (mig 882): soccer money in from LeagueApps against invoices out.
     // #in-house-proposal (mig 900): the case for youth in-house.
     this.screenManager.register('in-house-proposal', this.screens.inHouseProposal);
