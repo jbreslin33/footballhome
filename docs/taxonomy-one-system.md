@@ -166,8 +166,12 @@ Owner, 2026-11-24: "they did not press as much in our data years as they do now.
 have the concepts in but they may not be used much or at all but important its all there as
 football waiting to be used … or discarded … but not ignored."
 
-Used (at the rate that season's data supports), available at zero (built, wired into the sim
-behind a setting, unused), or discarded with a reason. Never unreachable. The marking mind is
+And then: "discarded means 0 used but not thrown out unless we think its dup or not real concept."
+
+So a real concept is in one of two states: **used** (at the rate that season's data supports)
+or **at zero** (kept — built or waiting to be — and unused; that is what "discarded" means
+here). A concept row is **deleted** only when it is a duplicate of another or not a real
+football concept. Never for being unused, and never unreachable. The marking mind is
 the first: `physics.mark.mind` — no row = the sim's fitted marking, 1 = its markers run the mind.
 A first 4-match on/off read was mixed (who gets tight and switches toward real; crosses, goals
 and closing pace away), so it sits at zero until the harness fits its steps one at a time.
