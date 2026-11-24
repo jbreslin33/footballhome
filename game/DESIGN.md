@@ -13282,3 +13282,31 @@ Next: the chooser's chain for the central midfielder's ball to the wide zone ahe
 the table's share, the weight before the read, after it, chosen (`passDiag` by origin × destination) — which step
 halves it (the wing split, the mark lift, the distance pick, the read); then the concept: `width` (13) names where he
 stands, `verticality` (19) / `switch` what the passer owes him. Harness only; tests 25/25; card as G5.244.
+
+### 8.353 G5.247 — the zone's share held at the table's: the central short ball eases, the wide ball ahead does not come (a trial not shipped)
+
+From §8.352 (midfield's centre → the same zone 45-48% v 35-36; → the wide zone ahead 6-7% v 12). A mate's weight is
+the table's share (StatsBomb zone → zone × DFL kappa × the wing's share × his pick within the zone) times three lifts
+each fitted on its own margin — the pass's length (§8.236), a short pass's direction (§8.249), his pace (§8.237).
+
+**Trial, not shipped** — `physics.pass.zone_keep`: the lifts choose the man within a zone-wing and each zone-wing's
+total is rescaled to the table's. Seeds 1000-4000 × 8, G5.244 → the trial (real):
+
+| | G5.244 | zone_keep | real |
+|---|---|---|---|
+| 35-52 centre → the same zone / the wide zone ahead / the centre a band back | 43.9 / 7.2 / 15.8% | 39.7 / 7.8 / 17.0 | 35.3 / 12.4 / 11.5 |
+| 52-70 centre → the same / wide ahead / back | 47.8 / 7.9 / 12.2% | 43.2 / 8.1 / 13.8 | 35.8 / 12.0 / 10.6 |
+| a stint one band up, from 35-52 / 52-70 | 12.0 / 15.2% | 12.7 / 15.8 | 16.8 / 19.1 |
+| from 18-35: into the last 18 m / back to midfield | 12.3 / 11.2% | 11.1 / 13.8 | 16.3 / 7.2 |
+| stints in the last 18 m | 46.0 | 39.6 | 69.1 |
+| passes by length 0-10 / 10-20 / 20-30 / 30-40 m | 133 / 159 / 63 / 29 | 109 / 162 / 78 / 36 | 118 / 176 / 73 / 28 |
+
+The same-zone ball eases a third of the way and the 20-30 m count comes right, but the wide ball ahead does not come
+(7.8 v 12.4), the back pass grows, and the last 18 m is fed less. The lifts are not what halves it. With a mate in the
+wide zone ahead 36% of midfield stints (43, §8.352) ours finds him 7.2 / 36 = 20% of those, a real side 12.4 / 43 =
+29% — a step before the lifts: the split of a wide zone's share between its two wings when one is empty (the empty
+wing's share is dropped, a central zone has no such loss), or the read. Code removed.
+
+Next (as §8.352 set, not skipped this time): `passDiag` by origin × destination with a mate there — the table's share,
+after the wing split, after the lifts, after the read, chosen — for 35-52 / 52-70 centre → the wide zones ahead and
+level. Tests 25/25; card as G5.244.
