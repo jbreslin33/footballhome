@@ -84,6 +84,7 @@ struct PossessionParams {
     math::Fixed64 mark_lift_hi[3][5]{};   // G5.157 (§8.262): the high pass's marker lift (DFL Height high)
     bool mark_hi_on = false;
     math::Fixed64 pick_lambda[3]{};   // G5.74 (§8.175): a zone's share split among its mates ~ e^(-d/lambda), by the passer's m off our goal 0-35 / 35-70 / 70+ (0 = even)
+    bool wing_near_full = false;       // G5.248 (§8.354): a wide zone's far-wing share is held back only when a mate stands on the far wing
     math::Fixed64 len_lift[6]{};       // §8.236: a mate's weight by the pass's length 0-10/10-20/20-30/30-40/40-50/50+ m (1 = off) [FH fit to StatsBomb PL 15/16 open-play lengths]
     math::Fixed64 pace_lift[4]{};      // §8.237: a mate's weight by his speed <1 / 1-2 / 2-4 / 4+ m/s (1 = off) [FH fit to DFL PICK BY PACE]
     // G5.76 (§8.177): the share of passes to our own keeper by the passer's 10 m off our goal
@@ -282,6 +283,9 @@ public:
     // cut, and the band chosen.
     struct PassDiag { std::int64_t pre[6] = {}, post[6] = {}; long n[6] = {}, cut[6] = {}, chosen[6] = {}, other = 0, dec = 0;
                       std::int64_t zpre[10] = {}, zpost[10] = {}, zreal[10] = {}; long zhas[10] = {}, zch[10] = {};
+                      // §8.354 by origin x destination zone (the diag band's decisions): decisions by origin; a mate there; the table's share
+                      // (x kappa where a mate is); the weight after the wing split and pick, after the lifts, before the read, after it; chosen
+                      long od_dec[10] = {}, od_has[10][10] = {}, od_ch[10][10] = {}; std::int64_t od_tab[10][10] = {}, od_tk[10][10] = {}, od_s1[10][10] = {}, od_s2[10][10] = {}, od_s3[10][10] = {}, od_s4[10][10] = {};
                       long sp_try[10] = {}, sp_far[10] = {}, sp_late[10] = {}, sp_theirs[10] = {}, sp_add[10] = {}; };   // §8.300 ball into space gates by zone   // §8.300 by destination zone
     const PassDiag& passDiag() const { return pdiag_; }
     PassDiag& passDiagMut() const { return pdiag_; }   // the on-ball state writes it (diag only)

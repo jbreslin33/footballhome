@@ -413,7 +413,10 @@ public:
         Fixed64 pick_hi[32] = {}, zsum_hi[20] = {};
         auto farShare = [&](int ez) { Fixed64 f = P.pass_far[oz][ez / 2] * P.pass_far_lift[oz & 1]; return f > Fixed64::fromFraction(1, 2) ? Fixed64::fromFraction(1, 2) : f; };
         auto wingIx = [&](int ez, const Vec2& to) { return P.pass_wing_on && (ez & 1) && ((to.y.raw >= 0) != (sp.y.raw >= 0)) ? ez + 10 : ez; };
-        auto wingShare = [&](int ez, int wi) { return !P.pass_wing_on || !(ez & 1) ? Fixed64::one() : wi >= 10 ? farShare(ez) : Fixed64::one() - farShare(ez); };   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
+        // G5.248 (§8.354): the far wing's share is the far man's when he is there; with that wing empty the zone's whole share is
+        // the near wing's (the table x kappa is the zone's share given a mate in it, on either wing) — held back regardless, a
+        // wide zone lost a quarter of its share at this step and a central zone none. Row physics.pass.wing_near_full.
+        auto wingShare = [&](int ez, int wi) { return !P.pass_wing_on || !(ez & 1) ? Fixed64::one() : wi >= 10 ? farShare(ez) : P.wing_near_full && zsum[ez + 10].raw <= 0 ? Fixed64::one() : Fixed64::one() - farShare(ez); };   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
         // [behaviour: poss_pass_back_to_keeper]
         // G5.76 (§8.177): our keeper is not in a zone's split — he has his own real share (below).
         // Alone in the deep zone when our backs push up, he took all of it: 31 passes a team-match
@@ -482,6 +485,7 @@ public:
             Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
                              : zsum[wi].raw > 0 && j < 32 ? P.pass_to[oz][ez] * P.pass_kappa[oz][ez] * wingShare(ez, wi) * pick[j] / zsum[wi] : Fixed64{};
             if (w0.raw <= 0) continue;
+            const Fixed64 w0_split = w0;   // §8.354 diag
             // §8.236: real passers play near mates more than the zone table's split gives (StatsBomb PL
             // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
             // 64-68 / 177-193 / 105-111 / 46-50) — a lift by the pass's length band.
@@ -590,6 +594,7 @@ public:
                 pd.pre[lb6] += wgt.raw >> 8; pd.post[lb6] += (sum - s0).raw >> 8; ++pd.n[lb6];
                 if ((sum - s0).raw < wgt.raw - (wgt.raw >> 6)) ++pd.cut[lb6];
                 pd.zpre[ez] += wgt.raw >> 8; pd.zpost[ez] += (sum - s0).raw >> 8;   // §8.300
+                pd.od_s1[oz][ez] += w0_split.raw >> 8; pd.od_s2[oz][ez] += w0.raw >> 8; pd.od_s3[oz][ez] += wgt.raw >> 8; pd.od_s4[oz][ez] += (sum - s0).raw >> 8;   // §8.354
             }
             if (is_gk) { gk_lo = nc0; gk_hi = nc; gk_w = sum - s0; sum = s0; }
             if (pb.raw <= 0) continue;
@@ -798,6 +803,9 @@ public:
                 auto& pd = c.poss.passDiagMut(); ++pd.dec;
                 for (int z = 0; z < 10; ++z) { if (in_zone[z]) ++pd.zhas[z]; pd.zreal[z] += P.pass_to[oz][z].raw >> 8; }   // §8.300
                 if (ch.j >= 0) ++pd.zch[zoneOf(hx, v2(w.player(static_cast<std::uint8_t>(ch.j)).pos), v.sg)];
+                ++pd.od_dec[oz];   // §8.354
+                for (int z = 0; z < 10; ++z) { pd.od_has[oz][z] += in_zone[z] > 0; pd.od_tab[oz][z] += P.pass_to[oz][z].raw >> 8; if (in_zone[z] > 0) pd.od_tk[oz][z] += (P.pass_to[oz][z] * P.pass_kappa[oz][z]).raw >> 8; }
+                if (ch.j >= 0 && !ch.behind && !ch.space) ++pd.od_ch[oz][zoneOf(hx, v2(w.player(static_cast<std::uint8_t>(ch.j)).pos), v.sg)];
                 if (!ch.behind && !ch.space && ch.j >= 0) { const Fixed64 dl = math::length(Vec2{w.player(static_cast<std::uint8_t>(ch.j)).pos.x - sp.x, w.player(static_cast<std::uint8_t>(ch.j)).pos.y - sp.y});
                     ++pd.chosen[std::min(5, static_cast<int>(dl.raw >> Fixed64::FRAC_BITS) / 10)]; } else ++pd.other;
             }
@@ -1588,6 +1596,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
         // length share (27.1 / 41.8 / 17.2 / 6.8 / 3.8 %); 50+ m is short for other reasons (range, air) [FH fit]
         static const int kLenLift[6] = {2080, 755, 440, 340, 850, 1000};
         for (int l = 0; l < 6; ++l) len_lift[l] = p.fixed(("physics.pass.len_lift_" + std::to_string(l)).c_str(), kLenLift[l]);
+        wing_near_full = p.fixed("physics.pass.wing_near_full", 0).raw > 0;
         for (int l = 0; l < 4; ++l) pace_lift[l] = p.fixed(("physics.pass.pace_lift_" + std::to_string(l)).c_str(), 1000);   // §8.237
     }
     {   // G5.83 (§8.184): DFL 7 matches, benchmarks_tracking_passpick.py MARKED PICK — within his zone the split

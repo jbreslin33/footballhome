@@ -13310,3 +13310,40 @@ wing's share is dropped, a central zone has no such loss), or the read. Code rem
 Next (as §8.352 set, not skipped this time): `passDiag` by origin × destination with a mate there — the table's share,
 after the wing split, after the lifts, after the read, chosen — for 35-52 / 52-70 centre → the wide zones ahead and
 level. Tests 25/25; card as G5.244.
+
+### 8.354 G5.248 — the chooser's chain: a wide zone lost a quarter of its share to an empty far wing; with nobody there the near wing takes it (mig 1851; shipped)
+
+From §8.353. New diag THE CHOOSER'S CHAIN (`Possession::PassDiag` od_*, harness §8.354): by origin × destination zone,
+each step's share of the origin's to-feet weight — the table (StatsBomb zone → zone) | × kappa where a mate is | after
+the wing split and the pick within the zone | after the three lifts | before the read | after it | chosen. A central
+midfielder 35-52 m off the line attacked, seeds 1000-4000 × 8, G5.244:
+
+| destination | a mate there | table | × presence | wing split | lifts | read | chosen |
+|---|---|---|---|---|---|---|---|
+| the wide zone ahead (18-35 w) | 36.9% | 12.4 | 10.4 | **7.6** | **5.4** | 4.4 | 3.9 |
+| the same zone (35-52 c) | 92.7 | 35.3 | 35.5 | 37.2 | **49.3** | 52.6 | 47.5 |
+| the wide zone level (35-52 w) | 67.9 | 16.3 | 19.5 | 16.4 | 14.0 | 14.6 | 14.9 |
+
+The read is innocent (5.4 → 4.4 with the ball-in-behind split). Two steps lose the wide ball: the wing split (−27%) and
+the lifts (−29%; they raise the same zone 37 → 49). §8.353's trial undid the second alone.
+
+**The wing split** (G5.172, §8.278): a wide zone's share is divided between its wings at the real far share, each
+wing's part split among the mates on it — and the far wing's part was dropped when nobody stood there, though the
+table × kappa is the zone's share given a mate in it on either wing. **Change**: `physics.pass.wing_near_full` — with the
+far wing empty the near wing's share is the zone's whole; the far man's share is unchanged
+[behaviour: poss_pass_far_wing]. No row = as before; goldens unchanged.
+
+| | G5.244 | G5.248 | real |
+|---|---|---|---|
+| 35-52 c → the wide zone ahead: after the wing split / chosen | 7.6 / 3.9 | 9.4 / 5.2 | 10.6 × presence |
+| 35-52 c → the wide zone level, chosen | 14.9 | 16.8 | 16.3 |
+| as played, 35-52 centre → 18-35 w / the same zone | 7.2 / 43.9% | 8.1 / 43.4 | 12.4 / 35.3 |
+| passes struck wide, 18-35 / 35-52 / 52-70 m off the line attacked | 23.0 / 40.6 / 41.6 | 24.0 / 42.7 / 43.6 | 36.4 / 49.2 / 45.8 |
+| … middle, 35-52 | 70.7 | 67.8 | 60.9 |
+| passes / completion % / goals | 400 / 76.6 / 2.14 | 400 / 76.3 / 2.17 | 434 / 77.5 / 1.35 |
+
+A share that was thrown away goes to the man it belongs to; the wide columns move toward real. Shipped
+(`card_G5.248.txt`, 10 / 9 / 14 — §8.351's noise). Left: the lifts' step (the same zone 35 → 47%), and a mate in the wide
+zone ahead 37% of decisions (DFL 43, §8.352). Next: the lifts on this base — the length lift was fitted when passes ran
+long (§8.236: 0-10 m 64-68 v 99) and today's are short of nothing under 10 m (137 v 118): refit it on today's lengths
+before holding zones. Tests 25/25.

@@ -3108,7 +3108,7 @@ int main(int argc, char** argv) {
         {   const auto& pd = s.brain().possession().passDiag();   // §8.284
             for (int b = 0; b < 6; ++b) { s_last_pdiag.pre[b] += pd.pre[b]; s_last_pdiag.post[b] += pd.post[b]; s_last_pdiag.n[b] += pd.n[b]; s_last_pdiag.cut[b] += pd.cut[b]; s_last_pdiag.chosen[b] += pd.chosen[b]; }
             s_last_pdiag.other += pd.other; s_last_pdiag.dec += pd.dec;
-            for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
+            for (int z = 0; z < 10; ++z) { s_last_pdiag.zpre[z] += pd.zpre[z]; s_last_pdiag.zpost[z] += pd.zpost[z]; s_last_pdiag.zreal[z] += pd.zreal[z]; s_last_pdiag.zhas[z] += pd.zhas[z]; s_last_pdiag.zch[z] += pd.zch[z]; s_last_pdiag.od_dec[z] += pd.od_dec[z]; for (int e2 = 0; e2 < 10; ++e2) { s_last_pdiag.od_has[z][e2] += pd.od_has[z][e2]; s_last_pdiag.od_ch[z][e2] += pd.od_ch[z][e2]; s_last_pdiag.od_tab[z][e2] += pd.od_tab[z][e2]; s_last_pdiag.od_tk[z][e2] += pd.od_tk[z][e2]; s_last_pdiag.od_s1[z][e2] += pd.od_s1[z][e2]; s_last_pdiag.od_s2[z][e2] += pd.od_s2[z][e2]; s_last_pdiag.od_s3[z][e2] += pd.od_s3[z][e2]; s_last_pdiag.od_s4[z][e2] += pd.od_s4[z][e2]; } s_last_pdiag.sp_try[z] += pd.sp_try[z]; s_last_pdiag.sp_far[z] += pd.sp_far[z]; s_last_pdiag.sp_late[z] += pd.sp_late[z]; s_last_pdiag.sp_theirs[z] += pd.sp_theirs[z]; s_last_pdiag.sp_add[z] += pd.sp_add[z]; } }
         {   // §8.330 BAND TIME (benchmarks_tracking_bandtime.py): each in-play 5 Hz frame on a man (one of the side in possession
             // within 2 m of the ball) or travelling, by the ball's band off the line that side attacks; stints = the same man, contiguous
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
@@ -4260,6 +4260,16 @@ int main(int argc, char** argv) {
         
             {   // §8.300 BY DESTINATION ZONE: a mate there %, the real policy share (the zone table, averaged over decisions), weight before / after the read, chosen
                 static const char* zn[10] = {"0-18 c", "0-18 w", "18-35 c", "18-35 w", "35-52 c", "35-52 w", "52-70 c", "52-70 w", "70+ c", "70+ w"};
+                {   // §8.354 THE CHOOSER'S CHAIN by origin x destination
+                    static const char* zn2[10] = {"0-18 c", "0-18 w", "18-35 c", "18-35 w", "35-52 c", "35-52 w", "52-70 c", "52-70 w", "70+ c", "70+ w"};
+                    std::printf("        §8.354 THE CHOOSER'S CHAIN (to-feet candidates; each column its share %% of the origin's total): destination: a mate there %% of decisions | the table | table x kappa, mates there | after the wing split + pick | after the lifts | before the read | after the read | chosen\n");
+                    for (int o : {4, 6, 5, 7}) { if (!pd.od_dec[o]) continue;
+                        double t[6] = {}; long tc = 0; for (int e2 = 0; e2 < 10; ++e2) { t[0] += pd.od_tab[o][e2]; t[1] += pd.od_tk[o][e2]; t[2] += pd.od_s1[o][e2]; t[3] += pd.od_s2[o][e2]; t[4] += pd.od_s3[o][e2]; t[5] += pd.od_s4[o][e2]; tc += pd.od_ch[o][e2]; }
+                        std::printf("          from %s (%ld decisions)\n", zn2[o], pd.od_dec[o]);
+                        for (int e2 = 0; e2 < 10; ++e2) { if (pd.od_tab[o][e2] * 200 < t[0]) continue;
+                            std::printf("            %-8s %5.1f | %5.1f | %5.1f | %5.1f | %5.1f | %5.1f | %5.1f | %5.1f\n", zn2[e2], 100.0 * pd.od_has[o][e2] / pd.od_dec[o], 100 * pd.od_tab[o][e2] / std::max(1.0, t[0]), 100 * pd.od_tk[o][e2] / std::max(1.0, t[1]),
+                                        100 * pd.od_s1[o][e2] / std::max(1.0, t[2]), 100 * pd.od_s2[o][e2] / std::max(1.0, t[3]), 100 * pd.od_s3[o][e2] / std::max(1.0, t[4]), 100 * pd.od_s4[o][e2] / std::max(1.0, t[5]), 100.0 * pd.od_ch[o][e2] / std::max(1L, tc)); } }
+                }
                 double zr = 0, zp = 0, zq = 0; long zc = 0; for (int z = 0; z < 10; ++z) { zr += pd.zreal[z]; zp += pd.zpre[z]; zq += pd.zpost[z]; zc += pd.zch[z]; }
                 std::printf("        by destination zone: a mate there %% of decisions | real policy share %% | weight before the read %% | after %% | chosen %%\n");
                 for (int z = 0; z < 10; ++z)
