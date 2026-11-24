@@ -13385,3 +13385,25 @@ shows where it should: 390 passes (434) — the surplus square balls were holdin
 Shipped (`card_G5.249.txt`, 9 / 7 / 17 — inside §8.351's noise). Next: one more step of the direction rows (52-70
 lateral 47.6 v 38.3), then the own third's count — why a real side has the ball at the back 30% more often.
 Rows only; tests 25/25.
+
+### 8.356 G5.250 — the short pass's direction rows, a second step; the own third's count is the last 18 m's mirror (mig 1856; shipped)
+
+From §8.355's "next". `physics.pass.short_dir_*` once more by real ÷ ours (35-52: 1.20 / 0.81 / 0.68; 52-70: 1.03 /
+0.53 / 0.51; 70+: 1.89 / 0.77 / 0.92). Seeds 1000-4000 × 8 (real, StatsBomb PL 15/16):
+
+| short passes, fwd / lateral / back | G5.249 | G5.250 | real |
+|---|---|---|---|
+| 52-70 m off the line attacked | 26.7 / 47.6 / 16.6 | 27.4 / 44.1 / 16.2 | 26.8 / 38.3 / 13.3 |
+| 35-52 | 24.2 / 42.8 / 18.5 | 25.1 / 42.9 / 17.1 | 25.8 / 40.2 / 16.0 |
+| 70+ | 16.7 / 22.8 / 6.5 | 19.1 / 22.8 / 6.8 | 21.9 / 22.0 / 6.5 |
+
+The rows move their own cells a little further and nothing downstream: a central midfielder's same-zone ball 42.3 →
+42.2% (35.8), stints by band unchanged, the next stint one band up from 52-70 m 16.2 → 16.3% (19.1). The lateral row at
+0.53 bought 3.5 of the 9 missing: the margin lift is spent. Shipped as rows (`card_G5.250.txt`, 10 / 11 / 12 — noise).
+
+**The own third's count** (174 stints v 228). From NEXT STINT: a stint in the own third is followed by another there
+53.6% (57.0) — so entries are ~81 a team-match v ~98. Of the 17 missing, ~15 are balls won off the other side in our
+last 35 m (their stints ending 0-18 m 44 × 36% v 69 × 37%; 18-35 m 91 × 28% v 94 × 32%) and ~2 the ball played back
+from midfield (9.5% v 11.3). It is the last 18 m's shortfall (35 stints v 60) seen from the other end, not a habit at
+the back. And midfield holds it: a stint 52-70 m out lasts 1.66 s (1.29), 3 s+ 18.5% (10.8); 35-52 m 1.33 (1.18).
+Next: the man's time on the ball in midfield — the free hold (§8.296) was fitted at 559 passes a team-match.
