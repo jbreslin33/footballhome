@@ -13,7 +13,10 @@
 // conference's divisions — each row starts with All.  Pills toggle, several
 // can be on: the pick centres the query — every name with a team in a
 // picked league shows with all its teams (UPSL included), several pills =
-// any of them; the picked league's lines are highlighted on each card.  The fold at the bottom says
+// any of them; the picked league's lines are highlighted on each card.
+// 👤 By player / 🏟 By club (mig 1784, owner: "order by clubs with most guys
+// from other clubs"): By club folds the same cards under each club, the club
+// with the most names first.  The fold at the bottom says
 // where each roster came from and when it was read.
 //
 // The server re-reads the rosters when they are a day old (a sweep of ~200
@@ -45,6 +48,8 @@ class DualRosteringScreen extends Screen {
     this._timer = null;
     this.pasteNote = null;   // the last save's answer, shown in the paste fold
     this.pasteOpen = false;
+    this.by = 'player';   // 'player' = one card per name; 'club' = folded under each club, most shared players first
+    this.clubOpen = new Set();
   }
 
   _c(tier, tokens, fb) {
@@ -189,6 +194,8 @@ class DualRosteringScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       const v = e.target.closest('[data-dr-view]');
       if (v) { this.view = v.dataset.drView; this._render(); return; }
+      const by = e.target.closest('[data-dr-by]');
+      if (by) { this.by = by.dataset.drBy; this._render(); return; }
       const pick = e.target.closest('[data-dr-pick]');
       if (pick) {
         const v = pick.dataset.drV, g = pick.dataset.drG, kind = pick.dataset.drPick;
@@ -220,6 +227,8 @@ class DualRosteringScreen extends Screen {
     this.element.addEventListener('toggle', (e) => {
       if (e.target.id === 'dr-paste-fold') this.pasteOpen = e.target.open;
       if (e.target.id === 'dr-paste-hand') this.handOpen = e.target.open;
+      const club = e.target.dataset && e.target.dataset.drClub;
+      if (club != null) { if (e.target.open) this.clubOpen.add(club); else this.clubOpen.delete(club); }
     }, true);
     this.element.addEventListener('input', (e) => {
       if (e.target.id === 'dr-q') { this.q = e.target.value.trim().toLowerCase(); this._renderBody(); }
@@ -405,7 +414,11 @@ class DualRosteringScreen extends Screen {
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 10px; ${window.LoadProgress ? LoadProgress.dim(!!sweep.running) : ''}">
         ${views.map(([code, tier, fb]) => `<button type="button" class="dr-pill ${code === this.view ? 'on' : ''}" data-dr-view="${code}">${esc(this._c(tier, {}, fb))} (${matches.filter(m => this._inView(m, code) && this._inLeague(m)).length})</button>`).join('')}
       </div>
-      <div style="${window.LoadProgress ? LoadProgress.dim(!!sweep.running) : ''}">${this._leaguePills(matches)}</div>`;
+      <div style="${window.LoadProgress ? LoadProgress.dim(!!sweep.running) : ''}">${this._leaguePills(matches)}</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px;">
+        ${[['player', 'by_player', '👤 By player'], ['club', 'by_club', '🏟 By club']].map(([code, tier, fb]) =>
+          `<button type="button" class="dr-pill ${code === this.by ? 'on' : ''}" data-dr-by="${code}">${esc(this._c(tier, {}, fb))}</button>`).join('')}
+      </div>`;
     this._renderBody();
   }
 
@@ -514,7 +527,32 @@ class DualRosteringScreen extends Screen {
     const justSaved = this.pasteNote && this.pasteNote.ok && this._pasteShown !== this.pasteNote;
     if (justSaved) { keep.team = ''; keep.raw = ''; keep.names = ''; this._pasteShown = this.pasteNote; }
 
-    body.innerHTML = pasteFold + (shown.length ? shown.map(card).join('')
+    // By club (mig 1784): the same cards folded under each club, the club
+    // with the most names first.  With league pills on, only the clubs of
+    // the picked teams get a fold; a name sits under each of its clubs.
+    const byClub = () => {
+      const clubs = new Map();
+      shown.forEach(m => {
+        const mine = (m.rows || []).filter(r => !this.groups.length || this._rowPicked(r));
+        [...new Set(mine.map(r => r.club || r.team))].forEach(c => {
+          if (!clubs.has(c)) clubs.set(c, { cards: [], teams: new Set() });
+          clubs.get(c).cards.push(m);
+          mine.filter(r => (r.club || r.team) === c).forEach(r => clubs.get(c).teams.add(r.team));
+        });
+      });
+      const tier = this.view === 'cross' ? 'club_count' : 'club_count_all';
+      return [...clubs.entries()].sort((a, b) => b[1].cards.length - a[1].cards.length || a[0].localeCompare(b[0])).map(([c, x]) => `
+        <details class="dr-card" data-dr-club="${esc(c)}" ${this.clubOpen.has(c) ? 'open' : ''}>
+          <summary style="cursor:pointer; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+            <span style="font-weight:800; font-size:1.05rem; min-width:2ch;">${x.cards.length}</span>
+            <span style="font-weight:800; flex:1 1 200px; min-width:0;">${esc(c)}</span>
+            <span style="font-size:0.78rem; opacity:0.7;">${esc([...x.teams].filter(t => t !== c).join(' · '))}</span>
+            ${chip(this._c(tier, { n: x.cards.length }, `${x.cards.length} also at another club`), 'background:rgba(251,191,36,0.2); color:#fbbf24;')}
+          </summary>
+          <div style="margin-top:8px;">${x.cards.map(card).join('')}</div>
+        </details>`).join('');
+    };
+    body.innerHTML = pasteFold + (shown.length ? (this.by === 'club' ? byClub() : shown.map(card).join(''))
         : `<div style="opacity:0.7; padding:var(--space-4); text-align:center;">${esc(this._c('empty', {}, 'No name is on two teams here.'))}</div>`)
       + sources;
     const put = (id, v) => { const el = this.find(id); if (el && v) el.value = v; };
