@@ -57,6 +57,8 @@ public class RelayService extends Service {
     // v1.4 FH Assistant: 👤 contacts into the picked Google account, on their
     // own thread (a first run is ~1,800 cards) every 15 minutes.
     static final long CONTACTS_MS = 15 * 60 * 1000;
+    static final long CONTACTS_NOW_GAP_MS = 30 * 1000;   // v1.7: at most one asked-for sync every 30 s
+    private long contactsKickedAt = 0;
     private HandlerThread contactsThread;
     private Handler contactsHandler;
     private final Runnable contactsTask = this::syncContacts;
@@ -174,6 +176,12 @@ public class RelayService extends Service {
             if (r.ok()) checkedIn(); else trouble(r.error());
             JSONObject up = r.ok() ? r.body.optJSONObject("update") : null;
             if (up != null) Updater.offered(this, up.optLong("version_code"), up.optString("version_name"), up.optString("url"));
+            // v1.7 🎯 a new lead's card is waiting (mig 1834): contacts now, not at the next 15 minutes —
+            // Football Home sends his first text only once the contact is on this phone.
+            if (r.ok() && r.body.optBoolean("contacts_now") && System.currentTimeMillis() - contactsKickedAt > CONTACTS_NOW_GAP_MS) {
+                contactsKickedAt = System.currentTimeMillis();
+                kickContacts();
+            }
             JSONObject text = r.ok() ? r.body.optJSONObject("text") : null;
             if (text != null) send(text.getLong("id"), text.getString("to"), text.getString("body"));
         } catch (Exception e) {
