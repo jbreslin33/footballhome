@@ -13407,3 +13407,32 @@ last 35 m (their stints ending 0-18 m 44 × 36% v 69 × 37%; 18-35 m 91 × 28% v
 from midfield (9.5% v 11.3). It is the last 18 m's shortfall (35 stints v 60) seen from the other end, not a habit at
 the back. And midfield holds it: a stint 52-70 m out lasts 1.66 s (1.29), 3 s+ 18.5% (10.8); 35-52 m 1.33 (1.18).
 Next: the man's time on the ball in midfield — the free hold (§8.296) was fitted at 559 passes a team-match.
+
+### 8.357 G5.251 — the free hold belongs to the own third: midfield let it go at the right distance again (mig 1859; shipped)
+
+From §8.356: midfield holds the ball. HOLD OVERRUN today: a spell runs 0.54 s past its drawn time (0.18-0.20 at
+§8.232), 17% of spells 1 s+ past — the free hold (§8.296: past his draw a free man keeps it until an opponent is within
+6 m, up to 3 s more, in his own half). It was fitted on the rate of play at 559 passes a team-match; today's is 392.
+Two arms, seeds 1000-4000 × 8 (real: DFL band time, StatsBomb 360 releases, StatsBomb card):
+
+| | G5.250 | own third only (shipped) | own half, 1.5 s more | real |
+|---|---|---|---|---|
+| a stint 52-70 m out: mean s / 3 s+ | 1.66 / 18.5% | **1.43 / 14.5%** | 1.60 / 16.8% | 1.29 / 10.8% |
+| … 70+ | 1.49 / 18.0% | 1.47 / 17.1% | 1.39 / 14.8% | 1.52 / 12.5% |
+| s on a man 52-70 m out | 302 | 265 | 296 | 221 |
+| midfield foot releases, nearest opponent 3-6 / 6+ m | 132 / 24 | **106 / 68** | 129 / 32 | 75 / 60 |
+| own third … 3-6 / 6+ m | 39 / 12 | 42 / 8 | 38 / 20 | 24 / 22 |
+| past the drawn hold, mean s; 1 s+ past | 0.54; 17% | 0.38; 10.5% | 0.41; 17% | |
+| the next stint one band up, from 52-70 m | 16.3% | 17.8% | 17.1% | 19.1% |
+| stints in the last 18 m | 35.8 | 37.4 | 35.9 | 60.3 |
+| passes / completed % | 392 / 75.3 | 416 / 76.3 | 410 / 75.7 | 434 / 77.5 |
+| carries 10 m+ / goals | 33.1 / 2.33 | 33.3 / 2.33 | 31.2 / 2.44 | 34.6 / 1.35 |
+| card ok / off / OFF | 10 / 11 / 12 | 11 / 9 / 13 | 11 / 9 / 13 | |
+
+**Change**: one row, `physics.tempo.free_hold_own_m` 52.5 → 35. In midfield a man lets it go on his draw; the releases
+with nobody inside 6 m come back to real (68 v 60) and the pile at 3-6 m — "a mole of its own" at §8.297 — loses a
+third of its surplus. Passes 416 (434). The shorter wait helps the own third instead (3 s+ 14.8%, free releases 20 v 22):
+the two are not rivals. Left: the own third's releases still bunch at the ring (42 v 24 at 3-6 m, 8 v 22 free);
+35-52 m, where no free hold reaches, a stint is 1.37 s (1.18) — the draw itself. `card_G5.251.txt`.
+Next: own third only + the 1.5 s wait together; then the draw by band against DFL stints (35-52 m).
+Rows only; tests 25/25.
