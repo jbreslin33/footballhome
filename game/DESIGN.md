@@ -12733,3 +12733,51 @@ accidental 1 m change to the led ball's carry moved the card as much). Shipped a
 still close 1.4 m on a travelling pass v 2.3 (the press's start, not the ball's pace); the one-weight spread and the
 hanging long ball (§8.337). Next: the ground forward pass from our own third (lost 1.6 v 4.8, §8.335) — who is on the
 receiver at the touch, DFL v ours. Tests 23/23.
+
+### 8.339 G5.233 — a pass their man got a body to was counted completed when a mate picked it up: the harness fixed; completion 77.1% (harness only)
+
+From §8.338 (next: the ground forward pass from our own third, lost 1.6 v 4.8). New
+`scripts/benchmarks_statsbomb_fwdloss.py` (StatsBomb PL 15/16), forward Ground + Low passes from the own third, a
+team-match: 24.2 tried / 4.8 lost (20%).
+
+- pressed 4.0 / 1.6 (38%), not pressed 20.2 / 3.3 (16%) — most of the losses are not under pressure;
+- Ground 18.6 / 2.3 (13%), **Low 5.6 / 2.5 (44%)** — the lifted one is half the losses;
+- centre-back 8.9 / 1.2 (14%), full-back 5.3 / 1.6 (31%), DM/CM 5.0 / 1.2 (24%), keeper 3.2 / 0.1; wide 8.7 / 2.7 (31%)
+  v central 15.5 / 2.1 (14%);
+- the lost ones end 3.9 / 12.9 / 23.2 m from the kick (p25 / med / p75), no recipient named in 2.0 of 4.8; next event:
+  their Block 1.37, their pass 1.29, Ball Recovery 1.14, Interception 0.74.
+
+**How a blocked pass is booked** (same script, part 2): 11.83 open-play passes a team-match carry an opponent's
+Block — **every one Incomplete**, whoever has the ball next; 0.45 carry the `deflected` flag and are complete.
+
+**The fault**: the harness called a pass completed when the next owner was a mate — a ball charged down, or headed
+by their man in a duel, and then picked up by ours was a completed pass. New harness line §8.339 (deflected by them
+after the kick, then owned), seeds 1000-4000 × 8, a team-match by the kick's band 0-35 / 35-70 / 70+ m: next a mate
+**2.4 / 5.6 / 3.8 = 11.8** (were completed), the kicker 0.6 / 1.3 / 0.3, theirs 4.9 / 10.7 / 6.4. A second, smaller one:
+completed passes were counted before the cuts that define a pass (a clearance or a no-kick release that reached a
+mate was in the numerator, not the denominator). **Fixed**: a pass their man deflected is not completed; completed is
+counted where tried is. Same game (G5.232), corrected ruler (`card_G5.233.txt`, the baseline from here):
+
+| | old ruler | corrected | real |
+|---|---|---|---|
+| pass completion % | 80.9 | **77.1** | 77.5 |
+| card | 9 / 12 / 12 | 10 / 11 / 12 | |
+
+MIDFIELD LOSSES / FORWARD PASSES on the corrected ruler, tried / not completed a team-match (real in brackets):
+
+| from | all | forward | square | back | forward ground |
+|---|---|---|---|---|---|
+| own third (70+) | 93.3 / 23.0 (94.2 / 23.2) | 43.0 / 18.4 (48.0 / 20.4) | 41.0 / 4.0 (37.4 / 2.6) | 9.3 / 0.7 (8.8 / 0.2) | 17.5 / 2.3 (24.2 / 4.8) |
+| 52-70 | 135.6 / 20.6 | 35.4 / 10.7 | 76.0 / 8.4 | 24.3 / 1.5 | 24.7 / 4.2 (25.5 / 4.9) |
+| 35-52 | 112.9 / 24.1 | 30.0 / 11.2 | 60.7 / 10.7 | 22.2 / 2.2 | 22.1 / 6.1 (25.6 / 6.0) |
+| 35-70 together | 248.5 / 44.7 (212.3 / 32.5) | 65.3 / 21.9 (69.8 / 22.8) | 136.7 / 19.1 (108.3 / 8.5) | 46.4 / 3.7 (34.3 / 1.3) | |
+| 18-35 | 50.3 / 19.2 (70.1 / 14.7) | 15.8 / 8.7 (19.9 / 6.6) | 24.4 / 8.4 (38.1 / 7.4) | 10.2 / 2.1 (12.1 / 0.6) | |
+
+§8.334's "the forward pass comes off far too often" was mostly this fault: from our own third the whole is real
+(23.0 lost v 23.2), the midfield's forward pass is real (21.9 v 22.8), the forward ground pass from midfield is real.
+What is left: from our own third the forward ground pass is tried 17.5 v 24.2 and lost 2.3 v 4.8 (the lifted Low
+pass and the full-back's ball down the line — ours has no Low pass); **the midfield's square ball is +28 and loses
+19.1 v 8.5** — now too many of ours are lost, their man gets a body to a short square pass; in their last 35 m we
+pass less (50 v 70) and lose more (19.2 v 14.7). Every earlier card read completion 3-4 points high. Next: the
+midfield's square pass that their man gets a body to — where he stands at the kick against StatsBomb 360's blocker
+(§8.271's ruler by direction). Harness only; tests 23/23.

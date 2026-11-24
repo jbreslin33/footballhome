@@ -89,6 +89,7 @@ struct Stats {
     long ml_who[4][2][5] = {};   // §8.335 not completed, ending under 10 m / beyond: who has it next
     long mr_n[5][2][2][2] = {}, mr_cd[5][5] = {}, mr_cv[5][4] = {}, mr_end[5][2] = {}, mr_len[5][3] = {}; std::vector<double> mr_off[5], mr_along[5];   // §8.334 PASS READ BY BAND
     long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
+    long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
@@ -1425,7 +1426,7 @@ int main(int argc, char** argv) {
                 if (rel.p >= 0 && !rel.kick && !rel.set && !rel.shot) { ++S.nk_n[ep_who]; rel = Rel{}; return; }   // §8.335: a touch that got away is not a pass (StatsBomb: a miscontrol / dispossession / carry)
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
-                ++S.passes;
+                ++S.passes; if (ok) ++S.pass_ok;   // §8.339: completed counted on the same cut as tried (it took in clearances and no-kick releases that reached a mate), and not when their man got a body to it
                 {   // §8.333 MIDFIELD LOSSES (benchmarks_statsbomb_midloss.py): open-play passes by the kick's m off the line attacked
                     const double tl = hx - rel.x * sg;
                     if (tl >= 18) {
@@ -1737,7 +1738,6 @@ int main(int argc, char** argv) {
                     if (rel.p >= 0) {
                         const bool mate = rel.team == q.team && rel.p != own;
                         hz_rec = mate && !rel.set && !rel.shot;
-                        if (mate && !rel.set && !rel.shot) ++S.pass_ok;
                         if (mate && mk.on && mk.p == rel.p) {   // §8.173: completed — the receiver's and the passer's nearest opponent outfielder where they stood at the kick
                             auto near = [&](int i) { double m = 99; for (std::uint8_t j = 0; j < N && j < 32; ++j) if (W.player(j).team != mk.team && !W.isKeeper(j)) m = std::min(m, std::hypot(mk.x[j] - mk.x[i], mk.y[j] - mk.y[i])); return m; };
                             const double r = near(own), own_d = hx + mk.x[own] * (mk.team == 0 ? 1.0 : -1.0);
@@ -1819,7 +1819,11 @@ int main(int argc, char** argv) {
                             ++S.sf_n; if (rel.why >= 0 && rel.why < 32) ++S.sf_why[rel.why]; ++S.sf_defl[W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k)) ? 1 : 0];
                             S.sf_s.push_back((static_cast<long>(k) - last_kick_k) / 30.0); S.sf_d.push_back(std::hypot(q.pos.x.toDouble() - rel.x, q.pos.y.toDouble() - rel.y));
                         }
-                        endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot);
+                        // §8.339: a pass their man got a body to on the way is Incomplete to StatsBomb whoever has it next (PL 15/16: 11.83
+                        // open-play passes a team-match carry an opponent's Block, every one Incomplete; 0.45 are "deflected" and complete)
+                        const bool blk = rel.kick && !rel.set && !rel.shot && W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k));
+                        if (blk && rel.why != static_cast<int>(ai::Why::Clear)) { const double tlb = hx - rel.x * (rel.team == 0 ? 1.0 : -1.0); ++S.bk_n[tlb < 35 ? 0 : tlb < 70 ? 1 : 2][ep_who == 4 ? 0 : ep_who == 0 ? 1 : 2]; }
+                        endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot && !blk);
                         ep_who = 3;
                     } else from[own] = -1;
                     if (owner_team >= 0 && q.team != owner_team) loss_tick[owner_team] = k;
@@ -3546,7 +3550,7 @@ int main(int argc, char** argv) {
                         for (int b = 0; b < 4; ++b) {
                             std::printf("\n     %-6s", bn4[b]);
                             for (int k = 0; k < 10; ++k) std::printf(" %s %.1f (%.1f) / %.2f (%.2f);", kn[k], S.ml_n[b][k] / tmo, R[b][2 * k], S.ml_bad[b][k] / tmo, R[b][2 * k + 1]);
-                            std::printf("\n        §8.335 not completed, who has it next (the kicker himself / their outfielder / their keeper / out of play / a mate after a set-piece or shot flag): ending under 10 m %.2f / %.2f / %.2f / %.2f / %.2f; beyond %.2f / %.2f / %.2f / %.2f / %.2f",
+                            std::printf("\n        §8.335 not completed, who has it next (the kicker himself / their outfielder / their keeper / out of play / a mate, off their touch or after a set-piece or shot flag): ending under 10 m %.2f / %.2f / %.2f / %.2f / %.2f; beyond %.2f / %.2f / %.2f / %.2f / %.2f",
                                         S.ml_who[b][0][0] / tmo, S.ml_who[b][0][1] / tmo, S.ml_who[b][0][2] / tmo, S.ml_who[b][0][3] / tmo, S.ml_who[b][0][4] / tmo, S.ml_who[b][1][0] / tmo, S.ml_who[b][1][1] / tmo, S.ml_who[b][1][2] / tmo, S.ml_who[b][1][3] / tmo, S.ml_who[b][1][4] / tmo);
                         }
                     }
@@ -3564,6 +3568,11 @@ int main(int argc, char** argv) {
                             for (int q = 0; q < 5; ++q) std::printf(" %4.1f (%4.1f) [%2.0f (%2.0f)] ", 100.0 * S.nx_to[z][q] / n, R[z][1 + q], 100.0 * S.nx_air[z][q] / std::max(1L, S.nx_to[z][q]), R[z][6 + q]);
                             std::printf("| %4.1f (%4.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %+.1f (%+.1f)", 100.0 * S.nx_lost[z] / n, R[z][11], 100.0 * S.nx_dead[z] / n, R[z][12], S.nx_n[z] / tmo, R[z][0], med(S.nx_d[z]), R[z][13]);
                         }
+                    }
+                    {   // §8.339
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.339 PASSES THEIR MAN GOT A BODY TO (deflected after the kick, then owned; StatsBomb PL 15/16: 11.83 a team-match with an opponent's Block, all Incomplete), a team-match by the kick's m off the line attacked 0-35 / 35-70 / 70+: next a mate (was counted completed) %.2f / %.2f / %.2f | the kicker %.2f / %.2f / %.2f | theirs %.2f / %.2f / %.2f",
+                                    S.bk_n[0][0] / tmo, S.bk_n[1][0] / tmo, S.bk_n[2][0] / tmo, S.bk_n[0][1] / tmo, S.bk_n[1][1] / tmo, S.bk_n[2][1] / tmo, S.bk_n[0][2] / tmo, S.bk_n[1][2] / tmo, S.bk_n[2][2] / tmo);
                     }
                     {   // §8.337 PASS PACE — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
                         static const double R[2][20] = {{9.3, 7.4, 11.1, 77.8, 0.8, 11.6, 9.9, 13.5, 121.2, 1.2, 13.4, 11.6, 15.3, 46.1, 1.8, 13.2, 11.6, 14.8, 7.2, 2.6}, {9.4, 7.0, 12.4, 42.4, 0.8, 11.6, 8.7, 14.6, 42.4, 1.2, 14.9, 12.4, 18.1, 22.8, 1.6, 16.4, 14.3, 18.1, 26.5, 2.4}};
