@@ -723,16 +723,30 @@ class FinancesScreen extends Screen {
     // Off the grant by members (owner 11/23: "we are trying to get off grant money by getting more members"):
     // what a paying member brings in a full year — the dues budget less LeagueApps' fees, per paying member
     // today — and how many more of them close the gap before the grant.
-    const paying = (this.expenses.plan_heads || []).reduce((a, h) => a + Number(h.paying || 0), 0);
-    const perMember = paying > 0 ? (sum(dues) - sum(rest.filter(it => it.category === 'la_fees'))) / paying : 0;
-    const gap = Math.max(0, -before), more = perMember > 0 ? Math.ceil(gap / perMember) : 0;
+    // "paying" in plan_heads = members who OWE dues (not free / volunteer / injured) — paid up or not.
+    const heads = this.expenses.plan_heads || [], paying = heads.reduce((a, h) => a + Number(h.paying || 0), 0);
+    const feeShare = sum(dues) > 0 ? sum(rest.filter(it => it.category === 'la_fees')) / sum(dues) : 0;
+    const perMember = paying > 0 ? sum(dues) * (1 - feeShare) / paying : 0;
+    // the full rate: each section's monthly dues × 12, weighted by who owes, after the same fee share
+    const monthly = (h) => Number(((this.expenses.plan_dues || []).find(d => d.section_id === h.section_id) || {}).monthly || 0);
+    const perFull = paying > 0 ? heads.reduce((a, h) => a + Number(h.paying || 0) * monthly(h) * 12, 0) / paying : 0;
+    const gap = Math.max(0, -before), more = perMember > 0 ? Math.ceil(gap / perMember) : 0, moreFull = perFull > 0 ? Math.ceil(gap / (perFull * (1 - feeShare))) : 0;
+    // who of them is paid up: the Tuition page's own statuses, per program (members_now), once loaded
+    const pg = (this.programsBy || {}).expected;
+    if (!pg && !this.pgErr) this._loadPrograms('expected');
+    let owe = 0, paid = 0;
+    if (pg) { const by = pg.budgets[pg.this_year] || { seasons: [], programs: {} };
+      for (const x of pg.programs || []) { const plan = by.seasons.filter(se => !se.real).map(se => (by.programs[x.code] || {})[se.code] || {}), mn = (plan[plan.length - 1] || {}).members_now || {};
+        owe += Number(mn.owing || 0); paid += Number(mn.paid_now || 0); } }
+    const nowLine = pg && owe ? C('bl_members_now', `${owe} members owe dues now: ${paid} are paid up, ${owe - paid} are behind.`, { owe, paid, behind: owe - paid }) : C('bl_members_owe', `${paying} members owe dues now.`, { owe: paying });
     const signed = (label, v, strong, extra = '') => `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}${extra}</td>
       <td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td></tr>`;
     const grantRows = !award ? '' : `<tr><td><a href="#other-income" style="color:inherit; font-weight:700;">${esc(C('bl_grant_used', `Grant used — as needed, up to ${M0(award)}`, { award: M0(award) }))} ›</a>
         <span class="fn-tick">${esc(C('bl_grant_left', `${M0(award - used)} of the grant not needed`, { left: M0(award - used) }))}</span>
         ${used > covers + 0.5 ? `<span class="fn-tick fn-warn">${esc(C('bl_grant_limit', `The grant may only pay for ${M0(covers)} of this year's costs (what it was given for).`, { covers: M0(covers) }))}</span>` : ''}</td>
         <td class="fn-in" style="font-weight:700;">${M0(used)}</td></tr>
-      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To need no grant: about ${more} more paying members (${paying} now), each bringing ${M0(perMember)} in a full year after fees.`, { more, paying, per: M0(perMember) }))}</td></tr>`
+      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To need no grant: about ${more} more members at the rate dues are really coming in (${M0(perMember)} a member a year after fees) — or about ${moreFull} if every one paid the full ${M0(perFull)} a year.`, { more, per: M0(perMember), more_full: moreFull, full: M0(perFull) }))}
+          <span class="fn-tick">${esc(nowLine)}</span></td></tr>`
         : gap < 0.5 ? `<tr class="item"><td colspan="2" style="padding-left:26px;" class="fn-in">${esc(C('bl_no_grant', 'The year pays for itself without the grant.'))}</td></tr>` : ''}`;
     return `<div class="fn-card"><div class="fn-title">${esc(C('bl_title', 'Balance'))} · ${esc(m.year)}</div>
       <div class="fn-note">${esc(C('bl_note', 'The whole year in one place: money in less money out. Each line is the total of its own page — tap it to see the facts behind it. The grant comes last, only as much as is needed to break even.'))}</div>
