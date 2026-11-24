@@ -12848,3 +12848,32 @@ cause: the square high ball is still 16 v 9.5. With the share per pass real, wha
 8.9 square high balls of 30 m+ from midfield where the table says a real side plays about 5: more long square balls
 are chosen (the far man across the pitch), each at the real height. Next: the midfield's square pass by length —
 tried, ours v StatsBomb (45-120°, by 10 m) — then the pass charged down at the kicker (7.8 v 3.2). Tests 23/23.
+
+### 8.342 G5.236 — the midfield's passes by angle × length: forward real; the short square and back ball +35, and a lateral ball goes high 2-3× the table (measured; no game change)
+
+From §8.341. Harness §8.342 MIDFIELD PASSES BY ANGLE × LENGTH beside `benchmarks_statsbomb_fwdloss.py` part 4: kicks
+35-70 m off the line attacked, 5 m+, by the angle off straight at their goal and length. Seeds 1000-4000 × 8, G5.235,
+tried a team-match (real) and of those high (real):
+
+| angle | 5-10 m | 10-20 m | 20-30 m | 30-40 m | 40 m+ |
+|---|---|---|---|---|---|
+| 0-30° | 9.5 (9.1), 0.7 (0.9) | 15.8 (20.1), 2.9 (2.8) | 7.8 (7.7), 3.9 (2.9) | 4.4 (5.0), 3.3 (3.5) | 3.4 (4.4), 3.2 (3.7) |
+| 30-45° | 4.9 (4.2), 0.2 (0.3) | 6.8 (8.9), 0.9 (0.8) | 2.9 (3.6), 1.2 (0.9) | 2.2 (1.6), 1.6 (1.1) | 2.1 (1.8), 1.9 (1.6) |
+| 45-60° | 5.1 (4.0), 0.3 (0.3) | 8.5 (9.6), 0.6 (0.7) | 3.0 (3.9), 0.7 (0.5) | 2.0 (1.5), 1.5 (0.8) | 1.4 (1.6), 1.2 (1.5) |
+| 60-90° | 12.2 (7.2), 0.5 (0.4) | 21.6 (18.0), 1.2 (0.7) | 8.7 (9.0), 1.3 (0.5) | 3.4 (2.9), 1.4 (0.8) | 3.0 (1.8), 2.9 (1.5) |
+| 90-120° | 11.3 (7.5), 0.3 (0.2) | 21.7 (15.1), 0.9 (0.3) | 7.0 (7.7), 0.9 (0.3) | 2.4 (2.4), 0.7 (0.3) | 0.7 (0.6), 0.7 (0.3) |
+| 120°+ | 18.6 (13.5), 0.7 (0.4) | 34.3 (21.7), 1.5 (0.7) | 7.5 (5.8), 0.6 (0.2) | 2.9 (2.1), 0.3 (0.2) | 0.3 (0.4), 0.2 (0.1) |
+
+- Within 60° of goal the midfield's passing is real cell by cell (the 10-20 m ball straight on is short, 15.8 v 20.1).
+- **The surplus is the pass under 20 m at 60° and beyond**: 119.7 v 83.0 — §8.249 / §8.333's short square and back
+  ball, +37 a team-match, now located.
+- **A lateral ball goes high more than its share**: at 60-120° 10.8 high v 5.3, in every length (20-30 m: 15% and 13% v
+  5 and 4). The table gives ours 4.2 at 60-90°; 7.3 are played. Where the extra come from: the ball into space and in
+  behind (5.0 of the square high ones, §8.341), and the pass to a man whose ground lane the read calls theirs — the
+  ground mode is cut to `risk_weight` of its share, the high one is not, so the mix tilts to the air where lanes are
+  shut. And the long switch: 60-90° of 40 m+ 3.0 v 1.8.
+
+No change: the high surplus is ~5 passes a team-match and spread thin; the +37 short square and back balls are the
+volume, and they are §8.330's extra midfield stints. The card's large misses are elsewhere — conversion 18.6% v 10.0,
+shots blocked 17.5% v 29.1, corners and crosses half — and LANE says why for the first two: at our shots **nobody of
+theirs is in the lane 65% of the time (real 29%)**. Next: who is goal-side at the shot. Harness only; tests 23/23.

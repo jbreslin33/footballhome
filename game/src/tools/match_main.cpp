@@ -90,6 +90,7 @@ struct Stats {
     long mr_n[5][2][2][2] = {}, mr_cd[5][5] = {}, mr_cv[5][4] = {}, mr_end[5][2] = {}, mr_len[5][3] = {}; std::vector<double> mr_off[5], mr_along[5];   // §8.334 PASS READ BY BAND
     long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
     long mqh_w[32][2] = {}, mqh_l[4][2] = {}, mqg_u[5][2] = {}, mqg_w[32][2] = {};   // §8.340 square midfield: high by order / length [tried, lost]; ground by their nearest at the kick / order [tried, blocked <8 m]
+    long ma_n[6][5] = {}, ma_h[6][5] = {}, ma_bad[6][5] = {};   // §8.342 midfield passes 5 m+ [angle 0-30 / 30-45 / 45-60 / 60-90 / 90-120 / 120+][5-10 / 10-20 / 20-30 / 30-40 / 40+ m]: tried, high, not completed
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -1439,6 +1440,11 @@ int main(int argc, char** argv) {
                         const bool hi = mk.p == rel.p && mk.peak >= 1.5;
                         for (const int k : {0, hi ? 2 : 1, d < 10 ? 3 : d < 20 ? 4 : d < 30 ? 5 : 6, dx >= std::fabs(dy) ? 7 : -dx >= std::fabs(dy) ? 9 : 8}) { ++S.ml_n[b][k]; S.ml_bad[b][k] += !ok; }
                         if (!ok) ++S.ml_who[b][d < 10 ? 0 : 1][ep_who];
+                        if ((b == 1 || b == 2) && d >= 5) {   // §8.342 MIDFIELD PASSES BY ANGLE x LENGTH (benchmarks_statsbomb_fwdloss.py part 4)
+                            const double a = std::atan2(std::fabs(dy), dx) * 57.29578;
+                            const int ab = a < 30 ? 0 : a < 45 ? 1 : a < 60 ? 2 : a < 90 ? 3 : a < 120 ? 4 : 5, lb = d < 10 ? 0 : d < 20 ? 1 : d < 30 ? 2 : d < 40 ? 3 : 4;
+                            ++S.ma_n[ab][lb]; S.ma_h[ab][lb] += hi; S.ma_bad[ab][lb] += !ok;
+                        }
                         if (b == 1 || b == 2) ++S.mq_t[dx >= std::fabs(dy) ? 0 : -dx >= std::fabs(dy) ? 2 : 1][hi ? 1 : 0];
                         if ((b == 1 || b == 2) && !(dx >= std::fabs(dy)) && !(-dx >= std::fabs(dy))) {   // §8.340: the square ones — by his order, by length, by their nearest at the kick
                             const int wy = rel.why >= 0 && rel.why < 32 ? rel.why : 31;
@@ -3603,6 +3609,14 @@ int main(int argc, char** argv) {
                         std::printf(" | by length <10 / 10-20 / 20-30 / 30+ m:"); for (int l = 0; l < 4; ++l) std::printf(" %.2f / %.2f;", S.mqh_l[l][0] / tmo, S.mqh_l[l][1] / tmo);
                         std::printf("\n     square ground by their nearest at the kick 0-1 / 1-2 / 2-3 / 3-5 / 5+ m, tried / blocked within 8 m:"); for (int u = 0; u < 5; ++u) std::printf(" %.1f / %.2f;", S.mqg_u[u][0] / tmo, S.mqg_u[u][1] / tmo);
                         std::printf(" | by his order:"); for (int y = 0; y < 32 && y < ai::kWhyCount; ++y) if (S.mqg_w[y][0]) std::printf(" %s %.1f / %.2f;", ai::kWhyNames[y], S.mqg_w[y][0] / tmo, S.mqg_w[y][1] / tmo);
+                    }
+                    {   // §8.342 — real: benchmarks_statsbomb_fwdloss.py part 4 {a team-match, high %}
+                        static const double R[6][5][2] = {{{9.1, 10}, {20.1, 14}, {7.7, 38}, {5.0, 69}, {4.4, 84}}, {{4.2, 8}, {8.9, 9}, {3.6, 25}, {1.6, 69}, {1.8, 91}}, {{4.0, 7}, {9.6, 7}, {3.9, 12}, {1.5, 51}, {1.6, 92}},
+                                                          {{7.2, 5}, {18.0, 4}, {9.0, 5}, {2.9, 27}, {1.8, 81}}, {{7.5, 3}, {15.1, 2}, {7.7, 4}, {2.4, 14}, {0.6, 55}}, {{13.5, 3}, {21.7, 3}, {5.8, 4}, {2.1, 8}, {0.4, 22}}};
+                        static const char* an[6] = {"0-30", "30-45", "45-60", "60-90", "90-120", "120+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.342 MIDFIELD PASSES BY ANGLE x LENGTH (kick 35-70 m off the line attacked, 5 m+; angle off straight at their goal; StatsBomb PL 15/16 in brackets): a team-match, high %% [not completed %%] by length 5-10 | 10-20 | 20-30 | 30-40 | 40+ m");
+                        for (int a = 0; a < 6; ++a) { std::printf("\n     %-6s", an[a]); for (int l = 0; l < 5; ++l) std::printf(" %5.1f (%4.1f) %3.0f%% (%2.0f) [%2.0f] |", S.ma_n[a][l] / tmo, R[a][l][0], 100.0 * S.ma_h[a][l] / std::max(1L, S.ma_n[a][l]), R[a][l][1], 100.0 * S.ma_bad[a][l] / std::max(1L, S.ma_n[a][l])); }
                     }
                     {   // §8.339
                         const double tmo = std::max(1.0, 2.0 * matches);
