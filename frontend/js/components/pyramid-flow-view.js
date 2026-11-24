@@ -398,6 +398,10 @@ class PyramidFlowView {
     this._model = model;
     return `
       <div class="fc-scroll" tabindex="0"><div class="fc-zoomed"><div class="fc-all"><svg class="fc-links"></svg>${this.screen.feature('pro', true) ? this.proHtml(model) : ''}<div class="fc-level">${this._calOn(model.data.calendar) ? this.chartHtml(model, confs) : ''}${this.besideHtml(model)}</div></div></div></div>
+      <div class="sh-styles">
+        <button data-shape-go="3d">${this._esc(this._copy('shape_style_standings'))}</button>
+        <button class="on">${this._esc(this._copy('shape_style_flat'))}</button>
+      </div>
       <div class="fc-zoom">
         <button data-zoom="out" title="${this._esc(this._copy('zoom_out'))}">−</button>
         <button data-zoom="reset" title="${this._esc(this._copy('zoom_reset'))}"></button>
@@ -411,6 +415,12 @@ class PyramidFlowView {
     this._applyZoom(root);
     this.drawArrows(root.querySelector('.fc-chart'), model, confs);
     this.drawProLinks(root.querySelector('.fc-all'), '.fc-conf, .fc-beside');
+    // 🗻 3D · ▦ 2D: the same two buttons as on the 3D view (owner 2026-11-24: "we would be able to
+    // tooggle on that screen not in hamburger") — from here, back to the 3D pyramid.
+    root.querySelectorAll('[data-shape-go]').forEach((b) => b.addEventListener('click', () => {
+      const go = document.querySelector('[data-view="shape"]');
+      if (go) go.click();
+    }));
     this.pannable(el);
     this.zoomable(root, el);
   }
