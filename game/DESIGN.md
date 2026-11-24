@@ -12877,3 +12877,37 @@ No change: the high surplus is ~5 passes a team-match and spread thin; the +37 s
 volume, and they are §8.330's extra midfield stints. The card's large misses are elsewhere — conversion 18.6% v 10.0,
 shots blocked 17.5% v 29.1, corners and crosses half — and LANE says why for the first two: at our shots **nobody of
 theirs is in the lane 65% of the time (real 29%)**. Next: who is goal-side at the shot. Harness only; tests 23/23.
+
+### 8.343 G5.237 — out of our own third the full-back's forward ball is half real's and never lost; G5.205's "no risks at the back" was fitted on the old ruler (measured; a trial not shipped)
+
+From §8.342 (the card's big misses: nobody in the lane at 65% of our shots; §8.314: ~3 goal-side at a build-up loss,
+real 6.7 — unchanged on G5.235: 3.3 at a loss 18-35 m out, ball |y| 11 v 23.7). `benchmarks_statsbomb_fwdloss.py` part 5
++ harness §8.343 OWN-THIRD PASSES BY ROLE: kicks 70 m+ off the line attacked by the passer's role × direction, tried
+/ not completed a team-match. Seeds 1000-4000 × 8, G5.235 (real in brackets):
+
+| | forward ground | forward high | square | back |
+|---|---|---|---|---|
+| keeper | 3.0 / 0.3 (3.2 / 0.1) | 9.2 / 5.9 (9.7 / 6.4) | 3.9 / 0.5 (5.2 / 0.2) | |
+| CB | 7.8 / 0.9 (8.9 / 1.2) | **9.3 / 6.1 (5.7 / 3.7)** | 18.8 / 1.1 (15.3 / 0.7) | 3.2 / 0.1 (2.9 / 0.0) |
+| FB | **2.9 / 0.4 (5.3 / 1.6)** | 3.8 / 2.3 (4.6 / 3.1) | 6.8 / 0.5 (4.9 / 0.5) | 1.9 / 0.1 (1.8 / 0.0) |
+| … FB within 14 m of his touchline | 1.7 / 0.3 (3.5 / 1.2) | 2.5 / 1.4 (3.2 / 2.2) | 3.8 / 0.3 (3.0 / 0.3) | |
+| DM/CM | 2.5 / 0.3 (4.5 / 1.0) | 2.9 / 1.8 (2.2 / 1.4) | 7.9 / 0.5 (8.1 / 0.7) | 2.8 / 0.0 (2.4 / 0.1) |
+| other | 1.2 / 0.2 (2.4 / 0.8) | 1.4 / 0.9 (1.6 / 1.1) | 3.7 / 0.4 (4.0 / 0.5) | 1.2 / 0.1 (1.7 / 0.1) |
+
+The keeper is real. **The full-back plays forward on the ground 2.9 times v 5.3 and loses 13% v 31%** (wide: 1.7 v 3.5,
+16% v 35%); the midfielder dropping in 2.5 v 4.5; in their place the full-back's square ball (+1.9) and **the
+centre-back's long one (+3.5)**. A real build-up breaks at the full-back's ball down the line, by the touchline with
+the side shifted across (§8.315); ours does not play it.
+
+Why: `physics.pass.risk_own3` 0.05 (G5.205, §8.311 [FH coaching: no risks at the back]) — a pass the read calls theirs
+is played at 5% of its share from our own third. It was fitted to "real own-third ground passes lost 1.73 a team-match"
+(Ground only, 5 m+, next event theirs) against ours on the ruler that booked a deflected pass completed (§8.339). On
+today's cut real sides lose 6.6 ground + low passes from their own third (ours 4.6), 4.8 of them forward (ours 2.0).
+
+**Trial, not shipped** — `physics.pass.risk_own3_line` 0.5: the forward ground ball to a man within 14 m of the
+kicker's own touchline keeps half its share when the read says theirs. FB forward ground 2.9 / 0.4 → 3.6 / 0.6, wide
+1.7 / 0.3 → 2.1 / 0.4; the build-up loss's |y| 11.2 → 12.9; goal-side at it 3.3 → 3.4; won within 35 m of our goal
+6.2 → 5.8; card 11 / 9 / 13 → 9 / 7 / 17 (noise). A fifth of the gap at half weight: the risk weight is not what
+stops him — there is seldom a man on the line ahead of him to play to. Code removed. Next: at the full-back's touch in
+our own third, who is ahead of him down the line and how far (DFL v ours) — the wide man's depth, not the passer's
+nerve. Harness only; tests 23/23.

@@ -136,3 +136,30 @@ for f in files:
 print("midfield origin (35-70 m off own goal), open-play foot passes 5 m+: by angle off straight-at-goal x length: n a team-match, high %, [high lost %]")
 for ab,an in enumerate(("0-30","30-45","45-60","60-90","90-120","120+")):
     print(f"  {an:7s} "+" | ".join(f"{C[(ab,lb,'n')]/tm:5.1f} {100*C[(ab,lb,'hi')]/max(1,C[(ab,lb,'n')]):3.0f}% [{100*C[(ab,lb,'hibad')]/max(1,C[(ab,lb,'hi')]):2.0f}]" for lb in range(5)), f"|| high a team-match {sum(C[(ab,lb,'hi')] for lb in range(5))/tm:.1f}")
+
+# part 5 (G5.237, §8.343): own-third (kick 70 m+ off the line attacked) open-play foot passes by the passer's role
+# (keeper / centre-back / full-back or wing-back / defensive + centre midfield / other) x forward not-High, forward
+# High, square, back (45 deg cones to where it ended): tried / not completed a team-match; and the full-back's by
+# where he stands (within 14 m of the touchline or not).
+C = collections.Counter()
+def role5(pos):
+    return 0 if pos == "Goalkeeper" else 1 if "Center Back" in pos else 2 if "Back" in pos else 3 if ("Defensive Midfield" in pos or "Center Midfield" in pos) else 4
+for f in files:
+    for e in json.load(open(f, encoding="utf8")):
+        if e["type"]["name"] != "Pass" or "location" not in e: continue
+        p = e["pass"]
+        if band(e["location"][0]) != 3 or p.get("type", {}).get("name") in SET or p.get("body_part", {}).get("name") == "Head": continue
+        out = p.get("outcome", {}).get("name")
+        if out not in (None, "Incomplete", "Out"): continue
+        dx = (p["end_location"][0] - e["location"][0]) * SX; dy = (p["end_location"][1] - e["location"][1]) * SY
+        hi = p.get("height", {}).get("name") == "High Pass"
+        k = (0 if not hi else 1) if dx >= abs(dy) else 3 if -dx >= abs(dy) else 2
+        r = role5(e["position"]["name"])
+        C[(r, k, "n")] += 1; C[(r, k, "bad")] += out is not None
+        if r == 2: w = abs(e["location"][1] - 40) * SY >= 20; C[("fbw", w, k, "n")] += 1; C[("fbw", w, k, "bad")] += out is not None
+print("OWN-THIRD PASSES BY ROLE (70 m+ off the line attacked), tried / not completed a team-match: forward ground+low | forward high | square | back")
+for r, rn in enumerate(("GK", "CB", "FB", "DM/CM", "other")):
+    print(f"  {rn:6s}" + " | ".join(f"{C[(r, k, 'n')] / tm:5.2f} / {C[(r, k, 'bad')] / tm:4.2f}" for k in range(4)))
+for w in (True, False):
+    print(f"  FB {'wide' if w else 'inside'}: " + " | ".join(f"{C[('fbw', w, k, 'n')] / tm:5.2f} / {C[('fbw', w, k, 'bad')] / tm:4.2f}" for k in range(4)))
+print("C++ rows: " + ", ".join("{" + ", ".join(f"{C[(r, k, 'n')] / tm:.2f}, {C[(r, k, 'bad')] / tm:.2f}" for k in range(4)) + "}" for r in range(5)))
