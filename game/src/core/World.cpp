@@ -476,7 +476,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         }
         // G5.190 (§8.296): his draw is up, but he is free in his own end — he keeps it until a man closes within
         // free_hold_m (or free_hold_max_s more). A pass only: not a shot, nor a clearance or any first-time hit (first_time set).
-        if (!hold_it && hold_on_ && free_hold_m_.raw > 0 && (act == Action::GroundKick || act == Action::LoftedKick || act == Action::ShortPass) && first_time_[kicker] == 0 && !isKeeper(kicker) &&
+        if (!hold_it && hold_on_ && free_hold_m_.raw > 0 && (act == Action::GroundKick || act == Action::LoftedKick || act == Action::ShortPass) && first_time_[kicker] == 0 && !ft_kick && !isKeeper(kicker) &&   // G5.252 (§8.358): nor the draw's one-touch slice
             clock_.tick() >= hold_until_tick_ &&
             clock_.tick() < hold_until_tick_ + static_cast<std::uint64_t>((free_hold_max_s_ * Fixed64::fromInt(kTickRate)).raw >> Fixed64::FRAC_BITS)) {
             const Fixed64 own_d = players_[kicker].team == 0 ? half_x_ + o.pos.x : half_x_ - o.pos.x;

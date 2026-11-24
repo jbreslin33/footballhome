@@ -13436,3 +13436,36 @@ the two are not rivals. Left: the own third's releases still bunch at the ring (
 35-52 m, where no free hold reaches, a stint is 1.37 s (1.18) — the draw itself. `card_G5.251.txt`.
 Next: own third only + the 1.5 s wait together; then the draw by band against DFL stints (35-52 m).
 Rows only; tests 25/25.
+
+### 8.358 G5.252 — the free hold in the own third: a first-time ball is played first time, and the wait is 1.5 s (mig 1861; shipped)
+
+From §8.357's "next". HOLD BY ZONE (§8.227; StatsBomb PL 15/16 free receipts) on G5.251: midfield's time on the ball is
+real (median 1.1-1.3 s v 1.0-1.2, p90 3.6-3.9 v 3.3-3.8); the own third is not — centre 2.1 s / 5.4 (1.3 / 4.3), first
+time 7.5% (24.5), 10 m+ from the receipt 27.7% (15.9). Four arms, seeds 1000-4000 × 8:
+
+| own third (70 m+ off the line attacked) | G5.251 | wait 1.5 s | hold off | first-time fix | **fix + 1.5 s (shipped)** | real |
+|---|---|---|---|---|---|---|
+| on the ball, centre: med / p90 s | 2.1 / 5.4 | 1.8 / 4.7 | 1.2 / 3.8 | 1.8 / 5.4 | 1.8 / 4.5 | 1.3 / 4.3 |
+| first time %, centre / wide | 7.5 / 11.3 | 7.6 / 11.2 | 28.4 / 29.3 | 28.1 / 28.9 | 28.6 / 28.5 | 24.5 / 26.5 |
+| 10 m+ from the receipt %, centre | 27.7 | 17.3 | 8.0 | 22.9 | 16.2 | 15.9 |
+| releases, their nearest 1.2-3 / 3-6 / 6+ m | 11.6 / 42.0 / 7.8 | 10.4 / 36.3 / 16.5 | 11.5 / 23.9 / 43.5 | 11.6 / 33.1 / 20.0 | 11.5 / 30.9 / 26.2 | 23.9 / 24.1 / 22.4 |
+| a stint there: mean s / 3 s+ % (DFL) | 1.47 / 17.1 | 1.38 / 14.6 | 1.14 / 10.4 | 1.37 / 15.6 | 1.27 / 14.2 | 1.52 / 12.5 |
+| passes / completed % | 416 / 76.3 | 418 / 76.1 | 442 / 76.2 | 414 / 76.2 | 426 / 76.0 | 434 / 77.5 |
+| carries 10 m+ / goals | 33.3 / 2.33 | 31.2 / 2.38 | 31.1 / 1.95 | 32.5 / 2.20 | 31.3 / 2.19 | 34.6 / 1.35 |
+| card ok / off / OFF | 11 / 9 / 13 | 10 / 10 / 13 | 8 / 10 / 15 | 7 / 8 / 18 | 12 / 7 / 14 | |
+
+**A bug.** A receipt whose draw fell in the one-touch slice (§8.227) has no hold, but the free hold's test asked only
+for `first_time_` (the brain's first-time wish), so a free man in his own end waited anyway: 7.5% first time v 24.5.
+
+**Change.** `World` kick resolution: the free hold skips the draw's one-touch slice (`ft_kick`); row
+`physics.tempo.free_hold_max_s` 3 → 1.5. The free hold has no row in the goldens: unchanged.
+
+**Read.** With the hold off the man's own time is real (1.2 s / 3.8, first time 28%) and what is wrong is who is near
+him: 43.5 releases with nobody inside 6 m (22.4), 11.5 with a man at 1.2-3 m (23.9) — in every arm. Real backs do not
+wait longer; they are closed sooner. The free hold stands in for a press on the back line the engine does not have
+(pressing distance / cover shadow — the catalogue's, being built as capabilities); it stays at its least-wrong
+setting until that press exists, then goes to zero. The 1.2-3 m cell is that press's ruler.
+`card_G5.252.txt`. Next: 35-52 m, where no free hold reaches, a stint is 1.34 s (1.18) and 3 s+ 13.0% (9.7) while
+StatsBomb's receipt-to-release is real there — what the DFL stint counts that the receipt does not (balls won, loose
+balls, carries after a take-on); then the last 18 m (37 stints v 60).
+Tests 28/28; lint clean.
