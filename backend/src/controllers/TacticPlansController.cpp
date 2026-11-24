@@ -103,6 +103,7 @@ TacticPlansController::~TacticPlansController() = default;
 void TacticPlansController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "",                  [this](const Request& r) { return handleGet(r); });
     router.get (prefix + "/list",             [this](const Request& r) { return handleList(r); });
+    router.get (prefix + "/taxonomy",         [this](const Request& r) { return handleTaxonomy(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
@@ -133,6 +134,18 @@ Response TacticPlansController::handleList(const Request& request) {
         return jsonOut(HttpStatus::OK, {{"plans", model_->list()}});
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleList: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /taxonomy — the taxonomy of football (#football-taxonomy).  Read-only reference;
+// any signed-in user (the menu shows the page to coaches).
+Response TacticPlansController::handleTaxonomy(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in first.");
+    try {
+        return jsonOut(HttpStatus::OK, model_->taxonomy());
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleTaxonomy: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

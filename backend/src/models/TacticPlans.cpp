@@ -175,6 +175,35 @@ json TacticPlans::list() {
     return out;
 }
 
+json TacticPlans::taxonomy() {
+    auto* db = Database::getInstance();
+    const auto r = db->query(R"SQL(
+        SELECT json_build_object(
+          'moments',    (SELECT json_agg(json_build_object('code', code, 'title', title) ORDER BY sort_order) FROM game_moments),
+          'principles', (SELECT json_agg(json_build_object('id', id, 'moment', moment, 'parent_id', parent_id, 'title', title,
+                                                           'description', description) ORDER BY sort_order, id) FROM game_principles),
+          'concepts',   (SELECT json_agg(json_build_object(
+                             'id', c.id, 'name', c.name, 'title', c.title, 'family', c.family, 'moment', c.moment,
+                             'cue', c.cue_answer, 'principle_id', c.principle_id,
+                             'job',  (SELECT k.code FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY k.sort_order LIMIT 1),
+                             'rule', (SELECT k.rule FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY (k.rule = 'home'), k.sort_order LIMIT 1),
+                             'act',  (SELECT a.code FROM game_engine_acts a WHERE a.concept_id = c.id ORDER BY a.code LIMIT 1),
+                             'act_note', (SELECT a.note FROM game_engine_acts a WHERE a.concept_id = c.id ORDER BY a.code LIMIT 1),
+                             'sources', (SELECT count(*) FROM game_concept_sources s WHERE s.concept_id = c.id))
+                           ORDER BY c.title) FROM game_concepts c),
+          'rules',      (SELECT json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order) FROM tactic_job_rules),
+          'techniques', (SELECT json_agg(json_build_object('id', id, 'parent_id', parent_id, 'node', node, 'title', title, 'how', how)
+                                         ORDER BY sort_order, id) FROM game_techniques),
+          'roles',      (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_roles),
+          'measures',   (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_measures),
+          'laws',       (SELECT json_agg(json_build_object('number', number, 'title', title, 'summary', summary) ORDER BY number) FROM game_ref_laws),
+          'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note) ORDER BY kind, sort_order)
+                           FROM game_engine_terms)
+        )::text AS doc)SQL");
+    if (r.empty() || r[0]["doc"].is_null()) return json::object();
+    return json::parse(r[0]["doc"].as<std::string>());
+}
+
 json TacticPlans::shortcuts() {
     json out = json::array();
     for (const auto& r : Database::getInstance()->query(

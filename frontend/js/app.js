@@ -64,6 +64,7 @@ class App {
       onboarding: new OnboardingScreen(this.navigation, this.auth),
       'league-registration': new LeagueRegistrationScreen(this.navigation, this.auth),
       awards: new AwardsScreen(this.navigation, this.auth),
+      footballTaxonomy: new FootballTaxonomyScreen(this.navigation, this.auth),
       attendanceCalls: new AttendanceCallsScreen(this.navigation, this.auth),
       dualRostering: new DualRosteringScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
@@ -188,6 +189,8 @@ class App {
     this.screenManager.register('league-registration', this.screens['league-registration']);
     // Awards (#awards, mig 800) — All-Stars to the league director + club awards. See screens/awards.js.
     this.screenManager.register('awards', this.screens.awards);
+    // 🧬 Taxonomy of Football (#football-taxonomy, mig 1810) — every concept and how far it reaches. See screens/football-taxonomy.js.
+    this.screenManager.register('football-taxonomy', this.screens.footballTaxonomy);
     // Attendance Calls (#attendance-calls, mig 1290) — every attendance call that went out. See screens/attendance-calls.js.
     this.screenManager.register('attendance-calls', this.screens.attendanceCalls);
     // Dual Rostering (#dual-rostering, mig 1774) — one name on two or three league rosters. See screens/dual-rostering.js.

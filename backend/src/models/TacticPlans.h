@@ -21,6 +21,12 @@ public:
     // [{ id, us, them, block, block_label, steps }] — formations by code, in
     // the order a coach meets them (ours, then theirs, then high → low).
     nlohmann::json list();
+    // The taxonomy of football as the club holds it (#football-taxonomy, mig 1810):
+    // moments → principles → concepts, each concept with how far it reaches —
+    // its board job and placement rule (tactic_job_kinds), the engine behaviour
+    // that plays it (game_engine_acts) — plus techniques, roles, measures, the
+    // Laws, and the engine's own vocabulary (game_engine_terms).  One query.
+    nlohmann::json taxonomy();
 
     // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
     // [code], in the dropdown's order.  lookups() carries it as "shortcuts".
