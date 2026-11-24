@@ -39,7 +39,10 @@ class PyramidPathView {
       .pt-pro-tier .lgs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
       .pt-pro-lg { border:2px solid #d4a017; border-radius:12px; padding:7px 16px; font-weight:800; background:rgba(212,160,23,0.10); }
       .pt-pro-note { font-size:0.8rem; opacity:0.75; text-align:center; max-width:520px; }
-      .pt-pro-gap { width:0; height:26px; border-left:2px dashed #64748b; margin-bottom:6px; }
+      .pt-pro-doc { max-width:560px; border:2px dashed #94a3b8; border-radius:12px; padding:10px 14px; text-align:center; background:rgba(148,163,184,0.08); }
+      .pt-pro-doc .why { font-size:0.85rem; font-style:italic; margin:6px 0; }
+      .pt-pro-link { display:block; font-weight:800; color:#fbbf24; }
+      .pt-pro-gap { width:0; height:22px; border-left:2px dashed #64748b; }
       .pt-conf .fc-cell { display:flex; gap:10px; justify-content:center; }`;
   }
 
@@ -89,8 +92,18 @@ class PyramidPathView {
       tiers.push(`<div class="pt-pro-tier"><span class="lbl">${esc(label)}</span><div class="lgs">${(names || '').split(';').map((n) => `<span class="pt-pro-lg">${esc(n.trim())}</span>`).join('')}</div></div>`);
     }
     if (!tiers.length) return '';
+    // The standards themselves (mig 1790): wording row 'label|url' → U.S. Soccer's page.
+    const [linkLabel, linkUrl] = (this._copy('path_pro_link') || '').split('|');
+    const link = /^https:\/\//.test(linkUrl || '') ? `<a class="pt-pro-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkLabel)}</a>` : '';
+    // The document sits ON the line between the pro leagues and the APSL
+    // (mig 1794, owner: "it currently acts as a block but should act as a
+    // bridge"): dashed line, the PLS box with its caption, dashed line.
+    const bridge = this._copy('path_pro_bridge');
     return `<div class="pt-pro"><h4>${esc(this._copy('path_pro_title'))}</h4>${tiers.join('')}
-      <div class="pt-pro-note">${esc(this._copy('path_pro_note'))}</div><div class="pt-pro-gap"></div></div>`;
+      <div class="pt-pro-gap"></div>
+      <div class="pt-pro-doc">${link}${bridge ? `<div class="why">${esc(bridge)}</div>` : ''}
+        <div class="pt-pro-note">${esc(this._copy('path_pro_note'))}</div></div>
+      <div class="pt-pro-gap"></div></div>`;
   }
 
   _clubHtml(model, club) {

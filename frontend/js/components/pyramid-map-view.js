@@ -868,17 +868,7 @@ class PyramidMapView {
     const body = ov.querySelector('.mp-ov-body');
     body.innerHTML = this.flow.chartHtml(this.model, [col.conf]);
     ov.hidden = false;
-    this._fitOverlay();
     requestAnimationFrame(() => this.flow.drawArrows(body.querySelector('.fc-chart'), this.model, [col.conf], { outliers: false }));
-  }
-
-  // The overlay starts just under the screen's ☰ button (mig 1234).
-  _fitOverlay() {
-    const ov = this.root && this.root.querySelector('.mp-ov');
-    const main = this.screen.element && this.screen.element.querySelector('.ap-menu-btn');
-    if (!ov || !main) return;
-    const top = main.getBoundingClientRect().bottom - this.root.querySelector('.mp-stage').getBoundingClientRect().top + 8;
-    ov.style.top = `${Math.max(12, Math.round(top))}px`;
   }
 
   _close() {
@@ -929,23 +919,6 @@ class PyramidMapView {
     }
   }
 
-  // The Club HUD: under the Conference HUD, down to the map key (or the
-  // bottom when the key is collapsed out of the way).
-  _fitClubHud() {
-    return;   // the club card lives in the ☰ menu since 2026-11-11
-    const hud = this.root && this.root.querySelector('.hud-club');
-    const stage = this.root && this.root.querySelector('.mp-stage');
-    if (!hud || !stage) return;
-    const s = stage.getBoundingClientRect();
-    const stats = this.root.querySelector('[data-hud="map-stats"]');
-    const key = this.root.querySelector('[data-hud="map-key"]');
-    // A panel switched off in ☰ (mig 1234) takes no room.
-    const top = stats && stats.offsetWidth ? stats.getBoundingClientRect().bottom - s.top + 8 : 62;
-    const bottom = key && key.offsetWidth ? s.bottom - key.getBoundingClientRect().top + 8 : 10;
-    hud.style.top = `${Math.round(top)}px`;
-    hud.style.maxHeight = `${Math.max(160, Math.round(s.height - top - bottom))}px`;
-  }
-
   // The map underneath: this code's pyramid_map_layers row, else the default.
   _setLayer(code) {
     const layers = this.model.data.map_layers || [];
@@ -984,7 +957,7 @@ class PyramidMapView {
       if (e.key !== 'Escape' || document.fullscreenElement) return;
       if (this.club != null) this.screen.clubCard.close(); else if (this.sel) this._close();
     };
-    this._onFull = () => setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); this._fitClubHud(); } }, 150);
+    this._onFull = () => setTimeout(() => { if (this.map) { this.map.invalidateSize(); this._relayout(); this._panel(); } }, 150);
     document.addEventListener('keydown', this._onKey);
     document.addEventListener('fullscreenchange', this._onFull);
   }
@@ -1113,8 +1086,6 @@ class PyramidMapView {
 
   onResize() {
     if (this.map) { this.map.invalidateSize(); this._relayout(); }
-    this._fitOverlay();
-    this._fitClubHud();
     const col = this.sel && this.columns && this.columns.find((c) => c.conf.id === this.sel);
     const chart = this.root && this.root.querySelector('.mp-ov .fc-chart');
     if (col && chart) this.flow.drawArrows(chart, this.model, [col.conf], { outliers: false });

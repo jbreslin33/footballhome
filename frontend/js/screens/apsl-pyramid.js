@@ -74,8 +74,6 @@ class ApslPyramidScreen extends Screen {
     div.className = 'screen';
     div.innerHTML = `
       <style>
-        .ap-totals { text-align:center; font-size:1.2rem; font-weight:800; margin:var(--space-2) 0 var(--space-3); }
-        .ap-pills { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-bottom:var(--space-3); }
         .ap-pill { padding:5px 14px; border-radius:999px; border:1px solid var(--border-color, #374151); background:transparent; color:inherit; font-weight:700; font-size:0.85rem; cursor:pointer; min-height:0; min-width:0; }
         .ap-readonly .fc-edit, .ap-readonly [data-cc="edit"], .ap-readonly #ap-refresh { display:none; }
         .ap-pill.on { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
@@ -122,16 +120,7 @@ class ApslPyramidScreen extends Screen {
         #ap-body.flush #ap-view { position:absolute; inset:0; }
         @media (max-width: 700px) { .ap-row .lbl { min-width:100%; } .ap-row.confs .lbl { display:none; } }
         @media (max-width: 900px) { .ap-main { flex-direction:column; align-items:stretch; } }
-        .ap-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.84); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3);
-                  border-radius:12px; color:#e5e7eb; font-size:0.8rem; box-shadow:0 4px 18px rgba(0,0,0,0.4); max-width:calc(100% - 20px); }
-        .ap-hud-head { display:flex; align-items:center; gap:8px; padding:4px 6px 4px 10px; font-weight:800; white-space:nowrap; }
-        .ap-hud-head .t { flex:1; overflow:hidden; text-overflow:ellipsis; }
-        .ap-hud-head button { min-height:0; min-width:0; padding:1px 8px; font-size:0.78rem; }
-        .ap-hud-body { padding:2px 10px 8px; }
-        .ap-dock .ap-hud-body { padding:0; }
         .ap-dock .mp-layers { margin-bottom:6px; }
-        .ap-hud.collapsed .ap-hud-body { display:none; }
-        .ap-hud.off { display:none !important; }
         /* The view's panels: a column beside the view (the map), or a strip above it (.ap-main.top). */
         .ap-menu { flex:0 0 340px; max-height:var(--ap-h, 70vh); overflow:auto; box-sizing:border-box; padding:4px 12px 10px;
                    border:1px solid rgba(148,163,184,0.25); border-radius:12px; font-size:0.85rem; }
@@ -143,11 +132,6 @@ class ApslPyramidScreen extends Screen {
         .ap-sec { border-top:1px solid rgba(148,163,184,0.25); padding:9px 0 4px; margin-top:6px; }
         .ap-dock > .ap-sec:first-child { border-top:0; margin-top:0; }
         .ap-sec h4 { margin:0 0 7px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
-        .ap-menu .ap-pills { justify-content:flex-start; margin-bottom:4px; }
-        .hud-tl { top:10px; left:10px; }
-        .hud-bl { bottom:10px; left:10px; }
-        .hud-br { bottom:10px; right:10px; }
-        .hud-bc { bottom:10px; left:50%; transform:translateX(-50%); }
         .ap-pill:disabled { opacity:0.35; cursor:not-allowed; }
         ${PyramidFlowView.css()}
         ${PyramidPresentView.css()}
@@ -200,10 +184,6 @@ class ApslPyramidScreen extends Screen {
         if (f) { this._setFeature(f.key, !this.feature(f.key, f.def)); this._renderBar(); }
         return;
       }
-      // ▾ / ▸ on any HUD: collapse to its title, remembered (owner: "the
-      // huds should be collapsable").
-      const tg = e.target.closest('[data-hud-toggle]');
-      if (tg) { this._toggleHud(tg.closest('[data-hud]')); return; }
       // A team's name anywhere → its club card (mig 856).
       const club = e.target.closest('[data-club]');
       if (club && !e.target.closest('.pz-vp')) { this.openClub(Number(club.dataset.club)); return; }
@@ -315,13 +295,7 @@ class ApslPyramidScreen extends Screen {
 
   findAll(sel) { return this.element ? this.element.querySelectorAll(sel) : []; }
 
-  // ── floating HUDs: shown only when ticked in ☰ Show on screen ────────
-  _hudShown(key) { try { return localStorage.getItem(`apsl-show-${key}`) === '1'; } catch (_) { return false; } }
-  _setShown(key, on) {
-    try { localStorage.setItem(`apsl-show-${key}`, on ? '1' : '0'); } catch (_) { /* private mode */ }
-    this.findAll(`#ap-view [data-hud="${key}"]`).forEach((el) => el.classList.toggle('off', !on));
-    this._viewCall('onResize');
-  }
+  // ── the view's switches and panels ────────────────────────────────
   // A view feature switched in ☰ Show on screen; `def` until the viewer
   // picks, remembered per device.
   feature(key, def = true) {
@@ -332,24 +306,10 @@ class ApslPyramidScreen extends Screen {
     if (this._impl().onFeature) this._impl().onFeature(key, on);
     else { this._viewCall('unmount'); this._renderBody(); }
   }
-  _hudCollapsed(key) { try { return localStorage.getItem(`apsl-hud-${key}`) === '1'; } catch (_) { return false; } }
-  _toggleHud(el) {
-    if (!el) return;
-    const key = el.dataset.hud;
-    const now = !el.classList.contains('collapsed');
-    el.classList.toggle('collapsed', now);
-    const b = el.querySelector('[data-hud-toggle]');
-    if (b) b.textContent = now ? '▸' : '▾';
-    try { localStorage.setItem(`apsl-hud-${key}`, now ? '1' : '0'); } catch (_) { /* private mode */ }
-    this._viewCall('onResize');
-  }
-  // A view's HUD panel: title + ▾/▸ + body; pos = hud-tl / hud-bl / hud-br / hud-bc.
-  // Off until ticked in ☰ (the map's Club HUD always rides its pick).
-  // Since 2026-11-11 a "HUD" is a section of the ☰ menu's dock, not a
-  // floating panel: the view's html() calls this while _renderBody collects
-  // the parts, and they are written into .ap-dock (which menu re-renders
-  // never touch, so a view's live content — conference stats, the club card
-  // — survives).  Views find these elements with screen.find().
+  // A view's panel: its html() calls this while _renderBody collects the
+  // parts, and they are written into .ap-dock (which later re-renders of
+  // the view's own sections never touch, so live content — conference
+  // stats, the club card — survives).  Views find them with screen.find().
   hud(key, title, body, pos = '', extra = '') {
     (this._dock = this._dock || []).push(`
       <div class="ap-sec ap-dock-sec ${extra}" data-hud="${key}">
