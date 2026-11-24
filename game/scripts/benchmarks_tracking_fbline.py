@@ -32,6 +32,9 @@ to the nearest touchline (0-5 / 5-14 / 14+; pitch 68 m wide), his nearest outfie
 G5.243 (§8.349) OFF HIS FEET, 2 S ON — each such taking (wide = within 14 m of a touchline / middle): 2 s later the
 ball is in play with the taker's side (kept) | with the side that had it (back) | play has stopped; and the taker's own
 stint on it, s med.
+G5.246 (§8.352) A MATE THERE — at the first frame of every stint of an outfield man, by the ball's band off the line
+attacked (0-18 / 18-35 / 35-52 / 52-70 / 70+): the share with at least one outfield mate in each zone — the same
+bands, centre / wide (|y| >= 20.16) — and the mean number of mates within 18 m and within 35 m of the line attacked.
 fh-game-match prints the same as FB ON THE LINE. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
@@ -98,6 +101,15 @@ def one(pos_path):
         new = man is not None and not (cont and prev_man == man)
         prev_man = man; prev_k = k
         la0, gap0 = la, gap
+        if new and man not in keepers:   # G5.246 A MATE THERE
+            sg2 = own[(k[0], t)]; tlb = half + sg2 * b[0]; bb5 = 0 if tlb < 18 else 1 if tlb < 35 else 2 if tlb < 52 else 3 if tlb < 70 else 4
+            seen = set(); n18 = n35 = 0
+            for pid, p in ps.items():
+                if who.get(pid) != t or pid == man or pid in keepers: continue
+                tl2 = half + sg2 * p[0]; n18 += tl2 < 18; n35 += tl2 < 35
+                seen.add(((0 if tl2 < 18 else 1 if tl2 < 35 else 2 if tl2 < 52 else 3 if tl2 < 70 else 4), int(abs(p[1]) >= 20.16)))
+            c[("mtn", bb5)] += 1; c[("mt18", bb5)] += n18; c[("mt35", bb5)] += n35
+            for zz in seen: c[("mt", bb5) + zz] += 1
         if ecf is not None:
             c[("ec_n",) + ecf[1]] += 1; c[("ec_o",) + ecf[1]] += man is not None and t != ecf[0]
             if man is not None and t != ecf[0]:
@@ -229,6 +241,12 @@ if __name__ == "__main__":
     print("  OFF HIS FEET, 2 S ON (G5.243) a team-match — kept / back with the side that had it / play stopped; the taker's stint s med, 0.4 s or less %: "
           + " | ".join(f"{nm} " + " / ".join(f"{c[('of2', w, i)] / tm2:.1f}" for i in range(3)) + f"; {md(L[f'of2s{w}']):.1f} s, {100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}'])):.0f}%" for w, nm in ((1, "wide"), (0, "middle"))))
     print("C++ of2 row: {" + ", ".join(f"{x:.1f}" for w in (1, 0) for x in [c[('of2', w, i)] / tm2 for i in range(3)] + [md(L[f'of2s{w}']), 100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}']))]) + "}")
+    print("  A MATE THERE (G5.246) — by the ball's band, % of stints' first frames with a mate in 0-18 c / 0-18 w / 18-35 c / 18-35 w / 35-52 c / 35-52 w | mates within 18 m, within 35 m of the line attacked (mean):")
+    bn5 = ["0-18", "18-35", "35-52", "52-70", "70+"]
+    for bb5 in range(5):
+        nn = max(1, c[("mtn", bb5)])
+        print(f"    ball {bn5[bb5]}: " + " / ".join(f"{100 * c[('mt', bb5, z, w)] / nn:.0f}" for z in range(3) for w in (0, 1)) + f" | {c[('mt18', bb5)] / nn:.2f}, {c[('mt35', bb5)] / nn:.2f}")
+    print("C++ mate row: {" + ", ".join(", ".join(f"{100 * c[('mt', bb5, z, w)] / max(1, c[('mtn', bb5)]):.1f}" for z in range(3) for w in (0, 1)) + f", {c[('mt18', bb5)] / max(1, c[('mtn', bb5)]):.2f}, {c[('mt35', bb5)] / max(1, c[('mtn', bb5)]):.2f}" for bb5 in range(5)) + "}")
     print("C++ wide3 row: {" + ", ".join(f"{x:.1f}" for x in [c['w3'] / tm2] + [c[f'w3e{i}'] / tm2 for i in range(7)] + [100 * c[f'w3r{r}'] / max(1, c['w3e4']) for r in range(6)]) + "}")
     print("C++ began row: {" + ", ".join(f"{x:.1f}" for i in range(5) for x in (c[f'hb{i}'] / (2 * len(files)), 100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']), md(L[f'hb{i}_d']))) + "}")
     print("C++ start row: {" + ", ".join(f"{x:.1f}" for x in [c['ps'] / (2 * len(files)), md(L['ps_len']), md(L['ps_fl']), md(L['ps_dk']), q(L['ps_dk'], .25), q(L['ps_dk'], .75)] + [100 * c[f'ps_b{i}'] / pm for i in range(4)]

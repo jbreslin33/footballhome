@@ -98,6 +98,7 @@ struct Stats {
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long tl_n[2][5] = {}, tl_h[2][5] = {}, tl_b[2][5] = {}, tl_o[2][5] = {}, tl_d[2][3] = {};   // §8.350 BLOCKED BY THE TOUCHLINE [0-5 / 5-14 m off it][direction]: passes / high / blocked / blocked then out; the blocker's m off the passer
+    long mt_n[5] = {}, mt_z[5][3][2] = {}, mt_18[5] = {}, mt_35[5] = {};   // §8.352 A MATE THERE [ball band]
     long bz_n[2][5] = {}, bz_nx[2][5] = {}, bz_bx[2][5] = {};   // §8.351: open-play passes struck there / of them crosses / crosses blocked
     long bz_b[2][5] = {}, bz_t[2][5] = {}, bz_c[2][5] = {};   // §8.349 BLOCKED BY WHERE [wide][band of the kick]: blocked / then a throw-in / then a corner
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -3152,6 +3153,15 @@ int main(int argc, char** argv) {
                     if (st_man == man && cont) ++st_n;
                     else {
                         close(); st_man = man; st_z = z; st_n = 1;
+                        if (!W.isKeeper(static_cast<std::uint8_t>(man))) {   // §8.352 A MATE THERE (benchmarks_tracking_fbline.py)
+                            bool seen[3][2] = {}; ++S.mt_n[z];
+                            for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
+                                if (W.player(p2).team != t || p2 == man || W.isKeeper(p2)) continue;
+                                const double tl2 = std::fabs(ax - f.x[p2]); S.mt_18[z] += tl2 < 18; S.mt_35[z] += tl2 < 35;
+                                if (tl2 < 52) seen[tl2 < 18 ? 0 : tl2 < 35 ? 1 : 2][std::fabs(f.y[p2]) >= 20.16 ? 1 : 0] = true;
+                            }
+                            for (int a2 = 0; a2 < 3; ++a2) for (int w2 = 0; w2 < 2; ++w2) S.mt_z[z][a2][w2] += seen[a2][w2];
+                        }
                         if (la_t >= 0 && la_out) { ++S.zo_n[la_z][la_wd]; S.zo_o[la_z][la_wd] += la_t != t && gapn == 0; }
                         if (la_t >= 0 && la_w3) {   // §8.347 STINTS ENDING IN THEIR WIDE LAST THIRD (benchmarks_tracking_fbline.py)
                             const int e = la_t != t ? (gapn == 0 ? 4 : gapn <= 5 ? 5 : 3) : la_man == man ? 2 : gapn >= 1 ? 0 : 1;
@@ -3799,6 +3809,12 @@ int main(int argc, char** argv) {
                             for (int tb = 0; tb < 2; ++tb) { std::printf("\n     §8.350 BLOCKED BY THE TOUCHLINE, kick %s: passes a team-match / high %% / blocked / of the blocked out %% (StatsBomb PL 15/16 in brackets) —", tb ? "5-14 m" : "0-5 m off the touchline");
                                 long nb = 0; for (int d = 0; d < 5; ++d) { nb += S.tl_b[tb][d]; std::printf(" %s %.1f / %.0f / %.2f / %.0f (%.1f / %.0f / %.2f / %.0f) |", dn[d], S.tl_n[tb][d] / tmo, 100.0 * S.tl_h[tb][d] / std::max(1L, S.tl_n[tb][d]), S.tl_b[tb][d] / tmo, 100.0 * S.tl_o[tb][d] / std::max(1L, S.tl_b[tb][d]), Tn[tb][d][0], Tn[tb][d][1], Tn[tb][d][2], Tn[tb][d][3]); }
                                 std::printf(" the blocker 0-2 / 2-4 / 4+ m off the passer %.0f / %.0f / %.0f%% (%.0f / %.0f / %.0f)", 100.0 * S.tl_d[tb][0] / std::max(1L, nb), 100.0 * S.tl_d[tb][1] / std::max(1L, nb), 100.0 * S.tl_d[tb][2] / std::max(1L, nb), Td[tb][0], Td[tb][1], Td[tb][2]); } }
+                        {   static const double Mt[40] = {91.4, 51.8, 98.5, 45.1, 81.6, 24.1, 3.61, 6.58, 39.1, 16.5, 93.7, 59.7, 96.4, 56.2, 1.15, 4.37, 7.3, 2.0, 65.6, 43.1, 94.0, 69.8, 0.15, 2.24, 0.9, 0.5, 29.7, 14.1, 86.2, 61.0, 0.02, 0.76, 0.1, 0.0, 3.6, 0.7, 49.8, 27.0, 0.00, 0.06};
+                            static const char* b5[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+                            std::printf("\n     §8.352 A MATE THERE (stints' first frames, by the ball's band: %% with an outfield mate in 0-18 c / 0-18 w / 18-35 c / 18-35 w / 35-52 c / 35-52 w | mates within 18 m, within 35 m of the line attacked; real DFL in brackets):");
+                            for (int z = 0; z < 5; ++z) { const double nn = std::max(1L, S.mt_n[z]); const double* m = Mt + 8 * z; std::printf("\n       ball %-6s", b5[z]);
+                                for (int a2 = 0; a2 < 3; ++a2) for (int w2 = 0; w2 < 2; ++w2) std::printf(" %.0f (%.0f) /", 100 * S.mt_z[z][a2][w2] / nn, m[a2 * 2 + w2]);
+                                std::printf(" | %.2f (%.2f), %.2f (%.2f)", S.mt_18[z] / nn, m[6], S.mt_35[z] / nn, m[7]); } }
                         std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
                             for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }

@@ -13234,3 +13234,51 @@ unmoved. A card move of five lines is a re-roll; slices are judged on their own 
 Next: the ball's way into the last 18 m and its stay there — entries a team-match by how (a pass from 18-35 m wide / a
 carry / a cross-field ball / a ball in behind), and what the man there does next (StatsBomb + DFL v ours); the concept
 off the shelf once the short route shows. Harness only; tests 25/25; card as G5.244.
+
+### 8.352 G5.246 — into the last 18 m: the men are there and the final third's passes are real; midfield's central man plays the central man beside him, not the wide man ahead (measured; no game change)
+
+From §8.351 (passes struck in the last 18 m 15.1 v 30.9). Three rulers, seeds 1000-4000 × 8, G5.244.
+
+**NEXT STINT (§8.332; DFL in brackets)** — every step up the pitch is taken less often and the band kept more:
+
+| a stint ending | next one band up | the same band | one band back | the other side's | a pass's m on, med |
+|---|---|---|---|---|---|
+| 52-70 m off the line attacked | 14.9% (19.1) | 53.8 (44.2) | 9.2 (11.3) | 14.2 (18.3) | +0.7 (+2.6) |
+| 35-52 | 12.2 (16.8) | 47.7 (41.4) | 12.6 (10.8) | 19.0 (23.6) | +0.2 (+1.9) |
+| 18-35 | 12.2 (16.3) | 37.3 (36.3) | 11.5 (7.2) | 29.2 (32.1) | +0.8 (+3.1) |
+| 0-18 | | 33.9 (41.7) | 8.2 (5.8) | 36.3 (37.2) | |
+
+Stints a team-match 43.9 / 85.9 / 173.4 / 195.3 / 168.9 (69.1 / 94.3 / 137.1 / 170.7 / 218.5). Losses in midfield are
+real in number (32.9 v 32.4, 27.7 v 31.2); the surplus is ~55 stints a team-match that stay in their midfield band.
+
+**A MATE THERE** — new, `benchmarks_tracking_fbline.py` + harness §8.352: at each stint's first frame, by the ball's
+band, the share with an outfield mate in a zone, and the mates within 18 / 35 m of the line attacked:
+
+| ball | a mate 0-18 c | 0-18 w | 18-35 c | 18-35 w | 35-52 w | within 18 m | within 35 m |
+|---|---|---|---|---|---|---|---|
+| 0-18 | 82 (91) | 46 (52) | 95 (98) | 48 (45) | 26 (24) | 2.71 (3.61) | 5.80 (6.58) |
+| 18-35 | 34 (39) | 19 (16) | 88 (94) | 55 (60) | 54 (56) | 1.01 (1.15) | 3.92 (4.37) |
+| 35-52 | 10 (7) | 4 (2) | 62 (66) | 36 (43) | 65 (70) | 0.25 (0.15) | 1.98 (2.24) |
+| 52-70 | 2 (1) | 0 (0) | 34 (30) | 13 (14) | 56 (61) | 0.04 (0.02) | 0.77 (0.76) |
+| 70+ | 0 (0) | 0 (0) | 7 (4) | 2 (1) | 18 (27) | 0.00 (0.00) | 0.12 (0.06) |
+
+The men are where real ones are for the ball's band (a little short wide one band up: 36 v 43, 56 v 61, 18 v 27; and
+in the box once the ball is in it, 2.71 v 3.61). Not the receivers.
+
+**PASS POLICY as played against its table (StatsBomb zone → zone, `kTo`)** — from the final third the shares are
+real (18-35 centre → 0-18 30.1% v 31.8; 18-35 wide → 0-18 29.2 v 27.8). From midfield's centre they are not:
+
+| origin → | the same zone | the wide zone ahead | the wide zone level | the centre a band back |
+|---|---|---|---|---|
+| 35-52 centre | **44.7 (35.3)** | **6.4 (12.4)** | 12.1 (16.3) | 16.2 (11.5) |
+| 52-70 centre | **48.2 (35.8)** | **7.3 (12.0)** | 11.9 (15.8) | 12.6 (10.6) |
+
+The central man in midfield plays the central man beside him 45-48% of the time (35-36) and the wide man ahead half
+as often as a real one — §8.342's +37 short square and back passes, and why the wide 18-35 m zone strikes 21.5 passes a
+team-match against 36.4 (§8.351) and the last 18 m is fed half as often. The table's share reaches the chooser
+already halved for the wide zone ahead (pooled: real 7.8% → weight before the read 3.5 → chosen 3.7), with a mate there.
+
+Next: the chooser's chain for the central midfielder's ball to the wide zone ahead — by origin, with a mate there:
+the table's share, the weight before the read, after it, chosen (`passDiag` by origin × destination) — which step
+halves it (the wing split, the mark lift, the distance pick, the read); then the concept: `width` (13) names where he
+stands, `verticality` (19) / `switch` what the passer owes him. Harness only; tests 25/25; card as G5.244.
