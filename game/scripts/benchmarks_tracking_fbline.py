@@ -29,6 +29,9 @@ G5.242 (§8.348) THE ENGAGE CUE — every 5 Hz frame an outfield man is on the b
 ball on a man of the other side that next frame (taken off his feet)? As a rate per second on the ball, by his metres
 to the nearest touchline (0-5 / 5-14 / 14+; pitch 68 m wide), his nearest outfield opponent's metres (0-1.5 / 1.5-3 /
 3-5 / 5+) and whether a second opponent is within 5 m. [concept: engage-or-contain, game_concepts 157]
+G5.243 (§8.349) OFF HIS FEET, 2 S ON — each such taking (wide = within 14 m of a touchline / middle): 2 s later the
+ball is in play with the taker's side (kept) | with the side that had it (back) | play has stopped; and the taker's own
+stint on it, s med.
 fh-game-match prints the same as FB ON THE LINE. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
@@ -97,6 +100,15 @@ def one(pos_path):
         la0, gap0 = la, gap
         if ecf is not None:
             c[("ec_n",) + ecf[1]] += 1; c[("ec_o",) + ecf[1]] += man is not None and t != ecf[0]
+            if man is not None and t != ecf[0]:
+                w2 = int(abs(b[1]) >= 20); b2 = ball.get((k[0], k[1] + 50))
+                c[("of2", w2, 2 if b2 is None else 0 if b2[2] == t else 1)] += 1
+                ns = 1; kk2 = k
+                while True:
+                    kk2 = (kk2[0], kk2[1] + 5); bb = ball.get(kk2); mm = pl.get(kk2, {}).get(man)
+                    if bb is None or bb[2] != t or not mm or math.hypot(mm[0] - bb[0], mm[1] - bb[1]) > 2: break
+                    ns += 1
+                L[f"of2s{w2}"].append(ns / 5); c[("of2short", w2)] += ns <= 2
         ecf = None
         if man is not None and man not in keepers:
             ds = sorted(math.hypot(p[0] - b[0], p[1] - b[1]) for pid, p in ps.items() if who.get(pid) == 1 - t and pid not in keepers)
@@ -214,6 +226,9 @@ if __name__ == "__main__":
     for tb in range(3):
         print(f"    {tn[tb]}: " + " | ".join(" / ".join(f"{5 * c[('ec_o', tb, d, s2)] / max(1, c[('ec_n', tb, d, s2)]):.2f} ({c[('ec_n', tb, d, s2)] / 5 / tm2:.0f})" for d in range(4)) for s2 in (0, 1)))
     print("C++ cue row: {" + ", ".join(f"{5 * c[('ec_o', tb, d, s2)] / max(1, c[('ec_n', tb, d, s2)]):.3f}, {c[('ec_n', tb, d, s2)] / 5 / tm2:.1f}" for tb in range(3) for s2 in (0, 1) for d in range(4)) + "}")
+    print("  OFF HIS FEET, 2 S ON (G5.243) a team-match — kept / back with the side that had it / play stopped; the taker's stint s med, 0.4 s or less %: "
+          + " | ".join(f"{nm} " + " / ".join(f"{c[('of2', w, i)] / tm2:.1f}" for i in range(3)) + f"; {md(L[f'of2s{w}']):.1f} s, {100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}'])):.0f}%" for w, nm in ((1, "wide"), (0, "middle"))))
+    print("C++ of2 row: {" + ", ".join(f"{x:.1f}" for w in (1, 0) for x in [c[('of2', w, i)] / tm2 for i in range(3)] + [md(L[f'of2s{w}']), 100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}']))]) + "}")
     print("C++ wide3 row: {" + ", ".join(f"{x:.1f}" for x in [c['w3'] / tm2] + [c[f'w3e{i}'] / tm2 for i in range(7)] + [100 * c[f'w3r{r}'] / max(1, c['w3e4']) for r in range(6)]) + "}")
     print("C++ began row: {" + ", ".join(f"{x:.1f}" for i in range(5) for x in (c[f'hb{i}'] / (2 * len(files)), 100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']), md(L[f'hb{i}_d']))) + "}")
     print("C++ start row: {" + ", ".join(f"{x:.1f}" for x in [c['ps'] / (2 * len(files)), md(L['ps_len']), md(L['ps_fl']), md(L['ps_dk']), q(L['ps_dk'], .25), q(L['ps_dk'], .75)] + [100 * c[f'ps_b{i}'] / pm for i in range(4)]

@@ -13111,3 +13111,48 @@ touchline, v ours by mechanism (tackle clock, touch-to-steal, heavy touch).
 
 Also here: the 21 DefendingBlock behaviours carry their `// [behaviour: …]` tags (behaviours.list: 0 pending); test
 `engage_or_contain_is_off_without_its_rows`; tests 24/24.
+
+### 8.349 G5.243 — what the takings off a man's feet are: a touch and gone, and by the touchline it goes out; a blocked pass goes out 42% of the time, ours 7% (measured; a trial not shipped)
+
+From §8.348 (off his feet 42 a team-match v 68; tackles real at 20.7 v 20.3 — so the rest is not StatsBomb's tackle;
+its turnovers in play by dispossession / miscontrol / a failed take-on are 11.8 a team-match,
+`benchmarks_statsbomb_turnover.py`). `benchmarks_tracking_fbline.py` OFF HIS FEET, 2 S ON + harness §8.349: each taking,
+2 s later — the taker's side has it / the side that had it / play has stopped; the taker's own stint. Seeds 1000-4000 ×
+8, G5.242 (DFL in brackets):
+
+| a team-match | kept | back | play stopped | taker's stint 0.4 s or less |
+|---|---|---|---|---|
+| within 14 m of a touchline | 9.7 (16.1) | 2.5 (6.6) | **2.0 (8.4)** | 64% (66) |
+| middle | 21.3 (24.6) | 6.2 (8.3) | 2.1 (3.8) | 66% (70) |
+
+Two-thirds of real takings are one touch — a poke, a block, a clearance — not a man coming away with it; the middle is
+near real (29.6 v 36.7); by a touchline ours is half (14.2 v 31.1) and the ball going out is a quarter (2.0 v 8.4).
+
+**Trial, not shipped** — `physics.tackle.poke_away`: a won tackle's loose ball leaves on the side away from the tackler
+(it was a coin). Stopped by a touchline 2.0 → 1.9, throw-ins 18.4 → 19.0 (noise): a squirt is ~4 a team-match at 6 m/s.
+Code removed.
+
+**Blocked passes** — new `benchmarks_statsbomb_blockzone.py` (StatsBomb PL 15/16: open-play passes with an opponent's
+Block, by where struck, and the throw-in / corner that follows) + harness BLOCKED BY WHERE (their touch within 8 m of
+the kick). A team-match, blocked / then a throw-in / then a corner:
+
+| kick, m off the line attacked | 0-18 | 18-35 | 35-52 | 52-70 | 70+ | all |
+|---|---|---|---|---|---|---|
+| wide, ours | 0.91 / 0.09 / 0.07 | 1.52 / 0.11 / 0.04 | 2.09 / 0.23 / 0.04 | 1.52 / 0.23 / 0 | 0.75 / 0.09 / 0 | 6.78 / 0.77 / 0.17 |
+| wide, real | 2.21 / 0.63 / 0.71 | 1.28 / 0.51 / 0.07 | 1.19 / 0.51 / 0.01 | 1.05 / 0.51 / 0 | 1.35 / 0.76 / 0.01 | 7.08 / 2.92 / 0.80 |
+| middle, ours | 0.69 / 0 / 0.06 | 2.12 / 0.01 / 0.03 | 3.11 / 0.03 / 0 | 2.50 / 0.01 / 0 | 1.59 / 0.04 / 0 | 10.02 / 0.11 / 0.09 |
+| middle, real | 1.36 / 0.13 / 0.57 | 1.10 / 0.11 / 0.04 | 0.88 / 0.11 / 0.01 | 0.67 / 0.09 / 0 | 0.73 / 0.13 / 0.01 | 4.74 / 0.57 / 0.63 |
+
+By a touchline the count is real (6.8 v 7.1) — short in the last 18 m (0.9 v 2.2: the cross) and deep (0.75 v 1.35) —
+but a real blocked pass goes out 42% of the time (wide 53%), ours 7% (wide 14%): 2.6 throw-ins and 1.2 corners a
+team-match of the card's 18.4 v 23.1 and 2.8 v 5.4. §8.294 fitted the pace off the body (`physics.block.keep` 0.4) on the
+ball that stayed in; within 5 m of the touchline a real block is a throw-in 54%, ours 14% (§8.271's line). In the
+middle ours blocks twice the real count (10.0 v 4.7).
+
+The pace and the turn off the body are fitted; what is left is who blocks what: a real man pinned on the line plays it
+down the line or crosses it INTO his defender (the lane is shut and he plays it — off him, out, our throw 2.67 of the
+2.93), and the defender's first job out there is the block (`deny-the-cross`, game_concepts 127: "block the cross
+first, then steer him away"); ours passes only where the lane reads open, so what his defender blocks is the ball
+inside. Next: the blocked pass by the touchline — its direction (down the line / inside / back) and the blocker's spot
+off the passer (ahead on the line / inside), StatsBomb v ours; then `deny-the-cross` as the wide defender's capability
+and the pinned man's ball into him, rates from that table. Harness only; tests 24/24; card as G5.242.

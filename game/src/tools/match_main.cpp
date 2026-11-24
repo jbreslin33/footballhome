@@ -94,9 +94,10 @@ struct Stats {
     long orl_n[5][4] = {}, orl_bad[5][4] = {}, orl_fn[2][4] = {}, orl_fbad[2][4] = {};   // §8.343 own-third passes [GK / CB / FB / DM-CM / other][fwd ground / fwd high / square / back]; the FB's [wide / inside]
     long fbl_n = 0, fbl_line[3] = {}, fbl_ins = 0, fbl_role[6] = {}, fbl_lo3 = 0; std::vector<double> fbl_opp, fbl_ah, fbl_insd, fbl_lo;   // §8.344 FB ON THE LINE
     long fbp_n = 0, fbp_d[5] = {}, fbp_r[6] = {}, fbp_still = 0, fbp_in3 = 0; std::vector<double> fbp_d1, fbp_cl, fbp_len;   // §8.345 THE PRESS ON HIM
-    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long ec_n[3][2][4] = {}, ec_o[3][2][4] = {};   /* §8.348 */ long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
+    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long ec_n[3][2][4] = {}, ec_o[3][2][4] = {}, of2[2][3] = {}, of2_short[2] = {}; std::vector<double> of2_s[2];   /* §8.349 */   /* §8.348 */ long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
+    long bz_b[2][5] = {}, bz_t[2][5] = {}, bz_c[2][5] = {};   // §8.349 BLOCKED BY WHERE [wide][band of the kick]: blocked / then a throw-in / then a corner
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
@@ -763,7 +764,10 @@ int main(int argc, char** argv) {
                 if (dead) { if (dead_k0 < 0) { dead_k0 = k; dead_why = before ? ai::kWhyCount : last_kick_why; } if (W.restartTeam() != 0xFF) dead_kind = static_cast<int>(W.restartKind()); }
                 else if (dead_k0 >= 0) {
                     const int kd = std::min(14, std::max(0, dead_kind));
-                    if (!dead_skip) { ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); } if (kd == 2) { ++S.out_by[2][dead_why]; if (std::getenv("GAME_OUT_TRACE")) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); }   // §8.245 throw-ins
+                    if (!dead_skip) { ++S.dead_n[kd]; S.dead_s[kd].push_back((k - dead_k0) / 30.0); } if ((kd == 2 || kd == 4) && dead_why < ai::kWhyCount && dk_why < 100 && dead_why != static_cast<int>(ai::Why::Clear) && dead_why != static_cast<int>(ai::Why::Shoot) && W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k)) && std::hypot(W.deflectedAt().x.toDouble() - dk_x, W.deflectedAt().y.toDouble() - dk_y) < 8) {   // §8.349: a pass their man got a body to within 8 m of the kick (StatsBomb's Block), then out
+                        const double tlb = hx - dk_x * (dk_team == 0 ? 1.0 : -1.0); const int zb = tlb < 18 ? 0 : tlb < 35 ? 1 : tlb < 52 ? 2 : tlb < 70 ? 3 : 4, wb = std::fabs(dk_y) >= 20 ? 1 : 0;
+                        ++S.bz_b[wb][zb]; ++(kd == 2 ? S.bz_t : S.bz_c)[wb][zb]; }
+                    if (kd == 2) { ++S.out_by[2][dead_why]; if (std::getenv("GAME_OUT_TRACE")) std::fprintf(stderr, "out kind %d %s\n", kd, out_note); }   // §8.245 throw-ins
                     if (cl_band >= 0 && dead_why == static_cast<int>(ai::Why::Clear)) { if (kd == 4) ++S.cl_c[cl_band]; else if (kd == 2) ++S.cl_t[cl_band]; }   // §8.286
                     if (hc_band >= 0) { if (kd == 4) ++S.hc_c[hc_band]; else if (kd == 2) ++S.hc_t[hc_band]; }
                     cl_band = -1; hc_band = -1;
@@ -1850,6 +1854,7 @@ int main(int argc, char** argv) {
                         // §8.339: a pass their man got a body to on the way is Incomplete to StatsBomb whoever has it next (PL 15/16: 11.83
                         // open-play passes a team-match carry an opponent's Block, every one Incomplete; 0.45 are "deflected" and complete)
                         const bool blk = rel.kick && !rel.set && !rel.shot && W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k));
+                        if (blk && rel.why != static_cast<int>(ai::Why::Clear) && std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8) { const double tl5 = hx - rel.x * (rel.team == 0 ? 1.0 : -1.0); ++S.bz_b[std::fabs(rel.y) >= 20 ? 1 : 0][tl5 < 18 ? 0 : tl5 < 35 ? 1 : tl5 < 52 ? 2 : tl5 < 70 ? 3 : 4]; }
                         if (blk && rel.why != static_cast<int>(ai::Why::Clear)) { const double tlb = hx - rel.x * (rel.team == 0 ? 1.0 : -1.0); ++S.bk_n[tlb < 35 ? 0 : tlb < 70 ? 1 : 2][ep_who == 4 ? 0 : ep_who == 0 ? 1 : 2]; }
                         ep_defl = blk ? (std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8 ? 1 : 2) : 0;
                         // §8.340: a deflected pass ends where their man got to it (StatsBomb's end_location of a blocked pass), not where it was next owned
@@ -3109,7 +3114,14 @@ int main(int argc, char** argv) {
                 }
                 const double bs = cont ? std::hypot(f.bx - pv->bx, f.by - pv->by) * 5 : -1;
                 {   // §8.348 THE ENGAGE CUE (benchmarks_tracking_fbline.py) [concept: engage-or-contain]
-                    if (cont && ec_t >= 0) { ++S.ec_n[ec_a][ec_s][ec_d]; S.ec_o[ec_a][ec_s][ec_d] += man >= 0 && t != ec_t; }
+                    if (cont && ec_t >= 0) { ++S.ec_n[ec_a][ec_s][ec_d]; S.ec_o[ec_a][ec_s][ec_d] += man >= 0 && t != ec_t;
+                        if (man >= 0 && t != ec_t) {   // §8.349 OFF HIS FEET, 2 S ON
+                            const std::size_t fi2 = static_cast<std::size_t>(&f - fl_f.data()); const int w2 = std::fabs(f.by) >= 20;
+                            const bool live2 = fi2 + 10 < fl_f.size() && fl_f[fi2 + 10].k == f.k + 60;
+                            ++S.of2[w2][!live2 ? 2 : fl_f[fi2 + 10].a == t ? 0 : 1];
+                            int ns = 1; for (std::size_t j = fi2 + 1; j < fl_f.size() && fl_f[j].k == fl_f[j - 1].k + 6 && fl_f[j].a == t && std::hypot(fl_f[j].x[man] - fl_f[j].bx, fl_f[j].y[man] - fl_f[j].by) <= 2; ++j) ++ns;
+                            S.of2_s[w2].push_back(ns / 5.0); S.of2_short[w2] += ns <= 2;
+                        } }
                     ec_t = -1;
                     if (man >= 0 && !W.isKeeper(static_cast<std::uint8_t>(man))) {
                         double d1 = 1e9, d2 = 1e9;
@@ -3751,6 +3763,16 @@ int main(int argc, char** argv) {
                             std::printf("\n     §8.348 THE ENGAGE CUE: taken off his feet per second on the ball, s on it a team-match (real DFL in brackets) — nearest opponent 0-1.5 / 1.5-3 / 3-5 / 5+ m; alone | a second within 5 m");
                             for (int a2 = 0; a2 < 3; ++a2) { std::printf("\n       %s:", tn[a2]);
                                 for (int s2 = 0; s2 < 2; ++s2) { for (int d = 0; d < 4; ++d) { const int i = a2 * 16 + s2 * 8 + d * 2; std::printf(" %.2f, %.0f (%.2f, %.0f) /", 5.0 * S.ec_o[a2][s2][d] / std::max(1L, S.ec_n[a2][s2][d]), S.ec_n[a2][s2][d] / 5.0 / tmo, E[i], E[i + 1]); } std::printf(" |"); } } }
+                        {   static const double O[10] = {16.1, 6.6, 8.4, 0.4, 66.5, 24.6, 8.3, 3.8, 0.4, 69.8};
+                            std::printf("\n     §8.349 OFF HIS FEET, 2 S ON (a team-match: kept / back with the side that had it / play stopped; the taker's stint s med, 0.4 s or less %%; real DFL in brackets):");
+                            for (int w = 1; w >= 0; --w) { const double* o = O + (w ? 0 : 5); std::printf(" %s %.1f / %.1f / %.1f (%.1f / %.1f / %.1f); %.1f s, %.0f%% (%.1f, %.0f) |", w ? "wide" : "middle", S.of2[w][0] / tmo, S.of2[w][1] / tmo, S.of2[w][2] / tmo, o[0], o[1], o[2],
+                                qt(S.of2_s[w], .5), 100.0 * S.of2_short[w] / std::max<std::size_t>(1, S.of2_s[w].size()), o[3], o[4]); } }
+                        {   static const double Bz[30] = {2.21, 0.63, 0.71, 1.28, 0.51, 0.07, 1.19, 0.51, 0.01, 1.05, 0.51, 0.00, 1.35, 0.76, 0.01, 1.36, 0.13, 0.57, 1.10, 0.11, 0.04, 0.88, 0.11, 0.01, 0.67, 0.09, 0.00, 0.73, 0.13, 0.01};
+                            std::printf("\n     §8.349 BLOCKED BY WHERE (open-play passes their man got a body to within 8 m of the kick, a team-match: blocked / then a throw-in / then a corner, by the kick's m off the line attacked 0-18 / 18-35 / 35-52 / 52-70 / 70+; StatsBomb PL 15/16 in brackets):");
+                            for (int w = 1; w >= 0; --w) { std::printf(" %s", w ? "wide" : "| middle"); long tb = 0, tt = 0, tc = 0; double rb = 0, rt = 0, rc = 0;
+                                for (int z = 0; z < 5; ++z) { const double* r3 = Bz + (w ? 0 : 15) + 3 * z; std::printf(" %.2f / %.2f / %.2f (%.2f / %.2f / %.2f) |", S.bz_b[w][z] / tmo, S.bz_t[w][z] / tmo, S.bz_c[w][z] / tmo, r3[0], r3[1], r3[2]);
+                                    tb += S.bz_b[w][z]; tt += S.bz_t[w][z]; tc += S.bz_c[w][z]; rb += r3[0]; rt += r3[1]; rc += r3[2]; }
+                                std::printf(" all %.2f / %.2f / %.2f (%.2f / %.2f / %.2f)", tb / tmo, tt / tmo, tc / tmo, rb, rt, rc); } }
                         std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
                             for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }
