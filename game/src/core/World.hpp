@@ -358,6 +358,7 @@ private:
     std::uint8_t fk_taker_ = 0xFF; std::uint64_t fk_tick_ = 0;   // G5.182 (§8.288): the free kick's taker and his spell's first tick
     math::Fixed64 aerial_clear_up_{}, aerial_clear_behind_[2][2]{};
     math::Fixed64 aerial_pass_share_[5][2]{}, aerial_pass_err_{}, aerial_pass_err_duel_{}, aerial_pass_reach_{}, aerial_clear_range_{};   // G5.181 (§8.287): a headed pass's share by spot, aim error, reach   // G5.180 (§8.286): a headed clearance's pull upfield; its glance behind [0-6 / 6-18 m][inside / wide the box]
+    math::Fixed64 block_out_[4]{};   // G5.244 (§8.350): a blocked pass leaves toward the nearer touchline at this share, by the block's m off it 0-5 / 5-10 / 10-20 / 20+ (0 = a coin)
     math::Fixed64 aerial_goal_speed_{}, aerial_clear_speed_{}, aerial_nod_keep_{}, aerial_goal_err_{}, aerial_goal_err_duel_{}, aerial_clear_err_{}, clear_err_{}, block_turn_{}, block_keep_{};
     math::Fixed64 react_body_m_{};   // G5.200 (§8.306): the body's reach to a kick inside his reaction (0 = kPlayerRadius)
     int aerial_duels_ = 0, aerial_lone_ = 0, headers_at_goal_[2] = {}, headers_clear_[2] = {}, headers_pass_[2] = {}, body_blocks_[2] = {};

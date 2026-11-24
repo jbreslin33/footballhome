@@ -13156,3 +13156,51 @@ first, then steer him away"); ours passes only where the lane reads open, so wha
 inside. Next: the blocked pass by the touchline — its direction (down the line / inside / back) and the blocker's spot
 off the passer (ahead on the line / inside), StatsBomb v ours; then `deny-the-cross` as the wide defender's capability
 and the pinned man's ball into him, rates from that table. Harness only; tests 24/24; card as G5.242.
+
+### 8.350 G5.244 — a blocked pass leaves toward the nearer touchline, not on a coin (mig 1843; shipped; a trial not shipped)
+
+From §8.349 (a blocked pass goes out 42% of the time, ours 7%). `benchmarks_statsbomb_blockzone.py` BLOCKED BY THE
+TOUCHLINE + harness §8.350: passes struck within 5 m of a touchline by direction — a team-match / blocked / of the
+blocked, out % (seeds 1000-4000 × 8, G5.242; StatsBomb PL 15/16 in brackets):
+
+| | passes | blocked | of them out |
+|---|---|---|---|
+| down the line (within 30°) | 12.0 (18.0) | 0.78 (1.47) | 26% (65) |
+| forward inside | 6.2 (7.1) | 0.32 (0.50) | 38% (54) |
+| square inside | 16.0 (15.1) | 0.91 (0.82) | 24% (56) |
+| back | 13.5 (17.9) | 0.44 (0.30) | 12% (62) |
+
+Whatever its direction a real blocked pass by the touchline goes out more than half the time — the pass struck inside
+too. So not who passes where (§8.349's guess); the ball off the blocker. (Open beside it: the ball down the line 12.0 v
+18.0, blocked 6.5% v 8.2; the blocker within 2 m of the passer 44% v 21.)
+
+**Trial, not shipped** — `physics.block.keep_pass` 0.7 / 1.0 (a blocked pass's pace into the body; the shot's 0.4,
+§8.294): blocked passes out 11.9 → 23.3 / 27.4% (35.8) but the next touch in play 9.1 → 12.5 / 15.2 m (8.9), and a real
+loose ball after a block averages 5.6 m/s to that touch, ours 6.5 already. Not the pace. Code removed.
+
+**Which way** — WHICH WAY OFF THE BLOCK (StatsBomb: the block's spot → the next touch or the restart's spot): toward
+the nearer touchline / along / away by the block's m off it 0-5 / 5-10 / 10-20 / 20+ = 62 / 15 / 24, 60 / 9 / 31,
+57 / 8 / 35, 51 / 11 / 38% (toward the nearer goal line within 10 m 50-53 / 13 / 34-37). Ours drew the side of straight
+on by a coin (`World::deflectOffBody`, G5.163). **Change**: for a blocked pass the side is the one toward the nearer
+touchline at `physics.block.out_{0,5,10,20}` = **0.72 / 0.66 / 0.62 / 0.57** (toward of toward + away); a shot keeps
+the coin; no rows = the coin, goldens unchanged. The leg put out to a pass comes from inside
+[concept: jockey-angle, game_concepts 10 — "show him the touchline"].
+
+| | G5.242 | G5.244 | real |
+|---|---|---|---|
+| blocked within 5 m of the touchline: then a throw-in | 30% | 45% | 54 |
+| … 5-10 m | 18% | 21% | 35 |
+| blocked passes: corner / out else | 4.1 / 7.8% | 4.2 / 12.5% | 10.7 / 25.1 |
+| next touch in play, m p25 / med / p75 | 4.7 / 9.1 / 14.4 | 4.5 / 8.4 / 13.7 | 4.8 / 8.9 / 14.4 |
+| next touch the attackers' / the defenders' | 38.5 / 45.1% | 34.9 / 45.6% | 27.8 / 36.5 |
+| blocked by a touchline, then a throw-in, a team-match (§8.349) | 0.77 | 1.22 | 2.92 |
+| throw-ins / corners | 18.4 / 2.77 | 20.2 / 2.48 | 23.1 / 5.40 |
+| ball in play % | 58.7 | 57.9 | 55.2 |
+| goals / card | 2.19, 14 / 7 / 12 | 2.14, 12 / 9 / 12 | 1.35 |
+
+The throw-in lines move toward real and the ball that stays in goes as far as a real one. Shipped (`card_G5.244.txt`).
+Left: half the gap (out else 12.5 v 25.1) — beyond 5 m the ball has to carry 5-14 m and ours is picked up first (the
+attackers' 35% v 28); corners unmoved (2.5 v 5.4): the same lean toward the nearer goal line (50-53 toward / 34-37 away
+within 10 m) and the blocked cross in the last 18 m (0.9 blocked v 2.2, §8.349). Next: the cross into the full-back —
+blocked crosses a team-match by the crosser's spot and the blocker's distance (StatsBomb v ours), `deny-the-cross`
+(127) as the capability. Tests 25/25.

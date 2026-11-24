@@ -1382,7 +1382,20 @@ void World::deflectOffBody(SlotIndex blocker) {
         Fixed64 acc{}; int bin = 3;
         for (int b = 0; b < 4; ++b) { acc += block_turn_p_[kind][b]; if (u < acc) { bin = b; break; } }
         const Fixed64 w = (detNoise(match_seed_, clock_.tick(), blocker, 114) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
-        const Fixed64 side = detNoise(match_seed_, clock_.tick(), blocker, 115).raw < 0 ? -Fixed64::one() : Fixed64::one();
+        Fixed64 side = detNoise(match_seed_, clock_.tick(), blocker, 115).raw < 0 ? -Fixed64::one() : Fixed64::one();
+        // G5.244 (§8.350): which side of straight on — a coin for a shot; a blocked PASS goes toward the nearer touchline
+        // 62 / 60 / 57 / 51% of the time and away from it 24 / 31 / 35 / 38% by the block's m off that line 0-5 / 5-10 /
+        // 10-20 / 20+ (StatsBomb PL 15/16, benchmarks_statsbomb_blockzone.py WHICH WAY OFF THE BLOCK) — the leg put out
+        // to it comes from inside [concept: jockey-angle, "show him the touchline"]. Rows physics.block.out_*; none = the coin.
+        if (kind == 1) {
+            const Fixed64 tch = half_y_ - math::fx_abs(ball_.pos.y);
+            const Fixed64 po = block_out_[tch < Fixed64::fromInt(5) ? 0 : tch < Fixed64::fromInt(10) ? 1 : tch < Fixed64::fromInt(20) ? 2 : 3];
+            if (po.raw > 0) {
+                const Fixed64 u2 = (detNoise(match_seed_, clock_.tick(), blocker, 115) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                const bool out_pos = (ball_.vel.x.raw >= 0) == (ball_.pos.y.raw >= 0);   // +side turns it toward +y when vx > 0
+                side = (u2 < po) == out_pos ? Fixed64::one() : -Fixed64::one();
+            }
+        }
         ang = (Fixed64::fromInt(45 * bin) + Fixed64::fromInt(45) * w) * Fixed64::fromFraction(71, 4068) * side;
         v = Vec2{ball_.vel.x, ball_.vel.y};   // turned from carrying straight on
     }
@@ -1465,6 +1478,7 @@ void World::configureAerial(const ModelParams& p) {
     clear_err_ = p.fixed("physics.kick.clear_err_deg", 0);
     block_turn_ = p.fixed("physics.block.turn_deg", 60000);
     block_keep_ = p.fixed("physics.block.keep", 300);
+    { static const char* kB[4] = {"0", "5", "10", "20"}; for (int b = 0; b < 4; ++b) block_out_[b] = p.fixed((std::string("physics.block.out_") + kB[b]).c_str(), 0); }
     react_reach_ = p.fixed("physics.ball.react_reach", 1000).raw > 0;   // G5.165 (§8.271)
     react_body_m_ = p.fixed("physics.ball.react_body_m", 0);   // G5.200 (§8.306), 0 = kPlayerRadius
     block_unread_ticks_ = static_cast<std::uint64_t>(std::max<std::int64_t>(0, p.milli("physics.block.unread_s", 500) * 30 / 1000));   // G5.164 (§8.270)

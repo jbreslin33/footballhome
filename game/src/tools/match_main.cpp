@@ -97,6 +97,7 @@ struct Stats {
     long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long ec_n[3][2][4] = {}, ec_o[3][2][4] = {}, of2[2][3] = {}, of2_short[2] = {}; std::vector<double> of2_s[2];   /* §8.349 */   /* §8.348 */ long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
+    long tl_n[2][5] = {}, tl_h[2][5] = {}, tl_b[2][5] = {}, tl_o[2][5] = {}, tl_d[2][3] = {};   // §8.350 BLOCKED BY THE TOUCHLINE [0-5 / 5-14 m off it][direction]: passes / high / blocked / blocked then out; the blocker's m off the passer
     long bz_b[2][5] = {}, bz_t[2][5] = {}, bz_c[2][5] = {};   // §8.349 BLOCKED BY WHERE [wide][band of the kick]: blocked / then a throw-in / then a corner
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
@@ -1439,6 +1440,16 @@ int main(int argc, char** argv) {
                 if (rel.p >= 0 && !rel.kick && !rel.set && !rel.shot) { ++S.nk_n[ep_who]; rel = Rel{}; return; }   // §8.335: a touch that got away is not a pass (StatsBomb: a miscontrol / dispossession / carry)
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
+                {   // §8.350 BLOCKED BY THE TOUCHLINE (benchmarks_statsbomb_blockzone.py)
+                    const double tch = 34 - std::fabs(rel.y);
+                    if (tch < 14) {
+                        const int tb = tch < 5 ? 0 : 1; const double a = std::atan2((ey - rel.y) * (rel.y > 0 ? 1.0 : -1.0), (ex - rel.x) * sg) * 57.29578;
+                        const int d = (a > 30 && a < 150) ? 4 : std::fabs(a) <= 30 ? 0 : (a >= -60 && a < -30) ? 1 : (a >= -120 && a < -60) ? 2 : 3;
+                        const bool blk2 = W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k)) && std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8;
+                        ++S.tl_n[tb][d]; S.tl_h[tb][d] += rel.act == static_cast<int>(core::Action::LoftedKick);
+                        if (blk2) { ++S.tl_b[tb][d]; S.tl_o[tb][d] += W.outStage() != 0 || W.restartTeam() != 0xFF; const double dd = std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y); ++S.tl_d[tb][dd < 2 ? 0 : dd < 4 ? 1 : 2]; }
+                    }
+                }
                 ++S.passes; if (ok) ++S.pass_ok;   // §8.339: completed counted on the same cut as tried (it took in clearances and no-kick releases that reached a mate), and not when their man got a body to it
                 {   // §8.333 MIDFIELD LOSSES (benchmarks_statsbomb_midloss.py): open-play passes by the kick's m off the line attacked
                     const double tl = hx - rel.x * sg;
@@ -3773,6 +3784,12 @@ int main(int argc, char** argv) {
                                 for (int z = 0; z < 5; ++z) { const double* r3 = Bz + (w ? 0 : 15) + 3 * z; std::printf(" %.2f / %.2f / %.2f (%.2f / %.2f / %.2f) |", S.bz_b[w][z] / tmo, S.bz_t[w][z] / tmo, S.bz_c[w][z] / tmo, r3[0], r3[1], r3[2]);
                                     tb += S.bz_b[w][z]; tt += S.bz_t[w][z]; tc += S.bz_c[w][z]; rb += r3[0]; rt += r3[1]; rc += r3[2]; }
                                 std::printf(" all %.2f / %.2f / %.2f (%.2f / %.2f / %.2f)", tb / tmo, tt / tmo, tc / tmo, rb, rt, rc); } }
+                        {   static const char* dn[5] = {"down the line", "forward inside", "square inside", "back", "toward the touchline"};
+                            static const double Tn[2][5][4] = {{{18.0, 35, 1.47, 65}, {7.1, 32, 0.50, 54}, {15.1, 19, 0.82, 56}, {17.9, 3, 0.30, 62}, {1.0, 9, 0.05, 72}}, {{33.7, 34, 1.33, 44}, {12.7, 34, 0.54, 39}, {31.7, 21, 1.46, 54}, {25.0, 4, 0.28, 44}, {19.5, 6, 0.35, 35}}};
+                            static const double Td[2][3] = {{21, 53, 26}, {18, 47, 36}};
+                            for (int tb = 0; tb < 2; ++tb) { std::printf("\n     §8.350 BLOCKED BY THE TOUCHLINE, kick %s: passes a team-match / high %% / blocked / of the blocked out %% (StatsBomb PL 15/16 in brackets) —", tb ? "5-14 m" : "0-5 m off the touchline");
+                                long nb = 0; for (int d = 0; d < 5; ++d) { nb += S.tl_b[tb][d]; std::printf(" %s %.1f / %.0f / %.2f / %.0f (%.1f / %.0f / %.2f / %.0f) |", dn[d], S.tl_n[tb][d] / tmo, 100.0 * S.tl_h[tb][d] / std::max(1L, S.tl_n[tb][d]), S.tl_b[tb][d] / tmo, 100.0 * S.tl_o[tb][d] / std::max(1L, S.tl_b[tb][d]), Tn[tb][d][0], Tn[tb][d][1], Tn[tb][d][2], Tn[tb][d][3]); }
+                                std::printf(" the blocker 0-2 / 2-4 / 4+ m off the passer %.0f / %.0f / %.0f%% (%.0f / %.0f / %.0f)", 100.0 * S.tl_d[tb][0] / std::max(1L, nb), 100.0 * S.tl_d[tb][1] / std::max(1L, nb), 100.0 * S.tl_d[tb][2] / std::max(1L, nb), Td[tb][0], Td[tb][1], Td[tb][2]); } }
                         std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
                             for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }
