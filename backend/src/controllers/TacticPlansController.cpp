@@ -104,6 +104,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.get (prefix + "",                  [this](const Request& r) { return handleGet(r); });
     router.get (prefix + "/list",             [this](const Request& r) { return handleList(r); });
     router.get (prefix + "/taxonomy",         [this](const Request& r) { return handleTaxonomy(r); });
+    router.get (prefix + "/taxonomy/source",  [this](const Request& r) { return handleSource(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
@@ -146,6 +147,23 @@ Response TacticPlansController::handleTaxonomy(const Request& request) {
         return jsonOut(HttpStatus::OK, model_->taxonomy());
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleTaxonomy: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /taxonomy/source?file=&from=&to= — the engine's own C++ for a class or a behaviour.
+// Staff only: it is the club's source code.
+Response TacticPlansController::handleSource(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireStaff(request, &userId, &error)) return error;
+    try {
+        const json out = model_->source(request.getQueryParam("file"), static_cast<int>(idOf(request.getQueryParam("from"))),
+                                        static_cast<int>(idOf(request.getQueryParam("to"))));
+        if (out.empty()) return jsonError(HttpStatus::NOT_FOUND, "No such file.");
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleSource: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

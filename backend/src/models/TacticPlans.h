@@ -27,6 +27,9 @@ public:
     // that plays it (game_engine_acts) — plus techniques, roles, measures, the
     // Laws, and the engine's own vocabulary (game_engine_terms).  One query.
     nlohmann::json taxonomy();
+    // Lines from..to of one engine source file as exported to game_engine_sources
+    // (scripts/taxonomy/export_engine_index.py): { file, from, to, commit, text }.
+    nlohmann::json source(const std::string& file, int from, int to);
 
     // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
     // [code], in the dropdown's order.  lookups() carries it as "shortcuts".

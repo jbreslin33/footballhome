@@ -185,6 +185,7 @@ json TacticPlans::taxonomy() {
           'concepts',   (SELECT json_agg(json_build_object(
                              'id', c.id, 'name', c.name, 'title', c.title, 'family', c.family, 'moment', c.moment,
                              'cue', c.cue_answer, 'principle_id', c.principle_id,
+                             'status', c.status, 'lacking', c.lacking, 'taught_from', c.taught_from,
                              'job',  (SELECT k.code FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY k.sort_order LIMIT 1),
                              'rule', (SELECT k.rule FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY (k.rule = 'home'), k.sort_order LIMIT 1),
                              'act',  (SELECT a.code FROM game_engine_acts a WHERE a.concept_id = c.id ORDER BY a.code LIMIT 1),
@@ -198,10 +199,34 @@ json TacticPlans::taxonomy() {
           'measures',   (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_measures),
           'laws',       (SELECT json_agg(json_build_object('number', number, 'title', title, 'summary', summary) ORDER BY number) FROM game_ref_laws),
           'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note) ORDER BY kind, sort_order)
-                           FROM game_engine_terms)
+                           FROM game_engine_terms),
+          'links',      (SELECT json_agg(json_build_object('from', concept_id, 'to', other_id, 'kind', kind)) FROM game_concept_links),
+          'jobs',       (SELECT json_agg(json_build_object('code', code, 'concept_id', concept_id, 'label', label, 'rule', rule,
+                                                           'dist_m', dist_m, 'press_m', press_m, 'lane_t', lane_t) ORDER BY sort_order) FROM tactic_job_kinds),
+          'behaviours', (SELECT json_agg(json_build_object('code', code, 'file', file, 'line', line, 'symbol', symbol, 'class', class_name,
+                                                           'tag', tag, 'who', who, 'what', what, 'status', status, 'concept_id', concept_id,
+                                                           'other', other_concepts, 'suggested', suggested, 'confidence', confidence,
+                                                           'read', is_read) ORDER BY file, line) FROM game_engine_behaviours),
+          'classes',    (SELECT json_agg(json_build_object('name', name, 'file', file, 'from', line_start, 'to', line_end, 'parent', parent,
+                                                           'doc', doc, 'kind', kind) ORDER BY name) FROM game_engine_classes),
+          'commit',     (SELECT max(commit) FROM game_engine_sources)
         )::text AS doc)SQL");
     if (r.empty() || r[0]["doc"].is_null()) return json::object();
     return json::parse(r[0]["doc"].as<std::string>());
+}
+
+json TacticPlans::source(const std::string& file, int from, int to) {
+    auto* db = Database::getInstance();
+    if (from < 1) from = 1;
+    if (to < from) to = from;
+    if (to - from > 400) to = from + 400;   // a class or a function, not a file
+    const auto r = db->query(
+        "SELECT commit, line_count, array_to_string((string_to_array(body, E'\\n'))[$2::int:$3::int], E'\\n') AS text "
+        "  FROM game_engine_sources WHERE file = $1",
+        {file, std::to_string(from), std::to_string(to)});
+    if (r.empty()) return json::object();
+    return {{"file", file}, {"from", from}, {"to", std::min(to, r[0]["line_count"].as<int>())},
+            {"commit", r[0]["commit"].as<std::string>()}, {"text", r[0]["text"].is_null() ? "" : r[0]["text"].as<std::string>()}};
 }
 
 json TacticPlans::shortcuts() {
