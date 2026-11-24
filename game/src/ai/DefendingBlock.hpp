@@ -53,6 +53,10 @@ struct BlockParams {
     // other side is 1.2-2.0 m off a high ball at head height (DFL benchmarks_tracking_aerial.py).
     math::Fixed64 contest_min_z{};
     bool contest_close = true;   // G5.152 (§8.257): ours first by under cut_margin on their high ball — contest it too
+    // G5.242 (§8.348) [concept: engage-or-contain, game_concepts 157]: the presser steps in when his cover has arrived
+    // (a mate within engage_cover_m of the ball: his tackle clock × engage_cover) and when the carrier is pinned on the
+    // touchline (within pinned_m of it: his stand-off × pinned_scale). 0 = off (he contains on the flat clock).
+    math::Fixed64 engage_cover{}, engage_cover_m{}, pinned_scale{}, pinned_m{};
     bool press_on_pass = true;                      // G5.82 (§8.183): the presser steps out as their pass travels
     int cut_margin = 0;                             // G5.99 (§8.200): ticks our first must WIN their pass's race by to go for it
     int their_pass_margin = 0;                      // G5.82 (§8.183): ticks our first may lose their pass's race by and still go; -1 = off (always go)

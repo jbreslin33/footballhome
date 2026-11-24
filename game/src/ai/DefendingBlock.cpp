@@ -73,6 +73,7 @@ public:
 
 // The one man who steps to their carrier: stand_off metres goal-side of him,
 // on his line to our goal; in reach and goal-side he may dive in.
+// [behaviour: press_ball]
 class PressBall final : public ActingState {
 public:
     std::uint8_t id() const override { return 2; }
@@ -89,6 +90,7 @@ public:
         const Fixed64 off_line = c.world.pitchHalfX() + (flight ? crp.x : ball.pos.x) * v.sg;   // ball metres off our line
         const int band = off_line < Fixed64::fromInt(18) ? 0 : off_line < Fixed64::fromInt(35) ? 1
                        : off_line < Fixed64::fromInt(52) ? 2 : off_line < Fixed64::fromInt(70) ? 3 : 4;
+        // [behaviour: press_tight_wide_loose_central]
         // G5.218 (§8.324): their ball 70 m+ off our line — a real side closes it by the touchline (nearest man p25 / med /
         // p75 2.9 / 5.3 / 8.8 m) and stands off it in the middle (4.9 / 8.9 / 13.5), DFL benchmarks_tracking_deepwide.py;
         // the one row for the band (3.7 / 8.0 / 13.3) was the two blended. Rows physics.press.stand_off_deep_{c,w}_*; none = the band's.
@@ -96,17 +98,33 @@ public:
         const auto& q = dw >= 0 && c.block.params().stand_off_deep[dw][1].raw > 0 ? c.block.params().stand_off_deep[dw] : c.block.params().stand_off[band];
         const Fixed64 u = (core::detNoise(v.match_seed, c.world.ownedAtTick(), v.slot, 30) + Fixed64::one()) *
                           Fixed64::fromFraction(1, 2);   // [0, 1): p25 … p75
-        const Fixed64 off = u < Fixed64::fromFraction(1, 2) ? q[0] + (q[1] - q[0]) * u * 2
-                                                            : q[1] + (q[2] - q[1]) * (u * 2 - Fixed64::one());
+        Fixed64 off = u < Fixed64::fromFraction(1, 2) ? q[0] + (q[1] - q[0]) * u * 2
+                                                      : q[1] + (q[2] - q[1]) * (u * 2 - Fixed64::one());
+        // [behaviour: press_step_in_pinned_touchline]
+        // G5.242 (§8.348) engage-or-contain, "he is pinned on the touchline": within pinned_m of it a real man on the ball has
+        // an opponent inside 1.5 m 15% of his time (11% in the middle; DFL, benchmarks_tracking_fbline.py THE ENGAGE CUE).
+        const auto& ep = c.block.params();
+        if (!flight && ep.pinned_scale.raw > 0 && c.world.pitchHalfY() - math::fx_abs(ball.pos.y) < ep.pinned_m) off = off * ep.pinned_scale;
         o.target = len.raw > 0 ? Vec2{crp.x + to_goal.x * off / len, crp.y + to_goal.y * off / len}
                                : crp;
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
         o.move.face = flight ? Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y} : Vec2{crp.x - me.pos.x, crp.y - me.pos.y};
         o.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
         o.why = Why::Press;
+        // [behaviour: press_tackle_flat_clock]
         const bool goal_side = (me.pos.x - crp.x) * v.sg < Fixed64::zero();
         if (!flight && goal_side && distSq(me.pos, ball.pos) < core::kTackleReach * core::kTackleReach) {
-            const Fixed64 per_tick = c.block.params().tackle_per_s * core::kTickDt;
+            Fixed64 per_tick = c.block.params().tackle_per_s * core::kTickDt;
+            // [behaviour: press_engage_cover_arrived]
+            // G5.242 (§8.348) engage-or-contain, "your cover has arrived": with a second defender within 5 m the ball is taken
+            // off a man's feet 0.58-0.74 times a second v 0.44-0.53 alone (DFL) — ×1.38.
+            if (ep.engage_cover.raw > 0) {
+                bool cover = false;
+                for (std::uint8_t j = 0; j < c.world.playerCount() && !cover; ++j)
+                    cover = j != v.slot && c.world.player(j).team == me.team && !c.world.isKeeper(j) &&
+                            distSq(c.world.player(j).pos, ball.pos) < ep.engage_cover_m * ep.engage_cover_m;
+                if (cover) per_tick = per_tick * ep.engage_cover;
+            }
             const Fixed64 n = core::detNoise(v.match_seed, c.tick, v.slot, 29);   // [-1, 1)
             if ((n + Fixed64::one()) * Fixed64::fromFraction(1, 2) < per_tick) o.action = core::Action::Tackle;
         }
@@ -115,6 +133,7 @@ public:
 };
 
 // His team's man for a loose ball goes to where he can take it.
+// [behaviour: chase_ball]
 class ChaseBall final : public ActingState {
 public:
     std::uint8_t id() const override { return 3; }
@@ -130,6 +149,7 @@ public:
 // G5.72 (§8.173): goal-side of the man he marks, mark_d off him on the man's line to our goal's
 // centre, running with him (Brain::blockLead) and facing the ball. Coaching: goal-side, see man
 // and ball; tighter the nearer our goal [FH, fitted to DFL].
+// [behaviour: block_mark]
 class MarkMan final : public ActingState {
 public:
     std::uint8_t id() const override { return 4; }
@@ -140,6 +160,7 @@ public:
         const auto& me = c.world.player(v.slot);
         o.target = c.block.markPoint(v.team, m, c.world);
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 4));
+        // [behaviour: mark_see_man_and_ball]
         o.move.face = Vec2{c.world.ball().pos.x - me.pos.x, c.world.ball().pos.y - me.pos.y};
         o.other = static_cast<std::int16_t>(m);
         o.why = Why::Mark;
@@ -199,6 +220,7 @@ void BlockParams::configure(const core::ModelParams& p) {
     static const int kStagger[kBandCount] = {3200, 2800, 2800, 2800, 3000, 2800, 2800, 2900, 2800, 3700};
     for (int b = 0; b < kBandCount; ++b)
         stagger[b] = p.fixed(std::string("physics.block.stagger_") + std::to_string(b * 10 + 5), kStagger[b]);
+    // [behaviour: mark_tighten_near_goal]
     {   // G5.72 (§8.173): marking radius / stand-off by the attacker's m off our goal, mm [FH, fitted]
         static const int kR[4] = {12000, 8000, 8000, 6000}, kD[4] = {1500, 3000, 3000, 4000};
         for (int b = 0; b < 4; ++b) {
@@ -222,6 +244,8 @@ void BlockParams::configure(const core::ModelParams& p) {
         cut_margin = m.raw <= 0 ? 0 : static_cast<int>((m * Fixed64::fromInt(30)).raw >> Fixed64::FRAC_BITS);
     }
     press_on_pass = p.fixed("physics.press.on_pass", 1000).raw > 0;
+    engage_cover = p.fixed("physics.press.engage_cover", 0); engage_cover_m = p.fixed("physics.press.engage_cover_m", 5000);
+    pinned_scale = p.fixed("physics.press.pinned_scale", 0); pinned_m = p.fixed("physics.press.pinned_m", 5000);
     tackle_per_s = p.fixed("physics.press.tackle_per_s", 750);   // G5.147 (§8.251) fit: 0.5 → 0.75 = StatsBomb fouls 12.5 + tackle duels 20.3 a team-match
 }
 
@@ -258,16 +282,19 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
     if (live && !ball.owner && fr.live) {
         // Our pass (G4.81): the man it's for meets it; the rest let it run —
         // unless they get there first, when our first man goes too.
+        // [behaviour: recv_pass_is_his]
         const int to = ball.pass_to < world.playerCount() && team_of_slot[ball.pass_to] == team &&
                                world.lastTouchTeam() == team ? static_cast<int>(ball.pass_to) : -1;
         const int theirs = fr.first[team ^ 1];
         const bool their_pass = world.lastTouchTeam() != team && ball.pass_to < world.playerCount() && team_of_slot[ball.pass_to] != team;
         if (to >= 0 && fr.tick[to] >= 0 && (theirs < 0 || fr.tick[to] <= fr.tick[theirs])) ch = to;
+        // [behaviour: def_hold_job_on_their_pass]
         // G5.82 (§8.183): their pass, their man first to it by more than the margin — nobody of
         // ours chases it; each keeps his job (mark, block spot) and the presser steps to the man
         // once it is his. Real receivers of a 10-30 m pass have a man of ours inside 3 m at the
         // touch 5-10% (DFL, benchmarks_tracking_firsttouch.py RECEIVER SPACE); our first man ran
         // to where HE could first take it — down the line past their receiver, onto him — 22-28%.
+        // [behaviour: def_cut_out_their_pass]
         else if (params_.their_pass_margin >= 0 && their_pass && theirs >= 0 && fr.tick[theirs] >= 0 &&
                  (fr.first[team] < 0 || fr.tick[fr.first[team]] < 0 || fr.tick[fr.first[team]] > fr.tick[theirs] + params_.their_pass_margin ||
                   fr.tick[fr.first[team]] + params_.cut_margin > fr.tick[theirs])) {
@@ -277,6 +304,7 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         // Nobody of ours can get there inside the race read's horizon (a ball come
         // to rest far from everyone): our nearest goes — else it sat there for good.
         else ch = nearest(ch);
+        // [behaviour: def_contest_high_ball]
         // G5.71 (§8.172): their high ball, their man first to it — our nearest outfielder to
         // where he meets it goes there, to contest it in the air or be on him as it lands.
         // Without it our chaser ran to where HE could first take it, past their man: the
@@ -310,6 +338,7 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
     if (!(live && !ball.owner && fr.live)) contest_[team & 1] = -1;
     int& pr = presser_[team & 1];
     press_flight_[team & 1] = false;
+    // [behaviour: def_press_on_pass]
     if (live && !ball.owner && press_to >= 0 && params_.press_on_pass && contest_[team & 1] < 0) {
         // G5.82 (§8.183): our nearest to where their man meets it, held until another is switch_m nearer
         const Vec2 at = fr.at[press_to];
@@ -323,6 +352,7 @@ void DefendingBlock::assign(std::uint8_t team, const core::World& world, const s
         if (pr >= 0 && pr != best && team_of_slot[pr] == team && !world.isKeeper(static_cast<std::uint8_t>(pr)) &&
             math::fx_sqrt(distSq(world.player(static_cast<std::uint8_t>(pr)).pos, at3)) < math::fx_sqrt(bd) + params_.switch_m) best = pr;
         pr = best; press_at_[team & 1] = at; press_flight_[team & 1] = best >= 0;
+    // [behaviour: press_pick_one_nearest]
     } else if (!live || !ball.owner || team_of_slot[*ball.owner] == team) pr = -1;
     else pr = nearest(pr);
     assignCover(team, world, team_of_slot, role_of_slot);
@@ -339,6 +369,7 @@ int markBand(Fixed64 off_goal) {
 // (not the carrier — the presser has him) within mark_r of our man's block spot (his zone); nearest
 // in fact first, one marker a man, one man a marker; a pair already on counts switch_m nearer than
 // it is and holds to mark_r + 2·switch_m (held).
+// [behaviour: mark_pickup_in_zone]
 void DefendingBlock::assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                                  const std::vector<Vec2>& spot_of, const std::vector<bool>& marks) {
     int* mk = mark_[team & 1];
@@ -391,6 +422,7 @@ Vec2 DefendingBlock::markPoint(std::uint8_t team, int man, const core::World& wo
 // space behind; his partner stands higher), held until the other is switch_m
 // nearer. Real (DFL): the pair stands ~2.8 m apart in depth at every band; the
 // deeper man is the far one from the ball only half the time — not a side rule.
+// [behaviour: block_cover]
 void DefendingBlock::assignCover(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                                  const std::vector<Role>& role_of_slot) {
     int& dc = deep_cb_[team & 1];
@@ -418,6 +450,7 @@ void DefendingBlock::assignCover(std::uint8_t team, const core::World& world, co
     dc = pick; oc = pick == cb[0] ? cb[1] : cb[0];
 }
 
+// [behaviour: block_spot]
 Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
     const Fixed64 hx = world.pitchHalfX();
     // the ball's metres off our own line, where it's going (G5.30) — or, G5.162 (§8.267) with depth_now, where it is:
@@ -431,6 +464,7 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         if (deep_cb_[t] == v.slot) x -= half_gap;
         else if (other_cb_[t] == v.slot) x += half_gap;
     }
+    // [behaviour: block_height_per_spell]
     {   // G5.52: the block's depth for their possession, one roll for the team
         const Fixed64 u = (core::detNoise(v.match_seed, their_won_[v.team & 1], v.team, 68) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
         const Fixed64* q = params_.line_q;
@@ -447,6 +481,7 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         if (off_line < Fixed64::fromInt(18))
             off = off_line <= Fixed64::fromInt(9) ? Fixed64::zero() : off * (off_line - Fixed64::fromInt(9)) / Fixed64::fromInt(9);
         x += off;
+        // [behaviour: block_forward_offset_per_spell]
         // G5.70: and his own, one roll a man a spell (the tails held at p10 / p90), no fade:
         // the near-goal table inside 15 m, the far one from 25 m, blended between.
         const Fixed64 um = (core::detNoise(v.match_seed, their_won_[v.team & 1], v.slot, 71) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
@@ -456,6 +491,7 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         x += off_line <= n15 ? near : off_line >= n25 ? far : near + (far - near) * (off_line - n15) / (n25 - n15);
         if (x < Fixed64::one()) x = Fixed64::one();
     }
+    // [behaviour: block_step_up_deep_wide]
     {   // G5.219 (§8.325): their ball deep in their own third and by a touchline — a real block steps up on it (the spot
         // table is by the ball's depth alone): by role, metres higher (DFL benchmarks_tracking_deepwide.py THE OTHER
         // SIDE BY ROLE v ours). Full from 70 m off our line and 20.16 m off the centre line, faded in over the 5 m and
@@ -469,6 +505,7 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
             if (fy > Fixed64::one()) fy = Fixed64::one();
             x += up * fd * fy;
         }
+        // [behaviour: block_squeeze_deep_wide]
         // G5.221 (§8.327): and squeezes while it stays there — DFL by the spell's age (benchmarks_tracking_deepwide.py): the real
         // lines climb 0.5-1.4 m/s over the first ~7 s (CB 47.7 → 51.5 m off their line, ST 79.1 → 85.3). Rows; none = 0.
         const Fixed64 sq = params_.squeeze[static_cast<int>(v.role)];
@@ -480,6 +517,7 @@ Vec2 DefendingBlock::spot(const PlayerView& v, const core::World& world) const {
         }
     }
     Vec2 at{(x - hx) * v.sg, v.across_def};
+    // [behaviour: block_goal_side_of_ball]
     if (params_.gs_r.raw > 0) {   // G5.85 (§8.186): ball near our goal — between it and the goal
         const Vec2 g{-v.sg * hx, Fixed64::zero()};
         const Fixed64 db = math::length(Vec2{v.ball_to.x - g.x, v.ball_to.y - g.y});

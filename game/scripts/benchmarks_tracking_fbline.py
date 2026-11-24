@@ -25,6 +25,10 @@ G5.241 (§8.347) STINTS ENDING IN THEIR WIDE LAST THIRD — every stint of an ou
 within 35 m of the line he attacks and 14 m of a touchline: a team-match, and what came next: a mate after the ball
 travelled (a pass) | a mate straight off his feet | his own again | theirs straight off his feet (tackled; the winner's
 role) | theirs within 1 s | theirs later | play stopped.
+G5.242 (§8.348) THE ENGAGE CUE — every 5 Hz frame an outfield man is on the ball with the next frame in play: was the
+ball on a man of the other side that next frame (taken off his feet)? As a rate per second on the ball, by his metres
+to the nearest touchline (0-5 / 5-14 / 14+; pitch 68 m wide), his nearest outfield opponent's metres (0-1.5 / 1.5-3 /
+3-5 / 5+) and whether a second opponent is within 5 m. [concept: engage-or-contain, game_concepts 157]
 fh-game-match prints the same as FB ON THE LINE. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
@@ -68,7 +72,7 @@ def one(pos_path):
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
     c = collections.Counter(); L = collections.defaultdict(list)
-    keys = sorted(ball); prev_man = None; prev_k = None; la = None; gap = 0
+    keys = sorted(ball); prev_man = None; prev_k = None; la = None; gap = 0; ecf = None   # ecf: the last frame's engage-cue cell, if a man was on it
     def wide3(l):   # the stint whose last frame is l = (k, man, t): the ball in that side's wide last third, an outfield man's
         bl = ball[l[0]]
         return l[1] not in keepers and half + own[(l[0][0], l[2])] * bl[0] < 35 and abs(bl[1]) >= 20
@@ -80,8 +84,8 @@ def one(pos_path):
         cont = b is not None and prev_k is not None and prev_k[0] == k[0] and k[1] - prev_k[1] == 5
         if not cont and la is not None and wide3(la): c["w3"] += 1; c["w3e6"] += 1   # play stopped
         if not cont and la is not None and zone(la): c[("zn",) + zone(la)] += 1
-        if b is None: prev_man = None; prev_k = None; la = None; gap = 0; continue
-        if not cont: la = None; gap = 0
+        if b is None: prev_man = None; prev_k = None; la = None; gap = 0; ecf = None; continue
+        if not cont: la = None; gap = 0; ecf = None
         t = b[2]; ps = pl[k]
         man = None; md = 2.0
         for pid, p in ps.items():
@@ -91,6 +95,14 @@ def one(pos_path):
         new = man is not None and not (cont and prev_man == man)
         prev_man = man; prev_k = k
         la0, gap0 = la, gap
+        if ecf is not None:
+            c[("ec_n",) + ecf[1]] += 1; c[("ec_o",) + ecf[1]] += man is not None and t != ecf[0]
+        ecf = None
+        if man is not None and man not in keepers:
+            ds = sorted(math.hypot(p[0] - b[0], p[1] - b[1]) for pid, p in ps.items() if who.get(pid) == 1 - t and pid not in keepers)
+            if ds:
+                tch = 34 - abs(b[1])
+                ecf = (t, (0 if tch < 5 else 1 if tch < 14 else 2, 0 if ds[0] < 1.5 else 1 if ds[0] < 3 else 2 if ds[0] < 5 else 3, int(len(ds) > 1 and ds[1] < 5)))
         if new and la0 is not None and zone(la0):
             c[("zn",) + zone(la0)] += 1; c[("zo",) + zone(la0)] += la0[2] != t and gap0 == 0
         if new and la0 is not None and wide3(la0):
@@ -197,6 +209,11 @@ if __name__ == "__main__":
     print("  OFF HIS FEET BY WHERE (stints ending there a team-match, of them theirs straight off his feet) — m off the line attacked 0-18 / 18-35 / 35-52 / 52-70 / 70+: "
           + " | ".join(f"{nm} " + " / ".join(f"{c[('zn', z, w)] / tm2:.1f}, {c[('zo', z, w)] / tm2:.1f}" for z in range(5)) for w, nm in ((1, "wide"), (0, "middle"))))
     print("C++ zone row: {" + ", ".join(f"{c[(kk, z, w)] / tm2:.1f}" for w in (1, 0) for z in range(5) for kk in ("zn", "zo")) + "}")
+    tn = ["0-5 m off the touchline", "5-14 m", "14 m+"]
+    print("  THE ENGAGE CUE (G5.242): taken off his feet per second on the ball (s on it a team-match) — nearest opponent 0-1.5 / 1.5-3 / 3-5 / 5+ m; alone | a second within 5 m")
+    for tb in range(3):
+        print(f"    {tn[tb]}: " + " | ".join(" / ".join(f"{5 * c[('ec_o', tb, d, s2)] / max(1, c[('ec_n', tb, d, s2)]):.2f} ({c[('ec_n', tb, d, s2)] / 5 / tm2:.0f})" for d in range(4)) for s2 in (0, 1)))
+    print("C++ cue row: {" + ", ".join(f"{5 * c[('ec_o', tb, d, s2)] / max(1, c[('ec_n', tb, d, s2)]):.3f}, {c[('ec_n', tb, d, s2)] / 5 / tm2:.1f}" for tb in range(3) for s2 in (0, 1) for d in range(4)) + "}")
     print("C++ wide3 row: {" + ", ".join(f"{x:.1f}" for x in [c['w3'] / tm2] + [c[f'w3e{i}'] / tm2 for i in range(7)] + [100 * c[f'w3r{r}'] / max(1, c['w3e4']) for r in range(6)]) + "}")
     print("C++ began row: {" + ", ".join(f"{x:.1f}" for i in range(5) for x in (c[f'hb{i}'] / (2 * len(files)), 100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']), md(L[f'hb{i}_d']))) + "}")
     print("C++ start row: {" + ", ".join(f"{x:.1f}" for x in [c['ps'] / (2 * len(files)), md(L['ps_len']), md(L['ps_fl']), md(L['ps_dk']), q(L['ps_dk'], .25), q(L['ps_dk'], .75)] + [100 * c[f'ps_b{i}'] / pm for i in range(4)]

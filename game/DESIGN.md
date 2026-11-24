@@ -13059,3 +13059,55 @@ capability, off by default, let data set its use): the engage cue's signature on
 per second on it by his metres to the touchline, his nearest opponent's metres and whether a second defender is within
 5 m — then `engage-or-contain` as the presser's step-in (stand-off dropped when the carrier is pinned / cover has
 arrived), rate from that table. Harness only; tests 24/24; card as G5.239.
+
+### 8.348 G5.242 — engage-or-contain, off the shelf: the presser steps in when his cover has arrived and when the carrier is pinned on the touchline (mig 1824; shipped)
+
+From §8.347, on the 11/24 method (docs/taxonomy-one-system.md): the gap → the catalogue concept whose signature it is →
+that concept as a capability, off without its rows → its use from data. The concept: `engage-or-contain`
+(game_concepts 157) — "step in to win it when your cover has arrived, he turns his back, he is pinned on the
+touchline, or his touch is loose; otherwise contain and delay".
+
+**The cue's signature** — `benchmarks_tracking_fbline.py` THE ENGAGE CUE + harness §8.348: every 5 Hz frame an outfield
+man is on the ball — is it on a man of the other side the next frame — as a rate per second, by his metres to the
+touchline, his nearest opponent's metres and a second opponent within 5 m. With an opponent inside 1.5 m (rate, and the
+seconds a team-match in that cell; seeds 1000-4000 × 8, G5.239; DFL in brackets):
+
+| m off the touchline | alone | a second within 5 m |
+|---|---|---|
+| 0-5 | 0.34, 6 s (0.44, 13) | 0.36, 2 s (0.58, 8) |
+| 5-14 | 0.34, 11 s (0.46, 15) | 0.36, 6 s (0.65, 11) |
+| 14+ | 0.40, 28 s (0.53, 22) | 0.45, 18 s (0.74, 22) |
+
+Beyond 1.5 m it is not taken (0.05-0.15 at 1.5-3 m, nil further), ours as real. Real: **cover arrived lifts the rate
+×1.38** in every column (ours ×1.07); the touchline does not lift the rate, it lifts how long a defender is tight —
+within 5 m of it the nearest opponent is inside 1.5 / 3 m 15 / 42% of the man's time on the ball (further in 11 / 32%),
+ours 7 / 26%.
+
+**The capability** (`PressBall`, DefendingBlock.cpp; both off without their rows, goldens unchanged):
+- `press_engage_cover_arrived` — in tackle reach and goal-side, a mate within `physics.press.engage_cover_m` (5) of the
+  ball: the tackle clock × `physics.press.engage_cover` (**1.38**, the DFL ratio).
+- `press_step_in_pinned_touchline` — the carrier within `physics.press.pinned_m` (5) of a touchline: the rolled
+  stand-off × `physics.press.pinned_scale` (**0.7** — real nearest-opponent distance there against further in).
+
+| | G5.239 | cover only | G5.242 (both) | real |
+|---|---|---|---|---|
+| off his feet a second, inside 1.5 m, cover arrived (three columns' mean) | 0.39 | 0.42 | 0.41 | 0.66 |
+| a defender inside 3 m of a man within 5 m of the touchline, % of his time | 26 | 27 | 32 | 42 |
+| … seconds a team-match inside 1.5 m there | 8 | 8 | 10 | 21 |
+| off his feet by a touchline, a team-match (§8.347) | 12.9 | 13.8 | 14.6 | 31.4 |
+| tackles a team-match | 17.9 | 19.2 | 20.7 | 20.3 |
+| fouls | 11.7 | 12.1 | 13.5 | 12.5 |
+| passes / completion % | 403 / 77.1 | 411 / 77.1 | 408 / 77.0 | 434 / 77.5 |
+| goals / card | 2.33, 10 / 9 / 14 | 2.31, 12 / 5 / 16 | 2.19, 14 / 7 / 12 | 1.35 |
+
+Both lines move toward real at the data's own values and the match's tackles land on StatsBomb's (20.7 v 20.3). Shipped
+(`card_G5.242.txt`). What it does not close: the rate itself. With cover arrived ours is 0.41 a second v 0.66, and the
+rate inside 1.5 m by the touchline fell (0.34 → 0.25) as the presser stood nearer without being goal-side and in reach.
+Only the one presser may tackle and only on the clock; a real ball is also taken by the second man (double-team, 12),
+off a loose touch and with the carrier's back turned — the cue's other three clauses. The tackle total is real now, so
+the rest of the 68 a team-match is not StatsBomb's tackle: next, what those takings are — on StatsBomb, the events that
+end a man's possession at his feet (tackle / dispossessed / miscontrol / interception at his feet / 50-50) by cover and
+touchline, v ours by mechanism (tackle clock, touch-to-steal, heavy touch).
+
+Also here: the 21 DefendingBlock behaviours carry their `// [behaviour: …]` tags (behaviours.list: 0 pending); test
+`engage_or_contain_is_off_without_its_rows`; tests 24/24.

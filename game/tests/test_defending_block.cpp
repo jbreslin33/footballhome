@@ -179,3 +179,21 @@ FH_TEST(their_pass_no_chaser_presser_steps_out) {
     FH_EXPECT_EQ(b2.chaser(0), 5);
     FH_EXPECT_EQ(b2.presser(0), -1);
 }
+
+// G5.242 (§8.348) engage-or-contain: both cues are rows and are off without them — the presser then contains on the
+// flat clock and the goldens do not move.
+FH_TEST(engage_or_contain_is_off_without_its_rows) {
+    ai::DefendingBlock b;
+    b.configure(core::ModelParams{});
+    FH_EXPECT_EQ(b.params().engage_cover.raw, 0);
+    FH_EXPECT_EQ(b.params().pinned_scale.raw, 0);
+    FH_EXPECT_EQ(b.params().engage_cover_m.raw, Fixed64::fromInt(5).raw);
+    FH_EXPECT_EQ(b.params().pinned_m.raw, Fixed64::fromInt(5).raw);
+    core::ModelParams on;
+    on.setMilli("physics.press.engage_cover", 1380);
+    on.setMilli("physics.press.pinned_scale", 700);
+    ai::DefendingBlock b2;
+    b2.configure(on);
+    FH_EXPECT_EQ(b2.params().engage_cover.raw, Fixed64::fromFraction(138, 100).raw);
+    FH_EXPECT_EQ(b2.params().pinned_scale.raw, Fixed64::fromFraction(7, 10).raw);
+}

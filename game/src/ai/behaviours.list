@@ -17,27 +17,27 @@
 #
 # "pending" after a code = its tag is not in the source yet (the file was being worked on
 # when the tags went in); the lint lets it through. Remove the word when the tag lands.
-block_cover pending
-block_forward_offset_per_spell pending
-block_goal_side_of_ball pending
-block_height_per_spell pending
-block_mark pending
+block_cover
+block_forward_offset_per_spell
+block_goal_side_of_ball
+block_height_per_spell
+block_mark
 block_recover
 block_shift_while_ball_travels
 block_slide_across
-block_spot pending
-block_squeeze_deep_wide pending
-block_step_up_deep_wide pending
+block_spot
+block_squeeze_deep_wide
+block_step_up_deep_wide
 block_tracks_carrier
 block_width_narrow
-chase_ball pending
+chase_ball
 corner_delivery
-def_contest_high_ball pending
-def_cut_out_their_pass pending
+def_contest_high_ball
+def_cut_out_their_pass
 def_danger_get_back
-def_hold_job_on_their_pass pending
+def_hold_job_on_their_pass
 def_into_the_lane
-def_press_on_pass pending
+def_press_on_pass
 fk_into_box
 fk_stand_over_ball
 form_anchor_slide
@@ -57,10 +57,10 @@ keeper_set_position
 law_distance_at_restart
 law_out_of_their_box_goal_kick
 line_run_pace
-mark_pickup_in_zone pending
+mark_pickup_in_zone
 mark_run_with_man
-mark_see_man_and_ball pending
-mark_tighten_near_goal pending
+mark_see_man_and_ball
+mark_tighten_near_goal
 pass_first_time_when_pressed
 pass_keep_carry_feet
 pass_lead_into_path
@@ -138,10 +138,12 @@ poss_width_by_ball
 poss_width_by_ball_band
 poss_wing_support
 press_arrive_with_carrier
-press_ball pending
-press_pick_one_nearest pending
-press_tackle_flat_clock pending
-press_tight_wide_loose_central pending
+press_ball
+press_engage_cover_arrived
+press_pick_one_nearest
+press_step_in_pinned_touchline
+press_tackle_flat_clock
+press_tight_wide_loose_central
 race_arrive_on_time
 read_att_transition
 read_ball_destination
@@ -159,7 +161,7 @@ read_phase
 read_possession_side
 read_race
 recv_always_meets
-recv_pass_is_his pending
+recv_pass_is_his
 recv_track_rolling_ball
 restart_shape_hold
 restart_taker

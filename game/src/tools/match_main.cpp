@@ -94,7 +94,7 @@ struct Stats {
     long orl_n[5][4] = {}, orl_bad[5][4] = {}, orl_fn[2][4] = {}, orl_fbad[2][4] = {};   // §8.343 own-third passes [GK / CB / FB / DM-CM / other][fwd ground / fwd high / square / back]; the FB's [wide / inside]
     long fbl_n = 0, fbl_line[3] = {}, fbl_ins = 0, fbl_role[6] = {}, fbl_lo3 = 0; std::vector<double> fbl_opp, fbl_ah, fbl_insd, fbl_lo;   // §8.344 FB ON THE LINE
     long fbp_n = 0, fbp_d[5] = {}, fbp_r[6] = {}, fbp_still = 0, fbp_in3 = 0; std::vector<double> fbp_d1, fbp_cl, fbp_len;   // §8.345 THE PRESS ON HIM
-    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
+    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long ec_n[3][2][4] = {}, ec_o[3][2][4] = {};   /* §8.348 */ long w3_n = 0, w3_e[7] = {}, w3_r[7] = {}, zo_n[5][2] = {}, zo_o[5][2] = {};   /* §8.347 */ long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -3091,6 +3091,7 @@ int main(int argc, char** argv) {
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
             double la_bx = 0, la_by = 0; int gapn = 0;   // §8.337
             int la_man = -1;   // §8.346: the man of the stint just ended
+            int ec_t = -1, ec_a = 0, ec_s = 0, ec_d = 0;   // §8.348: the last frame's engage-cue cell (side on it, touchline / second / distance), -1 = no man on it
             bool la_out = false; int la_wd = 0;   // §8.347: an outfield man's; wide (|y| >= 20)
             bool la_w3 = false;   // §8.347: its last frame had the ball in that side's wide last third, an outfield man's
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
@@ -3107,6 +3108,16 @@ int main(int argc, char** argv) {
                     if (d < mdd) { mdd = d; man = p2; }
                 }
                 const double bs = cont ? std::hypot(f.bx - pv->bx, f.by - pv->by) * 5 : -1;
+                {   // §8.348 THE ENGAGE CUE (benchmarks_tracking_fbline.py) [concept: engage-or-contain]
+                    if (cont && ec_t >= 0) { ++S.ec_n[ec_a][ec_s][ec_d]; S.ec_o[ec_a][ec_s][ec_d] += man >= 0 && t != ec_t; }
+                    ec_t = -1;
+                    if (man >= 0 && !W.isKeeper(static_cast<std::uint8_t>(man))) {
+                        double d1 = 1e9, d2 = 1e9;
+                        for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) { const double dd = std::hypot(f.x[q2] - f.bx, f.y[q2] - f.by); if (dd < d1) { d2 = d1; d1 = dd; } else if (dd < d2) d2 = dd; }
+                        const double tch = 34 - std::fabs(f.by);
+                        if (d1 < 1e8) { ec_t = t; ec_a = tch < 5 ? 0 : tch < 14 ? 1 : 2; ec_d = d1 < 1.5 ? 0 : d1 < 3 ? 1 : d1 < 5 ? 2 : 3; ec_s = d2 < 5; }
+                    }
+                }
                 if (man >= 0) {
                     ++S.bt_on[z]; if (bs >= 0) { S.bt_bo[z].push_back(bs); S.bt_ms[z].push_back(std::hypot(f.x[man] - pv->x[man], f.y[man] - pv->y[man]) * 5); }
                     if (st_man == man && cont) ++st_n;
@@ -3735,6 +3746,11 @@ int main(int argc, char** argv) {
                             static const double Z[20] = {25.1, 3.4, 47.6, 8.0, 71.2, 5.9, 76.4, 7.6, 68.9, 6.5, 44.1, 9.9, 46.7, 7.9, 65.9, 8.2, 92.9, 5.3, 102.4, 5.1};
                             auto zline = [&]() { std::printf("\n       OFF HIS FEET BY WHERE (stints ending there a team-match, of them theirs straight off his feet; m off the line attacked 0-18 / 18-35 / 35-52 / 52-70 / 70+):");
                                 for (int w = 1; w >= 0; --w) { std::printf(" %s", w ? "wide" : "| middle"); for (int z = 0; z < 5; ++z) { const int i = (w ? 0 : 10) + 2 * z; std::printf(" %.1f, %.1f (%.1f, %.1f) /", S.zo_n[z][w] / tmo, S.zo_o[z][w] / tmo, Z[i], Z[i + 1]); } } }; for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100.0 * S.w3_r[r] / std::max(1L, S.w3_e[4]), V[8 + r]); zline(); }
+                        {   static const double E[48] = {0.439, 13.0, 0.064, 27.9, 0.000, 31.1, 0.000, 48.5, 0.580, 7.9, 0.087, 10.7, 0.020, 3.5, 0.000, 0.0, 0.462, 14.7, 0.048, 37.1, 0.005, 47.2, 0.000, 96.2, 0.645, 11.4, 0.109, 19.6, 0.000, 8.4, 0.000, 0.0, 0.528, 21.6, 0.065, 49.6, 0.003, 68.2, 0.001, 182.8, 0.736, 22.3, 0.147, 32.5, 0.020, 14.3, 0.000, 0.0};
+                            static const char* tn[3] = {"0-5 m off the touchline", "5-14 m", "14 m+"};
+                            std::printf("\n     §8.348 THE ENGAGE CUE: taken off his feet per second on the ball, s on it a team-match (real DFL in brackets) — nearest opponent 0-1.5 / 1.5-3 / 3-5 / 5+ m; alone | a second within 5 m");
+                            for (int a2 = 0; a2 < 3; ++a2) { std::printf("\n       %s:", tn[a2]);
+                                for (int s2 = 0; s2 < 2; ++s2) { for (int d = 0; d < 4; ++d) { const int i = a2 * 16 + s2 * 8 + d * 2; std::printf(" %.2f, %.0f (%.2f, %.0f) /", 5.0 * S.ec_o[a2][s2][d] / std::max(1L, S.ec_n[a2][s2][d]), S.ec_n[a2][s2][d] / 5.0 / tmo, E[i], E[i + 1]); } std::printf(" |"); } } }
                         std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
                             for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }
