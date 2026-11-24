@@ -10,8 +10,10 @@
 // search box narrows by name, team or league.  Under them (mig 1778, owner:
 // "apsl pill then apsl confs. casa pill then casa confs … or all"): a row
 // of league pills, then the chosen league's conferences, then the chosen
-// conference's divisions — each row starts with All; a card shows when any
-// of its teams is in the pick.  The fold at the bottom says
+// conference's divisions — each row starts with All.  Pills toggle, several
+// can be on: the pick centres the query — every name with a team in a
+// picked league shows with all its teams (UPSL included), several pills =
+// any of them; the picked league's lines are highlighted on each card.  The fold at the bottom says
 // where each roster came from and when it was read.
 //
 // The server re-reads the rosters when they are a day old (a sweep of ~200
@@ -37,9 +39,9 @@ class DualRosteringScreen extends Screen {
     this.error = null;
     this.view = 'cross';   // cross | same | tri | all
     this.q = '';
-    this.group = '';      // league pill ('' = all), then its conference, then its division
-    this.sub = '';
-    this.div = '';
+    this.groups = [];     // league pills on (none = all); per league its conferences; per conference its divisions
+    this.subs = {};       // league → [conference, …]
+    this.divs = {};       // 'league|conference' → [division, …]
     this._timer = null;
     this.pasteNote = null;   // the last save's answer, shown in the paste fold
     this.pasteOpen = false;
@@ -127,6 +129,7 @@ class DualRosteringScreen extends Screen {
         .dr-head { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
         .dr-chip { font-size:0.72rem; font-weight:700; padding:1px 8px; border-radius:999px; background:rgba(148,163,184,0.18); white-space:nowrap; }
         .dr-row { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:baseline; font-size:0.85rem; padding:4px 0 0 4px; border-top:1px solid var(--border-color); margin-top:4px; }
+        .dr-row.picked { background:rgba(59,130,246,0.16); box-shadow:inset 3px 0 0 var(--primary-color); border-radius:4px; padding-left:8px; }
         .dr-src { font-size:0.8rem; padding:3px 0; display:flex; flex-wrap:wrap; gap:4px 10px; }
       </style>
       <div style="padding: var(--space-4); max-width: 900px; margin: 0 auto;">
@@ -186,12 +189,25 @@ class DualRosteringScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       const v = e.target.closest('[data-dr-view]');
       if (v) { this.view = v.dataset.drView; this._render(); return; }
-      const g = e.target.closest('[data-dr-group]');
-      if (g) { this.group = g.dataset.drGroup; this.sub = ''; this.div = ''; this._render(); return; }
-      const sb = e.target.closest('[data-dr-sub]');
-      if (sb) { this.sub = sb.dataset.drSub; this.div = ''; this._render(); return; }
-      const dv = e.target.closest('[data-dr-div]');
-      if (dv) { this.div = dv.dataset.drDiv; this._render(); return; }
+      const pick = e.target.closest('[data-dr-pick]');
+      if (pick) {
+        const v = pick.dataset.drV, g = pick.dataset.drG, kind = pick.dataset.drPick;
+        if (kind === 'group') {
+          if (!v) { this.groups = []; this.subs = {}; this.divs = {}; }
+          else {
+            this._toggle(this.groups, v);
+            if (!this.groups.includes(v)) { delete this.subs[v]; Object.keys(this.divs).filter(k => k.startsWith(v + '|')).forEach(k => delete this.divs[k]); }
+          }
+        } else if (kind === 'sub') {
+          if (!v) this.subs[g] = []; else this._toggle(this.subs[g] = this.subs[g] || [], v);
+          Object.keys(this.divs).filter(k => k.startsWith(g + '|')).forEach(k => delete this.divs[k]);
+        } else {
+          const key = g + '|' + pick.dataset.drS;
+          if (!v) this.divs[key] = []; else this._toggle(this.divs[key] = this.divs[key] || [], v);
+        }
+        this._render();
+        return;
+      }
       if (e.target.closest('[data-dr-refresh]')) { this._refresh(); return; }
       if (e.target.closest('[data-dr-paste-save]')) { this._savePaste(); return; }
       const rm = e.target.closest('[data-dr-paste-remove]');
@@ -299,13 +315,29 @@ class DualRosteringScreen extends Screen {
     if (view === 'tri') return m.teams >= 3;
     return true;
   }
-  // Is one of the card's teams in the league / conference / division picked?
-  _inLeague(m, group = this.group, sub = this.sub, div = this.div) {
-    if (!group) return true;
-    return (m.rows || []).some(r => r.group === group && (!sub || r.sub === sub) && (!div || r.division === div));
+  // The league pills are the pick (owner 11/23: "the pills should be the one
+  // to highlight and find matches with that one. but allow for clicking more
+  // than one. but if we click apsl but not upsl it should show if apsl guy is
+  // upsl" · "its just a way to center the query").  A pill toggles; none on
+  // = everything.  The pick is the centre of the query: every name with a
+  // team in a picked league (or its picked conferences / divisions) shows,
+  // with ALL its teams — so APSL alone still shows the APSL man who is also
+  // UPSL.  Several pills = any of them.  The picked teams are the
+  // highlighted lines on each card; the search box narrows further ("UPSL").
+  _rowIn(r, g) {
+    if (r.group !== g) return false;
+    const subs = this.subs[g] || [];
+    if (subs.length && !subs.includes(r.sub)) return false;
+    const divs = this.divs[g + '|' + r.sub] || [];
+    return !divs.length || divs.includes(r.division);
   }
-  // The pill rows: every league, the picked league's conferences, the picked
-  // conference's divisions (only when it has more than one), in the DB's order.
+  _rowPicked(r) { return this.groups.some(g => this._rowIn(r, g)); }
+  _inLeague(m) { return !this.groups.length || (m.rows || []).some(r => this._rowPicked(r)); }
+  _toggle(list, v) { const i = list.indexOf(v); if (i >= 0) list.splice(i, 1); else list.push(v); }
+
+  // The pill rows: every league; under it, per league picked, its
+  // conferences; under a league with exactly one conference picked, that
+  // conference's divisions (when it has more than one) — in the DB's order.
   _leaguePills(matches) {
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const inView = matches.filter(m => this._inView(m, this.view));
@@ -315,28 +347,33 @@ class DualRosteringScreen extends Screen {
       list.forEach(r => { if (r[key] && !seen.has(r[key])) seen.set(r[key], ord(r)); });
       return [...seen.entries()].sort((a, b) => a[1] - b[1] || String(a[0]).localeCompare(String(b[0]))).map(x => x[0]);
     };
-    const row = (attr, picked, allLabel, values, count, label = (v) => v) => `
+    const count = (test) => inView.filter(m => (m.rows || []).some(test)).length;
+    const row = (attrs, picked, allLabel, values, n, label = (v) => v) => `
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px;">
-        <button type="button" class="dr-pill ${picked === '' ? 'on' : ''}" ${attr}="">${esc(allLabel)} (${count('')})</button>
-        ${values.map(v => `<button type="button" class="dr-pill ${picked === v ? 'on' : ''}" ${attr}="${esc(v)}">${esc(label(v))} (${count(v)})</button>`).join('')}
+        <button type="button" class="dr-pill ${picked.length ? '' : 'on'}" ${attrs} data-dr-v="">${esc(allLabel)}</button>
+        ${values.map(v => `<button type="button" class="dr-pill ${picked.includes(v) ? 'on' : ''}" ${attrs} data-dr-v="${esc(v)}">${esc(label(v))} (${n(v)})</button>`).join('')}
       </div>`;
-    // "Delaware River Conference (Pennsylvania & New Jersey) - Group A" under Delaware River → "Group A".
-    const short = (v) => {
-      if (!String(v).startsWith(this.sub)) return v;
-      const cut = v.lastIndexOf(' - ');
-      const rest = cut >= 0 ? v.slice(cut + 3) : v.slice(this.sub.length).replace(/^\s*Conference\s*/, '').replace(/^[\s–-]+/, '');
-      return rest.trim() || v;
-    };
-    const n = (g, s2, d2) => inView.filter(m => this._inLeague(m, g, s2, d2)).length;
-    let html = row('data-dr-group', this.group, this._c('league_all', {}, 'All leagues'), uniq(rows, 'group', r => r.go), g => n(g, '', ''));
-    if (this.group) {
-      const inGroup = rows.filter(r => r.group === this.group);
-      html += row('data-dr-sub', this.sub, this._c('sub_all', { league: this.group }, `All ${this.group}`), uniq(inGroup, 'sub', r => r.so), s2 => n(this.group, s2, ''));
-      if (this.sub) {
-        const divs = uniq(inGroup.filter(r => r.sub === this.sub), 'division', () => 0);
-        if (divs.length > 1) html += row('data-dr-div', this.div, this._c('sub_all', { league: this.sub }, `All ${this.sub}`), divs, d2 => n(this.group, this.sub, d2), short);
-      }
-    }
+    const groups = uniq(rows, 'group', r => r.go);
+    let html = row('data-dr-pick="group"', this.groups, this._c('league_all', {}, 'All leagues'), groups, g => count(r => r.group === g));
+    groups.filter(g => this.groups.includes(g)).forEach(g => {
+      const inGroup = rows.filter(r => r.group === g);
+      const subs = this.subs[g] || [];
+      html += row(`data-dr-pick="sub" data-dr-g="${esc(g)}"`, subs, this._c('sub_all', { league: g }, `All ${g}`),
+                  uniq(inGroup, 'sub', r => r.so), s => count(r => r.group === g && r.sub === s));
+      if (subs.length !== 1) return;
+      const sub = subs[0];
+      const divs = uniq(inGroup.filter(r => r.sub === sub), 'division', () => 0);
+      if (divs.length < 2) return;
+      // "Delaware River Conference (Pennsylvania & New Jersey) - Group A" under Delaware River → "Group A".
+      const short = (v) => {
+        if (!String(v).startsWith(sub)) return v;
+        const cut = v.lastIndexOf(' - ');
+        const rest = cut >= 0 ? v.slice(cut + 3) : v.slice(sub.length).replace(/^\s*Conference\s*/, '').replace(/^[\s–-]+/, '');
+        return rest.trim() || v;
+      };
+      html += row(`data-dr-pick="div" data-dr-g="${esc(g)}" data-dr-s="${esc(sub)}"`, this.divs[g + '|' + sub] || [],
+                  this._c('sub_all', { league: sub }, `All ${sub}`), divs, d => count(r => r.group === g && r.sub === sub && r.division === d), short);
+    });
     return html;
   }
   _matchesSearch(m) {
@@ -400,7 +437,7 @@ class DualRosteringScreen extends Screen {
       return `<div class="dr-card">
           <div class="dr-head"><span style="font-weight:800; flex:1 1 180px; min-width:0;">${esc(name)}</span>${chips}</div>
           ${rows.map(r => `
-            <div class="dr-row">
+            <div class="dr-row ${this._rowPicked(r) ? 'picked' : ''}">
               <span style="font-weight:700;">${esc(r.team)}</span>
               <span style="opacity:0.75;">${esc(where(r))}</span>
               ${r.name !== name ? `<span style="opacity:0.75;">“${esc(r.name)}”</span>` : ''}
