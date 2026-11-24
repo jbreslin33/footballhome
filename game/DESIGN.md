@@ -12911,3 +12911,27 @@ kicker's own touchline keeps half its share when the read says theirs. FB forwar
 stops him — there is seldom a man on the line ahead of him to play to. Code removed. Next: at the full-back's touch in
 our own third, who is ahead of him down the line and how far (DFL v ours) — the wide man's depth, not the passer's
 nerve. Harness only; tests 23/23.
+
+### 8.344 G5.238 — the full-back by his touchline has the man down the line as often as a real one; what he lacks is the press on him (measured; no game change)
+
+From §8.343 ("there is seldom a man on the line ahead of him" — wrong). New `scripts/benchmarks_tracking_fbline.py`
+(DFL, 7 matches, 5 Hz) + harness §8.344 FB ON THE LINE: the first frame of each stint of a full-back on the ball
+within 35 m of his own line and 14 m of a touchline. Seeds 1000-4000 × 8, G5.235:
+
+| | ours | real |
+|---|---|---|
+| stints a team-match | 18.0 | 20.0 |
+| mates down the line (3 m+ ahead, within 14 m of that touchline): none / one / two+ | 14 / 44 / 42% | 20 / 40 / 40% |
+| the nearest of them, m ahead med [p25-p75] | 12.4 [7.2-18.8] | 14.1 [6.0-24.7] |
+| … he is WIDE / DM-CM / CB | 56 / 29 / 10% | 53 / 28 / 7% |
+| … his nearest opponent med, inside 3 m | 5.0 m, **23%** | 4.1 m, **36%** |
+| the full-back's own nearest opponent, med | **6.7 m** | **5.2 m** |
+| mates ahead inside (3 m+ ahead, within 30 m, not on the line) | 2.17 | 1.64 |
+
+The shape is real: the man down the line is there as often, as far, and he is the same man. What differs is the
+other side — it stands 1.5 m further off the full-back and marks the line man tight a third less often — and he has
+half a man more inside. A real full-back by his touchline is closed down and plays it down the line into a marked
+man (forward ground 3.5 tried / 1.2 lost, §8.343); ours is left alone and plays square. It is the card's
+passes-under-pressure line (11.9% v 17.0) at one spot, and the reason §8.343's risk trial moved so little: the pass
+was never forced. Next: the press on the full-back by his touchline — who closes him, from how far and how fast, and
+who takes the line man (DFL v ours). Harness only; tests 23/23.
