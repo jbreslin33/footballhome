@@ -457,7 +457,7 @@ void GameServer::practiceStart() {
     for (std::uint32_t t = 0; t < cfg_.practice_preroll_ticks; ++t) {
         const int taker = world_.restartTeam() == team ? brain_.restartTaker(world_, team) : -1;
         for (std::uint8_t slot = 0; slot < cfg_.slot_count; ++slot) {
-            ai::Orders o = brain_.ordersFor(slot, world_);
+            ai::Orders o = decide(slot);
             if (slot == taker) o.action = core::Action::None;   // he walks to the ball and waits for the coach: no kick
             last_orders_[slot] = o;
             applyOrders(slot, o);
@@ -499,7 +499,7 @@ void GameServer::tickOnce() {
             last_orders_[slot].why = ai::Why::Human;
             continue;
         }
-        const ai::Orders o = brain_.ordersFor(slot, world_);
+        const ai::Orders o = decide(slot);
         last_orders_[slot] = o;
         applyOrders(slot, o);
     }
@@ -575,7 +575,7 @@ void GameServer::sendBrain() {
         e.other = o.other >= 0 && o.other < 255 ? static_cast<std::uint8_t>(o.other) : 255;
         {   // 2.2: the concept he's playing out of possession (tactics trainer step 1)
             const auto slot = static_cast<core::SlotIndex>(bf.slots.size());
-            e.concept_id = act_concept_[static_cast<int>(brain_.actOf(slot, world_, o))];
+            e.concept_id = conceptOf(slot, o);
         }
         bf.slots.push_back(e);
     }

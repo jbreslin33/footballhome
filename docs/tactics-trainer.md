@@ -6,6 +6,12 @@ league teams that 'teach' the tactics" · "i would like to train from the game t
 option" · "maybe we skip the lh one and focus on teaching the ones from premier league. then when
 they are mature we add lh specific? this way the premier league stuff is not contaminated" · "yes".
 
+> **2026-11-24:** the trainer left the game page. `game.html` is the pure sim (no rooms, no
+> play controls); the practice room, ⏭ Next pass and 📋 Copy to our tactics live on
+> `/teach.html` — see [`teaching-room.md`](teaching-room.md), which also adds the room where
+> OUR side runs a plan's jobs. The rule below still holds: nothing from a plan reaches a
+> Premier League side in the game.
+
 ## The rule: Premier League is clean, information flows one way
 
 - The PL 15/16 sides defend as the engine models them (real data, pro only — mig 1042). They are

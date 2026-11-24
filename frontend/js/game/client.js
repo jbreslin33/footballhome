@@ -1,7 +1,10 @@
 // frontend/js/game/client.js
 //
-// Orchestrates the G0 walking skeleton: connect → HELLO builds the scene →
-// tap/click a player to claim it → drive it with keys or the joystick.
+// The match page: connect → HELLO builds the scene → watch. A pure sim of the 2015/16
+// Premier League (James 11/24: "it should be minimal options in the game its a sim right
+// and should just play") — nobody drives a player, edits a lineup or coaches from here.
+// What is left are ways to WATCH: camera, 2D / 3D, the brain overlay, speed, replay, and
+// which two sides play. The teaching room is its own page (teach.html).
 // All state shown is server snapshots; this file owns no game logic.
 
 (function () {
@@ -9,26 +12,12 @@
 
   const statusEl = document.getElementById('status');
   const boardEl = document.getElementById('scoreboard');
-  const autoBtn = document.getElementById('btn-auto');
-  const editBtn = document.getElementById('btn-edit');
-  const editPanel = document.getElementById('edit-panel');
   const canvas = document.getElementById('game-canvas');
   // Two views of the one match (boot.js picks; James 11/16): the top-down 2D canvas or the 3D scene.
   const VIEW_2D = window.GAME_VIEW === '2d';
   const renderer = VIEW_2D ? new GameRenderer2D(canvas) : new GameRenderer(canvas);
-  const input = new GameInput(
-    document.getElementById('joystick'),
-    document.getElementById('joystick-knob'),
-    document.getElementById('btn-pass'),
-    document.getElementById('btn-loft'),
-    document.getElementById('btn-tackle'));
-
-  const mySlots = new Set();
   let viewMenu = null;    // ☰ View (view-menu.js), set once the controls exist
-  let activeSlot = null;  // the ONE slot the controls drive right now
-  let autoSwitch = false; // AUTO: drive whichever held player is ball-nearest
   let hello = null;
-  let intentTimer = null;
   let toastTimer = null;
 
   // Names for EVENT frames (PROTOCOL.md §7 / MatchEventType).
@@ -70,17 +59,12 @@
   function toast(text, ms) {
     statusEl.textContent = text;
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(updateStatus, ms || 2500);
+    toastTimer = setTimeout(() => { statusEl.textContent = hello ? `match ${hello.matchId}` : ''; }, ms || 2500);
   }
 
   let roster = [];        // [{name, number}] per slot, server-authoritative
-  let editMode = false;   // admin: tap a player to open the lineup
 
-  // ── EDIT panel (admin): tap a player → his team's LINEUP (who starts
-  // where), saved to the club DB; the match re-reads the teams. G5.23: the
-  // PLAYER (made-up attributes) and KNOWLEDGE (concept ratings) tabs are gone.
   let teams = null;            // { home, away } from the TEAMS frame
-  let lastSnap = null;         // the latest SNAPSHOT (trainer step 4 copies the frozen one)
   let isAdmin = false;         // HELLO capability bit 3
   let idTeams = null;          // [home, away] roster payloads: slot numbers
   // Each on-pitch figure: its formation slot's shirt number + last name.
@@ -117,106 +101,6 @@
   const shieldKeys = (root) => root.querySelectorAll('input, textarea, select').forEach((el) => {
     for (const ev of ['keydown', 'keyup', 'keypress']) el.addEventListener(ev, (e) => e.stopPropagation());
   });
-
-  function openEditPanel(slot) {
-    const e = roster[slot] || { name: '#' + (slot + 1) };
-    editPanel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
-        <b>${esc(e.name)} — LINEUP</b><button id="ep-close">✕</button></div>
-      <div id="ep-body">loading…</div>`;
-    editPanel.style.display = 'block';
-    editPanel.style.width = 'min(340px, calc(100vw - 24px))';
-    editPanel.querySelector('#ep-close').onclick = () => (editPanel.style.display = 'none');
-    const body = editPanel.querySelector('#ep-body');
-    renderLineup(body, slot).catch((err) => {
-      body.innerHTML = '<span style="color:#ff8a94">Couldn\'t load the roster: ' + esc(err.message) + '</span>';
-    });
-  }
-
-  // LINEUP (mig 641; James: "allow for lineup change and for set lineup
-  // from game center"): who starts in each formation slot, bench included;
-  // a team linked to the club can take a Game Center lineup. Both save to
-  // the DB, then RELOAD_ROSTERS makes the running match re-read the teams.
-  async function renderLineup(body, slot) {
-    const perTeam = ((hello && hello.slotCount) || 22) / 2;
-    const away = slot >= perTeam;
-    const teamName = teams && (away ? teams.away : teams.home);
-    if (!teamName) { body.textContent = 'This match has no rostered teams.'; return; }
-    const t = await loadTeam(teamName, true);
-    const after = (msg, ok, text) => {
-      for (const k of Object.keys(teamCache)) delete teamCache[k];   // slot order changed
-      net.reloadRosters();
-      msg.textContent = text;
-      msg.style.color = ok ? '#7dff9a' : '#ff8a94';
-    };
-    let html = `<div style="font-size:11px;opacity:.7;margin-bottom:4px;">${esc(t.team)} · ${esc(t.formation)} — who starts where</div>`;
-    t.slots.forEach((label, i) => {
-      const cur = t.players.find((p) => p.lineup_slot === i + 1);
-      html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;">
-        <span style="width:34px;font-size:11px;font-weight:700;">${esc(label)}</span>
-        <select data-slot="${i}" style="flex:1;min-width:0;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:2px;">` +
-        t.players.map((p) => `<option value="${p.shirt}"${cur && cur.shirt === p.shirt ? ' selected' : ''}>#${p.shirt} ${esc(p.name)}${p.lineup_slot ? '' : ' (bench)'}</option>`).join('') +
-        `</select></div>`;
-    });
-    html += `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-        <span id="lu-msg" style="font-size:11px;opacity:.8;"></span>
-        <button id="lu-save" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 14px;border-radius:6px;font-weight:700;">SAVE LINEUP</button></div>`;
-    if (t.game_center) {
-      html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,.2);">
-        <div style="font-size:11px;font-weight:700;margin-bottom:4px;">Set lineup from Game Center</div>
-        <select id="gc-match" style="width:100%;background:#0b1c3d;color:#f4f6fb;border:1px solid #889;border-radius:6px;padding:3px;"><option>loading…</option></select>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
-          <span id="gc-msg" style="font-size:11px;opacity:.8;"></span>
-          <button id="gc-set" style="background:#ffcc00;color:#0b1c3d;border:none;padding:4px 10px;border-radius:6px;font-weight:700;">SET FROM GAME CENTER</button></div></div>`;
-    }
-    body.innerHTML = html;
-    shieldKeys(body);
-    body.querySelector('#lu-save').onclick = async () => {
-      const msg = body.querySelector('#lu-msg');
-      const shirts = [...body.querySelectorAll('select[data-slot]')].map((sel) => +sel.value);
-      if (new Set(shirts).size !== shirts.length) {
-        msg.textContent = '⚠ someone is picked twice';
-        msg.style.color = '#ff8a94';
-        return;
-      }
-      msg.textContent = 'saving…';
-      try {
-        const r = await fetch('/api/game/lineup', { method: 'PUT', headers: authHeaders(),
-          body: JSON.stringify({ team: t.team, shirts }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-        after(msg, true, '✓ saved — the match re-reads the team now');
-      } catch (err) {
-        after(msg, false, '⚠ not saved: ' + err.message);
-      }
-    };
-    if (!t.game_center) return;
-    const sel = body.querySelector('#gc-match');
-    try {
-      const r = await fetch('/api/game/game-center-lineups?team=' + encodeURIComponent(t.team), { headers: authHeaders() });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-      sel.innerHTML = j.matches.length
-        ? j.matches.map((m) => `<option value="${m.match_id}">${esc(m.date)} · ${esc(m.title)} (${m.starters} starters)</option>`).join('')
-        : '<option value="">No Game Center lineups yet</option>';
-    } catch (err) {
-      sel.innerHTML = '<option value="">' + esc('Couldn\'t load: ' + err.message) + '</option>';
-    }
-    body.querySelector('#gc-set').onclick = async () => {
-      const msg = body.querySelector('#gc-msg');
-      if (!sel.value) return;
-      msg.textContent = 'setting…';
-      try {
-        const r = await fetch('/api/game/lineup/game-center', { method: 'POST', headers: authHeaders(),
-          body: JSON.stringify({ team: t.team, match_id: +sel.value }) });
-        const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
-        after(msg, true, '✓ set' + (j.added ? ` (${j.added} new to the game)` : '') + ' — playing it now');
-        setTimeout(() => renderLineup(body, slot).catch(() => {}), 600);
-      } catch (err) {
-        after(msg, false, '⚠ not set: ' + err.message);
-      }
-    };
-  }
 
   let reconnectTimer = null;
   function scheduleReconnect() {
@@ -397,19 +281,6 @@
     `style="border:0;border-radius:10px;padding:3px 9px;font:700 11px system-ui,sans-serif;cursor:pointer;` +
     `background:#ffcc00;color:#0b1c3d;">⚽ Kick off</button>`;
   document.body.appendChild(matchBar);
-  // Tactics trainer step 2: a trainer room (game.html?trainer=1) is this viewer's own —
-  // two PL sides from a goal kick, paused; the live match carries on without him.
-  const trainer = new URLSearchParams(location.search).get('trainer') === '1';
-  if (trainer) {
-    const badge = document.createElement('div');
-    badge.className = 'game-only';
-    badge.textContent = 'Tactics trainer · from a goal kick · only you see this';
-    badge.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top, 0px) + 4px);' +
-      'z-index:21;background:#7fd7ff;color:#0b1c3d;border-radius:12px;padding:2px 10px;font:700 11px system-ui,sans-serif;';
-    document.body.appendChild(badge);
-    matchBar.querySelector('[data-mb="go"]').textContent = '⚽ Goal kick';
-    matchBar.querySelector('[data-mb="go"]').title = 'Start this match from a goal kick';
-  }
   const mbHome = matchBar.querySelector('[data-mb="home"]');
   const mbAway = matchBar.querySelector('[data-mb="away"]');
   const mbGo = matchBar.querySelector('[data-mb="go"]');
@@ -462,11 +333,7 @@
     `aria-label="Speed" style="width:110px;min-height:0;accent-color:#ffcc00;">` +
     `<button type="button" data-speed="up" title="Faster" aria-label="Faster" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">+</button>` +
     `<span data-speed-label style="min-width:44px;text-align:right;">1×</span>` +
-    `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>` +
-    // Trainer step 3: from the freeze, play the next pass (at the slider's speed) and freeze again.
-    `<button type="button" data-speed="step" title="Play the next pass, then freeze" hidden style="${spPill}background:#7fd7ff;color:#0b1c3d;">⏭ Next pass</button>` +
-    // Trainer step 4: this frozen moment onto our 🎯 Tactics board (one way: PL → board).
-    `<button type="button" data-speed="copy" title="Copy this moment to our tactics board" hidden style="${spPill}background:#fff;color:#0b1c3d;">📋 Copy to our tactics</button>`;
+    `<button type="button" data-speed="live" title="Back to live speed" style="${spPill}background:rgba(255,255,255,.15);color:#fff;">1×</button>`;
   document.body.appendChild(speedBar);
   const speedRange = speedBar.querySelector('input');
   const speedLabel = speedBar.querySelector('[data-speed-label]');
@@ -475,8 +342,6 @@
     speedBar.hidden = !isAdmin;
     speedLabel.textContent = fmtSpeed(simSpeed);
     speedBar.querySelector('[data-speed="pause"]').textContent = simSpeed === 0 ? '▶' : '⏸';
-    speedBar.querySelector('[data-speed="step"]').hidden = simSpeed !== 0;   // from a freeze only
-    speedBar.querySelector('[data-speed="copy"]').hidden = simSpeed !== 0 || !trainer || !COPY_READY;
     if (simSpeed > 0) {
       let k = 0;   // nearest stop
       SPEEDS.forEach((s, i) => { if (Math.abs(s - simSpeed) < Math.abs(SPEEDS[k] - simSpeed)) k = i; });
@@ -491,9 +356,7 @@
   speedBar.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-speed]');
     if (!b) return;
-    if (b.dataset.speed === 'copy') copyToTactics(b);
-    else if (b.dataset.speed === 'step') net.step(SPEEDS[Number(speedRange.value)] || 100);
-    else if (b.dataset.speed === 'live') net.setSpeed(100);
+    if (b.dataset.speed === 'live') net.setSpeed(100);
     else if (b.dataset.speed === 'down' || b.dataset.speed === 'up') {
       // One stop along the slider (from the resume speed while paused).
       const k = Number(speedRange.value) + (b.dataset.speed === 'up' ? 1 : -1);
@@ -501,89 +364,6 @@
     } else if (simSpeed === 0) net.setSpeed(resumeSpeed || 100);
     else { resumeSpeed = simSpeed; net.setSpeed(0); }
   });
-
-  // On since the club's POST /api/tactic-plans/copies went live (5092f607, mig 1202).
-  const COPY_READY = true;
-  // ── Trainer step 4 — owner: "except right to copy it over to … the event center".
-  // The frozen PL moment as a plan step on our 🎯 Tactics board: the side WITHOUT the
-  // ball is "us" (its men carry the concepts), the side with it "them". Plan frame
-  // (shared/tactics/TacticGeometry.hpp): 0–100 from our view, x left → right as we
-  // attack, y 0 = our goal line, 68 × 105 m. One way: nothing comes back to the engine.
-  function trainerMoment() {
-    const s = lastSnap;
-    if (!s || !s.players || !hello) return null;
-    const n = s.players.length, half = Math.floor(n / 2);
-    const teamOf = (i) => (i < half ? 0 : 1);
-    // Which end each side defends: its keeper's side of halfway (ends swap at half time).
-    const goalSign = [0, 1].map((t) => {
-      let sx = 0, c = 0;
-      for (let i = 0; i < n; i++) if (teamOf(i) === t && renderer.figures && renderer.figures[i] && renderer.figures[i].keeper) { sx += s.players[i].x; c++; }
-      if (!c) for (let i = 0; i < n; i++) if (teamOf(i) === t) { sx += s.players[i].x; c++; }
-      return sx < 0 ? -1 : 1;
-    });
-    // "Us" = the side with concept labels (out of possession); else the side not on the ball.
-    let us = -1;
-    if (brainEntries) for (let i = 0; i < n && us < 0; i++) if (brainEntries[i] && brainEntries[i].concept !== 255) us = teamOf(i);
-    if (us < 0 && s.ball.owner !== 255) us = 1 - teamOf(s.ball.owner);
-    if (us < 0) return null;
-    const them = 1 - us, gx = 52.5 * goalSign[us];
-    const xy = (px, py) => {
-      const fromGoal = Math.abs(px - gx);                     // metres off our goal line
-      const left = goalSign[us] < 0 ? -py : py;               // metres left of centre: attacking +x, left is -y (three.js: z = y)
-      const cl = (v) => Math.max(0, Math.min(100, Math.round(v * 10) / 10));
-      return { x: cl((34 - left) / 68 * 100), y: cl(fromGoal / 105 * 100) };
-    };
-    const num = (i) => (roster[i] && roster[i].number) || null;
-    let ballWith = null;
-    if (s.ball.owner !== 255 && teamOf(s.ball.owner) === them) ballWith = num(s.ball.owner);
-    else {
-      let best = 4;   // their man within 2 m of a loose ball
-      for (let i = 0; i < n; i++) if (teamOf(i) === them) {
-        const d = (s.players[i].x - s.ball.x) ** 2 + (s.players[i].y - s.ball.y) ** 2;
-        if (d < best) { best = d; ballWith = num(i); }
-      }
-    }
-    const opponents = [], ours = [];
-    for (let i = 0; i < n; i++) {
-      const p = xy(s.players[i].x, s.players[i].y);
-      if (!num(i)) continue;
-      if (teamOf(i) === them) opponents.push({ number: num(i), x: p.x, y: p.y });
-      else {
-        const e = brainEntries && brainEntries[i];
-        const concept = e && e.concept !== 255 ? e.concept : null;
-        const target = e && e.other !== 255 && teamOf(e.other) === them ? num(e.other) : null;
-        ours.push({ position_id: num(i), x: p.x, y: p.y, concept_id: concept, target });
-      }
-    }
-    const names = [(teams && teams.home) || '', (teams && teams.away) || ''];
-    const mm = String(Math.floor(s.match.clockSec / 60)).padStart(2, '0'), ss = String(s.match.clockSec % 60).padStart(2, '0');
-    return {
-      source: { home: names[0], away: names[1], clock: `${mm}:${ss}`, period: s.match.period, match_id: hello.matchId },
-      us_team: names[us], them_team: names[them], moment: 'out_of_possession',
-      ball_with: ballWith, ball: xy(s.ball.x, s.ball.y), opponents, ours,
-    };
-  }
-  async function copyToTactics(btn) {
-    const body = trainerMoment();
-    if (!body) { btn.textContent = '📋 Nothing to copy yet'; return; }
-    btn.disabled = true;
-    const was = '📋 Copy to our tactics';
-    btn.textContent = '📋 Copying…';
-    try {
-      const r = await fetch('/api/tactic-plans/copies', { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-                                                         body: JSON.stringify(body) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
-      // A new 📋 step under the plan's root on the board ("Ours:" picks the formation).
-      const skipped = (j.skipped || []).length;
-      btn.textContent = `📋 Copied to our tactics: ${j.us} v ${j.them}, ${j.block} block` + (skipped ? ` (${skipped} with no job)` : '');
-      if (j.url) window.open(j.url, '_blank', 'noopener');
-    } catch (e) {
-      btn.textContent = '📋 ' + (e.message || 'Copy failed');
-    } finally {
-      setTimeout(() => { btn.textContent = was; btn.disabled = false; }, 6000);
-    }
-  }
 
   // ── Replay (G4.62) — James: "not seeing replay or rewind more
   // importantly" / "slider bar needs buttons on the side to increment".
@@ -698,49 +478,11 @@
       // Admin capability (bit 3) shows the level pickers.
       isAdmin = !!(h.capabilities & 8);
       paintSpeedBar();
-      // Trainer step 3: every man labelled from the first freeze (not saved as this device's picks).
-      if (trainer && !brainOn) {
-        for (const t of [0, 1]) for (const i of teamSlots(t)) brainPick.add(i);
-        setBrainOn(true);
-      }
       paintMatchBar();
       paintReplayBar();
-      if ((h.capabilities & 8) && editBtn) {
-        editBtn.style.display = 'block';
-        const flipEdit = () => {
-          editMode = !editMode;
-          editBtn.style.background =
-            editMode ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
-          if (!editMode) editPanel.style.display = 'none';
-        };
-        editBtn.addEventListener('click', flipEdit);
-        editBtn.addEventListener('touchstart', (e) => {
-          e.preventDefault(); e.stopPropagation(); flipEdit();
-        });
-      }
-      statusEl.textContent =
-        `match ${h.matchId} — tap a player to take control · drag to ${VIEW_2D ? 'pan' : 'rotate'}`;
-      // Ship intents at tick rate for every slot we own. The server
-      // samples (last write before its tick wins), so this cadence is
-      // exactly right. [QUAKE]
-      if (intentTimer) clearInterval(intentTimer);
-      intentTimer = setInterval(() => {
-        if (mySlots.size === 0) return;
-        // Controls are CAMERA-relative: "up" means away from the viewer
-        // however the camera has been rotated.
-        const v = renderer.screenToPitch(input.vector());
-        const action = input.consumeAction();
-        // One input device drives ONE player. Other claimed slots get an
-        // explicit zero vector each tick — the server samples intents and
-        // would otherwise keep running their last one forever.
-        for (const slot of mySlots) {
-          if (slot === activeSlot) net.intent(slot, v.x, v.y, action);
-          else net.intent(slot, 0, 0, 0);
-        }
-      }, 1000 / (h.tickRate || 30));
+      statusEl.textContent = `match ${h.matchId}`;
     },
     onSnapshot(s) {
-      lastSnap = s;
       renderer.pushSnapshot(s);
       if (s.match && boardEl) {
         const m = s.match;
@@ -752,21 +494,6 @@
         const awayName = (teams && teams.away) || 'AWAY';
         boardEl.textContent =
           `${homeName} ${m.score0} — ${m.score1} ${awayName}   ${mm}:${ss} ${m.period === 2 ? '2H' : '1H'}`;
-      }
-      // AUTO: hand the controls to whichever held player is ball-nearest.
-      if (autoSwitch && mySlots.size > 1 && s.players) {
-        let best = activeSlot, bestD = Infinity;
-        for (const slot of mySlots) {
-          const p = s.players[slot];
-          if (!p) continue;
-          const d = (p.x - s.ball.x) ** 2 + (p.y - s.ball.y) ** 2;
-          if (d < bestD) { bestD = d; best = slot; }
-        }
-        if (best !== activeSlot) {
-          activeSlot = best;
-          renderer.setMySlots(mySlots, activeSlot);
-          updateStatus();
-        }
       }
     },
     onRoster(r) {
@@ -831,82 +558,20 @@
       }
     },
     onClose() {
-      // Claims died with the socket; drop them and come back by ourselves
-      // (phones sleep, wifi blips — a sandbox should just rejoin).
-      if (intentTimer) { clearInterval(intentTimer); intentTimer = null; }
-      mySlots.clear();
-      activeSlot = null;
-      renderer.setMySlots(mySlots, activeSlot);
+      // Come back by ourselves (phones sleep, wifi blips).
       statusEl.textContent = 'connection lost — reconnecting…';
       scheduleReconnect();
     },
   });
 
-  // Tap rules: unclaimed → claim it AND make it the active one;
-  // claimed-but-inactive → switch control to it; the active one → release
-  // it (control falls to another claimed player if you still hold one).
+  // A tap on a man does one thing: while WATCH is picking, the camera takes him.
   function pickAt(x, y) {
-    if (!hello) return;
+    if (!hello || !watchPicking) return;
     const slot = renderer.pickSlot(x, y);
-    if (slot === null) return;
-    if (editMode) {           // admin edit screen: inspect, don't claim
-      openEditPanel(slot);
-      return;
-    }
-    if (watchPicking) {       // WATCH: the camera takes him, nobody claims him
-      setWatch(slot);
-      return;
-    }
-    if (!mySlots.has(slot)) {
-      mySlots.add(slot);
-      net.claim(slot);
-      activeSlot = slot;
-    } else if (slot !== activeSlot) {
-      activeSlot = slot;
-    } else {
-      mySlots.delete(slot);
-      net.release(slot);
-      activeSlot = mySlots.size ? [...mySlots][0] : null;
-    }
-    renderer.setMySlots(mySlots, activeSlot);
-    updateStatus();
+    if (slot !== null) setWatch(slot);
   }
 
-  function updateStatus() {
-    if (!mySlots.size) {
-      statusEl.textContent = 'tap a player to take control';
-      return;
-    }
-    const others = [...mySlots].filter((s) => s !== activeSlot);
-    const myName = roster[activeSlot]
-      ? roster[activeSlot].name : '#' + (activeSlot + 1);
-    statusEl.textContent =
-      `driving ${myName}` +
-      (others.length ? ` (also holding ${others.map((s) => '#' + (s + 1)).join(', ')} — tap to switch)` : '') +
-      ' — WASD/joystick, Space pass, X loft · C or 1–6 camera, +/− zoom';
-  }
-  if (autoBtn) {
-    const flip = () => {
-      autoSwitch = !autoSwitch;
-      autoBtn.style.background =
-        autoSwitch ? 'rgba(255,204,0,.5)' : 'rgba(255,255,255,.12)';
-    };
-    autoBtn.addEventListener('click', flip);
-    autoBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault(); e.stopPropagation(); flip();
-    });
-  }
-
-  // Q cycles which held player you're driving (G2.6).
-  window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() !== 'q' || mySlots.size < 2) return;
-    const list = [...mySlots];
-    activeSlot = list[(list.indexOf(activeSlot) + 1) % list.length];
-    renderer.setMySlots(mySlots, activeSlot);
-    updateStatus();
-  });
-
-  // A click/tap claims — unless it turned into a camera drag.
+  // A click/tap picks — unless it turned into a camera drag.
   canvas.addEventListener('click', (e) => {
     if (renderer.rig.dragged) { renderer.rig.dragged = false; return; }
     pickAt(e.clientX, e.clientY);
@@ -914,9 +579,7 @@
   let tapStart = null;
   canvas.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
-    // Upper part of the screen only — lower part belongs to the joystick.
-    tapStart = (e.touches.length === 1 && t && t.clientY < window.innerHeight * 0.4)
-      ? { x: t.clientX, y: t.clientY } : null;
+    tapStart = (e.touches.length === 1 && t) ? { x: t.clientX, y: t.clientY } : null;
   });
   canvas.addEventListener('touchend', (e) => {
     const t = e.changedTouches[0];
@@ -1234,6 +897,6 @@
 
   // Debug handle for automated testing and console poking — reads state,
   // never owns it (the server stays authoritative regardless).
-  window.__game = { renderer, net, mySlots, pickAt, input,
+  window.__game = { renderer, net, pickAt,
                     get hello() { return hello; } };
 })();

@@ -114,13 +114,24 @@ class GameCenterTactics {
     const orient = [['portrait', this._copyTactics('orient_portrait') || '↕ Upright'], ['landscape', this._copyTactics('orient_landscape') || '↔ Sideways']]
       .map(([k, label]) => `<button type="button" data-gc-tactics-orient="${k}" class="btn btn-sm ${k === v.orientation ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.72rem; padding:3px 9px;">${esc(label)}</button>`).join('');
     const big = `<button type="button" data-gc-tactics-big class="btn btn-sm ${v.big ? 'btn-primary' : 'btn-secondary'}" style="font-size:0.72rem; padding:3px 10px;">${esc(v.big ? (this._copyTactics('big_close') || '✕ Close') : (this._copyTactics('big') || '⛶ Big'))}</button>`;
-    // 🎮 3D trainer (mig 1200): the game's PL-sides tactics trainer, link and
-    // label both DB copy — no row, no button.
+    // 🎮 PL sides (mig 1200, repointed by mig 1789 to the teaching room page): two
+    // Premier League sides, both the engine's own; link and label both DB copy.
     const trainerHref = this._copyTactics('trainer_href'), trainerLabel = this._copyTactics('trainer');
-    const trainer = trainerHref && trainerLabel && trainerHref.startsWith('/game.html?')
+    const trainer = trainerHref && trainerLabel && (trainerHref.startsWith('/teach.html?') || trainerHref.startsWith('/game.html?'))
       ? `<a href="${esc(trainerHref)}" target="_blank" rel="noopener" data-gc-tactics-trainer class="btn btn-sm btn-secondary" style="font-size:0.72rem; padding:3px 10px; text-decoration:none;">${esc(trainerLabel)}</a>` : '';
+    // 🎓 Watch it play (mig 1789): THIS plan in the teaching room — the game engine in a
+    // private room, their side its own PL build-out, ours on these jobs (teach.html,
+    // docs/teaching-room.md).  Label and link are DB copy; no saved plan, no button.
+    const planId = mode === 'plan' && this._plan.data && this._plan.data.plan && this._plan.data.plan.id;
+    const fCode = (id) => { const f = (this.formations || []).find(x => String(x.id) === String(id)); return f ? f.code : ''; };
+    const teachHref = planId ? this._copyTactics('teach_href', {
+      plan: planId, us: encodeURIComponent(fCode(this._planUsId()) || this.formation || ''),
+      them: encodeURIComponent(fCode(this._plan.oppFormationId)), block: encodeURIComponent(this._plan.block || '') }) : '';
+    const teachLabel = this._copyTactics('teach');
+    const teach = teachHref && teachLabel && teachHref.startsWith('/teach.html?')
+      ? `<a href="${esc(teachHref)}" data-gc-tactics-teach class="btn btn-sm btn-primary" style="font-size:0.72rem; padding:3px 10px; text-decoration:none;">${esc(teachLabel)}</a>` : '';
     const body = `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">${modes}
-        <span style="flex:1;"></span>${orient}${big}${trainer}</div>`
+        <span style="flex:1;"></span>${orient}${big}${teach}${trainer}</div>`
       + (mode === 'drawn' ? this._tacticsDrawnHtml() : this._planHtml());
     if (!v.big) return body;
     // Full screen: the same panel over everything (the job sheet, z 1000,

@@ -77,6 +77,7 @@ public:
     };
 
     GameServer(Config cfg, net::INetworkTransport& transport);
+    virtual ~GameServer() = default;
 
     // Advance one tick and broadcast one snapshot. The caller owns pacing.
     void tickOnce();
@@ -100,7 +101,14 @@ public:
     bool slotClaimedBy(std::uint8_t slot, ClientId client) const;
     bool stepping() const noexcept { return step_stage_ != 0; }
 
-private:
+protected:
+    // The seam a child room extends (server/TeachingServer, docs/teaching-room.md): one man's
+    // orders for this tick, and the concept his label names. The match itself is the brain's
+    // answer, untouched — nothing here changes what the live match or a PL practice room plays.
+    virtual ai::Orders decide(std::uint8_t slot) { return brain_.ordersFor(slot, world_); }
+    virtual std::uint8_t conceptOf(std::uint8_t slot, const ai::Orders& o) const {
+        return act_concept_[static_cast<int>(brain_.actOf(slot, world_, o))];
+    }
     // G5.35: build the match from cfg_ (formations, rosters) at kick-off.
     void startMatch();
     void practiceStart();   // the goal kick, the pre-roll, then paused
@@ -118,11 +126,13 @@ private:
     void handleFrame(ClientId id, const net::DecodedFrame& frame);
     net::Bytes buildSnapshotFrame() const;
 
+protected:
     Config cfg_;
     net::INetworkTransport& transport_;
     core::World world_;
     ai::Brain brain_;
 
+private:
     // slot → owning client. Absent key = AI-controlled (idle in G0).
     std::unordered_map<std::uint8_t, ClientId> slot_owner_;
     std::uint16_t speed_pct_ = 100;
@@ -150,8 +160,10 @@ private:
     std::uint64_t signal_until_tick_ = 0;
     std::unordered_map<ClientId, bool> brain_watchers_;
     void sendBrain();
+protected:
     std::uint8_t act_concept_[ai::kActCount];   // ai::Act → game_concepts id (255 none)
     net::ConceptLegendFrame concept_legend_;
+private:
     // Connected clients, for snapshot fan-out. Keyed map (not vector) so
     // disconnect is O(1); iteration order doesn't matter — clients receive
     // identical bytes.

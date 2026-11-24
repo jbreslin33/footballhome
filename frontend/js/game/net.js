@@ -24,16 +24,8 @@
         return;
       }
       const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-      // Tactics trainer step 2: a trainer link (game.html?trainer=1&home=…&away=…&gk=…)
-      // opens a room of this viewer's own on the same socket path — the live match is
-      // untouched (game/src/server/Rooms.hpp).
-      const q = new URLSearchParams(location.search);
-      let path = '/game';
-      if (q.get('trainer') === '1') {
-        const p = new URLSearchParams({ trainer: '1' });
-        for (const k of ['home', 'away', 'gk']) if (q.get(k)) p.set(k, q.get(k));
-        path += '?' + p.toString();
-      }
+      // The live match. A practice or teaching room is teach.html's (js/teach/teach.js).
+      const path = '/game';
       this.ws = new WebSocket(
         `${scheme}://${location.host}${path}`,
         `fh-game.v2.bearer.${token}`
@@ -76,13 +68,8 @@
       if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(buf);
     }
 
-    claim(slot) { this.send(GameWire.encodeClaim(slot, true)); }
-    release(slot) { this.send(GameWire.encodeClaim(slot, false)); }
-    intent(slot, x, y, action) { this.send(GameWire.encodeIntent(slot, x, y, action)); }
-    reloadRosters() { this.send(GameWire.encodeReloadRosters()); }
     brainWatch(on) { this.send(GameWire.encodeBrainWatch(on)); }
     setSpeed(pct) { this.send(GameWire.encodeSpeed(pct)); }
-    step(pct) { this.send(GameWire.encodeStep(pct)); }   // trainer step 3: the next pass, then pause
     newMatch(home, away) { this.send(GameWire.encodeNewMatch(home, away)); }
   }
 

@@ -18,8 +18,11 @@
 #include "server/GameServer.hpp"
 #include "server/MatchSetup.hpp"
 #include "server/Rooms.hpp"
+#include "teach/TeachingPlan.hpp"
+#include "teach/TeachingServer.hpp"
 
 #include <cstdio>
+#include <memory>
 #include <cstdlib>
 #include <tuple>
 #include <string>
@@ -82,15 +85,16 @@ int main() {
     // link opens a room of the viewer's own — two PL sides from a goal kick, paused.
     const server::GameServer::Config base = cfg;
     std::uint64_t practice_n = 0;
-    auto practice = [&base, &practice_n](const server::PracticeAsk& ask) -> std::optional<server::GameServer::Config> {
-        if (!base.db) return std::nullopt;
+    auto practice = [&base, &practice_n](const server::PracticeAsk& ask,
+                                         net::INetworkTransport& room) -> std::unique_ptr<server::GameServer> {
+        if (!base.db) return nullptr;
         server::GameServer::Config pc = base;
         const std::string hn = ask.home.empty() ? base.roster_home.name : ask.home;
         const std::string an = ask.away.empty() ? base.roster_away.name : ask.away;
-        if (hn == an) return std::nullopt;
+        if (hn == an) return nullptr;
         auto home = persistence::loadDemoTeam(*base.db, hn);
         auto away = persistence::loadDemoTeam(*base.db, an);
-        if (!home || !away) return std::nullopt;
+        if (!home || !away) return nullptr;
         for (auto [team, spec] : {std::pair{&*home, &pc.formation_home}, std::pair{&*away, &pc.formation_away}})
             if (!team->formation_code.empty())
                 if (auto f = persistence::loadFormation(*base.db, team->formation_code)) *spec = std::move(*f);
@@ -101,7 +105,18 @@ int main() {
         ++practice_n;
         pc.match_id = base.match_id * 1000 + practice_n;
         pc.match_seed = base.match_seed + practice_n;   // each practice match its own noise
-        return pc;
+        if (ask.teach_plan > 0) {
+            // The teaching room (docs/teaching-room.md): the side not taking the goal kick runs
+            // a club tactic plan's jobs; both sides line up in the plan's two formations.
+            auto plan = teach::loadPlan(*base.db, ask.teach_plan);
+            if (!plan) return nullptr;
+            const std::uint8_t us = static_cast<std::uint8_t>(1 - pc.goal_kick_team);
+            (us == 0 ? pc.roster_home : pc.roster_away).formation_code = plan->us_code;
+            (us == 0 ? pc.roster_away : pc.roster_home).formation_code = plan->them_code;
+            std::printf("fh-game: teaching room, plan %d (%s v %s)\n", plan->id, plan->us_code.c_str(), plan->them_code.c_str());
+            return std::make_unique<teach::TeachingServer>(std::move(pc), room, std::move(*plan), us);
+        }
+        return std::make_unique<server::GameServer>(std::move(pc), room);
     };
     server::RoomRouter rooms{transport, cfg, static_cast<std::uint16_t>(speed > 0 ? speed * 100 : 0), practice};
 

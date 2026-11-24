@@ -96,8 +96,26 @@ add_library(game_match STATIC
 )
 target_link_libraries(game_match PUBLIC game_server game_persistence)
 
+# The teaching room (docs/teaching-room.md): a GameServer child that places one side by a
+# club tactic plan, solved by the header the club backend shares (shared/tactics). The
+# repo keeps it at ../shared; the image build mounts it at /shared (Makefile game-deploy).
+if(EXISTS "${CMAKE_SOURCE_DIR}/../shared/tactics/TacticGeometry.hpp")
+  set(FH_SHARED_DIR "${CMAKE_SOURCE_DIR}/../shared")
+else()
+  set(FH_SHARED_DIR "/shared")
+endif()
+add_library(game_teach STATIC
+  src/teach/TeachingPlan.cpp
+  src/teach/TeachingServer.cpp
+)
+target_include_directories(game_teach PUBLIC ${FH_SHARED_DIR})
+target_link_libraries(game_teach PUBLIC game_server game_persistence)
+
+add_executable(fh-teach-probe src/tools/teach_probe_main.cpp)
+target_link_libraries(fh-teach-probe PRIVATE game_match game_teach)
+
 add_executable(fh-game src/main.cpp)
-target_link_libraries(fh-game PRIVATE game_match)
+target_link_libraries(fh-game PRIVATE game_match game_teach)
 
 # G4.43: N full matches of the REAL matchup, loaded from the club DB.
 add_executable(fh-game-match src/tools/match_main.cpp)
@@ -140,3 +158,5 @@ game_test(test_block)
 # No realism gate (James 10/24: "no gate!"): realism is measured and read —
 # fh-game-match prints line height, team length, shots, entries — never a
 # test that blocks a build.
+game_test(test_teaching_room)
+target_link_libraries(test_teaching_room PRIVATE game_teach)

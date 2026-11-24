@@ -842,7 +842,7 @@ print-clean:
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 game-deploy:
 	@echo "🎮 Building fh-game image (lint + build + full test suite)..."
-	@$(COMPOSE) --env-file env build footballhome_game
+	@flock $(BUILD_LOCK) $(ENGINE) build --build-context shared=$(CURDIR)/shared -t footballhome_footballhome_game ./game
 	@echo "✓ fh-game image built and test-gated."
 	@echo "  Restart the service to pick it up:"
 	@echo "  $(COMPOSE) --env-file env up -d footballhome_game"

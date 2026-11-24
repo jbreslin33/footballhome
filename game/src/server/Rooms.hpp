@@ -54,18 +54,22 @@ private:
 struct PracticeAsk {
     std::string home, away;
     std::string goal_kick = "away";   // whose goal kick it starts from: "home" / "away"
+    // The teaching room (docs/teaching-room.md): "&teach=<tactic_plans.id>" — the side
+    // NOT taking the goal kick runs that plan's jobs. 0 = a plain practice room.
+    int teach_plan = 0;
 };
 std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path);
 
 class RoomRouter {
 public:
     using clock = std::chrono::steady_clock;
-    // Builds a practice room's config for an ask (teams loaded from the DB), or nothing
-    // if the ask names a team that isn't there.
-    using PracticeConfigFn = std::function<std::optional<GameServer::Config>(const PracticeAsk&)>;
+    // Builds a practice room's match for an ask (teams loaded from the DB) on the room's
+    // transport, or nothing if the ask names a team or a plan that isn't there. A plain
+    // ask gets a GameServer; a teaching ask a child of it (teach/TeachingServer).
+    using PracticeRoomFn = std::function<std::unique_ptr<GameServer>(const PracticeAsk&, net::INetworkTransport&)>;
 
     RoomRouter(net::ws::WebSocketTransport& real, GameServer::Config live, std::uint16_t live_speed_pct,
-               PracticeConfigFn practice, std::size_t max_practice = 4);
+               PracticeRoomFn practice, std::size_t max_practice = 4);
 
     // One pass of the loop: poll the socket, tick every room that is due at its own
     // speed. Returns when a tick or a heartbeat is done (or ~200 ms passed).
@@ -87,7 +91,7 @@ private:
     void onMessage(ClientId id, std::span<const std::uint8_t> b);
 
     net::ws::WebSocketTransport& real_;
-    PracticeConfigFn practice_;
+    PracticeRoomFn practice_;
     std::size_t max_practice_;
     std::map<int, std::unique_ptr<Room>> rooms_;   // 0 = the live match
     std::map<ClientId, int> room_of_;

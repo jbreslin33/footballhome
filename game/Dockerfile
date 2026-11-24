@@ -27,6 +27,10 @@ COPY CMakeLists.txt ./
 COPY src ./src
 COPY tests ./tests
 COPY scripts ./scripts
+# The teaching room's plan solver is the club backend's too (shared/tactics, one
+# implementation). The game's context is game/, so it comes from the named build context
+# `shared` — `make game-deploy` passes --build-context shared=./shared (CMake finds /shared).
+COPY --from=shared tactics /shared/tactics
 
 # Determinism lint gates BEFORE compiling (DESIGN.md §3): loud early
 # failure beats a subtle desync later.

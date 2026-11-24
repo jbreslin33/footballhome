@@ -2,6 +2,8 @@
 
 #include "server/Rooms.hpp"
 
+#include <cstdlib>
+
 #include "core/Clock.hpp"
 
 #include <algorithm>
@@ -45,6 +47,7 @@ std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path) {
         else if (k == "home") ask.home = v;
         else if (k == "away") ask.away = v;
         else if (k == "gk" && (v == "home" || v == "away")) ask.goal_kick = v;
+        else if (k == "teach") ask.teach_plan = std::atoi(v.c_str());
         at = amp + 1;
     }
     if (!practice) return std::nullopt;
@@ -52,7 +55,7 @@ std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path) {
 }
 
 RoomRouter::RoomRouter(net::ws::WebSocketTransport& real, GameServer::Config live, std::uint16_t live_speed_pct,
-                       PracticeConfigFn practice, std::size_t max_practice)
+                       PracticeRoomFn practice, std::size_t max_practice)
     : real_{real}, practice_{std::move(practice)}, max_practice_{max_practice} {
     auto room = std::make_unique<Room>(real_);
     room->server = std::make_unique<GameServer>(std::move(live), room->transport);
@@ -73,15 +76,15 @@ void RoomRouter::onConnect(ClientId id, const auth::JwtClaims& c) {
             real_.disconnect(id);
             return;
         }
-        auto cfg = practice_ ? practice_(*ask) : std::nullopt;
-        if (!cfg) {
-            std::printf("fh-game: practice refused: unknown team(s) '%s' v '%s'\n", ask->home.c_str(), ask->away.c_str());
+        auto room = std::make_unique<Room>(real_);
+        room->server = practice_ ? practice_(*ask, room->transport) : nullptr;
+        if (!room->server) {
+            std::printf("fh-game: practice refused: unknown team(s) '%s' v '%s' or plan %d\n", ask->home.c_str(),
+                        ask->away.c_str(), ask->teach_plan);
             real_.disconnect(id);
             return;
         }
         r = next_room_++;
-        auto room = std::make_unique<Room>(real_);
-        room->server = std::make_unique<GameServer>(std::move(*cfg), room->transport);
         room->next = room->beat = clock::now();
         room->was_pct = room->server->speedPct();
         rooms_.emplace(r, std::move(room));

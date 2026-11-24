@@ -19,7 +19,7 @@ document.body.classList.add('view-' + view);
 
 const COMMON_HEAD = [
   'js/game/wire.js?v=20261110feet1',
-  'js/game/net.js?v=20261109step',
+  'js/game/net.js?v=20261124sim',
 ];
 const SCRIPTS_3D = [
   'js/game/players.js?v=20261113runup',
@@ -32,17 +32,15 @@ const SCRIPTS_3D = [
   'js/game/field.js?v=20261107ground',
   'js/game/camera.js?v=20261116circ',
   'js/game/renderer.js?v=20261116circ',
-  'js/game/view-menu.js?v=20261117menu2',
-  'js/game/input.js?v=20261022e',
+  'js/game/view-menu.js?v=20261124sim',
   'js/game/lighthouse-planner-data.js?v=20261022d',
   'js/game/pitch-planner.js?v=20261029a',
 ];
 const SCRIPTS_2D = [
   'js/game/renderer2d.js?v=20261116circ',
-  'js/game/view-menu.js?v=20261117menu2',   // ☰ Menu holds every control in 2D too (James 11/17)
-  'js/game/input.js?v=20261022e',
+  'js/game/view-menu.js?v=20261124sim',   // ☰ Menu holds every control in 2D too (James 11/17)
 ];
-const CLIENT = 'js/game/client.js?v=20261116circ';
+const CLIENT = 'js/game/client.js?v=20261124sim';
 
 if (view === '3d') {
   const T = await import('three');

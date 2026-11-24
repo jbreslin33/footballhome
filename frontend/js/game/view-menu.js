@@ -38,10 +38,8 @@
   ];
   // On-screen controls that may float over the pitch (elements carry data-hud="<key>"); every other
   // data-hud control lives inside the panel (CONTAIN) and is always shown there.
-  const SHOW = [
-    { k: 'play',    label: 'Touch play buttons over the pitch (PASS / LOFT / TKL / AUTO, stick)' },
-  ];
-  const CONTAIN = ['status', 'edit', 'camera', 'brain', 'match', 'speed', 'replay', 'watch'];
+  const SHOW = [];   // nothing floats over the pitch: the game is a sim to watch (James 11/24), no play buttons
+  const CONTAIN = ['status', 'camera', 'brain', 'match', 'speed', 'replay', 'watch'];
   const ALL = [...DRAW, ...QUALITY, ...SHOW].map((o) => o.k);
   const ESSENTIAL = { sharp: true };   // everything else off: field, ball, players, refs only
 
@@ -91,9 +89,8 @@
     }
 
     injectCss() {
-      const hud = SHOW.map((o) => `body.mode-game:not(.hud-${o.k}) [data-hud="${o.k}"]`).join(',\n');
       const st = document.createElement('style');
-      st.textContent = `${hud} { display: none !important; }
+      st.textContent = `
         #mode-bar { display: none !important; }   /* its modes are the menu's Mode section */
         #view-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         #view-controls > * { position: static !important; inset: auto !important; left: auto !important; right: auto !important;
@@ -156,7 +153,6 @@
         `<div class="note" style="margin:0 0 2px;">Always drawn: pitch, goals, ball, players, referees.</div>` +
         DRAW.map(box).join('') +
         `<h3>Quality</h3>` + QUALITY.map(box).join('') : '') +
-        `<h3>Over the pitch</h3>` + SHOW.map(box).join('') +
         (this.is3d ? `<h3>Mode</h3><div class="row" data-modes></div>` : '') +
         `<div class="note">M opens this menu. Saved on this device.</div>`;
       p.addEventListener('change', (e) => {
