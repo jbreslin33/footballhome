@@ -80,3 +80,59 @@ for f in files:
             b=blk[0].get("block",{})
             C[("block kind", "deflection" if b.get("deflection") else "plain", out)]+=1
 for k,v in sorted(C.items(), key=lambda kv:(str(kv[0][0]),-kv[1])): print(k, round(v/tm,2))
+
+# part 3 (G5.234, §8.340): midfield (kick 35-70 m off the line attacked) open-play passes by a foot not completed, by
+# direction (45 deg cones, to where the ball ended) and how: Ground + Low — an opponent's Block among the related
+# events and ended within 8 m | Block / Interception / their Duel, Clearance or keeper beyond 8 m ("their touch") |
+# their Ball Recovery or pass next ("theirs clean" — nobody got to it in flight) | Out | other; High apart.
+C = collections.Counter()
+for f in files:
+    ev = json.load(open(f, encoding="utf8")); byid = {e["id"]: e for e in ev}
+    for i, e in enumerate(ev):
+        if e["type"]["name"] != "Pass" or "location" not in e: continue
+        b = band(e["location"][0]); p = e["pass"]
+        if b not in (1, 2) or p.get("type", {}).get("name") in SET or p.get("body_part", {}).get("name") == "Head": continue
+        out = p.get("outcome", {}).get("name")
+        if out not in (None, "Incomplete", "Out"): continue
+        dx = (p["end_location"][0] - e["location"][0]) * SX; dy = (p["end_location"][1] - e["location"][1]) * SY
+        d = math.hypot(dx, dy); dr = 0 if dx >= abs(dy) else 2 if -dx >= abs(dy) else 1
+        C[(dr, "tried", p.get("height", {}).get("name") == "High Pass")] += 1
+        if out is None: continue
+        if p.get("height", {}).get("name") == "High Pass": C[(dr, 5)] += 1; continue
+        if out == "Out": C[(dr, 3)] += 1; continue
+        rel = [byid[r] for r in e.get("related_events", []) if r in byid and byid[r]["team"]["id"] != e["team"]["id"]]
+        blk = any(r["type"]["name"] == "Block" for r in rel)
+        nxt = next((n for n in ev[i + 1:i + 8] if n["type"]["name"] not in ("Ball Receipt*", "Pressure")), None)
+        nt = nxt["type"]["name"] if nxt is not None and nxt["team"]["id"] != e["team"]["id"] else ""
+        if blk and d < 8: C[(dr, 0)] += 1
+        elif blk or nt in ("Interception", "Duel", "Clearance", "Goal Keeper", "Block"): C[(dr, 1)] += 1
+        elif nt in ("Ball Recovery", "Pass", "Carry", "Dribble", "Shot", "Miscontrol", "Foul Committed"): C[(dr, 2)] += 1
+        else: C[(dr, 4)] += 1
+print("MIDFIELD PASSES NOT COMPLETED, HOW (35-70 m), a team-match: ground blocked <8 m | their touch beyond | theirs clean | out | other | high")
+for dr, dn in enumerate(("forward", "square", "back")):
+    print(f"  {dn}: " + " | ".join(f"{C[(dr, k)] / tm:.2f}" for k in range(6)))
+print("C++ rows: " + ", ".join("{" + ", ".join(f"{C[(dr, k)] / tm:.2f}" for k in range(6)) + "}" for dr in range(3)))
+print("  tried, ground / high: " + "; ".join(f"{dn} {C[(dr, 'tried', False)] / tm:.1f} / {C[(dr, 'tried', True)] / tm:.1f}" for dr, dn in enumerate(("forward", "square", "back"))))
+
+# part 4 (G5.234, §8.340): midfield origin (35-70 m off the passer's own goal), open-play foot passes of 5 m+ by the angle
+# off straight-at-their-goal x length: a team-match, the High share, and the share of the high ones not completed.
+C=collections.Counter()
+for f in files:
+    for e in json.load(open(f,encoding="utf8")):
+        if e["type"]["name"]!="Pass" or "location" not in e: continue
+        p=e["pass"]
+        if p.get("type",{}).get("name") in SET or p.get("body_part",{}).get("name")=="Head": continue
+        out=p.get("outcome",{}).get("name")
+        if out not in (None,"Incomplete","Out"): continue
+        own=e["location"][0]*SX
+        if not (35<=own<70): continue
+        dx=(p["end_location"][0]-e["location"][0])*SX; dy=(p["end_location"][1]-e["location"][1])*SY
+        d=math.hypot(dx,dy)
+        if d<5: continue
+        a=math.degrees(math.atan2(abs(dy),dx)); ab=0 if a<30 else 1 if a<45 else 2 if a<60 else 3 if a<90 else 4 if a<120 else 5
+        lb=0 if d<10 else 1 if d<20 else 2 if d<30 else 3 if d<40 else 4
+        hi=p.get("height",{}).get("name")=="High Pass"
+        C[(ab,lb,"n")]+=1; C[(ab,lb,"hi")]+=hi; C[(ab,lb,"hibad")]+= hi and out is not None
+print("midfield origin (35-70 m off own goal), open-play foot passes 5 m+: by angle off straight-at-goal x length: n a team-match, high %, [high lost %]")
+for ab,an in enumerate(("0-30","30-45","45-60","60-90","90-120","120+")):
+    print(f"  {an:7s} "+" | ".join(f"{C[(ab,lb,'n')]/tm:5.1f} {100*C[(ab,lb,'hi')]/max(1,C[(ab,lb,'n')]):3.0f}% [{100*C[(ab,lb,'hibad')]/max(1,C[(ab,lb,'hi')]):2.0f}]" for lb in range(5)), f"|| high a team-match {sum(C[(ab,lb,'hi')] for lb in range(5))/tm:.1f}")

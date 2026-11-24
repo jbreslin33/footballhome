@@ -89,6 +89,9 @@ struct Stats {
     long ml_who[4][2][5] = {};   // §8.335 not completed, ending under 10 m / beyond: who has it next
     long mr_n[5][2][2][2] = {}, mr_cd[5][5] = {}, mr_cv[5][4] = {}, mr_end[5][2] = {}, mr_len[5][3] = {}; std::vector<double> mr_off[5], mr_along[5];   // §8.334 PASS READ BY BAND
     long ml_n[4][10] = {}, ml_bad[4][10] = {};   // §8.333 MIDFIELD LOSSES: [18-35 / 35-52 / 52-70 / 70+][all, ground, high, <10, 10-20, 20-30, 30+, fwd, square, back]
+    long mqh_w[32][2] = {}, mqh_l[4][2] = {}, mqg_u[5][2] = {}, mqg_w[32][2] = {};   // §8.340 square midfield: high by order / length [tried, lost]; ground by their nearest at the kick / order [tried, blocked <8 m]
+    long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
+    long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
@@ -1387,6 +1390,7 @@ int main(int argc, char** argv) {
                 }
             if (k % 6 == 0) { hq_bx = b.pos.x.toDouble(); hq_by = b.pos.y.toDouble(); hq_own = own; }   // §8.238
             auto wsz = [](double tl, double y) { const bool w = std::fabs(y) >= 14; return tl < 18 ? (w ? 1 : 4) : tl < 35 ? (w ? 0 : 2) : (w ? 3 : 5); };
+            int ep_defl = 0;   // §8.340: this pass was deflected by them — 1 within 8 m of the kick, 2 beyond
             int ep_who = 3;   // §8.335: who has the pass next — 0 the kicker himself, 1 their outfielder, 2 their keeper, 3 out of play, 4 a mate
             auto endPass = [&](double ex, double ey, bool ok = false) {
                 if (rel.ws && !rel.set && !rel.shot && !rel.cross) {   // §8.155: pass to 18-35w / 35+ / 0-18w / 18-35c / 0-18c
@@ -1435,6 +1439,13 @@ int main(int argc, char** argv) {
                         const bool hi = mk.p == rel.p && mk.peak >= 1.5;
                         for (const int k : {0, hi ? 2 : 1, d < 10 ? 3 : d < 20 ? 4 : d < 30 ? 5 : 6, dx >= std::fabs(dy) ? 7 : -dx >= std::fabs(dy) ? 9 : 8}) { ++S.ml_n[b][k]; S.ml_bad[b][k] += !ok; }
                         if (!ok) ++S.ml_who[b][d < 10 ? 0 : 1][ep_who];
+                        if (b == 1 || b == 2) ++S.mq_t[dx >= std::fabs(dy) ? 0 : -dx >= std::fabs(dy) ? 2 : 1][hi ? 1 : 0];
+                        if ((b == 1 || b == 2) && !(dx >= std::fabs(dy)) && !(-dx >= std::fabs(dy))) {   // §8.340: the square ones — by his order, by length, by their nearest at the kick
+                            const int wy = rel.why >= 0 && rel.why < 32 ? rel.why : 31;
+                            if (hi) { ++S.mqh_w[wy][0]; S.mqh_w[wy][1] += !ok; const int l = d < 10 ? 0 : d < 20 ? 1 : d < 30 ? 2 : 3; ++S.mqh_l[l][0]; S.mqh_l[l][1] += !ok; }
+                            else { const int u = rel.upd < 1 ? 0 : rel.upd < 2 ? 1 : rel.upd < 3 ? 2 : rel.upd < 5 ? 3 : 4; ++S.mqg_u[u][0]; S.mqg_u[u][1] += ep_defl == 1; ++S.mqg_w[wy][0]; S.mqg_w[wy][1] += ep_defl == 1; }
+                        }
+                        if (!ok && (b == 1 || b == 2)) ++S.mq_n[dx >= std::fabs(dy) ? 0 : -dx >= std::fabs(dy) ? 2 : 1][hi ? 5 : ep_defl == 1 ? 0 : ep_defl == 2 ? 1 : ep_who == 1 || ep_who == 2 ? 2 : ep_who == 3 ? 3 : 4];   // §8.340
                         if (dx >= std::fabs(dy)) { const int l4 = d < 10 ? 0 : d < 20 ? 1 : d < 30 ? 2 : 3; ++S.fw_n[b][hi ? 1 : 0][l4]; S.fw_bad[b][hi ? 1 : 0][l4] += !ok; }   // §8.336
                     }
                 }
@@ -1823,7 +1834,10 @@ int main(int argc, char** argv) {
                         // open-play passes a team-match carry an opponent's Block, every one Incomplete; 0.45 are "deflected" and complete)
                         const bool blk = rel.kick && !rel.set && !rel.shot && W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k));
                         if (blk && rel.why != static_cast<int>(ai::Why::Clear)) { const double tlb = hx - rel.x * (rel.team == 0 ? 1.0 : -1.0); ++S.bk_n[tlb < 35 ? 0 : tlb < 70 ? 1 : 2][ep_who == 4 ? 0 : ep_who == 0 ? 1 : 2]; }
-                        endPass(q.pos.x.toDouble(), q.pos.y.toDouble(), mate && !rel.set && !rel.shot && !blk);
+                        ep_defl = blk ? (std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8 ? 1 : 2) : 0;
+                        // §8.340: a deflected pass ends where their man got to it (StatsBomb's end_location of a blocked pass), not where it was next owned
+                        endPass(blk ? W.deflectedAt().x.toDouble() : q.pos.x.toDouble(), blk ? W.deflectedAt().y.toDouble() : q.pos.y.toDouble(), mate && !rel.set && !rel.shot && !blk);
+                        ep_defl = 0;
                         ep_who = 3;
                     } else from[own] = -1;
                     if (owner_team >= 0 && q.team != owner_team) loss_tick[owner_team] = k;
@@ -1851,7 +1865,12 @@ int main(int argc, char** argv) {
                     for (int j = 0; j < 32; ++j) { pressed_in[j] = -1; facing[j] = 0; }
                 } else owner = -1;
             }
-            if (rel.p >= 0 && W.outStage() != 0) endPass(b.pos.x.toDouble(), b.pos.y.toDouble());
+            if (rel.p >= 0 && W.outStage() != 0) {
+                const bool blk = rel.kick && !rel.set && !rel.shot && W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k));   // §8.340
+                ep_defl = blk ? (std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8 ? 1 : 2) : 0;
+                endPass(blk ? W.deflectedAt().x.toDouble() : b.pos.x.toDouble(), blk ? W.deflectedAt().y.toDouble() : b.pos.y.toDouble());
+                ep_defl = 0;
+            }
             if (own >= 0) {
                 const auto& c = W.player(static_cast<std::uint8_t>(own));
                 const double sg = c.team == 0 ? 1.0 : -1.0;
@@ -1917,7 +1936,8 @@ int main(int argc, char** argv) {
             {   // §8.172: a high ball (rose past 4 m since last under 0.5 m) coming down through 2.4 m, in play (benchmarks_tracking_aerial.py)
                 const double bz = b.pos.z.toDouble();
                 const bool live = W.outStage() == 0 && W.restartTeam() == 0xFF;
-                if (mk.on) { mk.peak = std::max(mk.peak, bz); if (!live) mk.on = false; }
+                if (mk.on) { if (W.deflectedTick() < static_cast<std::uint64_t>(std::max(0L, last_kick_k))) mk.peak = std::max(mk.peak, bz);   // §8.340: its height as kicked — not the pop off their man
+                             if (!live) mk.on = false; }
                 const long kk = static_cast<long>(k);
                 for (std::size_t i = 0; i < hb_p.size();) {
                     const bool lost = W.lastTouchTeam() == (hb_p[i].po ^ 1);
@@ -3568,6 +3588,21 @@ int main(int argc, char** argv) {
                             for (int q = 0; q < 5; ++q) std::printf(" %4.1f (%4.1f) [%2.0f (%2.0f)] ", 100.0 * S.nx_to[z][q] / n, R[z][1 + q], 100.0 * S.nx_air[z][q] / std::max(1L, S.nx_to[z][q]), R[z][6 + q]);
                             std::printf("| %4.1f (%4.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %+.1f (%+.1f)", 100.0 * S.nx_lost[z] / n, R[z][11], 100.0 * S.nx_dead[z] / n, R[z][12], S.nx_n[z] / tmo, R[z][0], med(S.nx_d[z]), R[z][13]);
                         }
+                    }
+                    {   // §8.340 — real: benchmarks_statsbomb_fwdloss.py part 3
+                        static const double R[3][6] = {{1.95, 3.64, 4.52, 0.71, 0.08, 11.93}, {0.91, 1.59, 2.35, 0.58, 0.05, 3.01}, {0.35, 0.24, 0.42, 0.06, 0.02, 0.17}};
+                        static const char* dn[3] = {"forward", "square", "back"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.340 MIDFIELD PASSES NOT COMPLETED, HOW (kick 35-70 m off the line attacked; a team-match; StatsBomb PL 15/16 in brackets): ground blocked within 8 m of the kick | ground, their touch beyond | ground, theirs clean | ground, out | ground, other | high");
+                        for (int d = 0; d < 3; ++d) { std::printf("\n     %s:", dn[d]); for (int k = 0; k < 6; ++k) std::printf(" %.2f (%.2f)%s", S.mq_n[d][k] / tmo, R[d][k], k < 5 ? " |" : "");
+                            static const double RT[3][2] = {{51.1, 18.7}, {98.7, 9.5}, {33.1, 1.1}}; std::printf(" || tried ground %.1f (%.1f), high %.1f (%.1f)", S.mq_t[d][0] / tmo, RT[d][0], S.mq_t[d][1] / tmo, RT[d][1]); }
+                    }
+                    {   // §8.340: the square ones
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n     square high by his order, tried / lost:"); for (int y = 0; y < 32 && y < ai::kWhyCount; ++y) if (S.mqh_w[y][0]) std::printf(" %s %.2f / %.2f;", ai::kWhyNames[y], S.mqh_w[y][0] / tmo, S.mqh_w[y][1] / tmo);
+                        std::printf(" | by length <10 / 10-20 / 20-30 / 30+ m:"); for (int l = 0; l < 4; ++l) std::printf(" %.2f / %.2f;", S.mqh_l[l][0] / tmo, S.mqh_l[l][1] / tmo);
+                        std::printf("\n     square ground by their nearest at the kick 0-1 / 1-2 / 2-3 / 3-5 / 5+ m, tried / blocked within 8 m:"); for (int u = 0; u < 5; ++u) std::printf(" %.1f / %.2f;", S.mqg_u[u][0] / tmo, S.mqg_u[u][1] / tmo);
+                        std::printf(" | by his order:"); for (int y = 0; y < 32 && y < ai::kWhyCount; ++y) if (S.mqg_w[y][0]) std::printf(" %s %.1f / %.2f;", ai::kWhyNames[y], S.mqg_w[y][0] / tmo, S.mqg_w[y][1] / tmo);
                     }
                     {   // §8.339
                         const double tmo = std::max(1.0, 2.0 * matches);

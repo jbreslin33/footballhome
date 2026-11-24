@@ -12781,3 +12781,35 @@ pass and the full-back's ball down the line — ours has no Low pass); **the mid
 pass less (50 v 70) and lose more (19.2 v 14.7). Every earlier card read completion 3-4 points high. Next: the
 midfield's square pass that their man gets a body to — where he stands at the kick against StatsBomb 360's blocker
 (§8.271's ruler by direction). Harness only; tests 23/23.
+
+### 8.340 G5.234 — how the midfield's passes are lost: the forward ones as real ones are; the square ball goes high twice as often and is charged down at the kicker (measured; a trial not shipped)
+
+From §8.339 (the midfield's square ball: +28 tried, lost 19.1 v 8.5). `benchmarks_statsbomb_fwdloss.py` parts 3-4 +
+harness §8.340 MIDFIELD PASSES NOT COMPLETED, HOW: kicks 35-70 m off the line attacked, by direction (45° cones) and
+height. Two ruler refinements first: a deflected pass **ends where their man got to it** (StatsBomb's end_location
+of a blocked pass — it was where the ball was next owned, so a forward pass charged down and picked up to the side
+was a "square" loss), and its height is the height **as kicked**, not the pop off his body (`World::deflectedAt`,
+harness only; card unchanged but switches 9.9 → 9.8). Seeds 1000-4000 × 8, G5.232, a team-match (real in brackets):
+
+| | ground tried | ground lost | … blocked within 8 m | high tried | high lost |
+|---|---|---|---|---|---|
+| forward | 47.4 (51.1) | 10.9 (10.9) | 3.3 (1.95) | 19.6 (18.7) | 12.6 (11.9) |
+| square | 118.7 (98.7) | 9.8 (5.5) | 3.5 (0.91) | **17.2 (9.5)** | **8.5 (3.0)** |
+| back | 43.4 (33.1) | 2.1 (1.1) | 0.9 (0.35) | 2.1 (1.1) | 0.7 (0.2) |
+
+- The midfield's **forward pass is real in every cell** — tried, lost, on the ground and in the air.
+- **The square ball goes high 17.2 times v 9.5 and half are lost (real a third)**: by his order pass 11.7 / 4.6 lost,
+  ball into space 4.1 / 3.1, ball in behind 1.4 / 0.8; by length 30 m+ 8.9 / 4.5, 20-30 m 3.7 / 1.9. G5.230's high ball
+  into space is 4 of them (three in four lost).
+- **The ground pass is charged down within 8 m 7.8 times v 3.2** (square 3.5 v 0.9), at every distance of their
+  nearest man — 1.4 a team-match of the square ones with him 3 m+ off (§8.271: ours 2.7 / 1.3% at 3-5 / 5+ m, real
+  1.9 / 0.4). The buckets beyond 8 m are not like for like (StatsBomb's Interception v our clean take); the totals are.
+
+**Trial, not shipped** — `physics.space.high_side` 0 (the high ball into space only when forward by the pick's 60°
+cut): square high into space 4.1 → 3.6, nothing else; card 9 / 12 / 12 → 9 / 7 / 17 (noise). Code removed.
+
+**Why** (part 4): the pick's height table cuts forward at 60° (§8.176), the rulers at 45°. Real midfield passes of
+20-30 m go high 38% within 30° of straight at goal, 25% at 30-45°, **12% at 45-60°**, 5% at 60-90°; of 30-40 m 69 / 69
+/ 51 / 27%. The 60° table gives the 45-60° ball the forward share (≈28% at 20-30 m) — and G5.230's space ball rides
+the same cut. Next: recut the height table at 45° (`benchmarks_statsbomb_highpass.py --dir`), then the pass charged
+down at the kicker. Harness only; tests 23/23.
