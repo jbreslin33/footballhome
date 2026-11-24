@@ -31,8 +31,7 @@ def zone(x, y):
 def zname(z):
     return f"{NAMES[z // 2]} {'centre' if z % 2 == 0 else 'wide'}"
 
-
-files = sorted(glob.glob(os.path.join(sys.argv[1], "*.json")))
+files = sorted(f for f in glob.glob(os.path.join(sys.argv[1], "*.json")) if os.path.basename(f)[:-5].isdigit())   # event files only (the folder also holds the match list)
 n = collections.Counter()
 to = collections.Counter()
 loft = collections.Counter()

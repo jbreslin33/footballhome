@@ -13500,3 +13500,35 @@ once. The ball won in the last 35 m is half real (13.3 v 23.0) — the other sid
 Next: the pass received 35-52 m out by where it was struck (band × lane, StatsBomb v ours) — which origin sends the
 surplus; then the ball won in midfield and moved on.
 Rulers only; goldens unchanged.
+
+### 8.360 G5.254 — the central midfielder's ball to the man beside him: one proportional step on the table's presence correction (mig 1865; shipped)
+
+From §8.359: midfield's surplus stints are received passes. ORIGIN × DESTINATION (passes a team-match, ours as played
+minus StatsBomb PL 15/16 PASS POLICY; `benchmarks_statsbomb_passes.py` fixed to read event files only): the surplus is
+the central man to the central man — 52-70 m centre → the same zone +10.8, 35-52 m centre → the same zone +8.7, own third
+centre → the same zone +5.8, 35-52 c → back to 52-70 c +4.4 — and the central midfield origins themselves +13 / +19.
+Every destination nearer their goal is short: the last 18 m centre −13.6, 18-35 m wide −13.2, 18-35 centre −8.1.
+
+**Change**: rows only — `physics.pass.kappa_<o>_<d>` (§8.159's DFL presence correction) × real share ÷ ours as played,
+one step, for origins 35-52 c / 35-52 w / 52-70 c / 70+ c into destinations 18-35 .. 70+ (24 cells). §8.249 tried the same
+step on the own-half origins against an older table and the CBs got the ball anyway; here the cells are the ones the
+chooser's chain (§8.354) said the lifts inflate. Seeds 1000-4000 × 8:
+
+| | G5.252 | G5.254 | real |
+|---|---|---|---|
+| ours − real: 35-52 c → same / 52-70 c → same / 70+ c → same | +8.7 / +10.8 / +5.8 | +4.4 / +6.9 / +2.2 | 0 |
+| passes from 35-52 c / 52-70 c | 74.8 / 91.6 | 66.9 / 84.5 | 61.5 / 72.2 |
+| all passes into 35-52 c / 52-70 c | 77.2 / 77.2 | 68.5 / 70.6 | 61.5 / 62.2 |
+| … into the last 18 m centre / 18-35 wide | 22.1 / 29.5 | 22.0 / 30.4 | 35.6 / 42.7 |
+| stints begun by a mate's pass 35-52 / 52-70 m out | 127.6 / 138.7 | 121.8 / 135.0 | 93.6 / 113.3 |
+| stints 35-52 m out, mean s / 3 s+ | 179 / 1.31 / 12.6 | 171 / 1.28 / 12.4 | 139 / 1.18 / 9.7 |
+| passes / completed % | 426 / 76.0 | 415 / 75.3 | 434 / 77.5 |
+| goals / card ok / off / OFF | 2.19 / 12 / 7 / 14 | 2.41 / 11 / 7 / 15 | 1.35 |
+
+The step halves the same-zone surplus and takes the central origins two-thirds of the way to real. It does not reach the
+final third: the destinations nearer their goal are short by the VOLUME of the origins that feed them (18-35 m wide plays
+24.7 a team-match, real 36.0; 0-18 m 17.1 v 30.9), not by shares — the same finding as §8.351 / §8.356 from a third side.
+Completion slips 0.7 (the passes it moved are the riskier ones); goals +0.2 inside 4-seed noise (§8.351). `card_G5.254.txt`.
+Next: the ball into 18-35 m wide — the origin feeding it there is the volume gap (stints in their wide last third 62 v 73,
+§8.347); what a real side does from 35-52 wide that ours does not (its pass to 18-35 w 18.1% real v ours 14.5).
+Rows only; tests 28/28.
