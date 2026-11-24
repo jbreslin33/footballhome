@@ -8,11 +8,12 @@
 // shows both routes side by side.  The picked club is remembered.
 //
 // Picking a club (owner 2026-11-24: "needs easy selection of clubs. maybe a
-// list by league name then teams under them in a carousel"): two strips on
-// top, each one line that slides sideways (‹ › or a swipe) — the leagues
-// (each lit conference, then the leagues feeding it), and the clubs of the
-// league that is picked.  A tap on a club draws its way up.  ☰ Find a club
-// still works and moves the strips to that club's league.
+// list by league name then teams under them in a carousel" · "all the
+// conferences are back as pills lol. we need like a drop down"): ONE line
+// on top — a league drop-down (each lit conference, then ↳ the leagues
+// feeding it) and, beside it, the picked league's clubs on a strip that
+// slides sideways (‹ › or a swipe).  A tap on a club draws its way up.
+// ☰ Find a club still works and moves the line to that club's league.
 class PyramidPathView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
@@ -32,9 +33,8 @@ class PyramidPathView {
       .pt-car .strip button { flex:0 0 auto; white-space:nowrap; min-height:0; min-width:0; padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.85rem;
                               border:1px solid var(--border-color, #374151); background:transparent; color:inherit; }
       .pt-car .strip button.on { background:var(--primary-color, #2563eb); border-color:transparent; color:#fff; }
-      .pt-car .strip button.conf { border-color:var(--cc, #2563eb); border-width:2px; }
-      .pt-car .strip button.conf.on { background:var(--cc, #2563eb); color:var(--cc-fg, #fff); }
-      .pt-car.clubs .strip button { font-weight:600; font-size:0.82rem; padding:5px 12px; }
+      .pt-car .strip button { font-weight:600; font-size:0.82rem; padding:5px 12px; }
+      .pt-car select { flex:0 0 auto; max-width:46vw; min-height:0; padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.85rem; }
       .pt-car .nav { flex:0 0 auto; min-height:0; min-width:0; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:1rem; line-height:1;
                      border:1px solid var(--border-color, #374151); background:transparent; color:inherit; }
       .pt-club { text-align:center; margin:0 0 4px; }
@@ -55,9 +55,7 @@ class PyramidPathView {
       .pt-pro-tier .lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.6; }
       .pt-pro-tier .lgs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
       .pt-pro-lg { border:2px solid #d4a017; border-radius:12px; padding:7px 16px; font-weight:800; background:rgba(212,160,23,0.10); }
-      .pt-pro-note { font-size:0.8rem; opacity:0.75; text-align:center; max-width:520px; }
       .pt-pro-doc { max-width:560px; border:2px dashed #94a3b8; border-radius:12px; padding:10px 14px; text-align:center; background:rgba(148,163,184,0.08); }
-      .pt-pro-doc .why { font-size:0.85rem; font-style:italic; margin:6px 0; }
       .pt-pro-link { display:block; font-weight:800; color:#fbbf24; }
       .pt-pro-gap { width:0; height:22px; border-left:2px dashed #64748b; }
       .pt-conf .fc-cell { display:flex; gap:10px; justify-content:center; }`;
@@ -92,12 +90,11 @@ class PyramidPathView {
     if (!cur || (this.clubId && this._follow)) cur = leagues.find((l) => l.clubs.has(this.clubId)) || cur || leagues[0];
     this._follow = false;
     this.leagueId = cur.id;
-    const ink = (c) => (window.PyramidScreenColor ? PyramidScreenColor.ink(c) : '#fff');
-    const car = (cls, pills) => `<div class="pt-car ${cls}"><button class="nav" data-pt-nav="-1">‹</button><div class="strip">${pills}</div><button class="nav" data-pt-nav="1">›</button></div>`;
-    const lgs = leagues.map((l) => `<button class="${l.conf ? 'conf' : ''} ${l.id === cur.id ? 'on' : ''}" data-pt-league="${l.id}"${l.color ? ` style="--cc:${esc(l.color)}; --cc-fg:${ink(l.color)}"` : ''}>${esc(l.name)}</button>`).join('');
+    const lgs = leagues.map((l) => `<option value="${l.id}"${l.id === cur.id ? ' selected' : ''}>${l.conf ? '' : '↳ '}${esc(l.name)}</option>`).join('');
     const clubs = [...cur.clubs].sort((a, b) => a[1].localeCompare(b[1]))
       .map(([id, name]) => `<button class="${id === this.clubId ? 'on' : ''}" data-pt-club="${id}">${esc(name)}</button>`).join('');
-    return car('leagues', lgs) + car('clubs', clubs);
+    return `<div class="pt-car"><select data-pt-league>${lgs}</select>
+      <button class="nav" data-pt-nav="-1">‹</button><div class="strip">${clubs}</div><button class="nav" data-pt-nav="1">›</button></div>`;
   }
 
   html(model, confs) {
@@ -136,7 +133,7 @@ class PyramidPathView {
   // Above the APSL: the professional divisions (mig 1788, owner 11/24
   // "show that above the apsl its pro"), top first — wording rows
   // path_pro_1… = 'label|league;league'.  A dashed step, not an arrow: no
-  // club goes up on results, the note says how one does.
+  // club goes up on results.
   _proHtml() {
     if (!this.screen.feature('pro', true)) return '';
     const esc = (t) => this._esc(t);
@@ -151,15 +148,12 @@ class PyramidPathView {
     // The standards themselves (mig 1790): wording row 'label|url' → U.S. Soccer's page.
     const [linkLabel, linkUrl] = (this._copy('path_pro_link') || '').split('|');
     const link = /^https:\/\//.test(linkUrl || '') ? `<a class="pt-pro-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkLabel)}</a>` : '';
-    // The document sits ON the line between the pro leagues and the APSL
-    // (mig 1794, owner: "it currently acts as a block but should act as a
-    // bridge"): dashed line, the PLS box with its caption, dashed line.
-    const bridge = this._copy('path_pro_bridge');
+    // The document sits ON the line between the pro leagues and the APSL:
+    // dashed line, the link, dashed line.  No comment on it (mig 1831,
+    // owner 11/24: "just put the standards there … as a link with no comment").
     return `<div class="pt-pro"><h4>${esc(this._copy('path_pro_title'))}</h4>${tiers.join('')}
       <div class="pt-pro-gap"></div>
-      <div class="pt-pro-doc">${link}${bridge ? `<div class="why">${esc(bridge)}</div>` : ''}
-        <div class="pt-pro-note">${esc(this._copy('path_pro_note'))}</div></div>
-      <div class="pt-pro-gap"></div></div>`;
+      ${link ? `<div class="pt-pro-doc">${link}</div><div class="pt-pro-gap"></div>` : ''}</div>`;
   }
 
   _clubHtml(model, club) {
@@ -200,24 +194,24 @@ class PyramidPathView {
     this._reveal();
     if (root._pt) return;
     root._pt = true;
+    root.addEventListener('change', (e) => this._onLeague(e));
     root.addEventListener('click', (e) => {
       const nav = e.target.closest('[data-pt-nav]');
       if (nav) { const st = nav.parentElement.querySelector('.strip'); st.scrollLeft += Number(nav.dataset.ptNav) * st.clientWidth * 0.8; return; }
-      const lg = e.target.closest('[data-pt-league]');
-      if (lg) { this.leagueId = Number(lg.dataset.ptLeague); this._redrawPicker(); return; }
       const cb = e.target.closest('[data-pt-club]');
       if (cb) { const club = this.model.clubs.find((c) => c.id === Number(cb.dataset.ptClub)); if (club) { e.stopPropagation(); this.onClub(club, true); } }
     });
   }
 
+  _onLeague(e) {
+    const lg = e.target.closest('select[data-pt-league]');
+    if (lg) { this.leagueId = Number(lg.value); this._redrawPicker(); }
+  }
+
   _redrawPicker() {
     const box = this.root && this.root.querySelector('.pt-picker');
     if (!box) return;
-    const left = [...box.querySelectorAll('.strip')].map((s) => s.scrollLeft);
     box.innerHTML = this._pickerHtml(this.model, this.confs);
-    // The league strip keeps its place; the lit pills are slid into sight.
-    const st = box.querySelector('.leagues .strip');
-    if (st) { st.style.scrollBehavior = 'auto'; st.scrollLeft = left[0] || 0; st.style.scrollBehavior = ''; }
     this._reveal();
   }
   _reveal() {
