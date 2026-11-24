@@ -761,12 +761,19 @@ class FinancesScreen extends Screen {
     const fullNet = perFull * (1 - feeShare), rate = fullNet > 0 ? perMember / fullNet : 0;
     const fact = (label, value, detail) => `<tr class="item"><td style="padding-left:26px; white-space:normal;">${esc(label)}${detail ? `<span class="fn-tick">${esc(detail)}</span>` : ''}</td><td style="font-weight:700;">${esc(value)}</td></tr>`;
     const slotsText = split(more).map(g => `${g.n} ${g.label}`).join(' · ');
+    // The other way (owner 11/23: "give another option to. put raise dues to this amount and then we don't
+    // need new players"): the same members, paying the way they pay now, at a monthly rate that closes the
+    // gap over a full year — every section's dues up by the same share; nobody new, nobody leaving.
+    const duesNet = sum(dues) * (1 - feeShare), up = duesNet > 0 ? gap / duesNet : 0, monthNow = perFull / 12;
+    const raiseFact = up > 0 && monthNow > 0 ? fact(C('bl_f_raise', 'Or, with no new members: dues a month at'), M0(monthNow * (1 + up)),
+      C('bl_f_raise_note', `Now ${M0(monthNow)} — up ${Math.round(100 * up)}%, for a full year, the same members paying the way they pay now.`, { now: M0(monthNow), pct: Math.round(100 * up) })) : '';
     const facts = `<tr class="item"><td colspan="2" style="padding-left:26px; font-weight:800;">${esc(C('bl_f_title', 'To break even without the grant'))}</td></tr>`
       + fact(C('bl_f_more', 'More members needed — paying the way members pay now'), String(more), C('bl_f_more_note', 'No other new costs than a kit each.'))
       + fact(C('bl_f_full', 'The same money as this many members paying in full'), String(moreFull))
       + fact(C('bl_f_per', 'What a member brings a year now'), M0(net), C('bl_f_per_note', `${M0(perMember)} really collected after fees, less a ${M0(kit)} kit`, { per: M0(perMember), kit: M0(kit) }))
       + fact(C('bl_f_per_full', 'What a member paying in full brings'), M0(netFull), C('bl_f_per_full_note', `${M0(perFull)} a year, ${M0(fullNet)} after fees, less a ${M0(kit)} kit`, { full: M0(perFull), after: M0(fullNet), kit: M0(kit) }))
       + (rate > 0 ? fact(C('bl_f_rate', 'Dues really collected, of the full rate'), `${Math.round(100 * rate)}%`) : '')
+      + raiseFact
       + (pg && owe ? fact(C('bl_f_now', 'Members who owe dues now'), String(owe), C('bl_f_now_note', `${paid} paid up, ${owe - paid} behind`, { paid, behind: owe - paid })) : fact(C('bl_f_now', 'Members who owe dues now'), String(paying)))
       + (slotsText ? fact(C('bl_f_split', 'The members needed, by practice slot'), '', slotsText) : '');
     const signed = (label, v, strong, extra = '') => `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}${extra}</td>
