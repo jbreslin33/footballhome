@@ -36,6 +36,7 @@
   const say = (tier, tokens = {}) => (copy.get(tier) || '').replace(/\{(\w+)\}/g, (_, k) => (tokens[k] == null ? '' : String(tokens[k])));
   let concept = null, reported = null;   // the catalogue row; whether the engine names this concept at all
   let terms = [], legend = {};            // the engine's vocabulary (game_engine_terms); concept id → { name, title }
+  let tax = {}, sideTab = 'machine';     // the taxonomy payload; which side tab is open
 
   // ── the live match, remembered ──
   const snaps = [], brains = [];          // [{tick, players, ball}], [{tick, entries}]
@@ -89,7 +90,7 @@
       if (p.held >= MIN_HELD && clear && snaps.length && snaps[0].tick <= p.onset - BEFORE) {
         clips.push({ slot, onset: p.onset, from: p.onset - BEFORE, to: p.onset + AFTER, until: Math.min(p.last, p.onset + AFTER) });
         if (clips.length > 20) { clips.shift(); if (at > 0) at--; }
-        if (at < 0) show(0);          // the first one plays by itself
+        if (at < 0) { show(0); setTab('machine'); }   // the first one plays by itself, his state machine beside it
         else paintBar();
       }
     }
@@ -101,6 +102,16 @@
     const c = clips[at];
     Object.assign(play, { t: c.from, on: true, holdUntil: 0, last: performance.now(), ended: false, held: false });
     cam.set = false; machineKey = '';
+    // The ticks where his state changes inside this example: the clip holds a beat at each.
+    c.changes = [];
+    let lastKey = null;
+    for (const b of brains) {
+      if (b.tick < c.from || b.tick > c.to) continue;
+      const [sa] = snapAt(b.tick), s2 = stateOf(b.entries[c.slot], c.slot, sa.ball.owner), k = s2 && s2.state ? s2.state.code : '';
+      if (lastKey !== null && k !== lastKey) c.changes.push(b.tick);
+      lastKey = k;
+    }
+    play.flash = null;
     paintBar();
   }
   function snapAt(t) {     // the two snapshots round tick t, and how far between
@@ -144,6 +155,8 @@
       const was = play.t;
       play.t += dt * 30 * play.rate;
       if (!play.held && was < c.onset && play.t >= c.onset) { play.t = c.onset; play.held = true; play.holdUntil = now + 1100; }
+      for (const ch of c.changes || []) if (was < ch && play.t >= ch && ch !== c.onset) { play.t = ch; play.holdUntil = now + 800; play.flash = now + 1800; break; }
+      if (play.held && play.t === c.onset && !play.flash) play.flash = now + 2200;
       if (play.t >= c.to) { play.t = c.to; play.on = false; play.ended = true; paintBar(); }
     }
     const t = play.t, me = posAt(t, c.slot), entries = brainAt(t), e = entries && entries[c.slot];
@@ -187,14 +200,11 @@
       g.strokeStyle = '#ffcc00'; g.lineWidth = 2.5; g.setLineDash([7, 6]); line(me.x, me.y, tx, ty); g.setLineDash([]);
       const q = P(tx, ty); g.beginPath(); g.arc(q[0], q[1], 0.9 * sc, 0, Math.PI * 2); g.stroke();
     }
+    let gapAt = null;
     // The gap between him and the man he is acting on, in metres.
     if (other != null) {
       g.strokeStyle = 'rgba(255,92,122,.9)'; g.lineWidth = 2; line(me.x, me.y, op.x, op.y);
-      const m = P((me.x + op.x) / 2, (me.y + op.y) / 2), d = Math.hypot(me.x - op.x, me.y - op.y).toFixed(1) + ' m';
-      g.font = '800 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      m[1] -= Math.max(11, 1.05 * sc) + 26;   // above the two of them, clear of the rings when they are close
-      const w = g.measureText(d).width + 12; g.fillStyle = 'rgba(8,12,18,.85)'; g.fillRect(m[0] - w / 2, m[1] - 12, w, 24);
-      g.fillStyle = '#ff9fb2'; g.fillText(d, m[0], m[1] + 1);
+      gapAt = P((me.x + op.x) / 2, (me.y + op.y) / 2);
     }
     // Everyone: dim, but him and his man.
     const r = Math.max(11, 1.05 * sc);
@@ -212,12 +222,42 @@
       }
     }
     { const q = P(ballP.x, ballP.y); g.beginPath(); g.arc(q[0], q[1], Math.max(5, 0.4 * sc), 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#111'; g.stroke(); }
+    // What each of the two is doing, written on him (the state for the player; the decision for his man).
+    const st = stateOf(e, c.slot, ballP.owner);
+    const tag = (pos, text, fg, bg, below) => {
+      if (!text) return;
+      const q = P(pos.x, pos.y);
+      g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const w = g.measureText(text).width + 14, y = q[1] + (below ? r + 22 : -(r + 22));
+      g.fillStyle = bg; g.fillRect(q[0] - w / 2, y - 12, w, 24);
+      g.fillStyle = fg; g.fillText(text, q[0], y + 1);
+    };
+    if (gapAt) {   // the metres between them, drawn last so nothing covers it; beside the line when they are close
+      const d = Math.hypot(me.x - op.x, me.y - op.y), text = d.toFixed(1) + ' m';
+      if (d * sc < 6 * r) gapAt[1] -= 3.2 * r;
+      g.font = '800 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const w = g.measureText(text).width + 12; g.fillStyle = 'rgba(8,12,18,.9)'; g.fillRect(gapAt[0] - w / 2, gapAt[1] - 12, w, 24);
+      g.fillStyle = '#ff9fb2'; g.fillText(text, gapAt[0], gapAt[1] + 1);
+    }
+    const flashing = play.flash && now < play.flash;
+    tag(me, st && st.state ? (flashing ? say('cap_now', { state: st.state.title }) : st.state.title) : '', '#0b1c3d', flashing ? '#ffffff' : '#ffcc00', true);
+    if (other != null) { const os = stateOf(entries && entries[other], other, ballP.owner); tag(op, os ? os.decision.title : '', '#fff', 'rgba(200,40,70,.92)', op.x * sg > me.x * sg ? false : true); }
     g.restore();
+
+    // The caption: exactly what is happening, in words.
+    const gapNow = Math.hypot(me.x - op.x, me.y - op.y);
+    const before = Math.max(c.from, t - 15), mb = posAt(before, c.slot), ob = other != null ? posAt(before, other) : ballP;
+    const gapWas = Math.hypot(mb.x - ob.x, mb.y - ob.y), trend = gapWas - gapNow > 0.25 ? 'cap_closing' : gapNow - gapWas > 0.25 ? 'cap_opening' : 'cap_steady';
+    const l1 = st && st.state ? say('cap_line', { num: numOf(c.slot), player: nameOf(c.slot), state: st.state.title }) + (st.state.note ? ' — ' + st.state.note : '') : '';
+    const l2 = (ballP.owner !== NO ? say('cap_ball_with', { num: numOf(ballP.owner), player: nameOf(ballP.owner) }) : say('cap_ball_loose'))
+      + (other != null ? '   ·   ' + say('cap_gap', { d: gapNow.toFixed(1), num: numOf(other) }) + ', ' + say(trend) : '');
+    if (l1 !== frame.l1) { frame.l1 = l1; $('cap1').textContent = l1; }
+    if (l2 !== frame.l2) { frame.l2 = l2; $('cap2').textContent = l2; }
 
     // BEFORE / DOING IT / AFTER, and the timeline with the doing-it part filled in.
     const phase = t < c.onset ? 'before' : doing ? 'doing' : 'after';
     if (phase !== frame.phase || at !== frame.at) { frame.phase = phase; frame.at = at; paintPhase(phase); }
-    paintMachine(c, t, e, other, ballP);
+    if (sideTab === 'machine') paintMachine(c, t, e, other, ballP);
     const bar = $('time');
     const pct = (k) => (100 * (k - c.from) / (c.to - c.from)).toFixed(2) + '%';
     bar.style.setProperty('--from', pct(c.onset)); bar.style.setProperty('--to', pct(Math.min(c.until + 6, c.to))); bar.style.setProperty('--now', pct(t));
@@ -236,52 +276,134 @@
     return { decision: d, state: terms.find((x) => x.kind === 'state' && x.code === code) || null, ours };
   }
   let machineKey = '';
+  // Every term on this panel carries its definition right there (owner 11/24: "easily
+  // accessible definitions on the video loop on side"): the concept's own at the top, a
+  // state's under its name (game_engine_terms.note), a concept's cue under its title.
   function paintMachine(c, t, e, other, ball) {
     const st = stateOf(e, c.slot, ball.owner);
+    const cById = new Map((tax.concepts || []).map((k) => [k.id, k]));
+    const defOf = (id) => (id != null && id !== NO && cById.get(id) ? cById.get(id).cue || '' : '');
     // His states through the example, in order, with how long he was in each.
     const path = [];
     for (const b of brains) {
       if (b.tick < c.from || b.tick > c.to) continue;
-      const [sa] = snapAt(b.tick), s2 = stateOf(b.entries[c.slot], c.slot, sa.ball.owner);
-      const label = s2 && s2.state ? s2.state.title : '';
-      const con = b.entries[c.slot] && b.entries[c.slot].concept !== NO && legend[b.entries[c.slot].concept] ? legend[b.entries[c.slot].concept].title : '';
-      const key = label + '|' + con;
+      const [sa] = snapAt(b.tick), en = b.entries[c.slot], s2 = stateOf(en, c.slot, sa.ball.owner);
+      const cid = en && en.concept !== NO && legend[en.concept] ? en.concept : null;
+      const key = (s2 && s2.state ? s2.state.code : '') + '|' + cid;
       if (path.length && path[path.length - 1].key === key) path[path.length - 1].to = b.tick;
-      else path.push({ key, label, con, from: b.tick, to: b.tick });
+      else path.push({ key, state: s2 && s2.state, cid, from: b.tick, to: b.tick });
     }
     const cur = path.findIndex((p, i) => t >= p.from && (i === path.length - 1 || t < path[i + 1].from));
     const key = [at, st && st.state && st.state.code, st && st.decision.code, e && e.concept, cur, other].join('|');
     if (key === machineKey) return;
     machineKey = key;
-    const host = $('side');
+    const host = $('side-body');
     host.textContent = '';
     const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    add('h2', '', say('clip_sm_title', { num: numOf(c.slot), player: nameOf(c.slot) }));
-    add('h3', '', say('clip_sm_side'));
-    add('div', 'now', st ? say(st.ours ? 'clip_sm_with' : 'clip_sm_without') : say('clip_sm_none'));
-    add('h3', '', say('clip_sm_states'));
-    const ul = add('ul');
-    const keeper = st && st.state && st.state.code === 'keeper';
-    for (const s of terms.filter((x) => x.kind === 'state' && (keeper ? x.parent === 'keeper' : x.parent !== 'keeper'))) {
-      const li = add('li', st && st.state && st.state.code === s.code ? 'on' : (st && s.parent === (st.ours ? 'with' : 'without') ? 'done' : ''), s.title, ul);
-      if (st && st.state && st.state.code === s.code && s.note) add('small', '', s.note, li);
+    // What this concept IS, always in view.
+    if (concept) {
+      const box = add('div', 'def');
+      add('div', 'def-t', concept.title, box);
+      if (concept.cue) add('div', '', concept.cue, box);
+      if (concept.lacking) add('div', 'dim', say('clip_x_lacking') + ': ' + concept.lacking, box);
     }
-    add('h3', '', say('clip_sm_decision'));
-    add('div', 'now', st ? st.decision.title : say('clip_sm_none'));
-    add('h3', '', say('clip_sm_concept'));
-    add('div', 'now', e && e.concept !== NO && legend[e.concept] ? legend[e.concept].title : say('clip_sm_none'));
+    add('h2', '', say('clip_sm_title', { num: numOf(c.slot), player: nameOf(c.slot) }));
+    add('div', 'dim', st ? say('clip_sm_side') + ' ' + say(st.ours ? 'clip_sm_with' : 'clip_sm_without') : '');
+    // Through this example: each state he passes through, defined.
     add('h3', '', say('clip_sm_path'));
     const pl = add('ul');
     path.forEach((p, i) => {
-      const li = add('li', i === cur ? 'on' : (i < cur ? 'done' : ''), (p.label || say('clip_sm_none')) + '  ·  ' + ((p.to - p.from + 6) / 30).toFixed(1) + ' s', pl);
-      if (p.con) add('small', '', p.con, li);
+      const li = add('li', i === cur ? 'on' : (i < cur ? 'done' : ''), (p.state ? p.state.title : say('clip_sm_none')) + '  ·  ' + ((p.to - p.from + 6) / 30).toFixed(1) + ' s', pl);
+      if (p.state && p.state.note) add('small', '', p.state.note, li);
+      if (p.cid != null) add('small', 'con', legend[p.cid].title + (defOf(p.cid) ? ' — ' + defOf(p.cid) : ''), li);
     });
+    add('h3', '', say('clip_sm_decision'));
+    add('div', 'now', st ? st.decision.title : say('clip_sm_none'));
     if (other != null) {
       const entries = brainAt(t), os = stateOf(entries && entries[other], other, ball.owner);
       add('h3', '', say('clip_sm_other', { num: numOf(other), player: nameOf(other) }));
       add('div', 'now', os ? (os.state ? os.state.title + ' — ' : '') + os.decision.title : say('clip_sm_none'));
+      if (os && os.state && os.state.note) add('div', 'dim', os.state.note);
+    }
+    // Every state he could be in, each with what it means; the one he is in is lit.
+    add('h3', '', say('clip_sm_states'));
+    const ul = add('ul');
+    const keeper = st && st.state && st.state.code === 'keeper';
+    for (const s of terms.filter((x) => x.kind === 'state' && (keeper ? x.parent === 'keeper' : x.parent !== 'keeper'))) {
+      const on = st && st.state && st.state.code === s.code;
+      const li = add('li', on ? 'on' : (st && s.parent === (st.ours ? 'with' : 'without') ? 'done' : ''), s.title, ul);
+      if (s.note) add('small', '', s.note, li);
     }
     add('div', 'note', say('clip_sm_note'));
+  }
+
+  // ── 📖 What it is: real football · the game · the engine code (owner 11/24: "the popup
+  // needs to explain also what the concept is in real life, the game and the engine code").
+  // Every line is the taxonomy's own: the concept row, its behaviours, their classes.
+  function paintExplain() {
+    const host = $('side-body');
+    host.textContent = '';
+    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
+    const c = concept;
+    add('h3', 'big', say('clip_x_real'));
+    if (c) {
+      if (c.cue) { add('div', 'lab', say('clip_x_cue')); add('p', '', c.cue); }
+      if (c.lacking) { add('div', 'lab', say('clip_x_lacking')); add('p', '', c.lacking); }
+      const pr = (tax.principles || []).find((p) => p.id === c.principle_id);
+      if (pr) add('p', 'dim', say('clip_x_principle', { p: pr.title }));
+      if (c.taught_from) add('p', 'dim', say('clip_x_taught', { a: c.taught_from }));
+      const byId = new Map((tax.concepts || []).map((k) => [k.id, k]));
+      const words = { 'kind-of': 'link_kind_of', 'step-of': 'link_step_of', requires: 'link_requires', refines: 'link_refines', counters: 'link_counters', 'lapses-to': 'link_lapses_to' };
+      for (const l of tax.links || []) {
+        if (l.from === c.id && byId.get(l.to)) add('p', 'dim', say(words[l.kind]) + ' ' + byId.get(l.to).title);
+        else if (l.to === c.id && byId.get(l.from)) add('p', 'dim', say(words[l.kind] + '_by') + ' ' + byId.get(l.from).title);
+      }
+      if (c.sources) add('p', 'dim', say('clip_x_sources', { n: c.sources }));
+    }
+    const behs = (tax.behaviours || []).filter((b) => b.concept_id === CONCEPT);
+    add('h3', 'big', say('clip_x_game'));
+    if (!behs.length) add('p', '', say('clip_x_nogame'));
+    else {
+      add('p', 'state', say(behs.some((b) => b.in_sim !== false) ? 'clip_x_used' : 'clip_x_zero'));
+      for (const b of behs) { add('p', '', b.what); if (b.tag) add('p', 'dim', say('clip_x_built', { tag: b.tag })); }
+    }
+    add('h3', 'big', say('clip_x_code'));
+    if (!behs.length) add('p', '', say('clip_x_nocode'));
+    const cls = new Map((tax.classes || []).map((k) => [k.name, k]));
+    for (const b of behs) {
+      const k = b.class ? cls.get(b.class) : null;
+      if (k) {
+        const chain = [k.name];
+        for (let p = k.parent, n = 0; p && n < 10; n++) { chain.push(p); p = cls.get(p) ? cls.get(p).parent : null; }
+        add('div', 'lab', say('clip_x_chain'));
+        add('p', 'code', chain.join('  →  '));
+        if (b.symbol && b.symbol !== k.name) add('p', 'code dim', b.symbol);
+        if (k.doc) add('p', 'dim pre', k.doc);
+      } else if (b.symbol) add('p', 'code', say('clip_x_func', { symbol: b.symbol }));
+      add('p', 'dim', say('clip_x_where', { file: b.file, line: b.line }));
+      const btn = add('button', 'small', say('clip_x_show'));
+      const pre = add('pre', 'src');
+      pre.hidden = true;
+      btn.type = 'button';
+      btn.addEventListener('click', async () => {
+        pre.hidden = !pre.hidden;
+        btn.textContent = say(pre.hidden ? 'clip_x_show' : 'clip_x_hide');
+        if (pre.hidden || pre.dataset.got) return;
+        pre.dataset.got = '1';
+        try {
+          const res = await fetch('/api/tactic-plans/taxonomy/source?' + new URLSearchParams({ file: b.file, from: Math.max(1, b.line - 4), to: b.line + 40 }), { headers: { Authorization: 'Bearer ' + token } });
+          if (!res.ok) throw new Error();
+          const src = await res.json();
+          pre.textContent = src.text.split('\n').map((line, i) => String(src.from + i).padStart(4) + '  ' + line).join('\n');
+        } catch (_) { pre.textContent = say('clip_x_nosrc'); }
+      });
+    }
+  }
+  function setTab(tab) {
+    sideTab = tab;
+    for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tab);
+    machineKey = '';
+    if (tab === 'explain') paintExplain(); else $('side-body').textContent = '';
   }
 
   // ── words and controls ──
@@ -309,14 +431,12 @@
       fetch('/api/tactic-plans/taxonomy', { headers: { Authorization: 'Bearer ' + token } })]);
     if (r1.status === 401) { location.href = '/'; return; }
     for (const t of (((await r1.json()).data || {}).templates || [])) if (t.kind === 'taxonomy' && !copy.has(t.tier)) copy.set(t.tier, t.body || '');
-    const tax = r2.ok ? await r2.json() : {};
+    tax = r2.ok ? await r2.json() : {};
     concept = (tax.concepts || []).find((c) => c.id === CONCEPT) || null;
     terms = tax.engine || [];
-    const beh = (tax.behaviours || []).filter((b) => b.concept_id === CONCEPT && b.in_sim !== false);
     document.title = concept ? concept.title : say('clip_title');
     $('title').textContent = concept ? concept.title : say('clip_title');
     $('cue').textContent = concept ? (concept.cue || '') : '';
-    $('does').textContent = beh.length ? say('clip_engine', { what: beh[0].what }) : '';
     $('ph-before').textContent = say('clip_before'); $('ph-doing').textContent = say('clip_doing'); $('ph-after').textContent = say('clip_after');
     $('prev').textContent = say('clip_prev'); $('next').textContent = say('clip_next'); $('replay').textContent = say('clip_replay');
     $('speed').textContent = say('clip_speed'); $('legend').textContent = say('clip_legend');
@@ -326,6 +446,13 @@
       b.addEventListener('click', () => { play.rate = rate; paintBar(); });
       $('rates').appendChild(b);
     }
+    for (const [tab, tier] of [['machine', 'clip_tab_machine'], ['explain', 'clip_tab_explain']]) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.tab = tab; b.textContent = say(tier);
+      b.addEventListener('click', () => setTab(tab));
+      $('side-tabs').appendChild(b);
+    }
+    setTab('explain');   // what it is first: there is nothing to watch until the first example has happened
     $('prev').addEventListener('click', () => show(at - 1));
     $('next').addEventListener('click', () => show(at + 1));
     $('replay').addEventListener('click', () => show(at));
