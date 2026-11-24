@@ -27,6 +27,7 @@ class PyramidForecastView {
     const q = new URLSearchParams(window.location.search || '');
     this.section = PyramidForecastView.SECTIONS.includes(q.get('s')) ? q.get('s') : 'story';
     this.feederPick = null;
+    this.form = null;   // 📅 recent-form level (mig 1767): null = the conference's own, 0 = off, else days
     if (q.get('fc') === 'all') this.conf = 0;
     else if (Number(q.get('fc'))) { this.conf = Number(q.get('fc')); this.team = Number(q.get('focus')) || null; this.feederFocus = q.get('ff') || null; }
   }
@@ -182,7 +183,8 @@ class PyramidForecastView {
       : t ? `${t.name} · ${this._groupName(d, t.division)}` : this._copy('fc_title', { conf: d.conference.name, sims: Number(d.sims).toLocaleString() });
     const head = `${this._shareHtml()}${t ? `<button class="ap-pill" data-fc-back style="margin:0 8px 6px 0;">${esc(this._copy('fc_back'))}</button>` : ''}
       <h3 style="margin:4px 0 8px; font-size:1.15rem;">${esc(title)}</h3>
-      <div class="fc-confs" style="margin-bottom:12px;">${secs.map((k) => `<button class="ap-pill ${this.section === k ? 'on' : ''}" data-fc-sec="${k}">${esc(this._copy(`fc_sec_${k}`))}</button>`).join('')}</div>`;
+      <div class="fc-confs" style="margin-bottom:12px;">${secs.map((k) => `<button class="ap-pill ${this.section === k ? 'on' : ''}" data-fc-sec="${k}">${esc(this._copy(`fc_sec_${k}`))}</button>`).join('')}</div>
+      ${this._formHtml(this.conf === 0 ? this._all[0] : base)}`;
     let body;
     if (this.conf === 0) body = this._allSection(this._all);
     else if (t) body = this._teamSection(d, t, base);
@@ -284,9 +286,22 @@ class PyramidForecastView {
     return dt.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
+  // 📅 Recent form (mig 1767, owner 11/23 "allow to turn on or off and diff
+  // recency levels … from recommended and up or down from that"): the
+  // levels the forecast lists (pyramid_forecast_form_levels), the one in
+  // use lit; a tap replays every conference at that level.
+  _formHtml(d) {
+    const f = d && d.form;
+    if (!f || !(f.levels || []).length) return '';
+    return `<div class="fc-sub" style="align-items:center;"><span style="font-size:0.78rem; opacity:0.8;">${this._esc(this._copy('fc_form_label'))}</span>${f.levels.map((l) =>
+      `<button class="ap-pill ${Number(l.days) === Number(f.current) ? 'on' : ''}" data-fc-form="${Number(l.days)}">${this._esc(l.label)}</button>`).join('')}</div>`;
+  }
+  _formQuery() { return this.form == null ? '' : `&form=${encodeURIComponent(this.form)}`; }
+
   _howHtml(d) {
     const m = d.model || {};
     const parts = [this._copy('fc_how', { games: d.played, left: d.left, avg: m.avg_goals, home: m.home_edge })];
+    if (m.form_half_life_days) parts.push(this._copy('fc_form', { days: m.form_half_life_days }));   // mig 1767
     const f = d.format || {};
     if (f.group_rounds) parts.unshift(this._copy('fc_format', { n: f.per_team, rounds: f.group_rounds, cross: f.cross_group_rounds, listed: f.listed, added: f.added }));
     if (d.policy && d.policy.feeder) parts.push(this._copy('fc_feeder_note', { feeder: d.policy.feeder, pct: `${Math.round(d.policy.feeder_stay_up_pct)}%` }));
@@ -615,7 +630,7 @@ class PyramidForecastView {
     this._repaint();
     const seq = (this._wiSeq = (this._wiSeq || 0) + 1);
     try {
-      const r = await fetch(`/api/pyramid/forecast?conference=${encodeURIComponent(conf)}&team=${encodeURIComponent(id)}&rating=${encodeURIComponent(rating.toFixed(3))}`);
+      const r = await fetch(`/api/pyramid/forecast?conference=${encodeURIComponent(conf)}&team=${encodeURIComponent(id)}&rating=${encodeURIComponent(rating.toFixed(3))}${this._formQuery()}`);
       const j = await r.json().catch(() => ({}));
       if (seq !== this._wiSeq) return;
       this.whatIf = r.ok ? { team: id, conf, rating, data: j } : { team: id, conf, rating, error: j.error || `HTTP ${r.status}` };
@@ -729,8 +744,10 @@ class PyramidForecastView {
     if (!id || this.data.has(id)) { this._repaint(); return; }
     this._repaint();
     try {
-      const r = await fetch(`/api/pyramid/forecast?conference=${encodeURIComponent(id)}`);
+      const form = this.form;
+      const r = await fetch(`/api/pyramid/forecast?conference=${encodeURIComponent(id)}${this._formQuery()}`);
       const j = await r.json().catch(() => ({}));
+      if (form !== this.form) return;   // another level was picked meanwhile
       this.data.set(id, r.ok ? j : { error: j.error || `HTTP ${r.status}` });
     } catch (e) {
       this.data.set(id, { error: e.message });
@@ -755,6 +772,11 @@ class PyramidForecastView {
       if (tv) { this.tableView = tv.dataset.fcTview; this._repaint(); return; }
       const sc = e.target.closest('[data-fc-sec]');
       if (sc) { this.section = sc.dataset.fcSec; this._repaint(); return; }
+      const fm = e.target.closest('[data-fc-form]');
+      if (fm) {
+        this.form = Number(fm.dataset.fcForm); this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
+        this.data.clear(); this._load(this.conf); return;
+      }
       const fp = e.target.closest('[data-fc-feeder]');
       if (fp) { this.feederPick = fp.dataset.fcFeeder || null; this._repaint(); return; }
       const t = e.target.closest('[data-fc-team]');

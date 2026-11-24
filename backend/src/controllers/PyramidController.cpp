@@ -625,7 +625,7 @@ Response PyramidController::handleZoneRules(const Request& request) {
 }
 
 // 📈 Forecast (mig 1448), public like the page: one conference's season
-// played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>[&team=<id>&rating=<x>]
+// played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>[&team=<id>&rating=<x>][&form=<days>]
 Response PyramidController::handleForecast(const Request& request) {
     try {
         const std::string c = request.getQueryParam("conference");
@@ -637,7 +637,11 @@ Response PyramidController::handleForecast(const Request& request) {
             try { team = std::stoi(t); rating = std::stod(rt); } catch (...) { team = 0; rating = 0; }
             if (!(rating > 0.05 && rating < 20)) { team = 0; rating = 0; }
         }
-        return jsonOut(HttpStatus::OK, PyramidForecast::build(std::stoi(c), team, rating));
+        // ?form=<days> — the 📅 recent-form pills (mig 1767); 0 = every game the same
+        double form = -1;
+        const std::string fm = request.getQueryParam("form");
+        if (!fm.empty() && fm.size() <= 6 && fm.find_first_not_of("0123456789.") == std::string::npos) { try { form = std::stod(fm); } catch (...) { form = -1; } }
+        return jsonOut(HttpStatus::OK, PyramidForecast::build(std::stoi(c), team, rating, form));
     } catch (const std::invalid_argument& e) {
         return jsonError(HttpStatus::NOT_FOUND, e.what());
     } catch (const std::exception& e) {

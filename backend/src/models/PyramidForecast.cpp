@@ -35,6 +35,7 @@ struct Game {
     std::string when; bool done = false;
     bool tbs = false, neutral = false;   // mig 1449: not scheduled by the league yet; no known ground
     int hs = 0, as = 0;
+    double day = -1;   // days since the epoch, -1 = no date (form weights, mig 1767)
 };
 struct Division { int id = 0; std::string name; std::vector<int> teams; std::vector<json> zones; };
 
@@ -45,25 +46,41 @@ double pois(int k, double l) { return std::exp(-l + k * std::log(std::max(l, 1e-
 // team, 1.00 = average, shrunk toward average by `prior` average games; the
 // league's goals a side a game; a home edge (√ of home ÷ away goals, shrunk
 // by ten average games each side).  Shared by the conference and its feeder.
+//
+// Form (mig 1767, owner 11/23 "why didn't the what happens next pick this
+// up" — two 2-1 losses after 9-0 and 8-0): `w` weighs each game, 1 = in
+// full; formWeights halves a game's weight every `halfLife` days before the
+// latest game played (Dixon & Coles 1997 §4.4, exponential time weighting).
+// Empty `w` = every game the same.
 struct FitRes { int h, a, hs, as; };
-void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg, double& home,
+std::vector<double> formWeights(const std::vector<double>& day, double halfLife) {
+    if (halfLife <= 0) return {};
+    double latest = -1;
+    for (double d : day) latest = std::max(latest, d);
+    std::vector<double> w(day.size(), 1.0);
+    for (size_t i = 0; i < day.size(); ++i) if (day[i] >= 0) w[i] = std::pow(0.5, (latest - day[i]) / halfLife);   // no date = in full
+    return w;
+}
+void fitMaher(int n, const std::vector<FitRes>& done, const std::vector<double>& w, double prior, double& avg, double& home,
               std::vector<double>& att, std::vector<double>& def) {
     att.assign(n, 1.0); def.assign(n, 1.0);
-    double goals = 0, homeGoals = 0, awayGoals = 0;
-    for (const auto& g : done) { goals += g.hs + g.as; homeGoals += g.hs; awayGoals += g.as; }
-    avg = done.empty() ? 1.5 : goals / (2.0 * done.size());
+    const auto wt = [&](size_t i) { return i < w.size() ? w[i] : 1.0; };
+    double goals = 0, homeGoals = 0, awayGoals = 0, count = 0;
+    for (size_t i = 0; i < done.size(); ++i) { const auto& g = done[i]; goals += wt(i) * (g.hs + g.as); homeGoals += wt(i) * g.hs; awayGoals += wt(i) * g.as; count += wt(i); }
+    avg = done.empty() ? 1.5 : goals / (2.0 * count);
     home = done.empty() ? 1.0 : std::sqrt((homeGoals + 10 * avg) / (awayGoals + 10 * avg));
     for (int it = 0; it < 200 && !done.empty(); ++it) {
         double moved = 0;
         for (int pass = 0; pass < 2; ++pass)
             for (int t = 0; t < n; ++t) {
                 double got = 0, expd = 0;
-                for (const auto& g : done) {
+                for (size_t i = 0; i < done.size(); ++i) {
+                    const auto& g = done[i];
                     if (g.h != t && g.a != t) continue;
                     const bool isHome = g.h == t; const int o = isHome ? g.a : g.h;
                     const double edge = isHome ? home : 1.0 / home;
-                    if (pass == 0) { got += isHome ? g.hs : g.as; expd += avg * edge * def[o]; }
-                    else { got += isHome ? g.as : g.hs; expd += avg / edge * att[o]; }
+                    if (pass == 0) { got += wt(i) * (isHome ? g.hs : g.as); expd += wt(i) * avg * edge * def[o]; }
+                    else { got += wt(i) * (isHome ? g.as : g.hs); expd += wt(i) * avg / edge * att[o]; }
                 }
                 const double v = (got + prior * avg) / (expd + prior * avg);
                 double& slot = pass == 0 ? att[t] : def[t];
@@ -90,7 +107,7 @@ void fitMaher(int n, const std::vector<FitRes>& done, double prior, double& avg,
 //                 then plays our group-playoff winner (feeder_stay_up_pct).
 // The feeders' averages are taken as equal when they meet (no game links
 // them).
-json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, double feederStayUpPct, std::mt19937_64& rng) {
+json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, double halfLife, double feederStayUpPct, std::mt19937_64& rng) {
     json out = {{"seasons", json::array()}, {"feeders", json::array()}};
     for (const auto& r : db->query(
             "SELECT season, teams, divisions, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label, auto_down, playoff_place FROM pyramid_relegation_outlook "
@@ -149,18 +166,20 @@ json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, dou
             else if (skipConf && !r["other_conf"].is_null()) { t.skip = "conf"; t.skipArg = str(r, "other_conf"); }
             byExt[t.ext] = (int)F.t.size(); F.t.push_back(t);
         }
+        std::vector<double> days;
         for (const auto& g : db->query(
-                "SELECT home_ext, away_ext, complete, home_score, away_score FROM pyramid_games "
+                "SELECT home_ext, away_ext, complete, home_score, away_score, EXTRACT(EPOCH FROM starts_local) / 86400.0 AS day FROM pyramid_games "
                 " WHERE source_id = $1::int AND division_ext = $2 AND removed_at IS NULL AND NOT cancelled", {std::to_string(F.sourceId), str(f, "ext")})) {
             auto h = byExt.find(str(g, "home_ext")), a = byExt.find(str(g, "away_ext"));
             if (h == byExt.end() || a == byExt.end() || h->second == a->second) continue;
-            if (g["complete"].as<bool>() && !g["home_score"].is_null() && !g["away_score"].is_null())
+            if (g["complete"].as<bool>() && !g["home_score"].is_null() && !g["away_score"].is_null()) {
                 F.done.push_back({h->second, a->second, g["home_score"].as<int>(), g["away_score"].as<int>()});
-            else { F.left.push_back({h->second, a->second}); F.t[h->second].left++; F.t[a->second].left++; }
+                days.push_back(g["day"].is_null() ? -1.0 : g["day"].as<double>());
+            } else { F.left.push_back({h->second, a->second}); F.t[h->second].left++; F.t[a->second].left++; }
         }
         if (F.t.empty()) continue;
         std::vector<double> att, def;
-        fitMaher((int)F.t.size(), F.done, prior, F.avg, F.home, att, def);
+        fitMaher((int)F.t.size(), F.done, formWeights(days, halfLife), prior, F.avg, F.home, att, def);
         for (size_t i = 0; i < F.t.size(); ++i) { F.t[i].att = att[i]; F.t[i].def = def[i]; }
         F.played = (int)F.done.size();
         feeders.push_back(std::move(F));
@@ -303,13 +322,33 @@ json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, dou
 
 struct Cached { std::string stamp; std::chrono::steady_clock::time_point at; json body; };
 std::mutex gMutex;
-std::map<int, Cached> gCache;
+std::map<std::pair<int, int>, Cached> gCache;   // (conference, form half-life in days × 100; 0 = off)
 }  // namespace
 
-json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRating) {
+json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRating, double form) {
     const bool whatIf = whatIfTeam > 0 && whatIfRating > 0;
     auto* db = Database::getInstance();
     const std::string cid = std::to_string(conferenceId);
+
+    // Form (mig 1767): the conference's own half-life unless the page asks
+    // for another of the listed levels (pyramid_forecast_form_levels; 0 =
+    // every game the same).  A number that isn't a level = the default.
+    double halfLife = 0;
+    json formOut;
+    {
+        auto p = db->query("SELECT form_half_life_days FROM pyramid_forecast_policies "
+                           " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
+        const double dflt = p.empty() || p[0]["form_half_life_days"].is_null() ? 0 : num(p[0], "form_half_life_days");
+        halfLife = dflt;
+        json levels = json::array();
+        for (const auto& r : db->query("SELECT half_life_days, label, is_recommended FROM pyramid_forecast_form_levels ORDER BY sort_order, id")) {
+            const double d = r["half_life_days"].is_null() ? 0 : num(r, "half_life_days");
+            if (form >= 0 && std::fabs(d - form) < 0.005) halfLife = d;
+            levels.push_back({{"days", d}, {"label", str(r, "label")}, {"recommended", r["is_recommended"].as<bool>()}});
+        }
+        formOut = {{"levels", levels}, {"current", halfLife}, {"default", dflt}};
+    }
+    const std::pair<int, int> cacheKey{conferenceId, (int)std::lround(halfLife * 100)};
 
     auto conf = db->query("SELECT id, name FROM pyramid_competitions WHERE id = $1::int AND kind = 'conference'", {cid});
     if (conf.empty()) throw std::invalid_argument("No such conference");
@@ -342,7 +381,7 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     const std::string stamp = stampRow.empty() ? "" : str(stampRow[0], "s");
     if (!whatIf) {
         std::lock_guard<std::mutex> lock(gMutex);
-        auto it = gCache.find(conferenceId);
+        auto it = gCache.find(cacheKey);
         if (it != gCache.end() && it->second.stamp == stamp
             && std::chrono::steady_clock::now() - it->second.at < std::chrono::minutes(10)) return it->second.body;
     }
@@ -414,12 +453,14 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     std::vector<Game> games;
     std::string asOf;
     for (const auto& r : db->query(
-            "SELECT external_id, home_ext, away_ext, to_char(starts_local, 'YYYY-MM-DD\"T\"HH24:MI') AS w, complete, home_score, away_score "
+            "SELECT external_id, home_ext, away_ext, to_char(starts_local, 'YYYY-MM-DD\"T\"HH24:MI') AS w, complete, home_score, away_score, "
+            "       EXTRACT(EPOCH FROM starts_local) / 86400.0 AS day "
             "  FROM pyramid_games WHERE source_id = $1::int AND division_ext = ANY(string_to_array($2, ',')) "
             "   AND removed_at IS NULL AND NOT cancelled ORDER BY starts_local, external_id", {std::to_string(sourceId), extList})) {
         auto h = byExt.find(str(r, "home_ext")), a = byExt.find(str(r, "away_ext"));
         if (h == byExt.end() || a == byExt.end() || h->second == a->second) continue;
         Game g; g.id = std::stoll(str(r, "external_id")); g.h = h->second; g.a = a->second; g.when = str(r, "w");
+        g.day = r["day"].is_null() ? -1.0 : r["day"].as<double>();
         g.done = r["complete"].as<bool>() && !r["home_score"].is_null() && !r["away_score"].is_null();
         if (g.done) { g.hs = r["home_score"].as<int>(); g.as = r["away_score"].as<int>(); if (g.when > asOf) asOf = g.when; }
         games.push_back(g);
@@ -471,11 +512,12 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     // ── the goals model ──
     int played = 0;
     std::vector<FitRes> fitDone;
-    for (const auto& g : games) if (g.done) { played++; fitDone.push_back({g.h, g.a, g.hs, g.as}); }
+    std::vector<double> fitDays;
+    for (const auto& g : games) if (g.done) { played++; fitDone.push_back({g.h, g.a, g.hs, g.as}); fitDays.push_back(g.day); }
     double avg = 1.5, home = 1.0;
     {
         std::vector<double> att, def;
-        fitMaher(N, fitDone, prior, avg, home, att, def);
+        fitMaher(N, fitDone, formWeights(fitDays, halfLife), prior, avg, home, att, def);
         for (int t = 0; t < N; ++t) { teams[t].att = att[t]; teams[t].def = def[t]; }
     }
     // What if: that team's strength moved to the slider's, split evenly
@@ -681,15 +723,16 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     out["format"] = {{"group_rounds", groupRounds}, {"cross_group_rounds", crossRounds}, {"listed", listed}, {"added", added},
                      {"per_team", N ? 2 * (int)games.size() / N : 0}};
     out["as_of"] = asOf; out["sims"] = sims; out["played"] = played; out["left"] = (int)left.size();
-    out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}};
+    out["model"] = {{"avg_goals", r2(avg)}, {"home_edge", r2(home * home)}, {"prior_games", prior}, {"form_half_life_days", halfLife > 0 ? json(halfLife) : json(nullptr)}};
     out["policy"] = {{"paired", paired}, {"feeder", feeder.empty() ? json(nullptr) : json(feeder)}, {"feeder_stay_up_pct", feederPct}};
+    out["form"] = formOut;
     out["tiebreak"] = tiebreak;
     if (zonesAssumed) out["zones_assumed"] = true;
-    out["outlook"] = outlookJson(db, cid, N, sims, prior, feederPct, rng);
+    out["outlook"] = outlookJson(db, cid, N, sims, prior, halfLife, feederPct, rng);
     if (whatIf) { out["what_if"] = whatIfOut; return out; }
     {
         std::lock_guard<std::mutex> lock(gMutex);
-        gCache[conferenceId] = {stamp, std::chrono::steady_clock::now(), out};
+        gCache[cacheKey] = {stamp, std::chrono::steady_clock::now(), out};
     }
     return out;
 }

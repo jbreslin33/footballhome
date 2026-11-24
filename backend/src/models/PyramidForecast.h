@@ -23,6 +23,11 @@
 //                     A game's expected goals = average × home edge ×
 //                     attack × the other side's defence (Maher 1982; Dixon &
 //                     Coles 1997 without the low-score correction).
+//                     Form (mig 1767): with form_half_life_days set, a
+//                     game's weight halves every that many days before the
+//                     latest game played (Dixon & Coles 1997 §4.4); NULL =
+//                     every game the same.  The page's 📅 pills ask for
+//                     another level (pyramid_forecast_form_levels).
 //   One game          independent Poisson goals each side → win / draw /
 //                     loss, the most likely scores, over 2.5, both score;
 //                     fair decimal odds = 1 / chance (no margin).
@@ -45,5 +50,8 @@ public:
     // teamId > 0 plays the season with that team's strength (attack ÷
     // defence) set to `rating`, the split between attack and defence kept;
     // never cached.
-    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0);
+    // form (mig 1767, owner 11/23 "allow to turn on or off and diff recency
+    // levels"): -1 = the conference's own half-life; 0 = every game the
+    // same; else one of pyramid_forecast_form_levels' days.  Cached per level.
+    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0, double form = -1);
 };
