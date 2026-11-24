@@ -105,6 +105,7 @@ HttpClient::Response HttpClient::perform(const std::string& url,
     curl_easy_setopt(curl, CURLOPT_TIMEOUT, totalTimeoutSec_ > 0 ? totalTimeoutSec_ : kTotalTimeoutSec);
     if (!proxyUrl_.empty()) curl_easy_setopt(curl, CURLOPT_PROXY, proxyUrl_.c_str());
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");    // take gzip / deflate and decode it (modular11 answers gzip unasked)
     curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);          // signal-safe under threads
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);

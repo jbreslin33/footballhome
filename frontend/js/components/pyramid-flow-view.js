@@ -56,7 +56,21 @@ class PyramidFlowView {
       .fc-pro-lg .fc-meta { margin-bottom:8px; }
       .fc-pro-lg .fc-tbl { border-color:#a67c00; }
       .fc-pro-lg .fc-cell:empty { display:none; }
-      .fc-pls { margin-top:30px; position:relative; z-index:1; border:2px dashed #94a3b8; border-radius:12px; padding:10px 18px; background:var(--bg-color, #0b1220); text-align:center; }
+      .fc-level { display:flex; gap:44px; align-items:flex-start; justify-content:center; width:max-content; margin:0 auto; }
+      .fc-beside { position:relative; z-index:1; }
+      .fc-beside .fc-cell { display:grid; grid-auto-columns:max-content; gap:10px 14px; align-items:start; justify-content:start; }
+      .fc-beside h2 a { color:inherit; text-decoration:none; }
+      .fc-under { display:flex; flex-direction:column; align-items:center; }
+      .fc-under-row { display:flex; gap:10px; align-items:flex-start; }
+      .fc-up { width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid #94a3b8; margin:2px 0 8px; }
+      .fc-up[data-kind="promotion"] { border-bottom-color:#22c55e; }
+      .fc-fd { min-width:190px; text-align:center; }
+      .fc-fd .hd a { color:#fbbf24; }
+      .fc-loose-hd { margin:14px 0 6px; }
+      .fc-loose { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-start; }
+      .fc-names ul { list-style:none; margin:0; padding:4px 10px; font-size:0.82rem; line-height:1.55; text-align:left; white-space:nowrap; }
+      .fc-field ul { list-style:none; margin:0; padding:6px 10px; columns:3 150px; column-gap:22px; font-size:0.85rem; line-height:1.6; text-align:left; }
+      .fc-pls { position:relative; z-index:1; border:2px dashed #94a3b8; border-radius:12px; padding:10px 18px; background:var(--bg-color, #0b1220); text-align:center; }
       .fc-pls a { font-weight:800; color:#fbbf24; }
       .fc-zoom { position:absolute; right:12px; bottom:12px; z-index:5; display:flex; gap:4px; padding:4px; border-radius:999px; background:rgba(15,23,42,0.85); border:1px solid rgba(148,163,184,0.35); }
       .fc-zoom button { min-height:0; min-width:34px; height:30px; padding:0 10px; border-radius:999px; cursor:pointer; font-weight:800; font-size:0.85rem; border:1px solid rgba(148,163,184,0.35); background:rgba(30,41,59,0.9); color:#e2e8f0; }
@@ -163,33 +177,168 @@ class PyramidFlowView {
         <table><thead><tr>${head}</tr></thead><tbody>${t.teams.map((x) => `
           <tr><td>${x.pos == null ? '' : esc(x.pos)}</td><td class="tm">${esc(x.name)}</td><td>${x.gp}</td><td>${x.gd > 0 ? '+' : ''}${x.gd}</td><td><b>${x.pts}</b></td></tr>`).join('')}</tbody></table>
       </div>`;
-    const tiers = model.pro.map((t) => `
+    // A cup's field (league.field, mig 1839): the clubs in it this season, no figures.
+    const field = (t) => `
+      <div class="fc-tbl fc-field"><div class="hd">${esc(this._copy('pro_field', { season: t.name, n: t.teams.length }) || t.name)}</div>
+        <ul>${t.teams.map((x) => `<li>${esc(x.name)}</li>`).join('')}</ul>
+      </div>`;
+    const above = this._pro(model).filter((t) => !t.beside);
+    if (!above.length) return '';
+    const tiers = above.map((t) => `
       <div class="fc-pro-tier">${t.leagues.map((l) => `
         <div class="fc-pro-lg" data-pro-league="${l.id}" data-pro-tier="${t.tier}">
           <h2>${esc(l.name)}</h2><div class="fc-meta">${esc(t.label)}</div>
-          <div class="fc-cell">${l.tables.map((x) => table(x, l.tables.length > 1)).join('')}</div>
-        </div>`).join('')}</div>`).join('');
+          <div class="fc-cell">${l.tables.map((x) => (l.field ? field(x) : table(x, l.tables.length > 1))).join('')}</div>
+        </div>`).join('')}</div>`);
     const [label, url] = (this._copy('path_pro_link') || '').split('|');
     const pls = /^https:\/\//.test(url || '') ? `<div class="fc-pls"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a></div>` : '';
-    return `<div class="fc-pro">${tiers}${pls}</div>`;
+    // The standards box sits under EVERY pro division, not only the lowest (owner 2026-11-24:
+    // "put pls in between eadch pro level" · "have the link to to pls then to leage avoe"): no
+    // division is reached by results — each step up is the same document's next set of
+    // standards.  A level reached BY results (pro_league_tiers.by_standards = false: the
+    // Concacaf Champions Cup over MLS, mig 1838) has no box under it — the leagues below
+    // are tied straight to it.
+    return `<div class="fc-pro">${tiers.map((t, i) => t + (above[i].standards === false ? '' : pls)).join('')}</div>`;
+  }
+
+  // Season calendars (mig 1845 — owner 2026-11-24: "3 temporal buttons … pills"): a league is
+  // drawn while its calendar's pill is on; a league under another follows its upper league.
+  _calOn(code) { return !code || this.screen.feature(`cal-${code}`, true); }
+  _leagueOn(model, l) {
+    if (l.calendar) return this._calOn(l.calendar);
+    const up = l.feeds == null ? null : (model.pro || []).flatMap((t) => t.leagues).find((x) => x.id === l.feeds);
+    return up ? this._leagueOn(model, up) : true;
+  }
+  // The levels around the pyramid with only the leagues whose calendar is on; a level left empty is dropped.
+  _pro(model) {
+    return (model.pro || []).map((t) => ({ ...t, leagues: t.leagues.filter((l) => this._leagueOn(model, l)) })).filter((t) => t.leagues.length);
+  }
+
+  // The national leagues level with the APSL (pro_league_tiers.beside_pyramid, mig 1841 —
+  // owner 2026-11-24: "leagues that will be at same level as apsl. and can be toggled on and
+  // off. they would go into the pls too"): [{ id, name, label, tables }], and the ones on.
+  besideLeagues(model) {
+    return this._pro(model).filter((t) => t.beside).flatMap((t) => t.leagues.filter((l) => l.feeds == null).map((l) => ({ ...l, label: t.label })));
+  }
+  // The regional leagues under one of them (pro_leagues.feeds_league_id, mig 1844).
+  feedersOf(model, leagueId) {
+    return (model.pro || []).flatMap((t) => t.leagues.filter((l) => l.feeds === leagueId));
+  }
+  // One switch per league under ☰ Show on screen.
+  // ☰ Show on screen: the pro leagues above; the non-APSL open pyramid as a whole (owner:
+  // "put a button that says show non apsl open pyramind. like we have for show pro"), and
+  // while that is on, a switch per league.
+  features() {
+    const m = this._model || this.screen.model, leagues = m ? this.besideLeagues(m) : [];
+    const out = ((m && m.data.calendars) || []).map((c) => ({ key: `cal-${c.code}`, label: c.label, def: true }));
+    out.push({ key: 'pro', tier: 'feature_pro', def: true });
+    if (leagues.length) out.push({ key: 'open', tier: 'feature_open', def: true });
+    if (this.screen.feature('open', true)) for (const l of leagues) out.push({ key: `lg-${l.id}`, label: l.name, def: true });
+    return out;
+  }
+
+  // Their boxes, drawn beside the conferences and tied into the same standards box.
+  besideHtml(model) {
+    if (!this.screen.feature('open', true)) return '';
+    const esc = (t) => this._esc(t);
+    const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
+    const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
+    // A league read as club lists only (league.names_only, mig 1847 — UPSL): the names, no figures.
+    const names = (t) => `
+      <div class="fc-tbl fc-names"><div class="hd">${esc(t.name)}</div>
+        <ul>${t.teams.map((x) => `<li>${esc(x.name)}</li>`).join('')}</ul>
+        <div class="fc-meta">${esc(this._copy('club_list', { n: t.teams.length }))}</div>
+      </div>`;
+    const figures = (t, many) => `
+      <div class="fc-tbl">${many ? `<div class="hd">${esc(t.name)}</div>` : ''}
+        <table><thead><tr>${head}</tr></thead><tbody>${t.teams.map((x) => `
+          <tr><td>${x.pos == null ? '' : esc(x.pos)}</td><td class="tm">${esc(x.name)}</td><td>${x.gp}</td><td>${x.gd > 0 ? '+' : ''}${x.gd}</td><td><b>${x.pts}</b></td></tr>`).join('')}</tbody></table>
+      </div>`;
+    const table = (league, t, many) => (league.names_only ? names(t) : figures(t, many));
+    // Every division is the league's first division, so they run in ONE row (owner 2026-11-24:
+    // "should go linear across as they are all their 1st divsions").  A regional league that
+    // sits under named division(s) is drawn beneath them (row 2, the same columns); the
+    // partner leagues with no division named follow in a strip of their own.
+    const feederBox = (f) => `
+      <div class="fc-tbl feeder empty fc-fd" data-kind="${esc(f.feed_kind || '')}">
+        <div class="hd">${/^https:\/\//.test(f.url || '') ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)} ↗</a>` : esc(f.name)}</div>
+        <div class="fc-meta">${esc(f.feed_kind_label || '')}</div>
+        ${f.tables.length ? f.tables.map((x) => table(f, x, f.tables.length > 1)).join('') : `<div class="fc-meta">${esc(this._copy('feeder_no_table'))}</div>`}
+      </div>`;
+    // One division of a regional league, on its own (a league tied table-by-table, feeds_tables '=').
+    const feederTable = (f, x) => `
+      <div class="fc-tbl feeder fc-fd" data-kind="${esc(f.feed_kind || '')}">
+        <div class="fc-meta">${esc(f.name)}</div>${table(f, x, true)}
+      </div>`;
+    // "Region · Conference" → "Conference"
+    const bare = (name) => name.split(' · ').pop();
+    return this.besideLeagues(model).filter((l) => this.screen.feature(`lg-${l.id}`, true)).map((l) => {
+      const feeders = this.feedersOf(model, l.id), loose = [];
+      // What hangs under the divisions: one holder per run of columns, so two leagues (or two
+      // divisions) under the same division sit side by side instead of on top of each other.
+      const slots = new Map();
+      const hang = (cols, kind, html) => {
+        const key = `${cols[0]} / ${cols[cols.length - 1] + 1}`;
+        if (!slots.has(key)) slots.set(key, { kind, boxes: [] });
+        slots.get(key).boxes.push(html);
+      };
+      for (const f of feeders) {
+        if (f.feeds_tables === '=') {   // each of its divisions under the upper division(s) of the same name
+          for (const x of f.tables) {
+            // "American South" sits under "American South-Garden" and "-Keystone"; "Arizona North" under "Arizona"
+            const near = (a, b) => a === b || a.startsWith(b + '-') || a.startsWith(b + ' ');
+            const cols = l.tables.map((u, i) => (near(bare(u.name), bare(x.name)) || near(bare(x.name), bare(u.name)) ? i + 1 : 0)).filter(Boolean);
+            if (cols.length) hang(cols, f.feed_kind, feederTable(f, x)); else loose.push(feederTable(f, x));
+          }
+          continue;
+        }
+        const cols = f.feeds_tables ? l.tables.map((x, i) => (x.name.includes(f.feeds_tables) ? i + 1 : 0)).filter(Boolean) : [];
+        if (cols.length) hang(cols, f.feed_kind, feederBox(f)); else loose.push(feederBox(f));
+      }
+      const under = [...slots].map(([span, slot]) => `<div class="fc-under" style="grid-row:2; grid-column:${span};"><div class="fc-up" data-kind="${esc(slot.kind || '')}"></div><div class="fc-under-row">${slot.boxes.join('')}</div></div>`);
+      return `
+      <div class="fc-pro-lg fc-beside" data-pro-league="${l.id}">
+        <h2>${/^https:\/\//.test(l.url || '') ? `<a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.name)}</a>` : esc(l.name)}</h2><div class="fc-meta">${esc(l.label)}</div>
+        <div class="fc-cell">${l.tables.map((x, i) => `<div style="grid-row:1; grid-column:${i + 1};">${table(l, x, l.tables.length > 1)}</div>`).join('')}${under.join('')}</div>
+        ${loose.length ? `<div class="fc-meta fc-loose-hd">${esc(this._copy('feeder_partners'))}</div><div class="fc-loose">${loose.join('')}</div>` : ''}
+      </div>`;
+    }).join('');
   }
 
   // Dashed lines in `box` (an element holding .fc-pro, an svg.fc-links and
-  // the boxes named by `lowerSel`): each lower box's top → the standards
-  // box, and the standards box → every league of the lowest pro division.
+  // the boxes named by `lowerSel`).  Under a pro level sits either a standards
+  // box — tied up to every league of that level and down to every league of
+  // the level below (the lowest: to each lower box) — or nothing, when the
+  // level is reached by results: then the leagues below go straight up to it.
   drawProLinks(box, lowerSel) {
-    const svg = box && box.querySelector('.fc-links'), pls = box && box.querySelector('.fc-pls');
+    const svg = box && box.querySelector('.fc-links');
     if (!svg) return;
-    if (!pls) { svg.innerHTML = ''; return; }
+    const tiers = [...box.querySelectorAll('.fc-pro-tier')];
+    if (!tiers.length) { svg.innerHTML = ''; return; }
     const o = box.getBoundingClientRect();
     const k = box.offsetWidth ? o.width / box.offsetWidth : 1;
     const R = (el) => { const r = el.getBoundingClientRect(); return { l: (r.left - o.left) / k, r: (r.right - o.left) / k, t: (r.top - o.top) / k, b: (r.bottom - o.top) / k }; };
-    const p = R(pls), px = (p.l + p.r) / 2;
     const curve = (x1, y1, x2, y2) => { const my = (y1 + y2) / 2; return `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" />`; };
+    const mid = (r) => (r.l + r.r) / 2;
     const paths = [];
-    box.querySelectorAll(lowerSel).forEach((el) => { const r = R(el); paths.push(curve((r.l + r.r) / 2, r.t, Math.min(Math.max((r.l + r.r) / 2, p.l + 16), p.r - 16), p.b)); });
-    const tiers = [...box.querySelectorAll('.fc-pro-tier')];
-    if (tiers.length) tiers[tiers.length - 1].querySelectorAll('.fc-pro-lg').forEach((el) => { const r = R(el); paths.push(curve(px, p.t, (r.l + r.r) / 2, r.b)); });
+    tiers.forEach((tier, i) => {
+      const above = [...tier.querySelectorAll('.fc-pro-lg')].map(R);
+      const below = [...(tiers[i + 1] ? tiers[i + 1].querySelectorAll('.fc-pro-lg') : box.querySelectorAll(lowerSel))].map(R);
+      const next = tier.nextElementSibling, pls = next && next.classList.contains('fc-pls') ? R(next) : null;
+      // A short box beside a tall one (MLS NEXT Pro by USL League One — owner 2026-11-24 "mls
+      // next pro line goes under usl loeage one … it needs to go directory to pls"): each line
+      // first runs straight down its own league to the level's foot, and only then turns —
+      // so it never crosses the box next door.
+      const foot = Math.max(...above.map((a) => a.b));
+      const down = (a, x2, y2) => `<path d="M${mid(a)},${a.b} L${mid(a)},${foot}" />` + curve(mid(a), foot, x2, y2);
+      if (pls) {
+        const into = (x) => Math.min(Math.max(x, pls.l + 16), pls.r - 16);   // where a line meets the box
+        for (const a of above) paths.push(down(a, into(mid(a)), pls.t));
+        for (const b of below) paths.push(curve(mid(b), b.t, into(mid(b)), pls.b));
+      } else {
+        for (const a of above) for (const b of below) paths.push(down(a, mid(b), b.t));
+      }
+    });
     svg.setAttribute('width', box.offsetWidth); svg.setAttribute('height', box.offsetHeight);
     svg.innerHTML = `<g fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 6">${paths.join('')}</g>`;
   }
@@ -221,8 +370,9 @@ class PyramidFlowView {
 
   // ── the view ─────────────────────────────────────────────────────────
   html(model, confs) {
+    this._model = model;
     return `
-      <div class="fc-scroll" tabindex="0"><div class="fc-zoomed"><div class="fc-all"><svg class="fc-links"></svg>${this.proHtml(model)}${this.chartHtml(model, confs)}</div></div></div>
+      <div class="fc-scroll" tabindex="0"><div class="fc-zoomed"><div class="fc-all"><svg class="fc-links"></svg>${this.screen.feature('pro', true) ? this.proHtml(model) : ''}<div class="fc-level">${this._calOn(model.data.calendar) ? this.chartHtml(model, confs) : ''}${this.besideHtml(model)}</div></div></div></div>
       <div class="fc-zoom">
         <button data-zoom="out" title="${this._esc(this._copy('zoom_out'))}">−</button>
         <button data-zoom="reset" title="${this._esc(this._copy('zoom_reset'))}"></button>
@@ -235,7 +385,7 @@ class PyramidFlowView {
     const el = root.querySelector('.fc-scroll');
     this._applyZoom(root);
     this.drawArrows(root.querySelector('.fc-chart'), model, confs);
-    this.drawProLinks(root.querySelector('.fc-all'), '.fc-conf');
+    this.drawProLinks(root.querySelector('.fc-all'), '.fc-conf, .fc-beside');
     this.pannable(el);
     this.zoomable(root, el);
   }

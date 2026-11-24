@@ -108,6 +108,7 @@ set(SOURCES
     src/services/LaProgramSync.cpp
     src/services/FilmSync.cpp
     src/services/LeagueFormSync.cpp
+    src/services/LeagueTableReaders.cpp
     src/services/PyramidSync.cpp
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp

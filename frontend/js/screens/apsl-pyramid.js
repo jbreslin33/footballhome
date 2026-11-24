@@ -476,7 +476,7 @@ class ApslPyramidScreen extends Screen {
       <button class="li tick ${this.on && !this.on.size ? 'on' : ''}" data-conf="none">${esc(this._copy('pill_none'))}</button>`
       + this._conferences().map((c) => `<button class="li tick ${this._isOn(c.id) ? 'on' : ''}" data-conf="${c.id}"><i${c.color ? ` style="--cc:${esc(c.color)}"` : ''}></i>${esc(c.short_name || c.name)}</button>`).join('');
     const feats = (this._impl().features ? this._impl().features() : [])
-      .map((f) => `<button class="ap-pill ${this.feature(f.key, f.def) ? 'on' : ''}" data-feature="${esc(f.key)}">${esc(this._copy(f.tier))}</button>`).join('');
+      .map((f) => `<button class="ap-pill ${this.feature(f.key, f.def) ? 'on' : ''}" data-feature="${esc(f.key)}">${esc(f.label || this._copy(f.tier))}</button>`).join('');
     const cap = this._copy(`story_view_${this.view}`, { ...this.model.totals, confs: this._conferences().length });
     // The view's colour key rides the caption line (owner 11/24 "can go on same line as legend?").
     const legend = this._impl().legend ? this._impl().legend(this.model) : '';

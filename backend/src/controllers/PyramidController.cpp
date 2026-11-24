@@ -802,8 +802,10 @@ Response PyramidController::handleGet(const Request& request) {
         json pro = json::array();
         {
             auto pr = db->query(
-                "SELECT COALESCE(json_agg(json_build_object('tier', t.tier, 'label', t.label, 'leagues', "
-                "         (SELECT COALESCE(json_agg(json_build_object('id', l.id, 'name', l.name, 'read_at', to_char(l.last_ok_at, 'YYYY-MM-DD'), 'tables', "
+                "SELECT COALESCE(json_agg(json_build_object('tier', t.tier, 'label', t.label, 'standards', t.by_standards, 'beside', t.beside_pyramid, 'leagues', "
+                "         (SELECT COALESCE(json_agg(json_build_object('id', l.id, 'name', l.name, 'read_at', to_char(l.last_ok_at, 'YYYY-MM-DD'), 'field', COALESCE(l.feed_system = 'espn_teams', false), 'names_only', COALESCE(l.feed_system = 'wikipedia_club_list', false), 'url', l.website_url, "
+                "                   'calendar', l.calendar, 'feeds', l.feeds_league_id, 'feeds_tables', l.feeds_tables, 'feed_kind', l.feed_kind, "
+                "                   'feed_kind_label', (SELECT k.label FROM pro_league_feed_kinds k WHERE k.code = l.feed_kind), 'tables', "
                 "                   (SELECT COALESCE(json_agg(json_build_object('id', tb.id, 'name', tb.name, 'teams', "
                 "                             (SELECT COALESCE(json_agg(json_build_object('name', tm.name, 'pos', tm.position, 'gp', tm.played, 'w', tm.wins, 'd', tm.draws, "
                 "                                       'l', tm.losses, 'gf', tm.goals_for, 'ga', tm.goals_against, 'gd', tm.goals_for - tm.goals_against, 'pts', tm.points) "
@@ -815,8 +817,18 @@ Response PyramidController::handleGet(const Request& request) {
             if (!pr.empty() && !pr[0]["j"].is_null()) { json j = json::parse(pr[0]["j"].c_str(), nullptr, false); if (j.is_array()) pro = j; }
         }
 
+        // Season calendars (mig 1845): the pills, and the pyramid's own (its root's).
+        json calendars = json::array();
+        for (const auto& c : db->query("SELECT code, label FROM season_calendars ORDER BY sort_order, code"))
+            calendars.push_back({{"code", c["code"].c_str()}, {"label", c["label"].c_str()}});
+        json rootCalendar = nullptr;
+        {
+            auto rc = db->query("SELECT calendar FROM pyramid_competitions WHERE id = $1::int", {std::to_string(num(tot[0], "root_id"))});
+            if (!rc.empty() && !rc[0]["calendar"].is_null()) rootCalendar = rc[0]["calendar"].c_str();
+        }
+
         return jsonOut(HttpStatus::OK, {
-            {"pro", pro},
+            {"pro", pro}, {"calendars", calendars}, {"calendar", rootCalendar},
             {"root_id", num(tot[0], "root_id")},
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},

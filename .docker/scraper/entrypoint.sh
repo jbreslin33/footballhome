@@ -31,7 +31,7 @@ else
   # Forward proxy for the backend (tinyproxy.conf).  Only behind the
   # tunnel: without it the proxy would just relay from the blocked IP.
   if [ "${SCRAPE_PROXY:-1}" = "1" ] && command -v tinyproxy >/dev/null 2>&1; then
-    tinyproxy -c /etc/tinyproxy/tinyproxy.conf && echo "[scraper] 🔀 Proxy listening on :3128 (teampass.com only)"
+    tinyproxy -c /etc/tinyproxy/tinyproxy.conf && echo "[scraper] 🔀 Proxy listening on :3128 (league standings hosts only — tinyproxy.filter)"
   fi
 fi
 
