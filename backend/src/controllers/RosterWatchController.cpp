@@ -20,6 +20,8 @@ Response jsonError(HttpStatus s, const std::string& message) { return jsonOut(s,
 void RosterWatchController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix,               [this](const Request& r) { return handleGet(r); });
     router.post(prefix + "/refresh", [this](const Request& r) { return handleRefresh(r); });
+    router.post(prefix + "/paste",        [this](const Request& r) { return handlePaste(r); });
+    router.post(prefix + "/paste/remove", [this](const Request& r) { return handlePasteRemove(r); });
 }
 
 Response RosterWatchController::handleGet(const Request& request) {
@@ -56,6 +58,16 @@ Response RosterWatchController::handleGet(const Request& request) {
           )
           SELECT json_build_object(
             'totals', json_build_object('players', (SELECT count(*) FROM e), 'teams', (SELECT count(DISTINCT team_ref) FROM e)),
+            'paste', json_build_object(
+              'sources', COALESCE((SELECT json_agg(json_build_object('id', s.id, 'label', s.league_label) ORDER BY s.sort_order, s.id)
+                                     FROM roster_sheet_sources s WHERE s.is_active AND s.system = 'paste'), '[]'),
+              'teams', COALESCE((SELECT json_agg(json_build_object(
+                           'id', t.id, 'league', s.league_label, 'team', t.name,
+                           'n', (SELECT count(*) FROM roster_sheet_players p WHERE p.team_id = t.id),
+                           'when', to_char(t.loaded_at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD FMHH12:MI AM'))
+                           ORDER BY s.sort_order, t.name)
+                         FROM roster_sheet_teams t JOIN roster_sheet_sources s ON s.id = t.source_id
+                        WHERE s.is_active AND s.system = 'paste'), '[]')),
             'sources', COALESCE((SELECT json_agg(json_build_object(
                 'label', label, 'teams', teams, 'read', read, 'players', players, 'ok', ok, 'note', note,
                 'at', to_char(at AT TIME ZONE 'America/New_York', 'Dy FMMM/FMDD FMHH12:MI AM')) ORDER BY grp, ord, label) FROM src), '[]'),
@@ -82,4 +94,47 @@ Response RosterWatchController::handleRefresh(const Request& request) {
     if (!requireAdminLevel(request, {"club", "super"})) return jsonError(denialStatus(request), "Club admins only");
     const bool started = RosterWatchSync::start(true);
     return jsonOut(HttpStatus::OK, {{"started", started}, {"sweep", RosterWatchSync::state()}});
+}
+
+// POST /api/roster-watch/paste {source_id, team, names: ["First Last", …]}
+// (mig 1777) — one team's roster as the page picked it out of a pasted
+// league page; replaces that team in that source.
+Response RosterWatchController::handlePaste(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"})) return jsonError(denialStatus(request), "Club admins only");
+    json body = json::parse(request.getBody().empty() ? "{}" : request.getBody(), nullptr, false);
+    if (body.is_discarded() || !body.is_object()) return jsonError(HttpStatus::BAD_REQUEST, "Bad request");
+    const int sourceId = body.value("source_id", 0);
+    const std::string team = body.contains("team") && body["team"].is_string() ? body["team"].get<std::string>() : "";
+    if (sourceId <= 0 || team.empty() || team.size() > 120) return jsonError(HttpStatus::BAD_REQUEST, "League and team name are required");
+    if (!body.contains("names") || !body["names"].is_array() || body["names"].empty() || body["names"].size() > 200)
+        return jsonError(HttpStatus::BAD_REQUEST, "No names to save");
+    json names = json::array();
+    for (const auto& n : body["names"]) if (n.is_string()) names.push_back(n.get<std::string>());
+    try {
+        auto r = Database::getInstance()->query("SELECT fh_roster_paste_load($1::int, $2, $3::jsonb) AS n",
+                                                {std::to_string(sourceId), team, names.dump()});
+        const int n = r.empty() || r[0]["n"].is_null() ? 0 : r[0]["n"].as<int>();
+        if (n == 0) return jsonError(HttpStatus::BAD_REQUEST, "No names to save");
+        return jsonOut(HttpStatus::OK, {{"saved", n}});
+    } catch (const std::exception& e) {
+        std::cerr << "RosterWatchController::handlePaste: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save the roster");
+    }
+}
+
+// POST /api/roster-watch/paste/remove {team_id} — take a pasted team out.
+Response RosterWatchController::handlePasteRemove(const Request& request) {
+    if (!requireAdminLevel(request, {"club", "super"})) return jsonError(denialStatus(request), "Club admins only");
+    json body = json::parse(request.getBody().empty() ? "{}" : request.getBody(), nullptr, false);
+    const int teamId = body.is_object() ? body.value("team_id", 0) : 0;
+    if (teamId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "team_id is required");
+    try {
+        Database::getInstance()->query(
+            "DELETE FROM roster_sheet_teams t USING roster_sheet_sources s "
+            " WHERE t.id = $1::int AND s.id = t.source_id AND s.system = 'paste'", {std::to_string(teamId)});
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "RosterWatchController::handlePasteRemove: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not remove the team");
+    }
 }

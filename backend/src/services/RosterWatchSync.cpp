@@ -155,7 +155,7 @@ void sweep(bool force) {
         std::vector<Sheet> sheets;
         for (const auto& r : db->query(
                  "SELECT id, workbook_id, coalesce(tab_name, '') AS tab FROM roster_sheet_sources "
-                 " WHERE is_active AND ($1::boolean OR last_fetched_at IS NULL OR last_fetched_at < now() - make_interval(hours => $2::int)) "
+                 " WHERE is_active AND system = 'google_sheet' AND ($1::boolean OR last_fetched_at IS NULL OR last_fetched_at < now() - make_interval(hours => $2::int)) "
                  " ORDER BY sort_order, id", {f, h}))
             sheets.push_back({r["id"].c_str(), r["workbook_id"].c_str(), r["tab"].c_str()});
 

@@ -123,7 +123,7 @@ that's universally correct.
 | ------ | ---------------- | ---------------- |
 | APSL, CSL, ADASL | each team's TeamPass page (`pyramid_sources.team_page`) → `pyramid_team_people` | yes — the proxy above |
 | CASA | the public roster workbooks on Google Sheets (`roster_sheet_sources`, one row per workbook) → `roster_sheet_teams` / `roster_sheet_players` | no |
-| UPSL | **not read** — upsl.com answers every automated reader with a Cloudflare challenge, from the home line and the VPN alike, and publishes no roster list elsewhere | — |
+| UPSL | **by paste** (mig 1777) — upsl.com answers every automated reader with a Cloudflare challenge, from the home line and the VPN alike. Each team's roster is on its team page (`premier.upsl.com/teams/<club>-<id>/`): open it, copy all, paste into the page's ➕ fold (`roster_sheet_sources.system = 'paste'`) | — |
 
 - A sweep starts when the page opens and the last one is
   `roster_watch_policy.stale_hours` old (24); the page's 🔄 button reads

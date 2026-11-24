@@ -17,6 +17,11 @@
 //
 //   GET  /api/roster-watch            (RosterWatchController)
 //   POST /api/roster-watch/refresh    read every roster again
+//   POST /api/roster-watch/paste      a roster by paste (mig 1777 — UPSL: the
+//                                     server cannot read upsl.com, so open the
+//                                     team page, copy all, paste; the page
+//                                     picks the names out for fixing first)
+//   POST /api/roster-watch/paste/remove
 //
 // Words: message_templates kind 'roster_watch' (mig 1774).
 class DualRosteringScreen extends Screen {
@@ -29,11 +34,40 @@ class DualRosteringScreen extends Screen {
     this.view = 'cross';   // cross | same | tri | all
     this.q = '';
     this._timer = null;
+    this.pasteNote = null;   // the last save's answer, shown in the paste fold
+    this.pasteOpen = false;
   }
 
   _c(tier, tokens, fb) {
     return (window.MessageCopy && MessageCopy.has && MessageCopy.has('roster_watch', tier))
       ? MessageCopy.block('roster_watch', tier, tokens || {}) : fb;
+  }
+
+  // Names out of a pasted league page.  The layout is the league's, so this
+  // only proposes: every line that reads like a person's name (2–5 words of
+  // letters, initials allowed), shirt numbers and appearance counts trimmed
+  // off, after the page's "Roster" heading when it has one.  The viewer
+  // fixes the list before it is saved.
+  static namesFrom(text) {
+    let lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim());
+    const at = lines.findIndex(l => /^roster\b/i.test(l));
+    if (at >= 0) lines = lines.slice(at + 1);
+    const skip = /^(home|news|teams?|standings|schedule|schedules|results|stats|statistics|contact( us)?|about( us)?|privacy policy|terms.*|players?|coach(es)?|staff|goalkeepers?|defenders?|midfielders?|forwards?|strikers?|position|appearances|goals|assists|name|photo|all rights reserved.*|follow us.*|sign in|log ?in|register|search|menu|shop|sponsors?|partners?|match(es)?|fixtures|league table|head coach|assistant coach|team manager)$/i;
+    const word = "[\\p{L}][\\p{L}.'’-]*";
+    const name = new RegExp(`^${word}(?: ${word}){1,4}$`, 'u');
+    const seen = new Set();
+    const out = [];
+    for (let l of lines) {
+      l = l.replace(/^#?\d+[.)]?\s+/, '').replace(/(\s+\d+)+$/, '').trim();
+      l = l.replace(/\s+(goalkeeper|defender|midfielder|forward|striker|gk|df|mf|fw)$/i, '').trim();
+      if (!l || l.length > 40 || skip.test(l) || !name.test(l)) continue;
+      if (l === l.toLowerCase()) continue;
+      const key = l.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(l);
+    }
+    return out;
   }
 
   render() {
@@ -107,11 +141,73 @@ class DualRosteringScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       const v = e.target.closest('[data-dr-view]');
       if (v) { this.view = v.dataset.drView; this._render(); return; }
-      if (e.target.closest('[data-dr-refresh]')) { this._refresh(); }
+      if (e.target.closest('[data-dr-refresh]')) { this._refresh(); return; }
+      if (e.target.closest('[data-dr-paste-save]')) { this._savePaste(); return; }
+      const rm = e.target.closest('[data-dr-paste-remove]');
+      if (rm) { this._removePasted(Number(rm.dataset.drPasteRemove)); }
     });
+    // The paste fold stays as the viewer left it across re-renders.
+    this.element.addEventListener('toggle', (e) => {
+      if (e.target.id === 'dr-paste-fold') this.pasteOpen = e.target.open;
+    }, true);
     this.element.addEventListener('input', (e) => {
       if (e.target.id === 'dr-q') { this.q = e.target.value.trim().toLowerCase(); this._renderBody(); }
+      if (e.target.id === 'dr-paste-raw') {
+        const names = this.find('#dr-paste-names');
+        if (names) names.value = DualRosteringScreen.namesFrom(e.target.value).join('\n');
+        this._pasteCount();
+      }
+      if (e.target.id === 'dr-paste-names') this._pasteCount();
     });
+  }
+
+  _pasteNames() {
+    const el = this.find('#dr-paste-names');
+    return el ? el.value.split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean) : [];
+  }
+  _pasteCount() {
+    const n = this._pasteNames().length;
+    const label = this.find('#dr-paste-names-label');
+    if (label) label.textContent = this._c('paste_names', { n }, `Names found (${n}) — one per line, fix before saving`);
+    const btn = this.find('[data-dr-paste-save]');
+    if (btn) { btn.textContent = this._c('paste_save', { n }, `Save ${n} players`); btn.disabled = !n; }
+  }
+  async _savePaste() {
+    const team = ((this.find('#dr-paste-team') || {}).value || '').trim();
+    const source = Number((this.find('#dr-paste-source') || {}).value || 0);
+    const names = this._pasteNames();
+    if (!team) { const t = this.find('#dr-paste-team'); if (t) t.focus(); return; }
+    if (!source || !names.length) return;
+    try {
+      const res = await this.auth.fetch('/api/roster-watch/paste', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_id: source, team, names }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      this.pasteNote = { ok: true, text: this._c('paste_saved', { n: body.saved, team }, `✓ ${body.saved} players saved for ${team}`) };
+    } catch (err) {
+      console.error('[dual-rostering] paste failed:', err);
+      this.pasteNote = { ok: false, text: err.message };
+      this._pasteKeep = { team, raw: (this.find('#dr-paste-raw') || {}).value || '', names: names.join('\n') };
+    }
+    this.pasteOpen = true;
+    this._load();
+  }
+  async _removePasted(teamId) {
+    try {
+      const res = await this.auth.fetch('/api/roster-watch/paste/remove', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ team_id: teamId }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+      this.pasteNote = null;
+    } catch (err) {
+      console.error('[dual-rostering] remove failed:', err);
+      this.pasteNote = { ok: false, text: err.message };
+    }
+    this.pasteOpen = true;
+    this._load();
   }
 
   _inView(m, view) {
@@ -211,9 +307,48 @@ class DualRosteringScreen extends Screen {
         </div>
       </details>`;
 
-    body.innerHTML = (shown.length ? shown.map(card).join('')
+    const paste = d.paste || {};
+    const field = 'width:100%; padding:8px 10px; border-radius:var(--radius-md); border:1px solid var(--border-color); background:var(--bg-primary); color:var(--text-primary); font:inherit;';
+    const pasteFold = (paste.sources || []).length ? `
+      <details class="dr-card" id="dr-paste-fold" ${this.pasteOpen ? 'open' : ''}>
+        <summary style="cursor:pointer; font-weight:700;">${esc(this._c('paste_fold', {}, '➕ Add a roster by paste'))}</summary>
+        <div style="margin-top:6px; display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:0.8rem; opacity:0.8;">${esc(this._c('paste_how', {}, 'Open the team page, copy all, paste below.'))}</div>
+          ${this.pasteNote ? `<div style="font-weight:700; color:${this.pasteNote.ok ? '#4ade80' : '#f87171'};">${esc(this.pasteNote.text)}</div>` : ''}
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <label style="flex:0 1 200px; font-size:0.78rem;">${esc(this._c('paste_league', {}, 'League'))}
+              <select id="dr-paste-source" style="${field}">${paste.sources.map(x => `<option value="${Number(x.id)}">${esc(x.label)}</option>`).join('')}</select></label>
+            <label style="flex:1 1 240px; font-size:0.78rem;">${esc(this._c('paste_team', {}, 'Team name'))}
+              <input id="dr-paste-team" type="text" autocomplete="off" maxlength="120" style="${field}"></label>
+          </div>
+          <label style="font-size:0.78rem;">${esc(this._c('paste_raw', {}, 'Paste the team page here'))}
+            <textarea id="dr-paste-raw" rows="4" style="${field}"></textarea></label>
+          <label style="font-size:0.78rem;"><span id="dr-paste-names-label">${esc(this._c('paste_names', { n: 0 }, 'Names found (0)'))}</span>
+            <textarea id="dr-paste-names" rows="10" style="${field}"></textarea></label>
+          <div><button type="button" class="btn btn-primary" data-dr-paste-save disabled style="padding:6px 14px;">${esc(this._c('paste_save', { n: 0 }, 'Save 0 players'))}</button></div>
+          ${(paste.teams || []).length ? `
+            <div style="font-size:0.8rem; font-weight:700; margin-top:4px;">${esc(this._c('paste_teams', { n: paste.teams.length }, `Pasted so far (${paste.teams.length})`))}</div>
+            ${paste.teams.map(t => `<div class="dr-src" style="align-items:center;">
+                <span style="flex:1 1 240px;">${esc(this._c('paste_team_row', { team: t.team, n: t.n, when: t.when }, `${t.team} · ${t.n} players · ${t.when}`))} <span style="opacity:0.6;">· ${esc(t.league)}</span></span>
+                <button type="button" class="btn btn-secondary" data-dr-paste-remove="${Number(t.id)}" style="padding:2px 10px; font-size:0.75rem;">${esc(this._c('paste_remove', {}, 'Remove'))}</button>
+              </div>`).join('')}` : ''}
+        </div>
+      </details>` : '';
+    // A re-render (the sweep's polling) must not wipe a paste in progress.
+    const keep = this._pasteKeep || {
+      team: (this.find('#dr-paste-team') || {}).value || '', raw: (this.find('#dr-paste-raw') || {}).value || '',
+      names: (this.find('#dr-paste-names') || {}).value || '', source: (this.find('#dr-paste-source') || {}).value || '',
+    };
+    this._pasteKeep = null;
+    const justSaved = this.pasteNote && this.pasteNote.ok && this._pasteShown !== this.pasteNote;
+    if (justSaved) { keep.team = ''; keep.raw = ''; keep.names = ''; this._pasteShown = this.pasteNote; }
+
+    body.innerHTML = pasteFold + (shown.length ? shown.map(card).join('')
         : `<div style="opacity:0.7; padding:var(--space-4); text-align:center;">${esc(this._c('empty', {}, 'No name is on two teams here.'))}</div>`)
       + sources;
+    const put = (id, v) => { const el = this.find(id); if (el && v) el.value = v; };
+    put('#dr-paste-team', keep.team); put('#dr-paste-raw', keep.raw); put('#dr-paste-names', keep.names); put('#dr-paste-source', keep.source);
+    this._pasteCount();
   }
 }
 

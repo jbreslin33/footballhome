@@ -18,6 +18,12 @@
 //
 //   POST /api/roster-watch/refresh   read every roster again, now
 //     → { started, sweep }
+//
+//   POST /api/roster-watch/paste {source_id, team, names: [...]}   (mig 1777)
+//     → { saved }   one team's roster picked out of a pasted league page
+//     (UPSL: the server cannot read upsl.com); replaces that team.
+//   POST /api/roster-watch/paste/remove {team_id}
+//   GET adds  paste: {sources: [{id, label}], teams: [{id, league, team, n, when}]}
 class RosterWatchController : public Controller {
 public:
     void registerRoutes(Router& router, const std::string& prefix) override;
@@ -25,4 +31,6 @@ public:
 private:
     Response handleGet(const Request& request);
     Response handleRefresh(const Request& request);
+    Response handlePaste(const Request& request);         // mig 1777: a roster by paste (UPSL)
+    Response handlePasteRemove(const Request& request);
 };
