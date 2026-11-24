@@ -13347,3 +13347,41 @@ A share that was thrown away goes to the man it belongs to; the wide columns mov
 zone ahead 37% of decisions (DFL 43, §8.352). Next: the lifts on this base — the length lift was fitted when passes ran
 long (§8.236: 0-10 m 64-68 v 99) and today's are short of nothing under 10 m (137 v 118): refit it on today's lengths
 before holding zones. Tests 25/25.
+
+### 8.355 G5.249 — the chooser's two margin lifts refitted on today's game: the short pass's length and its direction (mig 1854; shipped)
+
+From §8.354 (the lifts raise a central midfielder's same-zone ball 37 → 49% of his to-feet weight). Two lifts, each a
+margin of StatsBomb PL 15/16, both stale:
+
+- **Length** (`physics.pass.len_lift_*`, §8.236) was fitted when ours ran long (0-10 m 64-68 a team-match v 99). Today
+  by 10 m: 137 / 156 / 61 / 30 / 13.5 / 8.5 v 118 / 176 / 73 / 28 / 12.7 / 7.1.
+- **A short pass's direction** (`physics.pass.short_dir_<band>_<dir>`, §8.249) was tried at 545 passes a team-match and
+  left unset. Today under 20 m, forward / lateral / back, by the kick's m off the line attacked: 52-70 25.9 / **58.0 /
+  20.7** v 26.8 / 38.3 / 13.3; 35-52 22.8 / 46.7 / 20.2 v 25.8 / 40.2 / 16.0; 70+ 15.2 / 27.4 / 7.1 v 21.9 / 22.0 / 6.5.
+  (18-35 and 0-18 are short in every direction — volume, §8.351 — and stay at 1.)
+
+**Change**: rows only, real ÷ ours — the length lift in two steps to 1.625 / 0.891 / 0.580 / 0.325 / 0.80 / 0.835 (code
+2.08 / 0.755 / 0.44 / 0.34 / 0.85 / 1), the direction rows for the three deeper bands (35-52: 1.13 / 0.86 / 0.79;
+52-70: 1.03 / 0.66 / 0.64; 70+: 1.44 / 0.80 / 0.92). Seeds 1000-4000 × 8 (real):
+
+| | G5.248 | length, one step | G5.249 | real |
+|---|---|---|---|---|
+| short passes 52-70 m out, fwd / lateral / back | 25.9 / 58.0 / 20.7 | | 26.7 / 47.6 / 16.6 | 26.8 / 38.3 / 13.3 |
+| … 35-52 | 22.8 / 46.7 / 20.2 | | 24.2 / 42.8 / 18.5 | 25.8 / 40.2 / 16.0 |
+| … 70+ | 15.2 / 27.4 / 7.1 | | 16.7 / 22.8 / 6.5 | 21.9 / 22.0 / 6.5 |
+| passes by length 0-10 / 10-20 / 20-30 / 30-40 m | 137 / 156 / 61 / 30 | 130 / 168 / 66 / 28 | 120 / 157 / 70 / 30 | 118 / 176 / 73 / 28 |
+| as played, 35-52 c → the same zone / the wide zone ahead | 43.4 / 8.1% | 42.0 / 7.4 | 42.1 / 8.6 | 35.3 / 12.4 |
+| … 52-70 c → the same zone / the wide zone ahead | 48.2 / 7.3% | 46.5 / 8.2 | 42.3 / 9.0 | 35.8 / 12.0 |
+| the next stint one band up, from 52-70 / 35-52 | 14.8 / 11.9% | 15.6 / 11.8 | 16.2 / 12.9 | 19.1 / 16.8 |
+| a pass's m on from 52-70, med | +0.6 | +0.7 | +1.1 | +2.6 |
+| stints 52-70 m out | 191 | 192 | 183 | 171 |
+| passes / completion % | 400 / 76.3 | 405 / 76.8 | 390 / 76.0 | 434 / 77.5 |
+| switches / corners / goals | 8.8 / 2.67 / 2.17 | 7.4 / 2.67 / 2.28 | 8.1 / 2.97 / 2.03 | 10.7 / 5.40 / 1.35 |
+
+The square and back short ball in midfield come two-thirds of the way to real, the lengths under 10 m and at 20-30 m
+land, and for the first time in this thread the ball steps up a band more often (16.2% v 14.8, real 19.1). The cost
+shows where it should: 390 passes (434) — the surplus square balls were holding the count up while the own third
+(174 stints v 228) and the last 18 m (36 v 60) are short. 10-20 m is 157 v 176: its forward cell (16 v 20, §8.342).
+Shipped (`card_G5.249.txt`, 9 / 7 / 17 — inside §8.351's noise). Next: one more step of the direction rows (52-70
+lateral 47.6 v 38.3), then the own third's count — why a real side has the ball at the back 30% more often.
+Rows only; tests 25/25.
