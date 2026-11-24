@@ -76,6 +76,24 @@ def one(pos_path):
         side = 1 if b[1] > 0 else -1
         c["n"] += 1
         L["opp"].append(min((math.hypot(p[0] - b[0], p[1] - b[1]) for pid, p in ps.items() if who.get(pid) == 1 - t and pid not in keepers), default=99))
+        # G5.239 (§8.345) THE PRESS ON HIM: his nearest outfield opponent at the stint's first frame — who (role), how far;
+        # 1 s on, if the full-back still has it (within 2 m of a live ball of his side): that opponent's m off him and the
+        # m he closed; and the stint's length.
+        od0, oid = min(((math.hypot(p[0] - b[0], p[1] - b[1]), pid) for pid, p in ps.items() if who.get(pid) == 1 - t and pid not in keepers), default=(99, None))
+        if oid is not None:
+            c[f"pr{ROLE.get(pos_of.get(oid), 2)}"] += 1; c["prn"] += 1
+            c[f"pd{0 if od0 < 3 else 1 if od0 < 5 else 2 if od0 < 8 else 3 if od0 < 12 else 4}"] += 1
+            k1 = (k[0], k[1] + 25); b1 = ball.get(k1); me1 = pl.get(k1, {}).get(man); o1 = pl.get(k1, {}).get(oid)
+            c["at1"] += 1
+            if b1 is not None and b1[2] == t and me1 and o1 and math.hypot(me1[0] - b1[0], me1[1] - b1[1]) <= 2:
+                c["still1"] += 1; d1 = math.hypot(o1[0] - me1[0], o1[1] - me1[1]); me0 = ps[man]; d0m = math.hypot(ps[oid][0] - me0[0], ps[oid][1] - me0[1])
+                L["d1"].append(d1); L["cl"].append(d0m - d1); c["in3_1"] += d1 < 3
+        n_st = 1; kk = k
+        while True:
+            kk = (kk[0], kk[1] + 5); bb = ball.get(kk); mm = pl.get(kk, {}).get(man)
+            if bb is None or bb[2] != t or not mm or math.hypot(mm[0] - bb[0], mm[1] - bb[1]) > 2: break
+            n_st += 1
+        L["len"].append(n_st / 5)
         line = []; inside = []
         for pid, p in ps.items():
             if who.get(pid) != t or pid == man or pid in keepers: continue
@@ -108,4 +126,8 @@ if __name__ == "__main__":
     print(f"  mates down the line none / one / two+: {100 * c['line0'] / n:.0f} / {100 * c['line1'] / n:.0f} / {100 * c['line2'] / n:.0f}% | the nearest: {md(L['ah']):.1f} m ahead [{q(L['ah'], .25):.1f}-{q(L['ah'], .75):.1f}], "
           + " ".join(f"{nm} {100 * c[f'lr{r}'] / nl:.0f}%" for r, nm in enumerate(NAMES)) + f" | his nearest opponent med {md(L['lo']):.1f} m, inside 3 m {100 * c['lo3'] / nl:.0f}%")
     print(f"  mates ahead inside (3 m+ ahead, within 30 m, not on the line): {c['inside'] / n:.2f} | the nearest {md(L['ins']):.1f} m")
+    pn = max(1, c["prn"]); s1 = max(1, c["still1"])
+    print(f"  THE PRESS ON HIM (G5.239): his nearest opponent at the first frame 0-3 / 3-5 / 5-8 / 8-12 / 12+ m: " + " / ".join(f"{100 * c[f'pd{i}'] / pn:.0f}" for i in range(5)) + "% | who: " + " ".join(f"{nm} {100 * c[f'pr{r}'] / pn:.0f}%" for r, nm in enumerate(NAMES))
+          + f" | still his 1 s on {100 * c['still1'] / max(1, c['at1']):.0f}%: that man then {md(L['d1']):.1f} m off, closed {md(L['cl']):.1f} m [{q(L['cl'], .25):.1f}-{q(L['cl'], .75):.1f}], inside 3 m {100 * c['in3_1'] / s1:.0f}% | stint s med {md(L['len']):.1f}, p75 {q(L['len'], .75):.1f}")
+    print("C++ press row: {" + ", ".join(f"{x:.1f}" for x in [100 * c[f'pd{i}'] / pn for i in range(5)] + [100 * c[f'pr{r}'] / pn for r in range(6)] + [100 * c['still1'] / max(1, c['at1']), md(L['d1']), md(L['cl']), q(L['cl'], .25), q(L['cl'], .75), 100 * c['in3_1'] / s1, md(L['len']), q(L['len'], .75)]) + "}")
     print("C++ row: {" + ", ".join(f"{x:.1f}" for x in [c['n'] / (2 * len(files)), md(L['opp']), 100 * c['line0'] / n, 100 * c['line1'] / n, 100 * c['line2'] / n, md(L['ah']), q(L['ah'], .25), q(L['ah'], .75)] + [100 * c[f'lr{r}'] / nl for r in range(6)] + [md(L['lo']), 100 * c['lo3'] / nl, c['inside'] / n, md(L['ins'])]) + "}")

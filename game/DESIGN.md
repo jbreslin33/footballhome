@@ -12935,3 +12935,38 @@ man (forward ground 3.5 tried / 1.2 lost, §8.343); ours is left alone and plays
 passes-under-pressure line (11.9% v 17.0) at one spot, and the reason §8.343's risk trial moved so little: the pass
 was never forced. Next: the press on the full-back by his touchline — who closes him, from how far and how fast, and
 who takes the line man (DFL v ours). Harness only; tests 23/23.
+
+### 8.345 G5.239 — the press on the full-back by his touchline: the right men, at half the pace; the deep ball's stand-off split touchline / middle (mig 1785; shipped)
+
+From §8.344. `benchmarks_tracking_fbline.py` THE PRESS ON HIM + harness §8.345: at the first frame of the
+full-back's stint (within 35 m of his own line, 14 m of a touchline) his nearest outfield opponent — how far, who;
+1 s on, if the full-back still has it, that man's metres off him and the metres he closed; the stint's length.
+Seeds 1000-4000 × 8:
+
+| | G5.235 | G5.239 | real |
+|---|---|---|---|
+| nearest opponent at his first frame, inside 3 m | 24% | 25% | 34% |
+| who: WIDE / ST / FB | 55 / 18 / 13% | | 56 / 21 / 8% |
+| still his 1 s on | 45% | 40% | 48% |
+| … that man then, m off him | 7.0 | 5.7 | 5.3 |
+| … closed in the second, m | 1.7 | 2.3 | 3.3 |
+| … inside 3 m | 11% | 17% | 24% |
+| his stint, s med / p75 | 0.75 / 2.55 | 0.6 / 1.95 | 1.0 / 1.8 |
+| his forward ground pass, tried / lost (§8.343) | 2.9 / 0.4 | 3.3 / 0.6 | 5.3 / 1.6 |
+| the build-up loss's ball, \|y\| (§8.315) | 11.2 | 13.7 | 23.7 |
+| the ball won 18-35 m off our goal, a team-match | 4.9 | 3.7 | 1.47 |
+| passes under pressure % | 11.7 | 12.0 | 17.0 |
+| goals / card | 2.19, 11 / 9 / 13 | 2.33, 10 / 9 / 14 | 1.35 |
+
+The right men go to him (the wide man over half the time, the striker a fifth); they close at half the pace, and a
+quarter do not close at all — their rolled stand-off is the band's blended row, 8-13 m for half of them. **Change**:
+no code — G5.218's `physics.press.stand_off_deep_{w,c}_{p25,p50,p75}` rows (§8.324: by a touchline 2.9 / 5.3 / 8.8 m,
+in the middle 4.9 / 8.9 / 13.5, DFL), left unset then on a card move of 12 / 8 / 13 → 9 / 7 / 17 that §8.338 shows is
+run noise. Every line of the press on the full-back moves toward real, his stints shorten to real, he plays forward a
+little more and loses it a little more, the build-up breaks a little wider, and the other side wins it near our box
+less. Shipped as the correct behaviour (`card_G5.239.txt`).
+
+Open: he is still met late — inside 3 m at his first touch 25% v 34 (the press starts on the pass, §8.183; real
+pressers are on their way before it) — and closed at 2.3 m a second v 3.3; the line man is marked tight 24% v 36
+(unchanged). Next: the presser's start — where the man who will close the full-back is when the pass to him is
+struck, and his pace during its flight (DFL v ours). Tests 23/23 (no game code changed).

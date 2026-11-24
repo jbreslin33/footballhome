@@ -93,6 +93,7 @@ struct Stats {
     long ma_n[6][5] = {}, ma_h[6][5] = {}, ma_bad[6][5] = {};   // §8.342 midfield passes 5 m+ [angle 0-30 / 30-45 / 45-60 / 60-90 / 90-120 / 120+][5-10 / 10-20 / 20-30 / 30-40 / 40+ m]: tried, high, not completed
     long orl_n[5][4] = {}, orl_bad[5][4] = {}, orl_fn[2][4] = {}, orl_fbad[2][4] = {};   // §8.343 own-third passes [GK / CB / FB / DM-CM / other][fwd ground / fwd high / square / back]; the FB's [wide / inside]
     long fbl_n = 0, fbl_line[3] = {}, fbl_ins = 0, fbl_role[6] = {}, fbl_lo3 = 0; std::vector<double> fbl_opp, fbl_ah, fbl_insd, fbl_lo;   // §8.344 FB ON THE LINE
+    long fbp_n = 0, fbp_d[5] = {}, fbp_r[6] = {}, fbp_still = 0, fbp_in3 = 0; std::vector<double> fbp_d1, fbp_cl, fbp_len;   // §8.345 THE PRESS ON HIM
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -3111,6 +3112,20 @@ int main(int argc, char** argv) {
                             const double sgf = t == 0 ? 1.0 : -1.0, side = f.by > 0 ? 1.0 : -1.0;
                             auto nopp = [&](double x, double y) { double m = 99; for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) m = std::min(m, std::hypot(f.x[q2] - x, f.y[q2] - y)); return m; };
                             ++S.fbl_n; S.fbl_opp.push_back(nopp(f.bx, f.by));
+                            {   // §8.345 THE PRESS ON HIM (benchmarks_tracking_fbline.py)
+                                int oid = -1; double od0 = 99;
+                                for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) { const double dd = std::hypot(f.x[q2] - f.bx, f.y[q2] - f.by); if (dd < od0) { od0 = dd; oid = q2; } }
+                                if (oid >= 0) {
+                                    ++S.fbp_n; ++S.fbp_d[od0 < 3 ? 0 : od0 < 5 ? 1 : od0 < 8 ? 2 : od0 < 12 ? 3 : 4]; const int orr = role(static_cast<std::uint8_t>(oid)); if (orr >= 0 && orr < 6) ++S.fbp_r[orr];
+                                    const std::size_t fi = static_cast<std::size_t>(&f - fl_f.data());
+                                    if (fi + 5 < fl_f.size() && fl_f[fi + 5].k == f.k + 30 && fl_f[fi + 5].a == t && std::hypot(fl_f[fi + 5].x[man] - fl_f[fi + 5].bx, fl_f[fi + 5].y[man] - fl_f[fi + 5].by) <= 2) {
+                                        const auto& g = fl_f[fi + 5]; const double d1 = std::hypot(g.x[oid] - g.x[man], g.y[oid] - g.y[man]), d0m = std::hypot(f.x[oid] - f.x[man], f.y[oid] - f.y[man]);
+                                        ++S.fbp_still; S.fbp_d1.push_back(d1); S.fbp_cl.push_back(d0m - d1); S.fbp_in3 += d1 < 3;
+                                    }
+                                    int ns = 1; for (std::size_t j = fi + 1; j < fl_f.size() && fl_f[j].k == fl_f[j - 1].k + 6 && fl_f[j].a == t && std::hypot(fl_f[j].x[man] - fl_f[j].bx, fl_f[j].y[man] - fl_f[j].by) <= 2; ++j) ++ns;
+                                    S.fbp_len.push_back(ns / 5.0);
+                                }
+                            }
                             int nl = 0, ni = 0, best = -1; double bah = 1e9, bin = 1e9;
                             for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
                                 if (W.player(p2).team != t || p2 == man || W.isKeeper(p2)) continue;
@@ -3662,6 +3677,12 @@ int main(int argc, char** argv) {
                         for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100 * S.fbl_role[r] / nl, R[8 + r]);
                         std::printf(" | his nearest opponent med %.1f m (%.1f), inside 3 m %.0f%% (%.0f)", qt(S.fbl_lo, .5), R[14], 100 * S.fbl_lo3 / nl, R[15]);
                         std::printf("\n     mates ahead inside (3 m+ ahead, within 30 m, not on the line): %.2f (%.2f) | the nearest %.1f m (%.1f)", S.fbl_ins / n, R[16], qt(S.fbl_insd, .5), R[17]);
+                        static const double P[19] = {33.6, 14.6, 19.3, 21.4, 11.1, 0.7, 7.5, 7.1, 6.8, 56.4, 21.4, 48.2, 5.3, 3.3, 0.7, 4.7, 24.4, 1.0, 1.8};
+                        const double pn = std::max(1L, S.fbp_n), s1 = std::max(1L, S.fbp_still);
+                        std::printf("\n     §8.345 THE PRESS ON HIM: his nearest opponent at the first frame 0-3 / 3-5 / 5-8 / 8-12 / 12+ m: %.0f / %.0f / %.0f / %.0f / %.0f%% (%.0f / %.0f / %.0f / %.0f / %.0f) | who:", 100 * S.fbp_d[0] / pn, 100 * S.fbp_d[1] / pn, 100 * S.fbp_d[2] / pn, 100 * S.fbp_d[3] / pn, 100 * S.fbp_d[4] / pn, P[0], P[1], P[2], P[3], P[4]);
+                        for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100 * S.fbp_r[r] / pn, P[5 + r]);
+                        std::printf(" | still his 1 s on %.0f%% (%.0f): that man then %.1f m off (%.1f), closed %.1f m [%.1f-%.1f] (%.1f [%.1f-%.1f]), inside 3 m %.0f%% (%.0f) | stint s med %.1f (%.1f), p75 %.1f (%.1f)",
+                                    100 * S.fbp_still / pn, P[11], qt(S.fbp_d1, .5), P[12], qt(S.fbp_cl, .5), qt(S.fbp_cl, .25), qt(S.fbp_cl, .75), P[13], P[14], P[15], 100 * S.fbp_in3 / s1, P[16], qt(S.fbp_len, .5), P[17], qt(S.fbp_len, .75), P[18]);
                     }
                     {   // §8.339
                         const double tmo = std::max(1.0, 2.0 * matches);
