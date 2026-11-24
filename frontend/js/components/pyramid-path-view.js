@@ -34,13 +34,8 @@ class PyramidPathView {
 
   html(model) {
     const esc = (t) => this._esc(t);
-    const names = model.clubs.map((c) => c.name).sort((a, b) => a.localeCompare(b));
     const club = this.clubId && model.clubs.find((c) => c.id === this.clubId);
     return `
-      <div class="pt-pick">
-        <input class="pt-search" list="pt-clubs" placeholder="${esc(this._copy('path_search'))}" value="${esc(club ? club.name : '')}">
-        <datalist id="pt-clubs">${names.map((n) => `<option value="${esc(n)}">`).join('')}</datalist>
-      </div>
       <div class="pt-body">${club ? this._clubHtml(model, club) : `<div class="fc-none">${esc(this._copy('path_pick'))}</div>`}</div>`;
   }
 
@@ -92,15 +87,14 @@ class PyramidPathView {
 
   mount(root, model) {
     this.root = root; this.model = model;
-    const input = root.querySelector('.pt-search');
-    if (!input) return;
-    input.addEventListener('change', () => {
-      const club = model.clubByName(input.value);
-      if (!club) return;
-      this.clubId = club.id;
-      try { localStorage.setItem('apsl-pyramid-club', String(club.id)); } catch (_) { /* private mode */ }
-      root.querySelector('.pt-body').innerHTML = this._clubHtml(model, club);
-    });
+  }
+
+  // The page's club search (right of the conference pills) picked a club.
+  onClub(club) {
+    this.clubId = club.id;
+    try { localStorage.setItem('apsl-pyramid-club', String(club.id)); } catch (_) { /* private mode */ }
+    const body = this.root && this.root.querySelector('.pt-body');
+    if (body) body.innerHTML = this._clubHtml(this.model, club);
   }
 
   onResize() {}

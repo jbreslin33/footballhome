@@ -32,7 +32,7 @@ class PyramidFlowView {
 
   static css() {
     return `
-      .fc-scroll { position:absolute; inset:0; overflow:auto; padding:62px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
+      .fc-scroll { position:absolute; inset:0; overflow:auto; padding:16px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
       .fc-scroll.dragging { cursor:grabbing; user-select:none; }
       .fc-scroll.dragging * { cursor:grabbing !important; }
       .fc-chart { position:relative; display:grid; column-gap:64px; row-gap:56px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }

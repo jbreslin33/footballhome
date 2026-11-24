@@ -14,11 +14,14 @@
 // columns), PyramidGrowthView (the league's seasons).  A view pill not built
 // yet shows greyed.  Wording: message_templates kind 'apsl_pyramid'.
 //
-// One ☰ button (mig 1234, owner 2026-11-11: "like game … one button to open
-// interface so screen on load is not cluttered … organized sections"): the
-// page opens on the view alone.  ☰ (or M) opens one panel — View,
-// Conferences, Show on screen (the view's floating panels, off by default,
-// remembered per device), Actions.  Same idea as game/view-menu.js.
+// A normal page with pill rows (owner 2026-11-24: "more like the other pages
+// with pills"): the site's top bar stays on top, then the title + totals,
+// a row of View pills, a row of Conference pills (All + each toggles), a
+// row of the view's on/off switches as pills, and the view under them.  A
+// view's panels (screen.hud(): the chart's legend, the slideshow's
+// controls, the map's key / conference / club card) sit in .ap-menu — a
+// strip above the view, or a column beside the map (under it on a phone).
+// The ☰ menu of mig 1234 is gone.
 // Black or white text on a conference colour (mig 1249), by its luminance.
 const PyramidScreenColor = {
   ink(hex) {
@@ -81,21 +84,44 @@ class ApslPyramidScreen extends Screen {
         .ap-pill.cc::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--cc); margin-right:6px; vertical-align:0; }
         .ap-pill.cc.on { background:var(--cc); border-color:var(--cc); color:var(--cc-fg, #fff); }
         .ap-pill.cc.on::before { background:var(--cc-fg, #fff); }
-        .ap-stage { position:fixed; inset:0; z-index:1000; background:var(--bg-color, #0b1220); overflow:hidden; }
-        .ap-stage #ap-body { position:absolute; inset:0; top:var(--ap-bar, 64px); overflow:auto; padding:12px 16px 24px; }
-        .ap-stage #ap-body.flush { padding:0; overflow:hidden; }
-        .ap-bar { position:absolute; top:0; left:0; right:0; z-index:1250; padding:8px 12px 6px 64px; min-height:60px; box-sizing:border-box;
-                  background:var(--bg-color, #0b1220); border-bottom:1px solid rgba(148,163,184,0.18); }
+        .ap-stage { background:var(--bg-color, #0b1220); padding:10px 12px 20px; box-sizing:border-box; }
+        .ap-stage:fullscreen { overflow:auto; }
+        .ap-bar { margin-bottom:10px; }
         .ap-bar .row { display:flex; align-items:center; gap:6px 12px; flex-wrap:wrap; }
         .ap-bar img { height:30px; width:auto; }
-        .ap-bar .t { font-weight:900; font-size:1.05rem; white-space:nowrap; }
-        .ap-bar .ap-pills { display:flex; gap:6px; flex-wrap:wrap; }
-        .ap-bar .cap { font-size:0.82rem; opacity:0.8; margin-top:4px; line-height:1.35; }
-        .ap-head { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin:-52px 0 14px 50px; min-height:44px; }
-        .ap-head img { height:30px; width:auto; }
-        .ap-head .t { font-weight:900; font-size:1.05rem; white-space:nowrap; }
-        .ap-head .ap-pills { display:flex; gap:6px; flex-wrap:wrap; }
-        .ap-stage #ap-body.flush #ap-view { position:absolute; inset:0; }
+        .ap-bar .t { font-weight:900; font-size:1.15rem; white-space:nowrap; }
+        .ap-bar .tot { font-size:0.85rem; font-weight:600; opacity:0.8; }
+        .ap-bar .acts { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
+        .ap-bar .acts .ap-pill { font-weight:600; font-size:0.78rem; padding:4px 11px; }
+        .ap-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
+        .ap-row .lbl { flex:0 0 auto; min-width:96px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
+        .ap-row.views .ap-pill { font-size:0.9rem; padding:6px 16px; }
+        /* Conferences: always ONE line (owner 11/24 "the conferences are on 2 lines") — compact pills, and on a narrow screen the line slides sideways. */
+        .ap-row.confs { flex-wrap:nowrap; }
+        .ap-confs { flex:1 1 auto; min-width:0; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
+        .ap-confs::-webkit-scrollbar { display:none; }
+        /* Club search, right of the conference pills: the clubs of the conferences that are lit. */
+        .ap-clubbox { position:relative; flex:0 0 240px; min-width:0; }
+        .ap-club { width:100%; box-sizing:border-box; min-height:0; padding:5px 12px; font-size:0.85rem; border-radius:999px; }
+        /* Its list: every club of the lit conferences, open on a conference pick or a tap in the box. */
+        .ap-clublist { position:absolute; right:0; top:calc(100% + 4px); z-index:1400; width:min(320px, 92vw); max-height:min(60vh, 520px); overflow:auto;
+                       background:var(--card-bg, #111827); border:1px solid var(--border-color, #374151); border-radius:12px; padding:4px; box-shadow:0 6px 24px rgba(0,0,0,0.5); }
+        .ap-clublist[hidden] { display:none; }
+        .ap-clublist button { display:block; width:100%; text-align:left; min-height:0; padding:6px 10px; border:0; border-radius:8px; background:transparent; color:inherit; font-size:0.85rem; cursor:pointer; }
+        .ap-clublist button:hover { background:rgba(148,163,184,0.18); }
+        @media (max-width: 700px) { .ap-row.confs { flex-wrap:wrap; } .ap-confs { flex-basis:100%; } .ap-clubbox { flex:1 1 100%; } .ap-clublist { left:0; right:auto; width:100%; } }
+        .ap-row.confs .ap-pill { flex:0 0 auto; white-space:nowrap; font-size:0.78rem; padding:3px 9px; }
+        .ap-row.confs .ap-pill.cc::before { margin-right:4px; }
+        .ap-row.show .ap-pill { font-weight:600; font-size:0.78rem; padding:4px 11px; }
+        .ap-bar .cap { font-size:0.85rem; opacity:0.8; margin-top:8px; line-height:1.35; }
+        .ap-main { display:flex; gap:12px; align-items:flex-start; }
+        .ap-main.top { flex-direction:column; align-items:stretch; gap:8px; }
+        #ap-body { position:relative; flex:1 1 auto; min-width:0; isolation:isolate; }
+        .ap-main.top #ap-body { flex:none; }
+        #ap-body.flush { height:var(--ap-h, 70vh); overflow:hidden; border:1px solid rgba(148,163,184,0.25); border-radius:12px; }
+        #ap-body.flush #ap-view { position:absolute; inset:0; }
+        @media (max-width: 700px) { .ap-row .lbl { min-width:100%; } .ap-row.confs .lbl { display:none; } }
+        @media (max-width: 900px) { .ap-main { flex-direction:column; align-items:stretch; } }
         .ap-hud { position:absolute; z-index:1100; background:rgba(11,18,32,0.84); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3);
                   border-radius:12px; color:#e5e7eb; font-size:0.8rem; box-shadow:0 4px 18px rgba(0,0,0,0.4); max-width:calc(100% - 20px); }
         .ap-hud-head { display:flex; align-items:center; gap:8px; padding:4px 6px 4px 10px; font-weight:800; white-space:nowrap; }
@@ -106,32 +132,22 @@ class ApslPyramidScreen extends Screen {
         .ap-dock .mp-layers { margin-bottom:6px; }
         .ap-hud.collapsed .ap-hud-body { display:none; }
         .ap-hud.off { display:none !important; }
-        .ap-menu-btn { position:absolute; top:10px; left:10px; z-index:1300; width:44px; height:44px; min-width:0; min-height:0; padding:0;
-                       border-radius:12px; border:1px solid rgba(148,163,184,0.35); background:rgba(11,18,32,0.84); color:#e5e7eb;
-                       font-size:1.35rem; line-height:1; cursor:pointer; box-shadow:0 4px 18px rgba(0,0,0,0.4); }
-        .ap-menu-btn.open { background:var(--primary-color, #2563eb); border-color:var(--primary-color, #2563eb); color:#fff; }
-        .ap-menu { position:absolute; top:calc(var(--ap-bar, 64px) + 4px); left:10px; z-index:1300; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 72px); overflow:auto;
-                   background:rgba(11,18,32,0.94); backdrop-filter:blur(6px); border:1px solid rgba(148,163,184,0.3); border-radius:12px;
-                   color:#e5e7eb; font-size:0.85rem; box-shadow:0 6px 24px rgba(0,0,0,0.5); padding:10px 12px; box-sizing:border-box; }
+        /* The view's panels: a column beside the view (the map), or a strip above it (.ap-main.top). */
+        .ap-menu { flex:0 0 340px; max-height:var(--ap-h, 70vh); overflow:auto; box-sizing:border-box; padding:4px 12px 10px;
+                   border:1px solid rgba(148,163,184,0.25); border-radius:12px; font-size:0.85rem; }
         .ap-menu[hidden] { display:none; }
-        .ap-menu-home { display:block; width:100%; margin-bottom:10px; }
-        .ap-menu-head { display:flex; align-items:center; gap:8px; font-weight:800; font-size:1rem; }
-        .ap-menu-head img { height:28px; width:auto; }
-        .ap-menu-head .t { flex:1; }
-        .ap-menu .ap-totals { text-align:left; font-size:0.85rem; font-weight:600; opacity:0.85; margin:4px 0 2px; }
+        .ap-main.top .ap-menu { order:-1; flex:none; max-height:none; overflow:visible; border:0; padding:0; }
+        .ap-main.top .ap-sec { border:0; padding:0; margin:0; }
+        .ap-main.top .ap-sec h4 { display:none; }
+        @media (max-width: 900px) { .ap-menu { flex:none; max-height:none; } }
         .ap-sec { border-top:1px solid rgba(148,163,184,0.25); padding:9px 0 4px; margin-top:6px; }
+        .ap-dock > .ap-sec:first-child { border-top:0; margin-top:0; }
         .ap-sec h4 { margin:0 0 7px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
         .ap-menu .ap-pills { justify-content:flex-start; margin-bottom:4px; }
-        .ap-show label { display:flex; align-items:center; gap:8px; padding:4px 0; cursor:pointer; }
-        .ap-show .none { opacity:0.6; font-size:0.8rem; }
-        .ap-acts { display:flex; flex-direction:column; gap:6px; }
-        .ap-acts button { width:100%; text-align:left; min-height:0; padding:7px 10px; }
         .hud-tl { top:10px; left:10px; }
         .hud-bl { bottom:10px; left:10px; }
         .hud-br { bottom:10px; right:10px; }
         .hud-bc { bottom:10px; left:50%; transform:translateX(-50%); }
-        .ap-views { margin-bottom:8px; }
-        .ap-views .ap-pill { font-size:0.9rem; padding:6px 16px; }
         .ap-pill:disabled { opacity:0.35; cursor:not-allowed; }
         ${PyramidFlowView.css()}
         ${PyramidPresentView.css()}
@@ -158,26 +174,32 @@ class ApslPyramidScreen extends Screen {
       </style>
       <div class="ap-stage">
         <div class="ap-bar"></div>
-        <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
-        <button class="ap-menu-btn" data-menu aria-label="☰">☰</button>
-        <div class="ap-menu" hidden><div class="ap-menu-main"></div><div class="ap-dock"></div><div class="ap-menu-extra"></div><div class="ap-menu-tail"></div></div>
+        <div class="ap-main">
+          <div id="ap-body"><div class="loading" style="padding-top:60px;">Loading…</div></div>
+          <aside class="ap-menu" hidden><div class="ap-dock"></div><div class="ap-menu-extra"></div></aside>
+        </div>
       </div>`;
     this.element = div;
-    this._onFullLabel = () => this._renderMenu();
+    this._onFullLabel = () => { this._renderBar(); this._fit(); };
     document.addEventListener('fullscreenchange', this._onFullLabel);
-    this._onKey = (e) => {
-      if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
-      if (e.key && e.key.toLowerCase() === 'm' && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey) this._menu();
-      else if (e.key === 'Escape' && this.menuOpen) this._menu(false);
-    };
     div.querySelector('.ap-stage').addEventListener('click', (e) => {
-      // ☰ (✕ while open) opens and closes the one menu.
-      if (e.target.closest('[data-menu]')) { this._menu(); return; }
-      // A view's own ☰ section (the map's proposed conferences).
+      // The club search (right of the conference pills): a tap in the box
+      // opens its list, a club in the list is picked, a tap elsewhere shuts it.
+      const cp = e.target.closest('[data-club-pick]');
+      if (cp) { this._pickClub(Number(cp.dataset.clubPick)); return; }
+      if (e.target.closest('.ap-club')) { this._clubList(true); e.target.select(); return; }
+      if (this.clubOpen && !e.target.closest('[data-conf]')) this._clubList(false);
+      // A view's own panel section (the map's proposed conferences).
       if (e.target.closest('.ap-menu') && this._impl().menuClick && this._impl().menuClick(e)) return;
       const act = e.target.closest('[data-act]');
       if (act) { this._menuAction(act.dataset.act); return; }
-      if (e.target.closest('[data-show], [data-feature]')) return;   // checkbox: handled on change
+      // A Show pill: one of the view's on/off switches.
+      const feat = e.target.closest('[data-feature]');
+      if (feat) {
+        const f = (this._impl().features ? this._impl().features() : []).find((x) => x.key === feat.dataset.feature);
+        if (f) { this._setFeature(f.key, !this.feature(f.key, f.def)); this._renderBar(); }
+        return;
+      }
       // ▾ / ▸ on any HUD: collapse to its title, remembered (owner: "the
       // huds should be collapsable").
       const tg = e.target.closest('[data-hud-toggle]');
@@ -203,11 +225,19 @@ class ApslPyramidScreen extends Screen {
       const ed = e.target.closest('[data-ed]');
       if (ed) this._editorAction(ed);
     });
+    // Typing narrows the list; Enter takes the first club left, Esc shuts it.
+    div.querySelector('.ap-stage').addEventListener('input', (e) => {
+      if (!e.target.closest('.ap-club')) return;
+      const q = e.target.value.trim().toLowerCase();
+      this._clubList(true);
+      this.findAll('.ap-clublist button').forEach((b) => { b.hidden = !!q && !b.textContent.toLowerCase().includes(q); });
+    });
+    div.querySelector('.ap-stage').addEventListener('keydown', (e) => {
+      if (!e.target.closest('.ap-club')) return;
+      if (e.key === 'Escape') this._clubList(false);
+      else if (e.key === 'Enter') { const b = [...this.findAll('.ap-clublist button')].find((x) => !x.hidden); if (b) this._pickClub(Number(b.dataset.clubPick)); }
+    });
     div.querySelector('.ap-stage').addEventListener('change', (e) => {
-      const show = e.target.closest('[data-show]');
-      if (show) { this._setShown(show.dataset.show, show.checked); return; }
-      const feat = e.target.closest('[data-feature]');
-      if (feat) { this._setFeature(feat.dataset.feature, feat.checked); return; }
       if (e.target.closest('.ap-editor')) this._editorRead();
     });
     return div;
@@ -219,99 +249,68 @@ class ApslPyramidScreen extends Screen {
     const user = this.auth.getUser();
     this.element.classList.toggle('ap-readonly', !(user && ['club', 'super'].includes(user.role)));
     window.addEventListener('resize', this._onResize);
-    window.addEventListener('keydown', this._onKey);
-    // A member's top band (#top-banners: the 🚦 status bar) stays visible;
-    // the page starts under it, following its height (owner 11/19 "stuff is
-    // blocked by my red menu at top. if that is there all goes under").
-    // A visitor has no band: the page fills the window.
-    const band = document.getElementById('top-banners'), stage = this.find('.ap-stage');
-    const fit = () => { if (stage) stage.style.top = `${band ? Math.max(0, Math.round(band.getBoundingClientRect().height)) : 0}px`; };
-    fit();
-    if (band && window.ResizeObserver) { this._bandObs = new ResizeObserver(fit); this._bandObs.observe(band); }
+    // The page sits in the normal flow under the site's top bars; a canvas
+    // view (chart, map, slideshow) takes the window height left under the
+    // pill rows, refitted whenever those bars or the rows change height.
+    this._fit();
+    if (window.ResizeObserver) {
+      this._bandObs = new ResizeObserver(() => { if (this._fit()) this._viewCall('onResize'); });
+      ['#top-banners', '#menu-pills'].forEach((q) => { const n = document.querySelector(q); if (n) this._bandObs.observe(n); });
+      const bar = this.find('.ap-bar'); if (bar) this._bandObs.observe(bar);
+    }
     const copyReady = window.MessageCopy ? MessageCopy.load(this.auth) : Promise.resolve();
     Promise.resolve(copyReady).then(() => {
-      const b = this.find('.ap-menu-btn'); if (b && this._copy('menu_button')) b.title = this._copy('menu_button');
-      if (this.data) this._renderBody(); else this._renderMenu();
+      if (this.data) this._renderBody();
     });
     this.load(false);
   }
 
   onExit() {
     window.removeEventListener('resize', this._onResize);
-    window.removeEventListener('keydown', this._onKey);
     if (this._bandObs) { this._bandObs.disconnect(); this._bandObs = null; }
-    if (this._barObs) { this._barObs.disconnect(); this._barObs = null; }
-    this._menu(false);
     this._viewCall('unmount');
     this.clubCard.close();
     if (document.fullscreenElement) document.exitFullscreen();
   }
 
-  // ── the ☰ menu (mig 1234) ────────────────────────────────────────────
-  _menu(open = !this.menuOpen) {
-    this.menuOpen = !!open;
-    const m = this.find('.ap-menu'), b = this.find('.ap-menu-btn');
-    if (m) m.hidden = !this.menuOpen;
-    if (b) { b.classList.toggle('open', this.menuOpen); b.textContent = this.menuOpen ? '✕' : '☰'; }
-    if (this.menuOpen) this._renderMenu();
-  }
+  // ── the view's panels (.ap-menu) ─────────────────────────────────────
+  // Views call _menu(true) to bring their panels up (the map, on a club
+  // pick) and _renderMenu() when their own section changed.
+  _menu(open = true) { if (open) this._renderMenu(); }
 
   _menuAction(act) {
     if (act === 'full') {
       const stage = this.find('.ap-stage');
       if (document.fullscreenElement) document.exitFullscreen(); else if (stage && stage.requestFullscreen) stage.requestFullscreen();
     } else if (act === 'refresh') this.load(true);
-    // 🏠 Main menu (owner 2026-11-11: "need on hamburger a way to leave
-    // screen to main menu") — straight home, not one step back.
-    else if (act === 'home') { this._menu(false); this.navigation.goTo(this.navigation.home()); }
   }
 
-  // Sections: title + totals, View, Conferences, Show on screen, Actions.
+  // The view's own sections (the map's proposed conferences) go under its
+  // dock panels; no panels at all → no column.
   _renderMenu() {
-    const m = this.find('.ap-menu-main'), tail = this.find('.ap-menu-tail');
-    if (!m || !this.menuOpen) return;
+    const side = this.find('.ap-menu'), extra = this.find('.ap-menu-extra'), main = this.find('.ap-main');
+    if (!side || !extra) return;
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
-    const root = this.model && this.model.root();
-    const sec = (tier, inner) => `<div class="ap-sec"><h4>${esc(this._copy(tier))}</h4>${inner}</div>`;
-    let body = '';
-    if (this.model) {
-      const views = this.views.map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}"${v.built ? '' : ` disabled title="${esc(this._copy('view_soon'))}"`}>${esc(this._copy(v.tier))}</button>`).join('');
-      const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`]
-        .concat(this._conferences().map((c) => `<button class="ap-pill ${c.color ? 'cc' : ''} ${this.on && this.on.has(c.id) ? 'on' : ''}" data-conf="${c.id}"${c.color ? ` style="--cc:${esc(c.color)}; --cc-fg:${PyramidScreenColor.ink(c.color)}"` : ''}>${esc(c.short_name || c.name)}</button>`))
-        .join('');
-      // No floating panels (owner 2026-11-11: "it should all be in
-      // hamburger"): a view's panels are sections of this menu (the dock,
-      // below); Show on screen is only the view's on/off features.
-      // …and the view's on/off features (impl.features(): outlier lines on
-      // the chart, proposed borders on the map — mig 1238/1239).
-      const feats = (this._impl().features ? this._impl().features() : [])
-        .map((f) => `<label><input type="checkbox" data-feature="${esc(f.key)}" ${this.feature(f.key, f.def) ? 'checked' : ''}> ${esc(this._copy(f.tier))}</label>`);
-      const show = feats.join('');
-      body = `
-        <div class="ap-totals">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</div>
-        ${sec('menu_view', `<div class="ap-pills">${views}</div>`)}
-        ${sec('menu_conf', `<div class="ap-pills">${confs}</div>`)}
-        ${show ? sec('menu_show', `<div class="ap-show">${show}</div>`) : ''}`;
-    }
-    const acts = [
-      `<button class="btn btn-secondary" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>`,
-      `<button class="btn btn-secondary" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>`,
-    ].join('');
-    // Back to the main menu first, at the very top (owner 11/11: "the go back
-    // to main needs to be at top of menu"); visitors have no main menu.
-    const home = this.auth.isLoggedIn()
-      ? `<button class="btn btn-secondary ap-menu-home" data-act="home">${esc(this._copy('menu_home') || '🏠 Main menu')}</button>` : '';
-    m.innerHTML = `
-      ${home}
-      <div class="ap-menu-head">
-        ${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}
-        <span class="t">${esc(this._copy('title'))}</span>
-      </div>
-      ${body}`;
-    // A view's own sections (the map's proposed conferences) go under its dock panels.
-    const extra = this.find('.ap-menu-extra');
-    if (extra) extra.innerHTML = this.model && this._impl().menuSections ? this._impl().menuSections().map((x) => sec(x.tier, x.html)).join('') : '';
-    if (tail) tail.innerHTML = sec('menu_actions', `<div class="ap-acts">${acts}</div>`);
+    const impl = this._impl();
+    extra.innerHTML = this.model && impl.menuSections
+      ? impl.menuSections().map((x) => `<div class="ap-sec"><h4>${esc(this._copy(x.tier))}</h4>${x.html}</div>`).join('') : '';
+    const dock = this.find('.ap-dock');
+    side.hidden = !((dock && dock.children.length) || extra.children.length);
+    if (main) main.classList.toggle('top', !impl.side);
+  }
+
+  // Height for a canvas view: the window under the pill rows (never less
+  // than 420px — the page scrolls then).  true = it changed.
+  _fit() {
+    const stage = this.find('.ap-stage'), body = this.find('#ap-body');
+    if (!stage || !body) return false;
+    const top = document.fullscreenElement === stage
+      ? body.getBoundingClientRect().top - stage.getBoundingClientRect().top + stage.scrollTop
+      : body.getBoundingClientRect().top + window.scrollY;
+    const h = `${Math.max(420, Math.round(window.innerHeight - top - 14))}px`;
+    if (stage.style.getPropertyValue('--ap-h') === h) return false;
+    stage.style.setProperty('--ap-h', h);
+    return true;
   }
 
   findAll(sel) { return this.element ? this.element.querySelectorAll(sel) : []; }
@@ -396,16 +395,49 @@ class ApslPyramidScreen extends Screen {
   // ── pills ────────────────────────────────────────────────────────────
   _conferences() { return this.model.conferences(); }
   _isOn(id) { return !this.on || this.on.has(id); }
+  _clubList(open) {
+    this.clubOpen = !!open;
+    const l = this.find('.ap-clublist');
+    if (l) l.hidden = !this.clubOpen;
+  }
+  // A club from the list → the view's own answer (Club pathway draws its
+  // routes), else its club card.
+  _pickClub(id) {
+    const club = this.model && this.model.clubs.find((c) => c.id === id);
+    if (!club) return;
+    this.clubName = club.name; this.clubOpen = false;
+    this._renderBar();
+    if (this._impl().onClub) this._impl().onClub(club); else this.openClub(club.id);
+  }
+  // Clubs with a team under a lit conference — its own tables or a feeder's
+  // (All = every club), A–Z.  The club search's list.
+  _clubsShown() {
+    if (!this.model) return [];
+    let clubs = this.model.clubs;
+    if (this.on) {
+      const ids = new Set();
+      for (const col of this.model.layout(this._shown()).columns)
+        for (const x of this.model.columnTeams(col)) if (x.team.club_id) ids.add(x.team.club_id);
+      clubs = clubs.filter((c) => ids.has(c.id));
+    }
+    return [...clubs].sort((a, b) => a.name.localeCompare(b.name));
+  }
   _toggle(key) {
     const all = this._conferences().map((c) => c.id);
     if (key === 'all') this.on = null;
+    else if (key === 'none') this.on = new Set();
     else {
+      // Each pill switches on/off on its own (owner 11/24 "have a select
+      // all and deselect all"): All lights every one, None clears them.
       const id = Number(key);
       const set = this.on ? new Set(this.on) : new Set(all);
       if (set.has(id)) set.delete(id); else set.add(id);
       this.on = set.size === all.length ? null : set;
     }
     try { localStorage.setItem('apsl-pyramid-on', JSON.stringify(this.on ? [...this.on] : null)); } catch (_) { /* private mode */ }
+    // A conference pick shows its clubs (owner 11/24 "clubs dont show on
+    // conf pick"): the list opens on whatever is lit — All = every club.
+    this.clubOpen = !this.on || this.on.size > 0;
     this._renderBody();
   }
 
@@ -413,7 +445,7 @@ class ApslPyramidScreen extends Screen {
     const el = this.find('#ap-body');
     if (!el) return;
     if (this.loading && !this.data) { el.innerHTML = '<div class="loading">Loading…</div>'; return; }
-    if (this.err) { el.innerHTML = `<div class="error">${this.escapeHtml(this.err)}</div>`; this._renderMenu(); return; }
+    if (this.err) { el.innerHTML = `<div class="error">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.model) return;
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const shown = this._shown();
@@ -427,28 +459,41 @@ class ApslPyramidScreen extends Screen {
     const dock = this.find('.ap-dock');
     if (dock) dock.innerHTML = this._dock.join('');
     this._renderMenu();
+    this._fit();
     if (shown.length) requestAnimationFrame(() => this._viewCall('mount'));
   }
 
 
-  // ── the header bar on every view (mig 1580, owner 11/19 "that includes
-  // the whole of #apsl-pyramid make it all tied together and tell a story
-  // and easily navigable"): logo, name, the views as numbered chapters in
-  // story order, and one plain sentence (with the numbers) on what this
-  // view shows.  A visitor's page is self-contained; 🏠 stays in ☰ for
-  // members.  The stage below starts under it (--ap-bar).
+  // ── the header: title + totals, then the pill rows ───────────────────
+  // Views in story order (mig 1580), conferences (All + each toggles), the
+  // view's on/off switches, and one plain sentence on what the view shows.
   _renderBar() {
-    const bar = this.find('.ap-bar'), stage = this.find('.ap-stage');
+    const bar = this.find('.ap-bar');
     if (!bar || !this.model) return;
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const root = this.model.root();
-    const pills = this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('');
+    const views = this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('');
+    const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`,
+      `<button class="ap-pill ${this.on && !this.on.size ? 'on' : ''}" data-conf="none">${esc(this._copy('pill_none'))}</button>`]
+      .concat(this._conferences().map((c) => `<button class="ap-pill ${c.color ? 'cc' : ''} ${this._isOn(c.id) ? 'on' : ''}" data-conf="${c.id}"${c.color ? ` style="--cc:${esc(c.color)}; --cc-fg:${PyramidScreenColor.ink(c.color)}"` : ''}>${esc(c.short_name || c.name)}</button>`))
+      .join('');
+    const feats = (this._impl().features ? this._impl().features() : [])
+      .map((f) => `<button class="ap-pill ${this.feature(f.key, f.def) ? 'on' : ''}" data-feature="${esc(f.key)}">${esc(this._copy(f.tier))}</button>`).join('');
+    const row = (cls, tier, pills) => `<div class="ap-row ${cls}"><span class="lbl">${esc(this._copy(tier))}</span>${pills}</div>`;
     const cap = this._copy(`story_view_${this.view}`, { ...this.model.totals, confs: this._conferences().length });
-    bar.innerHTML = `<div class="row">${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
-        <div class="ap-pills">${pills}</div></div>${cap ? `<div class="cap">${esc(cap)}</div>` : ''}`;
-    const fit = () => { if (stage) stage.style.setProperty('--ap-bar', `${Math.ceil(bar.getBoundingClientRect().height)}px`); };
-    fit();
-    if (window.ResizeObserver && !this._barObs) { this._barObs = new ResizeObserver(() => { fit(); this._viewCall('onResize'); }); this._barObs.observe(bar); }
+    bar.innerHTML = `
+      <div class="row">${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
+        <span class="tot">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</span>
+        <div class="acts">
+          <button class="ap-pill" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>
+          <button class="ap-pill" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>
+        </div></div>
+      ${row('views', 'menu_view', views)}
+      <div class="ap-row confs"><span class="lbl">${esc(this._copy('menu_conf'))}</span><div class="ap-confs">${confs}</div>
+        <div class="ap-clubbox"><input class="ap-club" autocomplete="off" placeholder="${esc(this._copy('path_search'))}" value="${esc(this.clubName || '')}">
+          <div class="ap-clublist"${this.clubOpen ? '' : ' hidden'}>${this._clubsShown().map((c) => `<button type="button" data-club-pick="${c.id}">${esc(c.name)}</button>`).join('')}</div></div></div>
+      ${feats ? row('show', 'menu_show', feats) : ''}
+      ${cap ? `<div class="cap">${esc(cap)}</div>` : ''}`;
   }
 
   // ── ✏️ override editor (mig 828) ─────────────────────────────────────

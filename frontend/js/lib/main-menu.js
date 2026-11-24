@@ -197,13 +197,18 @@ class MainMenu {
     // on admin when your in game … game or practice. event basically").
     const acct = window.Viewer ? Viewer.account() : null;
     if (acct && !acct.showsMenuBar) {
-      if ((acct.homeScreens || []).includes(screen)) return hide();
-      const codes = acct.menuBarPages || [];
+      // On their Calendar the 📅 pill would go nowhere, so it is left out;
+      // 👤 Account (menuBarAccount, owner 11/24) rides every page.
+      const home = (acct.homeScreens || []).includes(screen);
+      const codes = home ? [] : (acct.menuBarPages || []);
       const mine = ((MainMenu._data && MainMenu._data.pages) || [])
         .filter(p => codes.includes(p.code) && MainMenu._sees(p))
         .sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
-      if (!mine.length) return hide();
-      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), true, true)).join(''));
+      const onAccount = screen === 'main-menu';
+      const acctPill = acct.menuBarAccount
+        ? pill('data-menu-account', lbl(...split(copy('account_pill', '👤 Account'))), onAccount, true) : '';
+      if (!mine.length && !acctPill) return hide();
+      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), !onAccount, true)).join('') + acctPill);
       host.style.display = 'block';
       MainMenu._wire(host);
       return;

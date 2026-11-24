@@ -397,6 +397,7 @@ class PyramidMapView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
     this.fill = true;   // a canvas: fills the stage, writing in HUDs
+    this.side = true;   // its panels are a column beside the map (under it on a phone)
     this.map = null; this.sel = null;
   }
 
@@ -419,7 +420,7 @@ class PyramidMapView {
       .mp-hud-stats b { font-size:0.9rem; }
       .mp-key span { display:block; }
       .mp-key i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; vertical-align:-1px; }
-      .mp-ov { position:absolute; z-index:1200; top:56px; right:12px; bottom:12px; width:min(820px, calc(100% - 24px)); display:flex; flex-direction:column;
+      .mp-ov { position:absolute; z-index:1200; top:12px; right:12px; bottom:12px; width:min(820px, calc(100% - 24px)); display:flex; flex-direction:column;
                background:rgba(11,18,32,0.92); border:1px solid rgba(148,163,184,0.35); border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.5); }
       .mp-ov[hidden] { display:none; }
       .mp-name { color:#f8fafc; font-size:11px; font-weight:600; white-space:nowrap; text-shadow:0 0 3px #0b1220, 0 0 3px #0b1220, 0 0 2px #0b1220;

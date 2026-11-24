@@ -90,6 +90,9 @@ class PlayerViewer {
   // small 📅 icon is off — one Calendar button, not two.
   get showsCalendarButton() { return false; }
   get menuBarPages()      { return ['calendar']; }
+  // …and 👤 Account (sign out) beside it, on every page (owner 11/24 "yes
+  // add account to the player bar").
+  get menuBarAccount()    { return true; }
   get homeScreens()       { return ['calendar', 'event-center', 'my', 'player-calendar']; }
   // Which people sections: ✓ going, 🎟 invited and 🧑‍🏫 coaches.  Not the
   // no-response / not-going / injured / inactive / suspended / ineligible folds.
