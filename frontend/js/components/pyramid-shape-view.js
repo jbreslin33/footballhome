@@ -67,14 +67,14 @@ class PyramidShapeView {
       .sh-face { position:absolute; left:0; top:0; box-sizing:border-box; overflow:hidden; backface-visibility:hidden;
                  background:var(--bg-color, #0b1220); border:2px solid #334155; border-radius:6px; }
       .sh-face.on { border-color:#fbbf24; }
-      .sh-face .sh-hd { height:30px; line-height:30px; padding:0 10px; font-weight:800; font-size:0.9rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      .sh-face .sh-hd { position:absolute; left:0; right:0; top:0; z-index:2; height:30px; line-height:30px; padding:0 10px; font-weight:800; font-size:0.9rem; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
                         background:#1e293b; border-bottom:1px solid #334155; }
       .sh-face .sh-hd .lv { opacity:0.65; font-weight:700; margin-right:8px; }
       .sh-face .sh-in { position:absolute; left:0; top:30px; transform-origin:0 0; width:max-content; padding:10px; box-sizing:border-box; }
       .sh-face .sh-in .fc-pro-lg, .sh-face .sh-in .fc-chart { margin:0; }
       /* a cup's clubs across three columns, so its level is a block and not a tall strip */
       .sh-face .sh-in .fc-field ul, .sh-flat .fc-field ul, .sh-panel .fc-field ul { columns:3; column-gap:26px; width:600px; }
-      .sh-tag { position:absolute; left:0; padding:2px 10px; font-size:0.78rem; font-weight:800; border-radius:0 999px 999px 0; background:#1e293b; border:1px solid #334155; border-left:0; opacity:0.92; }
+      .sh-empty { opacity:0.6; border-style:dashed; min-width:320px; text-align:center; }
       .sh-ledge { position:absolute; left:0; top:0; box-sizing:border-box; backface-visibility:hidden; text-align:center; font-size:0.72rem; font-weight:800; line-height:20px;
                   color:#fbbf24; background:#111827; border:1px dashed #94a3b8; border-radius:4px; white-space:nowrap; overflow:hidden; }
       .sh-flat { position:absolute; left:0; top:0; visibility:hidden; pointer-events:none; }
@@ -83,11 +83,16 @@ class PyramidShapeView {
       .sh-tools button { min-height:0; min-width:0; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:1rem; font-weight:800;
                          border:1px solid var(--border-color, #374151); background:rgba(15,23,42,0.9); color:inherit; }
       .sh-tools button.wide { width:auto; padding:0 12px; border-radius:999px; font-size:0.8rem; }
-      .sh-cals { position:absolute; left:12px; top:10px; z-index:6; display:flex; gap:6px; flex-wrap:wrap; }
-      .sh-cals button { min-height:0; min-width:0; padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.85rem;
+      .sh-cals { position:absolute; left:12px; top:10px; z-index:6; display:flex; gap:5px; flex-wrap:wrap; }
+      .sh-cals button { min-height:0; min-width:0; padding:3px 10px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.72rem;
                         border:1px solid var(--border-color, #374151); background:rgba(15,23,42,0.9); color:inherit; }
       .sh-cals button.on { background:var(--primary-color, #2563eb); border-color:transparent; color:#fff; }
-      .sh-hint { position:absolute; left:12px; top:48px; z-index:5; font-size:0.78rem; opacity:0.7; max-width:60%; pointer-events:none; }
+      .sh-feats { position:absolute; left:12px; top:38px; z-index:6; display:flex; gap:5px; flex-wrap:wrap; }
+      .sh-feats button { min-height:0; min-width:0; padding:2px 8px; border-radius:999px; cursor:pointer; font-weight:600; font-size:0.66rem; opacity:0.6;
+                         border:1px solid var(--border-color, #374151); background:rgba(15,23,42,0.9); color:inherit; }
+      .sh-feats button.on { opacity:1; border-color:#fbbf24; }
+      .sh-feats button.on::before { content:"✓ "; }
+      .sh-hint { position:absolute; left:12px; top:62px; z-index:5; font-size:0.68rem; opacity:0.7; max-width:60%; pointer-events:none; }
       .sh-panel { position:absolute; right:10px; top:10px; bottom:10px; width:min(460px, 46%); z-index:6; display:flex; flex-direction:column;
                   background:var(--bg-color, #0b1220); border:2px solid #fbbf24; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,0.6); }
       .sh-panel[hidden] { display:none; }
@@ -103,6 +108,10 @@ class PyramidShapeView {
   features() { return this.flow.features().filter((f) => !f.key.startsWith('cal-')); }
 
   _calendars(model) { return model.data.calendars || []; }
+  // The cups over the leagues (levels reached by results): their switches sit on the shape itself,
+  // with the pro one (owner 2026-11-24: "we need togllge on screen for pro toggle and concacaf and
+  // club world cup toggles").
+  _cups(model) { return (model.pro || []).filter((t) => t.standards === false && !t.beside).flatMap((t) => t.leagues.map((l) => `lg-${l.id}`)); }
   _cal(model) {
     const all = this._calendars(model);
     return all.some((c) => c.code === this.cal) ? this.cal : (all[0] ? all[0].code : null);
@@ -120,10 +129,24 @@ class PyramidShapeView {
     const flow = this.flow, levels = [], cal = this._cal(model);
     // this calendar's leagues that are switched on (its own pill; the calendar pills of the flat view do not apply)
     const mine = (l) => this._calOf(model, l) === cal && this.screen.feature(`lg-${l.id}`, true);
-    const tiers = (model.pro || []).map((t) => ({ ...t, leagues: t.leagues.filter(mine) })).filter((t) => t.leagues.length);
-    if (this.screen.feature('pro', true))
-      for (const t of tiers.filter((x) => !x.beside))
-        levels.push({ standards: t.standards !== false, sides: t.leagues.map((l) => ({ key: `lg-${l.id}`, title: l.name, html: flow.proLeagueHtml(l, t) })) });
+    const every = (model.pro || []).map((t) => ({ ...t, leagues: t.leagues.filter(mine) }));
+    const tiers = every.filter((t) => t.leagues.length);
+    if (this.screen.feature('pro', true)) {
+      // A pro DIVISION keeps its step even with no league on this calendar, when there is a
+      // division above and below it that has one (owner 2026-11-24: "usl champtionsip and usl
+      // league one are spring to fall so if that is not selected then level under mls is empty
+      // right? and level 3 would only have mls next pro") — MLS NEXT Pro stays a Division III
+      // league, it does not slide up under MLS.  A cup (reached by results) with nothing on
+      // simply goes, and the rest move up.
+      const divisions = every.filter((t) => !t.beside && t.standards !== false);
+      const first = divisions.findIndex((t) => t.leagues.length), last = divisions.length - 1 - [...divisions].reverse().findIndex((t) => t.leagues.length);
+      const kept = new Set(first < 0 ? [] : divisions.slice(first, last + 1).map((t) => t.tier));
+      for (const t of every.filter((x) => !x.beside)) {
+        if (t.leagues.length) levels.push({ standards: t.standards !== false, sides: t.leagues.map((l) => ({ key: `lg-${l.id}`, title: l.name, html: flow.proLeagueHtml(l, t) })) });
+        else if (kept.has(t.tier)) levels.push({ standards: true, sides: [{ key: `tier-${t.tier}`, title: t.label,
+          html: `<div class="fc-pro-lg sh-empty"><h2>${this._esc(t.label)}</h2><div class="fc-meta">${this._esc(this._copy('shape_empty_level'))}</div></div>` }] });
+      }
+    }
     const bottom = [];
     if (model.data.calendar === cal) {
       const root = model.comp(model.data.root_id);
@@ -143,6 +166,7 @@ class PyramidShapeView {
     return `
       <div class="sh-stage">
         <div class="sh-cals">${this._calendars(model).map((c) => `<button class="${c.code === this._cal(model) ? 'on' : ''}" data-sh-cal="${esc(c.code)}">${esc(c.label)}</button>`).join('')}</div>
+        <div class="sh-feats">${this.features().filter((f) => f.key === 'pro' || this._cups(model).includes(f.key)).map((f) => `<button class="${this.screen.feature(f.key, f.def) ? 'on' : ''}" data-sh-feat="${esc(f.key)}">${esc(f.label || this._copy(f.tier))}</button>`).join('')}</div>
         <div class="sh-hint">${esc(this._copy('shape_hint'))}</div>
         <div class="sh-flat">${this._lv.map((lv, i) => lv.sides.map((s, k) => `<div data-flat="${i}-${k}">${s.html}</div>`).join('')).join('')}</div>
         <div class="sh-cam"><div class="sh-shape"></div></div>
@@ -197,27 +221,52 @@ class PyramidShapeView {
       const need = Math.max(...sides.map((m) => (m.w > 2400 ? m.w * 0.6 : m.w)));
       widths.push(Math.round(Math.max(360, need, i ? widths[i - 1] * 1.18 : 0)));
     });
+    const face = (level, slot, width, height, apothem, step, m, clip) => {
+      const id = this._sides.length;
+      this._sides.push({ id, key: m.key, title: m.title, html: m.html, level, slot, step });
+      // clip = the band of the league's own chart this level shows: the whole box is laid in, slid up, and the side cuts it
+      const top = clip ? HEAD - clip.y0 * m.scale : HEAD;
+      parts.push(`<div class="sh-face ${this.picked === m.key ? 'on' : ''}" data-side="${id}" style="width:${width}px; height:${height}px; margin-left:${-width / 2}px; transform:translateY(${y}px) rotateY(${slot * step}deg) translateZ(${apothem}px);">
+            <div class="sh-in" style="transform:scale(${m.scale}); left:${Math.max(0, (width - m.w * m.scale) / 2)}px; top:${top}px;">${m.html}</div>
+            <div class="sh-hd"><span class="lv">${esc(this._copy('shape_level', { n: level + 1 }))}</span>${esc(m.title)}</div></div>`);
+    };
+    const step = 360 / slots, apo = (width) => width / (2 * Math.tan(Math.PI / slots));
     L.forEach((lv, i) => {
       const count = lv.sides.length;                                          // one league wraps every side, two alternate
-      const width = widths[i];
-      const step = 360 / slots, apothem = width / (2 * Math.tan(Math.PI / slots));
-      const measured = natural[i].map((m) => { const scale = Math.min(1.6, width / m.w); return { ...m, scale, h: m.h * scale }; });
-      const height = Math.round(HEAD + Math.max(...measured.map((m) => m.h)));
-      for (let slot = 0; slot < slots; slot++) {
-        const m = measured[slot % count], id = this._sides.length;
-        this._sides.push({ id, key: m.key, title: m.title, html: m.html, level: i, slot, step, first: slot < count });
-        parts.push(`<div class="sh-face ${this.picked === m.key ? 'on' : ''}" data-side="${id}" style="width:${width}px; height:${height}px; margin-left:${-width / 2}px; transform:translateY(${y}px) rotateY(${slot * step}deg) translateZ(${apothem}px);">
-            <div class="sh-hd"><span class="lv">${esc(this._copy('shape_level', { n: i + 1 }))}</span>${esc(m.title)}</div>
-            <div class="sh-in" style="transform:scale(${m.scale}); left:${Math.max(0, (width - m.w * m.scale) / 2)}px;">${m.html}</div>
-            ${m.rows.filter((r) => r.step > 0).map((r) => `<div class="sh-tag" style="top:${Math.round(HEAD + r.y * m.scale)}px;">${esc(this._copy('shape_level', { n: i + 1 + r.step }))}</div>`).join('')}</div>`);
+      const measured = natural[i].map((m) => { const scale = Math.min(1.6, widths[i] / m.w); return { ...m, scale }; });
+      if (i < n - 1) {   // a level above the bottom ring: one block
+        const width = widths[i], height = Math.round(HEAD + Math.max(...measured.map((m) => m.h * m.scale)));
+        for (let slot = 0; slot < slots; slot++) face(i, slot, width, height, apo(width), step, measured[slot % count], null);
+        y += height;
+        if (lv.standards) {   // the step down is the standards a league must meet to come up
+          const [label, url] = (this._copy('path_pro_link') || '').split('|');
+          for (let slot = 0; slot < slots; slot++)
+            parts.push(`<div class="sh-ledge" style="width:${width}px; height:${LEDGE}px; margin-left:${-width / 2}px; transform:translateY(${y + 6}px) rotateY(${slot * step}deg) translateZ(${apo(width)}px);">${/^https:\/\//.test(url || '') ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:inherit;">${esc(label)}</a>` : esc(label || '')}</div>`);
+        }
+        y += GAP;
+        return;
       }
-      y += height;
-      if (lv.standards && i < n - 1) {   // the step down is the standards a league must meet to come up
-        const [label, url] = (this._copy('path_pro_link') || '').split('|');
-        for (let slot = 0; slot < slots; slot++)
-          parts.push(`<div class="sh-ledge" style="width:${width}px; height:${LEDGE}px; margin-left:${-width / 2}px; transform:translateY(${y + 6}px) rotateY(${slot * step}deg) translateZ(${apothem}px);">${/^https:\/\//.test(url || '') ? `<a href="${esc(url)}" target="_blank" rel="noopener" style="color:inherit;">${esc(label)}</a>` : esc(label || '')}</div>`);
+      // The bottom ring is several levels deep (owner 2026-11-24: "we are also missing the level 7
+      // of liga 1 etc. is there a way to pu the on level below apsl and sitll connec twith
+      // arrows?"): a league's first division is one level, each row of leagues that feed it the
+      // next level down, a step wider.  Every level shows its BAND of the league's one chart,
+      // cut half-way through the gap between rows — so the chart's own arrows leave the top of
+      // one level and arrive at the foot of the level above, in the same place across the step.
+      const bands = measured.map((m) => {
+        const tops = m.rows.slice().sort((p, q) => p.step - q.step).map((r) => r.y);
+        const cuts = tops.map((t, k) => (k === 0 ? 0 : Math.max(0, t - (m.chart ? 28 : 6))));   // half the chart's 56px row gap
+        return cuts.length ? cuts.map((y0, k) => ({ y0, y1: k + 1 < cuts.length ? cuts[k + 1] : m.h })) : [{ y0: 0, y1: m.h }];
+      });
+      const depth = Math.max(...bands.map((x) => x.length));
+      for (let k = 0; k < depth; k++) {
+        const width = Math.round(widths[i] * Math.pow(1.1, k));
+        const height = Math.round(HEAD + Math.max(...measured.map((m, j) => (bands[j][k] ? (bands[j][k].y1 - bands[j][k].y0) * m.scale : 0))));
+        for (let slot = 0; slot < slots; slot++) {
+          const j = slot % count;
+          if (bands[j][k]) face(i + k, slot, width, height, apo(width), step, measured[j], bands[j][k]);   // a league with no such level leaves its side open
+        }
+        y += height + (k + 1 < depth ? 8 : GAP);
       }
-      y += GAP;
     });
     this._height = Math.max(1, y - GAP);
     flat.remove();
@@ -322,7 +371,7 @@ class PyramidShapeView {
     stage._shWired = true;
     let drag = null;
     stage.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('.sh-panel, .sh-tools, .sh-cals, a')) return;
+      if (e.target.closest('.sh-panel, .sh-tools, .sh-cals, .sh-feats, a')) return;
       const face = e.target.closest('.sh-face');
       drag = { x: e.clientX, y: e.clientY, angle: this.angle, panY: this.panY, moved: false, side: face ? this._sides[Number(face.dataset.side)] : null };
       stage.setPointerCapture(e.pointerId);
@@ -359,6 +408,13 @@ class PyramidShapeView {
         try { localStorage.setItem('apsl-shape-cal', this.cal); } catch (_) { /* private mode */ }
         this.angle = 0; this.zoom = 0; this.picked = null;
         this.screen._viewCall('unmount'); this.screen._renderBody();
+        return;
+      }
+      const feat = e.target.closest('[data-sh-feat]');
+      if (feat) {   // the same switches as ☰ Show on screen; the shape is rebuilt and refitted
+        this.zoom = 0;
+        this.screen._setFeature(feat.dataset.shFeat, !this.screen.feature(feat.dataset.shFeat, true));
+        this.screen._renderBar();
         return;
       }
       const b = e.target.closest('[data-sh]');

@@ -16,8 +16,17 @@ that reuses the flow view's boxes (`proLeagueHtml`, `chartHtml`, `besideLeagueHt
   beside it. A league switched off (its own pill) leaves; an emptied level goes and the numbers
   below move up.
 - **Sides:** as many as the bottom ring has leagues (never fewer than four), at every level, so a
-  side is a whole column. One league at a level repeats on every side; two alternate. A bottom
-  side carries the league's lower levels (the leagues that feed it), each row tagged "Level N".
+  side is a whole column. One league at a level repeats on every side; two alternate.
+- **The bottom ring is several levels deep:** a league's first division is one level and each row
+  of leagues that feed it is the next level down, a step wider (APSL conferences, then the
+  Liga 1s, the Liga 2s …). Each level shows its *band* of the league's one chart, cut half-way
+  through the gap between rows, so the chart's own promotion arrows leave the top of one level
+  and arrive at the foot of the level above. A league with no such level leaves its side open.
+- **An empty division step:** a pro division with no league on the shown calendar keeps its
+  level, marked empty, when divisions above and below it have one (mig 1850).
+- **On the shape:** small switches for the pro levels and each cup, beside the calendar buttons —
+  the same switches as ☰ Show on screen.
+- **Opening view:** the page opens on this view (stored view key `apsl-pyramid-view2`).
 - **Size:** a level is as wide as its biggest league needs (a very wide one at 0.6 scale, a narrow
   one up to 1.6×) and at least 1.18× the level above.
 - **Hands:** drag sideways to spin, up/down to slide, wheel / ± to zoom (`scale3d` — depth too),

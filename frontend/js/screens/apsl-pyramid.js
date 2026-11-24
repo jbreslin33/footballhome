@@ -46,9 +46,11 @@ class ApslPyramidScreen extends Screen {
     this.views = [
       // story order (mig 1580): the pyramid → where → how a club climbs →
       // this season → what happens next → how it grew → the slideshow
-      { code: 'flow', tier: 'view_flow', built: true, impl: flow },
-      // 🔺 the same, as a shape you turn (mig 1849, owner 11/24: "a spinning pyramind would be way to go … each side is a 'league'")
+      // 🔺 the shape you turn comes first and is what the page opens on (mig 1849, owner 11/24: "a
+      // spinning pyramind would be way to go … each side is a 'league'" · "make the spin pyramid
+      // default and the firt thing people see"); the flat chart of the same is next
       { code: 'shape', tier: 'view_shape', built: true, impl: new PyramidShapeView(this, flow) },
+      { code: 'flow', tier: 'view_flow', built: true, impl: flow },
       { code: 'map', tier: 'view_map', built: true, impl: new PyramidMapView(this, flow) },
       { code: 'path', tier: 'view_path', built: true, impl: new PyramidPathView(this, flow) },
       { code: 'tables', tier: 'view_tables', built: true, impl: new PyramidTablesView(this, flow) },
@@ -57,11 +59,11 @@ class ApslPyramidScreen extends Screen {
       { code: 'growth', tier: 'view_growth', built: true, impl: new PyramidGrowthView(this) },
       { code: 'present', tier: 'view_present', built: true, impl: new PyramidPresentView(this, flow) },
     ];
-    this.view = 'flow';
+    this.view = 'shape';
     try {
       const saved = JSON.parse(localStorage.getItem('apsl-pyramid-on') || 'null');
       if (Array.isArray(saved)) this.on = new Set(saved);
-      const v = localStorage.getItem('apsl-pyramid-view');
+      const v = localStorage.getItem('apsl-pyramid-view2');   // '2' since the shape became the opening view: an older pick is not carried over
       if (this.views.some((x) => x.code === v && x.built)) this.view = v;
     } catch (_) { /* private mode */ }
     // A shared Forecast link (mig 1575: /?fc=<conference>&focus=<team>) opens on it.
@@ -201,7 +203,7 @@ class ApslPyramidScreen extends Screen {
         if (v && v.built && v.code !== this.view) {
           this._viewCall('unmount');
           this.view = v.code; this.menuOpen = false;
-          try { localStorage.setItem('apsl-pyramid-view', v.code); } catch (_) { /* private mode */ }
+          try { localStorage.setItem('apsl-pyramid-view2', v.code); } catch (_) { /* private mode */ }
           this._renderBody();
         }
         return;
