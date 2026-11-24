@@ -126,7 +126,7 @@ class FinancesScreen extends Screen {
       // A page of its own loads only what it reads: #groups = the programs
       // alone (_loadPrograms, from its view); #competitions = the plan lines
       // and the scopes.  #finances reads all three + the fines board.
-      const need = this.only === 'groups' ? [] : this.only === 'competitions' ? ['expenses', 'cash-flow'] : ['summary', 'expenses', 'cash-flow'];
+      const need = this.only === 'groups' ? [] : ['competitions', 'clubwide', 'otherincome'].includes(this.only) ? ['expenses', 'cash-flow'] : ['summary', 'expenses', 'cash-flow'];
       // fines board (mig 1386): the fines part of LA money, by the same rule as #tuition (FinesCollected)
       const finesP = this.only ? null : this.auth.fetch('/api/fines?months=24').then(r => (r.ok ? r.json() : null)).catch(() => null);
       const got = await Promise.all(need.map(async p => { const r = await this.auth.fetch(`/api/finances/${p}`), j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; }));
@@ -179,7 +179,7 @@ class FinancesScreen extends Screen {
     if (this.err) { body.innerHTML = `<div class="error-message">${this.escapeHtml(this.err)}</div>`; return; }
     if (!this.summary || !this.expenses || !this.flow) { body.innerHTML = '<div class="loading">Loading…</div>'; return; }
     const v = this.view;
-    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'groups' ? this._pbHtml(true) : v === 'competitions' ? this._competitionsHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
+    body.innerHTML = v === 'position' ? this._positionHtml() : v === 'activities' ? this._activitiesHtml() : v === 'variance' ? this._varianceHtml() : v === 'forecast' ? this._forecastHtml() : v === 'budgets' ? this._pbHtml() : v === 'groups' ? this._pbHtml(true) : v === 'competitions' ? this._competitionsHtml() : v === 'clubwide' ? this._clubWideHtml() : v === 'otherincome' ? this._otherIncomeHtml() : v === 'capacity' ? this._programsHtml('capacity') : v === 'programs' ? this._programsHtml('expected') : this._planHtml();
   }
 
   // ── shared bits ──
@@ -689,6 +689,74 @@ class FinancesScreen extends Screen {
       <div class="fn-note">${esc(seasonNote)} — ${esc(this._copy('pg_tap'))}</div>${g}${this.pgMsg ? `<div class="fn-warn">${esc(this.pgMsg)}</div>` : ''}
       ${headline}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr>${cols.map((c, i) => `<th>${esc(this._copy(c) || colDefault[i])}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></div>${full ? '' : this._coachingTable().html(year)}`;
   }
+  // ── 💰 Other income (#other-income, mig 1765; owner 11/23 "do we add other
+  // sources of income like grants and rentals?"): the money in that is not
+  // member dues — each grant / sponsorship of the year (income_awards:
+  // amount, what it may pay for, what has been received) and the field rental
+  // bookings on the calendar (booked + the seasons assumed).  The club's, not
+  // a group's.  Read-only: expenses.plan_grants and flow.rental_years.
+  _otherIncomeHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, C = (k, fb, tok) => this._copy(k, tok) || fb;
+    const x = this.expenses || {}, flow = this.flow || {}, thisYear = (flow.year || {}).label || '';
+    const years = [...new Set([...(x.plan_grants || []).map(g => g.budget_year), ...(flow.rental_years || []).map(r => r.label)].filter(Boolean))].sort();
+    const year = years.includes(this.cpYear) ? this.cpYear : (years.includes(thisYear) ? thisYear : years[0]);
+    if (!year) return `<div class="fn-card"><div class="fn-note">${esc(C('oi_none', 'No other income yet.'))}</div></div>`;
+    const catLabel = (code) => code === 'labor' ? C('coaching_label', 'Coaching') : this._catName ? this._catName(code) : code;
+    const rows = [];   // { source, kind, detail, amount, assumed, note }
+    for (const g of (x.plan_grants || []).filter(g => g.budget_year === year)) {
+      const got = (g.receipts || []).reduce((a, r) => a + Number(r.amount || 0), 0) || (g.status === 'received' ? Number(g.amount) : 0);
+      const purposes = (g.purposes || []).length ? g.purposes.map(catLabel) : (g.purpose_label || g.purpose ? [String(g.purpose_label || g.purpose).replace(/:\s*$/, '')] : []);
+      rows.push({ source: [g.source, g.label].filter(Boolean).join(' — '), kind: g.kind === 'sponsorship' ? C('oi_sponsor', 'Sponsor') : C('oi_grant', 'Grant'),
+        detail: [got >= 0.5 ? C('oi_received', `received ${M0(got)}`, { amount: M0(got) }) : C('oi_awarded', 'awarded, not received yet'),
+                 purposes.length ? C('oi_pays_for', `pays for: ${purposes.join(', ')}`, { purposes: purposes.join(', ') }) : ''].filter(Boolean).join(' · '),
+        amount: Number(g.amount || 0), assumed: g.status !== 'received', note: g.note || '' });
+    }
+    const ry = (flow.rental_years || []).find(r => r.label === year);
+    if (ry && Number(ry.booked || 0) + Number(ry.projected || 0) >= 0.5) {
+      const bn = Number(ry.booked_n || 0), an = Math.round(Number(ry.projected_n || 0));
+      rows.push({ source: C('oi_rental_line', 'Field rental bookings'), kind: C('oi_rental', 'Field rental'),
+        detail: [bn ? C('oi_booked', `${bn} booked on the calendar`, { n: bn }) : '', an ? C('oi_assumed', `${an} more assumed`, { n: an }) : ''].filter(Boolean).join(' · '),
+        amount: Number(ry.booked || 0) + Number(ry.projected || 0), assumed: an > 0, note: '' });
+    }
+    const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-cp-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
+    const head = `<div class="fn-card"><div class="fn-title">${esc(C('oi_title', 'Other income'))} · ${esc(year)}</div>
+      <div class="fn-note">${esc(C('oi_note', 'Money in that is not member dues: grants, sponsors and field rentals. It belongs to the club as a whole. A grant can only pay for what it was given for.'))}</div>${yearBar}`;
+    if (!rows.length) return `${head}<div class="fn-note">${esc(C('oi_none', 'No other income yet.'))}</div></div>`;
+    return `${head}<div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(C('oi_col_source', 'Source'))}</th><th style="text-align:left;">${esc(C('oi_col_kind', 'Kind'))}</th><th style="text-align:left;">${esc(C('oi_col_detail', 'Detail'))}</th><th>${esc(C('cp_col_amount', 'Amount'))}</th><th>${esc(C('cp_col_note', 'Note'))}</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${esc(r.source)}${r.assumed ? ` <span class="fn-dim">${esc(C('cw_estimate', 'estimate'))}</span>` : ''}</td><td style="text-align:left;">${esc(r.kind)}</td><td style="text-align:left; white-space:normal;">${esc(r.detail)}</td>
+        <td class="fn-in">${M0(r.amount)}</td><td style="text-align:left; white-space:normal;" class="fn-note">${esc(r.note)}</td></tr>`).join('')}
+      <tr class="sum"><td colspan="3">${esc(C('pb_total', 'Total'))}</td><td class="fn-in">${M0(rows.reduce((a, r) => a + r.amount, 0))}</td><td></td></tr></tbody></table></div></div>`;
+  }
+  // ── 🏟️ Club-wide (#club-wide, mig 1764; owner 11/23 "do we need more costs?
+  // like club wide that are beyond 'comps' … its beyond a comp"): every
+  // budget line of the year — practice coaching, kits per new member,
+  // equipment, the field — by kind of cost.  Price × how many = amount, who it
+  // is for (its section, or everyone), the total.  Read-only: expenses.budget
+  // as every report reads it.
+  _clubWideHtml() {
+    const esc = (t) => this.escapeHtml(t), M0 = FinancesScreen.money0, M2 = FinancesScreen.money2, C = (k, fb, tok) => this._copy(k, tok) || fb;
+    const x = this.expenses || {}, scopes = (this.flow || {}).scopes || [], thisYear = ((this.flow || {}).year || {}).label || '';
+    const years = [...new Set((x.budget || []).map(b => b.budget_year).filter(Boolean))].sort();
+    const year = years.includes(this.cpYear) ? this.cpYear : (years.includes(thisYear) ? thisYear : years[0]);
+    const lines = (x.budget || []).filter(b => b.budget_year === year);
+    if (!lines.length) return `<div class="fn-card"><div class="fn-note">${esc(C('cw_none', 'No club-wide costs yet.'))}</div></div>`;
+    const qty = (n) => Number(n) % 1 ? Number(n).toFixed(2) : String(Number(n));
+    const unit = (b) => b.amount_per === 'member' ? C('plan_unit_member', 'per member') : b.amount_per === 'new_member' ? C('plan_unit_new_member', 'new players') : b.amount_per === 'week' ? C('plan_unit_week', 'per week') : C('cw_unit_fixed', 'once a year');
+    const who = (b) => b.scope === 'club' || !b.scope ? C('cw_everyone', 'Everyone') : ((scopes.find(s => s.code === b.scope) || {}).label || b.section || b.scope);
+    const catName = (b) => b.category === 'labor' ? C('coaching_label', 'Coaching') : String(b.category_label || b.category).replace(/:\s*$/, '');
+    const order = (this._copy('category_order') || '').split('|').map(t => t.trim()).filter(Boolean), rank = (c) => order.indexOf(c) < 0 ? 500 : order.indexOf(c);
+    const cats = new Map(); for (const b of lines) { if (!cats.has(b.category)) cats.set(b.category, { code: b.category, label: catName(b), lines: [] }); cats.get(b.category).lines.push(b); }
+    const sum = (list) => list.reduce((a, b) => a + Number(b.year_total || 0), 0);
+    const money = (v) => Math.abs(v) >= 0.5 ? M0(v) : '<span class="fn-dim">–</span>';
+    const rows = [...cats.values()].sort((a, c) => rank(a.code) - rank(c.code)).map(c => `<tr class="subtotal"><td colspan="5">${esc(c.label)}</td><td>${money(sum(c.lines))}</td><td></td></tr>` + c.lines.map(b =>
+      `<tr><td>${esc(b.label)}${b.is_assumed ? ` <span class="fn-dim">${esc(C('cw_estimate', 'estimate'))}</span>` : ''}</td><td style="text-align:left;">${esc(who(b))}</td><td>${M2(b.amount)}</td><td style="text-align:left;">${esc(unit(b))}</td><td>${qty(b.year_units)}</td>
+        <td class="fn-out">${money(Number(b.year_total || 0))}</td><td style="text-align:left; white-space:normal;" class="fn-note">${esc(b.note || '')}</td></tr>`).join('')).join('');
+    const yearBar = `<div class="fn-pills" style="margin:4px 0 6px;">${years.map(y => `<button class="fn-pill ${y === year ? 'on' : ''}" data-cp-year="${esc(y)}">${esc(y)}</button>`).join('')}</div>`;
+    return `<div class="fn-card"><div class="fn-title">${esc(C('cw_title', 'Club-wide'))} · ${esc(year)}</div>
+      <div class="fn-note">${esc(C('cw_note', 'Every cost beyond a competition: practice coaching, kits, equipment and the field. Price × how many; the total is worked out, never typed.'))}</div>${yearBar}
+      <div style="overflow-x:auto;"><table class="fn-table"><thead><tr><th>${esc(C('cp_col_what', 'What'))}</th><th>${esc(C('cw_col_for', 'For'))}</th><th>${esc(C('cp_col_price', 'Price'))}</th><th>${esc(C('cp_col_per', 'Per'))}</th><th>${esc(C('cp_col_count', 'How many'))}</th><th>${esc(C('cp_col_amount', 'Amount'))}</th><th>${esc(C('cp_col_note', 'Note'))}</th></tr></thead>
+      <tbody>${rows}<tr class="sum"><td colspan="5">${esc(C('pb_total', 'Total'))}</td><td>${M0(sum(lines))}</td><td></td></tr></tbody></table></div></div>`;
+  }
   // ── 🏆 Competitions (#competitions, mig 1754; owner 11/23 "call it a
   // competition … this is where we gather facts … then u can roll them up as
   // mens ref fees league/tourny fees").  One pill per paying side (Men's,
@@ -740,11 +808,13 @@ class FinancesScreen extends Screen {
         unit_label: this._copy('plan_unit_game', { hours: p.hours_per_game, rate: M2(p.rate_per_hour) }) || '', is_assumed: g.assumed, season: c.season,
         note: [g.parts.join(' + '), p.note, g.split > 1 ? C('cp_coach_split', `coaching games are counted per team, shared evenly between its ${g.split} competitions here`, { n: g.split }) : ''].filter(Boolean).join(' — ') });
     }
+    const leagueShort = Object.fromEntries((this._copy('cp_league_short') || '').split('|').map(t => t.split('=').map(v => v.trim())).filter(t => t.length === 2));
     for (const c of all) {
-      // a side where a team enters several competitions (youth: fall, winter, spring) names each one whole —
-      // age, league, season (owner 11/23: "would prefer it says whole thing"); otherwise the scope's name says it
-      const whole = all.some(o => o.top === c.top && all.filter(q => q.scope === o.scope).length > 1);
-      c.label = whole ? `${sc(c.scope).label || c.scope} — ${c.league} ${c.season}` : (sc(c.scope).label || c.league);
+      // a side where a team enters several competitions (youth: fall, winter, spring) names each one short:
+      // the team's season icon, the age, the league's short name — "🍂 U8 PPR" (mig 1763); otherwise the scope's name says it
+      const several = all.some(o => o.top === c.top && all.filter(q => q.scope === o.scope).length > 1);
+      const icon = (String((c.lines.find(l => l.short_label) || {}).short_label || '').match(/^[^\w\s]+/) || [''])[0];
+      c.label = several ? `${icon ? icon + ' ' : ''}${sc(c.scope).label || c.scope} ${leagueShort[c.league] || c.league}` : (sc(c.scope).label || c.league);
       c.cost = c.lines.filter(l => l.category !== 'bonds');
       c.total = c.cost.reduce((a, l) => a + Number(l.amount || 0), 0);
     }

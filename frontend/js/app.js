@@ -81,6 +81,8 @@ class App {
       finances: new FinancesScreen(this.navigation, this.auth),
       groups: new FinancesScreen(this.navigation, this.auth, 'groups'),
       competitions: new FinancesScreen(this.navigation, this.auth, 'competitions'),
+      clubWide: new FinancesScreen(this.navigation, this.auth, 'clubwide'),
+      otherIncome: new FinancesScreen(this.navigation, this.auth, 'otherincome'),
       inHouseProposal: new InHouseProposalScreen(this.navigation, this.auth),
       proposals: new ProposalsScreen(this.navigation, this.auth),
       fines: new FinesScreen(this.navigation, this.auth),
@@ -216,6 +218,10 @@ class App {
     this.screenManager.register('groups', this.screens.groups);
     // #competitions (mig 1754): what each competition costs — facts, estimates, total.
     this.screenManager.register('competitions', this.screens.competitions);
+    // #club-wide (mig 1764): every cost beyond a competition — coaching, kits, equipment, the field.
+    this.screenManager.register('club-wide', this.screens.clubWide);
+    // #other-income (mig 1765): money in that is not member dues — grants, sponsors, field rentals.
+    this.screenManager.register('other-income', this.screens.otherIncome);
     // #cash-flow (mig 882): soccer money in from LeagueApps against invoices out.
     // #in-house-proposal (mig 900): the case for youth in-house.
     this.screenManager.register('in-house-proposal', this.screens.inHouseProposal);
