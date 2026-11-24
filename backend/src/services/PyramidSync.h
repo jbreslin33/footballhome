@@ -31,6 +31,9 @@ public:
     static void refreshIfStale(bool force = false);
     // mig 1455: re-read one source when a listed game has finished since its last read
     static bool refreshIfGameDue(int sourceId);
+    // The professional leagues above the pyramid (mig 1833): their tables,
+    // read when due (force = now).  Runs inside refreshIfStale().
+    static void refreshPro(bool force = false);
 
     // Geocode clubs' home grounds and league region points not tried yet,
     // on a background thread (one at a time; Nominatim's 1 request/second).

@@ -22,6 +22,9 @@ class PyramidModel {
     this.places = this.data.places || [];
     this._place = new Map(this.places.map((p) => [p.team_id, p]));
     this.seasons = this.data.seasons || [];
+    // Above the pyramid (mig 1833): the professional divisions, top first —
+    // [{tier, label, leagues:[{id, name, read_at, tables:[{id, name, teams}]}]}].
+    this.pro = this.data.pro || [];
     this._comp = new Map(this.competitions.map((c) => [c.id, c]));
     this._div = new Map(this.divisions.map((d) => [d.id, d]));
     this._compOrder = new Map(this.competitions.map((c, i) => [c.id, i]));

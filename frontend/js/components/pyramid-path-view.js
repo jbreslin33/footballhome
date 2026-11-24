@@ -37,10 +37,23 @@ class PyramidPathView {
       .pt-car select { flex:0 0 auto; max-width:46vw; min-height:0; padding:6px 10px; border-radius:999px; font-weight:700; font-size:0.85rem; }
       .pt-car .nav { flex:0 0 auto; min-height:0; min-width:0; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:1rem; line-height:1;
                      border:1px solid var(--border-color, #374151); background:transparent; color:inherit; }
-      .pt-club { text-align:center; margin:0 0 4px; }
-      .pt-venue { text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom:12px; }
       .pt-team { margin:0 0 26px; }
-      .pt-team h3 { text-align:center; font-size:1rem; margin:0 0 8px; }
+      /* The team's own table carries its bubble: club, where it stands, its ground — linked to the table by the pointer (owner 11/24 "this all should be nearer to the team in question … a linked bubble or box"). */
+      .pt-own { position:relative; }
+      .pt-bubble { position:absolute; left:calc(100% + 16px); top:6px; width:250px; box-sizing:border-box; text-align:left;
+                   border:3px solid #0b1220; border-radius:22px; padding:10px 14px; background:#fff; color:#0b1220; box-shadow:4px 4px 0 rgba(0,0,0,0.55); }
+      /* a comic-book speech bubble (owner: "like a comic book"): white, inked, its tail on the table */
+      .pt-bubble::before { content:""; position:absolute; left:-18px; top:14px; border-top:4px solid transparent; border-bottom:16px solid transparent; border-right:18px solid #fff; }
+      .pt-bubble b { display:block; font-size:1rem; }
+      .pt-bubble .st { font-size:0.85rem; font-weight:700; margin-top:2px; }
+      .pt-bubble .vn { font-size:0.78rem; opacity:0.75; margin-top:4px; }
+      .pt-bubble.alone { position:static; margin:0 auto 12px; }
+      .pt-bubble.alone::before { display:none; }
+      @media (max-width: 900px) {
+        .pt-own { display:flex; flex-direction:column-reverse; align-items:center; gap:18px; }
+        .pt-bubble { position:relative; left:auto; top:auto; width:min(250px, 100%); }
+        .pt-bubble::before { left:calc(50% - 9px); top:auto; bottom:-16px; border:0; border-left:4px solid transparent; border-right:16px solid transparent; border-top:16px solid #fff; }
+      }
       .pt-routes { display:flex; gap:28px; justify-content:center; flex-wrap:wrap; align-items:flex-start; }
       .pt-route { display:flex; flex-direction:column; align-items:center; }
       .pt-up { width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid #64748b; margin:6px 0; }
@@ -49,15 +62,13 @@ class PyramidPathView {
       .pt-below { display:flex; flex-direction:column; align-items:center; margin-top:14px; padding-top:12px; border-top:1px dashed rgba(148,163,184,0.3); }
       .pt-below h4 { margin:0 0 2px; font-size:0.9rem; opacity:0.85; text-align:center; }
       .pt-level { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; align-items:flex-start; }
-      .pt-pro { display:flex; flex-direction:column; align-items:center; gap:8px; margin:6px 0 4px; }
-      .pt-pro h4 { margin:0; font-size:0.9rem; opacity:0.85; }
-      .pt-pro-tier { display:flex; flex-direction:column; align-items:center; gap:4px; }
-      .pt-pro-tier .lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.6; }
-      .pt-pro-tier .lgs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
-      .pt-pro-lg { border:2px solid #d4a017; border-radius:12px; padding:7px 16px; font-weight:800; background:rgba(212,160,23,0.10); }
-      .pt-pro-doc { max-width:560px; border:2px dashed #94a3b8; border-radius:12px; padding:10px 14px; text-align:center; background:rgba(148,163,184,0.08); }
-      .pt-pro-link { display:block; font-weight:800; color:#fbbf24; }
-      .pt-pro-gap { width:0; height:22px; border-left:2px dashed #64748b; }
+      .pt-team { position:relative; }
+      .pt-team > .fc-pro { margin-bottom:70px; }
+      /* The APSL level: every lit conference on one sliding line, the team's own in full, the rest dimmed (owner 11/24 "show the other apsl confs but the focus should be on the team in question"). */
+      .pt-confs { display:flex; gap:28px; align-items:flex-start; overflow-x:auto; max-width:calc(100vw - 48px); padding:4px 2px 10px; scrollbar-width:thin; }
+      .pt-confs .pt-conf { flex:0 0 auto; opacity:0.45; }
+      .pt-confs .pt-conf.me { opacity:1; }
+      .pt-route, .pt-below { position:relative; z-index:1; }
       .pt-conf .fc-cell { display:flex; gap:10px; justify-content:center; }`;
   }
 
@@ -99,7 +110,7 @@ class PyramidPathView {
 
   html(model, confs) {
     const esc = (t) => this._esc(t);
-    this._follow = true;
+    this._follow = true; this._m = model; this.confs = confs || [];
     const club = this.clubId && model.clubs.find((c) => c.id === this.clubId);
     return `
       <div class="pt-picker">${this._pickerHtml(model, confs || [])}</div>
@@ -117,7 +128,17 @@ class PyramidPathView {
         const part = model.confTableTitle(col, d);
         return this.flow.tableHtml(model, d, part ? esc(part) : '', '', '', { club: club.name });
       }).join('');
-      return `<div class="pt-conf"><h4>${esc(conf.name)}</h4><div class="fc-cell">${tables}</div></div>`;
+      const one = (c, me) => {
+        if (me) return `<div class="pt-conf me"><h4>${esc(conf.name)}</h4><div class="fc-cell">${tables}</div></div>`;
+        const oc = model.layout([c]).columns[0];
+        if (!oc) return '';
+        return `<div class="pt-conf"><h4>${esc(c.name)}</h4><div class="fc-cell">${oc.top.map((d) => {
+          const part = model.confTableTitle(oc, d);
+          return this.flow.tableHtml(model, d, part ? esc(part) : '', '', '', { club: club.name });
+        }).join('')}</div></div>`;
+      };
+      const all = (this.confs || []).some((c) => c.id === conf.id) ? this.confs : [conf];
+      return `<div class="pt-confs">${all.map((c) => one(c, c.id === conf.id)).join('')}</div>`;
     }
     const d = model.division(Number(node.slice(1)));
     if (!d) return '';
@@ -130,30 +151,11 @@ class PyramidPathView {
   // Show on screen: the pro leagues above the APSL, on unless switched off.
   features() { return [{ key: 'pro', tier: 'feature_pro', def: true }]; }
 
-  // Above the APSL: the professional divisions (mig 1788, owner 11/24
-  // "show that above the apsl its pro"), top first — wording rows
-  // path_pro_1… = 'label|league;league'.  A dashed step, not an arrow: no
-  // club goes up on results.
+  // Above the APSL: the professional divisions with their tables and the
+  // standards box (PyramidFlowView.proHtml, mig 1833) — on unless switched
+  // off in ☰ Show on screen.
   _proHtml() {
-    if (!this.screen.feature('pro', true)) return '';
-    const esc = (t) => this._esc(t);
-    const tiers = [];
-    for (let i = 1; i <= 9; i++) {
-      const row = this._copy(`path_pro_${i}`);
-      if (!row) break;
-      const [label, names] = row.split('|');
-      tiers.push(`<div class="pt-pro-tier"><span class="lbl">${esc(label)}</span><div class="lgs">${(names || '').split(';').map((n) => `<span class="pt-pro-lg">${esc(n.trim())}</span>`).join('')}</div></div>`);
-    }
-    if (!tiers.length) return '';
-    // The standards themselves (mig 1790): wording row 'label|url' → U.S. Soccer's page.
-    const [linkLabel, linkUrl] = (this._copy('path_pro_link') || '').split('|');
-    const link = /^https:\/\//.test(linkUrl || '') ? `<a class="pt-pro-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkLabel)}</a>` : '';
-    // The document sits ON the line between the pro leagues and the APSL:
-    // dashed line, the link, dashed line.  No comment on it (mig 1831,
-    // owner 11/24: "just put the standards there … as a link with no comment").
-    return `<div class="pt-pro"><h4>${esc(this._copy('path_pro_title'))}</h4>${tiers.join('')}
-      <div class="pt-pro-gap"></div>
-      ${link ? `<div class="pt-pro-doc">${link}</div><div class="pt-pro-gap"></div>` : ''}</div>`;
+    return this.screen.feature('pro', true) ? `<svg class="fc-links"></svg>${this.flow.proHtml(this.model || this._m)}` : '';
   }
 
   _clubHtml(model, club) {
@@ -171,9 +173,15 @@ class PyramidPathView {
       const head = best === 0 ? this._copy('path_apsl', { table })
         : best != null ? this._copy('path_team', { table, steps: best })
           : this._copy('path_none', { table });
+      const bubble = (cls) => `<div class="pt-bubble ${cls}"><b>${esc(club.name)}</b><div class="st">${esc(head)}</div><div class="vn">${esc(venue)}</div></div>`;
       // Top of the pyramid first: each route reversed, arrows pointing up.
-      const cols = routes.map((r) => `
-        <div class="pt-route">${[...r].reverse().map((n) => this._nodeHtml(model, n, club)).join('<div class="pt-up"></div>')}</div>`).join('');
+      // The team's own table is the foot of every route; the rightmost
+      // one carries the bubble (free space beside it).
+      const cols = routes.map((r, ri) => `
+        <div class="pt-route">${[...r].reverse().map((n, i, a) => {
+          const box = this._nodeHtml(model, n, club);
+          return i === a.length - 1 ? `<div class="pt-own">${box}${ri === routes.length - 1 ? bubble('') : ''}</div>` : box;
+        }).join('<div class="pt-up"></div>')}</div>`).join('');
       // …and what is below it (mig 1787, owner 11/24 "also show what is
       // below them … in feeders etc"): the tables feeding this one, a row
       // per level, the same arrows pointing up into it.
@@ -182,16 +190,15 @@ class PyramidPathView {
       const below = !n ? '' : `
         <div class="pt-below"><h4>${esc(this._copy('path_below', { table, n }))}</h4>
           ${levels.map((l) => `<div class="pt-up"></div><div class="pt-level">${l.map((x) => this._nodeHtml(model, `d${x.id}`, club)).join('')}</div>`).join('')}</div>`;
-      return `<div class="pt-team"><h3>${esc(head)}</h3><div class="pt-venue">${esc(venue)}</div>${best != null ? this._proHtml() : ''}<div class="pt-routes">${cols}</div>${below}</div>`;
+      return `<div class="pt-team">${routes.length ? '' : bubble('alone')}${best != null ? this._proHtml() : ''}<div class="pt-routes">${cols}</div>${below}</div>`;
     }).join('');
-    return `
-      <h2 class="pt-club">${esc(club.name)}</h2>
-      ${teams}`;
+    return teams;
   }
 
   mount(root, model, confs) {
     this.root = root; this.model = model; this.confs = confs || [];
     this._reveal();
+    this._links();
     if (root._pt) return;
     root._pt = true;
     root.addEventListener('change', (e) => this._onLeague(e));
@@ -206,6 +213,21 @@ class PyramidPathView {
   _onLeague(e) {
     const lg = e.target.closest('select[data-pt-league]');
     if (lg) { this.leagueId = Number(lg.value); this._redrawPicker(); }
+  }
+
+  // The team's conference slid to the middle of its line, then the dashed
+  // lines: that conference → the standards box → Division III.
+  _links(focus) {
+    if (!this.root) return;
+    this.root.querySelectorAll('.pt-confs').forEach((st) => {
+      const me = st.querySelector('.pt-conf.me');
+      if (me && !st._set) st.scrollLeft = me.offsetLeft - st.offsetLeft - (st.clientWidth - me.offsetWidth) / 2;
+      if (!st._set) { st._set = true; st.addEventListener('scroll', () => this._links(), { passive: true }); }
+    });
+    this.root.querySelectorAll('.pt-team').forEach((t) => this.flow.drawProLinks(t, '.pt-conf.me'));
+    // Focus: the picked team's own table (and its bubble) into the middle of the window.
+    const own = focus && this.root.querySelector('.pt-own');
+    if (own) own.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
 
   _redrawPicker() {
@@ -233,9 +255,10 @@ class PyramidPathView {
     if (body) body.innerHTML = this._clubHtml(this.model, club);
     this._follow = !fromStrip;
     this._redrawPicker();
+    this._links(true);
   }
 
-  onResize() {}
+  onResize() { this._links(); }
   unmount() {}
 }
 window.PyramidPathView = PyramidPathView;

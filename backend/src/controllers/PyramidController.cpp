@@ -797,7 +797,26 @@ Response PyramidController::handleGet(const Request& request) {
                                    {"attribution", strOrNull(r, "attribution")}, {"max_zoom", num(r, "max_zoom")},
                                    {"def_on", r["def_on"].as<bool>()}});
 
+        // Above the pyramid (mig 1833): the professional divisions, each
+        // league with its tables — tiers top first.
+        json pro = json::array();
+        {
+            auto pr = db->query(
+                "SELECT COALESCE(json_agg(json_build_object('tier', t.tier, 'label', t.label, 'leagues', "
+                "         (SELECT COALESCE(json_agg(json_build_object('id', l.id, 'name', l.name, 'read_at', to_char(l.last_ok_at, 'YYYY-MM-DD'), 'tables', "
+                "                   (SELECT COALESCE(json_agg(json_build_object('id', tb.id, 'name', tb.name, 'teams', "
+                "                             (SELECT COALESCE(json_agg(json_build_object('name', tm.name, 'pos', tm.position, 'gp', tm.played, 'w', tm.wins, 'd', tm.draws, "
+                "                                       'l', tm.losses, 'gf', tm.goals_for, 'ga', tm.goals_against, 'gd', tm.goals_for - tm.goals_against, 'pts', tm.points) "
+                "                                     ORDER BY tm.position NULLS LAST, tm.points DESC, tm.name), '[]'::json) "
+                "                                FROM pro_league_teams tm WHERE tm.table_id = tb.id)) ORDER BY tb.sort_order), '[]'::json) "
+                "                      FROM pro_league_tables tb WHERE tb.league_id = l.id)) ORDER BY l.sort_order), '[]'::json) "
+                "            FROM pro_leagues l WHERE l.tier = t.tier AND l.is_active)) ORDER BY t.tier), '[]'::json)::text AS j "
+                "  FROM pro_league_tiers t");
+            if (!pr.empty() && !pr[0]["j"].is_null()) { json j = json::parse(pr[0]["j"].c_str(), nullptr, false); if (j.is_array()) pro = j; }
+        }
+
         return jsonOut(HttpStatus::OK, {
+            {"pro", pro},
             {"root_id", num(tot[0], "root_id")},
             {"totals", {{"leagues", num(tot[0], "leagues")}, {"clubs", num(tot[0], "clubs")},
                         {"teams", num(tot[0], "teams")}, {"states", num(tot[0], "states")}}},

@@ -44,7 +44,20 @@ class PyramidFlowView {
       .fc-scroll.dragging * { cursor:grabbing !important; }
       .fc-chart { position:relative; display:grid; column-gap:64px; row-gap:56px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
       .fc-zoomed { margin:0 auto; }
-      .fc-zoomed > .fc-chart { margin:0; transform-origin:0 0; }
+      /* .fc-all = the pro leagues, the standards box, then the chart — what the zoom scales. */
+      .fc-all { position:relative; width:max-content; transform-origin:0 0; }
+      .fc-all > .fc-chart { margin:0 auto; }
+      .fc-links { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
+      /* The professional leagues above the APSL (mig 1833): a division per row, each league a gold box holding its tables. */
+      .fc-pro { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:34px; margin:0 auto 96px; width:max-content; }
+      .fc-pro-tier { display:flex; gap:44px; justify-content:center; align-items:flex-start; }
+      .fc-pro-lg { border:2px solid #d4a017; border-radius:14px; padding:10px; background:rgba(212,160,23,0.08); }
+      .fc-pro-lg h2 { margin:0; font-size:1.1rem; text-align:center; }
+      .fc-pro-lg .fc-meta { margin-bottom:8px; }
+      .fc-pro-lg .fc-tbl { border-color:#a67c00; }
+      .fc-pro-lg .fc-cell:empty { display:none; }
+      .fc-pls { margin-top:30px; position:relative; z-index:1; border:2px dashed #94a3b8; border-radius:12px; padding:10px 18px; background:var(--bg-color, #0b1220); text-align:center; }
+      .fc-pls a { font-weight:800; color:#fbbf24; }
       .fc-zoom { position:absolute; right:12px; bottom:12px; z-index:5; display:flex; gap:4px; padding:4px; border-radius:999px; background:rgba(15,23,42,0.85); border:1px solid rgba(148,163,184,0.35); }
       .fc-zoom button { min-height:0; min-width:34px; height:30px; padding:0 10px; border-radius:999px; cursor:pointer; font-weight:800; font-size:0.85rem; border:1px solid rgba(148,163,184,0.35); background:rgba(30,41,59,0.9); color:#e2e8f0; }
       .fc-zoom button:hover { background:#2563eb; border-color:transparent; color:#fff; }
@@ -133,6 +146,54 @@ class PyramidFlowView {
   // The colour key, on the screen's caption line (mig 1825).
   legend(model) { return this.legendHtml(model); }
 
+  // ── above the APSL ────────────────────────────────────────────────────
+  // The professional divisions with their tables, top first, then the
+  // Professional League Standards link (wording row 'label|url').  Owner
+  // 2026-11-24: "show the standings of mls lol" · "and league one etc" ·
+  // "have the apsl confs connect to the pls … and then the pls goes to usl
+  // league one and mls next pro. that is our cute way of linking them."
+  // drawProLinks() draws those dashed lines.  '' when no leagues are known.
+  proHtml(model) {
+    const esc = (t) => this._esc(t);
+    if (!model.pro || !model.pro.length) return '';
+    const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
+    const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
+    const table = (t, many) => `
+      <div class="fc-tbl">${many ? `<div class="hd">${esc(t.name)}</div>` : ''}
+        <table><thead><tr>${head}</tr></thead><tbody>${t.teams.map((x) => `
+          <tr><td>${x.pos == null ? '' : esc(x.pos)}</td><td class="tm">${esc(x.name)}</td><td>${x.gp}</td><td>${x.gd > 0 ? '+' : ''}${x.gd}</td><td><b>${x.pts}</b></td></tr>`).join('')}</tbody></table>
+      </div>`;
+    const tiers = model.pro.map((t) => `
+      <div class="fc-pro-tier">${t.leagues.map((l) => `
+        <div class="fc-pro-lg" data-pro-league="${l.id}" data-pro-tier="${t.tier}">
+          <h2>${esc(l.name)}</h2><div class="fc-meta">${esc(t.label)}</div>
+          <div class="fc-cell">${l.tables.map((x) => table(x, l.tables.length > 1)).join('')}</div>
+        </div>`).join('')}</div>`).join('');
+    const [label, url] = (this._copy('path_pro_link') || '').split('|');
+    const pls = /^https:\/\//.test(url || '') ? `<div class="fc-pls"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a></div>` : '';
+    return `<div class="fc-pro">${tiers}${pls}</div>`;
+  }
+
+  // Dashed lines in `box` (an element holding .fc-pro, an svg.fc-links and
+  // the boxes named by `lowerSel`): each lower box's top → the standards
+  // box, and the standards box → every league of the lowest pro division.
+  drawProLinks(box, lowerSel) {
+    const svg = box && box.querySelector('.fc-links'), pls = box && box.querySelector('.fc-pls');
+    if (!svg) return;
+    if (!pls) { svg.innerHTML = ''; return; }
+    const o = box.getBoundingClientRect();
+    const k = box.offsetWidth ? o.width / box.offsetWidth : 1;
+    const R = (el) => { const r = el.getBoundingClientRect(); return { l: (r.left - o.left) / k, r: (r.right - o.left) / k, t: (r.top - o.top) / k, b: (r.bottom - o.top) / k }; };
+    const p = R(pls), px = (p.l + p.r) / 2;
+    const curve = (x1, y1, x2, y2) => { const my = (y1 + y2) / 2; return `<path d="M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}" />`; };
+    const paths = [];
+    box.querySelectorAll(lowerSel).forEach((el) => { const r = R(el); paths.push(curve((r.l + r.r) / 2, r.t, Math.min(Math.max((r.l + r.r) / 2, p.l + 16), p.r - 16), p.b)); });
+    const tiers = [...box.querySelectorAll('.fc-pro-tier')];
+    if (tiers.length) tiers[tiers.length - 1].querySelectorAll('.fc-pro-lg').forEach((el) => { const r = R(el); paths.push(curve(px, p.t, (r.l + r.r) / 2, r.b)); });
+    svg.setAttribute('width', box.offsetWidth); svg.setAttribute('height', box.offsetHeight);
+    svg.innerHTML = `<g fill="none" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6 6">${paths.join('')}</g>`;
+  }
+
   // The chart itself (grid + arrow layer), no legend / scroller around it.
   chartHtml(model, confs) {
     const esc = (t) => this._esc(t);
@@ -161,7 +222,7 @@ class PyramidFlowView {
   // ── the view ─────────────────────────────────────────────────────────
   html(model, confs) {
     return `
-      <div class="fc-scroll" tabindex="0"><div class="fc-zoomed">${this.chartHtml(model, confs)}</div></div>
+      <div class="fc-scroll" tabindex="0"><div class="fc-zoomed"><div class="fc-all"><svg class="fc-links"></svg>${this.proHtml(model)}${this.chartHtml(model, confs)}</div></div></div>
       <div class="fc-zoom">
         <button data-zoom="out" title="${this._esc(this._copy('zoom_out'))}">−</button>
         <button data-zoom="reset" title="${this._esc(this._copy('zoom_reset'))}"></button>
@@ -174,6 +235,7 @@ class PyramidFlowView {
     const el = root.querySelector('.fc-scroll');
     this._applyZoom(root);
     this.drawArrows(root.querySelector('.fc-chart'), model, confs);
+    this.drawProLinks(root.querySelector('.fc-all'), '.fc-conf');
     this.pannable(el);
     this.zoomable(root, el);
   }
@@ -181,7 +243,7 @@ class PyramidFlowView {
   // Scale the chart and size its wrapper to match (a transform alone
   // leaves the layout box, and so the scroll range, at 100%).
   _applyZoom(root) {
-    const chart = root.querySelector('.fc-zoomed > .fc-chart');
+    const chart = root.querySelector('.fc-zoomed > .fc-all');
     if (!chart) return;
     const z = this.zoom, wrap = chart.parentElement;
     chart.style.transform = z === 1 ? '' : `scale(${z})`;
@@ -194,7 +256,7 @@ class PyramidFlowView {
   // Zoom to z, keeping the chart point under (cx, cy) — client pixels, the
   // middle of the window when not given — where it is.
   _zoomTo(root, z, cx, cy) {
-    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-chart');
+    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-all');
     if (!el || !chart) return;
     z = Math.min(2.5, Math.max(0.2, z));
     const view = el.getBoundingClientRect();
@@ -210,7 +272,7 @@ class PyramidFlowView {
 
   // The whole chart in the window (never past 100% — text stays its size).
   _zoomFit(root) {
-    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-chart');
+    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-all');
     if (!el || !chart || !chart.offsetWidth) return;
     const z = Math.min(1, (el.clientWidth - 32) / chart.offsetWidth, (el.clientHeight - 40) / chart.offsetHeight);
     this._zoomTo(root, z);

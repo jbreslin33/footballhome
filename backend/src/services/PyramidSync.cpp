@@ -1023,6 +1023,65 @@ bool PyramidSync::refreshIfGameDue(int sourceId) {
     }
 }
 
+// The professional leagues above the pyramid (mig 1833): each league whose
+// table fh_pro_league_due() calls due is read from its feed and handed to
+// fh_pro_league_load().  feed_system 'espn' = ESPN's public standings JSON
+// (site.api.espn.com/apis/v2/sports/soccer/<locator>/standings): a table
+// per conference under `children`, or one table at the top.  A failed read
+// keeps the previous tables and stamps the note.
+void PyramidSync::refreshPro(bool force) {
+    auto* db = Database::getInstance();
+    try {
+        auto due = db->query("SELECT id, name, feed_locator FROM pro_leagues "
+                             " WHERE is_active AND feed_system = 'espn' AND ($1::boolean OR fh_pro_league_due(id)) ORDER BY id",
+                             {force ? "true" : "false"});
+        for (const auto& r : due) {
+            const std::string id = std::to_string(r["id"].as<int>());
+            std::string note;
+            try {
+                HttpClient http;
+                http.setTotalTimeoutSec(15);
+                auto resp = http.get("https://site.api.espn.com/apis/v2/sports/soccer/" + HttpClient::urlEncode(r["feed_locator"].c_str()) + "/standings",
+                                     {{"User-Agent", "Mozilla/5.0 (FootballHome)"}, {"Accept", "application/json"}});
+                json body = resp.ok() ? json::parse(resp.body, nullptr, false) : json(json::value_t::discarded);
+                json tables = json::array();
+                auto readTable = [&](const json& node, const std::string& fallbackName) {
+                    if (!node.is_object() || !node.contains("standings") || !node["standings"].contains("entries")) return;
+                    json teams = json::array();
+                    for (const auto& e : node["standings"]["entries"]) {
+                        if (!e.contains("team") || !e.contains("stats")) continue;
+                        json t = {{"name", e["team"].value("displayName", "")}};
+                        auto stat = [&](const char* espn, const char* ours) {
+                            for (const auto& st : e["stats"])
+                                if (st.value("name", "") == espn && st.contains("value") && st["value"].is_number()) { t[ours] = static_cast<int>(st["value"].get<double>()); return; }
+                        };
+                        stat("rank", "position"); stat("gamesPlayed", "played"); stat("wins", "wins"); stat("ties", "draws");
+                        stat("losses", "losses"); stat("pointsFor", "goals_for"); stat("pointsAgainst", "goals_against"); stat("points", "points");
+                        if (!t["name"].get<std::string>().empty()) teams.push_back(t);
+                    }
+                    if (!teams.empty()) tables.push_back({{"name", node.value("name", fallbackName)}, {"teams", teams}});
+                };
+                if (body.is_object()) {
+                    if (body.contains("children") && body["children"].is_array())
+                        for (const auto& c : body["children"]) readTable(c, r["name"].c_str());
+                    if (tables.empty()) readTable(body, r["name"].c_str());
+                }
+                if (tables.empty()) note = "no table in the feed (HTTP " + std::to_string(resp.status) + ")";
+                else {
+                    auto n = db->query("SELECT fh_pro_league_load($1::int, $2::jsonb)", {id, tables.dump()});
+                    std::cerr << "[pyramid] pro league " << id << ": " << (n.empty() ? 0 : n[0][0].as<int>()) << " teams" << std::endl;
+                }
+            } catch (const std::exception& e) { note = e.what(); }
+            if (!note.empty()) {
+                std::cerr << "[pyramid] pro league " << id << ": " << note << std::endl;
+                db->query("UPDATE pro_leagues SET last_fetched_at = now(), last_fetch_note = $2 WHERE id = $1::int", {id, note});
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "[pyramid] pro leagues: " << e.what() << std::endl;
+    }
+}
+
 void PyramidSync::refreshIfStale(bool force) {
     std::unique_lock<std::mutex> lock(gRefreshMutex, std::try_to_lock);
     if (!lock.owns_lock()) return;
@@ -1035,6 +1094,7 @@ void PyramidSync::refreshIfStale(bool force) {
             json res = refreshSource(r["id"].as<int>());
             std::cerr << "[pyramid] " << res.dump() << std::endl;
         }
+        refreshPro(force);
         geocodePending();
     } catch (const std::exception& e) {
         std::cerr << "[pyramid] " << e.what() << std::endl;
