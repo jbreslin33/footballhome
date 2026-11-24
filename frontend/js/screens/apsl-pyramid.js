@@ -84,6 +84,7 @@ class ApslPyramidScreen extends Screen {
         .ap-pill.cc.on::before { background:var(--cc-fg, #fff); }
         .ap-stage { background:var(--bg-color, #0b1220); padding:10px 12px 20px; box-sizing:border-box; }
         .ap-stage:fullscreen { overflow:auto; }
+        body.ap-clean #menu-pills { display:none !important; }
         .ap-bar { margin-bottom:10px; }
         .ap-bar .row { display:flex; align-items:center; gap:6px 12px; flex-wrap:wrap; }
         .ap-bar img { height:30px; width:auto; }
@@ -91,34 +92,34 @@ class ApslPyramidScreen extends Screen {
         .ap-bar .tot { font-size:0.85rem; font-weight:600; opacity:0.8; }
         .ap-bar .acts { margin-left:auto; display:flex; gap:6px; flex-wrap:wrap; }
         .ap-bar .acts .ap-pill { font-weight:600; font-size:0.78rem; padding:4px 11px; }
-        .ap-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
-        .ap-row .lbl { flex:0 0 auto; min-width:96px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
-        .ap-row.views .ap-pill { font-size:0.9rem; padding:6px 16px; }
-        /* Conferences: always ONE line (owner 11/24 "the conferences are on 2 lines") — compact pills, and on a narrow screen the line slides sideways. */
-        .ap-row.confs { flex-wrap:nowrap; }
-        .ap-confs { flex:1 1 auto; min-width:0; display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
-        .ap-confs::-webkit-scrollbar { display:none; }
-        /* Club search, right of the conference pills: the clubs of the conferences that are lit. */
-        .ap-clubbox { position:relative; flex:0 0 240px; min-width:0; }
-        .ap-club { width:100%; box-sizing:border-box; min-height:0; padding:5px 12px; font-size:0.85rem; border-radius:999px; }
-        /* Its list: every club of the lit conferences, open on a conference pick or a tap in the box. */
-        .ap-clublist { position:absolute; right:0; top:calc(100% + 4px); z-index:1400; width:min(320px, 92vw); max-height:min(60vh, 520px); overflow:auto;
-                       background:var(--card-bg, #111827); border:1px solid var(--border-color, #374151); border-radius:12px; padding:4px; box-shadow:0 6px 24px rgba(0,0,0,0.5); }
-        .ap-clublist[hidden] { display:none; }
-        .ap-clublist button { display:block; width:100%; text-align:left; min-height:0; padding:6px 10px; border:0; border-radius:8px; background:transparent; color:inherit; font-size:0.85rem; cursor:pointer; }
-        .ap-clublist button:hover { background:rgba(148,163,184,0.18); }
-        @media (max-width: 700px) { .ap-row.confs { flex-wrap:wrap; } .ap-confs { flex-basis:100%; } .ap-clubbox { flex:1 1 100%; } .ap-clublist { left:0; right:auto; width:100%; } }
-        .ap-row.confs .ap-pill { flex:0 0 auto; white-space:nowrap; font-size:0.78rem; padding:3px 9px; }
-        .ap-row.confs .ap-pill.cc::before { margin-right:4px; }
-        .ap-row.show .ap-pill { font-weight:600; font-size:0.78rem; padding:4px 11px; }
-        .ap-bar .cap { font-size:0.85rem; opacity:0.8; margin-top:8px; line-height:1.35; }
+        /* ☰ (mig 1826): the page is a display — ONE title line, the view takes the rest of the window, and everything you can change drops down over it, in headed sections. */
+        .ap-bar { position:relative; }
+        .ap-bar .acts .ap-pill.burger { font-size:1.05rem; padding:2px 12px; line-height:1.3; }
+        .ap-burger { position:absolute; right:0; top:calc(100% + 2px); z-index:1400; width:min(340px, 94vw); max-height:min(80vh, 760px); overflow:auto; box-sizing:border-box;
+                     background:var(--card-bg, #111827); border:1px solid var(--border-color, #374151); border-radius:12px; padding:0 8px 10px; box-shadow:0 8px 28px rgba(0,0,0,0.55); }
+        .ap-burger[hidden], .ap-clublist[hidden] { display:none; }
+        .ap-burger h4 { margin:10px 6px 4px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.6; }
+        .ap-burger h4:not(:first-child) { border-top:1px solid rgba(148,163,184,0.25); padding-top:10px; }
+        .ap-burger .li, .ap-clublist button { display:block; width:100%; text-align:left; min-height:0; padding:6px 8px; border:0; border-radius:8px; background:transparent; color:inherit; font-size:0.88rem; cursor:pointer; }
+        .ap-burger .li:hover, .ap-clublist button:hover { background:rgba(148,163,184,0.18); }
+        .ap-burger .li.on { font-weight:800; }
+        .ap-burger .li.tick::before { content:""; display:inline-block; width:1.3em; }
+        .ap-burger .li.tick.on::before { content:"✓"; }
+        .ap-burger .li i { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:7px; background:var(--cc, transparent); }
+        .ap-burger .feats { display:flex; flex-wrap:wrap; gap:4px; padding:0 4px; }
+        .ap-burger .feats .ap-pill { font-weight:600; font-size:0.78rem; padding:4px 11px; }
+        .ap-burger .cap { font-size:0.8rem; opacity:0.8; line-height:1.35; margin:2px 6px 8px; }
+        .ap-burger .fc-legend { margin:0 6px; justify-content:flex-start; gap:6px 12px; }
+        /* Club search: the clubs of the conferences that are lit. */
+        .ap-clubbox { padding:0 4px; }
+        .ap-club { width:100%; box-sizing:border-box; min-height:0; padding:6px 12px; font-size:0.85rem; border-radius:999px; }
+        .ap-clublist { max-height:220px; overflow:auto; margin-top:4px; border:1px solid rgba(148,163,184,0.25); border-radius:10px; padding:2px; }
         .ap-main { display:flex; gap:12px; align-items:flex-start; }
         .ap-main.top { flex-direction:column; align-items:stretch; gap:8px; }
         #ap-body { position:relative; flex:1 1 auto; min-width:0; isolation:isolate; }
         .ap-main.top #ap-body { flex:none; }
         #ap-body.flush { height:var(--ap-h, 70vh); overflow:hidden; border:1px solid rgba(148,163,184,0.25); border-radius:12px; }
         #ap-body.flush #ap-view { position:absolute; inset:0; }
-        @media (max-width: 700px) { .ap-row .lbl { min-width:100%; } .ap-row.confs .lbl { display:none; } }
         @media (max-width: 900px) { .ap-main { flex-direction:column; align-items:stretch; } }
         .ap-dock .mp-layers { margin-bottom:6px; }
         /* The view's panels: a column beside the view (the map), or a strip above it (.ap-main.top). */
@@ -164,7 +165,9 @@ class ApslPyramidScreen extends Screen {
         </div>
       </div>`;
     this.element = div;
-    this._onFullLabel = () => { this._renderBar(); this._fit(); };
+    // Full screen is the display case: it starts with the rows folded;
+    // leaving it brings back what this browser last chose.
+    this._onFullLabel = () => { this._renderBar(); if (this._fit()) this._viewCall('onResize'); };
     document.addEventListener('fullscreenchange', this._onFullLabel);
     div.querySelector('.ap-stage').addEventListener('click', (e) => {
       // The club search (right of the conference pills): a tap in the box
@@ -173,6 +176,8 @@ class ApslPyramidScreen extends Screen {
       if (cp) { this._pickClub(Number(cp.dataset.clubPick)); return; }
       if (e.target.closest('.ap-club')) { this._clubList(true); e.target.select(); return; }
       if (this.clubOpen && !e.target.closest('[data-conf]')) this._clubList(false);
+      // ☰: a tap outside its drop-down shuts it.
+      if (this.menuOpen && !e.target.closest('.ap-burger, [data-act="menu"]')) this._burger(false);
       // A view's own panel section (the map's proposed conferences).
       if (e.target.closest('.ap-menu') && this._impl().menuClick && this._impl().menuClick(e)) return;
       const act = e.target.closest('[data-act]');
@@ -192,7 +197,7 @@ class ApslPyramidScreen extends Screen {
         const v = this.views.find((x) => x.code === vp.dataset.view);
         if (v && v.built && v.code !== this.view) {
           this._viewCall('unmount');
-          this.view = v.code;
+          this.view = v.code; this.menuOpen = false;
           try { localStorage.setItem('apsl-pyramid-view', v.code); } catch (_) { /* private mode */ }
           this._renderBody();
         }
@@ -232,6 +237,8 @@ class ApslPyramidScreen extends Screen {
     // The page sits in the normal flow under the site's top bars; a canvas
     // view (chart, map, slideshow) takes the window height left under the
     // pill rows, refitted whenever those bars or the rows change height.
+    // A display page: the site's top bar is off here (☰ → ← Football Home).
+    document.body.classList.add('ap-clean');
     this._fit();
     if (window.ResizeObserver) {
       this._bandObs = new ResizeObserver(() => { if (this._fit()) this._viewCall('onResize'); });
@@ -248,6 +255,7 @@ class ApslPyramidScreen extends Screen {
   onExit() {
     window.removeEventListener('resize', this._onResize);
     if (this._bandObs) { this._bandObs.disconnect(); this._bandObs = null; }
+    document.body.classList.remove('ap-clean');
     this._viewCall('unmount');
     this.clubCard.close();
     if (document.fullscreenElement) document.exitFullscreen();
@@ -258,11 +266,36 @@ class ApslPyramidScreen extends Screen {
   // pick) and _renderMenu() when their own section changed.
   _menu(open = true) { if (open) this._renderMenu(); }
 
+  // 🔗 Copy link (mig 1815; owner 2026-11-24: "what the link is it should
+  // be copy link pill"): the page's public address on the clipboard; the
+  // pill says so for two seconds.
+  _link() { return `${location.origin}/#apsl-pyramid`; }
+  _copyLink() {
+    const url = this._link();
+    const old = () => {
+      const t = document.createElement('textarea');
+      t.value = url; t.style.cssText = 'position:fixed; opacity:0;';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); } catch (_e) { /* nothing more to try */ }
+      t.remove();
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).catch(old); else old();
+    const b = this.find('[data-act="link"]');
+    if (!b) return;
+    b.textContent = this._copy('link_copied');
+    b.classList.add('on');
+    setTimeout(() => { if (b.isConnected) { b.textContent = this._copy('link_copy'); b.classList.remove('on'); } }, 2000);
+  }
+
   _menuAction(act) {
     if (act === 'full') {
       const stage = this.find('.ap-stage');
+      this.menuOpen = false;
       if (document.fullscreenElement) document.exitFullscreen(); else if (stage && stage.requestFullscreen) stage.requestFullscreen();
     } else if (act === 'refresh') this.load(true);
+    else if (act === 'link') this._copyLink();
+    else if (act === 'menu') this._burger(!this.menuOpen);
+    else if (act === 'site') this.navigation.goTo('apsl');
   }
 
   // The view's own sections (the map's proposed conferences) go under its
@@ -355,6 +388,11 @@ class ApslPyramidScreen extends Screen {
   // ── pills ────────────────────────────────────────────────────────────
   _conferences() { return this.model.conferences(); }
   _isOn(id) { return !this.on || this.on.has(id); }
+  _burger(open) {
+    this.menuOpen = !!open;
+    const m = this.find('.ap-burger');
+    if (m) m.hidden = !this.menuOpen;
+  }
   _clubList(open) {
     this.clubOpen = !!open;
     const l = this.find('.ap-clublist');
@@ -365,7 +403,7 @@ class ApslPyramidScreen extends Screen {
   _pickClub(id) {
     const club = this.model && this.model.clubs.find((c) => c.id === id);
     if (!club) return;
-    this.clubName = club.name; this.clubOpen = false;
+    this.clubName = club.name; this.clubOpen = false; this.menuOpen = false;
     this._renderBar();
     if (this._impl().onClub) this._impl().onClub(club); else this.openClub(club.id);
   }
@@ -395,9 +433,9 @@ class ApslPyramidScreen extends Screen {
       this.on = set.size === all.length ? null : set;
     }
     try { localStorage.setItem('apsl-pyramid-on', JSON.stringify(this.on ? [...this.on] : null)); } catch (_) { /* private mode */ }
-    // A conference pick shows its clubs (owner 11/24 "clubs dont show on
-    // conf pick"): the list opens on whatever is lit — All = every club.
-    this.clubOpen = !this.on || this.on.size > 0;
+    // The club search lists the clubs of whatever is lit (All = every
+    // club); it opens on a tap in its box.
+    this.clubOpen = false;
     this._renderBody();
   }
 
@@ -432,28 +470,42 @@ class ApslPyramidScreen extends Screen {
     if (!bar || !this.model) return;
     const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     const root = this.model.root();
-    const views = this.views.filter((v) => v.built).map((v) => `<button class="ap-pill ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('');
-    const confs = [`<button class="ap-pill ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>`,
-      `<button class="ap-pill ${this.on && !this.on.size ? 'on' : ''}" data-conf="none">${esc(this._copy('pill_none'))}</button>`]
-      .concat(this._conferences().map((c) => `<button class="ap-pill ${c.color ? 'cc' : ''} ${this._isOn(c.id) ? 'on' : ''}" data-conf="${c.id}"${c.color ? ` style="--cc:${esc(c.color)}; --cc-fg:${PyramidScreenColor.ink(c.color)}"` : ''}>${esc(c.short_name || c.name)}</button>`))
-      .join('');
+    const views = this.views.filter((v) => v.built)
+      .map((v) => `<button class="li tick ${this.view === v.code ? 'on' : ''}" data-view="${v.code}">${esc(this._copy(v.tier))}</button>`).join('');
+    const confs = `<button class="li tick ${!this.on ? 'on' : ''}" data-conf="all">${esc(this._copy('pill_all'))}</button>
+      <button class="li tick ${this.on && !this.on.size ? 'on' : ''}" data-conf="none">${esc(this._copy('pill_none'))}</button>`
+      + this._conferences().map((c) => `<button class="li tick ${this._isOn(c.id) ? 'on' : ''}" data-conf="${c.id}"><i${c.color ? ` style="--cc:${esc(c.color)}"` : ''}></i>${esc(c.short_name || c.name)}</button>`).join('');
     const feats = (this._impl().features ? this._impl().features() : [])
       .map((f) => `<button class="ap-pill ${this.feature(f.key, f.def) ? 'on' : ''}" data-feature="${esc(f.key)}">${esc(this._copy(f.tier))}</button>`).join('');
-    const row = (cls, tier, pills) => `<div class="ap-row ${cls}"><span class="lbl">${esc(this._copy(tier))}</span>${pills}</div>`;
     const cap = this._copy(`story_view_${this.view}`, { ...this.model.totals, confs: this._conferences().length });
+    // The view's colour key rides the caption line (owner 11/24 "can go on same line as legend?").
+    const legend = this._impl().legend ? this._impl().legend(this.model) : '';
+    const li = (act, text, extra = '') => `<button class="li" data-act="${act}"${extra}>${esc(text)}</button>`;
+    const was = bar.querySelector('.ap-burger'), scroll = was ? was.scrollTop : 0;
+    // ONE line (owner 11/24: "its really a view thing and not a work thing"
+    // · "we want full screens always"): title, counts, ☰.  The drop-down:
+    // views, conferences, club search, the view's switches, then the page's
+    // own actions and what the view shows + its colour key.
     bar.innerHTML = `
       <div class="row">${root && root.logo_url ? `<img src="${esc(root.logo_url)}" alt="">` : ''}<span class="t">${esc(this._copy('title'))}</span>
         <span class="tot">${esc(this._copy('totals', this.model.totals))}${this.loading ? ' · ⟳' : ''}</span>
-        <div class="acts">
-          <button class="ap-pill" data-act="full">${esc(this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}</button>
-          <button class="ap-pill" data-act="refresh" id="ap-refresh">${esc(this._copy('menu_refresh'))}</button>
-        </div></div>
-      ${row('views', 'menu_view', views)}
-      <div class="ap-row confs"><span class="lbl">${esc(this._copy('menu_conf'))}</span><div class="ap-confs">${confs}</div>
+        <div class="acts"><button class="ap-pill burger" data-act="menu">${esc(this._copy('menu_open'))}</button></div></div>
+      <div class="ap-burger"${this.menuOpen ? '' : ' hidden'}>
+        <h4>${esc(this._copy('menu_view'))}</h4>${views}
+        <h4>${esc(this._copy('menu_conf'))}</h4>${confs}
+        <h4>${esc(this._copy('menu_club'))}</h4>
         <div class="ap-clubbox"><input class="ap-club" autocomplete="off" placeholder="${esc(this._copy('path_search'))}" value="${esc(this.clubName || '')}">
-          <div class="ap-clublist"${this.clubOpen ? '' : ' hidden'}>${this._clubsShown().map((c) => `<button type="button" data-club-pick="${c.id}">${esc(c.name)}</button>`).join('')}</div></div></div>
-      ${feats ? row('show', 'menu_show', feats) : ''}
-      ${cap ? `<div class="cap">${esc(cap)}</div>` : ''}`;
+          <div class="ap-clublist"${this.clubOpen ? '' : ' hidden'}>${this._clubsShown().map((c) => `<button type="button" data-club-pick="${c.id}">${esc(c.name)}</button>`).join('')}</div></div>
+        ${feats ? `<h4>${esc(this._copy('menu_show'))}</h4><div class="feats">${feats}</div>` : ''}
+        <h4>${esc(this._copy('menu_page'))}</h4>
+        ${li('link', this._copy('link_copy'), ` title="${esc(this._link())}"`)}
+        ${li('full', this._copy(document.fullscreenElement ? 'map_exit_full' : 'map_full') || '⛶')}
+        ${li('refresh', this._copy('menu_refresh'), ' id="ap-refresh"')}
+        ${this.auth.isLoggedIn() ? li('site', this._copy('menu_site')) : ''}
+        ${cap || legend ? `<h4>${esc(this._copy('menu_about'))}</h4>${cap ? `<div class="cap">${esc(cap)}</div>` : ''}${legend ? `<div class="fc-legend">${legend}</div>` : ''}` : ''}
+      </div>`;
+    const now = bar.querySelector('.ap-burger');
+    if (now && scroll) now.scrollTop = scroll;
   }
 
   // ── ✏️ override editor (mig 828) ─────────────────────────────────────

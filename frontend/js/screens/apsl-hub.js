@@ -2,7 +2,7 @@
 // should have apsl section. then from there the messaging section and the
 // pyramid section etc. we need to be organize".  Same shape as #casa:
 //
-//   #apsl           the hub: tiles — add a tile here for each new APSL tool.
+//   #apsl           the hub: a row of pills — add a pill here for each new APSL tool.
 //   #apsl-messages  the league office's contacts (club_competitions status
 //                   'league' under APSL, mig 483) with ✉️/💬, and the
 //                   roster-moves email to the commissioner (mig 829,
@@ -53,14 +53,18 @@ class ApslHubScreen extends Screen {
   _draw(moves) {
     const body = this.find('#ah-body'); if (!body) return;
     const esc = (t) => this.escapeHtml(t);
+    // The hub's tools are a row of pills, like every other page (owner
+    // 11/24 "the leagues menu needs to have its buttons turned into
+    // pills"): label on the pill, the tile's description in its tooltip,
+    // the unasked-moves count on the messaging pill.
+    const pillCss = 'padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);';
     const tile = (tier, go, extra = '', league = '') => { const t = this._tile(tier); return `
-      <button class="btn btn-lg btn-primary" data-go="${go}" ${league ? `data-league="${league}"` : ''} style="display:flex; align-items:center; gap:var(--space-3); width:100%; text-align:left; margin-bottom:10px;">
-        <div style="flex:1;"><div style="font-weight:bold;">${esc(t.label)}</div><div style="font-size:0.85rem; opacity:0.8;">${esc(t.desc)}${extra
-          ? `<b style="color:#fdba74;">${esc(extra)}</b>` : ''}</div></div>
-      </button>`; };
-    body.innerHTML = tile('tile_messages', 'apsl-messages', moves ? this._copy('tile_moves_n', { n: moves }) : '')
+      <button data-go="${go}" ${league ? `data-league="${league}"` : ''} title="${esc(t.desc)}" style="${pillCss}">${esc(t.label)}${extra
+        ? ` <b style="color:#fdba74;">${esc(extra)}</b>` : ''}</button>`; };
+    body.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">${
+      tile('tile_messages', 'apsl-messages', moves ? this._copy('tile_moves_n', { n: moves }) : '')
       + tile('tile_pyramid', 'apsl-pyramid')
-      + tile('tile_opponents', 'opponents', '', 'APSL');
+      + tile('tile_opponents', 'opponents', '', 'APSL')}</div>`;
   }
 }
 

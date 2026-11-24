@@ -65,8 +65,6 @@ class PyramidPresentView {
   }
 
   // The chart's outlier lines (mig 1238) switch here too.
-  features() { return this.flow.features(); }
-  onFeature() { if (this.chart) this.flow.drawArrows(this.chart, this.model, this.confs); }
 
   mount(root, model, confs) {
     this.root = root; this.model = model; this.confs = confs;

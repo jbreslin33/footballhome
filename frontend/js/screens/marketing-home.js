@@ -15,7 +15,7 @@ class MarketingHomeScreen extends Screen {
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Ad interest form submissions, funnel touch-history, and conversion analytics from first touch through LA registration.
         </p>
-        <div id="section-recruitment" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-recruitment" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">📣 Communications</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
@@ -33,13 +33,7 @@ class MarketingHomeScreen extends Screen {
       const el = this.find(elId);
       if (!el) return;
       el.innerHTML = tiles.map(tile => `
-        <button class="btn btn-lg btn-secondary sub-nav-btn"
-                data-section="${tile.id}"
-                style="height: auto; padding: var(--space-3); text-align: left;">
-          <div style="font-size: 2rem; margin-bottom: var(--space-1);">${tile.icon}</div>
-          <div style="font-weight: 600; margin-bottom: var(--space-1);">${tile.label}</div>
-          <div style="opacity: 0.7; font-size: 0.85rem;">${tile.description}</div>
-        </button>
+        <button class="sub-nav-btn" data-section="${tile.id}" title="${tile.description}" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">${tile.icon} ${tile.label}</button>
       `).join('');
     };
 
@@ -49,15 +43,9 @@ class MarketingHomeScreen extends Screen {
       el.innerHTML = groups.map(group => `
         <div style="margin-bottom: var(--space-4);">
           <div style="font-weight: 700; margin-bottom: var(--space-2); opacity: 0.88;">${group.label}</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);">
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
             ${group.tiles.map(tile => `
-              <button class="btn btn-lg btn-secondary sub-nav-btn"
-                      data-section="${tile.id}"
-                      style="height: auto; padding: var(--space-3); text-align: left;">
-                <div style="font-size: 2rem; margin-bottom: var(--space-1);">${tile.icon}</div>
-                <div style="font-weight: 600; margin-bottom: var(--space-1);">${tile.label}</div>
-                <div style="opacity: 0.7; font-size: 0.85rem;">${tile.description}</div>
-              </button>
+              <button class="sub-nav-btn" data-section="${tile.id}" title="${tile.description}" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">${tile.icon} ${tile.label}</button>
             `).join('')}
           </div>
         </div>

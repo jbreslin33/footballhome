@@ -16,9 +16,16 @@ class GameModelScreen extends Screen {
     const div = document.createElement('div');
     div.className = 'screen screen-game-model';
 
+    // Every control on the page is a pill, like the rest of the site's
+    // menus (owner 11/24 "fix game model … should be new style of menus").
     div.innerHTML = `
+      <style>
+        .gm-pill { padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0;
+                   border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); }
+        .gm-pill.on { background:var(--primary-color); color:#fff; border-color:transparent; }
+      </style>
       <div class="screen-header" style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:var(--space-2);">
-        <button class="btn btn-primary edit-game-model-btn">Edit Game Model</button>
+        <button class="gm-pill edit-game-model-btn">Edit Game Model</button>
       </div>
 
       <div style="padding: var(--space-4); display: grid; gap: var(--space-4);">
@@ -229,7 +236,7 @@ class GameModelScreen extends Screen {
     const gameModelPhaseButtons = gameModelPhases.map((phase) => {
       const isActive = selectedPhase && (String(phase.id || phase.slug || phase.label).toLowerCase() === String(selectedPhase.id || selectedPhase.slug || selectedPhase.label).toLowerCase());
       return `
-        <button class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}" type="button" data-phase-key="${this.escapeHtml(String(phase.id || phase.slug || phase.label))}" style="justify-content:flex-start;">
+        <button class="gm-pill ${isActive ? 'on' : ''}" type="button" data-phase-key="${this.escapeHtml(String(phase.id || phase.slug || phase.label))}">
           ${this.escapeHtml(phase.label || phase.slug || 'Phase')}
         </button>
       `;
@@ -238,7 +245,7 @@ class GameModelScreen extends Screen {
     const playerActionPhaseButtons = playerActionPhases.map((phase) => {
       const isActive = selectedPlayerActionPhase && (String(phase.id || phase.slug || phase.label).toLowerCase() === String(selectedPlayerActionPhase.id || selectedPlayerActionPhase.slug || selectedPlayerActionPhase.label).toLowerCase());
       return `
-        <button class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}" type="button" data-player-phase-key="${this.escapeHtml(String(phase.id || phase.slug || phase.label))}" style="justify-content:flex-start;">
+        <button class="gm-pill ${isActive ? 'on' : ''}" type="button" data-player-phase-key="${this.escapeHtml(String(phase.id || phase.slug || phase.label))}">
           ${this.escapeHtml(phase.label || phase.slug || 'Phase')}
         </button>
       `;
@@ -251,21 +258,20 @@ class GameModelScreen extends Screen {
     ].map((button) => {
       const isActive = this.selectedViewMode === button.key;
       return `
-        <button class="btn ${isActive ? 'btn-primary' : 'btn-secondary'}" type="button" data-view-mode="${button.key}">${this.escapeHtml(button.label)}</button>
+        <button class="gm-pill ${isActive ? 'on' : ''}" type="button" data-view-mode="${button.key}">${this.escapeHtml(button.label)}</button>
       `;
     }).join('');
 
+    // One on/off pill each (lit = shown): a tap asks for the other state.
     const subPrinciplesButtons = `
       <div style="display:flex; flex-wrap:wrap; gap: var(--space-2);">
-        <button class="btn ${this.showSubPrinciples ? 'btn-primary' : 'btn-secondary'}" type="button" data-toggle-sub-principles="show">Show Sub Principles</button>
-        <button class="btn ${this.showSubPrinciples ? 'btn-secondary' : 'btn-primary'}" type="button" data-toggle-sub-principles="hide">Hide Sub Principles</button>
+        <button class="gm-pill ${this.showSubPrinciples ? 'on' : ''}" type="button" data-toggle-sub-principles="${this.showSubPrinciples ? 'hide' : 'show'}">Sub Principles</button>
       </div>
     `;
 
     const playerActionItemsButtons = `
       <div style="display:flex; flex-wrap:wrap; gap: var(--space-2);">
-        <button class="btn ${this.showPlayerActionItems ? 'btn-primary' : 'btn-secondary'}" type="button" data-toggle-player-action-items="show">Show Action Items</button>
-        <button class="btn ${this.showPlayerActionItems ? 'btn-secondary' : 'btn-primary'}" type="button" data-toggle-player-action-items="hide">Hide Action Items</button>
+        <button class="gm-pill ${this.showPlayerActionItems ? 'on' : ''}" type="button" data-toggle-player-action-items="${this.showPlayerActionItems ? 'hide' : 'show'}">Action Items</button>
       </div>
     `;
 
@@ -304,10 +310,10 @@ class GameModelScreen extends Screen {
             ${playerActionItemsButtons}
           </div>
           <div style="display:flex; flex-wrap:wrap; gap: var(--space-2); margin-top: 0.25rem;">
-            <button class="btn btn-secondary" type="button" data-admin-entity="days">Days</button>
-            <button class="btn btn-secondary" type="button" data-admin-entity="sessions">Sessions</button>
-            <button class="btn btn-secondary" type="button" data-admin-entity="exercises">Exercises</button>
-            <button class="btn btn-secondary" type="button" data-player-actions="true">Player Actions</button>
+            <button class="gm-pill" type="button" data-admin-entity="days">Days</button>
+            <button class="gm-pill" type="button" data-admin-entity="sessions">Sessions</button>
+            <button class="gm-pill" type="button" data-admin-entity="exercises">Exercises</button>
+            <button class="gm-pill" type="button" data-player-actions="true">Player Actions</button>
           </div>
         </article>
 

@@ -69,18 +69,24 @@ class CasaHubScreen extends Screen {
     const divisions = [...new Set((this.data.competitions || []).map(c => c.division_label))];
     const clubs = new Set((this.data.competitions || []).map(c => c.club_id)).size;
     const fx = this.data.fixtures || {};
-    const tile = (tier, go, extra = '') => { const t = this._tile(tier); return `
-      <button class="btn btn-lg btn-primary" ${go ? `data-go="${go}"` : 'data-links'} style="display:flex; align-items:center; gap:var(--space-3); width:100%; text-align:left; margin-bottom:10px;">
-        <span style="font-size:2rem;">${tier === 'tile_contacts' ? '📇' : tier === 'tile_links' ? '📅' : tier === 'tile_scores' ? '🥅' : '📤'}</span>
-        <div style="flex:1;"><div style="font-weight:bold;">${esc(t.label)}</div><div style="font-size:0.85rem; opacity:0.8;">${esc(t.desc)}${extra}</div></div>
-      </button>`; };
+    // The hub's tools are a row of pills, like every other page (owner
+    // 11/24 "the leagues menu needs to have its buttons turned into pills
+    // like when i click casa its old buttons"): label on the pill, the
+    // tile's description + numbers in its tooltip, `badge` on the pill.
+    const pillCss = 'padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);';
+    const tile = (tier, go, extra = '', badge = '') => { const t = this._tile(tier); return `
+      <button data-go="${go}" title="${esc(t.desc)}${extra}" style="${pillCss}">${tier === 'tile_contacts' ? '📇' : tier === 'tile_links' ? '📅' : '🥅'} ${esc(t.label)}${badge
+        ? ` <b style="color:#fdba74;">${badge}</b>` : ''}</button>`; };
     const recent = (this.data.recent || []).slice(0, 8).map(r => `<li style="font-size:0.85rem;">${esc(r.sent_at)} — ${esc(r.tier.replace(/^all_|^one_/, '').replace(/_/g, ' '))} ${r.n > 1 ? `to ${r.n} addresses` : ''} (${esc(r.clubs.length > 90 ? r.clubs.slice(0, 90) + '…' : r.clubs)})</li>`).join('');
     body.innerHTML = `
-      ${tile('tile_contacts', 'casa-contacts', ` · ${divisions.map(esc).join(', ')} · ${clubs} clubs`)}
-      ${tile('tile_links', 'casa-schedule', fx.n ? ` · ${fx.n} games${fx.last_fetched_at ? ` · ${fx.fresh ? 'refreshed just now' : `from ${esc(fx.last_fetched_at)}`}` : ''}` : '')}
-      ${tile('tile_scores', 'casa-scores', fx.waiting ? ` · ${fx.waiting} waiting` : '')}
-      ${tile('tile_log', null)}
-      <div style="margin:-4px 0 12px 8px;">${recent ? `<ul style="margin:0; padding-left:20px;">${recent}</ul>` : `<div style="font-size:0.85rem; opacity:0.7;">Nothing sent from ${esc(from)} yet.</div>`}</div>`;
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+        ${tile('tile_contacts', 'casa-contacts', ` · ${divisions.map(esc).join(', ')} · ${clubs} clubs`)}
+        ${tile('tile_links', 'casa-schedule', fx.n ? ` · ${fx.n} games${fx.last_fetched_at ? ` · ${fx.fresh ? 'refreshed just now' : `from ${esc(fx.last_fetched_at)}`}` : ''}` : '')}
+        ${tile('tile_scores', 'casa-scores', fx.waiting ? ` · ${fx.waiting} waiting` : '', fx.waiting ? `${fx.waiting}` : '')}
+      </div>
+      <div style="font-weight:800; margin-bottom:4px;">📤 ${esc(this._tile('tile_log').label)}</div>
+      <div style="font-size:0.85rem; opacity:0.75; margin-bottom:6px;">${esc(this._tile('tile_log').desc)}</div>
+      <div style="margin:0 0 12px 8px;">${recent ? `<ul style="margin:0; padding-left:20px;">${recent}</ul>` : `<div style="font-size:0.85rem; opacity:0.7;">Nothing sent from ${esc(from)} yet.</div>`}</div>`;
   }
 }
 

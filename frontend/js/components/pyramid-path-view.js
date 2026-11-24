@@ -6,6 +6,13 @@
 // table boxes PyramidFlowView draws, the club's own rows marked.  A table
 // with two ways up (North Jersey Liga 1 → Delaware River / Metropolitan)
 // shows both routes side by side.  The picked club is remembered.
+//
+// Picking a club (owner 2026-11-24: "needs easy selection of clubs. maybe a
+// list by league name then teams under them in a carousel"): two strips on
+// top, each one line that slides sideways (‹ › or a swipe) — the leagues
+// (each lit conference, then the leagues feeding it), and the clubs of the
+// league that is picked.  A tap on a club draws its way up.  ☰ Find a club
+// still works and moves the strips to that club's league.
 class PyramidPathView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow;
@@ -18,8 +25,18 @@ class PyramidPathView {
 
   static css() {
     return `
-      .pt-pick { display:flex; justify-content:center; margin:4px 0 14px; }
-      .pt-pick input { width:min(420px, 100%); padding:8px 12px; font-size:1rem; border-radius:999px; }
+      .pt-picker { margin:0 0 14px; }
+      .pt-car { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+      .pt-car .strip { flex:1 1 auto; min-width:0; display:flex; gap:6px; overflow-x:auto; scroll-behavior:smooth; scrollbar-width:none; padding:2px 0; }
+      .pt-car .strip::-webkit-scrollbar { display:none; }
+      .pt-car .strip button { flex:0 0 auto; white-space:nowrap; min-height:0; min-width:0; padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.85rem;
+                              border:1px solid var(--border-color, #374151); background:transparent; color:inherit; }
+      .pt-car .strip button.on { background:var(--primary-color, #2563eb); border-color:transparent; color:#fff; }
+      .pt-car .strip button.conf { border-color:var(--cc, #2563eb); border-width:2px; }
+      .pt-car .strip button.conf.on { background:var(--cc, #2563eb); color:var(--cc-fg, #fff); }
+      .pt-car.clubs .strip button { font-weight:600; font-size:0.82rem; padding:5px 12px; }
+      .pt-car .nav { flex:0 0 auto; min-height:0; min-width:0; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:1rem; line-height:1;
+                     border:1px solid var(--border-color, #374151); background:transparent; color:inherit; }
       .pt-club { text-align:center; margin:0 0 4px; }
       .pt-venue { text-align:center; font-size:0.8rem; opacity:0.7; margin-bottom:12px; }
       .pt-team { margin:0 0 26px; }
@@ -46,10 +63,49 @@ class PyramidPathView {
       .pt-conf .fc-cell { display:flex; gap:10px; justify-content:center; }`;
   }
 
-  html(model) {
+  // The leagues, in pyramid order: each lit conference, then the leagues
+  // feeding it; each with its clubs A–Z (a club once per league).
+  _leagues(model, confs) {
+    const out = [], seen = new Set();
+    const add = (comp, isConf, divIds) => {
+      if (!comp) return;
+      let lg = out.find((x) => x.id === comp.id);
+      if (!lg) { if (seen.has(comp.id)) return; seen.add(comp.id); lg = { id: comp.id, name: model.label(comp), color: isConf ? comp.color : '', conf: isConf, clubs: new Map() }; out.push(lg); }
+      for (const id of divIds) {
+        const d = model.division(id);
+        for (const t of (d && d.teams) || []) if (t.club_id && !lg.clubs.has(t.club_id)) lg.clubs.set(t.club_id, t.club || t.name);
+      }
+    };
+    for (const col of model.layout(confs).columns) {
+      add(col.conf, true, col.top.map((d) => d.id));
+      for (const ids of col.levels) for (const id of ids) { const d = model.division(id); if (d) add(model.comp(d.competition_id), false, [id]); }
+    }
+    return out.filter((lg) => lg.clubs.size);
+  }
+
+  _pickerHtml(model, confs) {
     const esc = (t) => this._esc(t);
+    const leagues = this._leagues(model, confs);
+    if (!leagues.length) return '';
+    // The strip opens on the picked club's league.
+    let cur = leagues.find((l) => l.id === this.leagueId);
+    if (!cur || (this.clubId && this._follow)) cur = leagues.find((l) => l.clubs.has(this.clubId)) || cur || leagues[0];
+    this._follow = false;
+    this.leagueId = cur.id;
+    const ink = (c) => (window.PyramidScreenColor ? PyramidScreenColor.ink(c) : '#fff');
+    const car = (cls, pills) => `<div class="pt-car ${cls}"><button class="nav" data-pt-nav="-1">‹</button><div class="strip">${pills}</div><button class="nav" data-pt-nav="1">›</button></div>`;
+    const lgs = leagues.map((l) => `<button class="${l.conf ? 'conf' : ''} ${l.id === cur.id ? 'on' : ''}" data-pt-league="${l.id}"${l.color ? ` style="--cc:${esc(l.color)}; --cc-fg:${ink(l.color)}"` : ''}>${esc(l.name)}</button>`).join('');
+    const clubs = [...cur.clubs].sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([id, name]) => `<button class="${id === this.clubId ? 'on' : ''}" data-pt-club="${id}">${esc(name)}</button>`).join('');
+    return car('leagues', lgs) + car('clubs', clubs);
+  }
+
+  html(model, confs) {
+    const esc = (t) => this._esc(t);
+    this._follow = true;
     const club = this.clubId && model.clubs.find((c) => c.id === this.clubId);
     return `
+      <div class="pt-picker">${this._pickerHtml(model, confs || [])}</div>
       <div class="pt-body">${club ? this._clubHtml(model, club) : `<div class="fc-none">${esc(this._copy('path_pick'))}</div>`}</div>`;
   }
 
@@ -139,16 +195,50 @@ class PyramidPathView {
       ${teams}`;
   }
 
-  mount(root, model) {
-    this.root = root; this.model = model;
+  mount(root, model, confs) {
+    this.root = root; this.model = model; this.confs = confs || [];
+    this._reveal();
+    if (root._pt) return;
+    root._pt = true;
+    root.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-pt-nav]');
+      if (nav) { const st = nav.parentElement.querySelector('.strip'); st.scrollLeft += Number(nav.dataset.ptNav) * st.clientWidth * 0.8; return; }
+      const lg = e.target.closest('[data-pt-league]');
+      if (lg) { this.leagueId = Number(lg.dataset.ptLeague); this._redrawPicker(); return; }
+      const cb = e.target.closest('[data-pt-club]');
+      if (cb) { const club = this.model.clubs.find((c) => c.id === Number(cb.dataset.ptClub)); if (club) { e.stopPropagation(); this.onClub(club, true); } }
+    });
   }
 
-  // The page's club search (right of the conference pills) picked a club.
-  onClub(club) {
+  _redrawPicker() {
+    const box = this.root && this.root.querySelector('.pt-picker');
+    if (!box) return;
+    const left = [...box.querySelectorAll('.strip')].map((s) => s.scrollLeft);
+    box.innerHTML = this._pickerHtml(this.model, this.confs);
+    // The league strip keeps its place; the lit pills are slid into sight.
+    const st = box.querySelector('.leagues .strip');
+    if (st) { st.style.scrollBehavior = 'auto'; st.scrollLeft = left[0] || 0; st.style.scrollBehavior = ''; }
+    this._reveal();
+  }
+  _reveal() {
+    if (!this.root) return;
+    this.root.querySelectorAll('.pt-picker .strip').forEach((st) => {
+      const on = st.querySelector('button.on');
+      if (!on) return;
+      const a = on.offsetLeft - st.offsetLeft, b = a + on.offsetWidth;
+      if (a < st.scrollLeft || b > st.scrollLeft + st.clientWidth) st.scrollLeft = Math.max(0, a - 40);
+    });
+  }
+
+  // A club picked — from the strips here (stay on that league) or from the
+  // page's ☰ Find a club (the strips move to its league).
+  onClub(club, fromStrip) {
     this.clubId = club.id;
     try { localStorage.setItem('apsl-pyramid-club', String(club.id)); } catch (_) { /* private mode */ }
     const body = this.root && this.root.querySelector('.pt-body');
     if (body) body.innerHTML = this._clubHtml(this.model, club);
+    this._follow = !fromStrip;
+    this._redrawPicker();
   }
 
   onResize() {}

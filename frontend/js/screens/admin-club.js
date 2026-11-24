@@ -38,19 +38,19 @@ class AdminClubScreen extends Screen {
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Step 2 — which team events each member can RSVP for (Pickup, Practice, APSL, Liga 1, Liga 2, Adult). Tabs: All / Men / Women / Boys / Girls.
         </p>
-        <div id="section-rsvp" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-rsvp" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">🗓️ Soccer Calendar</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Google Calendar owns event timing and tags. Football Home mirrors soccer events here and translates FH details when classification exists.
         </p>
-        <div id="section-schedule" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-schedule" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
 
         <h3 style="margin: var(--space-5) 0 var(--space-2); opacity: 0.9;">⚙️ Teams &amp; Structure</h3>
         <p style="opacity: 0.7; margin-bottom: var(--space-3); font-size: 0.9rem;">
           Teams, venues, tactical boards, and club-wide settings. Human records live under People.
         </p>
-        <div id="section-structure" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);"></div>
+        <div id="section-structure" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
 
         <div id="game-model-panel" style="margin-top: var(--space-5); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: var(--space-4);">
           <div style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-3);">
@@ -106,13 +106,7 @@ class AdminClubScreen extends Screen {
       const el = this.find(elId);
       if (!el) return;
       el.innerHTML = tiles.map(section => `
-        <button class="btn btn-lg btn-secondary sub-nav-btn"
-                data-section="${section.id}"
-                style="height: auto; padding: var(--space-3); text-align: left;">
-          <div style="font-size: 2rem; margin-bottom: var(--space-1);">${section.icon}</div>
-          <div style="font-weight: 600; margin-bottom: var(--space-1);">${section.label}</div>
-          <div style="opacity: 0.7; font-size: 0.85rem;">${section.description}</div>
-        </button>
+        <button class="sub-nav-btn" data-section="${section.id}" title="${section.description}" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">${section.icon} ${section.label}</button>
       `).join('');
     };
 
@@ -122,15 +116,9 @@ class AdminClubScreen extends Screen {
       el.innerHTML = groups.map(group => `
         <div style="margin-bottom: var(--space-4);">
           <div style="font-weight: 700; margin-bottom: var(--space-2); opacity: 0.88;">${group.label}</div>
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-2);">
+          <div style="display:flex; flex-wrap:wrap; gap:8px;">
             ${group.tiles.map(section => `
-              <button class="btn btn-lg btn-secondary sub-nav-btn"
-                      data-section="${section.id}"
-                      style="height: auto; padding: var(--space-3); text-align: left;">
-                <div style="font-size: 2rem; margin-bottom: var(--space-1);">${section.icon}</div>
-                <div style="font-weight: 600; margin-bottom: var(--space-1);">${section.label}</div>
-                <div style="opacity: 0.7; font-size: 0.85rem;">${section.description}</div>
-              </button>
+              <button class="sub-nav-btn" data-section="${section.id}" title="${section.description}" style="padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.9rem; min-height:0; min-width:0; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary);">${section.icon} ${section.label}</button>
             `).join('')}
           </div>
         </div>

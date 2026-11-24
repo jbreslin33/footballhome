@@ -19,23 +19,35 @@
 // Outlier links (owner 2026-11-11, mig 1238): a table that feeds two
 // conferences sends its MINORITY link (the conference fewer of its teams'
 // grounds are nearest) from those teams' rows — one branch per row, merged
-// into one line beside the table.  Switch: ☰ Show on screen → "outliers".
+// into one line beside the table.  Always drawn — its on/off switch went
+// 2026-11-24 (mig 1823; owner: "clutter").
 // Not on the map (proposed borders live there).
+//
+// Zoom (owner 2026-11-24: "the pyramid needs to allow zoom in and out",
+// mig 1814): − / % / + / Fit buttons in the bottom-right corner, the mouse
+// wheel (and a trackpad or two-finger pinch) about the pointer, and the
+// + / − / 0 keys.  The chart
+// is scaled by a transform inside .fc-zoomed, which is sized to the scaled
+// chart so the scroller pans exactly what is drawn.  The level is kept on
+// the view, so a re-render (conference pills, resize) holds it.
 class PyramidFlowView {
-  constructor(screen) { this.screen = screen; this.fill = true; }
+  constructor(screen) { this.screen = screen; this.fill = true; this.zoom = 1; }
 
-  features() { return [{ key: 'outliers', tier: 'feature_outliers', def: true }]; }
-  onFeature() { this.screen._viewCall('mount'); }
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
   _copy(tier, tokens) { return this.screen._copy(tier, tokens); }
 
   static css() {
     return `
-      .fc-scroll { position:absolute; inset:0; overflow:auto; padding:16px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
+      .fc-scroll { position:absolute; inset:0; overflow:auto; outline:none; padding:16px 16px 24px; cursor:grab; touch-action:pan-x pan-y; }
       .fc-scroll.dragging { cursor:grabbing; user-select:none; }
       .fc-scroll.dragging * { cursor:grabbing !important; }
       .fc-chart { position:relative; display:grid; column-gap:64px; row-gap:56px; width:max-content; margin:0 auto; align-items:start; justify-items:center; }
+      .fc-zoomed { margin:0 auto; }
+      .fc-zoomed > .fc-chart { margin:0; transform-origin:0 0; }
+      .fc-zoom { position:absolute; right:12px; bottom:12px; z-index:5; display:flex; gap:4px; padding:4px; border-radius:999px; background:rgba(15,23,42,0.85); border:1px solid rgba(148,163,184,0.35); }
+      .fc-zoom button { min-height:0; min-width:34px; height:30px; padding:0 10px; border-radius:999px; cursor:pointer; font-weight:800; font-size:0.85rem; border:1px solid rgba(148,163,184,0.35); background:rgba(30,41,59,0.9); color:#e2e8f0; }
+      .fc-zoom button:hover { background:#2563eb; border-color:transparent; color:#fff; }
       .fc-arrows { position:absolute; left:0; top:0; pointer-events:none; overflow:visible; z-index:0; }
       .fc-tbl tr.fc-out td.tm { text-decoration:underline dotted #94a3b8; text-underline-offset:3px; }
       .fc-cell { display:flex; gap:44px; justify-content:center; position:relative; z-index:1; }   /* room for the lines (owner: "spread the tables more to see line") */
@@ -118,6 +130,9 @@ class PyramidFlowView {
                `<span><b style="color:${esc(model.kindColor('relegation'))}">▼</b> ${esc(this._copy('arrow_down'))}</span>`]).join('');
   }
 
+  // The colour key, on the screen's caption line (mig 1825).
+  legend(model) { return this.legendHtml(model); }
+
   // The chart itself (grid + arrow layer), no legend / scroller around it.
   chartHtml(model, confs) {
     const esc = (t) => this._esc(t);
@@ -145,15 +160,103 @@ class PyramidFlowView {
 
   // ── the view ─────────────────────────────────────────────────────────
   html(model, confs) {
-    const legend = this.legendHtml(model);
     return `
-      ${legend ? this.screen.hud('legend', this._copy('hud_legend'), `<div class="fc-legend" style="margin:0; justify-content:flex-start;">${legend}</div>`, 'hud-bl', 'fc-legend-hud') : ''}
-      <div class="fc-scroll">${this.chartHtml(model, confs)}</div>`;
+      <div class="fc-scroll" tabindex="0"><div class="fc-zoomed">${this.chartHtml(model, confs)}</div></div>
+      <div class="fc-zoom">
+        <button data-zoom="out" title="${this._esc(this._copy('zoom_out'))}">−</button>
+        <button data-zoom="reset" title="${this._esc(this._copy('zoom_reset'))}"></button>
+        <button data-zoom="in" title="${this._esc(this._copy('zoom_in'))}">+</button>
+        <button data-zoom="fit">${this._esc(this._copy('zoom_fit'))}</button>
+      </div>`;
   }
 
   mount(root, model, confs) {
+    const el = root.querySelector('.fc-scroll');
+    this._applyZoom(root);
     this.drawArrows(root.querySelector('.fc-chart'), model, confs);
-    this.pannable(root.querySelector('.fc-scroll'));
+    this.pannable(el);
+    this.zoomable(root, el);
+  }
+
+  // Scale the chart and size its wrapper to match (a transform alone
+  // leaves the layout box, and so the scroll range, at 100%).
+  _applyZoom(root) {
+    const chart = root.querySelector('.fc-zoomed > .fc-chart');
+    if (!chart) return;
+    const z = this.zoom, wrap = chart.parentElement;
+    chart.style.transform = z === 1 ? '' : `scale(${z})`;
+    wrap.style.width = `${chart.offsetWidth * z}px`;
+    wrap.style.height = `${chart.offsetHeight * z}px`;
+    const pct = root.querySelector('[data-zoom="reset"]');
+    if (pct) pct.textContent = `${Math.round(z * 100)}%`;
+  }
+
+  // Zoom to z, keeping the chart point under (cx, cy) — client pixels, the
+  // middle of the window when not given — where it is.
+  _zoomTo(root, z, cx, cy) {
+    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-chart');
+    if (!el || !chart) return;
+    z = Math.min(2.5, Math.max(0.2, z));
+    const view = el.getBoundingClientRect();
+    if (cx == null) { cx = view.left + view.width / 2; cy = view.top + view.height / 2; }
+    const before = chart.getBoundingClientRect(), old = this.zoom;
+    const px = (cx - before.left) / old, py = (cy - before.top) / old;
+    this.zoom = z;
+    this._applyZoom(root);
+    const after = chart.getBoundingClientRect();
+    el.scrollLeft += after.left + px * z - cx;
+    el.scrollTop += after.top + py * z - cy;
+  }
+
+  // The whole chart in the window (never past 100% — text stays its size).
+  _zoomFit(root) {
+    const el = root.querySelector('.fc-scroll'), chart = root.querySelector('.fc-zoomed > .fc-chart');
+    if (!el || !chart || !chart.offsetWidth) return;
+    const z = Math.min(1, (el.clientWidth - 32) / chart.offsetWidth, (el.clientHeight - 40) / chart.offsetHeight);
+    this._zoomTo(root, z);
+    el.scrollLeft = 0; el.scrollTop = 0;
+  }
+
+  zoomable(root, el) {
+    if (!el || el._zoom) return;
+    el._zoom = true;
+    const step = (dir, cx, cy) => this._zoomTo(root, this.zoom * (dir > 0 ? 1.2 : 1 / 1.2), cx, cy);
+    // The wheel zooms (as on the map and the tour); drag pans.
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY;
+      this._zoomTo(root, this.zoom * Math.exp(-dy * 0.002), e.clientX, e.clientY);
+    }, { passive: false });
+    // Two fingers pinch (one finger still pans natively).
+    let pinch = null;
+    const gap = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    el.addEventListener('touchstart', (e) => {
+      pinch = e.touches.length === 2 ? { d: gap(e.touches) || 1, z: this.zoom } : null;
+    }, { passive: true });
+    el.addEventListener('touchmove', (e) => {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      const t = e.touches;
+      this._zoomTo(root, pinch.z * gap(t) / pinch.d, (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2);
+    }, { passive: false });
+    el.addEventListener('touchend', () => { pinch = null; }, { passive: true });
+    el.addEventListener('touchcancel', () => { pinch = null; }, { passive: true });
+    el.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === '+' || e.key === '=') step(1);
+      else if (e.key === '-' || e.key === '_') step(-1);
+      else if (e.key === '0') this._zoomTo(root, 1);
+      else return;
+      e.preventDefault();
+    });
+    const bar = root.querySelector('.fc-zoom');
+    if (bar) bar.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-zoom]');
+      if (!b) return;
+      if (b.dataset.zoom === 'fit') this._zoomFit(root);
+      else if (b.dataset.zoom === 'reset') this._zoomTo(root, 1);
+      else step(b.dataset.zoom === 'in' ? 1 : -1);
+    });
   }
 
   // Mouse / pen drag pans the scroller (touch already does).  Past 5 px it
@@ -224,7 +327,7 @@ class PyramidFlowView {
     const box = chart.getBoundingClientRect();
     const k = chart.offsetWidth ? box.width / chart.offsetWidth : 1;
     const paths = [];
-    const outliers = opts.outliers !== false && (this.screen.feature ? this.screen.feature('outliers', true) : true);
+    const outliers = opts.outliers !== false;
     const edges = model.layout(confs).edges;
     // A split table (mig 1260): each conference's rows leave by the side
     // facing it — the leftmost conference's out of the left edge, the
