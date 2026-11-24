@@ -103,6 +103,7 @@ struct Stats {
     long bz_b[2][5] = {}, bz_t[2][5] = {}, bz_c[2][5] = {};   // §8.349 BLOCKED BY WHERE [wide][band of the kick]: blocked / then a throw-in / then a corner
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
+    long hwb_n[5][5] = {}, hwb_s[5][5] = {};   // §8.359 HOW A STINT BEGAN [band][same man again / off a mate / a mate's ball that travelled / theirs before / play stopped before]
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
@@ -754,7 +755,7 @@ int main(int argc, char** argv) {
                 fn_last = dead ? -1 : own_now;
             }
             {   // in play, and each dead spell by the restart that ends it (benchmarks_tracking_dead.py)
-                const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0;
+                const bool dead = W.restartTeam() != 0xFF || W.outStage() != 0 || (b.owner && W.freeKickSpell(*b.owner));   // §8.359: the taker on a free kick — dead until kicked
                 ++S.tick_n; if (!dead) ++S.tick_live;
                 if (dead && dead_k0 < 0 && before && std::getenv("GAME_OUT_TRACE")) {   // §8.245: carried out — the man on it, and theirs nearest
                     const auto& op = W.player(*before); const auto& lo3 = s.lastOrders()[*before]; const double sg3 = op.team == 0 ? 1.0 : -1.0;
@@ -2172,7 +2173,8 @@ int main(int argc, char** argv) {
             if (W.lastTouchTeam() <= 1 && W.lastTouchTeam() != rc_team) { rc_team = W.lastTouchTeam(); rc_k = static_cast<long>(k); rc_bx = W.ball().pos.x.toDouble(); rc_by = W.ball().pos.y.toDouble(); }
             if (W.outStage() != 0 || W.restartTeam() != 0xFF) dead_last = static_cast<long>(k);   // §8.162
             // ── 5 Hz, in play, the last team on the ball (as DFL flags it) ──
-            if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1) continue;
+            // §8.359: a free kick's taker standing on it is not play yet — DFL (and the Laws) have the ball in play when it is kicked
+            if (k % 6 != 0 || W.outStage() != 0 || W.restartTeam() != 0xFF || W.lastTouchTeam() > 1 || (b.owner && W.freeKickSpell(*b.owner))) continue;
             const int a = W.lastTouchTeam(), dteam = a ^ 1;
             {   // §8.217 THE PASS IN FLIGHT: keep the frame; read at the match's end (benchmarks_tracking_flight.py)
                 FlF f; f.k = static_cast<long>(k); f.bx = static_cast<float>(b.pos.x.toDouble()); f.by = static_cast<float>(b.pos.y.toDouble()); f.bz = static_cast<float>(b.pos.z.toDouble()); f.a = a;
@@ -3118,7 +3120,8 @@ int main(int argc, char** argv) {
             bool la_out = false; int la_wd = 0;   // §8.347: an outfield man's; wide (|y| >= 20)
             bool la_w3 = false;   // §8.347: its last frame had the ball in that side's wide last third, an outfield man's
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
-            auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; } st_man = -1; };
+            int st_hb = 4;   // §8.359: what came before this stint
+            auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; ++S.hwb_n[st_z][st_hb]; S.hwb_s[st_z][st_hb] += st_n; } st_man = -1; };
             for (const auto& f : fl_f) {
                 const bool cont = pv && f.k == pv->k + 6;
                 if (!cont) { close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; if (la_w3) { ++S.w3_n; ++S.w3_e[6]; } if (la_out) ++S.zo_n[la_z][la_wd]; la_t = -1; } }
@@ -3153,6 +3156,7 @@ int main(int argc, char** argv) {
                     if (st_man == man && cont) ++st_n;
                     else {
                         close(); st_man = man; st_z = z; st_n = 1;
+                        st_hb = la_t < 0 ? 4 : la_t != t ? 3 : la_man == man ? 0 : gapn == 0 ? 1 : 2;   // §8.359 (benchmarks_tracking_bandtime.py)
                         if (!W.isKeeper(static_cast<std::uint8_t>(man))) {   // §8.352 A MATE THERE (benchmarks_tracking_fbline.py)
                             bool seen[3][2] = {}; ++S.mt_n[z];
                             for (std::uint8_t p2 = 0; p2 < N && p2 < 32; ++p2) {
@@ -3710,6 +3714,18 @@ int main(int argc, char** argv) {
                             std::printf("\n     %-6s", zn5[z]);
                             for (int q = 0; q < 5; ++q) std::printf(" %4.1f (%4.1f) [%2.0f (%2.0f)] ", 100.0 * S.nx_to[z][q] / n, R[z][1 + q], 100.0 * S.nx_air[z][q] / std::max(1L, S.nx_to[z][q]), R[z][6 + q]);
                             std::printf("| %4.1f (%4.1f) | %4.1f (%4.1f) || %6.1f (%6.1f) | %+.1f (%+.1f)", 100.0 * S.nx_lost[z] / n, R[z][11], 100.0 * S.nx_dead[z] / n, R[z][12], S.nx_n[z] / tmo, R[z][0], med(S.nx_d[z]), R[z][13]);
+                        }
+                    }
+                    {   // §8.359 HOW A STINT BEGAN — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
+                        static const double R[5][10] = {{3.36, 1.54, 7.71, 0.41, 35.00, 0.91, 6.14, 0.83, 8.07, 0.37}, {3.64, 1.76, 4.21, 1.04, 59.21, 1.40, 16.93, 0.93, 5.79, 0.61},
+                                                        {4.36, 1.63, 6.43, 0.73, 93.64, 1.34, 27.29, 0.84, 7.64, 0.47}, {6.57, 1.48, 6.14, 1.02, 113.29, 1.53, 34.36, 0.74, 11.79, 0.57},
+                                                        {10.71, 1.31, 14.79, 1.00, 119.36, 1.81, 66.14, 1.29, 17.14, 0.92}};
+                        static const char* zn5[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.359 HOW A STINT BEGAN (stints a team-match, mean s; real DFL in brackets): the same man again | off a mate, no frame between | a mate's ball that travelled | theirs before | play stopped before");
+                        for (int z = 0; z < 5; ++z) {
+                            std::printf("\n     %-6s", zn5[z]);
+                            for (int q = 0; q < 5; ++q) std::printf("%s %5.1f, %.2f (%5.1f, %.2f)", q ? " |" : "", S.hwb_n[z][q] / tmo, S.hwb_s[z][q] / 5.0 / std::max(1L, S.hwb_n[z][q]), R[z][2 * q], R[z][2 * q + 1]);
                         }
                     }
                     {   // §8.340 — real: benchmarks_statsbomb_fwdloss.py part 3

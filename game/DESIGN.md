@@ -13469,3 +13469,34 @@ setting until that press exists, then goes to zero. The 1.2-3 m cell is that pre
 StatsBomb's receipt-to-release is real there — what the DFL stint counts that the receipt does not (balls won, loose
 balls, carries after a take-on); then the last 18 m (37 stints v 60).
 Tests 28/28; lint clean.
+
+### 8.359 G5.253 — how a stint began: the midfield surplus is received passes; a free kick's taker was counted as play (rulers; no game change)
+
+From §8.358's "next" (35-52 m out a stint is 1.34 s v 1.18 and there are 179 v 139, while StatsBomb's receipt-to-release
+is real there). New split in `benchmarks_tracking_bandtime.py` (DFL) and the harness, HOW A STINT BEGAN: each stint by
+what came before it — the same man again (the ball left his 2 m and came back) | off a mate with no frame between | a
+mate's ball that travelled | theirs before | play stopped before.
+
+**Harness fix.** A free kick is live in the engine at the taker's first touch and he then stands on it (`fk_stand`);
+the 5 Hz cut and BALL IN PLAY counted that as play. DFL (and Law 13) have it in play when kicked. Now a
+`freeKickSpell` frame is dead time: stints after a stop 35-52 / 52-70 m out 1.22 / 1.30 s → 0.82 / 1.11 (0.47 / 0.57);
+ball in play 57.8 → 57.0% (55.2); s on a man 35-52 m 245 → 237 (162). Every tracking ruler reads a touch lower.
+
+Seeds 1000-4000 × 8 on G5.252, a team-match, mean s (real DFL):
+
+| band | a mate's ball that travelled | theirs before | play stopped before | the same man again |
+|---|---|---|---|---|
+| 0-18 | 24.0, 0.92 (35.0, 0.91) | 3.5, 0.91 (6.1, 0.83) | 3.7, 0.49 (8.1, 0.37) | 3.0, 1.20 (3.4, 1.54) |
+| 18-35 | 59.6, 1.26 (59.2, 1.40) | 9.8, 1.06 (16.9, 0.93) | 7.4, 0.65 (5.8, 0.61) | 2.6, 1.46 (3.6, 1.76) |
+| 35-52 | **127.6**, 1.44 (**93.6**, 1.34) | 23.7, 1.09 (27.3, 0.84) | 14.2, 0.82 (7.6, 0.47) | 2.6, 1.64 (4.4, 1.63) |
+| 52-70 | **138.7**, 1.54 (**113.3**, 1.53) | 41.5, 1.11 (34.4, 0.74) | 15.6, 1.11 (11.8, 0.57) | 3.2, 1.94 (6.6, 1.48) |
+| 70+ | 98.4, 1.53 (119.4, 1.81) | 56.3, 0.94 (66.1, 1.29) | 14.9, 0.77 (17.1, 0.92) | 3.9, 1.85 (10.7, 1.31) |
+
+**Read.** The stint count is not a cut artefact (the same man again is rarer in ours, not commoner). Midfield's surplus
+is the received pass, +34 and +25 a team-match in the two bands, with a real length; the own third and the last 18 m
+are short of them by 21 and 11. A ball won in midfield is held 1.1 s (0.74-0.84): a real man who wins it moves it on at
+once. The ball won in the last 35 m is half real (13.3 v 23.0) — the other side of §8.356's own-third count. Restarts
+35-70 m out are 30 v 19: free kicks and throw-ins taken in midfield.
+Next: the pass received 35-52 m out by where it was struck (band × lane, StatsBomb v ours) — which origin sends the
+surplus; then the ball won in midfield and moved on.
+Rulers only; goldens unchanged.

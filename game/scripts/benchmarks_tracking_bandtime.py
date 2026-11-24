@@ -11,7 +11,9 @@ TRAVELLING. Per band, a team-match: s on a man, s travelling; on-a-man stints (t
 count, mean s, share of 3 s+ ; the ball's speed m/s med on a man / travelling; and the man's own speed med on it.
 NEXT STINT (G5.226, §8.332): from a stint ending in a band, the next stint — the same side's by band (and whether
 the ball rose past 2 m between), the other side's, or play stopped first; the ball's metres on toward their goal.
-fh-game-match prints the same as BAND TIME / NEXT STINT. FH original.
+HOW A STINT BEGAN (G5.253, §8.359): each stint by what came before it — the same man again (the ball left his 2 m and
+came back), off a mate with no frame between, a mate's ball that travelled, theirs before, play stopped before.
+fh-game-match prints the same as BAND TIME / NEXT STINT / HOW A STINT BEGAN. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
 
@@ -59,7 +61,7 @@ def one(pos_path):
     # G5.226 (§8.332) NEXT STINT: last = the stint just closed (team, band, the ball's m off the line attacked at its end); zmax since
     last = None; zmax = 0.0; gapn = 0
     def close(st):
-        if st: c[f"k{st[1]}"] += 1; c[f"ks{st[1]}"] += st[2]; c[f"k3{st[1]}"] += st[2] >= 15
+        if st: c[f"k{st[1]}"] += 1; c[f"ks{st[1]}"] += st[2]; c[f"k3{st[1]}"] += st[2] >= 15; c[f"hb{st[1]}_{st[3]}"] += 1; c[f"hbs{st[1]}_{st[3]}"] += st[2]
     for k in sorted(ball):
         b = ball[k]
         cont = prev is not None and b is not None and prev[0][0] == k[0] and k[1] - prev[0][1] == 5
@@ -79,9 +81,11 @@ def one(pos_path):
             c[f"on{z}"] += 1
             if bs is not None: L[f"bo{z}"].append(bs)
             if cont and man in pl[prev[0]]: q = pl[prev[0]][man]; L[f"ms{z}"].append(math.hypot(pl[k][man][0] - q[0], pl[k][man][1] - q[1]) * 5)
-            if stint and cont and stint[0] == man: stint = (man, stint[1], stint[2] + 1)
+            if stint and cont and stint[0] == man: stint = (man, stint[1], stint[2] + 1, stint[3])
             else:
-                close(stint); stint = (man, z, 1)
+                # G5.253 (§8.359) HOW A STINT BEGAN: the same man again | off a mate (no frame between) | a mate's ball that travelled | theirs before | play stopped before
+                hb = 4 if last is None else 3 if last[0] != t else 0 if last[5] == man else 1 if gapn == 0 else 2
+                close(stint); stint = (man, z, 1, hb)
                 if last is not None:
                     fz = last[1]; c[f"x{fz}"] += 1
                     if last[0] != t: c[f"x{fz}_lost"] += 1
@@ -92,7 +96,7 @@ def one(pos_path):
                             d2 = math.hypot(b[0] - last[3], b[1] - last[4]); tt = (gapn + 1) / 5
                             lb = None if d2 < 5 else 0 if d2 < 10 else 1 if d2 < 20 else 2 if d2 < 30 else 3
                             if lb is not None: hh = 0 if zmax < 1.0 else 1; L[f"pp{hh}_{lb}"].append(d2 / tt); L[f"pt{hh}_{lb}"].append(tt)
-            last = (t, z, tl, b[0], b[1]); zmax = 0.0; gapn = 0
+            last = (t, z, tl, b[0], b[1], man); zmax = 0.0; gapn = 0
         else:
             zmax = max(zmax, b[3]); gapn += 1
         if man is None:
@@ -131,6 +135,15 @@ if __name__ == "__main__":
     for hh, hn in ((0, "ground (under 1 m)"), (1, "off the ground")):
         print(f"    {hn}: " + "; ".join(f"{q(L[f'pp{hh}_{lb}'], .5):.1f} [{q(L[f'pp{hh}_{lb}'], .25):.1f}-{q(L[f'pp{hh}_{lb}'], .75):.1f}] ({len(L[f'pp{hh}_{lb}']) / tm:.1f}), {q(L[f'pt{hh}_{lb}'], .5):.1f} s" for lb in range(4)))
     print("  C++ pace rows {med, p25, p75, n, s} x 4 lengths, ground then air: " + "; ".join("{" + ", ".join(f"{q(L[f'pp{hh}_{lb}'], .5):.1f}, {q(L[f'pp{hh}_{lb}'], .25):.1f}, {q(L[f'pp{hh}_{lb}'], .75):.1f}, {len(L[f'pp{hh}_{lb}']) / tm:.1f}, {q(L[f'pt{hh}_{lb}'], .5):.1f}" for lb in range(4)) + "}" for hh in (0, 1)))
+    print("  HOW A STINT BEGAN (G5.253) — stints a team-match, mean s: the same man again | off a mate, no frame between | a mate's ball that travelled | theirs before | play stopped before")
+    hrows = []
+    for z, nm in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
+        r = []
+        for q in range(5): r += [c[f"hb{z}_{q}"] / tm, c[f"hbs{z}_{q}"] / 5 / max(1, c[f"hb{z}_{q}"])]
+        hrows.append(r)
+        print(f"  {nm:6s} " + " | ".join(f"{r[2 * q]:5.1f}, {r[2 * q + 1]:.2f}" for q in range(5)))
+    print("C++ how-began rows:")
+    for r in hrows: print("  {" + ", ".join(f"{x:.2f}" for x in r) + "},")
     print("C++ next-stint rows:")
     for r in xrows: print("  {" + ", ".join(f"{x:.1f}" for x in r) + "},")
     print("C++ rows:")
