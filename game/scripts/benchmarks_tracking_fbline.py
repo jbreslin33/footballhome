@@ -14,6 +14,13 @@ touchline (|y| >= 20):
   one / two+ %; the nearest one: m ahead of the ball med [p25-p75], his role %, his nearest opponent m med, and the
   share with that opponent inside 3 m;
   mates AHEAD INSIDE — 3 m+ ahead, within 30 m of the ball, not down the line: mean count, the nearest m med.
+G5.240 (§8.346) THE PRESSER'S START — the stints above that a MATE'S PASS began (the frame before the ball left for him
+was a different mate's, the ball travelling 1+ frames between, all in play): the pass's flight s and length m; the
+PRESSER = his nearest outfield opponent at his first frame; at the kick (the passer's last frame): the presser's m off
+the full-back, the share of pressers within 5 m of the passer, his speed (m/s over the next 0.2 s); in the flight: his
+pace (path / flight), the m he closed on the full-back and that per second; his speed in the last 0.2 s before the touch;
+how straight he ran (m closed / m run, runs of 1 m+); and the angle at the full-back between the presser and the
+presser's own goal, at the kick and at the touch (0 = square on the full-back's line to that goal).
 fh-game-match prints the same as FB ON THE LINE. FH original.
 """
 import collections, glob, math, multiprocessing, os, re, statistics, sys
@@ -57,11 +64,12 @@ def one(pos_path):
                 if pid in keepers: xs[who[pid]].append(p[0])
         for tm in (0, 1): own[(sc, tm)] = -1 if (sum(xs[tm]) / max(1, len(xs[tm]))) < 0 else 1
     c = collections.Counter(); L = collections.defaultdict(list)
-    keys = sorted(ball); prev_man = None; prev_k = None
+    keys = sorted(ball); prev_man = None; prev_k = None; la = None; gap = 0
     for k in keys:
         b = ball[k]
-        if b is None: prev_man = None; prev_k = None; continue
+        if b is None: prev_man = None; prev_k = None; la = None; gap = 0; continue
         cont = prev_k is not None and prev_k[0] == k[0] and k[1] - prev_k[1] == 5
+        if not cont: la = None; gap = 0
         t = b[2]; ps = pl[k]
         man = None; md = 2.0
         for pid, p in ps.items():
@@ -70,6 +78,9 @@ def one(pos_path):
             if dd < md: md = dd; man = pid
         new = man is not None and not (cont and prev_man == man)
         prev_man = man; prev_k = k
+        la0, gap0 = la, gap
+        if man is not None: la = (k, man, t); gap = 0
+        else: gap += 1
         if not new or man in keepers or pos_of.get(man) not in ROLE or ROLE[pos_of[man]] != 1: continue
         sg = own[(k[0], t)]   # his goal line at x = sg * half; he attacks -sg
         if half - sg * b[0] >= 35 or abs(b[1]) < 20: continue
@@ -88,6 +99,29 @@ def one(pos_path):
             if b1 is not None and b1[2] == t and me1 and o1 and math.hypot(me1[0] - b1[0], me1[1] - b1[1]) <= 2:
                 c["still1"] += 1; d1 = math.hypot(o1[0] - me1[0], o1[1] - me1[1]); me0 = ps[man]; d0m = math.hypot(ps[oid][0] - me0[0], ps[oid][1] - me0[1])
                 L["d1"].append(d1); L["cl"].append(d0m - d1); c["in3_1"] += d1 < 3
+            # how the stint began: 0 a mate's pass (below) | 1 off a mate's feet (no travelling frame between) | 2 the ball was theirs
+            # the frame before or last on a man of theirs | 3 play just (re)started or the ball came off nobody's
+            hb = 3 if la0 is None else 2 if la0[2] != t else 0 if (la0[1] != man and gap0 >= 1) else 1 if la0[1] != man else 4   # 4 his own again after a touch away
+            c[f"hb{hb}"] += 1; c[f"hb{hb}_3"] += od0 < 3; L[f"hb{hb}_d"].append(od0)
+            if hb == 2:   # won from them: straight off their man's feet (no travelling frame) | within 1 s of their touch | later (their pass / long ball picked off)
+                w = 0 if gap0 == 0 else 1 if gap0 <= 5 else 2
+                c[f"wn{w}"] += 1; c[f"wn{w}_3"] += od0 < 3; c[f"wn{w}_same"] += oid == la0[1]
+            if la0 is not None and la0[2] == t and la0[1] != man and gap0 >= 1:   # G5.240 (§8.346) THE PRESSER'S START
+                kq = la0[0]; fr = [pl.get((k[0], n2), {}) for n2 in range(kq[1], k[1] + 1, 5)]; bq = ball.get(kq)
+                if bq is not None and all(oid in f2 for f2 in fr) and man in fr[0] and la0[1] in fr[0]:
+                    fl = (gap0 + 1) / 5; o = [f2[oid] for f2 in fr]; me0 = fr[0][man]; pa = fr[0][la0[1]]
+                    dk = math.hypot(o[0][0] - me0[0], o[0][1] - me0[1]); d0 = math.hypot(o[-1][0] - ps[man][0], o[-1][1] - ps[man][1])
+                    path = sum(math.hypot(o[i + 1][0] - o[i][0], o[i + 1][1] - o[i][1]) for i in range(len(o) - 1))
+                    c["ps"] += 1; L["ps_fl"].append(fl); L["ps_len"].append(math.hypot(b[0] - bq[0], b[1] - bq[1]))
+                    L["ps_dk"].append(dk); c[f"ps_b{0 if dk < 5 else 1 if dk < 10 else 2 if dk < 15 else 3}"] += 1
+                    c["ps_onp"] += math.hypot(o[0][0] - pa[0], o[0][1] - pa[1]) < 5
+                    L["ps_vk"].append(5 * math.hypot(o[1][0] - o[0][0], o[1][1] - o[0][1])); L["ps_vr"].append(5 * math.hypot(o[-1][0] - o[-2][0], o[-1][1] - o[-2][1]))
+                    L["ps_pace"].append(path / fl); L["ps_cl"].append(dk - d0); L["ps_cls"].append((dk - d0) / fl); L["ps_d0"].append(d0)
+                    if path >= 1: L["ps_str"].append((dk - d0) / path)
+                    def offl(op, mp):   # degrees between the full-back -> presser and the full-back -> the presser's own goal (0 = square on his line to goal)
+                        gx, gy = -sg * half - mp[0], -mp[1]; ox, oy = op[0] - mp[0], op[1] - mp[1]
+                        return math.degrees(math.acos(max(-1, min(1, (gx * ox + gy * oy) / max(1e-9, math.hypot(gx, gy) * math.hypot(ox, oy))))))
+                    L["ps_ak"].append(offl(o[0], me0)); L["ps_a0"].append(offl(o[-1], ps[man]))
         n_st = 1; kk = k
         while True:
             kk = (kk[0], kk[1] + 5); bb = ball.get(kk); mm = pl.get(kk, {}).get(man)
@@ -129,5 +163,18 @@ if __name__ == "__main__":
     pn = max(1, c["prn"]); s1 = max(1, c["still1"])
     print(f"  THE PRESS ON HIM (G5.239): his nearest opponent at the first frame 0-3 / 3-5 / 5-8 / 8-12 / 12+ m: " + " / ".join(f"{100 * c[f'pd{i}'] / pn:.0f}" for i in range(5)) + "% | who: " + " ".join(f"{nm} {100 * c[f'pr{r}'] / pn:.0f}%" for r, nm in enumerate(NAMES))
           + f" | still his 1 s on {100 * c['still1'] / max(1, c['at1']):.0f}%: that man then {md(L['d1']):.1f} m off, closed {md(L['cl']):.1f} m [{q(L['cl'], .25):.1f}-{q(L['cl'], .75):.1f}], inside 3 m {100 * c['in3_1'] / s1:.0f}% | stint s med {md(L['len']):.1f}, p75 {q(L['len'], .75):.1f}")
+    pm = max(1, c["ps"])
+    print(f"  THE PRESSER'S START (G5.240): stints a mate's pass began {c['ps'] / (2 * len(files)):.1f} a team-match; the pass {md(L['ps_len']):.1f} m, {md(L['ps_fl']):.1f} s in flight | the presser at the kick: {md(L['ps_dk']):.1f} m off the full-back [{q(L['ps_dk'], .25):.1f}-{q(L['ps_dk'], .75):.1f}], 0-5 / 5-10 / 10-15 / 15+ m "
+          + " / ".join(f"{100 * c[f'ps_b{i}'] / pm:.0f}" for i in range(4)) + f"%, within 5 m of the passer {100 * c['ps_onp'] / pm:.0f}%, moving {md(L['ps_vk']):.1f} m/s [{q(L['ps_vk'], .25):.1f}-{q(L['ps_vk'], .75):.1f}]"
+          + f" | in the flight: pace {md(L['ps_pace']):.1f} m/s [{q(L['ps_pace'], .25):.1f}-{q(L['ps_pace'], .75):.1f}], closed {md(L['ps_cl']):.1f} m [{q(L['ps_cl'], .25):.1f}-{q(L['ps_cl'], .75):.1f}] = {md(L['ps_cls']):.1f} m/s | at the touch {md(L['ps_d0']):.1f} m off, moving {md(L['ps_vr']):.1f} m/s [{q(L['ps_vr'], .25):.1f}-{q(L['ps_vr'], .75):.1f}]"
+          + f" | closed / run {md(L['ps_str']):.2f} [{q(L['ps_str'], .25):.2f}-{q(L['ps_str'], .75):.2f}] | off the full-back's line to the presser's goal, deg: at the kick {md(L['ps_ak']):.0f} [{q(L['ps_ak'], .25):.0f}-{q(L['ps_ak'], .75):.0f}], at the touch {md(L['ps_a0']):.0f} [{q(L['ps_a0'], .25):.0f}-{q(L['ps_a0'], .75):.0f}]")
+    hn = ["a mate's pass", "off a mate's feet", "theirs before", "play restarted", "his own again"]
+    print("  HOW HIS STINT BEGAN (a team-match, his nearest opponent inside 3 m %, med m): " + " | ".join(f"{hn[i]} {c[f'hb{i}'] / (2 * len(files)):.1f}, {100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']):.0f}%, {md(L[f'hb{i}_d']):.1f} m" for i in range(5)))
+    wn = ["off their man's feet", "within 1 s of their touch", "later"]
+    print("  WON FROM THEM (a team-match, nearest opponent inside 3 m %, that opponent the man who had it %): " + " | ".join(f"{wn[i]} {c[f'wn{i}'] / (2 * len(files)):.1f}, {100 * c[f'wn{i}_3'] / max(1, c[f'wn{i}']):.0f}%, {100 * c[f'wn{i}_same'] / max(1, c[f'wn{i}']):.0f}%" for i in range(3)))
+    print("C++ won row: {" + ", ".join(f"{x:.1f}" for i in range(3) for x in (c[f'wn{i}'] / (2 * len(files)), 100 * c[f'wn{i}_3'] / max(1, c[f'wn{i}']), 100 * c[f'wn{i}_same'] / max(1, c[f'wn{i}']))) + "}")
+    print("C++ began row: {" + ", ".join(f"{x:.1f}" for i in range(5) for x in (c[f'hb{i}'] / (2 * len(files)), 100 * c[f'hb{i}_3'] / max(1, c[f'hb{i}']), md(L[f'hb{i}_d']))) + "}")
+    print("C++ start row: {" + ", ".join(f"{x:.1f}" for x in [c['ps'] / (2 * len(files)), md(L['ps_len']), md(L['ps_fl']), md(L['ps_dk']), q(L['ps_dk'], .25), q(L['ps_dk'], .75)] + [100 * c[f'ps_b{i}'] / pm for i in range(4)]
+          + [100 * c['ps_onp'] / pm, md(L['ps_vk']), q(L['ps_vk'], .25), q(L['ps_vk'], .75), md(L['ps_pace']), q(L['ps_pace'], .25), q(L['ps_pace'], .75), md(L['ps_cl']), q(L['ps_cl'], .25), q(L['ps_cl'], .75), md(L['ps_cls']), md(L['ps_d0']), md(L['ps_vr']), q(L['ps_vr'], .25), q(L['ps_vr'], .75)]) + ", " + ", ".join(f"{x:.2f}" for x in [md(L['ps_str']), q(L['ps_str'], .25), q(L['ps_str'], .75)]) + ", " + ", ".join(f"{x:.0f}" for x in [md(L['ps_ak']), q(L['ps_ak'], .25), q(L['ps_ak'], .75), md(L['ps_a0']), q(L['ps_a0'], .25), q(L['ps_a0'], .75)]) + "}")
     print("C++ press row: {" + ", ".join(f"{x:.1f}" for x in [100 * c[f'pd{i}'] / pn for i in range(5)] + [100 * c[f'pr{r}'] / pn for r in range(6)] + [100 * c['still1'] / max(1, c['at1']), md(L['d1']), md(L['cl']), q(L['cl'], .25), q(L['cl'], .75), 100 * c['in3_1'] / s1, md(L['len']), q(L['len'], .75)]) + "}")
     print("C++ row: {" + ", ".join(f"{x:.1f}" for x in [c['n'] / (2 * len(files)), md(L['opp']), 100 * c['line0'] / n, 100 * c['line1'] / n, 100 * c['line2'] / n, md(L['ah']), q(L['ah'], .25), q(L['ah'], .75)] + [100 * c[f'lr{r}'] / nl for r in range(6)] + [md(L['lo']), 100 * c['lo3'] / nl, c['inside'] / n, md(L['ins'])]) + "}")

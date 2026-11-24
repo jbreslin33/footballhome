@@ -12970,3 +12970,51 @@ Open: he is still met late — inside 3 m at his first touch 25% v 34 (the press
 pressers are on their way before it) — and closed at 2.3 m a second v 3.3; the line man is marked tight 24% v 36
 (unchanged). Next: the presser's start — where the man who will close the full-back is when the pass to him is
 struck, and his pace during its flight (DFL v ours). Tests 23/23 (no game code changed).
+
+### 8.346 G5.240 — the presser's start: the press on a full-back's received pass is real; what is short is the ball he wins off their man's feet (measured; a trial not shipped)
+
+From §8.345 ("he is still met late — inside 3 m at his first touch 25% v 34"). `benchmarks_tracking_fbline.py` THE
+PRESSER'S START / HOW HIS STINT BEGAN / WON FROM THEM + harness §8.346. Of the full-back's stints by his touchline in
+his own third, those a mate's pass began (the frame before the ball left was another mate's): the presser (his nearest
+outfield opponent at the touch) at the kick, through the flight, at the touch. Seeds 1000-4000 × 8, G5.239 (DFL in
+brackets):
+
+| | ours | real |
+|---|---|---|
+| stints a mate's pass began, a team-match | 8.6 | 9.4 |
+| the pass, m / s in flight | 12.2 / 1.1 | 15.5 / 1.2 |
+| the presser at the kick, m off the full-back med [p25-p75] | 10.1 [6.5-13.8] | 12.8 [8.6-15.6] |
+| … moving, m/s | 3.3 | 3.7 |
+| in the flight: pace m/s; closed m | 3.8; 1.9 | 4.5; 3.3 |
+| … closed / run | 0.55 | 0.66 |
+| at the touch: m off, moving m/s | 8.0, 4.4 | 8.6, 5.1 |
+| off the full-back's line to the presser's goal, deg, kick → touch | 51 → 45 | 40 → 34 |
+| his job as it arrives | press 64%, chase 29%, hold 8% | |
+
+Ours starts 2.7 m nearer, closes 1.4 m less and is where a real one is at the touch (8.0 v 8.6 m; 1 s on 5.7 v 5.3,
+§8.345). A real presser does not come round onto the full-back's line to goal either (40° → 34°).
+
+**Trial, not shipped** — `physics.press.flight_direct`: while their pass travels the presser aims at his stand-off on
+his OWN line to the meeting point instead of the receiver's line to our goal. Closed 1.9 → 1.5 m, pace 3.8 → 3.2 m/s,
+closed / run 0.55 → 0.52: starting 10 m off with a 3-9 m stand-off he has little left to run. Worse on its own ruler;
+code removed.
+
+**What the 34% was.** The stint's first frame by how it began (a team-match; his nearest opponent inside 3 m; med m):
+
+| | ours | real |
+|---|---|---|
+| a mate's pass | 8.6, 9%, 7.3 m | 9.4, 8%, 7.9 m |
+| off a mate's feet | 0.8, 38% | 0.6, 75% |
+| theirs before (he won it) | 6.0, **54%**, 2.9 m | 6.2, **76%**, 2.1 m |
+| … straight off their man's feet | **2.0**, 98% | **3.1**, 98% |
+| … within 1 s of their touch | 1.5, 41% | 1.1, 56% |
+| … later (a pass picked off) | **2.5, 30%** | **1.9, 52%** |
+| play restarted | 2.3, 7%, 12.9 m | 2.7, 13%, 6.9 m |
+| his own again | 0.8, 20% | 1.1, 40% |
+
+A real full-back receiving a pass by his touchline has a man inside 3 m 8% of the time, ours 9%: the press on the
+received pass is real, and §8.345's "met late" was the mix. The tight first frames are balls he WINS — a third of his
+stints — and there ours differs: he takes it straight off the attacker's feet 2.0 times a team-match v 3.1, and picks
+off a late pass with nobody near 2.5 v 1.9 (inside 3 m 30% v 52). Their wide man does not bring the ball to him.
+Next: the full-back's 1v1 by his touchline in his own third — how often their man carries at him there, from how far,
+and how it ends (tackle / past him / pass / cross), DFL + StatsBomb v ours. Harness only; tests 24/24; card as G5.239 (10 / 9 / 14, goals 2.33).

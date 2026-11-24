@@ -94,6 +94,7 @@ struct Stats {
     long orl_n[5][4] = {}, orl_bad[5][4] = {}, orl_fn[2][4] = {}, orl_fbad[2][4] = {};   // §8.343 own-third passes [GK / CB / FB / DM-CM / other][fwd ground / fwd high / square / back]; the FB's [wide / inside]
     long fbl_n = 0, fbl_line[3] = {}, fbl_ins = 0, fbl_role[6] = {}, fbl_lo3 = 0; std::vector<double> fbl_opp, fbl_ah, fbl_insd, fbl_lo;   // §8.344 FB ON THE LINE
     long fbp_n = 0, fbp_d[5] = {}, fbp_r[6] = {}, fbp_still = 0, fbp_in3 = 0; std::vector<double> fbp_d1, fbp_cl, fbp_len;   // §8.345 THE PRESS ON HIM
+    long fps_n = 0, fps_b[4] = {}, fps_onp = 0; std::vector<double> fps_fl, fps_len, fps_dk, fps_vk, fps_vr, fps_pace, fps_cl, fps_cls, fps_d0, fps_str, fps_ak, fps_a0, fhb_d[5]; long fhb_n[5] = {}, fhb_3[5] = {}, fwn_n[3] = {}, fwn_3[3] = {}, fwn_s[3] = {}; long fps_w[5] = {}; double fps_wc[5] = {}, fps_wp[5] = {};   // §8.346 THE PRESSER'S START
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
@@ -3089,6 +3090,7 @@ int main(int argc, char** argv) {
             // within 2 m of the ball) or travelling, by the ball's band off the line that side attacks; stints = the same man, contiguous
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
             double la_bx = 0, la_by = 0; int gapn = 0;   // §8.337
+            int la_man = -1;   // §8.346: the man of the stint just ended
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
             auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; } st_man = -1; };
             for (const auto& f : fl_f) {
@@ -3124,6 +3126,24 @@ int main(int argc, char** argv) {
                                     }
                                     int ns = 1; for (std::size_t j = fi + 1; j < fl_f.size() && fl_f[j].k == fl_f[j - 1].k + 6 && fl_f[j].a == t && std::hypot(fl_f[j].x[man] - fl_f[j].bx, fl_f[j].y[man] - fl_f[j].by) <= 2; ++j) ++ns;
                                     S.fbp_len.push_back(ns / 5.0);
+                                    { const int hb = la_t < 0 ? 3 : la_t != t ? 2 : (la_man != man && gapn >= 1) ? 0 : la_man != man ? 1 : 4;   // §8.346 HOW HIS STINT BEGAN
+                                      ++S.fhb_n[hb]; S.fhb_3[hb] += od0 < 3; S.fhb_d[hb].push_back(od0);
+                                      if (hb == 2) { const int w = gapn == 0 ? 0 : gapn <= 5 ? 1 : 2; ++S.fwn_n[w]; S.fwn_3[w] += od0 < 3; S.fwn_s[w] += oid == la_man; } }
+                                    if (la_t == t && la_man >= 0 && la_man != man && gapn >= 1 && fi >= static_cast<std::size_t>(gapn) + 1) {   // §8.346 THE PRESSER'S START (benchmarks_tracking_fbline.py)
+                                        const std::size_t ki = fi - static_cast<std::size_t>(gapn) - 1; const auto& g = fl_f[ki]; const double fl = (gapn + 1) / 5.0;
+                                        const double dk = std::hypot(g.x[oid] - g.x[man], g.y[oid] - g.y[man]), d0 = std::hypot(f.x[oid] - f.x[man], f.y[oid] - f.y[man]);
+                                        double path = 0; for (std::size_t j = ki; j < fi; ++j) path += std::hypot(fl_f[j + 1].x[oid] - fl_f[j].x[oid], fl_f[j + 1].y[oid] - fl_f[j].y[oid]);
+                                        ++S.fps_n; S.fps_fl.push_back(fl); S.fps_len.push_back(std::hypot(f.bx - g.bx, f.by - g.by)); S.fps_dk.push_back(dk); ++S.fps_b[dk < 5 ? 0 : dk < 10 ? 1 : dk < 15 ? 2 : 3];
+                                        S.fps_onp += std::hypot(g.x[oid] - g.x[la_man], g.y[oid] - g.y[la_man]) < 5;
+                                        S.fps_vk.push_back(5 * std::hypot(fl_f[ki + 1].x[oid] - g.x[oid], fl_f[ki + 1].y[oid] - g.y[oid])); S.fps_vr.push_back(5 * std::hypot(f.x[oid] - fl_f[fi - 1].x[oid], f.y[oid] - fl_f[fi - 1].y[oid]));
+                                        S.fps_pace.push_back(path / fl); S.fps_cl.push_back(dk - d0); S.fps_cls.push_back((dk - d0) / fl); S.fps_d0.push_back(d0);
+                                        if (path >= 1) S.fps_str.push_back((dk - d0) / path);
+                                        { auto offl = [&](const FlF& h) { const double gx = sgf * hx - h.x[man], gy = -h.y[man], ox = h.x[oid] - h.x[man], oy = h.y[oid] - h.y[man];
+                                              return std::acos(std::clamp((gx * ox + gy * oy) / std::max(1e-9, std::hypot(gx, gy) * std::hypot(ox, oy)), -1.0, 1.0)) * 180.0 / 3.14159265358979; };
+                                          S.fps_ak.push_back(offl(g)); S.fps_a0.push_back(offl(f)); }
+                                        { const int w = fl_f[fi - 1].why[oid], wb = w == static_cast<int>(ai::Why::Press) ? 0 : w == static_cast<int>(ai::Why::Hold) ? 1 : w == static_cast<int>(ai::Why::Mark) ? 2 : w == static_cast<int>(ai::Why::Chase) ? 3 : 4;
+                                          ++S.fps_w[wb]; S.fps_wc[wb] += dk - d0; S.fps_wp[wb] += path / fl; }   // his job in the last frame of the flight
+                                    }
                                 }
                             }
                             int nl = 0, ni = 0, best = -1; double bah = 1e9, bin = 1e9;
@@ -3142,7 +3162,7 @@ int main(int argc, char** argv) {
                                 if (gapn >= 1) { const double d2 = std::hypot(f.bx - la_bx, f.by - la_by), tt = (gapn + 1) / 5.0;   // §8.337 PASS PACE
                                     if (d2 >= 5) { const int lb = d2 < 10 ? 0 : d2 < 20 ? 1 : d2 < 30 ? 2 : 3, hh = zmax < 1.0 ? 0 : 1; S.pc_v[hh][lb].push_back(d2 / tt); S.pc_t[hh][lb].push_back(tt); } } } }
                     }
-                    la_t = t; la_z = z; la_tl = tl; zmax = 0; la_bx = f.bx; la_by = f.by; gapn = 0;
+                    la_t = t; la_man = man; la_z = z; la_tl = tl; zmax = 0; la_bx = f.bx; la_by = f.by; gapn = 0;
                 } else { ++S.bt_tr[z]; close(); if (bs >= 0) S.bt_bt[z].push_back(bs); zmax = std::max(zmax, static_cast<double>(f.bz)); ++gapn; }
                 pv = &f;
             }
@@ -3683,6 +3703,24 @@ int main(int argc, char** argv) {
                         for (int r = 0; r < 6; ++r) std::printf(" %s %.0f%% (%.0f)", rn[r], 100 * S.fbp_r[r] / pn, P[5 + r]);
                         std::printf(" | still his 1 s on %.0f%% (%.0f): that man then %.1f m off (%.1f), closed %.1f m [%.1f-%.1f] (%.1f [%.1f-%.1f]), inside 3 m %.0f%% (%.0f) | stint s med %.1f (%.1f), p75 %.1f (%.1f)",
                                     100 * S.fbp_still / pn, P[11], qt(S.fbp_d1, .5), P[12], qt(S.fbp_cl, .5), qt(S.fbp_cl, .25), qt(S.fbp_cl, .75), P[13], P[14], P[15], 100 * S.fbp_in3 / s1, P[16], qt(S.fbp_len, .5), P[17], qt(S.fbp_len, .75), P[18]);
+                        static const double T[25] = {9.4, 15.5, 1.2, 12.8, 8.6, 15.6, 9.8, 21.2, 40.2, 28.8, 21.2, 3.7, 2.8, 4.5, 4.5, 3.3, 5.2, 3.3, 1.3, 6.4, 3.1, 8.6, 5.1, 3.7, 6.0};
+                        const double pm = std::max(1L, S.fps_n);
+                        std::printf("\n     §8.346 THE PRESSER'S START (stints a mate's pass began): %.1f a team-match (%.1f); the pass %.1f m (%.1f), %.1f s in flight (%.1f) | the presser at the kick: %.1f m off the full-back [%.1f-%.1f] (%.1f [%.1f-%.1f]), 0-5 / 5-10 / 10-15 / 15+ m %.0f / %.0f / %.0f / %.0f%% (%.0f / %.0f / %.0f / %.0f), within 5 m of the passer %.0f%% (%.0f), moving %.1f m/s [%.1f-%.1f] (%.1f [%.1f-%.1f])",
+                                    S.fps_n / tmo, T[0], qt(S.fps_len, .5), T[1], qt(S.fps_fl, .5), T[2], qt(S.fps_dk, .5), qt(S.fps_dk, .25), qt(S.fps_dk, .75), T[3], T[4], T[5], 100 * S.fps_b[0] / pm, 100 * S.fps_b[1] / pm, 100 * S.fps_b[2] / pm, 100 * S.fps_b[3] / pm, T[6], T[7], T[8], T[9], 100 * S.fps_onp / pm, T[10], qt(S.fps_vk, .5), qt(S.fps_vk, .25), qt(S.fps_vk, .75), T[11], T[12], T[13]);
+                        std::printf(" | in the flight: pace %.1f m/s [%.1f-%.1f] (%.1f [%.1f-%.1f]), closed %.1f m [%.1f-%.1f] (%.1f [%.1f-%.1f]) = %.1f m/s (%.1f) | at the touch %.1f m off (%.1f), moving %.1f m/s [%.1f-%.1f] (%.1f [%.1f-%.1f])",
+                                    qt(S.fps_pace, .5), qt(S.fps_pace, .25), qt(S.fps_pace, .75), T[14], T[15], T[16], qt(S.fps_cl, .5), qt(S.fps_cl, .25), qt(S.fps_cl, .75), T[17], T[18], T[19], qt(S.fps_cls, .5), T[20], qt(S.fps_d0, .5), T[21], qt(S.fps_vr, .5), qt(S.fps_vr, .25), qt(S.fps_vr, .75), T[22], T[23], T[24]);
+                        std::printf(" | closed / run %.2f [%.2f-%.2f] (0.66 [0.30-0.85]) | off the full-back's line to the presser's goal, deg: at the kick %.0f [%.0f-%.0f] (40 [20-77]), at the touch %.0f [%.0f-%.0f] (34 [15-71])",
+                                    qt(S.fps_str, .5), qt(S.fps_str, .25), qt(S.fps_str, .75), qt(S.fps_ak, .5), qt(S.fps_ak, .25), qt(S.fps_ak, .75), qt(S.fps_a0, .5), qt(S.fps_a0, .25), qt(S.fps_a0, .75));
+                        {   static const double B[15] = {9.4, 8.3, 7.9, 0.6, 75.0, 2.3, 6.2, 75.9, 2.1, 2.7, 13.2, 6.9, 1.1, 40.0, 3.5};
+                            static const char* hn[5] = {"a mate's pass", "off a mate's feet", "theirs before", "play restarted", "his own again"};
+                            std::printf("\n       HOW HIS STINT BEGAN (a team-match, his nearest opponent inside 3 m %%, med m):");
+                            for (int h = 0; h < 5; ++h) std::printf(" %s %.1f, %.0f%%, %.1f m (%.1f, %.0f%%, %.1f) |", hn[h], S.fhb_n[h] / tmo, 100.0 * S.fhb_3[h] / std::max(1L, S.fhb_n[h]), qt(S.fhb_d[h], .5), B[3 * h], B[3 * h + 1], B[3 * h + 2]); }
+                        {   static const double Wn[9] = {3.1, 97.7, 97.7, 1.1, 56.2, 56.2, 1.9, 51.9, 25.9};
+                            static const char* wn[3] = {"off their man's feet", "within 1 s of their touch", "later"};
+                            std::printf("\n       WON FROM THEM (a team-match, nearest opponent inside 3 m %%, that opponent the man who had it %%):");
+                            for (int w = 0; w < 3; ++w) std::printf(" %s %.1f, %.0f%%, %.0f%% (%.1f, %.0f%%, %.0f%%) |", wn[w], S.fwn_n[w] / tmo, 100.0 * S.fwn_3[w] / std::max(1L, S.fwn_n[w]), 100.0 * S.fwn_s[w] / std::max(1L, S.fwn_n[w]), Wn[3 * w], Wn[3 * w + 1], Wn[3 * w + 2]); }
+                        std::printf("\n       his job as it arrives (share, mean m closed, mean pace):"); { static const char* wn[5] = {"press", "hold shape", "mark", "chase", "other"};
+                            for (int w = 0; w < 5; ++w) std::printf(" %s %.0f%% %.1f m %.1f m/s |", wn[w], 100 * S.fps_w[w] / pm, S.fps_wc[w] / std::max(1L, S.fps_w[w]), S.fps_wp[w] / std::max(1L, S.fps_w[w])); }
                     }
                     {   // §8.339
                         const double tmo = std::max(1.0, 2.0 * matches);
