@@ -114,7 +114,7 @@ int main() {
             (us == 0 ? pc.roster_home : pc.roster_away).formation_code = plan->us_code;
             (us == 0 ? pc.roster_away : pc.roster_home).formation_code = plan->them_code;
             std::printf("fh-game: teaching room, plan %d (%s v %s)\n", plan->id, plan->us_code.c_str(), plan->them_code.c_str());
-            return std::make_unique<teach::TeachingServer>(std::move(pc), room, std::move(*plan), us);
+            return std::make_unique<teach::TeachingServer>(std::move(pc), room, std::move(*plan), us, ask.zonal);
         }
         return std::make_unique<server::GameServer>(std::move(pc), room);
     };

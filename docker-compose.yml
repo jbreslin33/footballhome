@@ -98,6 +98,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      # The game engine's source, read-only: ⚽ Football → 🧬 Taxonomy checks it against the
+      # database on every load (backend/src/models/TaxonomySync; ENGINE_SRC defaults to /engine).
+      - ./game/src:/engine/game/src:ro
+      - ./shared/tactics:/engine/shared/tactics:ro
       # Mount database/data for writing ##u/##p files
       - ./database/data:/app/database/data
       # Shared image storage (backend writes, frontend serves via nginx)

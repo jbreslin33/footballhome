@@ -43,6 +43,8 @@ enum class FrameType : std::uint8_t {
     NewMatch       = 0x46, // c→s admin (2.1): a TEAMS payload, names only — kick off that match
     ConceptLegend  = 0x47, // s→c (2.2): the trainer's labels — game_concepts id, name, title (mig 1199), on connect
     Step           = 0x48, // c→s admin (2.2): play to the next pass (received, dead or won), then pause — trainer step 3
+    Mind           = 0x49, // s→c (2.4): one watched player's mind — his states, eyes, memory, the options he weighed; UTF-8 JSON (teaching rooms)
+    MindWatch      = 0x4A, // c→s (2.4): u8 slot — watch that player's mind (255 = stop)
     // Retired in 2.0 (G5.23) with the old brain — never reuse: 0x32 MATCH_SETTINGS,
     // 0x33 PLAYER_SETTINGS, 0x35 PRESETS, 0x36 APPLY_PRESET, 0x37 PLAYER_ATTRIBUTES,
     // 0x3A CONCEPTS, 0x3E PHASES, 0x3F RUN_PHASE, 0x40 MODEL_DEMANDS, 0x41 SET_DEMAND,

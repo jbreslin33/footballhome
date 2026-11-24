@@ -158,6 +158,15 @@ public:
         const int m = c.block.markOf(v.team, v.slot);
         if (m < 0) return false;
         const auto& me = c.world.player(v.slot);
+        if (c.block.params().mark_mind) {   // the marking mind: his own eyes, memory and step (ai/concepts/Marking)
+            const concepts::MarkView mv = c.block.markMind(v, m, c.world);
+            o.target = mv.target;
+            o.move.move = seek(me.pos, o.target, mv.full_pace ? Fixed64::fromFraction(1, 2) : Fixed64::fromFraction(1, 4));
+            o.move.face = mv.face;
+            o.other = static_cast<std::int16_t>(m);
+            o.why = Why::Mark;
+            return true;
+        }
         o.target = c.block.markPoint(v.team, m, c.world);
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 4));
         // [behaviour: mark_see_man_and_ball]
@@ -174,6 +183,17 @@ const PressBall kPress;
 const ChaseBall kChase;
 
 }  // namespace
+
+// The man assignMarks gave him is his for as long as it says so (the zone, the handover are
+// its): within that he marks him man-to-man — the mind's steps, on what he has SEEN of him.
+concepts::MarkView DefendingBlock::markMind(const PlayerView& v, int man, const core::World& world) const {
+    const std::uint8_t s = v.slot & 31;
+    if (mind_man_[s] != man) {
+        mind_[s] = concepts::MarkingMind{concepts::MarkKind::ManOriented, static_cast<core::SlotIndex>(man), Vec2{}};
+        mind_man_[s] = man;
+    }
+    return mind_[s].think(world, v.slot, v.sg);
+}
 
 const ActingState* DefendingBlock::holdBlockSpot() { return &kHold; }
 const ActingState* DefendingBlock::pressBall() { return &kPress; }
@@ -228,6 +248,7 @@ void BlockParams::configure(const core::ModelParams& p) {
             mark_d[b] = p.fixed(("physics.block.mark_d_" + std::to_string(b)).c_str(), kD[b]);
         }
     }
+    mark_mind = p.fixed("physics.mark.mind", 0).raw > 0;   // the marking mind — no row = off
     switch_m = p.fixed("physics.press.switch_m", 2000);
     depth_now = p.fixed("physics.block.depth_now", 1000).raw > 0;   // G5.162 (§8.267), default on
     gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)

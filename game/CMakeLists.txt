@@ -64,6 +64,7 @@ add_library(game_ai STATIC
   src/ai/Possession.cpp
   src/ai/TeamPhase.cpp
   src/ai/DefendingBlock.cpp
+  src/ai/concepts/Marking.cpp
 )
 target_link_libraries(game_ai PUBLIC game_core)
 
@@ -160,3 +161,4 @@ game_test(test_block)
 # test that blocks a build.
 game_test(test_teaching_room)
 target_link_libraries(test_teaching_room PRIVATE game_teach)
+game_test(test_marking)

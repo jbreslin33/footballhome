@@ -57,6 +57,7 @@ struct PracticeAsk {
     // The teaching room (docs/teaching-room.md): "&teach=<tactic_plans.id>" — the side
     // NOT taking the goal kick runs that plan's jobs. 0 = a plain practice room.
     int teach_plan = 0;
+    bool zonal = false;   // "&marking=zonal": the plan's marks are zonal (pass him on); else man-oriented
 };
 std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path);
 

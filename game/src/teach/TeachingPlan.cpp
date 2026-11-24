@@ -90,6 +90,10 @@ std::optional<Plan> loadPlan(const persistence::DbConfig& cfg, int plan_id) {
             plan.frame.kinds[code] = {code, r[1].as<std::string>(), r[2].as<double>(), optNum(r[3]), optNum(r[4])};
             plan.concepts[code] = {r[5].as<int>(), r[6].as<std::string>(), r[7].as<std::string>()};
         }
+        if (tx.exec("SELECT to_regclass('game_engine_behaviours') IS NOT NULL")[0][0].as<bool>())
+            for (const auto& r : tx.exec("SELECT b.code, c.id, c.name, c.title FROM game_engine_behaviours b "
+                                         "JOIN game_concepts c ON c.id = b.concept_id"))
+                plan.behaviours[r[0].as<std::string>()] = {r[1].as<int>(), r[2].as<std::string>(), r[3].as<std::string>()};
         for (const auto& r : tx.exec_params(
                  "SELECT DISTINCT ON (num) num, x, y FROM ("
                  "  SELECT COALESCE(r.number, (p->>'position_id')::int) AS num, (p->>'slot')::int AS slot, "

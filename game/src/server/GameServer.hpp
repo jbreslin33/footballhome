@@ -106,6 +106,10 @@ protected:
     // orders for this tick, and the concept his label names. The match itself is the brain's
     // answer, untouched — nothing here changes what the live match or a PL practice room plays.
     virtual ai::Orders decide(std::uint8_t slot) { return brain_.ordersFor(slot, world_); }
+    // A frame the match itself has no use for (a child room's own, e.g. MIND_WATCH), and the
+    // moment after each tick's snapshots have gone out (and each paused heartbeat).
+    virtual void onOtherFrame(ClientId, const net::DecodedFrame&) {}
+    virtual void afterTick() {}
     virtual std::uint8_t conceptOf(std::uint8_t slot, const ai::Orders& o) const {
         return act_concept_[static_cast<int>(brain_.actOf(slot, world_, o))];
     }

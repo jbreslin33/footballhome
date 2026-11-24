@@ -37,14 +37,16 @@
   const S = {
     ws: null, hello: null, snap: null, roster: [], brain: null, legend: {}, kits: [null, null], names: ['', ''],
     speed: 0, pace: 50, shown: [], ballShown: null, prevJobs: {}, changedUntil: {},
+    focus: null, mind: null, trail: [],   // the one player being watched, his mind, his step changes
   };
   const PLAN = q.get('plan');
+  const ZONAL = q.get('marking') === 'zonal';
   const teamOf = (i) => (S.hello && i < S.hello.slotCount / 2 ? US : THEM);
   const numOf = (i) => (S.roster[i] && S.roster[i].number) || null;
 
   function connect() {
     if (S.ws) { S.ws.onclose = null; S.ws.close(); }
-    Object.assign(S, { hello: null, snap: null, brain: null, shown: [], ballShown: null, speed: 0, prevJobs: {}, changedUntil: {} });
+    Object.assign(S, { hello: null, snap: null, brain: null, shown: [], ballShown: null, speed: 0, prevJobs: {}, changedUntil: {}, mind: null, trail: [], live: false });
     status(say('st_connecting'));
     paintButtons();
     // With a plan: ours run its jobs. Without one (?us_team=…&them_team=…): two sides, both the
@@ -52,6 +54,7 @@
     const p = new URLSearchParams({ trainer: '1', gk: 'away',
                                     home: q.get('us_team') || say('us_team'), away: q.get('them_team') || say('them_team') });
     if (PLAN) p.set('teach', PLAN);
+    if (ZONAL) p.set('marking', 'zonal');
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${scheme}://${location.host}/game?${p}`, `fh-game.v2.bearer.${token}`);
     ws.binaryType = 'arraybuffer';
@@ -59,7 +62,8 @@
     ws.onmessage = (ev) => {
       const view = new DataView(ev.data), T = GameWire.FrameType;
       for (const f of GameWire.decodeFrame(ev.data)) {
-        if (f.type === T.HELLO) { S.hello = GameWire.decodeHello(view, f.payloadAt); send(GameWire.encodeBrainWatch(true)); }
+        if (f.type === T.HELLO) { S.hello = GameWire.decodeHello(view, f.payloadAt); send(GameWire.encodeBrainWatch(true)); if (S.focus != null) send(GameWire.encodeMindWatch(S.focus)); }
+        else if (f.type === T.MIND) { const m = GameWire.decodeMind(view, f.payloadAt, f.payloadLen); if (m && m.slot === S.focus) { noteMind(m); paintMind(); } }
         else if (f.type === T.SNAPSHOT) S.snap = GameWire.decodeSnapshot(view, f.payloadAt);
         else if (f.type === T.ROSTER) S.roster = GameWire.decodeRoster(view, f.payloadAt, f.payloadLen);
         else if (f.type === T.BRAIN) { S.brain = GameWire.decodeBrain(view, f.payloadAt); paintJobs(); }
@@ -147,6 +151,33 @@
     $('btn-step').addEventListener('click', () => send(GameWire.encodeStep(S.pace)));
     $('btn-play').addEventListener('click', () => send(GameWire.encodeSpeed(S.speed === 0 ? S.pace : 0)));
     $('btn-restart').addEventListener('click', connect);
+    // Tap one of ours on the pitch: the one-player view.
+    cv.addEventListener('click', (e) => {
+      if (!S.snap || !S.hello) return;
+      const box = cv.getBoundingClientRect(), x = e.clientX - box.left, y = e.clientY - box.top;
+      let best = null, bd = 26 * 26;
+      for (let i = 0; i < S.snap.players.length; i++) {
+        if (teamOf(i) !== US || !S.shown[i]) continue;
+        const c = P(S.shown[i].x, S.shown[i].y), dd = (c[0] - x) ** 2 + (c[1] - y) ** 2;
+        if (dd < bd) { bd = dd; best = i; }
+      }
+      if (best != null) focusOn(best === S.focus ? null : best);
+    });
+    // Marking: man-oriented | zonal — the same steps, one rule different. A new room either way.
+    if (PLAN && say('mark_kind')) {
+      const box = document.createElement('span');
+      box.id = 'kinds';
+      box.appendChild(document.createTextNode(say('mark_kind') + ' '));
+      for (const [zonal, label] of [[false, say('mark_kind_man')], [true, say('mark_kind_zonal')]]) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = label;
+        if (zonal === ZONAL) b.className = 'on';
+        b.addEventListener('click', () => { const u = new URL(location.href); if (zonal) u.searchParams.set('marking', 'zonal'); else u.searchParams.delete('marking'); location.href = u.toString(); });
+        box.appendChild(b);
+      }
+      $('speeds').after(box);
+    }
     if (say('pick_back')) {   // ☰ back to the list of plans
       const a = document.createElement('a');
       a.href = '/teach.html';
@@ -168,7 +199,7 @@
   // ── Who does what ──
   function conceptTitle(id) { const c = S.legend[id]; return c ? (c.title || c.name) : ''; }
   function paintJobs() {
-    if (!S.brain || !S.hello) return;
+    if (!S.brain || !S.hello || S.focus != null) return;   // the one-player view has the panel
     const rows = [], now = performance.now();
     for (let i = 0; i < S.hello.slotCount; i++) {
       if (teamOf(i) !== US || !numOf(i) || numOf(i) === 1 || (S.snap && S.snap.players[i] && (S.snap.players[i].flags & 2))) continue;   // outfielders
@@ -195,6 +226,99 @@
       }
       ul.appendChild(li);
     }
+  }
+
+  // ── One player: all his state machines (owner 11/24: "focus on 1 player and all his state
+  // machines"). Tap one of ours: MIND_WATCH asks the room for his mind, and the panel shows
+  // his states top down, what runs alongside (eyes, movement), what he knows and how old it
+  // is, the options he weighed, and what he has done. The words for a state are its
+  // behaviour's catalogue concept (game_engine_behaviours → game_concepts, from the taxonomy
+  // endpoint) — the same row the 🧬 Taxonomy page shows.
+  const BEH = new Map();   // behaviour code → { title, what, cue }
+  async function loadBehaviours() {
+    try {
+      const r = await fetch('/api/tactic-plans/taxonomy', { headers: { Authorization: 'Bearer ' + token } });
+      if (!r.ok) return;
+      const d = await r.json(), byId = new Map((d.concepts || []).map((c) => [c.id, c]));
+      for (const b of d.behaviours || []) {
+        const c = byId.get(b.concept_id);
+        BEH.set(b.code, { title: c ? c.title : b.code, what: b.what, cue: c ? c.cue : '' });
+      }
+    } catch (_) { /* the codes show instead */ }
+  }
+  const behTitle = (code) => (BEH.get(code) || {}).title || code;
+  const behWhat = (code) => (BEH.get(code) || {}).what || '';
+
+  function focusOn(slot) {
+    S.focus = slot; S.mind = null; S.trail = [];
+    send(GameWire.encodeMindWatch(slot));
+    document.body.classList.toggle('focused', slot != null);
+    if (slot == null) { $('jobs-title').textContent = say('jobs_title'); $('note').textContent = say(PLAN ? 'note' : 'note_pl'); paintJobs(); }
+    else paintMind();
+  }
+  function noteMind(m) {
+    const was = S.mind;
+    // The engine takes a marker for a moment (first to a loose ball, their ball dead): keep
+    // his last mind on the panel and say so, rather than blank it.
+    if (!m.mind && was && was.mind) { S.mind = Object.assign({}, was, { off: true, tick: m.tick, phase: m.phase }); return; }
+    S.mind = m;
+    if (m.mind && (!was || !was.mind || was.step !== m.step)) {
+      S.trail.push({ tick: m.tick, step: m.step });
+      if (S.trail.length > 12) S.trail.shift();
+    }
+  }
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function paintMind() {
+    if (S.focus == null) return;
+    const ul = $('jobs'), m = S.mind, n = numOf(S.focus) || '';
+    $('jobs-title').textContent = say('mind_title', { n });
+    $('note').textContent = '';
+    ul.textContent = '';
+    const close = el('button', '', say('mind_close'));
+    close.type = 'button';
+    close.addEventListener('click', () => focusOn(null));
+    const top = el('li'); top.appendChild(close); ul.appendChild(top);
+    if (!m) return;
+    if (!m.mind) { ul.appendChild(el('li', 'mind-note', say('mind_none', { n }))); return; }
+    if (m.off) ul.appendChild(el('li', 'mind-fact stale', say('mind_off')));
+    const sec = (title) => ul.appendChild(el('li', 'mind-h', title));
+    const row = (k, v, cls, sub) => {
+      const li = el('li', 'mind-row' + (cls ? ' ' + cls : ''));
+      li.appendChild(el('span', 'k', k));
+      const val = el('span', 'v', v);
+      if (sub) val.appendChild(el('small', '', sub));
+      li.appendChild(val);
+      ul.appendChild(li);
+    };
+    sec(say('mind_stack'));
+    row(say('mind_l_team'), m.phase);
+    row(say('mind_l_job'), say('mind_job_marking', { n: numOf(m.man) || '' }));
+    row(say('mind_l_kind'), behTitle(m.kind), '', behWhat(m.kind));
+    row(say('mind_l_step'), behTitle(m.step), 'now', behWhat(m.step));
+    sec(say('mind_side'));
+    row(say('mind_m_eyes'), behTitle(m.eyes), '', behWhat(m.eyes));
+    const sp = m.speed, mv = sp < 0.3 ? 'stand' : sp < 2 ? 'walk' : sp < 4 ? 'jog' : sp < 6 ? 'run' : 'sprint';
+    row(say('mind_m_move'), say('mind_move_' + mv) + ' · ' + sp.toFixed(1) + ' m/s');
+    sec(say('mind_memory'));
+    const secs = (t) => (t / 30).toFixed(1);
+    const off = Math.hypot(m.man_seen[0] - m.man_now[0], m.man_seen[1] - m.man_now[1]);
+    ul.appendChild(el('li', 'mind-fact' + (m.man_age > 6 ? ' stale' : ''), m.man_age > 6 ? say('mind_man_stale', { s: secs(m.man_age), m: off.toFixed(1) }) : say('mind_man_fresh')));
+    ul.appendChild(el('li', 'mind-fact' + (m.ball_age > 6 ? ' stale' : ''), m.ball_age > 6 ? say('mind_ball_stale', { s: secs(m.ball_age) }) : say('mind_ball_fresh')));
+    if (m.pass_to_man) ul.appendChild(el('li', 'mind-fact', say('mind_f_pass')));
+    if (m.man_has_ball) ul.appendChild(el('li', 'mind-fact', say(m.back_to_goal ? 'mind_f_back' : 'mind_f_turned')));
+    sec(say('mind_options'));
+    for (const o of m.opts.slice().sort((a, b) => b.score - a.score)) {
+      const state = o.k === m.step ? 'win' : o.k === m.wants ? 'wants' : o.cue ? 'true' : 'false';
+      const li = el('li', 'mind-opt ' + state);
+      li.appendChild(el('span', 's', o.cue ? String(o.score) : '–'));
+      li.appendChild(el('span', 'v', behTitle(o.k)));
+      li.appendChild(el('small', '', say('mind_o_' + state)));
+      ul.appendChild(li);
+    }
+    sec(say('mind_timeline'));
+    for (const t of S.trail.slice().reverse())
+      ul.appendChild(el('li', 'mind-fact', ((m.tick - t.tick) / 30).toFixed(1) + ' s  ·  ' + behTitle(t.step)));
+    ul.appendChild(el('li', 'mind-note', say('mind_ghost')));
   }
 
   // ── The pitch ──
@@ -295,6 +419,22 @@
       g.fillStyle = 'rgba(8,12,18,.78)'; g.fillRect(x - w / 2, y + r + 2, w, 15);
       g.fillStyle = '#ffcc00'; g.fillText(text, x, y + r + 4);
     }
+    // The one player being watched: a ring on him, where he is looking, and — hollow — where
+    // he THINKS his man is. When that is not where his man really is, he has not seen him.
+    if (S.focus != null && S.shown[S.focus]) {
+      const d = S.shown[S.focus], c = P(d.x, d.y), r = Math.max(9, 1.5 * sc);
+      g.setLineDash([]); g.strokeStyle = '#ffcc00'; g.lineWidth = 3;
+      g.beginPath(); g.arc(c[0], c[1], r + 5, 0, Math.PI * 2); g.stroke();
+      const m = S.mind;
+      if (m && m.mind) {
+        g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2;
+        line(d.x, d.y, d.x + m.gaze[0] * 7, d.y + m.gaze[1] * 7);
+        const gp = P(m.man_seen[0], m.man_seen[1]);
+        g.setLineDash([4, 4]); g.strokeStyle = '#ff5c7a'; g.lineWidth = 2.5;
+        g.beginPath(); g.arc(gp[0], gp[1], r + 3, 0, Math.PI * 2); g.stroke();
+        g.setLineDash([]);
+      }
+    }
     // The ball: bigger as it rises.
     const b = P(bs.x, bs.y), br = Math.max(4, 0.55 * sc) * (1 + Math.min(1.2, s.ball.z / 6));
     g.beginPath(); g.arc(b[0], b[1], br, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
@@ -302,8 +442,9 @@
 
     // The moment, in words.
     const o = s.ball.owner, rt = s.match.restartTeam;
-    status(o !== NO ? (teamOf(o) === THEM ? (rt === THEM ? say('st_goal_kick') : say('st_with', { n: numOf(o) || '' })) : say('st_ours', { n: numOf(o) || '' }))
-                    : rt === THEM ? say('st_goal_kick') : rt !== NO ? say('st_dead') : say('st_flight'));
+    if (rt === NO) S.live = true;   // the goal kick has been taken; a later dead ball is not it
+    status(o !== NO ? (teamOf(o) === THEM ? (rt === THEM ? say(S.live ? 'st_dead' : 'st_goal_kick') : say('st_with', { n: numOf(o) || '' })) : say('st_ours', { n: numOf(o) || '' }))
+                    : rt === THEM ? say(S.live ? 'st_dead' : 'st_goal_kick') : rt !== NO ? say('st_dead') : say('st_flight'));
   }
 
   // ── No plan in the link (opened from the ⚽ Football menu): the plans to pick from ──
@@ -336,11 +477,12 @@
   // ── Boot ──
   (async function () {
     if (!(await loadCopy())) return;
+    loadBehaviours().then(() => { if (S.focus != null) paintMind(); });
     document.title = say('title');
     $('title').textContent = say('title');
     $('back').textContent = say('back');
     $('jobs-title').textContent = say('jobs_title');
-    $('note').textContent = say(PLAN ? 'note' : 'note_pl');
+    $('note').textContent = say(PLAN ? 'note' : 'note_pl') + (PLAN && say('mind_hint') ? ' ' + say('mind_hint') : '');
     $('matchup').textContent = q.get('us') && q.get('them') ? say('matchup', { us: q.get('us'), them: q.get('them'), block: q.get('block') || '' }) : '';
     buildControls();
     window.addEventListener('resize', layout);

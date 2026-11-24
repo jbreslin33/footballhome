@@ -491,11 +491,17 @@
       : c && cloop.on ? loopFill(w.example, { player: slotName(c.slot), i: cloop.at + 1, n })
       : !cloop.on ? loopFill(w.live, { n }) : w.waiting;
     const b = 'border:0;border-radius:12px;padding:5px 11px;font:700 12px system-ui,sans-serif;cursor:pointer;min-width:0;min-height:0;';
+    // Examples / Live: one switch, both words always showing, the one you are on filled in (James 11/24:
+    // "loop and watch live are confusing. maybe if it was toggle and both showed").
+    const seg = (on) => (on ? 'background:#ffcc00;color:#0b1c3d;' : 'background:transparent;color:#ffcc00;');
     loopBar.innerHTML = `<div style="font-weight:800;">${esc(w.title || '')}</div><div style="opacity:.9;margin:2px 0 6px;">${esc(line || '')}</div>` +
       (cloop.reported === false ? '' : `<div style="display:flex;gap:6px;justify-content:center;">
-        <button type="button" data-loop="prev" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 ? '' : 'disabled'}>${esc(w.prev || '‹')}</button>
-        <button type="button" data-loop="${cloop.on ? 'live' : 'loop'}" style="${b}background:#ffcc00;color:#0b1c3d;">${esc(cloop.on ? w.go_live : w.go_loop)}</button>
-        <button type="button" data-loop="next" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 ? '' : 'disabled'}>${esc(w.next || '›')}</button></div>`);
+        <button type="button" data-loop="prev" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 && cloop.on ? '' : 'disabled'}>${esc(w.prev || '‹')}</button>
+        <span role="group" style="display:inline-flex;border:1px solid #ffcc00;border-radius:13px;overflow:hidden;">
+          <button type="button" data-loop="loop" aria-pressed="${cloop.on}" style="${b}border-radius:0;${seg(cloop.on)}">${esc(w.go_loop)}</button>
+          <button type="button" data-loop="live" aria-pressed="${!cloop.on}" style="${b}border-radius:0;${seg(!cloop.on)}">${esc(w.go_live)}</button>
+        </span>
+        <button type="button" data-loop="next" style="${b}background:rgba(255,255,255,.18);color:#fff;" ${n > 1 && cloop.on ? '' : 'disabled'}>${esc(w.next || '›')}</button></div>`);
     loopBar.hidden = false;
   }
   function loopCmd(cmd) {

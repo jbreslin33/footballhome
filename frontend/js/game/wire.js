@@ -30,6 +30,8 @@
     NEW_MATCH: 0x46,      // 2.1 c→s admin: a TEAMS payload, names only — kick off that match
     CONCEPT_LEGEND: 0x47, // 2.2 s→c: the trainer's labels — game_concepts id, name, title (mig 1199)
     STEP: 0x48,           // 2.2 c→s admin: play to the next pass, then pause (trainer step 3)
+    MIND: 0x49,           // 2.4 s→c: one watched player's mind — states, eyes, memory, options (UTF-8 JSON; teaching rooms)
+    MIND_WATCH: 0x4A,     // 2.4 c→s: u8 slot — watch that player's mind (255 = stop)
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
 
@@ -266,6 +268,16 @@
     new DataView(p).setUint16(0, pct || 100, true);
     return envelope(FrameType.STEP, p);
   }
+  // 2.4 MIND_WATCH: u8 slot (255 = stop).
+  function encodeMindWatch(slot) {
+    const p = new ArrayBuffer(1);
+    new DataView(p).setUint8(0, slot == null ? 255 : slot);
+    return envelope(FrameType.MIND_WATCH, p);
+  }
+  // 2.4 MIND: the payload is UTF-8 JSON (game/src/teach/TeachingServer::mindJson).
+  function decodeMind(view, at, len) {
+    try { return JSON.parse(utf8.decode(new Uint8Array(view.buffer, view.byteOffset + at, len))); } catch (e) { return null; }
+  }
   function decodeSpeed(view, at) {
     return view.getUint16(at, true);
   }
@@ -320,6 +332,8 @@
     decodeNames,
     decodeConceptLegend,
     encodeStep,
+    encodeMindWatch,
+    decodeMind,
     decodeBrain,
     encodeBrainWatch,
     decodeFrame,

@@ -1,4 +1,7 @@
 #include "TacticPlans.h"
+#include "TaxonomySync.h"
+
+#include <iostream>
 
 #include "../database/Database.h"
 
@@ -176,6 +179,9 @@ json TacticPlans::list() {
 }
 
 json TacticPlans::taxonomy() {
+    // Every load checks the engine's C++ against the database first (and refreshes the page's
+    // copy of the code if it changed): what comes back is current, with the time of the check.
+    try { TaxonomySync::run(); } catch (const std::exception& e) { std::cerr << "TaxonomySync: " << e.what() << std::endl; }
     auto* db = Database::getInstance();
     const auto r = db->query(R"SQL(
         SELECT json_build_object(
@@ -206,10 +212,16 @@ json TacticPlans::taxonomy() {
           'behaviours', (SELECT json_agg(json_build_object('code', code, 'file', file, 'line', line, 'symbol', symbol, 'class', class_name,
                                                            'tag', tag, 'who', who, 'what', what, 'status', status, 'concept_id', concept_id,
                                                            'other', other_concepts, 'suggested', suggested, 'confidence', confidence,
-                                                           'read', is_read) ORDER BY file, line) FROM game_engine_behaviours),
+                                                           'read', is_read, 'in_sim', in_sim) ORDER BY file, line) FROM game_engine_behaviours),
           'classes',    (SELECT json_agg(json_build_object('name', name, 'file', file, 'from', line_start, 'to', line_end, 'parent', parent,
                                                            'doc', doc, 'kind', kind) ORDER BY name) FROM game_engine_classes),
-          'commit',     (SELECT max(commit) FROM game_engine_sources)
+          'commit',     (SELECT max(commit) FROM game_engine_sources),
+          'sync',       (SELECT json_build_object('checked_at', extract(epoch FROM checked_at), 'changed_at', extract(epoch FROM changed_at),
+                                                   'in_sync', in_sync, 'tagged', tagged, 'listed', listed, 'db_rows', db_rows, 'diff', diff,
+                                                   'game_built_at', extract(epoch FROM game_built_at),
+                                                   'game_stale', game_built_at IS NOT NULL AND source_newest_at > game_built_at + interval '1 minute',
+                                                   'now', extract(epoch FROM now()))
+                           FROM taxonomy_sync WHERE id = 1)
         )::text AS doc)SQL");
     if (r.empty() || r[0]["doc"].is_null()) return json::object();
     return json::parse(r[0]["doc"].as<std::string>());

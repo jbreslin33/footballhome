@@ -43,6 +43,7 @@ struct Plan {
     fh::tactics::PlanFrame frame;
     std::vector<PlanState> states;                   // the root first
     std::map<std::string, KindConcept> concepts;     // by tactic_job_kinds.code
+    std::map<std::string, KindConcept> behaviours;   // by game_engine_behaviours.code: the concept a behaviour plays
     ai::FormationSpec us, them;                      // the two shapes, numbered as the board numbers them
 
     const PlanState* root() const { return states.empty() ? nullptr : &states.front(); }

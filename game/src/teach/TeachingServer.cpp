@@ -3,10 +3,15 @@
 #include "teach/TeachingServer.hpp"
 
 #include "ai/Steering.hpp"
+#include "ai/TeamPhase.hpp"
+#include "net/Codec.hpp"
 #include "core/Clock.hpp"
 #include "core/PlayerSkill.hpp"
 
+#include <cmath>
+#include <cstdio>
 #include <map>
+#include <string>
 
 namespace fh::game::teach {
 
@@ -26,11 +31,23 @@ server::GameServer::Config withShapes(server::GameServer::Config cfg, const Plan
 
 }  // namespace
 
-TeachingServer::TeachingServer(Config cfg, net::INetworkTransport& transport, Plan plan, std::uint8_t us)
+TeachingServer::TeachingServer(Config cfg, net::INetworkTransport& transport, Plan plan, std::uint8_t us, bool zonal)
     : GameServer{withShapes(std::move(cfg), plan, us & 1), transport},
       plan_{std::move(plan)}, us_{static_cast<std::uint8_t>(us & 1)}, them_{static_cast<std::uint8_t>(1 - (us & 1))} {
+    zonal_ = zonal;
     for (auto& o : other_) o = -1;
     for (auto& c : concept_) c = 255;
+    for (auto& m : mind_man_) m = -1;
+    // Each marking step's label is its behaviour's concept (game_engine_behaviours → game_concepts).
+    for (int i = 0; i < ai::concepts::kMarkStepCount; ++i) {
+        step_concept_[i] = 255;
+        const auto it = plan_.behaviours.find(ai::concepts::kMarkStepCodes[i]);
+        if (it == plan_.behaviours.end() || it->second.id < 0 || it->second.id > 254) continue;
+        step_concept_[i] = static_cast<std::uint8_t>(it->second.id);
+        bool have = false;
+        for (const auto& e : concept_legend_.entries) have = have || e.id == it->second.id;
+        if (!have) concept_legend_.entries.push_back({step_concept_[i], it->second.name, it->second.title});
+    }
     // The labels: every job kind the plan uses, by the game concept the board names it with.
     for (const auto& s : plan_.states)
         for (const auto& j : s.jobs) {
@@ -86,6 +103,7 @@ void TeachingServer::solve() {
     double sg = us_ == 0 ? 1.0 : -1.0;
     for (std::uint8_t i = 0; i < n; ++i)
         if (teamOf(i) == us_ && world_.isKeeper(i)) { sg = world_.player(i).pos.x.toDouble() < 0 ? 1.0 : -1.0; break; }
+    attack_plus_ = sg > 0;
     const double hx = world_.pitchHalfX().toDouble(), hy = world_.pitchHalfY().toDouble();
     // The plan pitch (TacticGeometry.hpp): 0-100 from our view, y 0 = our goal line.
     const auto toPlan = [&](const math::Vec3& p) {
@@ -109,6 +127,7 @@ void TeachingServer::solve() {
     for (const auto& p : sol.players) at[p.position] = p.at;
     std::map<int, const tg::Job*> job;
     for (const auto& j : st.jobs) job[j.position] = &j;
+    const std::map<int, tg::Point> home = tg::blockHome(plan_.frame);
 
     for (std::uint8_t i = 0; i < n; ++i) {
         if (teamOf(i) != us_ || world_.isKeeper(i)) continue;
@@ -127,6 +146,24 @@ void TeachingServer::solve() {
                     other_[i] = static_cast<std::int16_t>(ts->second);
             if (const auto c = plan_.concepts.find(j.kind); c != plan_.concepts.end() && c->second.id >= 0 && c->second.id <= 254)
                 concept_[i] = static_cast<std::uint8_t>(c->second.id);
+            // A mark job (the `mark` placement rule) on a man: the marking mind runs it. Its zone
+            // is his own spot in the block.
+            const auto k = plan_.frame.kinds.find(j.kind);
+            mind_on_[i] = k != plan_.frame.kinds.end() && k->second.rule == "mark" && other_[i] >= 0;
+            if (mind_on_[i]) {
+                tg::Point hp = a->second;
+                if (const auto h = home.find(num); h != home.end()) hp = h->second;
+                const Vec2 hw{Fixed64::fromDouble(sg * (hp.y / 100.0 * 2 * hx - hx)), Fixed64::fromDouble(sg * (hp.x / 100.0 * 2 * hy - hy))};
+                if (mind_man_[i] != other_[i]) {
+                    mind_[i] = ai::concepts::MarkingMind{zonal_ ? ai::concepts::MarkKind::Zonal : ai::concepts::MarkKind::ManOriented,
+                                                         static_cast<core::SlotIndex>(other_[i]), hw};
+                    mind_man_[i] = other_[i];
+                } else {
+                    mind_[i].setHome(hw);
+                }
+            }
+        } else {
+            mind_on_[i] = false;
         }
     }
     active_ = true;
@@ -157,6 +194,18 @@ ai::Orders TeachingServer::decide(std::uint8_t slot) {
     p.other = other_[slot];
     p.move.move = ai::seek(me.pos, p.target, Fixed64::fromInt(2));
     p.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
+    if (mind_on_[slot]) {
+        // Marking: his own eyes, memory and choice of step (ai/concepts/Marking). While their
+        // ball is dead the Law keeps his plan spot; the mind still looks and thinks.
+        const Fixed64 sg = attack_plus_ ? Fixed64::one() : -Fixed64::one();
+        view_[slot] = mind_[slot].think(world_, slot, sg);
+        if (world_.restartTeam() == 0xFF) {
+            p.target = view_[slot].target;
+            p.move.move = ai::seek(me.pos, p.target, view_[slot].full_pace ? Fixed64::fromFraction(1, 2) : Fixed64::fromInt(2));
+        }
+        p.move.face = view_[slot].face;
+        p.why = ai::Why::Mark;
+    }
     // On their carrier, in reach: he may dive in — the engine's own tackle rate (G5.25).
     if (ball.owner && teamOf(*ball.owner) == them_ && world_.restartTeam() == 0xFF &&
         ai::distSq(me.pos, ball.pos) < core::kTackleReach * core::kTackleReach) {
@@ -172,8 +221,65 @@ ai::Orders TeachingServer::decide(std::uint8_t slot) {
 }
 
 std::uint8_t TeachingServer::conceptOf(std::uint8_t slot, const ai::Orders& o) const {
+    // A marker's label is the step he is on (track the runner, jump the pass …).
+    if (slot < 32 && on_job_[slot] && mind_on_[slot]) {
+        const std::uint8_t c = step_concept_[static_cast<int>(view_[slot].step)];
+        if (c != 255) return c;
+    }
     if (slot < 32 && on_job_[slot] && concept_[slot] != 255) return concept_[slot];
     return GameServer::conceptOf(slot, o);
+}
+
+// ── The one-player view: MIND_WATCH picks a player, MIND carries his mind ──────────────
+void TeachingServer::onOtherFrame(ClientId id, const net::DecodedFrame& frame) {
+    if (frame.type != net::FrameType::MindWatch || frame.payload.empty()) return;
+    const std::uint8_t slot = frame.payload[0];
+    if (slot >= cfg_.slot_count) { mind_watch_.erase(id); return; }
+    mind_watch_[id] = slot;
+    const std::string js = mindJson(slot);   // at once: a frozen room has no next tick
+    transport_.send(id, net::encodeFrame(net::FrameType::Mind, net::Bytes(js.begin(), js.end())));
+}
+
+void TeachingServer::afterTick() {
+    if (mind_watch_.empty() || world_.tickCount() % 3 != 0) return;   // 10 Hz
+    for (const auto& [id, slot] : mind_watch_) {
+        const std::string js = mindJson(slot);
+        transport_.send(id, net::encodeFrame(net::FrameType::Mind, net::Bytes(js.begin(), js.end())));
+    }
+}
+
+std::string TeachingServer::mindJson(std::uint8_t slot) const {
+    namespace mk = ai::concepts;
+    char buf[256];
+    std::string js = "{\"slot\":" + std::to_string(slot) + ",\"tick\":" + std::to_string(world_.tickCount());
+    js += std::string(",\"phase\":\"") + ai::kPhaseNames[static_cast<int>(brain_.phaseOf(teamOf(slot)))] + "\"";
+    if (slot >= 32 || !mind_on_[slot] || !on_job_[slot]) return js + ",\"mind\":false}";
+    const mk::MarkView& v = view_[slot];
+    const mk::MarkMemory& m = mind_[slot].memory();
+    const std::uint64_t now = world_.tickCount();
+    const auto& me = world_.player(slot);
+    const auto& man = world_.player(mind_[slot].man());
+    const double speed = std::hypot(me.vel.x.toDouble(), me.vel.y.toDouble());
+    js += ",\"mind\":true,\"concept\":\"marking\"";
+    js += std::string(",\"kind\":\"") + mk::kMarkKindCodes[static_cast<int>(v.kind)] + "\"";
+    js += std::string(",\"step\":\"") + mk::kMarkStepCodes[static_cast<int>(v.step)] + "\"";
+    js += std::string(",\"wants\":\"") + mk::kMarkStepCodes[static_cast<int>(v.wants)] + "\"";
+    js += std::string(",\"eyes\":\"") + mk::kEyesCodes[static_cast<int>(v.eyes)] + "\"";
+    js += std::string(",\"sees_man\":") + (v.sees_man ? "true" : "false") + ",\"sees_ball\":" + (v.sees_ball ? "true" : "false");
+    js += ",\"man\":" + std::to_string(mind_[slot].man());
+    js += ",\"man_age\":" + std::to_string(m.man.ever ? now - m.man.tick : 0) + ",\"ball_age\":" + std::to_string(m.ball.ever ? now - m.ball.tick : 0);
+    std::snprintf(buf, sizeof buf, ",\"man_seen\":[%.2f,%.2f],\"man_now\":[%.2f,%.2f],\"target\":[%.2f,%.2f],\"gaze\":[%.3f,%.3f],\"speed\":%.2f",
+                  m.man.pos.x.toDouble(), m.man.pos.y.toDouble(), man.pos.x.toDouble(), man.pos.y.toDouble(),
+                  v.target.x.toDouble(), v.target.y.toDouble(), v.face.x.toDouble(), v.face.y.toDouble(), speed);
+    js += buf;
+    js += std::string(",\"man_has_ball\":") + (m.man_has_ball ? "true" : "false") + ",\"back_to_goal\":" + (m.man_back_to_goal ? "true" : "false") +
+          ",\"pass_to_man\":" + (m.pass_to_man ? "true" : "false");
+    js += ",\"opts\":[";
+    for (int i = 0; i < mk::kMarkStepCount; ++i) {
+        const auto& o = v.options[i];
+        js += std::string(i ? "," : "") + "{\"k\":\"" + mk::kMarkStepCodes[i] + "\",\"cue\":" + (o.cue ? "true" : "false") + ",\"score\":" + std::to_string(o.score) + "}";
+    }
+    return js + "]}";
 }
 
 }  // namespace fh::game::teach

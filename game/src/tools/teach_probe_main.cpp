@@ -54,6 +54,14 @@ void print(const teach::TeachingServer& s, const char* when) {
                     s.onJob(i) ? "PLAN" : "engine", me.pos.x.toDouble(), me.pos.y.toDouble(), std::hypot(dx, dy),
                     ai::kWhyNames[static_cast<int>(orders[i].why)],
                     orders[i].other >= 0 ? s.brain().numberOf(static_cast<core::SlotIndex>(orders[i].other)) : 0);
+        if (s.hasMind(i) && s.onJob(i)) {   // the marking mind: the step he is on, his eyes, how old his picture of his man is
+            const auto& v = s.mindView(i);
+            const auto& m = s.mind(i).memory();
+            std::printf("           mind: %-20s eyes=%-9s sees man %d ball %d, man last seen %llu ticks ago%s\n",
+                        ai::concepts::kMarkStepCodes[static_cast<int>(v.step)], ai::concepts::kEyesCodes[static_cast<int>(v.eyes)],
+                        v.sees_man, v.sees_ball, static_cast<unsigned long long>(w.tickCount() - m.man.tick),
+                        v.wants != v.step ? "  (reacting)" : "");
+        }
     }
 }
 
@@ -82,12 +90,23 @@ int main(int argc, char** argv) {
     teach::TeachingServer s{cfg, t, std::move(*plan), 0};
     print(s, "FREEZE (their goal kick)");
     int last_step = s.stateId();
+    int seen_step[ai::concepts::kMarkStepCount] = {};
+    unsigned long long blind_ticks = 0, mind_ticks = 0;
     for (int i = 0; i < seconds * 30; ++i) {
         s.tickOnce();
+        for (std::uint8_t k = 0; k < 11; ++k)
+            if (s.hasMind(k) && s.onJob(k)) {
+                ++seen_step[static_cast<int>(s.mindView(k).step)];
+                ++mind_ticks;
+                if (!s.mindView(k).sees_man) ++blind_ticks;
+            }
         const bool ours = s.world().ball().owner && *s.world().ball().owner < 11;
         if (s.stateId() != last_step) { last_step = s.stateId(); print(s, "NEW STEP"); }
         else if (i % 150 == 149) print(s, "…");
         if (ours) { print(s, "WE WON IT"); break; }
     }
+    std::printf("\nmarking minds, man-ticks in each step:");
+    for (int k = 0; k < ai::concepts::kMarkStepCount; ++k) std::printf(" %s=%d", ai::concepts::kMarkStepCodes[k], seen_step[k]);
+    std::printf("\nman out of sight %.0f%% of the time\n", mind_ticks ? 100.0 * blind_ticks / mind_ticks : 0.0);
     return 0;
 }

@@ -367,7 +367,8 @@ void GameServer::handleFrame(ClientId id, const DecodedFrame& frame) {
             return;
         }
         default:
-            return;   // anything else (incl. the frames G5.23 retired) is ignored
+            onOtherFrame(id, frame);   // a child room's own frames; the match ignores the rest (incl. the frames G5.23 retired)
+            return;
     }
 }
 
@@ -542,6 +543,7 @@ void GameServer::tickOnce() {
     for (const auto& [id, _] : clients_) transport_.send(id, frame);
     // The brain overlay at ~5 Hz, only to clients that switched it on.
     if (!brain_watchers_.empty() && world_.tickCount() % 6 == 0) sendBrain();
+    afterTick();
 }
 
 void GameServer::setSpeedPct(std::uint16_t pct) {
@@ -558,6 +560,7 @@ void GameServer::heartbeat() {
     if (clients_.empty()) return;
     const Bytes frame = buildSnapshotFrame();
     for (const auto& [id, _] : clients_) transport_.send(id, frame);
+    afterTick();
 }
 
 void GameServer::sendBrain() {

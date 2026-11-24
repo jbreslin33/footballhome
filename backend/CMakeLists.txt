@@ -72,6 +72,7 @@ set(SOURCES
     src/models/FieldPlan.cpp
     src/models/FormationTactics.cpp
     src/models/TacticPlans.cpp
+    src/models/TaxonomySync.cpp
     src/models/GameRoster.cpp
     src/models/SmsOptInBoard.cpp
     src/models/Contacts.cpp

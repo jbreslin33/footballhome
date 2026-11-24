@@ -23,7 +23,7 @@
 //     concept, real football with no name yet, or a fudge — and what the engine READS;
 //   • tap a class name anywhere → the C++ class: its parents (each a link), its children,
 //     its comment, the behaviours in it, and the source itself
-//     (game_engine_classes / game_engine_sources, scripts/taxonomy/export_engine_index.py).
+//     (game_engine_classes / game_engine_sources, refreshed by the backend TaxonomySync on load).
 //
 // WHERE it lives, on every concept card (owner 11/24: "i need on each concept card wherther
 // icons for if used in game, db, engine" · "clicking each one takes you to pertiientn info.
@@ -130,6 +130,13 @@ class FootballTaxonomyScreen extends Screen {
                    border:1px solid var(--border-color); background:transparent; color:var(--text-primary); }
         .tx-chip.on { cursor:pointer; border-color:#38bdf8; background:rgba(56,189,248,0.12); }
         .tx-chip.off { opacity:0.3; filter:grayscale(1); }
+        .tx-chip.half { cursor:pointer; border:1px dashed #f59e0b; background:rgba(245,158,11,0.10); opacity:0.85; }
+        .tx-card[data-reach="engine"] { border-left-color:#f43f5e; }
+        .tx-card[data-reach="fudge"]  { border-left-color:#a855f7; }
+        .tx-dot[data-reach="engine"] { background:#f43f5e; border-color:#f43f5e; }
+        .tx-sync { margin:10px 0 2px; padding:8px 10px; border:1px solid var(--border-color); border-radius:var(--radius-md); font-size:0.8rem; display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; }
+        .tx-sync.bad { border-color:#f43f5e; background:rgba(244,63,94,0.08); }
+        .tx-sync .d { flex-basis:100%; }
       </style>
       <div class="tx-wrap" id="tx-body"></div>
       <div id="tx-detail"></div>`;
@@ -140,6 +147,7 @@ class FootballTaxonomyScreen extends Screen {
       const b = e.target.closest('[data-tx]');
       if (!b) return;
       const [k, v] = [b.dataset.tx, b.dataset.v];
+      if (k === 'sync') { this._syncNow(); return; }
       if (k === 'close') { this.detail = null; this.trail = []; this._renderDetail(); return; }
       if (k === 'watch') { this._watch(Number(v)); return; }
       if (k === 'back') { this.detail = this.trail.pop() || null; this._renderDetail(); return; }
@@ -173,7 +181,9 @@ class FootballTaxonomyScreen extends Screen {
   onEnter() {
     this._render();
     const copy = window.MessageCopy ? MessageCopy.load(this.auth).catch(() => {}) : Promise.resolve();
-    Promise.all([copy, this.data ? null : this._load()]).then(() => this._render());
+    // Every visit reads it again, and every read checks the engine's C++ against the database
+    // first (backend TaxonomySync) — the sync line says when.
+    Promise.all([copy, this._load()]).then(() => this._render());
   }
 
   async _load() {
@@ -219,7 +229,9 @@ class FootballTaxonomyScreen extends Screen {
     const add = (n) => { if (n && ix.cls.has(n) && !classes.includes(n)) classes.push(n); };
     for (const b of game) add(b.class);
     for (const j of this.data.jobs || []) if (j.concept_id === c.id && j.rule && j.rule !== 'home') add(this._ruleClass(j.rule));
-    return { game, classes, played: game.length > 0 || !!c.act };
+    // played = the sim itself runs it; built = there is engine code no side uses yet.
+    const inSim = game.some(b => b.in_sim !== false) || !!c.act;
+    return { game, classes, played: inSim, built: !inSim && game.length > 0 };
   }
 
   // The three chips: 🗄 DB · 🎮 Game · ⚙️ C++ — lit ones go to their own place.
@@ -233,7 +245,10 @@ class FootballTaxonomyScreen extends Screen {
     const code = w.classes.length === 1 ? `data-tx-open="class" data-k="${esc(w.classes[0])}"`
       : w.classes.length ? `data-tx-open="concept" data-k="${c.id}" data-sec="classes"`
       : w.game.length === 1 ? `data-tx-open="behaviour" data-k="${esc(w.game[0].code)}"` : `data-tx-open="concept" data-k="${c.id}" data-sec="behaviours"`;
-    return `<div class="tx-where">${chip('where_db', true, `data-tx-open="db" data-k="${c.id}"`)}${chip('where_game', w.played, game)}${chip('where_code', w.classes.length > 0 || w.game.length > 0, code)}</div>`;
+    const gameChip = w.built
+      ? `<button type="button" class="tx-chip half" title="${esc(this._t('where_game_built'))}" ${game}>${esc(this._t('where_game'))}</button>`
+      : chip('where_game', w.played, game);
+    return `<div class="tx-where">${chip('where_db', true, `data-tx-open="db" data-k="${c.id}"`)}${gameChip}${chip('where_code', w.classes.length > 0 || w.game.length > 0, code)}</div>`;
   }
 
   // How far a concept reaches.
@@ -250,7 +265,7 @@ class FootballTaxonomyScreen extends Screen {
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const head = `<h2 style="margin:0;">${esc(this._t('title'))}</h2>
       <div class="tx-dim" style="font-size:0.85rem; margin-top:4px; max-width:75ch;">${esc(this._t('intro'))}</div>`;
-    if (this.error) { el.innerHTML = head + `<p>${esc(this._t('failed'))}</p>`; return; }
+    if (this.error && !this.data) { el.innerHTML = head + `<p>${esc(this._t('failed'))}</p>`; return; }
     if (!this.data) { el.innerHTML = head + `<p class="tx-dim">${esc(this._t('loading'))}</p>`; return; }
     const d = this.data;
     const tabs = [['concepts', this._t('tab_concepts'), (d.concepts || []).length], ['techniques', this._t('tab_techniques'), (d.techniques || []).length],
@@ -261,7 +276,7 @@ class FootballTaxonomyScreen extends Screen {
     else if (this.tab === 'techniques') body = this._techniquesHtml(esc);
     else if (this.tab === 'more') body = this._moreHtml(esc);
     else body = this._engineHtml(esc);
-    el.innerHTML = head + `<div class="tx-pills">${tabs}</div>` + body;
+    el.innerHTML = head + this._syncHtml(esc) + `<div class="tx-pills">${tabs}</div>` + body;
     if (this.tab === 'concepts') this._renderConceptList();
     this._renderDetail();
   }
@@ -273,8 +288,11 @@ class FootballTaxonomyScreen extends Screen {
     const count = (r) => inMoment.filter(c => r === 'all' || this._reach(c) === r).length;
     const moments = [['', this._t('moment_all'), all.length]].concat((d.moments || []).map(m => [m.code, m.title, all.filter(c => c.moment === m.code).length]))
       .map(([k, label, n]) => `<button type="button" class="tx-pill ${this.moment === k ? 'on' : ''}" data-tx="moment" data-v="${esc(k)}">${esc(label)}<span class="n">${n}</span></button>`).join('');
+    const eo = this._engineOnly(), dups = this._dups();
     const reaches = ['all', 'played', 'placed', 'job', 'named']
-      .map(r => `<button type="button" class="tx-pill ${this.reach === r ? 'on' : ''}" data-tx="reach" data-v="${r}">${r === 'all' ? '' : `<span class="tx-dot" data-reach="${r}"></span>`}${esc(this._t('reach_' + r))}<span class="n">${count(r)}</span></button>`).join('');
+      .map(r => `<button type="button" class="tx-pill ${this.reach === r ? 'on' : ''}" data-tx="reach" data-v="${r}">${r === 'all' ? '' : `<span class="tx-dot" data-reach="${r}"></span>`}${esc(this._t('reach_' + r))}<span class="n">${count(r) + (r === 'all' && !this.moment ? eo.length : 0)}</span></button>`).join('')
+      + `<button type="button" class="tx-pill ${this.reach === 'engine' ? 'on' : ''}" data-tx="reach" data-v="engine"><span class="tx-dot" data-reach="engine"></span>${esc(this._t('reach_engine'))}<span class="n">${eo.length}</span></button>`
+      + `<button type="button" class="tx-pill ${this.reach === 'dups' ? 'on' : ''}" data-tx="reach" data-v="dups">${esc(this._t('reach_dups'))}<span class="n">${dups.engine.length + dups.pairs.length}</span></button>`;
     const legend = this._t('legend'), where = this._t('where_legend');
     return `<div class="tx-pills">${moments}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
       ${where ? `<div class="tx-legend" style="margin:0 0 8px;">${esc(where)}</div>` : ''}
@@ -290,8 +308,9 @@ class FootballTaxonomyScreen extends Screen {
     const d = this.data, q = this.search.trim().toLowerCase();
     const rules = {};
     for (const r of d.rules || []) rules[r.code] = r.label;
+    if (this.reach === 'dups') { el.innerHTML = this._dupsHtml(esc); return; }
     const shown = (d.concepts || []).filter(c => (!this.moment || c.moment === this.moment)
-      && (this.reach === 'all' || this._reach(c) === this.reach)
+      && this.reach !== 'engine' && (this.reach === 'all' || this._reach(c) === this.reach)
       && (!q || (c.title + ' ' + c.name + ' ' + (c.cue || '')).toLowerCase().includes(q)));
     const card = (c) => {
       const reach = this._reach(c);
@@ -306,7 +325,10 @@ class FootballTaxonomyScreen extends Screen {
         ${this._whereHtml(c, esc)}
       </div>`;
     };
-    let html = `<div class="tx-dim" style="font-size:0.78rem; margin-top:8px;">${esc(this._t('count', { n: shown.length, total: (d.concepts || []).length }))}</div>`;
+    // What the engine does under no catalogue name is part of the taxonomy too (owner 11/24).
+    const eo = (this.reach === 'all' || this.reach === 'engine') && !this.moment
+      ? this._engineOnly().filter(g => !q || (g.title + ' ' + g.what + ' ' + g.near.join(' ')).toLowerCase().includes(q)) : [];
+    let html = `<div class="tx-dim" style="font-size:0.78rem; margin-top:8px;">${esc(this._t('count_all', { n: shown.length + eo.length, total: (d.concepts || []).length, e: this._engineOnly().length }))}</div>`;
     for (const m of d.moments || []) {
       const mine = shown.filter(c => c.moment === m.code);
       if (!mine.length) continue;
@@ -319,7 +341,109 @@ class FootballTaxonomyScreen extends Screen {
         html += `<div class="tx-principle">${esc(title)}</div><div class="tx-grid">${list.map(card).join('')}</div>`;
       }
     }
+    if (eo.length) {
+      const ix = this._index();
+      html += `<div class="tx-moment">${esc(this._t('h_engine_only'))}</div><div class="tx-grid">` + eo.map(g => {
+        const near = g.near.map(n => ix.byName.get(n)).filter(Boolean);
+        return `<div class="tx-card" data-reach="${g.fudge ? 'fudge' : 'engine'}" data-tx-open="behaviour" data-k="${esc(g.behaviours[0].code)}">
+          <div class="tx-title">${esc(g.title)}</div>
+          <div class="tx-meta">${esc(g.fudge ? this._t('eo_fudge') : this._t('eo_unnamed', { n: g.behaviours.length }))}${g.behaviours[0].symbol ? ` · <span class="tx-code">${esc(g.behaviours[0].symbol)}</span>` : ''}</div>
+          <div class="tx-cue">${esc(g.what)}</div>
+          ${g.fudge ? '' : `<div class="tx-line">${near.length ? esc(this._t('eo_near')) + ' ' + near.map(c => this._conceptLink(c, esc)).join(', ') : esc(this._t('eo_none'))}</div>`}
+          <div class="tx-where"><span class="tx-chip off">${esc(this._t('where_db'))}</span><span class="tx-chip on">${esc(this._t('where_game'))}</span><span class="tx-chip on">${esc(this._t('where_code'))}</span></div>
+        </div>`;
+      }).join('') + `</div>`;
+    }
     el.innerHTML = html;
+  }
+
+  // The engine's behaviours no catalogue concept names, one entry per suggested name (two
+  // behaviours given the same name are the same idea), fudges each their own.
+  _engineOnly() {
+    if (this._eo && this._eo.d === this.data) return this._eo.list;
+    const groups = new Map(), list = [];
+    const pretty = (n) => { const t = String(n || '').replace(/-/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); };
+    for (const b of this.data.behaviours || []) {
+      if (b.status === 'concept') continue;
+      const near = (b.other || '').split(/,\s*/).filter(Boolean);
+      if (b.status === 'fudge') { list.push({ title: pretty(b.code.replace(/_/g, '-')), what: b.what, behaviours: [b], near: [], fudge: true }); continue; }
+      const key = b.suggested || b.code;
+      if (!groups.has(key)) { groups.set(key, { title: pretty(key), what: b.what, behaviours: [], near: [], fudge: false }); list.push(groups.get(key)); }
+      const g = groups.get(key);
+      g.behaviours.push(b);
+      for (const n of near) if (!g.near.includes(n)) g.near.push(n);
+    }
+    list.sort((a, b) => (a.fudge - b.fudge) || a.title.localeCompare(b.title));
+    this._eo = { d: this.data, list };
+    return list;
+  }
+
+  // Duplicate candidates, from evidence: an engine-only entry and the concepts it may already
+  // be; and two concepts that one behaviour was judged to fit both of.
+  _dups() {
+    if (this._dp && this._dp.d === this.data) return this._dp.v;
+    const ix = this._index(), pairs = new Map();
+    for (const b of this.data.behaviours || []) {
+      const a = b.concept_id != null ? ix.concept.get(b.concept_id) : null;
+      if (!a) continue;
+      for (const n of (b.other || '').split(/,\s*/).filter(Boolean)) {
+        const o = ix.byName.get(n);
+        if (!o || o.id === a.id) continue;
+        const key = [Math.min(a.id, o.id), Math.max(a.id, o.id)].join('|');
+        if (!pairs.has(key)) pairs.set(key, { a: a.id < o.id ? a : o, b: a.id < o.id ? o : a, n: 0 });
+        pairs.get(key).n++;
+      }
+    }
+    const v = { engine: this._engineOnly().filter(g => !g.fudge && g.near.some(n => ix.byName.has(n))),
+                pairs: [...pairs.values()].sort((x, y) => y.n - x.n || x.a.title.localeCompare(y.a.title)) };
+    this._dp = { d: this.data, v };
+    return v;
+  }
+
+  _dupsHtml(esc) {
+    const ix = this._index(), v = this._dups();
+    if (!v.engine.length && !v.pairs.length) return `<p class="tx-dim">${esc(this._t('dup_none'))}</p>`;
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('dup_intro'))}</div>`;
+    if (v.engine.length) html += `<div class="tx-h">${esc(this._t('dup_h_engine'))} <span class="tx-dim">${v.engine.length}</span></div>` + v.engine.map(g =>
+      `<div class="tx-row" data-status="unnamed" data-tx-open="behaviour" data-k="${esc(g.behaviours[0].code)}">
+        <div style="font-size:0.88rem;"><strong>${esc(g.title)}</strong> <span class="tx-dim">— ${esc(g.what)}</span></div>
+        <div class="tx-meta">${esc(this._t('eo_near'))} ${g.near.map(n => ix.byName.get(n)).filter(Boolean).map(c => this._conceptLink(c, esc)).join(', ')}</div>
+      </div>`).join('');
+    if (v.pairs.length) html += `<div class="tx-h">${esc(this._t('dup_h_pairs'))} <span class="tx-dim">${v.pairs.length}</span></div>` + v.pairs.map(p =>
+      `<div class="tx-row" data-status="concept" style="cursor:default;">
+        <div style="font-size:0.88rem;">${this._conceptLink(p.a, esc)} <span class="tx-dim">↔</span> ${this._conceptLink(p.b, esc)}</div>
+        <div class="tx-meta">${esc(this._t('dup_pair_why', { n: p.n }))}</div>
+      </div>`).join('');
+    return html;
+  }
+
+  // ── Always in step, with a timestamp (scripts/taxonomy/sync.py → taxonomy_sync) ──
+  _ago(epoch, now) {
+    const s = Math.max(0, Math.round(now - epoch));
+    if (s < 90) return this._t('ago_s', { n: s });
+    if (s < 5400) return this._t('ago_m', { n: Math.round(s / 60) });
+    if (s < 86400) return this._t('ago_h', { n: Math.round(s / 3600) });
+    return this._t('ago_at', { t: new Date(epoch * 1000).toLocaleString() });
+  }
+  _syncHtml(esc) {
+    const y = this.data && this.data.sync;
+    const btn = `<button type="button" class="tx-pill" data-tx="sync" ${this._syncing ? 'disabled' : ''}>${esc(this._t(this._syncing ? 'sync_wait' : 'sync_now'))}</button>`;
+    if (!y || !y.checked_at) return `<div class="tx-sync"><span>${esc(this._t('sync_never'))}</span>${btn}</div>`;
+    const when = this._ago(y.checked_at, y.now) + ' (' + new Date(y.checked_at * 1000).toLocaleTimeString() + ')';
+    const main = y.in_sync ? this._t('sync_ok', { when, n: y.db_rows }) : this._t('sync_bad', { when });
+    const diffs = Object.entries(y.diff || {}).filter(([, list]) => list && list.length)
+      .map(([k, list]) => `<div class="d">${esc(this._t('sync_d_' + k, { list: list.join(', ') }))}</div>`).join('');
+    const game = y.game_built_at ? `<div class="d">${esc(this._t(y.game_stale ? 'sync_game_stale' : 'sync_game_ok', { when: this._ago(y.game_built_at, y.now) }))}</div>` : '';
+    return `<div class="tx-sync ${y.in_sync ? '' : 'bad'}"><span>${esc(main)}</span>${btn}${diffs}${game}</div>`;
+  }
+  // 🔄 Sync now: read it all again — every read checks the C++ against the database first.
+  async _syncNow() {
+    if (this._syncing) return;
+    this._syncing = true;
+    this._render();
+    await this._load();
+    this._syncing = false;
+    this._render();
   }
 
   // ── 🦶 Techniques: the tree as nested lists ────────────────────────────
@@ -371,7 +495,7 @@ class FootballTaxonomyScreen extends Screen {
     } else {
       body = (sets[this.engine] || all).map(b => this._behaviourRow(b, esc)).join('');
     }
-    return `<div class="tx-dim" style="font-size:0.85rem; max-width:75ch;">${esc(this._t('engine_intro2', { n: all.length, used, total: (d.concepts || []).length, commit: d.commit || '' }))}</div>
+    return `<div class="tx-dim" style="font-size:0.85rem; max-width:75ch;">${esc(this._t('engine_intro2', { n: all.length, used, total: (d.concepts || []).length }))}</div>
       <div class="tx-pills">${pills}</div>${body}`;
   }
 

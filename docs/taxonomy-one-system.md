@@ -54,9 +54,8 @@ Each row has a **standing**:
 3. Add its `game_engine_behaviours` row by migration: what it does, its standing, its concept.
    No concept fits → first ask whether a catalogue concept should have been picked off the
    shelf instead of inventing one; if it is genuinely new football, add the concept row too.
-4. After it lands: `python3 scripts/taxonomy/export_engine_index.py | sudo podman exec -i
-   footballhome_db psql -U footballhome_user -d footballhome -v ON_ERROR_STOP=1 -1` so the page
-   shows the current classes, source and line numbers (the tag is the anchor).
+4. Open ⚽ Football → 🧬 Taxonomy: it re-reads the code on load and shows the new behaviour, its
+   class and its source (the tag is the anchor), or says exactly what is out of step.
 
 ## Not done yet
 
@@ -99,3 +98,76 @@ Limit, today: the engine names a concept per player only for the acts in `game_e
 concept the popup shows the match with no loop and says so. Closing that needs the engine to
 report which *behaviour* each player is running (its `[behaviour: code]`), in `game/src` — the
 game session's files.
+
+## Marking: the first concept built whole (mig 1830)
+
+Owner, 2026-11-24, on the proof of concept: "if the player is in man-oriented marking that is a
+state of marking? then we should have sub states where he does certain things to accomplish it
+and both state machines should show" · "a player should have multiple state machines" · "focus
+on 1 player and all his state machines" · "build it for marking first" · "this is going to be in
+engine too right? we are working together with engine".
+
+`game/src/ai/concepts/Marking.{hpp,cpp}` — an engine capability, fixed point, deterministic, off
+by default (nothing in `Brain` or `DefendingBlock` calls it). The pattern for every concept after:
+
+| | In marking | Generally |
+|---|---|---|
+| **Recognise** | an EYES machine (ball / man / both, by field of view; a shoulder check on a rhythm) writes a MEMORY: his man and the ball, each with the tick he saw it | what a player has not seen he does not know |
+| **Choose** | eight steps, each with a cue read from his memory and a score; the best one becomes his state once it has held for his reaction time | the options and scores are kept for the viewer |
+| **Execute** | the step's own spot and pace | |
+
+The states as a stack — **Marking › kind › step**:
+
+- *kind* is inheritance (`game_concept_links.kind = 'kind-of'`): man-oriented and zonal share
+  every step and differ in one rule — he leaves, follow him in / pass him on.
+- *step* is a sub-state (`'step-of'`): find your man, where to stand, track the runner, follow
+  the dropper, pass him on, jump the pass, no turn, contain. Each is a catalogue concept and a
+  behaviour code in `behaviours.list`.
+- *alongside* run the eyes, and movement.
+
+The look also found a mislabel: the engine's own `MarkMan` is zonal and was named by the
+man-oriented concept. `zonal-marking` (concept 189) now names it.
+
+**Where to see it.** The teaching room runs the mind for every plan job placed by the `mark`
+rule; tap one of ours on `/teach.html` and the panel shows his stack, his eyes, what he knows
+and how old it is (with a hollow ring on the pitch where he THINKS his man is), the options he
+weighed, and what he has done. `&marking=zonal` switches the kind. Server → page: the `MIND`
+frame (JSON, `TeachingServer::mindJson`), asked for with `MIND_WATCH`.
+
+**Not fitted.** The priorities and distances are [FH] coaching values. They are the numbers data
+should set when a side's use of each step is measured — and until then the Premier League match
+does not use the mind.
+
+## Always in step: sync on load, with a timestamp (mig 1836)
+
+Owner, 2026-11-24: "i need to see all the concepts the sim and the db and c++ have on that page
+because if the game engine is using something then that is part of taxonomy … and find if its
+dup" · "the taxonomy needs to always check c++ and db and game etc when loading every time OR …
+have a sync button" · "with timestamp" · "a sync on load is fine and a sync button is fine".
+
+- **Every load of the page, and 🔄 Sync now**, runs `backend/src/models/TaxonomySync`: the
+  backend reads the engine source (mounted read-only at `/engine`, `docker-compose.yml`), checks
+  the `[behaviour: …]` tags, `behaviours.list` and `game_engine_behaviours` against each other,
+  and — only when the source changed — refreshes the page's copy of the code (sources, classes,
+  each behaviour's line and class). The result and its time are the one row of `taxonomy_sync`,
+  shown at the top of the page; any difference is listed by name.
+- **The game.** `make game-deploy` stamps `taxonomy_sync.game_built_at`; the page says whether
+  the running game is older than the engine code.
+- **Everything is on the page.** The engine's behaviours that no concept names are entries on
+  the Concepts tab ("in the engine, not in the catalogue"), each with the concepts it might
+  already be. **👯 Possible duplicates** lists those and the pairs of concepts one behaviour
+  fits both of — candidates; a merge or a delete is the owner's call and lands as a migration.
+- **🎮 has three states** (`game_engine_behaviours.in_sim`): lit = the sim runs it; dashed =
+  built and tested, no side uses it yet; grey = nothing.
+
+## Every concept has a fate
+
+Owner, 2026-11-24: "they did not press as much in our data years as they do now. that is why we
+have the concepts in but they may not be used much or at all but important its all there as
+football waiting to be used … or discarded … but not ignored."
+
+Used (at the rate that season's data supports), available at zero (built, wired into the sim
+behind a setting, unused), or discarded with a reason. Never unreachable. The marking mind is
+the first: `physics.mark.mind` — no row = the sim's fitted marking, 1 = its markers run the mind.
+A first 4-match on/off read was mixed (who gets tight and switches toward real; crosses, goals
+and closing pace away), so it sits at zero until the harness fits its steps one at a time.

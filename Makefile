@@ -844,6 +844,7 @@ game-deploy:
 	@echo "🎮 Building fh-game image (lint + build + full test suite)..."
 	@python3 scripts/taxonomy/check_engine_sync.py
 	@flock $(BUILD_LOCK) $(ENGINE) build --build-context shared=$(CURDIR)/shared -t footballhome_footballhome_game ./game
+	@$(ENGINE) exec -i footballhome_db psql -U footballhome_user -d footballhome -qc "UPDATE taxonomy_sync SET game_built_at = now() WHERE id = 1"
 	@echo "✓ fh-game image built and test-gated."
 	@echo "  Restart the service to pick it up:"
 	@echo "  $(COMPOSE) --env-file env up -d footballhome_game"
