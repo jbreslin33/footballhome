@@ -32,6 +32,7 @@ constexpr int kRealSpotDm[kRoleCount][kBandCount] = {   // decimetres
     {144, 180, 238, 303, 353, 416, 457, 507, 550, 641},   // WIDE
     { 96, 131, 195, 256, 304, 359, 400, 446, 488, 552},   // ST
 };
+// [behaviour: poss_width_by_ball_band]
 // G5.102 (§8.204): the side ON the ball, its width — the real gap between a role's pair across by
 // the ball's band off THEIR line (benchmarks_tracking_posswidth.py: CB 11.9 → 20.8 m as the ball goes
 // back into their own half — the pair splits for the build-up; WIDE 21.9 → 32.3) over the game's
@@ -151,14 +152,17 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         if (d2 < nd) { nd = d2; near = j; }
     }
     const auto& P = c.poss.params();
+    // [behaviour: poss_carry_pressed_line]
     bool pressed_line = P.line_press_m.raw > 0 && near >= 0 && nd < P.line_press_m * P.line_press_m;
     bool cone = near >= 0 && nd < Fixed64::fromInt(9);
     int zl = zoneOf(w.pitchHalfX(), sp, v.sg);
+    // [behaviour: poss_carry_line_latch]
     if (P.line_latch) {   // G5.132 (§8.233): as at his spell's first call
         auto& L = c.poss.lineLatch(v.slot);
         if (L.at != w.ownedAtTick()) { L.at = w.ownedAtTick(); L.z = zl; L.pr = pressed_line; L.cone = cone; }
         zl = L.z; pressed_line = L.pr; cone = L.cone;
     }
+    // [behaviour: poss_carry_free_line]
     if (P.line_on && (near < 0 || nd >= Fixed64::fromInt(9) || pressed_line)) {
         // G5.128 (§8.229): nobody of theirs within 3 m — his line is drawn from the real free carries
         // from his zone (kCarryLine), one draw a spell, so his wish holds while he has it. Off the
@@ -181,10 +185,12 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
         if (hx - sp.x * v.sg < Fixed64::fromInt(3) && (fx * v.sg).raw > 0) fx = -fx;
         dir = Vec2{fx, fy};
     }
+    // [behaviour: poss_carry_off_nearest_man]
     if (near >= 0) {
         const auto& d = w.player(static_cast<std::uint8_t>(near));
         const Vec2 away = math::normalized(Vec2{sp.x - d.pos.x, sp.y - d.pos.y});
         dir = math::normalized(Vec2{dir.x + away.x * Fixed64::fromFraction(7, 10), dir.y + away.y * Fixed64::fromFraction(7, 10)});
+        // [behaviour: poss_pressed_touch_cone]
         // G5.81 (§8.182): pressed (his man inside 3 m), the line he takes it on is drawn from the
         // real pressed first touches — away from the man 56%, across 27%, toward 14% (DFL controlled
         // first touches, PRESSED TOUCH: the touch's line v the line to the nearest opponent, away
@@ -209,6 +215,7 @@ Vec2 carryDir(const PlayerView& v, const PlayerCtx& c, const Vec2& sp, const Vec
             }
         }
     }
+    // [behaviour: poss_carry_edge_turn]
     // G5.141 (§8.245): whatever drew his line, within edge_m of the touchline or their goal line it
     // turns back in, as the free line already did. Away from a man pressing from inside took the carrier
     // over the touchline: 'carried out' + nothing kicked since the throw = 15.8 throw-ins a team-match,
@@ -241,6 +248,7 @@ public:
         const Fixed64 own_end = hx + sp.x * v.sg;          // metres off our line
 
         if (!v.keeper) {
+            // [behaviour: poss_shot_policy]
             // 1. A shot — the real policy (StatsBomb PL 2015/16): the share of
             // releases at his spot that are shots, by distance × the goal mouth's
             // angle; one roll for the spell, so the World's release (his real
@@ -255,6 +263,7 @@ public:
                 const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 40) + Fixed64::one()) *
                                   Fixed64::fromFraction(1, 2);
                 Fixed64 sp_eff = P.shot_p[db][ab];
+                // [behaviour: poss_shot_crowd]
                 if (P.shot_crowd) {   // G5.198 (§8.304): who's in the way — outfielders of theirs nearer the goal centre than him
                     int g = 0;
                     for (std::uint8_t q = 0; q < w.playerCount(); ++q)
@@ -263,6 +272,7 @@ public:
                     sp_eff = sp_eff * P.shot_crowd_k[db][ab][g <= 1 ? 0 : g <= 3 ? 1 : g <= 5 ? 2 : 3];
                 }
                 if (u < sp_eff) {
+                    // [behaviour: poss_shot_aim]
                     // G5.37 (§8.135): where it goes is drawn from where real shots
                     // from this distance went (on target, wide, over), one draw for
                     // the spell — the kick then has to get there past the keeper
@@ -292,6 +302,7 @@ public:
                 }
             }
         }
+        // [behaviour: poss_keeper_long_ball]
         // 1b. G5.139 (§8.243): clear the danger. Real defenders boot it clear at the 360 rate for
         // where they are and how close the nearest opponent is (own box 13-54%, the rest of our third
         // 0.4-7%) — StatsBomb logs 11.4 foot clearances a team-match, nearly all in the own third.
@@ -330,6 +341,7 @@ public:
                 return true;
             }
         }
+        // [behaviour: poss_clear_danger]
         if (!v.keeper && P.clear_on) {
             const Fixed64 ay = math::fx_abs(sp.y);
             const int cz = own_end < Fixed64::fromFraction(165, 10) && ay < Fixed64::fromFraction(2016, 100) ? 0
@@ -345,6 +357,7 @@ public:
             const int cn = nd2 < Fixed64::fromFraction(144, 100) ? 0 : nd2 < Fixed64::fromInt(9) ? 1 : nd2 < Fixed64::fromInt(36) ? 2 : 3;
             const Fixed64 u = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 47) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
             if (u < P.clear_rate[cz][cn]) {
+                // [behaviour: poss_clear_aim]
                 const Fixed64 hy = w.pitchHalfY();
                 const Fixed64 ul = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 48) + Fixed64::one()) * Fixed64::fromInt(2);   // 0..4 over the knots
                 const int qi = std::min(3, static_cast<int>(ul.raw >> Fixed64::FRAC_BITS));
@@ -355,6 +368,7 @@ public:
                 if (ay >= P.clear_touch_y) ty = sp.y.raw >= 0 ? hy : -hy;   // "if in doubt, put it out"
                 else { const Fixed64 off = hy * Fixed64::fromFraction(7, 20); ty = crowd[0] <= crowd[1] ? -off : off; }
                 o.target = Vec2{ax * v.sg, ty};
+                // [behaviour: poss_clear_out_of_play]
                 if (P.clear_out) {   // G5.188 (§8.294): out at the real share by his spot — behind his own line wide of the post, or over his touchline
                     const int a = own_end < Fixed64::fromInt(6) ? 0 : own_end < Fixed64::fromInt(18) ? 1 : own_end < Fixed64::fromInt(35) ? 2 : 3;
                     const int wd = ay < Fixed64::fromFraction(2016, 100) ? 0 : 1;
@@ -377,6 +391,7 @@ public:
                 return true;
             }
         }
+        // [behaviour: poss_pass_zone_policy]
         // 2. A pass — the real policy (StatsBomb PL 2015/16 open play). Each
         // mate's weight is the share of real passes from this zone to his zone,
         // split among the mates standing there; only passes the race read says
@@ -384,12 +399,14 @@ public:
         const int oz = zoneOf(hx, sp, v.sg);
         const bool diag_mid = depth >= P.diag_lo && depth < P.diag_hi;   // §8.284 diag (G5.210: band by param, default 35-70)
         int in_zone[10] = {};
+        // [behaviour: poss_pass_near_mate]
         // G5.74 (§8.175): a zone's share is split among the mates standing there by e^(-d/lambda),
         // d = his metres from the passer (DFL: the man a pass is for is the nearest in his zone 50-62%
         // of the time, 37-40% if even; wide to wide with a mate on each flank, the passer's own
         // flank 95-100%). Split evenly, the far flank's man took half of every wide-to-wide share.
         const int lb = own_end < Fixed64::fromInt(35) ? 0 : own_end < Fixed64::fromInt(70) ? 1 : 2;
         const Fixed64 lam = P.pick_lambda[lb];
+        // [behaviour: poss_pass_far_wing]
         // G5.172 (§8.278): a wide zone's two wings apart — index ez, or ez + 10 for the far wing (the other side of the
         // pitch from the ball), each with its real share of the zone (pass_far); the mates on a wing split that.
         Fixed64 pick[32] = {}, zsum[20] = {};
@@ -397,6 +414,7 @@ public:
         auto farShare = [&](int ez) { Fixed64 f = P.pass_far[oz][ez / 2] * P.pass_far_lift[oz & 1]; return f > Fixed64::fromFraction(1, 2) ? Fixed64::fromFraction(1, 2) : f; };
         auto wingIx = [&](int ez, const Vec2& to) { return P.pass_wing_on && (ez & 1) && ((to.y.raw >= 0) != (sp.y.raw >= 0)) ? ez + 10 : ez; };
         auto wingShare = [&](int ez, int wi) { return !P.pass_wing_on || !(ez & 1) ? Fixed64::one() : wi >= 10 ? farShare(ez) : Fixed64::one() - farShare(ez); };   // G5.157 (§8.262): the same split for a high pass, on its own marker lift
+        // [behaviour: poss_pass_back_to_keeper]
         // G5.76 (§8.177): our keeper is not in a zone's split — he has his own real share (below).
         // Alone in the deep zone when our backs push up, he took all of it: 31 passes a team-match
         // (real 7.7), 12 from 40-60 m out (1.2).
@@ -409,6 +427,7 @@ public:
                 ++in_zone[ez];
                 pick[j] = lam.raw > 0 ? math::fx_exp_neg(math::length(Vec2{to.x - sp.x, to.y - sp.y}) / lam) : Fixed64::one();
                 pick_hi[j] = pick[j];
+                // [behaviour: poss_pass_free_man]
                 if (P.mark_on) {   // G5.83 (§8.184): a man with theirs close gets less of his zone's share
                     Fixed64 nd2 = Fixed64::fromInt(10000);
                     for (std::uint8_t q = 0; q < w.playerCount(); ++q)
@@ -423,6 +442,7 @@ public:
                 zsum_hi[wingIx(ez, to)] += pick_hi[j];
             }
         struct Cand { int j; Fixed64 wgt; bool loft; Loft lf; bool behind; Vec2 at; std::uint8_t carry; bool cross = false; bool space = false; bool moded = false; };
+        // [behaviour: poss_pass_risk_own_third]
         // G5.202 (§8.308): in our own third a pass the race read says they win is played at risk_own3, not risk_weight
         // [FH coaching: no risks at the back] — our defenders' passes there were cut out ~3x real (POSSESSIONS WON).
         const Fixed64 rw = P.risk_own3.raw > 0 && own_end < Fixed64::fromInt(35) ? P.risk_own3 : P.risk_weight;
@@ -456,6 +476,7 @@ public:
             const auto& m = w.player(j);
             const Vec2 to = v2(m.pos);
             const Fixed64 d = math::length(Vec2{to.x - sp.x, to.y - sp.y});
+            // [behaviour: poss_pass_min_length]
             if (d < P.pass_min_m) continue;
             const int ez = zoneOf(hx, to, v.sg), wi = wingIx(ez, to);
             Fixed64 w0 = is_gk ? (P.gk_share[gkb].raw > 0 ? Fixed64::one() : Fixed64{})
@@ -465,12 +486,14 @@ public:
             // 15/16 open play by length 0-10/10-20/20-30/30-40 m: 99 / 153 / 63 / 25 a team-match; ours
             // 64-68 / 177-193 / 105-111 / 46-50) — a lift by the pass's length band.
             w0 = w0 * P.len_lift[std::min(5, static_cast<int>(d.raw >> Fixed64::FRAC_BITS) / 10)];
+            // [behaviour: poss_pass_short_direction]
             if (d < Fixed64::fromInt(20)) {   // §8.249: a short pass's direction — real passers play it square or back half as often (StatsBomb SHORT PASSES)
                 const int sb = depth < Fixed64::fromInt(18) ? 0 : depth < Fixed64::fromInt(35) ? 1 : depth < Fixed64::fromInt(52) ? 2 : depth < Fixed64::fromInt(70) ? 3 : 4;
                 const Fixed64 fx = (to.x - sp.x) * v.sg, fy = math::fx_abs(to.y - sp.y);
                 const int sd = fx >= fy ? 0 : -fx >= fy ? 2 : 1;   // within 45 deg forward / back, else lateral
                 w0 = w0 * P.short_dir[sb][sd];
             }
+            // [behaviour: poss_pass_to_mover]
             {   // §8.237: real passers find the man on the move (DFL: against the mates at the release, 4+ m/s
                 // picked 2.19x, under 1 m/s 0.71x) — a lift by his speed band.
                 const Fixed64 sp2 = m.vel.x * m.vel.x + m.vel.y * m.vel.y;
@@ -478,6 +501,7 @@ public:
                 w0 = w0 * P.pace_lift[pb2];
             }
             if (w0.raw <= 0) continue;
+            // [behaviour: poss_behind_choose]
             // Of the passes for a man this far short of their line, the real share
             // that are played in behind him (DFL, by 2 m of gap); the rest to feet.
             Fixed64 pb{};
@@ -485,6 +509,7 @@ public:
             if (!w.isKeeper(j) && gap.raw >= 0 && gap < Fixed64::fromInt(18))
                 pb = P.behind_gap[static_cast<int>(gap.raw >> Fixed64::FRAC_BITS) / 2];
             const Fixed64 wgt = w0 * (Fixed64::one() - pb);
+            // [behaviour: poss_pass_high_or_ground]
             // G5.73 (§8.174): to feet, outside the cross into the box — high or on the ground at the
             // real share for his spot and this length; the race read sets each mode's risk, never the
             // mode. Before, a blocked ground lane with a safe loft became a chip: 12-30% of our passes
@@ -492,6 +517,7 @@ public:
             // stayed on the ground (19-35% high, real 77-90%).
             const bool box_ball = ez == 0 && oz != 0;
             if (wgt.raw > 0 && P.high_on && !box_ball) {
+                // [behaviour: poss_pass_risk_gate]
                 const bool gsafe = c.reads.passSafe(w, v.slot, sp, to, w.passSpeed(d), Fixed64::one());
                 // Past his range the high share is not his to play, and is not handed to the ground:
                 // nobody drives a 55 m pass along the floor (real 50+ m passes 87-98% high).
@@ -505,6 +531,7 @@ public:
                 add(Cand{j, gw, false, Loft{}, false, to, 0, false, false, true});
                 if (ph.raw > 0 && d <= reach) {
                     Loft lf = loftTo(w.ballFlight(), m, me.pos, reach, w.loftLevel(v.slot));
+                    // [behaviour: poss_long_ball_beyond]
                     // G5.212 (§8.318): the long ball from the back is hit beyond the man, not onto him — the drop off the
                     // mate nearest it at the launch, DFL (benchmarks_tracking_longball.py) by carry 30-40 / 40-50 / 50+ m:
                     // on toward their goal p25 / med / p75 -2.8 / +3.7 / +10.3, +4.3 / +8.8 / +13.5, +9.5 / +15.9 / +20.6;
@@ -528,6 +555,7 @@ public:
                     Fixed64 hw = wgt;
                     if (P.mark_hi_on && j < 32 && pick[j].raw > 0 && zsum_hi[wi].raw > 0)
                         hw = wgt * (pick_hi[j] / zsum_hi[wi]) / (pick[j] / zsum[wi]);
+                    // [behaviour: poss_long_ball_own_side]
                     // G5.214 (§8.320): the long ball from the back goes down the kicker's own side — real wide men end 84% of
                     // theirs in their own wing or channel (StatsBomb PL 15/16, benchmarks_statsbomb_longball_across.py); a lift
                     // by where he stands across the pitch (centre |y| < 10 / half / wide 20.16+) x the lane the aim is in,
@@ -541,6 +569,7 @@ public:
                     }
                     add(Cand{j, lsafe ? hw * ph : hw * ph * P.high_risk, true, lf, false, to, 0, false, false, true});
                 }
+            // [behaviour: poss_pass_chip_blocked_lane]
             } else if (wgt.raw > 0) {
                 if (c.reads.passSafe(w, v.slot, sp, to, w.passSpeed(d), Fixed64::one())) {
                     add(Cand{j, wgt, false, Loft{}, false, to, 0});
@@ -564,6 +593,7 @@ public:
             }
             if (is_gk) { gk_lo = nc0; gk_hi = nc; gk_w = sum - s0; sum = s0; }
             if (pb.raw <= 0) continue;
+            // [behaviour: poss_behind_spot_and_weight]
             // The ball in behind: into the space a real roll past the line on his
             // line of run; on the ground weighted to arrive as he does (his run's
             // time to the spot), else in the air — the real share first, or
@@ -596,11 +626,13 @@ public:
             const Fixed64 vg = w.passSpeed(Fixed64::fromInt(cm));
             const Loft lf{at, aimedCarry(me.pos, at, reach)};
             Fixed64 bw = w0 * pb;
+            // [behaviour: poss_behind_to_runner]
             if (P.behind_lift_on) {   // G5.91 (§8.192): to the man already running at their goal
                 const Fixed64 vf = m.vel.x * v.sg;
                 const int vb = vf.raw < 0 ? 0 : vf < Fixed64::fromInt(2) ? 1 : vf < Fixed64::fromInt(4) ? 2 : vf < Fixed64::fromInt(6) ? 3 : 4;
                 bw = bw * P.behind_lift[vb];
             }
+            // [behaviour: poss_behind_air_or_ground]
             const bool air_first = u4 < P.behind_air && bd <= reach;
             const bool gsafe = c.reads.passSafe(w, v.slot, sp, at, vg, Fixed64::one());
             const bool lsafe = bd <= reach && c.reads.loftSafe(w, v.slot, sp, lf.at, lf.carry_m, Fixed64::one());
@@ -619,6 +651,7 @@ public:
             // deep: 52+ m out ours 3.7 a team-match v 14.9 real.
             else add(Cand{j, bw * P.behind_risk, air_first, lf, true, at, carry});
         }
+        // [behaviour: poss_space_empty_zone]
         // G5.54 (§8.155): a zone ahead with no mate in it keeps its real share — the
         // ball into space there, for the mate who gets to it first (real passes into
         // their wide channel complete 70%, StatsBomb; a cross lands ~7.5 m out around
@@ -633,9 +666,11 @@ public:
                 const Fixed64 wz = P.pass_to[oz][ez];
                 if (wz.raw <= 0) continue;
                 const bool wide = ez % 2 == 1;
+                // [behaviour: poss_cross_to_space]
                 const bool cross = ez == 0 && oz % 2 == 1;
                 const Fixed64 dep = ez == 0 ? P.cross_depth_m : Fixed64::fromInt(kMid[ez / 2]);
                 Vec2 at{(hx - dep) * v.sg, wide ? side * P.space_wide_y : Fixed64::zero()};
+                // [behaviour: poss_space_lead_runner]
                 // G5.195 (§8.301): with space_lead_s, the ball goes ahead of a runner on his line, not to the zone's middle —
                 // each mate's spot space_lead_s on that lands in the zone is a candidate; the one he beats theirs to by most.
                 if (P.space_lead_s.raw > 0 && !cross) {
@@ -667,6 +702,7 @@ public:
                 const Fixed64 bd = math::length(Vec2{at.x - sp.x, at.y - sp.y});
                 if (diag_mid) ++c.poss.passDiagMut().sp_try[ez];   // §8.300
                 if (bd < P.pass_min_m || bd > reach) { if (diag_mid) ++c.poss.passDiagMut().sp_far[ez]; continue; }
+                // [behaviour: poss_space_race_gate]
                 // Who gets there first (his run's ticks, 0.3 s steps to 4.5 s).
                 int best = -1, bn = 1000;
                 for (std::uint8_t j = 0; j < w.playerCount(); ++j) {
@@ -698,6 +734,7 @@ public:
                     // ball into the channel, as every pass the read says they win; real balls into space are 50/50s), else dropped (G5.55).
                     if (tn < bn + P.space_margin_ticks) { if (diag_mid) ++c.poss.passDiagMut().sp_theirs[ez]; theirs_first = true; contested = P.space_contest; }
                 }
+                // [behaviour: poss_space_high]
                 // G5.230 (§8.336): the ball into an empty zone goes in the air at the real high share for its length and
                 // direction (highShare — the table every pass to a man uses); before it was always a die-at ground ball, and
                 // real sides' long forward balls are high (StatsBomb forward 30 m+: 28.9 a team-match high v 4.8 ground; ours
@@ -722,6 +759,7 @@ public:
                     add(Cand{best, ok ? wz : wz * P.space_risk, true, lf, true, at, 0, true});
                     continue;
                 }
+                // [behaviour: poss_space_die_at_weight]
                 // G5.57 (§8.158): a die-at kick (core::dieAtSpeed): on the old weighted kick's
                 // floor (9 m/s at the spot) it ran ~23 m on and out a quarter of the time.
                 // Timed to reach the spot as he does (the G5.54 weight), never softer than one
@@ -768,6 +806,7 @@ public:
             if (ch.behind && ch.cross) {   // G5.54: a cross into the box to space
                 o.target = ch.lf.at; o.carry_m = ch.lf.carry_m; o.action = Action::LoftedKick; o.pass_to = static_cast<std::uint8_t>(ch.j);
                 o.why = Why::Cross;
+                // [behaviour: poss_carry_until_release]
                 o.move.move = carryDir(v, c, sp, goal);
                 return true;
             }
@@ -779,6 +818,7 @@ public:
                 return true;
             }
             const int ez = zoneOf(hx, v2(m.pos), v.sg);
+            // [behaviour: poss_cross_to_man]
             // A ball into the box from wide goes in the air at the real cross share;
             // any other pass lofted at the zone's real loft share, if the loft is safe.
             const Fixed64 u2 = (core::detNoise(v.match_seed, w.ownedAtTick(), v.slot, 42) + Fixed64::one()) *
@@ -810,6 +850,8 @@ public:
             o.move.move = carryDir(v, c, sp, goal);   // he carries it until the release
             return true;
         }
+        // [behaviour: poss_keeper_punt_nothing_on]
+        // [behaviour: poss_clear_nothing_on]
         // 4. Nothing safe: a keeper kicks it long; in our end, clear it.
         if (v.keeper || own_end < P.clear_from_m) {
             const Fixed64 len = v.keeper ? P.keeper_long_m : Fixed64::fromInt(45);
@@ -820,6 +862,7 @@ public:
             o.why = v.keeper ? Why::KeeperPunt : Why::Clear;
             return true;
         }
+        // [behaviour: poss_keep_and_carry_nothing_on]
         // 5. Nothing on: carry.
         const Vec2 dir = carryDir(v, c, sp, goal);
         o.target = Vec2{sp.x + dir.x * Fixed64::fromInt(5), sp.y + dir.y * Fixed64::fromInt(5)};
@@ -837,6 +880,7 @@ public:
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         Vec2 t = c.poss.spot(v, c.world, c.team_of_slot);
         const Fixed64 t0y = math::fx_abs(t.y);   // G5.168: a spot on his touchline keeps its width through the spread clamp
+        // [behaviour: poss_stay_onside]
         // Law 11: no further on than their second-last man (or the ball, or
         // halfway), less onside_margin_m.
         Fixed64 a{}, b{};   // their deepest two, in our attack direction
@@ -852,6 +896,7 @@ public:
         if (bx > line) line = bx;
         if (line < Fixed64::zero()) line = Fixed64::zero();
         const Fixed64 lim = line - c.poss.params().onside_margin_m;
+        // [behaviour: poss_spread_off_mates]
         {   // G5.118 (§8.219): off his mates — real men in possession stand 10-12 m from the nearest mate (DFL),
             // ours ran to their spots regardless (8-9.5 m, twice as many within 5 m). Each outfield mate within
             // spread_r_m of his spot pushes it away by spread_k x the overlap, the sum capped at spread_max_m.
@@ -891,11 +936,13 @@ class Receive final : public ActingState {
 public:
     std::uint8_t id() const override { return 6; }
     const char* name() const override { return "receive"; }
+    // [behaviour: poss_receive_meet_pass]
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         Vec2 at{};
         if (!c.reads.getInLine(v.slot, c.world, at)) at = v.chase_to;
         const auto& me = c.world.player(v.slot);
         const auto& b = c.world.ball().pos;
+        // [behaviour: poss_receive_run_onto_behind]
         // A ball in behind for him (G5.27): while it is still behind him he runs on
         // to the spot it was played to, not back to the earliest point of its line.
         const auto& led = c.poss.led(c.world.ball().last_kicker);
@@ -935,11 +982,13 @@ public:
         const auto& w = c.world;
         const auto& me = w.player(v.slot);
         const auto& ball = w.ball();
+        // [behaviour: keeper_set_position]
         const Vec2 g{-v.sg * w.pitchHalfX(), Fixed64::zero()};
         const Vec2 bg{ball.pos.x - g.x, ball.pos.y - g.y};
         const Fixed64 d = math::length(bg);
         Fixed64 depth = P.keeper_depth_m + P.keeper_depth_k * d;
         if (depth > P.keeper_depth_max_m) depth = P.keeper_depth_max_m;
+        // [behaviour: keeper_depth_by_cover]
         // G5.122 (§8.223): their ball near our goal — he stands where real keepers stood at the strike for
         // its distance and how many of ours are between it and the goal: off his line to narrow the angle
         // when the man is through (12-18 m, 0-1 goal-side: 4.8 m), on it behind a crowd (2.0). Without it
@@ -957,6 +1006,7 @@ public:
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
         o.why = Why::KeeperPosition;
+        // [behaviour: keeper_reaction_hold]
         // G5.37 (§8.135): their strike — for his own reaction time (Body::reaction,
         // the read every other man already pays) he carries on as he was: no
         // new line, no dive. Reacting on the strike's own tick he ran to where
@@ -971,6 +1021,7 @@ public:
                 return true;
             }
         }
+        // [behaviour: keeper_dive]
         // A shot on goal he can't run to: dive at where it crosses his line.
         if (!ball.owner && w.restartTeam() == 0xFF && ball.vel.x * v.sg < Fixed64::fromInt(-8)) {
             const Fixed64 t = (me.pos.x - ball.pos.x) / ball.vel.x;
@@ -1007,6 +1058,7 @@ public:
         const Fixed64 by = c.world.ball().pos.y;
         const Fixed64 side = by.raw >= 0 ? Fixed64::one() : -Fixed64::one();
         const int k = c.poss.runnerIndex(v.slot);
+        // [behaviour: poss_box_spots]
         // Spots: ball side at |y|, then far side, then the middle, then again deeper.
         static const int kSide[4] = {1, -1, 0, 1};
         Fixed64 y = side * P.box_ay[z] * Fixed64::fromInt(kSide[k & 3]);
@@ -1079,6 +1131,7 @@ int Possession::runnerIndex(std::uint8_t slot) const {
     return k;
 }
 
+// [behaviour: poss_box_runner_count]
 void Possession::assignRunners(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                                const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
     const auto& b = world.ball();
@@ -1097,6 +1150,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     if (params_.box_restart_keep && world.outStage() != 0 && world.restartTeam() == 0xFF && world.lastTouchTeam() != team) return;
     if (!ours || world.restartTeam() != 0xFF || world.outStage() != 0) { clear(); return; }
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
+    // [behaviour: poss_box_run_on_the_pass]
     // G5.60 (§8.161): with our pass on its way, the zone it is going to — the man it is
     // played to — so the runs start as it is played, not as it lands (the ball stays
     // in 18-35 wide 1.5 s; runners drawn on arrival were 11-13 m from their spots).
@@ -1114,6 +1168,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     // line hovering at 16 m flipped deep and back, and each flip re-read the count.
     const Fixed64 lnd = world.pitchHalfX() - offsideLine(team, world, team_of_slot);
     const bool deep = lnd < (deep_[team & 1] && zone_[team & 1] >= 0 ? params_.box_line_deep_out_m : params_.box_line_deep_m);
+    // [behaviour: poss_box_redraw_stabilisers]
     if (z == zone_[team & 1] && deep == deep_[team & 1] && now - drawn_[team & 1] < 90) return;
     zone_[team & 1] = z; drawn_[team & 1] = now; deep_[team & 1] = deep;
     // G5.60 (§8.161): the men already running stay first in line — a redraw (every
@@ -1131,6 +1186,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     const Fixed64* kz = params_.box_kl[z][deep ? 1 : 0];
     int n = 0; Fixed64 acc = kz[0];
     while (n < 3 && u >= acc) { ++n; acc += kz[n]; }
+    // [behaviour: poss_box_stay_in]
     if (params_.box_stay) {
         // G5.61 (§8.162): a runner who has reached the box stays — a lower count does not
         // send him out. Real: of the men in the box, 70% (ball 18-35) to 91% (35-52) were
@@ -1190,6 +1246,7 @@ void Possession::assignRunners(std::uint8_t team, const core::World& world, cons
     assignChannel(team, world, team_of_slot, role_of_slot, match_seed, z, deep, keepc);
 }
 
+// [behaviour: poss_channel_runner]
 // G5.56 (§8.157): who stands in their wide channel on the ball's side — the real
 // mean count for the zone and their line inside line_deep_m or not (whole part
 // sure, the rest a roll), by the real role counts, nearest the channel spot
@@ -1259,6 +1316,7 @@ Fixed64 Possession::offsideLineVelX(std::uint8_t team, const core::World& world,
     return world.player(jb).vel.x;
 }
 
+// [behaviour: poss_run_onto_line]
 void Possession::assignRuns(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                             const std::vector<Role>& role_of_slot, std::uint64_t match_seed) {
     const auto& b = world.ball();
@@ -1308,6 +1366,7 @@ void Possession::assignRuns(std::uint8_t team, const core::World& world, const s
     }
 }
 
+// [behaviour: poss_front_men_on_line]
 void Possession::assignFront(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
     const auto& b = world.ball();
     const bool ours = b.owner ? team_of_slot[*b.owner] == team : world.lastTouchTeam() == team;
@@ -1332,6 +1391,7 @@ void Possession::assignFront(std::uint8_t team, const core::World& world, const 
             if (best == 0xFF || x > bx) { best = j; bx = x; }
         }
         if (best == 0xFF) { f[k] = 0xFF; continue; }
+        // [behaviour: poss_front_job_hysteresis]
         // G5.63: a holder who is only busy for a moment (the pass is his, or he is
         // running into the box or a channel) keeps the job, so it does not jump to
         // a man 7 m back and jump back when he is free (§8.164).
@@ -1378,8 +1438,10 @@ static Fixed64 yLookup(const Fixed64 (&row)[PossessionParams::kYBins], Fixed64 a
     return row[i] + (row[i + 1] - row[i]) * f;
 }
 
+// [behaviour: poss_slide_to_ball_side]
 Fixed64 PossessionParams::slideAt(int role, Fixed64 by) const {
     Fixed64 s = yLookup(slide[role], math::fx_abs(by));
+    // [behaviour: poss_slide_ramp]
     // §8.238: toward the ball's side, so it must be 0 with the ball on the centre line. Held at the
     // first bin (0.5-1.2 m) inside 2 m, every spot stepped 1-2.4 m across in one tick each time the
     // ball crossed the middle (read as a 5-12 m/s spot). Ramped to 0 over the first 2 m.
@@ -1790,6 +1852,7 @@ void PossessionParams::configure(const core::ModelParams& p) {
     }
 }
 
+// [behaviour: poss_spell_depth_offset]
 Fixed64 Possession::spellDepth(const PlayerView& v) const {
     // One roll a man a spell, piecewise through the real p10 … p90 (held at the
     // ends: the 10% tails each side stand at p10 / p90).
@@ -1803,10 +1866,12 @@ Fixed64 Possession::spellDepth(const PlayerView& v) const {
     return q[4];
 }
 
+// [behaviour: poss_shape_depth_by_ball]
 Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::vector<std::uint8_t>& team_of_slot) const {
     const Fixed64 hx = world.pitchHalfX();
     const Fixed64 off_their = hx - world.ball().pos.x * v.sg;   // ball metres off their line
     Fixed64 x = bandLookup(params_.spot[static_cast<int>(v.role_ours)], off_their) + spellDepth(v);
+    // [behaviour: poss_follow_dropping_line]
     if (params_.follow_line_m.raw > 0) {
         // G5.62 (§8.163): a man near their line keeps his gap to it as it drops. The spot
         // is by the ball; the line's usual depth for this ball (DFL mean, 5 m bins) is
@@ -1832,6 +1897,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
         }
     }
     if (x.raw < 0) x = Fixed64::zero();
+    // [behaviour: poss_hold_touchline]
     if (params_.touch_on && (v.role_ours == Role::FB || v.role_ours == Role::DM || v.role_ours == Role::Wide)) {
         // G5.168 (§8.274): he holds his touchline this spell — one roll a man a spell (the zone and side set the share), so the man who holds it keeps it as the ball moves.
         const int z = off_their < Fixed64::fromInt(35) ? 0 : off_their < Fixed64::fromInt(70) ? 1 : 2;
@@ -1851,6 +1917,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             if (params_.touch_latch && v.slot < 32) touch_latch_[v.slot] = won_[v.team & 1] + 1;
             const Fixed64 u2 = (core::detNoise(v.match_seed, won_[v.team & 1], v.slot, 111) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
             const Fixed64 d = params_.touch_m_max * u2 * math::fx_sqrt(u2);
+            // [behaviour: poss_fullback_high_and_wide]
             if (params_.touch_fb_depth && v.role_ours == Role::FB) {
                 // G5.174 (§8.280): on his touchline a FB stands at the real offset from the ball (high and wide while the centre-backs
                 // build: ball in our half, 8 s+, 20 m ahead of it) — never past their offside line. [FH: "full-backs high and wide"]
@@ -1864,6 +1931,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             return Vec2{(hx - x) * v.sg, side * (world.pitchHalfY() - d)};
         }
     }
+    // [behaviour: poss_striker_pulls_wide_deep_ball]
     // G5.89 (§8.190): the striker / AM's drift into their wide channel on the ball's side — real
     // ones stand there 4-13% of the time with the ball 35-70 m out (ours: ST 0-3%, AM never). One
     // roll a man a spell a ball zone, against the real share; he takes the real spot. [FH, DFL]
@@ -1880,6 +1948,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             return Vec2{(hx - params_.drift_deep_tl) * v.sg, side * params_.drift_deep_y};
         }
     }
+    // [behaviour: poss_st_am_channel_drift]
     if (params_.drift_on && (v.role_ours == Role::ST || v.role_ours == Role::AM)) {
         const Fixed64 by = world.ball().pos.y;
         const bool wide = math::fx_abs(by) >= Fixed64::fromFraction(2016, 100);
@@ -1897,6 +1966,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             }
         }
     }
+    // [behaviour: poss_wing_support]
     if (params_.wing_on) {
         // G5.125 (§8.226): the ball wide 18-35 / 35-52 m out — the one man of his role on its side may go to support
         // the man on it, at his role's real spot from the ball (it moves with the ball). One roll a man a spell a zone.
@@ -1919,6 +1989,7 @@ Vec2 Possession::spot(const PlayerView& v, const core::World& world, const std::
             }
         }
     }
+    // [behaviour: poss_lone_man_side]
     if (params_.lone_on && v.lone_ours && (v.role_ours == Role::DM || v.role_ours == Role::AM || v.role_ours == Role::ST)) {
         // G5.120 (§8.221): a lone DM / AM / ST stands off the centre line, a side a spell — real ones keep one
         // side through a spell with the ball central 95-97%, on the ball's side more as it goes wide. One roll a

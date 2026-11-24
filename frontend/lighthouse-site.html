@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Lighthouse Field — Football Home</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!-- The 3D model of Lighthouse Field and the pitch planner (js/game/site-client.js). Its
+       own page since 2026-11-24: game.html is the pure Premier League sim. -->
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1c3d;
+                 font-family: -apple-system, system-ui, sans-serif; }
+    #game-canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+    #back { position: fixed; top: env(safe-area-inset-top, 8px); left: 8px; color: #ffcc00;
+            text-decoration: none; font-size: 14px; padding: 10px; z-index: 5; }
+    .kick-btn { position: fixed; right: 12px; border: 2px solid rgba(255,255,255,.4);
+                background: rgba(255,255,255,.12); color: #f4f6fb; font-weight: 700; font-size: 11px;
+                letter-spacing: 1px; height: 34px; border-radius: 17px;
+                touch-action: none; user-select: none; -webkit-user-select: none; }
+    /* The planner's layer pills switch leaves and contours (pitch-planner.js). */
+    body.mode-design #btn-leaves, body.mode-design #btn-contours { display: none !important; }
+  </style>
+</head>
+<body class="mode-design">
+  <canvas id="game-canvas"></canvas>
+  <a id="back" href="/">‹ Home</a>
+  <button id="btn-cam" class="kick-btn" style="top: 44px; width: 92px;">CAM TV</button>
+  <button id="btn-zoom-in" class="kick-btn" style="right: 60px; top: 84px; width: 40px; font-size: 18px; padding: 0;">+</button>
+  <button id="btn-zoom-out" class="kick-btn" style="top: 84px; width: 40px; font-size: 18px; padding: 0;">−</button>
+  <button id="btn-leaves" class="kick-btn" style="top: 124px; width: 92px;">LEAVES OFF</button>
+  <button id="btn-contours" class="kick-btn" style="top: 164px; width: 92px;">LIDAR 10CM</button>
+  <script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                 "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+  </script>
+  <script type="module" src="js/game/site-boot.js?v=20261124a"></script>
+</body>
+</html>

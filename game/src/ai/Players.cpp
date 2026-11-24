@@ -47,15 +47,18 @@ class Pick final : public PlayerState {
 public:
     std::uint8_t id() const override { return 0xFE; }
     const char* name() const override { return "pick"; }
+    // [behaviour: pick_one_job_per_man]
     void execute(PlayerAgent& a, const PlayerCtx& c) const override {
         const auto& ball = c.world.ball();
         const std::uint8_t team = c.team.team;
         const PlayerState* next;
         if (ball.owner && *ball.owner == a.slot) next = Possession::onBall();
+        // [behaviour: keeper_goes_for_loose_ball]
         // His team's man for the loose ball — a keeper too: the pass back to him,
         // the ball he's first to (else a pass to the keeper rolled into the net).
         else if (c.block.chaser(team) == a.slot)
             next = (ball.pass_to == a.slot && c.world.lastTouchTeam() == team) ? Possession::receive() : DefendingBlock::chaseBall();
+        // [behaviour: recv_always_meets]
         // The pass is his (G5.98, §8.199): while it is loose he goes to meet it, first on
         // the race read or not — the defender has to win it. Before, only a ball in behind
         // (G5.27) or the team's chaser did; a man the race read put second held shape and

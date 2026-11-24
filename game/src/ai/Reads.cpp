@@ -34,6 +34,7 @@ Fixed64 runToward(const World& world, SlotIndex slot, const Vec2& at, Fixed64 t)
     return world.body(slot).reach(v0, p.max_speed, t);
 }
 
+// [behaviour: read_chance_quality]
 Fixed64 chanceQuality(const World& world, const std::vector<std::uint8_t>& team_of_slot,
                       SlotIndex shooter, const Vec2& goal) {
     const Fixed64 half_w = Fixed64::fromFraction(732, 200);
@@ -59,6 +60,7 @@ Fixed64 chanceQuality(const World& world, const std::vector<std::uint8_t>& team_
     return q;
 }
 
+// [behaviour: read_loft_lead]
 Loft loftTo(const core::BallFlight& flight, const core::PlayerState& mate, const Vec3& from, Fixed64 max_m, int level) {
     Vec2 at{mate.pos.x, mate.pos.y};
     Fixed64 d{};
@@ -129,6 +131,7 @@ const Reads::FlightRead& Reads::flightRead(const World& world) const {
     return f;
 }
 
+// [behaviour: read_race]
 void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
     const SlotIndex n = world.playerCount();
     f.tick.assign(n, -1);
@@ -190,9 +193,11 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             if (f.tick[i] >= 0) continue;
             if (i == rb.kicker && k < rb.lockout) continue;
             const auto& p = world.player(i);
+            // [behaviour: read_offside_leave_it]
             // A man in an offside position leaves it (the flag decides).
             if (flag_team != 0xFF && p.team == flag_team && ((flagged >> (i & 31)) & 1u)) continue;
             const bool gk = world.isKeeper(i);
+            // [behaviour: read_header_point]
             // G5.11 (§8.108): an outfielder reads the HEAD-height point of a
             // ball coming down too (World::aerialWinner's window: min_z up to
             // his head, within the aerial radius, any speed) — reading only to
@@ -204,6 +209,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
             if (!header && pos.z > (gk ? core::kKeeperReachZ : core::kOutfieldReachZ)) continue;   // G4.94
             const Fixed64 cap = gk ? core::kCaptureMaxSpeed + core::kKeeperHandsBonus : core::kCaptureMaxSpeed;
             if (!header && sp2 > cap * cap) continue;
+            // [behaviour: read_own_touch_pace]
             // Our own ball (G4.85): he takes it where it has come down to a
             // pace his first touch can hold — a man knows his touch. Met
             // early and hot it came off him (traced: 53 bad touches a match
@@ -242,6 +248,7 @@ void Reads::race(const World& world, const RaceBall& rb, FlightRead& f) const {
 
 namespace { constexpr int kInLineSoonTicks = 15; }   // G5.98: 0.5 s — a ball this near he meets on time, not early
 
+// [behaviour: read_get_in_line]
 bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
     const Fixed64 early = early_s_;
     if (early.raw <= 0) return false;
@@ -294,6 +301,7 @@ bool Reads::getInLine(SlotIndex slot, const World& world, Vec2& at) const {
     return false;
 }
 
+// [behaviour: read_pass_safe]
 bool Reads::passSafe(const World& world, SlotIndex passer, const Vec2& from, const Vec2& to,
                      Fixed64 speed, Fixed64 reach) const {
     const Vec2 ab{to.x - from.x, to.y - from.y};

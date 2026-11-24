@@ -109,6 +109,19 @@ def main():
         print('INSERT INTO game_engine_classes (name, file, line_start, line_end, parent, doc, kind) VALUES '
               f'({q(name)}, {q(rel)}, {a}, {b}, {q(parent if parent in known else None)}, {q(doc)}, {q(kind)});')
 
+    # Where each behaviour is tagged: the first code line after `// [behaviour: <code>]`.
+    tags = {}
+    for rel, (body, _) in files.items():
+        lines = body.split('\n')
+        for n, text in enumerate(lines, 1):
+            m = re.search(r'//\s*\[behaviour:\s*([a-z0-9_]+)\]', text)
+            if not m or m.group(1) in tags:
+                continue
+            k = n
+            while k < len(lines) and (lines[k].strip().startswith('//') or not lines[k].strip()):
+                k += 1
+            tags[m.group(1)] = (rel, k + 1)
+
     # Re-anchor the behaviours: file:line → the class body it is in, else the Class::method above it.
     rows = subprocess.run(['sudo', '-n', 'podman', 'exec', '-i', 'footballhome_db', 'psql', '-U', 'footballhome_user', '-d',
                            'footballhome', '-At', '-F', '|', '-c', 'SELECT code, file, line FROM game_engine_behaviours'],
@@ -116,6 +129,8 @@ def main():
     for row in rows.splitlines():
         code, rel, line = row.split('|')
         rel, line = ('game/src/' + rel if not rel.startswith(('game/', 'shared/')) else rel), int(line)
+        if code in tags:   # the `// [behaviour: code]` tag is the anchor; file:line follows the code as it moves
+            rel, line = tags[code]
         cls = [c for c in classes if c[1] == rel and c[2] <= line <= c[3]]
         symbol, cname = None, None
         if cls:
@@ -127,7 +142,7 @@ def main():
                 _, owner, method = above[-1]
                 symbol = owner + '::' + method
                 cname = owner if owner in known else None
-        print(f'UPDATE game_engine_behaviours SET symbol = {q(symbol)}, class_name = {q(cname)}, file = {q(rel)} WHERE code = {q(code)};')
+        print(f'UPDATE game_engine_behaviours SET symbol = {q(symbol)}, class_name = {q(cname)}, file = {q(rel)}, line = {line} WHERE code = {q(code)};')
     sys.stderr.write(f'{len(files)} files, {len(seen)} classes at {commit}\n')
 
 

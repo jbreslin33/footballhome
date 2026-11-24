@@ -29,33 +29,12 @@
                 background: rgba(255,255,255,.12); color: #f4f6fb;
                 font-weight: 700; font-size: 13px; letter-spacing: 1px;
                 touch-action: none; user-select: none; -webkit-user-select: none; }
-    /* Modes over the one Lighthouse model (James 10/22): GAME shows the
-       match controls; DESIGN (the pitch planner) hides them. */
-    body.mode-design .game-only, body.mode-other .game-only { display: none !important; }
-    /* DESIGN's layer pills switch leaves/contours (pitch-planner.js). */
-    body.mode-design #btn-leaves, body.mode-design #btn-contours { display: none !important; }
-    /* GAME: leaves + contours live in the ☰ View menu (view-menu.js). */
-    body.mode-game #btn-leaves, body.mode-game #btn-contours { display: none !important; }
-    /* Until view-menu.js has applied this device's choices, GAME shows no floating controls. */
+    /* Until view-menu.js has applied this device's choices, the page shows no floating controls. */
     body.mode-game:not(.hud-ready) [data-hud] { display: none !important; }
-    #mode-note { display: none; position: fixed; left: 50%; transform: translateX(-50%); top: 8px; z-index: 20;
-      max-width: min(520px, calc(100vw - 16px)); box-sizing: border-box; padding: 8px 12px; border-radius: 10px;
-      background: rgba(10,14,20,.86); color: #f4f6fb; font: 12px system-ui, sans-serif; }
-    body.mode-other #mode-note { display: block; }
-    #mode-bar { position: fixed; left: 8px; top: 84px; z-index: 12; display: flex; flex-wrap: wrap; gap: 0;
-      max-width: calc(100vw - 120px);
-      border: 2px solid #ffd24d; border-radius: 14px; overflow: hidden; background: rgba(10,14,20,.72); }
-    #mode-bar button { min-width: 0; min-height: 0; padding: 4px 12px; border: 0; background: transparent;
-      color: #f4f6fb; font: 600 11px system-ui, sans-serif; cursor: pointer; }
-    #mode-bar button.on { background: #ffd24d; color: #10141a; }
-    /* 2D view (boot.js, James 11/16): the top-down match only — the Lighthouse model's modes and
-       layers are the 3D view's. */
-    body.view-2d #mode-bar, body.view-2d #mode-note, body.view-2d #btn-leaves,
-    body.view-2d #btn-contours { display: none !important; }
     body.view-2d { background: #2f6b2a; }
   </style>
 </head>
-<body class="mode-game"><!-- view-menu.js: GAME hides the HUD until the ☰ View choices load -->
+<body class="mode-game"><!-- view-menu.js hides the HUD until the ☰ Menu choices load -->
   <canvas id="game-canvas"></canvas>
   <a id="back" href="/">‹ Home</a>
   <div id="scoreboard" class="game-only" style="position: fixed; top: env(safe-area-inset-top, 8px);
@@ -75,17 +54,9 @@
   <button id="btn-zoom-out" data-hud="camera" class="kick-btn" style="right: 12px; top: 84px;
        bottom: auto; width: 40px; height: 34px; border-radius: 17px;
        font-size: 18px; padding: 0;">−</button>
-  <button id="btn-leaves" class="kick-btn" style="right: 12px; top: 124px;
-       bottom: auto; width: 92px; height: 34px; border-radius: 17px;
-       font-size: 11px;">LEAVES OFF</button>
-  <button id="btn-contours" class="kick-btn" style="right: 12px; top: 164px;
-       bottom: auto; width: 92px; height: 34px; border-radius: 17px;
-       font-size: 11px;">LIDAR 10CM</button>
   <button id="btn-follow" data-hud="camera" class="kick-btn" style="right: 12px; top: 244px;
        bottom: auto; width: 92px; height: 34px; border-radius: 17px;
        font-size: 11px;">FOLLOW ON</button>
-  <div id="mode-bar" data-hud="modes"><button data-mode="game">🎮 GAME</button><button data-mode="design">📐 DESIGN</button><button data-mode="practice">🦺 PRACTICE</button><button data-mode="barn">🎪 BARN NIGHT</button><button data-mode="rodeo">🐂 RODEO</button></div>
-  <div id="mode-note"></div>
 
   <!-- three.js 0.160 as an ES module; boot.js exposes THREE and loads the game scripts in order
        (their versions live in boot.js). Graphics tier 2 step 1, 11/11. -->
@@ -93,6 +64,6 @@
   { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
                  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
   </script>
-  <script type="module" src="js/game/boot.js?v=20261124sim"></script>
+  <script type="module" src="js/game/boot.js?v=20261124pure"></script>
 </body>
 </html>

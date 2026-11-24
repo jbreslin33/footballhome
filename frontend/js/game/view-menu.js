@@ -1,10 +1,10 @@
 // game/view-menu.js — ☰ VIEW menu (James 11/10: "by default shut off everything but the field,
 // ball, players and refs … allow for everything to be shut on or off … all options in a menu as
 // the gui is too cluttered"). One ViewMenu owns, in GAME mode only:
-//   • DRAW  — what the 3D scene draws beyond the essentials (the Lighthouse site's layers, solid
-//             leaves, contours, water, the 7v7 chalk, name tags, shadows, sharp resolution);
+//   • DRAW  — what the 3D scene draws beyond the essentials (player name tags, shadows, sharp
+//             resolution; the Lighthouse site's layers left with the site, lighthouse-site.html);
 //   • SHOW  — which on-screen controls float over the pitch (elements tagged data-hud="<key>");
-//   • the camera / brain / mode controls themselves, so a hidden button never strands a feature.
+//   • the camera and brain controls themselves, so a hidden button never strands a feature.
 //   • CONTROLS (James 11/17: "everything is supposed to be contained in 'menu' in top left that is
 //     rolled up by default") — Home, status, EDIT, camera, view switch, Brain, Watch, speed, matchup,
 //     kick-off and replay are MOVED into the panel, in the 2D view and the 3D view alike. Over the pitch
@@ -19,18 +19,7 @@
 
   // Scene items: key → label, field.js layers it switches, default.
   const DRAW = [
-    { k: 'ground',    label: 'Site ground, courts & paint', layers: ['ground', 'paint'] },
-    { k: 'buildings', label: 'Buildings',                    layers: ['buildings'] },
-    { k: 'fences',    label: 'Fences',                       layers: (n) => n === 'fences' || (n.endsWith('_fences') && n !== 'proposed_lane_fences') },
-    { k: 'props',     label: 'Bleachers, animals, cars',     layers: ['props'] },
-    { k: 'trees',     label: 'Trees',                        layers: ['trees'] },
-    { k: 'leaves',    label: '· solid leaves',               layers: [] },
-    { k: 'labels',    label: 'Place labels',                 layers: ['labels'] },
-    { k: 'contours',  label: 'Ground contours (lidar)',      layers: ['contours'] },
-    { k: 'water',     label: 'Water & drainage',             layers: ['water', 'channels'] },
-    { k: 'lane',      label: 'Proposed lane',                layers: ['proposed_lane', 'proposed_lane_fences'] },
-    { k: 'seven',     label: '7v7 chalk',                    layers: [] },
-    { k: 'tags',      label: 'Player name tags',             layers: [] },
+    { k: 'tags',      label: 'Player name tags' },
   ];
   const QUALITY = [
     { k: 'shadows', label: 'Shadows' },
@@ -44,9 +33,8 @@
   const ESSENTIAL = { sharp: true };   // everything else off: field, ball, players, refs only
 
   class ViewMenu {
-    // hooks: { renderer, isGame(), cam: { label(), cycle(), zoom(f), follow(), toggleFollow() },
-    //          brain: { on(), toggle() }, modes: { list: [[key, label]], current(), set(k) },
-    //          syncSeven() }
+    // hooks: { renderer, cam: { label(), cycle(), zoom(f), follow(), toggleFollow() },
+    //          brain: { on(), toggle() } }
     constructor(hooks) {
       this.h = hooks;
       this.is3d = !!(hooks.renderer && hooks.renderer.renderer && hooks.renderer.scene);   // 2D: no scene to dress
@@ -91,7 +79,6 @@
     injectCss() {
       const st = document.createElement('style');
       st.textContent = `
-        #mode-bar { display: none !important; }   /* its modes are the menu's Mode section */
         #view-controls { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
         #view-controls > * { position: static !important; inset: auto !important; left: auto !important; right: auto !important;
           top: auto !important; bottom: auto !important; transform: none !important; margin: 0 !important; z-index: auto !important;
@@ -153,7 +140,6 @@
         `<div class="note" style="margin:0 0 2px;">Always drawn: pitch, goals, ball, players, referees.</div>` +
         DRAW.map(box).join('') +
         `<h3>Quality</h3>` + QUALITY.map(box).join('') : '') +
-        (this.is3d ? `<h3>Mode</h3><div class="row" data-modes></div>` : '') +
         `<div class="note">M opens this menu. Saved on this device.</div>`;
       p.addEventListener('change', (e) => {
         const k = e.target.dataset && e.target.dataset.k;
@@ -161,7 +147,6 @@
       });
       p.addEventListener('click', (e) => {
         const a = e.target.dataset && e.target.dataset.act;
-        const m = e.target.dataset && e.target.dataset.mode;
         const { cam, brain } = this.h;
         if (a === 'essential') this.setAll(false);
         else if (a === 'all') this.setAll(true);
@@ -170,7 +155,6 @@
         else if (a === 'zout') cam.zoom(1 / 0.85);
         else if (a === 'follow') cam.toggleFollow();
         else if (a === 'brain') brain.toggle();
-        else if (m) this.h.modes.set(m);
         else return;
         this.paint();
       });
@@ -194,13 +178,6 @@
     paint() {
       if (!this.panel) return;
       for (const el of this.panel.querySelectorAll('input[data-k]')) el.checked = this.get(el.dataset.k);
-      const leaves = this.panel.querySelector('input[data-k="leaves"]');
-      if (leaves) leaves.disabled = !this.get('trees');
-      const { modes } = this.h;
-      const q = (s) => this.panel.querySelector(s);
-
-      if (q('[data-modes]')) q('[data-modes]').innerHTML = modes.list.map(([k, label]) =>
-        `<button type="button" data-mode="${k}" class="${modes.current() === k ? 'on' : ''}">${label}</button>`).join('');
     }
 
     // CONTROLS: move every contained control into the panel — now, and any the client builds later.
@@ -236,33 +213,18 @@
       if (!this.is3d) return;   // the 2D view draws only the match
       const r = this.h.renderer;
       this.applyQuality(r);
-      if (!this.h.isGame()) return;
-      const f = r.field;
-      if (!f || !f.setLayer) return;   // client.js re-runs applyMode until the site is built
-      for (const o of DRAW) {
-        const names = typeof o.layers === 'function' ? (f.layers || []).filter(o.layers) : o.layers;
-        for (const l of names) f.setLayer(l, this.get(o.k));
-      }
-      if (f.setContours) f.setContours(this.get('contours') ? 'lidar' : 'off');
-      if (f.setWater) f.setWater(this.get('water'));
-      if (f.setLeaves) f.setLeaves(this.get('leaves'));
-      this.h.syncSeven();
       for (const fig of r.figures || []) if (fig.tag) fig.tag.visible = this.get('tags');
       this.applySurround(r);
     }
 
-    // Without the site's ground, a plain grass apron (one quad) so the pitch isn't floating in sky.
+    // A plain grass apron (one quad) around the pitch, so it isn't floating in sky.
     applySurround(r) {
-      const show = !this.get('ground');
-      if (!this.surround && show) {
-        this.surround = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200),
-          new THREE.MeshLambertMaterial({ color: 0x3f6b35 }));
-        this.surround.rotation.x = -Math.PI / 2;
-        this.surround.position.y = -0.13;
-        this.surround.receiveShadow = true;
-        r.scene.add(this.surround);
-      }
-      if (this.surround) this.surround.visible = show;
+      if (this.surround) return;
+      this.surround = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200), new THREE.MeshLambertMaterial({ color: 0x3f6b35 }));
+      this.surround.rotation.x = -Math.PI / 2;
+      this.surround.position.y = -0.13;
+      this.surround.receiveShadow = true;
+      r.scene.add(this.surround);
     }
 
     applyQuality(r) {
@@ -296,7 +258,7 @@
         F.n = 0; F.t0 = now;
         if (this.open) this.panel.querySelector('[data-fps]').textContent = F.val + ' fps';
         if (!this.is3d) return;
-        const tags = this.get('tags') || !this.h.isGame();
+        const tags = this.get('tags');
         for (const fig of this.h.renderer.figures || []) if (fig.tag && fig.tag.visible !== tags) fig.tag.visible = tags;
       }
     }

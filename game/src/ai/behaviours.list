@@ -1,0 +1,175 @@
+# game/src/ai/behaviours.list — every behaviour the engine has, by code.
+#
+# ONE system (owner 2026-11-24: "we need them synced taxonomy and engine" · "enforce then"):
+# the club's taxonomy of football and this engine are the same list. A behaviour is a
+# distinct football thing a player or the team reads or does. Each one has
+#
+#   1. a tag in the code, on the line above it:      // [behaviour: <code>]
+#   2. a line in this file
+#   3. a row in the database (game_engine_behaviours) that names its catalogue concept —
+#      or says it has none yet, or that it is a fudge.  ⚽ Football → 🧬 Taxonomy shows it.
+#
+# scripts/check_behaviours.sh runs in the image build beside the determinism lints and
+# FAILS the build when 1 and 2 disagree: a tag with no line here, a line here with no tag,
+# a code twice here. `make game-deploy` first runs scripts/taxonomy/check_engine_sync.py,
+# which fails when 2 and 3 disagree. So a new behaviour ships with all three or not at all:
+# add the tag, add the line, add the row by migration (docs/taxonomy-one-system.md).
+#
+# "pending" after a code = its tag is not in the source yet (the file was being worked on
+# when the tags went in); the lint lets it through. Remove the word when the tag lands.
+block_cover pending
+block_forward_offset_per_spell pending
+block_goal_side_of_ball pending
+block_height_per_spell pending
+block_mark pending
+block_recover
+block_shift_while_ball_travels
+block_slide_across
+block_spot pending
+block_squeeze_deep_wide pending
+block_step_up_deep_wide pending
+block_tracks_carrier
+block_width_narrow
+chase_ball pending
+corner_delivery
+def_contest_high_ball pending
+def_cut_out_their_pass pending
+def_danger_get_back
+def_hold_job_on_their_pass pending
+def_into_the_lane
+def_press_on_pass pending
+fk_into_box
+fk_stand_over_ball
+form_anchor_slide
+form_base_shape
+front_man_rides_the_line
+fwd_jog_back
+hold_face_ball
+hold_walk_far_from_ball
+keeper_depth_by_cover
+keeper_dive
+keeper_goal_kick_long_fallback
+keeper_goes_for_loose_ball
+keeper_leash
+keeper_penalty_on_line
+keeper_reaction_hold
+keeper_set_position
+law_distance_at_restart
+law_out_of_their_box_goal_kick
+line_run_pace
+mark_pickup_in_zone pending
+mark_run_with_man
+mark_see_man_and_ball pending
+mark_tighten_near_goal pending
+pass_first_time_when_pressed
+pass_keep_carry_feet
+pass_lead_into_path
+penalty_kick
+penalty_stay_out
+phase_min_dwell
+pick_one_job_per_man
+poss_behind_air_or_ground
+poss_behind_choose
+poss_behind_spot_and_weight
+poss_behind_to_runner
+poss_box_redraw_stabilisers
+poss_box_run_on_the_pass
+poss_box_runner_count
+poss_box_spots
+poss_box_stay_in
+poss_carry_edge_turn
+poss_carry_free_line
+poss_carry_line_latch
+poss_carry_off_nearest_man
+poss_carry_pressed_line
+poss_carry_until_release
+poss_channel_runner
+poss_clear_aim
+poss_clear_danger
+poss_clear_nothing_on
+poss_clear_out_of_play
+poss_cross_to_man
+poss_cross_to_space
+poss_follow_dropping_line
+poss_front_close_cap
+poss_front_job_hysteresis
+poss_front_men_on_line
+poss_fullback_high_and_wide
+poss_hold_touchline
+poss_keep_and_carry_nothing_on
+poss_keeper_long_ball
+poss_keeper_punt_nothing_on
+poss_lone_man_side
+poss_long_ball_beyond
+poss_long_ball_own_side
+poss_pass_back_to_keeper
+poss_pass_chip_blocked_lane
+poss_pass_far_wing
+poss_pass_free_man
+poss_pass_high_or_ground
+poss_pass_min_length
+poss_pass_near_mate
+poss_pass_risk_gate
+poss_pass_risk_own_third
+poss_pass_short_direction
+poss_pass_to_mover
+poss_pass_zone_policy
+poss_pressed_touch_cone
+poss_receive_meet_pass
+poss_receive_run_onto_behind
+poss_run_onto_line
+poss_shape_depth_by_ball
+poss_shot_aim
+poss_shot_crowd
+poss_shot_policy
+poss_slide_ramp
+poss_slide_to_ball_side
+poss_space_die_at_weight
+poss_space_empty_zone
+poss_space_high
+poss_space_lead_runner
+poss_space_race_gate
+poss_spell_depth_offset
+poss_spread_off_mates
+poss_st_am_channel_drift
+poss_stay_onside
+poss_striker_pulls_wide_deep_ball
+poss_width_by_ball
+poss_width_by_ball_band
+poss_wing_support
+press_arrive_with_carrier
+press_ball pending
+press_pick_one_nearest pending
+press_tackle_flat_clock pending
+press_tight_wide_loose_central pending
+race_arrive_on_time
+read_att_transition
+read_ball_destination
+read_chance_quality
+read_def_transition
+read_get_in_line
+read_header_point
+read_in_danger
+read_loft_lead
+read_offside_leave_it
+read_our_ball_live
+read_own_touch_pace
+read_pass_safe
+read_phase
+read_possession_side
+read_race
+recv_always_meets
+recv_pass_is_his pending
+recv_track_rolling_ball
+restart_shape_hold
+restart_taker
+restart_walk_to_spot
+shape_moves_with_our_ball
+shape_pace_caps_by_direction
+shape_shift_at_a_jog
+sp_corner_attack_shape
+sp_corner_defend_shape
+sp_fk_box_lines
+sp_fk_wall
+throw_in_to_free_man
+wingback_ball_side_goes_far_tucks

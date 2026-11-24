@@ -34,7 +34,7 @@ COPY --from=shared tactics /shared/tactics
 
 # Determinism lint gates BEFORE compiling (DESIGN.md §3): loud early
 # failure beats a subtle desync later.
-RUN bash scripts/check_no_floats.sh && bash scripts/check_no_bad_rng.sh
+RUN bash scripts/check_no_floats.sh && bash scripts/check_no_bad_rng.sh && bash scripts/check_behaviours.sh
 
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
     && cmake --build build --parallel

@@ -24,23 +24,16 @@ const COMMON_HEAD = [
 const SCRIPTS_3D = [
   'js/game/players.js?v=20261113runup',
   'js/game/bodies.js?v=20261113runup',
-  'js/game/lighthouse-site.js?v=20261022s',
-  'js/game/lighthouse-trees.js?v=20261022zi',
-  'js/game/lighthouse-contours.js?v=20261022zs',
-  'js/game/lighthouse-drainage.js?v=20261022zzd',
-  'js/game/lighthouse-layout.js?v=20261025b',
-  'js/game/field.js?v=20261107ground',
+  'js/game/field.js?v=20261107ground',   // with no Lighthouse site data loaded it builds nothing: a plain pitch
   'js/game/camera.js?v=20261116circ',
   'js/game/renderer.js?v=20261116circ',
-  'js/game/view-menu.js?v=20261124sim',
-  'js/game/lighthouse-planner-data.js?v=20261022d',
-  'js/game/pitch-planner.js?v=20261029a',
+  'js/game/view-menu.js?v=20261124pure',
 ];
 const SCRIPTS_2D = [
   'js/game/renderer2d.js?v=20261116circ',
-  'js/game/view-menu.js?v=20261124sim',   // ☰ Menu holds every control in 2D too (James 11/17)
+  'js/game/view-menu.js?v=20261124pure',   // ☰ Menu holds every control in 2D too (James 11/17)
 ];
-const CLIENT = 'js/game/client.js?v=20261124sim';
+const CLIENT = 'js/game/client.js?v=20261124pure';
 
 if (view === '3d') {
   const T = await import('three');

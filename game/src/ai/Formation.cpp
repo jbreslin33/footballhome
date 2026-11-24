@@ -35,6 +35,7 @@ Fixed64 clampFx(Fixed64 v, Fixed64 lo, Fixed64 hi) {
 
 }  // namespace
 
+// [behaviour: form_base_shape]
 std::vector<Vec2> formationBases(std::uint8_t n) {
     switch (n) {
         case 11:  // 4-4-2 [GRF]-style role spread
@@ -75,6 +76,7 @@ FormationSpec builtinFormation(std::uint8_t n) {
     return spec;
 }
 
+// [behaviour: form_anchor_slide]
 Vec2 anchorFor(const Vec2& base, int attack_sign, const Vec3& ball,
                Fixed64 half_x, Fixed64 half_y, bool is_keeper) {
     // Normalized → pitch metres, mirrored for the attack direction.
@@ -86,6 +88,7 @@ Vec2 anchorFor(const Vec2& base, int attack_sign, const Vec3& ball,
     x += clampFx(ball.x * kShiftX, -kShiftCapX, kShiftCapX);
     y += clampFx(ball.y * kShiftY, -kShiftCapY, kShiftCapY);
 
+    // [behaviour: keeper_leash]
     if (is_keeper) {
         // The keeper holds the goal line area regardless of the slide.
         const Fixed64 line = half_x * sign * Fixed64::fromFraction(-95, 100);

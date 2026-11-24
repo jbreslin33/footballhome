@@ -3,6 +3,7 @@
 
 namespace fh::game::ai {
 
+// [behaviour: read_possession_side]
 BallSide readBallSide(const core::World& world, const std::vector<std::uint8_t>& team_of_slot) {
     BallSide b;
     const auto& ball = world.ball();
@@ -34,6 +35,7 @@ const PhaseState kStates[kPhaseCount] = {
 };
 const TeamState* st(Phase p) { return &kStates[static_cast<int>(p)]; }
 
+// [behaviour: read_phase]
 // The global state reads the ball every tick and moves the team between
 // phases: a dead ball is a set piece for one side or the other; a change of
 // side that has held min_dwell starts a transition; a transition that has
@@ -55,10 +57,13 @@ public:
         if (b.side == 0xFF) return;
         bool turned = false;
         if (a.side == 0xFF) { a.side = b.side; turned = true; }
+        // [behaviour: phase_min_dwell]
         else if (b.side != a.side) {
             if (a.pending != b.side) { a.pending = b.side; a.pending_since = c.tick; }
             if (c.tick - a.pending_since >= c.params.min_dwell_ticks) { a.side = b.side; a.pending = 0xFF; turned = true; }
         } else a.pending = 0xFF;
+        // [behaviour: read_att_transition]
+        // [behaviour: read_def_transition]
         if (turned) {
             a.machine.change(a, c, st(a.side == a.team ? Phase::AttackingTransition : Phase::DefensiveTransition), c.tick);
             return;

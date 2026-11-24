@@ -224,6 +224,7 @@ struct PossessionParams {
     // 10-60 m out, DFL), never nearer than the front man's gap.
     math::Fixed64 front_q[5]{}, front_swap_m{}, second_q[5]{};
     bool front_keep_busy = true;   // G5.63: a busy holder (the pass's man, a runner) keeps the front job
+    // [behaviour: poss_front_close_cap]
     // G5.50: how fast a line job closes on his spot on top of the line's velocity
     // [FH, fitted to the real ball-still runs, 41.7 a team-match, DFL]; 0 = uncapped.
     math::Fixed64 front_close{};

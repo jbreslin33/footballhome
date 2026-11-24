@@ -720,152 +720,22 @@
     for (const ev of ['mouseup', 'mouseleave', 'touchend', 'touchcancel'])
       el.addEventListener(ev, stop);
   }
-  // Trees: see-through wire leaves by default; LEAVES button or L shows
-  // solid foliage.
-  const leavesBtn = document.getElementById('btn-leaves');
-  let leavesOn = false;
-  const toggleLeaves = () => {
-    if (viewMenu && mode === 'game') { viewMenu.set('leaves', !viewMenu.get('leaves')); return; }
-    leavesOn = !leavesOn;
-    if (renderer.field && renderer.field.setLeaves) renderer.field.setLeaves(leavesOn);
-    if (leavesBtn) leavesBtn.textContent = leavesOn ? 'LEAVES ON' : 'LEAVES OFF';
-  };
-  if (leavesBtn) {
-    leavesBtn.addEventListener('click', toggleLeaves);
-    leavesBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault(); e.stopPropagation(); toggleLeaves();
-    });
-  }
-  // Ground contours: button or K cycles lidar 10 cm (USGS 3DEP) → City
-  // 2 ft → USGS topo 10 ft → all → off.
-  const contoursBtn = document.getElementById('btn-contours');
-  const CMODES = ['lidar', 'city', 'topo', 'all', 'off'];
-  const CLABEL = { lidar: 'LIDAR 10CM', city: 'CITY 2FT', topo: 'USGS 10FT', all: 'ALL LINES',
-                   off: 'CONTOURS OFF' };
-  let cmode = 0;
-  const toggleContours = () => {
-    if (viewMenu && mode === 'game') { viewMenu.set('contours', !viewMenu.get('contours')); return; }
-    cmode = (cmode + 1) % CMODES.length;
-    if (renderer.field && renderer.field.setContours) renderer.field.setContours(CMODES[cmode]);
-    if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
-  };
-  if (contoursBtn) {
-    contoursBtn.addEventListener('click', toggleContours);
-    contoursBtn.addEventListener('touchstart', (e) => {
-      e.preventDefault(); e.stopPropagation(); toggleContours();
-    });
-  }
-  // Drag-and-drop pitch planner: live legality + water score.
-  const planner = window.PitchPlanner ? window.PitchPlanner.attach(renderer) : null;
-  // MODES over the one Lighthouse model (James 10/22: a "game" button and
-  // a "design" button, later practice setup / barn night / rodeo — each
-  // mode brings only its own controls, so none is cluttered). GAME: the
-  // match + its controls, ball-follow, no contours. DESIGN: the pitch
-  // planner, contours, camera parked; game-only controls hidden (CSS
-  // body.mode-design .game-only). Remembered per device; GAME by default.
-  const modeBar = document.getElementById('mode-bar');
-  let mode = 'game';
-  try {
-    mode = localStorage.getItem('fh.game.mode') ||
-      (localStorage.getItem('fh.game.planMode') === '1' ? 'design' : 'game');
-  } catch (e) { /* default GAME */ }
-  // Modes set up but not built yet (James: "setup the others functionally
-  // but not implemented"): the model with the game controls cleared and a
-  // note of what's coming.
-  const COMING = {
-    practice: '🦺 <b>Practice setup</b> — coming: place cones, grids and stations on the field so every coach knows where tonight\'s session goes.',
-    barn: '🎪 <b>Barn night</b> — coming: simulate a fundraiser night at the barn, people arriving, going in and out.',
-    rodeo: '🐂 <b>Rodeo night</b> — coming: the rodeo with the band, the bulls, and cars driving in.',
-  };
-  const modeNote = document.getElementById('mode-note');
-  if (mode !== 'game' && mode !== 'design' && !COMING[mode]) mode = 'game';
-  if (VIEW_2D) mode = 'game';   // DESIGN and the night modes are the 3D Lighthouse model's
-  // GAME plays on the DESIGNED pitch (James: "we need field oriented like
-  // it is in design. and add 7v7 too"): the site turns so the club's 11v11
-  // is the match pitch, and the designed 7v7 is chalked on the grass. From
-  // the planner when it's loaded (live drags), else the saved club layout.
-  let savedPlan = null;
-  fetch('/api/field-plan').then((r) => (r.ok ? r.json() : null)).then((j) => {
-    if (j && j.current) {
-      savedPlan = j.current.items.filter((i) => i.kind === 'pitch')
-        .map((i) => ({ id: i.key, x: i.x, z: i.z, rot: i.rot, size: [i.length_yd, i.width_yd] }));
-      if (mode === 'game') syncGameField();
-    }
-  }).catch(() => { /* keep the built-in spot */ });
-  function syncGameField() {
-    const f = renderer.field;
-    if (!f || !f.setGamePitch) { setTimeout(syncGameField, 300); return; }
-    const ps = (planner && planner.current()) || savedPlan;
-    if (!ps) return;
-    const big = ps.find((p) => p.id === '11v11');
-    const seven = ps.find((p) => p.id === '7v7');
-    if (big) f.setGamePitch({ x: big.x, z: big.z, rotDeg: big.rot });
-    f.setGameSeven(mode === 'game' && seven && (!viewMenu || viewMenu.get('seven'))
-      ? { x: seven.x, z: seven.z, rotDeg: seven.rot, length: seven.size[0] * 0.9144, width: seven.size[1] * 0.9144 }
-      : null);
-  }
-  const applyMode = () => {
-    const design = mode === 'design';
-    const other = !!COMING[mode];
-    document.body.classList.toggle('mode-design', design);
-    document.body.classList.toggle('mode-game', mode === 'game');
-    document.body.classList.toggle('mode-other', other);
-    // The match (players + ball) only in GAME and DESIGN; the other modes
-    // show the complex itself — field, animals, buildings, trees.
-    renderer.showMatch = !other;
-    if (modeNote) modeNote.innerHTML = other ? COMING[mode] : '';
-    if (modeBar) for (const b of modeBar.querySelectorAll('button')) b.classList.toggle('on', b.dataset.mode === mode);
-    if (!renderer.field || !renderer.field.setContours) {
-      if (planner) planner.setOn(design);   // so a late planner build lands in the right mode
-      setTimeout(applyMode, 300);
-      return;
-    }
-    cmode = CMODES.indexOf(design ? 'lidar' : 'off');
-    renderer.field.setContours(CMODES[cmode]);
-    if (contoursBtn) contoursBtn.textContent = CLABEL[CMODES[cmode]];
-    syncGameField();
-    // Today's yellow painted pitch only in DESIGN (James: "yellow field
-    // needs to not be in game just design").
-    if (renderer.field.setOldPitch) renderer.field.setOldPitch(design);
-    // Ball-follow only in GAME; every other mode parks the camera.
-    if (renderer.rig.follow !== (mode === 'game')) toggleFollow();
-    // Last: in DESIGN the planner's layer pills decide contours, today's
-    // pitch, water and the match, over the mode defaults above.
-    if (planner) planner.setOn(design);
-    // GAME: the ☰ View menu decides what's drawn (essentials only by default).
-    if (viewMenu) { viewMenu.apply(); viewMenu.paint(); }
-  };
-  const setMode = (m) => {
-    if (m === mode) return;
-    mode = m;
-    try { localStorage.setItem('fh.game.mode', mode); } catch (e) { /* this visit only */ }
-    applyMode();
-  };
-  if (modeBar) {
-    for (const b of modeBar.querySelectorAll('button')) {
-      b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); setMode(b.dataset.mode); });
-      b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); setMode(b.dataset.mode); });
-    }
-  }
+  // The Lighthouse site model, its pitch planner and the Practice / Barn / Rodeo modes left
+  // this page on 11/24 (lighthouse-site.html, js/game/site-client.js): the match is played
+  // on a plain pitch.
   // ☰ View (James 11/10): everything beyond field, ball, players and refs is opt-in, and every
-  // floating control can be hidden; the menu carries camera, brain and mode so nothing is lost.
+  // floating control can be hidden; the menu carries camera and brain so nothing is lost.
   viewMenu = window.ViewMenu ? new window.ViewMenu({
     renderer,
-    isGame: () => mode === 'game',
     cam: { label: () => renderer.rig.label(), cycle: () => renderer.rig.cycle(), zoom: zoomBy,
            follow: () => renderer.rig.follow, toggleFollow },
     brain: { on: () => brainOn, toggle: () => setBrainOn(!brainOn) },
-    modes: { list: [['game', '🎮 Game'], ['design', '📐 Design'], ['practice', '🦺 Practice'], ['barn', '🎪 Barn'], ['rodeo', '🐂 Rodeo']],
-             current: () => mode, set: (m) => setMode(m) },
-    syncSeven: () => syncGameField(),
   }) : null;
-  applyMode();
+  if (viewMenu) { viewMenu.apply(); viewMenu.paint(); }
   const CAMS = ['broadcast', 'ball', 'third', 'first', 'top', 'orbit', 'watch'];
   window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k === 'c' && !e.repeat) renderer.rig.cycle();
-    if (k === 'l' && !e.repeat) toggleLeaves();
-    if (k === 'k' && !e.repeat) toggleContours();
     if (k === 'v' && !e.repeat) toggleFollow();
     if (k === '+' || k === '=') zoomBy(0.85);
     if (k === '-' || k === '_') zoomBy(1 / 0.85);

@@ -202,6 +202,7 @@ void Brain::think(const World& world) const {
     }
 }
 
+// [behaviour: block_slide_across]
 Fixed64 Brain::slideY(const Vec2& base, Fixed64 ball_y, Fixed64 shift, Fixed64 cap) const {
     Fixed64 s = ball_y * shift;
     if (cap.raw > 0) {
@@ -215,6 +216,7 @@ Fixed64 Brain::slideY(const Vec2& base, Fixed64 ball_y, Fixed64 shift, Fixed64 c
     return v;
 }
 
+// [behaviour: block_width_narrow]
 // G5.36 (§8.134): a wing-back — James: "the ball-side wing-back goes, the
 // far-side one tucks in to make a back four". Without the ball the one on the
 // ball's side (where it is going) stands at a wide man's depth; the other at a
@@ -230,6 +232,7 @@ Fixed64 Brain::acrossDef(const Vec2& base, const PlayerView& v) const {
     return slideY(Vec2{base.x, base.y * f}, v.ball_to.y, theirs_shift_y_, theirs_cap_y_);
 }
 
+// [behaviour: wingback_ball_side_goes_far_tucks]
 void Brain::wingBack(const FormationSpec::Pos& mine, PlayerView& v) const {
     if (mine.role != "wing-back") return;
     v.role_ours = Role::Wide;
@@ -250,6 +253,8 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     v.role_ours = v.role;
     v.keeper = world.isKeeper(slot);
     const FlightRead& fr = reads_.flightRead(world);
+    // [behaviour: block_shift_while_ball_travels]
+    // [behaviour: read_ball_destination]
     // G5.30 (§8.128): where the ball is going — a free ball in play, the point
     // the race read's first man (either side) takes it; else where it is. The
     // block shifts while the ball travels, not after it lands.
@@ -264,6 +269,7 @@ PlayerView Brain::viewOf(SlotIndex slot, const World& world) const {
     }
     v.across_def = acrossDef(mine.base, v);
     wingBack(mine, v);
+    // [behaviour: poss_width_by_ball]
     {   // G5.102 (§8.204): his formation width scaled to the real in-possession gap for his role and the ball's band
         const Fixed64 off_their = half_x_ - world.ball().pos.x * v.sg;
         const Fixed64 f = bandLookup(poss_.params().width[static_cast<int>(v.role_ours)], off_their);
@@ -316,6 +322,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     Orders o;
     if (!takeRestart(slot, world, o) && !playFreeKick(slot, world, o)) {
         bool held = false;
+        // [behaviour: restart_shape_hold]
         // A restart shape is held until the dead ball is played (G4.58 / G5.2).
         if (hold_team_ != 0xFF && world.restartTeam() == hold_team_)
             for (const auto& [s, mark] : hold_) {
@@ -345,6 +352,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     namePass(slot, world, o);
     brakeToArrive(slot, world, o, blockLead(slot, world, o));
     capAcross(slot, world, o);
+    // [behaviour: hold_face_ball]
     // Settled at his spot he faces the ball.
     if (o.move.face.x.raw == 0 && o.move.face.y.raw == 0 && (o.why == Why::Hold || o.why == Why::KeeperPosition)) {
         const auto& me = world.player(slot);
@@ -352,6 +360,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
         if (distSq(me.pos, Vec3{o.target.x, o.target.y, Fixed64::zero()}) <= Fixed64::fromInt(4))
             o.move.face = Vec2{b.x - me.pos.x, b.y - me.pos.y};
     }
+    // [behaviour: fk_stand_over_ball]
     // G5.184 (§8.290): a free kick is struck from its spot — the taker stands over it to the release (it is live at his
     // first touch, so the on-ball choice carried it on: ours from 25-35 m out reached 0-25 m before the kick). Only
     // "nothing on" (Why::Dribble) still carries.
@@ -364,6 +373,7 @@ Orders Brain::ordersFor(SlotIndex slot, const World& world) const {
     return o;
 }
 
+// [behaviour: restart_taker]
 // The taker of a held restart (G5.2): the keeper for his goal kick, the man a
 // restart shape puts on the spot, else the nearest outfielder to the spot.
 int Brain::restartTaker(const World& world, std::uint8_t team) const {
@@ -398,6 +408,7 @@ bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
             case core::MatchEventType::Penalty: return playPenalty(slot, world, out);
             default: break;
         }
+        // [behaviour: keeper_goal_kick_long_fallback]
         // Goal kick: the keeper's own ball — his on-ball state chooses it;
         // he doesn't stand on it for ever if it finds nothing.
         actAs(Possession::onBall(), slot, world, out);
@@ -413,6 +424,7 @@ bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
         }
         return true;
     }
+    // [behaviour: restart_walk_to_spot]
     // Walk to it: behind the line for a throw, behind the ball for a kick,
     // onto it once the referee has it ready.
     const Vec3& sp = world.restartSpot();
@@ -431,6 +443,7 @@ bool Brain::takeRestart(SlotIndex slot, const World& world, Orders& out) const {
     return true;
 }
 
+// [behaviour: throw_in_to_free_man]
 bool Brain::playThrow(SlotIndex slot, const World& world, Orders& out) const {
     const std::uint8_t team = setup_.team_of_slot[slot];
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
@@ -479,6 +492,7 @@ bool Brain::playThrow(SlotIndex slot, const World& world, Orders& out) const {
     return true;
 }
 
+// [behaviour: penalty_kick]
 // G5.40 (Law 14): the penalty. Where it goes is drawn from where real ones went
 // (StatsBomb PL 2015/16, benchmarks_statsbomb_penalties.py): on target 93.4% (81.3%
 // scored, 12.1% saved), off 6.6%; on target a median 2.38 m from the goal's centre
@@ -516,6 +530,7 @@ bool Brain::playPenalty(SlotIndex slot, const World& world, Orders& out) const {
     return true;
 }
 
+// [behaviour: penalty_stay_out]
 // Law 14 (G5.40): until the penalty is kicked everyone but the taker and the
 // defending keeper stands outside the penalty area and the arc (9.15 m from the
 // mark), behind the ball — on a line 21 m out, across the area's width. The
@@ -525,6 +540,7 @@ void Brain::penaltyPlaces(SlotIndex slot, const World& world, Orders& o) const {
     const Vec3& sp = world.restartSpot();
     const Fixed64 end = sp.x.raw > 0 ? Fixed64::one() : -Fixed64::one();   // the goal it is taken at
     const std::uint8_t team = setup_.team_of_slot[slot];
+    // [behaviour: keeper_penalty_on_line]
     if (world.isKeeper(slot)) {
         if (team == world.restartTeam()) return;   // the taker's keeper: his own game
         const Vec2 t{end * half_x_ - end * Fixed64::fromFraction(1, 5), Fixed64::zero()};
@@ -548,6 +564,7 @@ void Brain::penaltyPlaces(SlotIndex slot, const World& world, Orders& o) const {
     o.why = Why::LawDistance;
 }
 
+// [behaviour: corner_delivery]
 bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {
     const Vec3& sp = world.restartSpot();
     const Fixed64 end = sp.x.raw > 0 ? Fixed64::one() : -Fixed64::one();
@@ -558,6 +575,7 @@ bool Brain::playCorner(SlotIndex slot, const World& world, Orders& out) const {
     return boxDelivery(slot, world, out, end, Vec2{sp.x, sp.y});
 }
 
+// [behaviour: fk_into_box]
 // G5.182 (§8.288): a free kick is live at the taker's first touch, so his on-ball state used to play it as open play — never
 // into the box from 25-52 m (real 28-71%). At the real share by spot (one roll for his spell), he delivers it as a corner is.
 bool Brain::playFreeKick(SlotIndex slot, const World& world, Orders& out) const {
@@ -636,6 +654,8 @@ void Brain::buildSetPieceShape(const World& world, std::uint8_t rt, int taker, b
         }
         if (best >= 0) { sps_.has[best & 31] = 1; sps_.at[best & 31] = at; }
     };
+    // [behaviour: sp_corner_defend_shape]
+    // [behaviour: sp_corner_attack_shape]
     // Spots in dm: (m off their line × 10, across × 10 toward the ball's side).
     if (corner) {
         static const int kA[6][2] = {{60, 20}, {80, -10}, {110, 40}, {100, -60}, {130, 0}, {200, 0}};
@@ -647,6 +667,7 @@ void Brain::buildSetPieceShape(const World& world, std::uint8_t rt, int taker, b
         return;
     }
     const bool near = d < Fixed64::fromInt(35);
+    // [behaviour: sp_fk_wall]
     // The wall: on the ball's line to the goal's middle, 9.15 m off the ball.
     const Vec2 goal{end * half_x_, Fixed64::zero()};
     const Vec2 dir = math::normalized(Vec2{goal.x - sp.x, goal.y - sp.y});
@@ -657,6 +678,7 @@ void Brain::buildSetPieceShape(const World& world, std::uint8_t rt, int taker, b
         const Fixed64 off = Fixed64::fromFraction(6 * (2 * i - (walls - 1)), 10);
         take(Vec2{sp.x + dir.x * w915 + side.x * off, sp.y + dir.y * w915 + side.y * off}, false);
     }
+    // [behaviour: sp_fk_box_lines]
     if (near) {
         static const int kA[6][2] = {{125, -90}, {125, -30}, {125, 30}, {125, 90}, {190, 60}, {190, -60}};
         static const int kD[5][2] = {{120, -90}, {120, -30}, {120, 30}, {120, 90}, {80, 0}};
@@ -701,6 +723,7 @@ bool Brain::boxDelivery(SlotIndex slot, const World& world, Orders& out, Fixed64
     return true;
 }
 
+// [behaviour: law_distance_at_restart]
 // Their dead ball (G5.2): Law 15 two metres from the throw, Law 17 / Law 13
 // the 9.15 m of a corner or free kick. His walk stops at the distance; if
 // he's inside it, he backs off.
@@ -732,6 +755,7 @@ void Brain::keepLawDistance(SlotIndex slot, const World& world, Orders& o) const
     o.why = Why::LawDistance;
 }
 
+// [behaviour: law_out_of_their_box_goal_kick]
 void Brain::outOfTheirBox(SlotIndex slot, const World& world, Orders& o) const {
     // Their goal kick (Law 16): every one of us stays outside their penalty
     // area until the ball is kicked — the man-marker picks his CB up on the
@@ -751,6 +775,7 @@ void Brain::outOfTheirBox(SlotIndex slot, const World& world, Orders& o) const {
     o.target = t;
 }
 
+// [behaviour: pass_first_time_when_pressed]
 // A kick to a mate (G4.81): name him, weight a ground pass to where it's aimed
 // and lead it into a moving man's path; pressed in his control touch, a ground
 // pass goes first time (G4.95b).
@@ -771,6 +796,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
             }
         }
     }
+    // [behaviour: pass_lead_into_path]
     // A kick to a mate (G4.81): name him on the ball, and weight a
     // ground pass to the spot it's aimed at.
     if (o.action == core::Action::ShortPass || o.action == core::Action::GroundKick ||
@@ -808,6 +834,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
                 if (reads_.passSafe(world, slot, from, at,
                              world.passSpeed(math::length(Vec2{at.x - p.x, at.y - p.y})), Fixed64::one())) {
                     o.target = at;
+                    // [behaviour: pass_keep_carry_feet]
                     // G5.127 (§8.228): on the ball, his feet stay on OnBall's carry until the release —
                     // walking at the man he'll pass to took 39% of a free middle-third carrier's ticks
                     // backward (carries there +0.1 m forward v StatsBomb +2.4). The kick reads target.
@@ -830,6 +857,7 @@ void Brain::namePass(SlotIndex slot, const World& world, Orders& o) const {
 // holding the block with their man carrying it in play; a free ball's spot is
 // where it will be taken, which stands still while it travels.
 Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const {
+    // [behaviour: recv_track_rolling_ball]
     // G5.58 (§8.159): meeting a rolling ball within track_m of it, he runs with
     // the ball's own velocity (less any part of it coming at him) and closes the
     // gap on top — tracking, as the block's G5.30. Braked to arrive at a meet
@@ -852,17 +880,20 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
             }
         }
     }
+    // [behaviour: front_man_rides_the_line]
     // G5.47 (§8.147): the front man's spot is their line less his gap — it moves
     // as the line does, so he runs with the line's own velocity (tracking).
     if (o.why == Why::Hold && poss_.onLine(setup_.team_of_slot[slot], slot) &&
         players_[slot & 31].machine.current() == Possession::support())
         return Vec2{Possession::offsideLineVelX(setup_.team_of_slot[slot], world, setup_.team_of_slot), Fixed64::zero()};
+    // [behaviour: mark_run_with_man]
     // G5.72: marking, he runs with his man.
     if (o.why == Why::Mark && o.other >= 0 && o.other < world.playerCount()) {
         const auto& mv = world.player(static_cast<std::uint8_t>(o.other)).vel;
         return Vec2{mv.x, mv.y};
     }
     if (o.why != Why::Hold || players_[slot & 31].machine.current() != DefendingBlock::holdBlockSpot()) return Vec2{};
+    // [behaviour: block_tracks_carrier]
     const auto& b = world.ball();
     if (!b.owner || world.restartTeam() != 0xFF || world.outStage() != 0) return Vec2{};
     if (setup_.team_of_slot[*b.owner] == setup_.team_of_slot[slot]) return Vec2{};
@@ -879,6 +910,7 @@ Vec2 Brain::blockLead(SlotIndex slot, const World& world, const Orders& o) const
     return Vec2{(then.x - now.x) / h, (then.y - now.y) / h};
 }
 
+// [behaviour: shape_pace_caps_by_direction]
 // G5.31 (§8.129): holding shape, his pace by direction, not one cap — across
 // and up the pitch at the shift's pace (shape_max), back toward our goal at
 // the defending pace (defend_max; in danger, as §8.108 has it). The real side
@@ -900,12 +932,14 @@ void Brain::capAcross(SlotIndex slot, const World& world, Orders& o) const {
     if (lineRun(slot, world, o)) flim = run_max_ / top;
     else if (shift_fwd_max_.raw > 0 && shift_fwd_max_ < shape_max_ && ourBall(slot, world)) flim = shift_fwd_max_ / top;   // G5.95 (§8.196): the build-up shift at a jog
     if (fwd > flim) o.move.move.x = flim * sg;
+    // [behaviour: fwd_jog_back]
     // G5.96 (§8.197): a forward drops back at his own pace, in danger too — real ones stay up as the ball goes past.
     if (fwd_back_max_.raw > 0 && fwd_back_max_ < defend_max_ && ((fwd_back_roles_ >> static_cast<int>(role_of_slot_[slot])) & 1)) {
         if (-fwd > fwd_back_max_ / top) o.move.move.x = -(fwd_back_max_ / top) * sg;
     } else if (defend_max_.raw > 0 && !inDanger(slot, world) && -fwd > defend_max_ / top) o.move.move.x = -(defend_max_ / top) * sg;
 }
 
+// [behaviour: read_our_ball_live]
 // G5.94 (§8.195): a holder with our ball making a RUN, not shifting with the shape — within
 // run_zone of their offside line, his spot ahead of him and on the line or within run_tgap of it.
 // Real players shift at a jog and run at the line at 5-6 m/s (DFL runs: speed over the run med
@@ -918,6 +952,7 @@ bool Brain::ourBall(SlotIndex slot, const World& world) const {
     return ours && world.restartTeam() == 0xFF && world.outStage() == 0;
 }
 
+// [behaviour: line_run_pace]
 bool Brain::lineRun(SlotIndex slot, const World& world, const Orders& o) const {
     if (run_max_.raw <= 0 || o.why != Why::Hold) return false;
     const auto& b = world.ball();
@@ -930,6 +965,7 @@ bool Brain::lineRun(SlotIndex slot, const World& world, const Orders& o) const {
     return gap < run_zone_ && tgap < run_tgap_ && (o.target.x - world.player(slot).pos.x) * sg > Fixed64::one();
 }
 
+// [behaviour: read_in_danger]
 // Their ball inside shape_danger_m of our goal (G5.10, §8.108).
 bool Brain::inDanger(SlotIndex slot, const World& world) const {
     if (shape_danger_.raw <= 0) return false;
@@ -940,6 +976,7 @@ bool Brain::inDanger(SlotIndex slot, const World& world) const {
     return theirs && b.pos.x * sg + half_x_ < shape_danger_;
 }
 
+// [behaviour: def_into_the_lane]
 // G5.197 (§8.303): "get in line of the shot" [FH coaching]. Real shots have an outfielder a median 0.56 m off the ball-goal
 // line (StatsBomb PL 15/16 freeze frames; 1+ within 1 m 71%); ours 3.4 m (27%) — the presser arrives beside the shooter and
 // nobody else steps across. With their man on the ball within lane_range_m of our goal centre, a holder or marker of ours
@@ -993,6 +1030,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         case Why::Chase: case Why::MeetPass:
             v_end = arrive_through_;
             break;
+        // [behaviour: press_arrive_with_carrier]
         case Why::Press: {
             // G5.39 (§8.139): his spot moves with their carrier — he arrives at
             // it no slower than the carrier runs (tracking, not pursuit, as the
@@ -1011,6 +1049,8 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         default: break;
     }
     Fixed64 v_ok = math::fx_sqrt(v_end * v_end + Fixed64::fromInt(2) * arrive_decel_ * dist);
+    // [behaviour: shape_shift_at_a_jog]
+    // [behaviour: def_danger_get_back]
     // G5.5 (§8.103): adjusting his shape he goes only as fast as the gap asks,
     // closing it in shape_tau_s. Off the ball real men spend 3.3% of the time
     // over 5 m/s (DFL tracking); ours 47.5%, 58% of that holding shape, and a
@@ -1021,6 +1061,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     // 18-30 m out, the offside line 4-5 m too high, the box empty).
     const bool danger = o.why == Why::Hold && inDanger(slot, world);
     if (o.why == Why::Hold && shape_tau_.raw > 0 && !danger) {
+        // [behaviour: shape_moves_with_our_ball]
         // G5.14 (§8.111): with our ball the shape moves with it — he closes
         // the gap in shape_tau_ours_s. Eased over shape_tau_s (fitted to the
         // block without the ball, §8.103) every man trailed his spot by the
@@ -1037,6 +1078,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
             const bool ours = b.owner ? setup_.team_of_slot[*b.owner] == team
                                       : (world.restartTeam() == 0xFF && world.lastTouchTeam() == team);
             if (ours) tau = shape_tau_ours_;
+            // [behaviour: block_recover]
             // G5.32 (§8.130): without the ball, a spot goal-side of him (a metre+)
             // he closes in shape_tau_back_s — get goal-side first [FH coaching];
             // across and up he keeps the shift's patience. On one tau the block
@@ -1050,6 +1092,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
         const Fixed64 ease = dist / tau;
         if (ease < v_ok) v_ok = ease;
     }
+    // [behaviour: hold_walk_far_from_ball]
     // G5.137 (§8.240): with our ball, not going forward, a man near his spot
     // walks — he doesn't run with every step it takes. Inside hold_walk_m his
     // pace is the walk; beyond it, walk + the excess gap / shape_tau_ours. Real
@@ -1119,6 +1162,7 @@ void Brain::brakeToArrive(SlotIndex slot, const World& world, Orders& o, Vec2 le
     // Holding shape outside danger his pace is by direction (capAcross, G5.31).
     if (shape_max_.raw > 0 && o.why == Why::Hold && !danger && defend_max_ < v_ok) v_ok = defend_max_;
     if (danger && shape_danger_sprint_ == 0 && defend_max_.raw > 0 && defend_max_ < v_ok) v_ok = defend_max_;
+    // [behaviour: race_arrive_on_time]
     // A race to a MOVING ball (G4.84): arrive ON TIME, not just under
     // control. His target is where the flight read says he and the ball
     // meet, fr.tick ticks from now — so he runs at least dist / that time
