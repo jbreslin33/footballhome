@@ -50,29 +50,67 @@ class DualRosteringScreen extends Screen {
       ? MessageCopy.block('roster_watch', tier, tokens || {}) : fb;
   }
 
-  // Names out of a pasted league page.  The layout is the league's, so this
-  // only proposes: every line that reads like a person's name (2–5 words of
-  // letters, initials allowed), shirt numbers and appearance counts trimmed
-  // off, after the page's "Roster" heading when it has one.  The viewer
-  // fixes the list before it is saved.
+  // A saved UPSL team page (mig 1780) → {team, division, players: [{name, apps}]}.
+  // The league's markup: .single-team__roster-player blocks under the
+  // "Roster N" heading (staff sit under "Staff" with the title Coach / Admin),
+  // each with first<br>last, a position and data-appearences; the header has
+  // the team (h1) and its conference (.page__header--conference).
+  static fromSavedPage(html) {
+    const doc = new DOMParser().parseFromString(String(html || ''), 'text/html');
+    const text = (el) => (el ? el.textContent : '').replace(/\s+/g, ' ').trim();
+    const heading = [...doc.querySelectorAll('.single-team__heading')].find(h => /^\s*roster/i.test(h.textContent));
+    let blocks = heading && heading.nextElementSibling ? [...heading.nextElementSibling.querySelectorAll('.single-team__roster-player')] : [];
+    if (!blocks.length) blocks = [...doc.querySelectorAll('.single-team__roster-player')];
+    const players = [];
+    blocks.forEach(b => {
+      const nameEl = b.querySelector('.single-team__roster-player-name');
+      if (!nameEl) return;
+      if (/^(coach|admin|manager|staff)$/i.test(text(b.querySelector('.single-team__roster-player-title')))) return;
+      const copy = nameEl.cloneNode(true);
+      copy.querySelectorAll('br').forEach(br => br.replaceWith(' '));
+      const name = text(copy);
+      const apps = parseInt(b.getAttribute('data-appearences') || b.getAttribute('data-appearances') || '', 10);
+      if (name) players.push(Number.isFinite(apps) ? { name, apps } : { name });
+    });
+    const team = text(doc.querySelector('.page__header--team-name-wrapper h1') || doc.querySelector('h1'))
+      || text(doc.querySelector('title')).replace(/-\d+\s*-.*$/, '').trim();
+    return { team, division: text(doc.querySelector('.page__header--conference')), players };
+  }
+
+  // Names out of a team page copied as text (Ctrl+A, Ctrl+C).  A UPSL page
+  // reads, after its "Roster N" heading, one player over several lines:
+  // first name / last name / position / "Appearances: N" (the last two not
+  // always there).  Any other page: every line that reads like a full name.
+  // Either way this only proposes — the viewer fixes the list before saving.
   static namesFrom(text) {
-    let lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim());
+    let lines = String(text || '').split(/\r?\n/).map(l => l.replace(/\s+/g, ' ').trim()).filter(Boolean);
     const at = lines.findIndex(l => /^roster\b/i.test(l));
     if (at >= 0) lines = lines.slice(at + 1);
-    const skip = /^(home|news|teams?|standings|schedule|schedules|results|stats|statistics|contact( us)?|about( us)?|privacy policy|terms.*|players?|coach(es)?|staff|goalkeepers?|defenders?|midfielders?|forwards?|strikers?|position|appearances|goals|assists|name|photo|all rights reserved.*|follow us.*|sign in|log ?in|register|search|menu|shop|sponsors?|partners?|match(es)?|fixtures|league table|head coach|assistant coach|team manager)$/i;
-    const word = "[\\p{L}][\\p{L}.'’-]*";
-    const name = new RegExp(`^${word}(?: ${word}){1,4}$`, 'u');
-    const seen = new Set();
+    const position = /^(forward|midfield(er)?|defen[sc]e|defender|goalkeeper|striker)$/i;
+    const stop = /^(top scorers|staff|schedule|results|standings|news|menu|home|about|socials|teams)$/i;   // what follows the roster: other sections, the footer menu
+    const word = /^[\p{L}][\p{L}.'’ -]*$/u;
     const out = [];
+    const seen = new Set();
+    const add = (n) => { const k = n.toLowerCase(); if (n && !seen.has(k)) { seen.add(k); out.push(n); } };
+    if (at >= 0 && lines.some(l => position.test(l) || /^appearances:/i.test(l))) {
+      let buf = [];
+      const flush = () => { if (buf.length) add(buf.join(' ')); buf = []; };
+      for (const l of lines) {
+        if (stop.test(l)) break;
+        if (/^appearances:/i.test(l) || position.test(l)) { flush(); continue; }
+        if (!word.test(l) || l.length > 40) { flush(); continue; }
+        if (buf.length >= 2) flush();   // a player with no position shown
+        buf.push(l);
+      }
+      flush();
+      return out;
+    }
+    const full = /^[\p{L}][\p{L}.'’-]*(?: [\p{L}][\p{L}.'’-]*){1,4}$/u;
+    const skip = /^(home|news|teams?|standings|schedule|schedules|results|stats|statistics|contact( us)?|about( us)?|privacy policy|terms.*|players?|coach(es)?|staff|position|appearances|goals|assists|name|photo|all rights reserved.*|follow us.*|sign in|log ?in|register|search|menu|shop|sponsors?|partners?|match(es)?|fixtures|league table|head coach|assistant coach|team manager|top scorers|player registration|new team membership)$/i;
     for (let l of lines) {
       l = l.replace(/^#?\d+[.)]?\s+/, '').replace(/(\s+\d+)+$/, '').trim();
-      l = l.replace(/\s+(goalkeeper|defender|midfielder|forward|striker|gk|df|mf|fw)$/i, '').trim();
-      if (!l || l.length > 40 || skip.test(l) || !name.test(l)) continue;
-      if (l === l.toLowerCase()) continue;
-      const key = l.toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(l);
+      if (!l || l.length > 40 || skip.test(l) || position.test(l) || !full.test(l) || l === l.toLowerCase()) continue;
+      add(l);
     }
     return out;
   }
@@ -159,9 +197,13 @@ class DualRosteringScreen extends Screen {
       const rm = e.target.closest('[data-dr-paste-remove]');
       if (rm) { this._removePasted(Number(rm.dataset.drPasteRemove)); }
     });
+    this.element.addEventListener('change', (e) => {
+      if (e.target.id === 'dr-paste-files' && e.target.files && e.target.files.length) this._saveFiles([...e.target.files]);
+    });
     // The paste fold stays as the viewer left it across re-renders.
     this.element.addEventListener('toggle', (e) => {
       if (e.target.id === 'dr-paste-fold') this.pasteOpen = e.target.open;
+      if (e.target.id === 'dr-paste-hand') this.handOpen = e.target.open;
     }, true);
     this.element.addEventListener('input', (e) => {
       if (e.target.id === 'dr-q') { this.q = e.target.value.trim().toLowerCase(); this._renderBody(); }
@@ -204,6 +246,34 @@ class DualRosteringScreen extends Screen {
       this.pasteNote = { ok: false, text: err.message };
       this._pasteKeep = { team, raw: (this.find('#dr-paste-raw') || {}).value || '', names: names.join('\n') };
     }
+    this.pasteOpen = true;
+    this._load();
+  }
+  // Saved team pages, many at once: each is read here and saved as its team.
+  async _saveFiles(files) {
+    const source = Number((this.find('#dr-paste-source') || {}).value || 0);
+    if (!source) return;
+    let teams = 0, players = 0;
+    const bad = [];
+    for (const f of files) {
+      try {
+        const page = DualRosteringScreen.fromSavedPage(await f.text());
+        if (!page.team || !page.players.length) { bad.push(f.name); continue; }
+        const res = await this.auth.fetch('/api/roster-watch/paste', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source_id: source, team: page.team, division: page.division, names: page.players }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.error || `HTTP ${res.status}`);
+        teams++; players += Number(body.saved) || 0;
+      } catch (err) {
+        console.error('[dual-rostering] file failed:', f.name, err);
+        bad.push(f.name);
+      }
+    }
+    const done = this._c('files_done', { teams, players }, `✓ ${teams} teams saved · ${players} players`);
+    const missed = bad.length ? ' ' + this._c('files_bad', { names: bad.join(', ') }, `⚠ no roster found in: ${bad.join(', ')}`) : '';
+    this.pasteNote = { ok: !bad.length, text: done + missed };
     this.pasteOpen = true;
     this._load();
   }
@@ -335,6 +405,7 @@ class DualRosteringScreen extends Screen {
               <span style="opacity:0.75;">${esc(where(r))}</span>
               ${r.name !== name ? `<span style="opacity:0.75;">“${esc(r.name)}”</span>` : ''}
               ${r.dob ? `<span style="opacity:0.75;">${esc(this._c('row_dob', { dob: r.dob }, `born ${r.dob}`))}</span>` : ''}
+              ${r.apps != null ? `<span style="opacity:0.75;">${esc(this._c('row_apps', { n: r.apps }, `${r.apps} appearances`))}</span>` : ''}
               ${r.added ? `<span style="opacity:0.6;">${esc(this._c('row_added', { added: r.added }, `added ${r.added}`))}</span>` : ''}
             </div>`).join('')}
         </div>`;
@@ -369,9 +440,16 @@ class DualRosteringScreen extends Screen {
         <div style="margin-top:6px; display:flex; flex-direction:column; gap:8px;">
           <div style="font-size:0.8rem; opacity:0.8;">${esc(this._c('paste_how', {}, 'Open the team page, copy all, paste below.'))}</div>
           ${this.pasteNote ? `<div style="font-weight:700; color:${this.pasteNote.ok ? '#4ade80' : '#f87171'};">${esc(this.pasteNote.text)}</div>` : ''}
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
             <label style="flex:0 1 200px; font-size:0.78rem;">${esc(this._c('paste_league', {}, 'League'))}
               <select id="dr-paste-source" style="${field}">${paste.sources.map(x => `<option value="${Number(x.id)}">${esc(x.label)}</option>`).join('')}</select></label>
+            <label style="flex:1 1 300px; font-size:0.78rem;">${esc(this._c('files_label', {}, 'Saved team pages'))}
+              <input id="dr-paste-files" type="file" accept=".html,.htm,text/html" multiple style="${field}"></label>
+          </div>
+          <details ${this.handOpen ? 'open' : ''} id="dr-paste-hand">
+            <summary style="cursor:pointer; font-size:0.8rem; opacity:0.85;">${esc(this._c('files_or', {}, 'Or one team by hand:'))}</summary>
+            <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <label style="flex:1 1 240px; font-size:0.78rem;">${esc(this._c('paste_team', {}, 'Team name'))}
               <input id="dr-paste-team" type="text" autocomplete="off" maxlength="120" style="${field}"></label>
           </div>
@@ -380,6 +458,8 @@ class DualRosteringScreen extends Screen {
           <label style="font-size:0.78rem;"><span id="dr-paste-names-label">${esc(this._c('paste_names', { n: 0 }, 'Names found (0)'))}</span>
             <textarea id="dr-paste-names" rows="10" style="${field}"></textarea></label>
           <div><button type="button" class="btn btn-primary" data-dr-paste-save disabled style="padding:6px 14px;">${esc(this._c('paste_save', { n: 0 }, 'Save 0 players'))}</button></div>
+            </div>
+          </details>
           ${(paste.teams || []).length ? `
             <div style="font-size:0.8rem; font-weight:700; margin-top:4px;">${esc(this._c('paste_teams', { n: paste.teams.length }, `Pasted so far (${paste.teams.length})`))}</div>
             ${paste.teams.map(t => `<div class="dr-src" style="align-items:center;">

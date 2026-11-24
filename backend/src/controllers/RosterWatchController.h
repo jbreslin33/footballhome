@@ -21,7 +21,7 @@
 //   POST /api/roster-watch/refresh   read every roster again, now
 //     → { started, sweep }
 //
-//   POST /api/roster-watch/paste {source_id, team, names: [...]}   (mig 1777)
+//   POST /api/roster-watch/paste {source_id, team, division?, names: [name | {name, apps}]}   (migs 1777, 1780)
 //     → { saved }   one team's roster picked out of a pasted league page
 //     (UPSL: the server cannot read upsl.com); replaces that team.
 //   POST /api/roster-watch/paste/remove {team_id}

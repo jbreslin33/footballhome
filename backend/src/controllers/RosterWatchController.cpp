@@ -77,7 +77,7 @@ Response RosterWatchController::handleGet(const Request& request) {
                                        WHERE e.name_key = g.name_key AND e.dob IS NOT NULL GROUP BY e.dob) x), 0) >= 2,
                 'rows', (SELECT json_agg(json_build_object(
                            'name', e.full_name, 'league', e.league, 'team', e.team, 'division', e.division, 'club', e.club,
-                           'dob', to_char(e.dob, 'FMMM/FMDD/YYYY'), 'added', e.added_on,
+                           'dob', to_char(e.dob, 'FMMM/FMDD/YYYY'), 'added', e.added_on, 'apps', e.appearances,
                            'group', e.league_group, 'sub', e.league_sub, 'go', e.group_order, 'so', e.sub_order)
                            ORDER BY e.group_order, e.sub_order, e.team)
                          FROM e WHERE e.name_key = g.name_key))
@@ -98,7 +98,7 @@ Response RosterWatchController::handleRefresh(const Request& request) {
     return jsonOut(HttpStatus::OK, {{"started", started}, {"sweep", RosterWatchSync::state()}});
 }
 
-// POST /api/roster-watch/paste {source_id, team, names: ["First Last", …]}
+// POST /api/roster-watch/paste {source_id, team, division?, names: ["First Last" | {name, apps}, …]}
 // (mig 1777) — one team's roster as the page picked it out of a pasted
 // league page; replaces that team in that source.
 Response RosterWatchController::handlePaste(const Request& request) {
@@ -110,11 +110,21 @@ Response RosterWatchController::handlePaste(const Request& request) {
     if (sourceId <= 0 || team.empty() || team.size() > 120) return jsonError(HttpStatus::BAD_REQUEST, "League and team name are required");
     if (!body.contains("names") || !body["names"].is_array() || body["names"].empty() || body["names"].size() > 200)
         return jsonError(HttpStatus::BAD_REQUEST, "No names to save");
+    // A name, or {name, apps} when the league's page shows appearances (mig 1780).
     json names = json::array();
-    for (const auto& n : body["names"]) if (n.is_string()) names.push_back(n.get<std::string>());
+    for (const auto& n : body["names"]) {
+        if (n.is_string()) names.push_back(n.get<std::string>());
+        else if (n.is_object() && n.contains("name") && n["name"].is_string()) {
+            json row = {{"name", n["name"].get<std::string>()}};
+            if (n.contains("apps") && n["apps"].is_number_integer()) row["apps"] = std::to_string(n["apps"].get<int>());
+            names.push_back(row);
+        }
+    }
+    const std::string division = body.contains("division") && body["division"].is_string() ? body["division"].get<std::string>() : "";
+    if (division.size() > 120) return jsonError(HttpStatus::BAD_REQUEST, "Bad request");
     try {
-        auto r = Database::getInstance()->query("SELECT fh_roster_paste_load($1::int, $2, $3::jsonb) AS n",
-                                                {std::to_string(sourceId), team, names.dump()});
+        auto r = Database::getInstance()->query("SELECT fh_roster_paste_load($1::int, $2, $3, $4::jsonb) AS n",
+                                                {std::to_string(sourceId), team, division, names.dump()});
         const int n = r.empty() || r[0]["n"].is_null() ? 0 : r[0]["n"].as<int>();
         if (n == 0) return jsonError(HttpStatus::BAD_REQUEST, "No names to save");
         return jsonOut(HttpStatus::OK, {{"saved", n}});
