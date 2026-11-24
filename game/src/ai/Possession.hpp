@@ -97,6 +97,11 @@ struct PossessionParams {
     math::Fixed64 pass_high_dir[3][3][6]{};
     bool high_dir_on = true;
     math::Fixed64 highShare(math::Fixed64 own_m, math::Fixed64 len, int dir = -1) const;
+    // G5.235 (§8.341): the pass's direction band for highShare, from its metres toward their goal and its length —
+    // five angle bands off straight at goal (0-30 / 30-45 / 45-60 / 60-120 / 120+ deg) when physics.pass.high5_on,
+    // else G5.75's three cones (within 60 deg / lateral / back).
+    int highDir(math::Fixed64 fwd, math::Fixed64 len) const;
+    math::Fixed64 pass_high5[3][5][6]{}; bool high5_on = false;
     math::Fixed64 risk_weight{};
     math::Fixed64 behind_risk{};
     bool behind_split = false;   // G5.161 (§8.266): each mode of a ball in behind at its real share, the read only its risk

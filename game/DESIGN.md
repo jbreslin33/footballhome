@@ -12810,6 +12810,41 @@ cut): square high into space 4.1 → 3.6, nothing else; card 9 / 12 / 12 → 9 /
 
 **Why** (part 4): the pick's height table cuts forward at 60° (§8.176), the rulers at 45°. Real midfield passes of
 20-30 m go high 38% within 30° of straight at goal, 25% at 30-45°, **12% at 45-60°**, 5% at 60-90°; of 30-40 m 69 / 69
-/ 51 / 27%. The 60° table gives the 45-60° ball the forward share (≈28% at 20-30 m) — and G5.230's space ball rides
+/ 51 / 27%. The 60° table gives the 45-60° ball the forward share (25% at 20-30 m) — and G5.230's space ball rides
 the same cut. Next: recut the height table at 45° (`benchmarks_statsbomb_highpass.py --dir`), then the pass charged
 down at the kicker. Harness only; tests 23/23.
+
+### 8.341 G5.235 — a pass's height by five angle bands, not three cones (mig 1776; shipped)
+
+From §8.340. `benchmarks_statsbomb_highpass.py --angle` (StatsBomb PL 15/16, open play, crosses out): the High share
+by the passer's metres off his own goal × the angle off straight at their goal × length. From midfield, a
+team-match and high %:
+
+| angle | 10-20 m | 20-30 m | 30-40 m | 40-50 m |
+|---|---|---|---|---|
+| 0-30° | 18.1, 11% | 7.1, 34% | 4.7, 67% | 2.8, 81% |
+| 30-45° | 8.3, 8% | 3.4, 22% | 1.5, 68% | 1.1, 87% |
+| 45-60° | 9.1, 7% | 3.7, 10% | 1.4, 50% | 0.9, 90% |
+| 60-120° | 31.8, 3% | 16.2, 4% | 5.2, 21% | 1.7, 69% |
+| 120°+ | 20.6, 2% | 5.3, 4% | 1.7, 8% | 0.3, 21% |
+
+G5.75's "forward" cone (within 60°) gave the first three one share (25% at 20-30 m, 64% at 30-40). **Change**
+(`Possession.cpp`): `PossessionParams::highDir(fwd, len)` gives the band, `highShare` reads `pass_high5[origin][band]
+[length]` — the script's table as the code default, `physics.pass.high5_<o>_<a>_<l>` rows to override a cell — for the
+pass to a man and for G5.230's ball into space; `physics.pass.high5_on` 0 = the three cones (the default: tests and
+goldens unchanged). Seeds 1000-4000 × 8, midfield kicks, a team-match:
+
+| | G5.232 | G5.235 | real |
+|---|---|---|---|
+| square high, tried / lost | 17.2 / 8.5 | 16.0 / 8.2 | 9.5 / 3.0 |
+| … a pass / into space / in behind, tried | 11.7 / 4.1 / 1.4 | 11.0 / 3.5 / 1.5 | |
+| forward high, tried / lost | 19.6 / 12.6 | 20.2 / 13.8 | 18.7 / 11.9 |
+| forward high 30 m+ from 70+ / 52-70 / 35-52 m, tried | 21.1 / 5.8 / 3.6 | 21.2 / 5.8 / 4.2 | 18.8 / 7.0 / 2.75 |
+| passes / completion % / goals | 407 / 77.1 / 2.31 | 409 / 77.1 / 2.19 | 434 / 77.5 / 1.35 |
+| card | 9 / 12 / 12 | 11 / 9 / 13 | |
+
+The real table at its real grain; shipped as the correct behaviour (`card_G5.235.txt`), and it is a trim, not the
+cause: the square high ball is still 16 v 9.5. With the share per pass real, what is left is the pick — ours plays
+8.9 square high balls of 30 m+ from midfield where the table says a real side plays about 5: more long square balls
+are chosen (the far man across the pitch), each at the real height. Next: the midfield's square pass by length —
+tried, ours v StatsBomb (45-120°, by 10 m) — then the pass charged down at the kicker (7.8 v 3.2). Tests 23/23.

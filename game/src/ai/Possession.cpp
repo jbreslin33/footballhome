@@ -498,7 +498,7 @@ public:
                 // G5.75 (§8.176): and its direction — real 30-40 m passes from our third go high 73%
                 // forward, 12% across, 4% back; by length alone our lateral balls went up at the forward rate.
                 const Fixed64 fwd = (to.x - sp.x) * v.sg;
-                const int dir = fwd * Fixed64::fromInt(2) > d ? 0 : fwd * Fixed64::fromInt(2) < -d ? 2 : 1;
+                const int dir = P.highDir(fwd, d);
                 const Fixed64 ph = P.highShare(own_end, d, dir);
                 Fixed64 gw = wgt * (Fixed64::one() - ph);
                 if (!gsafe) gw = gw * rw;
@@ -706,7 +706,7 @@ public:
                 Fixed64 wg = wz;
                 if (!cross && P.space_high.raw > 0) {
                     const Fixed64 fwd = (at.x - sp.x) * v.sg;
-                    const int dir = fwd * Fixed64::fromInt(2) > bd ? 0 : fwd * Fixed64::fromInt(2) < -bd ? 2 : 1;
+                    const int dir = P.highDir(fwd, bd);
                     const Fixed64 ph = P.highShare(own_end, bd, dir);
                     if (ph.raw > 0) {
                         const Loft lh{at, aimedCarry(me.pos, at, reach)};
@@ -1391,13 +1391,19 @@ Fixed64 PossessionParams::slideAt(int role, Fixed64 by) const {
 // between the length bands' middles (5, 15, … 55 m), held past the ends.
 Fixed64 PossessionParams::highShare(Fixed64 own_m, Fixed64 len, int dir) const {
     const int o = own_m < Fixed64::fromInt(35) ? 0 : own_m < Fixed64::fromInt(70) ? 1 : 2;
-    const Fixed64* h = high_dir_on && dir >= 0 && dir < 3 ? pass_high_dir[o][dir] : pass_high[o];
+    const Fixed64* h = high5_on && dir >= 0 && dir < 5 ? pass_high5[o][dir] : high_dir_on && dir >= 0 && dir < 3 ? pass_high_dir[o][dir] : pass_high[o];
     if (len <= Fixed64::fromInt(5)) return h[0];
     if (len >= Fixed64::fromInt(55)) return h[5];
     const Fixed64 u = (len - Fixed64::fromInt(5)) / Fixed64::fromInt(10);
     const int i = static_cast<int>(u.raw >> Fixed64::FRAC_BITS);
     const Fixed64 f = u - Fixed64::fromInt(i);
     return h[i] + (h[i + 1] - h[i]) * f;
+}
+
+int PossessionParams::highDir(Fixed64 fwd, Fixed64 len) const {
+    if (!high5_on) return fwd * Fixed64::fromInt(2) > len ? 0 : fwd * Fixed64::fromInt(2) < -len ? 2 : 1;
+    const Fixed64 c = fwd * Fixed64::fromInt(1000);   // cos 30 / 45 / 60 / 120 deg x 1000
+    return c > len * Fixed64::fromInt(866) ? 0 : c > len * Fixed64::fromInt(707) ? 1 : c > len * Fixed64::fromInt(500) ? 2 : c >= len * Fixed64::fromInt(-500) ? 3 : 4;
 }
 
 void PossessionParams::configure(const core::ModelParams& p) {
@@ -1494,6 +1500,18 @@ void PossessionParams::configure(const core::ModelParams& p) {
                 for (int l = 0; l < 6; ++l)
                     pass_high_dir[o][d][l] = p.fixed(("physics.pass.high_" + std::to_string(o) + "_" + std::to_string(d) + "_" + std::to_string(l)).c_str(), kHighDir[o][d][l]);
         high_dir_on = p.fixed("physics.pass.high_dir_on", 1000).raw > 0;
+        // G5.235 (§8.341): by five angle bands off straight at their goal (benchmarks_statsbomb_highpass.py --angle), permille;
+        // the 60 deg cone gave a 45-60 deg ball the forward share (20-30 m from midfield 25%, real 10%). The last two bands
+        // are G5.75's lateral and back rows.
+        static const int kHigh5[3][5][6] = {
+            {{96, 106, 410, 825, 958, 985}, {61, 60, 196, 626, 856, 962}, {42, 39, 88, 378, 750, 921}, {36, 24, 36, 122, 473, 786}, {21, 19, 11, 44, 44, 44}},
+            {{101, 112, 337, 673, 808, 909}, {69, 79, 223, 681, 872, 970}, {61, 65, 103, 504, 901, 971}, {36, 30, 40, 206, 692, 896}, {32, 24, 40, 78, 210, 210}},
+            {{70, 100, 206, 341, 341, 341}, {84, 105, 397, 679, 938, 938}, {79, 120, 381, 757, 860, 860}, {62, 81, 163, 386, 737, 892}, {25, 24, 49, 143, 361, 361}}};
+        for (int o = 0; o < 3; ++o)
+            for (int d = 0; d < 5; ++d)
+                for (int l = 0; l < 6; ++l)
+                    pass_high5[o][d][l] = p.fixed(("physics.pass.high5_" + std::to_string(o) + "_" + std::to_string(d) + "_" + std::to_string(l)).c_str(), kHigh5[o][d][l]);
+        high5_on = p.fixed("physics.pass.high5_on", 0).raw > 0;   // 0 = G5.75's three cones
     }
     {   // G5.76 (§8.177): StatsBomb PL 15/16 open play, crosses out — the share of passes to the
         // passer's own keeper, by the passer's 10 m off his own goal, permille (to 0.1 permille)
