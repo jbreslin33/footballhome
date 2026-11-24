@@ -148,6 +148,31 @@ class PyramidModel {
     return out;
   }
 
+  // What is below a table (Club pathway, mig 1787): every table linked
+  // under it, level by level — [[division, …] one step down, [… two], …].
+  // A conference's own table also takes the tables linked to the conference.
+  below(divId) {
+    const seen = new Set([divId]), levels = [];
+    let cur = [divId];
+    while (cur.length) {
+      const next = [];
+      for (const id of cur) {
+        const d = this.division(id);
+        if (!d) continue;
+        const c = this.comp(d.competition_id);
+        const conf = c && c.kind === 'conference' ? c.id : null;
+        for (const l of this.links) {
+          if (!(l.upper_division === id || (conf && l.upper_competition === conf))) continue;
+          if (seen.has(l.lower) || !this.division(l.lower)) continue;
+          seen.add(l.lower); next.push(l.lower);
+        }
+      }
+      if (next.length) levels.push(next.map((id) => this.division(id)));
+      cur = next;
+    }
+    return levels;
+  }
+
   // Steps a route climbs to reach an APSL conference (null = it never does).
   routeSteps(route) {
     const last = route[route.length - 1];

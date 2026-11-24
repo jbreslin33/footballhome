@@ -29,6 +29,17 @@ class PyramidPathView {
       .pt-up { width:0; height:0; border-left:9px solid transparent; border-right:9px solid transparent; border-bottom:14px solid #64748b; margin:6px 0; }
       .pt-conf { border:2px solid #2563eb; border-radius:14px; padding:8px 10px; background:rgba(37,99,235,0.08); text-align:center; }
       .pt-conf h4 { margin:0 0 6px; }
+      .pt-below { display:flex; flex-direction:column; align-items:center; margin-top:14px; padding-top:12px; border-top:1px dashed rgba(148,163,184,0.3); }
+      .pt-below h4 { margin:0 0 2px; font-size:0.9rem; opacity:0.85; text-align:center; }
+      .pt-level { display:flex; gap:14px; justify-content:center; flex-wrap:wrap; align-items:flex-start; }
+      .pt-pro { display:flex; flex-direction:column; align-items:center; gap:8px; margin:6px 0 4px; }
+      .pt-pro h4 { margin:0; font-size:0.9rem; opacity:0.85; }
+      .pt-pro-tier { display:flex; flex-direction:column; align-items:center; gap:4px; }
+      .pt-pro-tier .lbl { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.6; }
+      .pt-pro-tier .lgs { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+      .pt-pro-lg { border:2px solid #d4a017; border-radius:12px; padding:7px 16px; font-weight:800; background:rgba(212,160,23,0.10); }
+      .pt-pro-note { font-size:0.8rem; opacity:0.75; text-align:center; max-width:520px; }
+      .pt-pro-gap { width:0; height:26px; border-left:2px dashed #64748b; margin-bottom:6px; }
       .pt-conf .fc-cell { display:flex; gap:10px; justify-content:center; }`;
   }
 
@@ -60,6 +71,28 @@ class PyramidPathView {
     return this.flow.tableHtml(model, d, title, apsl ? '' : 'feeder', '', { club: club.name });
   }
 
+  // Show on screen: the pro leagues above the APSL, on unless switched off.
+  features() { return [{ key: 'pro', tier: 'feature_pro', def: true }]; }
+
+  // Above the APSL: the professional divisions (mig 1788, owner 11/24
+  // "show that above the apsl its pro"), top first — wording rows
+  // path_pro_1… = 'label|league;league'.  A dashed step, not an arrow: no
+  // club goes up on results, the note says how one does.
+  _proHtml() {
+    if (!this.screen.feature('pro', true)) return '';
+    const esc = (t) => this._esc(t);
+    const tiers = [];
+    for (let i = 1; i <= 9; i++) {
+      const row = this._copy(`path_pro_${i}`);
+      if (!row) break;
+      const [label, names] = row.split('|');
+      tiers.push(`<div class="pt-pro-tier"><span class="lbl">${esc(label)}</span><div class="lgs">${(names || '').split(';').map((n) => `<span class="pt-pro-lg">${esc(n.trim())}</span>`).join('')}</div></div>`);
+    }
+    if (!tiers.length) return '';
+    return `<div class="pt-pro"><h4>${esc(this._copy('path_pro_title'))}</h4>${tiers.join('')}
+      <div class="pt-pro-note">${esc(this._copy('path_pro_note'))}</div><div class="pt-pro-gap"></div></div>`;
+  }
+
   _clubHtml(model, club) {
     const esc = (t) => this._esc(t);
     // Each team plays at its own ground (mig 855) — named with the team.
@@ -78,7 +111,15 @@ class PyramidPathView {
       // Top of the pyramid first: each route reversed, arrows pointing up.
       const cols = routes.map((r) => `
         <div class="pt-route">${[...r].reverse().map((n) => this._nodeHtml(model, n, club)).join('<div class="pt-up"></div>')}</div>`).join('');
-      return `<div class="pt-team"><h3>${esc(head)}</h3><div class="pt-venue">${esc(venue)}</div><div class="pt-routes">${cols}</div></div>`;
+      // …and what is below it (mig 1787, owner 11/24 "also show what is
+      // below them … in feeders etc"): the tables feeding this one, a row
+      // per level, the same arrows pointing up into it.
+      const levels = model.below(d.id);
+      const n = levels.reduce((k, l) => k + l.length, 0);
+      const below = !n ? '' : `
+        <div class="pt-below"><h4>${esc(this._copy('path_below', { table, n }))}</h4>
+          ${levels.map((l) => `<div class="pt-up"></div><div class="pt-level">${l.map((x) => this._nodeHtml(model, `d${x.id}`, club)).join('')}</div>`).join('')}</div>`;
+      return `<div class="pt-team"><h3>${esc(head)}</h3><div class="pt-venue">${esc(venue)}</div>${best != null ? this._proHtml() : ''}<div class="pt-routes">${cols}</div>${below}</div>`;
     }).join('');
     return `
       <h2 class="pt-club">${esc(club.name)}</h2>
