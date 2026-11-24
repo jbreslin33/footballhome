@@ -755,16 +755,27 @@ class FinancesScreen extends Screen {
     const slotList = [...slots.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([start, ps]) => { const adult = ps.find(x => x.kind !== 'youth'), youth = ps.filter(x => x.kind === 'youth');
       return { label: adult ? adult.label : `${clock(start)} ${youth[0].label}${youth.length > 1 ? '–' + youth[youth.length - 1].label : ''}` }; });
     const split = (n) => slotList.map((g, i) => ({ ...g, n: Math.floor(n / slotList.length) + (i < n % slotList.length ? 1 : 0) })).filter(g => g.n > 0);
-    const nowLine = pg && owe ? C('bl_members_now', `${owe} members owe dues now: ${paid} are paid up, ${owe - paid} are behind.`, { owe, paid, behind: owe - paid }) : C('bl_members_owe', `${paying} members owe dues now.`, { owe: paying });
+    // The facts, one a line (owner 11/23: "lets post the facts on the balance that its like x more members
+    // needed and x full paying etc"): members needed at the rate dues really come in, the same money in
+    // fully paying members, what each brings, the share of the full rate collected, who owes now, by slot.
+    const fullNet = perFull * (1 - feeShare), rate = fullNet > 0 ? perMember / fullNet : 0;
+    const fact = (label, value, detail) => `<tr class="item"><td style="padding-left:26px; white-space:normal;">${esc(label)}${detail ? `<span class="fn-tick">${esc(detail)}</span>` : ''}</td><td style="font-weight:700;">${esc(value)}</td></tr>`;
+    const slotsText = split(more).map(g => `${g.n} ${g.label}`).join(' · ');
+    const facts = `<tr class="item"><td colspan="2" style="padding-left:26px; font-weight:800;">${esc(C('bl_f_title', 'To break even without the grant'))}</td></tr>`
+      + fact(C('bl_f_more', 'More members needed — paying the way members pay now'), String(more), C('bl_f_more_note', 'No other new costs than a kit each.'))
+      + fact(C('bl_f_full', 'The same money as this many members paying in full'), String(moreFull))
+      + fact(C('bl_f_per', 'What a member brings a year now'), M0(net), C('bl_f_per_note', `${M0(perMember)} really collected after fees, less a ${M0(kit)} kit`, { per: M0(perMember), kit: M0(kit) }))
+      + fact(C('bl_f_per_full', 'What a member paying in full brings'), M0(netFull), C('bl_f_per_full_note', `${M0(perFull)} a year, ${M0(fullNet)} after fees, less a ${M0(kit)} kit`, { full: M0(perFull), after: M0(fullNet), kit: M0(kit) }))
+      + (rate > 0 ? fact(C('bl_f_rate', 'Dues really collected, of the full rate'), `${Math.round(100 * rate)}%`) : '')
+      + (pg && owe ? fact(C('bl_f_now', 'Members who owe dues now'), String(owe), C('bl_f_now_note', `${paid} paid up, ${owe - paid} behind`, { paid, behind: owe - paid })) : fact(C('bl_f_now', 'Members who owe dues now'), String(paying)))
+      + (slotsText ? fact(C('bl_f_split', 'The members needed, by practice slot'), '', slotsText) : '');
     const signed = (label, v, strong, extra = '') => `<tr class="sum" ${strong ? 'style="border-top:3px double currentColor; background:rgba(251,191,36,0.10);"' : ''}><td style="font-weight:900;">${esc(label)}${extra}</td>
       <td style="font-weight:900; color:${v < -0.5 ? '#fca5a5' : '#86efac'};">${M0(v)}</td></tr>`;
     const grantRows = !award ? '' : `<tr><td><a href="#other-income" style="color:inherit; font-weight:700;">${esc(C('bl_grant_used', `Grant used — as needed, up to ${M0(award)}`, { award: M0(award) }))} ›</a>
         <span class="fn-tick">${esc(C('bl_grant_left', `${M0(award - used)} of the grant not needed`, { left: M0(award - used) }))}</span>
         ${used > covers + 0.5 ? `<span class="fn-tick fn-warn">${esc(C('bl_grant_limit', `The grant may only pay for ${M0(covers)} of this year's costs (what it was given for).`, { covers: M0(covers) }))}</span>` : ''}</td>
         <td class="fn-in" style="font-weight:700;">${M0(used)}</td></tr>
-      ${gap >= 0.5 && more ? `<tr class="item"><td colspan="2" style="padding-left:26px; white-space:normal;">${esc(C('bl_members_needed', `To break even without the grant: about ${more} more members. Each brings ${M0(perMember)} a year at the rate dues are really coming in (after fees), less a ${M0(kit)} kit = ${M0(net)}; no other new costs. About ${moreFull} if every one paid the full ${M0(perFull)} a year.`, { more, per: M0(perMember), kit: M0(kit), net: M0(net), more_full: moreFull, full: M0(perFull) }))}
-          ${split(more).length ? `<span class="fn-tick">${esc(C('bl_members_split', `Spread over the practice slots that is ${split(more).map(g => `${g.n} ${g.label}`).join(' · ')}.`, { list: split(more).map(g => `${g.n} ${g.label}`).join(' · ') }))}</span>` : ''}
-          <span class="fn-tick">${esc(nowLine)}</span></td></tr>`
+      ${gap >= 0.5 && more ? facts
         : gap < 0.5 ? `<tr class="item"><td colspan="2" style="padding-left:26px;" class="fn-in">${esc(C('bl_no_grant', 'The year pays for itself without the grant.'))}</td></tr>` : ''}`;
     return `<div class="fn-card"><div class="fn-title">${esc(C('bl_title', 'Balance'))} · ${esc(m.year)}</div>
       <div class="fn-note">${esc(C('bl_note', 'The whole year in one place: money in less money out. Each line is the total of its own page — tap it to see the facts behind it. The grant comes last, only as much as is needed to break even.'))}</div>
