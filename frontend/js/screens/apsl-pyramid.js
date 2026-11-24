@@ -47,6 +47,8 @@ class ApslPyramidScreen extends Screen {
       // story order (mig 1580): the pyramid → where → how a club climbs →
       // this season → what happens next → how it grew → the slideshow
       { code: 'flow', tier: 'view_flow', built: true, impl: flow },
+      // 🔺 the same, as a shape you turn (mig 1849, owner 11/24: "a spinning pyramind would be way to go … each side is a 'league'")
+      { code: 'shape', tier: 'view_shape', built: true, impl: new PyramidShapeView(this, flow) },
       { code: 'map', tier: 'view_map', built: true, impl: new PyramidMapView(this, flow) },
       { code: 'path', tier: 'view_path', built: true, impl: new PyramidPathView(this, flow) },
       { code: 'tables', tier: 'view_tables', built: true, impl: new PyramidTablesView(this, flow) },
@@ -135,6 +137,7 @@ class ApslPyramidScreen extends Screen {
         .ap-sec h4 { margin:0 0 7px; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.65; }
         .ap-pill:disabled { opacity:0.35; cursor:not-allowed; }
         ${PyramidFlowView.css()}
+        ${PyramidShapeView.css()}
         ${PyramidPresentView.css()}
         ${PyramidMapView.css()}
         ${PyramidPathView.css()}

@@ -167,29 +167,42 @@ class PyramidFlowView {
   // "have the apsl confs connect to the pls … and then the pls goes to usl
   // league one and mls next pro. that is our cute way of linking them."
   // drawProLinks() draws those dashed lines.  '' when no leagues are known.
-  proHtml(model) {
-    const esc = (t) => this._esc(t);
-    if (!model.pro || !model.pro.length) return '';
+  // A table with its figures; `many` = it carries its own heading.
+  _figuresHtml(t, many) {
+    const esc = (v) => this._esc(v);
     const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
     const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
-    const table = (t, many) => `
+    return `
       <div class="fc-tbl">${many ? `<div class="hd">${esc(t.name)}</div>` : ''}
         <table><thead><tr>${head}</tr></thead><tbody>${t.teams.map((x) => `
           <tr><td>${x.pos == null ? '' : esc(x.pos)}</td><td class="tm">${esc(x.name)}</td><td>${x.gp}</td><td>${x.gd > 0 ? '+' : ''}${x.gd}</td><td><b>${x.pts}</b></td></tr>`).join('')}</tbody></table>
       </div>`;
-    // A cup's field (league.field, mig 1839): the clubs in it this season, no figures.
-    const field = (t) => `
+  }
+  // A cup's field (league.field, mig 1839): the clubs in it this season, no figures.
+  _fieldHtml(t) {
+    const esc = (v) => this._esc(v);
+    return `
       <div class="fc-tbl fc-field"><div class="hd">${esc(this._copy('pro_field', { season: t.name, n: t.teams.length }) || t.name)}</div>
         <ul>${t.teams.map((x) => `<li>${esc(x.name)}</li>`).join('')}</ul>
       </div>`;
+  }
+  // One league above the APSL: its box with its tables (also a side of the 3D shape).
+  proLeagueHtml(l, t) {
+    const esc = (v) => this._esc(v);
+    return `
+        <div class="fc-pro-lg" data-pro-league="${l.id}" data-pro-tier="${t.tier}">
+          <h2>${esc(l.name)}</h2><div class="fc-meta">${esc(t.label)}</div>
+          <div class="fc-cell">${l.tables.map((x) => (l.field ? this._fieldHtml(x) : this._figuresHtml(x, l.tables.length > 1))).join('')}</div>
+        </div>`;
+  }
+
+  proHtml(model) {
+    const esc = (t) => this._esc(t);
+    if (!model.pro || !model.pro.length) return '';
     const above = this._pro(model).filter((t) => !t.beside);
     if (!above.length) return '';
     const tiers = above.map((t) => `
-      <div class="fc-pro-tier">${t.leagues.map((l) => `
-        <div class="fc-pro-lg" data-pro-league="${l.id}" data-pro-tier="${t.tier}">
-          <h2>${esc(l.name)}</h2><div class="fc-meta">${esc(t.label)}</div>
-          <div class="fc-cell">${l.tables.map((x) => (l.field ? field(x) : table(x, l.tables.length > 1))).join('')}</div>
-        </div>`).join('')}</div>`);
+      <div class="fc-pro-tier">${t.leagues.map((l) => this.proLeagueHtml(l, t)).join('')}</div>`);
     const [label, url] = (this._copy('path_pro_link') || '').split('|');
     const pls = /^https:\/\//.test(url || '') ? `<div class="fc-pls"><a href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a></div>` : '';
     // The standards box sits under EVERY pro division, not only the lowest (owner 2026-11-24:
@@ -205,6 +218,7 @@ class PyramidFlowView {
   // drawn while its calendar's pill is on; a league under another follows its upper league.
   _calOn(code) { return !code || this.screen.feature(`cal-${code}`, true); }
   _leagueOn(model, l) {
+    if (!this.screen.feature(`lg-${l.id}`, true)) return false;   // its own pill (the cups above, the leagues beside)
     if (l.calendar) return this._calOn(l.calendar);
     const up = l.feeds == null ? null : (model.pro || []).flatMap((t) => t.leagues).find((x) => x.id === l.feeds);
     return up ? this._leagueOn(model, up) : true;
@@ -229,9 +243,15 @@ class PyramidFlowView {
   // "put a button that says show non apsl open pyramind. like we have for show pro"), and
   // while that is on, a switch per league.
   features() {
-    const m = this._model || this.screen.model, leagues = m ? this.besideLeagues(m) : [];
+    const m = this._model || this.screen.model;
+    // every league beside the APSL, on or off — a pill must stay to switch one back on
+    const leagues = m ? (m.pro || []).filter((t) => t.beside).flatMap((t) => t.leagues.filter((l) => l.feeds == null)) : [];
     const out = ((m && m.data.calendars) || []).map((c) => ({ key: `cal-${c.code}`, label: c.label, def: true }));
     out.push({ key: 'pro', tier: 'feature_pro', def: true });
+    // the cups over the leagues: off, and everything under them moves up a level (owner 2026-11-24:
+    // "if we toggled them off mls would move upt to 1st level")
+    if (m && this.screen.feature('pro', true))
+      for (const t of m.pro || []) if (t.standards === false && !t.beside) for (const l of t.leagues) out.push({ key: `lg-${l.id}`, label: l.name, def: true });
     if (leagues.length) out.push({ key: 'open', tier: 'feature_open', def: true });
     if (this.screen.feature('open', true)) for (const l of leagues) out.push({ key: `lg-${l.id}`, label: l.name, def: true });
     return out;
@@ -240,6 +260,11 @@ class PyramidFlowView {
   // Their boxes, drawn beside the conferences and tied into the same standards box.
   besideHtml(model) {
     if (!this.screen.feature('open', true)) return '';
+    return this.besideLeagues(model).filter((l) => this.screen.feature(`lg-${l.id}`, true)).map((l) => this.besideLeagueHtml(model, l)).join('');
+  }
+
+  // One of them: its divisions in a row, its regional leagues beneath (also a side of the 3D shape).
+  besideLeagueHtml(model, l) {
     const esc = (t) => this._esc(t);
     const cols = (this._copy('table_head') || '').split(/\s+/).filter(Boolean);
     const head = cols.map((c, i) => `<th${i === 1 ? ' class="tm"' : ''}>${esc(c === '-' ? '' : c)}</th>`).join('');
@@ -272,7 +297,7 @@ class PyramidFlowView {
       </div>`;
     // "Region · Conference" → "Conference"
     const bare = (name) => name.split(' · ').pop();
-    return this.besideLeagues(model).filter((l) => this.screen.feature(`lg-${l.id}`, true)).map((l) => {
+    {
       const feeders = this.feedersOf(model, l.id), loose = [];
       // What hangs under the divisions: one holder per run of columns, so two leagues (or two
       // divisions) under the same division sit side by side instead of on top of each other.
@@ -302,7 +327,7 @@ class PyramidFlowView {
         <div class="fc-cell">${l.tables.map((x, i) => `<div style="grid-row:1; grid-column:${i + 1};">${table(l, x, l.tables.length > 1)}</div>`).join('')}${under.join('')}</div>
         ${loose.length ? `<div class="fc-meta fc-loose-hd">${esc(this._copy('feeder_partners'))}</div><div class="fc-loose">${loose.join('')}</div>` : ''}
       </div>`;
-    }).join('');
+    }
   }
 
   // Dashed lines in `box` (an element holding .fc-pro, an svg.fc-links and
