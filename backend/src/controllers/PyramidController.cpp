@@ -625,7 +625,7 @@ Response PyramidController::handleZoneRules(const Request& request) {
 }
 
 // 📈 Forecast (mig 1448), public like the page: one conference's season
-// played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>[&team=<id>&rating=<x>][&form_unit=games|weeks&form=<n>]
+// played out (models/PyramidForecast.h).  GET /api/pyramid/forecast?conference=<id>[&team=<id>&rating=<x>][&form_unit=games|weeks&form=<n>&form_fade=<pct>]
 Response PyramidController::handleForecast(const Request& request) {
     try {
         const std::string c = request.getQueryParam("conference");
@@ -638,12 +638,14 @@ Response PyramidController::handleForecast(const Request& request) {
             if (!(rating > 0.05 && rating < 20)) { team = 0; rating = 0; }
         }
         // ?form_unit=games|weeks&form=<n> — the 📅 recent-form toggle + slider (mig 1772); 0 = the whole season
-        std::string unit = request.getQueryParam("form_unit"); int form = 0;
+        std::string unit = request.getQueryParam("form_unit"); int form = 0, fade = -1;
+        const std::string fd = request.getQueryParam("form_fade");   // % a game past the window counts of the one after it (mig 1773)
+        if (!fd.empty() && fd.size() <= 3 && fd.find_first_not_of("0123456789") == std::string::npos) fade = std::stoi(fd);
         const std::string fm = request.getQueryParam("form");
         if (unit != "games" && unit != "weeks") unit.clear();
         else if (!fm.empty() && fm.size() <= 3 && fm.find_first_not_of("0123456789") == std::string::npos) form = std::stoi(fm);
         else unit.clear();
-        return jsonOut(HttpStatus::OK, PyramidForecast::build(std::stoi(c), team, rating, unit, form));
+        return jsonOut(HttpStatus::OK, PyramidForecast::build(std::stoi(c), team, rating, unit, form, fade));
     } catch (const std::invalid_argument& e) {
         return jsonError(HttpStatus::NOT_FOUND, e.what());
     } catch (const std::exception& e) {

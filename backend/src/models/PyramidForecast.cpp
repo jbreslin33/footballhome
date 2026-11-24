@@ -54,26 +54,33 @@ double pois(int k, double l) { return std::exp(-l + k * std::log(std::max(l, 1e-
 //   games   each team's own last `window` games (a game can count for one
 //           side and not the other);
 //   weeks   games in the last `window` weeks before the latest game played.
-// window 0 = the whole season.  FormW: per game, does it count for the home
-// side's rating / the away side's; empty = every game counts.
+// window 0 = the whole season.  Past the window a game fades (mig 1773,
+// owner 11/23 "it counts those full … but then diminishing more after",
+// "have a diminish slider that gives diff diminish rates"): each game (or
+// week) further back counts `fade` × the one after it — 0 = a clean cut.
+// FormW: per game, its weight in the home side's rating / the away side's;
+// empty = every game in full.
 struct FitRes { int h, a, hs, as; };
 struct FormW { std::vector<double> h, a; };
-FormW formWeights(int n, const std::vector<FitRes>& done, const std::vector<double>& day, bool byWeeks, int window) {
+FormW formWeights(int n, const std::vector<FitRes>& done, const std::vector<double>& day, bool byWeeks, int window, double fade) {
     FormW w;
     if (window <= 0 || done.empty()) return w;
     w.h.assign(done.size(), 0.0); w.a.assign(done.size(), 0.0);
+    const auto past = [&](int back) { return back < window ? 1.0 : fade <= 0 ? 0.0 : std::pow(fade, back - window + 1); };   // back: 0 = the latest
     if (byWeeks) {
         double latest = -1;
         for (double d : day) latest = std::max(latest, d);
-        for (size_t i = 0; i < done.size(); ++i)
-            if (latest < 0 || (day[i] >= 0 && std::floor(latest) - std::floor(day[i]) < 7.0 * window)) w.h[i] = w.a[i] = 1.0;
+        for (size_t i = 0; i < done.size(); ++i) {
+            if (latest < 0) w.h[i] = w.a[i] = 1.0;                                   // no dates at all = every game in full
+            else if (day[i] >= 0) w.h[i] = w.a[i] = past((int)((std::floor(latest) - std::floor(day[i])) / 7.0));
+        }
         return w;
     }
     std::vector<std::vector<size_t>> mine(n);
     for (size_t i = 0; i < done.size(); ++i) { mine[done[i].h].push_back(i); mine[done[i].a].push_back(i); }
     for (int t = 0; t < n; ++t) {
         std::stable_sort(mine[t].begin(), mine[t].end(), [&](size_t x, size_t y) { return day[x] > day[y]; });   // latest first; no date = oldest
-        for (size_t k = 0; k < mine[t].size() && (int)k < window; ++k) { const size_t i = mine[t][k]; (done[i].h == t ? w.h[i] : w.a[i]) = 1.0; }
+        for (size_t k = 0; k < mine[t].size(); ++k) { const size_t i = mine[t][k]; (done[i].h == t ? w.h[i] : w.a[i]) = past((int)k); }
     }
     return w;
 }
@@ -126,7 +133,7 @@ void fitMaher(int n, const std::vector<FitRes>& done, const FormW& w, double pri
 //                 then plays our group-playoff winner (feeder_stay_up_pct).
 // The feeders' averages are taken as equal when they meet (no game links
 // them).
-json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, bool formWeeks, int formWindow, double feederStayUpPct, std::mt19937_64& rng) {
+json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, double prior, bool formWeeks, int formWindow, double formFade, double feederStayUpPct, std::mt19937_64& rng) {
     json out = {{"seasons", json::array()}, {"feeders", json::array()}};
     for (const auto& r : db->query(
             "SELECT season, teams, divisions, relegated::float8 AS relegated, promoted::float8 AS promoted, rules_label, auto_down, playoff_place FROM pyramid_relegation_outlook "
@@ -198,7 +205,7 @@ json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, dou
         }
         if (F.t.empty()) continue;
         std::vector<double> att, def;
-        fitMaher((int)F.t.size(), F.done, formWeights((int)F.t.size(), F.done, days, formWeeks, formWindow), prior, F.avg, F.home, att, def);
+        fitMaher((int)F.t.size(), F.done, formWeights((int)F.t.size(), F.done, days, formWeeks, formWindow, formFade), prior, F.avg, F.home, att, def);
         for (size_t i = 0; i < F.t.size(); ++i) { F.t[i].att = att[i]; F.t[i].def = def[i]; }
         F.played = (int)F.done.size();
         feeders.push_back(std::move(F));
@@ -341,10 +348,10 @@ json outlookJson(Database* db, const std::string& cid, int nTeams, int sims, dou
 
 struct Cached { std::string stamp; std::chrono::steady_clock::time_point at; json body; };
 std::mutex gMutex;
-std::map<std::pair<int, int>, Cached> gCache;   // (conference, form window × 2 + weeks?; 0 = the whole season by games)
+std::map<std::pair<int, int>, Cached> gCache;   // (conference, the form window + unit + fade as one number; 0 = the whole season)
 }  // namespace
 
-json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRating, const std::string& formUnit, int form) {
+json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRating, const std::string& formUnit, int form, int fade) {
     const bool whatIf = whatIfTeam > 0 && whatIfRating > 0;
     auto* db = Database::getInstance();
     const std::string cid = std::to_string(conferenceId);
@@ -376,13 +383,14 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     // Form (migs 1767, 1772): the conference's own window unless the page
     // asks for another — a unit (games / weeks) and a count, 0 = the whole
     // season.  A count at or past what's been played = the whole season.
-    bool formWeeks = false; int formWindow = 0;
+    bool formWeeks = false; int formWindow = 0, formFadePct = 0;
     json formOut;
     {
-        auto p = db->query("SELECT form_unit, form_window FROM pyramid_forecast_policies "
+        auto p = db->query("SELECT form_unit, form_window, form_fade_pct FROM pyramid_forecast_policies "
                            " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
         const bool dfltWeeks = !p.empty() && str(p[0], "form_unit") == "weeks";
         const int dflt = p.empty() || p[0]["form_window"].is_null() ? 0 : p[0]["form_window"].as<int>();
+        const int dfltFade = p.empty() ? 0 : p[0]["form_fade_pct"].as<int>();
         auto m = db->query(R"SQL(
             WITH g AS (SELECT home_ext, away_ext, starts_local FROM pyramid_games
                         WHERE source_id = $1::int AND division_ext = ANY(string_to_array($2, ','))
@@ -394,11 +402,12 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
         formWeeks = formUnit.empty() ? dfltWeeks : formUnit == "weeks";
         formWindow = formUnit.empty() || form < 0 ? (formUnit.empty() ? dflt : 0) : form;
         if (formWindow >= (formWeeks ? maxWeeks : maxGames)) formWindow = 0;
-        formOut = {{"unit", formWeeks ? "weeks" : "games"}, {"current", formWindow},
-                   {"default_unit", dfltWeeks ? "weeks" : "games"}, {"default", dflt},
+        formFadePct = formUnit.empty() || fade < 0 || fade > 100 ? dfltFade : fade;   // 100 = no fade: the older games in full too
+        formOut = {{"unit", formWeeks ? "weeks" : "games"}, {"current", formWindow}, {"fade", formFadePct},
+                   {"default_unit", dfltWeeks ? "weeks" : "games"}, {"default", dflt}, {"default_fade", dfltFade},
                    {"max", {{"games", maxGames}, {"weeks", maxWeeks}}}};
     }
-    const std::pair<int, int> cacheKey{conferenceId, formWindow * 2 + (formWeeks ? 1 : 0)};
+    const std::pair<int, int> cacheKey{conferenceId, formWindow ? (formWindow * 2 + (formWeeks ? 1 : 0)) * 101 + formFadePct : 0};
 
     // Cache stamp: the games' last read.
     auto stampRow = db->query(
@@ -543,7 +552,7 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     double avg = 1.5, home = 1.0;
     {
         std::vector<double> att, def;
-        fitMaher(N, fitDone, formWeights(N, fitDone, fitDays, formWeeks, formWindow), prior, avg, home, att, def);
+        fitMaher(N, fitDone, formWeights(N, fitDone, fitDays, formWeeks, formWindow, formFadePct / 100.0), prior, avg, home, att, def);
         for (int t = 0; t < N; ++t) { teams[t].att = att[t]; teams[t].def = def[t]; }
     }
     // What if: that team's strength moved to the slider's, split evenly
@@ -754,10 +763,11 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     out["form"] = formOut;
     out["tiebreak"] = tiebreak;
     if (zonesAssumed) out["zones_assumed"] = true;
-    out["outlook"] = outlookJson(db, cid, N, sims, prior, formWeeks, formWindow, feederPct, rng);
+    out["outlook"] = outlookJson(db, cid, N, sims, prior, formWeeks, formWindow, formFadePct / 100.0, feederPct, rng);
     if (whatIf) { out["what_if"] = whatIfOut; return out; }
     {
         std::lock_guard<std::mutex> lock(gMutex);
+        if (gCache.size() > 96) gCache.clear();   // every slider stop of every conference would be a lot of copies
         gCache[cacheKey] = {stamp, std::chrono::steady_clock::now(), out};
     }
     return out;

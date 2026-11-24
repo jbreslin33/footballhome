@@ -295,13 +295,22 @@ class PyramidForecastView {
   _formLabel(f, unit, v) {
     return v >= this._formMax(f, unit) ? this._copy('fc_form_all') : this._copy(unit === 'weeks' ? 'fc_form_weeks' : 'fc_form_games', { n: v });
   }
+  // the fade slider (mig 1773): how much each game / week past the window
+  // loses on the one after it — 0% = none ("one that is 0 diminish"), 100% =
+  // a clean cut.  The forecast speaks in what is kept (form.fade), so 100 − it.
+  _fadeLabel(unit, keep) {
+    return keep >= 100 ? this._copy('fc_fade_full') : keep <= 0 ? this._copy('fc_fade_none')
+      : this._copy(unit === 'weeks' ? 'fc_fade_weeks' : 'fc_fade_games', { pct: 100 - keep });
+  }
   _formHtml(d) {
     const f = d && d.form, esc = (x) => this._esc(x);
     if (!f || !f.max) return '';
     const max = this._formMax(f, f.unit);
     if (max < 2) return '';
     const v = Number(f.current) > 0 ? Number(f.current) : max;
-    const own = f.unit === f.default_unit && Number(f.current) === (Number(f.default) >= this._formMax(f, f.default_unit) ? 0 : Number(f.default));
+    const whole = !(Number(f.current) > 0);
+    const own = f.unit === f.default_unit && Number(f.current) === (Number(f.default) >= this._formMax(f, f.default_unit) ? 0 : Number(f.default))
+      && (whole || Number(f.fade) === Number(f.default_fade));
     const star = f.unit === f.default_unit && Number(f.default) > 0 && Number(f.default) < max ? Number(f.default) : null;
     return `<div style="margin:0 0 12px; padding:8px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.35); background:rgba(148,163,184,0.08); max-width:560px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800;">
@@ -312,21 +321,23 @@ class PyramidForecastView {
         <input type="range" min="1" max="${max}" step="1" value="${v}" data-fc-form="${esc(f.unit)}" list="fc-form-ticks" style="width:100%; margin:6px 0 2px;">
         <datalist id="fc-form-ticks">${star ? `<option value="${star}" label="⭐"></option>` : ''}</datalist>
         <div data-fc-form-label style="font-size:0.8rem;">${esc(this._formLabel(f, f.unit, v))}${own ? ' ⭐' : ''}</div>
+        <input type="range" min="0" max="100" step="10" value="${100 - (Number(f.fade) || 0)}" data-fc-fade ${whole ? 'disabled' : ''} style="width:100%; margin:8px 0 2px;${whole ? ' opacity:0.4;' : ''}">
+        <div data-fc-fade-label style="font-size:0.8rem;${whole ? ' opacity:0.5;' : ''}">${esc(this._fadeLabel(f.unit, Number(f.fade) || 0))}</div>
         <div style="font-size:0.72rem; opacity:0.75; margin-top:2px;">${esc(this._copy('fc_form_hint'))}</div>
       </div>`;
   }
-  // form = null (the conference's own) | { unit: 'games' | 'weeks', n } — n 0 = the whole season
+  // form = null (the conference's own) | { unit: 'games' | 'weeks', n, fade } — n 0 = the whole season, fade in %
   _setForm(form) {
     this.form = form; this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
     this.data.clear(); this._load(this.conf);
   }
   _formNow() { const d = this.conf === 0 ? (this._all || [])[0] : this.data.get(this.conf); return d && d.form; }
-  _formQuery() { return this.form ? `&form_unit=${encodeURIComponent(this.form.unit)}&form=${encodeURIComponent(this.form.n)}` : ''; }
+  _formQuery() { return this.form ? `&form_unit=${encodeURIComponent(this.form.unit)}&form=${encodeURIComponent(this.form.n)}&form_fade=${encodeURIComponent(this.form.fade)}` : ''; }
 
   _howHtml(d) {
     const m = d.model || {};
     const parts = [this._copy('fc_how', { games: d.played, left: d.left, avg: m.avg_goals, home: m.home_edge })];
-    if (d.form && Number(d.form.current) > 0) parts.push(`${this._formLabel(d.form, d.form.unit, Number(d.form.current))}.`);   // mig 1772
+    if (d.form && Number(d.form.current) > 0) parts.push(`${this._formLabel(d.form, d.form.unit, Number(d.form.current))}; ${this._fadeLabel(d.form.unit, Number(d.form.fade) || 0)}.`);   // migs 1772, 1773
     const f = d.format || {};
     if (f.group_rounds) parts.unshift(this._copy('fc_format', { n: f.per_team, rounds: f.group_rounds, cross: f.cross_group_rounds, listed: f.listed, added: f.added }));
     if (d.policy && d.policy.feeder) parts.push(this._copy('fc_feeder_note', { feeder: d.policy.feeder, pct: `${Math.round(d.policy.feeder_stay_up_pct)}%` }));
@@ -803,7 +814,7 @@ class PyramidForecastView {
         const f = this._formNow(), unit = fu.dataset.fcFormUnit;
         if (!f || unit === f.unit) return;
         const n = Number(f.current) > 0 && Number(f.current) < this._formMax(f, unit) ? Number(f.current) : 0;
-        this._setForm({ unit, n }); return;
+        this._setForm({ unit, n, fade: Number(f.fade) || 0 }); return;
       }
       const fp = e.target.closest('[data-fc-feeder]');
       if (fp) { this.feederPick = fp.dataset.fcFeeder || null; this._repaint(); return; }
@@ -835,6 +846,13 @@ class PyramidForecastView {
         if (lab && f) lab.textContent = this._formLabel(f, f.unit, Number(fs.value));
         return;
       }
+      const fd = e.target.closest('[data-fc-fade]');
+      if (fd) {
+        const lab = root.querySelector('[data-fc-fade-label]');
+        const f = this._formNow();
+        if (lab && f) lab.textContent = this._fadeLabel(f.unit, 100 - Number(fd.value));
+        return;
+      }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       const lab = root.querySelector('[data-fc-slider-label]');
@@ -852,7 +870,9 @@ class PyramidForecastView {
         return;
       }
       const fs = e.target.closest('[data-fc-form]');
-      if (fs) { const v = Number(fs.value); this._setForm({ unit: fs.dataset.fcForm, n: v >= Number(fs.max) ? 0 : v }); return; }
+      if (fs) { const v = Number(fs.value), f = this._formNow() || {}; this._setForm({ unit: fs.dataset.fcForm, n: v >= Number(fs.max) ? 0 : v, fade: Number(f.fade) || 0 }); return; }
+      const fd = e.target.closest('[data-fc-fade]');
+      if (fd) { const f = this._formNow(); if (f) this._setForm({ unit: f.unit, n: Number(f.current) || 0, fade: 100 - Number(fd.value) }); return; }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       this._runWhatIf(Number(sl.dataset.fcSlider), this._fromSlider(base, Number(sl.value)));

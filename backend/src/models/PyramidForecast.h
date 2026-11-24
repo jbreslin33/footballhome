@@ -26,9 +26,11 @@
 //                     Form (migs 1767, 1772): the ratings can be built
 //                     from a window — each team's own last N games, or
 //                     the games of the last N weeks — instead of the
-//                     whole season (pyramid_forecast_policies form_unit /
-//                     form_window; the page's 📅 toggle + slider ask for
-//                     another).
+//                     whole season; a game past the window fades, each
+//                     one back counting form_fade_pct % of the one after
+//                     it, 0 = a clean cut (pyramid_forecast_policies
+//                     form_unit / form_window / form_fade_pct; the page's
+//                     📅 toggle + two sliders ask for another).
 //   One game          independent Poisson goals each side → win / draw /
 //                     loss, the most likely scores, over 2.5, both score;
 //                     fair decimal odds = 1 / chance (no margin).
@@ -54,6 +56,8 @@ public:
     // Form (owner 11/23 "toggle for games or weeks and default to games …
     // so everyones last 3 games e.g."): formUnit "" = the conference's own
     // window; "games" / "weeks" + form = that many (0 = the whole season).
-    // Cached per window.
-    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0, const std::string& formUnit = "", int form = 0);
+    // fade (mig 1773, "have a diminish slider"): what each game / week past
+    // the window counts of the one after it, in % (0 = a clean cut; -1 =
+    // the conference's own).  Cached per setting.
+    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0, const std::string& formUnit = "", int form = 0, int fade = -1);
 };
