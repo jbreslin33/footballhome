@@ -637,7 +637,7 @@ Response PyramidController::handleForecast(const Request& request) {
             try { team = std::stoi(t); rating = std::stod(rt); } catch (...) { team = 0; rating = 0; }
             if (!(rating > 0.05 && rating < 20)) { team = 0; rating = 0; }
         }
-        // ?form=<days> — the 📅 recent-form pills (mig 1767); 0 = every game the same
+        // ?form=<days> — the 📅 recent-form slider (migs 1767, 1771); 0 = every game the same
         double form = -1;
         const std::string fm = request.getQueryParam("form");
         if (!fm.empty() && fm.size() <= 6 && fm.find_first_not_of("0123456789.") == std::string::npos) { try { form = std::stod(fm); } catch (...) { form = -1; } }

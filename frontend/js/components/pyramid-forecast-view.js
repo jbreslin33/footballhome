@@ -286,15 +286,31 @@ class PyramidForecastView {
     return dt.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
-  // 📅 Recent form (mig 1767, owner 11/23 "allow to turn on or off and diff
-  // recency levels … from recommended and up or down from that"): the
-  // levels the forecast lists (pyramid_forecast_form_levels), the one in
-  // use lit; a tap replays every conference at that level.
+  // 📅 Recent form (mig 1767; owner 11/23 "just have slider bar for
+  // weeks", mig 1771): how many weeks until a game counts half — 1 (fresh
+  // start, jumpy) … max_weeks, then one more notch = off (every game the
+  // same).  ⭐ marks the conference's own; letting go replays every
+  // conference at that setting.
+  _formWeeks(f) { return Number(f.current) > 0 ? Math.round(Number(f.current) / 7) : Number(f.max_weeks) + 1; }
+  _formLabel(f, v) { return v > Number(f.max_weeks) ? this._copy('fc_form_off') : this._copy('fc_form_weeks', { weeks: v }); }
   _formHtml(d) {
-    const f = d && d.form;
-    if (!f || !(f.levels || []).length) return '';
-    return `<div class="fc-sub" style="align-items:center;"><span style="font-size:0.78rem; opacity:0.8;">${this._esc(this._copy('fc_form_label'))}</span>${f.levels.map((l) =>
-      `<button class="ap-pill ${Number(l.days) === Number(f.current) ? 'on' : ''}" data-fc-form="${Number(l.days)}">${this._esc(l.label)}</button>`).join('')}</div>`;
+    const f = d && d.form, esc = (x) => this._esc(x);
+    if (!f || !(Number(f.max_weeks) > 0)) return '';
+    const v = this._formWeeks(f), star = Number(f.default) > 0 ? Math.round(Number(f.default) / 7) : Number(f.max_weeks) + 1;
+    return `<div style="margin:0 0 12px; padding:8px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.35); background:rgba(148,163,184,0.08); max-width:560px;">
+        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800;">
+          <span>${esc(this._copy('fc_form_label'))}</span>
+          ${v !== star ? `<button class="ap-pill" data-fc-form-reset style="padding:1px 10px; font-size:0.75rem;">${esc(this._copy('fc_form_reset'))}</button>` : ''}
+        </div>
+        <input type="range" min="1" max="${Number(f.max_weeks) + 1}" step="1" value="${v}" data-fc-form data-fc-form-max="${Number(f.max_weeks)}" list="fc-form-ticks" style="width:100%; margin:6px 0 2px;">
+        <datalist id="fc-form-ticks"><option value="${star}" label="⭐"></option></datalist>
+        <div data-fc-form-label style="font-size:0.8rem;">${esc(this._formLabel(f, v))}${v === star ? ' ⭐' : ''}</div>
+        <div style="font-size:0.72rem; opacity:0.75; margin-top:2px;">${esc(this._copy('fc_form_hint'))}</div>
+      </div>`;
+  }
+  _setForm(days) {
+    this.form = days; this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
+    this.data.clear(); this._load(this.conf);
   }
   _formQuery() { return this.form == null ? '' : `&form=${encodeURIComponent(this.form)}`; }
 
@@ -772,11 +788,7 @@ class PyramidForecastView {
       if (tv) { this.tableView = tv.dataset.fcTview; this._repaint(); return; }
       const sc = e.target.closest('[data-fc-sec]');
       if (sc) { this.section = sc.dataset.fcSec; this._repaint(); return; }
-      const fm = e.target.closest('[data-fc-form]');
-      if (fm) {
-        this.form = Number(fm.dataset.fcForm); this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
-        this.data.clear(); this._load(this.conf); return;
-      }
+      if (e.target.closest('[data-fc-form-reset]')) { this._setForm(null); return; }
       const fp = e.target.closest('[data-fc-feeder]');
       if (fp) { this.feederPick = fp.dataset.fcFeeder || null; this._repaint(); return; }
       const t = e.target.closest('[data-fc-team]');
@@ -800,6 +812,12 @@ class PyramidForecastView {
     root.addEventListener('click', this._onClick);
     // the slider: the label follows the thumb; letting go replays the season
     this._onInput = (e) => {
+      const fs = e.target.closest('[data-fc-form]');
+      if (fs) {
+        const lab = root.querySelector('[data-fc-form-label]');
+        if (lab) lab.textContent = this._formLabel({ max_weeks: Number(fs.dataset.fcFormMax) }, Number(fs.value));
+        return;
+      }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       const lab = root.querySelector('[data-fc-slider-label]');
@@ -816,6 +834,8 @@ class PyramidForecastView {
         this._load(this.conf); root.scrollIntoView({ block: 'start' });
         return;
       }
+      const fs = e.target.closest('[data-fc-form]');
+      if (fs) { const v = Number(fs.value); this._setForm(v > Number(fs.dataset.fcFormMax) ? 0 : 7 * v); return; }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       this._runWhatIf(Number(sl.dataset.fcSlider), this._fromSlider(base, Number(sl.value)));

@@ -330,23 +330,24 @@ json PyramidForecast::build(int conferenceId, int whatIfTeam, double whatIfRatin
     auto* db = Database::getInstance();
     const std::string cid = std::to_string(conferenceId);
 
-    // Form (mig 1767): the conference's own half-life unless the page asks
-    // for another of the listed levels (pyramid_forecast_form_levels; 0 =
-    // every game the same).  A number that isn't a level = the default.
+    // Form (mig 1767; the weeks slider mig 1771): the conference's own
+    // half-life unless the page asks for another — 0 = every game the same,
+    // else whole weeks from 1 to form_slider_max_weeks (in days).  Anything
+    // else = the default.
     double halfLife = 0;
     json formOut;
     {
-        auto p = db->query("SELECT form_half_life_days FROM pyramid_forecast_policies "
+        auto p = db->query("SELECT form_half_life_days, form_slider_max_weeks FROM pyramid_forecast_policies "
                            " WHERE competition_id = $1::int OR competition_id IS NULL ORDER BY competition_id NULLS LAST LIMIT 1", {cid});
         const double dflt = p.empty() || p[0]["form_half_life_days"].is_null() ? 0 : num(p[0], "form_half_life_days");
+        const int maxWeeks = p.empty() ? 0 : p[0]["form_slider_max_weeks"].as<int>();
         halfLife = dflt;
-        json levels = json::array();
-        for (const auto& r : db->query("SELECT half_life_days, label, is_recommended FROM pyramid_forecast_form_levels ORDER BY sort_order, id")) {
-            const double d = r["half_life_days"].is_null() ? 0 : num(r, "half_life_days");
-            if (form >= 0 && std::fabs(d - form) < 0.005) halfLife = d;
-            levels.push_back({{"days", d}, {"label", str(r, "label")}, {"recommended", r["is_recommended"].as<bool>()}});
+        if (form == 0) halfLife = 0;
+        else if (form > 0) {
+            const long weeks = std::lround(form / 7.0);
+            if (std::fabs(form - 7.0 * weeks) < 0.005 && weeks >= 1 && weeks <= maxWeeks) halfLife = 7.0 * weeks;
         }
-        formOut = {{"levels", levels}, {"current", halfLife}, {"default", dflt}};
+        formOut = {{"current", halfLife}, {"default", dflt}, {"max_weeks", maxWeeks}};
     }
     const std::pair<int, int> cacheKey{conferenceId, (int)std::lround(halfLife * 100)};
 
