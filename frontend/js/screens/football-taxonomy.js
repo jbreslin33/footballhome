@@ -24,6 +24,25 @@
 //   • tap a class name anywhere → the C++ class: its parents (each a link), its children,
 //     its comment, the behaviours in it, and the source itself
 //     (game_engine_classes / game_engine_sources, scripts/taxonomy/export_engine_index.py).
+//
+// WHERE it lives, on every concept card (owner 11/24: "i need on each concept card wherther
+// icons for if used in game, db, engine" · "clicking each one takes you to pertiientn info.
+// c++ icon for code right? should take me to code with links to parent and childs"; mig 1827)
+// — three chips, lit or dim, the three layers of docs/taxonomy-one-system.md:
+//   🗄 DB     the catalogue row                       → the database sheet (owner: "db icon
+//             should show me talbe and relationships and normalzation"): the game_concepts
+//             table with its key and foreign keys, this row, the rows it points to, and
+//             every table that points at it with its rows — GET /taxonomy/db?concept=,
+//             read from the Postgres catalogue, so a new table shows by itself
+//   🎮 Game   the engine plays it in a match          → the game sheet (owner: "engine
+//             ashould talk about and demo how its used … show the players moving and
+//             demonstrating the concept in a popup game on a loop" · "the popup game shold
+//             run the engine full"): what the engine does with it, and ▶ a popup window on
+//             the live match (/game.html?concept=<id>, js/game/client.js "Concept loop")
+//             that replays each moment a player does it.  The popup asks this page for its
+//             words (loop_* rows) by postMessage.
+//   ⚙️ C++    there is code for it — a behaviour's class or its board placement class
+//                                                     → the class sheet: parents, children, source
 // GET /api/tactic-plans/taxonomy (one fetch) + /taxonomy/source for the code.
 // Every word is message_templates kind 'taxonomy'; the content is the tables' own.
 class FootballTaxonomyScreen extends Screen {
@@ -100,17 +119,29 @@ class FootballTaxonomyScreen extends Screen {
         .tx-src .ln { display:inline-block; width:3.2em; margin-right:10px; text-align:right; opacity:0.45; user-select:none; }
         .tx-src .hit { background:rgba(250,204,21,0.18); display:inline-block; min-width:100%; }
         .tx-crumb { font-size:0.9rem; margin:6px 0; }
+        .tx-tbl { border-collapse:collapse; font-size:0.78rem; width:100%; margin:4px 0 2px; }
+        .tx-tbl th { text-align:left; opacity:0.65; font-weight:600; padding:2px 8px 2px 0; white-space:nowrap; }
+        .tx-tbl td { padding:3px 8px 3px 0; border-top:1px solid var(--border-color); vertical-align:top; overflow-wrap:anywhere; }
+        .tx-tbl td.tx-code { white-space:nowrap; overflow-wrap:normal; }
+        .tx-tname { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:700; font-size:0.86rem; margin-top:10px; }
+        .tx-scroll { overflow-x:auto; }
+        .tx-where { display:flex; gap:5px; margin-top:6px; }
+        .tx-chip { padding:2px 8px; border-radius:6px; font-size:0.7rem; font-weight:700; line-height:1.5; min-height:0; min-width:0;
+                   border:1px solid var(--border-color); background:transparent; color:var(--text-primary); }
+        .tx-chip.on { cursor:pointer; border-color:#38bdf8; background:rgba(56,189,248,0.12); }
+        .tx-chip.off { opacity:0.3; filter:grayscale(1); }
       </style>
       <div class="tx-wrap" id="tx-body"></div>
       <div id="tx-detail"></div>`;
     this.element = div;
     div.addEventListener('click', (e) => {
       const open = e.target.closest('[data-tx-open]');
-      if (open) { e.stopPropagation(); this._open(open.dataset.txOpen, open.dataset.k); return; }
+      if (open) { e.stopPropagation(); this._open(open.dataset.txOpen, open.dataset.k, open.dataset.sec); return; }
       const b = e.target.closest('[data-tx]');
       if (!b) return;
       const [k, v] = [b.dataset.tx, b.dataset.v];
       if (k === 'close') { this.detail = null; this.trail = []; this._renderDetail(); return; }
+      if (k === 'watch') { this._watch(Number(v)); return; }
       if (k === 'back') { this.detail = this.trail.pop() || null; this._renderDetail(); return; }
       if (k === 'tab') this.tab = v;
       else if (k === 'moment') this.moment = v;
@@ -118,6 +149,19 @@ class FootballTaxonomyScreen extends Screen {
       else if (k === 'engine') this.engine = v;
       this._render();
     });
+    // The concept-loop popup (game.html?concept=) asks for its words when it is ready.
+    if (!this._onPopup) {
+      this._onPopup = (e) => {
+        const m = e.data || {};
+        if (e.origin !== location.origin || m.src !== 'fh-game' || m.type !== 'concept-ready' || !this.data || !e.source) return;
+        const c = this._index().concept.get(Number(m.concept));
+        if (!c) return;
+        const words = { title: c.title };
+        for (const k of ['waiting', 'unreported', 'example', 'live', 'prev', 'next', 'go_live', 'go_loop']) words[k] = this._t('loop_' + k);
+        e.source.postMessage({ src: 'fh-taxonomy', cmd: 'words', words }, location.origin);
+      };
+      window.addEventListener('message', this._onPopup);
+    }
     div.addEventListener('input', (e) => {
       if (!e.target.matches('[data-tx-search]')) return;
       this.search = e.target.value;
@@ -161,10 +205,35 @@ class FootballTaxonomyScreen extends Screen {
   // The placement class behind a board rule: cover_shadow → CoverShadowRule (shared/tactics/TacticGeometry.hpp).
   _ruleClass(rule) { return String(rule || '').split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('') + 'Rule'; }
 
-  _open(type, key) {
-    if (this.detail) this.trail.push(this.detail);
-    this.detail = { type, key };
+  // sec = the sheet section to land on ('behaviours' | 'classes').
+  _open(type, key, sec) {
+    if (this.detail) this.trail.push({ type: this.detail.type, key: this.detail.key });
+    this.detail = { type, key, sec };
     this._renderDetail();
+  }
+
+  // Where a concept lives → { game: [behaviours that play it], classes: [C++ class names] }.
+  // The classes are its behaviours' own and the placement class of its board jobs.
+  _where(c) {
+    const ix = this._index(), game = ix.behOf.get(c.id) || [], classes = [];
+    const add = (n) => { if (n && ix.cls.has(n) && !classes.includes(n)) classes.push(n); };
+    for (const b of game) add(b.class);
+    for (const j of this.data.jobs || []) if (j.concept_id === c.id && j.rule && j.rule !== 'home') add(this._ruleClass(j.rule));
+    return { game, classes, played: game.length > 0 || !!c.act };
+  }
+
+  // The three chips: 🗄 DB · 🎮 Game · ⚙️ C++ — lit ones go to their own place.
+  _whereHtml(c, esc) {
+    const w = this._where(c);
+    const chip = (tier, on, attrs) => on
+      ? `<button type="button" class="tx-chip on" title="${esc(this._t(tier + '_tip'))}" ${attrs}>${esc(this._t(tier))}</button>`
+      : `<span class="tx-chip off" title="${esc(this._t(tier + '_no'))}">${esc(this._t(tier))}</span>`;
+    const game = `data-tx-open="game" data-k="${c.id}"`;
+    // code with no class of its own (a free function) → the behaviour, which shows its source
+    const code = w.classes.length === 1 ? `data-tx-open="class" data-k="${esc(w.classes[0])}"`
+      : w.classes.length ? `data-tx-open="concept" data-k="${c.id}" data-sec="classes"`
+      : w.game.length === 1 ? `data-tx-open="behaviour" data-k="${esc(w.game[0].code)}"` : `data-tx-open="concept" data-k="${c.id}" data-sec="behaviours"`;
+    return `<div class="tx-where">${chip('where_db', true, `data-tx-open="db" data-k="${c.id}"`)}${chip('where_game', w.played, game)}${chip('where_code', w.classes.length > 0 || w.game.length > 0, code)}</div>`;
   }
 
   // How far a concept reaches.
@@ -206,8 +275,9 @@ class FootballTaxonomyScreen extends Screen {
       .map(([k, label, n]) => `<button type="button" class="tx-pill ${this.moment === k ? 'on' : ''}" data-tx="moment" data-v="${esc(k)}">${esc(label)}<span class="n">${n}</span></button>`).join('');
     const reaches = ['all', 'played', 'placed', 'job', 'named']
       .map(r => `<button type="button" class="tx-pill ${this.reach === r ? 'on' : ''}" data-tx="reach" data-v="${r}">${r === 'all' ? '' : `<span class="tx-dot" data-reach="${r}"></span>`}${esc(this._t('reach_' + r))}<span class="n">${count(r)}</span></button>`).join('');
-    const legend = this._t('legend');
+    const legend = this._t('legend'), where = this._t('where_legend');
     return `<div class="tx-pills">${moments}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
+      ${where ? `<div class="tx-legend" style="margin:0 0 8px;">${esc(where)}</div>` : ''}
       <input type="search" class="tx-search" data-tx-search placeholder="${esc(this._t('search'))}" value="${esc(this.search)}">
       <div id="tx-concepts"></div>`;
   }
@@ -233,6 +303,7 @@ class FootballTaxonomyScreen extends Screen {
         ${c.cue ? `<div class="tx-cue">${esc(c.cue)}</div>` : ''}
         ${reach === 'placed' ? `<div class="tx-line">${esc(this._t('placed_by', { rule: rules[c.rule] || c.rule }))}</div>` : ''}
         ${nb ? `<div class="tx-line">${esc(this._t('n_behaviours', { n: nb }))}</div>` : ''}
+        ${this._whereHtml(c, esc)}
       </div>`;
     };
     let html = `<div class="tx-dim" style="font-size:0.78rem; margin-top:8px;">${esc(this._t('count', { n: shown.length, total: (d.concepts || []).length }))}</div>`;
@@ -334,11 +405,16 @@ class FootballTaxonomyScreen extends Screen {
     if (!this.detail || !this.data) { host.innerHTML = ''; return; }
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const { type, key } = this.detail;
-    const inner = type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'behaviour' ? this._behaviourSheet(key, esc) : this._classSheet(key, esc);
+    const inner = type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'db' ? this._dbSheet(Number(key), esc)
+      : type === 'game' ? this._gameSheet(Number(key), esc)
+      : type === 'behaviour' ? this._behaviourSheet(key, esc) : this._classSheet(key, esc);
     host.innerHTML = `<div class="tx-sheet-back" data-tx="close"></div><div class="tx-sheet" role="dialog">
       <div class="tx-pills" style="margin-top:0;">${this.trail.length ? `<button type="button" class="tx-pill" data-tx="back">${esc(this._t('back'))}</button>` : ''}
         <button type="button" class="tx-pill" data-tx="close">${esc(this._t('close'))}</button></div>${inner}</div>`;
-    if (type !== 'concept') this._loadSource();
+    if (type === 'db') this._loadDb(Number(key));
+    else if (type !== 'concept' && type !== 'game') this._loadSource();
+    const at = this.detail.sec && host.querySelector(`[data-tx-sec="${this.detail.sec}"]`);
+    if (at) at.scrollIntoView({ block: 'start' });
   }
 
   _kv(rows, esc) {
@@ -356,6 +432,7 @@ class FootballTaxonomyScreen extends Screen {
     const principle = ((d.principles || []).find(p => p.id === c.principle_id) || {}).title;
     const reach = this._reach(c);
     let html = `<h3>${esc(c.title)}</h3><div class="tx-dim tx-code">game_concepts · id ${c.id} · ${esc(c.name)}</div>
+      ${this._whereHtml(c, esc)}
       <h4>${esc(this._t('s_row'))}</h4>` + this._kv([
         [this._t('f_reach'), this._t('reach_' + reach)], [this._t('f_moment'), moment], [this._t('f_principle'), principle],
         [this._t('f_family'), this._t('family_' + c.family) || c.family], [this._t('f_status'), c.status],
@@ -374,9 +451,100 @@ class FootballTaxonomyScreen extends Screen {
       return `<li><strong>${esc(j.label)}</strong> <span class="tx-dim tx-code">${esc(j.code)}</span><br>${esc(rule ? rule.label : j.rule)}${nums ? ` <span class="tx-dim">(${esc(nums)})</span>` : ''} — ${this._classLink(this._ruleClass(j.rule), esc)}</li>`;
     }).join('')}</ul>` : `<div class="tx-dim">${esc(this._t('none_jobs'))}</div>`);
     const behs = ix.behOf.get(id) || [];
-    html += `<h4>${esc(this._t('s_behaviours'))}</h4>` + (behs.length ? behs.map(b => this._behaviourRow(b, esc)).join('') : `<div class="tx-dim">${esc(this._t('none_behaviours'))}</div>`);
+    const classes = this._where(c).classes;
+    if (classes.length) html += `<h4 data-tx-sec="classes">${esc(this._t('s_classes'))}</h4><ul class="tx-list">${classes.map(n => `<li>${this._classLink(n, esc)} <span class="tx-dim tx-code">${esc(ix.cls.get(n).file)}</span></li>`).join('')}</ul>`;
+    html += `<h4 data-tx-sec="behaviours">${esc(this._t('s_behaviours'))}</h4>` + (behs.length ? behs.map(b => this._behaviourRow(b, esc)).join('') : `<div class="tx-dim">${esc(this._t('none_behaviours'))}</div>`);
     const also = (d.behaviours || []).filter(b => b.concept_id !== id && (b.other || '').split(/,\s*/).includes(c.name));
     if (also.length) html += `<h4>${esc(this._t('s_near'))}</h4>` + also.map(b => this._behaviourRow(b, esc)).join('');
+    return html;
+  }
+
+  // ── 🎮 the concept in the game: what the engine does with it, and a live demo ──
+  _gameSheet(id, esc) {
+    const c = this._index().concept.get(id);
+    if (!c) return '';
+    const w = this._where(c);
+    let html = `<h3>${esc(this._t('game_title', { title: c.title }))}</h3>
+      <div class="tx-dim tx-code">game_concepts · id ${c.id} · ${this._conceptLink({ id: c.id, title: this._t('db_to_concept') }, esc)}</div>
+      ${c.cue ? `<div style="font-size:0.9rem; margin-top:8px;">${esc(c.cue)}</div>` : ''}`;
+    if (!w.played) return html + `<p class="tx-dim">${esc(this._t('where_game_no'))}</p>`;
+    html += `<h4>${esc(this._t('game_s_watch'))}</h4>
+      <button type="button" class="tx-pill on" data-tx="watch" data-v="${c.id}" style="font-size:0.9rem; padding:8px 16px;">${esc(this._t('game_watch'))}</button>
+      <div class="tx-dim" style="font-size:0.8rem; margin-top:6px; max-width:70ch;">${esc(this._t(c.act ? 'game_watch_note' : 'game_watch_unreported'))}</div>
+      <h4>${esc(this._t('game_s_how'))}</h4>`;
+    if (c.act_note) html += `<div style="font-size:0.86rem; margin-bottom:6px;">${esc(c.act_note)}</div>`;
+    html += w.game.map(b => this._behaviourRow(b, esc)).join('');
+    return html;
+  }
+
+  // The popup on the live match.  It needs its opener (the words), so no 'noopener'.
+  _watch(id) {
+    window.open(`/game.html?concept=${id}`, 'fh-concept-loop', 'popup=yes,width=1180,height=720');
+  }
+
+  // ── 🗄 the concept as the database holds it ────────────────────────────
+  _dbSheet(id, esc) {
+    const c = this._index().concept.get(id);
+    if (!c) return '';
+    return `<h3>${esc(this._t('db_title', { title: c.title }))}</h3>
+      <div class="tx-dim tx-code">game_concepts · id ${c.id} · ${this._conceptLink({ id: c.id, title: this._t('db_to_concept') }, esc)}</div>
+      <div data-tx-db="${c.id}"><p class="tx-dim">${esc(this._t('loading'))}</p></div>`;
+  }
+
+  async _loadDb(id) {
+    if (!this.dbCache) this.dbCache = new Map();
+    let db = this.dbCache.get(id);
+    if (!db) {
+      try {
+        const res = await this.auth.fetch('/api/tactic-plans/taxonomy/db?concept=' + id);
+        db = res.ok ? await res.json() : null;
+      } catch (_) { db = null; }
+      if (db) this.dbCache.set(id, db);
+    }
+    const host = this.find(`[data-tx-db="${id}"]`);
+    if (!host) return;
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    host.innerHTML = db ? this._dbHtml(id, db, esc) : `<p>${esc(this._t('failed'))}</p>`;
+  }
+
+  // A cell: a key into game_concepts / the behaviour index / a class becomes a link.
+  _dbCell(table, col, v, selfId, esc) {
+    if (v == null) return '<span class="tx-dim">—</span>';
+    const ix = this._index(), text = typeof v === 'object' ? JSON.stringify(v) : String(v);
+    if (col.ref === 'game_concepts.id' && Number(v) !== selfId && ix.concept.has(Number(v))) return this._conceptLink(ix.concept.get(Number(v)), esc);
+    if (table === 'game_engine_behaviours' && col.name === 'code' && ix.beh.has(text)) return `<button type="button" class="tx-link tx-code" data-tx-open="behaviour" data-k="${esc(text)}">${esc(text)}</button>`;
+    if (col.name === 'class_name' && ix.cls.has(text)) return this._classLink(text, esc);
+    return esc(text.length > 220 ? text.slice(0, 220) + '…' : text);
+  }
+  _dbKey(col) { return col.pk ? '🔑' : col.ref ? '🔗' : col.unique ? '◇' : ''; }
+
+  // One row as the table's columns down the side: key · column · type · value · points to.
+  _dbRowHtml(info, row, selfId, esc) {
+    return `<div class="tx-scroll"><table class="tx-tbl"><thead><tr><th></th><th>${esc(this._t('db_col'))}</th><th>${esc(this._t('db_type'))}</th><th>${esc(this._t('db_value'))}</th><th>${esc(this._t('db_ref'))}</th></tr></thead><tbody>`
+      + info.columns.map(col => `<tr><td>${this._dbKey(col)}</td><td class="tx-code">${esc(col.name)}</td><td class="tx-dim tx-code">${esc(col.type)}${col.notnull ? '' : ' ?'}</td>
+          <td>${row ? this._dbCell(info.name, col, row[col.name], selfId, esc) : ''}</td><td class="tx-code">${col.ref ? '→ ' + esc(col.ref) : ''}</td></tr>`).join('')
+      + `</tbody></table></div>`;
+  }
+
+  _dbHtml(id, db, esc) {
+    const used = db.pointed_at_by.filter(t => t.count > 0), empty = db.pointed_at_by.filter(t => !t.count);
+    let html = `<div style="font-size:0.84rem; margin-top:8px; max-width:75ch;">${esc(this._t('db_norm', { cols: db.table.columns.length, out: db.points_to.length, tables: db.pointed_at_by.length, used: used.length }))}</div>
+      <div class="tx-dim" style="font-size:0.74rem; margin-top:4px;">${esc(this._t('db_key_legend'))}</div>
+      <h4>${esc(this._t('db_s_table'))}</h4><div class="tx-tname">game_concepts</div>` + this._dbRowHtml(db.table, db.row, id, esc);
+    if (db.points_to.length) {
+      html += `<h4>${esc(this._t('db_s_out'))}</h4>`;
+      for (const p of db.points_to) html += `<div class="tx-tname">${esc(p.column)} → ${esc(p.table.name)}.${esc(p.ref_column)}</div>` + this._dbRowHtml(p.table, p.row, id, esc);
+    }
+    html += `<h4>${esc(this._t('db_s_in'))}</h4>`;
+    for (const t of used) {
+      // the rows across; the column that points here is dropped (it is this concept on every row)
+      const cols = t.table.columns.filter(col => col.name !== t.column);
+      html += `<div class="tx-tname">${esc(t.table.name)}.${esc(t.column)} → game_concepts <span class="tx-dim" style="font-weight:400;">· ${esc(this._t('db_rows', { n: t.count }))}</span></div>
+        <div class="tx-scroll"><table class="tx-tbl"><thead><tr>${cols.map(col => `<th class="tx-code">${this._dbKey(col)} ${esc(col.name)}</th>`).join('')}</tr></thead>
+        <tbody>${t.rows.map(r => `<tr>${cols.map(col => `<td>${this._dbCell(t.table.name, col, r[col.name], id, esc)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+        ${t.count > t.rows.length ? `<div class="tx-dim" style="font-size:0.74rem;">${esc(this._t('db_more', { n: t.count - t.rows.length }))}</div>` : ''}`;
+    }
+    if (empty.length) html += `<h4>${esc(this._t('db_s_empty'))}</h4><div class="tx-code" style="font-size:0.78rem; line-height:1.7;">${empty.map(t => `${esc(t.table.name)}.${esc(t.column)}`).join('<br>')}</div>`;
     return html;
   }
 

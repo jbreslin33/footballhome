@@ -69,3 +69,33 @@ Each row has a **standing**:
 - **The mappings are a first pass** from a full read of the code on 11/24. 85 behaviours are
   `unnamed` and wait for the owner's call.
 - **Recognition is not a layer yet.** The engine reads perfectly and instantly for everyone.
+
+## Where a concept lives: the three chips (migs 1827 / 1828)
+
+Owner, 2026-11-24: "i need on each concept card wherther icons for if used in game, db,
+engine" · "clicking each one takes you to pertiientn info" · "db icon should show me talbe and
+relationships and normalzation" · "engine ashould talk about and demo how its used … show the
+players moving and demonstrating the concept in a popup game on a loop" · "the popup game shold
+run the engine full".
+
+Every concept card (and its sheet) carries three chips, lit or dim:
+
+| Chip | Lit when | Opens |
+|---|---|---|
+| 🗄 DB | always (a `game_concepts` row) | the database sheet: the table with its key and foreign keys, this row, the rows it points to, every table that points at it with its rows, and the tables with nothing for it yet. `GET /api/tactic-plans/taxonomy/db?concept=` (`TacticPlans::conceptDb`) reads it from the Postgres catalogue, so a new table or column shows without a code change. Staff only. |
+| 🎮 Game | a `game_engine_behaviours` row names it, or a `game_engine_acts` row | the game sheet: what the engine does with it, and ▶ the concept loop |
+| ⚙️ C++ | a behaviour of it exists, or one of its board jobs has a placement class | the class sheet (parents, children, source); several classes → the concept sheet's 🧱 list |
+
+**The concept loop** — `/game.html?concept=<game_concepts id>`, opened as a popup window (the
+site answers `X-Frame-Options DENY`, so it is not an iframe). It is the ordinary live match: the
+whole engine, both sides. `frontend/js/game/client.js` ("Concept loop") watches the BRAIN feed;
+each time a player starts playing the concept, 3 s before to 5 s after becomes a clip, replayed
+on a loop from the viewer's 2-minute history with only that player's label on, while the match
+runs on and newer examples queue (twice round, then on to the next). The bar's words are the
+taxonomy page's `loop_*` rows, handed to the popup by `postMessage`.
+
+Limit, today: the engine names a concept per player only for the acts in `game_engine_acts`
+(six: block spot, recover, cover, press the ball, chase the ball, mark). For every other played
+concept the popup shows the match with no loop and says so. Closing that needs the engine to
+report which *behaviour* each player is running (its `[behaviour: code]`), in `game/src` — the
+game session's files.

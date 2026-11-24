@@ -229,6 +229,67 @@ json TacticPlans::source(const std::string& file, int from, int to) {
             {"commit", r[0]["commit"].as<std::string>()}, {"text", r[0]["text"].is_null() ? "" : r[0]["text"].as<std::string>()}};
 }
 
+namespace {
+// A table as the catalogue describes it: columns in order, each with its type, whether it
+// is (part of) the primary key, and the table.column a single-column foreign key points to.
+json tableInfo(Database* db, const std::string& table) {
+    json cols = json::array();
+    for (const auto& r : db->query(R"SQL(
+            SELECT a.attname AS name, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull AS notnull,
+                   EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = a.attrelid AND i.indisprimary AND a.attnum = ANY (i.indkey)) AS pk,
+                   EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = a.attrelid AND i.indisunique AND NOT i.indisprimary
+                              AND i.indnkeyatts = 1 AND a.attnum = i.indkey[0]) AS uniq,
+                   (SELECT c.confrelid::regclass::text || '.' || af.attname FROM pg_constraint c
+                      JOIN pg_attribute af ON af.attrelid = c.confrelid AND af.attnum = c.confkey[1]
+                     WHERE c.contype = 'f' AND c.conrelid = a.attrelid AND array_length(c.conkey, 1) = 1 AND c.conkey[1] = a.attnum
+                     LIMIT 1) AS ref
+              FROM pg_attribute a
+             WHERE a.attrelid = to_regclass($1) AND a.attnum > 0 AND NOT a.attisdropped
+             ORDER BY a.attnum)SQL", {table}))
+        cols.push_back({{"name", r["name"].c_str()}, {"type", r["type"].c_str()}, {"notnull", r["notnull"].as<bool>()},
+                        {"pk", r["pk"].as<bool>()}, {"unique", r["uniq"].as<bool>()},
+                        {"ref", r["ref"].is_null() ? json(nullptr) : json(r["ref"].c_str())}});
+    return {{"name", table}, {"columns", cols}};
+}
+}  // namespace
+
+json TacticPlans::conceptDb(long long conceptId) {
+    auto* db = Database::getInstance();
+    const std::string id = std::to_string(conceptId);
+    const auto row = db->query("SELECT row_to_json(c)::text AS j FROM game_concepts c WHERE c.id = $1::int", {id});
+    if (row.empty()) return json::object();
+    json out = {{"table", tableInfo(db, "game_concepts")}, {"row", json::parse(row[0]["j"].c_str())},
+                {"points_to", json::array()}, {"pointed_at_by", json::array()}};
+    // The rows this one points to (its foreign keys out).  Table and column names come from
+    // the catalogue and go through format(%I), never from the request.
+    for (const auto& col : out["table"]["columns"]) {
+        if (col["ref"].is_null() || out["row"][col["name"].get<std::string>()].is_null()) continue;
+        const std::string ref = col["ref"].get<std::string>(), table = ref.substr(0, ref.rfind('.')), refCol = ref.substr(ref.rfind('.') + 1);
+        const auto sql = db->query("SELECT format('SELECT row_to_json(t)::text AS j FROM %s t WHERE t.%I::text = $1 LIMIT 1', to_regclass($1), $2::text) AS q",
+                                   {table, refCol});
+        const json& v = out["row"][col["name"].get<std::string>()];
+        const auto r = db->query(sql[0]["q"].c_str(), {v.is_string() ? v.get<std::string>() : v.dump()});
+        out["points_to"].push_back({{"column", col["name"]}, {"table", tableInfo(db, table)}, {"ref_column", refCol},
+                                    {"row", r.empty() ? json(nullptr) : json::parse(r[0]["j"].c_str())}});
+    }
+    // Every table that points at game_concepts (by id or by name), with its rows for this concept.
+    for (const auto& fk : db->query(R"SQL(
+            SELECT c.conrelid::regclass::text AS tbl, a.attname AS col, af.attname AS ref_col,
+                   format('SELECT count(*) AS n, (SELECT json_agg(x) FROM (SELECT * FROM %s t WHERE t.%I::text = $1 LIMIT 40) x)::text AS j FROM %s t WHERE t.%I::text = $1',
+                          c.conrelid::regclass, a.attname, c.conrelid::regclass, a.attname) AS q
+              FROM pg_constraint c JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+              JOIN pg_attribute af ON af.attrelid = c.confrelid AND af.attnum = c.confkey[1]
+             WHERE c.contype = 'f' AND c.confrelid = 'game_concepts'::regclass AND array_length(c.conkey, 1) = 1
+             ORDER BY 1, 2)SQL")) {
+        const json& v = out["row"][fk["ref_col"].c_str()];
+        const auto r = db->query(fk["q"].c_str(), {v.is_string() ? v.get<std::string>() : v.dump()});
+        out["pointed_at_by"].push_back({{"table", tableInfo(db, fk["tbl"].c_str())}, {"column", fk["col"].c_str()},
+                                        {"count", r[0]["n"].as<long long>()},
+                                        {"rows", r[0]["j"].is_null() ? json::array() : json::parse(r[0]["j"].c_str())}});
+    }
+    return out;
+}
+
 json TacticPlans::shortcuts() {
     json out = json::array();
     for (const auto& r : Database::getInstance()->query(

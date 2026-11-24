@@ -105,6 +105,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.get (prefix + "/list",             [this](const Request& r) { return handleList(r); });
     router.get (prefix + "/taxonomy",         [this](const Request& r) { return handleTaxonomy(r); });
     router.get (prefix + "/taxonomy/source",  [this](const Request& r) { return handleSource(r); });
+    router.get (prefix + "/taxonomy/db",      [this](const Request& r) { return handleConceptDb(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
@@ -147,6 +148,22 @@ Response TacticPlansController::handleTaxonomy(const Request& request) {
         return jsonOut(HttpStatus::OK, model_->taxonomy());
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleTaxonomy: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// GET /taxonomy/db?concept=<id> — one concept as the database holds it: its table, its row,
+// what it points to and what points at it.  Staff only: it is the club's schema.
+Response TacticPlansController::handleConceptDb(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireStaff(request, &userId, &error)) return error;
+    try {
+        const json out = model_->conceptDb(idOf(request.getQueryParam("concept")));
+        if (out.empty()) return jsonError(HttpStatus::NOT_FOUND, "No such concept.");
+        return jsonOut(HttpStatus::OK, out);
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleConceptDb: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }

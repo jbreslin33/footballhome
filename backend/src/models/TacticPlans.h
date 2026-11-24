@@ -30,6 +30,11 @@ public:
     // Lines from..to of one engine source file as exported to game_engine_sources
     // (scripts/taxonomy/export_engine_index.py): { file, from, to, commit, text }.
     nlohmann::json source(const std::string& file, int from, int to);
+    // One concept as the database holds it (🗄 on #football-taxonomy, mig 1827): the
+    // game_concepts table (columns, key, foreign keys), this row, the rows it points to and
+    // every table that points at it with its rows — read from the catalogue, so a new
+    // table or column shows without a code change.  Empty when there is no such concept.
+    nlohmann::json conceptDb(long long conceptId);
 
     // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
     // [code], in the dropdown's order.  lookups() carries it as "shortcuts".
