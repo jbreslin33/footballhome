@@ -765,8 +765,13 @@ class FinancesScreen extends Screen {
     // need new players"): the same members, paying the way they pay now, at a monthly rate that closes the
     // gap over a full year — every section's dues up by the same share; nobody new, nobody leaving.
     const duesNet = sum(dues) * (1 - feeShare), up = duesNet > 0 ? gap / duesNet : 0, monthNow = perFull / 12;
-    const raiseFact = up > 0 && monthNow > 0 ? fact(C('bl_f_raise', 'Or, with no new members: dues a month at'), M0(monthNow * (1 + up)),
-      C('bl_f_raise_note', `Now ${M0(monthNow)} — up ${Math.round(100 * up)}%, for a full year, the same members paying the way they pay now.`, { now: M0(monthNow), pct: Math.round(100 * up) })) : '';
+    // each rate as a month and as a year (owner 11/23: "show current rate what that is yearly and proposed rate and what that is yearly")
+    const rateText = (mo) => C('bl_f_rate_value', `${M0(mo)} a month · ${M0(mo * 12)} a year`, { month: M0(mo), year: M0(mo * 12) });
+    // the proposed rate is a whole dollar a month, rounded up so it still closes the gap; its year = 12 of those
+    const monthNew = Math.ceil(monthNow * (1 + up) - 1e-9), upPct = monthNow > 0 ? Math.round(100 * (monthNew / monthNow - 1)) : 0;
+    const raiseFact = up > 0 && monthNow > 0 ? fact(C('bl_f_dues_now', 'Dues now'), rateText(monthNow))
+      + fact(C('bl_f_raise', 'Or, with no new members: dues at'), rateText(monthNew),
+          C('bl_f_raise_note', `Up ${upPct}%, for a full year, the same members paying the way they pay now.`, { pct: upPct })) : '';
     const facts = `<tr class="item"><td colspan="2" style="padding-left:26px; font-weight:800;">${esc(C('bl_f_title', 'To break even without the grant'))}</td></tr>`
       + fact(C('bl_f_more', 'More members needed — paying the way members pay now'), String(more), C('bl_f_more_note', 'No other new costs than a kit each.'))
       + fact(C('bl_f_full', 'The same money as this many members paying in full'), String(moreFull))
