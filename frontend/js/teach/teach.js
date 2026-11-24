@@ -147,6 +147,13 @@
     $('btn-step').addEventListener('click', () => send(GameWire.encodeStep(S.pace)));
     $('btn-play').addEventListener('click', () => send(GameWire.encodeSpeed(S.speed === 0 ? S.pace : 0)));
     $('btn-restart').addEventListener('click', connect);
+    if (say('pick_back')) {   // ☰ back to the list of plans
+      const a = document.createElement('a');
+      a.href = '/teach.html';
+      a.textContent = say('pick_back');
+      a.className = 'pill';
+      $('speeds').after(a);
+    }
     if (!PLAN && say('copy')) {
       copyBtn = document.createElement('button');
       copyBtn.type = 'button';
@@ -299,6 +306,33 @@
                     : rt === THEM ? say('st_goal_kick') : rt !== NO ? say('st_dead') : say('st_flight'));
   }
 
+  // ── No plan in the link (opened from the ⚽ Football menu): the plans to pick from ──
+  async function pickPlan() {
+    document.body.classList.add('picking');
+    $('jobs-title').textContent = say('pick_title');
+    $('note').textContent = '';
+    status(say('pick_status'));
+    const ul = $('jobs');
+    ul.textContent = '';
+    const add = (href, text) => {
+      const li = document.createElement('li'), a = document.createElement('a');
+      a.href = href;
+      a.textContent = text;
+      li.appendChild(a);
+      ul.appendChild(li);
+    };
+    let plans = [];
+    try {
+      const r = await fetch('/api/tactic-plans/list', { headers: { Authorization: 'Bearer ' + token } });
+      if (r.ok) plans = (await r.json()).plans || [];
+    } catch (_) { /* the list stays empty */ }
+    for (const p of plans)
+      add('/teach.html?' + new URLSearchParams({ plan: p.id, us: p.us, them: p.them, block: p.block }),
+          say('pick_row', { us: p.us, them: p.them, block: p.block_label, steps: p.steps }));
+    if (!plans.length) status(say('pick_none'));
+    if (say('pick_pl')) add('/teach.html?' + new URLSearchParams({ us_team: 'Arsenal', them_team: 'West Ham United' }), say('pick_pl'));
+  }
+
   // ── Boot ──
   (async function () {
     if (!(await loadCopy())) return;
@@ -312,7 +346,7 @@
     window.addEventListener('resize', layout);
     layout();
     requestAnimationFrame(frame);
-    if (!PLAN && !(q.get('us_team') && q.get('them_team'))) { status(say('no_plan')); return; }
+    if (!PLAN && !(q.get('us_team') && q.get('them_team'))) { pickPlan(); return; }
     connect();
   })();
 })();

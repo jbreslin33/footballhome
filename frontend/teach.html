@@ -46,6 +46,14 @@
     #jobs .j { font-weight: 700; }
     #jobs .t { color: var(--dim); }
     #jobs li.changed .j { color: var(--gold); }
+    #jobs li a { color: var(--ink); font-weight: 700; text-decoration: none; padding: 6px 0; display: block; }
+    #jobs li a:hover { color: var(--gold); }
+    a.pill { color: var(--gold); font-weight: 700; font-size: 13px; text-decoration: none; padding: 8px 6px; }
+    /* Picking a plan: no room yet, so no pitch and no room controls — the list is the page. */
+    body.picking #pitch-box, body.picking #bar button, body.picking #speeds, body.picking a.pill { display: none; }
+    body.picking main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+    body.picking #side { max-height: none; border: 0; }
+    body.picking #jobs { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
     #note { margin: 8px 0 0; color: var(--dim); font-size: 12px; max-width: 70ch; }
     @media (min-width: 900px) {
       main { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: minmax(0, 1fr); }
@@ -79,6 +87,6 @@
   </div>
   <!-- The wire codec is the game protocol's own (one decoder for every client). -->
   <script src="js/game/wire.js?v=20261110feet1"></script>
-  <script src="js/teach/teach.js?v=20261124b"></script>
+  <script src="js/teach/teach.js?v=20261124c"></script>
 </body>
 </html>

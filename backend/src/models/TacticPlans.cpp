@@ -159,6 +159,22 @@ json TacticPlans::lookups() {
     return out;
 }
 
+json TacticPlans::list() {
+    auto* db = Database::getInstance();
+    json out = json::array();
+    for (const auto& r : db->query(
+             "SELECT p.id, f.code AS us, o.code AS them, p.block_height, b.label AS block_label, "
+             "       (SELECT count(*) FROM tactic_states s WHERE s.plan_id = p.id AND s.copied_from IS NULL) AS steps "
+             "  FROM tactic_plans p JOIN formations f ON f.id = p.formation_id "
+             "  JOIN formations o ON o.id = p.opponent_formation_id "
+             "  JOIN tactic_block_heights b ON b.code = p.block_height "
+             " ORDER BY f.code, o.code, b.sort_order, p.id"))
+        out.push_back({{"id", r["id"].as<long long>()}, {"us", r["us"].as<std::string>()}, {"them", r["them"].as<std::string>()},
+                       {"block", r["block_height"].as<std::string>()}, {"block_label", r["block_label"].as<std::string>()},
+                       {"steps", r["steps"].as<int>()}});
+    return out;
+}
+
 json TacticPlans::shortcuts() {
     json out = json::array();
     for (const auto& r : Database::getInstance()->query(

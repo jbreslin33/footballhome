@@ -20,6 +20,7 @@ private:
     bool requireStaff(const Request& request, long long* userId, Response* error);
 
     Response handleGet(const Request& request);          // ?formation_id&opponent_formation_id&moment&block
+    Response handleList(const Request& request);         // every plan (the teaching room picker)
     Response handleCreate(const Request& request);       // POST
     Response handleAddState(const Request& request);     // POST /states
     Response handleSolve(const Request& request);        // POST /solve (shared geometry, nothing saved)

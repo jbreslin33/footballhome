@@ -17,6 +17,10 @@ public:
     //   kinds: [{code,concept_id,concept,concept_title,cue,label,target_a_label,target_b_label,partner_label,dist_m,press_m,multi_a,lane_t}],
     //   stances: [{code,label}], restarts: [{code,label,law,our_max_y}] }
     nlohmann::json lookups();
+    // Every plan there is, for the teaching room's picker (teach.html, mig 1799):
+    // [{ id, us, them, block, block_label, steps }] — formations by code, in
+    // the order a coach meets them (ours, then theirs, then high → low).
+    nlohmann::json list();
 
     // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
     // [code], in the dropdown's order.  lookups() carries it as "shortcuts".

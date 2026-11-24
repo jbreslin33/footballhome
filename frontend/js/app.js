@@ -20,7 +20,6 @@ class App {
       login: new LoginScreen(this.navigation, this.auth),
       oauthSuccess: new OAuthSuccessScreen(this.navigation, this.auth),
       mainMenu: new MainMenuScreen(this.navigation, this.auth),
-      tactical: new TacticalScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
       practicePlan: new PracticePlanScreen(this.navigation, this.auth),
@@ -119,8 +118,8 @@ class App {
     this.screenManager.register('login', this.screens.login);
     this.screenManager.register('oauth-success', this.screens.oauthSuccess);
     this.screenManager.register('main-menu', this.screens.mainMenu);
-    // Tactical (#tactical) — game model, practice plans, days, exercises, board. See screens/tactical.js.
-    this.screenManager.register('tactical', this.screens.tactical);
+    // The ⚽ Football pages (game model, practice plans, days & exercises, boards) are menu pills
+    // (menu_pages, mig 1799); the #tactical tile hub that led to them is gone.
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('club-selection', this.screens.clubSelection);
     this.screenManager.register('practice-plan', this.screens.practicePlan);

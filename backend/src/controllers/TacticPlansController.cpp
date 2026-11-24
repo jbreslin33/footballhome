@@ -102,6 +102,7 @@ TacticPlansController::~TacticPlansController() = default;
 
 void TacticPlansController::registerRoutes(Router& router, const std::string& prefix) {
     router.get (prefix + "",                  [this](const Request& r) { return handleGet(r); });
+    router.get (prefix + "/list",             [this](const Request& r) { return handleList(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
@@ -122,6 +123,18 @@ bool TacticPlansController::requireStaff(const Request& request, long long* user
         {std::to_string(*userId)});
     if (r.empty()) { *error = jsonError(HttpStatus::FORBIDDEN, "Coaches and admins only."); return false; }
     return true;
+}
+
+// GET /list — every plan, for the teaching room's picker.  Any signed-in user:
+// it is a list of formation names, and the room itself is theirs to open.
+Response TacticPlansController::handleList(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in first.");
+    try {
+        return jsonOut(HttpStatus::OK, {{"plans", model_->list()}});
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleList: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
 }
 
 Response TacticPlansController::handleGet(const Request& request) {

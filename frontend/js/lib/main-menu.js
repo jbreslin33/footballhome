@@ -25,7 +25,8 @@ class MainMenu {
   static ADMIN_LEVELS = ['club', 'sport_division', 'team', 'super', 'system', 'league'];
   // Pages that never set navigation.context.role (the old tile list).
   static NOT_ROLES = ['calendar', 'reports', 'rsvps', 'security', 'logos', 'files', 'invoices', 'opponents', 'casa',
-                      'game-center', 'event-center', 'kit', 'teams', 'tactical', 'league-schedules', 'apsl'];
+                      'game-center', 'event-center', 'kit', 'teams', 'league-schedules', 'apsl',
+                      'game-model', 'practice-plan', 'game-model-admin', 'tactical-board', 'tactical-live'];
 
   static get _nav()  { return window.app && window.app.navigation; }
   static get _auth() { return window.app && window.app.auth; }
@@ -147,7 +148,6 @@ class MainMenu {
       case 'messages':
       case 'leads':       ctx.role = 'marketing'; return nav.goTo(code);
       case 'teams':
-      case 'tactical':
         // The Teams board scopes its cards by the viewer's hat.
         ctx.role = (MainMenu.ADMIN_LEVELS.includes(user.role) || user.role === 'marketing') ? 'club-admin' : 'coach';
         return nav.goTo(code);
