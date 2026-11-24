@@ -98,6 +98,7 @@ struct Stats {
     long mq_t[3][2] = {};   // §8.340 … tried [dir][ground / high]
     long mq_n[3][6] = {};   // §8.340 midfield (35-70 m) passes not completed [fwd / square / back][blocked <8 m / deflected beyond / taken clean by theirs / out / the kicker or other / high]
     long tl_n[2][5] = {}, tl_h[2][5] = {}, tl_b[2][5] = {}, tl_o[2][5] = {}, tl_d[2][3] = {};   // §8.350 BLOCKED BY THE TOUCHLINE [0-5 / 5-14 m off it][direction]: passes / high / blocked / blocked then out; the blocker's m off the passer
+    long bz_n[2][5] = {}, bz_nx[2][5] = {}, bz_bx[2][5] = {};   // §8.351: open-play passes struck there / of them crosses / crosses blocked
     long bz_b[2][5] = {}, bz_t[2][5] = {}, bz_c[2][5] = {};   // §8.349 BLOCKED BY WHERE [wide][band of the kick]: blocked / then a throw-in / then a corner
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
@@ -1440,6 +1441,11 @@ int main(int argc, char** argv) {
                 if (rel.p >= 0 && !rel.kick && !rel.set && !rel.shot) { ++S.nk_n[ep_who]; rel = Rel{}; return; }   // §8.335: a touch that got away is not a pass (StatsBomb: a miscontrol / dispossession / carry)
                 if (rel.p < 0 || rel.set || rel.shot || rel.why == static_cast<int>(ai::Why::Clear)) { rel = Rel{}; return; }   // §8.243: a clearance is not a pass (StatsBomb)
                 const double sg = rel.team == 0 ? 1.0 : -1.0;
+                {   // §8.351: passes by where struck (BLOCKED BY WHERE's denominators), and the crosses among them
+                    const double tl6 = hx - rel.x * sg; const int z6 = tl6 < 18 ? 0 : tl6 < 35 ? 1 : tl6 < 52 ? 2 : tl6 < 70 ? 3 : 4, w6 = std::fabs(rel.y) >= 20 ? 1 : 0;
+                    const bool blk6 = W.deflectedTick() >= static_cast<std::uint64_t>(std::max(0L, last_kick_k)) && std::hypot(W.deflectedAt().x.toDouble() - rel.x, W.deflectedAt().y.toDouble() - rel.y) < 8;
+                    ++S.bz_n[w6][z6]; if (rel.cross) { ++S.bz_nx[w6][z6]; S.bz_bx[w6][z6] += blk6; }
+                }
                 {   // §8.350 BLOCKED BY THE TOUCHLINE (benchmarks_statsbomb_blockzone.py)
                     const double tch = 34 - std::fabs(rel.y);
                     if (tch < 14) {
@@ -3783,7 +3789,10 @@ int main(int argc, char** argv) {
                             for (int w = 1; w >= 0; --w) { std::printf(" %s", w ? "wide" : "| middle"); long tb = 0, tt = 0, tc = 0; double rb = 0, rt = 0, rc = 0;
                                 for (int z = 0; z < 5; ++z) { const double* r3 = Bz + (w ? 0 : 15) + 3 * z; std::printf(" %.2f / %.2f / %.2f (%.2f / %.2f / %.2f) |", S.bz_b[w][z] / tmo, S.bz_t[w][z] / tmo, S.bz_c[w][z] / tmo, r3[0], r3[1], r3[2]);
                                     tb += S.bz_b[w][z]; tt += S.bz_t[w][z]; tc += S.bz_c[w][z]; rb += r3[0]; rt += r3[1]; rc += r3[2]; }
-                                std::printf(" all %.2f / %.2f / %.2f (%.2f / %.2f / %.2f)", tb / tmo, tt / tmo, tc / tmo, rb, rt, rc); } }
+                                std::printf(" all %.2f / %.2f / %.2f (%.2f / %.2f / %.2f)", tb / tmo, tt / tmo, tc / tmo, rb, rt, rc); }
+                            static const double Pn[2][5] = {{19.1, 36.4, 49.2, 45.8, 31.1}, {11.8, 36.9, 60.9, 71.7, 70.9}};
+                            std::printf("\n       passes struck there a team-match (real):"); for (int w = 1; w >= 0; --w) { std::printf(" %s", w ? "wide" : "| middle"); for (int z = 0; z < 5; ++z) std::printf(" %.1f (%.1f)", S.bz_n[w][z] / tmo, Pn[w ? 0 : 1][z]); }
+                            std::printf(" || crosses from the wide last 18 m / 18-35 m: %.2f / %.2f a team-match, blocked %.2f / %.2f (StatsBomb flag: 5.63 / 2.74, blocked 0.03 / 0.01 — a blocked cross loses the flag)", S.bz_nx[1][0] / tmo, S.bz_nx[1][1] / tmo, S.bz_bx[1][0] / tmo, S.bz_bx[1][1] / tmo); }
                         {   static const char* dn[5] = {"down the line", "forward inside", "square inside", "back", "toward the touchline"};
                             static const double Tn[2][5][4] = {{{18.0, 35, 1.47, 65}, {7.1, 32, 0.50, 54}, {15.1, 19, 0.82, 56}, {17.9, 3, 0.30, 62}, {1.0, 9, 0.05, 72}}, {{33.7, 34, 1.33, 44}, {12.7, 34, 0.54, 39}, {31.7, 21, 1.46, 54}, {25.0, 4, 0.28, 44}, {19.5, 6, 0.35, 35}}};
                             static const double Td[2][3] = {{21, 53, 26}, {18, 47, 36}};

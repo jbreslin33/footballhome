@@ -13204,3 +13204,33 @@ attackers' 35% v 28); corners unmoved (2.5 v 5.4): the same lean toward the near
 within 10 m) and the blocked cross in the last 18 m (0.9 blocked v 2.2, §8.349). Next: the cross into the full-back —
 blocked crosses a team-match by the crosser's spot and the blocker's distance (StatsBomb v ours), `deny-the-cross`
 (127) as the capability. Tests 25/25.
+
+### 8.351 G5.245 — corners: the lean toward the goal line does nothing; we play half the passes in the last 18 m (measured; a trial not shipped)
+
+From §8.350 (corners 2.5 v 5.4). **Trial, not shipped** — `physics.block.gl_0` / `gl_5` 0.575 / 0.61: a blocked pass's
+side leans toward the nearer goal line within 10 m of it as it does toward the touchline (WHICH WAY OFF THE BLOCK:
+50 / 13 / 37 and 53 / 13 / 34% toward / along / away), the two leans multiplied as odds. Corners 2.41 → 2.45; blocked
+passes then a corner 3.1 → 3.1%; struck within 18 m of the line attacked then a corner 7 → 7% (31). Code removed.
+
+Why — BLOCKED BY WHERE with its denominators (harness §8.351; `benchmarks_statsbomb_blockzone.py`), open-play passes
+struck a team-match by m off the line attacked (seeds 1000-4000 × 8, G5.244; StatsBomb PL 15/16 in brackets):
+
+| | 0-18 | 18-35 | 35-52 | 52-70 | 70+ |
+|---|---|---|---|---|---|
+| within 14 m of a touchline | **9.7 (19.1)** | 21.5 (36.4) | 40.9 (49.2) | 43.0 (45.8) | 27.8 (31.1) |
+| middle | **5.4 (11.8)** | 29.1 (36.9) | 72.1 (60.9) | 91.3 (71.7) | 65.9 (70.9) |
+
+In the last 18 m ours strikes 15.1 passes a team-match, real 30.9; wide 18-35 m 21.5 v 36.4. The blocked share there
+is near real (wide 0.84 of 9.7 = 8.7% v 11.6%), so of all blocked passes 8% are in the last 18 m against 33%, and a lean
+on them moves nothing. (StatsBomb's cross flag is no ruler for the blocked cross: 5.63 crosses a team-match from the
+wide last 18 m carry it, 0.03 of the blocked.) It is §8.330's line again — the ball on a man in their last 18 m 35
+stints v 60 — seen from the corner flag: the corners, the blocked crosses and the throw-ins high up are all short by
+the ball's time there.
+
+Noise, measured by accident: the trial's code drew the same shares from the same noise in a different order with its
+rows unset, and the 4-seed card went 12 / 9 / 12 → 11 / 5 / 17, throw-ins 20.2 → 19.1, with every ruler of the slice
+unmoved. A card move of five lines is a re-roll; slices are judged on their own ruler.
+
+Next: the ball's way into the last 18 m and its stay there — entries a team-match by how (a pass from 18-35 m wide / a
+carry / a cross-field ball / a ball in behind), and what the man there does next (StatsBomb + DFL v ours); the concept
+off the shelf once the short route shows. Harness only; tests 25/25; card as G5.244.

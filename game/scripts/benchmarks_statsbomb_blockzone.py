@@ -29,7 +29,7 @@ for f in files:
         if e["type"]["name"] != "Pass" or e["pass"].get("type", {}).get("name") in SET: continue
         x, y = e["location"][0] * SX, e["location"][1] * SY
         tl = 105 - x; z = 0 if tl < 18 else 1 if tl < 35 else 2 if tl < 52 else 3 if tl < 70 else 4; w = int(abs(y - 34) >= 20)
-        C[("n", w, z)] += 1
+        C[("n", w, z)] += 1; C[("nx", w, z)] += bool(e["pass"].get("cross"))
         tch = 34 - abs(y - 34); tb = 0 if tch < 5 else 1 if tch < 14 else 2
         ex, ey = e["pass"]["end_location"][0] * SX, e["pass"]["end_location"][1] * SY
         sd = 1 if y > 34 else -1   # +1: his touchline is at y = 68
@@ -39,7 +39,7 @@ for f in files:
         d = dirof(ex - x, (ey - y) * sd); hi = e["pass"].get("height", {}).get("name") == "High Pass"
         if tb < 2: C[("tn", tb, d)] += 1; C[("tnh", tb, d)] += hi
         if not any(r in byid and byid[r]["type"]["name"] == "Block" and byid[r]["team"]["id"] != e["team"]["id"] for r in e.get("related_events", [])): continue
-        C[("b", w, z)] += 1
+        C[("b", w, z)] += 1; C[("bx", w, z)] += bool(e["pass"].get("cross"))
         blk = next(byid[r] for r in e.get("related_events", []) if r in byid and byid[r]["type"]["name"] == "Block" and byid[r]["team"]["id"] != e["team"]["id"])
         if tb < 2:
             C[("tb", tb, d)] += 1
@@ -78,3 +78,4 @@ for tb, nm in ((0, "0-5 m off the touchline"), (1, "5-14 m")):
 for kk, nm in (("wy", "touchline"), ("wx", "goal line")):
     print(f"WHICH WAY OFF THE BLOCK, by the block's m off the nearer {nm} 0-5 / 5-10 / 10-20 / 20+: toward it / along / away % (n) — " + " | ".join(
         (lambda t: f"{100 * C[(kk, b4, 0)] / t:.0f} / {100 * C[(kk, b4, 1)] / t:.0f} / {100 * C[(kk, b4, 2)] / t:.0f} ({t})")(max(1, sum(C[(kk, b4, i)] for i in range(3)))) for b4 in range(4)))
+print(f"CROSSES (StatsBomb's cross flag) from the wide last 18 m / 18-35 m: {C[('nx', 1, 0)] / tm:.2f} / {C[('nx', 1, 1)] / tm:.2f} a team-match, blocked {C[('bx', 1, 0)] / tm:.2f} / {C[('bx', 1, 1)] / tm:.2f}")
