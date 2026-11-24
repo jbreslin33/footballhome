@@ -741,7 +741,10 @@ class FinancesScreen extends Screen {
         note: [g.parts.join(' + '), p.note, g.split > 1 ? C('cp_coach_split', `coaching games are counted per team, shared evenly between its ${g.split} competitions here`, { n: g.split }) : ''].filter(Boolean).join(' — ') });
     }
     for (const c of all) {
-      c.label = all.filter(o => o.scope === c.scope).length > 1 ? `${sc(c.scope).label || c.scope} — ${c.season}` : (sc(c.scope).label || c.league);
+      // a side where a team enters several competitions (youth: fall, winter, spring) names each one whole —
+      // age, league, season (owner 11/23: "would prefer it says whole thing"); otherwise the scope's name says it
+      const whole = all.some(o => o.top === c.top && all.filter(q => q.scope === o.scope).length > 1);
+      c.label = whole ? `${sc(c.scope).label || c.scope} — ${c.league} ${c.season}` : (sc(c.scope).label || c.league);
       c.cost = c.lines.filter(l => l.category !== 'bonds');
       c.total = c.cost.reduce((a, l) => a + Number(l.amount || 0), 0);
     }
