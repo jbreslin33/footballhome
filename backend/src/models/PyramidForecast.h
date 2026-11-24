@@ -23,11 +23,12 @@
 //                     A game's expected goals = average × home edge ×
 //                     attack × the other side's defence (Maher 1982; Dixon &
 //                     Coles 1997 without the low-score correction).
-//                     Form (mig 1767): with form_half_life_days set, a
-//                     game's weight halves every that many days before the
-//                     latest game played (Dixon & Coles 1997 §4.4); NULL =
-//                     every game the same.  The page's 📅 slider asks for
-//                     another, in whole weeks (mig 1771).
+//                     Form (migs 1767, 1772): the ratings can be built
+//                     from a window — each team's own last N games, or
+//                     the games of the last N weeks — instead of the
+//                     whole season (pyramid_forecast_policies form_unit /
+//                     form_window; the page's 📅 toggle + slider ask for
+//                     another).
 //   One game          independent Poisson goals each side → win / draw /
 //                     loss, the most likely scores, over 2.5, both score;
 //                     fair decimal odds = 1 / chance (no margin).
@@ -50,9 +51,9 @@ public:
     // teamId > 0 plays the season with that team's strength (attack ÷
     // defence) set to `rating`, the split between attack and defence kept;
     // never cached.
-    // form (mig 1767, owner 11/23 "allow to turn on or off and diff recency
-    // levels" → "just have slider bar for weeks", mig 1771): -1 = the
-    // conference's own half-life; 0 = every game the same; else days, whole
-    // weeks up to the policy's form_slider_max_weeks.  Cached per level.
-    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0, double form = -1);
+    // Form (owner 11/23 "toggle for games or weeks and default to games …
+    // so everyones last 3 games e.g."): formUnit "" = the conference's own
+    // window; "games" / "weeks" + form = that many (0 = the whole season).
+    // Cached per window.
+    static nlohmann::json build(int conferenceId, int teamId = 0, double rating = 0, const std::string& formUnit = "", int form = 0);
 };

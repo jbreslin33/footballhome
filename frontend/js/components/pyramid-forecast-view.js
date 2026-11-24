@@ -27,7 +27,7 @@ class PyramidForecastView {
     const q = new URLSearchParams(window.location.search || '');
     this.section = PyramidForecastView.SECTIONS.includes(q.get('s')) ? q.get('s') : 'story';
     this.feederPick = null;
-    this.form = null;   // 📅 recent-form level (mig 1767): null = the conference's own, 0 = off, else days
+    this.form = null;   // 📅 recent form (mig 1772): null = the conference's own, else { unit, n }
     if (q.get('fc') === 'all') this.conf = 0;
     else if (Number(q.get('fc'))) { this.conf = Number(q.get('fc')); this.team = Number(q.get('focus')) || null; this.feederFocus = q.get('ff') || null; }
   }
@@ -286,38 +286,47 @@ class PyramidForecastView {
     return dt.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
   }
 
-  // 📅 Recent form (mig 1767; owner 11/23 "just have slider bar for
-  // weeks", mig 1771): how many weeks until a game counts half — 1 (fresh
-  // start, jumpy) … max_weeks, then one more notch = off (every game the
-  // same).  ⭐ marks the conference's own; letting go replays every
-  // conference at that setting.
-  _formWeeks(f) { return Number(f.current) > 0 ? Math.round(Number(f.current) / 7) : Number(f.max_weeks) + 1; }
-  _formLabel(f, v) { return v > Number(f.max_weeks) ? this._copy('fc_form_off') : this._copy('fc_form_weeks', { weeks: v }); }
+  // 📅 Recent form (migs 1767, 1772; owner 11/23 "just have slider bar"
+  // → "toggle for games or weeks and default to games … so everyones last
+  // 3 games e.g."): the ratings from each team's last N games, or from the
+  // last N weeks' games; the slider's far right = the whole season.  ⭐
+  // marks the conference's own; letting go replays every conference.
+  _formMax(f, unit) { return Number((f.max || {})[unit]) || 0; }
+  _formLabel(f, unit, v) {
+    return v >= this._formMax(f, unit) ? this._copy('fc_form_all') : this._copy(unit === 'weeks' ? 'fc_form_weeks' : 'fc_form_games', { n: v });
+  }
   _formHtml(d) {
     const f = d && d.form, esc = (x) => this._esc(x);
-    if (!f || !(Number(f.max_weeks) > 0)) return '';
-    const v = this._formWeeks(f), star = Number(f.default) > 0 ? Math.round(Number(f.default) / 7) : Number(f.max_weeks) + 1;
+    if (!f || !f.max) return '';
+    const max = this._formMax(f, f.unit);
+    if (max < 2) return '';
+    const v = Number(f.current) > 0 ? Number(f.current) : max;
+    const own = f.unit === f.default_unit && Number(f.current) === (Number(f.default) >= this._formMax(f, f.default_unit) ? 0 : Number(f.default));
+    const star = f.unit === f.default_unit && Number(f.default) > 0 && Number(f.default) < max ? Number(f.default) : null;
     return `<div style="margin:0 0 12px; padding:8px 12px; border-radius:10px; border:1px solid rgba(148,163,184,0.35); background:rgba(148,163,184,0.08); max-width:560px;">
-        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.82rem; font-weight:800;">
           <span>${esc(this._copy('fc_form_label'))}</span>
-          ${v !== star ? `<button class="ap-pill" data-fc-form-reset style="padding:1px 10px; font-size:0.75rem;">${esc(this._copy('fc_form_reset'))}</button>` : ''}
+          <span class="fc-sub" style="margin:0;">${['games', 'weeks'].map((u) => `<button class="ap-pill ${f.unit === u ? 'on' : ''}" data-fc-form-unit="${u}">${esc(this._copy(`fc_form_unit_${u}`))}</button>`).join('')}
+            ${own ? '' : `<button class="ap-pill" data-fc-form-reset>${esc(this._copy('fc_form_reset'))}</button>`}</span>
         </div>
-        <input type="range" min="1" max="${Number(f.max_weeks) + 1}" step="1" value="${v}" data-fc-form data-fc-form-max="${Number(f.max_weeks)}" list="fc-form-ticks" style="width:100%; margin:6px 0 2px;">
-        <datalist id="fc-form-ticks"><option value="${star}" label="⭐"></option></datalist>
-        <div data-fc-form-label style="font-size:0.8rem;">${esc(this._formLabel(f, v))}${v === star ? ' ⭐' : ''}</div>
+        <input type="range" min="1" max="${max}" step="1" value="${v}" data-fc-form="${esc(f.unit)}" list="fc-form-ticks" style="width:100%; margin:6px 0 2px;">
+        <datalist id="fc-form-ticks">${star ? `<option value="${star}" label="⭐"></option>` : ''}</datalist>
+        <div data-fc-form-label style="font-size:0.8rem;">${esc(this._formLabel(f, f.unit, v))}${own ? ' ⭐' : ''}</div>
         <div style="font-size:0.72rem; opacity:0.75; margin-top:2px;">${esc(this._copy('fc_form_hint'))}</div>
       </div>`;
   }
-  _setForm(days) {
-    this.form = days; this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
+  // form = null (the conference's own) | { unit: 'games' | 'weeks', n } — n 0 = the whole season
+  _setForm(form) {
+    this.form = form; this.whatIf = null; this._wiSeq = (this._wiSeq || 0) + 1;
     this.data.clear(); this._load(this.conf);
   }
-  _formQuery() { return this.form == null ? '' : `&form=${encodeURIComponent(this.form)}`; }
+  _formNow() { const d = this.conf === 0 ? (this._all || [])[0] : this.data.get(this.conf); return d && d.form; }
+  _formQuery() { return this.form ? `&form_unit=${encodeURIComponent(this.form.unit)}&form=${encodeURIComponent(this.form.n)}` : ''; }
 
   _howHtml(d) {
     const m = d.model || {};
     const parts = [this._copy('fc_how', { games: d.played, left: d.left, avg: m.avg_goals, home: m.home_edge })];
-    if (m.form_half_life_days) parts.push(this._copy('fc_form', { days: m.form_half_life_days }));   // mig 1767
+    if (d.form && Number(d.form.current) > 0) parts.push(`${this._formLabel(d.form, d.form.unit, Number(d.form.current))}.`);   // mig 1772
     const f = d.format || {};
     if (f.group_rounds) parts.unshift(this._copy('fc_format', { n: f.per_team, rounds: f.group_rounds, cross: f.cross_group_rounds, listed: f.listed, added: f.added }));
     if (d.policy && d.policy.feeder) parts.push(this._copy('fc_feeder_note', { feeder: d.policy.feeder, pct: `${Math.round(d.policy.feeder_stay_up_pct)}%` }));
@@ -789,6 +798,13 @@ class PyramidForecastView {
       const sc = e.target.closest('[data-fc-sec]');
       if (sc) { this.section = sc.dataset.fcSec; this._repaint(); return; }
       if (e.target.closest('[data-fc-form-reset]')) { this._setForm(null); return; }
+      const fu = e.target.closest('[data-fc-form-unit]');
+      if (fu) {   // the other unit, the slider's number kept when it fits
+        const f = this._formNow(), unit = fu.dataset.fcFormUnit;
+        if (!f || unit === f.unit) return;
+        const n = Number(f.current) > 0 && Number(f.current) < this._formMax(f, unit) ? Number(f.current) : 0;
+        this._setForm({ unit, n }); return;
+      }
       const fp = e.target.closest('[data-fc-feeder]');
       if (fp) { this.feederPick = fp.dataset.fcFeeder || null; this._repaint(); return; }
       const t = e.target.closest('[data-fc-team]');
@@ -815,7 +831,8 @@ class PyramidForecastView {
       const fs = e.target.closest('[data-fc-form]');
       if (fs) {
         const lab = root.querySelector('[data-fc-form-label]');
-        if (lab) lab.textContent = this._formLabel({ max_weeks: Number(fs.dataset.fcFormMax) }, Number(fs.value));
+        const f = this._formNow();
+        if (lab && f) lab.textContent = this._formLabel(f, f.unit, Number(fs.value));
         return;
       }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
@@ -835,7 +852,7 @@ class PyramidForecastView {
         return;
       }
       const fs = e.target.closest('[data-fc-form]');
-      if (fs) { const v = Number(fs.value); this._setForm(v > Number(fs.dataset.fcFormMax) ? 0 : 7 * v); return; }
+      if (fs) { const v = Number(fs.value); this._setForm({ unit: fs.dataset.fcForm, n: v >= Number(fs.max) ? 0 : v }); return; }
       const sl = e.target.closest('[data-fc-slider]'); if (!sl) return;
       const base = this.data.get(this.conf); if (!base) return;
       this._runWhatIf(Number(sl.dataset.fcSlider), this._fromSlider(base, Number(sl.value)));
