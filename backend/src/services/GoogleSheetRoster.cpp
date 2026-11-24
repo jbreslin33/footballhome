@@ -129,3 +129,51 @@ GoogleSheetRoster::Result GoogleSheetRoster::fetch(const std::string& spreadshee
     std::cerr << "[GoogleSheetRoster] tab \"" << tabName << "\" (gid " << gid << "): " << out.pdf.size() << " bytes" << std::endl;
     return out;
 }
+
+// ── #dual-rostering (mig 1774) ─────────────────────────────────────────
+// The htmlview page's tab list, every entry:
+//   items.push({name: "F\x26M FC (Liga 1)", pageUrl: "…gid=682688852", …
+// The name is a JavaScript string (\xNN, \uNNNN, \" escapes).
+std::vector<GoogleSheetRoster::Tab> GoogleSheetRoster::tabs(const std::string& spreadsheetId, std::string& error) {
+    std::vector<Tab> out;
+    if (!validId(spreadsheetId)) { error = "the roster sheet is not set up correctly"; return out; }
+    auto page = get(std::string(kSheetsBase) + spreadsheetId + "/htmlview");
+    if (!page.ok()) { error = "the league's roster sheet did not open (" + why(page) + ")"; return out; }
+    const std::string& s = page.body;
+    const std::string key = "items.push({name: \"";
+    auto utf8 = [](unsigned cp, std::string& to) {
+        if (cp < 0x80) to.push_back(static_cast<char>(cp));
+        else if (cp < 0x800) { to.push_back(static_cast<char>(0xC0 | (cp >> 6))); to.push_back(static_cast<char>(0x80 | (cp & 0x3F))); }
+        else { to.push_back(static_cast<char>(0xE0 | (cp >> 12))); to.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F))); to.push_back(static_cast<char>(0x80 | (cp & 0x3F))); }
+    };
+    for (size_t p = 0; (p = s.find(key, p)) != std::string::npos;) {
+        p += key.size();
+        Tab tab;
+        size_t i = p;
+        for (; i < s.size() && s[i] != '"'; i++) {
+            if (s[i] != '\\' || i + 1 >= s.size()) { tab.name.push_back(s[i]); continue; }
+            const char e = s[++i];
+            const size_t digits = e == 'x' ? 2 : e == 'u' ? 4 : 0;
+            if (digits && i + digits < s.size()) {
+                try { utf8(static_cast<unsigned>(std::stoul(s.substr(i + 1, digits), nullptr, 16)), tab.name); } catch (...) {}
+                i += digits;
+            } else tab.name.push_back(e);
+        }
+        const size_t end = s.find('}', i);
+        const size_t g = s.find("gid=", i);
+        if (g == std::string::npos || (end != std::string::npos && g > end)) continue;
+        for (size_t k = g + 4; k < s.size() && std::isdigit(static_cast<unsigned char>(s[k])); k++) tab.gid.push_back(s[k]);
+        if (!tab.name.empty() && !tab.gid.empty()) out.push_back(tab);
+        p = i;
+    }
+    if (out.empty()) error = "the league's roster sheet lists no tabs";
+    return out;
+}
+
+std::string GoogleSheetRoster::csv(const std::string& spreadsheetId, const std::string& gid, std::string& error) {
+    if (!validId(spreadsheetId) || gid.empty() || gid.find_first_not_of("0123456789") != std::string::npos) { error = "the roster sheet is not set up correctly"; return {}; }
+    auto r = get(std::string(kSheetsBase) + spreadsheetId + "/export?format=csv&gid=" + gid);
+    if (!r.ok()) { error = "the tab did not download (" + why(r) + ")"; return {}; }
+    if (r.body.rfind("<!DOCTYPE", 0) == 0 || r.body.rfind("<html", 0) == 0) { error = "the league's roster sheet is not shared by link any more"; return {}; }
+    return r.body;
+}

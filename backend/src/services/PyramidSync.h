@@ -51,7 +51,7 @@ public:
     static nlohmann::json conferenceTravel(int confId);
 
     // A team's staff + roster from its league page, when a day old (mig 856).
-    static void teamPeople(int teamId);
+    static void teamPeople(int teamId, int maxAgeHours = 24);   // 0 = read now (#dual-rostering sweep, mig 1774)
 
     // A conference's main city: {name, geometry} (OSM boundary, fetched once)
     // or null (mig 860); and a point-in-(Multi)Polygon test (lon, lat).

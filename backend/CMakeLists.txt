@@ -111,6 +111,7 @@ set(SOURCES
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp
     src/services/GoogleSheetRoster.cpp
+    src/services/RosterWatchSync.cpp
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
     src/services/AttendanceCallScheduler.cpp
@@ -168,6 +169,7 @@ set(SOURCES
     src/controllers/GameRosterController.cpp
     src/controllers/LockupController.cpp
     src/controllers/AttendanceCallController.cpp
+    src/controllers/RosterWatchController.cpp
     src/controllers/ClubLogoController.cpp
     src/controllers/ClubFileController.cpp
     src/controllers/InvoiceController.cpp

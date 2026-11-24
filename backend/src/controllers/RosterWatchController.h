@@ -1,0 +1,28 @@
+#pragma once
+#include <string>
+#include "../core/Controller.h"
+
+// RosterWatchController — /api/roster-watch, the #dual-rostering page
+// (mig 1774; owner 2026-11-23: "a page to report dual or even tri
+// rostering").  Club admins only.
+//
+//   GET /api/roster-watch
+//     → { sweep: {running, done, total},
+//         totals: {players, teams},
+//         sources: [{label, teams, read, players, at, ok, note}],
+//         matches: [{key, teams, clubs, dobs, dob_same,
+//                    rows: [{name, league, team, division, club, dob, added}]}] }
+//     Every name (fh_name_key) rostered on two or more teams in
+//     roster_watch_entries, most clubs first.  Starts a sweep
+//     (RosterWatchSync) when the rosters are stale.
+//
+//   POST /api/roster-watch/refresh   read every roster again, now
+//     → { started, sweep }
+class RosterWatchController : public Controller {
+public:
+    void registerRoutes(Router& router, const std::string& prefix) override;
+
+private:
+    Response handleGet(const Request& request);
+    Response handleRefresh(const Request& request);
+};

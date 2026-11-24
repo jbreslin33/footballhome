@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <vector>
 #include "RosterFile.h"
 
 // GoogleSheetRoster — pulls one team's tab of a league's public roster
@@ -21,4 +22,10 @@ public:
 
     // spreadsheetId "1qGcNV7z-…", tabName "Lighthouse Boys Club".
     static Result fetch(const std::string& spreadsheetId, const std::string& tabName);
+
+    // #dual-rostering (mig 1774, RosterWatchSync): a workbook's tabs in
+    // sheet order, and one tab as CSV.  On failure: empty, `error` says why.
+    struct Tab { std::string name, gid; };
+    static std::vector<Tab> tabs(const std::string& spreadsheetId, std::string& error);
+    static std::string csv(const std::string& spreadsheetId, const std::string& gid, std::string& error);
 };

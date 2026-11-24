@@ -113,3 +113,25 @@ handle proxies differently (env var vs CLI flag vs ProxyAgent), and
 DNS-over-HTTPS in modern Chromium bypasses `HTTPS_PROXY` for name
 resolution. Running the whole tool inside the netns is the only way
 that's universally correct.
+
+## Every league roster: #dual-rostering (mig 1774)
+
+`RosterWatchSync` (backend) reads every roster we can and the
+`#dual-rostering` page lists each name that is on two or more teams.
+
+| League | Where it is read | Through the VPN? |
+| ------ | ---------------- | ---------------- |
+| APSL, CSL, ADASL | each team's TeamPass page (`pyramid_sources.team_page`) → `pyramid_team_people` | yes — the proxy above |
+| CASA | the public roster workbooks on Google Sheets (`roster_sheet_sources`, one row per workbook) → `roster_sheet_teams` / `roster_sheet_players` | no |
+| UPSL | **not read** — upsl.com answers every automated reader with a Cloudflare challenge, from the home line and the VPN alike, and publishes no roster list elsewhere | — |
+
+- A sweep starts when the page opens and the last one is
+  `roster_watch_policy.stale_hours` old (24); the page's 🔄 button reads
+  everything again. One request at a time, `pause_ms` apart (~200 pages,
+  a few minutes).
+- A new CASA workbook (a new season, a new region) = one
+  `roster_sheet_sources` row by migration: `tab_name` NULL when each team
+  has its own tab, else the name of the one tab listing every team.
+- A sheet team that is really one of the pyramid's clubs under another
+  name = a `pyramid_club_aliases` row; otherwise the page counts it as a
+  different club.

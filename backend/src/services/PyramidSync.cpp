@@ -748,15 +748,15 @@ json PyramidSync::conferenceTravel(int confId) {
 // pages: staff = li.coach-row ("<b>Manager:</b> Name"); roster = the
 // TableRoster rows (name, "added: date", goals, assists).  A failed read
 // keeps what was there.
-void PyramidSync::teamPeople(int teamId) {
+void PyramidSync::teamPeople(int teamId, int maxAgeHours) {
     auto* db = Database::getInstance();
     try {
         auto r = db->query(
             "SELECT t.external_id, s.team_page FROM pyramid_teams t "
             "  JOIN pyramid_divisions d ON d.id = t.division_id JOIN pyramid_sources s ON s.id = d.source_id "
             " WHERE t.id = $1::int AND s.team_page IS NOT NULL "
-            "   AND (t.people_fetched_at IS NULL OR t.people_fetched_at < now() - interval '24 hours')",
-            {std::to_string(teamId)});
+            "   AND (t.people_fetched_at IS NULL OR t.people_fetched_at <= now() - make_interval(hours => $2::int))",
+            {std::to_string(teamId), std::to_string(maxAgeHours < 0 ? 0 : maxAgeHours)});
         if (r.empty()) return;
         std::string url = r[0]["team_page"].c_str();
         const std::string ext = r[0]["external_id"].c_str();

@@ -59,6 +59,7 @@
 #include "controllers/GameRosterController.h"
 #include "controllers/LockupController.h"
 #include "controllers/AttendanceCallController.h"
+#include "controllers/RosterWatchController.h"
 #include "controllers/ClubLogoController.h"
 #include "controllers/ClubFileController.h"
 #include "controllers/InvoiceController.h"
@@ -171,6 +172,7 @@ private:
     std::shared_ptr<GameRosterController> game_roster_controller_;
     std::shared_ptr<LockupController> lockup_controller_;
     std::shared_ptr<AttendanceCallController> attendance_call_controller_;
+    std::shared_ptr<RosterWatchController> roster_watch_controller_;   // #dual-rostering (mig 1774)
     std::shared_ptr<ClubLogoController> club_logo_controller_;
     std::shared_ptr<ClubFileController> club_file_controller_;
     std::shared_ptr<InvoiceController> invoice_controller_;
@@ -291,6 +293,7 @@ public:
         game_roster_controller_ = std::make_shared<GameRosterController>();
         lockup_controller_ = std::make_shared<LockupController>();
         attendance_call_controller_ = std::make_shared<AttendanceCallController>();
+        roster_watch_controller_ = std::make_shared<RosterWatchController>();
         club_logo_controller_ = std::make_shared<ClubLogoController>();
         club_file_controller_ = std::make_shared<ClubFileController>();
         invoice_controller_ = std::make_shared<InvoiceController>();
@@ -648,6 +651,7 @@ private:
         // #security (owner 2026-09-24): nightly gate photo check-in + upload link (mig 421/424).
         router_.useController("/api/security", lockup_controller_);
         router_.useController("/api/attendance-calls", attendance_call_controller_);
+        router_.useController("/api/roster-watch", roster_watch_controller_);
         // #logos (owner 2026-09-25): club crests stored in the DB, opponent text -> club (mig 428).
         router_.useController("/api/club-logos", club_logo_controller_);
         router_.useController("/api/files", club_file_controller_);

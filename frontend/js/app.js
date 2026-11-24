@@ -66,6 +66,7 @@ class App {
       'league-registration': new LeagueRegistrationScreen(this.navigation, this.auth),
       awards: new AwardsScreen(this.navigation, this.auth),
       attendanceCalls: new AttendanceCallsScreen(this.navigation, this.auth),
+      dualRostering: new DualRosteringScreen(this.navigation, this.auth),
       texts: new SmsOptInBoardScreen(this.navigation, this.auth),
       contacts: new ContactsScreen(this.navigation, this.auth),
       leagueSchedules: new LeagueSchedulesScreen(this.navigation, this.auth),
@@ -190,6 +191,8 @@ class App {
     this.screenManager.register('awards', this.screens.awards);
     // Attendance Calls (#attendance-calls, mig 1290) — every attendance call that went out. See screens/attendance-calls.js.
     this.screenManager.register('attendance-calls', this.screens.attendanceCalls);
+    // Dual Rostering (#dual-rostering, mig 1774) — one name on two or three league rosters. See screens/dual-rostering.js.
+    this.screenManager.register('dual-rostering', this.screens.dualRostering);
     // Uniforms & Kit (#kit) — uniform numbers + kit handed out. See screens/kit.js.
     this.screenManager.register('kit', this.screens.kit);
     // Texts (#texts, mig 537) — who has opted in to club texts, nudge the rest. See screens/texts.js.
