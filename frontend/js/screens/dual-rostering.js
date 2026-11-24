@@ -7,7 +7,11 @@
 // and CASA's public roster workbooks.  One card per name — its teams, the
 // league of each, the date added and (where the league shows one) the birth
 // date.  Pills: Different clubs (default) / Same club / 3+ teams / All; a
-// search box narrows by name, team or league.  The fold at the bottom says
+// search box narrows by name, team or league.  Under them (mig 1778, owner:
+// "apsl pill then apsl confs. casa pill then casa confs … or all"): a row
+// of league pills, then the chosen league's conferences, then the chosen
+// conference's divisions — each row starts with All; a card shows when any
+// of its teams is in the pick.  The fold at the bottom says
 // where each roster came from and when it was read.
 //
 // The server re-reads the rosters when they are a day old (a sweep of ~200
@@ -33,6 +37,9 @@ class DualRosteringScreen extends Screen {
     this.error = null;
     this.view = 'cross';   // cross | same | tri | all
     this.q = '';
+    this.group = '';      // league pill ('' = all), then its conference, then its division
+    this.sub = '';
+    this.div = '';
     this._timer = null;
     this.pasteNote = null;   // the last save's answer, shown in the paste fold
     this.pasteOpen = false;
@@ -141,6 +148,12 @@ class DualRosteringScreen extends Screen {
     this.element.addEventListener('click', (e) => {
       const v = e.target.closest('[data-dr-view]');
       if (v) { this.view = v.dataset.drView; this._render(); return; }
+      const g = e.target.closest('[data-dr-group]');
+      if (g) { this.group = g.dataset.drGroup; this.sub = ''; this.div = ''; this._render(); return; }
+      const sb = e.target.closest('[data-dr-sub]');
+      if (sb) { this.sub = sb.dataset.drSub; this.div = ''; this._render(); return; }
+      const dv = e.target.closest('[data-dr-div]');
+      if (dv) { this.div = dv.dataset.drDiv; this._render(); return; }
       if (e.target.closest('[data-dr-refresh]')) { this._refresh(); return; }
       if (e.target.closest('[data-dr-paste-save]')) { this._savePaste(); return; }
       const rm = e.target.closest('[data-dr-paste-remove]');
@@ -216,6 +229,46 @@ class DualRosteringScreen extends Screen {
     if (view === 'tri') return m.teams >= 3;
     return true;
   }
+  // Is one of the card's teams in the league / conference / division picked?
+  _inLeague(m, group = this.group, sub = this.sub, div = this.div) {
+    if (!group) return true;
+    return (m.rows || []).some(r => r.group === group && (!sub || r.sub === sub) && (!div || r.division === div));
+  }
+  // The pill rows: every league, the picked league's conferences, the picked
+  // conference's divisions (only when it has more than one), in the DB's order.
+  _leaguePills(matches) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const inView = matches.filter(m => this._inView(m, this.view));
+    const rows = inView.flatMap(m => m.rows || []);
+    const uniq = (list, key, ord) => {
+      const seen = new Map();
+      list.forEach(r => { if (r[key] && !seen.has(r[key])) seen.set(r[key], ord(r)); });
+      return [...seen.entries()].sort((a, b) => a[1] - b[1] || String(a[0]).localeCompare(String(b[0]))).map(x => x[0]);
+    };
+    const row = (attr, picked, allLabel, values, count, label = (v) => v) => `
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin:0 0 8px;">
+        <button type="button" class="dr-pill ${picked === '' ? 'on' : ''}" ${attr}="">${esc(allLabel)} (${count('')})</button>
+        ${values.map(v => `<button type="button" class="dr-pill ${picked === v ? 'on' : ''}" ${attr}="${esc(v)}">${esc(label(v))} (${count(v)})</button>`).join('')}
+      </div>`;
+    // "Delaware River Conference (Pennsylvania & New Jersey) - Group A" under Delaware River → "Group A".
+    const short = (v) => {
+      if (!String(v).startsWith(this.sub)) return v;
+      const cut = v.lastIndexOf(' - ');
+      const rest = cut >= 0 ? v.slice(cut + 3) : v.slice(this.sub.length).replace(/^\s*Conference\s*/, '').replace(/^[\s–-]+/, '');
+      return rest.trim() || v;
+    };
+    const n = (g, s2, d2) => inView.filter(m => this._inLeague(m, g, s2, d2)).length;
+    let html = row('data-dr-group', this.group, this._c('league_all', {}, 'All leagues'), uniq(rows, 'group', r => r.go), g => n(g, '', ''));
+    if (this.group) {
+      const inGroup = rows.filter(r => r.group === this.group);
+      html += row('data-dr-sub', this.sub, this._c('sub_all', { league: this.group }, `All ${this.group}`), uniq(inGroup, 'sub', r => r.so), s2 => n(this.group, s2, ''));
+      if (this.sub) {
+        const divs = uniq(inGroup.filter(r => r.sub === this.sub), 'division', () => 0);
+        if (divs.length > 1) html += row('data-dr-div', this.div, this._c('sub_all', { league: this.sub }, `All ${this.sub}`), divs, d2 => n(this.group, this.sub, d2), short);
+      }
+    }
+    return html;
+  }
   _matchesSearch(m) {
     if (!this.q) return true;
     return (m.rows || []).some(r => [r.name, r.team, r.league, r.club, r.division].some(t => t && String(t).toLowerCase().includes(this.q)));
@@ -243,8 +296,9 @@ class DualRosteringScreen extends Screen {
         `${(d.totals || {}).players || 0} rostered players on ${(d.totals || {}).teams || 0} teams.`))}</div>
       ${progress}
       <div style="display:flex; gap:6px; flex-wrap:wrap; margin:8px 0 10px; ${window.LoadProgress ? LoadProgress.dim(!!sweep.running) : ''}">
-        ${views.map(([code, tier, fb]) => `<button type="button" class="dr-pill ${code === this.view ? 'on' : ''}" data-dr-view="${code}">${esc(this._c(tier, {}, fb))} (${matches.filter(m => this._inView(m, code)).length})</button>`).join('')}
-      </div>`;
+        ${views.map(([code, tier, fb]) => `<button type="button" class="dr-pill ${code === this.view ? 'on' : ''}" data-dr-view="${code}">${esc(this._c(tier, {}, fb))} (${matches.filter(m => this._inView(m, code) && this._inLeague(m)).length})</button>`).join('')}
+      </div>
+      <div style="${window.LoadProgress ? LoadProgress.dim(!!sweep.running) : ''}">${this._leaguePills(matches)}</div>`;
     this._renderBody();
   }
 
@@ -285,7 +339,7 @@ class DualRosteringScreen extends Screen {
             </div>`).join('')}
         </div>`;
     };
-    const shown = (d.matches || []).filter(m => this._inView(m, this.view) && this._matchesSearch(m));
+    const shown = (d.matches || []).filter(m => this._inView(m, this.view) && this._inLeague(m) && this._matchesSearch(m));
 
     const srcLine = (s) => {
       let text;

@@ -77,7 +77,9 @@ Response RosterWatchController::handleGet(const Request& request) {
                                        WHERE e.name_key = g.name_key AND e.dob IS NOT NULL GROUP BY e.dob) x), 0) >= 2,
                 'rows', (SELECT json_agg(json_build_object(
                            'name', e.full_name, 'league', e.league, 'team', e.team, 'division', e.division, 'club', e.club,
-                           'dob', to_char(e.dob, 'FMMM/FMDD/YYYY'), 'added', e.added_on) ORDER BY e.league, e.team)
+                           'dob', to_char(e.dob, 'FMMM/FMDD/YYYY'), 'added', e.added_on,
+                           'group', e.league_group, 'sub', e.league_sub, 'go', e.group_order, 'so', e.sub_order)
+                           ORDER BY e.group_order, e.sub_order, e.team)
                          FROM e WHERE e.name_key = g.name_key))
                 ORDER BY g.n_clubs DESC, g.n_teams DESC, g.name_key) FROM g), '[]')
           )::text AS body)SQL");

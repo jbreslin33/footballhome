@@ -11,7 +11,9 @@
 //         totals: {players, teams},
 //         sources: [{label, teams, read, players, at, ok, note}],
 //         matches: [{key, teams, clubs, dobs, dob_same,
-//                    rows: [{name, league, team, division, club, dob, added}]}] }
+//                    rows: [{name, league, team, division, club, dob, added,
+//                            group, sub, go, so}]}] }   group/sub = the league and
+//                            conference pills (mig 1778), go/so their order
 //     Every name (fh_name_key) rostered on two or more teams in
 //     roster_watch_entries, most clubs first.  Starts a sweep
 //     (RosterWatchSync) when the rosters are stale.
