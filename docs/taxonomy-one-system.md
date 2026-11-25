@@ -479,3 +479,12 @@ A live room makes every viewer wait while the match finds the concept. A **build
   (`--good`, `--bad`); players see exactly the set. "Show me more" from the pool is later, if wanted.
 - **Stale**: each build carries the engine sha; an engine change = build that concept again (by hand
   for now). Presentation (what it is, the cue, freeze-and-tap) comes once several concepts are built.
+
+**Goal side (mig 1920).** Owner 11/25: "being able to press but the player can dribble to our goal lol is
+bad as we are 'chasing'" · "to be correct fully we need to prevent forward progress right?" — yes.
+Stay in pressing distance done fully = **in reach AND goal side** (`PressReach::goal_side`: nearer his
+own goal's centre than his man is; REACH flag 4), and its test is the result: **no forward progress**
+for his man. A read only — the sim does not act on it yet (the step into reach goes from his place in
+the shape, which is usually goal side). The viewer calls in-reach-on-the-wrong-side red ("he would be
+chasing"); the clip judge's good needs goal side at the kick, and bad now includes near-but-chasing.
+Open: whether the STEP itself should aim for a goal-side spot (an engine behaviour change — harness).
