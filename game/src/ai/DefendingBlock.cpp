@@ -65,12 +65,8 @@ public:
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         const auto& me = c.world.player(v.slot);
         o.target = c.block.spot(v, c.world);
-        // Stay in pressing distance (ai/concepts/PressingDistance), when a side is given it: off
-        // his spot toward his man by the dial's share of the step that puts him back in reach.
-        if (const Fixed64 hold = c.block.params().press_hold; hold.raw > 0) {
-            const Vec2 step = c.block.pressDistance().of(v.slot).step;
-            o.target = Vec2{o.target.x + step.x * hold, o.target.y + step.y * hold};
-        }
+        // His pressing-distance machine's proposal (ai/concepts/Machines), when it is awake.
+        c.block.machines().bendHold(v.slot, c.block.pressDistance().of(v.slot).step, c.block.params().press_hold, o.target);
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.why = Why::Hold;
         return true;
@@ -113,20 +109,13 @@ public:
         if (!flight && ep.pinned_scale.raw > 0 && c.world.pitchHalfY() - math::fx_abs(ball.pos.y) < ep.pinned_m) off = off * ep.pinned_scale;
         o.target = len.raw > 0 ? Vec2{crp.x + to_goal.x * off / len, crp.y + to_goal.y * off / len}
                                : crp;
-        // [behaviour: cs_press_along_the_lane]
-        // Press on the cover shadow (ai/concepts/CoverShadow), when a side is given it: his spot
-        // moves off the line to our goal onto the line to the receiver he is hiding, the same
-        // stand-off from the carrier — so he arrives along the pass he blocks.
-        if (!flight && ep.shadow_press.raw > 0) {
-            const int rcv = c.block.shadows().screen(v.team);
-            if (rcv >= 0) {
-                const auto& rp = c.world.player(static_cast<core::SlotIndex>(rcv)).pos;
-                const Vec2 to_r{rp.x - crp.x, rp.y - crp.y};
-                const Fixed64 lr = math::length(to_r);
-                if (lr > off) {
-                    const Vec2 lane{crp.x + to_r.x * off / lr, crp.y + to_r.y * off / lr};
-                    o.target = Vec2{o.target.x + (lane.x - o.target.x) * ep.shadow_press, o.target.y + (lane.y - o.target.y) * ep.shadow_press};
-                }
+        // His cover-shadow machine's proposal (ai/concepts/Machines), when it is awake: onto the
+        // lane to the receiver it is hiding (the one it woke for, kept while it is committed).
+        if (!flight) {
+            const auto& cs = c.block.machines().of(v.slot, concepts::MachineId::CoverShadow);
+            if (cs.state == concepts::shadow::OnTheLane && cs.other >= 0 && cs.other < c.world.playerCount()) {
+                const auto& rp = c.world.player(static_cast<core::SlotIndex>(cs.other)).pos;
+                c.block.machines().bendPress(v.slot, crp, off, Vec2{rp.x, rp.y}, ep.shadow_press, o.target);
             }
         }
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));

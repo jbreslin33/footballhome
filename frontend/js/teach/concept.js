@@ -29,6 +29,11 @@
   const token = localStorage.getItem('token');
   if (!token) { location.href = '/'; return; }
   const CONCEPT = Number(new URLSearchParams(location.search).get('concept')) || 0;
+  // Owner 11/25: "get rid of everything lol and i will ask for stuff to come back. i need states,
+  // replay button, title of concept and if clicked popup def" · "game should be rest of screen".
+  // BARE switches off every overlay drawn on the pitch but the two rings (him, his man) and the
+  // label with his states; the code stays, so a piece comes back by name when he asks.
+  const BARE = true;
   const NO = 255, BEFORE = 90, AFTER = 150, MIN_HELD = 5, KEEP = 3600;   // ticks at 30 Hz; brain frames at 5 Hz
   const SPEEDS = [[0.125, '⅛×'], [0.25, '¼×'], [0.5, '½×'], [1, '1×'], [2, '2×']];
 
@@ -44,6 +49,7 @@
   let reachKind = false;                          // this concept IS pressing distance (examples = a pass to a man somebody has)
   let shadowKind = false;                         // this concept IS the cover shadow (examples = a man closing the ball down)
   const shadowLog = [];                           // [{tick, v: { body, screen, hidden }}]
+  const machineLog = [];                          // [{tick, v: per slot [{machine, state, other}]}] — the engine's concept machines (frame MACHINES)
   const stateLog = [];                            // [{tick, v: [state code per slot]}] — his own machine, from the engine (frame STATES)
   const phaseLog = [];                            // [{tick, v: [home phase, away phase]}] — the team machine (frame PHASE)
   const ownKind = () => pairKind;    // the page cuts its own examples; the engine's per-player label is not needed
@@ -81,6 +87,7 @@
         else if (f.type === T.CONCEPT_LEGEND) { legend = GameWire.decodeConceptLegend(view, f.payloadAt); reported = !!legend[CONCEPT] || shadowKind; paintBar(); }
         else if (f.type === T.BRAIN) see(GameWire.decodeBrain(view, f.payloadAt));
         else if (f.type === T.PAIRS) seePairs(GameWire.decodePairs(view, f.payloadAt));
+        else if (f.type === T.MACHINES) { machineLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeMachines(view, f.payloadAt) }); if (machineLog.length > KEEP / 6 + 20) machineLog.shift(); }
         else if (f.type === T.STATES) { stateLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeStates(view, f.payloadAt) }); if (stateLog.length > KEEP / 6 + 20) stateLog.shift(); }
         else if (f.type === T.PHASE) { phaseLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodePhase(view, f.payloadAt) }); if (phaseLog.length > KEEP / 6 + 20) phaseLog.shift(); }
         else if (f.type === T.SHADOW) { shadowLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeShadow(view, f.payloadAt) }); if (shadowLog.length > KEEP / 6 + 20) shadowLog.shift(); }
@@ -110,7 +117,7 @@
       if (p.held >= MIN_HELD && clear && snaps.length && snaps[0].tick <= p.onset - BEFORE) {
         clips.push({ slot, onset: p.onset, from: p.onset - BEFORE, to: p.onset + AFTER, until: Math.min(p.last, p.onset + AFTER) });
         if (clips.length > 20) { clips.shift(); if (at > 0) at--; }
-        if (at < 0) { load.done = true; paintLoad(); show(0); setTab('machine'); }   // the first one plays by itself, his state machine beside it
+        if (at < 0) { load.done = true; paintLoad(); show(0); }   // the first one plays by itself
         else paintBar();
       }
     }
@@ -137,7 +144,7 @@
       if (sw.held >= MIN_HELD && clear && snaps.length && snaps[0].tick <= sw.onset - BEFORE) {
         clips.push({ slot, onset: sw.onset, from: sw.onset - BEFORE, to: sw.onset + AFTER, until: sw.onset + 60, was: sw.from, now: sw.to });
         if (clips.length > 20) { clips.shift(); if (at > 0) at--; }
-        if (at < 0) { load.done = true; paintLoad(); show(0); setTab('machine'); } else paintBar();
+        if (at < 0) { load.done = true; paintLoad(); show(0); } else paintBar();
       }
     }
   }
@@ -196,7 +203,7 @@
     at = Math.max(0, Math.min(clips.length - 1, i));
     const c = clips[at];
     Object.assign(play, { t: c.from, on: true, holdUntil: 0, last: performance.now(), ended: false, held: false });
-    cam.set = false; machineKey = ''; $('side-body').dataset.clip = '';
+    cam.set = false; strip.x = null; machineKey = ''; $('side-body').dataset.clip = '';
     // The ticks where his state changes inside this example: the clip holds a beat at each.
     c.changes = [];
     let lastKey = null;
@@ -291,7 +298,7 @@
     for (const s of [-1, 1]) for (const [d, w] of [[16.5, 20.16], [5.5, 9.16]]) { const gx = 52.5 * s; line(gx, -w, gx - d * s, -w); line(gx - d * s, -w, gx - d * s, w); line(gx - d * s, w, gx, w); }
 
     // Who has whom: a thin line from each defender to his direct opponent.
-    if (showPairs && pairs) {
+    if (!BARE && showPairs && pairs) {
       g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 1.5; g.setLineDash([3, 5]);
       pairs.forEach((o, i) => { if (o !== NO && i !== c.slot && o < sa.players.length) { const a = posAt(t, i), b = posAt(t, o); line(a.x, a.y, b.x, b.y); } });
       g.setLineDash([]);
@@ -299,7 +306,7 @@
     // Pressing distance: his reach as a ring round him — how far he can get while a pass to his
     // man travels, right now. Green = his man is inside it.
     let reachNow = null;
-    if (reachKind && other != null) {
+    if (!BARE && reachKind && other != null) {
       const live = reachAt(t), lr = live && live[c.slot];
       if (lr && lr.reach != null) {
         const gap = Math.hypot(me.x - op.x, me.y - op.y), ok = gap <= lr.reach, q = P(me.x, me.y);
@@ -312,7 +319,7 @@
     // The cover shadow: the wedge of pitch behind him as seen from the ball — a ground pass into
     // it goes through him. Who stands in it is the engine's own read (frame SHADOW).
     let shade = null;
-    if (shadowKind && doing && ballP.owner !== NO && teamOf(ballP.owner) !== teamOf(c.slot)) {   // only while he is closing down a man who has it
+    if (!BARE && shadowKind && doing && ballP.owner !== NO && teamOf(ballP.owner) !== teamOf(c.slot)) {   // only while he is closing down a man who has it
       const sv = shadowAt(t), d = Math.hypot(me.x - ballP.x, me.y - ballP.y);
       if (sv && d > 0.5) {
         const mask = sv.hidden[c.slot] >>> 0, scr = sv.screen[teamOf(c.slot)];
@@ -332,15 +339,15 @@
     }
     // His path so far in this example: where he has come from.
     g.fillStyle = 'rgba(255,204,0,.55)';
-    for (let k = c.from; k < t; k += 6) { const p = posAt(k, c.slot), q = P(p.x, p.y); g.beginPath(); g.arc(q[0], q[1], 2.5, 0, Math.PI * 2); g.fill(); }
+    if (!BARE) for (let k = c.from; k < t; k += 6) { const p = posAt(k, c.slot), q = P(p.x, p.y); g.beginPath(); g.arc(q[0], q[1], 2.5, 0, Math.PI * 2); g.fill(); }
     // Where he is heading.
-    if (doing && Math.hypot(tx - me.x, ty - me.y) > 0.8) {
+    if (!BARE && doing && Math.hypot(tx - me.x, ty - me.y) > 0.8) {
       g.strokeStyle = '#ffcc00'; g.lineWidth = 2.5; g.setLineDash([7, 6]); line(me.x, me.y, tx, ty); g.setLineDash([]);
       const q = P(tx, ty); g.beginPath(); g.arc(q[0], q[1], 0.9 * sc, 0, Math.PI * 2); g.stroke();
     }
     let gapAt = null;
     // The gap between him and the man he is acting on, in metres.
-    if (other != null) {
+    if (!BARE && other != null) {
       g.strokeStyle = 'rgba(255,92,122,.9)'; g.lineWidth = 2; line(me.x, me.y, op.x, op.y);
       gapAt = P((me.x + op.x) / 2, (me.y + op.y) / 2);
     }
@@ -378,13 +385,13 @@
       g.fillStyle = '#ff9fb2'; g.fillText(text, gapAt[0], gapAt[1] + 1);
     }
     const flashing = play.flash && now < play.flash;
-    tag(me, st && st.state ? (flashing ? say('cap_now', { state: st.state.title }) : st.state.title) : '', '#0b1c3d', flashing ? '#ffffff' : '#ffcc00', true);
-    if (other != null) { const ol = layersAt(t, other); tag(op, ol.state ? ol.state.title : '', '#fff', 'rgba(200,40,70,.92)', op.x * sg > me.x * sg ? false : true); }   // his man's own state, the same words as the panel
+    // (his own state is in the label that follows him — placeStrip)
+    // (no state tag on his man: states live only in the label that follows the player)
     if (shade) {   // who is in his shadow, and the pass left open
       for (const i of shade.hidden) tag(posAt(t, i), say('shadow_hidden'), '#fff', 'rgba(6,10,20,.92)', false);
       if (shade.screen != null && !shade.hidden.includes(shade.screen)) tag(posAt(t, shade.screen), say('shadow_open'), '#0b1c3d', '#ffffff', false);
     }
-    if (showPairs && pairs) {   // the spare man of the defending side and the man they leave free
+    if (!BARE && showPairs && pairs) {   // the spare man of the defending side and the man they leave free
       const def = teamOf(c.slot);
       const watched = new Set(pairs.filter((o, i) => o !== NO && teamOf(i) === def));
       for (let i = 0; i < sa.players.length; i++) {
@@ -392,6 +399,11 @@
         if (teamOf(i) === def && pairs[i] === NO) tag(posAt(t, i), say('pairs_spare'), '#0b1c3d', '#9fe39f', false);
         else if (teamOf(i) !== def && !watched.has(i)) tag(posAt(t, i), say('pairs_free'), '#0b1c3d', '#9fe39f', false);
       }
+    }
+    {   // the pitch's box on screen, and what the label must not cover (his man, the ball)
+      const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
+      const keep = [P(op.x, op.y), P(ballP.x, ballP.y)];
+      placeStrip(P(me.x, me.y), r, keep, { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
     }
     g.restore();
 
@@ -425,13 +437,16 @@
         : shade.screen != null ? say('cap_shadow_open', { ...who, man: numOf(shade.screen) }) : say('cap_shadow_none', who);
     }
     if (reachKind && reachNow) cap2 = say('cap_reach_live', { num: numOf(c.slot), player: nameOf(c.slot), man: numOf(other), gap: reachNow.gap.toFixed(1), reach: reachNow.m.toFixed(1), verdict: say(reachNow.ok ? 'reach_in' : 'reach_out') });
-    if (cap1 !== frame.l1) { frame.l1 = cap1; $('cap1').textContent = cap1; }
-    if (cap2 !== frame.l2) { frame.l2 = cap2; $('cap2').textContent = cap2; }
+    // The concept panel's two live lines: is he doing it (and why not), and the concept's numbers.
+    const stNow = conceptStatus(lay, reachAt(t) && reachAt(t)[c.slot]);
+    const ls = $('live-status'), lm = $('live-measure');
+    if (ls && stNow.text !== frame.l1) { frame.l1 = stNow.text; ls.textContent = stNow.text; ls.className = 'status ' + stNow.kind; }
+    if (lm && cap2 !== frame.l2) { frame.l2 = cap2; lm.textContent = cap2; }
 
     // BEFORE / DOING IT / AFTER, and the timeline with the doing-it part filled in.
     const phase = t < c.onset ? 'before' : doing ? 'doing' : 'after';
     if (phase !== frame.phase || at !== frame.at) { frame.phase = phase; frame.at = at; paintPhase(phase); }
-    if (sideTab === 'machine') paintBrain(c, t);
+    paintStrip(c, t);
     const bar = $('time');
     const pct = (k) => (100 * (k - c.from) / (c.to - c.from)).toFixed(2) + '%';
     bar.style.setProperty('--from', pct(c.onset)); bar.style.setProperty('--to', pct(Math.min(c.until + 6, c.to))); bar.style.setProperty('--now', pct(t));
@@ -501,19 +516,135 @@
       out.push({ key: job === 'double_team' ? 'double' : 'press', state: say(job === 'double_team' ? 'm_double_on' : 'm_press_on', { man: carrier }) });
     }
     if (job === 'chase_ball') out.push({ key: 'chase', state: say('m_chase_on') });
-    if (job === 'mark_man') out.push({ key: 'mark', state: say('m_mark_on', { man: e && e.other !== NO ? num(e.other) : '' }) });
+    // The machines the engine runs (ai/concepts/Machines): the marking scheme, the cover shadow and
+    // pressing distance — read from MACHINES, not guessed. Passive states (watching his man, someone
+    // hidden behind him by where he stands) are reads, so they are in KNOWS, not here.
+    const eng = logAt(machineLog, t), mine = eng ? eng[slot] || [] : null;
+    const engm = (id) => (mine ? mine.find((x) => x.machine === id) : null);
+    const mterm = (id, st) => terms.find((x) => x.kind === 'machine_state' && x.wire === st && x.parent === (terms.find((y) => y.kind === 'machine' && y.wire === id) || {}).code);
+    if (mine) {
+      const sc = engm(1);
+      if (sc && (sc.state === 2 || sc.state === 3)) { const tt = mterm(1, sc.state); out.push({ key: 'scheme', engine: true, state: (tt ? tt.title : '') + (sc.other !== NO ? ' ' + num(sc.other) : '') }); }
+    } else if (job === 'mark_man') out.push({ key: 'mark', state: say('m_mark_on', { man: e && e.other !== NO ? num(e.other) : '' }) });
     if (cname === 'cover') out.push({ key: 'cover', state: say('m_cover_on') });
     const sv = shadowAt(t);
-    if (sv && !OURS_PHASES.has(lay.phaseIndex)) {
+    if (mine) {
+      const cs = engm(2), pd = engm(3);
+      if (cs && cs.state === 2) out.push({ key: 'shadow', engine: true, state: say('m_shadow_lane', { man: cs.other !== NO ? num(cs.other) : '' }) });
+      if (pd && pd.state === 1) out.push({ key: 'pdist', engine: true, state: say('m_pdist_on', { man: pd.other !== NO ? num(pd.other) : '' }) });
+    } else if (sv && !OURS_PHASES.has(lay.phaseIndex)) {
       const m = sv.hidden[slot] >>> 0, h = [];
       for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push(num(i));
       if (cname === 'cover-shadow') out.push({ key: 'shadow', state: say('m_shadow_press', { man: sv.screen[teamOf(slot)] !== NO ? num(sv.screen[teamOf(slot)]) : '', list: h.join(', ') }) });
       else if (h.length) out.push({ key: 'shadow', state: say('m_shadow_on', { list: h.join(', ') }) });
     }
-    if (cname === 'pressing-distance') out.push({ key: 'pdist', state: say('m_pdist_on', { man: man != null ? num(man) : '' }) });
+    if (!mine && cname === 'pressing-distance') out.push({ key: 'pdist', state: say('m_pdist_on', { man: man != null ? num(man) : '' }) });
     const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
     out.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
     return out;
+  }
+  // ── beside the pitch: one line per state, tap for what it means ──
+  // Owner 11/25: "can we have the states 1 line each and then you click for info on them? can they
+  // be right next to pitch". The same words as the timeline; asleep machines are not listed.
+  const stripOpen = new Set();
+  let stripKey = '';
+  const MACHINE_CONCEPT = { recover: 'recover', press: 'close-down', chase: 'nearest-decides', double: 'double-team', cover: 'cover', mark: 'zonal-marking', shadow: 'cover-shadow', pdist: 'pressing-distance' };
+  // The label sits beside him — right of him, or left when there is no room — and glides after him;
+  // a gold line joins it to him.
+  const strip = { x: null, y: null };
+  // Owner 11/25: "the thing attached to player is covering up players on pitch it can stay if
+  // transparent but if not it has to go on side of pitch. maybe have a toggle for either option".
+  // 'follow' = beside him, see-through; 'side' = docked off the pitch, solid, the line still to him.
+  // Then: "prob better if it don't move though" — so 'side' is the default and it stays still, top left
+  // of the game; only the line moves with him.
+  let labelMode = localStorage.getItem('fh.concept.label2') === 'follow' ? 'follow' : 'side';
+  // Owner 11/25: "but if not enough room then off to exact side of pitch stacked 1 row each". So:
+  // beside him if it fits on the screen without covering his man or the ball; otherwise docked
+  // just off the pitch on the side with more room, level with him — the line still joins them.
+  function placeStrip(q, rr, keep, pitch) {
+    const el = $('strip');
+    if (!el.firstChild) return;
+    const bw = el.offsetWidth, bh = el.offsetHeight, gap = rr + 34;
+    const top = 56, bottom = H - 96;
+    const yOf = () => Math.max(top, Math.min(bottom - bh, q[1] - bh / 2));
+    const fits = (x, y) => x >= 8 && x + bw <= W - 8 && y >= top && y + bh <= bottom + 1 &&
+      !keep.some((k) => k[0] > x - 14 && k[0] < x + bw + 14 && k[1] > y - 14 && k[1] < y + bh + 14);
+    let x = q[0] + gap, y = yOf();
+    if (labelMode === 'side') x = -1;   // always docked off the pitch
+    if (labelMode === 'side' || !fits(x, y)) {
+      if (labelMode !== 'side') x = q[0] - gap - bw;
+      if (labelMode === 'side' || !fits(x, y)) {
+        // [docked] off the pitch on the roomier side; if neither side has room, the screen edge.
+        const left = pitch.x0 - 8, right = W - 8 - pitch.x1;
+        x = right >= left ? Math.max(pitch.x1 + 10, Math.min(W - bw - 8, pitch.x1 + 10)) : Math.min(pitch.x0 - 10 - bw, Math.max(8, pitch.x0 - 10 - bw));
+        if (Math.max(left, right) < bw + 10) x = right >= left ? W - bw - 8 : 8;
+      }
+    }
+    x = Math.max(8, Math.min(W - bw - 8, x));
+    if (labelMode === 'side') { x = 10; y = 10; strip.x = x; strip.y = y; }   // parked: it does not move
+    if (strip.x == null || Math.abs(strip.x - x) > W / 2) { strip.x = x; strip.y = y; }
+    strip.x += (x - strip.x) * 0.2; strip.y += (y - strip.y) * 0.2;
+    el.style.transform = `translate(${Math.round(strip.x)}px, ${Math.round(strip.y)}px)`;
+    // Parked, no line: "since we know what player its for" — his gold ring says who it is.
+    if (labelMode === 'side') return;
+    const tx = Math.max(strip.x, Math.min(strip.x + bw, q[0])), ty = Math.max(strip.y, Math.min(strip.y + bh, q[1]));
+    const d = Math.hypot(tx - q[0], ty - q[1]) || 1;
+    g.strokeStyle = '#ffcc00'; g.lineWidth = 2.5; g.setLineDash([]);
+    g.beginPath(); g.moveTo(q[0] + (tx - q[0]) * (rr + 6) / d, q[1] + (ty - q[1]) * (rr + 6) / d); g.lineTo(tx, ty); g.stroke();
+    g.fillStyle = '#ffcc00'; g.beginPath(); g.arc(tx, ty, 3.5, 0, Math.PI * 2); g.fill();
+  }
+  function paintStrip(c, t) {
+    const lay = layersAt(t, c.slot), awake = machinesAt(t, c.slot);
+    const pairs = pairsAt(t), reach = reachAt(t), r = reach && reach[c.slot];
+    const man = pairs && pairs[c.slot] !== NO ? pairs[c.slot] : null;
+    const en = brainAt(t), ee = en && en[c.slot], dd = ee ? terms.find((x) => x.kind === 'decision' && x.wire === ee.why) : null;
+    const status = conceptStatus(lay, r);
+    const cdef = (name) => { const k = (tax.concepts || []).find((x) => x.name === name); return k ? k.definition || k.cue || '' : ''; };
+    // Owner 11/25: "what is him? what is action? … multi states" · "the team him action should be on
+    // side" · "the side def should be accessible with click popup" · "save space". So: on the SIDE,
+    // one line each, the states that are one at a time (team, his job, and what he is doing only
+    // when it says more than his job); ON THE PLAYER, only what is switched on — the machines awake
+    // now, several at once. Every line opens its meaning in a popup.
+    const DEFAULT_DOING = new Set(['hold', 'press', 'chase', 'meet_pass', 'attack_box', 'run_line', 'mark', 'keeper_pos']);
+    const side = [
+      { id: 'team', lab: say('strip_team'), val: lay.phase ? lay.phase.title : '—', def: lay.phase ? lay.phase.definition || lay.phase.note || '' : '' },
+      { id: 'him', lab: say('strip_job'), val: lay.state ? lay.state.title : '—', def: lay.state ? lay.state.definition || lay.state.note || '' : '' }];
+    if (dd && !DEFAULT_DOING.has(dd.code)) side.push({ id: 'act', lab: say('strip_doing'), val: dd.title, def: dd.definition || dd.note || '' });
+    const on = awake.map((m) => {
+      const mt = m.key === 'scheme' ? terms.find((x) => x.kind === 'machine' && x.code === 'marking_scheme') : null;
+      return { id: 'm:' + m.key, lab: say('m_' + m.key) + (m.engine ? ' ' + say('m_engine_mark') : ''), val: m.state, def: mt ? mt.definition || '' : cdef(MACHINE_CONCEPT[m.key] || '') };
+    });
+    const key = [at, ...side.map((x) => x.id + '=' + x.val), '|', ...on.map((x) => x.id + '=' + x.val)].join('§');
+    if (key === stripKey) return;
+    stripKey = key;
+    stripRows = new Map([...side, ...on].map((x) => [x.id, x]));
+    const fill = (host, rows, cls) => {
+      if (!host) return;
+      host.textContent = '';
+      for (const x of rows) {
+        const row = document.createElement('div'); row.className = 'row ' + cls; row.dataset.id = x.id;
+        const l = document.createElement('span'); l.className = 'lab'; l.textContent = x.lab; row.appendChild(l);
+        const v = document.createElement('span'); v.className = 'val'; v.textContent = x.val; row.appendChild(v);
+        host.appendChild(row);
+      }
+    };
+    if (BARE) {   // every state in the one label on the player: one at a time, then what is switched on
+      fill($('strip'), side, 'one');
+      if (on.length) { const sep = document.createElement('div'); sep.className = 'sep'; $('strip').appendChild(sep); }
+      const tmp = document.createElement('div'); fill(tmp, on, 'm'); while (tmp.firstChild) $('strip').appendChild(tmp.firstChild);
+    } else {
+      fill($('side-states'), side, 'one');
+      fill($('strip'), on, 'm');
+    }
+  }
+  let stripRows = new Map();
+  // One popup for every meaning on the page.
+  function popup(title, body) {
+    $('popup-t').textContent = title;
+    const b = $('popup-b');
+    b.textContent = '';
+    if (typeof body === 'string') b.textContent = body || say('m_nodef'); else if (body) b.appendChild(body);
+    $('popup').hidden = false;
   }
   function paintBrain(c, t) {
     const host = $('side-body');
@@ -538,7 +669,7 @@
     if (an) {
       an.textContent = '';
       if (!awake.length) an.textContent = say('m_none');
-      awake.forEach((m, i) => { const d = document.createElement('div'); d.className = 'awake'; d.textContent = say('m_' + m.key) + ': ' + m.state; if (i === 0 && awake.length > 1) { const w = document.createElement('small'); w.className = 'wins'; w.textContent = say('m_wins'); d.appendChild(w); } an.appendChild(d); });
+      awake.forEach((m, i) => { const d = document.createElement('div'); d.className = 'awake'; d.textContent = say('m_' + m.key) + (m.engine ? ' ' + say('m_engine_mark') : '') + ': ' + m.state; if (i === 0 && awake.length > 1) { const w = document.createElement('small'); w.className = 'wins'; w.textContent = say('m_wins'); d.appendChild(w); } an.appendChild(d); });
     }
     const en = brainAt(t), ee = en && en[c.slot], dd = ee ? terms.find((x) => x.kind === 'decision' && x.wire === ee.why) : null;
     set('bn-action', dd ? dd.title : '—');
@@ -550,6 +681,10 @@
     if (r && r.reach != null && man != null) {
       const [a, b] = [posAt(t, c.slot), posAt(t, man)];
       knows.push(say('brain_knows_reach', { gap: Math.hypot(a.x - b.x, a.y - b.y).toFixed(1), reach: r.reach.toFixed(1), verdict: say(r.in ? 'reach_in' : 'reach_out') }));
+    }
+    {   // passive: someone hidden behind him just from where he stands (the cover-shadow machine's HIDING)
+      const eng = logAt(machineLog, t), cs = eng && eng[c.slot] ? eng[c.slot].find((x) => x.machine === 2) : null;
+      if (cs && cs.state === 1 && !shadowKind) knows.push(say('brain_knows_hiding', { list: cs.other !== NO ? '#' + numOf(cs.other) : '' }));
     }
     if (sv && shadowKind) { const m = sv.hidden[c.slot] >>> 0, hid = []; for (let i = 0; i < 32; i++) if ((m >>> i) & 1) hid.push('#' + numOf(i)); knows.push(hid.length ? say('brain_knows_shadow', { list: hid.join(', ') }) : say('brain_knows_noshadow')); }
     set('bn-knows', knows.join('   ·   ') || '—');
@@ -593,14 +728,6 @@
     const how = add('div', 'howto');
     add('div', 'howto-t', say('brain_howto_title'), how);
     for (const k of ['brain_howto_team', 'brain_howto_him', 'brain_howto_using', 'brain_howto_knows']) add('div', 'howto-l', say(k), how);
-    // RIGHT NOW + the status line
-    add('div', 'status', '', host).id = 'bn-status';
-    const now = add('div', 'nowbox');
-    for (const [id, lab] of [['bn-phase', 'brain_lane_team'], ['bn-state', 'brain_lane_him'], ['bn-action', 'brain_lane_action_short'], ['bn-using', 'brain_lane_awake'], ['bn-knows', 'brain_lane_knows']]) {
-      const row = add('div', 'nowrow', null, now);
-      add('span', 'nowlab', say(lab), row);
-      add('span', 'nowval', '', row).id = id;
-    }
     // The lanes: one per layer, across this example.
     add('h3', '', say('brain_lanes'));
     const lanes = add('div', 'lanes');
@@ -658,12 +785,14 @@
     const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
     const keys = [...seen.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
     if (!keys.length) add('div', 'lane-s', say('m_none_example'), lanes);
-    for (const k of keys) lane(say('m_' + k), segsOf((tk) => { const m = machinesAt(tk, c.slot).find((x) => x.key === k); return m ? m.state : ''; }), () => hue(k));
+    const engineKeys = new Set(['scheme', 'shadow', 'pdist'].filter(() => machineLog.length));
+    for (const k of keys) lane(say('m_' + k) + (engineKeys.has(k) ? ' ' + say('m_engine_mark') : ''), segsOf((tk) => { const m = machinesAt(tk, c.slot).find((x) => x.key === k); return m ? m.state : ''; }), () => hue(k));
     group('brain_group_reads');
     lane(say('brain_lane_man'), segsOf((k) => { const p = pairsAt(k); return p && p[c.slot] !== NO ? '#' + numOf(p[c.slot]) + (p.how && p.how[c.slot] === 'battle' ? ' ⚔' : '') : ''; }), () => 'rgba(255,255,255,.18)');
     if (reachKind) lane(say('brain_lane_reach'), segsOf((k) => { const rr = reachAt(k); const x = rr && rr[c.slot]; return x && x.reach != null ? say(x.in ? 'brain_in' : 'brain_out') : ''; }), (g) => (g.text === say('brain_in') ? '#2e8b45' : '#a83248'));
     if (shadowKind) lane(say('brain_lane_shadow'), segsOf((k) => { const v = shadowAt(k); if (!v) return ''; const m = v.hidden[c.slot] >>> 0; const h = []; for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push('#' + numOf(i)); return h.join(' '); }), () => '#444c66');
     add('div', 'playhead', null, lanes);
+    if (machineLog.length) add('div', 'note', say('m_engine_note'));
     add('div', 'note', say('brain_lanes_note'));
     // Every state of each machine, his lit — how many there are.
     const all = add('details', 'all');
@@ -680,8 +809,9 @@
   // ── 📖 What it is: real football · the game · the engine code (owner 11/24: "the popup
   // needs to explain also what the concept is in real life, the game and the engine code").
   // Every line is the taxonomy's own: the concept row, its behaviours, their classes.
-  function paintExplain() {
-    const host = $('side-body');
+  function paintExplain(into) {
+    const host = into || $('side-body');
+    host.classList.add('explain');
     host.textContent = '';
     const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
     const c = concept;
@@ -740,11 +870,111 @@
       });
     }
   }
-  function setTab(tab) {
-    sideTab = tab;
-    for (const b of document.querySelectorAll('[data-tab]')) b.classList.toggle('on', b.dataset.tab === tab);
-    machineKey = ''; $('side-body').dataset.clip = '';
-    if (tab === 'explain') paintExplain(); else $('side-body').textContent = '';
+  // One panel for the concept at hand (owner 11/25: "don't have states in multi places its confusing"
+  // · "states. then a explanation of concept at hand" · "simple interface" · "too much clutter"):
+  // its name, what it is, two live lines (is he doing it — or why not — and its numbers), the key to
+  // what is drawn, and the game / engine detail folded away.
+  function setTab() {
+    const host = $('side-body');
+    host.textContent = '';
+    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
+    // The concept's name — tap it for what it is, the key to the drawing and the engine detail (a popup).
+    const t = add('button', 'ctitle', (concept ? concept.title : say('clip_title')));
+    t.type = 'button';
+    t.addEventListener('click', () => {
+      const box = document.createElement('div');
+      const d = document.createElement('p'); d.textContent = concept ? concept.definition || concept.cue || '' : ''; box.appendChild(d);
+      const k = document.createElement('p'); k.className = 'key'; k.textContent = say(reachKind ? 'reach_legend' : shadowKind ? 'shadow_legend' : 'clip_legend'); box.appendChild(k);
+      const more = document.createElement('details'); more.className = 'more';
+      const sm = document.createElement('summary'); sm.textContent = say('clip_more'); more.appendChild(sm);
+      const inner = document.createElement('div'); more.appendChild(inner); paintExplain(inner);
+      box.appendChild(more);
+      popup(concept ? concept.title : '', box);
+    });
+    add('div', 'room ' + (roomOn() ? 'on' : 'live'), roomOn() ? say('room_on_short') : say('room_live_short'));
+    add('div', 'status off', '', host).id = 'live-status';
+    add('div', 'measure', '', host).id = 'live-measure';
+    add('div', 'states', null, host).id = 'side-states';
+    frame.l1 = frame.l2 = null; stripKey = '';
+  }
+  function paintExplain(into) {
+    const host = into || $('side-body');
+    host.textContent = '';
+    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
+    const c = concept;
+    add('h3', 'big', say('clip_x_real'));
+    if (c) {
+      if (c.definition) add('p', '', c.definition);
+      if (c.cue) { add('div', 'lab', say('clip_x_cue')); add('p', '', c.cue); }
+      if (c.lacking) { add('div', 'lab', say('clip_x_lacking')); add('p', '', c.lacking); }
+      const pr = (tax.principles || []).find((p) => p.id === c.principle_id);
+      if (pr) add('p', 'dim', say('clip_x_principle', { p: pr.title }));
+      if (c.taught_from) add('p', 'dim', say('clip_x_taught', { a: c.taught_from }));
+      const byId = new Map((tax.concepts || []).map((k) => [k.id, k]));
+      const words = { 'kind-of': 'link_kind_of', 'step-of': 'link_step_of', requires: 'link_requires', refines: 'link_refines', counters: 'link_counters', 'lapses-to': 'link_lapses_to' };
+      for (const l of tax.links || []) {
+        if (l.from === c.id && byId.get(l.to)) add('p', 'dim', say(words[l.kind]) + ' ' + byId.get(l.to).title);
+        else if (l.to === c.id && byId.get(l.from)) add('p', 'dim', say(words[l.kind] + '_by') + ' ' + byId.get(l.from).title);
+      }
+      if (c.sources) add('p', 'dim', say('clip_x_sources', { n: c.sources }));
+    }
+    const behs = (tax.behaviours || []).filter((b) => b.concept_id === CONCEPT);
+    add('h3', 'big', say('clip_x_game'));
+    if (!behs.length) add('p', '', say('clip_x_nogame'));
+    else {
+      add('p', 'state', say(behs.some((b) => b.in_sim !== false) ? 'clip_x_used' : 'clip_x_zero'));
+      for (const b of behs) { add('p', '', b.what); if (b.tag) add('p', 'dim', say('clip_x_built', { tag: b.tag })); }
+    }
+    add('h3', 'big', say('clip_x_code'));
+    if (!behs.length) add('p', '', say('clip_x_nocode'));
+    const cls = new Map((tax.classes || []).map((k) => [k.name, k]));
+    for (const b of behs) {
+      const k = b.class ? cls.get(b.class) : null;
+      if (k) {
+        const chain = [k.name];
+        for (let p = k.parent, n = 0; p && n < 10; n++) { chain.push(p); p = cls.get(p) ? cls.get(p).parent : null; }
+        add('div', 'lab', say('clip_x_chain'));
+        add('p', 'code', chain.join('  →  '));
+        if (b.symbol && b.symbol !== k.name) add('p', 'code dim', b.symbol);
+        if (k.doc) add('p', 'dim pre', k.doc);
+      } else if (b.symbol) add('p', 'code', say('clip_x_func', { symbol: b.symbol }));
+      add('p', 'dim', say('clip_x_where', { file: b.file, line: b.line }));
+      const btn = add('button', 'small', say('clip_x_show'));
+      const pre = add('pre', 'src');
+      pre.hidden = true;
+      btn.type = 'button';
+      btn.addEventListener('click', async () => {
+        pre.hidden = !pre.hidden;
+        btn.textContent = say(pre.hidden ? 'clip_x_show' : 'clip_x_hide');
+        if (pre.hidden || pre.dataset.got) return;
+        pre.dataset.got = '1';
+        try {
+          const res = await fetch('/api/tactic-plans/taxonomy/source?' + new URLSearchParams({ file: b.file, from: Math.max(1, b.line - 4), to: b.line + 40 }), { headers: { Authorization: 'Bearer ' + token } });
+          if (!res.ok) throw new Error();
+          const src = await res.json();
+          pre.textContent = src.text.split('\n').map((line, i) => String(src.from + i).padStart(4) + '  ' + line).join('\n');
+        } catch (_) { pre.textContent = say('clip_x_nosrc'); }
+      });
+    }
+  }
+  // One panel for the concept at hand (owner 11/25: "don't have states in multi places its confusing"
+  // · "states. then a explanation of concept at hand" · "simple interface" · "too much clutter"):
+  // its name, what it is, two live lines (is he doing it — or why not — and its numbers), the key to
+  // what is drawn, and the game / engine detail folded away.
+  function setTab() {
+    const host = $('side-body');
+    host.textContent = '';
+    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
+    add('h2', 'ctitle', concept ? concept.title : say('clip_title'));
+    if (concept) add('p', 'cdef', concept.definition || concept.cue || '');
+    add('div', 'status off', '', host).id = 'live-status';
+    add('div', 'measure', '', host).id = 'live-measure';
+    add('div', 'key', say(reachKind ? 'reach_legend' : shadowKind ? 'shadow_legend' : 'clip_legend'));
+    const more = add('details', 'more');
+    add('summary', '', say('clip_more'), more);
+    const inner = add('div', '', null, more);
+    paintExplain(inner);
+    frame.l1 = frame.l2 = null;
   }
 
   // ── words and controls ──
@@ -778,9 +1008,10 @@
     pairKind = !!concept && concept.name === 'direct-opponent';
     for (const t of copy.keys()) if (t.startsWith('dial_state_')) DIAL_STATES[t.slice(11)] = { in_state: copy.get(t) };   // which state a switched-on concept lives in
     reachKind = !!concept && concept.name === 'pressing-distance';
+    if (BARE) showPairs = false;
     shadowKind = !!concept && concept.name === 'cover-shadow';
     if (shadowKind) reported = true;
-    showPairs = pairKind;
+    showPairs = pairKind && !BARE;
     {   // who has whom: on for the direct-opponent concept, a switch for the rest
       const b = document.createElement('button');
       b.type = 'button'; b.id = 'pairs'; b.textContent = say('pairs_show'); b.classList.toggle('on', showPairs);
@@ -788,23 +1019,37 @@
       $('rates').after(b);
     }
     document.title = concept ? concept.title : say('clip_title');
-    $('title').textContent = concept ? concept.title : say('clip_title');
-    $('cue').textContent = concept ? (concept.definition || concept.cue || '') : '';
-    {   // which match this is: the concept's own room with it ON, or the live sim
-      const b = document.createElement('div');
-      b.id = 'room'; b.textContent = roomOn() ? say('room_on', { concept: concept ? concept.title : '' }) : say('room_live');
-      b.style.cssText = 'margin-top:6px;font-weight:800;font-size:13px;color:' + (roomOn() ? '#0b1c3d;background:#7cfc8a' : '#e9eef7;background:rgba(255,255,255,.12)') + ';display:inline-block;padding:4px 10px;border-radius:10px';
-      $('cue').after(b);
+    {   // the concept's name, top left — tap it for what it is
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'ctitle'; b.textContent = concept ? concept.title : say('clip_title');
+      b.addEventListener('click', () => popup(concept ? concept.title : '', concept ? concept.definition || concept.cue || '' : ''));
+      $('bar').prepend(b);
     }
+    {   // the label: on the player (see-through) or beside the pitch (solid)
+      const b = document.createElement('button');
+      b.type = 'button'; b.id = 'labelmode';
+      const paint = () => { b.textContent = say(labelMode === 'side' ? 'label_side' : 'label_follow'); $('strip').classList.toggle('see', labelMode === 'follow'); };
+      b.addEventListener('click', () => { labelMode = labelMode === 'side' ? 'follow' : 'side'; localStorage.setItem('fh.concept.label2', labelMode); strip.x = null; paint(); });
+      $('replay').after(b);
+      paint();
+    }
+    $('title').textContent = concept ? concept.title : say('clip_title');
+    $('cue').textContent = '';
+    // (which match this is now sits in the side panel, under the concept's name)
     $('ph-before').textContent = say('clip_before'); $('ph-doing').textContent = say('clip_doing'); $('ph-after').textContent = say('clip_after');
     $('prev').textContent = say('clip_prev'); $('next').textContent = say('clip_next'); $('replay').textContent = say('clip_replay');
-    $('speed').textContent = say('clip_speed'); $('legend').textContent = say(reachKind ? 'reach_legend' : shadowKind ? 'shadow_legend' : 'clip_legend');
+    $('speed').textContent = say('clip_speed'); $('legend').textContent = '';
     for (const [rate, label] of SPEEDS) {
       const b = document.createElement('button');
       b.type = 'button'; b.dataset.rate = rate; b.textContent = label;
       b.addEventListener('click', () => { play.rate = rate; paintBar(); });
       $('rates').appendChild(b);
     }
+    const openRow = (ev) => { const row = ev.target.closest('.row'); const x = row && stripRows.get(row.dataset.id); if (x) popup(x.lab + ' — ' + x.val, x.def); };
+    $('strip').addEventListener('click', openRow);
+    $('side-body').addEventListener('click', (ev) => { if (ev.target.closest('#side-states')) openRow(ev); });
+    $('popup').addEventListener('click', (ev) => { if (ev.target.id === 'popup' || ev.target.id === 'popup-x') $('popup').hidden = true; });
+    window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') $('popup').hidden = true; });
     $('side-body').addEventListener('click', (ev) => {   // tap a title: its meaning opens / closes
       const n = ev.target.closest('[data-def]');
       if (!n || sideTab !== 'machine') return;
@@ -812,13 +1057,7 @@
       if (openDefs.has(n.dataset.def)) openDefs.delete(n.dataset.def); else openDefs.add(n.dataset.def);
       machineKey = ''; $('side-body').dataset.clip = '';
     });
-    for (const [tab, tier] of [['machine', 'brain_tab'], ['explain', 'clip_tab_explain']]) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.dataset.tab = tab; b.textContent = say(tier);
-      b.addEventListener('click', () => setTab(tab));
-      $('side-tabs').appendChild(b);
-    }
-    setTab('explain');   // what it is first: there is nothing to watch until the first example has happened
+    setTab();   // the concept panel, there from the start
     $('prev').addEventListener('click', () => show(at - 1));
     $('next').addEventListener('click', () => show(at + 1));
     $('replay').addEventListener('click', () => show(at));

@@ -229,6 +229,28 @@ void Brain::think(const World& world) const {
         const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[s] & 1], now};
         players_[s].machine.update(players_[s], c);
     }
+    // The concept machines (ai/concepts/Machines), after the job states: each player's
+    // marking-scheme, cover-shadow and pressing-distance machine reads the tick and moves.
+    // [behaviour: machine_tick]
+    for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
+        const std::uint8_t t = setup_.team_of_slot[s];
+        const Phase ph = teams_[t & 1].phase();
+        const PlayerState* st = players_[s].machine.current();
+        concepts::MachineSense ms;
+        ms.job = world.isKeeper(s) ? concepts::Job::Keeper
+               : st == DefendingBlock::holdBlockSpot() ? concepts::Job::Hold
+               : st == DefendingBlock::pressBall() ? concepts::Job::Press
+               : st == DefendingBlock::markMan() ? concepts::Job::Mark : concepts::Job::Other;
+        ms.their_ball = ph == Phase::DefendingBlock || ph == Phase::DefensiveTransition || ph == Phase::TheirSetPiece;
+        ms.direct = block_.opponents().of(s);
+        ms.mark = block_.markOf(t, s);
+        ms.hidden = block_.shadows().hiddenBy(s);
+        ms.screen = block_.shadows().screen(t);
+        ms.step = block_.pressDistance().of(s).step;
+        ms.shadow_press = block_.params().shadow_press;
+        ms.press_hold = block_.params().press_hold;
+        block_.machines().update(s, ms, now);
+    }
 }
 
 // [behaviour: block_slide_across]
@@ -336,7 +358,7 @@ Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
     if (ph != Phase::DefendingBlock && ph != Phase::DefensiveTransition && ph != Phase::TheirSetPiece) return Act::None;
     const PlayerState* st = players_[slot & 31].machine.current();
     if (st == DefendingBlock::pressBall())   // on the lane to the receiver he hides, when his side presses on the cover shadow
-        return block_.params().shadow_press.raw > 0 && world.ball().owner && block_.shadows().screen(setup_.team_of_slot[slot]) >= 0 ? Act::PressShadow : Act::PressBall;
+        return block_.machines().of(slot, concepts::MachineId::CoverShadow).state == concepts::shadow::OnTheLane ? Act::PressShadow : Act::PressBall;
     if (st == DefendingBlock::chaseBall()) return Act::ChaseBall;
     if (st == DefendingBlock::doubleTeamBall()) return Act::DoubleTeam;
     if (st == DefendingBlock::markMan()) return Act::Mark;
@@ -345,10 +367,8 @@ Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     if (trainer_recover_m_.raw > 0 && (world.player(slot).pos.x - o.target.x) * sg >= trainer_recover_m_) return Act::BlockRecover;
     if (block_.deepCb(team) == static_cast<int>(slot)) return Act::BlockCover;
-    if (block_.params().press_hold.raw > 0) {   // off his spot for his man: staying in pressing distance
-        const Vec2 step = block_.pressDistance().of(slot).step;
-        if (step.x.raw != 0 || step.y.raw != 0) return Act::PressDistance;
-    }
+    if (block_.machines().of(slot, concepts::MachineId::PressingDistance).state == concepts::pdist::Stepping)   // off his spot for his man
+        return Act::PressDistance;
     return Act::BlockSpot;
 }
 

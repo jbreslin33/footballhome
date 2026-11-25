@@ -68,6 +68,7 @@ add_library(game_ai STATIC
   src/ai/concepts/DirectOpponent.cpp
   src/ai/concepts/PressingDistance.cpp
   src/ai/concepts/CoverShadow.cpp
+  src/ai/concepts/Machines.cpp
   src/ai/concepts/DoubleTeam.cpp
 )
 target_link_libraries(game_ai PUBLIC game_core)
@@ -169,4 +170,5 @@ game_test(test_marking)
 game_test(test_direct_opponent)
 game_test(test_pressing_distance)
 game_test(test_cover_shadow)
+game_test(test_machines)
 game_test(test_double_team)

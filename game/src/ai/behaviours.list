@@ -70,6 +70,11 @@ keeper_set_position
 law_distance_at_restart
 law_out_of_their_box_goal_kick
 line_run_pace
+machine_commit
+machine_cover_shadow
+machine_marking_scheme
+machine_pressing_distance
+machine_tick
 mark_contain
 mark_follow_dropper
 mark_jump_pass
@@ -87,6 +92,7 @@ mark_track_runner
 pass_first_time_when_pressed
 pass_keep_carry_feet
 pass_lead_into_path
+pd_bend_his_place
 pd_help_on_others
 pd_reach_his_man
 pd_step_into_distance

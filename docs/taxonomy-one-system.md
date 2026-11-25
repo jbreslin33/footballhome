@@ -342,3 +342,26 @@ priority order, the first marked as the one that wins if they fight; the timelin
 machine that woke up in the example. **Next:** the engine runs real machines, one at a time
 with the game session — marking scheme and cover shadow first — each checked against the
 real-match data.
+
+### The first engine machines (mig 1883)
+
+`game/src/ai/concepts/Machines` — `PlayerMachines`, held by the defending block, updated at the
+end of `Brain::think` after the job states (`machine_tick`), one `MachineSense` per player:
+
+| Machine | States (0 = asleep) | Proposes |
+|---|---|---|
+| Marking scheme | watching his man · zonal on #x · free (spare man) | nothing yet — "mark his man" still executes |
+| Cover shadow | hiding (passive) · pressing on the lane | `bendPress`: the presser onto the lane to the man he hides (`physics.shadow.press`) |
+| Pressing distance | stepping into reach | `bendHold`: his place toward his man (`physics.pressdist.hold`) |
+
+An awake machine is committed for `hold_ticks` (0.3 s) unless what it lives in has gone
+(`machine_commit`). The two bends that sat inline in `HoldBlockSpot` and `PressBall` are these
+proposals now, applied where the job sets its target; the trainer acts (`press_distance`,
+`press_shadow`) are read from the machines. With no dial rows the goldens are unchanged
+(3v3 `0x440f6541eceb348b`, 11v11 `0xa30722dbc1ad79fe`). Frame `MACHINES` (0x50) sends the awake
+ones; `game_engine_terms` kinds `machine` / `machine_state` name them. The viewer marks
+engine-run machines ⚙; recover, press, loose ball, double-team and cover are still read from the
+job state.
+
+**Next:** those five become machines too; then the first machine that REPLACES the job's orders,
+and with it the resolver's rule for two that fight (the order in `machine_order`).

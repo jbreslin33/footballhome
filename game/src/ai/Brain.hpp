@@ -92,6 +92,8 @@ public:
     std::uint32_t hiddenBy(core::SlotIndex slot) const { return block_.shadows().hiddenBy(slot); }
     int shadowScreen(std::uint8_t team) const { return block_.shadows().screen(team); }
     math::Fixed64 shadowBodyM() const { return block_.shadows().params().body_m; }
+    // The concept machines (ai/concepts/Machines): one player's machine, for the MACHINES frame.
+    const concepts::MachineState& machineOf(core::SlotIndex slot, concepts::MachineId m) const { return block_.machines().of(slot, m); }
     const DefendingBlock& block() const { return block_; }   // harness probe: who chases / contests / presses (§8.257)
     int restartTaker(const core::World& world, std::uint8_t team) const;
     // Harness probe: the target his state gave him this tick.

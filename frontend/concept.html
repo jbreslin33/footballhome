@@ -35,6 +35,9 @@
     main { display: grid; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
     #stage { position: relative; min-height: 0; }
     canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    /* the pitch to the right of the brain column, so the column never covers it */
+    #pitchbox { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+
     #phases { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
     #phases span { padding: 5px 14px; border-radius: 14px; font-weight: 800; font-size: 13px; letter-spacing: .06em; background: rgba(8,12,18,.7); color: var(--dim); }
     #phases span.on { background: var(--gold); color: #0b1c3d; font-size: 16px; }
@@ -50,6 +53,72 @@
     #load-steps { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; color: var(--dim); }
     #load-steps li.on { color: var(--ink); font-weight: 700; }
     #load-steps li.done { color: #9fe39f; }
+    /* The brain ON the pitch: a label that follows the player, joined to him by a line, one line per
+       state; tap a line for what it means (owner 11/25: "needs to be way clearer the states. one line
+       each right next to pitch actually should follow player around lol with line") */
+    #strip { position: absolute; left: 0; top: 0; z-index: 3; background: rgba(6,10,18,.93); border: 2px solid var(--gold);
+             border-radius: 10px; padding: 5px 6px; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.45); max-width: 46%; }
+    #strip:empty { display: none; }
+    /* on the player: see-through, so the players under it stay visible; the words keep a dark edge to read */
+    #strip.see { background: rgba(6,10,18,.28); border-color: rgba(255,204,0,.55); box-shadow: none; }
+    #strip.see .val, #strip.see .lab { text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
+    #strip .row { display: flex; gap: 8px; align-items: baseline; padding: 2px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+    #strip .row:hover { background: rgba(255,255,255,.08); }
+    #strip .lab { flex: 0 0 auto; min-width: 66px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
+    #strip .row.m .lab { color: #7cfc8a; }
+    #strip .row.k .lab { color: #9fc3ff; }
+    #strip .val { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+    #strip .def { flex-basis: 100%; white-space: normal; font-size: 12px; line-height: 1.4; color: var(--dim); padding: 2px 0 4px; max-width: 360px; }
+    #strip .row.open { flex-wrap: wrap; }
+    #strip .st { font-weight: 800; padding: 3px 6px; border-radius: 6px; margin-bottom: 3px; font-size: 12px; white-space: nowrap; }
+    #strip .st.on { background: #2e8b45; color: #fff; }
+    #strip .st.off { background: rgba(255,255,255,.1); }
+    #strip .st.read { background: #2c4a7a; color: #fff; }
+    #strip .head { font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); padding: 4px 4px 1px; white-space: nowrap; }
+    #strip .head:not(:first-child) { border-top: 1px solid var(--line); margin-top: 3px; padding-top: 5px; }
+    #strip .sep { border-top: 1px solid var(--line); margin: 3px 0; }
+    #caption, #legend, header[hidden] { display: none !important; }
+    /* BARE (owner 11/25 "get rid of everything … i need states, replay button, title of concept and if clicked popup def" ·
+       "game should be rest of screen"): the bar is the title and Replay; the game is the rest. */
+    #side, #phases, #time, #which, #dots, #prev, #next, #pause, #rates, #pairs, #loader-hide { display: none !important; }
+    main { grid-template-columns: minmax(0, 1fr) !important; }
+    #app { grid-template-rows: auto minmax(0, 1fr) !important; }   /* header and footer are hidden: the bar, then the game */
+    #bar { gap: 10px; }
+    #ctitle { all: unset; cursor: pointer; font-size: 17px; font-weight: 800; color: var(--gold); margin-right: 6px; }
+    #ctitle::after { content: ' ⓘ'; font-weight: 400; font-size: 13px; opacity: .7; }
+    /* side panel, compact */
+    #side button.ctitle { all: unset; cursor: pointer; display: block; font-size: 17px; font-weight: 800; color: var(--gold); margin: 0 0 4px; }
+    #side button.ctitle::after { content: ' ⓘ'; font-weight: 400; font-size: 13px; opacity: .7; }
+    #side .room { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 8px; margin-bottom: 8px; }
+    #side .room.on { background: #7cfc8a; color: #0b1c3d; }
+    #side .room.live { background: rgba(255,255,255,.12); }
+    #side .states { border-top: 1px solid var(--line); padding-top: 6px; }
+    #side .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
+    #side .row:hover { background: rgba(255,255,255,.07); }
+    #side .row .lab { flex: 0 0 64px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
+    #side .row .val { font-weight: 700; font-size: 14px; }
+    #side .row .val::after, #strip .val::after { content: ' ⓘ'; opacity: .5; font-weight: 400; font-size: 11px; }
+    /* one popup for every meaning */
+    #popup { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
+    #popup[hidden] { display: none; }
+    #popup .box { position: relative; width: min(560px, calc(100vw - 32px)); max-height: 80vh; overflow: auto; background: var(--panel);
+                  border: 1px solid var(--gold); border-radius: 14px; padding: 16px 18px; font-size: 14px; line-height: 1.5; }
+    #popup h3 { margin: 0 30px 8px 0; color: var(--gold); font-size: 16px; }
+    #popup-x { position: absolute; top: 8px; right: 10px; font-size: 20px; line-height: 1; padding: 2px 8px; }
+    #popup .key { color: var(--dim); font-size: 12.5px; }
+    .explain h3.big { font-size: 13px; margin: 14px 0 4px; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; }
+    .explain p { margin: 2px 0 6px; font-size: 13px; }
+    .explain .dim, .explain .lab { color: var(--dim); font-size: 12px; }
+    .explain .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+    .explain pre.src { margin: 0 0 10px; padding: 8px; border-radius: 8px; background: #071226; color: #e2e8f0; overflow: auto; max-height: 40vh;
+                       font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.45; white-space: pre; }
+    #popup details.more summary { cursor: pointer; font-weight: 800; color: var(--gold); }   /* one place for states (the label), one for the concept (the panel) */
+    #side .ctitle { font-size: 18px; margin: 2px 0 6px; color: var(--gold); }
+    #side .cdef { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
+    #side .measure { font-size: 14px; font-weight: 700; line-height: 1.45; margin: 0 0 10px; min-height: 1.4em; }
+    #side .key { font-size: 12px; color: var(--dim); line-height: 1.45; border-top: 1px solid var(--line); padding-top: 8px; }
+    #side details.more { margin-top: 10px; }
+    #side details.more summary { cursor: pointer; font-weight: 800; font-size: 12.5px; color: var(--gold); }
     #caption { position: absolute; left: 50%; transform: translateX(-50%); bottom: 32px; width: min(900px, calc(100% - 28px)); text-align: center;
                background: rgba(8,12,18,.86); border-radius: 12px; padding: 8px 14px; pointer-events: none; }
     #cap1 { font-weight: 800; font-size: 16px; color: var(--gold); }
@@ -125,10 +194,7 @@
 </head>
 <body>
   <div id="app">
-    <header>
-      <h1 id="title"></h1>
-      <div id="cue"></div>
-    </header>
+    <header hidden><h1 id="title"></h1><div id="cue"></div></header>
     <div id="bar">
       <span id="which"></span>
       <span id="dots"></span>
@@ -140,17 +206,19 @@
     </div>
     <main>
       <div id="stage">
-        <canvas id="pitch"></canvas>
+        <div id="pitchbox"><canvas id="pitch"></canvas></div>
         <div id="phases"><span id="ph-before"></span><span id="ph-doing"></span><span id="ph-after"></span></div>
         <div id="loader" hidden><div id="load-title"></div><div id="load-track"><div id="load-bar"></div></div><div id="load-pct"></div><ul id="load-steps"></ul></div>
+        <div id="strip"></div>
         <div id="caption"><div id="cap1"></div><div id="cap2"></div></div>
         <div id="time"></div>
       </div>
-      <aside id="side"><div id="side-tabs"></div><div id="side-body"></div></aside>
+      <aside id="side"><div id="side-body"></div></aside>
+      <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
     </main>
     <footer id="legend"></footer>
   </div>
-  <script src="js/game/wire.js?v=20261124states"></script>
-  <script src="js/teach/concept.js?v=20261125c"></script>
+  <script src="js/game/wire.js?v=20261125machines"></script>
+  <script src="js/teach/concept.js?v=20261125q"></script>
 </body>
 </html>

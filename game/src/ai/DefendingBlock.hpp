@@ -19,6 +19,7 @@
 #include "ai/Players.hpp"
 #include "ai/concepts/CoverShadow.hpp"
 #include "ai/concepts/DirectOpponent.hpp"
+#include "ai/concepts/Machines.hpp"
 #include "ai/concepts/DoubleTeam.hpp"
 #include "ai/concepts/Marking.hpp"
 #include "ai/concepts/PressingDistance.hpp"
@@ -114,7 +115,7 @@ public:
     // their man meets it (pressFlight true, pressAt the meet point) so he is on him as it arrives.
     bool pressFlight(std::uint8_t team) const { return press_flight_[team & 1]; }
     math::Vec2 pressAt(std::uint8_t team) const { return press_at_[team & 1]; }
-    void reset() { double_team_.reset(); opponents_.reset(); press_dist_.reset(); shadows_.reset(); for (int& m : mind_man_) m = -1; for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; dw_since_[0] = dw_since_[1] = 0; }
+    void reset() { double_team_.reset(); opponents_.reset(); press_dist_.reset(); shadows_.reset(); machines_.reset(); for (int& m : mind_man_) m = -1; for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; dw_since_[0] = dw_since_[1] = 0; }
 
     // G5.72: after assign — each defender's block spot (by slot) and whether his role marks (CB/FB/DM).
     void assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
@@ -130,6 +131,10 @@ public:
     // Cover shadows (ai/concepts/CoverShadow): who each defender hides from the ball, and the pass
     // the presser should block; read every tick, it moves the presser only with physics.shadow.press.
     concepts::CoverShadows& shadows() const { return shadows_; }
+    // The concept machines (ai/concepts/Machines): every player's marking-scheme, cover-shadow and
+    // pressing-distance machines; Brain::think updates them after the job states, and the job
+    // states apply their proposals where they set the target.
+    concepts::PlayerMachines& machines() const { return machines_; }
     // Double-team (ai/concepts/DoubleTeam): the second man who traps their carrier on the touchline, read after assign.
     concepts::DoubleTeam& doubleTeam() const { return double_team_; }
     bool doubleTeams(std::uint8_t team, int slot) const { return params_.double_team.share.raw > 0 && double_team_.isSecond(team, slot); }
@@ -153,6 +158,7 @@ private:
     mutable concepts::DirectOpponents opponents_{};
     mutable concepts::PressingDistance press_dist_{};
     mutable concepts::CoverShadows shadows_{};
+    mutable concepts::PlayerMachines machines_{};
     mutable concepts::DoubleTeam double_team_{};
     mutable int mind_man_[32] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     int chaser_[2] = {-1, -1};

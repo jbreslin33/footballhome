@@ -640,6 +640,23 @@ void GameServer::sendBrain() {
         }
         const Bytes sf2 = encodeFrame(FrameType::States, stf);
         for (const auto& [id, _] : brain_watchers_) transport_.send(id, sf2);
+        // 2.10: the concept machines that are awake (asleep ones are not sent)
+        Bytes mf;
+        mf.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s) {
+            const std::size_t at = mf.size();
+            mf.push_back(0);
+            for (int m = 1; m <= ai::concepts::kMachineCount; ++m) {
+                const auto& ms = brain_.machineOf(s, static_cast<ai::concepts::MachineId>(m));
+                if (ms.state == ai::concepts::kAsleep) continue;
+                mf.push_back(static_cast<std::uint8_t>(m));
+                mf.push_back(ms.state);
+                mf.push_back(ms.other >= 0 && ms.other < 255 ? static_cast<std::uint8_t>(ms.other) : std::uint8_t{255});
+                ++mf[at];
+            }
+        }
+        const Bytes mfr = encodeFrame(FrameType::Machines, mf);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, mfr);
     }
 }
 
