@@ -92,6 +92,7 @@ class App {
       apslHub: new ApslHubScreen(this.navigation, this.auth),
       apslMessages: new ApslMessagesScreen(this.navigation, this.auth),
       apslPyramid: new ApslPyramidScreen(this.navigation, this.auth),
+      tickets: new TicketsScreen(this.navigation, this.auth),   // 🎟 mig 1886
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
       eventCenter: new EventCenterScreen(this.navigation, this.auth),
@@ -244,6 +245,8 @@ class App {
     this.screenManager.register('apsl-messages', this.screens.apslMessages);
     // #apsl-pyramid (mig 819): the APSL pyramid — conferences, Tier 2 feeders, live tables, totals.
     this.screenManager.register('apsl-pyramid', this.screens.apslPyramid);
+    // #tickets (mig 1886): the gate (scan, sell, count) and the ticket list.
+    this.screenManager.register('tickets', this.screens.tickets);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
     this.screenManager.register('dashboard', this.screens.dashboard);
     // #cup-rosters (mig 556): the USASA / EPSA player pool sheet from the men's rosters.
@@ -407,6 +410,11 @@ class App {
       }
       if (window.location.hash === '#apsl-pyramid') {
         this.navigation.goTo('apsl-pyramid');
+        return;
+      }
+      // 🎟 #tickets (mig 1886): the gate on match day.
+      if (window.location.hash === '#tickets') {
+        this.navigation.goTo('tickets');
         return;
       }
       // The one 📅 Calendar — #calendar (magic-link verify lands here) or an

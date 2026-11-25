@@ -66,6 +66,8 @@
 #include "controllers/FinancesController.h"
 #include "controllers/FilmController.h"
 #include "controllers/PyramidController.h"
+#include "controllers/TicketsController.h"
+#include "services/TicketOrderSync.h"
 #include "controllers/CarpoolController.h"
 #include "controllers/MatchPlanController.h"
 #include "controllers/TacticalLiveController.h"
@@ -179,6 +181,7 @@ private:
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FilmController> film_controller_;
     std::shared_ptr<PyramidController> pyramid_controller_;
+    std::shared_ptr<TicketsController> tickets_controller_;
     std::shared_ptr<CarpoolController> carpool_controller_;
     std::shared_ptr<MatchPlanController> match_plan_controller_;
     std::shared_ptr<TacticalLiveController> tactical_live_controller_;
@@ -300,6 +303,7 @@ public:
         finances_controller_ = std::make_shared<FinancesController>();
         film_controller_ = std::make_shared<FilmController>();
         pyramid_controller_ = std::make_shared<PyramidController>();
+        tickets_controller_ = std::make_shared<TicketsController>();
         carpool_controller_ = std::make_shared<CarpoolController>();
         match_plan_controller_ = std::make_shared<MatchPlanController>();
         tactical_live_controller_ = std::make_shared<TacticalLiveController>();
@@ -384,6 +388,8 @@ public:
         catch (const std::exception& e) { std::cerr << "LeagueLogo startup: " << e.what() << std::endl; }
         // Web search for crests of opponents nothing matches (mig 432).
         ClubLogoSearchScheduler::getInstance().start();
+        // 🎟 LeagueApps ticket orders → tickets every five minutes (mig 1886).
+        TicketOrderSync::startLoop();
 
         // Phase 13 — start the LISTEN fh_lineups pump.  Spawns one thread
         // that owns a dedicated pqxx::connection and fans NOTIFY payloads
@@ -670,6 +676,8 @@ private:
         router_.useController("/api/film", film_controller_);
         // #apsl (mig 819): the APSL pyramid — conferences, Tier 2 affiliates, live tables, totals.
         router_.useController("/api/pyramid", pyramid_controller_);
+        // 🎟 Tickets (mig 1886): gate, ticket page, LA ticket orders.
+        router_.useController("/api/tickets", tickets_controller_);
         router_.useController("/api/schedule-links", schedule_links_controller_);
         // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
         router_.useController("/api/dashboard", dashboard_controller_);

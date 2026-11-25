@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tickets — Lighthouse 1893 SC</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!--
+    🎟 footballhome.org/tickets/ (mig 1886): the one link for Linktree and
+    Instagram.  Lists every ticket_products row on sale with a Buy button to
+    its LeagueApps product page; nothing to change here when a new ticket
+    goes on sale.  No sign-in.  Reads GET /api/tickets/public/on-sale;
+    wording = message_templates kind 'tickets' (public rows).
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #07122b; color: #f1f5f9; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 480px; margin: 0 auto; padding: 22px 14px 40px; }
+    header { text-align: center; margin-bottom: 16px; }
+    header img { width: 84px; height: 84px; }
+    h1 { margin: 6px 0 4px; font-size: 26px; }
+    .intro { color: #cbd5e1; font-size: 15px; }
+    .card { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: linear-gradient(160deg, #0b1c3d, #112a5c); border: 1px solid #1e3a8a; border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+    .card b { font-size: 18px; display: block; }
+    .card span { color: #fcd34d; font-weight: 800; font-size: 18px; }
+    .buy { background: #fbbf24; color: #0f172a; font-weight: 900; text-decoration: none; padding: 12px 22px; border-radius: 12px; font-size: 17px; white-space: nowrap; }
+    .note { color: #94a3b8; font-size: 13px; text-align: center; margin-top: 14px; }
+    .none { text-align: center; color: #cbd5e1; padding: 20px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="/images/lighthouse-1893-crest.png" alt="Lighthouse 1893 SC">
+      <h1 id="title"></h1>
+      <div class="intro" id="intro"></div>
+    </header>
+    <div id="list"></div>
+    <div class="note" id="note"></div>
+  </main>
+  <script>
+    (async () => {
+      const esc = (t) => { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+      const copy = {};
+      try {
+        const j = await fetch('/api/public/program-copy').then(r => r.json());
+        for (const t of ((j.data || {}).templates || [])) if (t.kind === 'tickets' && !(t.tier in copy)) copy[t.tier] = t.body;
+      } catch (_) {}
+      document.getElementById('title').textContent = copy.pub_buy_title || '';
+      document.getElementById('intro').textContent = copy.pub_buy_intro || '';
+      let products = [];
+      try { products = (await fetch('/api/tickets/public/on-sale').then(r => r.json())).products || []; } catch (_) {}
+      const money = (p) => '$' + (Number(p) % 1 ? Number(p).toFixed(2) : String(Number(p)));
+      document.getElementById('list').innerHTML = products.length
+        ? products.map(p => `<div class="card"><div><b>${esc(p.label)}</b><span>${esc(money(p.price))}</span></div>
+            <a class="buy" href="${esc(p.buyUrl)}">${esc(copy.pub_buy || '')}</a></div>`).join('')
+        : `<div class="card none">${esc(copy.pub_buy_none || '')}</div>`;
+      document.getElementById('note').textContent = products.length ? (copy.pub_buy_note || '') : '';
+    })();
+  </script>
+</body>
+</html>

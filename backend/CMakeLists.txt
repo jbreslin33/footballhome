@@ -110,6 +110,7 @@ set(SOURCES
     src/services/LeagueFormSync.cpp
     src/services/LeagueTableReaders.cpp
     src/services/PyramidSync.cpp
+    src/services/TicketOrderSync.cpp
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp
     src/services/GoogleSheetRoster.cpp
@@ -178,6 +179,7 @@ set(SOURCES
     src/controllers/FinancesController.cpp
     src/controllers/FilmController.cpp
     src/controllers/PyramidController.cpp
+    src/controllers/TicketsController.cpp
     src/controllers/CarpoolController.cpp
     src/controllers/MatchPlanController.cpp
     src/controllers/TacticalLiveController.cpp
@@ -190,6 +192,7 @@ set(SOURCES
     src/models/LeagueEntry.cpp
     src/models/VolunteerShifts.cpp
     src/models/Proposals.cpp
+    src/models/Tickets.cpp
     src/models/Onboarding.cpp
     src/models/PersonTodos.cpp
     src/controllers/ScheduleLinksController.cpp

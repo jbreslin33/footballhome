@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <title>Ticket — Lighthouse 1893 SC</title>
+  <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
+  <!--
+    🎟 A fan's ticket (mig 1886): /t/?k=<token>.  No app, no sign-in — the
+    token in the link is the key, so the link is private to its holder.
+    Shows the QR the gate scans (it encodes this page's own link, so any
+    phone camera opens the ticket too), how many people it admits per game,
+    and the home games it is good for with which ones it was used at.
+    Reads GET /api/tickets/public/ticket?k=; wording = message_templates
+    kind 'tickets' (public rows) via GET /api/public/program-copy.
+    QR drawn by js/vendor/qrcode-generator-1.4.4.js (MIT).
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; background: #07122b; color: #f1f5f9; font: 16px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 440px; margin: 0 auto; padding: 18px 14px 40px; }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    header img { width: 48px; height: 48px; }
+    header strong { font-size: 20px; display: block; }
+    header span { font-size: 13px; color: #94a3b8; }
+    .card { background: linear-gradient(160deg, #0b1c3d, #112a5c); border: 1px solid #1e3a8a; border-radius: 18px; padding: 18px; margin-bottom: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.35); }
+    .product { font-size: 21px; font-weight: 800; margin: 0 0 2px; }
+    .who { color: #fcd34d; font-weight: 700; }
+    .qr { background: #fff; border-radius: 14px; padding: 14px; margin: 14px auto 8px; width: fit-content; }
+    .qr img, .qr svg { display: block; width: 240px; height: 240px; image-rendering: pixelated; }
+    .show { text-align: center; color: #cbd5e1; font-size: 14px; }
+    .code { text-align: center; font-family: ui-monospace, monospace; font-size: 12px; color: #64748b; word-break: break-all; margin-top: 4px; }
+    .admits { text-align: center; font-size: 18px; font-weight: 800; color: #4ade80; margin-top: 8px; }
+    h2 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #94a3b8; margin: 0 0 8px; }
+    .game { display: flex; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid rgba(148,163,184,0.2); font-size: 15px; }
+    .game:first-of-type { border-top: 0; }
+    .game .used { color: #4ade80; font-weight: 700; white-space: nowrap; }
+    .venue { font-size: 13px; color: #94a3b8; margin-top: 10px; }
+    .void { color: #f87171; font-weight: 800; text-align: center; }
+    .msg { text-align: center; color: #cbd5e1; padding: 30px 10px; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="/images/lighthouse-1893-crest.png" alt="">
+      <div><strong id="club">Lighthouse 1893 SC</strong><span id="venue-top"></span></div>
+    </header>
+    <div id="body"></div>
+  </main>
+  <script src="/js/vendor/qrcode-generator-1.4.4.js"></script>
+  <script>
+    (async () => {
+      const esc = (t) => { const d = document.createElement('div'); d.textContent = t == null ? '' : String(t); return d.innerHTML; };
+      const copy = {};
+      try {
+        const j = await fetch('/api/public/program-copy').then(r => r.json());
+        for (const t of ((j.data || {}).templates || [])) if (t.kind === 'tickets' && !(t.tier in copy)) copy[t.tier] = t.body;
+      } catch (_) {}
+      const c = (tier, tokens = {}) => String(copy[tier] || '').replace(/\{(\w+)\}/g, (_, k) => tokens[k] == null ? '' : tokens[k]);
+      if (copy.pub_club) document.getElementById('club').textContent = copy.pub_club;
+      const body = document.getElementById('body');
+      const token = new URLSearchParams(location.search).get('k') || '';
+      let t = null;
+      try {
+        const res = await fetch('/api/tickets/public/ticket?k=' + encodeURIComponent(token));
+        if (res.ok) t = (await res.json()).ticket;
+      } catch (_) {}
+      if (!t) { body.innerHTML = `<div class="card msg">${esc(c('pub_missing'))}</div>`; return; }
+
+      const when = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+      let qrHtml = '';
+      if (!t.voided && window.qrcode) {
+        const q = qrcode(0, 'M');
+        q.addData(`${location.origin}/t/?k=${t.token}`);
+        q.make();
+        qrHtml = `<div class="qr">${q.createSvgTag({ cellSize: 6, margin: 0, scalable: true })}</div>`;
+      }
+      const games = (t.games || []).map(g => `
+        <div class="game"><span>${esc(when(g.kickoffAt))} · ${esc([g.league, g.opponent ? 'v ' + g.opponent : ''].filter(Boolean).join(' '))}</span>
+        ${g.used ? `<span class="used">✓ ${esc(c('pub_used'))} ${g.used}</span>` : ''}</div>`).join('');
+      body.innerHTML = `
+        <div class="card">
+          <div class="product">${esc(t.product)}</div>
+          ${t.first ? `<div class="who">${esc(t.first)}</div>` : ''}
+          ${t.voided ? `<p class="void">${esc(c('pub_voided'))}</p>` : `
+            ${qrHtml}
+            <div class="show">${esc(c('pub_show'))}</div>
+            <div class="admits">${esc(c('pub_admits', { n: t.admits }))}</div>
+            <div class="code">${esc(t.token)}</div>`}
+        </div>
+        <div class="card">
+          <h2>${esc(c('pub_games'))}</h2>
+          ${games || `<div class="show" style="text-align:left">${esc(c('pub_no_games'))}</div>`}
+          <div class="venue">📍 ${esc(c('pub_venue'))}</div>
+        </div>`;
+    })();
+  </script>
+</body>
+</html>
