@@ -362,21 +362,61 @@ class PyramidShapeView {
   // total amount of clubs in the pyrmaid and total levels. for apsl e.g. this header would go right
   // above level 4"): on the top level of every side with a league, "<league> pyramid · N clubs ·
   // M levels" — clubs counted once each across all that side's tables, levels = its numbered steps.
-  // a club, not a team: a second side ("… II", "… 2", "… B", "… Reserves", "… U23") is the same club
-  _club(name) { return name.trim().toLowerCase().replace(/\s+(ii|iii|2|3|b|c|reserves?|u-?2[0-3]|academy)$/i, '').trim(); }
+  // CLUBS AND TEAMS (owner 2026-11-25: "we should count 2nd teams as anther team in toal temas but not
+  // another club. try to calc that best you can with fuzzy logic"): every table row is a team (the same
+  // team twice counts once); its club is, best first —
+  //   1. the club the APSL data already ties it to (pyramid teams carry club_id: "Oaklyn United FC II"
+  //      → Oaklyn United FC, "PFA APSL" → Patuxent Football Athletics);
+  //   2. else its name boiled down: accents, punctuation, FC / SC / Club / Soccer … words dropped, and
+  //      a second-team ending (II, 2, B, Reserves, U23, Academy …) cut off — matched against every
+  //      club already seen, by name or a known club's own name;
+  //   3. else, only when a second-team ending was cut, a known club whose boiled name starts or ends
+  //      the same way ("Whitecaps FC 2" → Vancouver Whitecaps FC), so long as it is one club only.
+  static NOISE = new Set(['fc', 'sc', 'afc', 'cf', 'ac', 'sfc', 'club', 'soccer', 'futbol', 'football', 'the', 'de', 'cd', 'fk', 'sk']);
+  static SECOND = new Set(['ii', 'iii', '2', '3', 'b', 'c', 'reserves', 'reserve', 'res', 'u23', 'u21', 'u20', 'u19', 'academy', 'development', 'dev', '2nd', 'sbu']);
+  _boil(name) {
+    const words = String(name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      .replace(/\bu-(\d\d)\b/g, 'u$1').replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+    let cut = false;
+    while (words.length > 1 && PyramidShapeView.SECOND.has(words[words.length - 1])) { words.pop(); cut = true; }
+    const core = words.filter((w) => !PyramidShapeView.NOISE.has(w));
+    return { club: (core.length ? core : words).join(' '), team: words.join(' ') + (cut ? ' #2' : ''), cut };
+  }
+  _tally(cells) {
+    const M = this.flow && this.flow._model, teams = new Set(), clubs = new Set(), alias = new Map();
+    const named = [];
+    for (const c of cells) for (const t of c.tables || []) {
+      const div = M && t.node && t.node[0] === 'd' ? M.division(Number(t.node.slice(1))) : null;
+      if (div && div.teams && div.teams.length) {
+        for (const tm of div.teams) {
+          const key = tm.club_id ? `c${tm.club_id}` : `n${this._boil(tm.club || tm.name).club}`;
+          teams.add(`t${tm.id}`); clubs.add(key);
+          for (const n of [tm.club, tm.name]) if (n) { const b = this._boil(n); if (!alias.has(b.club)) alias.set(b.club, key); }
+        }
+      } else for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) named.push(name);
+    }
+    for (const name of named) {
+      const b = this._boil(name);
+      teams.add(`n${b.team}`);
+      let key = alias.get(b.club);
+      if (!key && b.cut && b.club.length >= 5) {
+        const near = [...new Set([...alias].filter(([k]) => k.startsWith(`${b.club} `) || k.endsWith(` ${b.club}`) || b.club.startsWith(`${k} `) || b.club.endsWith(` ${k}`)).map(([, v]) => v))];
+        if (near.length === 1) key = near[0];
+      }
+      if (!key) { key = `n${b.club}`; alias.set(b.club, key); }
+      clubs.add(key);
+    }
+    return { clubs: clubs.size, teams: teams.size };
+  }
   _banners(rows) {
     const slots = [...new Set(rows.flatMap((r) => r.cells.map((c) => c.slot)))];
     for (const slot of slots) {
       // only levels with tables on them: an empty placeholder step above (tier-*) is not this league's
       const cells = rows.map((r) => r.cells.find((c) => c.slot === slot)).filter((c) => c && c.tables && c.tables.length);
       if (!cells.length) continue;
-      const clubs = new Set(), nums = new Set();
-      for (const c of cells) {
-        if (c.num != null) nums.add(c.num);
-        for (const t of c.tables || []) for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) clubs.add(this._club(name));
-      }
+      const nums = new Set(cells.map((c) => c.num).filter((x) => x != null)), n = this._tally(cells);
       const league = this._copy(`shape_side_${slot}`) || cells[0].title;
-      cells[0].banner = this._copy('shape_side_header', { league, clubs: clubs.size, levels: nums.size });
+      cells[0].banner = this._copy('shape_side_header', { league, clubs: n.clubs, teams: n.teams, levels: nums.size });
     }
     this._crown = this._crownOf(rows);
   }
@@ -385,12 +425,12 @@ class PyramidShapeView {
   // Massachusetts"): levels = the deepest numbered level, clubs once each across every side (the cups'
   // fields are foreign clubs, left out); the deep line names the deepest table's league and its side
   _crownOf(rows) {
-    const clubs = new Set();
     let deep = null, top = null;
+    const all = rows.filter((r) => r.num != null).flatMap((r) => r.cells);   // the cups' fields are foreign clubs, left out
+    const n = this._tally(all);
     for (const r of rows) {
       if (r.num == null) continue;
       for (const c of r.cells) {
-        for (const t of c.tables || []) for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) clubs.add(this._club(name));
         if (!(c.tables || []).length) continue;
         if (!deep || r.num > deep.num) deep = { num: r.num, cell: c };
         if (!top || r.num < top.num) top = { num: r.num, cell: c };
@@ -402,7 +442,7 @@ class PyramidShapeView {
     const comp = div && M.comp(div.competition_id);
     const league = (comp && comp.name) || (t && t.name ? t.name.split(' · ')[0] : '');
     const root = this._copy(`shape_side_${deep.cell.slot}`) || '';
-    return [this._copy('shape_crown', { levels: deep.num, clubs: clubs.size }),
+    return [this._copy('shape_crown', { levels: deep.num, clubs: n.clubs, teams: n.teams }),
             league ? this._copy('shape_crown_deep', { levels: deep.num, root, league, top: this._copy(`shape_side_${top.cell.slot}`) || top.cell.title, top_n: top.num }) : ''].filter(Boolean);
   }
 

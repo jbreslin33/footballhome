@@ -520,39 +520,82 @@ class PyramidSolid {
     this.spin.add(group);
   }
 
-  // THE CROWN (owner 2026-11-25: "American pyramid at top. number of levels and number of clubs"): a
-  // gold sign floating over the apex, turned to the camera from every side — the first line big, the
-  // "goes N levels deep with …" line under it
+  // THE CROWN (owner 2026-11-25: "American pyramid at top. number of levels and number of clubs" ·
+  // "make the "crown" the shape of a pyramid and viewable from all sides" · "either dup it on all sides
+  // or have it wrap"): a small gold pyramid floating over the apex, as many sides as the big one and
+  // turned the same way, the same words on every face — readable whichever side is toward you.
+  // a face's foot wide enough to read with the whole pyramid on screen; squat, the words sit low
+  _crownDims() {
+    const half = Math.PI / this.slots, faceW = 2 * this.base * Math.tan(half) * 0.62;
+    return { faceW, A: faceW / 2 / Math.tan(half), Hc: faceW * 0.75, gap: 0.25 };
+  }
   _crownSign(T, lines, font) {
-    const c = document.createElement('canvas'), W = 2048, g = c.getContext('2d');
-    // the deep line wraps onto as many lines as it needs at a size that still reads from afar
-    const SMALL = 104, wrap = [];
-    if (lines[1]) {
-      g.font = `700 ${SMALL}px ${font}`;
-      let cur = '';
-      for (const word of lines[1].split(' ')) {
-        const next = cur ? `${cur} ${word}` : word;
-        if (cur && g.measureText(next).width > W - 180) { wrap.push(cur); cur = word; } else cur = next;
+    const n = this.slots, half = Math.PI / n, step = (2 * Math.PI) / n;
+    const { faceW, A, Hc, gap } = this._crownDims();
+    const slant = Math.hypot(A, Hc), lean = Math.atan(A / Hc);
+    // one face: a gold triangle, the words in its wide lower part
+    const W = 1400, H = Math.round(W * slant / faceW), c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fbbf24';
+    g.beginPath(); g.moveTo(W / 2, 0); g.lineTo(W, H); g.lineTo(0, H); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(120,80,0,0.9)'; g.lineWidth = 10; g.stroke();
+    const widthAt = (y) => (W * y) / H * 0.84;   // room across at height y, inside the slanting edges
+    // largest size where the lines, stacked up from the foot, each fit across where they sit
+    const plan = (size) => {
+      const out = [], big = size * 1.25;
+      g.font = `700 ${size}px ${font}`;
+      const words = (lines[1] || '').split(' ').filter(Boolean), wrap = [];
+      let y = H - size * 0.9;   // bottom line's middle
+      // fill from the bottom: the widest room first, so build the deep line backwards
+      let cur = [];
+      for (let k = words.length - 1; k >= 0; k--) {
+        const next = [words[k], ...cur].join(' ');
+        if (cur.length && g.measureText(next).width > widthAt(y - size * 0.6)) { wrap.unshift({ t: cur.join(' '), y }); y -= size * 1.18; cur = [words[k]]; }
+        else cur = [words[k], ...cur];
       }
-      if (cur) wrap.push(cur);
+      if (cur.length) { wrap.unshift({ t: cur.join(' '), y }); y -= size * 1.18; }
+      if (wrap.some((l) => { g.font = `700 ${size}px ${font}`; return g.measureText(l.t).width > widthAt(l.y - size * 0.6); })) return null;
+      y -= size * 0.35;
+      g.font = `800 ${big}px ${font}`;
+      // the headline, split at its dots onto as many lines as its room needs
+      const parts = lines[0].split(' · '), head = [];
+      let line = '';
+      for (let k = parts.length - 1; k >= 0; k--) {
+        const next = line ? `${parts[k]} · ${line}` : parts[k];
+        if (line && g.measureText(next).width > widthAt(y - big * 0.6)) { head.unshift({ t: line, y }); y -= big * 1.15; line = parts[k]; }
+        else line = next;
+      }
+      if (line) head.unshift({ t: line, y });
+      if (head.some((l) => g.measureText(l.t).width > widthAt(l.y - big * 0.6)) || head[0].y - big < H * 0.12) return null;
+      return { size, big, head, wrap };
+    };
+    let best = null;
+    for (let size = 110; size >= 24 && !best; size -= 4) best = plan(size);
+    if (best) {
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = '#0b1220'; g.font = `800 ${best.big}px ${font}`;
+      best.head.forEach((l) => g.fillText(l.t, W / 2, l.y));
+      g.fillStyle = 'rgba(11,18,32,0.85)'; g.font = `700 ${best.size}px ${font}`;
+      best.wrap.forEach((l) => g.fillText(l.t, W / 2, l.y));
     }
-    const H = 250 + wrap.length * SMALL * 1.2;
-    c.width = W; c.height = Math.round(H);
-    const fit = (text, size, weight, max) => { let s = size; do { g.font = `${weight} ${s}px ${font}`; s -= 4; } while (s > 20 && g.measureText(text).width > max); };
-    g.fillStyle = 'rgba(251,191,36,0.96)';
-    if (g.roundRect) { g.beginPath(); g.roundRect(8, 8, W - 16, c.height - 16, 70); g.fill(); } else g.fillRect(8, 8, W - 16, c.height - 16);
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0b1220';
-    fit(lines[0], 150, 800, W - 140); g.fillText(lines[0], W / 2, 135);
-    g.fillStyle = 'rgba(11,18,32,0.85)'; g.font = `700 ${SMALL}px ${font}`;
-    wrap.forEach((t, k) => g.fillText(t, W / 2, 250 + SMALL * 0.55 + k * SMALL * 1.2));
     const tex = new T.CanvasTexture(c);
     tex.colorSpace = T.SRGBColorSpace;
-    const mat = new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
-    const sign = new T.Sprite(mat), w = 2 * this.base * Math.tan(Math.PI / this.slots) * 0.85, h = w * H / W;   // as wide as most of the foot, so it reads with the whole pyramid on screen
-    sign.scale.set(w, h, 1);
-    sign.position.set(0, this.total / 2 + h / 2 + 0.2, 0);
-    this.spin.add(sign);
-    this.own.push(tex, mat);
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    const mat = new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, side: T.DoubleSide });
+    const geo = new T.PlaneGeometry(faceW, slant);
+    const crown = new T.Group();
+    crown.position.y = this.total / 2 + gap;   // its foot, a little over the apex
+    for (let k = 0; k < n; k++) {
+      const plane = new T.Mesh(geo, mat);
+      plane.position.set(0, Hc / 2, A / 2);
+      plane.rotation.x = -lean;
+      const pivot = new T.Group();
+      pivot.rotation.y = k * step;
+      pivot.add(plane); crown.add(pivot);
+    }
+    this.spin.add(crown);
+    this.own.push(tex, mat, geo);
   }
 
   // ── where it stands ──────────────────────────────────────────────────
@@ -590,7 +633,10 @@ class PyramidSolid {
     const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this._room(), keep = 0.94;
     const p = this.lean * 0.55, half = Math.PI / this.slots;
     let dist = 0;
-    for (const [a, y] of [[this._apo(0), this.total / 2], [this.base, -this.total / 2]]) {
+    const crown = this.hooks.crown && this.hooks.crown.length ? this._crownDims() : null;   // the crown's tip has to be on screen too
+    const pts = [[this._apo(0), this.total / 2], [this.base, -this.total / 2]];
+    if (crown) pts.push([crown.A, this.total / 2 + crown.gap], [0.001, this.total / 2 + crown.gap + crown.Hc]);
+    for (const [a, y] of pts) {
       const r = a / Math.cos(half), w = a * Math.tan(half);
       for (const [x, z] of [[w, a], [-w, a], [r, 0], [-r, 0], [0, r], [w, -a], [0, -r]]) {
         const y2 = y * Math.cos(p) - z * Math.sin(p), z2 = y * Math.sin(p) + z * Math.cos(p);
