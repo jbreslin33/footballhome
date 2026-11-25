@@ -1239,7 +1239,12 @@ class FinancesScreen extends Screen {
       rows += mIn.html + group(C('pb_row_out', 'MONEY OUT'));
       let out = 0, outWas = 0;
       const coachLabel = C('pb_sub_coaching', '🧑‍🏫 Coaching');
+      // BALANCE BEFORE COACHING (mig 1921; owner 11/25 "for budget progream
+      // budgets we need a before coaing and before grant total"): money in
+      // less its own costs and competitions, just above the coaching block;
+      // BALANCE BEFORE GRANT then takes coaching and the shares off too.
       for (const [k, label] of [['own', C('pg_col_direct', 'Own costs')], ['comp', C('pb_sub_comp', '🏆 Competitions')], ['coach', coachLabel], ...subs.filter(([k]) => ['section', 'club'].includes(k))]) {
+        if (k === 'coach') rows += balance(C('pb_before_coach', 'BALANCE BEFORE COACHING'), mIn.total - out, mIn.computed - outWas, false);
         const bl = block(k, label, 'fn-out'); rows += bl.html; out += bl.total; outWas += bl.computed;
       }
       const pre = mIn.total - out, preWas = mIn.computed - outWas;
