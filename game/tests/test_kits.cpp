@@ -20,7 +20,7 @@ FH_TEST(red_on_red_is_a_clash) {
     FH_EXPECT(shirtsApart(k(0x6cabdd), k(0x034694)));     // sky v royal (Man City v Chelsea)
     FH_EXPECT(shirtsApart(k(kYellow), k(kWhite)));
     FH_EXPECT(shirtsApart(k(kLiverpool), k(kWhite)));
-    FH_EXPECT(colourGap(kWhite, kWhite) == 0);
+    FH_EXPECT(colourGap2(kWhite, kWhite) == 0);
 }
 
 FH_TEST(apart_already_both_wear_home) {

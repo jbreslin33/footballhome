@@ -9,13 +9,13 @@
 //
 // "Clearly apart" = the shirts are in different colour FAMILIES (owner: "no red and diff red"):
 // red (claret, maroon, pink with it), orange, yellow, green, sky, blue (royal, navy), purple, white,
-// grey, black — read from the shirt's hue, saturation and lightness (HSL). Two very dark shirts
+// grey, black — read from the shirt's hue, saturation and lightness (HSL, in integers). Two very dark shirts
 // (navy against black) always clash: from above they are the same. [FH] the band edges are picked
 // by eye for a top-down pitch, not fitted. Shirts only: from above, a man is his shirt. A colour
 // of -1 (the client's default) is never called a clash. When no pair is apart, the pair furthest
 // apart by the redmean distance [Riemersma, "Colour metric", compuphase.com] is worn.
 //
-// Cosmetic, never the sim: no Fixed64 here, and nothing the World reads.
+// Cosmetic, never the sim: integers only (the server lints out floating point), nothing the World reads.
 
 #pragma once
 
@@ -27,8 +27,8 @@ namespace fh::game::server {
 
 enum class Family { Red, Orange, Yellow, Green, Sky, Blue, Purple, White, Grey, Black };
 Family familyOf(std::int32_t rgb);
-// Redmean distance between two 0xRRGGBB colours (0 = the same; max ≈ 765): the fallback's tie-break.
-int colourGap(std::int32_t a, std::int32_t b);
+// Redmean distance SQUARED between two 0xRRGGBB colours (0 = the same): the fallback's tie-break.
+long colourGap2(std::int32_t a, std::int32_t b);
 // The two shirts can be told apart (either unknown = yes).
 bool shirtsApart(const persistence::Kit& a, const persistence::Kit& b);
 

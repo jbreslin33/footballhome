@@ -2,42 +2,46 @@
 
 #include "server/Kits.hpp"
 
-#include <cmath>
+#include <algorithm>
+#include <cstdlib>
 
 namespace fh::game::server {
 
-int colourGap(std::int32_t a, std::int32_t b) {
+long colourGap2(std::int32_t a, std::int32_t b) {
     const int ra = (a >> 16) & 0xff, ga = (a >> 8) & 0xff, ba = a & 0xff;
     const int rb = (b >> 16) & 0xff, gb = (b >> 8) & 0xff, bb = b & 0xff;
     const int rm = (ra + rb) / 2, dr = ra - rb, dg = ga - gb, db = ba - bb;
-    const long d2 = (((512L + rm) * dr * dr) >> 8) + 4L * dg * dg + (((767L - rm) * db * db) >> 8);
-    return static_cast<int>(std::lround(std::sqrt(static_cast<double>(d2))));
+    return (((512L + rm) * dr * dr) >> 8) + 4L * dg * dg + (((767L - rm) * db * db) >> 8);
 }
 
 namespace {
-struct Hsl { double h, s, l; };   // h 0-360, s and l 0-1
+// HSL in integers (the server lints out floating point): hue 0-359 degrees, saturation and
+// lightness in thousandths.
+struct Hsl { int h, s, l; };
 Hsl hslOf(std::int32_t rgb) {
-    const double r = ((rgb >> 16) & 0xff) / 255.0, g = ((rgb >> 8) & 0xff) / 255.0, b = (rgb & 0xff) / 255.0;
-    const double mx = std::fmax(r, std::fmax(g, b)), mn = std::fmin(r, std::fmin(g, b)), d = mx - mn;
-    Hsl o{0, 0, (mx + mn) / 2};
+    const int r = (rgb >> 16) & 0xff, g = (rgb >> 8) & 0xff, b = rgb & 0xff;
+    const int mx = std::max(r, std::max(g, b)), mn = std::min(r, std::min(g, b)), d = mx - mn;
+    Hsl o{0, 0, (mx + mn) * 1000 / 510};
     if (d <= 0) return o;
-    o.s = d / (1 - std::fabs(2 * o.l - 1));
-    o.h = mx == r ? 60 * std::fmod((g - b) / d + 6, 6) : mx == g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
+    const int den = 255 - std::abs(mx + mn - 255);
+    o.s = den > 0 ? d * 1000 / den : 0;
+    const int h = mx == r ? 60 * (g - b) / d : mx == g ? 60 * (b - r) / d + 120 : 60 * (r - g) / d + 240;
+    o.h = (h + 360) % 360;
     return o;
 }
-constexpr double kDark = 0.25;   // [FH] HSL lightness under this: "very dark" — navy, black, deep claret
+constexpr int kDark = 250;   // [FH] lightness (thousandths) under this: "very dark" — navy, black, deep claret
 }  // namespace
 
 Family familyOf(std::int32_t rgb) {
     const Hsl c = hslOf(rgb);
-    if (c.l >= 0.9 || (c.l >= 0.8 && c.s < 0.3)) return Family::White;
-    if (c.l <= 0.15 || (c.l < kDark && c.s < 0.35)) return Family::Black;
-    if (c.s < 0.2) return Family::Grey;
+    if (c.l >= 900 || (c.l >= 800 && c.s < 300)) return Family::White;
+    if (c.l <= 150 || (c.l < kDark && c.s < 350)) return Family::Black;
+    if (c.s < 200) return Family::Grey;
     if (c.h < 15 || c.h >= 300) return Family::Red;    // claret, maroon and pink are red to the eye here
     if (c.h < 40) return Family::Orange;
     if (c.h < 70) return Family::Yellow;
     if (c.h < 170) return Family::Green;
-    if (c.h < 260) return (c.h < 215 && c.l >= 0.5) || c.l >= 0.7 ? Family::Sky : Family::Blue;
+    if (c.h < 260) return (c.h < 215 && c.l >= 500) || c.l >= 700 ? Family::Sky : Family::Blue;
     return Family::Purple;
 }
 
@@ -57,10 +61,11 @@ WornKits chooseKits(const std::vector<persistence::Kit>& home, const std::vector
         for (int a = 0; a < static_cast<int>(A.size()); ++a)
             if (shirtsApart(H[h], A[a])) return wear(h, a);
     // Nothing clears the bar: the most apart pair (home kit first on a tie).
-    int bh = 0, ba = 0, best = -1;
+    int bh = 0, ba = 0;
+    long best = -1;
     for (int h = 0; h < static_cast<int>(H.size()); ++h)
         for (int a = 0; a < static_cast<int>(A.size()); ++a) {
-            const int g = colourGap(H[h].shirt, A[a].shirt);
+            const long g = colourGap2(H[h].shirt, A[a].shirt);
             if (g > best) { best = g; bh = h; ba = a; }
         }
     return wear(bh, ba);
