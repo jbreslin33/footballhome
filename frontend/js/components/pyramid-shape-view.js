@@ -307,6 +307,10 @@ class PyramidShapeView {
       onPick: (cell) => { this._solid.face(cell.slot); this._openPanel(cell.key, cell); },
       head: (this._copy('table_head') || '').split(/\s+/).filter(Boolean).slice(-3),
       crown: this._crown || null,
+      reserveOf: (node) => {   // 'd23' (Cosmo Division 1 Reserve) → 'd22' — PyramidModel.reserveOf
+        const M = this.flow && this.flow._model, id = node && node[0] === 'd' ? M && M.reserveOf(Number(node.slice(1))) : null;
+        return id ? `d${id}` : null;
+      },
     }, { edges: this._edges || [],
          colors: { promotion: this.flow._model.kindColor('promotion'), relegation: this.flow._model.kindColor('relegation') } });
     this._rows = rows; this._renderRail();
@@ -412,7 +416,7 @@ class PyramidShapeView {
     const slots = [...new Set(rows.flatMap((r) => r.cells.map((c) => c.slot)))];
     for (const slot of slots) {
       // only levels with tables on them: an empty placeholder step above (tier-*) is not this league's
-      const cells = rows.map((r) => r.cells.find((c) => c.slot === slot)).filter((c) => c && c.tables && c.tables.length);
+      const cells = rows.map((r) => r.cells.find((c) => c.slot === slot)).filter((c) => c && c.num != null && c.tables && c.tables.length);   // cups' fields (foreign clubs) are not the league's
       if (!cells.length) continue;
       const nums = new Set(cells.map((c) => c.num).filter((x) => x != null)), n = this._tally(cells);
       const league = this._copy(`shape_side_${slot}`) || cells[0].title;

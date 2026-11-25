@@ -190,21 +190,37 @@ class PyramidSolid {
   }
   // the tables into perRow columns: in aim order, each in the column nearest its aim that keeps the
   // order and leaves room for the rest; a column holds as many as the fewest rows need
+  // A reserve table (hooks.reserveOf: Cosmo's Division 1 Reserve → Division 1, owner 2026-11-25 "as a
+  // tag along … conntect them toggler side by side") goes with its senior one as ONE unit, side by side
+  // on the same row of tables, the reserve to the right.
+  _units(tables) {
+    const of = (t) => (this.hooks.reserveOf && t.node ? this.hooks.reserveOf(t.node) : null);
+    const at = new Map(tables.map((t, k) => [t.node, k]));
+    const lead = tables.map((t, k) => { const s = of(t); return s != null && at.has(s) ? at.get(s) : k; });
+    const units = [];
+    tables.forEach((t, k) => { if (lead[k] === k) units.push([k, ...tables.map((x, j) => j).filter((j) => j !== k && lead[j] === k)]); });
+    return units;
+  }
   _slotsUnder(tables, perRow, aim) {
-    const n = tables.length, R = Math.ceil(n / perRow), C = perRow;
-    const order = tables.map((t, k) => k).sort((a, b) => (aim[a] - aim[b]) || a - b);
+    const n = tables.length, C = perRow, R = Math.ceil(n / perRow);
+    const units = this._units(tables).sort((p, q) => (aim[p[0]] - aim[q[0]]) || p[0] - q[0]);
     const used = new Array(C).fill(0), out = new Array(n);
-    let c0 = 0;
-    order.forEach((k, j) => {
+    let c0 = 0, left = n;
+    for (const u of units) {
+      const sp = Math.min(u.length, C);
+      left -= u.length;
       while (c0 < C - 1 && used[c0] >= R) c0++;
-      const left = n - j - 1;   // still to place after this one
-      const room = (c) => (C - c) * R - used[c] - 1;   // seats left from column c on, once this one sits in it
-      let c = Math.max(c0, Math.min(C - 1, Math.floor(aim[k] * C)));
-      while (c > c0 && room(c) < left) c--;
-      const t = tables[k];
-      out[k] = { ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: c, gr: used[c] };
-      used[c]++; c0 = c;
-    });
+      const room = (c) => (C - c) * R - used[c] - sp;   // seats left from column c on, once this unit sits there
+      let c = Math.max(0, Math.min(C - sp, Math.max(c0, Math.floor(aim[u[0]] * C))));
+      while (c > Math.min(c0, C - sp) && room(c) < left) c--;
+      const gr = Math.max(...used.slice(c, c + sp));
+      u.forEach((k, m) => {
+        const t = tables[k], gx = c + Math.min(m, sp - 1);
+        out[k] = { ...t, n: (t.rows && t.rows.length) || t.teams.length, gx, gr: gr + (m >= sp ? 1 : 0), tag: m ? tables[u[0]].node : null };
+      });
+      for (let x = c; x < c + sp; x++) used[x] = gr + 1;
+      c0 = c;
+    }
     return out;
   }
   // where this level's tables ended up, for the level under it to aim at
@@ -230,9 +246,10 @@ class PyramidSolid {
     const fs = Math.min(0.085, (colW - gut) / (perLetter - 1.2)), lh = fs * 1.32;
     const cols = aim ? this._slotsUnder(tables, perRow, aim)
       : tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
+    const lastRow = Math.max(...cols.map((c) => c.gr));
     const linesOf = (c) => c.n + (c.name ? 1.2 : 0) + (c.rows && c.rows.length ? 1 : 0);   // + the GP/GD/Pts head
     let gy = 0;
-    for (let r = 0; r <= cols[cols.length - 1].gr; r++) {   // each row of tables as tall as its longest table
+    for (let r = 0; r <= lastRow; r++) {   // each row of tables as tall as its longest table
       const these = cols.filter((c) => c.gr === r);
       these.forEach((c) => { c.gy = gy; });
       gy += Math.max(...these.map(linesOf)) * lh + Math.max(lh * 0.9, corridor + lh * 0.45);   // + the box's own overhang
@@ -314,6 +331,14 @@ class PyramidSolid {
       col.at = { x: ((x0 + x1) / 2 / W - 0.5) * w, l: (x0 / W - 0.5) * w, r: (x1 / W - 0.5) * w,
                  top: plan.head + col.gy - 0.06, foot: plan.head + col.gy + ((col.n + (col.name ? 1.2 : 0) + (figures ? 1 : 0)) * lh + lh * 0.2) / u };
     });
+    // a reserve table joined to its senior one by a gold bar across the gap, at the height of their names
+    for (const col of plan.cols) {
+      const lead = col.tag && col.box && plan.cols.find((x) => x.node === col.tag && x.box && x.gr === col.gr);
+      if (!lead) continue;
+      const x0 = (lead.box.r / w + 0.5) * W, x1 = (col.box.l / w + 0.5) * W, y = (col.box.top * u) + lh * 0.6, bh = lh * 0.3;
+      g.fillStyle = '#fcd34d'; g.fillRect(x0, y - bh / 2, x1 - x0, bh);
+      plan.texts.push({ l: lead.box.r, r: col.box.l, top: (y - bh / 2) / u, foot: (y + bh / 2) / u });
+    }
     const tex = new T.CanvasTexture(c);
     tex.colorSpace = T.SRGBColorSpace;
     tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();

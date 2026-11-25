@@ -34,6 +34,22 @@ class PyramidModel {
   root() { return this._comp.get(this.data.root_id) || null; }
   comp(id) { return this._comp.get(id) || null; }
   division(id) { return this._div.get(id) || null; }
+  // RESERVE DIVISIONS (owner 2026-11-25: "for cosmopolitan league keep in mind they have a sep reserve
+  // divsion … listed in the pyramid. as a tag along to the division 1 cosmo for d1 reserves, and d2
+  // cosmo for d2 rsserves. so conntect them toggler side by side"): a division of the same league whose
+  // name is another's with "Reserve(s)" in it ("Division 2 Reserve - Group A" → "Division 2 - Group A")
+  // tags along beside that one — no links of its own, its teams' clubs already the senior side's.
+  reserveOf(id) {
+    if (!this._reserve) {
+      this._reserve = new Map();
+      const key = (n) => n.toLowerCase().replace(/\breserves?\b/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+      const senior = new Map();
+      for (const d of this.divisions) if (!/\breserves?\b/i.test(d.name)) senior.set(`${d.competition_id}|${key(d.name)}`, d.id);
+      for (const d of this.divisions) if (/\breserves?\b/i.test(d.name)) { const s = senior.get(`${d.competition_id}|${key(d.name)}`); if (s) this._reserve.set(d.id, s); }
+    }
+    return this._reserve.get(id) || null;
+  }
+  reservesOf(id) { this.reserveOf(-1); return [...this._reserve].filter(([, s]) => s === id).map(([r]) => r); }
   conferences() { return this.competitions.filter((c) => c.kind === 'conference'); }
   label(c) { return c ? (c.short_name || c.name) : ''; }
 
@@ -254,6 +270,7 @@ class PyramidModel {
       let current = [...new Set(this.links.filter((l) => l.upper_competition === conf.id && this._div.has(l.lower) && !majorityElsewhere(l)).map((l) => l.lower))]
         .filter((id) => !placed.has(id)).sort(byEdge);
       while (current.length) {
+        current = current.flatMap((id) => [id, ...this.reservesOf(id).filter((r) => !placed.has(r) && !current.includes(r))]);   // a reserve division beside its senior one
         current.forEach((id) => placed.add(id));
         levels.push(current);
         const next = [];
