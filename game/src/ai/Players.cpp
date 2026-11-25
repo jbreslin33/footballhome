@@ -69,6 +69,7 @@ public:
         else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
         else if (defendingPhase(c.team.phase()))
             next = c.block.presser(team) == a.slot ? DefendingBlock::pressBall()
+                 : c.block.doubleTeams(team, a.slot) ? DefendingBlock::doubleTeamBall()   // ai/concepts/DoubleTeam
                  : c.block.markOf(team, a.slot) >= 0 ? DefendingBlock::markMan() : DefendingBlock::holdBlockSpot();   // G5.72
         else next = c.poss.runner(a.slot) ? Possession::attackBox() : c.poss.running(a.slot) ? Possession::runLine() : Possession::support();
         a.machine.change(a, c, next, c.tick);

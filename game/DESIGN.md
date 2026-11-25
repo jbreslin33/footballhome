@@ -13532,3 +13532,77 @@ Completion slips 0.7 (the passes it moved are the riskier ones); goals +0.2 insi
 Next: the ball into 18-35 m wide — the origin feeding it there is the volume gap (stints in their wide last third 62 v 73,
 §8.347); what a real side does from 35-52 wide that ours does not (its pass to 18-35 w 18.1% real v ours 14.5).
 Rows only; tests 28/28.
+
+### 8.361 G5.255 — WON BACK: a side that loses the ball gets it straight back less often than real (ruler; no game change)
+
+From §8.360: the final third's volume. Real football there is a scramble — the ball changes hands and changes back.
+New split (`benchmarks_tracking_bandtime.py` DFL + harness WON BACK): a side loses it (its stint ends, the other side's
+begins), and has it again within 3 s / 5 s, in play throughout, by the band it lost it in. Seeds 1000-4000 × 8 (G5.254):
+
+| lost it in | losses a team-match | its own again within 3 s / 5 s % | real (DFL) |
+|---|---|---|---|
+| 0-18 | 16.1 (25.7) | 22.3 / 35.1 | 25.0 / 37.8 |
+| 18-35 | 26.8 (30.3) | 20.6 / 31.9 | 30.9 / 44.1 |
+| 35-52 | 37.5 (32.4) | 23.6 / 31.9 | 34.2 / 48.8 |
+| 52-70 | 31.1 (31.2) | 25.6 / 34.6 | 28.8 / 42.8 |
+| 70+ | 22.3 (31.3) | 29.2 / 40.5 | 34.2 / 46.6 |
+
+Short everywhere, most in midfield and their 18-35 m — the counter-press (game_concepts 16) and the trap near the line.
+Committed e3f4dc0d.
+
+### 8.362 G5.256 — double-team (game_concepts 12), built whole, kept at zero (mig 1869)
+
+From §8.347 / §8.348: in their wide last third the ball is taken straight off the attacker's feet 5.5 a team-match v
+11.4 (DFL); within 5 m of a touchline a man on the ball has an opponent inside 1.5 m with a second within 5 m for 2 s a
+team-match v 8 — only our first presser went near him. The shelf's concept: double-team, "trap on the touchline".
+
+**Built** (`ai/concepts/DoubleTeam`, recognise → choose → execute; `test_double_team`): their carrier within 12 m of a
+touchline, our presser within 5 m of him → the second man is our nearest other outfielder within 15 m; his spot 1.5 m
+inside the carrier, toward the middle, level with him [FH]. Dial `physics.press.double_team` = the share of such spells
+trapped, one roll a spell; NO ROW = 0, read only. Execute: `DoubleTeamBall` (DefendingBlock) — he closes the inside, faces
+the ball, and in reach shares the presser's covered tackle rate (§8.348's ×engage_cover is the rate the ball is taken by
+EITHER man; half each when both are in reach). Act `double_team`, state term, concept dial for the clip viewer
+(/concept.html?concept=12 opens a room with it on).
+
+**Read** (seeds 1000-4000 × 8, real in the last column):
+
+| | dial 0 | 0.5 | 1, own clocks | 1, shared clock | real |
+|---|---|---|---|---|---|
+| off his feet in their wide last third | 5.5 | 5.9 | 6.5 | 6.5 | 11.4 |
+| 0-5 m off the line: s with opp < 1.5 m + second < 5 m / rate a s | 2 / 0.36 | 3 / 0.33 | 4 / 0.45 | 4 / 0.42 | 8 / 0.58 |
+| 5-14 m off the line: the same | 6 / 0.43 | 8 / 0.43 | 9 / 0.43 | 9 / 0.40 | 11 / 0.65 |
+| tackles / fouls | 20.6 / 14.1 | 23.3 / 14.6 | 24.4 / 15.5 | 23.7 / 16.3 | 20.3 / 12.5 |
+| carries 10 m+ / passes | 32.4 / 415 | 31.2 / 416 | 28.8 / 403 | 28.2 / 410 | 34.6 / 434 |
+| won back within 5 s, lost 18-35 / 35-52 m | 31.9 / 31.9 | 29.8 / 34.0 | 30.1 / 33.4 | 30.9 / 32.8 | 44.1 / 48.8 |
+| card ok / off / OFF | 11 / 7 / 15 | 7 / 10 / 16 | 5 / 10 / 18 | 10 / 7 / 16 | |
+
+The signature moves the right way and half of it is reached, but each extra ball won costs ~3 tackles and ~2 fouls:
+the second man is in reach as often as real while a tackle from the side wins the ball no more often than one from the
+front, and fouls as often. **Fate: AT ZERO** (built, wired, dial 0). Next: what a real tackle wins by the tackler's
+angle to the carrier (DFL, the defender's spot at the change of hands) and what the real carrier does when shut in —
+StatsBomb's Dispossessed / Miscontrol by a touchline — before the dial gets a row.
+Code in 2eb6dc65 (with the Taxonomy session's concepts) and the commit after it (the state switch in Players.cpp, mig 1869). Tests 29/29; lint clean (188 tagged).
+
+### 8.363 G5.257 — the tackler's angle: real carriers lose it from the side and behind nearly as often as from the front; ours do not (ruler; no game change)
+
+From §8.362: a second man from the side added tackles, not balls won. THE TACKLER'S ANGLE (`benchmarks_tracking_fbline.py`
+DFL + harness): the engage cue split by where the nearest opponent inside 1.5 m stands — in front of the carrier (within
+45° of his way to the goal he attacks), to the side, behind. Taken off his feet per second (s a team-match), seeds
+1000-4000 × 8 on G5.254 (real DFL):
+
+| alone | in front | to the side | behind |
+|---|---|---|---|
+| 0-5 m off the touchline | 0.52, 2.1 (0.42, 4.1) | 0.27, 4.0 (0.44, 6.4) | 0.16, 1.9 (0.47, 2.6) |
+| 5-14 m | 0.46, 3.6 (0.53, 4.9) | 0.33, 6.6 (0.43, 6.9) | 0.29, 3.0 (0.42, 2.9) |
+| 14 m+ | 0.50, 7.5 (0.67, 8.1) | 0.35, 13.5 (0.47, 9.7) | 0.28, 6.0 (0.39, 3.9) |
+| **a second within 5 m**, 14 m+ | 0.61, 5.1 (0.79, 7.0) | 0.51, 8.9 (0.69, 10.3) | 0.32, 3.9 (0.75, 5.1) |
+
+From the front we are near real; from the side and behind half or less. Not the tackle: TACKLES are real in count and
+outcome (20.6 a team-match, won ~61%; StatsBomb 20.3 duels, ~60% won) and our presser tackles only goal-side. StatsBomb
+PL 15/16 a team-match: Dispossessed 13.8, Miscontrol 14.2 beside 20.3 tackle duels. Ours: a carry lost to a heavy touch
+1.4 (StatsBomb open-play miscontrol losses 4.1); REWIN CAUSE "other ball action" 1.3 (DFL 27.3). The dribble touch
+(`World`, the carrier's touch) has no error: he loses it only by turning away or outrunning it. A real man pressed from
+the side or behind — no body between the man and the ball, no sight of him — loses his touch.
+Next: the carrier's touch under pressure as a capability (the touch's error by the nearest opponent's distance and
+angle, rows from this table and the 4.1 heavy-touch losses), then double-team's dial again.
+Committed 0eaec847.
