@@ -115,6 +115,14 @@
     rows.push({ id: 'team', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
     const sl = at(logs.states, t), code = sl ? sl[slot] : null, st = code ? terms.find((x) => x.kind === 'state' && x.code === code) : null;
     rows.push({ id: 'job', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });
+    // What he is DOING this moment (the engine's decision, BRAIN frame) and the concept his act plays.
+    const br = at(logs.brain, t), e = br && br[slot];
+    const dec = e ? terms.find((x) => x.kind === 'decision' && x.wire === e.why) : null;
+    if (dec) rows.push({ id: 'doing', k: say('tbl_doing'), v: dec.title, def: dec.definition || dec.note || '' });
+    if (e && e.concept !== NO && legend[e.concept]) {
+      const kc = (tax.concepts || []).find((x) => x.id === e.concept);
+      rows.push({ id: 'using', k: say('tbl_using'), v: legend[e.concept].title, def: kc ? kc.definition || kc.cue || '' : '' });
+    }
     const eng = at(logs.machines, t);
     const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
     const mrows = [];
@@ -148,15 +156,17 @@
 
   // ── drawing: the whole pitch and both goals, side to side, fixed ──
   const cv = $('pitch'), g = cv.getContext('2d');
-  let W = 0, H = 0, sc = 1, ox = 0, oy = 0;
+  let W = 0, H = 0, sc = 1, ox = 0, oy = 0, side = 0;
   function layout() {
     const app = $('app'), dpr = Math.min(window.devicePixelRatio || 1, 2);
     W = app.clientWidth; H = app.clientHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     // 105 × 68 plus the goals (2 m deep) and a margin; the controls sit over the bottom strip.
-    sc = Math.min(W / 113, H / 76);
-    ox = W / 2; oy = H / 2;
+    // A wide screen keeps a strip on the left for his state table and fits the pitch in the rest.
+    side = W >= 900 ? Math.min(400, Math.round(W * 0.27)) : 0;
+    sc = Math.min((W - side) / 113, H / 76);
+    ox = side + (W - side) / 2; oy = H / 2;
   }
   const P = (x, y) => [ox + x * sc, oy - y * sc];
   const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
@@ -240,41 +250,36 @@
     }
     { const q = P(ball.x, ball.y); g.beginPath(); g.arc(q[0], q[1], Math.max(3.5, 0.35 * sc), 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#111'; g.stroke(); }
 
-    paintTag(rows, follow >= 0 ? P(posAt(t, follow).x, posAt(t, follow).y) : null, r);
+    paintTag(rows);
     paintControls();
   }
 
-  // ── his label, beside him, see-through, following ──
+  // ── his states, docked beside the pitch: one line each ──
   let tagKey = '', tagRows = new Map();
-  const tagPos = { x: null, y: null };
-  function paintTag(rows, q, r) {
+  function paintTag(rows) {
     const el = $('tag');
-    const key = rows.map((x) => [x.id, x.k, x.v, x.man, x.d].join('=')).join('§');
+    const key = follow + '§' + rows.map((x) => [x.id, x.k, x.v, x.man, x.d].join('=')).join('§');
     if (key !== tagKey) {
       tagKey = key; tagRows = new Map(rows.map((x) => [x.id, x]));
       el.textContent = '';
+      if (!rows.length) return;
+      const add = (parent, cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; parent.appendChild(d); return d; };
+      add(el, 'who', say('view_following', { num: numOf(follow), player: nameOf(follow) }));
+      const tbl = document.createElement('table'), hr = tbl.insertRow();
+      for (const h of ['tbl_machine', 'tbl_state', 'tbl_man', 'tbl_detail']) { const th = document.createElement('th'); th.textContent = say(h); hr.appendChild(th); }
+      let firstM = true;
       for (const x of rows) {
-        const ln = document.createElement('div');
-        ln.className = 'ln' + (x.m ? ' m' : '') + (x.c ? ' c' : '');
-        ln.dataset.id = x.id;
-        const kk = document.createElement('span'); kk.className = 'k'; kk.textContent = x.m ? '' : x.k; if (!x.m) ln.appendChild(kk);
-        const vv = document.createElement('span'); vv.className = 'v';
-        vv.textContent = x.m ? (x.v && x.v !== 'On' ? x.k + ' · ' + x.v : x.k) : x.v;
-        ln.appendChild(vv);
-        if (x.man) { const s = document.createElement('span'); s.className = 'x'; s.textContent = x.man; ln.appendChild(s); }
-        if (x.d && x.c) { const s = document.createElement('span'); s.className = 'd'; s.textContent = x.d; ln.appendChild(s); }
-        el.appendChild(ln);
+        const tr = tbl.insertRow();
+        tr.className = 'row' + (x.m ? ' m' : '') + (x.c ? ' c' : '') + (x.m && firstM ? ' first-m' : '');
+        if (x.m) firstM = false;
+        tr.dataset.id = x.id;
+        for (const [cls, v] of [['lab', x.k], ['val', x.v], ['man', x.man], ['det', x.d]]) { const td = tr.insertCell(); td.className = cls; td.textContent = v || ''; }
       }
+      el.appendChild(tbl);
     }
-    if (!q || !rows.length) return;
-    const bw = el.offsetWidth, bh = el.offsetHeight;
-    let x = q[0] + r + 10, y = q[1] - bh / 2;
-    if (x + bw > W - 6) x = q[0] - r - 10 - bw;              // no room on his right: his left
-    y = Math.max(46, Math.min(H - 64 - bh, y));               // clear of the title row and the controls
-    x = Math.max(6, Math.min(W - bw - 6, x));
-    if (tagPos.x == null || Math.abs(tagPos.x - x) > W / 3) { tagPos.x = x; tagPos.y = y; }
-    tagPos.x += (x - tagPos.x) * 0.25; tagPos.y += (y - tagPos.y) * 0.25;
-    el.style.transform = `translate(${Math.round(tagPos.x)}px, ${Math.round(tagPos.y)}px)`;
+    // Docked in the dark beside the pitch when there is room; else over the pitch's left edge (see-through).
+    el.style.width = (side ? side - 16 : Math.min(340, W * 0.45)) + 'px';
+    el.style.maxHeight = (H - 50 - 64) + 'px';
   }
 
   // ── the controls ──
@@ -347,11 +352,11 @@
     cv.addEventListener('click', (ev) => {
       let best = null, bd = 30 * 30;
       for (const [x, y, i] of shown) { const d = (x - ev.offsetX) ** 2 + (y - ev.offsetY) ** 2; if (d < bd) { bd = d; best = i; } }
-      if (best != null) { follow = best; localStorage.setItem('fh.concept.follow.' + CONCEPT, String(best)); tagKey = ''; tagPos.x = null; }
+      if (best != null) { follow = best; localStorage.setItem('fh.concept.follow.' + CONCEPT, String(best)); tagKey = ''; }
     });
     $('tag').addEventListener('click', (ev) => {
-      const ln = ev.target.closest('.ln'), x = ln && tagRows.get(ln.dataset.id);
-      if (x) popup((x.m ? x.k + (x.v && x.v !== 'On' ? ' — ' + x.v : '') : x.k + ' — ' + x.v), x.def);
+      const ln = ev.target.closest('.row'), x = ln && tagRows.get(ln.dataset.id);
+      if (x) popup(x.k + (x.v ? ' — ' + x.v : ''), x.def);
     });
     $('popup').addEventListener('click', (ev) => { if (ev.target.id === 'popup' || ev.target.id === 'popup-x') $('popup').hidden = true; });
     window.addEventListener('keydown', (ev) => {
@@ -360,7 +365,7 @@
       else if (ev.key === 'ArrowLeft') { play.live = false; play.t = Math.max(firstTick(), play.t - 150); }
       else if (ev.key === 'ArrowRight') { play.t = Math.min(lastTick(), play.t + 150); }
     });
-    window.addEventListener('resize', () => { layout(); tagPos.x = null; });
+    window.addEventListener('resize', layout);
     try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (_) { /* not allowed outside fullscreen */ }
     load.step = 1;
     layout();
