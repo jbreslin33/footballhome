@@ -22,9 +22,12 @@
 class PyramidSolid {
   // the arrow lanes (units on the wall): lane spacing, the gutter between columns of tables, the
   // corridor under a row of tables — room for a few arrows side by side in each
-  static LANE = 0.012;
-  static GUTTER = 0.07;
-  static CORRIDOR = 0.1;
+  // (owner 2026-11-25: "lines are too close to edge of div/conf. give a little space beteeen lines and
+  // confs and lines adn each other": lanes wider apart, a clear margin of CLEAR off every box)
+  static LANE = 0.017;
+  static CLEAR = 0.028;
+  static GUTTER = 0.11;
+  static CORRIDOR = 0.14;
 
   static three() {
     if (!PyramidSolid._three) PyramidSolid._three = import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
@@ -368,13 +371,13 @@ class PyramidSolid {
     this.own.push(head);
 
     // the lane grid of one side
-    const s = Math.max(PyramidSolid.LANE, R * 2.6), dh = s / slopeOf, m = s * 0.8, mh = m / slopeOf;
+    const s = Math.max(PyramidSolid.LANE, R * 3.5), dh = s / slopeOf, m = Math.max(PyramidSolid.CLEAR, s * 1.5), mh = m / slopeOf;
     const stub = Math.ceil((HEADLEN * 1.2) / s);   // rows of straight line at each end, for the head
     const grids = new Map();
     const gridOf = (slot) => {
       if (grids.has(slot)) return grids.get(slot);
       const X = Math.ceil(((this._cap + this._grow * this.total) * tanHalf) / s), nx = 2 * X + 1, ny = Math.ceil(this.total / dh) + 1;
-      const block = new Uint8Array(nx * ny), used = new Uint8Array(nx * ny);
+      const block = new Uint8Array(nx * ny), used = new Uint8Array(nx * ny), near = new Uint8Array(nx * ny);
       for (let j = 0; j < ny; j++) {   // off the wall
         const lim = (this._cap + this._grow * j * dh) * tanHalf - s;
         for (let i = 0; i < nx; i++) if (Math.abs((i - X) * s) > lim) block[j * nx + i] = 1;
@@ -384,7 +387,7 @@ class PyramidSolid {
         const j0 = Math.max(0, Math.ceil((b.top - mh) / dh)), j1 = Math.min(ny - 1, Math.floor((b.foot + mh) / dh));
         for (let j = j0; j <= j1; j++) block.fill(1, j * nx + i0, j * nx + i1 + 1);
       }
-      const g = { X, nx, ny, block, used };
+      const g = { X, nx, ny, block, used, near };
       grids.set(slot, g);
       return g;
     };
@@ -418,8 +421,8 @@ class PyramidSolid {
       const push = (f, st) => { heap.push([f, st]); let k = heap.length - 1; while (k) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
       const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const a = 2 * k + 1, b = a + 1; let c = k; if (a < heap.length && heap[a][0] < heap[c][0]) c = a; if (b < heap.length && heap[b][0] < heap[c][0]) c = b; if (c === k) break; [heap[c], heap[k]] = [heap[k], heap[c]]; k = c; } } return top; };
       const idx = (i, j, d) => (((j - jA) * g.nx + i) << 2) | d;
-      for (const e of starts) { const st = idx(e.i, e.j, 0); cost[st] = e.cost; push(e.cost + guess(e.i, e.j), st); }
-      const DI = [0, 0, -1, 1], DJ = [-1, 1, 0, 0], TURN = 6, BUSY = 40;
+      for (const e of starts) { const k = e.j * g.nx + e.i, c0 = e.cost + (g.used[k] ? 40 : 0) + (g.near[k] ? 8 : 0), st = idx(e.i, e.j, 0); cost[st] = c0; push(c0 + guess(e.i, e.j), st); }
+      const DI = [0, 0, -1, 1], DJ = [-1, 1, 0, 0], TURN = 6, BUSY = 40, NEAR = 8;
       let goal = -1;
       while (heap.length) {
         const [f, st] = pop(), c = cost[st], d = st & 3, cell = st >> 2, i = cell % g.nx, j = jA + Math.floor(cell / g.nx);
@@ -432,7 +435,7 @@ class PyramidSolid {
           if (ni < 0 || ni >= g.nx || nj < jA || nj > jB) continue;
           const k = nj * g.nx + ni;
           if (g.block[k]) continue;
-          const nc = c + 1 + (nd !== d ? TURN : 0) + (g.used[k] ? BUSY : 0), ns = idx(ni, nj, nd);
+          const nc = c + 1 + (nd !== d ? TURN : 0) + (g.used[k] ? BUSY : 0) + (g.near[k] ? NEAR : 0), ns = idx(ni, nj, nd);
           if (nc < cost[ns]) { cost[ns] = nc; from[ns] = st; push(nc + guess(ni, nj), ns); }
         }
       }
@@ -464,9 +467,13 @@ class PyramidSolid {
       if (path) {
         // the corners of the path in (x, h), from the table's top edge to the foot it goes up to
         const P = [[path.start.x, path.start.h]];
-        for (const [i, j] of path.cells) { g.used[j * g.nx + i] = 1; P.push([(i - g.X) * s, j * dh]); }
-        for (let j = path.start.j0; j !== path.start.j; j += Math.sign(path.start.j - path.start.j0 || 1)) g.used[j * g.nx + path.start.i] = 1;
-        for (let j = path.end.j0; j !== path.end.j; j += Math.sign(path.end.j - path.end.j0 || 1)) g.used[j * g.nx + path.end.i] = 1;
+        const take = (i, j) => {   // this lane is taken; the lanes either side are "near"
+          g.used[j * g.nx + i] = 1;
+          for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = i + di, b = j + dj; if (a >= 0 && a < g.nx && b >= 0 && b < g.ny) g.near[b * g.nx + a] = 1; }
+        };
+        for (const [i, j] of path.cells) { take(i, j); P.push([(i - g.X) * s, j * dh]); }
+        for (let j = path.start.j0; j !== path.start.j; j += Math.sign(path.start.j - path.start.j0 || 1)) take(path.start.i, j);
+        for (let j = path.end.j0; j !== path.end.j; j += Math.sign(path.end.j - path.end.j0 || 1)) take(path.end.i, j);
         P.push([path.end.x, path.end.h]);
         const C = [P[0]];
         for (let k = 1; k < P.length - 1; k++) {
