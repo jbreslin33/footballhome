@@ -386,12 +386,14 @@ class PyramidShapeView {
   // fields are foreign clubs, left out); the deep line names the deepest table's league and its side
   _crownOf(rows) {
     const clubs = new Set();
-    let deep = null;
+    let deep = null, top = null;
     for (const r of rows) {
       if (r.num == null) continue;
       for (const c of r.cells) {
         for (const t of c.tables || []) for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) clubs.add(this._club(name));
-        if ((c.tables || []).length && (!deep || r.num > deep.num)) deep = { num: r.num, cell: c };
+        if (!(c.tables || []).length) continue;
+        if (!deep || r.num > deep.num) deep = { num: r.num, cell: c };
+        if (!top || r.num < top.num) top = { num: r.num, cell: c };
       }
     }
     if (!deep) return null;
@@ -401,7 +403,7 @@ class PyramidShapeView {
     const league = (comp && comp.name) || (t && t.name ? t.name.split(' · ')[0] : '');
     const root = this._copy(`shape_side_${deep.cell.slot}`) || '';
     return [this._copy('shape_crown', { levels: deep.num, clubs: clubs.size }),
-            league && root ? this._copy('shape_crown_deep', { levels: deep.num, root, league }) : ''].filter(Boolean);
+            league ? this._copy('shape_crown_deep', { levels: deep.num, root, league, top: this._copy(`shape_side_${top.cell.slot}`) || top.cell.title, top_n: top.num }) : ''].filter(Boolean);
   }
 
   _openPanel(key, cell) {
