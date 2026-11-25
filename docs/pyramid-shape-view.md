@@ -65,24 +65,31 @@ Two files:
   (`_arrows`). All levels lie on one slope, so a point on a side is (x across, h down) and a line
   runs on from level to level. Only the APSL's side has them, and only on its calendar. Thin and
   narrow-headed (owner: "make them thinnger and smaller arross").
-- **On screen:** a quick go-to button for every side the data names (bottom, after Fit; owner: "add
-  them to bottom too for quick goto view"), named by its first league below the cups — dimmed when
-  that side is not on the pyramid now; pressing one switches on its calendar and show switch if
-  needed, then turns to it and fills the screen with that side's own levels
-  (`PyramidSolid.focus`; owner: "not seeing upsl" · "its blank" — it stood opposite the face, and
-  seen whole its tables were a few pixels tall); the calendar buttons; small switches for the pro levels and each cup, and for the non-APSL
-  open pyramid and each league beside the APSL on the calendars shown (they share the 2D chart's
-  Show-on-screen settings, so a league hidden there shows here as a switch that is off — owner:
-  "sometnig weier if u see it and i don't"); 🗻 3D
-  pyramid / ▦ 2D chart (the flow view, which has the same two buttons back); ‹ › − + Fit.
+- **On screen — THE RAIL on the right, nothing across the top** (2026-11-25, mig 1893; owner: "we
+  need on right not bottom. the controls … should be names of leagus to go to their pyramdid" ·
+  "get rid of everyting at top"): one button per side, named by message copy `shape_side_<n>`
+  (APSL, MLS, UPSL, USL, NPSL, LfC) in the order `shape_side_order` gives (MLS, USL, APSL, NPSL,
+  UPSL, LfC). The picked league's levels sit under it as number buttons (APSL 4 5 6 7 8 9; MLS
+  Cup Cup 1 2 3). A league button snaps round to that side and fills the screen with its levels
+  (`PyramidSolid.focus(slot)`); a level button snaps to that one level (`focus(slot, [row])`). A
+  dimmed league (its calendar off) switches on what it needs and snaps there after the rebuild.
+  Whole pyramid (fit), − +, the hint. The calendar pills, Show-on-screen switches, 3D / 2D buttons
+  and ‹ › are gone (the page's ☰ still has views and Show on screen). The tap panel opens to the
+  left of the rail; the camera centres the pyramid in the room the rail leaves (`_inset`, `_room`).
+- **Levels numbered by division** (mig 1893): Division I = 1, II = 2, III = 3, the APSL and the
+  national leagues beside it = 4 (the lowest beside tier), each feeder row after it 5, 6 …; cups
+  carry no number (`shape_level_cup`). Before, rows counted from the top (Club World Cup = 1).
 
 ## Hands
 
 One rule at every zoom, like a map (owner: "we need it easier to spin and zoom etc. the controls
 are awkward"; hint mig 1867):
 
-- drag: sideways turns, up/down moves along the levels, both at once; a flick keeps turning
-- right-drag, shift-drag or two fingers: pan any way; two fingers also pinch to zoom
+- drag: sideways turns (kept for fun — owner: "keep the mouse rotatons for coolmess factor"; any
+  rail button snaps back square), up/down moves along the levels; a flick keeps turning
+- NO side-to-side sliding (owner: "the pyrmaid has no need to go side to side so movmennt should be
+  restricted to up and down"): right-drag, shift-drag and two fingers move up/down only, and zoom
+  at the pointer keeps it centred across (`_clampX` = 0); two fingers also pinch to zoom
 - wheel, pinch, trackpad pinch: zoom toward the pointer (exponential, smooth on both)
 - a trackpad's sideways swipe turns; ctrl-/alt-drag tilts
 - tap a level: its league opens flat in the right-hand panel, scrolled to that level, the side lit

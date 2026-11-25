@@ -153,7 +153,7 @@ class PyramidSolid {
     g.textBaseline = 'middle'; g.textAlign = 'center';
     // "Level N" is the headline of every level (owner 2026-11-24: "the imoprtant thing is the Level x
     // txt"); the league's name, where the level has one league, sits under it, smaller
-    const lvl = this.hooks.level ? this.hooks.level(cell.level + 1) : '';
+    const lvl = this.hooks.level ? this.hooks.level(cell.num) : '';   // the division number (cups: none)
     g.fillStyle = '#ffffff'; g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 0.02 * u;
     fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, 0.12 * u);
     g.shadowBlur = 0;
@@ -278,9 +278,13 @@ class PyramidSolid {
   // With the panel open the pyramid moves into the room left of it.
   _view() {
     const w = this.stage.clientWidth, h = this.stage.clientHeight;
-    if (this.shift) this.camera.setViewOffset(w, h, Math.round(w * this.shift), 0, w, h); else this.camera.clearViewOffset();
+    // the rail on the right (PyramidShapeView) takes its width: the pyramid centres in what is left
+    const off = Math.round(w * this.shift + this._inset() / 2);
+    if (off) this.camera.setViewOffset(w, h, off, 0, w, h); else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
   }
+  _inset() { const r = this.stage.querySelector('.sh-rail'); return r && r.offsetWidth ? r.offsetWidth + 10 : 0; }
+  _room() { const w = this.stage.clientWidth || 1; return Math.max(0.3, (w - this._inset()) / w) * (this.shift ? 0.54 : 1); }
   setShift(on) {
     const wide = this.stage.clientWidth > 760;
     this.shift = on && wide ? 0.23 : 0;
@@ -291,7 +295,7 @@ class PyramidSolid {
     // Far enough back that every corner of the cap and of the foot is inside the frame — square
     // on a side or corner-on, at the resting tilt.  A short, wide stack (two levels) needs this:
     // its foot comes well toward the eye.
-    const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this.shift ? 0.54 : 1, keep = 0.94;
+    const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this._room(), keep = 0.94;
     const p = this.lean * 0.55, half = Math.PI / this.slots;
     let dist = 0;
     for (const [a, y] of [[this._apo(0), this.total / 2], [this.base, -this.total / 2]]) {
@@ -330,13 +334,14 @@ class PyramidSolid {
   // Turn to a side AND fill the screen with its own levels (owner 2026-11-24: "its blank" — a side
   // seen whole from the fitted distance has its tables a few pixels tall).  The close view then
   // sharpens by itself (_sharpen).
-  focus(slot) {
-    const rows = this.rows.map((r, i) => (r.cells.some((c) => c.slot === slot) ? i : -1)).filter((i) => i >= 0);
+  // only = row indexes to fill the screen with (a rail level button: one level of that side)
+  focus(slot, only) {
+    const rows = only && only.length ? only.slice().sort((a, b) => a - b) : this.rows.map((r, i) => (r.cells.some((c) => c.slot === slot) ? i : -1)).filter((i) => i >= 0);
     if (!rows.length) return this.face(slot);
     this.face(slot);
     const first = rows[0], last = rows[rows.length - 1];
     const yT = this._yTop(first), yB = this._yTop(last + 1), mid = (yT + yB) / 2, tall = (yT - yB) / Math.cos(this.lean);
-    const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this.shift ? 0.54 : 1, keep = 0.9;
+    const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this._room(), keep = 0.9;
     const half = Math.PI / this.slots, wide = 2 * this._apo(last + 1) * Math.tan(half);
     const a = this._apo((first + last + 1) / 2) || this._apo(first);
     const p = this.to.pitch;
@@ -491,7 +496,7 @@ class PyramidSolid {
         this.dist = this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.02, g.dist * f));
         // the spot between the fingers stays between the fingers
         const [nx, ny] = ndc(m.x, m.y), t = Math.tan((this.camera.fov * Math.PI) / 360);
-        this.panX = this.to.panX = g.panX - (m.x - g.m.x) * wpp + nx * t * this.camera.aspect * (g.dist - this.dist);
+        this.panX = this.to.panX = 0;   // up and down only
         this.panY = this.to.panY = g.panY + (m.y - g.m.y) * wpp + ny * t * (g.dist - this.dist);
         this._auto = false; this.draw();
         return;
@@ -562,7 +567,7 @@ class PyramidSolid {
     });
   }
   // keep it on the screen: never slide the pyramid wholly out of view
-  _clampX(x) { return Math.max(-this.base, Math.min(this.base, x)); }
+  _clampX() { return 0; }   // up and down only (owner 2026-11-25: "the pyrmaid has no need to go side to side so movmennt should be restricted to up and down")
   _clampY(y) { return Math.max(-this.total / 2, Math.min(this.total / 2, y)); }
 
   // The league under the pointer: its words, or the side of the level they are on.
