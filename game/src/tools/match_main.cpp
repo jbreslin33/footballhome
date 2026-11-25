@@ -176,7 +176,7 @@ struct Stats {
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
-    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0, toe_n[5][4] = {}, toe_x[5][4] = {}, toe_why[64] = {}, tko_n[5] = {}, tko_ok[5] = {},   // §8.366 TAKE-ON ENDS: failed by cause x next ball; by band
+    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0, fc[5] = {},   /* G5.262 (§8.368) FACED: past him / lost clean / knocked loose / kicked it away / other */ toe_n[5][4] = {}, toe_x[5][4] = {}, toe_why[64] = {}, tko_n[5] = {}, tko_ok[5] = {},   // §8.366 TAKE-ON ENDS: failed by cause x next ball; by band
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
     long ph[ai::kPhaseCount] = {}, ph_n = 0;
@@ -1629,8 +1629,13 @@ int main(int argc, char** argv) {
                         // §8.264: StatsBomb's take-on (a Dribble) is an attempt to beat the man — faced and then taken off
                         // him, or poked loose while carrying it; faced and then passing it away is no take-on. Before,
                         // every faced spell counted: 80 a team-match v 18.05.
-                        const bool carrying = s.lastOrders()[owner].why == ai::Why::Dribble;
-                        if ((own >= 0 && W.player(static_cast<std::uint8_t>(own)).team != owner_team) || (own < 0 && carrying)) {
+                        // G5.262 (§8.368): knocked loose = a tackle / nick / steal / heavy touch within 3 ticks, whatever his order.
+                        // The §8.264 test was his order Dribble — never true for a faced man (he carries under a pass order
+                        // until the release), so a take-on knocked loose was never booked; hidden while 70% of won tackles were clean.
+                        bool contest = false;
+                        for (int c = 0; c < 4; ++c) if (static_cast<long>(k) - tf_k[c] <= 3) contest = true;
+                        ++S.fc[own >= 0 ? (W.player(static_cast<std::uint8_t>(own)).team != owner_team ? 1 : 4) : contest ? 2 : 3];
+                        if ((own >= 0 && W.player(static_cast<std::uint8_t>(own)).team != owner_team) || (own < 0 && contest)) {
                             ++S.takeon; ++S.tko_n[fz];
                             // §8.366 TAKE-ON ENDS: why it ended (tackle won / nick / touch-tight steal / heavy touch / other)
                             const long kk = static_cast<long>(k); int cz = 4;
@@ -1997,7 +2002,7 @@ int main(int argc, char** argv) {
                 }
                 if (facing[own] > 0) {
                     const auto& d = W.player(static_cast<std::uint8_t>(facing[own] - 1));
-                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.takeon; ++S.takeon_ok; ++S.tko_n[facing_z[own]]; ++S.tko_ok[facing_z[own]]; ++S.fo_past[facing_z[own]]; facing[own] = 0; }
+                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.fc[0]; ++S.takeon; ++S.takeon_ok; ++S.tko_n[facing_z[own]]; ++S.tko_ok[facing_z[own]]; ++S.fo_past[facing_z[own]]; facing[own] = 0; }
                 }
             }
 
@@ -4126,7 +4131,7 @@ int main(int argc, char** argv) {
         long fl = 0; for (int c = 0; c < 5; ++c) for (int n = 0; n < 4; ++n) fl += S.toe_n[c][n];
         std::printf("      failed %.2f (7.46): next ball ours / theirs / dead, our restart / dead, theirs —", fl / tm);
         for (int c = 0; c < 5; ++c) std::printf(" %s %.2f = %.2f / %.2f / %.2f / %.2f%s", cn[c], (S.toe_n[c][0] + S.toe_n[c][1] + S.toe_n[c][2] + S.toe_n[c][3]) / tm, S.toe_n[c][0] / tm, S.toe_n[c][1] / tm, S.toe_n[c][2] / tm, S.toe_n[c][3] / tm, c < 4 ? ";" : "\n");
-        std::printf("      faced, knocked loose, NOT booked (his order not Dribble):");
+        std::printf("      faced, loose and NOT booked (none since G5.262, §8.368: a faced spell knocked loose is a take-on):");
         for (int c = 0; c < 4; ++c) std::printf(" %s %.2f / %.2f / %.2f / %.2f%s", cn[c], S.toe_x[c][0] / tm, S.toe_x[c][1] / tm, S.toe_x[c][2] / tm, S.toe_x[c][3] / tm, c < 3 ? ";" : "; his order:");
         for (int w = 0; w < 64; ++w) if (S.toe_why[w]) std::printf(" %s %.2f", (w < static_cast<int>(ai::kWhyCount) ? ai::kWhyNames[w] : "?"), S.toe_why[w] / tm);
         std::printf("\n");
@@ -4181,6 +4186,13 @@ int main(int argc, char** argv) {
             std::printf("      squirts <5 m off the line %s: %.2f a team-match, out %.1f%%, taken by the tackler's side %.2f / the carrier's %.2f, rolled %.1f m before taken\n",
                         q ? "toward it" : "away from it", S.tkq_n[q] / tm, 100.0 * S.tkq_out[q] / std::max(1L, S.tkq_n[q]), S.tkq_got[q][1] / tm, S.tkq_got[q][0] / tm, S.tkq_d[q] / std::max(1L, got));
         }
+    }
+    {   // G5.262 (§8.368) FACED: how it ended (a take-on = past him, lost clean or knocked loose)
+        static const char* en[5] = {"past him", "lost clean", "knocked loose", "kicked it away", "other"};
+        long n = 0; for (int e = 0; e < 5; ++e) n += S.fc[e];
+        std::printf("   FACED (a man goal-side within 1.5 m in his 45 deg cone), how it ended: %.2f a team-match =", n / tm);
+        for (int e = 0; e < 5; ++e) std::printf(" %s %.2f%s", en[e], S.fc[e] / tm, e < 4 ? ";" : "\n");
+        std::printf("      (StatsBomb PL 15/16: take-ons 18.05 tried, 10.59 past, 6.49 ended in a tackle duel; tackles with no take-on 13.83 = every Dispossessed)\n");
     }
     std::printf("   BODY BLOCKS (G4.25 sweep, any ball above capture speed; §8.269): %.2f a team-match\n", S.bblk / tm);
     std::printf("   PASSES CHARGED DOWN (§8.271: their touch in a pass's first 0.4 s / 8 m; StatsBomb PL 15/16 blocked passes 11.97 a team-match = 2.8%% of 433.8, the blocker 2.2 / 3.0 / 4.4 m off the passer, 0.1-0.3 s on): %.2f a team-match of %.1f kicks (%.1f%%) — kept %.2f, off him loose %.2f\n",

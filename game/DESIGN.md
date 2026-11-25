@@ -13733,3 +13733,32 @@ overshoot (5-20 m) while <5 m and 20+ sit on real, so the pace is a stand-in for
 or across the line). Next: take-ons tried fell 3.2 a team-match at the 0.25 clean share in every arm — more loose balls,
 fewer carriers set to take a man on; read the take-on trigger.
 Tests 30/30; lint clean (204 tagged); engine sync OK.
+
+### 8.368 G5.262 — the take-on cut: a faced man knocked loose is a take-on, whatever his order (harness only; rulers, no game change)
+
+From §8.367: take-ons tried fell 16.2 → 13.0 (18.05) at the 0.25 clean share in every arm. New FACED line (fh-game-match):
+every spell with a man goal-side within 1.5 m in the carrier's 45° cone (§8.231), by how it ended. Seeds 1000-4000 × 8 on
+G5.261: **faced 56.95 a team-match = past him 9.73, lost clean 3.30, knocked loose 4.50, kicked it away 39.42.** The
+§8.264 cut booked a faced spell that went loose only if his order was Why::Dribble — and **no faced man ever has it**
+(0.00 a team-match: "nothing on: carry" is never the order with a man square in front; he carries under a pass order
+until the release). So every take-on knocked loose went unbooked, while a take-on lost clean was booked whatever his
+order. With 70% of won tackles clean (G4.24) that hid inside the count; G5.261's squirts (75%) moved 4 a team-match from
+"lost clean" to "knocked loose" and out of the count — the play did not change, the cut did.
+
+**Fixed:** a faced spell is a take-on when he gets 1 m past the man, or loses it clean to them, or it is knocked loose (a
+tackle won / nick / touch-tight steal / heavy touch within 3 ticks), whatever his order. Kicked away = no take-on.
+
+| seeds 1000-4000 × 8, G5.261 code | §8.264 cut | **G5.262 cut** | real (StatsBomb PL 15/16) |
+|---|---|---|---|
+| take-ons tried | 13.03 | **17.53** | 18.05 |
+| completed | 9.73 | 9.73 | 10.59 |
+| success % | 74.6 | **55.5** | 58.7 |
+
+Also corrected (StatsBomb, PL 15/16): every **Dispossessed** (13.84 a team-match) is the carrier's side of a Tackle duel
+with no take-on (13.81 related to one; outcomes Won 3.20 / Success In Play 4.77 / Lost In Play 2.92 / Lost Out 2.49 /
+Success Out 0.45). §8.363-8.366's "Dispossessed 13.8 beside 20.3 tackle duels" is wrong: they are inside the 20.3. The
+G5.259 target (a carry stolen off his feet, StatsBomb 8.0, "by a duel / dispossessed") was already the combined count, so
+its rows stand; but our nicks and touch-tight steals (no tackle) are real dispossessions too, and the card's tackles
+line counts only tickTackles duels — next: book a nick / steal as the tackle duel StatsBomb records, then read tackles.
+Card 9 / 11 / 13 → **10 ok / 12 off / 11 OFF** (`card_G5.262.txt`): takeons_tm OFF → ok (17.53 v 18.05), take-on success
+OFF → off (55.4 v 58.7). Tests 30/30; lint clean.
