@@ -258,22 +258,36 @@
   let tagKey = '', tagRows = new Map();
   function paintTag(rows) {
     const el = $('tag');
-    const key = follow + '§' + rows.map((x) => [x.id, x.k, x.v, x.man, x.d].join('=')).join('§');
+    // The rows (with this moment's man and numbers, for the popup) every frame; the table only when a name changes.
+    tagRows = new Map(rows.map((x) => [x.id, x]));
+    for (const x of rows) if (x.m && x.v && x.v !== 'On') tagRows.set(x.id + ':s', Object.assign({}, x, { k: x.v, sdef: true }));
+    const key = follow + '§' + rows.map((x) => [x.id, x.k, x.v].join('=')).join('§');
     if (key !== tagKey) {
-      tagKey = key; tagRows = new Map(rows.map((x) => [x.id, x]));
+      tagKey = key;
       el.textContent = '';
       if (!rows.length) return;
       const add = (parent, cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; parent.appendChild(d); return d; };
       add(el, 'who', say('view_following', { num: numOf(follow), player: nameOf(follow) }));
-      const tbl = document.createElement('table'), hr = tbl.insertRow();
-      for (const h of ['tbl_machine', 'tbl_state', 'tbl_man', 'tbl_detail']) { const th = document.createElement('th'); th.textContent = say(h); hr.appendChild(th); }
-      let firstM = true;
+      // Owner 11/25: "state, on (don't show if off) — that is it. then if you click a state it has popup
+      // explaining". One row per state that is on: its name. A machine in a deeper state (stepping into
+      // reach) is the machine's row, then the deeper state on its own row. Everything else is in the popup.
+      const tbl = document.createElement('table');
+      // One name once: his action, the concept he plays and a machine can all be "Close down the man on the
+      // ball". The machine's row wins (its deeper state sits under it), so a single row with a machine's
+      // name or one of its state names is dropped.
+      const seen = new Set();
+      for (const x of rows) if (x.m) { seen.add('m:' + x.k); if (x.v) seen.add('m:' + x.v); }
       for (const x of rows) {
-        const tr = tbl.insertRow();
-        tr.className = 'row' + (x.m ? ' m' : '') + (x.c ? ' c' : '') + (x.m && firstM ? ' first-m' : '');
-        if (x.m) firstM = false;
-        tr.dataset.id = x.id;
-        for (const [cls, v] of [['lab', x.k], ['val', x.v], ['man', x.man], ['det', x.d]]) { const td = tr.insertCell(); td.className = cls; td.textContent = v || ''; }
+        if (!x.m && seen.has('m:' + x.v)) continue;
+        const lines = x.m && x.v && x.v !== 'On' ? [[x.id, x.k, ''], [x.id + ':s', x.v, ' sub']] : [[x.id, x.m ? x.k : x.v, '']];
+        for (const [id, name, sub] of lines) {
+          if (seen.has(name)) continue;
+          seen.add(name);
+          const tr = tbl.insertRow();
+          tr.className = 'row' + (x.c ? ' c' : '') + sub;
+          tr.dataset.id = id;
+          const td = tr.insertCell(); td.className = 'val'; td.textContent = name || '—';
+        }
       }
       el.appendChild(tbl);
     }
@@ -356,7 +370,15 @@
     });
     $('tag').addEventListener('click', (ev) => {
       const ln = ev.target.closest('.row'), x = ln && tagRows.get(ln.dataset.id);
-      if (x) popup(x.k + (x.v ? ' — ' + x.v : ''), x.def);
+      if (!x) return;
+      // The popup: what the state means, then his man and the numbers.
+      const box = document.createElement('div');
+      const p1 = document.createElement('p'); p1.textContent = x.def || say('m_nodef'); box.appendChild(p1);
+      for (const extra of [x.man ? say('tbl_man') + ': ' + x.man : '', ...(x.d ? x.d.split(' · ') : [])]) {
+        if (!extra) continue;
+        const pe = document.createElement('p'); pe.className = 'key'; pe.textContent = extra; box.appendChild(pe);
+      }
+      popup(x.m ? x.k : x.v, box);
     });
     $('popup').addEventListener('click', (ev) => { if (ev.target.id === 'popup' || ev.target.id === 'popup-x') $('popup').hidden = true; });
     window.addEventListener('keydown', (ev) => {
