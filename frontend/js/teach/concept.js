@@ -186,6 +186,124 @@
     return rows.concat(mrows);
   }
 
+  // ── THE concept, on the pitch (owner 11/25: "i still don't see what we are getting out of the viewer in regards to
+  // 'stay in pressing distance' … lost in shuffle … not highlighted"). For pressing distance: his reach circle (green
+  // with his man inside it, red outside), a line to his man with the metres, a banner IN / OUT, and the scrub bar
+  // coloured with every moment of the recording he was in it. Words are copy rows focus_pd_*.
+  const PD = 3;   // the pressing-distance machine's wire number (MACHINE_KEY)
+  const focusOn = () => cMachine === PD;
+  function pdAt(t, slot) {
+    const eng = at(logs.machines, t), e = eng && (eng[slot] || []).find((x) => x.machine === PD);
+    if (!e || e.other === NO) {
+      const pr = at(logs.poss, t), mine = pr && pr[slot], ph = mine ? mine.phase : null;
+      const sl = at(logs.states, t), code = sl ? sl[slot] : null;
+      const why = ph != null && !DEFENDING.has(ph) ? 'ours' : code === 'press_ball' ? 'press' : code === 'chase_ball' ? 'chase' : code === 'keeper' ? 'keeper' : 'none';
+      return { on: false, why };
+    }
+    const rr = at(logs.reach, t), r = rr && rr[slot];
+    if (!r || r.reach == null) return { on: false, why: 'none' };
+    const a = posAt(t, slot), b = posAt(t, e.other), gap = Math.hypot(a.x - b.x, a.y - b.y);
+    return { on: true, in: r.in, man: e.other, gap, reach: r.reach, stepping: e.state === 2 };
+  }
+  // The scrub bar's strip (owner 11/25: "like in the youtube like control … highlight with color at what from and
+  // till timestamps the 'stay in press..' is ON. dont show others in that yet or allow them to be toggled. to show
+  // all concepts or main one in question"). THIS concept (default): one gold lane, each spell he is in it from its
+  // start to its end. ALL concepts: a lane per machine that came on in the recording, each its own colour. ⏮ ⏭ jump
+  // to the start of the previous / next spell of this concept.
+  const LANE_COL = { scheme: '#9fc3ff', shadow: '#c39bff', pdist: '#ffcc00', recover: '#ff9f43', press: '#ff4d4d', chase: '#2ecc71', double: '#ff6bd5', cover: '#4dd0e1' };
+  let stripAt = 0, stripMode = localStorage.getItem('fh.concept.strip') || 'main', spells = [], tally = { inT: 0, outT: 0 };
+  function onSpans(test) {   // [[from, till], …] in ticks, sampled every 0.5 s
+    const a = firstTick(), b = lastTick(), out = [];
+    let open = null;
+    for (let t = a; t <= b; t += 15) {
+      const on = test(t);
+      if (on && open == null) open = t;
+      if (!on && open != null) { out.push([open, t]); open = null; }
+    }
+    if (open != null) out.push([open, b]);
+    return out;
+  }
+  const machineOnAt = (t, slot, pred) => { const eng = at(logs.machines, t); return !!(eng && (eng[slot] || []).some(pred)); };
+  function paintStrip() {
+    const el = $('strip'), nav = $('spellnav');
+    if (cMachine == null || follow < 0 || !snaps.length) { el.hidden = true; nav.hidden = true; return; }
+    el.hidden = false; nav.hidden = false;
+    if (performance.now() - stripAt < 1000) return;
+    stripAt = performance.now();
+    const a = firstTick(), b = lastTick(), span = Math.max(1, b - a);
+    spells = onSpans((t) => machineOnAt(t, follow, conceptOn));
+    if (focusOn()) {
+      tally = { inT: 0, outT: 0 };
+      for (const [f, u] of spells) for (let t = f; t < u; t += 15) { const x = pdAt(t, follow); if (x.on) { if (x.in) tally.inT += 15; else tally.outT += 15; } }
+    }
+    const lanes = [];
+    if (stripMode === 'all') {
+      for (const [w, key] of Object.entries(MACHINE_KEY)) {
+        const n = Number(w), sp = onSpans((t) => machineOnAt(t, follow, (e) => e.machine === n));
+        if (!sp.length) continue;
+        const m = terms.find((x) => x.kind === 'machine' && x.wire === n);
+        lanes.push({ name: m ? m.title : key, col: n === cMachine ? '#ffcc00' : LANE_COL[key] || '#fff', sp, main: n === cMachine });
+      }
+    } else lanes.push({ name: concept ? concept.title : '', col: '#ffcc00', sp: spells, main: true });
+    el.textContent = '';
+    el.style.height = (lanes.length * 8) + 'px';
+    el.style.top = (-(lanes.length * 8) - 4) + 'px';
+    lanes.forEach((ln, i) => {
+      const lane = document.createElement('div'); lane.className = 'lane' + (ln.main ? ' main' : ''); lane.title = ln.name;
+      lane.style.top = (i * 8) + 'px';
+      for (const [f, u] of ln.sp) {
+        const d = document.createElement('div'); d.className = 'spell';
+        d.style.left = (100 * (f - a) / span) + '%'; d.style.width = Math.max(0.3, 100 * (u - f) / span) + '%'; d.style.background = ln.col;
+        d.title = ln.name + ' · ' + clockOf(f) + '–' + clockOf(u);
+        lane.appendChild(d);
+      }
+      el.appendChild(lane);
+    });
+    $('stripmode').textContent = say(stripMode === 'all' ? 'strip_all' : 'strip_main');
+  }
+  function jumpSpell(dir) {
+    if (!spells.length) return;
+    const now = play.t, eps = 15;
+    const tgt = dir > 0 ? spells.find(([f]) => f > now + eps) : [...spells].reverse().find(([f]) => f < now - eps);
+    if (!tgt) return;
+    play.t = tgt[0]; play.live = false; play.on = true;
+  }
+  function paintFocus(t) {
+    const el = $('focus');
+    if (!focusOn() || follow < 0) { el.hidden = true; return null; }
+    const f = pdAt(t, follow);
+    el.hidden = false;
+    el.className = 'glass ' + (!f.on ? 'off' : f.in ? 'in' : 'out');
+    const tot = tally.inT + tally.outT;
+    const line2 = tot ? say('focus_pd_tally', { num: numOf(follow), pin: Math.round(100 * tally.inT / tot), pout: Math.round(100 * tally.outT / tot) }) : '';
+    let line1;
+    if (!f.on) line1 = say('focus_pd_off_' + f.why, { num: numOf(follow) });
+    else line1 = say(f.in ? 'focus_pd_in' : 'focus_pd_out', { num: numOf(follow), man: numOf(f.man), gap: f.gap.toFixed(1), reach: f.reach.toFixed(1), short: Math.max(0, f.gap - f.reach).toFixed(1) })
+               + (f.stepping ? ' ' + say('focus_pd_stepping') : '');
+    const key = line1 + '§' + line2;
+    if (el.dataset.k !== key) {
+      el.dataset.k = key; el.textContent = '';
+      const d1 = document.createElement('div'); d1.className = 'f1'; d1.textContent = line1; el.appendChild(d1);
+      if (line2) { const d2 = document.createElement('div'); d2.className = 'f2'; d2.textContent = line2; el.appendChild(d2); }
+    }
+    return f;
+  }
+  function drawFocus(t, f) {
+    if (!f || !f.on) return;
+    const a = posAt(t, follow), b = posAt(t, f.man), qa = P(a.x, a.y), qb = P(b.x, b.y);
+    const col = f.in ? '46,204,113' : '255,77,77';
+    g.beginPath(); g.arc(qa[0], qa[1], f.reach * sc, 0, Math.PI * 2);
+    g.fillStyle = `rgba(${col},.13)`; g.fill();
+    g.lineWidth = 2.5; g.setLineDash([]); g.strokeStyle = `rgba(${col},.95)`; g.stroke();
+    g.beginPath(); g.moveTo(qa[0], qa[1]); g.lineTo(qb[0], qb[1]);
+    g.lineWidth = 2; g.setLineDash([6, 5]); g.strokeStyle = `rgba(${col},1)`; g.stroke(); g.setLineDash([]);
+    const mx = (qa[0] + qb[0]) / 2, my = (qa[1] + qb[1]) / 2, txt = f.gap.toFixed(1) + ' m';
+    g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const w = g.measureText(txt).width + 10;
+    g.fillStyle = 'rgba(6,10,18,.75)'; g.fillRect(mx - w / 2, my - 9, w, 18);
+    g.fillStyle = `rgb(${col})`; g.fillText(txt, mx, my);
+  }
+
   // ── playback: a position on the recording, a rate; at the newest moment it is LIVE ──
   const play = { t: 0, on: true, live: true, rate: 1, last: performance.now(), dragging: false };
   function posAt(t, slot) { const [a, b, k] = snapAt(t); return { x: lerp(a.players[slot].x, b.players[slot].x, k), y: lerp(a.players[slot].y, b.players[slot].y, k) }; }
@@ -241,15 +359,25 @@
     if (play.live && !play.dragging) play.t = lastTick();
     else if (play.on && !play.dragging) {
       play.t += dt * 30 * play.rate;
-      if (play.t >= lastTick()) { play.t = lastTick(); play.live = true; }
+      if (play.t >= lastTick()) { if (play.only && spells.length) play.t = spells[0][0]; else { play.t = lastTick(); play.live = true; } }
     }
     play.t = Math.max(firstTick(), Math.min(lastTick(), play.t));
+    // Play only the concept: inside a spell, play on; past one, on to the next spell's start (after the last, the first).
+    if (play.only && spells.length && !play.dragging) {
+      if (!spells.some(([f, u]) => play.t >= f && play.t <= u)) {
+        const nx = spells.find(([f]) => f > play.t) || spells[0];
+        play.t = nx[0];
+      }
+    }
     const t = play.t, [sa, sb, k] = snapAt(t);
     const ball = { x: lerp(sa.ball.x, sb.ball.x, k), y: lerp(sa.ball.y, sb.ball.y, k) };
 
     const rows = follow >= 0 && follow < sa.players.length ? rowsFor(t, follow) : [];
     const man = (rows.find((r) => r.c && r.other !== NO && r.other != null) || {}).other;
 
+    const focus = paintFocus(t);
+    drawFocus(t, focus);
+    paintStrip();
     // every player, a little smaller than life-size on the old zoom
     const r = Math.max(6, 0.85 * sc);
     shown = [];
@@ -392,7 +520,15 @@
       if (play.on || play.live) { play.on = false; play.live = false; } else play.on = true;
       play.last = performance.now();
     });
-    $('live').addEventListener('click', () => { play.live = true; play.on = true; });
+    $('live').addEventListener('click', () => { play.live = true; play.on = true; play.only = false; paintOnly(); });
+    // The concept's spells: ⏮ ⏭ jump between them; ▶ only plays just them (owner 11/25: "button to 'play only main
+    // concept' not leading up or after"); the lanes button shows this concept or all of them.
+    const paintOnly = () => { const b = $('onlybtn'); b.textContent = say(play.only ? 'strip_only_on' : 'strip_only'); b.classList.toggle('on', !!play.only); };
+    $('prevspell').addEventListener('click', () => jumpSpell(-1));
+    $('nextspell').addEventListener('click', () => jumpSpell(1));
+    $('onlybtn').addEventListener('click', () => { play.only = !play.only; if (play.only) { play.live = false; play.on = true; play.last = performance.now(); } paintOnly(); });
+    $('stripmode').addEventListener('click', () => { stripMode = stripMode === 'all' ? 'main' : 'all'; localStorage.setItem('fh.concept.strip', stripMode); stripAt = 0; });
+    paintOnly();
     const scrub = $('scrub');
     scrub.addEventListener('pointerdown', () => { play.dragging = true; play.live = false; });
     scrub.addEventListener('input', () => { play.t = Number(scrub.value); play.live = false; });

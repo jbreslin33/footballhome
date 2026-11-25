@@ -49,7 +49,22 @@
     input[type=range]::-moz-range-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.35); }
     input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5.5px; border-radius: 50%; background: var(--gold); border: 0; }
     input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); border: 0; }
-    #scrub { flex: 1 1 auto; min-width: 80px; }
+    #scrubwrap { flex: 1 1 auto; min-width: 80px; position: relative; display: flex; align-items: center; }
+    #scrubwrap #scrub { flex: 1 1 auto; width: 100%; }
+    #strip { position: absolute; left: 0; right: 0; top: -12px; height: 8px; pointer-events: none; }
+    #strip .lane { position: absolute; left: 0; right: 0; height: 7px; border-radius: 3px; background: rgba(255,255,255,.12); }
+    #strip .lane.main { box-shadow: 0 0 0 1px rgba(255,204,0,.6); }
+    #strip .spell { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+    #spellnav { flex: 0 0 auto; display: flex; gap: 4px; }
+    #spellnav button { font: 700 12px system-ui, sans-serif; padding: 4px 8px; }
+    #onlybtn.on { background: rgba(255,204,0,.85); color: #0b1c3d; }
+    #focus { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 34px); transform: translateX(-50%); max-width: min(720px, calc(100% - 24px));
+             padding: 8px 16px; border-radius: 12px; text-align: center; pointer-events: none; z-index: 5; }
+    #focus .f1 { font: 800 18px system-ui, sans-serif; }
+    #focus .f2 { font: 600 12px system-ui, sans-serif; color: var(--dim); margin-top: 3px; }
+    #focus.in { border: 2px solid #2ecc71; } #focus.in .f1 { color: #2ecc71; }
+    #focus.out { border: 2px solid #ff4d4d; } #focus.out .f1 { color: #ff4d4d; }
+    #focus.off { border: 2px solid rgba(255,255,255,.25); } #focus.off .f1 { color: var(--dim); font-size: 15px; }
     #scrub::-webkit-slider-runnable-track { background: linear-gradient(to right, rgba(255,204,0,.8) var(--p, 0%), rgba(255,255,255,.3) var(--p, 0%)); }
     #speed { width: 110px; }
 
@@ -122,19 +137,21 @@
     <canvas id="pitch"></canvas>
     <button id="ctitle" class="glass" type="button"></button>
     <div id="hint"></div>
+    <div id="focus" class="glass" hidden></div>
     <div id="tag"></div>
     <button id="exit" class="glass" type="button"></button>
     <div id="controls" class="glass">
       <button id="playbtn" class="glass" type="button">⏸</button>
-      <input id="scrub" type="range" min="0" max="1" step="1" value="0">
+      <span id="scrubwrap"><span id="strip" hidden></span><input id="scrub" type="range" min="0" max="1" step="1" value="0"></span>
       <span id="clock"></span>
       <button id="live" class="glass" type="button"></button>
+      <span id="spellnav" hidden><button id="prevspell" class="glass" type="button">⏮</button><button id="onlybtn" class="glass" type="button"></button><button id="nextspell" class="glass" type="button">⏭</button><button id="stripmode" class="glass" type="button"></button></span>
       <span id="speedbox"><input id="speed" type="range" min="0" max="100" step="1" value="50"><span id="speedval"></span></span>
     </div>
     <div id="loader" class="glass"><div id="load-title"></div><div id="load-track"><div id="load-bar"></div></div><div id="load-pct"></div></div>
     <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
   </div>
   <script src="js/game/wire.js?v=20261125possread"></script>
-  <script src="js/teach/concept.js?v=20261125boxes5"></script>
+  <script src="js/teach/concept.js?v=20261125spells"></script>
 </body>
 </html>
