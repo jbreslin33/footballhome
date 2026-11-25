@@ -32,9 +32,10 @@ Two files:
   league one adn usl2 side" · "put upsl on the blank side"). The side is data:
   `pyramid_competitions.pyramid_side` for the APSL root, `pro_leagues.pyramid_side` for the rest
   (0 = the face the page opens on; NULL = the next free side; a league that feeds another is drawn
-  inside its upper league's side). Today: 0 the APSL with CASA etc. · 1 the MLS column (Club World
-  Cup, Concacaf, MLS, MLS NEXT Pro) · 2 the USL column (Championship, League One, League Two) ·
-  3 the UPSL (with Division 1) · 4 the NPSL · 5 the League for Clubs. An empty pro division step
+  inside its upper league's side). Today (mig 1885): 0 the APSL with CASA etc. · 1 the MLS column
+  (Club World Cup, Concacaf, MLS, MLS NEXT Pro) · 2 the UPSL (with Division 1; on the APSL's
+  calendar, mig 1884) · 3 the USL column (Championship, League One, League Two) · 4 the NPSL ·
+  5 the League for Clubs — the FIFA calendar's sides together, the others after. An empty pro division step
   stands on the side most pro divisions use. More sides appear if the data asks for them.
 - **Many tables wrap:** more than 12 tables in a band (the UPSL's 35 conferences) go onto further
   rows of tables, so the letters stay readable.
@@ -64,7 +65,15 @@ Two files:
   (`_arrows`). All levels lie on one slope, so a point on a side is (x across, h down) and a line
   runs on from level to level. Only the APSL's side has them, and only on its calendar. Thin and
   narrow-headed (owner: "make them thinnger and smaller arross").
-- **On screen:** the calendar buttons; small switches for the pro levels and each cup; 🗻 3D
+- **On screen:** a quick go-to button for every side the data names (bottom, after Fit; owner: "add
+  them to bottom too for quick goto view"), named by its first league below the cups — dimmed when
+  that side is not on the pyramid now; pressing one switches on its calendar and show switch if
+  needed, then turns to it and fills the screen with that side's own levels
+  (`PyramidSolid.focus`; owner: "not seeing upsl" · "its blank" — it stood opposite the face, and
+  seen whole its tables were a few pixels tall); the calendar buttons; small switches for the pro levels and each cup, and for the non-APSL
+  open pyramid and each league beside the APSL on the calendars shown (they share the 2D chart's
+  Show-on-screen settings, so a league hidden there shows here as a switch that is off — owner:
+  "sometnig weier if u see it and i don't"); 🗻 3D
   pyramid / ▦ 2D chart (the flow view, which has the same two buttons back); ‹ › − + Fit.
 
 ## Hands

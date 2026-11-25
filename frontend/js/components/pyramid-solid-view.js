@@ -327,6 +327,25 @@ class PyramidSolid {
     this.to.yaw = -(cur + dir * d) * this.step;
     this._ease();
   }
+  // Turn to a side AND fill the screen with its own levels (owner 2026-11-24: "its blank" — a side
+  // seen whole from the fitted distance has its tables a few pixels tall).  The close view then
+  // sharpens by itself (_sharpen).
+  focus(slot) {
+    const rows = this.rows.map((r, i) => (r.cells.some((c) => c.slot === slot) ? i : -1)).filter((i) => i >= 0);
+    if (!rows.length) return this.face(slot);
+    this.face(slot);
+    const first = rows[0], last = rows[rows.length - 1];
+    const yT = this._yTop(first), yB = this._yTop(last + 1), mid = (yT + yB) / 2, tall = (yT - yB) / Math.cos(this.lean);
+    const t = Math.tan((this.camera.fov * Math.PI) / 360), room = this.shift ? 0.54 : 1, keep = 0.9;
+    const half = Math.PI / this.slots, wide = 2 * this._apo(last + 1) * Math.tan(half);
+    const a = this._apo((first + last + 1) / 2) || this._apo(first);
+    const p = this.to.pitch;
+    this.to.dist = Math.max(this.base * 1.02, a + Math.max(tall / 2 / (t * keep), wide / 2 / (t * this.camera.aspect * room * keep)));
+    this.to.panX = 0;
+    this.to.panY = this._clampY(mid * Math.cos(p) - a * Math.sin(p));
+    this._auto = false;
+    this._ease();
+  }
   face(slot) {
     const want = -slot * this.step, tau = 2 * Math.PI;
     this.to.yaw = this.yaw + ((((want - this.yaw) % tau) + tau * 1.5) % tau) - Math.PI;   // the short way round
