@@ -240,7 +240,9 @@ void Brain::think(const World& world) const {
         ms.job = world.isKeeper(s) ? concepts::Job::Keeper
                : st == DefendingBlock::holdBlockSpot() ? concepts::Job::Hold
                : st == DefendingBlock::pressBall() ? concepts::Job::Press
-               : st == DefendingBlock::markMan() ? concepts::Job::Mark : concepts::Job::Other;
+               : st == DefendingBlock::markMan() ? concepts::Job::Mark
+               : st == DefendingBlock::chaseBall() ? concepts::Job::Chase
+               : st == DefendingBlock::doubleTeamBall() ? concepts::Job::DoubleTeam : concepts::Job::Other;
         ms.their_ball = ph == Phase::DefendingBlock || ph == Phase::DefensiveTransition || ph == Phase::TheirSetPiece;
         ms.direct = block_.opponents().of(s);
         ms.mark = block_.markOf(t, s);
@@ -249,6 +251,14 @@ void Brain::think(const World& world) const {
         ms.step = block_.pressDistance().of(s).step;
         ms.shadow_press = block_.params().shadow_press;
         ms.press_hold = block_.params().press_hold;
+        // Recover reads what the trainer's label always read: his place recover_m+ goal-side of him.
+        if (ms.job == concepts::Job::Hold && ms.their_ball && trainer_recover_m_.raw > 0) {
+            const PlayerView v = viewOf(s, world);
+            const Vec2 spot = block_.spot(v, world);
+            ms.behind = (world.player(s).pos.x - spot.x) * v.sg >= trainer_recover_m_;
+        }
+        ms.cover = block_.deepCb(t) == static_cast<int>(s);
+        ms.carrier = world.ball().owner && setup_.team_of_slot[*world.ball().owner] != t ? static_cast<int>(*world.ball().owner) : -1;
         block_.machines().update(s, ms, now);
     }
 }

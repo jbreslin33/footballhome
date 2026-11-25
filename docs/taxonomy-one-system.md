@@ -365,3 +365,23 @@ job state.
 
 **Next:** those five become machines too; then the first machine that REPLACES the job's orders,
 and with it the resolver's rule for two that fight (the order in `machine_order`).
+
+### All eight machines in the engine; states named; the label a table (mig 1888)
+
+Owner, 2026-11-25: "how is the concept not in the state the whole time? when they don't have ball
+and defending … is it a state or not" · "just name the state the player is in a table field. then
+if you want to editorialise who he is marking or whatever then use other fields".
+
+- **Pressing distance is ON the whole time** his side defends and he has a man (not the presser,
+  not the loose ball's man); **stepping** is a deeper state inside it (dial above 0 only).
+- The five that were the page's guess are engine machines too: **recover** (his place 5 m+
+  behind him), **press**, **loose ball**, **double-team**, **cover** (the deeper CB). Recognitions
+  for now — the job states execute.
+- **Commitment only on the way down:** a machine goes deeper at once (on → stepping) but keeps
+  a state 0.3 s before dropping to a lower one.
+- Every machine and state has a name in `game_engine_terms` (kinds `machine`, `machine_state`).
+- The player's label is a **table: Machine | State | Man | Detail** — the state's name in its own
+  field; who he is minding and the numbers (e.g. "16.6 m away · can reach 14.1 m · OUT of reach")
+  in the others. Every machine that is on gets a row; tap a row for its meaning.
+
+With no dial rows the goldens are unchanged.

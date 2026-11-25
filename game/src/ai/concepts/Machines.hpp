@@ -33,8 +33,9 @@
 //                      where he stands — passive) · pressing on the lane (he is the presser
 //                      and bends his approach onto the line to the receiver he hides;
 //                      physics.shadow.press above 0 only).
-//   pressing distance  asleep · stepping into reach (holding his place, his man out of reach:
-//                      bends his place toward him; physics.pressdist.hold above 0 only).
+//   pressing distance  asleep · on (defending, he has a man — the whole time) · stepping into reach
+//                      (holding his place, his man out of reach: bends his place toward him;
+//                      physics.pressdist.hold above 0 only).
 //
 // With no dial rows nothing bends and the sim is the sim it was (the goldens prove it).
 // Fixed point, no noise: the same world gives the same machines.
@@ -50,17 +51,29 @@
 
 namespace fh::game::ai::concepts {
 
-// The machines, by wire number (game_engine_terms kind 'machine', wire_index). Order = priority.
-enum class MachineId : std::uint8_t { Marking = 1, CoverShadow = 2, PressingDistance = 3 };
-inline constexpr int kMachineCount = 3;
+// The machines, by wire number (game_engine_terms kind 'machine', wire_index).
+enum class MachineId : std::uint8_t { Marking = 1, CoverShadow = 2, PressingDistance = 3,
+                                      Recover = 4, Press = 5, LooseBall = 6, DoubleTeam = 7, Cover = 8 };
+inline constexpr int kMachineCount = 8;
 inline constexpr std::uint8_t kAsleep = 0;
 
 namespace marking { enum : std::uint8_t { Asleep = 0, Watching = 1, Zonal = 2, Free = 3 }; }
 namespace shadow { enum : std::uint8_t { Asleep = 0, Hiding = 1, OnTheLane = 2 }; }
-namespace pdist { enum : std::uint8_t { Asleep = 0, Stepping = 1 }; }
+// Owner 11/25: "how is the concept not in the state the whole time? when they don't have ball and
+// defending … is it a state or not". It is: ON whenever his side defends and he has a man (not the
+// presser, not the loose ball's man); STEPPING is the part where he corrects (dial above 0 only).
+namespace pdist { enum : std::uint8_t { Asleep = 0, On = 1, Stepping = 2 }; }
+// 11/25, the second five: each awake while the engine is doing that thing (recognitions; they
+// propose nothing yet — the job states execute). They make the whole brain one set of machines
+// the page reads, instead of the page guessing from the job.
+namespace recover { enum : std::uint8_t { Asleep = 0, GettingBack = 1 }; }
+namespace press { enum : std::uint8_t { Asleep = 0, Closing = 1 }; }
+namespace looseball { enum : std::uint8_t { Asleep = 0, Going = 1 }; }
+namespace doubleteam { enum : std::uint8_t { Asleep = 0, SecondMan = 1 }; }
+namespace cover { enum : std::uint8_t { Asleep = 0, Behind = 1 }; }
 
 // What his job state is, as far as the machines care.
-enum class Job : std::uint8_t { Other, Hold, Press, Mark, Keeper };
+enum class Job : std::uint8_t { Other, Hold, Press, Mark, Keeper, Chase, DoubleTeam };
 
 // One tick's situation for one player — everything the machines read, gathered by the Brain.
 struct MachineSense {
@@ -73,6 +86,9 @@ struct MachineSense {
     math::Vec2 step{};               // pressing distance: the step back into reach (zero = in reach)
     math::Fixed64 shadow_press{};    // dials (0 = off)
     math::Fixed64 press_hold{};
+    bool behind = false;             // his place is recover_m+ goal-side of him: the line is broken behind him
+    bool cover = false;              // he is the deeper centre-back behind the one who steps
+    int carrier = -1;                // their man on the ball, -1 none
 };
 
 struct MachineState {

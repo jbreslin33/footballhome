@@ -502,6 +502,39 @@
   // as real machines (docs/taxonomy-one-system.md, "Player brain as parallel machines"), each is
   // read from what the engine already sends: his job state, the concept label of his act, his
   // shadow. Order = the priority when they fight (copy row machine_order).
+  // Every engine machine that is on for one player, as table rows (owner 11/25: "just name the state
+  // the player is in a table field. then if you want to editorialise who he is marking or whatever
+  // then use other fields"): the machine, the state's name, the man, the detail.
+  const MACHINE_KEY = { 1: 'scheme', 2: 'shadow', 3: 'pdist', 4: 'recover', 5: 'press', 6: 'chase', 7: 'double', 8: 'cover' };
+  function engineRows(t, slot) {
+    const eng = logAt(machineLog, t);
+    if (!eng) return null;
+    const num = (i) => (i != null && i !== NO ? '#' + numOf(i) : '');
+    const mt = (id) => terms.find((x) => x.kind === 'machine' && x.wire === id);
+    const stt = (id, st) => { const m = mt(id); return m ? terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === st) : null; };
+    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
+    const rows = [];
+    for (const e of eng[slot] || []) {
+      const m = mt(e.machine), st = stt(e.machine, e.state), key = MACHINE_KEY[e.machine] || String(e.machine);
+      let state = st ? st.title : '', def = st ? st.definition || '' : '', detail = '';
+      if (key === 'pdist') {
+        const on = stt(3, 1);
+        if (e.state === 2 && on) def = (on.definition || '') + ' ' + (st.definition || '');
+        const rr = reachAt(t), r = rr && rr[slot];
+        if (r && r.reach != null && e.other !== NO) {
+          const a = posAt(t, slot), b = posAt(t, e.other);
+          detail = say('tbl_reach', { gap: Math.hypot(a.x - b.x, a.y - b.y).toFixed(1), reach: r.reach.toFixed(1), verdict: say(r.in ? 'tbl_in' : 'tbl_out') });
+        }
+      }
+      if (key === 'shadow') {
+        const sv = shadowAt(t);
+        if (sv) { const mask = sv.hidden[slot] >>> 0, h = []; for (let i = 0; i < 32; i++) if ((mask >>> i) & 1) h.push('#' + numOf(i)); if (h.length) detail = say('tbl_hidden', { list: h.join(', ') }); }
+      }
+      rows.push({ id: 'm:' + key, key, machine: m ? m.title : key, state, man: key === 'shadow' ? '' : num(e.other), detail, def: def || (m ? m.definition || '' : '') });
+    }
+    rows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
+    return rows;
+  }
   function machinesAt(t, slot) {
     const lay = layersAt(t, slot), out = [];
     const job = lay.state ? lay.state.code : '', cname = lay.concept && legend[lay.concept.id] ? legend[lay.concept.id].name : '';
@@ -606,36 +639,29 @@
     // when it says more than his job); ON THE PLAYER, only what is switched on — the machines awake
     // now, several at once. Every line opens its meaning in a popup.
     const DEFAULT_DOING = new Set(['hold', 'press', 'chase', 'meet_pass', 'attack_box', 'run_line', 'mark', 'keeper_pos']);
-    const side = [
-      { id: 'team', lab: say('strip_team'), val: lay.phase ? lay.phase.title : '—', def: lay.phase ? lay.phase.definition || lay.phase.note || '' : '' },
-      { id: 'him', lab: say('strip_job'), val: lay.state ? lay.state.title : '—', def: lay.state ? lay.state.definition || lay.state.note || '' : '' }];
-    if (dd && !DEFAULT_DOING.has(dd.code)) side.push({ id: 'act', lab: say('strip_doing'), val: dd.title, def: dd.definition || dd.note || '' });
-    const on = awake.map((m) => {
-      const mt = m.key === 'scheme' ? terms.find((x) => x.kind === 'machine' && x.code === 'marking_scheme') : null;
-      return { id: 'm:' + m.key, lab: say('m_' + m.key) + (m.engine ? ' ' + say('m_engine_mark') : ''), val: m.state, def: mt ? mt.definition || '' : cdef(MACHINE_CONCEPT[m.key] || '') };
-    });
-    const key = [at, ...side.map((x) => x.id + '=' + x.val), '|', ...on.map((x) => x.id + '=' + x.val)].join('§');
+    const rows = [
+      { id: 'team', machine: say('tbl_team'), state: lay.phase ? lay.phase.title : '—', man: '', detail: '', def: lay.phase ? lay.phase.definition || lay.phase.note || '' : '' },
+      { id: 'him', machine: say('tbl_job'), state: lay.state ? lay.state.title : '—', man: (ee && ee.other !== NO ? '#' + numOf(ee.other) : ''), detail: '', def: lay.state ? lay.state.definition || lay.state.note || '' : '' }];
+    if (dd && !DEFAULT_DOING.has(dd.code)) rows.push({ id: 'act', machine: say('tbl_doing'), state: dd.title, man: '', detail: '', def: dd.definition || dd.note || '' });
+    const eng = engineRows(t, c.slot);
+    if (eng) rows.push(...eng);
+    else for (const m of awake) rows.push({ id: 'm:' + m.key, machine: say('m_' + m.key), state: m.state, man: '', detail: '', def: cdef(MACHINE_CONCEPT[m.key] || '') });
+    const key = [at, ...rows.map((x) => [x.id, x.state, x.man, x.detail].join('='))].join('§');
     if (key === stripKey) return;
     stripKey = key;
-    stripRows = new Map([...side, ...on].map((x) => [x.id, x]));
-    const fill = (host, rows, cls) => {
-      if (!host) return;
-      host.textContent = '';
-      for (const x of rows) {
-        const row = document.createElement('div'); row.className = 'row ' + cls; row.dataset.id = x.id;
-        const l = document.createElement('span'); l.className = 'lab'; l.textContent = x.lab; row.appendChild(l);
-        const v = document.createElement('span'); v.className = 'val'; v.textContent = x.val; row.appendChild(v);
-        host.appendChild(row);
-      }
-    };
-    if (BARE) {   // every state in the one label on the player: one at a time, then what is switched on
-      fill($('strip'), side, 'one');
-      if (on.length) { const sep = document.createElement('div'); sep.className = 'sep'; $('strip').appendChild(sep); }
-      const tmp = document.createElement('div'); fill(tmp, on, 'm'); while (tmp.firstChild) $('strip').appendChild(tmp.firstChild);
-    } else {
-      fill($('side-states'), side, 'one');
-      fill($('strip'), on, 'm');
-    }
+    stripRows = new Map(rows.map((x) => [x.id, x]));
+    const host = $('strip');
+    host.textContent = '';
+    const tbl = document.createElement('table');
+    const hr = tbl.insertRow();
+    for (const h of ['tbl_machine', 'tbl_state', 'tbl_man', 'tbl_detail']) { const th = document.createElement('th'); th.textContent = say(h); hr.appendChild(th); }
+    rows.forEach((x, n) => {
+      const tr = tbl.insertRow();
+      tr.className = 'row' + (n === 2 && rows[1] && rows[1].id === 'him' && x.id !== 'act' ? ' first-m' : '') + (x.id === 'act' ? '' : x.id.startsWith('m:') ? ' m' : ' one');
+      tr.dataset.id = x.id;
+      for (const [cls, v] of [['lab', x.machine], ['val', x.state], ['man', x.man], ['det', x.detail]]) { const td = tr.insertCell(); td.className = cls; td.textContent = v || ''; }
+    });
+    host.appendChild(tbl);
   }
   let stripRows = new Map();
   // One popup for every meaning on the page.
@@ -1045,7 +1071,7 @@
       b.addEventListener('click', () => { play.rate = rate; paintBar(); });
       $('rates').appendChild(b);
     }
-    const openRow = (ev) => { const row = ev.target.closest('.row'); const x = row && stripRows.get(row.dataset.id); if (x) popup(x.lab + ' — ' + x.val, x.def); };
+    const openRow = (ev) => { const row = ev.target.closest('.row'); const x = row && stripRows.get(row.dataset.id); if (x) popup(x.machine + ' — ' + x.state, x.def); };
     $('strip').addEventListener('click', openRow);
     $('side-body').addEventListener('click', (ev) => { if (ev.target.closest('#side-states')) openRow(ev); });
     $('popup').addEventListener('click', (ev) => { if (ev.target.id === 'popup' || ev.target.id === 'popup-x') $('popup').hidden = true; });

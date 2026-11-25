@@ -34,14 +34,16 @@ FH_TEST(marking_scheme_states) {
     FH_EXPECT_EQ(m.of(3, co::MachineId::Marking).state, co::marking::Free);
 }
 
-// Pressing distance wakes only when he holds his place, his man is out of reach AND a side has
-// the dial on. With no dial it sleeps, and its proposal moves nothing — the sim as it was.
-FH_TEST(pressing_distance_sleeps_without_the_dial) {
+// Pressing distance is ON the whole time his side defends and he has a man; it STEPS only when
+// he holds his place, his man is out of reach AND a side has the dial on. With no dial it never
+// steps, and its proposal moves nothing — the sim as it was.
+FH_TEST(pressing_distance_on_while_defending_steps_only_with_the_dial) {
     co::PlayerMachines m;
     co::MachineSense s = defending(co::Job::Hold);
     s.direct = 15; s.step = v(3, 0);
     m.update(0, s, 0);
-    FH_EXPECT(!m.awake(0, co::MachineId::PressingDistance));
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).state, co::pdist::On);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).other, 15);
     Vec2 t = v(-30, 0);
     FH_EXPECT(!m.bendHold(0, s.step, Fixed64::one(), t));
     FH_EXPECT(t.x == Fixed64::fromInt(-30));
@@ -63,11 +65,14 @@ FH_TEST(an_awake_machine_is_committed_but_leaves_with_its_state) {
     m.update(0, s, 101);
     FH_EXPECT(m.awake(0, co::MachineId::PressingDistance));
     m.update(0, s, 100 + m.params().hold_ticks);
-    FH_EXPECT(!m.awake(0, co::MachineId::PressingDistance));
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).state, co::pdist::On);   // back to just on
     s.step = v(3, 0);
     m.update(0, s, 200);
     s.job = co::Job::Press;                 // he became the presser: pressing distance is not his business now
     m.update(0, s, 201);
+    FH_EXPECT(!m.awake(0, co::MachineId::PressingDistance));
+    s.job = co::Job::Hold; s.their_ball = false;   // our ball: asleep
+    m.update(0, s, 300);
     FH_EXPECT(!m.awake(0, co::MachineId::PressingDistance));
 }
 
@@ -101,6 +106,43 @@ FH_TEST(several_awake_at_once) {
     m.update(0, s, 0);
     FH_EXPECT(m.awake(0, co::MachineId::CoverShadow));
     FH_EXPECT(m.awake(0, co::MachineId::Marking));
+}
+
+// The second five follow what the engine is doing: the presser's PRESS machine is on his carrier,
+// the loose ball's man is GOING, the second man DOUBLE-TEAMS, the deeper centre-back COVERS, and a
+// man whose place is behind him RECOVERS — each asleep otherwise.
+FH_TEST(press_loose_ball_double_team_cover_recover) {
+    co::PlayerMachines m;
+    co::MachineSense s = defending(co::Job::Press); s.carrier = 18;
+    m.update(0, s, 0);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Press).state, co::press::Closing);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Press).other, 18);
+    s.job = co::Job::Hold;
+    m.update(0, s, 1);
+    FH_EXPECT(!m.awake(0, co::MachineId::Press));            // leaves with his job: no commitment needed
+    s = defending(co::Job::Chase);
+    m.update(1, s, 0);
+    FH_EXPECT(m.awake(1, co::MachineId::LooseBall));
+    s = defending(co::Job::DoubleTeam); s.carrier = 16;
+    m.update(2, s, 0);
+    FH_EXPECT_EQ(m.of(2, co::MachineId::DoubleTeam).other, 16);
+    s = defending(co::Job::Hold); s.cover = true; s.behind = true;
+    m.update(3, s, 0);
+    FH_EXPECT(m.awake(3, co::MachineId::Cover));
+    FH_EXPECT(m.awake(3, co::MachineId::Recover));             // two at once: covering AND getting back
+    s.their_ball = false;
+    m.update(3, s, 1);
+    FH_EXPECT(!m.awake(3, co::MachineId::Cover) && !m.awake(3, co::MachineId::Recover));
+}
+
+// Marking a man the block gave him: that man is his man for pressing distance too.
+FH_TEST(pressing_distance_follows_the_man_he_marks) {
+    co::PlayerMachines m;
+    co::MachineSense s = defending(co::Job::Mark);
+    s.mark = 19; s.direct = -1;
+    m.update(0, s, 0);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).state, co::pdist::On);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).other, 19);
 }
 
 FH_TEST_MAIN()

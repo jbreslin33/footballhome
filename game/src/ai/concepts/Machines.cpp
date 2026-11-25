@@ -7,12 +7,14 @@ namespace fh::game::ai::concepts {
 using math::Fixed64;
 using math::Vec2;
 
-// Into a new state, unless the machine is awake and committed: an awake state is kept for
-// hold_ticks, unless what it lives in has gone (may_leave).
+// Into a new state, unless the machine is committed: a state it is in is kept hold_ticks before it
+// drops to a lower one, unless what it lives in has gone (may_leave).
 void PlayerMachines::set(MachineState& m, std::uint8_t state, std::int16_t other, std::uint64_t tick, bool may_leave) {
     if (state == m.state) { m.other = other; return; }
     // [behaviour: machine_commit]
-    if (m.state != kAsleep && !may_leave && tick < m.since + p_.hold_ticks) return;
+    // Committed only on the way DOWN (to a lower state, asleep the lowest): a machine can go deeper
+    // into its state at once (on → stepping), but does not drop back for 0.3 s.
+    if (m.state != kAsleep && state < m.state && !may_leave && tick < m.since + p_.hold_ticks) return;
     m.state = state;
     m.other = other;
     m.since = tick;
@@ -41,13 +43,41 @@ void PlayerMachines::update(core::SlotIndex slot, const MachineSense& s, std::ui
         else if (first >= 0) set(m, shadow::Hiding, static_cast<std::int16_t>(first), tick, s.job != Job::Press);
         else set(m, shadow::Asleep, -1, tick, s.job != Job::Press);
     }
+    {   // RECOVER — the line is broken behind him: get back goal-side first
+        // [behaviour: machine_recover]
+        auto& m = me[static_cast<int>(MachineId::Recover) - 1];
+        if (s.their_ball && s.job == Job::Hold && s.behind) set(m, recover::GettingBack, -1, tick, false);
+        else set(m, recover::Asleep, -1, tick, s.job != Job::Hold || !s.their_ball);
+    }
+    {   // PRESS, LOOSE BALL, DOUBLE-TEAM — the engine's one presser, first man to the loose ball, second man
+        // [behaviour: machine_press_chase_double]
+        auto& p = me[static_cast<int>(MachineId::Press) - 1];
+        if (s.job == Job::Press) set(p, press::Closing, static_cast<std::int16_t>(s.carrier), tick, true);
+        else set(p, press::Asleep, -1, tick, true);
+        auto& l = me[static_cast<int>(MachineId::LooseBall) - 1];
+        if (s.job == Job::Chase) set(l, looseball::Going, -1, tick, true);
+        else set(l, looseball::Asleep, -1, tick, true);
+        auto& d = me[static_cast<int>(MachineId::DoubleTeam) - 1];
+        if (s.job == Job::DoubleTeam) set(d, doubleteam::SecondMan, static_cast<std::int16_t>(s.carrier), tick, true);
+        else set(d, doubleteam::Asleep, -1, tick, true);
+    }
+    {   // COVER — the deeper centre-back behind the one who steps
+        // [behaviour: machine_cover]
+        auto& m = me[static_cast<int>(MachineId::Cover) - 1];
+        if (s.their_ball && s.job == Job::Hold && s.cover) set(m, cover::Behind, -1, tick, false);
+        else set(m, cover::Asleep, -1, tick, s.job != Job::Hold || !s.their_ball);
+    }
     {   // PRESSING DISTANCE
         // [behaviour: machine_pressing_distance]
         auto& m = me[static_cast<int>(MachineId::PressingDistance) - 1];
         const bool out = s.step.x.raw != 0 || s.step.y.raw != 0;
-        if (!s.their_ball || s.job != Job::Hold || s.press_hold.raw <= 0) set(m, pdist::Asleep, -1, tick, true);
-        else if (out && s.direct >= 0) set(m, pdist::Stepping, static_cast<std::int16_t>(s.direct), tick, false);
-        else set(m, pdist::Asleep, -1, tick, false);
+        const bool on_ball_job = s.job == Job::Press || s.job == Job::Chase || s.job == Job::DoubleTeam;
+        // His man: the one he marks while marking (the block's assignment), else his direct opponent —
+        // the same man the marking scheme names, never two different "his man" at once.
+        const int man = s.job == Job::Mark && s.mark >= 0 ? s.mark : s.direct;
+        if (!s.their_ball || keeper || man < 0 || on_ball_job) set(m, pdist::Asleep, -1, tick, true);
+        else if (s.job == Job::Hold && out && s.press_hold.raw > 0) set(m, pdist::Stepping, static_cast<std::int16_t>(man), tick, false);
+        else set(m, pdist::On, static_cast<std::int16_t>(man), tick, false);
     }
 }
 
