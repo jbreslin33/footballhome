@@ -941,7 +941,17 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             }
         }
         if (contested) {
-            if (++ball_.contest_ticks >= kStealTicks) {
+            // [behaviour: steal_front_ticks] G5.260 trial (§8.366): a man square in front of a carrier who
+            // takes him on is a tackle in real football, not a touch-tight steal; physics.steal.front_ticks
+            // (0 = kStealTicks, as before) is how long touch-tight from the front takes it.
+            int need = kStealTicks;
+            if (steal_front_ticks_ > 0) {
+                const PlayerState& oc = players_[*ball_.owner];
+                const Vec2 e{players_[thief].pos.x - oc.pos.x, players_[thief].pos.y - oc.pos.y};
+                const Fixed64 el = math::length(e), ax = oc.team == 0 ? Fixed64::one() : -Fixed64::one();
+                if (el.raw > 0 && e.x * ax / el >= Fixed64::fromFraction(7071, 10000)) need = steal_front_ticks_;
+            }
+            if (++ball_.contest_ticks >= need) {
                 losing_team_ = players_[*ball_.owner].team;
                 turnover_tick_ = clock_.tick();
                 turnover_ball_x_ = ball_.pos.x;
@@ -1585,6 +1595,7 @@ void World::configureTempo(const ModelParams& p) {
         for (int a = 0; a < 3; ++a) { nick_[a] = p.fixed(std::string("physics.steal.nick_") + kAng[a] + "_per_s", 0); nick_on_ = nick_on_ || nick_[a].raw > 0; }
         nick_m_ = p.fixed("physics.steal.nick_m", 1500);
     }
+    steal_front_ticks_ = static_cast<int>(p.fixed("physics.steal.front_ticks", 0).raw >> math::Fixed64::FRAC_BITS);   // G5.260 trial: 0 = kStealTicks
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
     carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band

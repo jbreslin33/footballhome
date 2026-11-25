@@ -450,6 +450,7 @@ private:
     math::Fixed64 press_err_[3]{}, press_err_m_{}, press_err_rad_{}, press_err_heavy_{}, press_err_min_{};
     bool nick_on_ = false;   // G5.259 (§8.365): dispossessed by angle
     math::Fixed64 nick_[3]{}, nick_m_{};
+    int steal_front_ticks_ = 0;   // G5.260 trial (§8.366): touch-tight from the front, ticks; 0 = kStealTicks
     std::uint32_t nick_n_ = 0;
     CarryDiag carry_diag_;
     // G5.79 (§8.180)

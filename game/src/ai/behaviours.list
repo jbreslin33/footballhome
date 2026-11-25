@@ -208,6 +208,7 @@ sp_corner_attack_shape
 sp_corner_defend_shape
 sp_fk_box_lines
 sp_fk_wall
+steal_front_ticks
 throw_in_to_free_man
 wingback_ball_side_goes_far_tucks
 dt_trap_on_touchline

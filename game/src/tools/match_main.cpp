@@ -175,7 +175,7 @@ struct Stats {
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
-    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0,
+    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0, toe_n[5][4] = {}, toe_x[5][4] = {}, toe_why[64] = {}, tko_n[5] = {}, tko_ok[5] = {},   // §8.366 TAKE-ON ENDS: failed by cause x next ball; by band
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
     long ph[ai::kPhaseCount] = {}, ph_n = 0;
@@ -372,6 +372,7 @@ int main(int argc, char** argv) {
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
+        int tf_pend = -1, tf_pend_team = -1, tf_px = 0; long tf_k[4] = {-100, -100, -100, -100}; std::uint32_t tf_pv_nick = 0, tf_pv_steal = 0, tf_pv_lost = 0;   // §8.366: tackle won / nick / steal / heavy touch, last tick
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
         // 5 Hz ring for "3 s before" (ball x, every man's x).
@@ -679,6 +680,14 @@ int main(int argc, char** argv) {
                 }
             }
             const auto& b = W.ball();
+            {   // §8.366: what took the ball off its man this tick (a nick also counts as a steal: nick first)
+                if (W.nicks() != tf_pv_nick) tf_k[1] = static_cast<long>(k);
+                else if (W.steals() != tf_pv_steal) tf_k[2] = static_cast<long>(k);
+                if (W.dribbleLost() != tf_pv_lost) tf_k[3] = static_cast<long>(k);
+                tf_pv_nick = W.nicks(); tf_pv_steal = W.steals(); tf_pv_lost = W.dribbleLost();
+                for (const auto& e : s.lastEvents()) if (e.type == core::MatchEventType::TackleWon) tf_k[0] = static_cast<long>(k);
+                if (tf_pend >= 0 && W.restartTeam() != 0xFF) { ++(tf_px ? S.toe_x : S.toe_n)[tf_pend][W.restartTeam() == tf_pend_team ? 2 : 3]; tf_pend = -1; }   // dead before anyone had it
+            }
             for (const auto& e : s.lastEvents()) {
                 if (e.type == core::MatchEventType::Foul) ++S.fouls;
                 if (e.type == core::MatchEventType::Penalty) { ++S.pens; pen_k = -1; pen_on = true; }   // §8.140
@@ -1613,7 +1622,17 @@ int main(int argc, char** argv) {
                         // him, or poked loose while carrying it; faced and then passing it away is no take-on. Before,
                         // every faced spell counted: 80 a team-match v 18.05.
                         const bool carrying = s.lastOrders()[owner].why == ai::Why::Dribble;
-                        if ((own >= 0 && W.player(static_cast<std::uint8_t>(own)).team != owner_team) || (own < 0 && carrying)) ++S.takeon;
+                        if ((own >= 0 && W.player(static_cast<std::uint8_t>(own)).team != owner_team) || (own < 0 && carrying)) {
+                            ++S.takeon; ++S.tko_n[fz];
+                            // §8.366 TAKE-ON ENDS: why it ended (tackle won / nick / touch-tight steal / heavy touch / other)
+                            const long kk = static_cast<long>(k); int cz = 4;
+                            for (int c = 0; c < 4; ++c) if (kk - tf_k[c] <= 3) { cz = c; break; }
+                            if (own >= 0) ++S.toe_n[cz][1]; else { tf_pend = cz; tf_pend_team = owner_team; tf_px = 0; }
+                        } else if (own < 0) {   // §8.366 faced, then loose and not booked a take-on: why, and who has it next
+                            const long kk = static_cast<long>(k); int cz = 4;
+                            for (int c = 0; c < 4; ++c) if (kk - tf_k[c] <= 3) { cz = c; break; }
+                            if (cz < 4) { ++S.toe_why[std::min(63, static_cast<int>(s.lastOrders()[owner].why))]; tf_pend = cz; tf_pend_team = owner_team; tf_px = 1; }
+                        }
                         facing[owner] = 0; }
                     if (own < 0) {
                         const auto why = s.lastOrders()[owner].why;
@@ -1891,6 +1910,7 @@ int main(int argc, char** argv) {
                         ws_on = W.restartTeam() == 0xFF && wsz(hx - q.pos.x.toDouble() * sgw, q.pos.y.toDouble()) == 0;
                         if (ws_on) ++S.ws_n; }
                     if (fo_pend_team >= 0) { if (q.team != fo_pend_team) ++S.fo_lost[fo_pend_z]; else ++S.fo_kept[fo_pend_z]; fo_pend_team = -1; }
+                    if (tf_pend >= 0) { ++(tf_px ? S.toe_x : S.toe_n)[tf_pend][q.team == tf_pend_team ? 0 : 1]; tf_pend = -1; }
                     own_lx = q.pos.x.toDouble(); own_ly = q.pos.y.toDouble(); own_path = 0; own_nv = 0; own_ss = 0; own_sn = 0; own_e = 0;
                     own_got = -1;   // §8.234: his 5 Hz pace over the second before the receipt (windows ending 0 / -0.2 .. -0.8 s)
                     if (k >= 30 && own < 32) { own_got = from[own] >= 0 && last_ft <= 3.0 ? 1 : 0; /* §8.236: the real cut, a mate's pass reaching him within 3 s, else won / loose (benchmarks_tracking_spellpace.py) */ own_why = static_cast<int>(s.lastOrders()[own].why); own_plen = last_plen; own_ft = last_ft; own_v0 = last_v0; own_va = last_va; own_kk = last_kk; own_fl_ok = false;
@@ -1968,7 +1988,7 @@ int main(int argc, char** argv) {
                 }
                 if (facing[own] > 0) {
                     const auto& d = W.player(static_cast<std::uint8_t>(facing[own] - 1));
-                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.takeon; ++S.takeon_ok; ++S.fo_past[facing_z[own]]; facing[own] = 0; }
+                    if ((c.pos.x.toDouble() - d.pos.x.toDouble()) * sg >= 1) { ++S.takeon; ++S.takeon_ok; ++S.tko_n[facing_z[own]]; ++S.tko_ok[facing_z[own]]; ++S.fo_past[facing_z[own]]; facing[own] = 0; }
                 }
             }
 
@@ -4088,6 +4108,21 @@ int main(int argc, char** argv) {
     std::printf("CONCEPT ACTS a team-match (StatsBomb cuts; real PL 15/16 in brackets): pressures %.1f (151.8), counter-press %.1f = %.1f%% (21.0%%); passes %.1f (433.8): switches %.2f (10.69), crosses %.2f (11.47), cut-backs %.2f (1.03); take-ons %.2f tried (18.05), %.2f completed (10.59); return passes %.2f (42.11) = %.1f%% of passes after a receipt (15.7%%); carries 10 m+ %.2f (34.64)\n",
                 S.press / tm, S.cpress / tm, 100.0 * S.cpress / std::max(1L, S.press), S.passes / tm, S.switches / tm, S.crosses / tm, S.cutbacks / tm,
                 S.takeon / tm, S.takeon_ok / tm, S.ret / tm, 100.0 * S.ret / std::max(1L, S.ret_base), S.carry10 / tm);
+    {   // §8.366 TAKE-ON ENDS (benchmarks_statsbomb_takeon_fail.py)
+        static const char* zn[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+        static const double rn[5] = {4.00, 4.84, 4.04, 3.11, 2.06}, rk[5] = {47.9, 57.3, 62.3, 65.5, 65.5};
+        std::printf("   TAKE-ON ENDS a team-match (StatsBomb PL 15/16 in brackets) by m off their line: tried / completed %%:");
+        for (int z = 0; z < 5; ++z) std::printf(" %s %.2f / %.1f%% (%.2f / %.1f%%)%s", zn[z], S.tko_n[z] / tm, 100.0 * S.tko_ok[z] / std::max(1L, S.tko_n[z]), rn[z], rk[z], z < 4 ? ";" : "\n");
+        static const char* cn[5] = {"tackle won", "taken off his feet (nick)", "touch-tight steal", "heavy touch", "other / loose"};
+        long fl = 0; for (int c = 0; c < 5; ++c) for (int n = 0; n < 4; ++n) fl += S.toe_n[c][n];
+        std::printf("      failed %.2f (7.46): next ball ours / theirs / dead, our restart / dead, theirs —", fl / tm);
+        for (int c = 0; c < 5; ++c) std::printf(" %s %.2f = %.2f / %.2f / %.2f / %.2f%s", cn[c], (S.toe_n[c][0] + S.toe_n[c][1] + S.toe_n[c][2] + S.toe_n[c][3]) / tm, S.toe_n[c][0] / tm, S.toe_n[c][1] / tm, S.toe_n[c][2] / tm, S.toe_n[c][3] / tm, c < 4 ? ";" : "\n");
+        std::printf("      faced, knocked loose, NOT booked (his order not Dribble):");
+        for (int c = 0; c < 4; ++c) std::printf(" %s %.2f / %.2f / %.2f / %.2f%s", cn[c], S.toe_x[c][0] / tm, S.toe_x[c][1] / tm, S.toe_x[c][2] / tm, S.toe_x[c][3] / tm, c < 3 ? ";" : "; his order:");
+        for (int w = 0; w < 64; ++w) if (S.toe_why[w]) std::printf(" %s %.2f", (w < static_cast<int>(ai::kWhyCount) ? ai::kWhyNames[w] : "?"), S.toe_why[w] / tm);
+        std::printf("\n");
+        std::printf("      (real: tackled, theirs 3.81 · tackled, knocked loose in play 1.29 (ours next 92%%) · knocked out 1.39 (ours 96%%) · past him then lost it 0.95 (theirs 96%%); Dispossessed beside them 13.84, Miscontrol 14.19)\n");
+    }
     std::printf("   passes completed %.1f%% (77.5%%; open play, Recovery / Interception passes in, §8.263 — was 79.1 on the old 377.7-pass cut)\n", 100.0 * S.pass_ok / std::max(1L, S.passes));
     {
         std::printf("BALL IN PLAY %.1f%% of the match (real DFL 55.2%%); dead before each restart, a team-match / median s (real):", 100.0 * S.tick_live / std::max(1L, S.tick_n));

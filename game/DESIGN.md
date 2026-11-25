@@ -13653,3 +13653,41 @@ The cost is the take-on: a dribbler in his duel is taken by the man beside him 7
 success once he is 1 m past, so these are losses before). Next: the take-on duel against StatsBomb — how a real one
 fails (tackled / dispossessed / out) and the beaten man's chance after — before the rows change again.
 `card_G5.259.txt`. Tests 29/29 (clean tree).
+
+### 8.366 G5.260 — TAKE-ON ENDS: a failed take-on is a tackle in real football, never ours to keep; the touch-tight steal from the front slowed (mig 1898; shipped)
+
+From §8.365: dispossessed by angle cost the take-on 7 points (57.7 → 50.7%, real 58.7). New split, StatsBomb
+(`benchmarks_statsbomb_takeon_fail.py`): every Dribble by the carrier's m off the line he attacks, the failed ones by
+the related opponent event and who has the ball next. Real PL 15/16 a team-match: 18.05 tried, 10.59 completed; of the
+7.46 failed, **3.81 tackled and theirs**, 1.29 a tackle that knocks it loose in play (his side next 90-95%), 1.39
+knocked out (his side's restart 95-97%), 0.95 past him and lost it after (theirs 96%). Beside them, apart: Dispossessed
+13.84, Miscontrol 14.19. A real take-on that fails is a tackle duel; a third of the time his side keeps the ball.
+
+Ours, the same cut in fh-game-match (TAKE-ON ENDS: failed by cause — tackle won / nick / touch-tight steal / heavy touch —
+by next ball ours / theirs / dead), seeds 1000-4000 × 8 on G5.259: 17.80 / 9.03 (50.7%); **all 8.77 failed go to them**:
+4.88 tackles, **3.08 the v1 touch-tight steal** (0.6 m for 10 ticks, no tackle, no foul), 0.81 nicks. The harness misses
+little: faced, knocked loose and not booked (his order not Dribble) ~0.5 a team-match of squirted tackles, half kept.
+A real man square in front of a man taking him on tackles him; the touch-tight steal from in front is a v1 mechanic.
+
+**Built** (`World`, the touch-to-steal contest [behaviour: steal_front_ticks]): the nearest touch-tight man in front of
+the carrier (within 45° of his way to the goal he attacks) needs `physics.steal.front_ticks` (0 = kStealTicks 10, as
+before) to take it. With the front steal slower, the off-feet losses move where DFL has them (§8.363: as often from the
+side and behind): the nick rows from ×0.37 to ×0.6 of the DFL rate gaps.
+
+| seeds 1000-4000 × 8 | G5.259 | front 20 | front 30 | 20 + nicks ×0.6 | **30 + nicks ×0.6 (shipped)** | real |
+|---|---|---|---|---|---|---|
+| take-on success % | 50.7 | 58.9 | 60.4 | 58.0 | 57.8 | 58.7 |
+| failed take-ons (all theirs) | 8.77 | 6.53 | 6.28 | 6.69 | 6.84 | 7.46 (4.76 theirs) |
+| … touch-tight steal / nick | 3.08 / 0.81 | 1.38 / 0.67 | 1.12 / 0.80 | 1.34 / 1.19 | 1.22 / 1.11 | |
+| taken off his feet | 8.38 | 6.38 | 6.30 | 8.12 | 7.89 | 8.0 |
+| fouls | 12.8 | 13.8 | 13.2 | 14.1 | 13.5 | 12.5 |
+| passes | 433 | 426 | 425 | 425 | 424 | 434 |
+| goals | 2.41 | 2.44 | 2.44 | 2.00 | 2.12 | 1.35 |
+| card ok / off / OFF | 9 / 8 / 16 | 9 / 12 / 12 | 14 / 8 / 11 | 9 / 8 / 16 | 8 / 10 / 15 | |
+
+Card totals swing on the shot-zone shares and penalties between arms (32 matches); the rulers here are the take-on,
+off-his-feet, foul and pass lines. Nicks: 0.03 / 0.08 / 0.12 a s (front / side / behind). FACED (§8.231, DFL) still
+reads past 13-19% v 2-5% and kept 39-68% v 57-75%: our carriers go by a man square in front far more often than real
+ones, and keep it less. Next: a failed take-on is never ours — the real 2.68 a team-match (the tackle that knocks it
+loose or out and his own side has it next) has no counterpart; the won tackle's squirt (30%) and where it goes.
+Tests 30/30 (clean tree); lint clean (200 tagged).
