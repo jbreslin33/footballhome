@@ -9,8 +9,9 @@
 //     amount, optional name + phone → a single-game ticket, let in on the
 //     spot (the seller checks the payment on the buyer's phone first).
 //   • Who is in, and the gate money by who sold it and how.
-// Tickets pill (club admins): every ticket — LeagueApps orders pulled by
-// TicketOrderSync, gate sales — with its private link /t/?k=<token> to copy.
+// Sales pill (club admins, mig 1887): every sale — LeagueApps orders pulled
+// by TicketOrderSync, gate sales — totals by ticket and by how paid, search
+// by name / email / phone, filters, each sale's private link, CSV export.
 // Wording = message_templates kind 'tickets'.
 class TicketsScreen extends Screen {
   constructor(navigation, auth) {
@@ -30,6 +31,7 @@ class TicketsScreen extends Screen {
     div.innerHTML = `
       <style>
         .tkt { max-width:640px; margin:0 auto; padding:10px 12px 40px; }
+        .tkt.wide { max-width:1100px; }
         .tkt .pills { display:flex; gap:6px; margin-bottom:10px; }
         .tkt .pill { padding:6px 16px; border-radius:999px; cursor:pointer; font-weight:700; border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); min-height:0; min-width:0; }
         .tkt .pill.on { background:var(--primary-color); color:#fff; border-color:transparent; }
@@ -63,6 +65,16 @@ class TicketsScreen extends Screen {
     div.addEventListener('click', (e) => this._click(e));
     div.addEventListener('change', (e) => {
       if (e.target.id === 'tkt-game') { this.eventId = Number(e.target.value) || null; this.result = null; this._loadSummary(); }
+      if (e.target.id === 'tkt-fp') { this.fProduct = e.target.value; this._drawSales(); }
+      if (e.target.id === 'tkt-fs') { this.fSource = e.target.value; this._drawSales(); }
+    });
+    div.addEventListener('input', (e) => {
+      if (e.target.id !== 'tkt-q') return;
+      this.q = e.target.value;
+      const at = e.target.selectionStart;
+      this._drawSales();
+      const q = this.find('#tkt-q');
+      if (q) { q.focus(); q.setSelectionRange(at, at); }
     });
     div.addEventListener('keydown', (e) => {
       if (e.target.id === 'tkt-code' && e.key === 'Enter') { e.preventDefault(); this._scan(e.target.value); }
@@ -126,6 +138,7 @@ class TicketsScreen extends Screen {
         <button class="pill ${this.pill === 'gate' ? 'on' : ''}" data-pill="gate">${this._e(this._c('pill_gate'))}</button>
         <button class="pill ${this.pill === 'list' ? 'on' : ''}" data-pill="list">${this._e(this._c('pill_list'))}</button></div>` : '';
     const err = this.error ? `<div class="err">${this._e(this.error)}</div>` : '';
+    body.classList.toggle('wide', this.pill === 'list');
     body.innerHTML = pills + err + (this.pill === 'list' ? '<div id="tkt-list"></div>' : this._gate());
     if (this.pill === 'list') this._loadList();
   }
@@ -195,7 +208,8 @@ class TicketsScreen extends Screen {
     if (act.dataset.act === 'scan') { if (this.stream) this._stopCamera(); else await this._startCamera(); this._redrawKeepCamera(); return; }
     if (act.dataset.act === 'code') { this._scan(this.find('#tkt-code').value); return; }
     if (act.dataset.act === 'sell') { this._sell(); return; }
-    if (act.dataset.act === 'sync') { this._loadList(true); }
+    if (act.dataset.act === 'sync') { this._loadList(true); return; }
+    if (act.dataset.act === 'export') { this._exportCsv(); }
   }
 
   // Redraw the gate without losing the live camera feed.
@@ -293,24 +307,115 @@ class TicketsScreen extends Screen {
     this.stream = null;
   }
 
-  // ── Tickets list (club admins) ──────────────────────────────────────────
+  // ── Sales (club admins) ─────────────────────────────────────────────────
+  // Every sale — LeagueApps orders and gate sales — with totals by ticket
+  // and by how paid, a search over name / email / phone, two filters, and
+  // a CSV of what is shown.
   async _loadList(sync = false) {
     const box = this.find('#tkt-list');
     if (!box) return;
     try {
       const d = await this._get(`/api/tickets/list${sync ? '?sync=1' : ''}`);
-      const rows = d.tickets || [];
-      const link = (t) => `${location.origin}/t/?k=${t.token}`;
-      box.innerHTML = `<div class="card"><div class="row" style="margin-top:0;justify-content:space-between;">
-          <span class="note" style="margin:0;">${this._e(this._c('list_synced'))}${d.sync && d.sync.error ? ' — ' + this._e(d.sync.error) : ''}</span>
-          <button class="small" data-act="sync">↻</button></div></div>`
-        + (rows.length ? `<div class="card"><table>${rows.map(t => `
-          <tr>
-            <td>${this._e(t.icon)}</td>
-            <td><b>${this._e([t.first, t.last].join(' ').trim() || '—')}</b><br><span class="note">${this._e(t.product)}${t.opponent ? ' · v ' + this._e(t.opponent) : ''} · ${this._e(this._c('admits', { n: t.admits }))} · $${this._e(t.amount)}</span>
-              ${t.email || t.phone ? `<br><span class="note">${this._e([t.phone, t.email].filter(Boolean).join(' · '))}</span>` : ''}</td>
-            <td><a href="${this._e(link(t))}" target="_blank" rel="noopener">🎟</a><br><button class="small" data-copy="${this._e(link(t))}">${this._e(this._c('copy_link'))}</button></td>
-          </tr>`).join('')}</table></div>` : `<div class="card">${this._e(this._c('list_empty'))}</div>`);
+      this.sales = (d.tickets || []).filter(t => !t.voided);
+      this.syncNote = d.sync && d.sync.error ? d.sync.error : '';
+      this.q = this.q || ''; this.fProduct = this.fProduct || ''; this.fSource = this.fSource || '';
+      this._drawSales();
     } catch (err) { box.innerHTML = `<div class="card err">${this._e(err.message)}</div>`; }
+  }
+
+  _shown() {
+    const q = (this.q || '').trim().toLowerCase();
+    return (this.sales || []).filter(t =>
+      (!this.fProduct || t.product === this.fProduct) && (!this.fSource || t.source === this.fSource)
+      && (!q || [t.first, t.last, t.email, t.phone].join(' ').toLowerCase().includes(q)));
+  }
+
+  // Postgres "2026-11-25 01:22:39.12+00" → a Date (local time on screen).
+  _ts(text) {
+    const d = new Date(String(text || '').replace(' ', 'T').replace(/([+-]\d\d)$/, '$1:00'));
+    return isNaN(d) ? null : d;
+  }
+
+  _money(n) { return '$' + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ''); }
+
+  _drawSales() {
+    const box = this.find('#tkt-list');
+    if (!box) return;
+    const all = this.sales || [];
+    const rows = this._shown();
+    const sum = (list, f) => list.reduce((a, t) => a + f(t), 0);
+    const group = (key) => {
+      const m = new Map();
+      for (const t of rows) {
+        const g = m.get(t[key]) || { n: 0, people: 0, money: 0, icon: t.icon };
+        g.n += 1; g.people += t.admits; g.money += Number(t.amount) || 0;
+        m.set(t[key], g);
+      }
+      return [...m.entries()];
+    };
+    const groupTable = (title, entries, icon) => `<div><h3>${this._e(title)}</h3><table>${entries.map(([k, g]) =>
+      `<tr><td>${icon ? this._e(g.icon) + ' ' : ''}${this._e(k)}</td><td>${g.n}</td><td>${g.people}</td><td>${this._money(g.money)}</td></tr>`).join('')}</table></div>`;
+    const opts = (vals, cur) => vals.map(v => `<option ${v === cur ? 'selected' : ''}>${this._e(v)}</option>`).join('');
+    const products = [...new Set(all.map(t => t.product))];
+    const sources = [...new Set(all.map(t => t.source))];
+    const link = (t) => `${location.origin}/t/?k=${t.token}`;
+    const date = (iso) => { const d = this._ts(iso); return d ? d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; };
+    box.innerHTML = `
+      <div class="card">
+        <div class="counts">
+          <div><b>${rows.length}</b><span>${this._e(this._c('sales_tickets'))}</span></div>
+          <div><b>${sum(rows, t => t.admits)}</b><span>${this._e(this._c('sales_people'))}</span></div>
+          <div><b>${this._money(sum(rows, t => Number(t.amount) || 0))}</b><span>${this._e(this._c('sales_money'))}</span></div>
+        </div>
+      </div>
+      <div class="card" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
+        ${groupTable(this._c('by_product'), group('product'), false)}
+        ${groupTable(this._c('by_source'), group('source'), true)}
+      </div>
+      <div class="card">
+        <div class="row" style="margin-top:0;">
+          <input id="tkt-q" placeholder="${this._e(this._c('search_ph'))}" value="${this._e(this.q)}">
+          <button class="small" data-act="sync" title="LeagueApps">↻</button>
+        </div>
+        <div class="row">
+          <select id="tkt-fp" style="flex:1;width:auto;"><option value="">${this._e(this._c('all_products'))}</option>${opts(products, this.fProduct)}</select>
+          <select id="tkt-fs" style="flex:1;width:auto;"><option value="">${this._e(this._c('all_sources'))}</option>${opts(sources, this.fSource)}</select>
+        </div>
+        <div class="row" style="justify-content:space-between;">
+          <span class="note" style="margin:0;">${this._e(this._c('shown', { n: rows.length }))}${this.syncNote ? ' — ' + this._e(this.syncNote) : ''}</span>
+          <button class="small" data-act="export">${this._e(this._c('export'))}</button>
+        </div>
+      </div>
+      <div class="card" style="overflow-x:auto;">
+        ${rows.length ? `<table style="white-space:nowrap;">
+          <tr><th>${this._e(this._c('col_date'))}</th><th>${this._e(this._c('col_name'))}</th><th>${this._e(this._c('col_phone'))}</th><th>${this._e(this._c('col_email'))}</th>
+              <th>${this._e(this._c('col_ticket'))}</th><th>${this._e(this._c('col_source'))}</th><th>${this._e(this._c('col_people'))}</th><th>${this._e(this._c('col_amount'))}</th><th>${this._e(this._c('col_used'))}</th><th>${this._e(this._c('col_link'))}</th></tr>
+          ${rows.map(t => `<tr>
+            <td>${this._e(date(t.created))}</td>
+            <td><b>${this._e([t.first, t.last].join(' ').trim() || '—')}</b></td>
+            <td>${t.phone ? `<a href="tel:${this._e(t.phone)}">${this._e(t.phone)}</a>` : ''}</td>
+            <td>${t.email ? `<a href="mailto:${this._e(t.email)}">${this._e(t.email)}</a>` : ''}</td>
+            <td>${this._e(t.product)}${t.opponent ? ' · v ' + this._e(t.opponent) : ''}</td>
+            <td>${this._e(t.icon)} ${this._e(t.source)}</td>
+            <td>${t.admits}</td>
+            <td>${this._money(Number(t.amount) || 0)}</td>
+            <td>${t.scanned}</td>
+            <td><a href="${this._e(link(t))}" target="_blank" rel="noopener">🎟</a> <button class="small" data-copy="${this._e(link(t))}">${this._e(this._c('copy_link'))}</button></td>
+          </tr>`).join('')}</table>` : this._e(this._c(all.length ? 'none_match' : 'list_empty'))}
+      </div>`;
+  }
+
+  _exportCsv() {
+    const cell = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+    const head = ['col_date', 'col_name', 'col_phone', 'col_email', 'col_ticket', 'col_source', 'col_people', 'col_amount', 'col_used', 'col_link'].map(k => this._c(k));
+    const lines = [head.map(cell).join(',')].concat(this._shown().map(t => [
+      (this._ts(t.created) || new Date(NaN)).toLocaleString(), [t.first, t.last].join(' ').trim(), t.phone, t.email,
+      t.product + (t.opponent ? ' v ' + t.opponent : ''), t.source, t.admits, t.amount, t.scanned,
+      `${location.origin}/t/?k=${t.token}`].map(cell).join(',')));
+    const url = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = `tickets-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 }
