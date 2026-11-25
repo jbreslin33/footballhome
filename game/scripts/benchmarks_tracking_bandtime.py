@@ -60,12 +60,14 @@ def one(pos_path):
     prev = None; stint = None   # stint = (pid, band0, frames)
     # G5.226 (§8.332) NEXT STINT: last = the stint just closed (team, band, the ball's m off the line attacked at its end); zmax since
     last = None; zmax = 0.0; gapn = 0
+    loss = None   # G5.255 (§8.361) WON BACK: (side that lost it, band it lost it in, section, frame)
     def close(st):
         if st: c[f"k{st[1]}"] += 1; c[f"ks{st[1]}"] += st[2]; c[f"k3{st[1]}"] += st[2] >= 15; c[f"hb{st[1]}_{st[3]}"] += 1; c[f"hbs{st[1]}_{st[3]}"] += st[2]
     for k in sorted(ball):
         b = ball[k]
         cont = prev is not None and b is not None and prev[0][0] == k[0] and k[1] - prev[0][1] == 5
         if b is None or not cont:
+            loss = None
             if last is not None: c[f"x{last[1]}_dead"] += 1; c[f"x{last[1]}"] += 1; last = None
         if b is None: close(stint); stint = None; prev = None; continue
         t = b[2]; sg = own[(k[0], t)]
@@ -88,7 +90,11 @@ def one(pos_path):
                 close(stint); stint = (man, z, 1, hb)
                 if last is not None:
                     fz = last[1]; c[f"x{fz}"] += 1
-                    if last[0] != t: c[f"x{fz}_lost"] += 1
+                    if last[0] != t:
+                        c[f"x{fz}_lost"] += 1
+                        if loss is not None and loss[0] == t and loss[2] == k[0] and (k[1] - loss[3]) / 25 <= 5:   # G5.255: t lost it, now has it back
+                            dt = (k[1] - loss[3]) / 25; c[f"wb5_{loss[1]}"] += 1; c[f"wb3_{loss[1]}"] += dt <= 3
+                        c[f"wl{fz}"] += 1; loss = (last[0], fz, k[0], k[1])
                     else:
                         c[f"x{fz}_{z}"] += 1; air = zmax >= 2.0; c[f"xa{fz}_{z}"] += air
                         L[f"xg{fz}_{z}"].append(gapn / 5); L[f"xd{fz}"].append(last[2] - tl)
@@ -142,6 +148,13 @@ if __name__ == "__main__":
         for q in range(5): r += [c[f"hb{z}_{q}"] / tm, c[f"hbs{z}_{q}"] / 5 / max(1, c[f"hb{z}_{q}"])]
         hrows.append(r)
         print(f"  {nm:6s} " + " | ".join(f"{r[2 * q]:5.1f}, {r[2 * q + 1]:.2f}" for q in range(5)))
+    print("  WON BACK (G5.255) — a side loses the ball (its stint ends, the other side's begins) by the band it lost it in: losses a team-match | its own again within 3 s / 5 s % (in play throughout) | won back in the band med")
+    wrows = []
+    for z, nm in enumerate(("0-18", "18-35", "35-52", "52-70", "70+")):
+        n = max(1, c[f"wl{z}"]); r = [c[f"wl{z}"] / tm, 100 * c[f"wb3_{z}"] / n, 100 * c[f"wb5_{z}"] / n]
+        wrows.append(r); print(f"  {nm:6s} {r[0]:6.1f} | {r[1]:4.1f} / {r[2]:4.1f}")
+    print("C++ won-back rows:")
+    for r in wrows: print("  {" + ", ".join(f"{x:.2f}" for x in r) + "},")
     print("C++ how-began rows:")
     for r in hrows: print("  {" + ", ".join(f"{x:.2f}" for x in r) + "},")
     print("C++ next-stint rows:")

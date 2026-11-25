@@ -104,6 +104,7 @@ struct Stats {
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long hwb_n[5][5] = {}, hwb_s[5][5] = {};   // §8.359 HOW A STINT BEGAN [band][same man again / off a mate / a mate's ball that travelled / theirs before / play stopped before]
+    long wbk_l[5] = {}, wbk_3[5] = {}, wbk_5[5] = {};   // §8.361 WON BACK: losses by band, its own again within 3 / 5 s
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
@@ -3121,10 +3122,11 @@ int main(int argc, char** argv) {
             bool la_w3 = false;   // §8.347: its last frame had the ball in that side's wide last third, an outfield man's
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
             int st_hb = 4;   // §8.359: what came before this stint
+            int ls_t = -1, ls_z = 0; long ls_k = 0;   // §8.361: the last loss (side that lost it, band, tick)
             auto close = [&]() { if (st_man >= 0) { ++S.bt_k[st_z]; S.bt_ks[st_z] += st_n; S.bt_k3[st_z] += st_n >= 15; ++S.hwb_n[st_z][st_hb]; S.hwb_s[st_z][st_hb] += st_n; } st_man = -1; };
             for (const auto& f : fl_f) {
                 const bool cont = pv && f.k == pv->k + 6;
-                if (!cont) { close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; if (la_w3) { ++S.w3_n; ++S.w3_e[6]; } if (la_out) ++S.zo_n[la_z][la_wd]; la_t = -1; } }
+                if (!cont) { ls_t = -1; close(); if (la_t >= 0) { ++S.nx_n[la_z]; ++S.nx_dead[la_z]; if (la_w3) { ++S.w3_n; ++S.w3_e[6]; } if (la_out) ++S.zo_n[la_z][la_wd]; la_t = -1; } }
                 const int t = f.a; const double ax = t == 0 ? hx : -hx, tl = std::fabs(ax - f.bx);
                 const int z = tl < 18 ? 0 : tl < 35 ? 1 : tl < 52 ? 2 : tl < 70 ? 3 : 4;
                 int man = -1; double mdd = 2.0;
@@ -3220,7 +3222,9 @@ int main(int argc, char** argv) {
                                              const double od = nopp(f.x[best], f.y[best]); S.fbl_lo.push_back(od); S.fbl_lo3 += od < 3; }
                         }
                         if (la_t >= 0) { ++S.nx_n[la_z];
-                            if (la_t != t) ++S.nx_lost[la_z]; else { ++S.nx_to[la_z][z]; S.nx_air[la_z][z] += zmax >= 2.0; S.nx_d[la_z].push_back(la_tl - tl);
+                            if (la_t != t) { ++S.nx_lost[la_z];
+                                if (ls_t == t && f.k - ls_k <= 150) { ++S.wbk_5[ls_z]; S.wbk_3[ls_z] += f.k - ls_k <= 90; }   // §8.361: t lost it, has it back
+                                ++S.wbk_l[la_z]; ls_t = la_t; ls_z = la_z; ls_k = f.k; } else { ++S.nx_to[la_z][z]; S.nx_air[la_z][z] += zmax >= 2.0; S.nx_d[la_z].push_back(la_tl - tl);
                                 if (gapn >= 1) { const double d2 = std::hypot(f.bx - la_bx, f.by - la_by), tt = (gapn + 1) / 5.0;   // §8.337 PASS PACE
                                     if (d2 >= 5) { const int lb = d2 < 10 ? 0 : d2 < 20 ? 1 : d2 < 30 ? 2 : 3, hh = zmax < 1.0 ? 0 : 1; S.pc_v[hh][lb].push_back(d2 / tt); S.pc_t[hh][lb].push_back(tt); } } } }
                     }
@@ -3727,6 +3731,14 @@ int main(int argc, char** argv) {
                             std::printf("\n     %-6s", zn5[z]);
                             for (int q = 0; q < 5; ++q) std::printf("%s %5.1f, %.2f (%5.1f, %.2f)", q ? " |" : "", S.hwb_n[z][q] / tmo, S.hwb_s[z][q] / 5.0 / std::max(1L, S.hwb_n[z][q]), R[z][2 * q], R[z][2 * q + 1]);
                         }
+                    }
+                    {   // §8.361 WON BACK — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
+                        static const double R[5][3] = {{25.71, 25.00, 37.78}, {30.29, 30.94, 44.10}, {32.43, 34.21, 48.81}, {31.21, 28.84, 42.79}, {31.29, 34.25, 46.58}};
+                        static const char* zn5[5] = {"0-18", "18-35", "35-52", "52-70", "70+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.361 WON BACK (a side loses it: its stint ends, the other side's begins; by the band it lost it in; real DFL in brackets): losses a team-match | its own again within 3 s / 5 s %%");
+                        for (int z = 0; z < 5; ++z) { const double n = std::max(1L, S.wbk_l[z]);
+                            std::printf("\n     %-6s %5.1f (%5.1f) | %4.1f / %4.1f (%4.1f / %4.1f)", zn5[z], S.wbk_l[z] / tmo, R[z][0], 100.0 * S.wbk_3[z] / n, 100.0 * S.wbk_5[z] / n, R[z][1], R[z][2]); }
                     }
                     {   // §8.340 — real: benchmarks_statsbomb_fwdloss.py part 3
                         static const double R[3][6] = {{1.95, 3.64, 4.52, 0.71, 0.08, 11.93}, {0.91, 1.59, 2.35, 0.58, 0.05, 3.01}, {0.35, 0.24, 0.42, 0.06, 0.02, 0.17}};
