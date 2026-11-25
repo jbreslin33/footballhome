@@ -123,7 +123,42 @@
     clip.endAt = 0;
     paintClipBar();
   }
+  // Which "exe" this is (owner 11/25: "needs to be more clear of what exe we are watching"): the build's line at the
+  // top — concept, engine build, when, from how many matches, how many clips — or LIVE when it is not a build.
+  const whenOf = (iso) => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+  const clipLine = (c) => say('build_clip_row', { num: c.defender.number, name: c.defender.name, label: c.defender.label, min: c.minute,
+    outcome: say('clip_out_' + c.outcome, { m: Math.round(c.forward_m), gap: c.gap_at_arrival_m.toFixed(1) }) });
+  function paintBuild() {
+    const el = $('buildbtn');
+    el.hidden = false;
+    const b = clip.build;
+    if (CLIPS && b) {
+      el.className = 'glass built';
+      el.textContent = say('build_line', { concept: concept ? concept.title : '', engine: b.engine, when: whenOf(b.built_at), matches: b.matches,
+        n: clip.list.length, good: clip.list.filter((c) => c.kind === 'good').length, bad: clip.list.filter((c) => c.kind === 'bad').length });
+    } else { el.className = 'glass live'; el.textContent = say('build_live'); }
+    $('hint').hidden = true;
+  }
+  function buildPopup() {
+    const b = clip.build;
+    if (!CLIPS || !b) { popup(say('build_popup_title'), say('build_live_def')); return; }
+    const box = document.createElement('div');
+    const fixtures = [...new Set(b.pool.map((c) => c.fixture))];
+    const p = document.createElement('p');
+    p.textContent = say('build_popup_body', { concept: concept ? concept.title : '', matches: b.matches, fixtures: fixtures.join(', '), engine: b.engine, when: whenOf(b.built_at), secs: b.build_s, pool: b.pool.length });
+    box.appendChild(p);
+    const ul = document.createElement('ul'); ul.className = 'cliplist';
+    clip.list.forEach((c, i) => {
+      const li = document.createElement('li'); li.className = c.kind + (i === clip.i ? ' now' : '');
+      li.textContent = (i + 1) + '. ' + clipLine(c);
+      li.addEventListener('click', () => { $('popup').hidden = true; loadClip(i); });
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+    popup(say('build_popup_title'), box);
+  }
   function paintClipBar() {
+    paintBuild();
     const el = $('clipbar');
     if (!CLIPS) { el.hidden = true; return; }
     el.hidden = false;
@@ -426,7 +461,8 @@
       play.t += dt * 30 * play.rate;
       // At the end of what is recorded so far: wait for more (it is buffering), or with "only", back to the first spell.
       if (play.t >= lastTick()) play.t = play.only && spells.length ? spells[0][0] : lastTick();
-      if (CLIPS && play.t >= lastTick()) { if (!clip.endAt) clip.endAt = now; else if (now - clip.endAt > 1500) loadClip(clip.i + 1); }
+      // Owner 11/25: "it should pause after each one" — a clip stops at its end; ▶ plays it again, ◀ ▶ go on.
+      if (CLIPS && play.t >= lastTick()) { play.on = false; clip.endAt = now; }
     }
     paceRoom();
     play.t = Math.max(firstTick(), Math.min(lastTick(), play.t));
@@ -585,7 +621,7 @@
     $('hint').textContent = say('view_tap');
 
     $('playbtn').addEventListener('click', () => {
-      if (play.on || play.live) { play.on = false; play.live = false; } else play.on = true;
+      if (play.on || play.live) { play.on = false; play.live = false; } else { if (CLIPS && play.t >= lastTick()) play.t = firstTick(); play.on = true; }
       play.last = performance.now();
     });
     $('live').addEventListener('click', () => { play.live = true; play.on = true; play.only = false; paintOnly(); });
@@ -639,7 +675,8 @@
     requestAnimationFrame(frame);
     $('clipprev').addEventListener('click', () => loadClip(clip.i - 1));
     $('clipnext').addEventListener('click', () => loadClip(clip.i + 1));
+    $('buildbtn').addEventListener('click', buildPopup);
     $('clipprev').title = say('clip_prev'); $('clipnext').title = say('clip_next');
-    if (CLIPS) { load.step = 2; paintClipBar(); loadBuild(); } else connect();
+    if (CLIPS) { load.step = 2; paintClipBar(); loadBuild(); } else { paintBuild(); connect(); }
   })();
 })();

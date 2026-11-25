@@ -64,6 +64,13 @@
     #focus .f2 { font: 600 12px system-ui, sans-serif; color: var(--dim); margin-top: 3px; }
     #focus.in { border: 2px solid #2ecc71; } #focus.in .f1 { color: #2ecc71; }
     #focus.out { border: 2px solid #ff4d4d; } #focus.out .f1 { color: #ff4d4d; }
+    #buildbtn { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 6px); transform: translateX(-50%); max-width: min(900px, calc(100% - 420px));
+                font: 800 13px system-ui, sans-serif; padding: 4px 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #buildbtn.built { color: #ffd84d; border: 1px solid rgba(255,216,77,.6); } #buildbtn.live { color: #ff6b6b; border: 1px solid rgba(255,107,107,.6); }
+    #focus { top: calc(env(safe-area-inset-top, 0px) + 40px) !important; }
+    .cliplist { list-style: none; padding: 0; margin: 8px 0 0; } .cliplist li { padding: 6px 8px; border-radius: 6px; cursor: pointer; font: 600 13px system-ui, sans-serif; }
+    .cliplist li:hover { background: rgba(255,255,255,.08); } .cliplist li.now { background: rgba(255,216,77,.18); }
+    .cliplist li.good::before { content: '✓ '; color: #2ecc71; font-weight: 800; } .cliplist li.bad::before { content: '✗ '; color: #ff4d4d; font-weight: 800; }
     #clipbar { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 64px); transform: translateX(-50%); max-width: min(820px, calc(100% - 24px));
                display: flex; align-items: center; gap: 8px; padding: 6px 8px; font: 600 13px system-ui, sans-serif; }
     #clipbar .kind { font-weight: 800; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
@@ -142,6 +149,7 @@
     <canvas id="pitch"></canvas>
     <button id="ctitle" class="glass" type="button"></button>
     <div id="hint"></div>
+    <button id="buildbtn" class="glass" type="button" hidden></button>
     <div id="focus" class="glass" hidden></div>
     <div id="tag"></div>
     <div id="clipbar" class="glass" hidden><button id="clipprev" class="glass" type="button">◀</button><span id="clipkind" class="kind"></span><span id="cliptxt"></span><button id="clipnext" class="glass" type="button">▶</button></div>
@@ -158,6 +166,6 @@
     <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
   </div>
   <script src="js/game/wire.js?v=20261125possread"></script>
-  <script src="js/teach/concept.js?v=20261125clips2"></script>
+  <script src="js/teach/concept.js?v=20261125exe2"></script>
 </body>
 </html>
