@@ -10,7 +10,7 @@
 // event, the game link — which are preselected; the section list
 // follows unchanged:
 //
-//   💬 Message (hello) · the section's own forms · 🔗 Sign-in link ·
+//   💬 Message (hello) · the section's own forms · 💳 Pay link · 🔗 Sign-in link ·
 //   👋 Welcome · ✏️ Blank
 //
 //   mens   → every "Men's Club" registration row (Liga 1 / APSL reg) and
@@ -111,6 +111,17 @@
     // when sent from his next game he is Going to, his attendance and his
     // Going answers to the practices left (short / projected / met).
     if (section === 'mens' && ctx.playerId && ctx.screen && ctx.screen.auth) list.push(practiceCriteriaMessage(ctx.screen, ctx.playerId));
+
+    // 💳 Pay link (mig 1922; owner 11/25 "we dont' want over due notice harsh
+    // just here pay here" … "standard possible message in contact for all"):
+    // the LeagueApps dashboard link only — no amount, no months behind.
+    {
+      const tier = isYouth(section) ? 'parent' : 'adult';
+      const fill = isYouth(section) ? { first: ctx.parentFirst || '', child: first } : { first };
+      const pay = window.MessageCopy && MessageCopy.render('pay_link_email', tier, fill);
+      if (pay) list.push({ key: 'pay_link', label: cp('msg_pay_link', '💳 Pay link'), subject: pay.subject, body: pay.body,
+                           smsBody: MessageCopy.block('pay_link_sms', tier, fill) });
+    }
 
     // Sign-in and welcome are minted for a person — none for a contact
     // FH has no person row for (the youth-roster parent from LA).
