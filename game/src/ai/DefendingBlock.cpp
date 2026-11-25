@@ -65,6 +65,12 @@ public:
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         const auto& me = c.world.player(v.slot);
         o.target = c.block.spot(v, c.world);
+        // Stay in pressing distance (ai/concepts/PressingDistance), when a side is given it: off
+        // his spot toward his man by the dial's share of the step that puts him back in reach.
+        if (const Fixed64 hold = c.block.params().press_hold; hold.raw > 0) {
+            const Vec2 step = c.block.pressDistance().of(v.slot).step;
+            o.target = Vec2{o.target.x + step.x * hold, o.target.y + step.y * hold};
+        }
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.why = Why::Hold;
         return true;
@@ -107,6 +113,22 @@ public:
         if (!flight && ep.pinned_scale.raw > 0 && c.world.pitchHalfY() - math::fx_abs(ball.pos.y) < ep.pinned_m) off = off * ep.pinned_scale;
         o.target = len.raw > 0 ? Vec2{crp.x + to_goal.x * off / len, crp.y + to_goal.y * off / len}
                                : crp;
+        // [behaviour: cs_press_along_the_lane]
+        // Press on the cover shadow (ai/concepts/CoverShadow), when a side is given it: his spot
+        // moves off the line to our goal onto the line to the receiver he is hiding, the same
+        // stand-off from the carrier — so he arrives along the pass he blocks.
+        if (!flight && ep.shadow_press.raw > 0) {
+            const int rcv = c.block.shadows().screen(v.team);
+            if (rcv >= 0) {
+                const auto& rp = c.world.player(static_cast<core::SlotIndex>(rcv)).pos;
+                const Vec2 to_r{rp.x - crp.x, rp.y - crp.y};
+                const Fixed64 lr = math::length(to_r);
+                if (lr > off) {
+                    const Vec2 lane{crp.x + to_r.x * off / lr, crp.y + to_r.y * off / lr};
+                    o.target = Vec2{o.target.x + (lane.x - o.target.x) * ep.shadow_press, o.target.y + (lane.y - o.target.y) * ep.shadow_press};
+                }
+            }
+        }
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
         o.move.face = flight ? Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y} : Vec2{crp.x - me.pos.x, crp.y - me.pos.y};
         o.other = ball.owner ? static_cast<std::int16_t>(*ball.owner) : static_cast<std::int16_t>(-1);
@@ -125,7 +147,45 @@ public:
                             distSq(c.world.player(j).pos, ball.pos) < ep.engage_cover_m * ep.engage_cover_m;
                 if (cover) per_tick = per_tick * ep.engage_cover;
             }
+            // Double-team (ai/concepts/DoubleTeam): the second man in reach too — the covered rate is shared, half each.
+            if (const auto& dt = c.block.doubleTeam().of(v.team); c.block.doubleTeams(v.team, dt.second) &&
+                distSq(c.world.player(static_cast<core::SlotIndex>(dt.second)).pos, ball.pos) < core::kTackleReach * core::kTackleReach)
+                per_tick = per_tick * Fixed64::fromFraction(1, 2);
             const Fixed64 n = core::detNoise(v.match_seed, c.tick, v.slot, 29);   // [-1, 1)
+            if ((n + Fixed64::one()) * Fixed64::fromFraction(1, 2) < per_tick) o.action = core::Action::Tackle;
+        }
+        return true;
+    }
+};
+
+// Double-team (ai/concepts/DoubleTeam, game_concepts 12): the second man closes the carrier's inside —
+// between him and the middle, level with him — so the touchline and the presser shut him in; in reach he has
+// his own tackle clock, on the presser's rate (as engage-or-contain's "your cover has arrived").
+// [behaviour: dt_close_the_inside]
+class DoubleTeamBall final : public ActingState {
+public:
+    std::uint8_t id() const override { return 10; }
+    const char* name() const override { return "double-team"; }
+    bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
+        const auto& ball = c.world.ball();
+        const auto& r = c.block.doubleTeam().of(v.team);
+        if (!ball.owner || r.carrier < 0 || static_cast<int>(*ball.owner) != r.carrier) return false;
+        const auto& me = c.world.player(v.slot);
+        o.target = r.spot;
+        o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 10));
+        o.move.face = Vec2{ball.pos.x - me.pos.x, ball.pos.y - me.pos.y};
+        o.other = static_cast<std::int16_t>(r.carrier);
+        o.why = Why::Press;
+        // [behaviour: dt_tackle_in_reach]
+        // The real rate with a second man close (DFL, §8.348: ×engage_cover) is the ball taken by EITHER of them —
+        // so with both in reach they share it, half each; alone in reach he has it all.
+        if (distSq(me.pos, ball.pos) < core::kTackleReach * core::kTackleReach) {
+            Fixed64 per_tick = c.block.params().tackle_per_s * core::kTickDt;
+            if (c.block.params().engage_cover.raw > 0) per_tick = per_tick * c.block.params().engage_cover;   // his cover is the presser
+            const int pr = c.block.presser(v.team);
+            if (pr >= 0 && distSq(c.world.player(static_cast<core::SlotIndex>(pr)).pos, ball.pos) < core::kTackleReach * core::kTackleReach)
+                per_tick = per_tick * Fixed64::fromFraction(1, 2);
+            const Fixed64 n = core::detNoise(v.match_seed, c.tick, v.slot, 126);   // [-1, 1)
             if ((n + Fixed64::one()) * Fixed64::fromFraction(1, 2) < per_tick) o.action = core::Action::Tackle;
         }
         return true;
@@ -181,6 +241,7 @@ const MarkMan kMark;
 const HoldBlockSpot kHold;
 const PressBall kPress;
 const ChaseBall kChase;
+const DoubleTeamBall kDoubleTeam;
 
 }  // namespace
 
@@ -199,6 +260,7 @@ const ActingState* DefendingBlock::holdBlockSpot() { return &kHold; }
 const ActingState* DefendingBlock::pressBall() { return &kPress; }
 const ActingState* DefendingBlock::chaseBall() { return &kChase; }
 const ActingState* DefendingBlock::markMan() { return &kMark; }
+const ActingState* DefendingBlock::doubleTeamBall() { return &kDoubleTeam; }
 
 void BlockParams::configure(const core::ModelParams& p) {
     static const int kLine[5] = {-5600, -3500, -800, 2400, 5400};   // G5.52, DFL spell offsets (m x1000)
@@ -249,6 +311,13 @@ void BlockParams::configure(const core::ModelParams& p) {
         }
     }
     mark_mind = p.fixed("physics.mark.mind", 0).raw > 0;   // the marking mind — no row = off
+    press_hold = p.fixed("physics.pressdist.hold", 0);     // stay in pressing distance — no row = 0 = read only
+    shadow_press = p.fixed("physics.shadow.press", 0);     // press on the cover shadow — no row = 0 = read only
+    double_team.share = p.fixed("physics.press.double_team", 0);   // double-team — no row = 0 = read only
+    double_team.trap_m = p.fixed("physics.press.double_team_trap_m", 12000);
+    double_team.presser_m = p.fixed("physics.press.double_team_presser_m", 5000);
+    double_team.join_m = p.fixed("physics.press.double_team_join_m", 15000);
+    double_team.inside_m = p.fixed("physics.press.double_team_inside_m", 1500);
     switch_m = p.fixed("physics.press.switch_m", 2000);
     depth_now = p.fixed("physics.block.depth_now", 1000).raw > 0;   // G5.162 (§8.267), default on
     gs_r = p.fixed("physics.block.gs_r", 0);   // G5.85 (§8.186) [FH]: built, left OFF — no row = off (mm)

@@ -82,6 +82,16 @@ public:
     using FlightRead = Reads::FlightRead;
     const FlightRead& flightRead(const core::World& world) const { return reads_.flightRead(world); }
     const Reads& reads() const { return reads_; }
+    // His direct opponent right now (a slot), or -1: the spare man, a keeper, or his side has the ball.
+    int directOpponent(core::SlotIndex slot) const { return block_.opponents().of(slot); }
+    concepts::PairHow directHow(core::SlotIndex slot) const { return block_.opponents().how(slot); }
+    // His pressing-distance read (ai/concepts/PressingDistance): his reach against the gap to his man.
+    const concepts::PressReach& pressReach(core::SlotIndex slot) const { return block_.pressDistance().of(slot); }
+    // Cover shadows (ai/concepts/CoverShadow): the opponents he hides from the ball (a bit a slot), and
+    // the receiver his side's presser should hide (-1 none).
+    std::uint32_t hiddenBy(core::SlotIndex slot) const { return block_.shadows().hiddenBy(slot); }
+    int shadowScreen(std::uint8_t team) const { return block_.shadows().screen(team); }
+    math::Fixed64 shadowBodyM() const { return block_.shadows().params().body_m; }
     const DefendingBlock& block() const { return block_; }   // harness probe: who chases / contests / presses (§8.257)
     int restartTaker(const core::World& world, std::uint8_t team) const;
     // Harness probe: the target his state gave him this tick.

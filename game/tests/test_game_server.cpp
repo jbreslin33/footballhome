@@ -308,7 +308,9 @@ FH_TEST(practice_link_parses) {
     FH_EXPECT(a.has_value());
     FH_EXPECT(a->home == "West Ham United" && a->away == "Arsenal" && a->goal_kick == "home");
     const auto b = server::parsePracticeAsk("/game?trainer=1");
-    FH_EXPECT(b.has_value() && b->home.empty() && b->goal_kick == "away");
+    FH_EXPECT(b.has_value() && b->home.empty() && b->goal_kick == "away" && b->concept_id == 0);
+    const auto c = server::parsePracticeAsk("/game?trainer=1&concept=164");   // the concept clip viewer's room
+    FH_EXPECT(c.has_value() && c->concept_id == 164 && c->teach_plan == 0);
 }
 
 FH_TEST(practice_room_starts_paused_on_their_goal_kick) {

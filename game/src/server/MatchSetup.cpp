@@ -2,6 +2,7 @@
 
 #include "server/MatchSetup.hpp"
 
+#include <string>
 #include <cstdio>
 #include <tuple>
 
@@ -34,6 +35,7 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
     cfg.db = db;   // G4.32: admin RELOAD_ROSTERS re-reads the teams
     cfg.model_params = persistence::loadModelParams(db);
     cfg.team_names = persistence::loadDemoTeamNames(db);   // G5.35: the matchup dropdowns
+    cfg.state_codes = persistence::loadStateCodes(db);   // the clip viewer's brain panel: each man's real state
     cfg.acts = persistence::loadActConcepts(db);   // tactics trainer step 1 (mig 1199)
     say("fh-game: %zu trainer label(s) from game_engine_acts\n", cfg.acts.size());
     // G5.40 (§8.140): the Laws' distances from the club's tactic_restarts (one statement).
@@ -43,6 +45,11 @@ void loadMatchFromDb(GameServer::Config& cfg, const persistence::DbConfig& db,
                                     std::pair{"penalty", "physics.restart.penalty_arc_m"}})
         if (auto it = laws.find(code); it != laws.end()) cfg.model_params.setMilli(key, it->second);
     say("fh-game: %zu restart law(s) from tactic_restarts\n", laws.size());
+    // Direct opponents by position number (game_direct_opponents, mig 694 / 1858): handed to the
+    // engine as model params, like the Laws' distances above (ai/concepts/DirectOpponent).
+    const auto pairs = persistence::loadDirectPairs(db);
+    for (const auto& [a, b] : pairs) cfg.model_params.setMilli("concept.direct.pair_" + std::to_string(a) + "_" + std::to_string(b), 1000);
+    say("fh-game: %zu direct-opponent pair(s) from game_direct_opponents\n", pairs.size());
     say("fh-game: %zu physics param(s) loaded\n", cfg.model_params.size());
     if (auto t = persistence::loadDemoTeam(db, th)) {
         cfg.roster_home = std::move(*t);

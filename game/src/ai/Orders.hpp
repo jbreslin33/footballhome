@@ -30,8 +30,8 @@ inline constexpr int kWhyCount = static_cast<int>(sizeof(kWhyNames) / sizeof(kWh
 // behaviour the engine is running for a man, by code. The codes are rows of
 // game_engine_acts (mig 1199), which name the game_concepts row each one plays;
 // the wording lives there, never here. Read-only: never fed back into the sim.
-enum class Act : std::uint8_t { None, BlockSpot, BlockRecover, BlockCover, PressBall, ChaseBall, Mark };
-inline constexpr const char* kActCodes[] = {"", "block_spot", "block_recover", "block_cover", "press_ball", "chase_ball", "block_mark"};
+enum class Act : std::uint8_t { None, BlockSpot, BlockRecover, BlockCover, PressBall, ChaseBall, Mark, PressDistance, PressShadow, DoubleTeam };
+inline constexpr const char* kActCodes[] = {"", "block_spot", "block_recover", "block_cover", "press_ball", "chase_ball", "block_mark", "press_distance", "press_shadow", "double_team"};
 inline constexpr int kActCount = static_cast<int>(sizeof(kActCodes) / sizeof(kActCodes[0]));
 
 struct Orders {

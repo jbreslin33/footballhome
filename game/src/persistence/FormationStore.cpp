@@ -155,6 +155,51 @@ std::vector<ActConcept> loadActConcepts(const DbConfig& cfg) {
     return out;
 }
 
+std::vector<std::pair<int, int>> loadDirectPairs(const DbConfig& cfg) {
+    std::vector<std::pair<int, int>> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        if (!tx.exec("SELECT to_regclass('game_direct_opponents') IS NOT NULL")[0][0].as<bool>()) return out;
+        for (const auto& r : tx.exec("SELECT number, opponent_number FROM game_direct_opponents ORDER BY 1, 2"))
+            out.emplace_back(r[0].as<int>(), r[1].as<int>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_direct_opponents load failed: %s\n", e.what());
+    }
+    return out;
+}
+
+std::vector<std::pair<std::string, std::string>> loadStateCodes(const DbConfig& cfg) {
+    std::vector<std::pair<std::string, std::string>> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        if (!tx.exec("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'game_engine_terms' AND column_name = 'engine_name')")[0][0].as<bool>()) return out;
+        for (const auto& r : tx.exec("SELECT engine_name, code FROM game_engine_terms WHERE kind = 'state' AND engine_name IS NOT NULL"))
+            out.emplace_back(r[0].as<std::string>(), r[1].as<std::string>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: state codes load failed: %s\n", e.what());
+    }
+    return out;
+}
+
+std::vector<std::pair<std::string, std::int64_t>> loadConceptDials(const DbConfig& cfg, int concept_id) {
+    std::vector<std::pair<std::string, std::int64_t>> out;
+    try {
+        pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +
+                              " password=" + cfg.password + " connect_timeout=5"};
+        pqxx::work tx{conn};
+        if (!tx.exec("SELECT to_regclass('game_concept_dials') IS NOT NULL")[0][0].as<bool>()) return out;
+        for (const auto& r : tx.exec_params("SELECT param, on_milli FROM game_concept_dials WHERE concept_id = $1 ORDER BY param", concept_id))
+            out.emplace_back(r[0].as<std::string>(), r[1].as<std::int64_t>());
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "fh-game: game_concept_dials load failed: %s\n", e.what());
+    }
+    return out;
+}
+
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name) {
     try {
         pqxx::connection conn{"host=" + cfg.host + " dbname=" + cfg.dbname + " user=" + cfg.user +

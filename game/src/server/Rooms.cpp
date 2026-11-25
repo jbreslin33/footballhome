@@ -49,6 +49,7 @@ std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path) {
         else if (k == "gk" && (v == "home" || v == "away")) ask.goal_kick = v;
         else if (k == "teach") ask.teach_plan = std::atoi(v.c_str());
         else if (k == "marking") ask.zonal = v == "zonal";
+        else if (k == "concept") ask.concept_id = std::atoi(v.c_str());
         at = amp + 1;
     }
     if (!practice) return std::nullopt;

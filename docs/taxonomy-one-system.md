@@ -175,3 +175,134 @@ football concept. Never for being unused, and never unreachable. The marking min
 the first: `physics.mark.mind` — no row = the sim's fitted marking, 1 = its markers run the mind.
 A first 4-match on/off read was mixed (who gets tight and switches toward real; crosses, goals
 and closing pace away), so it sits at zero until the harness fits its steps one at a time.
+
+## Direct opponent, then pressing distance (migs 1853 / 1855)
+
+Owner, 2026-11-24: "lets focus on stay in pressing distance and fully finish it" · "for the
+concept he needs a direct opponent right? even if its a temp direct opponent because of
+movement" · "yes build direct opponent first".
+
+**Direct opponent** — `game/src/ai/concepts/DirectOpponent`. The side without the ball pairs
+every outfielder with one of theirs: the man nearest his place in the defensive shape, nobody
+taken twice, a pair kept until another of ours is 4 m better placed, the deepest of ours the
+spare man, their furthest man left free. A recognition; the sim runs it every tick and it
+moves nobody. Frame `PAIRS` (0x4B) carries it to the page.
+
+**Stay in pressing distance** — `game/src/ai/concepts/PressingDistance`, on top of the pairs.
+
+| | |
+|---|---|
+| **Recognise** | his REACH: how far he can cover (0.3 s reaction, then 6 m/s, "on him" = within 1.5 m) while a pass from where the ball is now travels to his man, at the engine's own pass speed for that length. His man inside his reach = in pressing distance. So the right gap is not a number: the further the ball is from his man, the further off he may stand. Also counted: the other opponents he could get to (the help). |
+| **Choose** | `physics.pressdist.hold`, 0 … 1 — the share of the missing distance he takes back. **No row = 0**: read only, the sim as fitted. |
+| **Execute** | from his place in the shape (not from his feet), the step toward his man that leaves the gap equal to his reach; never more than 6 m off his place. `HoldBlockSpot` applies it; the trainer's label is the act `press_distance`. |
+
+The reaction, pace and arrive distance are [FH] coaching values. The man on the ball is not
+this concept, and the look found a mislabel: the engine's `press_ball` (the one presser) was
+named by pressing-distance. It is now `close-down` ("Close down the man on the ball"), a new
+catalogue row.
+
+**Where to see it.** `/concept.html?concept=<pressing-distance id>`. The test of pressing
+distance is a pass to a man somebody has, so that is what an example is: the page watches the
+live match for a pass that arrives with a man who has a defender on him, and shows the
+defender's reach as a circle (frame `REACH`, 0x4C) — live and dashed before the pass, frozen
+at the moment it is struck, green when his man is inside it. The caption gives the gap, the
+reach and the answer, then how far he was from his man as the ball arrived. It keeps both
+answers coming: never a third example in a row with the same one.
+
+**The harness read, 11/24** (dial 0 v 1, the same 8 matches each, seeds 7000 / 7100 × 4, scratch DB):
+
+| | off | on | real |
+|---|---|---|---|
+| nearest defender to an attacker 52 m+ from the goal he attacks, ball near (m) | 6.5 | 6.1–6.2 | 5.2 |
+| … one within 2 m of him (%) | 8.6–8.9 | 9.0–9.5 | 12.4 |
+| … same band, ball far (m) | 9.2 | 8.6–8.9 | 7.4 |
+| attacker 18–35 m out, ball near (m) | 3.2 | 3.1 | 3.8 |
+| nearest opponent to a receiver at his touch, all (median m) | 5.8–6.0 | 5.65–5.7 | 7.4 |
+| … controlled touches (median m) | 6.6–6.9 | 6.4–6.7 | 9.25 |
+
+Mixed, and small. High up the pitch the sim's defenders stand too far off their men and the
+step brings them toward real; near our goal and at the receiver's touch the sim is already
+tighter than real and the step takes it further off. So the dial **stays at zero**. The next
+trial is the step only where the gap is (the man 52 m+ from the goal he attacks), not everywhere.
+
+**Owed.** That banded trial; and whether the pace and reaction should be the man's own attributes.
+
+## Cover shadow (mig 1857)
+
+The concept after pressing distance. The catalogue's cue: "Pressing their centre back: run at
+him along the line to his nearest receiver, so that pass is blocked by your body."
+
+`game/src/ai/concepts/CoverShadow`:
+
+| | |
+|---|---|
+| **Recognise** | every outfielder of the side without the ball: which opponents stand in his shadow — further from the ball than he is, with him within 1.2 m (his body and a stride either side) of the straight line from the ball to that man. And for whoever closes the ball down: the pass to block — the carrier's nearest mate within 30 m who is level with him or nearer our goal. |
+| **Choose** | `physics.shadow.press`, 0 … 1. **No row = 0**: read only. |
+| **Execute** | in `PressBall`: his stand-off spot moves off the carrier's line to our goal onto the carrier's line to that receiver, the same distance off him, by the dial's share. The trainer's label is the act `press_shadow`. |
+
+**Where to see it.** `/concept.html?concept=<cover-shadow id>`. An example is a man closing
+the ball down (the engine's `close-down` label). His shadow is drawn as a dark wedge from the
+ball through him (frame `SHADOW`, 0x4D, carries who is in it and the pass to block); men in it
+are tagged, and when the nearest pass is not in it the line to that receiver is drawn white and
+tagged open. With the dial at zero that is what the sim's presser mostly shows: he comes
+goal-side and the pass beside him is open — the catalogue's "lacking", on screen.
+
+**Owed.** The harness read with `physics.shadow.press` above 0; the same shadow used by a
+man who is not pressing (`shadow-second-man`, `shadow-the-line`), which needs him to choose a
+second man — the read for it is already there (`hiddenBy`).
+
+## Direct opponent by the matchup; concepts watched switched on (mig 1866)
+
+Owner, 2026-11-24, on the first build: "direct opponent would never be that far away lol. a
+direct opponent is normally 9 vs 4,5  10 v 6 2 v 7 11v3 8v8 but of course in the heat of
+battle you have to adjust to the ball area" · "i am not seeing the concept ran?"
+
+**The pairing**, `game/src/ai/concepts/DirectOpponent`, in three steps for the side without
+the ball:
+
+1. **The battle** — everyone within 18 m of the ball pairs with the opponents actually in that
+   scene, nearest first, nobody twice.
+2. **The matchup** — everyone else by position number, from `game_direct_opponents` (the
+   owner's pairs of 10/24, back in after the clean slate): 9 on their 4 or 5, 4 and 5 on their
+   9 (the nearer marks, the other is the spare man), 10 on 6, 6 on 10, 8 on 8, full-backs and
+   wingers on each other **along the same touchline**, whichever of 7 / 11 a formation calls
+   the left.
+3. **No matchup** — only a man whose number finds nobody in their shape takes the nearest man
+   left, and only within 20 m; otherwise he has nobody.
+
+A pair is kept until another is 4 m better. The pairs reach the engine as model params
+(`concept.direct.pair_<n>_<m>`, MatchSetup), like the Laws' distances. Measured on the live
+match for a minute: matchup pairs median 8 m apart (max 27), battle pairs 4.7 m; the commonest
+pairs 2v11, 7v3, 3v7, 11v2, 5v9, 8v8, 6v10.
+
+**Watching a concept switched on.** `game_concept_dials` holds the model param(s) that switch
+a concept on. `/game?trainer=1&concept=<id>` opens a private room of the full engine (Leicester
+v Arsenal, the live match's sides) with those dials on for both teams; the clip viewer opens
+it for pressing distance and cover shadow, plays it, and cuts its examples from the men doing
+the concept (the acts `press_distance` and `press_shadow`). A green banner says it is that room,
+not the real sim. A concept with a dial gets one row here and the viewer can show it.
+
+## The brain panel: what the engine is doing, layer by layer (migs 1872 / 1874)
+
+Owner, 2026-11-24: "is he in 'stay in pressing distance' the whole time … can you be in 2
+states of same machine … we need this explained on the graphic" · "it needs to be crystal
+clear what is going on in the 'brain' and what we are seeing".
+
+The clip viewer's 🧠 tab draws the layers the engine really has, one lane each across the
+example, with a white playhead:
+
+| Lane | What it is | How many | At a time |
+|---|---|---|---|
+| **Team** | the team's phase (`ai::Phase`, frame `PHASE` 0x4E) | 6 | one, shared by all eleven |
+| **Him** | his state (`PlayerState`, frame `STATES` 0x4F — the engine's real state, mapped to `game_engine_terms.code` by `engine_name`) | 11 | one — never two of the same machine |
+| **Using** | the concept he applies inside that state (the trainer act) — changes HOW he does the state; not a state | — | none or one |
+| **Knows** | reads that always run: his man (and why), can he reach him, who is hidden behind him | — | all at once; they decide nothing |
+
+Above the lanes: RIGHT NOW in words, and one status line for THIS concept: active, or not
+active and why (his team has the ball / he is in another state — pressing distance lives
+only in "Hold his place", the cover shadow only in "Press the man on the ball" / his man is
+already in reach). Caption line 1 on the pitch says the same three layers.
+
+Before the `STATES` frame the page guessed his state from his order of the tick; with the
+ball loose that showed "We have the ball" beside "Hold his place in the defensive shape".
+The guess is now only a fallback before the first frame arrives.

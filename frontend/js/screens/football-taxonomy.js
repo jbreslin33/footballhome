@@ -547,7 +547,7 @@ class FootballTaxonomyScreen extends Screen {
       <h4>${esc(this._t('s_row'))}</h4>` + this._kv([
         [this._t('f_reach'), this._t('reach_' + reach)], [this._t('f_moment'), moment], [this._t('f_principle'), principle],
         [this._t('f_family'), this._t('family_' + c.family) || c.family], [this._t('f_status'), c.status],
-        [this._t('f_taught'), c.taught_from], [this._t('f_cue'), c.cue], [this._t('f_lacking'), c.lacking],
+        [this._t('f_taught'), c.taught_from], [this._t('f_definition'), c.definition], [this._t('f_cue'), c.cue], [this._t('f_lacking'), c.lacking],
         [this._t('f_sources'), c.sources || null]], esc);
     const out = (d.links || []).filter(l => l.from === id), inn = (d.links || []).filter(l => l.to === id);
     if (out.length || inn.length) {

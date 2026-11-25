@@ -105,6 +105,12 @@ int main() {
         ++practice_n;
         pc.match_id = base.match_id * 1000 + practice_n;
         pc.match_seed = base.match_seed + practice_n;   // each practice match its own noise
+        if (ask.concept_id > 0) {
+            // The concept clip viewer: this one concept switched on, both sides (game_concept_dials).
+            const auto dials = persistence::loadConceptDials(*base.db, ask.concept_id);
+            for (const auto& [key, milli] : dials) pc.model_params.setMilli(key, milli);
+            std::printf("fh-game: concept room, concept %d: %zu dial(s) on\n", ask.concept_id, dials.size());
+        }
         if (ask.teach_plan > 0) {
             // The teaching room (docs/teaching-room.md): the side not taking the goal kick runs
             // a club tactic plan's jobs; both sides line up in the plan's two formations.

@@ -31,6 +31,11 @@
     CONCEPT_LEGEND: 0x47, // 2.2 s→c: the trainer's labels — game_concepts id, name, title (mig 1199)
     STEP: 0x48,           // 2.2 c→s admin: play to the next pass, then pause (trainer step 3)
     MIND: 0x49,           // 2.4 s→c: one watched player's mind — states, eyes, memory, options (UTF-8 JSON; teaching rooms)
+    PAIRS: 0x4B,          // 2.5 s→c: direct opponents — u8 count, per slot u8: his man in the low 6 bits, how in the top 2 (1 matchup, 2 battle, 3 nearest), 255 none; with BRAIN
+    REACH: 0x4C,          // 2.6 s→c: pressing distance — u8 count, per slot u16 reach dm (0xFFFF none), u8 flags (1 in, 2 man on ball), u8 help; with PAIRS
+    SHADOW: 0x4D,         // 2.7 s→c: cover shadows — u8 count, u8 body half-width dm, u8 u8 the receiver each side's presser should hide, per slot u32 mask of opponents he hides; with PAIRS
+    PHASE: 0x4E,          // 2.8 s→c: each team's phase — u8 home, u8 away (0 in possession … 5 their set piece); with PAIRS
+    STATES: 0x4F,         // 2.9 s→c: each man's state — u8 count, per slot u8 len + game_engine_terms code (or the engine's name); with PAIRS
     MIND_WATCH: 0x4A,     // 2.4 c→s: u8 slot — watch that player's mind (255 = stop)
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
@@ -268,6 +273,35 @@
     new DataView(p).setUint16(0, pct || 100, true);
     return envelope(FrameType.STEP, p);
   }
+  // 2.5 PAIRS: who each man's direct opponent is (game/src/ai/concepts/DirectOpponent) → [slot | 255].
+  // → [slot | 255], with .how[slot] = 'matchup' | 'battle' | 'nearest' | null.
+  function decodePairs(view, at) {
+    const n = view.getUint8(at), out = new Array(n), how = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = view.getUint8(at + 1 + i);
+      out[i] = v === 255 ? 255 : v & 63;
+      how[i] = v === 255 ? null : [null, 'matchup', 'battle', 'nearest'][v >> 6];
+    }
+    out.how = how;
+    return out;
+  }
+  // 2.6 REACH: can he get to his man while a pass to him travels (game/src/ai/concepts/PressingDistance)
+  // → [{ reach (m) | null, in, onBall, help }].
+  function decodeReach(view, at) {
+    const n = view.getUint8(at), out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const o = at + 1 + i * 4, v = view.getUint16(o, true), f = view.getUint8(o + 2);
+      out[i] = { reach: v === 0xFFFF ? null : v / 10, in: !!(f & 1), onBall: !!(f & 2), help: view.getUint8(o + 3) };
+    }
+    return out;
+  }
+  // 2.7 SHADOW: who each man hides from the ball (game/src/ai/concepts/CoverShadow)
+  // → { body (m), screen: [slot | 255, slot | 255], hidden: [u32 mask per slot] }.
+  function decodeShadow(view, at) {
+    const n = view.getUint8(at), hidden = new Array(n);
+    for (let i = 0; i < n; i++) hidden[i] = view.getUint32(at + 4 + i * 4, true);
+    return { body: view.getUint8(at + 1) / 10, screen: [view.getUint8(at + 2), view.getUint8(at + 3)], hidden };
+  }
   // 2.4 MIND_WATCH: u8 slot (255 = stop).
   function encodeMindWatch(slot) {
     const p = new ArrayBuffer(1);
@@ -333,6 +367,16 @@
     decodeConceptLegend,
     encodeStep,
     encodeMindWatch,
+    decodePairs,
+    decodeReach,
+    decodeShadow,
+    decodeStates: (view, at) => {
+      const n = view.getUint8(at), out = new Array(n);
+      let o = at + 1;
+      for (let i = 0; i < n; i++) { const len = view.getUint8(o); out[i] = new TextDecoder().decode(new Uint8Array(view.buffer, view.byteOffset + o + 1, len)); o += 1 + len; }
+      return out;
+    },
+    decodePhase: (view, at) => [view.getUint8(at), view.getUint8(at + 1)],
     decodeMind,
     decodeBrain,
     encodeBrainWatch,

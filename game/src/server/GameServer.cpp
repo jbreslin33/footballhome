@@ -584,6 +584,63 @@ void GameServer::sendBrain() {
     }
     const Bytes frame = encodeFrame(FrameType::Brain, encodeBrain(bf));
     for (const auto& [id, _] : brain_watchers_) transport_.send(id, frame);
+    {   // 2.5: who each man's direct opponent is (ai/concepts/DirectOpponent)
+        Bytes pairs;
+        pairs.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s) {
+            // his man's slot (6 bits) and how the pair was made (2 bits: matchup 1, battle 2, nearest 3)
+            const int o = brain_.directOpponent(s);
+            const int how = static_cast<int>(brain_.directHow(s));
+            pairs.push_back(o >= 0 && o < 63 ? static_cast<std::uint8_t>(o | (how << 6)) : std::uint8_t{255});
+        }
+        const Bytes pf = encodeFrame(FrameType::Pairs, pairs);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, pf);
+        // 2.6: and whether each can reach his man while a pass to him travels (ai/concepts/PressingDistance)
+        Bytes reach;
+        reach.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s) {
+            const auto& r = brain_.pressReach(s);
+            const bool has = r.man >= 0 && !r.man_on_ball;
+            const std::int64_t dmv = (r.reach_m * Fixed64::fromInt(10)).raw >> Fixed64::FRAC_BITS;
+            const std::uint16_t v = !has ? 0xFFFF : static_cast<std::uint16_t>(dmv < 0 ? 0 : (dmv > 65000 ? 65000 : dmv));
+            reach.push_back(static_cast<std::uint8_t>(v & 0xFF));
+            reach.push_back(static_cast<std::uint8_t>(v >> 8));
+            reach.push_back(static_cast<std::uint8_t>((r.in ? 1 : 0) | (r.man_on_ball ? 2 : 0)));
+            reach.push_back(r.help);
+        }
+        const Bytes rf = encodeFrame(FrameType::Reach, reach);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, rf);
+        // 2.7: and who each man hides from the ball (ai/concepts/CoverShadow)
+        Bytes sh;
+        sh.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        sh.push_back(static_cast<std::uint8_t>((brain_.shadowBodyM() * Fixed64::fromInt(10)).raw >> Fixed64::FRAC_BITS));
+        for (std::uint8_t t = 0; t < 2; ++t) {
+            const int r = brain_.shadowScreen(t);
+            sh.push_back(r >= 0 && r < 255 ? static_cast<std::uint8_t>(r) : std::uint8_t{255});
+        }
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s) {
+            const std::uint32_t m = brain_.hiddenBy(s);
+            for (int b = 0; b < 4; ++b) sh.push_back(static_cast<std::uint8_t>((m >> (8 * b)) & 0xFF));
+        }
+        const Bytes sf = encodeFrame(FrameType::Shadow, sh);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, sf);
+        // 2.8: each team's phase — the team machine every player's own state sits under
+        const Bytes ph = encodeFrame(FrameType::Phase, Bytes{static_cast<std::uint8_t>(brain_.phaseOf(0)), static_cast<std::uint8_t>(brain_.phaseOf(1))});
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, ph);
+        // 2.9: each man's own state — the state machine's real answer, not a guess from his order
+        Bytes stf;
+        stf.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s) {
+            const ai::PlayerState* st = brain_.stateOf(s);
+            std::string code = st ? st->name() : "";
+            for (const auto& [name, c] : cfg_.state_codes) if (name == code) { code = c; break; }
+            if (code.size() > 40) code.resize(40);
+            stf.push_back(static_cast<std::uint8_t>(code.size()));
+            stf.insert(stf.end(), code.begin(), code.end());
+        }
+        const Bytes sf2 = encodeFrame(FrameType::States, stf);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, sf2);
+    }
 }
 
 bool GameServer::slotClaimedBy(std::uint8_t slot, ClientId client) const {

@@ -38,6 +38,18 @@
     #phases { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
     #phases span { padding: 5px 14px; border-radius: 14px; font-weight: 800; font-size: 13px; letter-spacing: .06em; background: rgba(8,12,18,.7); color: var(--dim); }
     #phases span.on { background: var(--gold); color: #0b1c3d; font-size: 16px; }
+    #loader { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 40px));
+              background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+    #load-title { font-weight: 800; font-size: 16px; margin-bottom: 10px; }
+    #load-track { height: 14px; border-radius: 7px; background: rgba(255,255,255,.14); overflow: hidden; }
+    #load-bar { height: 100%; width: 0; background: var(--gold); border-radius: 7px; transition: width .25s linear; }
+    #load-bar.wait { background: repeating-linear-gradient(45deg, var(--gold) 0 12px, #d9ad00 12px 24px); background-size: 34px 34px; animation: load-slide 1s linear infinite; }
+    @keyframes load-slide { to { background-position: 34px 0; } }
+    @media (prefers-reduced-motion: reduce) { #load-bar.wait { animation: none; } }
+    #load-pct { text-align: right; font-weight: 800; color: var(--gold); min-height: 1.3em; font-variant-numeric: tabular-nums; }
+    #load-steps { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; color: var(--dim); }
+    #load-steps li.on { color: var(--ink); font-weight: 700; }
+    #load-steps li.done { color: #9fe39f; }
     #caption { position: absolute; left: 50%; transform: translateX(-50%); bottom: 32px; width: min(900px, calc(100% - 28px)); text-align: center;
                background: rgba(8,12,18,.86); border-radius: 12px; padding: 8px 14px; pointer-events: none; }
     #cap1 { font-weight: 800; font-size: 16px; color: var(--gold); }
@@ -48,7 +60,7 @@
     #time::after { content: ''; position: absolute; top: -3px; bottom: -3px; left: var(--now, 0%); width: 3px; background: #fff; }
     #side { padding: 10px 14px; max-height: 36dvh; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
     #side h2 { margin: 0 0 4px; font-size: 14px; }
-    #side h3 { margin: 12px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
+    #side h3 { margin: 8px 0 3px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
     #side ul { list-style: none; margin: 0; padding: 0; }
     #side li { padding: 3px 8px; border-radius: 8px; font-size: 13px; color: var(--dim); }
     #side li.on { background: var(--gold); color: #0b1c3d; font-weight: 800; }
@@ -56,10 +68,36 @@
     #side li small { display: block; font-weight: 400; font-size: 11.5px; opacity: .85; }
     #side .now { font-weight: 800; font-size: 15px; }
     #side .note { color: var(--dim); font-size: 11.5px; margin-top: 12px; }
-    #side .def { border: 1px solid var(--gold); border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; font-size: 13px; background: rgba(255,204,0,.07); }
-    #side .def-t { font-weight: 800; color: var(--gold); margin-bottom: 2px; }
-    #side .def .dim { margin-top: 4px; }
-    #side li small.con { margin-top: 2px; font-style: italic; }
+    #side .def-t { font-weight: 800; color: var(--gold); font-size: 15px; margin-bottom: 6px; }
+    #side .tap { cursor: pointer; }
+    #side .tap::after { content: ' ⓘ'; opacity: .55; font-weight: 400; font-size: 11px; }
+    #side .tap > small::after, #side .tap > small { cursor: default; }
+    #side .con { font-size: 11.5px; font-style: italic; opacity: .9; }
+    #side li.on .con { opacity: 1; }
+    #side ul.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
+    #side ul.two li { font-size: 12px; }
+    #side small { display: block; font-weight: 400; font-size: 12px; line-height: 1.4; margin-top: 3px; color: var(--ink); }
+    #side li.on small { color: #0b1c3d; }
+    /* 🧠 the brain panel: one lane per layer (owner 11/24 "crystal clear what is going on in the brain") */
+    #side .howto { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 6px 0 10px; background: rgba(255,255,255,.04); }
+    #side .howto-t { font-weight: 800; color: var(--gold); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
+    #side .howto-l { font-size: 12.5px; line-height: 1.45; margin: 3px 0; }
+    #side .status { font-weight: 800; font-size: 14px; padding: 8px 10px; border-radius: 10px; margin-bottom: 8px; }
+    #side .status.on { background: #2e8b45; color: #fff; }
+    #side .status.off { background: rgba(255,255,255,.1); color: var(--ink); }
+    #side .status.read { background: #2c4a7a; color: #fff; }
+    #side .nowbox { display: grid; gap: 4px; margin-bottom: 10px; }
+    #side .nowrow { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: baseline; }
+    #side .nowlab { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+    #side .nowval { font-size: 14px; font-weight: 700; }
+    #side .lanes { position: relative; --lw: 104px; margin: 4px 0 6px; }
+    #side .lane { display: grid; grid-template-columns: var(--lw) 1fr; align-items: center; min-height: 26px; border-bottom: 1px solid rgba(255,255,255,.06); }
+    #side .lane-l { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--dim); padding-right: 6px; line-height: 1.2; }
+    #side .lane-t { position: relative; height: 22px; }
+    #side .seg { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; font-size: 10.5px; font-weight: 700; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 4px 0; box-sizing: border-box; }
+    #side .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; left: calc(var(--lw) + (100% - var(--lw)) * var(--nowf, 0)); pointer-events: none; }
+    #side details.all { margin-top: 10px; }
+    #side details.all summary { cursor: pointer; font-weight: 800; font-size: 12.5px; color: var(--gold); }
     #side-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
     #side-tabs button { padding: 6px 12px; }
     #side h3.big { font-size: 13px; margin-top: 16px; }
@@ -75,7 +113,7 @@
                     font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.45; white-space: pre; }
     footer { padding: 6px 14px calc(env(safe-area-inset-bottom, 0px) + 8px); color: var(--dim); font-size: 12px; }
     @media (min-width: 900px) {
-      main { grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: minmax(0, 1fr); }
+      main { grid-template-columns: minmax(0, 1fr) clamp(320px, 34vw, 480px); grid-template-rows: minmax(0, 1fr); }   /* the brain's lanes need the width */
       #side { max-height: none; border-top: 0; border-left: 1px solid var(--line); }
     }
   </style>
@@ -99,6 +137,7 @@
       <div id="stage">
         <canvas id="pitch"></canvas>
         <div id="phases"><span id="ph-before"></span><span id="ph-doing"></span><span id="ph-after"></span></div>
+        <div id="loader" hidden><div id="load-title"></div><div id="load-track"><div id="load-bar"></div></div><div id="load-pct"></div><ul id="load-steps"></ul></div>
         <div id="caption"><div id="cap1"></div><div id="cap2"></div></div>
         <div id="time"></div>
       </div>
@@ -106,7 +145,7 @@
     </main>
     <footer id="legend"></footer>
   </div>
-  <script src="js/game/wire.js?v=20261124mind"></script>
-  <script src="js/teach/concept.js?v=20261124g"></script>
+  <script src="js/game/wire.js?v=20261124states"></script>
+  <script src="js/teach/concept.js?v=20261124w"></script>
 </body>
 </html>

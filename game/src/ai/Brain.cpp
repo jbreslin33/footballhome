@@ -92,6 +92,7 @@ Brain& Brain::operator=(const Brain& o) {
 }
 
 void Brain::setModelParams(const core::ModelParams& p) {
+    block_.opponents().configure(p);   // direct opponents: the number pairs (game_direct_opponents)
     {   // G5.182 (§8.288): StatsBomb PL 15/16 free kicks into the box by spot (benchmarks in match_main FREE KICKS line); 0-25 m
         // central left to the on-ball choice (real 75% shots)
         static const int kB[4][2] = {{0, 864}, {576, 711}, {312, 281}, {54, 71}};
@@ -181,14 +182,42 @@ void Brain::think(const World& world) const {
     for (std::uint8_t t = 0; t < 2; ++t)
     {
         block_.assign(t, world, setup_.team_of_slot, role_of_slot_, fr, restartTaker(world, t));
+        block_.doubleTeam().read(t, world, setup_.team_of_slot, block_.presser(t), match_seed_);   // the touchline trap (ai/concepts/DoubleTeam)
         {   // G5.72 (§8.173): marking, from each man's block spot
             std::vector<Vec2> spot_of(world.playerCount());
             std::vector<bool> marks(world.playerCount(), false);
+            // Direct opponents (ai/concepts/DirectOpponent): the side without the ball pairs every
+            // outfielder with one of theirs, from his place in the defensive shape. A recognition —
+            // nobody's orders read it yet; it is what pressing distance and the rest will stand on.
+            const auto& bo = world.ball().owner;
+            const std::uint8_t has = bo ? setup_.team_of_slot[*bo] : (world.restartTeam() != 0xFF ? world.restartTeam() : world.lastTouchTeam());
+            std::vector<Vec2> place(world.playerCount());
+            Fixed64 sg_t = t == 0 ? Fixed64::one() : -Fixed64::one();
             for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
                 if (setup_.team_of_slot[s] != t || world.isKeeper(s)) continue;
                 const PlayerView v = viewOf(s, world);
+                sg_t = v.sg;
                 marks[s] = v.role == Role::CB || v.role == Role::FB || v.role == Role::DM;
                 if (marks[s]) spot_of[s] = block_.spot(v, world);
+                if (has != t) place[s] = marks[s] ? spot_of[s] : block_.spot(v, world);
+            }
+            // And on the pairs, pressing distance (ai/concepts/PressingDistance): can each man reach
+            // his while a pass to him travels? Read every tick; it moves a man only with the dial.
+            if (has == t || has > 1) {
+                block_.opponents().clear(t, setup_.team_of_slot);
+                block_.pressDistance().clear(t, setup_.team_of_slot);
+                block_.shadows().clear(t, setup_.team_of_slot);
+            } else {
+                block_.shadows().read(t, world, setup_.team_of_slot, sg_t);   // who each man hides from the ball (ai/concepts/CoverShadow)
+                std::vector<std::int16_t> number(world.playerCount(), 0);
+                std::vector<Fixed64> base_y(world.playerCount());
+                for (std::uint8_t s = 0; s < world.playerCount() && s < setup_.team_of_slot.size(); ++s) {
+                    const auto& pos = spec_[setup_.team_of_slot[s] & 1].positions[index_in_team_[s]];
+                    number[s] = pos.number;
+                    base_y[s] = pos.base.y;
+                }
+                block_.opponents().assign(t, world, setup_.team_of_slot, place, -sg_t * half_x_, number, base_y);
+                block_.pressDistance().read(t, world, setup_.team_of_slot, block_.opponents(), place);
             }
             block_.assignMarks(t, world, setup_.team_of_slot, spot_of, marks);
         }
@@ -306,14 +335,20 @@ Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
     const Phase ph = teams_[setup_.team_of_slot[slot] & 1].phase();   // a loose ball in our own phase is not out of possession
     if (ph != Phase::DefendingBlock && ph != Phase::DefensiveTransition && ph != Phase::TheirSetPiece) return Act::None;
     const PlayerState* st = players_[slot & 31].machine.current();
-    if (st == DefendingBlock::pressBall()) return Act::PressBall;
+    if (st == DefendingBlock::pressBall())   // on the lane to the receiver he hides, when his side presses on the cover shadow
+        return block_.params().shadow_press.raw > 0 && world.ball().owner && block_.shadows().screen(setup_.team_of_slot[slot]) >= 0 ? Act::PressShadow : Act::PressBall;
     if (st == DefendingBlock::chaseBall()) return Act::ChaseBall;
+    if (st == DefendingBlock::doubleTeamBall()) return Act::DoubleTeam;
     if (st == DefendingBlock::markMan()) return Act::Mark;
     if (st != DefendingBlock::holdBlockSpot()) return Act::None;
     const std::uint8_t team = setup_.team_of_slot[slot];
     const Fixed64 sg = team == 0 ? Fixed64::one() : -Fixed64::one();
     if (trainer_recover_m_.raw > 0 && (world.player(slot).pos.x - o.target.x) * sg >= trainer_recover_m_) return Act::BlockRecover;
     if (block_.deepCb(team) == static_cast<int>(slot)) return Act::BlockCover;
+    if (block_.params().press_hold.raw > 0) {   // off his spot for his man: staying in pressing distance
+        const Vec2 step = block_.pressDistance().of(slot).step;
+        if (step.x.raw != 0 || step.y.raw != 0) return Act::PressDistance;
+    }
     return Act::BlockSpot;
 }
 

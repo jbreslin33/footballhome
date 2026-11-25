@@ -190,7 +190,7 @@ json TacticPlans::taxonomy() {
                                                            'description', description) ORDER BY sort_order, id) FROM game_principles),
           'concepts',   (SELECT json_agg(json_build_object(
                              'id', c.id, 'name', c.name, 'title', c.title, 'family', c.family, 'moment', c.moment,
-                             'cue', c.cue_answer, 'principle_id', c.principle_id,
+                             'cue', c.cue_answer, 'definition', c.definition, 'principle_id', c.principle_id,
                              'status', c.status, 'lacking', c.lacking, 'taught_from', c.taught_from,
                              'job',  (SELECT k.code FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY k.sort_order LIMIT 1),
                              'rule', (SELECT k.rule FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY (k.rule = 'home'), k.sort_order LIMIT 1),
@@ -204,7 +204,7 @@ json TacticPlans::taxonomy() {
           'roles',      (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_roles),
           'measures',   (SELECT json_agg(json_build_object('code', code, 'title', title)) FROM game_measures),
           'laws',       (SELECT json_agg(json_build_object('number', number, 'title', title, 'summary', summary) ORDER BY number) FROM game_ref_laws),
-          'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note, 'wire', wire_index, 'parent', parent) ORDER BY kind, sort_order)
+          'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note, 'definition', definition, 'wire', wire_index, 'parent', parent) ORDER BY kind, sort_order)
                            FROM game_engine_terms),
           'links',      (SELECT json_agg(json_build_object('from', concept_id, 'to', other_id, 'kind', kind)) FROM game_concept_links),
           'jobs',       (SELECT json_agg(json_build_object('code', code, 'concept_id', concept_id, 'label', label, 'rule', rule,

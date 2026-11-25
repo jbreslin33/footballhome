@@ -58,6 +58,10 @@ struct PracticeAsk {
     // NOT taking the goal kick runs that plan's jobs. 0 = a plain practice room.
     int teach_plan = 0;
     bool zonal = false;   // "&marking=zonal": the plan's marks are zonal (pass him on); else man-oriented
+    // The concept clip viewer (frontend/js/teach/concept.js): "&concept=<game_concepts id>" — a
+    // plain practice room with that concept's dials switched on for both sides
+    // (game_concept_dials), so a concept the real sim leaves at zero can be watched being done.
+    int concept_id = 0;
 };
 std::optional<PracticeAsk> parsePracticeAsk(const std::string& request_path);
 

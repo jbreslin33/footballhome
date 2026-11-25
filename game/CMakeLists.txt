@@ -65,6 +65,10 @@ add_library(game_ai STATIC
   src/ai/TeamPhase.cpp
   src/ai/DefendingBlock.cpp
   src/ai/concepts/Marking.cpp
+  src/ai/concepts/DirectOpponent.cpp
+  src/ai/concepts/PressingDistance.cpp
+  src/ai/concepts/CoverShadow.cpp
+  src/ai/concepts/DoubleTeam.cpp
 )
 target_link_libraries(game_ai PUBLIC game_core)
 
@@ -162,3 +166,7 @@ game_test(test_block)
 game_test(test_teaching_room)
 target_link_libraries(test_teaching_room PRIVATE game_teach)
 game_test(test_marking)
+game_test(test_direct_opponent)
+game_test(test_pressing_distance)
+game_test(test_cover_shadow)
+game_test(test_double_team)

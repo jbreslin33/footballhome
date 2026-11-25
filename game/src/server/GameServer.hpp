@@ -69,6 +69,7 @@ public:
         // G5.35 (2.1): every team a match can be made of (TEAM_LIST).
         std::vector<std::string> team_names;
         std::vector<persistence::ActConcept> acts;   // tactics trainer (mig 1199)
+        std::vector<std::pair<std::string, std::string>> state_codes;   // engine state name → game_engine_terms code (the STATES frame)
         // Tactics trainer step 2 (Rooms.hpp): a practice room — whoever is in it runs it
         // (speed, pause, teams), and every match in it starts frozen on a goal kick.
         bool practice = false;

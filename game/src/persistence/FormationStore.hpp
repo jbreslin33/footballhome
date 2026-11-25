@@ -27,6 +27,7 @@
 #include <optional>
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace fh::game::persistence {
@@ -56,6 +57,13 @@ std::vector<std::int64_t> loadAdminUserIds(const DbConfig& cfg);
 
 // G4.57: direct-opponent pairs by position number (game_direct_opponents):
 // (number, opponent_number) — our 9's are their 4 and 5, and so on.
+std::vector<std::pair<int, int>> loadDirectPairs(const DbConfig& cfg);
+// The player states' catalogue codes (game_engine_terms kind 'state', engine_name → code, mig 1873):
+// what the STATES frame calls each state. Empty when the column is absent.
+std::vector<std::pair<std::string, std::string>> loadStateCodes(const DbConfig& cfg);
+// A concept's dials (game_concept_dials): model param → its "on" value, milli. Empty when none.
+std::vector<std::pair<std::string, std::int64_t>> loadConceptDials(const DbConfig& cfg, int concept_id);   // empty when the table is absent: the engine's built-in pairs
+
 struct DemoPlayer {
     std::string name;
     std::string position;          // game_demo_players.position (the roster's label)

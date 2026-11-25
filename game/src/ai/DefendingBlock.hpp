@@ -17,7 +17,11 @@
 #pragma once
 
 #include "ai/Players.hpp"
+#include "ai/concepts/CoverShadow.hpp"
+#include "ai/concepts/DirectOpponent.hpp"
+#include "ai/concepts/DoubleTeam.hpp"
 #include "ai/concepts/Marking.hpp"
+#include "ai/concepts/PressingDistance.hpp"
 #include "core/ModelParams.hpp"
 
 namespace fh::game::ai {
@@ -71,6 +75,18 @@ struct BlockParams {
     // the steps of marking — instead of standing mark_d goal-side of him. No row = off: marking
     // is as fitted. It is for the harness to say whether the sim is nearer real with it on.
     bool mark_mind = false;
+    // Stay in pressing distance (ai/concepts/PressingDistance): how much of the step that puts
+    // his man back inside his reach a man holding his block spot takes (0 … 1). No row
+    // physics.pressdist.hold = 0: he reads it and moves for nothing — the sim as fitted.
+    math::Fixed64 press_hold{};
+    // Press on the cover shadow (ai/concepts/CoverShadow): how far the presser's stand-off spot
+    // moves off the line to our goal onto the line to the receiver he is hiding (0 … 1). No row
+    // physics.shadow.press = 0: he stands goal-side as fitted.
+    math::Fixed64 shadow_press{};
+    // Double-team (ai/concepts/DoubleTeam, game_concepts 12): the share of their spells by a touchline,
+    // our presser on the man, that a second man comes across and closes the inside. No row
+    // physics.press.double_team = 0: the read runs and nobody moves for it.
+    concepts::DoubleTeamParams double_team{};
     // G5.85 (§8.186): the ball within gs_r of our goal centre — a holder whose spot is within gs_w of
     // the ball and not gs_m nearer our goal centre than it slides straight toward the goal centre till
     // he is (coaching: in our box, between ball and goal). Fitted to the real goal-side counts (DFL
@@ -83,8 +99,8 @@ struct BlockParams {
 
 class DefendingBlock {
 public:
-    DefendingBlock() { params_.configure(core::ModelParams{}); }   // the real tables, no DB needed
-    void configure(const core::ModelParams& p) { params_.configure(p); }
+    DefendingBlock() { params_.configure(core::ModelParams{}); double_team_.configure(params_.double_team); }   // the real tables, no DB needed
+    void configure(const core::ModelParams& p) { params_.configure(p); double_team_.configure(params_.double_team); }
     const BlockParams& params() const { return params_; }
 
     void assign(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
@@ -98,13 +114,25 @@ public:
     // their man meets it (pressFlight true, pressAt the meet point) so he is on him as it arrives.
     bool pressFlight(std::uint8_t team) const { return press_flight_[team & 1]; }
     math::Vec2 pressAt(std::uint8_t team) const { return press_at_[team & 1]; }
-    void reset() { for (int& m : mind_man_) m = -1; for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; dw_since_[0] = dw_since_[1] = 0; }
+    void reset() { double_team_.reset(); opponents_.reset(); press_dist_.reset(); shadows_.reset(); for (int& m : mind_man_) m = -1; for (auto& t : mark_) for (int& m : t) m = -1; contest_[0] = contest_[1] = -1; press_flight_[0] = press_flight_[1] = false; chaser_[0] = chaser_[1] = presser_[0] = presser_[1] = deep_cb_[0] = deep_cb_[1] = other_cb_[0] = other_cb_[1] = -1; their_won_[0] = their_won_[1] = 0; their_had_[0] = their_had_[1] = false; dw_since_[0] = dw_since_[1] = 0; }
 
     // G5.72: after assign — each defender's block spot (by slot) and whether his role marks (CB/FB/DM).
     void assignMarks(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                      const std::vector<math::Vec2>& spot_of, const std::vector<bool>& marks);
     int markOf(std::uint8_t team, std::uint8_t slot) const { return slot < 32 ? mark_[team & 1][slot] : -1; }
     math::Vec2 markPoint(std::uint8_t team, int man, const core::World& world) const;   // mark_d goal-side of him
+    // Direct opponents (ai/concepts/DirectOpponent): who each outfielder's man is right now, for
+    // the side without the ball. A recognition — it moves nobody; Brain::think keeps it current.
+    concepts::DirectOpponents& opponents() const { return opponents_; }
+    // Pressing distance (ai/concepts/PressingDistance): each defender's reach against the gap to
+    // his man, read every tick after the pairs; it moves a man only with physics.pressdist.hold.
+    concepts::PressingDistance& pressDistance() const { return press_dist_; }
+    // Cover shadows (ai/concepts/CoverShadow): who each defender hides from the ball, and the pass
+    // the presser should block; read every tick, it moves the presser only with physics.shadow.press.
+    concepts::CoverShadows& shadows() const { return shadows_; }
+    // Double-team (ai/concepts/DoubleTeam): the second man who traps their carrier on the touchline, read after assign.
+    concepts::DoubleTeam& doubleTeam() const { return double_team_; }
+    bool doubleTeams(std::uint8_t team, int slot) const { return params_.double_team.share.raw > 0 && double_team_.isSecond(team, slot); }
     // physics.mark.mind: the marker's mind for this tick, on the man he was given (a new man, a new mind).
     concepts::MarkView markMind(const PlayerView& v, int man, const core::World& world) const;
     math::Vec2 spot(const PlayerView& v, const core::World& world) const;
@@ -115,12 +143,17 @@ public:
     static const ActingState* pressBall();
     static const ActingState* chaseBall();
     static const ActingState* markMan();
+    static const ActingState* doubleTeamBall();
 
 private:
     void assignCover(std::uint8_t team, const core::World& world, const std::vector<std::uint8_t>& team_of_slot,
                      const std::vector<Role>& role_of_slot);
     BlockParams params_{};
     mutable concepts::MarkingMind mind_[32];   // by our slot (physics.mark.mind)
+    mutable concepts::DirectOpponents opponents_{};
+    mutable concepts::PressingDistance press_dist_{};
+    mutable concepts::CoverShadows shadows_{};
+    mutable concepts::DoubleTeam double_team_{};
     mutable int mind_man_[32] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
     int chaser_[2] = {-1, -1};
     int contest_[2] = {-1, -1};
