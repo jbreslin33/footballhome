@@ -284,8 +284,11 @@ class PyramidShapeView {
           const b = x.bands[k];
           if (!b) return;
           const c = count(x.m.el, b.y0, b.y1);
-          const more = c.names.length > 2 ? ` ${this._copy('shape_solid_more', { n: c.names.length - 2 })}` : '';
-          add(row, x.m, slot, level, k && c.names.length ? c.names.slice(0, 2).join(' · ') + more : x.m.title, c, b.y0);
+          // a feeder level of several leagues gets no big title — its tables' own yellow headings name
+          // them (owner 2026-11-24: "i don't like the size of CASA MA headers. i think if its multi
+          // leagus jsut leave it with the yellow conf headers"); one league keeps its name
+          const title = !k ? x.m.title : c.names.length === 1 ? c.names[0] : '';
+          add(row, x.m, slot, level, title, title ? c : { ...c, clubs: 0 }, b.y0);
         });
         rows.push(row); level++;
       }

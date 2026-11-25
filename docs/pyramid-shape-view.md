@@ -50,6 +50,10 @@ Two files:
   optionally the tables' names in page order joined by ` ; `. The hosts are on the scraper VPN
   proxy's allow-list. NorCal Division 2 (no site), Gulf Coast PL (site answers almost nothing) and
   Metroplex PL (JavaScript app) are still named boxes.
+- **"Level N" heads every level** (owner: "the imoprtant thing is the Level x txt"), big. A level of
+  one league has the league's name smaller under it; a feeder level of several leagues has no
+  name line at all — its tables' yellow headings name them (owner: "i don't like the size of CASA
+  MA headers … if its multi leagus jsut leave it with the yellow conf headers"; mig 1880).
 - **Every table in full on its level:** pos · club · GP · GD · Pts, the 2D chart's zone colour per
   row (read from each row's `--zc`), one column per table, gold table name. A cup (a list of
   clubs, no standings) shows its clubs. A level is as tall as its longest table needs at the width
@@ -78,6 +82,13 @@ are awkward"; hint mig 1867):
 - keys (once the pyramid has focus): ← → a side (bare sides passed over), ↑ ↓ move, + − zoom, 0/F fit
 - letting go of a turn settles square on a side only when zoomed out (not closer than 0.8 × fit);
   pans are clamped so the pyramid never leaves the screen
+
+- **Sharp close up** (owner: "it don't let me zoom in enought to see levels text of teams good
+  enough"): each side is drawn once as a light picture (≤ 360 px a unit, ≤ 4096 wide), which goes
+  soft close in. 280 ms after the pyramid stops, when zoomed in past 0.55 × fit, the sides in view
+  (a 4 × 4 grid of rays) are drawn again at up to 8192 px wide (`_sharpen` / `_redraw`), club names
+  ~30 px tall. At most four are sharp at once; the rest, and all of them on zooming out, go back
+  to light. The camera may come to 1.02 × the foot's apothem.
 
 ## Cost
 

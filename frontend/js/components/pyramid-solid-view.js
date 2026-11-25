@@ -97,6 +97,7 @@ class PyramidSolid {
         plane.position.set(0, yTop(i) - H / 2, (a0 + a1) / 2 + 0.012);
         plane.rotation.x = -this.lean;
         plane.userData.cell = cell; cell.row = i; cell.w = w;
+        plane.userData.draw = { row, w, h, font };   // to draw it again, sharper, when it is looked at close (_sharpen)
         const pivot = new T.Group();
         pivot.rotation.y = cell.slot * step;
         pivot.add(plane); this.spin.add(pivot);
@@ -128,7 +129,7 @@ class PyramidSolid {
   // readable size instead of shrinking to nothing.
   _planTables(cell, w) {
     const tables = cell.tables && cell.tables.length ? cell.tables : [{ name: '', rows: [], teams: [] }];
-    const HEAD = 0.42, perLetter = 25, MAX = 12;              // pos 2 · club 15 · three figures 2.5 each, and gaps
+    const HEAD = cell.title ? 0.44 : 0.26, perLetter = 25, MAX = 12;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
     const perRow = Math.min(tables.length, MAX), colW = w / perRow;
     const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
     const cols = tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
@@ -142,18 +143,23 @@ class PyramidSolid {
     return { h: HEAD + gy + 0.06, fs, cols, head: HEAD, perRow, table: true };
   }
 
-  _tables(T, cell, row, w, h, font) {
+  // px = pixels to the unit; by default a light picture (≤ 360 px a unit, ≤ 4096 wide), sharper on demand.
+  _tables(T, cell, row, w, h, font, px) {
     const plan = cell.plan, c = document.createElement('canvas');
-    const PX = Math.min(360, 4096 / w);
+    const PX = px || Math.min(360, 4096 / w);
     c.width = Math.max(64, Math.round(w * PX)); c.height = Math.max(64, Math.round(h * PX));
     const g = c.getContext('2d'), W = c.width, u = PX;
     const fit = (text, size, weight, max) => { let s = size; do { g.font = `${weight} ${s}px ${font}`; s -= 2; } while (s > 12 && g.measureText(text).width > max); };
     g.textBaseline = 'middle'; g.textAlign = 'center';
-    const small = (this.hooks.level ? this.hooks.level(cell.level + 1) : '').toUpperCase();
-    g.fillStyle = 'rgba(255,255,255,0.7)'; fit(small, 0.075 * u, 700, W * 0.94); g.fillText(small, W / 2, 0.07 * u);
-    g.fillStyle = row.kind === 'empty' ? 'rgba(255,255,255,0.55)' : '#ffffff';
-    fit(cell.title || '', 0.17 * u, 800, W * 0.94); g.fillText(cell.title || '', W / 2, 0.22 * u);
-    if (cell.sub) { g.fillStyle = 'rgba(255,255,255,0.75)'; fit(cell.sub, 0.07 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, 0.36 * u); }
+    // "Level N" is the headline of every level (owner 2026-11-24: "the imoprtant thing is the Level x
+    // txt"); the league's name, where the level has one league, sits under it, smaller
+    const lvl = this.hooks.level ? this.hooks.level(cell.level + 1) : '';
+    g.fillStyle = '#ffffff'; g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 0.02 * u;
+    fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, 0.12 * u);
+    g.shadowBlur = 0;
+    g.fillStyle = row.kind === 'empty' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.88)';
+    if (cell.title) { fit(cell.title, 0.1 * u, 700, W * 0.94); g.fillText(cell.title, W / 2, 0.28 * u); }
+    if (cell.title && cell.sub) { g.fillStyle = 'rgba(255,255,255,0.65)'; fit(cell.sub, 0.06 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, 0.38 * u); }
     const fs = plan.fs * u, lh = fs * 1.32, colW = W / (plan.perRow || plan.cols.length), pad = fs * 0.6;
     plan.cols.forEach((col) => {
       const k = col.gx, top = (plan.head + col.gy) * u;
@@ -305,7 +311,7 @@ class PyramidSolid {
   // Zoom, keeping what is under the pointer where it is (nx, ny = the pointer, −1 … 1 across the stage).
   zoomBy(f, nx = 0, ny = 0) {
     const was = this.to.dist, t = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.08, was / f));
+    this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.02, was / f));
     this.to.panX = this._clampX(this.to.panX + nx * t * this.camera.aspect * (was - this.to.dist));
     this.to.panY = this._clampY(this.to.panY + ny * t * (was - this.to.dist));
     this._auto = false;
@@ -351,6 +357,48 @@ class PyramidSolid {
     this.camera.lookAt(this.panX, this.panY, 0);
     this.renderer.render(this.scene, this.camera);
     if (this.hooks.onMove) this.hooks.onMove();
+    clearTimeout(this._sharpT);
+    this._sharpT = setTimeout(() => this._sharpen(), 280);
+  }
+
+  // SHARP CLOSE UP (owner 2026-11-24: "it don't let me zoom in enought to see levels text of teams good
+  // enough").  Every side is drawn once as a light picture, so its small table text is only ~10 px
+  // tall and goes soft close in.  A moment after the pyramid stops moving, zoomed in, the sides in
+  // view are drawn again at the most pixels the graphics card takes (≤ 8192 a side) — the club names
+  // then ~30 px tall — and only those: at most four sharp at once, the rest go back to light, and
+  // all of them go back when it is zoomed out.  Memory stays where it was.
+  _sharpen() {
+    if (this.dead || !this.T) return;
+    const T = this.T, sharp = this._sharp || (this._sharp = new Map()), close = this.fitDist && this.dist < this.fitDist * 0.55;
+    const back = (plane) => { this._redraw(plane, null); sharp.delete(plane); };
+    if (!close) { [...sharp.keys()].forEach(back); if (!sharp.size) return; }
+    // what is in view: rays through a grid of points on the screen
+    const ray = new T.Raycaster(), seen = new Set();
+    for (const x of [-0.7, -0.25, 0.25, 0.7]) for (const y of [-0.7, -0.25, 0.25, 0.7]) {
+      ray.setFromCamera(new T.Vector2(x, y), this.camera);
+      const hit = ray.intersectObjects([...this.labels, ...this.blocks], false)[0];
+      if (hit && hit.object.userData.cell) seen.add(hit.object);
+    }
+    let changed = false;
+    for (const plane of seen) {
+      if (sharp.has(plane)) { sharp.set(plane, performance.now()); continue; }
+      this._redraw(plane, this._maxPx(plane)); sharp.set(plane, performance.now()); changed = true;
+    }
+    // keep the four looked at last
+    [...sharp.entries()].sort((a, b) => b[1] - a[1]).slice(4).forEach(([plane]) => { back(plane); changed = true; });
+    if (changed) { this.renderer.render(this.scene, this.camera); }
+  }
+  _maxPx(plane) {
+    const { w, h } = plane.userData.draw, cap = Math.min(8192, this.renderer.capabilities.maxTextureSize || 4096);
+    return Math.max(1, Math.min(1400, cap / w, cap / h));
+  }
+  _redraw(plane, px) {
+    const { row, w, h, font } = plane.userData.draw, old = plane.material.map;
+    const tex = this._tables(this.T, plane.userData.cell, row, w, h, font, px || undefined);
+    plane.material.map = tex; plane.material.needsUpdate = true;
+    const at = this.own.indexOf(old);
+    if (at >= 0) this.own[at] = tex; else this.own.push(tex);
+    if (old) old.dispose();
   }
 
   // ── the picked level ─────────────────────────────────────────────────
@@ -421,7 +469,7 @@ class PyramidSolid {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (g.kind === 'pinch' && pts.size >= 2) {
         const m = mid(), f = g.m.d / m.d, wpp = (2 * Math.tan((this.camera.fov * Math.PI) / 360) * g.dist) / this.stage.clientHeight;
-        this.dist = this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.08, g.dist * f));
+        this.dist = this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.02, g.dist * f));
         // the spot between the fingers stays between the fingers
         const [nx, ny] = ndc(m.x, m.y), t = Math.tan((this.camera.fov * Math.PI) / 360);
         this.panX = this.to.panX = g.panX - (m.x - g.m.x) * wpp + nx * t * this.camera.aspect * (g.dist - this.dist);
@@ -515,6 +563,7 @@ class PyramidSolid {
 
   dispose() {
     this.dead = true;
+    clearTimeout(this._sharpT);
     if (this._raf) cancelAnimationFrame(this._raf);
     if (this._ro) this._ro.disconnect();
     if (this.glow) this.glow.children.forEach((c) => c.geometry.dispose());
