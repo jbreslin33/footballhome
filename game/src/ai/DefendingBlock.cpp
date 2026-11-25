@@ -64,12 +64,9 @@ public:
     const char* name() const override { return "hold the block spot"; }
     bool act(const PlayerView& v, const PlayerCtx& c, Orders& o) const override {
         const auto& me = c.world.player(v.slot);
-        const Vec2 place = c.block.spot(v, c.world);
-        o.target = place;
-        // His machines' proposals (ai/concepts/Machines), by the resolver: recover, when it is awake,
-        // takes the spot (straight back to his place); else pressing distance may bend it to his man.
-        if (!c.block.machines().recoverTo(v.slot, place, o.target))
-            c.block.machines().bendHold(v.slot, c.block.pressDistance().of(v.slot).step, c.block.params().press_hold, o.target);
+        o.target = c.block.spot(v, c.world);
+        // His pressing-distance machine's proposal (ai/concepts/Machines), when it is awake.
+        c.block.machines().bendHold(v.slot, c.block.pressDistance().of(v.slot).step, c.block.params().press_hold, o.target);
         o.move.move = seek(me.pos, o.target, Fixed64::fromFraction(1, 2));
         o.why = Why::Hold;
         return true;

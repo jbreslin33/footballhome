@@ -385,24 +385,3 @@ if you want to editorialise who he is marking or whatever then use other fields"
   in the others. Every machine that is on gets a row; tap a row for its meaning.
 
 With no dial rows the goldens are unchanged.
-
-### The resolver; recover takes his spot (mig 1891)
-
-The first machine that **replaces** the job's orders, and the rule for two that fight:
-
-- `kPriority` in `Machines.hpp` is `machine_order` (recover › press › loose ball › double-team ›
-  marking › cover shadow › cover › pressing distance); `test_machines` pins the two equal.
-- A machine either **takes his spot** (its proposal is the target) or **bends** one. The resolver
-  (`driver`, `machine_resolver`): the highest awake spot-taker drives; a lower machine's bend of
-  that spot is dropped (they fight). A bend of the job's own target — the cover shadow on the
-  press — still applies (they complement).
-- **Recover** is the first spot-taker (`recover_takes_his_spot`): his place 5 m+ goal-side of
-  him, `HoldBlockSpot` asks the machines first and recover sends him straight back to his place;
-  pressing distance does not pull him toward his man until he is back (and recover's 0.3 s
-  commitment is up).
-
-With no dial rows pressing distance never bends, so the goldens are unchanged; with
-`physics.pressdist.hold` on, a man caught behind now gets back before he steps to his man.
-
-**Next:** press, loose ball and double-team leave the job states and become spot-takers in the
-same way, so the job machine shrinks to "in the block or not".

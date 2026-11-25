@@ -145,40 +145,4 @@ FH_TEST(pressing_distance_follows_the_man_he_marks) {
     FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).other, 19);
 }
 
-// The resolver, and the first machine that takes his spot: with the line broken behind him and his
-// man out of reach (dial on), RECOVER wins over pressing distance (machine_order) — straight back to
-// his place, no bend to his man. Back on the line, recover sleeps and pressing distance bends again.
-FH_TEST(recover_outranks_pressing_distance) {
-    co::PlayerMachines m;
-    co::MachineSense s = defending(co::Job::Hold);
-    s.direct = 15; s.step = v(3, 0); s.press_hold = Fixed64::one(); s.behind = true;
-    m.update(0, s, 0);
-    FH_EXPECT(m.awake(0, co::MachineId::Recover));
-    FH_EXPECT_EQ(m.of(0, co::MachineId::PressingDistance).state, co::pdist::Stepping);   // both awake
-    bool driving = false;
-    FH_EXPECT(m.driver(0, driving) == co::MachineId::Recover && driving);
-    Vec2 t = v(10, 4);
-    FH_EXPECT(m.recoverTo(0, v(10, 4), t));
-    FH_EXPECT(!m.bendHold(0, s.step, Fixed64::one(), t));    // they fight: recover wins
-    FH_EXPECT_EQ(t.x.raw, Fixed64::fromInt(10).raw);
-    s.behind = false;
-    m.update(0, s, 100);                                     // back, past the commitment
-    FH_EXPECT(!m.awake(0, co::MachineId::Recover));
-    FH_EXPECT(!m.recoverTo(0, v(10, 4), t));
-    FH_EXPECT(m.bendHold(0, s.step, Fixed64::one(), t));
-    FH_EXPECT_EQ(t.x.raw, Fixed64::fromInt(13).raw);
-}
-
-// The engine's order is the agreed one (copy row machine_order: recover,press,chase,double,mark,shadow,cover,pdist).
-FH_TEST(priority_is_machine_order) {
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::Recover), 0);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::Press), 1);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::LooseBall), 2);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::DoubleTeam), 3);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::Marking), 4);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::CoverShadow), 5);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::Cover), 6);
-    FH_EXPECT_EQ(co::rankOf(co::MachineId::PressingDistance), 7);
-}
-
 FH_TEST_MAIN()

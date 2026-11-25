@@ -57,20 +57,6 @@ enum class MachineId : std::uint8_t { Marking = 1, CoverShadow = 2, PressingDist
 inline constexpr int kMachineCount = 8;
 inline constexpr std::uint8_t kAsleep = 0;
 
-// The order they win in when two awake machines want things that cannot both happen — the copy
-// row machine_order (mig 1882, the owner's to change; the viewer reads the row): recover › press ›
-// loose ball › double-team › marking › cover shadow › cover › pressing distance › (his place).
-inline constexpr MachineId kPriority[kMachineCount] = {
-    MachineId::Recover, MachineId::Press, MachineId::LooseBall, MachineId::DoubleTeam,
-    MachineId::Marking, MachineId::CoverShadow, MachineId::Cover, MachineId::PressingDistance};
-constexpr int rankOf(MachineId m) {
-    for (int i = 0; i < kMachineCount; ++i) if (kPriority[i] == m) return i;
-    return kMachineCount;
-}
-// A machine that TAKES his spot (its proposal replaces the job's target, it does not bend it).
-// Recover first (11/25); press, loose ball and double-team are still the job states themselves.
-constexpr bool takesSpot(MachineId m) { return m == MachineId::Recover; }
-
 namespace marking { enum : std::uint8_t { Asleep = 0, Watching = 1, Zonal = 2, Free = 3 }; }
 namespace shadow { enum : std::uint8_t { Asleep = 0, Hiding = 1, OnTheLane = 2 }; }
 // Owner 11/25: "how is the concept not in the state the whole time? when they don't have ball and
@@ -125,14 +111,6 @@ public:
     bool bendPress(core::SlotIndex slot, math::Vec2 carrier, math::Fixed64 standoff, math::Vec2 receiver,
                    math::Fixed64 dial, math::Vec2& target) const;
     bool bendHold(core::SlotIndex slot, math::Vec2 step, math::Fixed64 dial, math::Vec2& target) const;
-    // The resolver: the highest-ranked awake machine that takes his spot, or none (driving = false).
-    // A lower machine's bend of that spot is dropped — they fight and the order decides; a bend of a
-    // job's own target (the cover shadow on the press) still applies — they complement.
-    MachineId driver(core::SlotIndex slot, bool& driving) const;
-    bool outranked(core::SlotIndex slot, MachineId m) const;
-    // Recover's proposal while he holds his place: straight to his place in the shape (the job's
-    // target), and nothing below it bends it. Returns true when it drives.
-    bool recoverTo(core::SlotIndex slot, math::Vec2 place, math::Vec2& target) const;
 
     const MachineState& of(core::SlotIndex slot, MachineId m) const { return st_[slot & 31][static_cast<int>(m) - 1]; }
     bool awake(core::SlotIndex slot, MachineId m) const { return of(slot, m).state != kAsleep; }
