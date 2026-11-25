@@ -76,6 +76,7 @@ machine_cover_shadow
 machine_marking_scheme
 machine_press_chase_double
 machine_pressing_distance
+machine_resolver
 machine_recover
 machine_tick
 mark_contain
@@ -198,6 +199,7 @@ read_race
 recv_always_meets
 recv_pass_is_his
 recv_track_rolling_ball
+recover_takes_his_spot
 restart_shape_hold
 restart_taker
 restart_walk_to_spot

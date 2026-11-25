@@ -100,8 +100,35 @@ bool PlayerMachines::bendPress(core::SlotIndex slot, Vec2 carrier, Fixed64 stand
 // share of the step that puts his man back in reach.
 bool PlayerMachines::bendHold(core::SlotIndex slot, Vec2 step, Fixed64 dial, Vec2& target) const {
     if (of(slot, MachineId::PressingDistance).state != pdist::Stepping || dial.raw <= 0) return false;
+    if (outranked(slot, MachineId::PressingDistance)) return false;   // recover is getting him back first
     if (step.x.raw == 0 && step.y.raw == 0) return false;
     target = Vec2{target.x + step.x * dial, target.y + step.y * dial};
+    return true;
+}
+
+// [behaviour: machine_resolver]
+// Two awake machines that want different spots: the higher in kPriority (machine_order) wins.
+MachineId PlayerMachines::driver(core::SlotIndex slot, bool& driving) const {
+    for (const MachineId m : kPriority)
+        if (takesSpot(m) && awake(slot, m)) { driving = true; return m; }
+    driving = false;
+    return MachineId::Marking;
+}
+
+bool PlayerMachines::outranked(core::SlotIndex slot, MachineId m) const {
+    bool driving = false;
+    const MachineId d = driver(slot, driving);
+    return driving && rankOf(d) < rankOf(m);
+}
+
+// [behaviour: recover_takes_his_spot]
+// The first machine that REPLACES the job's orders: with the line broken behind him (his place 5 m+
+// goal-side of him) he goes straight back to it — pressing distance does not pull him off it to
+// his man until he is back. The place is the one the job worked out; recover owns it.
+bool PlayerMachines::recoverTo(core::SlotIndex slot, Vec2 place, Vec2& target) const {
+    bool driving = false;
+    if (driver(slot, driving) != MachineId::Recover || !driving) return false;
+    target = place;
     return true;
 }
 
