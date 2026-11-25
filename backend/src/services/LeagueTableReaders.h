@@ -37,6 +37,8 @@
 #include <string>
 
 #include "../core/HttpClient.h"
+#include <vector>
+#include <string>
 #include "../third_party/json.hpp"
 
 class LeagueTableReader {
@@ -75,6 +77,36 @@ public:
 // ("Region · Division · 2026"), a "Club" heading row, then rank, club, GP, W, D, L,
 // GF, GA, GD, Pts.
 class GoogleSheetTableReader : public LeagueTableReader {
+public:
+    nlohmann::json read(const std::string& locator, const std::string& leagueName, std::string& note) override;
+};
+
+// League sites that publish a plain standings table (owner 2026-11-24: "do midwest upstate and
+// mountain").  Shared: reading a heading row (POS / TEAM or CLUB / GP or MP or P / W D L or W-D-L /
+// GF or F / GA or A / GD / PTS, in any order) and turning a row into a team.  The locator is the
+// page, then optionally the tables' names in page order: "<url> ; <name> ; <name> …" — names are
+// data, given where the page does not name its tables near them.  Pages go through the VPN.
+class HtmlStandingsReader : public LeagueTableReader {
+protected:
+    struct Columns { int pos = -1, name = -1, played = -1, w = -1, d = -1, l = -1, wdl = -1, gf = -1, ga = -1, gd = -1, pts = -1;
+                     bool ok() const { return name >= 0 && pts >= 0; } };
+    static Columns columns(const std::vector<std::string>& head);
+    static nlohmann::json team(const Columns& c, const std::vector<std::string>& cells);   // null when the row is not a team
+    static std::string text(const std::string& markup);   // tags dropped, entities read, spaces folded
+    // the page (through the VPN) and the names after it; "" + note when it cannot be read
+    static std::string page(const std::string& locator, std::vector<std::string>& names, std::string& note);
+};
+
+// locator = a page with one <table> per division (Midwest PL /standings, Mountain PL /standings).
+// A table is named from the locator's names in order, else from the text just before it.
+class HtmlTableReader : public HtmlStandingsReader {
+public:
+    nlohmann::json read(const std::string& locator, const std::string& leagueName, std::string& note) override;
+};
+
+// locator = a Squarespace page whose table is a grid of text boxes (Upstate PL /standings): the
+// boxes in page order are the heading cells, then each club's cells, row after row.
+class TextGridReader : public HtmlStandingsReader {
 public:
     nlohmann::json read(const std::string& locator, const std::string& leagueName, std::string& note) override;
 };

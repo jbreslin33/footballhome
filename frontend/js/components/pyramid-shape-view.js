@@ -20,9 +20,11 @@
 // builds were tried that day (four CSS-3D, three solid); this is the one kept (owner: "last one
 // is winnner as far as resourcess … drop the other versions").  ▦ 2D chart is the flat view.
 //
-// ONE PYRAMID PER CALENDAR (owner: "if not enoguht sides just never show the 'summer' ones with
-// the fifa cal ones"): the fall–spring game, the U23 summer leagues and the spring-to-fall
-// leagues are three pyramids, picked on the row at the top.
+// CALENDARS (season_calendars: the fall–spring game, the U23 summer leagues, spring-to-fall): the
+// row at the top switches them on and off, any number at once (owner, at first: "separate
+// pyraminds"; later: "the toggles should add allow for multi selectet").  The pyramid holds the
+// leagues of every calendar on; never none.  On a shared level the APSL's calendar's league comes
+// first, so it stands on the APSL's face.
 //
 // A tap on a level opens its league flat in the panel on the right, scrolled to that level, a
 // line tying the panel to the level wherever it has turned to (dashed when it faces away).
@@ -30,8 +32,14 @@ class PyramidShapeView {
   constructor(screen, flow) {
     this.screen = screen; this.flow = flow; this.fill = true;
     this.picked = null;                              // the league key open in the panel
-    this.cal = null;                                 // which calendar's pyramid is up (null = the first)
-    try { this.cal = localStorage.getItem('apsl-shape-cal') || null; } catch (_) { /* private mode */ }
+    // which calendars are on the pyramid — any number at once (owner 2026-11-24: "the toggles should
+    // add allow for multi selectet"); none stored = the first.  The old one-calendar pick carries over.
+    this.cals = [];
+    try {
+      const many = JSON.parse(localStorage.getItem('apsl-shape-cals') || 'null');
+      const one = localStorage.getItem('apsl-shape-cal');
+      this.cals = Array.isArray(many) ? many : one ? [one] : [];
+    } catch (_) { /* private mode */ }
   }
 
   _esc(t) { return this.screen.escapeHtml(t == null ? '' : String(t)); }
@@ -82,9 +90,11 @@ class PyramidShapeView {
   // with the pro one (owner 2026-11-24: "we need togllge on screen for pro toggle and concacaf and
   // club world cup toggles").
   _cups(model) { return (model.pro || []).filter((t) => t.standards === false && !t.beside).flatMap((t) => t.leagues.map((l) => `lg-${l.id}`)); }
-  _cal(model) {
-    const all = this._calendars(model);
-    return all.some((c) => c.code === this.cal) ? this.cal : (all[0] ? all[0].code : null);
+  // The calendars switched on: those picked that still exist, else the first.
+  _calsOn(model) {
+    const all = this._calendars(model).map((c) => c.code);
+    const on = this.cals.filter((c) => all.includes(c));
+    return new Set(on.length ? on : all.slice(0, 1));
   }
   // A league's calendar: its own, else its upper league's.
   _calOf(model, l) {
@@ -96,10 +106,12 @@ class PyramidShapeView {
   // ── what is on the shape ──────────────────────────────────────────────
   // → [{ sides:[{ key, title, html, chart? }], standards }] top first.
   _levels(model, confs) {
-    const flow = this.flow, levels = [], cal = this._cal(model);
-    // this calendar's leagues that are switched on (its own pill; the calendar pills of the flat view do not apply)
-    const mine = (l) => this._calOf(model, l) === cal && this.screen.feature(`lg-${l.id}`, true);
-    const every = (model.pro || []).map((t) => ({ ...t, leagues: t.leagues.filter(mine) }));
+    const flow = this.flow, levels = [], cals = this._calsOn(model), home = model.data.calendar;
+    // the leagues of the calendars switched on, each also on its own pill (the flat view's calendar pills do not apply);
+    // two calendars on one level: the APSL's calendar first, so its league stands on the APSL's face
+    const mine = (l) => cals.has(this._calOf(model, l)) && this.screen.feature(`lg-${l.id}`, true);
+    const first = (a, b) => (this._calOf(model, a) === home ? 0 : 1) - (this._calOf(model, b) === home ? 0 : 1);
+    const every = (model.pro || []).map((t) => ({ ...t, leagues: t.leagues.filter(mine).sort(first) }));
     const tiers = every.filter((t) => t.leagues.length);
     if (this.screen.feature('pro', true)) {
       // A pro DIVISION keeps its step even with no league on this calendar, when there is a
@@ -109,22 +121,26 @@ class PyramidShapeView {
       // league, it does not slide up under MLS.  A cup (reached by results) with nothing on
       // simply goes, and the rest move up.
       const divisions = every.filter((t) => !t.beside && t.standards !== false);
-      const first = divisions.findIndex((t) => t.leagues.length), last = divisions.length - 1 - [...divisions].reverse().findIndex((t) => t.leagues.length);
-      const kept = new Set(first < 0 ? [] : divisions.slice(first, last + 1).map((t) => t.tier));
+      const top = divisions.findIndex((t) => t.leagues.length), last = divisions.length - 1 - [...divisions].reverse().findIndex((t) => t.leagues.length);
+      const kept = new Set(top < 0 ? [] : divisions.slice(top, last + 1).map((t) => t.tier));
+      // an empty division step stands on the side most pro divisions use (the MLS column)
+      const count = new Map();
+      for (const t of divisions) for (const l of t.leagues) if (l.side != null) count.set(l.side, (count.get(l.side) || 0) + 1);
+      const proSide = [...count].sort((a, b) => b[1] - a[1]).map((x) => x[0])[0] ?? null;
       for (const t of every.filter((x) => !x.beside)) {
-        if (t.leagues.length) levels.push({ standards: t.standards !== false, sides: t.leagues.map((l) => ({ key: `lg-${l.id}`, title: l.name, html: flow.proLeagueHtml(l, t) })) });
-        else if (kept.has(t.tier)) levels.push({ standards: true, sides: [{ key: `tier-${t.tier}`, title: t.label,
+        if (t.leagues.length) levels.push({ standards: t.standards !== false, sides: t.leagues.map((l) => ({ key: `lg-${l.id}`, title: l.name, side: l.side, html: flow.proLeagueHtml(l, t) })) });
+        else if (kept.has(t.tier)) levels.push({ standards: true, sides: [{ key: `tier-${t.tier}`, title: t.label, side: proSide,
           html: `<div class="fc-pro-lg sh-empty"><h2>${this._esc(t.label)}</h2><div class="fc-meta">${this._esc(this._copy('shape_empty_level'))}</div></div>` }] });
       }
     }
     const bottom = [];
-    if (model.data.calendar === cal) {
+    if (cals.has(home)) {
       const root = model.comp(model.data.root_id);
-      bottom.push({ key: 'root', title: root ? model.label(root) : '', html: flow.chartHtml(model, confs), chart: true });
+      bottom.push({ key: 'root', title: root ? model.label(root) : '', side: model.data.side, html: flow.chartHtml(model, confs), chart: true });
     }
     if (this.screen.feature('open', true))
       for (const t of tiers.filter((x) => x.beside))
-        for (const l of t.leagues.filter((x) => x.feeds == null)) bottom.push({ key: `lg-${l.id}`, title: l.name, html: flow.besideLeagueHtml(model, { ...l, label: t.label }) });
+        for (const l of t.leagues.filter((x) => x.feeds == null)) bottom.push({ key: `lg-${l.id}`, title: l.name, side: l.side, html: flow.besideLeagueHtml(model, { ...l, label: t.label }) });
     if (bottom.length) levels.push({ standards: false, sides: bottom });
     return levels;
   }
@@ -135,7 +151,7 @@ class PyramidShapeView {
     const esc = (t) => this._esc(t);
     return `
       <div class="sh-stage">
-        <div class="sh-cals">${this._calendars(model).map((c) => `<button class="${c.code === this._cal(model) ? 'on' : ''}" data-sh-cal="${esc(c.code)}">${esc(c.label)}</button>`).join('')}</div>
+        <div class="sh-cals">${this._calendars(model).map((c) => `<button class="${this._calsOn(model).has(c.code) ? 'on' : ''}" data-sh-cal="${esc(c.code)}">${esc(c.label)}</button>`).join('')}</div>
         <div class="sh-feats">${this.features().filter((f) => f.key === 'pro' || this._cups(model).includes(f.key)).map((f) => `<button class="${this.screen.feature(f.key, f.def) ? 'on' : ''}" data-sh-feat="${esc(f.key)}">${esc(f.label || this._copy(f.tier))}</button>`).join('')}</div>
         <div class="sh-styles">
           <button class="on">${esc(this._copy('shape_style_standings'))}</button>
@@ -181,8 +197,10 @@ class PyramidShapeView {
       }
       return { ...s, el, html: el.innerHTML, rows };
     }));
-    const slots = Math.max(4, ...L.map((lv) => lv.sides.length));   // never fewer than four; enough for the level with most leagues
-    this._edges = model.data.calendar === this._cal(model) ? model.layout(confs).edges : [];   // the APSL chart's links, when its calendar is up
+    // six sides (owner 2026-11-24: "make six sides and put mls stuff by itself and our pyramind apsl by
+    // itself with casa etc"), more if the data asks for a higher side or a level has more leagues
+    const slots = Math.max(6, ...L.flatMap((lv) => lv.sides.map((x) => (x.side ?? -1) + 1)), ...L.map((lv) => lv.sides.length));
+    this._edges = this._calsOn(model).has(model.data.calendar) ? model.layout(confs).edges : [];   // the APSL chart's links, when its calendar is up
     this._mountSolid(stage, natural, slots);
     flat.remove();
   }
@@ -233,12 +251,23 @@ class PyramidShapeView {
       row.cells.push(cell);
       this._sides.push({ id: this._sides.length, key: m.key, title: m.title, html: m.html, level, slot, step: 360 / slots, cell });
     };
+    // EACH LEAGUE ON ITS OWN SIDE (pro_leagues.pyramid_side / the root's, mig 1871): the APSL alone on
+    // the face, the MLS column, the USL column, the UPSL, the NPSL, the League for Clubs.  A league
+    // with no side, or whose side is taken on that level, goes on the next free one.
+    const place = (list) => {
+      const taken = new Set(), at = new Map();
+      for (const m of list) if (m.side != null && m.side < slots && !taken.has(m.side)) { taken.add(m.side); at.set(m, m.side); }
+      let free = 0;
+      for (const m of list) if (!at.has(m)) { while (taken.has(free)) free++; taken.add(free); at.set(m, free); }
+      return at;
+    };
     let level = 0;
     L.forEach((lv, i) => {
       if (i < n - 1) {
         const empty = natural[i].every((m) => m.key.startsWith('tier-'));
         const row = { kind: empty ? 'empty' : lv.standards ? 'pro' : 'cup', level, cells: [] };
-        natural[i].forEach((m, slot) => add(row, m, slot, level, m.title, empty ? { clubs: 0 } : count(m.el, 0, Infinity), 0));
+        const at = place(natural[i]);
+        natural[i].forEach((m) => add(row, m, at.get(m), level, m.title, empty ? { clubs: 0 } : count(m.el, 0, Infinity), 0));
         rows.push(row); level++;
         return;
       }
@@ -247,10 +276,11 @@ class PyramidShapeView {
         const cuts = tops.map((t, k) => (k === 0 ? 0 : Math.max(0, t - (m.chart ? 28 : 6))));
         return { m, bands: cuts.length ? cuts.map((y0, k) => ({ y0, y1: k + 1 < cuts.length ? cuts[k + 1] : Infinity })) : [{ y0: 0, y1: Infinity }] };
       });
-      const depth = Math.max(...sides.map((x) => x.bands.length));
+      const depth = Math.max(...sides.map((x) => x.bands.length)), at = place(natural[i]);
       for (let k = 0; k < depth; k++) {
         const row = { kind: k ? 'feeder' : 'own', level, cells: [] };
-        sides.forEach((x, slot) => {
+        sides.forEach((x) => {
+          const slot = at.get(x.m);
           const b = x.bands[k];
           if (!b) return;
           const c = count(x.m.el, b.y0, b.y1);
@@ -313,9 +343,11 @@ class PyramidShapeView {
     stage._shWired = true;
     stage.addEventListener('click', (e) => {
       const cal = e.target.closest('[data-sh-cal]');
-      if (cal) {   // another calendar's pyramid: a fresh one, fitted
-        this.cal = cal.dataset.shCal;
-        try { localStorage.setItem('apsl-shape-cal', this.cal); } catch (_) { /* private mode */ }
+      if (cal) {   // a calendar on or off (any number together, never none); the pyramid is rebuilt and fitted
+        const on = this._calsOn(this.flow._model), code = cal.dataset.shCal;
+        if (on.has(code)) { if (on.size > 1) on.delete(code); } else on.add(code);
+        this.cals = [...on];
+        try { localStorage.setItem('apsl-shape-cals', JSON.stringify(this.cals)); localStorage.removeItem('apsl-shape-cal'); } catch (_) { /* private mode */ }
         this.picked = null;
         this.screen._viewCall('unmount'); this.screen._renderBody();
         return;

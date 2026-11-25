@@ -123,15 +123,23 @@ class PyramidSolid {
   // ── the tables ───────────────────────────────────────────────────────
   // Each table is one column, in full: pos · club · GP · GD ·
   // Pts, a zone colour down the left of a row (promotion / playoff / relegation, the same colours
-  // as the 2D chart).  A table never folds; many tables in a band make smaller letters.
+  // as the 2D chart).  A table never folds.  More than a dozen tables (the UPSL's 35 conferences —
+  // owner: "put upsl on the blank side") wrap onto further rows of tables, so the letters stay a
+  // readable size instead of shrinking to nothing.
   _planTables(cell, w) {
     const tables = cell.tables && cell.tables.length ? cell.tables : [{ name: '', rows: [], teams: [] }];
-    const HEAD = 0.42, perLetter = 25;                        // pos 2 · club 15 · three figures 2.5 each, and gaps
-    const colW = w / tables.length;
-    const fs = Math.min(0.085, colW / perLetter);
-    const cols = tables.map((t) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length }));
-    const lines = Math.max(...cols.map((c) => c.n + (c.name ? 1.2 : 0) + 1));   // + the GP/GD/Pts head
-    return { h: HEAD + lines * fs * 1.32 + 0.12, fs, cols, head: HEAD, table: true };
+    const HEAD = 0.42, perLetter = 25, MAX = 12;              // pos 2 · club 15 · three figures 2.5 each, and gaps
+    const perRow = Math.min(tables.length, MAX), colW = w / perRow;
+    const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
+    const cols = tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
+    const linesOf = (c) => c.n + (c.name ? 1.2 : 0) + (c.rows && c.rows.length ? 1 : 0);   // + the GP/GD/Pts head
+    let gy = 0;
+    for (let r = 0; r <= cols[cols.length - 1].gr; r++) {   // each row of tables as tall as its longest table
+      const these = cols.filter((c) => c.gr === r);
+      these.forEach((c) => { c.gy = gy; });
+      gy += Math.max(...these.map(linesOf)) * lh + lh * 0.9;
+    }
+    return { h: HEAD + gy + 0.06, fs, cols, head: HEAD, perRow, table: true };
   }
 
   _tables(T, cell, row, w, h, font) {
@@ -146,15 +154,16 @@ class PyramidSolid {
     g.fillStyle = row.kind === 'empty' ? 'rgba(255,255,255,0.55)' : '#ffffff';
     fit(cell.title || '', 0.17 * u, 800, W * 0.94); g.fillText(cell.title || '', W / 2, 0.22 * u);
     if (cell.sub) { g.fillStyle = 'rgba(255,255,255,0.75)'; fit(cell.sub, 0.07 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, 0.36 * u); }
-    const fs = plan.fs * u, lh = fs * 1.32, colW = W / plan.cols.length, pad = fs * 0.6;
-    plan.cols.forEach((col, k) => {
+    const fs = plan.fs * u, lh = fs * 1.32, colW = W / (plan.perRow || plan.cols.length), pad = fs * 0.6;
+    plan.cols.forEach((col) => {
+      const k = col.gx, top = (plan.head + col.gy) * u;
       const x0 = k * colW + pad, x1 = (k + 1) * colW - pad, inner = x1 - x0;
       const xPos = x0 + fs * 1.1, xName = x0 + fs * 2.6, xPts = x1, xGd = x1 - fs * 2.6, xGp = x1 - fs * 5.2, nameW = xGp - fs * 2.2 - xName;
-      let y = plan.head * u + lh / 2;
+      let y = top + lh / 2;
       // the box behind the table, so it reads as one table on the wall (none for a level with no clubs)
       if (!col.n && !col.name) return;
       g.fillStyle = 'rgba(8,13,26,0.42)';
-      g.fillRect(x0 - pad * 0.5, plan.head * u - lh * 0.15, inner + pad, (col.n + (col.name ? 1.2 : 0) + 1) * lh + lh * 0.3);
+      g.fillRect(x0 - pad * 0.5, top - lh * 0.15, inner + pad, (col.n + (col.name ? 1.2 : 0) + 1) * lh + lh * 0.3);
       if (col.name) { g.textAlign = 'left'; g.font = `800 ${fs}px ${font}`; g.fillStyle = '#fcd34d'; g.fillText(col.name, x0, y, inner); y += lh * 1.2; }
       const figures = col.rows && col.rows.length;
       if (figures) {   // the head: GP GD Pts
@@ -180,7 +189,7 @@ class PyramidSolid {
       });
       // where this table sits on the wall, for the arrows: its middle across, its top and foot down the slope
       col.at = { x: ((x0 + x1) / 2 / W - 0.5) * w, l: (x0 / W - 0.5) * w, r: (x1 / W - 0.5) * w,
-                 top: plan.head - 0.06, foot: plan.head + ((col.n + (col.name ? 1.2 : 0) + (figures ? 1 : 0)) * lh + lh * 0.2) / u };
+                 top: plan.head + col.gy - 0.06, foot: plan.head + col.gy + ((col.n + (col.name ? 1.2 : 0) + (figures ? 1 : 0)) * lh + lh * 0.2) / u };
     });
     const tex = new T.CanvasTexture(c);
     tex.colorSpace = T.SRGBColorSpace;

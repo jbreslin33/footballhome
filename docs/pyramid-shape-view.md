@@ -17,20 +17,39 @@ Two files:
 
 ## What is on it
 
-- **One pyramid per calendar** (`season_calendars`): the row of buttons at the top picks it. A
-  league is only on the pyramid of its own calendar.
+- **Calendars** (`season_calendars`): the row of buttons at the top switches them on and off,
+  any number at once, never none (owner: "the toggles should add allow for multi selectet"; kept
+  per browser in `apsl-shape-cals`). The pyramid holds the leagues of every calendar on; on a
+  shared level the APSL's calendar's league comes first, so it stands on the APSL's face.
 - **Levels, top first:** each `pro_league_tiers` level above the APSL that has a league on, then
   the APSL — its conferences, then each row of leagues that feed them, each row a level — and
   each national league beside it. A league switched off (its own pill) leaves; an emptied level
   goes and the numbers below move up.
 - **An empty division step:** a pro division with no league on the shown calendar keeps its
   level, marked empty, when divisions above and below it have one (mig 1850).
-- **One league, one side** (owner: "no need to draw somethnig on multiple sides. mls side shouod
-  be apsl side … that is why we put them on our 'face'" — the APSL is the open league that makes
-  agreements with the leagues above it). The APSL's side carries the whole column from the Club
-  World Cup down; a level's next league goes on the next side; the other sides are bare.
-- **The UPSL is switched off** (mig 1858, `pro_leagues.is_active`; owner: "screw upsl"). Its rows
-  and club lists are kept.
+- **Six sides, a family of leagues on each** (mig 1871; owner: "make six sides and put mls stuff
+  by itself and our pyramind apsl by itself with casa etc" · "put usl championship on the usl
+  league one adn usl2 side" · "put upsl on the blank side"). The side is data:
+  `pyramid_competitions.pyramid_side` for the APSL root, `pro_leagues.pyramid_side` for the rest
+  (0 = the face the page opens on; NULL = the next free side; a league that feeds another is drawn
+  inside its upper league's side). Today: 0 the APSL with CASA etc. · 1 the MLS column (Club World
+  Cup, Concacaf, MLS, MLS NEXT Pro) · 2 the USL column (Championship, League One, League Two) ·
+  3 the UPSL (with Division 1) · 4 the NPSL · 5 the League for Clubs. An empty pro division step
+  stands on the side most pro divisions use. More sides appear if the data asks for them.
+- **Many tables wrap:** more than 12 tables in a band (the UPSL's 35 conferences) go onto further
+  rows of tables, so the letters stay readable.
+- **The UPSL is back on** (mig 1871; it was off from mig 1858).
+- **MLS NEXT Pro** reads Wikipedia (mig 1870): the season article keeps the standings in one
+  template per conference, so its locator is the two template pages joined by ` ; ` — the
+  Sports-table reader now takes several pages and names each table from its page ("Eastern
+  Conference"), and reads names written all on one line. New season = new page titles.
+- **League for Clubs partner leagues** (mig 1877): Midwest PL and Mountain PL read their sites'
+  `<table>`s (`html_table`), Upstate PL its Squarespace grid of text boxes (`text_grid`) — readers
+  `HtmlTableReader` / `TextGridReader` in `backend/src/services/LeagueTableReaders.cpp`, sharing a
+  heading-row map (POS / TEAM / GP / W D L or W-D-L / GF GA GD / PTS). Locator = the page, then
+  optionally the tables' names in page order joined by ` ; `. The hosts are on the scraper VPN
+  proxy's allow-list. NorCal Division 2 (no site), Gulf Coast PL (site answers almost nothing) and
+  Metroplex PL (JavaScript app) are still named boxes.
 - **Every table in full on its level:** pos · club · GP · GD · Pts, the 2D chart's zone colour per
   row (read from each row's `--zc`), one column per table, gold table name. A cup (a list of
   clubs, no standings) shows its clubs. A level is as tall as its longest table needs at the width

@@ -5,6 +5,9 @@
 #include <vector>
 #include <cstdlib>
 #include <regex>
+#include <algorithm>
+#include <cctype>
+#include <strings.h>
 #include <thread>
 
 using json = nlohmann::json;
@@ -56,6 +59,8 @@ std::unique_ptr<LeagueTableReader> LeagueTableReader::forSystem(const std::strin
     if (feedSystem == "google_sheet") return std::make_unique<GoogleSheetTableReader>();
     if (feedSystem == "wikipedia_sports_table") return std::make_unique<WikipediaSportsTableReader>();
     if (feedSystem == "wikipedia_club_list")    return std::make_unique<WikipediaClubListReader>();
+    if (feedSystem == "html_table")             return std::make_unique<HtmlTableReader>();
+    if (feedSystem == "text_grid")              return std::make_unique<TextGridReader>();
     return nullptr;
 }
 
@@ -255,13 +260,37 @@ std::string WikipediaReader::plain(std::string s) {
     return trim(unescape(s));
 }
 
+// The locator is one article, or several pages joined by " ; " — a season whose standings live in
+// templates of their own (MLS NEXT Pro: "Template:2026 MLS Next Pro Eastern Conference table ;
+// Template:… Western Conference table").  A table with no section= is named from its page:
+// "2026 MLS Next Pro Eastern Conference table" → "Eastern Conference".
 json WikipediaSportsTableReader::read(const std::string& locator, const std::string& leagueName, std::string& note) {
+    if (locator.find(" ; ") != std::string::npos) {
+        json all = json::array();
+        size_t from = 0;
+        for (;;) {
+            const size_t cut = locator.find(" ; ", from);
+            const std::string page = trim(locator.substr(from, cut == std::string::npos ? std::string::npos : cut - from));
+            std::string title = std::regex_replace(page, std::regex("^Template:"), "");
+            title = std::regex_replace(title, std::regex("^\\d{4}(-\\d{2,4})?\\s+"), "");
+            title = std::regex_replace(title, std::regex("\\s+table$", std::regex::icase), "");
+            if (title.size() > leagueName.size() && strncasecmp(title.c_str(), leagueName.c_str(), leagueName.size()) == 0) title = trim(title.substr(leagueName.size()));
+            std::string pageNote;
+            for (auto& t : read(page, title.empty() ? leagueName : title, pageNote)) all.push_back(t);
+            if (!pageNote.empty()) note += (note.empty() ? "" : "; ") + pageNote;
+            if (cut == std::string::npos) break;
+            from = cut + 3;
+        }
+        if (!all.empty()) note.clear();
+        return all;
+    }
     const std::string text = wikitext(locator, note);
     if (text.empty()) return json::array();
     static const std::regex kSection("section\\s*=\\s*([^\\n|]+)");
     static const std::regex kOrder("team_order\\s*=\\s*([^\\n|]+)");
     static const std::regex kStat("\\|\\s*(win|draw|loss|gf|ga)_([A-Za-z0-9]+)\\s*=\\s*(-?\\d+)");
-    static const std::regex kName("\\|\\s*name_([A-Za-z0-9]+)\\s*=\\s*([^\\n]*)");
+    // a name runs to the next | that is not inside [[ ]] or {{ }} — some tables put every name_X on one line
+    static const std::regex kName("\\|\\s*name_([A-Za-z0-9]+)\\s*=\\s*((?:\\[\\[[^\\]]*\\]\\]|\\{\\{[^}]*\\}\\}|[^\\n|\\[{])*)");
     const std::string open = "{{#invoke:Sports table|main";
     json tables = json::array();
     for (size_t at = text.find(open); at != std::string::npos; at = text.find(open, at + 1)) {
@@ -370,5 +399,203 @@ json WikipediaClubListReader::read(const std::string& locator, const std::string
     for (const auto& name : order) tables.push_back({{"name", name}, {"teams", clubs[name]}});
     if (tables.empty()) note = "no clubs in section " + heading;
     (void)leagueName;
+    return tables;
+}
+
+
+// ── league sites with a plain table (Midwest PL, Mountain PL, Upstate PL) ──────────────
+
+HtmlStandingsReader::Columns HtmlStandingsReader::columns(const std::vector<std::string>& head) {
+    Columns c;
+    for (int i = 0; i < static_cast<int>(head.size()); ++i) {
+        std::string h;
+        for (char ch : head[i]) if (!std::isspace(static_cast<unsigned char>(ch))) h.push_back(static_cast<char>(std::toupper(static_cast<unsigned char>(ch))));
+        // "P" is the place when it heads the table (Mountain PL), the games played elsewhere (Midwest PL)
+        if (c.pos < 0 && c.name < 0 && (h == "P" || h == "POS" || h == "#" || h == "RK" || h == "RANK" || h == "PL")) c.pos = i;
+        else if (h == "TEAM" || h == "CLUB" || h == "TEAMS" || h == "CLUBS") c.name = i;
+        else if (h == "GP" || h == "MP" || h == "P" || h == "PLD" || h == "PL" || h == "GAMES") c.played = i;
+        else if (h == "W") c.w = i;
+        else if (h == "D" || h == "T") c.d = i;
+        else if (h == "L") c.l = i;
+        else if (h == "W-D-L" || h == "W-T-L" || h == "W/D/L") c.wdl = i;
+        else if (h == "GF" || h == "F") c.gf = i;
+        else if (h == "GA" || h == "A") c.ga = i;
+        else if (h == "GD" || h == "+/-") c.gd = i;
+        else if (h == "PTS" || h == "PT" || h == "POINTS") c.pts = i;
+    }
+    return c;
+}
+
+json HtmlStandingsReader::team(const Columns& c, const std::vector<std::string>& cells) {
+    auto cell = [&](int i) { return i >= 0 && i < static_cast<int>(cells.size()) ? trim(cells[i]) : std::string{}; };
+    std::string name = cell(c.name);
+    // a clinched / out marker in front of the name ("C - Spindles United FC", "X - Collar City FC")
+    static const std::regex kMark("^[A-Za-z]{1,3}\\s+-\\s+");
+    name = trim(std::regex_replace(name, kMark, ""));
+    const std::string pts = cell(c.pts);
+    if (name.empty() || pts.empty() || !std::isdigit(static_cast<unsigned char>(pts[0]))) return nullptr;
+    int w = whole(cell(c.w)), d = whole(cell(c.d)), l = whole(cell(c.l));
+    if (c.wdl >= 0) {   // "5-2-3"
+        const std::string s = cell(c.wdl);
+        const auto a = s.find('-'), b = a == std::string::npos ? a : s.find('-', a + 1);
+        if (b != std::string::npos) { w = whole(s.substr(0, a)); d = whole(s.substr(a + 1, b - a - 1)); l = whole(s.substr(b + 1)); }
+    }
+    int gf = whole(cell(c.gf)), ga = whole(cell(c.ga));
+    // a table that gives only the goal difference (Upstate PL): carried as goals for / against
+    // so the difference shows right — the two figures themselves are not known
+    if (c.gf < 0 && c.ga < 0 && c.gd >= 0) { const int gd = whole(cell(c.gd)); gf = gd > 0 ? gd : 0; ga = gd < 0 ? -gd : 0; }
+    json t = {{"name", name}, {"played", c.played >= 0 ? whole(cell(c.played)) : w + d + l}, {"wins", w}, {"draws", d}, {"losses", l},
+              {"goals_for", gf}, {"goals_against", ga}, {"points", whole(pts)}};
+    if (c.pos >= 0 && !cell(c.pos).empty() && std::isdigit(static_cast<unsigned char>(cell(c.pos)[0]))) t["position"] = whole(cell(c.pos));
+    return t;
+}
+
+std::string HtmlStandingsReader::text(const std::string& markup) {
+    std::string out;
+    bool tag = false;
+    for (size_t i = 0; i < markup.size(); ++i) {
+        // a script or style block is not text
+        if (!tag && markup.compare(i, 7, "<script") == 0) { const auto e = markup.find("</script>", i); if (e == std::string::npos) break; i = e + 8; out.push_back(' '); continue; }
+        if (!tag && markup.compare(i, 6, "<style") == 0)  { const auto e = markup.find("</style>", i);  if (e == std::string::npos) break; i = e + 7; out.push_back(' '); continue; }
+        const char ch = markup[i];
+        if (ch == '<') { tag = true; out.push_back(' '); }
+        else if (ch == '>') tag = false;
+        else if (!tag) out.push_back(ch);
+    }
+    out = unescape(out);
+    std::string folded;
+    for (char ch : out) {
+        if (std::isspace(static_cast<unsigned char>(ch))) { if (!folded.empty() && folded.back() != ' ') folded.push_back(' '); }
+        else folded.push_back(ch);
+    }
+    return trim(folded);
+}
+
+std::string HtmlStandingsReader::page(const std::string& locator, std::vector<std::string>& names, std::string& note) {
+    std::vector<std::string> parts;
+    for (size_t from = 0;;) {
+        const size_t cut = locator.find(" ; ", from);
+        parts.push_back(trim(locator.substr(from, cut == std::string::npos ? std::string::npos : cut - from)));
+        if (cut == std::string::npos) break;
+        from = cut + 3;
+    }
+    names.assign(parts.begin() + 1, parts.end());
+    auto resp = get(parts[0], true, {{"Accept", "text/html"}});
+    if (!resp.ok()) { note = httpNote(resp); return {}; }
+    return resp.body;
+}
+
+json HtmlTableReader::read(const std::string& locator, const std::string& leagueName, std::string& note) {
+    std::vector<std::string> names;
+    const std::string html = page(locator, names, note);
+    if (html.empty()) return json::array();
+    // every <table>…</table>, and the text since the table before it (its heading, when the page gives one)
+    struct Found { std::string body, before; };
+    std::vector<Found> found;
+    for (size_t at = 0, prev = 0;;) {
+        const size_t a = html.find("<table", at);
+        if (a == std::string::npos) break;
+        const size_t b = html.find("</table>", a);
+        if (b == std::string::npos) break;
+        found.push_back({html.substr(a, b - a), html.substr(prev, a - prev)});
+        at = prev = b + 8;
+    }
+    json tables = json::array();
+    for (size_t k = 0; k < found.size(); ++k) {
+        // rows, then cells: <th> or <td>
+        std::vector<std::vector<std::string>> rows;
+        const std::string& t = found[k].body;
+        for (size_t r = t.find("<tr"); r != std::string::npos; r = t.find("<tr", r + 3)) {
+            const size_t re = t.find("</tr>", r);
+            const std::string row = t.substr(r, (re == std::string::npos ? t.size() : re) - r);
+            std::vector<std::string> cells;
+            for (size_t c = 0;;) {
+                const size_t th = row.find("<th", c), td = row.find("<td", c), o = std::min(th, td);
+                if (o == std::string::npos) break;
+                const size_t open = row.find('>', o);
+                if (open == std::string::npos) break;
+                // the cell runs to the next cell or the row's end
+                const size_t nth = row.find("<th", open), ntd = row.find("<td", open), next = std::min({nth, ntd, row.size()});
+                cells.push_back(text(row.substr(open + 1, next - open - 1)));
+                c = next;
+            }
+            if (!cells.empty()) rows.push_back(cells);
+        }
+        if (rows.empty()) continue;
+        const Columns cols = columns(rows[0]);
+        if (!cols.ok()) continue;
+        json teams = json::array();
+        int pos = 0;
+        for (size_t r = 1; r < rows.size(); ++r) {
+            json tm = team(cols, rows[r]);
+            if (tm.is_null()) continue;
+            if (!tm.contains("position")) tm["position"] = pos + 1;
+            ++pos;
+            teams.push_back(tm);
+        }
+        // its name: the locator's, in page order; else the last words before it
+        std::string name = k < names.size() ? names[k] : std::string{};
+        if (name.empty()) {
+            const std::string before = found[k].before;
+            std::vector<std::string> bits;
+            size_t from = 0;
+            for (size_t lt = before.find('<'); lt != std::string::npos; lt = before.find('<', lt + 1)) {
+                const std::string piece = text(before.substr(from, lt - from));
+                if (!piece.empty()) bits.push_back(piece);
+                const size_t gt = before.find('>', lt);
+                if (gt == std::string::npos) break;
+                if (before.compare(lt, 7, "<script") == 0) { const auto e = before.find("</script>", lt); lt = e == std::string::npos ? before.size() : e; }
+                from = (before.compare(lt, 9, "</script>") == 0 ? lt + 9 : gt + 1);
+            }
+            if (!bits.empty() && bits.back().size() <= 60) name = bits.back();
+        }
+        if (teams.empty()) continue;
+        tables.push_back({{"name", name.empty() ? leagueName : name}, {"teams", teams}});
+    }
+    if (tables.empty()) note = "no standings table on the page";
+    return tables;
+}
+
+json TextGridReader::read(const std::string& locator, const std::string& leagueName, std::string& note) {
+    std::vector<std::string> names;
+    const std::string html = page(locator, names, note);
+    if (html.empty()) return json::array();
+    // the text boxes, in page order
+    std::vector<std::string> boxes;
+    const std::string open = "<div class=\"sqs-html-content\"";
+    for (size_t at = html.find(open); at != std::string::npos; at = html.find(open, at + 1)) {
+        const size_t a = html.find('>', at), b = a == std::string::npos ? a : html.find("</div>", a);
+        if (b == std::string::npos) break;
+        boxes.push_back(text(html.substr(a + 1, b - a - 1)));
+    }
+    json tables = json::array();
+    size_t k = 0;
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        // a heading run: consecutive boxes that are all column names, with a club and a points column
+        size_t n = 0;
+        std::vector<std::string> head;
+        while (i + n < boxes.size()) {
+            const Columns one = columns({boxes[i + n]});
+            const bool known = one.pos >= 0 || one.name >= 0 || one.played >= 0 || one.w >= 0 || one.d >= 0 || one.l >= 0 || one.wdl >= 0 || one.gf >= 0 || one.ga >= 0 || one.gd >= 0 || one.pts >= 0;
+            if (!known) break;
+            head.push_back(boxes[i + n]);
+            ++n;
+        }
+        const Columns cols = columns(head);
+        if (n < 3 || !cols.ok()) continue;
+        json teams = json::array();
+        size_t r = i + n;
+        for (; r + n <= boxes.size(); r += n) {
+            std::vector<std::string> cells(boxes.begin() + static_cast<long>(r), boxes.begin() + static_cast<long>(r + n));
+            json tm = team(cols, cells);
+            if (tm.is_null()) break;   // the table has ended
+            if (!tm.contains("position")) tm["position"] = static_cast<int>(teams.size()) + 1;
+            teams.push_back(tm);
+        }
+        if (!teams.empty()) tables.push_back({{"name", k < names.size() && !names[k].empty() ? names[k] : leagueName}, {"teams", teams}});
+        ++k;
+        i = r > 0 ? r - 1 : r;
+    }
+    if (tables.empty()) note = "no standings grid on the page";
     return tables;
 }
