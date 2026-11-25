@@ -104,7 +104,8 @@ struct Stats {
     long bk_n[3][3] = {};   // §8.339 passes their man deflected [kick 0-35 / 35-70 / 70+ m off the line attacked][next: a mate / the kicker / theirs]
     std::vector<double> pc_v[2][4], pc_t[2][4];   // §8.337 PASS PACE [ground / off the ground][5-10, 10-20, 20-30, 30+ m]
     long hwb_n[5][5] = {}, hwb_s[5][5] = {};   // §8.359 HOW A STINT BEGAN [band][same man again / off a mate / a mate's ball that travelled / theirs before / play stopped before]
-    long wbk_l[5] = {}, wbk_3[5] = {}, wbk_5[5] = {};   // §8.361 WON BACK: losses by band, its own again within 3 / 5 s
+    long wbk_l[5] = {}, wbk_3[5] = {}, wbk_5[5] = {};
+    long ea_n[3][2][3] = {}, ea_o[3][2][3] = {};   // §8.363 THE TACKLER'S ANGLE [touchline band][a second within 5 m][front / side / behind]   // §8.361 WON BACK: losses by band, its own again within 3 / 5 s
     long nx_n[5] = {}, nx_to[5][5] = {}, nx_air[5][5] = {}, nx_lost[5] = {}, nx_dead[5] = {}; std::vector<double> nx_d[5];   // §8.332 NEXT STINT
     long bt_on[5] = {}, bt_tr[5] = {}, bt_k[5] = {}, bt_ks[5] = {}, bt_k3[5] = {}; std::vector<double> bt_bo[5], bt_bt[5], bt_ms[5];   // §8.330 BAND TIME
     long cha_n[2] = {}, cha_a[2] = {}, cha_d[2] = {}, cha_a0[2] = {}, cha_d0[2] = {}, cha_on[2] = {}, cha_o3[2] = {}, cha_t3[2] = {}, cha_r[2][6] = {}; std::vector<double> cha_na[2], cha_nd[2], cha_rm[2][6];   // §8.329 THE CHANNEL AHEAD [ball in the middle / wide]
@@ -3117,7 +3118,7 @@ int main(int argc, char** argv) {
             const FlF* pv = nullptr; int st_man = -1, st_z = 0, st_n = 0;
             double la_bx = 0, la_by = 0; int gapn = 0;   // §8.337
             int la_man = -1;   // §8.346: the man of the stint just ended
-            int ec_t = -1, ec_a = 0, ec_s = 0, ec_d = 0;   // §8.348: the last frame's engage-cue cell (side on it, touchline / second / distance), -1 = no man on it
+            int ec_t = -1, ec_a = 0, ec_s = 0, ec_d = 0, ec_g = -1;   // ec_g §8.363: the nearest's angle (front / side / behind), -1 = not inside 1.5 m   // §8.348: the last frame's engage-cue cell (side on it, touchline / second / distance), -1 = no man on it
             bool la_out = false; int la_wd = 0;   // §8.347: an outfield man's; wide (|y| >= 20)
             bool la_w3 = false;   // §8.347: its last frame had the ball in that side's wide last third, an outfield man's
             int la_t = -1, la_z = 0; double la_tl = 0, zmax = 0;   // §8.332: the stint just ended (side, band at its end, ball m off the line attacked)
@@ -3137,6 +3138,7 @@ int main(int argc, char** argv) {
                 }
                 const double bs = cont ? std::hypot(f.bx - pv->bx, f.by - pv->by) * 5 : -1;
                 {   // §8.348 THE ENGAGE CUE (benchmarks_tracking_fbline.py) [concept: engage-or-contain]
+                    if (cont && ec_t >= 0 && ec_g >= 0) { ++S.ea_n[ec_a][ec_s][ec_g]; S.ea_o[ec_a][ec_s][ec_g] += man >= 0 && t != ec_t; }   // §8.363
                     if (cont && ec_t >= 0) { ++S.ec_n[ec_a][ec_s][ec_d]; S.ec_o[ec_a][ec_s][ec_d] += man >= 0 && t != ec_t;
                         if (man >= 0 && t != ec_t) {   // §8.349 OFF HIS FEET, 2 S ON
                             const std::size_t fi2 = static_cast<std::size_t>(&f - fl_f.data()); const int w2 = std::fabs(f.by) >= 20;
@@ -3147,8 +3149,13 @@ int main(int argc, char** argv) {
                         } }
                     ec_t = -1;
                     if (man >= 0 && !W.isKeeper(static_cast<std::uint8_t>(man))) {
-                        double d1 = 1e9, d2 = 1e9;
-                        for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) { const double dd = std::hypot(f.x[q2] - f.bx, f.y[q2] - f.by); if (dd < d1) { d2 = d1; d1 = dd; } else if (dd < d2) d2 = dd; }
+                        double d1 = 1e9, d2 = 1e9; int q1 = -1;
+                        for (std::uint8_t q2 = 0; q2 < N && q2 < 32; ++q2) if (W.player(q2).team != t && !W.isKeeper(q2)) { const double dd = std::hypot(f.x[q2] - f.bx, f.y[q2] - f.by); if (dd < d1) { d2 = d1; d1 = dd; q1 = q2; } else if (dd < d2) d2 = dd; }
+                        ec_g = -1;
+                        if (q1 >= 0 && d1 < 1.5) {   // §8.363: in front = within 45 deg of his way to the goal he attacks (benchmarks_tracking_fbline.py)
+                            const double dx = f.x[q1] - f.bx, dy = f.y[q1] - f.by, cs = dx * (ax > 0 ? 1.0 : -1.0) / std::max(1e-9, std::hypot(dx, dy));
+                            ec_g = cs >= 0.7071 ? 0 : cs <= -0.7071 ? 2 : 1;
+                        }
                         const double tch = 34 - std::fabs(f.by);
                         if (d1 < 1e8) { ec_t = t; ec_a = tch < 5 ? 0 : tch < 14 ? 1 : 2; ec_d = d1 < 1.5 ? 0 : d1 < 3 ? 1 : d1 < 5 ? 2 : 3; ec_s = d2 < 5; }
                     }
@@ -3731,6 +3738,16 @@ int main(int argc, char** argv) {
                             std::printf("\n     %-6s", zn5[z]);
                             for (int q = 0; q < 5; ++q) std::printf("%s %5.1f, %.2f (%5.1f, %.2f)", q ? " |" : "", S.hwb_n[z][q] / tmo, S.hwb_s[z][q] / 5.0 / std::max(1L, S.hwb_n[z][q]), R[z][2 * q], R[z][2 * q + 1]);
                         }
+                    }
+                    {   // §8.363 THE TACKLER'S ANGLE — real: benchmarks_tracking_fbline.py (DFL, 7 matches)
+                        static const double R[36] = {0.421, 4.1, 0.437, 6.4, 0.470, 2.6, 0.727, 2.4, 0.514, 3.6, 0.522, 1.9, 0.529, 4.9, 0.432, 6.9, 0.419, 2.9, 0.677, 4.1, 0.646, 5.2, 0.578, 2.1, 0.671, 8.1, 0.465, 9.7, 0.387, 3.9, 0.789, 7.0, 0.693, 10.3, 0.749, 5.1};
+                        static const char* tn3[3] = {"0-5 m off the touchline", "5-14 m", "14 m+"};
+                        const double tmo = std::max(1.0, 2.0 * matches);
+                        std::printf("\n   §8.363 THE TACKLER'S ANGLE (nearest opponent inside 1.5 m in front / to the side / behind the carrier; taken off his feet per s (s a team-match); alone | a second within 5 m; real DFL in brackets)");
+                        for (int a = 0; a < 3; ++a) { std::printf("\n     %-24s", tn3[a]);
+                            for (int s2 = 0; s2 < 2; ++s2) { for (int g = 0; g < 3; ++g) { const int ri = ((a * 2 + s2) * 3 + g) * 2;
+                                std::printf(" %.2f (%.1f) [%.2f (%.1f)]", 5.0 * S.ea_o[a][s2][g] / std::max(1L, S.ea_n[a][s2][g]), S.ea_n[a][s2][g] / 5.0 / tmo, R[ri], R[ri + 1]); }
+                                if (!s2) std::printf(" |"); } }
                     }
                     {   // §8.361 WON BACK — real: benchmarks_tracking_bandtime.py (DFL, 7 matches)
                         static const double R[5][3] = {{25.71, 25.00, 37.78}, {30.29, 30.94, 44.10}, {32.43, 34.21, 48.81}, {31.21, 28.84, 42.79}, {31.29, 34.25, 46.58}};
