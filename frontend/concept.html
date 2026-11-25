@@ -63,11 +63,17 @@
     /* one popup for every meaning: the concept, a player's states */
     /* HIS states, docked beside the pitch (owner 11/25 "we need the states on the side" · "1 line each"):
        one line per thing; each machine a block — its name, then its state, his man, the numbers. */
-    #tag { position: absolute; left: 8px; top: 50px; z-index: 3; padding: 6px 9px; border-radius: 10px; background: rgba(6,10,18,.32);
-           border: 1px solid rgba(255,204,0,.5); font-size: 13px; line-height: 1.4; overflow: auto;
-           text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
+    /* Boxes down the left: formation, style, then actions at the bottom (owner 11/25). */
+    #tag { position: absolute; left: 8px; top: 50px; z-index: 3; display: flex; flex-direction: column; gap: 8px; overflow: auto;
+           font-size: 13px; line-height: 1.4; text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
+    #tag .who { font-weight: 800; color: var(--gold); padding: 0 4px; }
+    #tag .box { background: rgba(6,10,18,.32); border: 1px solid rgba(255,255,255,.22); border-radius: 10px; padding: 5px 8px 6px; }
+    #tag .box-actions { margin-top: auto; border-color: rgba(124,252,138,.45); }
+    #tag .box-style { border-color: rgba(255,204,0,.45); }
+    #tag .box-formation { border-color: rgba(159,195,255,.5); }
+    #tag .bt { font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 2px; }
+    #tag tr.none td { color: var(--dim); }
     #tag:empty { display: none; }
-    #tag .who { font-weight: 800; color: var(--gold); margin-bottom: 4px; }
     /* the state table: one row per state — Machine | State | Man | Detail */
     #tag table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
     #tag th { text-align: left; font-size: 9.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim);
@@ -125,6 +131,6 @@
     <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
   </div>
   <script src="js/game/wire.js?v=20261125machines"></script>
-  <script src="js/teach/concept.js?v=20261125s8"></script>
+  <script src="js/teach/concept.js?v=20261125b1"></script>
 </body>
 </html>

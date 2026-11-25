@@ -402,3 +402,9 @@ the first whose concept machine comes on, then only a tap changes him — with a
 moving beside him: team phase, his job, every machine on (the concept's in gold, with its detail);
 tap a line for its meaning. On the pitch: play/pause, a scrub bar over the recording, LIVE / Go
 live, a speed slider (⅛×–8×, never past live), the concept's title ⓘ and Exit.
+
+Since mig 1897/1899 his states are a list docked on the left, only the states that are ON, one name a
+row, tap for the meaning (his man and the numbers are in the popup), in three boxes: **Formation**
+(team phase, his place in the shape), **Style** (marking scheme, pressing distance, cover shadow —
+and "mark the opponent in his area"), **Actions** at the bottom (what he is doing; press, loose ball,
+double-team, recover, cover). The formation itself (4-2-3-1, his role) is not on the wire yet.

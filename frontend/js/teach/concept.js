@@ -108,20 +108,29 @@
 
   // ── his states as lines: team phase, his job, every machine that is on ──
   const MACHINE_KEY = { 1: 'scheme', 2: 'shadow', 3: 'pdist', 4: 'recover', 5: 'press', 6: 'chase', 7: 'double', 8: 'cover' };
+  // The boxes down the left (owner 11/25: "formation, stylle, then actions down bottom"): FORMATION = his
+  // team's phase and his place in the shape; STYLE = how we defend (marking scheme, pressing distance,
+  // cover shadow); ACTIONS = what he is doing (press, loose ball, double-team, recover, cover, his action).
+  const BOXES = ['formation', 'style', 'actions'];
+  const MACHINE_BOX = { scheme: 'style', shadow: 'style', pdist: 'style', recover: 'actions', press: 'actions', chase: 'actions', double: 'actions', cover: 'actions' };
+  const JOB_BOX = { hold_block: 'formation', support: 'formation', keeper: 'formation', mark_man: 'style',
+                    press_ball: 'actions', chase_ball: 'actions', double_team: 'actions', on_ball: 'actions', receive: 'actions', attack_box: 'actions', run_line: 'actions' };
+  const CONCEPT_BOX = { 'pressing-distance': 'style', 'cover-shadow': 'style', 'zonal-marking': 'style', 'direct-opponent': 'style', libero: 'style',
+                        recover: 'actions', 'close-down': 'actions', 'nearest-decides': 'actions', 'double-team': 'actions', cover: 'actions' };
   function rowsFor(t, slot) {
     const rows = [];
     const ph = at(logs.phase, t), phases = terms.filter((x) => x.kind === 'phase');
     const phase = ph ? phases[ph[teamOf(slot)]] : null;
-    rows.push({ id: 'team', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
+    rows.push({ id: 'team', box: 'formation', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
     const sl = at(logs.states, t), code = sl ? sl[slot] : null, st = code ? terms.find((x) => x.kind === 'state' && x.code === code) : null;
-    rows.push({ id: 'job', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });
+    rows.push({ id: 'job', box: JOB_BOX[code] || 'formation', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });
     // What he is DOING this moment (the engine's decision, BRAIN frame) and the concept his act plays.
     const br = at(logs.brain, t), e = br && br[slot];
     const dec = e ? terms.find((x) => x.kind === 'decision' && x.wire === e.why) : null;
-    if (dec) rows.push({ id: 'doing', k: say('tbl_doing'), v: dec.title, def: dec.definition || dec.note || '' });
+    if (dec) rows.push({ id: 'doing', box: 'actions', k: say('tbl_doing'), v: dec.title, def: dec.definition || dec.note || '' });
     if (e && e.concept !== NO && legend[e.concept]) {
       const kc = (tax.concepts || []).find((x) => x.id === e.concept);
-      rows.push({ id: 'using', k: say('tbl_using'), v: legend[e.concept].title, def: kc ? kc.definition || kc.cue || '' : '' });
+      rows.push({ id: 'using', box: CONCEPT_BOX[legend[e.concept].name] || 'style', k: say('tbl_using'), v: legend[e.concept].title, def: kc ? kc.definition || kc.cue || '' : '' });
     }
     const eng = at(logs.machines, t);
     const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
@@ -144,7 +153,7 @@
       }
       let def = s ? s.definition || '' : '';
       if (key === 'pdist' && e.state === 2) { const on = m && terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === 1); if (on) def = (on.definition || '') + ' ' + def; }
-      mrows.push({ id: 'm' + e.machine, key, m: true, c: conceptOn(e), k: m ? m.title : key, v: s ? s.title : '', man: key !== 'shadow' && e.other !== NO ? '#' + numOf(e.other) : '', other: e.other, d: detail, def: def || (m ? m.definition || '' : '') });
+      mrows.push({ id: 'm' + e.machine, key, box: MACHINE_BOX[key] || 'style', m: true, c: conceptOn(e), k: m ? m.title : key, v: s ? s.title : '', man: key !== 'shadow' && e.other !== NO ? '#' + numOf(e.other) : '', other: e.other, d: detail, def: def || (m ? m.definition || '' : '') });
     }
     mrows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
     return rows.concat(mrows);
@@ -271,14 +280,19 @@
       // Owner 11/25: "state, on (don't show if off) — that is it. then if you click a state it has popup
       // explaining". One row per state that is on: its name. A machine in a deeper state (stepping into
       // reach) is the machine's row, then the deeper state on its own row. Everything else is in the popup.
-      const tbl = document.createElement('table');
       // One name once: his action, the concept he plays and a machine can all be "Close down the man on the
-      // ball". The machine's row wins (its deeper state sits under it), so a single row with a machine's
-      // name or one of its state names is dropped.
+      // ball". The machine's row wins (its deeper state sits under it).
       const seen = new Set();
       for (const x of rows) if (x.m) { seen.add('m:' + x.k); if (x.v) seen.add('m:' + x.v); }
+      const tbls = {};
+      for (const bx of BOXES) {
+        const box = add(el, 'box box-' + bx, '');
+        add(box, 'bt', say('box_' + bx));
+        tbls[bx] = document.createElement('table'); box.appendChild(tbls[bx]);
+      }
       for (const x of rows) {
         if (!x.m && seen.has('m:' + x.v)) continue;
+        const tbl = tbls[x.box] || tbls.style;
         const lines = x.m && x.v && x.v !== 'On' ? [[x.id, x.k, ''], [x.id + ':s', x.v, ' sub']] : [[x.id, x.m ? x.k : x.v, '']];
         for (const [id, name, sub] of lines) {
           if (seen.has(name)) continue;
@@ -289,11 +303,11 @@
           const td = tr.insertCell(); td.className = 'val'; td.textContent = name || '—';
         }
       }
-      el.appendChild(tbl);
+      for (const bx of BOXES) if (!tbls[bx].rows.length) { const tr = tbls[bx].insertRow(); tr.className = 'none'; tr.insertCell().textContent = '—'; }
     }
     // Docked in the dark beside the pitch when there is room; else over the pitch's left edge (see-through).
     el.style.width = (side ? side - 16 : Math.min(340, W * 0.45)) + 'px';
-    el.style.maxHeight = (H - 50 - 64) + 'px';
+    el.style.height = (H - 50 - 64) + 'px';
   }
 
   // ── the controls ──
