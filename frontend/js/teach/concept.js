@@ -408,8 +408,9 @@
     // Line 1 says the brain in the panel's own words: team phase · his state · the concept he is
     // using in it. Line 2 is what this concept's picture shows (or the ball and the gap).
     const lay = layersAt(t, c.slot);
+    const awakeNow = machinesAt(t, c.slot);
     const cap1 = say('cap_layers', { num: numOf(c.slot), player: nameOf(c.slot), phase: lay.phase ? lay.phase.title : '—',
-                                     state: lay.state ? lay.state.title : '—', using: lay.concept ? lay.concept.title : say('brain_nothing') });
+                                     state: lay.state ? lay.state.title : '—', using: awakeNow.length ? awakeNow.map((m) => say('m_' + m.key)).join(' + ') : say('m_none') });
     let cap2 = l2;
     if (pairKind || showPairs) {
       const o = pairs ? pairs[c.slot] : NO;
@@ -480,6 +481,40 @@
     const cRow = cid != null ? ((tax.concepts || []).find((k) => k.id === cid) || { id: cid, title: legend[cid].title }) : null;
     return { phase: pi != null ? phases[pi] || null : null, phaseIndex: pi, state: st && st.state, decision: st && st.decision, concept: cRow };
   }
+  // ── the machines that are AWAKE (owner 11/25: "if state is 'off' i would not display it … maybe
+  // display the ones that are on?"). One machine per concept, asleep ("nothing to do") most of the
+  // time; several can be awake at once and they complement or fight. Until the engine runs them
+  // as real machines (docs/taxonomy-one-system.md, "Player brain as parallel machines"), each is
+  // read from what the engine already sends: his job state, the concept label of his act, his
+  // shadow. Order = the priority when they fight (copy row machine_order).
+  function machinesAt(t, slot) {
+    const lay = layersAt(t, slot), out = [];
+    const job = lay.state ? lay.state.code : '', cname = lay.concept && legend[lay.concept.id] ? legend[lay.concept.id].name : '';
+    const entries = brainAt(t), e = entries && entries[slot];
+    const [sa] = snaps.length ? snapAt(t) : [null];
+    const owner = sa ? sa.ball.owner : NO;
+    const num = (i) => '#' + numOf(i);
+    const pairs = pairsAt(t), man = pairs && pairs[slot] !== NO ? pairs[slot] : null;
+    if (cname === 'recover') out.push({ key: 'recover', state: say('m_recover_on') });
+    if (job === 'press_ball' || job === 'double_team') {
+      const carrier = owner !== NO && teamOf(owner) !== teamOf(slot) ? num(owner) : '';
+      out.push({ key: job === 'double_team' ? 'double' : 'press', state: say(job === 'double_team' ? 'm_double_on' : 'm_press_on', { man: carrier }) });
+    }
+    if (job === 'chase_ball') out.push({ key: 'chase', state: say('m_chase_on') });
+    if (job === 'mark_man') out.push({ key: 'mark', state: say('m_mark_on', { man: e && e.other !== NO ? num(e.other) : '' }) });
+    if (cname === 'cover') out.push({ key: 'cover', state: say('m_cover_on') });
+    const sv = shadowAt(t);
+    if (sv && !OURS_PHASES.has(lay.phaseIndex)) {
+      const m = sv.hidden[slot] >>> 0, h = [];
+      for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push(num(i));
+      if (cname === 'cover-shadow') out.push({ key: 'shadow', state: say('m_shadow_press', { man: sv.screen[teamOf(slot)] !== NO ? num(sv.screen[teamOf(slot)]) : '', list: h.join(', ') }) });
+      else if (h.length) out.push({ key: 'shadow', state: say('m_shadow_on', { list: h.join(', ') }) });
+    }
+    if (cname === 'pressing-distance') out.push({ key: 'pdist', state: say('m_pdist_on', { man: man != null ? num(man) : '' }) });
+    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
+    out.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
+    return out;
+  }
   function paintBrain(c, t) {
     const host = $('side-body');
     const pct = (k) => Math.max(0, Math.min(100, 100 * (k - c.from) / (c.to - c.from)));
@@ -489,7 +524,7 @@
     const man = pairs && pairs[c.slot] !== NO ? pairs[c.slot] : null;
     const r = reach && reach[c.slot];
     const status = conceptStatus(lay, r);
-    const key = [at, lay.phase && lay.phase.code, lay.state && lay.state.code, lay.concept && lay.concept.id, man, pairs && pairs.how ? pairs.how[c.slot] : '', r ? r.in + '' + Math.round(r.reach || 0) : '', status.kind, [...openDefs].join(',')].join('|');
+    const key = [at, lay.phase && lay.phase.code, lay.state && lay.state.code, lay.concept && lay.concept.id, machinesAt(t, c.slot).map((m) => m.key + m.state).join(';'), (brainAt(t) || [])[c.slot] ? brainAt(t)[c.slot].why : '', man, pairs && pairs.how ? pairs.how[c.slot] : '', r ? r.in + '' + Math.round(r.reach || 0) : '', status.kind, [...openDefs].join(',')].join('|');
     if (key === machineKey) return;
     const fresh = !host.dataset.clip || host.dataset.clip !== String(at) || machineKey.split('|').pop() !== [...openDefs].join(',');
     machineKey = key;
@@ -498,7 +533,15 @@
     const set = (id, text) => { const n = host.querySelector('#' + id); if (n) n.textContent = text; };
     set('bn-phase', lay.phase ? lay.phase.title : '—');
     set('bn-state', lay.state ? lay.state.title : '—');
-    set('bn-using', lay.concept ? lay.concept.title : say('brain_nothing'));
+    const awake = machinesAt(t, c.slot);
+    const an = host.querySelector('#bn-using');
+    if (an) {
+      an.textContent = '';
+      if (!awake.length) an.textContent = say('m_none');
+      awake.forEach((m, i) => { const d = document.createElement('div'); d.className = 'awake'; d.textContent = say('m_' + m.key) + ': ' + m.state; if (i === 0 && awake.length > 1) { const w = document.createElement('small'); w.className = 'wins'; w.textContent = say('m_wins'); d.appendChild(w); } an.appendChild(d); });
+    }
+    const en = brainAt(t), ee = en && en[c.slot], dd = ee ? terms.find((x) => x.kind === 'decision' && x.wire === ee.why) : null;
+    set('bn-action', dd ? dd.title : '—');
     const how = pairs && pairs.how ? pairs.how[c.slot] : null;
     const knows = [];
     if (man != null) knows.push(say('brain_knows_man', { man: numOf(man), player: nameOf(man), how: how === 'matchup' ? say('pair_matchup', { num: numOf(c.slot), man: numOf(man) }) : how === 'battle' ? say('pair_battle') : say('pair_nearest') }));
@@ -553,7 +596,7 @@
     // RIGHT NOW + the status line
     add('div', 'status', '', host).id = 'bn-status';
     const now = add('div', 'nowbox');
-    for (const [id, lab] of [['bn-phase', 'brain_lane_team'], ['bn-state', 'brain_lane_him'], ['bn-using', 'brain_lane_using'], ['bn-knows', 'brain_lane_knows']]) {
+    for (const [id, lab] of [['bn-phase', 'brain_lane_team'], ['bn-state', 'brain_lane_him'], ['bn-action', 'brain_lane_action_short'], ['bn-using', 'brain_lane_awake'], ['bn-knows', 'brain_lane_knows']]) {
       const row = add('div', 'nowrow', null, now);
       add('span', 'nowlab', say(lab), row);
       add('span', 'nowval', '', row).id = id;
@@ -605,8 +648,17 @@
     group('brain_group_action');
     const decisions = terms.filter((x) => x.kind === 'decision');
     lane(say('brain_lane_action', { n: decisions.length }), segsOf((k) => { const en = brainAt(k), e2 = en && en[c.slot]; const d = e2 ? decisions.find((x) => x.wire === e2.why) : null; return d ? d.title : ''; }), (g) => hue(g.text));
-    group('brain_group_using');
-    lane(say('brain_lane_using_full'), segsOf((k) => { const l = layersAt(k, c.slot); return l.concept ? l.concept.title : ''; }), (g) => (/pressing distance|shadow/i.test(g.text) && concept && g.text === concept.title ? '#b8860b' : hue(g.text)));
+    // The machines that woke up in this example — a row each, a bar only while it was awake.
+    group('brain_group_awake');
+    const seen = new Map();
+    for (const b of brains) {
+      if (b.tick < c.from || b.tick > c.to) continue;
+      for (const m of machinesAt(b.tick, c.slot)) if (!seen.has(m.key)) seen.set(m.key, true);
+    }
+    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
+    const keys = [...seen.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+    if (!keys.length) add('div', 'lane-s', say('m_none_example'), lanes);
+    for (const k of keys) lane(say('m_' + k), segsOf((tk) => { const m = machinesAt(tk, c.slot).find((x) => x.key === k); return m ? m.state : ''; }), () => hue(k));
     group('brain_group_reads');
     lane(say('brain_lane_man'), segsOf((k) => { const p = pairsAt(k); return p && p[c.slot] !== NO ? '#' + numOf(p[c.slot]) + (p.how && p.how[c.slot] === 'battle' ? ' ⚔' : '') : ''; }), () => 'rgba(255,255,255,.18)');
     if (reachKind) lane(say('brain_lane_reach'), segsOf((k) => { const rr = reachAt(k); const x = rr && rr[c.slot]; return x && x.reach != null ? say(x.in ? 'brain_in' : 'brain_out') : ''; }), (g) => (g.text === say('brain_in') ? '#2e8b45' : '#a83248'));

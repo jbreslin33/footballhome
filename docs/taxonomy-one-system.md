@@ -306,3 +306,39 @@ already in reach). Caption line 1 on the pitch says the same three layers.
 Before the `STATES` frame the page guessed his state from his order of the tick; with the
 ball loose that showed "We have the ball" beside "Hold his place in the defensive shape".
 The guess is now only a fallback before the first frame arrives.
+
+## Player brain as parallel machines (agreed 11/25; the viewer shows it first, mig 1882)
+
+Owner, 2026-11-25: "i could be in state of 352(212) as the 1 in middle of 212. could be in man
+marking direct opponent … but also could be in my team has ball … i could be in cover shadow
+and press or recover … because my line was broken" · "formation is one state, man marking or
+zonal is another state machine? then under each there needs to be a state machine for diff
+concepts and maybe multi state machines? like cover shadow or not. maybe there is no cover
+shadow to do" · "wouldn't it be better ai coding to use state machines" · "can we allow for
+temp 'extra' state machine at a certain level? … they would complement or fight each other but
+run" · "ok yes like it. but for display … display the ones that are on".
+
+**The design** (statecharts: machines in parallel, each in exactly one state):
+
+- Team: **phase** (6).
+- Per player: **formation** (his place; in it / stepped out / getting back), **marking scheme**
+  (man-oriented / zonal / free, with the scheme's own steps under it), **one machine per
+  concept**, and the **action** his body does (with commitment, not re-chosen every tick).
+- Every concept machine has a **"nothing to do"** state and sleeps there until its trigger
+  (no shadow to do, line not broken …). Several can be awake at once — that is how two
+  same-level things happen together. A machine is *created* for a moment only for situations
+  tied to particular players (a 2-v-1); everything else is always there, asleep.
+- Awake machines **propose** (a spot, a facing, a pace, maybe a body action); a **resolver**
+  combines them: complementing proposals merge (the cover shadow bends the press's path),
+  conflicting ones go by priority, and the body does one action at a time. Priority, proposed
+  11/25 and the owner's to change (copy row `machine_order`): recover › press › loose ball ›
+  double-team › marking › cover shadow › cover › pressing distance › (hold formation).
+
+**Today** the engine has the team phase, ONE job machine per player (11 states) and an action
+chosen fresh every tick; the rest is squeezed into the job state (the "concept" label flickers
+inside "Hold his place"). The clip viewer already draws the agreed stack, read from what the
+engine sends: core (team phase, his job, his action) and only the machines AWAKE now, in
+priority order, the first marked as the one that wins if they fight; the timeline has a row per
+machine that woke up in the example. **Next:** the engine runs real machines, one at a time
+with the game session — marking scheme and cover shadow first — each checked against the
+real-match data.
