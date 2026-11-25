@@ -8,231 +8,111 @@
   <meta http-equiv="Expires" content="0">
   <title>Football Home</title>
   <link rel="icon" href="/images/lighthouse-1893-crest.png" type="image/png">
-  <!-- The concept clip viewer (js/teach/concept.js): examples of ONE concept cut from the live
-       match and shown so it cannot be missed. Opened from 🧬 Taxonomy's 🎮. Every word is
-       message_templates kind 'taxonomy' (clip_*), or the concept's own catalogue row. -->
+  <!-- The concept viewer (js/teach/concept.js): the live match, whole pitch, every player with his
+       states written small beside him; a scrub bar to go back and forward, a speed slider. Opened
+       from 🧬 Taxonomy's 🎮. Every word is message_templates kind 'taxonomy', or the concept's own
+       catalogue row. Owner 11/25: "all controls on pitch and transpearnet. the iptch should be whole
+       screen. exit is transparent on pitch". -->
   <style>
     :root { color-scheme: dark; --bg: #0b1c3d; --panel: #10264f; --line: rgba(255,255,255,.16); --ink: #f4f6fb; --dim: #a9b6d3; --gold: #ffcc00; }
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 14px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; }
-    #app { display: grid; height: 100dvh; grid-template-rows: auto auto minmax(0, 1fr) auto; }
-    header { padding: calc(env(safe-area-inset-top, 0px) + 10px) 14px 4px; }
-    header h1 { margin: 0; font-size: 20px; }
-    #cue { color: var(--ink); font-size: 14px; max-width: 90ch; margin-top: 2px; }
-    #bar { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 8px 14px; }
-    #which { font-weight: 800; color: var(--gold); font-size: 15px; }
-    #dots { display: inline-flex; gap: 5px; }
-    .dot { width: 14px; height: 14px; padding: 0; border-radius: 50%; border: 2px solid var(--dim); background: transparent; cursor: pointer; }
-    .dot.on { background: var(--gold); border-color: var(--gold); }
-    button { font: 700 13px system-ui, sans-serif; color: var(--ink); background: rgba(255,255,255,.12); border: 1px solid var(--line); border-radius: 16px; padding: 8px 14px; cursor: pointer; }
-    button:disabled { opacity: .35; cursor: default; }
-    button.on { background: var(--ink); color: #0b1c3d; }
-    #replay { background: var(--gold); color: #0b1c3d; border-color: var(--gold); }
-    #replay.pulse { box-shadow: 0 0 0 4px rgba(255,204,0,.35); }
-    #rates { display: inline-flex; gap: 4px; align-items: center; }
-    #rates button { padding: 6px 10px; }
-    #speed { color: var(--dim); font-size: 12px; }
-    main { display: grid; min-height: 0; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-    #stage { position: relative; min-height: 0; }
-    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-    /* the pitch to the right of the brain column, so the column never covers it */
-    #pitchbox { position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
-
-    #phases { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; pointer-events: none; }
-    #phases span { padding: 5px 14px; border-radius: 14px; font-weight: 800; font-size: 13px; letter-spacing: .06em; background: rgba(8,12,18,.7); color: var(--dim); }
-    #phases span.on { background: var(--gold); color: #0b1c3d; font-size: 16px; }
-    #loader { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 40px));
-              background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
-    #load-title { font-weight: 800; font-size: 16px; margin-bottom: 10px; }
-    #load-track { height: 14px; border-radius: 7px; background: rgba(255,255,255,.14); overflow: hidden; }
-    #load-bar { height: 100%; width: 0; background: var(--gold); border-radius: 7px; transition: width .25s linear; }
-    #load-bar.wait { background: repeating-linear-gradient(45deg, var(--gold) 0 12px, #d9ad00 12px 24px); background-size: 34px 34px; animation: load-slide 1s linear infinite; }
-    @keyframes load-slide { to { background-position: 34px 0; } }
-    @media (prefers-reduced-motion: reduce) { #load-bar.wait { animation: none; } }
-    #load-pct { text-align: right; font-weight: 800; color: var(--gold); min-height: 1.3em; font-variant-numeric: tabular-nums; }
-    #load-steps { list-style: none; margin: 4px 0 0; padding: 0; font-size: 13px; color: var(--dim); }
-    #load-steps li.on { color: var(--ink); font-weight: 700; }
-    #load-steps li.done { color: #9fe39f; }
-    /* The brain ON the pitch: a label that follows the player, joined to him by a line, one line per
-       state; tap a line for what it means (owner 11/25: "needs to be way clearer the states. one line
-       each right next to pitch actually should follow player around lol with line") */
-    #strip { position: absolute; left: 0; top: 0; z-index: 3; background: rgba(6,10,18,.93); border: 2px solid var(--gold);
-             border-radius: 10px; padding: 5px 6px; font-size: 14px; box-shadow: 0 6px 18px rgba(0,0,0,.45); max-width: 46%; }
-    #strip:empty { display: none; }
-    /* the state table (owner 11/25: "name the state the player is in a table field … use other fields") */
-    #strip table { border-collapse: collapse; font-size: 13.5px; }
-    #strip th { text-align: left; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding: 1px 8px 3px 4px; }
-    #strip td { padding: 2px 8px 2px 4px; white-space: nowrap; vertical-align: baseline; }
-    #strip tr.row { cursor: pointer; display: table-row; }
-    #strip tr.row:hover td { background: rgba(255,255,255,.08); }
-    #strip td.lab { font-size: 12.5px; font-weight: 800; color: var(--gold); text-transform: none; letter-spacing: 0; }   /* the concept's title as written ("details!") */
-    #strip tr.m td.lab { color: #7cfc8a; }
-    #strip td.val { font-weight: 700; }
-    #strip td.val::after { content: ' ⓘ'; opacity: .5; font-weight: 400; font-size: 11px; }
-    #strip td.man { font-weight: 800; color: #ff9fb2; }
-    #strip td.det { color: var(--dim); font-size: 12.5px; }
-    #strip tr.first-m td { border-top: 1px solid var(--line); }
-    #strip.see td.val, #strip.see td.lab, #strip.see td.man, #strip.see td.det, #strip.see th { text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
-    /* on the player: see-through, so the players under it stay visible; the words keep a dark edge to read */
-    #strip.see { background: rgba(6,10,18,.28); border-color: rgba(255,204,0,.55); box-shadow: none; }
-    #strip.see .val, #strip.see .lab { text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
-    #strip .row { display: flex; gap: 8px; align-items: baseline; padding: 2px 4px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
-    #strip .row:hover { background: rgba(255,255,255,.08); }
-    #strip .lab { flex: 0 0 auto; min-width: 66px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
-    #strip .row.m .lab { color: #7cfc8a; }
-    #strip .row.k .lab { color: #9fc3ff; }
-    #strip .val { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
-    #strip .def { flex-basis: 100%; white-space: normal; font-size: 12px; line-height: 1.4; color: var(--dim); padding: 2px 0 4px; max-width: 360px; }
-    #strip .row.open { flex-wrap: wrap; }
-    #strip .st { font-weight: 800; padding: 3px 6px; border-radius: 6px; margin-bottom: 3px; font-size: 12px; white-space: nowrap; }
-    #strip .st.on { background: #2e8b45; color: #fff; }
-    #strip .st.off { background: rgba(255,255,255,.1); }
-    #strip .st.read { background: #2c4a7a; color: #fff; }
-    #strip .head { font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--dim); padding: 4px 4px 1px; white-space: nowrap; }
-    #strip .head:not(:first-child) { border-top: 1px solid var(--line); margin-top: 3px; padding-top: 5px; }
-    #strip .sep { border-top: 1px solid var(--line); margin: 3px 0; }
-    #caption, #legend, header[hidden] { display: none !important; }
-    /* BARE (owner 11/25 "get rid of everything … i need states, replay button, title of concept and if clicked popup def" ·
-       "game should be rest of screen"): the bar is the title and Replay; the game is the rest. */
-    #side, #phases, #time, #which, #dots, #prev, #next, #pause, #rates, #pairs, #loader-hide { display: none !important; }
-    main { grid-template-columns: minmax(0, 1fr) !important; }
-    #app { grid-template-rows: auto minmax(0, 1fr) !important; }   /* header and footer are hidden: the bar, then the game */
-    #bar { gap: 10px; }
-    #ctitle { all: unset; cursor: pointer; font-size: 17px; font-weight: 800; color: var(--gold); margin-right: 6px; }
-    #ctitle::after { content: ' ⓘ'; font-weight: 400; font-size: 13px; opacity: .7; }
-    /* side panel, compact */
-    #side button.ctitle { all: unset; cursor: pointer; display: block; font-size: 17px; font-weight: 800; color: var(--gold); margin: 0 0 4px; }
-    #side button.ctitle::after { content: ' ⓘ'; font-weight: 400; font-size: 13px; opacity: .7; }
-    #side .room { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 8px; margin-bottom: 8px; }
-    #side .room.on { background: #7cfc8a; color: #0b1c3d; }
-    #side .room.live { background: rgba(255,255,255,.12); }
-    #side .states { border-top: 1px solid var(--line); padding-top: 6px; }
-    #side .row { display: flex; gap: 8px; align-items: baseline; padding: 3px 4px; border-radius: 6px; cursor: pointer; }
-    #side .row:hover { background: rgba(255,255,255,.07); }
-    #side .row .lab { flex: 0 0 64px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--gold); }
-    #side .row .val { font-weight: 700; font-size: 14px; }
-    #side .row .val::after, #strip .val::after { content: ' ⓘ'; opacity: .5; font-weight: 400; font-size: 11px; }
-    /* one popup for every meaning */
-    #popup { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
-    #popup[hidden] { display: none; }
-    #popup .box { position: relative; width: min(560px, calc(100vw - 32px)); max-height: 80vh; overflow: auto; background: var(--panel);
-                  border: 1px solid var(--gold); border-radius: 14px; padding: 16px 18px; font-size: 14px; line-height: 1.5; }
-    #popup h3 { margin: 0 30px 8px 0; color: var(--gold); font-size: 16px; }
-    #popup-x { position: absolute; top: 8px; right: 10px; font-size: 20px; line-height: 1; padding: 2px 8px; }
-    #popup .key { color: var(--dim); font-size: 12.5px; }
-    .explain h3.big { font-size: 13px; margin: 14px 0 4px; color: var(--gold); text-transform: uppercase; letter-spacing: .06em; }
-    .explain p { margin: 2px 0 6px; font-size: 13px; }
-    .explain .dim, .explain .lab { color: var(--dim); font-size: 12px; }
-    .explain .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-    .explain pre.src { margin: 0 0 10px; padding: 8px; border-radius: 8px; background: #071226; color: #e2e8f0; overflow: auto; max-height: 40vh;
-                       font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.45; white-space: pre; }
-    #popup details.more summary { cursor: pointer; font-weight: 800; color: var(--gold); }   /* one place for states (the label), one for the concept (the panel) */
-    #side .ctitle { font-size: 18px; margin: 2px 0 6px; color: var(--gold); }
-    #side .cdef { font-size: 14px; line-height: 1.5; margin: 0 0 10px; }
-    #side .measure { font-size: 14px; font-weight: 700; line-height: 1.45; margin: 0 0 10px; min-height: 1.4em; }
-    #side .key { font-size: 12px; color: var(--dim); line-height: 1.45; border-top: 1px solid var(--line); padding-top: 8px; }
-    #side details.more { margin-top: 10px; }
-    #side details.more summary { cursor: pointer; font-weight: 800; font-size: 12.5px; color: var(--gold); }
-    #caption { position: absolute; left: 50%; transform: translateX(-50%); bottom: 32px; width: min(900px, calc(100% - 28px)); text-align: center;
-               background: rgba(8,12,18,.86); border-radius: 12px; padding: 8px 14px; pointer-events: none; }
-    #cap1 { font-weight: 800; font-size: 16px; color: var(--gold); }
-    #cap2 { font-size: 14px; margin-top: 2px; }
-    #caption:has(#cap1:empty) { display: none; }
-    #time { position: absolute; left: 14px; right: 14px; bottom: 12px; height: 10px; border-radius: 5px; background: rgba(255,255,255,.18); overflow: hidden; }
-    #time::before { content: ''; position: absolute; top: 0; bottom: 0; left: var(--from, 0%); width: calc(var(--to, 0%) - var(--from, 0%)); background: rgba(255,204,0,.75); }
-    #time::after { content: ''; position: absolute; top: -3px; bottom: -3px; left: var(--now, 0%); width: 3px; background: #fff; }
-    #side { padding: 10px 14px; max-height: 36dvh; overflow: auto; border-top: 1px solid var(--line); background: var(--panel); }
-    #side h2 { margin: 0 0 4px; font-size: 14px; }
-    #side h3 { margin: 8px 0 3px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); }
-    #side ul { list-style: none; margin: 0; padding: 0; }
-    #side li { padding: 3px 8px; border-radius: 8px; font-size: 13px; color: var(--dim); }
-    #side li.on { background: var(--gold); color: #0b1c3d; font-weight: 800; }
-    #side li.done { color: var(--ink); }
-    #side li small { display: block; font-weight: 400; font-size: 11.5px; opacity: .85; }
-    #side .now { font-weight: 800; font-size: 15px; }
-    #side .note { color: var(--dim); font-size: 11.5px; margin-top: 12px; }
-    #side .def-t { font-weight: 800; color: var(--gold); font-size: 15px; margin-bottom: 6px; }
-    #side .tap { cursor: pointer; }
-    #side .tap::after { content: ' ⓘ'; opacity: .55; font-weight: 400; font-size: 11px; }
-    #side .tap > small::after, #side .tap > small { cursor: default; }
-    #side .con { font-size: 11.5px; font-style: italic; opacity: .9; }
-    #side li.on .con { opacity: 1; }
-    #side ul.two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
-    #side ul.two li { font-size: 12px; }
-    #side small { display: block; font-weight: 400; font-size: 12px; line-height: 1.4; margin-top: 3px; color: var(--ink); }
-    #side li.on small { color: #0b1c3d; }
-    /* 🧠 the brain panel: one lane per layer (owner 11/24 "crystal clear what is going on in the brain") */
-    #side .howto { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin: 6px 0 10px; background: rgba(255,255,255,.04); }
-    #side .howto-t { font-weight: 800; color: var(--gold); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 4px; }
-    #side .howto-l { font-size: 12.5px; line-height: 1.45; margin: 3px 0; }
-    #side .status { font-weight: 800; font-size: 14px; padding: 8px 10px; border-radius: 10px; margin-bottom: 8px; }
-    #side .status.on { background: #2e8b45; color: #fff; }
-    #side .status.off { background: rgba(255,255,255,.1); color: var(--ink); }
-    #side .status.read { background: #2c4a7a; color: #fff; }
-    #side .nowbox { display: grid; gap: 4px; margin-bottom: 10px; }
-    #side .nowrow { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: baseline; }
-    #side .nowlab { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
-    #side .nowval { font-size: 14px; font-weight: 700; }
-    #side .lanes { position: relative; margin: 4px 0 6px; }
-    #side .lane-g { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); margin: 10px 0 2px; padding-top: 6px; border-top: 1px solid var(--line); }
-    #side .lane-g:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
-    #side .lane { padding: 4px 0 6px; }
-    #side .lane-l { font-size: 12.5px; font-weight: 800; color: var(--ink); margin-bottom: 3px; }
-    #side .lane-t { position: relative; height: 22px; background: rgba(255,255,255,.04); border-radius: 5px; }
-    #side .seg { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; font-size: 10.5px; font-weight: 700; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 4px 0; box-sizing: border-box; }
-    #side .awake { font-size: 13.5px; font-weight: 700; }
-    #side .awake small.wins { display: inline; margin-left: 6px; font-weight: 400; font-size: 11px; color: var(--dim); }
-    #side .lane-s { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.35; }
-    #side .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; left: calc(100% * var(--nowf, 0)); pointer-events: none; opacity: .8; }
-    #side details.all { margin-top: 10px; }
-    #side details.all summary { cursor: pointer; font-weight: 800; font-size: 12.5px; color: var(--gold); }
-    #side-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
-    #side-tabs button { padding: 6px 12px; }
-    #side h3.big { font-size: 13px; margin-top: 16px; }
-    #side h3.big:first-child { margin-top: 0; }
-    #side p { margin: 2px 0 6px; font-size: 13px; }
-    #side .lab { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 6px; }
-    #side .dim { color: var(--dim); font-size: 12px; }
-    #side .state { font-weight: 800; color: var(--gold); }
-    #side .code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-    #side .pre { white-space: pre-wrap; }
-    #side button.small { padding: 5px 10px; font-size: 12px; margin: 2px 0 8px; }
-    #side pre.src { margin: 0 0 10px; padding: 8px; border-radius: 8px; background: #071226; color: #e2e8f0; overflow: auto; max-height: 46vh;
-                    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.45; white-space: pre; }
-    footer { padding: 6px 14px calc(env(safe-area-inset-bottom, 0px) + 8px); color: var(--dim); font-size: 12px; }
-    @media (min-width: 900px) {
-      main { grid-template-columns: minmax(0, 1fr) clamp(320px, 34vw, 480px); grid-template-rows: minmax(0, 1fr); }   /* the brain's lanes need the width */
-      #side { max-height: none; border-top: 0; border-left: 1px solid var(--line); }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink); font: 14px/1.4 -apple-system, system-ui, "Segoe UI", sans-serif; }
+    #app { position: fixed; left: 0; top: 0; width: 100vw; height: 100dvh; }
+    /* The pitch runs side to side, as a pitch is shaped. A phone held upright gets it turned, to be
+       tilted ("orient field side to side. even on phone as they would tilt phone"). */
+    @media (orientation: portrait) {
+      #app { width: 100dvh; height: 100vw; transform-origin: top left; transform: rotate(90deg) translateY(-100%); }
     }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+    /* every control sits ON the pitch, see-through */
+    .glass { background: rgba(6,10,18,.32); border: 1px solid rgba(255,255,255,.22); border-radius: 14px; color: var(--ink);
+             text-shadow: 0 0 3px #000, 0 1px 2px #000; backdrop-filter: none; }
+    button.glass { font: 800 13px system-ui, sans-serif; padding: 6px 12px; cursor: pointer; }
+    button.glass:hover { background: rgba(6,10,18,.5); }
+    #ctitle { position: absolute; left: 10px; top: calc(env(safe-area-inset-top, 0px) + 8px); font-size: 15px; color: var(--gold); }
+    #ctitle::after { content: ' ⓘ'; font-weight: 400; font-size: 12px; opacity: .75; }
+    #exit { position: absolute; right: 10px; top: calc(env(safe-area-inset-top, 0px) + 8px); }
+    #hint { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 12px); transform: translateX(-50%); font-size: 12px; color: var(--dim);
+            text-shadow: 0 0 3px #000, 0 1px 2px #000; pointer-events: none; white-space: nowrap; }
+
+    #controls { position: absolute; left: 10px; right: 10px; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+                display: flex; align-items: center; gap: 10px; padding: 6px 10px; }
+    #playbtn { flex: 0 0 auto; width: 38px; padding: 6px 0; font-size: 15px; }
+    #clock { flex: 0 0 auto; font: 700 12px system-ui, sans-serif; font-variant-numeric: tabular-nums; min-width: 52px; text-align: center; }
+    #live { flex: 0 0 auto; font-size: 11px; padding: 4px 9px; }
+    #live.on { color: #ff5c5c; border-color: rgba(255,92,92,.6); }
+    #speedbox { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; font: 700 12px system-ui, sans-serif; }
+    #speedval { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; margin: 0; height: 26px; cursor: pointer; }
+    input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.35); }
+    input[type=range]::-moz-range-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,.35); }
+    input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5.5px; border-radius: 50%; background: var(--gold); border: 0; }
+    input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: var(--gold); border: 0; }
+    #scrub { flex: 1 1 auto; min-width: 80px; }
+    #scrub::-webkit-slider-runnable-track { background: linear-gradient(to right, rgba(255,204,0,.8) var(--p, 0%), rgba(255,255,255,.3) var(--p, 0%)); }
+    #speed { width: 110px; }
+
+    #loader { position: absolute; left: 50%; top: 45%; transform: translate(-50%, -50%); width: min(420px, calc(100% - 40px)); padding: 12px 16px; }
+    #loader[hidden] { display: none; }
+    #load-title { font-weight: 800; margin-bottom: 8px; }
+    #load-track { height: 10px; border-radius: 5px; background: rgba(255,255,255,.18); overflow: hidden; }
+    #load-bar { height: 100%; width: 0; background: var(--gold); transition: width .25s linear; }
+    #load-pct { text-align: right; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+    /* one popup for every meaning: the concept, a player's states */
+    /* HIS label: the states of the one player we follow, see-through, moving with him */
+    #tag { position: absolute; left: 0; top: 0; z-index: 3; padding: 4px 7px; border-radius: 10px; background: rgba(6,10,18,.28);
+           border: 1px solid rgba(255,204,0,.55); font-size: 12px; line-height: 1.35; pointer-events: auto; max-width: 46%;
+           text-shadow: 0 0 3px #000, 0 0 3px #000, 0 1px 2px #000; }
+    #tag:empty { display: none; }
+    #tag .ln { display: flex; gap: 6px; white-space: nowrap; cursor: pointer; align-items: baseline; }
+    #tag .ln:hover { background: rgba(255,255,255,.1); border-radius: 5px; }
+    #tag .k { font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); min-width: 44px; }
+    #tag .v { font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+    #tag .ln.m .k { color: #7cfc8a; }
+    #tag .ln.c .v { color: var(--gold); font-weight: 800; }
+    #tag .x { color: #ff9fb2; font-weight: 800; }
+    #tag .d { color: var(--dim); font-size: 11px; }
+    #popup { position: absolute; inset: 0; background: rgba(0,0,0,.5); display: grid; place-items: center; z-index: 20; }
+    #popup[hidden] { display: none; }
+    #popup .box { position: relative; max-width: min(640px, calc(100% - 32px)); max-height: 86%; overflow: auto; background: var(--panel);
+                  border: 1px solid var(--gold); border-radius: 14px; padding: 14px 16px; font-size: 14px; line-height: 1.5; }
+    #popup h3 { margin: 0 34px 8px 0; color: var(--gold); font-size: 16px; }
+    #popup-x { position: absolute; top: 8px; right: 10px; font: 700 18px system-ui; line-height: 1; padding: 3px 9px; color: var(--ink);
+               background: rgba(255,255,255,.12); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; }
+    #popup table { border-collapse: collapse; font-size: 13.5px; }
+    #popup th { text-align: left; font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); padding: 1px 10px 3px 2px; }
+    #popup td { padding: 3px 10px 3px 2px; vertical-align: baseline; }
+    #popup tr.row { cursor: pointer; }
+    #popup tr.row:hover td { background: rgba(255,255,255,.07); }
+    #popup td.lab { font-weight: 800; color: var(--gold); font-size: 12.5px; }
+    #popup tr.m td.lab { color: #7cfc8a; }
+    #popup td.val { font-weight: 700; }
+    #popup td.val::after { content: ' ⓘ'; opacity: .5; font-weight: 400; font-size: 11px; }
+    #popup td.man { font-weight: 800; color: #ff9fb2; }
+    #popup td.det { color: var(--dim); font-size: 12.5px; }
+    #popup tr.def td { color: var(--dim); font-size: 12.5px; padding: 0 4px 6px 12px; white-space: normal; }
   </style>
 </head>
 <body>
   <div id="app">
-    <header hidden><h1 id="title"></h1><div id="cue"></div></header>
-    <div id="bar">
-      <span id="which"></span>
-      <span id="dots"></span>
-      <button id="prev" type="button"></button>
-      <button id="replay" type="button"></button>
-      <button id="next" type="button"></button>
-      <button id="pause" type="button"></button>
-      <span id="rates"><span id="speed"></span></span>
+    <canvas id="pitch"></canvas>
+    <button id="ctitle" class="glass" type="button"></button>
+    <div id="hint"></div>
+    <div id="tag"></div>
+    <button id="exit" class="glass" type="button"></button>
+    <div id="controls" class="glass">
+      <button id="playbtn" class="glass" type="button">⏸</button>
+      <input id="scrub" type="range" min="0" max="1" step="1" value="0">
+      <span id="clock"></span>
+      <button id="live" class="glass" type="button"></button>
+      <span id="speedbox"><input id="speed" type="range" min="0" max="100" step="1" value="50"><span id="speedval"></span></span>
     </div>
-    <main>
-      <div id="stage">
-        <div id="pitchbox"><canvas id="pitch"></canvas></div>
-        <div id="phases"><span id="ph-before"></span><span id="ph-doing"></span><span id="ph-after"></span></div>
-        <div id="loader" hidden><div id="load-title"></div><div id="load-track"><div id="load-bar"></div></div><div id="load-pct"></div><ul id="load-steps"></ul></div>
-        <div id="strip"></div>
-        <div id="caption"><div id="cap1"></div><div id="cap2"></div></div>
-        <div id="time"></div>
-      </div>
-      <aside id="side"><div id="side-body"></div></aside>
-      <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
-    </main>
-    <footer id="legend"></footer>
+    <div id="loader" class="glass"><div id="load-title"></div><div id="load-track"><div id="load-bar"></div></div><div id="load-pct"></div></div>
+    <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
   </div>
   <script src="js/game/wire.js?v=20261125machines"></script>
-  <script src="js/teach/concept.js?v=20261125t"></script>
+  <script src="js/teach/concept.js?v=20261125w3"></script>
 </body>
 </html>

@@ -1,27 +1,23 @@
-// frontend/js/teach/concept.js — the concept clip viewer (concept.html?concept=<game_concepts id>).
+// frontend/js/teach/concept.js — the concept viewer (concept.html?concept=<game_concepts id>).
 //
-// Owner 2026-11-24, of the first popup (the live 3D match with one small label): "its trash
-// lol. can't tell what is happening. it should show the concept so clear!!!" · "i should be
-// able to hit replay to see the example again. it should be clear what example i am on" ·
-// "i should be able run it in slow mo … or sped up".
+// Owner 2026-11-25, of the clip viewer it replaces: "states need to be writtin small next to player but
+// able to see through it. it should follow plaeyr" · "we need youutbe like bar to slide the game forward
+// or back to see exacatly what statest the plaeyrs is in and the situation on field" · "get rid of one on
+// side" · "orient field side to side. even on phone as they would tilt phone" · "we need also controls
+// for play speed. a slider bar will do" · "all controls on pitch and transpearnet. the iptch should be
+// whole screen" · "stop switching player focus. show all players on screen at all times" · "don't jump
+// to diff players its disorietning" · "the players involved for US should ahve state machnines over them
+// transparent. in the case of stey in prssing dist its only one player we are focuesed on. also we need
+// to see his statemmacne theat he is defendiing or transigint to def etc." · "just show entire pitch and
+// goals and make plaeyrs a little smaller".
 //
-// It watches the ordinary live match (the whole engine, nothing staged) and keeps the last
-// two minutes. Each time a player plays the concept for a second or more, the 3 s before to
-// 5 s after becomes an EXAMPLE. An example plays once, then stops, and is shown so the
-// concept cannot be missed:
-//
-//   • top-down, zoomed on the player and the man (or ball) he is acting on, turned so his
-//     side attacks up the screen;
-//   • him ringed in gold, his man ringed in red with the metres between them, where he is
-//     heading, and his path as a trail; everyone else dimmed;
-//   • BEFORE / DOING IT / AFTER across the top, a freeze at the moment it starts, and a
-//     timeline with the doing-it part filled in;
-//   • ↺ Replay, ‹ Previous / Next ›, "Example 2 of 5", and ⅛× … 2×.
-//
-// The concept's name and cue are its catalogue row (GET /api/tactic-plans/taxonomy); every
-// other word is message_templates kind 'taxonomy', tiers clip_* (mig 1842).
-// The engine names a concept per player only for the acts in game_engine_acts; for any
-// other concept there is nothing to cut on and the page says so.
+// So: the live match (the concept's own room of the full engine when the sim keeps the concept at zero),
+// recorded; the WHOLE pitch, goals included, fixed — no camera, no cutting; every player drawn. ONE of
+// our players is followed: his states in a see-through label that moves with him — his team's phase,
+// his job, and every machine that is on (the concept's own in gold). He stays the one followed until a
+// different player is tapped. Below, on the pitch: play/pause, a scrub bar over everything recorded,
+// LIVE, and a speed slider. Tap a line of his label for what it means; tap the concept's title for its
+// definition. The clip viewer before this is in git (8b30c21c and earlier).
 
 (function () {
   'use strict';
@@ -29,997 +25,289 @@
   const token = localStorage.getItem('token');
   if (!token) { location.href = '/'; return; }
   const CONCEPT = Number(new URLSearchParams(location.search).get('concept')) || 0;
-  // Owner 11/25: "get rid of everything lol and i will ask for stuff to come back. i need states,
-  // replay button, title of concept and if clicked popup def" · "game should be rest of screen".
-  // BARE switches off every overlay drawn on the pitch but the two rings (him, his man) and the
-  // label with his states; the code stays, so a piece comes back by name when he asks.
-  const BARE = true;
-  const NO = 255, BEFORE = 90, AFTER = 150, MIN_HELD = 5, KEEP = 3600;   // ticks at 30 Hz; brain frames at 5 Hz
-  const SPEEDS = [[0.125, '⅛×'], [0.25, '¼×'], [0.5, '½×'], [1, '1×'], [2, '2×']];
+  const NO = 255, KEEP = 30 * 60 * 10, US = 0;   // 10 minutes of snapshots at 30 Hz; "us" = the home side
 
   const copy = new Map();
   const say = (tier, tokens = {}) => (copy.get(tier) || '').replace(/\{(\w+)\}/g, (_, k) => (tokens[k] == null ? '' : String(tokens[k])));
-  let concept = null, reported = null;   // the catalogue row; whether the engine names this concept at all
-  let terms = [], legend = {};            // the engine's vocabulary (game_engine_terms); concept id → { name, title }
-  let tax = {}, sideTab = 'machine';     // the taxonomy payload; which side tab is open
+  let concept = null, terms = [], tax = {}, legend = {};
 
-  // ── the live match, remembered ──
-  const snaps = [], brains = [], pairsLog = [], reachLog = [];   // [{tick, players, ball}], [{tick, entries}], [{tick, pairs}], [{tick, reach}]
-  let showPairs = false, pairKind = false;        // draw who has whom; this concept IS direct opponents (examples = a change of man)
-  let reachKind = false;                          // this concept IS pressing distance (examples = a pass to a man somebody has)
-  let shadowKind = false;                         // this concept IS the cover shadow (examples = a man closing the ball down)
-  const shadowLog = [];                           // [{tick, v: { body, screen, hidden }}]
-  const machineLog = [];                          // [{tick, v: per slot [{machine, state, other}]}] — the engine's concept machines (frame MACHINES)
-  const stateLog = [];                            // [{tick, v: [state code per slot]}] — his own machine, from the engine (frame STATES)
-  const phaseLog = [];                            // [{tick, v: [home phase, away phase]}] — the team machine (frame PHASE)
-  const ownKind = () => pairKind;    // the page cuts its own examples; the engine's per-player label is not needed
-  let hello = null, roster = [], kits = [null, null], teamNames = ['', ''];
-  const pending = new Map();              // slot → { onset, held, last }  (playing it now)
-  const clips = [];                       // { slot, onset, from, to, until }
-  let at = -1;                            // the example on screen
-  const play = { t: 0, rate: 0.5, on: false, holdUntil: 0, last: 0, ended: false };
-
+  // ── the match, recorded ──
+  const snaps = [];                                   // {tick, players, ball}
+  const logs = { machines: [], states: [], phase: [], reach: [], shadow: [], brain: [] };   // {tick, v}
+  let hello = null, roster = [], kits = [null, null];
   const teamOf = (i) => (hello && i < hello.slotCount / 2 ? 0 : 1);
   const numOf = (i) => (roster[i] && roster[i].number) || '';
   const nameOf = (i) => (roster[i] && roster[i].name) || ('#' + numOf(i));
+  const lastTick = () => (snaps.length ? snaps[snaps.length - 1].tick : 0);
+  const firstTick = () => (snaps.length ? snaps[0].tick : 0);
+  const push = (log, v) => { log.push({ tick: lastTick(), v }); if (log.length > KEEP / 6 + 50) log.shift(); };
 
-  // A concept the real sim keeps at zero is watched in a private room of the full engine with it
-  // switched on for both sides (game/src/main.cpp, game_concept_dials) — owner 11/24: "i am not
-  // seeing the concept ran?". The room is the viewer's own; it starts paused at a goal kick, so
-  // the page plays it.
-  const roomOn = () => reachKind || shadowKind;
+  // The concept's own room when the real sim keeps it at zero (game/src/main.cpp, game_concept_dials).
+  let roomOn = false;
   function connect() {
+    load.step = Math.max(load.step, 1);
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
-    if (load.step < 1) { load.step = 1; load.since = performance.now(); }
-    const path = roomOn() ? `/game?trainer=1&concept=${CONCEPT}` : '/game';
-    const ws = new WebSocket(`${scheme}://${location.host}${path}`, `fh-game.v2.bearer.${token}`);
+    const ws = new WebSocket(`${scheme}://${location.host}${roomOn ? `/game?trainer=1&concept=${CONCEPT}` : '/game'}`, `fh-game.v2.bearer.${token}`);
     ws.binaryType = 'arraybuffer';
     ws.onmessage = (ev) => {
       const view = new DataView(ev.data), T = GameWire.FrameType;
       for (const f of GameWire.decodeFrame(ev.data)) {
-        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); ws.send(GameWire.encodeBrainWatch(true)); if (roomOn()) ws.send(GameWire.encodeSpeed(100)); }
+        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); ws.send(GameWire.encodeBrainWatch(true)); if (roomOn) ws.send(GameWire.encodeSpeed(100)); }
         else if (f.type === T.SNAPSHOT) {
           const s = GameWire.decodeSnapshot(view, f.payloadAt);
-          snaps.push({ tick: s.tick, players: s.players, ball: s.ball, restart: s.match ? s.match.restartTeam : NO });
+          snaps.push({ tick: s.tick, players: s.players, ball: s.ball });
           if (snaps.length > KEEP) snaps.shift();
+          if (load.step < 2) load.step = 2;
         } else if (f.type === T.ROSTER) roster = GameWire.decodeRoster(view, f.payloadAt, f.payloadLen);
-        else if (f.type === T.TEAMS) { const tm = GameWire.decodeTeams(view, f.payloadAt, f.payloadLen); kits = tm.kits; teamNames = [tm.home, tm.away]; }
-        else if (f.type === T.CONCEPT_LEGEND) { legend = GameWire.decodeConceptLegend(view, f.payloadAt); reported = !!legend[CONCEPT] || shadowKind; paintBar(); }
-        else if (f.type === T.BRAIN) see(GameWire.decodeBrain(view, f.payloadAt));
-        else if (f.type === T.PAIRS) seePairs(GameWire.decodePairs(view, f.payloadAt));
-        else if (f.type === T.MACHINES) { machineLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeMachines(view, f.payloadAt) }); if (machineLog.length > KEEP / 6 + 20) machineLog.shift(); }
-        else if (f.type === T.STATES) { stateLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeStates(view, f.payloadAt) }); if (stateLog.length > KEEP / 6 + 20) stateLog.shift(); }
-        else if (f.type === T.PHASE) { phaseLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodePhase(view, f.payloadAt) }); if (phaseLog.length > KEEP / 6 + 20) phaseLog.shift(); }
-        else if (f.type === T.SHADOW) { shadowLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, v: GameWire.decodeShadow(view, f.payloadAt) }); if (shadowLog.length > KEEP / 6 + 20) shadowLog.shift(); }
-        else if (f.type === T.REACH) { reachLog.push({ tick: snaps.length ? snaps[snaps.length - 1].tick : 0, reach: GameWire.decodeReach(view, f.payloadAt) }); if (reachLog.length > KEEP / 6 + 20) reachLog.shift(); }
+        else if (f.type === T.TEAMS) kits = GameWire.decodeTeams(view, f.payloadAt, f.payloadLen).kits;
+        else if (f.type === T.CONCEPT_LEGEND) legend = GameWire.decodeConceptLegend(view, f.payloadAt);
+        else if (f.type === T.MACHINES) { push(logs.machines, GameWire.decodeMachines(view, f.payloadAt)); pickFollow(); }
+        else if (f.type === T.STATES) push(logs.states, GameWire.decodeStates(view, f.payloadAt));
+        else if (f.type === T.PHASE) push(logs.phase, GameWire.decodePhase(view, f.payloadAt));
+        else if (f.type === T.REACH) push(logs.reach, GameWire.decodeReach(view, f.payloadAt));
+        else if (f.type === T.SHADOW) push(logs.shadow, GameWire.decodeShadow(view, f.payloadAt));
+        else if (f.type === T.BRAIN) push(logs.brain, GameWire.decodeBrain(view, f.payloadAt));
       }
     };
     ws.onclose = () => setTimeout(connect, 2000);
   }
 
-  // Every BRAIN frame: who is playing the concept; a spell of a second or more becomes an
-  // example once its five seconds after have been played.
-  function see(entries) {
-    const tick = snaps.length ? snaps[snaps.length - 1].tick : 0;
-    brains.push({ tick, entries });
-    if (brains.length > KEEP / 6 + 20) brains.shift();
-    entries.forEach((e, slot) => {
-      // The cover shadow is seen on whoever closes the ball down — whether or not his side presses on it.
-      const doing = !ownKind() && e && (e.concept === CONCEPT || (shadowKind && legend[e.concept] && legend[e.concept].name === 'close-down')), p = pending.get(slot);
-      if (doing && !p) pending.set(slot, { onset: tick, held: 1, last: tick, open: true });
-      else if (doing && p && p.open) { p.held++; p.last = tick; }
-      else if (!doing && p) p.open = false;
-    });
-    for (const [slot, p] of pending) {
-      if (tick < p.onset + AFTER) continue;
-      pending.delete(slot);
-      const clear = !clips.length || p.onset > clips[clips.length - 1].onset + 45;   // not the same moment twice
-      if (p.held >= MIN_HELD && clear && snaps.length && snaps[0].tick <= p.onset - BEFORE) {
-        clips.push({ slot, onset: p.onset, from: p.onset - BEFORE, to: p.onset + AFTER, until: Math.min(p.last, p.onset + AFTER) });
-        if (clips.length > 20) { clips.shift(); if (at > 0) at--; }
-        if (at < 0) { load.done = true; paintLoad(); show(0); }   // the first one plays by itself
-        else paintBar();
-      }
-    }
+  // Binary search: the newest entry at or before tick t.
+  function at(log, t) {
+    let lo = 0, hi = log.length - 1, best = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (log[m].tick <= t) { best = m; lo = m + 1; } else hi = m - 1; }
+    return best >= 0 ? log[best].v : null;
   }
-
-  // Direct opponents (PAIRS, with every BRAIN frame): who has whom. For the direct-opponent
-  // concept itself an example is a CHANGE of man — the temporary opponent — once the new pair
-  // has held a second.
-  const switching = new Map();   // slot → { onset, from, to, held }
-  function seePairs(pairs) {
-    const tick = snaps.length ? snaps[snaps.length - 1].tick : 0, prev = pairsLog.length ? pairsLog[pairsLog.length - 1].pairs : null;
-    pairsLog.push({ tick, pairs });
-    if (pairsLog.length > KEEP / 6 + 20) pairsLog.shift();
-    if (!pairKind || !prev) return;
-    pairs.forEach((o, slot) => {
-      const sw = switching.get(slot);
-      if (sw) { if (o === sw.to) sw.held++; else switching.delete(slot); }
-      else if (o !== NO && prev[slot] !== NO && prev[slot] !== undefined && o !== prev[slot]) switching.set(slot, { onset: tick, from: prev[slot], to: o, held: 1 });
-    });
-    for (const [slot, sw] of switching) {
-      if (tick < sw.onset + AFTER) continue;
-      switching.delete(slot);
-      const clear = !clips.length || sw.onset > clips[clips.length - 1].onset + 45;
-      if (sw.held >= MIN_HELD && clear && snaps.length && snaps[0].tick <= sw.onset - BEFORE) {
-        clips.push({ slot, onset: sw.onset, from: sw.onset - BEFORE, to: sw.onset + AFTER, until: sw.onset + 60, was: sw.from, now: sw.to });
-        if (clips.length > 20) { clips.shift(); if (at > 0) at--; }
-        if (at < 0) { load.done = true; paintLoad(); show(0); } else paintBar();
-      }
-    }
-  }
-  // Pressing distance (REACH, with every PAIRS frame): how far each defender can get while a
-  // pass to his man travels. In the concept's room he acts on it (the act press_distance), so an
-  // example is a spell of him stepping off his place to keep his man in reach.
-  function reachAt(t) {
-    let best = null;
-    for (const p of reachLog) { if (p.tick <= t) best = p; else break; }
-    return best ? best.reach : null;
-  }
-  function shadowAt(t) {
-    let best = null;
-    for (const p of shadowLog) { if (p.tick <= t) best = p; else break; }
-    return best ? best.v : null;
-  }
-  function pairsAt(t) {
-    let best = null;
-    for (const p of pairsLog) { if (p.tick <= t) best = p; else break; }
-    return best ? best.pairs : null;
-  }
-
-  // ── getting the first example: a progress bar that says which step it is on (owner 11/24:
-  // "we need to show a progress bar on the loading of the video"). The wait is real — the
-  // concept has to happen in the live match, then five more seconds have to be played.
-  const load = { step: 0, since: performance.now(), done: false };   // 0 words · 1 connecting · 2 watching · 3 recording
-  function paintLoad() {
-    const box = $('loader');
-    if (load.done || (reported === false && !ownKind())) { box.hidden = true; return; }
-    box.hidden = false;
-    // The furthest-on spell being recorded, if there is one.
-    const tick = snaps.length ? snaps[snaps.length - 1].tick : 0;
-    let rec = null;
-    for (const [slot, p] of pending) if (p.held >= MIN_HELD && (!rec || p.onset < rec.onset)) rec = { slot, onset: p.onset };
-    for (const [slot, p] of switching) if (p.held >= MIN_HELD && (!rec || p.onset < rec.onset)) rec = { slot, onset: p.onset };
-    if (hello && snaps.length && load.step < 2) { load.step = 2; load.since = performance.now(); }
-    const step = rec ? 3 : load.step;
-    const secs = Math.round((performance.now() - load.since) / 1000);
-    const recPct = rec ? Math.max(0, Math.min(1, (tick - rec.onset) / AFTER)) : 0;
-    const pct = step === 0 ? 5 : step === 1 ? 15 : step === 2 ? 30 : Math.round(30 + 70 * recPct);
-    $('load-bar').style.width = pct + '%';
-    $('load-bar').classList.toggle('wait', step === 2);
-    $('load-pct').textContent = step === 2 ? '' : pct + '%';
-    $('load-title').textContent = say('load_title');
-    const rows = [[0, say('load_words')], [1, say('load_connect')], [2, say('load_watch', { s: step === 2 ? secs : '' })],
-                  [3, rec ? say('load_record', { num: numOf(rec.slot), player: nameOf(rec.slot), s: Math.max(0, ((AFTER - (tick - rec.onset)) / 30)).toFixed(0) }) : say('load_record_wait')]];
-    const ul = $('load-steps');
-    ul.textContent = '';
-    for (const [i, text] of rows) { const li = document.createElement('li'); li.className = i < step ? 'done' : i === step ? 'on' : ''; li.textContent = (i < step ? '✓ ' : i === step ? '▸ ' : '· ') + text; ul.appendChild(li); }
-  }
-  setInterval(paintLoad, 250);
-
-  // ── the example on screen ──
-  function show(i) {
-    if (!clips.length) return;   // nothing yet: a key pressed while it is still watching
-    at = Math.max(0, Math.min(clips.length - 1, i));
-    const c = clips[at];
-    Object.assign(play, { t: c.from, on: true, holdUntil: 0, last: performance.now(), ended: false, held: false });
-    cam.set = false; strip.x = null; machineKey = ''; $('side-body').dataset.clip = '';
-    // The ticks where his state changes inside this example: the clip holds a beat at each.
-    c.changes = [];
-    let lastKey = null;
-    for (const b of brains) {
-      if (b.tick < c.from || b.tick > c.to) continue;
-      const [sa] = snapAt(b.tick), s2 = stateOf(b.entries[c.slot], c.slot, sa.ball.owner), k = s2 && s2.state ? s2.state.code : '';
-      if (lastKey !== null && k !== lastKey) c.changes.push(b.tick);
-      lastKey = k;
-    }
-    play.flash = null;
-    paintBar();
-  }
-  function snapAt(t) {     // the two snapshots round tick t, and how far between
+  function snapAt(t) {
     let lo = 0, hi = snaps.length - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (snaps[m].tick <= t) lo = m; else hi = m - 1; }
     const a = snaps[lo], b = snaps[Math.min(lo + 1, snaps.length - 1)];
     return [a, b, b.tick > a.tick ? Math.max(0, Math.min(1, (t - a.tick) / (b.tick - a.tick))) : 0];
   }
-  function brainAt(t) {
-    let best = null;
-    for (const b of brains) { if (b.tick <= t) best = b; else break; }
-    return best ? best.entries : null;
-  }
   const lerp = (a, b, k) => a + (b - a) * k;
-  function posAt(t, slot) { const [a, b, k] = snapAt(t); return { x: lerp(a.players[slot].x, b.players[slot].x, k), y: lerp(a.players[slot].y, b.players[slot].y, k) }; }
 
-  // ── drawing ──
-  const cv = $('pitch'), g = cv.getContext('2d');
-  let W = 0, H = 0;
-  function layout() {
-    const box = cv.parentElement.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = box.width; H = box.height;
-    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // ── the concept's machine: the engine machine (or marking-scheme state) titled as the concept ──
+  let cMachine = null, cState = null;   // wire numbers
+  function findConceptMachine() {
+    if (!concept) return;
+    const m = terms.find((x) => x.kind === 'machine' && x.title === concept.title);
+    if (m) { cMachine = m.wire; return; }
+    const s = terms.find((x) => x.kind === 'machine_state' && x.title === concept.title);
+    if (s) { const p = terms.find((x) => x.kind === 'machine' && x.code === s.parent); if (p) { cMachine = p.wire; cState = s.wire; } }
   }
-  const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
-  const ink = (n) => (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150 ? '#0b1c3d' : '#ffffff';
-  const kitOf = (i, keeper) => { const t = teamOf(i), k = kits[t] && kits[t].shirt != null ? kits[t].shirt : (t ? 0xeef1f6 : 0x14326e); return keeper ? (t ? 0xff8a1f : 0x2e9e44) : k; };
-  const cam = { x: 0, y: 0, span: 40, set: false };
+  const conceptOn = (e) => e.machine === cMachine && (cState == null || e.state === cState);
 
-  function frame(now) {
-    requestAnimationFrame(frame);
-    if (!W) layout();
-    g.fillStyle = '#0b1c3d'; g.fillRect(0, 0, W, H);
-    const c = clips[at];
-    if (!c || !snaps.length || !hello) return;
-
-    // Time: once through, a freeze where it starts, then stop on the last frame.
-    const dt = Math.min(0.1, (now - play.last) / 1000); play.last = now;
-    if (play.on && now >= play.holdUntil) {
-      const was = play.t;
-      play.t += dt * 30 * play.rate;
-      if (!play.held && was < c.onset && play.t >= c.onset) { play.t = c.onset; play.held = true; play.holdUntil = now + 1100; }
-      for (const ch of c.changes || []) if (was < ch && play.t >= ch && ch !== c.onset) { play.t = ch; play.holdUntil = now + 800; play.flash = now + 1800; break; }
-      if (play.held && play.t === c.onset && !play.flash) play.flash = now + 2200;
-      if (play.t >= c.to) { play.t = c.to; play.on = false; play.ended = true; paintBar(); }
-    }
-    const t = play.t, me = posAt(t, c.slot), entries = brainAt(t), e = entries && entries[c.slot];
-    const doing = t >= c.onset && t <= c.until + 6;
-    const [sa] = snapAt(t);
-    const ballP = (() => { const [a, b, k] = snapAt(t); return { x: lerp(a.ball.x, b.ball.x, k), y: lerp(a.ball.y, b.ball.y, k), owner: a.ball.owner }; })();
-    // Who he is acting on: the man his orders name, else their man on the ball, else the ball.
-    const pairs = pairsAt(t);
-    let other = e && e.other !== NO && e.other < sa.players.length ? e.other : null;
-    if (pairKind) other = pairs && pairs[c.slot] !== NO ? pairs[c.slot] : (t < c.onset ? c.was : c.now);
-    if (reachKind && pairs && pairs[c.slot] !== NO) other = pairs[c.slot];
-    if (other == null && ballP.owner !== NO && teamOf(ballP.owner) !== teamOf(c.slot)) other = ballP.owner;
-    const op = other != null ? posAt(t, other) : ballP;
-
-    // His side attacks up the screen: off his keeper's end at this moment.
-    let sg = teamOf(c.slot) === 0 ? 1 : -1;
-    for (let i = 0; i < sa.players.length; i++) if (teamOf(i) === teamOf(c.slot) && (sa.players[i].flags & 2)) { sg = sa.players[i].x < 0 ? 1 : -1; break; }
-    // Camera: between him and what he is acting on, wide enough for both and where he is heading.
-    const tx = e ? e.tx : me.x, ty = e ? e.ty : me.y;
-    const cx = (me.x + op.x) / 2, cy = (me.y + op.y) / 2;
-    const span = Math.max(26, 2.4 * Math.hypot(me.x - op.x, me.y - op.y), 2.4 * Math.hypot(me.x - tx, me.y - ty));
-    if (!cam.set) { Object.assign(cam, { x: cx, y: cy, span, set: true }); }
-    cam.x += (cx - cam.x) * 0.08; cam.y += (cy - cam.y) * 0.08; cam.span += (Math.min(span, 70) - cam.span) * 0.06;
-    const sc = Math.min(W, H) / cam.span;
-    const P = (x, y) => [W / 2 + sg * (y - cam.y) * sc, H / 2 - sg * (x - cam.x) * sc];
-    const line = (x0, y0, x1, y1) => { const a = P(x0, y0), b = P(x1, y1); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); };
-
-    // Pitch.
-    g.save();
-    g.beginPath(); g.rect(0, 0, W, H); g.clip();
-    const corners = [P(-52.5, -34), P(52.5, -34), P(52.5, 34), P(-52.5, 34)];
-    g.fillStyle = '#2f6b2a'; g.beginPath(); corners.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
-    g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.5; g.setLineDash([]);
-    g.stroke();
-    line(0, -34, 0, 34);
-    { const c0 = P(0, 0); g.beginPath(); g.arc(c0[0], c0[1], 9.15 * sc, 0, Math.PI * 2); g.stroke(); }
-    for (const s of [-1, 1]) for (const [d, w] of [[16.5, 20.16], [5.5, 9.16]]) { const gx = 52.5 * s; line(gx, -w, gx - d * s, -w); line(gx - d * s, -w, gx - d * s, w); line(gx - d * s, w, gx, w); }
-
-    // Who has whom: a thin line from each defender to his direct opponent.
-    if (!BARE && showPairs && pairs) {
-      g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 1.5; g.setLineDash([3, 5]);
-      pairs.forEach((o, i) => { if (o !== NO && i !== c.slot && o < sa.players.length) { const a = posAt(t, i), b = posAt(t, o); line(a.x, a.y, b.x, b.y); } });
-      g.setLineDash([]);
-    }
-    // Pressing distance: his reach as a ring round him — how far he can get while a pass to his
-    // man travels, right now. Green = his man is inside it.
-    let reachNow = null;
-    if (!BARE && reachKind && other != null) {
-      const live = reachAt(t), lr = live && live[c.slot];
-      if (lr && lr.reach != null) {
-        const gap = Math.hypot(me.x - op.x, me.y - op.y), ok = gap <= lr.reach, q = P(me.x, me.y);
-        reachNow = { m: lr.reach, gap, ok };
-        g.beginPath(); g.arc(q[0], q[1], lr.reach * sc, 0, Math.PI * 2);
-        g.fillStyle = ok ? 'rgba(124,252,138,.16)' : 'rgba(255,92,122,.14)'; g.fill();
-        g.lineWidth = 3; g.strokeStyle = ok ? '#7cfc8a' : '#ff5c7a'; g.stroke();
-      }
-    }
-    // The cover shadow: the wedge of pitch behind him as seen from the ball — a ground pass into
-    // it goes through him. Who stands in it is the engine's own read (frame SHADOW).
-    let shade = null;
-    if (!BARE && shadowKind && doing && ballP.owner !== NO && teamOf(ballP.owner) !== teamOf(c.slot)) {   // only while he is closing down a man who has it
-      const sv = shadowAt(t), d = Math.hypot(me.x - ballP.x, me.y - ballP.y);
-      if (sv && d > 0.5) {
-        const mask = sv.hidden[c.slot] >>> 0, scr = sv.screen[teamOf(c.slot)];
-        shade = { hidden: [], screen: scr !== NO && scr < sa.players.length ? scr : null };
-        for (let i = 0; i < sa.players.length; i++) if ((mask >>> i) & 1) shade.hidden.push(i);
-        const h = Math.atan2(me.y - ballP.y, me.x - ballP.x), a = Math.asin(Math.min(1, sv.body / d)), R = 45;
-        const pt = (ang, r) => P(ballP.x + Math.cos(ang) * r, ballP.y + Math.sin(ang) * r);
-        const q = [pt(h - a, d), pt(h - a, R), pt(h + a, R), pt(h + a, d)];
-        g.beginPath(); q.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath();
-        g.fillStyle = 'rgba(6,10,20,.55)'; g.fill();
-        g.strokeStyle = 'rgba(255,204,0,.7)'; g.lineWidth = 1.5; g.setLineDash([6, 6]); g.stroke(); g.setLineDash([]);
-        if (shade.screen != null && !shade.hidden.includes(shade.screen)) {   // the pass he should be blocking, and is not
-          const r = posAt(t, shade.screen);
-          g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = 2; g.setLineDash([4, 6]); line(ballP.x, ballP.y, r.x, r.y); g.setLineDash([]);
-        }
-      }
-    }
-    // His path so far in this example: where he has come from.
-    g.fillStyle = 'rgba(255,204,0,.55)';
-    if (!BARE) for (let k = c.from; k < t; k += 6) { const p = posAt(k, c.slot), q = P(p.x, p.y); g.beginPath(); g.arc(q[0], q[1], 2.5, 0, Math.PI * 2); g.fill(); }
-    // Where he is heading.
-    if (!BARE && doing && Math.hypot(tx - me.x, ty - me.y) > 0.8) {
-      g.strokeStyle = '#ffcc00'; g.lineWidth = 2.5; g.setLineDash([7, 6]); line(me.x, me.y, tx, ty); g.setLineDash([]);
-      const q = P(tx, ty); g.beginPath(); g.arc(q[0], q[1], 0.9 * sc, 0, Math.PI * 2); g.stroke();
-    }
-    let gapAt = null;
-    // The gap between him and the man he is acting on, in metres.
-    if (!BARE && other != null) {
-      g.strokeStyle = 'rgba(255,92,122,.9)'; g.lineWidth = 2; line(me.x, me.y, op.x, op.y);
-      gapAt = P((me.x + op.x) / 2, (me.y + op.y) / 2);
-    }
-    // Everyone: dim, but him and his man.
-    const r = Math.max(11, 1.05 * sc);
-    for (let i = 0; i < sa.players.length; i++) {
-      const p = posAt(t, i), q = P(p.x, p.y), lead = i === c.slot || i === other, star = lead || (shade && (shade.hidden.includes(i) || shade.screen === i)), col = kitOf(i, !!(sa.players[i].flags & 2));
-      g.globalAlpha = star ? 1 : 0.32;
-      g.beginPath(); g.arc(q[0], q[1], r, 0, Math.PI * 2); g.fillStyle = hex(col); g.fill();
-      g.lineWidth = 1.5; g.strokeStyle = 'rgba(0,0,0,.55)'; g.stroke();
-      g.fillStyle = ink(col); g.font = `800 ${Math.round(r)}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(numOf(i), q[0], q[1] + 0.5);
-      g.globalAlpha = 1;
-      if (lead) {
-        g.lineWidth = 4; g.strokeStyle = i === c.slot ? '#ffcc00' : '#ff5c7a';
-        g.beginPath(); g.arc(q[0], q[1], r + 6, 0, Math.PI * 2); g.stroke();
-      }
-    }
-    { const q = P(ballP.x, ballP.y); g.beginPath(); g.arc(q[0], q[1], Math.max(5, 0.4 * sc), 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 2; g.strokeStyle = '#111'; g.stroke(); }
-    // What each of the two is doing, written on him (the state for the player; the decision for his man).
-    const st = (() => { const l = layersAt(t, c.slot); return l.state ? { state: l.state } : stateOf(e, c.slot, ballP.owner); })();
-    const tag = (pos, text, fg, bg, below) => {
-      if (!text) return;
-      const q = P(pos.x, pos.y);
-      g.font = '800 14px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const w = g.measureText(text).width + 14, y = q[1] + (below ? r + 22 : -(r + 22));
-      g.fillStyle = bg; g.fillRect(q[0] - w / 2, y - 12, w, 24);
-      g.fillStyle = fg; g.fillText(text, q[0], y + 1);
-    };
-    if (gapAt) {   // the metres between them, drawn last so nothing covers it; beside the line when they are close
-      const d = Math.hypot(me.x - op.x, me.y - op.y), text = d.toFixed(1) + ' m';
-      if (d * sc < 6 * r) gapAt[1] -= 3.2 * r;
-      g.font = '800 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      const w = g.measureText(text).width + 12; g.fillStyle = 'rgba(8,12,18,.9)'; g.fillRect(gapAt[0] - w / 2, gapAt[1] - 12, w, 24);
-      g.fillStyle = '#ff9fb2'; g.fillText(text, gapAt[0], gapAt[1] + 1);
-    }
-    const flashing = play.flash && now < play.flash;
-    // (his own state is in the label that follows him — placeStrip)
-    // (no state tag on his man: states live only in the label that follows the player)
-    if (shade) {   // who is in his shadow, and the pass left open
-      for (const i of shade.hidden) tag(posAt(t, i), say('shadow_hidden'), '#fff', 'rgba(6,10,20,.92)', false);
-      if (shade.screen != null && !shade.hidden.includes(shade.screen)) tag(posAt(t, shade.screen), say('shadow_open'), '#0b1c3d', '#ffffff', false);
-    }
-    if (!BARE && showPairs && pairs) {   // the spare man of the defending side and the man they leave free
-      const def = teamOf(c.slot);
-      const watched = new Set(pairs.filter((o, i) => o !== NO && teamOf(i) === def));
-      for (let i = 0; i < sa.players.length; i++) {
-        if (sa.players[i].flags & 2) continue;
-        if (teamOf(i) === def && pairs[i] === NO) tag(posAt(t, i), say('pairs_spare'), '#0b1c3d', '#9fe39f', false);
-        else if (teamOf(i) !== def && !watched.has(i)) tag(posAt(t, i), say('pairs_free'), '#0b1c3d', '#9fe39f', false);
-      }
-    }
-    {   // the pitch's box on screen, and what the label must not cover (his man, the ball)
-      const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
-      const keep = [P(op.x, op.y), P(ballP.x, ballP.y)];
-      placeStrip(P(me.x, me.y), r, keep, { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) });
-    }
-    g.restore();
-
-    // The caption: exactly what is happening, in words.
-    const gapNow = Math.hypot(me.x - op.x, me.y - op.y);
-    const before = Math.max(c.from, t - 15), mb = posAt(before, c.slot), ob = other != null ? posAt(before, other) : ballP;
-    const gapWas = Math.hypot(mb.x - ob.x, mb.y - ob.y), trend = gapWas - gapNow > 0.25 ? 'cap_closing' : gapNow - gapWas > 0.25 ? 'cap_opening' : 'cap_steady';
-    const l1 = st && st.state ? say('cap_line', { num: numOf(c.slot), player: nameOf(c.slot), state: st.state.title }) : '';
-    // Out of play is said out loud: the ball over the line with a restart waiting is the match, not a glitch.
-    const dead = sa.restart !== NO && sa.restart !== undefined;
-    const l2 = (dead ? say('cap_ball_dead', { team: teamNames[sa.restart] || '' })
-      : ballP.owner !== NO ? say('cap_ball_with', { num: numOf(ballP.owner), player: nameOf(ballP.owner) }) : say('cap_ball_loose'))
-      + (other != null ? '   ·   ' + say('cap_gap', { d: gapNow.toFixed(1), num: numOf(other) }) + ', ' + say(trend) : '');
-    // Line 1 says the brain in the panel's own words: team phase · his state · the concept he is
-    // using in it. Line 2 is what this concept's picture shows (or the ball and the gap).
-    const lay = layersAt(t, c.slot);
-    const awakeNow = machinesAt(t, c.slot);
-    const cap1 = say('cap_layers', { num: numOf(c.slot), player: nameOf(c.slot), phase: lay.phase ? lay.phase.title : '—',
-                                     state: lay.state ? lay.state.title : '—', using: awakeNow.length ? awakeNow.map((m) => say('m_' + m.key)).join(' + ') : say('m_none') });
-    let cap2 = l2;
-    if (pairKind || showPairs) {
-      const o = pairs ? pairs[c.slot] : NO;
-      const h = pairs && pairs.how ? pairs.how[c.slot] : null;
-      const why = h === 'matchup' ? say('pair_matchup', { num: numOf(c.slot), man: numOf(o) }) : h === 'battle' ? say('pair_battle') : h === 'nearest' ? say('pair_nearest') : '';
-      const who = o !== NO && o !== undefined ? say('cap_his_man', { num: numOf(o), player: nameOf(o) }) + (why ? '  (' + why + ')' : '') : say('cap_no_man');
-      if (pairKind) cap2 = t >= c.onset && t < c.onset + 75 ? who + '   ·   ' + say('cap_switch', { from: numOf(c.was), to: numOf(c.now) }) : who;
-    }
-    if (shadowKind && shade) {
-      const who = { num: numOf(c.slot), player: nameOf(c.slot) };
-      cap2 = shade.hidden.length ? say('cap_shadow', { ...who, list: shade.hidden.map((i) => '#' + numOf(i)).join(', ') })
-        : shade.screen != null ? say('cap_shadow_open', { ...who, man: numOf(shade.screen) }) : say('cap_shadow_none', who);
-    }
-    if (reachKind && reachNow) cap2 = say('cap_reach_live', { num: numOf(c.slot), player: nameOf(c.slot), man: numOf(other), gap: reachNow.gap.toFixed(1), reach: reachNow.m.toFixed(1), verdict: say(reachNow.ok ? 'reach_in' : 'reach_out') });
-    // The concept panel's two live lines: is he doing it (and why not), and the concept's numbers.
-    const stNow = conceptStatus(lay, reachAt(t) && reachAt(t)[c.slot]);
-    const ls = $('live-status'), lm = $('live-measure');
-    if (ls && stNow.text !== frame.l1) { frame.l1 = stNow.text; ls.textContent = stNow.text; ls.className = 'status ' + stNow.kind; }
-    if (lm && cap2 !== frame.l2) { frame.l2 = cap2; lm.textContent = cap2; }
-
-    // BEFORE / DOING IT / AFTER, and the timeline with the doing-it part filled in.
-    const phase = t < c.onset ? 'before' : doing ? 'doing' : 'after';
-    if (phase !== frame.phase || at !== frame.at) { frame.phase = phase; frame.at = at; paintPhase(phase); }
-    paintStrip(c, t);
-    const bar = $('time');
-    const pct = (k) => (100 * (k - c.from) / (c.to - c.from)).toFixed(2) + '%';
-    bar.style.setProperty('--from', pct(c.onset)); bar.style.setProperty('--to', pct(Math.min(c.until + 6, c.to))); bar.style.setProperty('--now', pct(t));
+  // ── the one player followed: ours, the first whose concept machine comes on; then only a tap moves it ──
+  const saved = localStorage.getItem('fh.concept.follow.' + CONCEPT);
+  let follow = saved != null && saved !== '' && Number.isFinite(Number(saved)) ? Number(saved) : -1;
+  function pickFollow() {
+    if (follow >= 0 || cMachine == null || !hello) return;
+    const v = logs.machines[logs.machines.length - 1].v;
+    for (let i = 0; i < v.length; i++) if (teamOf(i) === US && (v[i] || []).some(conceptOn)) { follow = i; return; }
   }
 
-  // ── his state machine, beside the pitch ──
-  // The match sends each man's DECISION (ai::Why, by its wire number) and the concept he is
-  // playing, not his state; game_engine_terms says which state a decision belongs to, and a
-  // "hold" is the block spot without the ball and support with it.
-  function stateOf(e, slot, owner) {
-    if (!e) return null;
-    const d = terms.find((x) => x.kind === 'decision' && x.wire === e.why);
-    if (!d) return null;
-    const ours = owner !== NO && teamOf(owner) === teamOf(slot);
-    const code = d.code === 'hold' && ours ? 'support' : d.parent;
-    return { decision: d, state: terms.find((x) => x.kind === 'state' && x.code === code) || null, ours };
-  }
-  // ── 🧠 the brain, beside the pitch ──
-  // Owner 11/24: "is he in 'stay in pressing distance' the whole time … we need a way to display
-  // the state machines and how many there are. i assume the hold position is a sub state machine
-  // or is it at same level? can you be in 2 states of same machine. we need this explained on the
-  // graphic" · "it needs to be crystal clear what is going on in the brain and what we are seeing".
-  //
-  // So the panel draws the layers the engine actually has, one LANE each across the example,
-  // with a playhead:
-  //   TEAM      one phase at a time, shared by all eleven (game_engine_terms kind phase)
-  //   HIM       one state at a time (kind state) — never two states of the same machine
-  //   USING     inside that state, none or one concept (the act the BRAIN feed names) — it
-  //             changes HOW he does the state, it is not a state of its own
-  //   KNOWS     reads, always running: his man, can he reach him, who is in his shadow — they
-  //             tell him things and decide nothing
-  // Then RIGHT NOW in words, and one line: is THIS concept active, and if not, why not.
-  let machineKey = '';
-  const openDefs = new Set();
-  const OURS_PHASES = new Set([0, 1, 4]);   // ai::Phase: in possession, attacking transition, our set piece
-  function logAt(log, t) { let best = null; for (const p of log) { if (p.tick <= t) best = p; else break; } return best ? best.v : null; }
-  // The three machines' answers for one player at one moment.
-  function layersAt(t, slot) {
-    const entries = brainAt(t), e = entries && entries[slot], [sa] = snaps.length ? snapAt(t) : [null];
-    // His state is the engine's own (STATES); the order-based guess only before that frame arrives.
-    const sl = logAt(stateLog, t), code = sl ? sl[slot] : null;
-    const real = code ? (terms.find((x) => x.kind === 'state' && x.code === code) || { code, title: code }) : null;
-    const st = real ? { state: real, decision: null } : (sa ? stateOf(e, slot, sa.ball.owner) : null);
-    const ph = logAt(phaseLog, t), pi = ph ? ph[teamOf(slot)] : null;
-    const phases = terms.filter((x) => x.kind === 'phase');
-    const cid = e && e.concept !== NO && legend[e.concept] ? e.concept : null;
-    const cRow = cid != null ? ((tax.concepts || []).find((k) => k.id === cid) || { id: cid, title: legend[cid].title }) : null;
-    return { phase: pi != null ? phases[pi] || null : null, phaseIndex: pi, state: st && st.state, decision: st && st.decision, concept: cRow };
-  }
-  // ── the machines that are AWAKE (owner 11/25: "if state is 'off' i would not display it … maybe
-  // display the ones that are on?"). One machine per concept, asleep ("nothing to do") most of the
-  // time; several can be awake at once and they complement or fight. Until the engine runs them
-  // as real machines (docs/taxonomy-one-system.md, "Player brain as parallel machines"), each is
-  // read from what the engine already sends: his job state, the concept label of his act, his
-  // shadow. Order = the priority when they fight (copy row machine_order).
-  // Every engine machine that is on for one player, as table rows (owner 11/25: "just name the state
-  // the player is in a table field. then if you want to editorialise who he is marking or whatever
-  // then use other fields"): the machine, the state's name, the man, the detail.
+  // ── his states as lines: team phase, his job, every machine that is on ──
   const MACHINE_KEY = { 1: 'scheme', 2: 'shadow', 3: 'pdist', 4: 'recover', 5: 'press', 6: 'chase', 7: 'double', 8: 'cover' };
-  function engineRows(t, slot) {
-    const eng = logAt(machineLog, t);
-    if (!eng) return null;
-    const num = (i) => (i != null && i !== NO ? '#' + numOf(i) : '');
-    const mt = (id) => terms.find((x) => x.kind === 'machine' && x.wire === id);
-    const stt = (id, st) => { const m = mt(id); return m ? terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === st) : null; };
-    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
+  function rowsFor(t, slot) {
     const rows = [];
-    for (const e of eng[slot] || []) {
-      const m = mt(e.machine), st = stt(e.machine, e.state), key = MACHINE_KEY[e.machine] || String(e.machine);
-      let state = st ? st.title : '', def = st ? st.definition || '' : '', detail = '';
+    const ph = at(logs.phase, t), phases = terms.filter((x) => x.kind === 'phase');
+    const phase = ph ? phases[ph[teamOf(slot)]] : null;
+    rows.push({ id: 'team', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
+    const sl = at(logs.states, t), code = sl ? sl[slot] : null, st = code ? terms.find((x) => x.kind === 'state' && x.code === code) : null;
+    rows.push({ id: 'job', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });
+    const eng = at(logs.machines, t);
+    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
+    const mrows = [];
+    for (const e of (eng && eng[slot]) || []) {
+      const m = terms.find((x) => x.kind === 'machine' && x.wire === e.machine);
+      const s = m ? terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === e.state) : null;
+      const key = MACHINE_KEY[e.machine] || String(e.machine);
+      let detail = '';
       if (key === 'pdist') {
-        const on = stt(3, 1);
-        if (e.state === 2 && on) def = (on.definition || '') + ' ' + (st.definition || '');
-        const rr = reachAt(t), r = rr && rr[slot];
+        const rr = at(logs.reach, t), r = rr && rr[slot];
         if (r && r.reach != null && e.other !== NO) {
           const a = posAt(t, slot), b = posAt(t, e.other);
           detail = say('tbl_reach', { gap: Math.hypot(a.x - b.x, a.y - b.y).toFixed(1), reach: r.reach.toFixed(1), verdict: say(r.in ? 'tbl_in' : 'tbl_out') });
         }
       }
       if (key === 'shadow') {
-        const sv = shadowAt(t);
+        const sv = at(logs.shadow, t);
         if (sv) { const mask = sv.hidden[slot] >>> 0, h = []; for (let i = 0; i < 32; i++) if ((mask >>> i) & 1) h.push('#' + numOf(i)); if (h.length) detail = say('tbl_hidden', { list: h.join(', ') }); }
       }
-      rows.push({ id: 'm:' + key, key, machine: m ? m.title : key, state, man: key === 'shadow' ? '' : num(e.other), detail, def: def || (m ? m.definition || '' : '') });
+      let def = s ? s.definition || '' : '';
+      if (key === 'pdist' && e.state === 2) { const on = m && terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === 1); if (on) def = (on.definition || '') + ' ' + def; }
+      mrows.push({ id: 'm' + e.machine, key, m: true, c: conceptOn(e), k: m ? m.title : key, v: s ? s.title : '', man: key !== 'shadow' && e.other !== NO ? '#' + numOf(e.other) : '', other: e.other, d: detail, def: def || (m ? m.definition || '' : '') });
     }
-    rows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
-    return rows;
+    mrows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
+    return rows.concat(mrows);
   }
-  function machinesAt(t, slot) {
-    const lay = layersAt(t, slot), out = [];
-    const job = lay.state ? lay.state.code : '', cname = lay.concept && legend[lay.concept.id] ? legend[lay.concept.id].name : '';
-    const entries = brainAt(t), e = entries && entries[slot];
-    const [sa] = snaps.length ? snapAt(t) : [null];
-    const owner = sa ? sa.ball.owner : NO;
-    const num = (i) => '#' + numOf(i);
-    const pairs = pairsAt(t), man = pairs && pairs[slot] !== NO ? pairs[slot] : null;
-    if (cname === 'recover') out.push({ key: 'recover', state: say('m_recover_on') });
-    if (job === 'press_ball' || job === 'double_team') {
-      const carrier = owner !== NO && teamOf(owner) !== teamOf(slot) ? num(owner) : '';
-      out.push({ key: job === 'double_team' ? 'double' : 'press', state: say(job === 'double_team' ? 'm_double_on' : 'm_press_on', { man: carrier }) });
-    }
-    if (job === 'chase_ball') out.push({ key: 'chase', state: say('m_chase_on') });
-    // The machines the engine runs (ai/concepts/Machines): the marking scheme, the cover shadow and
-    // pressing distance — read from MACHINES, not guessed. Passive states (watching his man, someone
-    // hidden behind him by where he stands) are reads, so they are in KNOWS, not here.
-    const eng = logAt(machineLog, t), mine = eng ? eng[slot] || [] : null;
-    const engm = (id) => (mine ? mine.find((x) => x.machine === id) : null);
-    const mterm = (id, st) => terms.find((x) => x.kind === 'machine_state' && x.wire === st && x.parent === (terms.find((y) => y.kind === 'machine' && y.wire === id) || {}).code);
-    if (mine) {
-      const sc = engm(1);
-      if (sc && (sc.state === 2 || sc.state === 3)) { const tt = mterm(1, sc.state); out.push({ key: 'scheme', engine: true, state: (tt ? tt.title : '') + (sc.other !== NO ? ' ' + num(sc.other) : '') }); }
-    } else if (job === 'mark_man') out.push({ key: 'mark', state: say('m_mark_on', { man: e && e.other !== NO ? num(e.other) : '' }) });
-    if (cname === 'cover') out.push({ key: 'cover', state: say('m_cover_on') });
-    const sv = shadowAt(t);
-    if (mine) {
-      const cs = engm(2), pd = engm(3);
-      if (cs && cs.state === 2) out.push({ key: 'shadow', engine: true, state: say('m_shadow_lane', { man: cs.other !== NO ? num(cs.other) : '' }) });
-      if (pd && pd.state === 1) out.push({ key: 'pdist', engine: true, state: say('m_pdist_on', { man: pd.other !== NO ? num(pd.other) : '' }) });
-    } else if (sv && !OURS_PHASES.has(lay.phaseIndex)) {
-      const m = sv.hidden[slot] >>> 0, h = [];
-      for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push(num(i));
-      if (cname === 'cover-shadow') out.push({ key: 'shadow', state: say('m_shadow_press', { man: sv.screen[teamOf(slot)] !== NO ? num(sv.screen[teamOf(slot)]) : '', list: h.join(', ') }) });
-      else if (h.length) out.push({ key: 'shadow', state: say('m_shadow_on', { list: h.join(', ') }) });
-    }
-    if (!mine && cname === 'pressing-distance') out.push({ key: 'pdist', state: say('m_pdist_on', { man: man != null ? num(man) : '' }) });
-    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
-    out.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
-    return out;
+
+  // ── playback: a position on the recording, a rate; at the newest moment it is LIVE ──
+  const play = { t: 0, on: true, live: true, rate: 1, last: performance.now(), dragging: false };
+  function posAt(t, slot) { const [a, b, k] = snapAt(t); return { x: lerp(a.players[slot].x, b.players[slot].x, k), y: lerp(a.players[slot].y, b.players[slot].y, k) }; }
+
+  // ── drawing: the whole pitch and both goals, side to side, fixed ──
+  const cv = $('pitch'), g = cv.getContext('2d');
+  let W = 0, H = 0, sc = 1, ox = 0, oy = 0;
+  function layout() {
+    const app = $('app'), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = app.clientWidth; H = app.clientHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 105 × 68 plus the goals (2 m deep) and a margin; the controls sit over the bottom strip.
+    sc = Math.min(W / 113, H / 76);
+    ox = W / 2; oy = H / 2;
   }
-  // ── beside the pitch: one line per state, tap for what it means ──
-  // Owner 11/25: "can we have the states 1 line each and then you click for info on them? can they
-  // be right next to pitch". The same words as the timeline; asleep machines are not listed.
-  const stripOpen = new Set();
-  let stripKey = '';
-  const MACHINE_CONCEPT = { recover: 'recover', press: 'close-down', chase: 'nearest-decides', double: 'double-team', cover: 'cover', mark: 'zonal-marking', shadow: 'cover-shadow', pdist: 'pressing-distance' };
-  // The label sits beside him — right of him, or left when there is no room — and glides after him;
-  // a gold line joins it to him.
-  const strip = { x: null, y: null };
-  // Owner 11/25: "the thing attached to player is covering up players on pitch it can stay if
-  // transparent but if not it has to go on side of pitch. maybe have a toggle for either option".
-  // 'follow' = beside him, see-through; 'side' = docked off the pitch, solid, the line still to him.
-  // Then: "prob better if it don't move though" — so 'side' is the default and it stays still, top left
-  // of the game; only the line moves with him.
-  let labelMode = localStorage.getItem('fh.concept.label2') === 'follow' ? 'follow' : 'side';
-  // Owner 11/25: "but if not enough room then off to exact side of pitch stacked 1 row each". So:
-  // beside him if it fits on the screen without covering his man or the ball; otherwise docked
-  // just off the pitch on the side with more room, level with him — the line still joins them.
-  function placeStrip(q, rr, keep, pitch) {
-    const el = $('strip');
-    if (!el.firstChild) return;
-    const bw = el.offsetWidth, bh = el.offsetHeight, gap = rr + 34;
-    const top = 56, bottom = H - 96;
-    const yOf = () => Math.max(top, Math.min(bottom - bh, q[1] - bh / 2));
-    const fits = (x, y) => x >= 8 && x + bw <= W - 8 && y >= top && y + bh <= bottom + 1 &&
-      !keep.some((k) => k[0] > x - 14 && k[0] < x + bw + 14 && k[1] > y - 14 && k[1] < y + bh + 14);
-    let x = q[0] + gap, y = yOf();
-    if (labelMode === 'side') x = -1;   // always docked off the pitch
-    if (labelMode === 'side' || !fits(x, y)) {
-      if (labelMode !== 'side') x = q[0] - gap - bw;
-      if (labelMode === 'side' || !fits(x, y)) {
-        // [docked] off the pitch on the roomier side; if neither side has room, the screen edge.
-        const left = pitch.x0 - 8, right = W - 8 - pitch.x1;
-        x = right >= left ? Math.max(pitch.x1 + 10, Math.min(W - bw - 8, pitch.x1 + 10)) : Math.min(pitch.x0 - 10 - bw, Math.max(8, pitch.x0 - 10 - bw));
-        if (Math.max(left, right) < bw + 10) x = right >= left ? W - bw - 8 : 8;
+  const P = (x, y) => [ox + x * sc, oy - y * sc];
+  const hex = (n) => '#' + (n >>> 0).toString(16).padStart(6, '0').slice(-6);
+  const ink = (n) => (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150 ? '#0b1c3d' : '#ffffff';
+  const kitOf = (i, keeper) => { const t = teamOf(i), k = kits[t] && kits[t].shirt != null ? kits[t].shirt : (t ? 0xeef1f6 : 0x14326e); return keeper ? (t ? 0xff8a1f : 0x2e9e44) : k; };
+  let shown = [];   // where each player is on screen this frame (for a tap)
+
+  function drawPitch() {
+    const line = (x0, y0, x1, y1) => { const a = P(x0, y0), b = P(x1, y1); g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(b[0], b[1]); g.stroke(); };
+    const [x0, y0] = P(-52.5, 34), [x1, y1] = P(52.5, -34);
+    g.fillStyle = '#2f6b2a'; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+    g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1.5;
+    g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    line(0, -34, 0, 34);
+    { const c = P(0, 0); g.beginPath(); g.arc(c[0], c[1], 9.15 * sc, 0, Math.PI * 2); g.stroke(); }
+    for (const s of [-1, 1]) {
+      for (const [d, w] of [[16.5, 20.16], [5.5, 9.16]]) { const gx = 52.5 * s; line(gx, -w, gx - d * s, -w); line(gx - d * s, -w, gx - d * s, w); line(gx - d * s, w, gx, w); }
+      const ps = P(41.5 * s, 0); g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.arc(ps[0], ps[1], 2, 0, Math.PI * 2); g.fill();
+      // the goal: 7.32 m wide, 2 m deep behind the line
+      const a = P(52.5 * s, 3.66), b = P((52.5 + 2) * s, -3.66);
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(Math.min(a[0], b[0]), a[1], Math.abs(b[0] - a[0]), b[1] - a[1]);
+      g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(Math.min(a[0], b[0]), a[1], Math.abs(b[0] - a[0]), b[1] - a[1]);
+      g.strokeStyle = 'rgba(255,255,255,.6)'; g.lineWidth = 1.5;
+    }
+  }
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (!W) layout();
+    g.fillStyle = '#0b1c3d'; g.fillRect(0, 0, W, H);
+    drawPitch();
+    paintLoad();
+    if (!snaps.length || !hello) { $('tag').textContent = ''; return; }
+
+    const dt = Math.min(0.1, (now - play.last) / 1000); play.last = now;
+    if (play.live && !play.dragging) play.t = lastTick();
+    else if (play.on && !play.dragging) {
+      play.t += dt * 30 * play.rate;
+      if (play.t >= lastTick()) { play.t = lastTick(); play.live = true; }
+    }
+    play.t = Math.max(firstTick(), Math.min(lastTick(), play.t));
+    const t = play.t, [sa, sb, k] = snapAt(t);
+    const ball = { x: lerp(sa.ball.x, sb.ball.x, k), y: lerp(sa.ball.y, sb.ball.y, k) };
+
+    const rows = follow >= 0 && follow < sa.players.length ? rowsFor(t, follow) : [];
+    const man = (rows.find((r) => r.c && r.other !== NO && r.other != null) || {}).other;
+
+    // every player, a little smaller than life-size on the old zoom
+    const r = Math.max(6, 0.85 * sc);
+    shown = [];
+    for (let i = 0; i < sa.players.length; i++) {
+      const p = posAt(t, i), q = P(p.x, p.y), col = kitOf(i, !!(sa.players[i].flags & 2));
+      shown.push([q[0], q[1], i]);
+      // His feet (the engine's own steps, 2.3 wire): each in its real direction from his centre, just
+      // outside the rim — further out the longer the stride (0.5 m+ = the most) — filled planted, hollow
+      // in the air.
+      const pa = sa.players[i], pb = sb.players[i];
+      if (pa.feet) for (let f = 0; f < 2; f++) {
+        const fa = pa.feet[f], fb = (pb.feet || pa.feet)[f];
+        const dx = lerp(fa.x, fb.x, k) - p.x, dy = lerp(fa.y, fb.y, k) - p.y, dl = Math.hypot(dx, dy);
+        if (dl < 0.02 || dl > 1.5) continue;   // under him, or a stale step from a restart
+        const out = r * 0.55 + r * 0.75 * Math.min(1, dl / 0.5), fq = [q[0] + dx / dl * out, q[1] - dy / dl * out];
+        g.beginPath(); g.arc(fq[0], fq[1], Math.max(2, r * 0.3), 0, Math.PI * 2);
+        if (fa.down) { g.fillStyle = 'rgba(15,15,15,.9)'; g.fill(); } else { g.lineWidth = 1.2; g.strokeStyle = 'rgba(15,15,15,.9)'; g.stroke(); }
+      }
+      g.beginPath(); g.arc(q[0], q[1], r, 0, Math.PI * 2); g.fillStyle = hex(col); g.fill();
+      g.lineWidth = 1.2; g.strokeStyle = 'rgba(0,0,0,.55)'; g.stroke();
+      // His body's facing (engine, 1.8 wire): a white wedge on the rim. His head: toward the ball, as the
+      // 3D game turns it (players.js "look") — a dark dot on the rim.
+      if (pa.fx != null && (pa.fx || pa.fy)) {
+        const a = Math.atan2(-pa.fy, pa.fx), w = 0.45;
+        g.beginPath(); g.moveTo(q[0] + Math.cos(a) * (r + 4), q[1] + Math.sin(a) * (r + 4));
+        g.lineTo(q[0] + Math.cos(a - w) * r, q[1] + Math.sin(a - w) * r); g.lineTo(q[0] + Math.cos(a + w) * r, q[1] + Math.sin(a + w) * r);
+        g.closePath(); g.fillStyle = '#fff'; g.fill();
+      }
+      g.fillStyle = ink(col); g.font = `800 ${Math.round(r * 1.05)}px system-ui, sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(numOf(i), q[0], q[1] + 0.5);
+      { const hx = ball.x - p.x, hy = ball.y - p.y, hl = Math.hypot(hx, hy);
+        if (hl > 0.3) { const a = Math.atan2(-hy, hx); g.beginPath(); g.arc(q[0] + Math.cos(a) * r * 0.7, q[1] + Math.sin(a) * r * 0.7, Math.max(2.2, r * 0.32), 0, Math.PI * 2); g.fillStyle = '#111'; g.fill(); } }
+      if (i === follow || i === man) { g.lineWidth = 3; g.strokeStyle = i === follow ? '#ffcc00' : '#ff5c7a'; g.beginPath(); g.arc(q[0], q[1], r + 4, 0, Math.PI * 2); g.stroke(); }
+    }
+    { const q = P(ball.x, ball.y); g.beginPath(); g.arc(q[0], q[1], Math.max(3.5, 0.35 * sc), 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#111'; g.stroke(); }
+
+    paintTag(rows, follow >= 0 ? P(posAt(t, follow).x, posAt(t, follow).y) : null, r);
+    paintControls();
+  }
+
+  // ── his label, beside him, see-through, following ──
+  let tagKey = '', tagRows = new Map();
+  const tagPos = { x: null, y: null };
+  function paintTag(rows, q, r) {
+    const el = $('tag');
+    const key = rows.map((x) => [x.id, x.k, x.v, x.man, x.d].join('=')).join('§');
+    if (key !== tagKey) {
+      tagKey = key; tagRows = new Map(rows.map((x) => [x.id, x]));
+      el.textContent = '';
+      for (const x of rows) {
+        const ln = document.createElement('div');
+        ln.className = 'ln' + (x.m ? ' m' : '') + (x.c ? ' c' : '');
+        ln.dataset.id = x.id;
+        const kk = document.createElement('span'); kk.className = 'k'; kk.textContent = x.m ? '' : x.k; if (!x.m) ln.appendChild(kk);
+        const vv = document.createElement('span'); vv.className = 'v';
+        vv.textContent = x.m ? (x.v && x.v !== 'On' ? x.k + ' · ' + x.v : x.k) : x.v;
+        ln.appendChild(vv);
+        if (x.man) { const s = document.createElement('span'); s.className = 'x'; s.textContent = x.man; ln.appendChild(s); }
+        if (x.d && x.c) { const s = document.createElement('span'); s.className = 'd'; s.textContent = x.d; ln.appendChild(s); }
+        el.appendChild(ln);
       }
     }
-    x = Math.max(8, Math.min(W - bw - 8, x));
-    if (labelMode === 'side') { x = 10; y = 10; strip.x = x; strip.y = y; }   // parked: it does not move
-    if (strip.x == null || Math.abs(strip.x - x) > W / 2) { strip.x = x; strip.y = y; }
-    strip.x += (x - strip.x) * 0.2; strip.y += (y - strip.y) * 0.2;
-    el.style.transform = `translate(${Math.round(strip.x)}px, ${Math.round(strip.y)}px)`;
-    // Parked, no line: "since we know what player its for" — his gold ring says who it is.
-    if (labelMode === 'side') return;
-    const tx = Math.max(strip.x, Math.min(strip.x + bw, q[0])), ty = Math.max(strip.y, Math.min(strip.y + bh, q[1]));
-    const d = Math.hypot(tx - q[0], ty - q[1]) || 1;
-    g.strokeStyle = '#ffcc00'; g.lineWidth = 2.5; g.setLineDash([]);
-    g.beginPath(); g.moveTo(q[0] + (tx - q[0]) * (rr + 6) / d, q[1] + (ty - q[1]) * (rr + 6) / d); g.lineTo(tx, ty); g.stroke();
-    g.fillStyle = '#ffcc00'; g.beginPath(); g.arc(tx, ty, 3.5, 0, Math.PI * 2); g.fill();
+    if (!q || !rows.length) return;
+    const bw = el.offsetWidth, bh = el.offsetHeight;
+    let x = q[0] + r + 10, y = q[1] - bh / 2;
+    if (x + bw > W - 6) x = q[0] - r - 10 - bw;              // no room on his right: his left
+    y = Math.max(46, Math.min(H - 64 - bh, y));               // clear of the title row and the controls
+    x = Math.max(6, Math.min(W - bw - 6, x));
+    if (tagPos.x == null || Math.abs(tagPos.x - x) > W / 3) { tagPos.x = x; tagPos.y = y; }
+    tagPos.x += (x - tagPos.x) * 0.25; tagPos.y += (y - tagPos.y) * 0.25;
+    el.style.transform = `translate(${Math.round(tagPos.x)}px, ${Math.round(tagPos.y)}px)`;
   }
-  function paintStrip(c, t) {
-    const lay = layersAt(t, c.slot), awake = machinesAt(t, c.slot);
-    const pairs = pairsAt(t), reach = reachAt(t), r = reach && reach[c.slot];
-    const man = pairs && pairs[c.slot] !== NO ? pairs[c.slot] : null;
-    const en = brainAt(t), ee = en && en[c.slot], dd = ee ? terms.find((x) => x.kind === 'decision' && x.wire === ee.why) : null;
-    const status = conceptStatus(lay, r);
-    const cdef = (name) => { const k = (tax.concepts || []).find((x) => x.name === name); return k ? k.definition || k.cue || '' : ''; };
-    // Owner 11/25: "what is him? what is action? … multi states" · "the team him action should be on
-    // side" · "the side def should be accessible with click popup" · "save space". So: on the SIDE,
-    // one line each, the states that are one at a time (team, his job, and what he is doing only
-    // when it says more than his job); ON THE PLAYER, only what is switched on — the machines awake
-    // now, several at once. Every line opens its meaning in a popup.
-    const DEFAULT_DOING = new Set(['hold', 'press', 'chase', 'meet_pass', 'attack_box', 'run_line', 'mark', 'keeper_pos']);
-    const rows = [
-      { id: 'team', machine: say('tbl_team'), state: lay.phase ? lay.phase.title : '—', man: '', detail: '', def: lay.phase ? lay.phase.definition || lay.phase.note || '' : '' },
-      { id: 'him', machine: say('tbl_job'), state: lay.state ? lay.state.title : '—', man: (ee && ee.other !== NO ? '#' + numOf(ee.other) : ''), detail: '', def: lay.state ? lay.state.definition || lay.state.note || '' : '' }];
-    if (dd && !DEFAULT_DOING.has(dd.code)) rows.push({ id: 'act', machine: say('tbl_doing'), state: dd.title, man: '', detail: '', def: dd.definition || dd.note || '' });
-    const eng = engineRows(t, c.slot);
-    if (eng) rows.push(...eng);
-    else for (const m of awake) rows.push({ id: 'm:' + m.key, machine: say('m_' + m.key), state: m.state, man: '', detail: '', def: cdef(MACHINE_CONCEPT[m.key] || '') });
-    const key = [at, ...rows.map((x) => [x.id, x.state, x.man, x.detail].join('='))].join('§');
-    if (key === stripKey) return;
-    stripKey = key;
-    stripRows = new Map(rows.map((x) => [x.id, x]));
-    const host = $('strip');
-    host.textContent = '';
-    const tbl = document.createElement('table');
-    const hr = tbl.insertRow();
-    for (const h of ['tbl_machine', 'tbl_state', 'tbl_man', 'tbl_detail']) { const th = document.createElement('th'); th.textContent = say(h); hr.appendChild(th); }
-    rows.forEach((x, n) => {
-      const tr = tbl.insertRow();
-      tr.className = 'row' + (n === 2 && rows[1] && rows[1].id === 'him' && x.id !== 'act' ? ' first-m' : '') + (x.id === 'act' ? '' : x.id.startsWith('m:') ? ' m' : ' one');
-      tr.dataset.id = x.id;
-      for (const [cls, v] of [['lab', x.machine], ['val', x.state], ['man', x.man], ['det', x.detail]]) { const td = tr.insertCell(); td.className = cls; td.textContent = v || ''; }
-    });
-    host.appendChild(tbl);
+
+  // ── the controls ──
+  const RATE = (v) => Math.pow(2, (v - 50) / 50 * 3);   // slider 0…100 → ⅛× … 8×, 1× in the middle
+  const clockOf = (ticks) => { const s = Math.max(0, Math.round(ticks / 30)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+  function paintControls() {
+    const sc_ = $('scrub'), a = firstTick(), b = lastTick();
+    sc_.min = a; sc_.max = Math.max(a + 1, b);
+    if (!play.dragging) sc_.value = Math.round(play.t);
+    sc_.style.setProperty('--p', (b > a ? 100 * (play.t - a) / (b - a) : 100).toFixed(2) + '%');
+    $('clock').textContent = play.live ? clockOf(play.t) : say('view_behind', { s: clockOf(b - play.t) });
+    const lv = $('live'); lv.classList.toggle('on', play.live); lv.textContent = play.live ? say('view_live') : say('view_go_live');
+    $('playbtn').textContent = play.on || play.live ? '⏸' : '▶';
+    $('playbtn').title = say(play.on || play.live ? 'clip_pause' : 'clip_play');
   }
-  let stripRows = new Map();
-  // One popup for every meaning on the page.
+
+  // ── loading: words, connecting, the first frame ──
+  const load = { step: 0 };
+  function paintLoad() {
+    const box = $('loader');
+    if (load.step >= 2 && snaps.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const pct = [10, 50, 100][load.step];
+    $('load-title').textContent = load.step ? say('view_connecting') : say('load_words');
+    $('load-bar').style.width = pct + '%'; $('load-pct').textContent = pct + '%';
+  }
+
+  // ── one popup for every meaning ──
   function popup(title, body) {
     $('popup-t').textContent = title;
-    const b = $('popup-b');
-    b.textContent = '';
+    const b = $('popup-b'); b.textContent = '';
     if (typeof body === 'string') b.textContent = body || say('m_nodef'); else if (body) b.appendChild(body);
     $('popup').hidden = false;
-  }
-  function paintBrain(c, t) {
-    const host = $('side-body');
-    const pct = (k) => Math.max(0, Math.min(100, 100 * (k - c.from) / (c.to - c.from)));
-    host.style.setProperty('--nowf', (pct(t) / 100).toFixed(4));
-    const lay = layersAt(t, c.slot);
-    const pairs = pairsAt(t), reach = reachAt(t), sv = shadowAt(t);
-    const man = pairs && pairs[c.slot] !== NO ? pairs[c.slot] : null;
-    const r = reach && reach[c.slot];
-    const status = conceptStatus(lay, r);
-    const key = [at, lay.phase && lay.phase.code, lay.state && lay.state.code, lay.concept && lay.concept.id, machinesAt(t, c.slot).map((m) => m.key + m.state).join(';'), (brainAt(t) || [])[c.slot] ? brainAt(t)[c.slot].why : '', man, pairs && pairs.how ? pairs.how[c.slot] : '', r ? r.in + '' + Math.round(r.reach || 0) : '', status.kind, [...openDefs].join(',')].join('|');
-    if (key === machineKey) return;
-    const fresh = !host.dataset.clip || host.dataset.clip !== String(at) || machineKey.split('|').pop() !== [...openDefs].join(',');
-    machineKey = key;
-    if (fresh) { host.dataset.clip = String(at); buildBrain(c, host); }
-    // RIGHT NOW
-    const set = (id, text) => { const n = host.querySelector('#' + id); if (n) n.textContent = text; };
-    set('bn-phase', lay.phase ? lay.phase.title : '—');
-    set('bn-state', lay.state ? lay.state.title : '—');
-    const awake = machinesAt(t, c.slot);
-    const an = host.querySelector('#bn-using');
-    if (an) {
-      an.textContent = '';
-      if (!awake.length) an.textContent = say('m_none');
-      awake.forEach((m, i) => { const d = document.createElement('div'); d.className = 'awake'; d.textContent = say('m_' + m.key) + (m.engine ? ' ' + say('m_engine_mark') : '') + ': ' + m.state; if (i === 0 && awake.length > 1) { const w = document.createElement('small'); w.className = 'wins'; w.textContent = say('m_wins'); d.appendChild(w); } an.appendChild(d); });
-    }
-    const en = brainAt(t), ee = en && en[c.slot], dd = ee ? terms.find((x) => x.kind === 'decision' && x.wire === ee.why) : null;
-    set('bn-action', dd ? dd.title : '—');
-    const how = pairs && pairs.how ? pairs.how[c.slot] : null;
-    const knows = [];
-    if (man != null) knows.push(say('brain_knows_man', { man: numOf(man), player: nameOf(man), how: how === 'matchup' ? say('pair_matchup', { num: numOf(c.slot), man: numOf(man) }) : how === 'battle' ? say('pair_battle') : say('pair_nearest') }));
-    else if (lay.phaseIndex != null && OURS_PHASES.has(lay.phaseIndex)) knows.push(say('brain_knows_ourball'));   // with the ball nobody has a direct opponent
-    else if (pairs) knows.push(say('brain_knows_noman'));
-    if (r && r.reach != null && man != null) {
-      const [a, b] = [posAt(t, c.slot), posAt(t, man)];
-      knows.push(say('brain_knows_reach', { gap: Math.hypot(a.x - b.x, a.y - b.y).toFixed(1), reach: r.reach.toFixed(1), verdict: say(r.in ? 'reach_in' : 'reach_out') }));
-    }
-    {   // passive: someone hidden behind him just from where he stands (the cover-shadow machine's HIDING)
-      const eng = logAt(machineLog, t), cs = eng && eng[c.slot] ? eng[c.slot].find((x) => x.machine === 2) : null;
-      if (cs && cs.state === 1 && !shadowKind) knows.push(say('brain_knows_hiding', { list: cs.other !== NO ? '#' + numOf(cs.other) : '' }));
-    }
-    if (sv && shadowKind) { const m = sv.hidden[c.slot] >>> 0, hid = []; for (let i = 0; i < 32; i++) if ((m >>> i) & 1) hid.push('#' + numOf(i)); knows.push(hid.length ? say('brain_knows_shadow', { list: hid.join(', ') }) : say('brain_knows_noshadow')); }
-    set('bn-knows', knows.join('   ·   ') || '—');
-    const sn = host.querySelector('#bn-status');
-    if (sn) { sn.textContent = status.text; sn.className = 'status ' + status.kind; }
-    // the lists of every state, his lit
-    for (const n of host.querySelectorAll('[data-term]')) {
-      const [k, code] = n.dataset.term.split(':');
-      n.classList.toggle('on', (k === 'phase' && lay.phase && lay.phase.code === code) || (k === 'state' && lay.state && lay.state.code === code));
-    }
-  }
-  // Is THIS concept active right now — and if not, the reason, from the brain's own layers.
-  function conceptStatus(lay, r) {
-    const title = concept ? concept.title : '';
-    if (pairKind) return { kind: 'read', text: say('brain_status_read', { concept: title }) };
-    if (lay.concept && lay.concept.id === CONCEPT) return { kind: 'on', text: say('brain_status_on', { concept: title }) };
-    if (lay.phaseIndex != null && OURS_PHASES.has(lay.phaseIndex) && concept && concept.moment === 'out_of_possession')
-      return { kind: 'off', text: say('brain_status_ourball', { concept: title }) };
-    const dial = (tax.dials || []).find((d) => d.concept_id === CONCEPT) || DIAL_STATES[concept ? concept.name : ''];
-    const inState = dial ? terms.find((x) => x.kind === 'state' && x.code === dial.in_state) : null;
-    if (inState && (!lay.state || lay.state.code !== inState.code))
-      return { kind: 'off', text: say('brain_status_otherstate', { concept: title, state: lay.state ? lay.state.title : '—', host: inState.title }) };
-    if (reachKind && r && r.in) return { kind: 'off', text: say('brain_status_inreach', { concept: title }) };
-    return { kind: 'off', text: say('brain_status_nothing', { concept: title }) };
-  }
-  // Which state each switched-on concept lives in (game_concept_dials.in_state, mig 1867).
-  const DIAL_STATES = {};
-  function buildBrain(c, host) {
-    host.textContent = '';
-    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    const term = (parent, tag, cls, title, id, def) => {
-      const n = add(tag, cls + (def ? ' tap' : ''), title, parent);
-      if (!def) return n;
-      n.dataset.def = id;
-      if (openDefs.has(id)) add('small', '', def, n);
-      return n;
-    };
-    const sdef = (x) => (x ? x.definition || x.note || '' : '');
-    add('h2', '', say('clip_sm_title', { num: numOf(c.slot), player: nameOf(c.slot) }));
-    // How to read it — the layers, in one box, always on screen.
-    const how = add('div', 'howto');
-    add('div', 'howto-t', say('brain_howto_title'), how);
-    for (const k of ['brain_howto_team', 'brain_howto_him', 'brain_howto_using', 'brain_howto_knows']) add('div', 'howto-l', say(k), how);
-    // The lanes: one per layer, across this example.
-    add('h3', '', say('brain_lanes'));
-    const lanes = add('div', 'lanes');
-    const phases = terms.filter((x) => x.kind === 'phase');
-    // Owner 11/24: "the state names are cut off. and the names of the state machines are cut
-    // off. is it 5 state machines? because there are 5 rows." — so the rows are grouped under
-    // what they are (2 state machines · what he uses inside his state · reads, which are not
-    // machines), each row's name on its own full-width line, and under each bar the same
-    // states written out in order, in full.
-    const group = (tier) => add('div', 'lane-g', say(tier), lanes);
-    const lane = (label, segs, colour) => {
-      const row = add('div', 'lane', null, lanes);
-      add('div', 'lane-l', label, row);
-      const track = add('div', 'lane-t', null, row);
-      for (const g of segs) {
-        if (!g.text) continue;
-        const b = add('div', 'seg', g.text, track);
-        b.style.left = g.a + '%'; b.style.width = Math.max(0.8, g.b - g.a) + '%';
-        b.style.background = colour(g); b.title = g.text;
-      }
-      const seq = segs.filter((g) => g.text).map((g) => g.text);
-      add('div', 'lane-s', seq.length ? seq.join('  →  ') : say('brain_lane_empty'), row);
-      return row;
-    };
-    const segsOf = (fn) => {   // merge consecutive brain frames with the same text
-      const out = [];
-      for (const b of brains) {
-        if (b.tick < c.from || b.tick > c.to) continue;
-        const text = fn(b.tick) || '', p = 100 * (b.tick - c.from) / (c.to - c.from);
-        if (out.length && out[out.length - 1].text === text) out[out.length - 1].b = p + 0.6;
-        else { if (out.length) out[out.length - 1].b = p; out.push({ text, a: p, b: p + 0.6 }); }
-      }
-      return out;
-    };
-    const hue = (t) => { let h = 0; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 45% 38%)`; };
-    group('brain_group_machines');
-    lane(say('brain_machine_team', { n: phases.length }), segsOf((k) => { const ph = logAt(phaseLog, k); const pi = ph ? ph[teamOf(c.slot)] : null; return pi != null && phases[pi] ? phases[pi].title : ''; }), (g) => hue(g.text));
-    const states = terms.filter((x) => x.kind === 'state');
-    lane(say('brain_machine_him', { n: states.length }), segsOf((k) => { const l = layersAt(k, c.slot); return l.state ? l.state.title : ''; }), (g) => hue(g.text));
-    // Owner 11/25: "how are we getting the proper behaviour with 1 player state machine lol. i
-    // would think we need one just for player actions". The engine's third player layer is
-    // his ACTION this instant (ai::Why — pass, shoot, dribble, press, hold …), chosen fresh by
-    // his state every tick: no memory, no commitment, so not a machine (yet). Shown as its
-    // own row so that is plain.
-    group('brain_group_action');
-    const decisions = terms.filter((x) => x.kind === 'decision');
-    lane(say('brain_lane_action', { n: decisions.length }), segsOf((k) => { const en = brainAt(k), e2 = en && en[c.slot]; const d = e2 ? decisions.find((x) => x.wire === e2.why) : null; return d ? d.title : ''; }), (g) => hue(g.text));
-    // The machines that woke up in this example — a row each, a bar only while it was awake.
-    group('brain_group_awake');
-    const seen = new Map();
-    for (const b of brains) {
-      if (b.tick < c.from || b.tick > c.to) continue;
-      for (const m of machinesAt(b.tick, c.slot)) if (!seen.has(m.key)) seen.set(m.key, true);
-    }
-    const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
-    const keys = [...seen.keys()].sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
-    if (!keys.length) add('div', 'lane-s', say('m_none_example'), lanes);
-    const engineKeys = new Set(['scheme', 'shadow', 'pdist'].filter(() => machineLog.length));
-    for (const k of keys) lane(say('m_' + k) + (engineKeys.has(k) ? ' ' + say('m_engine_mark') : ''), segsOf((tk) => { const m = machinesAt(tk, c.slot).find((x) => x.key === k); return m ? m.state : ''; }), () => hue(k));
-    group('brain_group_reads');
-    lane(say('brain_lane_man'), segsOf((k) => { const p = pairsAt(k); return p && p[c.slot] !== NO ? '#' + numOf(p[c.slot]) + (p.how && p.how[c.slot] === 'battle' ? ' ⚔' : '') : ''; }), () => 'rgba(255,255,255,.18)');
-    if (reachKind) lane(say('brain_lane_reach'), segsOf((k) => { const rr = reachAt(k); const x = rr && rr[c.slot]; return x && x.reach != null ? say(x.in ? 'brain_in' : 'brain_out') : ''; }), (g) => (g.text === say('brain_in') ? '#2e8b45' : '#a83248'));
-    if (shadowKind) lane(say('brain_lane_shadow'), segsOf((k) => { const v = shadowAt(k); if (!v) return ''; const m = v.hidden[c.slot] >>> 0; const h = []; for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push('#' + numOf(i)); return h.join(' '); }), () => '#444c66');
-    add('div', 'playhead', null, lanes);
-    if (machineLog.length) add('div', 'note', say('m_engine_note'));
-    add('div', 'note', say('brain_lanes_note'));
-    // Every state of each machine, his lit — how many there are.
-    const all = add('details', 'all');
-    add('summary', '', say('brain_all', { phases: phases.length, states: states.length }), all);
-    add('h3', '', say('brain_lane_team') + ' — ' + say('brain_count', { n: phases.length }), all);
-    const ul1 = add('ul', 'two', null, all);
-    for (const p of phases) term(ul1, 'li', '', p.title, 'ph:' + p.code, sdef(p)).dataset.term = 'phase:' + p.code;
-    add('h3', '', say('brain_lane_him') + ' — ' + say('brain_count', { n: states.length }), all);
-    const ul2 = add('ul', 'two', null, all);
-    for (const x of states) term(ul2, 'li', '', x.title, 's:' + x.code, sdef(x)).dataset.term = 'state:' + x.code;
-    add('div', 'note', say('clip_sm_tap'));
-  }
-
-  // ── 📖 What it is: real football · the game · the engine code (owner 11/24: "the popup
-  // needs to explain also what the concept is in real life, the game and the engine code").
-  // Every line is the taxonomy's own: the concept row, its behaviours, their classes.
-  function paintExplain(into) {
-    const host = into || $('side-body');
-    host.classList.add('explain');
-    host.textContent = '';
-    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    const c = concept;
-    add('h3', 'big', say('clip_x_real'));
-    if (c) {
-      if (c.definition) add('p', '', c.definition);
-      if (c.cue) { add('div', 'lab', say('clip_x_cue')); add('p', '', c.cue); }
-      if (c.lacking) { add('div', 'lab', say('clip_x_lacking')); add('p', '', c.lacking); }
-      const pr = (tax.principles || []).find((p) => p.id === c.principle_id);
-      if (pr) add('p', 'dim', say('clip_x_principle', { p: pr.title }));
-      if (c.taught_from) add('p', 'dim', say('clip_x_taught', { a: c.taught_from }));
-      const byId = new Map((tax.concepts || []).map((k) => [k.id, k]));
-      const words = { 'kind-of': 'link_kind_of', 'step-of': 'link_step_of', requires: 'link_requires', refines: 'link_refines', counters: 'link_counters', 'lapses-to': 'link_lapses_to' };
-      for (const l of tax.links || []) {
-        if (l.from === c.id && byId.get(l.to)) add('p', 'dim', say(words[l.kind]) + ' ' + byId.get(l.to).title);
-        else if (l.to === c.id && byId.get(l.from)) add('p', 'dim', say(words[l.kind] + '_by') + ' ' + byId.get(l.from).title);
-      }
-      if (c.sources) add('p', 'dim', say('clip_x_sources', { n: c.sources }));
-    }
-    const behs = (tax.behaviours || []).filter((b) => b.concept_id === CONCEPT);
-    add('h3', 'big', say('clip_x_game'));
-    if (!behs.length) add('p', '', say('clip_x_nogame'));
-    else {
-      add('p', 'state', say(behs.some((b) => b.in_sim !== false) ? 'clip_x_used' : 'clip_x_zero'));
-      for (const b of behs) { add('p', '', b.what); if (b.tag) add('p', 'dim', say('clip_x_built', { tag: b.tag })); }
-    }
-    add('h3', 'big', say('clip_x_code'));
-    if (!behs.length) add('p', '', say('clip_x_nocode'));
-    const cls = new Map((tax.classes || []).map((k) => [k.name, k]));
-    for (const b of behs) {
-      const k = b.class ? cls.get(b.class) : null;
-      if (k) {
-        const chain = [k.name];
-        for (let p = k.parent, n = 0; p && n < 10; n++) { chain.push(p); p = cls.get(p) ? cls.get(p).parent : null; }
-        add('div', 'lab', say('clip_x_chain'));
-        add('p', 'code', chain.join('  →  '));
-        if (b.symbol && b.symbol !== k.name) add('p', 'code dim', b.symbol);
-        if (k.doc) add('p', 'dim pre', k.doc);
-      } else if (b.symbol) add('p', 'code', say('clip_x_func', { symbol: b.symbol }));
-      add('p', 'dim', say('clip_x_where', { file: b.file, line: b.line }));
-      const btn = add('button', 'small', say('clip_x_show'));
-      const pre = add('pre', 'src');
-      pre.hidden = true;
-      btn.type = 'button';
-      btn.addEventListener('click', async () => {
-        pre.hidden = !pre.hidden;
-        btn.textContent = say(pre.hidden ? 'clip_x_show' : 'clip_x_hide');
-        if (pre.hidden || pre.dataset.got) return;
-        pre.dataset.got = '1';
-        try {
-          const res = await fetch('/api/tactic-plans/taxonomy/source?' + new URLSearchParams({ file: b.file, from: Math.max(1, b.line - 4), to: b.line + 40 }), { headers: { Authorization: 'Bearer ' + token } });
-          if (!res.ok) throw new Error();
-          const src = await res.json();
-          pre.textContent = src.text.split('\n').map((line, i) => String(src.from + i).padStart(4) + '  ' + line).join('\n');
-        } catch (_) { pre.textContent = say('clip_x_nosrc'); }
-      });
-    }
-  }
-  // One panel for the concept at hand (owner 11/25: "don't have states in multi places its confusing"
-  // · "states. then a explanation of concept at hand" · "simple interface" · "too much clutter"):
-  // its name, what it is, two live lines (is he doing it — or why not — and its numbers), the key to
-  // what is drawn, and the game / engine detail folded away.
-  function setTab() {
-    const host = $('side-body');
-    host.textContent = '';
-    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    // The concept's name — tap it for what it is, the key to the drawing and the engine detail (a popup).
-    const t = add('button', 'ctitle', (concept ? concept.title : say('clip_title')));
-    t.type = 'button';
-    t.addEventListener('click', () => {
-      const box = document.createElement('div');
-      const d = document.createElement('p'); d.textContent = concept ? concept.definition || concept.cue || '' : ''; box.appendChild(d);
-      const k = document.createElement('p'); k.className = 'key'; k.textContent = say(reachKind ? 'reach_legend' : shadowKind ? 'shadow_legend' : 'clip_legend'); box.appendChild(k);
-      const more = document.createElement('details'); more.className = 'more';
-      const sm = document.createElement('summary'); sm.textContent = say('clip_more'); more.appendChild(sm);
-      const inner = document.createElement('div'); more.appendChild(inner); paintExplain(inner);
-      box.appendChild(more);
-      popup(concept ? concept.title : '', box);
-    });
-    add('div', 'room ' + (roomOn() ? 'on' : 'live'), roomOn() ? say('room_on_short') : say('room_live_short'));
-    add('div', 'status off', '', host).id = 'live-status';
-    add('div', 'measure', '', host).id = 'live-measure';
-    add('div', 'states', null, host).id = 'side-states';
-    frame.l1 = frame.l2 = null; stripKey = '';
-  }
-  function paintExplain(into) {
-    const host = into || $('side-body');
-    host.textContent = '';
-    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    const c = concept;
-    add('h3', 'big', say('clip_x_real'));
-    if (c) {
-      if (c.definition) add('p', '', c.definition);
-      if (c.cue) { add('div', 'lab', say('clip_x_cue')); add('p', '', c.cue); }
-      if (c.lacking) { add('div', 'lab', say('clip_x_lacking')); add('p', '', c.lacking); }
-      const pr = (tax.principles || []).find((p) => p.id === c.principle_id);
-      if (pr) add('p', 'dim', say('clip_x_principle', { p: pr.title }));
-      if (c.taught_from) add('p', 'dim', say('clip_x_taught', { a: c.taught_from }));
-      const byId = new Map((tax.concepts || []).map((k) => [k.id, k]));
-      const words = { 'kind-of': 'link_kind_of', 'step-of': 'link_step_of', requires: 'link_requires', refines: 'link_refines', counters: 'link_counters', 'lapses-to': 'link_lapses_to' };
-      for (const l of tax.links || []) {
-        if (l.from === c.id && byId.get(l.to)) add('p', 'dim', say(words[l.kind]) + ' ' + byId.get(l.to).title);
-        else if (l.to === c.id && byId.get(l.from)) add('p', 'dim', say(words[l.kind] + '_by') + ' ' + byId.get(l.from).title);
-      }
-      if (c.sources) add('p', 'dim', say('clip_x_sources', { n: c.sources }));
-    }
-    const behs = (tax.behaviours || []).filter((b) => b.concept_id === CONCEPT);
-    add('h3', 'big', say('clip_x_game'));
-    if (!behs.length) add('p', '', say('clip_x_nogame'));
-    else {
-      add('p', 'state', say(behs.some((b) => b.in_sim !== false) ? 'clip_x_used' : 'clip_x_zero'));
-      for (const b of behs) { add('p', '', b.what); if (b.tag) add('p', 'dim', say('clip_x_built', { tag: b.tag })); }
-    }
-    add('h3', 'big', say('clip_x_code'));
-    if (!behs.length) add('p', '', say('clip_x_nocode'));
-    const cls = new Map((tax.classes || []).map((k) => [k.name, k]));
-    for (const b of behs) {
-      const k = b.class ? cls.get(b.class) : null;
-      if (k) {
-        const chain = [k.name];
-        for (let p = k.parent, n = 0; p && n < 10; n++) { chain.push(p); p = cls.get(p) ? cls.get(p).parent : null; }
-        add('div', 'lab', say('clip_x_chain'));
-        add('p', 'code', chain.join('  →  '));
-        if (b.symbol && b.symbol !== k.name) add('p', 'code dim', b.symbol);
-        if (k.doc) add('p', 'dim pre', k.doc);
-      } else if (b.symbol) add('p', 'code', say('clip_x_func', { symbol: b.symbol }));
-      add('p', 'dim', say('clip_x_where', { file: b.file, line: b.line }));
-      const btn = add('button', 'small', say('clip_x_show'));
-      const pre = add('pre', 'src');
-      pre.hidden = true;
-      btn.type = 'button';
-      btn.addEventListener('click', async () => {
-        pre.hidden = !pre.hidden;
-        btn.textContent = say(pre.hidden ? 'clip_x_show' : 'clip_x_hide');
-        if (pre.hidden || pre.dataset.got) return;
-        pre.dataset.got = '1';
-        try {
-          const res = await fetch('/api/tactic-plans/taxonomy/source?' + new URLSearchParams({ file: b.file, from: Math.max(1, b.line - 4), to: b.line + 40 }), { headers: { Authorization: 'Bearer ' + token } });
-          if (!res.ok) throw new Error();
-          const src = await res.json();
-          pre.textContent = src.text.split('\n').map((line, i) => String(src.from + i).padStart(4) + '  ' + line).join('\n');
-        } catch (_) { pre.textContent = say('clip_x_nosrc'); }
-      });
-    }
-  }
-  // One panel for the concept at hand (owner 11/25: "don't have states in multi places its confusing"
-  // · "states. then a explanation of concept at hand" · "simple interface" · "too much clutter"):
-  // its name, what it is, two live lines (is he doing it — or why not — and its numbers), the key to
-  // what is drawn, and the game / engine detail folded away.
-  function setTab() {
-    const host = $('side-body');
-    host.textContent = '';
-    const add = (tag, cls, text, parent) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; (parent || host).appendChild(n); return n; };
-    add('h2', 'ctitle', concept ? concept.title : say('clip_title'));
-    if (concept) add('p', 'cdef', concept.definition || concept.cue || '');
-    add('div', 'status off', '', host).id = 'live-status';
-    add('div', 'measure', '', host).id = 'live-measure';
-    add('div', 'key', say(reachKind ? 'reach_legend' : shadowKind ? 'shadow_legend' : 'clip_legend'));
-    const more = add('details', 'more');
-    add('summary', '', say('clip_more'), more);
-    const inner = add('div', '', null, more);
-    paintExplain(inner);
-    frame.l1 = frame.l2 = null;
-  }
-
-  // ── words and controls ──
-  function paintPhase(phase) {
-    for (const k of ['before', 'doing', 'after']) $('ph-' + k).classList.toggle('on', k === phase);
-  }
-  function paintBar() {
-    const c = clips[at], n = clips.length;
-    $('which').textContent = reported === false && !ownKind() ? say('clip_unreported')
-      : c ? say(reachKind ? 'clip_which_reach_on' : pairKind ? 'clip_which_switch' : 'clip_which', { i: at + 1, n, player: nameOf(c.slot), num: numOf(c.slot) }) : say('clip_waiting');
-    $('dots').textContent = '';
-    clips.forEach((_, i) => { const d = document.createElement('button'); d.type = 'button'; d.className = 'dot' + (i === at ? ' on' : ''); d.title = String(i + 1); d.addEventListener('click', () => show(i)); $('dots').appendChild(d); });
-    $('prev').disabled = !c || at <= 0;
-    $('next').disabled = !c || at >= n - 1;
-    $('replay').disabled = !c;
-    $('replay').classList.toggle('pulse', !!c && play.ended);
-    $('pause').disabled = !c || play.ended;
-    $('pause').textContent = say(play.on ? 'clip_pause' : 'clip_play');
-    for (const b of document.querySelectorAll('[data-rate]')) b.classList.toggle('on', Number(b.dataset.rate) === play.rate);
   }
 
   (async function () {
@@ -1031,71 +319,51 @@
     tax = r2.ok ? await r2.json() : {};
     concept = (tax.concepts || []).find((c) => c.id === CONCEPT) || null;
     terms = tax.engine || [];
-    pairKind = !!concept && concept.name === 'direct-opponent';
-    for (const t of copy.keys()) if (t.startsWith('dial_state_')) DIAL_STATES[t.slice(11)] = { in_state: copy.get(t) };   // which state a switched-on concept lives in
-    reachKind = !!concept && concept.name === 'pressing-distance';
-    if (BARE) showPairs = false;
-    shadowKind = !!concept && concept.name === 'cover-shadow';
-    if (shadowKind) reported = true;
-    showPairs = pairKind && !BARE;
-    {   // who has whom: on for the direct-opponent concept, a switch for the rest
-      const b = document.createElement('button');
-      b.type = 'button'; b.id = 'pairs'; b.textContent = say('pairs_show'); b.classList.toggle('on', showPairs);
-      b.addEventListener('click', () => { showPairs = !showPairs; b.classList.toggle('on', showPairs); });
-      $('rates').after(b);
-    }
+    roomOn = !!concept && (concept.name === 'pressing-distance' || concept.name === 'cover-shadow');
+    findConceptMachine();
     document.title = concept ? concept.title : say('clip_title');
-    {   // the concept's name, top left — tap it for what it is
-      const b = document.createElement('button');
-      b.type = 'button'; b.id = 'ctitle'; b.textContent = concept ? concept.title : say('clip_title');
-      b.addEventListener('click', () => popup(concept ? concept.title : '', concept ? concept.definition || concept.cue || '' : ''));
-      $('bar').prepend(b);
-    }
-    {   // the label: on the player (see-through) or beside the pitch (solid)
-      const b = document.createElement('button');
-      b.type = 'button'; b.id = 'labelmode';
-      const paint = () => { b.textContent = say(labelMode === 'side' ? 'label_side' : 'label_follow'); $('strip').classList.toggle('see', labelMode === 'follow'); };
-      b.addEventListener('click', () => { labelMode = labelMode === 'side' ? 'follow' : 'side'; localStorage.setItem('fh.concept.label2', labelMode); strip.x = null; paint(); });
-      $('replay').after(b);
-      paint();
-    }
-    $('title').textContent = concept ? concept.title : say('clip_title');
-    $('cue').textContent = '';
-    // (which match this is now sits in the side panel, under the concept's name)
-    $('ph-before').textContent = say('clip_before'); $('ph-doing').textContent = say('clip_doing'); $('ph-after').textContent = say('clip_after');
-    $('prev').textContent = say('clip_prev'); $('next').textContent = say('clip_next'); $('replay').textContent = say('clip_replay');
-    $('speed').textContent = say('clip_speed'); $('legend').textContent = '';
-    for (const [rate, label] of SPEEDS) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.dataset.rate = rate; b.textContent = label;
-      b.addEventListener('click', () => { play.rate = rate; paintBar(); });
-      $('rates').appendChild(b);
-    }
-    const openRow = (ev) => { const row = ev.target.closest('.row'); const x = row && stripRows.get(row.dataset.id); if (x) popup(x.machine + ' — ' + x.state, x.def); };
-    $('strip').addEventListener('click', openRow);
-    $('side-body').addEventListener('click', (ev) => { if (ev.target.closest('#side-states')) openRow(ev); });
+    $('ctitle').textContent = concept ? concept.title : say('clip_title');
+    $('ctitle').addEventListener('click', () => popup(concept ? concept.title : '', concept ? concept.definition || concept.cue || '' : ''));
+    $('exit').textContent = say('view_exit');
+    $('exit').addEventListener('click', () => { if (window.opener) window.close(); else location.href = '/#football-taxonomy'; });
+    $('hint').textContent = say('view_tap');
+
+    $('playbtn').addEventListener('click', () => {
+      if (play.on || play.live) { play.on = false; play.live = false; } else play.on = true;
+      play.last = performance.now();
+    });
+    $('live').addEventListener('click', () => { play.live = true; play.on = true; });
+    const scrub = $('scrub');
+    scrub.addEventListener('pointerdown', () => { play.dragging = true; play.live = false; });
+    scrub.addEventListener('input', () => { play.t = Number(scrub.value); play.live = false; });
+    const endDrag = () => { if (play.dragging) { play.dragging = false; play.last = performance.now(); } };
+    scrub.addEventListener('pointerup', endDrag); scrub.addEventListener('change', endDrag); window.addEventListener('pointerup', endDrag);
+    const speed = $('speed');
+    const paintSpeed = () => { play.rate = RATE(Number(speed.value)); $('speedval').textContent = say('view_speed', { x: play.rate >= 1 ? play.rate.toFixed(play.rate < 2 ? 2 : 1).replace(/\.?0+$/, '') : play.rate.toFixed(2).replace(/0$/, '') }); };
+    speed.addEventListener('input', () => { paintSpeed(); if (play.live && play.rate < 1) { play.live = false; play.on = true; } });   // slower than live leaves live
+    paintSpeed();
+
+    // Tap a player: he is the one followed (until another is tapped). Tap a line of his label: what it means.
+    cv.addEventListener('click', (ev) => {
+      let best = null, bd = 30 * 30;
+      for (const [x, y, i] of shown) { const d = (x - ev.offsetX) ** 2 + (y - ev.offsetY) ** 2; if (d < bd) { bd = d; best = i; } }
+      if (best != null) { follow = best; localStorage.setItem('fh.concept.follow.' + CONCEPT, String(best)); tagKey = ''; tagPos.x = null; }
+    });
+    $('tag').addEventListener('click', (ev) => {
+      const ln = ev.target.closest('.ln'), x = ln && tagRows.get(ln.dataset.id);
+      if (x) popup((x.m ? x.k + (x.v && x.v !== 'On' ? ' — ' + x.v : '') : x.k + ' — ' + x.v), x.def);
+    });
     $('popup').addEventListener('click', (ev) => { if (ev.target.id === 'popup' || ev.target.id === 'popup-x') $('popup').hidden = true; });
-    window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') $('popup').hidden = true; });
-    $('side-body').addEventListener('click', (ev) => {   // tap a title: its meaning opens / closes
-      const n = ev.target.closest('[data-def]');
-      if (!n || sideTab !== 'machine') return;
-      ev.stopPropagation();
-      if (openDefs.has(n.dataset.def)) openDefs.delete(n.dataset.def); else openDefs.add(n.dataset.def);
-      machineKey = ''; $('side-body').dataset.clip = '';
+    window.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape') $('popup').hidden = true;
+      else if (ev.key === ' ') { ev.preventDefault(); $('playbtn').click(); }
+      else if (ev.key === 'ArrowLeft') { play.live = false; play.t = Math.max(firstTick(), play.t - 150); }
+      else if (ev.key === 'ArrowRight') { play.t = Math.min(lastTick(), play.t + 150); }
     });
-    setTab();   // the concept panel, there from the start
-    $('prev').addEventListener('click', () => show(at - 1));
-    $('next').addEventListener('click', () => show(at + 1));
-    $('replay').addEventListener('click', () => show(at));
-    $('pause').addEventListener('click', () => { play.on = !play.on; play.last = performance.now(); paintBar(); });
-    window.addEventListener('keydown', (e) => {
-      if (e.key === ' ') { e.preventDefault(); if (play.ended) show(at); else $('pause').click(); }
-      else if (e.key === 'ArrowLeft') show(at - 1);
-      else if (e.key === 'ArrowRight') show(at + 1);
-      else if (e.key.toLowerCase() === 'r') show(at);
-    });
-    window.addEventListener('resize', layout);
-    layout(); paintBar(); paintPhase('');
+    window.addEventListener('resize', () => { layout(); tagPos.x = null; });
+    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (_) { /* not allowed outside fullscreen */ }
+    load.step = 1;
+    layout();
     requestAnimationFrame(frame);
     connect();
   })();

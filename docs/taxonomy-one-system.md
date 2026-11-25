@@ -385,3 +385,20 @@ if you want to editorialise who he is marking or whatever then use other fields"
   in the others. Every machine that is on gets a row; tap a row for its meaning.
 
 With no dial rows the goldens are unchanged.
+
+### The concept viewer: whole pitch, one player followed, a scrub bar (mig 1895)
+
+Owner 11/25: "show all players on screen at all times" · "don't jump to diff players" · "youtube
+like bar to slide the game forward or back" · "all controls on pitch and transparent" · "orient
+field side to side" · "in the case of stay in pressing dist its only one player we are focused on.
+also we need to see his state machine that he is defending or transitioning to def".
+
+`concept.html` / `js/teach/concept.js` (the clip viewer before it is in git, ≤ 8b30c21c): the
+concept's room (or the live match), recorded 10 minutes; the whole pitch and both goals, fixed, side
+to side (a phone held upright gets it turned, to be tilted). Every player drawn with his body
+facing (white wedge, engine), feet (engine steps; filled planted, hollow in the air) and head
+(toward the ball, as the 3D game turns it — the engine sends no head). ONE of ours is followed —
+the first whose concept machine comes on, then only a tap changes him — with a see-through label
+moving beside him: team phase, his job, every machine on (the concept's in gold, with its detail);
+tap a line for its meaning. On the pitch: play/pause, a scrub bar over the recording, LIVE / Go
+live, a speed slider (⅛×–8×, never past live), the concept's title ⓘ and Exit.
