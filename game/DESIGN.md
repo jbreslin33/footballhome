@@ -13606,3 +13606,50 @@ the side or behind — no body between the man and the ball, no sight of him —
 Next: the carrier's touch under pressure as a capability (the touch's error by the nearest opponent's distance and
 angle, rows from this table and the 4.1 heavy-touch losses), then double-team's dial again.
 Committed 0eaec847.
+
+### 8.364 G5.258 — the carrier's touch under pressure: built, kept at zero (a miscontrol, not a dispossession)
+
+From §8.363 (real carriers lose it from the side and behind nearly as often as from the front; ours half or less; the
+dribble touch had no error). `World`, the dribble touch [behaviour: dribble_touch_under_pressure]: with an opponent
+inside `physics.dribble.press_err_m` (1.5), a roll a touch by where he stands (in front = within 45° of the carrier's way
+to the goal he attacks / side / behind) against `press_err_{front,side,behind}`; a hit turns the touch ±`press_err_deg`
+(70) and sends it ×`press_err_heavy` (1.8, at least `press_err_min_mps` 4). No rows = off. Seeds 1000-4000 × 8 v G5.254:
+
+| | G5.254 | side 0.10 / behind 0.15 | side 0.20 / behind 0.30 | real |
+|---|---|---|---|---|
+| a carry lost to a heavy touch | 1.4 | 6.6 | 11.2 | 4.1 (StatsBomb miscontrol) |
+| off his feet from the side / behind, 14 m+ (a s) | 0.35 / 0.28 | 0.38 / 0.29 | 0.37 / 0.29 | 0.47 / 0.39 (DFL) |
+| carries 10 m+ | 32.4 | 29.0 | 27.6 | 34.6 |
+
+A knocked-off touch runs loose and their man does not get it at once: heavy-touch losses overshoot, the angle rates do
+not move. It is the miscontrol, not the dispossession. **AT ZERO**; at about half the first arm it would answer the
+miscontrol gap (4.1) on its own — a later slice.
+
+### 8.365 G5.259 — dispossessed by angle: a man beside or behind the carrier takes it off his feet (mig 1889; shipped)
+
+`World`, before the touch-tight steal [behaviour: dispossess_by_angle]: every opponent outfielder within
+`physics.steal.nick_m` (1.5) of the carrier rolls each tick against `nick_{front,side,behind}_per_s` × dt; a hit takes the
+ball (no tackle, no foul — StatsBomb's Dispossessed, 13.8 a team-match beside 20.3 tackle duels), the carrier off balance
+(`kDispossessedRecovery`). No rows = off. BY HIS OWN SPEED (DFL, `benchmarks_tracking_fbline.py`): caught from behind a real
+carrier loses it MORE when fast (0.38 / 0.58 / 0.61 a s at 0-2 / 2-4 / 4+ m/s; side 0.44 / 0.57 / 0.55; front 0.72 / 0.50
+/ 0.76) — no speed term.
+
+The two sources disagree on size: the DFL rate gaps (+0.05 / +0.13 / +0.19 a s) put carry losses off the feet at 12.5 a
+team-match, StatsBomb PL 15/16 8.0, and still short of DFL's rates. Events are PL 15/16's (the data rule): ×0.37.
+
+| seeds 1000-4000 × 8 | G5.254 | DFL gaps 0.05 / 0.13 / 0.19 | **×0.37: 0.02 / 0.05 / 0.07 (shipped)** | real |
+|---|---|---|---|---|
+| a carry stolen off his feet | 5.3 | 12.5 | 8.4 | 8.0 (StatsBomb) |
+| off his feet from the side, by band (a s) | 0.27 / 0.33 / 0.35 | 0.33 / 0.41 / 0.40 | 0.32 / 0.39 / 0.37 | 0.44 / 0.43 / 0.47 (DFL) |
+| … from behind | 0.16 / 0.29 / 0.28 | 0.26 / 0.30 / 0.31 | 0.21 / 0.30 / 0.30 | 0.47 / 0.42 / 0.39 |
+| off his feet in their wide last third | 5.5 | 6.2 | 6.4 | 11.4 (DFL) |
+| tackles / fouls | 20.6 / 14.1 | 20.1 / 14.2 | 21.8 / 12.8 | 20.3 / 12.5 |
+| passes / completed % | 415 / 75.3 | 423 / 75.3 | 433 / 75.6 | 434 / 77.5 |
+| take-on success % | 57.7 | 50.7 | 50.7 | 58.7 |
+| carries 10 m+ / goals | 32.4 / 2.41 | 29.3 / 2.19 | 30.8 / 2.41 | 34.6 / 1.35 |
+| card ok / off / OFF | 11 / 7 / 15 | 8 / 10 / 15 | 9 / 8 / 16 | |
+
+The cost is the take-on: a dribbler in his duel is taken by the man beside him 7 points more often (the harness books
+success once he is 1 m past, so these are losses before). Next: the take-on duel against StatsBomb — how a real one
+fails (tackled / dispossessed / out) and the beaten man's chance after — before the rows change again.
+`card_G5.259.txt`. Tests 29/29 (clean tree).

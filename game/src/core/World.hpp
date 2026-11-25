@@ -169,6 +169,8 @@ public:
     std::uint64_t deflectedTick() const noexcept { return deflected_tick_; }
     math::Vec2 deflectedAt() const noexcept { return deflected_at_; }   // G5.234: where (harness)   // G5.203: last deflection (harness)
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
+    std::uint32_t pressTouchErrors() const noexcept { return press_err_n_; }
+    std::uint32_t nicks() const noexcept { return nick_n_; }   // G5.259: taken off his feet by a man beside / behind / in front, no tackle   // G5.258: touches knocked off his line by a man on him
     // G5.79 (§8.180): kicks off a plant foot. Each player's strong foot (0 = right, 1 = left) and his
     // weak-foot habit; the foot of his last kick (on the wire); and the kicks that waited for a plant.
     void configureKicks(const ModelParams& p);
@@ -443,7 +445,12 @@ private:
                                       math::Fixed64::fromFraction(72, 100), math::Fixed64::fromFraction(79, 100), math::Fixed64::fromFraction(82, 100),
                                       math::Fixed64::fromFraction(88, 100), math::Fixed64::fromFraction(95, 100)};
     std::uint64_t last_touch_tick_ = 0;
-    std::uint32_t dribble_touches_ = 0, dribble_lost_ = 0, steals_ = 0;
+    std::uint32_t dribble_touches_ = 0, dribble_lost_ = 0, steals_ = 0, press_err_n_ = 0;
+    bool press_err_on_ = false;   // G5.258 (§8.364): the dribble touch under pressure
+    math::Fixed64 press_err_[3]{}, press_err_m_{}, press_err_rad_{}, press_err_heavy_{}, press_err_min_{};
+    bool nick_on_ = false;   // G5.259 (§8.365): dispossessed by angle
+    math::Fixed64 nick_[3]{}, nick_m_{};
+    std::uint32_t nick_n_ = 0;
     CarryDiag carry_diag_;
     // G5.79 (§8.180)
     struct PendingKick {

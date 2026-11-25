@@ -211,3 +211,5 @@ dt_trap_on_touchline
 dt_roll_per_spell
 dt_close_the_inside
 dt_tackle_in_reach
+dribble_touch_under_pressure
+dispossess_by_angle

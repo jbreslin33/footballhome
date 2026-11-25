@@ -114,6 +114,7 @@ def one(pos_path):
             c[("ec_n",) + ecf[1]] += 1; c[("ec_o",) + ecf[1]] += man is not None and t != ecf[0]
             if ecf[2] >= 0:
                 ea = (ecf[1][0], ecf[1][2], ecf[2]); c[("ea_n",) + ea] += 1; c[("ea_o",) + ea] += man is not None and t != ecf[0]
+            if ecf[3] is not None: c[("es_o",) + ecf[3]] += man is not None and t != ecf[0]
             if man is not None and t != ecf[0]:
                 w2 = int(abs(b[1]) >= 20); b2 = ball.get((k[0], k[1] + 50))
                 c[("of2", w2, 2 if b2 is None else 0 if b2[2] == t else 1)] += 1
@@ -131,12 +132,15 @@ def one(pos_path):
                 tch = 34 - abs(b[1])
                 # G5.257 (§8.363) THE TACKLER'S ANGLE: the nearest opponent inside 1.5 m — in front of the carrier (within 45 deg
                 # of his way to the goal he attacks), to the side (45-135) or behind (135+)
-                ang = -1
+                ang = -1; ecs = None
                 if ds[0] < 1.5:
                     q = dp[0][1]; dx, dy = q[0] - b[0], q[1] - b[1]; ax = -own[(k[0], t)]
                     cs = dx * ax / max(1e-9, math.hypot(dx, dy))
                     ang = 0 if cs >= 0.7071 else 2 if cs <= -0.7071 else 1
-                ecf = (t, (0 if tch < 5 else 1 if tch < 14 else 2, 0 if ds[0] < 1.5 else 1 if ds[0] < 3 else 2 if ds[0] < 5 else 3, int(len(ds) > 1 and ds[1] < 5)), ang)
+                    pq = pl.get((k[0], k[1] - 5), {}).get(man); mq = ps.get(man)
+                    spd = math.hypot(mq[0] - pq[0], mq[1] - pq[1]) * 5 if pq and mq else -1
+                    if spd >= 0: sb = 0 if spd < 2 else 1 if spd < 4 else 2; c[("es_n", ang, sb)] += 1; ecs = (ang, sb)
+                ecf = (t, (0 if tch < 5 else 1 if tch < 14 else 2, 0 if ds[0] < 1.5 else 1 if ds[0] < 3 else 2 if ds[0] < 5 else 3, int(len(ds) > 1 and ds[1] < 5)), ang, ecs)
         if new and la0 is not None and zone(la0):
             c[("zn",) + zone(la0)] += 1; c[("zo",) + zone(la0)] += la0[2] != t and gap0 == 0
         if new and la0 is not None and wide3(la0):
@@ -252,6 +256,10 @@ if __name__ == "__main__":
     for tb in range(3):
         print(f"    {tn[tb]}: " + " | ".join(" / ".join(f"{5 * c[('ea_o', tb, s2, a)] / max(1, c[('ea_n', tb, s2, a)]):.2f} ({c[('ea_n', tb, s2, a)] / 5 / tm2:.1f})" for a in range(3)) for s2 in (0, 1)))
     print("C++ angle row: {" + ", ".join(f"{5 * c[('ea_o', tb, s2, a)] / max(1, c[('ea_n', tb, s2, a)]):.3f}, {c[('ea_n', tb, s2, a)] / 5 / tm2:.1f}" for tb in range(3) for s2 in (0, 1) for a in range(3)) + "}")
+    print("  BY HIS OWN SPEED (G5.259): the same, nearest inside 1.5 m in front / side / behind, by the carrier's m/s 0-2 / 2-4 / 4+: per s (s a team-match)")
+    for a, an in enumerate(("in front", "to the side", "behind")):
+        print(f"    {an}: " + " / ".join(f"{5 * c[('es_o', a, sb)] / max(1, c[('es_n', a, sb)]):.2f} ({c[('es_n', a, sb)] / 5 / tm2:.1f})" for sb in range(3)))
+    print("C++ speed row: {" + ", ".join(f"{5 * c[('es_o', a, sb)] / max(1, c[('es_n', a, sb)]):.3f}, {c[('es_n', a, sb)] / 5 / tm2:.1f}" for a in range(3) for sb in range(3)) + "}")
     print("  OFF HIS FEET, 2 S ON (G5.243) a team-match — kept / back with the side that had it / play stopped; the taker's stint s med, 0.4 s or less %: "
           + " | ".join(f"{nm} " + " / ".join(f"{c[('of2', w, i)] / tm2:.1f}" for i in range(3)) + f"; {md(L[f'of2s{w}']):.1f} s, {100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}'])):.0f}%" for w, nm in ((1, "wide"), (0, "middle"))))
     print("C++ of2 row: {" + ", ".join(f"{x:.1f}" for w in (1, 0) for x in [c[('of2', w, i)] / tm2 for i in range(3)] + [md(L[f'of2s{w}']), 100 * c[('of2short', w)] / max(1, len(L[f'of2s{w}']))]) + "}")

@@ -840,6 +840,36 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
                     if (stop.raw < 0) stop = Fixed64::zero();
                     sp = (Fixed64::one() - kBallRollDecayPerTick) * Fixed64::fromInt(kTickRate) * stop;
                 }
+                // [behaviour: dribble_touch_under_pressure]
+                // G5.258 (§8.364): his touch with a man on him. A real carrier with an opponent inside 1.5 m loses it off
+                // his feet from the side or behind nearly as often as from the front (DFL, THE TACKLER'S ANGLE, §8.363) —
+                // no body between the man and the ball, no sight of him: the touch is knocked off its line and runs on.
+                // A roll a touch by where the nearest opponent stands (in front = within 45 deg of his way to the goal he
+                // attacks / side / behind); rows physics.dribble.press_err_{front,side,behind} (0 = off).
+                if (press_err_on_ && !turning_back) {
+                    int qn = -1; Fixed64 qd = press_err_m_ * press_err_m_;
+                    for (SlotIndex j = 0; j < players_.size(); ++j) {
+                        if (players_[j].team == o.team || keeper_[j]) continue;
+                        const Fixed64 dd = math::lengthSquared(Vec2{players_[j].pos.x - o.pos.x, players_[j].pos.y - o.pos.y});
+                        if (dd < qd) { qd = dd; qn = j; }
+                    }
+                    if (qn >= 0) {
+                        const Vec2 e{players_[qn].pos.x - o.pos.x, players_[qn].pos.y - o.pos.y};
+                        const Fixed64 el = math::length(e), ax = o.team == 0 ? Fixed64::one() : -Fixed64::one();
+                        const Fixed64 cs = el.raw > 0 ? e.x * ax / el : Fixed64::zero();
+                        const Fixed64 c45 = Fixed64::fromFraction(7071, 10000);
+                        const int ang = cs >= c45 ? 0 : cs <= -c45 ? 2 : 1;
+                        const Fixed64 u = (detNoise(match_seed_, clock_.tick(), c, 130) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                        if (u < press_err_[ang]) {
+                            const Fixed64 th = detNoise(match_seed_, clock_.tick(), c, 131) * press_err_rad_;   // ±press_err_deg off his line
+                            const Fixed64 ct = math::fx_cos(th), st = math::fx_sin(th);
+                            dir = Vec2{dir.x * ct - dir.y * st, dir.x * st + dir.y * ct};
+                            sp = sp * press_err_heavy_;
+                            if (sp < press_err_min_) sp = press_err_min_;
+                            ++press_err_n_;
+                        }
+                    }
+                }
                 ball_.spin = false;   // G5.156: only an aimed loft carries backspin
                 ball_.vel = Vec3{dir.x * sp, dir.y * sp, Fixed64::zero()};
                 last_touch_tick_ = clock_.tick();
@@ -857,6 +887,39 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             return;   // tickFreeBall sees it over the line this same tick
         }
 
+        // [behaviour: dispossess_by_angle]
+        // G5.259 (§8.365): a man within nick_m of the carrier gets a foot to it and takes it off him — no tackle, no
+        // foul (StatsBomb's Dispossessed, 13.8 a team-match beside 20.3 tackle duels). Real carriers lose it off their
+        // feet from the side and behind nearly as often as from the front (DFL, THE TACKLER'S ANGLE, §8.363); ours
+        // only to a man touch-tight on the ball, which he keeps in front of his body. A rate a second by where the man
+        // stands (in front = within 45 deg of the carrier's way to the goal he attacks / side / behind); rows
+        // physics.steal.nick_{front,side,behind}_per_s (0 = off). Each man in range rolls; lower slot first.
+        if (nick_on_ && !keeper_[*ball_.owner]) {
+            const SlotIndex car = *ball_.owner;
+            const Fixed64 ax = o.team == 0 ? Fixed64::one() : -Fixed64::one(), c45 = Fixed64::fromFraction(7071, 10000);
+            for (SlotIndex i = 0; i < players_.size(); ++i) {
+                if (players_[i].team == o.team || keeper_[i] || players_[i].recovery_ticks > 0) continue;
+                const Vec2 e{players_[i].pos.x - o.pos.x, players_[i].pos.y - o.pos.y};
+                const Fixed64 el2 = math::lengthSquared(e);
+                if (el2 >= nick_m_ * nick_m_) continue;
+                const Fixed64 el = math::length(e), cs = el.raw > 0 ? e.x * ax / el : Fixed64::one();
+                const int ang = cs >= c45 ? 0 : cs <= -c45 ? 2 : 1;
+                const Fixed64 u = (detNoise(match_seed_, clock_.tick(), i, 132) + Fixed64::one()) * Fixed64::fromFraction(1, 2);
+                if (u >= nick_[ang] * kTickDt) continue;
+                losing_team_ = o.team;
+                turnover_tick_ = clock_.tick();
+                turnover_ball_x_ = ball_.pos.x;
+                players_[car].recovery_ticks = kDispossessedRecovery; players_[car].recovery_kind = 2;
+                ball_.owner = i;
+                ++steals_; ++nick_n_;
+                owned_at_tick_ = clock_.tick();
+                settleControl(i, Fixed64::zero());
+                firstTouch(i);
+                box_clear_team_ = 0xFF;
+                ball_.contest_ticks = 0;
+                return;
+            }
+        }
         // Touch-to-steal contest [v1]: an opponent touch-tight on the
         // carried ball for kStealTicks takes it (nearest wins, lower slot
         // breaks ties). Teammates never contest.
@@ -1507,6 +1570,21 @@ void World::configureTempo(const ModelParams& p) {
     stretch_m_ = p.fixed("physics.tempo.stretch_m", 0);
     control_r_ = p.fixed("physics.ball.reach_m", 900);   // §8.246: an outfielder's reach to a ground ball [FH; fit: ground passes out, completion]
     carry_share_ = p.fixed("physics.tempo.carry_share", 0);
+    {   // G5.258 (§8.364): the dribble touch with a man on him — per touch, by where he stands; 0 = off
+        static const char* const kAng[3] = {"front", "side", "behind"};
+        press_err_on_ = false;
+        for (int a = 0; a < 3; ++a) { press_err_[a] = p.fixed(std::string("physics.dribble.press_err_") + kAng[a], 0); press_err_on_ = press_err_on_ || press_err_[a].raw > 0; }
+        press_err_m_ = p.fixed("physics.dribble.press_err_m", 1500);
+        press_err_rad_ = p.fixed("physics.dribble.press_err_deg", 70000) * Fixed64::fromFraction(314159, 100000) / Fixed64::fromInt(180);
+        press_err_heavy_ = p.fixed("physics.dribble.press_err_heavy", 1800);
+        press_err_min_ = p.fixed("physics.dribble.press_err_min_mps", 4000);
+    }
+    {   // G5.259 (§8.365): a man within nick_m takes it off the carrier's feet, a rate a second by where he stands; 0 = off
+        static const char* const kAng[3] = {"front", "side", "behind"};
+        nick_on_ = false;
+        for (int a = 0; a < 3; ++a) { nick_[a] = p.fixed(std::string("physics.steal.nick_") + kAng[a] + "_per_s", 0); nick_on_ = nick_on_ || nick_[a].raw > 0; }
+        nick_m_ = p.fixed("physics.steal.nick_m", 1500);
+    }
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
     carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band
