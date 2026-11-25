@@ -10,7 +10,8 @@
 // event, the game link — which are preselected; the section list
 // follows unchanged:
 //
-//   💬 Message (hello) · the section's own forms · 💳 Pay link · 🔗 Sign-in link ·
+//   💬 Message (hello) · the section's own forms · 💳 Pay link · 💳 Balance ·
+//   ⚠️ Past due (when owed) · 🔗 Sign-in link ·
 //   👋 Welcome · ✏️ Blank
 //
 //   mens   → every "Men's Club" registration row (Liga 1 / APSL reg) and
@@ -121,6 +122,21 @@
       const pay = window.MessageCopy && MessageCopy.render('pay_link_email', tier, fill);
       if (pay) list.push({ key: 'pay_link', label: cp('msg_pay_link', '💳 Pay link'), subject: pay.subject, body: pay.body,
                            smsBody: MessageCopy.block('pay_link_sms', tier, fill) });
+      // 💳 Balance / ⚠️ Past due (mig 1923, owner 11/25 "just the amount due
+      // and how far behind simple" + "multiple tones"): only when he owes —
+      // PersonStanding's dues (/api/payments/standing, club admins); how far
+      // behind = full months of the monthly rate.  No notice numbering.
+      const d = ctx.playerId && window.PersonStanding && PersonStanding.dues ? PersonStanding.dues(ctx.playerId) : null;
+      if (pay && d && d.member && !d.free_reason && Number(d.balance) > 0.5) {
+        const bal = Number(d.balance), rate = Number((MessageCopy.duesPolicy || {}).monthlyDuesUsd) || 0;
+        const n = rate > 0 ? Math.floor(bal / rate + 1e-9) : 0;
+        const owed = { ...fill, amount: `$${Math.round(bal)}`,
+          months_label: n >= 1 ? ((n === 1 ? MessageCopy.block('pay_months', 'one', {}) : MessageCopy.block('pay_months', 'many', { n })) || '') : '' };
+        for (const [kind, label, fb] of [['pay_balance', 'msg_pay_balance', '💳 Balance'], ['pay_past_due', 'msg_pay_past_due', '⚠️ Past due']]) {
+          const c = MessageCopy.render(`${kind}_email`, tier, owed);
+          if (c) list.push({ key: kind, label: cp(label, fb), subject: c.subject, body: c.body, smsBody: MessageCopy.block(`${kind}_sms`, tier, owed) });
+        }
+      }
     }
 
     // Sign-in and welcome are minted for a person — none for a contact
