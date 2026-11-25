@@ -34,7 +34,7 @@
   // ── the match, recorded ──
   const snaps = [];                                   // {tick, players, ball}
   const logs = { machines: [], states: [], phase: [], reach: [], shadow: [], brain: [] };   // {tick, v}
-  let hello = null, roster = [], kits = [null, null];
+  let hello = null, roster = [], kits = [null, null], teamNames = ['', ''];
   const teamOf = (i) => (hello && i < hello.slotCount / 2 ? 0 : 1);
   const numOf = (i) => (roster[i] && roster[i].number) || '';
   const nameOf = (i) => (roster[i] && roster[i].name) || ('#' + numOf(i));
@@ -59,7 +59,7 @@
           if (snaps.length > KEEP) snaps.shift();
           if (load.step < 2) load.step = 2;
         } else if (f.type === T.ROSTER) roster = GameWire.decodeRoster(view, f.payloadAt, f.payloadLen);
-        else if (f.type === T.TEAMS) kits = GameWire.decodeTeams(view, f.payloadAt, f.payloadLen).kits;
+        else if (f.type === T.TEAMS) { const tm = GameWire.decodeTeams(view, f.payloadAt, f.payloadLen); kits = tm.kits; teamNames = [tm.home, tm.away]; }
         else if (f.type === T.CONCEPT_LEGEND) legend = GameWire.decodeConceptLegend(view, f.payloadAt);
         else if (f.type === T.MACHINES) { push(logs.machines, GameWire.decodeMachines(view, f.payloadAt)); pickFollow(); }
         else if (f.type === T.STATES) push(logs.states, GameWire.decodeStates(view, f.payloadAt));
@@ -121,6 +121,14 @@
     const rows = [];
     const ph = at(logs.phase, t), phases = terms.filter((x) => x.kind === 'phase');
     const phase = ph ? phases[ph[teamOf(slot)]] : null;
+    // The formation his side plays and his place in it (ROSTER 2.11 tail).
+    const fm = roster.formation ? roster.formation[teamOf(slot)] : '', me = roster[slot] || {};
+    if (fm) rows.push({ id: 'formation', box: 'formation', k: '', v: say('view_formation', { code: fm }), def: say('view_formation_def', { code: fm, team: teamNames[teamOf(slot)] || '' }) });
+    if (me.role) {
+      const role = say('role_' + me.role) || me.role;
+      rows.push({ id: 'position', box: 'formation', k: '', v: me.label ? say('view_position', { role, label: me.label }) : role,
+                  def: say('view_position_def', { role: role.toLowerCase(), label: me.label || '', num: numOf(slot) }) });
+    }
     rows.push({ id: 'team', box: 'formation', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
     const sl = at(logs.states, t), code = sl ? sl[slot] : null, st = code ? terms.find((x) => x.kind === 'state' && x.code === code) : null;
     rows.push({ id: 'job', box: JOB_BOX[code] || 'formation', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });

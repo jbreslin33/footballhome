@@ -146,6 +146,19 @@ void GameServer::broadcastRoster() {
         rf.slots.push_back(std::move(e));
         rf.numbers.push_back(static_cast<std::uint8_t>(brain_.numberOf(i)));   // 1.17
     }
+    {   // 2.11: the formation each side plays and each man's place in it (label, role) — slot k of a
+        // side is position k of its spec, as setupPlayers places them.
+        const std::uint8_t per_team = cfg_.slot_count / 2;
+        const ai::FormationSpec* sp[2] = {&cfg_.formation_home, &cfg_.formation_away};
+        for (int t = 0; t < 2; ++t) rf.formation[t] = sp[t]->valid(per_team) ? sp[t]->code : std::string{};
+        for (std::uint8_t i = 0; i < cfg_.slot_count; ++i) {
+            const int t = i < per_team ? 0 : 1;
+            const std::uint8_t k = t == 0 ? i : i - per_team;
+            const bool ok = sp[t]->valid(per_team);
+            rf.labels.push_back(ok ? sp[t]->positions[k].label : std::string{});
+            rf.roles.push_back(ok ? sp[t]->positions[k].role : std::string{});
+        }
+    }
     const Bytes frame = encodeFrame(FrameType::Roster, encodeRoster(rf));
     for (const auto& [cid, _] : clients_) transport_.send(cid, frame);
 }

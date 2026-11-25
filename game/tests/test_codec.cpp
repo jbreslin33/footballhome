@@ -332,4 +332,23 @@ FH_TEST(roster_round_trip) {
     FH_EXPECT(back->numbers[0] == 9 && back->numbers[1] == 6 && back->slots[1].name == "Kante");
 }
 
+// 2.11: ROSTER's tail — each side's formation, each slot's board label and role; a 2.10 payload
+// (no tail) still decodes, with them empty.
+FH_TEST(roster_formation_tail) {
+    RosterFrame f;
+    RosterEntry a; a.name = "Simpson";
+    RosterEntry b; b.name = "Vardy";
+    f.slots = {a, b};
+    f.numbers = {2, 9};
+    f.formation[0] = "4-4-2"; f.formation[1] = "4-2-3-1";
+    f.labels = {"RB", "ST"}; f.roles = {"full-back", "nine"};
+    const auto back = decodeRoster(encodeRoster(f));
+    FH_EXPECT(back.has_value() && back->formation[0] == "4-4-2" && back->formation[1] == "4-2-3-1");
+    FH_EXPECT(back->labels.size() == 2 && back->labels[0] == "RB" && back->roles[1] == "nine");
+    Bytes old = encodeRoster(f);
+    old.resize(1 + 1 + 7 + 1 + 5 + 1 + 2);   // names + numbers only
+    const auto o = decodeRoster(old);
+    FH_EXPECT(o.has_value() && o->formation[0].empty() && o->labels.empty());
+}
+
 FH_TEST_MAIN()

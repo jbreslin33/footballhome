@@ -157,6 +157,10 @@ struct RosterFrame {
     // Each slot's position number (2 RB … 9 striker; 0 = unknown), from the
     // formation the engine plays.
     std::vector<std::uint8_t> numbers;
+    // 2.11 tail: each side's formation (formations.code, "" built-in), then per slot its board
+    // label (RB …) and role (formation_slot_roles.role: full-back …) — the viewer's FORMATION box.
+    std::string formation[2];
+    std::vector<std::string> labels, roles;
 };
 Bytes encodeRoster(const RosterFrame& f);
 std::optional<RosterFrame> decodeRoster(const Bytes& payload);

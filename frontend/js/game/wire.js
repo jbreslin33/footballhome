@@ -160,6 +160,14 @@
     if (payloadLen != null && p < at + payloadLen) {
       const c = view.getUint8(p); p += 1;
       for (let i = 0; i < c && i < slots.length; i++) slots[i].number = view.getUint8(p + i) || null;
+      p += c;
+    }
+    // 2.11 tail: each side's formation code, then per slot its board label (RB …) and role (full-back …).
+    if (payloadLen != null && p < at + payloadLen) {
+      const str = () => { const len = view.getUint8(p); p += 1; const t = utf8.decode(new Uint8Array(view.buffer, view.byteOffset + p, len)); p += len; return t; };
+      slots.formation = [str(), str()];
+      const c = view.getUint8(p); p += 1;
+      for (let i = 0; i < c; i++) { const label = str(), role = str(); if (slots[i]) { slots[i].label = label; slots[i].role = role; } }
     }
     return slots;
   }

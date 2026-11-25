@@ -47,6 +47,7 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
         if (rows.empty()) return std::nullopt;
 
         ai::FormationSpec spec;
+        spec.code = code;
         spec.positions.reserve(rows.size());
         for (const auto& row : rows) {
             spec.positions.push_back(
@@ -54,6 +55,7 @@ std::optional<ai::FormationSpec> loadFormation(const DbConfig& cfg,
                                 row[2].as<std::string>() == "GK"));
             spec.positions.back().number = static_cast<std::int16_t>(row[3].as<int>());
             spec.positions.back().role = row[4].as<std::string>();
+            spec.positions.back().label = row[2].as<std::string>();
         }
         return spec;
     } catch (const std::exception& e) {

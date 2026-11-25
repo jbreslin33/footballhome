@@ -292,6 +292,18 @@ Bytes encodeRoster(const RosterFrame& f) {
         w.u8(static_cast<std::uint8_t>(f.numbers.size()));
         for (std::uint8_t v : f.numbers) w.u8(v);
     }
+    {   // 2.11: formations, labels, roles
+        auto str = [&w](const std::string& s) {
+            const std::size_t len = s.size() > 40 ? 40 : s.size();
+            w.u8(static_cast<std::uint8_t>(len));
+            for (std::size_t i = 0; i < len; ++i) w.u8(static_cast<std::uint8_t>(s[i]));
+        };
+        str(f.formation[0]);
+        str(f.formation[1]);
+        const std::size_t n = f.labels.size() < f.roles.size() ? f.labels.size() : f.roles.size();
+        w.u8(static_cast<std::uint8_t>(n));
+        for (std::size_t i = 0; i < n; ++i) { str(f.labels[i]); str(f.roles[i]); }
+    }
     return std::move(w.out);
 }
 
@@ -309,6 +321,13 @@ std::optional<RosterFrame> decodeRoster(const Bytes& payload) {
     if (r.ok) {
         const std::uint8_t c = r.u8();
         for (std::uint8_t k = 0; k < c && r.ok; ++k) f.numbers.push_back(r.u8());
+    }
+    if (r.ok && r.remaining() > 0) {   // 2.11 tail
+        auto str = [&r]() { std::string s; const std::uint8_t len = r.u8(); for (std::uint8_t k = 0; k < len && r.ok; ++k) s.push_back(static_cast<char>(r.u8())); return s; };
+        f.formation[0] = str();
+        f.formation[1] = str();
+        const std::uint8_t c = r.u8();
+        for (std::uint8_t k = 0; k < c && r.ok; ++k) { f.labels.push_back(str()); f.roles.push_back(str()); }
     }
     if (!r.ok) return std::nullopt;
     return f;

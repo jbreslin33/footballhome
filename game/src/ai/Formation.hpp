@@ -38,8 +38,12 @@ struct FormationSpec {
         // Its role (DB formation_slot_roles.role, "" = unknown) — keys a
         // game model's demand per position (game_model_role_concepts).
         std::string role;
+        // Its label on the club's formation board (RB, CB, CDM, ST …; "" = unknown) — shown, never read by the sim.
+        std::string label;
     };
     std::vector<Pos> positions;
+    // The club formation it came from (formations.code, e.g. "4-2-3-1"; "" = built-in) — shown, never read by the sim.
+    std::string code;
 
     bool valid(std::uint8_t team_size) const {
         return positions.size() == team_size;
