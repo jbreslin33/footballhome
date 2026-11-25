@@ -215,13 +215,23 @@ std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& tea
         DemoTeam out;
         out.name = team_name;
         if (!team[0][1].is_null()) out.formation_code = team[0][1].as<std::string>();
-        // '#rrggbb' → 0xRRGGBB (mig 639).
-        std::int32_t* kit[4] = {&out.kit_shirt, &out.kit_shorts, &out.kit_socks, &out.kit_trim};
-        for (int c = 0; c < 4; ++c) {
-            if (team[0][2 + c].is_null()) continue;
-            const std::string hex = team[0][2 + c].as<std::string>();
-            if (hex.size() == 7 && hex[0] == '#') *kit[c] = static_cast<std::int32_t>(std::stol(hex.substr(1), nullptr, 16));
-        }
+        // '#rrggbb' → 0xRRGGBB (mig 639): the home kit on the team row, then the change kits (mig 1923).
+        const auto kitOf = [](const pqxx::row& r, int from) {
+            Kit k;
+            std::int32_t* part[4] = {&k.shirt, &k.shorts, &k.socks, &k.trim};
+            for (int c = 0; c < 4; ++c) {
+                if (r[from + c].is_null()) continue;
+                const std::string hex = r[from + c].as<std::string>();
+                if (hex.size() == 7 && hex[0] == '#') *part[c] = static_cast<std::int32_t>(std::stol(hex.substr(1), nullptr, 16));
+            }
+            return k;
+        };
+        out.kits.push_back(kitOf(team[0], 2));
+        if (!tx.exec("SELECT 1 FROM pg_tables WHERE tablename = 'game_demo_team_change_kits'").empty())
+            for (const auto& r : tx.exec_params(
+                     "SELECT shirt, shorts, socks, trim FROM game_demo_team_change_kits WHERE team_id = $1 ORDER BY kit_order",
+                     team[0][0].as<int>()))
+                out.kits.push_back(kitOf(r, 0));
         // Mig 641: the lineup, not the shirts, decides who starts — index =
         // formation slot (1-11), then the bench by shirt.
         for (const auto& r : tx.exec_params(
