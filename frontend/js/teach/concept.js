@@ -25,6 +25,10 @@
   const token = localStorage.getItem('token');
   if (!token) { location.href = '/'; return; }
   const CONCEPT = Number(new URLSearchParams(location.search).get('concept')) || 0;
+  // Clip mode (owner 11/25 "run the sim and grab the examples ahead of time for each concept … like compiling"):
+  // The concept's BUILT clips play by default when a build exists (?live=1 = the old live room) (game/src/tools/concept_clips_main.cpp → /game-clips/<concept>/) — the
+  // set, one after another — instead of a live room. A clip is the bytes a viewer would have been sent.
+  let CLIPS = !new URLSearchParams(location.search).has('live');
   const NO = 255, KEEP = 30 * 60 * 20, US = 0;   // 10 minutes of snapshots at 30 Hz; "us" = the home side
 
   const copy = new Map();
@@ -61,10 +65,14 @@
     const ws = new WebSocket(`${scheme}://${location.host}${roomOn ? `/game?trainer=1&concept=${CONCEPT}` : '/game'}`, `fh-game.v2.bearer.${token}`);
     ws.binaryType = 'arraybuffer';
     wsNow = ws; aheadPct = AHEAD_PCT;
-    ws.onmessage = (ev) => {
-      const view = new DataView(ev.data), T = GameWire.FrameType;
-      for (const f of GameWire.decodeFrame(ev.data)) {
-        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); ws.send(GameWire.encodeBrainWatch(true)); if (roomOn) ws.send(GameWire.encodeSpeed(AHEAD_PCT)); }
+    ws.onmessage = (ev) => ingest(ev.data, ws);
+    ws.onclose = () => setTimeout(connect, 2000);
+  }
+  // One message from the match (a socket's, or a built clip's): onto the recording.
+  function ingest(buf, ws) {
+      const view = new DataView(buf), T = GameWire.FrameType;
+      for (const f of GameWire.decodeFrame(buf)) {
+        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); if (ws) { ws.send(GameWire.encodeBrainWatch(true)); if (roomOn) ws.send(GameWire.encodeSpeed(AHEAD_PCT)); } }
         else if (f.type === T.SNAPSHOT) {
           const s = GameWire.decodeSnapshot(view, f.payloadAt);
           snaps.push({ tick: s.tick, players: s.players, ball: s.ball });
@@ -81,8 +89,52 @@
         else if (f.type === T.SHADOW) push(logs.shadow, GameWire.decodeShadow(view, f.payloadAt));
         else if (f.type === T.BRAIN) push(logs.brain, GameWire.decodeBrain(view, f.payloadAt));
       }
-    };
-    ws.onclose = () => setTimeout(connect, 2000);
+  }
+
+  // ── the built clips: index.json (the set, the pool), each .fhclip = head json + the wire messages ──
+  const clip = { build: null, list: [], i: 0, endAt: 0, loading: false };
+  async function loadBuild() {
+    const r = await fetch(`/game-clips/${CONCEPT}/index.json`, { cache: 'no-store' }).catch(() => null);
+    clip.build = r && r.ok ? await r.json() : null;
+    if (!clip.build) { CLIPS = false; paintClipBar(); load.step = 1; connect(); return; }   // nothing built: the live room
+    const byId = new Map(clip.build.pool.map((c) => [c.id, c]));
+    clip.list = clip.build.set.map((id) => byId.get(id)).filter(Boolean);
+    loadClip(0);
+  }
+  async function loadClip(i) {
+    if (!clip.list.length || clip.loading) return;
+    clip.loading = true;
+    clip.i = (i + clip.list.length) % clip.list.length;
+    const c = clip.list[clip.i];
+    const r = await fetch(`/game-clips/${CONCEPT}/${c.file}?b=${encodeURIComponent(clip.build.built_at)}`).catch(() => null);
+    const buf = r && r.ok ? await r.arrayBuffer() : null;
+    clip.loading = false;
+    if (!buf) return;
+    snaps.length = 0;
+    for (const k of Object.keys(logs)) logs[k].length = 0;
+    const dv = new DataView(buf);
+    let at = 8 + 4 + dv.getUint32(8, true);
+    while (at + 4 <= buf.byteLength) {
+      const n = dv.getUint32(at, true); at += 4;
+      ingest(buf.slice(at, at + n), null); at += n;
+    }
+    follow = c.defender.slot; tagKey = ''; stripAt = 0;
+    play.t = firstTick(); play.on = true; play.live = false; play.only = false; play.last = performance.now();
+    clip.endAt = 0;
+    paintClipBar();
+  }
+  function paintClipBar() {
+    const el = $('clipbar');
+    if (!CLIPS) { el.hidden = true; return; }
+    el.hidden = false;
+    if (!clip.build) { $('cliptxt').textContent = say('clip_none'); return; }
+    const c = clip.list[clip.i];
+    if (!c) return;
+    $('clipkind').textContent = say(c.kind === 'good' ? 'clip_good' : 'clip_bad');
+    $('clipkind').className = 'kind ' + c.kind;
+    $('cliptxt').textContent = [say('clip_of', { n: clip.i + 1, total: clip.list.length }),
+      say('clip_who', { num: c.defender.number, name: c.defender.name, label: c.defender.label, min: c.minute }),
+      say('clip_out_' + c.outcome, { m: Math.round(c.forward_m), gap: c.gap_at_arrival_m.toFixed(1) })].join(' · ');
   }
 
   // Binary search: the newest entry at or before tick t.
@@ -374,6 +426,7 @@
       play.t += dt * 30 * play.rate;
       // At the end of what is recorded so far: wait for more (it is buffering), or with "only", back to the first spell.
       if (play.t >= lastTick()) play.t = play.only && spells.length ? spells[0][0] : lastTick();
+      if (CLIPS && play.t >= lastTick()) { if (!clip.endAt) clip.endAt = now; else if (now - clip.endAt > 1500) loadClip(clip.i + 1); }
     }
     paceRoom();
     play.t = Math.max(firstTick(), Math.min(lastTick(), play.t));
@@ -489,7 +542,7 @@
     if (!play.dragging) sc_.value = Math.round(play.t);
     sc_.style.setProperty('--p', (b > a ? 100 * (play.t - a) / (b - a) : 100).toFixed(2) + '%');
     $('clock').textContent = say('view_clock', { t: clockOf(play.t - a), total: clockOf(b - a) });
-    const lv = $('live'); lv.classList.toggle('on', play.live); lv.textContent = play.live ? say('view_live') : say('view_go_newest');
+    const lv = $('live'); lv.hidden = CLIPS; lv.classList.toggle('on', play.live); lv.textContent = play.live ? say('view_live') : say('view_go_newest');
     $('playbtn').textContent = play.on || play.live ? '⏸' : '▶';
     $('playbtn').title = say(play.on || play.live ? 'clip_pause' : 'clip_play');
   }
@@ -584,6 +637,9 @@
     load.step = 1;
     layout();
     requestAnimationFrame(frame);
-    connect();
+    $('clipprev').addEventListener('click', () => loadClip(clip.i - 1));
+    $('clipnext').addEventListener('click', () => loadClip(clip.i + 1));
+    $('clipprev').title = say('clip_prev'); $('clipnext').title = say('clip_next');
+    if (CLIPS) { load.step = 2; paintClipBar(); loadBuild(); } else connect();
   })();
 })();

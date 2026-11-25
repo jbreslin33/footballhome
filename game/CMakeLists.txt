@@ -127,6 +127,10 @@ target_link_libraries(fh-game PRIVATE game_match game_teach)
 add_executable(fh-game-match src/tools/match_main.cpp)
 target_link_libraries(fh-game-match PRIVATE game_match)
 
+# 11/25: one concept's clips built ahead of time (frontend/game-clips/<concept>/, docs/taxonomy-one-system.md).
+add_executable(fh-concept-clips src/tools/concept_clips_main.cpp)
+target_link_libraries(fh-concept-clips PRIVATE game_match)
+
 
 # ── tests ──────────────────────────────────────────────────────────────
 enable_testing()

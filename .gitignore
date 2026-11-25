@@ -117,3 +117,6 @@ backend/.builder-out/
 phone-app/**/build/
 phone-app/**/.gradle/
 phone-app/**/local.properties
+
+# Concept clips: a build output (game/src/tools/concept_clips_main.cpp), rebuilt per engine
+frontend/game-clips/

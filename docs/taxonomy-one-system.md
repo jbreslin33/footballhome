@@ -444,3 +444,38 @@ read stays for the frame `PHASE` and the harness. No rows = 0 = he reads it the 
 so the goldens are unchanged. Frame `POSS_READ` (0x51): per slot his phase | 0x80 while the ball has
 turned and he has not read it. **Owed:** the two numbers from tracking data — after a turnover, when
 does each man's run change, by his distance to the ball (DFL `~/football-data/dfl_idsse`).
+
+## A concept's clips, built ahead of time (mig 1917)
+
+Owner 11/25: "would it be better to run the sim and grab the examples ahead of time for each concept
+since it does not take long. think of it like compiling a c++ program. we can have multiple
+'executables' for them to view?" · "one concept at a time" · "we can focus on the 'presentation' of the
+concept once we have multiple 'exe'".
+
+A live room makes every viewer wait while the match finds the concept. A **build** does it once:
+
+    fh-concept-clips --out frontend/game-clips/<concept> --concept <id> --matches 8 --jobs ≤4 --engine <sha>
+
+- **Source**: the engine, the concept's dials on (`game_concept_dials`, as in the concept's room), 8
+  whole matches of the PL round robin (the club's teaching sides — copies of West Ham — left out;
+  `--skip`), seeds from `--seed`.
+- **Recorder**: each match has one more client, watching the brains. A clip is exactly the bytes a
+  viewer would have been sent (Viewer = game): the once-only frames (HELLO, legends, teams, roster),
+  then every tick's frames from the clip's first tick to its last.
+- **Test** (stay in pressing distance, 164): a pass to the man a defender has (his pressing-distance
+  machine awake, on that man). At the kick: was the man inside his reach (the engine's `PressReach`)?
+  As it arrives: how far is he from him? The next 4 s: did the man's side get 10 m+ forward (or score),
+  go nowhere, or lose it?
+  **Good** = in reach at the kick, ≤ 3 m as it arrives, nowhere / won. **Bad** = out of reach, 4–12 m
+  as it arrives (further = he was never near his man: a different lesson), and they got forward.
+  [FH] values for picking clear clips; they never touch the sim.
+- **Output**: `index.json` (engine, matches, fixtures, the SET a player is shown — 5 good, 3 bad,
+  spread across positions — and the POOL of 30 of each, best first) and one `<id>.fhclip` per clip
+  (`FHCLIP1\n`, u32 json length, the clip's json, then `[u32 length][message]`…). The new build is
+  written beside the old and swapped in whole: a viewer never sees half a build. ~3 min for 8 matches
+  on 3-4 cores.
+- **Viewer**: `concept.html?concept=164&clips=1` plays the set one clip after another, following the
+  defender, with a bar: done right / done wrong, who, the minute, what happened. Coach decides how many
+  (`--good`, `--bad`); players see exactly the set. "Show me more" from the pool is later, if wanted.
+- **Stale**: each build carries the engine sha; an engine change = build that concept again (by hand
+  for now). Presentation (what it is, the cue, freeze-and-tap) comes once several concepts are built.
