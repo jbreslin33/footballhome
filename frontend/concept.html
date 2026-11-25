@@ -71,11 +71,13 @@
     .cliplist { list-style: none; padding: 0; margin: 8px 0 0; } .cliplist li { padding: 6px 8px; border-radius: 6px; cursor: pointer; font: 600 13px system-ui, sans-serif; }
     .cliplist li:hover { background: rgba(255,255,255,.08); } .cliplist li.now { background: rgba(255,216,77,.18); }
     .cliplist li.good::before { content: '✓ '; color: #2ecc71; font-weight: 800; } .cliplist li.bad::before { content: '✗ '; color: #ff4d4d; font-weight: 800; }
-    #clipbar { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 64px); transform: translateX(-50%); max-width: min(820px, calc(100% - 24px));
+    #clipbar { position: absolute; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 64px); transform: translateX(-50%); width: min(820px, calc(100% - 24px)); box-sizing: border-box;
                display: flex; align-items: center; gap: 8px; padding: 6px 8px; font: 600 13px system-ui, sans-serif; }
     #clipbar .kind { font-weight: 800; padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
     #clipbar .kind.good { background: #1f7a45; color: #eafff1; } #clipbar .kind.bad { background: #9b2333; color: #ffecef; }
-    #clipbar button { font: 800 14px system-ui, sans-serif; padding: 3px 10px; }
+    #clipbar button { font: 800 14px system-ui, sans-serif; padding: 3px 10px; flex: 0 0 auto; }
+    /* ◀ ▶ side by side at the bar's left, the bar a fixed width: they never move, so cycling is tap tap tap */
+    #clipbar .kind { flex: 0 0 auto; } #cliptxt { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     #focus.off { border: 2px solid rgba(255,255,255,.25); } #focus.off .f1 { color: var(--dim); font-size: 15px; }
     #scrub::-webkit-slider-runnable-track { background: linear-gradient(to right, rgba(255,204,0,.8) var(--p, 0%), rgba(255,255,255,.3) var(--p, 0%)); }
     #speed { width: 110px; }
@@ -152,7 +154,7 @@
     <button id="buildbtn" class="glass" type="button" hidden></button>
     <div id="focus" class="glass" hidden></div>
     <div id="tag"></div>
-    <div id="clipbar" class="glass" hidden><button id="clipprev" class="glass" type="button">◀</button><span id="clipkind" class="kind"></span><span id="cliptxt"></span><button id="clipnext" class="glass" type="button">▶</button></div>
+    <div id="clipbar" class="glass" hidden><button id="clipprev" class="glass" type="button">◀</button><button id="clipnext" class="glass" type="button">▶</button><span id="clipkind" class="kind"></span><span id="cliptxt"></span></div>
     <button id="exit" class="glass" type="button"></button>
     <div id="controls" class="glass">
       <button id="playbtn" class="glass" type="button">⏸</button>
@@ -166,6 +168,6 @@
     <div id="popup" hidden><div class="box"><button id="popup-x" type="button">×</button><h3 id="popup-t"></h3><div id="popup-b"></div></div></div>
   </div>
   <script src="js/game/wire.js?v=20261125possread"></script>
-  <script src="js/teach/concept.js?v=20261125exe2"></script>
+  <script src="js/teach/concept.js?v=20261125exe3"></script>
 </body>
 </html>
