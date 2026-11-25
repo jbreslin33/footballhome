@@ -407,4 +407,7 @@ Since mig 1897/1899 his states are a list docked on the left, only the states th
 row, tap for the meaning (his man and the numbers are in the popup), in three boxes: **Formation**
 (team phase, his place in the shape), **Style** (marking scheme, pressing distance, cover shadow —
 and "mark the opponent in his area"), **Actions** at the bottom (what he is doing; press, loose ball,
-double-team, recover, cover). The formation itself (4-2-3-1, his role) is not on the wire yet.
+double-team, recover, cover). Since mig 1900 the Formation box also leads with the formation his
+side plays (`formations.code`, e.g. 4-2-3-1) and his place in it (`formation_slot_roles.role` +
+the board label, e.g. "Full-back (RB)"), sent on the ROSTER 2.11 tail; the role words are copy
+rows `role_<role>`.
