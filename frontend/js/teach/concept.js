@@ -25,7 +25,7 @@
   const token = localStorage.getItem('token');
   if (!token) { location.href = '/'; return; }
   const CONCEPT = Number(new URLSearchParams(location.search).get('concept')) || 0;
-  const NO = 255, KEEP = 30 * 60 * 10, US = 0;   // 10 minutes of snapshots at 30 Hz; "us" = the home side
+  const NO = 255, KEEP = 30 * 60 * 20, US = 0;   // 10 minutes of snapshots at 30 Hz; "us" = the home side
 
   const copy = new Map();
   const say = (tier, tokens = {}) => (copy.get(tier) || '').replace(/\{(\w+)\}/g, (_, k) => (tokens[k] == null ? '' : String(tokens[k])));
@@ -42,6 +42,17 @@
   const firstTick = () => (snaps.length ? snaps[0].tick : 0);
   const push = (log, v) => { log.push({ tick: lastTick(), v }); if (log.length > KEEP / 6 + 50) log.shift(); };
 
+  // Owner 11/25: "the video controls are terrible it should start at 0 seconds. looks like its always at end?" — a
+  // VIDEO now: the playhead starts at 0:00 and plays at 1×; the concept's room runs the match AHEAD at 4× so the
+  // recording (the bar's lighter part, like a video buffering) and the concept's spells are found before you get there.
+  // The room eases to 1× once it is 3 minutes ahead (and back to 4× under that). LIVE is no longer where it sits.
+  const AHEAD_PCT = 400, AHEAD_MAX = 30 * 180;
+  let aheadPct = AHEAD_PCT, wsNow = null;
+  function paceRoom() {
+    if (!roomOn || !wsNow || wsNow.readyState !== 1) return;
+    const want = lastTick() - play.t > AHEAD_MAX ? 100 : AHEAD_PCT;
+    if (want !== aheadPct) { aheadPct = want; wsNow.send(GameWire.encodeSpeed(want)); }
+  }
   // The concept's own room when the real sim keeps it at zero (game/src/main.cpp, game_concept_dials).
   let roomOn = false;
   function connect() {
@@ -49,10 +60,11 @@
     const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
     const ws = new WebSocket(`${scheme}://${location.host}${roomOn ? `/game?trainer=1&concept=${CONCEPT}` : '/game'}`, `fh-game.v2.bearer.${token}`);
     ws.binaryType = 'arraybuffer';
+    wsNow = ws; aheadPct = AHEAD_PCT;
     ws.onmessage = (ev) => {
       const view = new DataView(ev.data), T = GameWire.FrameType;
       for (const f of GameWire.decodeFrame(ev.data)) {
-        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); ws.send(GameWire.encodeBrainWatch(true)); if (roomOn) ws.send(GameWire.encodeSpeed(100)); }
+        if (f.type === T.HELLO) { hello = GameWire.decodeHello(view, f.payloadAt); ws.send(GameWire.encodeBrainWatch(true)); if (roomOn) ws.send(GameWire.encodeSpeed(AHEAD_PCT)); }
         else if (f.type === T.SNAPSHOT) {
           const s = GameWire.decodeSnapshot(view, f.payloadAt);
           snaps.push({ tick: s.tick, players: s.players, ball: s.ball });
@@ -254,7 +266,7 @@
       for (const [f, u] of ln.sp) {
         const d = document.createElement('div'); d.className = 'spell';
         d.style.left = (100 * (f - a) / span) + '%'; d.style.width = Math.max(0.3, 100 * (u - f) / span) + '%'; d.style.background = ln.col;
-        d.title = ln.name + ' · ' + clockOf(f) + '–' + clockOf(u);
+        d.title = ln.name + ' · ' + clockOf(f - a) + '–' + clockOf(u - a);
         lane.appendChild(d);
       }
       el.appendChild(lane);
@@ -305,7 +317,7 @@
   }
 
   // ── playback: a position on the recording, a rate; at the newest moment it is LIVE ──
-  const play = { t: 0, on: true, live: true, rate: 1, last: performance.now(), dragging: false };
+  const play = { t: -1, on: true, live: false, rate: 1, last: performance.now(), dragging: false };
   function posAt(t, slot) { const [a, b, k] = snapAt(t); return { x: lerp(a.players[slot].x, b.players[slot].x, k), y: lerp(a.players[slot].y, b.players[slot].y, k) }; }
 
   // ── drawing: the whole pitch and both goals, side to side, fixed ──
@@ -356,11 +368,14 @@
     if (!snaps.length || !hello) { $('tag').textContent = ''; return; }
 
     const dt = Math.min(0.1, (now - play.last) / 1000); play.last = now;
+    if (play.t < 0) play.t = firstTick();   // a video: from the start
     if (play.live && !play.dragging) play.t = lastTick();
     else if (play.on && !play.dragging) {
       play.t += dt * 30 * play.rate;
-      if (play.t >= lastTick()) { if (play.only && spells.length) play.t = spells[0][0]; else { play.t = lastTick(); play.live = true; } }
+      // At the end of what is recorded so far: wait for more (it is buffering), or with "only", back to the first spell.
+      if (play.t >= lastTick()) play.t = play.only && spells.length ? spells[0][0] : lastTick();
     }
+    paceRoom();
     play.t = Math.max(firstTick(), Math.min(lastTick(), play.t));
     // Play only the concept: inside a spell, play on; past one, on to the next spell's start (after the last, the first).
     if (play.only && spells.length && !play.dragging) {
@@ -473,8 +488,8 @@
     sc_.min = a; sc_.max = Math.max(a + 1, b);
     if (!play.dragging) sc_.value = Math.round(play.t);
     sc_.style.setProperty('--p', (b > a ? 100 * (play.t - a) / (b - a) : 100).toFixed(2) + '%');
-    $('clock').textContent = play.live ? clockOf(play.t) : say('view_behind', { s: clockOf(b - play.t) });
-    const lv = $('live'); lv.classList.toggle('on', play.live); lv.textContent = play.live ? say('view_live') : say('view_go_live');
+    $('clock').textContent = say('view_clock', { t: clockOf(play.t - a), total: clockOf(b - a) });
+    const lv = $('live'); lv.classList.toggle('on', play.live); lv.textContent = play.live ? say('view_live') : say('view_go_newest');
     $('playbtn').textContent = play.on || play.live ? '⏸' : '▶';
     $('playbtn').title = say(play.on || play.live ? 'clip_pause' : 'clip_play');
   }
