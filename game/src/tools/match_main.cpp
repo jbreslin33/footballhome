@@ -139,6 +139,7 @@ struct Stats {
     long pass_ok = 0;
     // In behind (G5.27, benchmarks_tracking_behind.py): passes met past their line as it stood at the kick.
     long tkl[2][3] = {};
+    long tke[2][4] = {}, tkb_n[4] = {}, tkb_out[4] = {}, tkq_n[2] = {}, tkq_out[2] = {}, tkq_got[2][2] = {}; double tkq_d[2] = {};   // §8.367 squirts <5 m off the line: [toward the line?] n / out / taken by [same side as tackler?] / m rolled before taken;   // + by m off the touchline: won tackles, squirted out of play   // §8.367 TACKLE ENDS: clean / squirt x next ball tackler live / tackler restart / carrier live / carrier restart
     long tick_n = 0, tick_live = 0, dead_n[15] = {}, out_by[3][ai::kWhyCount + 1] = {}; std::vector<double> dead_s[15]; long fouls = 0, pens = 0, pen_goals = 0, tkl_area = 0, area_rec = 0, area_ticks = 0;
     long tk_spells = 0, tk_frames = 0, tk_press = 0, tk_takeon = 0, tk_press_z[5] = {};
     long press_why[ai::kWhyCount] = {}, press_d[5] = {}, gap_h[10] = {}, led = 0, bh_pass = 0, bh_n = 0, bh_ok = 0, bh_air = 0, bh_fwd = 0, bh_frun = 0, bh_z[10] = {};
@@ -372,6 +373,7 @@ int main(int argc, char** argv) {
         bool ws_on = false;   // §8.155: this spell began wide 18-35 m out
         int fn_team = -1, fn_deep = -1, fn_holder = -1, fn_last = -1; long fn_k0 = 0; bool fn_owned = false;   // §8.228 the side's spell: deepest band its man had the ball in
         int from[32]; long from_t[32], pressed_in[32]; int facing[32], facing_z[32] = {}; int fo_pend_team = -1, fo_pend_z = 0;   // §8.231
+        int tk_pend = -1, tk_band = 0, tk_q = -1; double tk_x0 = 0, tk_y0 = 0;   // §8.367: a squirted tackle's side, until the next owner or restart
         int tf_pend = -1, tf_pend_team = -1, tf_px = 0; long tf_k[4] = {-100, -100, -100, -100}; std::uint32_t tf_pv_nick = 0, tf_pv_steal = 0, tf_pv_lost = 0;   // §8.366: tackle won / nick / steal / heavy touch, last tick
         for (int j = 0; j < 32; ++j) { from[j] = -1; from_t[j] = -1000; pressed_in[j] = -1; facing[j] = 0; }
         long loss_tick[2] = {-1000, -1000};
@@ -686,6 +688,7 @@ int main(int argc, char** argv) {
                 if (W.dribbleLost() != tf_pv_lost) tf_k[3] = static_cast<long>(k);
                 tf_pv_nick = W.nicks(); tf_pv_steal = W.steals(); tf_pv_lost = W.dribbleLost();
                 for (const auto& e : s.lastEvents()) if (e.type == core::MatchEventType::TackleWon) tf_k[0] = static_cast<long>(k);
+                if (tk_pend >= 0 && W.restartTeam() != 0xFF) { ++S.tke[1][W.restartTeam() == tk_pend ? 1 : 3]; ++S.tkb_out[tk_band]; if (tk_q >= 0) ++S.tkq_out[tk_q]; tk_pend = -1; tk_q = -1; }   // §8.367
                 if (tf_pend >= 0 && W.restartTeam() != 0xFF) { ++(tf_px ? S.toe_x : S.toe_n)[tf_pend][W.restartTeam() == tf_pend_team ? 2 : 3]; tf_pend = -1; }   // dead before anyone had it
             }
             for (const auto& e : s.lastEvents()) {
@@ -694,6 +697,11 @@ int main(int argc, char** argv) {
                 if (e.type == core::MatchEventType::TackleWon || e.type == core::MatchEventType::TackleLost) {
                     const double tx = b.pos.x.toDouble() * (e.team == 0 ? 1.0 : -1.0) + hx;   // metres from the tackler's own goal
                     ++S.tkl[e.type == core::MatchEventType::TackleWon ? 0 : 1][tx < 35 ? 0 : tx < 70 ? 1 : 2];
+                    if (e.type == core::MatchEventType::TackleWon) {   // §8.367: clean (his now) or squirted loose
+                        { const double tl = hy - std::fabs(b.pos.y.toDouble()); tk_band = tl < 5 ? 0 : tl < 12 ? 1 : tl < 20 ? 2 : 3; ++S.tkb_n[tk_band]; }
+                        if (b.owner && W.player(*b.owner).team == e.team) ++S.tke[0][0]; else { tk_pend = e.team; tk_q = -1;
+                            if (tk_band == 0) { tk_q = b.vel.y.toDouble() * b.pos.y.toDouble() > 0 ? 1 : 0; ++S.tkq_n[tk_q]; tk_x0 = b.pos.x.toDouble(); tk_y0 = b.pos.y.toDouble(); } }
+                    }
                     if (tx < 16.5 && std::fabs(b.pos.y.toDouble()) < 20.16) ++S.tkl_area;   // §8.140: in his own penalty area
                 }
             }
@@ -1911,6 +1919,7 @@ int main(int argc, char** argv) {
                         if (ws_on) ++S.ws_n; }
                     if (fo_pend_team >= 0) { if (q.team != fo_pend_team) ++S.fo_lost[fo_pend_z]; else ++S.fo_kept[fo_pend_z]; fo_pend_team = -1; }
                     if (tf_pend >= 0) { ++(tf_px ? S.toe_x : S.toe_n)[tf_pend][q.team == tf_pend_team ? 0 : 1]; tf_pend = -1; }
+                    if (tk_pend >= 0) { ++S.tke[1][q.team == tk_pend ? 0 : 2]; if (tk_q >= 0) { ++S.tkq_got[tk_q][q.team == tk_pend ? 1 : 0]; S.tkq_d[tk_q] += std::hypot(b.pos.x.toDouble() - tk_x0, b.pos.y.toDouble() - tk_y0); } tk_pend = -1; tk_q = -1; }   // §8.367
                     own_lx = q.pos.x.toDouble(); own_ly = q.pos.y.toDouble(); own_path = 0; own_nv = 0; own_ss = 0; own_sn = 0; own_e = 0;
                     own_got = -1;   // §8.234: his 5 Hz pace over the second before the receipt (windows ending 0 / -0.2 .. -0.8 s)
                     if (k >= 30 && own < 32) { own_got = from[own] >= 0 && last_ft <= 3.0 ? 1 : 0; /* §8.236: the real cut, a mate's pass reaching him within 3 s, else won / loose (benchmarks_tracking_spellpace.py) */ own_why = static_cast<int>(s.lastOrders()[own].why); own_plen = last_plen; own_ft = last_ft; own_v0 = last_v0; own_va = last_va; own_kk = last_kk; own_fl_ok = false;
@@ -4159,6 +4168,20 @@ int main(int argc, char** argv) {
     std::printf("   TACKLES a team-match won / lost, by the tackler's own third / middle / their third (StatsBomb tackle duels 10.30 7.82 2.20, fouls 2.78 6.71 3.02):");
     for (int z = 0; z < 3; ++z) std::printf(" %.1f/%.1f", S.tkl[0][z] / tm, S.tkl[1][z] / tm);
     std::printf("; fouls %.1f (12.52, advantage 1.73)\n", S.fouls / tm);
+    {   // §8.367 TACKLE ENDS (benchmarks_statsbomb_tackle_ends.py)
+        const long a = S.tke[0][0] + S.tke[1][0] + S.tke[1][1] + S.tke[1][2] + S.tke[1][3];
+        std::printf("   TACKLE ENDS a team-match, won tackles by who has the ball next (StatsBomb PL 15/16, take-on tackles in brackets): clean %.2f, squirted %.2f = tackler %.2f + his restart %.2f / carrier %.2f + his restart %.2f; all: tackler's side %.1f%% (57.3%%), carrier's live %.1f%% (21.4%%), carrier's restart %.1f%% (20.9%%)\n",
+                    S.tke[0][0] / tm, (S.tke[1][0] + S.tke[1][1] + S.tke[1][2] + S.tke[1][3]) / tm, S.tke[1][0] / tm, S.tke[1][1] / tm, S.tke[1][2] / tm, S.tke[1][3] / tm,
+                    100.0 * (S.tke[0][0] + S.tke[1][0] + S.tke[1][1]) / std::max(1L, a), 100.0 * S.tke[1][2] / std::max(1L, a), 100.0 * S.tke[1][3] / std::max(1L, a));
+        static const char* bn[4] = {"<5 m", "5-12", "12-20", "20+"}; static const double rb[4] = {4.70, 5.22, 4.43, 5.98}, ro[4] = {50.5, 26.0, 12.2, 4.2};
+        std::printf("      by m off the touchline: won tackles / out of play %% (StatsBomb tackle duels / out %%):");
+        for (int z = 0; z < 4; ++z) std::printf(" %s %.2f / %.1f%% (%.2f / %.1f%%)%s", bn[z], S.tkb_n[z] / tm, 100.0 * S.tkb_out[z] / std::max(1L, S.tkb_n[z]), rb[z], ro[z], z < 3 ? ";" : "\n");
+        for (int q = 1; q >= 0; --q) {
+            const long got = S.tkq_got[q][0] + S.tkq_got[q][1];
+            std::printf("      squirts <5 m off the line %s: %.2f a team-match, out %.1f%%, taken by the tackler's side %.2f / the carrier's %.2f, rolled %.1f m before taken\n",
+                        q ? "toward it" : "away from it", S.tkq_n[q] / tm, 100.0 * S.tkq_out[q] / std::max(1L, S.tkq_n[q]), S.tkq_got[q][1] / tm, S.tkq_got[q][0] / tm, S.tkq_d[q] / std::max(1L, got));
+        }
+    }
     std::printf("   BODY BLOCKS (G4.25 sweep, any ball above capture speed; §8.269): %.2f a team-match\n", S.bblk / tm);
     std::printf("   PASSES CHARGED DOWN (§8.271: their touch in a pass's first 0.4 s / 8 m; StatsBomb PL 15/16 blocked passes 11.97 a team-match = 2.8%% of 433.8, the blocker 2.2 / 3.0 / 4.4 m off the passer, 0.1-0.3 s on): %.2f a team-match of %.1f kicks (%.1f%%) — kept %.2f, off him loose %.2f\n",
                 (S.ch_kept + S.ch_loose) / tm, S.ch_k / tm, 100.0 * (S.ch_kept + S.ch_loose) / std::max(1L, S.ch_k), S.ch_kept / tm, S.ch_loose / tm);

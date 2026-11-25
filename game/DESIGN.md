@@ -13691,3 +13691,45 @@ reads past 13-19% v 2-5% and kept 39-68% v 57-75%: our carriers go by a man squa
 ones, and keep it less. Next: a failed take-on is never ours — the real 2.68 a team-match (the tackle that knocks it
 loose or out and his own side has it next) has no counterpart; the won tackle's squirt (30%) and where it goes.
 Tests 30/30 (clean tree); lint clean (200 tagged).
+
+### 8.367 G5.261 — TACKLE ENDS: a won tackle knocks it loose, the two men in it can't touch it until up, and the squirt goes away from the foot that played it (mig 1916; shipped)
+
+From §8.366: the won tackle's squirt (30%) and where it goes. New ruler, StatsBomb
+(`benchmarks_statsbomb_tackle_ends.py`): every Tackle duel by outcome, take-on or not, then who has the ball next and
+whether it is a restart; last, every tackle by its m off the nearer touchline and the share knocked out of play. Real
+PL 15/16 a team-match: 20.3 tackles; Won 23-27%, Success In Play 29-35%, Success Out 3%, Lost In Play 20-21%, Lost Out
+18-21%. **Next ball: the tackler's side 57.3%, the carrier's in play 21.4%, the carrier's restart 20.9%.** Out of play
+by m off the touchline: **<5 m 50.5%, 5-12 26.0%, 12-20 12.2%, 20+ 4.2%** — a tackle that goes out is a tackle by the line.
+
+Ours (fh-game-match TACKLE ENDS: clean / squirted, the squirt's next ball by side and restart, the band cut and, for
+squirts <5 m off the line, toward / away from it with the m rolled before someone took it), seeds 1000-4000 × 8 on
+G5.260: 80.9 / 17.1 / 2.0%, **0-9% out in every band**. Not the clean share alone (0.40: 61-68 / 26-35 / 3-6%), not
+the poke's pace (a 6 m/s squirt rolls ~15 m on kBallRollDecayPerTick), not its side (all away from the tackler: still
+0-8% out <5 m). The diagnostic: squirts toward the line were taken **0.2-1.5 m from the tackle**, away from it 6-14 m —
+the first-touch capture never looked at recovery_ticks, so the dispossessed carrier (kDispossessedRecovery) and the
+tackler (kTackleWinRecovery) took it back the next tick, the ball still in their reach.
+
+**Built** (`World::tickTackles`, the first-touch capture):
+- [behaviour: tackle_squirt_share] `physics.tackle.clean` of won tackles are his at once (no row = 0.70, G4.24).
+- [behaviour: tackle_recover_no_touch] `physics.tackle.recover_no_touch`: a man recovering from a tackle (kind 1 the
+  tackler, won or beaten; kind 2 the dispossessed carrier) gets no foot to the loose ball until he is up (no row = 0).
+- [behaviour: tackle_poke_away] `physics.tackle.poke_away`: that share of squirts leaves on the far side from the
+  tackler — the ball goes away from the foot that plays it; by the line he stands inside, so it goes out (no row = 0).
+- `physics.tackle.poke_mps`: the squirt's pace (no row = 6). No tracking source for it; fitted to the out bands.
+
+| seeds 1000-2000 × 8 unless 4 | G5.260 (4) | clean .4 | + no touch | + away | clean .25, 9 m/s | 12 m/s | 13.5 (4) | **15 m/s (4, shipped)** | real |
+|---|---|---|---|---|---|---|---|---|---|
+| tackler's side % | 80.9 | 61-68 | 80-82 | 74-76 | 60-63 | 60-61 | 62.3 | **57.3** | 57.3 |
+| carrier's live % | 17.1 | 26-35 | 15-17 | 18-20 | 26-29 | 27-29 | 24.6 | **26.4** | 21.4 |
+| carrier's restart % | 2.0 | 3-6 | 3-4 | 6 | 8-14 | 11 | 13.1 | **16.4** | 20.9 |
+| out <5 / 5-12 / 12-20 / 20+ m % | — | 0-9 everywhere | 15-20 / 3-4 / 0-2 / 0 | 29-37 / 5-6 / 0-5 / 1-2 | 39-50 / 15-19 / 2-7 / 1 | 38-41 / 17-22 / 4-17 / 0-6 | 40 / 31 / 14 / 2 | **52 / 30 / 18 / 3.8** | 50.5 / 26 / 12.2 / 4.2 |
+
+Costs on 4 seeds (G5.260 → shipped, real): take-ons tried 16.2 → 13.0 (18.05), completed 9.35 → 9.73 (10.59);
+fouls 13.5 → 13.1 (12.5); passes 424 → 418 (434); goals 2.13 → 2.11 (1.35); ball in play 56.7 → 56.8% (55.2);
+throw-ins 20.7 → 21.7 (harness DFL 19.9; card StatsBomb 23.1, ok). Card 8 / 10 / 15 → **9 ok / 11 off / 13 OFF**
+(`~/football-data/scorecards/card_G5.261.txt`); take-on success on the card's cut 74.6% (58.7) — fewer tried, not more won.
+Left: the carrier's side keeps it in play too often (26 v 21%) and out of play too rarely (16 v 21%) — the middle bands
+overshoot (5-20 m) while <5 m and 20+ sit on real, so the pace is a stand-in for the direction a real poke takes (along
+or across the line). Next: take-ons tried fell 3.2 a team-match at the 0.25 clean share in every arm — more loose balls,
+fewer carriers set to take a man on; read the take-on trigger.
+Tests 30/30; lint clean (204 tagged); engine sync OK.

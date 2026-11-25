@@ -402,8 +402,11 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             turnover_tick_ = clock_.tick();
             turnover_ball_x_ = ball_.pos.x;
             const Fixed64 r2 = detNoise(match_seed_, clock_.tick(), i, 14);
-            if ((r2 + Fixed64::one()) < Fixed64::fromFraction(7, 5)) {
-                ball_.owner = i;  // clean: 70% of won tackles
+            // [behaviour: tackle_squirt_share] G5.261 (§8.367): a real tackle knocks the ball loose more often than
+            // the tackler comes away with it (StatsBomb PL 15/16: next ball the tackler's side 57%, the carrier's 43%,
+            // half of that his restart) — physics.tackle.clean of won tackles are his, the rest squirt.
+            if ((r2 + Fixed64::one()) < tackle_clean_ * Fixed64::fromInt(2)) {
+                ball_.owner = i;  // clean
                 owned_at_tick_ = clock_.tick();
                 settleControl(i, Fixed64::zero());
                 ball_.spin = false;   // G5.156: only an aimed loft carries backspin
@@ -416,11 +419,22 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
                 Vec2 n = cl.raw == 0 ? Vec2{Fixed64::zero(), Fixed64::one()}
                                      : Vec2{-cb.y / cl, cb.x / cl};
                 if (r2.raw & 1) n = Vec2{-n.x, -n.y};
+                // [behaviour: tackle_poke_away] G5.261 (§8.367): the ball goes away from the foot that plays it — the
+                // squirt leaves on the far side from the tackler (by the line he stands inside, so it goes out:
+                // StatsBomb PL 15/16, tackles <5 m off the touchline 50.5% out). physics.tackle.poke_away of squirts;
+                // no row = 0, the side by noise as before.
+                if (tackle_away_.raw > 0) {
+                    const Fixed64 r3 = detNoise(match_seed_, clock_.tick(), i, 15);
+                    if ((r3 + Fixed64::one()) < tackle_away_ * Fixed64::fromInt(2)) {
+                        const Vec2 tb{ball_.pos.x - tackler.pos.x, ball_.pos.y - tackler.pos.y};
+                        if (n.x * tb.x + n.y * tb.y < Fixed64::zero()) n = Vec2{-n.x, -n.y};
+                    }
+                }
                 flight_tick_ = clock_.tick();
                 ball_.owner.reset();
                 ball_.spin = false;   // G5.156: only an aimed loft carries backspin
-                ball_.vel = Vec3{n.x * kTacklePokeSpeed,
-                                 n.y * kTacklePokeSpeed, Fixed64::zero()};
+                ball_.vel = Vec3{n.x * tackle_poke_,
+                                 n.y * tackle_poke_, Fixed64::zero()};
                 ball_.kick_alive = kKickAliveTicks;
             }
             tackler.recovery_ticks = kTackleWinRecovery;
@@ -1048,6 +1062,12 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         // by the man beside the blocker within a tick, and a loose touch (the bobble) off each body in the cluster
         // took 60% off its pace three times in 0.1 s. Keepers, set for the shot, still play it.
         if (!gk && block_unread_ticks_ > 0 && block_tick_ != kNoTick && clock_.tick() < block_tick_ + block_unread_ticks_) continue;
+        // [behaviour: tackle_recover_no_touch] G5.261 (§8.367): the two men in a won tackle are off balance — the
+        // carrier dispossessed (kDispossessedRecovery), the tackler down in it (kTackleWinRecovery) — and neither gets
+        // a foot to the ball it squirted until he is up. Ours took it back the next tick, 0.2-1.5 m from the tackle,
+        // so a tackle by the line never went out (StatsBomb PL 15/16: <5 m off the touchline 50.5% out, ours 0-8%).
+        // physics.tackle.recover_no_touch; no row = 0, they can (as before).
+        if (tackle_no_touch_ && players_[i].recovery_ticks > 0 && (players_[i].recovery_kind == 1 || players_[i].recovery_kind == 2)) continue;
         // G5.5 (§8.103): the man a pass is for, set for it, reaches out a leg.
         // G5.11 (§8.108): their ball in our box, a defender sticks a leg out.
         const bool box_def = box_reach_m_.raw > 0 && !gk && ball_.last_kicker < players_.size() &&
@@ -1596,6 +1616,10 @@ void World::configureTempo(const ModelParams& p) {
         nick_m_ = p.fixed("physics.steal.nick_m", 1500);
     }
     steal_front_ticks_ = static_cast<int>(p.fixed("physics.steal.front_ticks", 0).raw >> math::Fixed64::FRAC_BITS);   // G5.260 trial: 0 = kStealTicks
+    tackle_clean_ = p.fixed("physics.tackle.clean", 700);   // G5.261 (§8.367): no row = 0.70, as G4.24
+    tackle_poke_ = p.fixed("physics.tackle.poke_mps", 6000);
+    tackle_away_ = p.fixed("physics.tackle.poke_away", 0);
+    tackle_no_touch_ = p.fixed("physics.tackle.recover_no_touch", 0).raw > 0;
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
     carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band

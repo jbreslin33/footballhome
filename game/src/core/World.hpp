@@ -451,6 +451,10 @@ private:
     bool nick_on_ = false;   // G5.259 (§8.365): dispossessed by angle
     math::Fixed64 nick_[3]{}, nick_m_{};
     int steal_front_ticks_ = 0;   // G5.260 trial (§8.366): touch-tight from the front, ticks; 0 = kStealTicks
+    math::Fixed64 tackle_clean_ = math::Fixed64::fromFraction(7, 10);   // G5.261 (§8.367): won tackles he comes away with; the rest squirt loose
+    bool tackle_no_touch_ = false;   // G5.261 (§8.367): men recovering from a tackle can't take the loose ball
+    math::Fixed64 tackle_away_{};   // G5.261 (§8.367): share of squirts sent away from the tackler's side; 0 = by noise
+    math::Fixed64 tackle_poke_ = kTacklePokeSpeed;   // G5.261 (§8.367): the squirt's pace, m/s
     std::uint32_t nick_n_ = 0;
     CarryDiag carry_diag_;
     // G5.79 (§8.180)
