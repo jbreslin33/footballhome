@@ -47,6 +47,7 @@
 #include "controllers/PersonTeamsController.h"
 #include "controllers/PersonSheetController.h"
 #include "controllers/PersonSeesController.h"
+#include "controllers/PersonTodoController.h"
 #include "controllers/PracticeCriteriaController.h"
 #include "controllers/JobsController.h"
 #include "controllers/CoachScheduleController.h"
@@ -164,6 +165,7 @@ private:
     std::shared_ptr<PersonSeesController> person_sees_controller_;
     std::shared_ptr<PracticeCriteriaController> practice_criteria_controller_;
     std::shared_ptr<JobsController> jobs_controller_;
+    std::shared_ptr<PersonTodoController> person_todo_controller_;
     std::shared_ptr<CoachScheduleController> coach_schedule_controller_;
     std::shared_ptr<AwardsController> awards_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
@@ -288,6 +290,7 @@ public:
         jobs_controller_ = std::make_shared<JobsController>();
         coach_schedule_controller_ = std::make_shared<CoachScheduleController>();
         awards_controller_ = std::make_shared<AwardsController>();
+        person_todo_controller_ = std::make_shared<PersonTodoController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
         field_plan_controller_ = std::make_shared<FieldPlanController>();
         formation_tactics_controller_ = std::make_shared<FormationTacticsController>();
@@ -646,6 +649,7 @@ private:
         router_.useController("/api/coach-schedule", coach_schedule_controller_);
         // #awards (mig 800): All-Stars to the league director + club awards per team, per season.
         router_.useController("/api/awards", awards_controller_);
+        router_.useController("/api/person-todos", person_todo_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
         router_.useController("/api/field-plan", field_plan_controller_);

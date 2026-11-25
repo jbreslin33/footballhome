@@ -49,10 +49,10 @@
 // kind 'health' (mig 510).  Health saves: PUT /api/person-health, the same
 // call the #teams control makes.
 (function () {
-  const TABS = ['person', 'contact', 'teams', 'health', 'money', 'fines', 'activity'];
+  const TABS = ['person', 'contact', 'teams', 'health', 'money', 'fines', 'activity', 'todo'];
   const TAB_FALLBACK = {
     person: '👤 Person', contact: '📇 Contact', teams: '⚽ Teams', health: '🩹 Health',
-    money: '💳 Money', fines: '⚖️ Fines', activity: '📅 Activity',
+    money: '💳 Money', fines: '⚖️ Fines', activity: '📅 Activity', todo: '✅ To do',
   };
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -472,6 +472,9 @@
         return laButton(p);
       case 'activity':
         return pid && window.PersonStanding ? (PersonStanding.html(pid) || '') : '';
+      case 'todo':
+        // ✅ What staff gave this player (mig 1903) — PersonTodoTab.
+        return window.PersonTodoTab ? PersonTodoTab.html(p) : '';
       default:
         return '';
     }
@@ -615,6 +618,7 @@
     state.el.querySelector('.ps-title').textContent = name;
     state.el.querySelector('.ps-tabs').innerHTML = tabBtns;
     const bodyEl = state.el.querySelector('.ps-body');
+    if (window.PersonTodoTab) PersonTodoTab.saveDraft(bodyEl);
     const keepScroll = bodyEl.dataset.tab === state.tab ? bodyEl.scrollTop : 0;
     bodyEl.innerHTML = body;
     bodyEl.dataset.tab = state.tab;
@@ -626,6 +630,13 @@
       const mpid = p.personId;
       loadMoves(state.opts.auth, mpid, true).then(() => {
         if (state && state.person && state.person.personId === mpid) draw();
+      });
+    }
+    if (p.personId && window.PersonTodoTab && !state.todoAsked) {
+      state.todoAsked = true;
+      const tpid = p.personId;
+      PersonTodoTab.load(state.opts.auth, tpid, true).then(() => {
+        if (state && state.person && state.person.personId === tpid) draw();
       });
     }
     if (p.personId && window.PersonStanding && !state.standingAsked) {
@@ -663,7 +674,7 @@
       if (!state) return;
       const ctx = { auth: state.opts.auth, person: state.person, base: state.base, key: cardKey(state.base),
         redraw: draw, say: toast, onChange: state.opts.onChange };
-      if (handleMovesClick(e, ctx) || handleCardClick(e, ctx)) e.stopPropagation();
+      if ((window.PersonTodoTab && PersonTodoTab.handleClick(e, ctx)) || handleMovesClick(e, ctx) || handleCardClick(e, ctx)) e.stopPropagation();
     });
     el.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
@@ -729,6 +740,7 @@
     });
     const visible = (node) => node && node.style.display !== 'none';
     function paint() {
+      if (window.PersonTodoTab) PersonTodoTab.saveDraft(c);
       const p = withCard(ctl.person || {});
       c.querySelector('.ps-page-tabs').innerHTML = tabButtons(ctl.tab);
       TABS.forEach(k => {
@@ -749,6 +761,7 @@
       if (tb && c.contains(tb)) { ctl.setTab(tb.getAttribute('data-ps-tab')); return; }
       const ctx = { auth: opts.auth, person: withCard(ctl.person), base: ctl.person, key: cardKey(ctl.person),
         redraw: () => paint(), say: (m, bad) => toastIn(document.body, m, bad), onChange: opts.onChange };
+      if (window.PersonTodoTab && PersonTodoTab.handleClick(e, ctx)) return;
       if (!handleMovesClick(e, ctx)) handleCardClick(e, ctx);
     });
     c.addEventListener('change', (e) => {
@@ -770,6 +783,7 @@
       if (opts.auth && window.SectionContact) SectionContact.load(opts.auth).then(() => paint()).catch(() => {});
       const pid = ctl.person && ctl.person.personId;
       if (pid) loadMoves(opts.auth, pid, true).then(() => { if (ctl.person && ctl.person.personId === pid) paint(); });
+      if (pid && window.PersonTodoTab) PersonTodoTab.load(opts.auth, pid, true).then(() => { if (ctl.person && ctl.person.personId === pid) paint(); });
       if (!pid || !window.PersonStanding) return;
       PersonStanding.load(opts.auth, [pid]).then(() => {
         if (ctl.person && ctl.person.personId === pid) paint();

@@ -97,6 +97,10 @@ class TodoPanel {
     if (b) this.post({ action: b.getAttribute('data-td-act'), id: Number(b.getAttribute('data-td-id')) });
   }
 
+  fmtDay(ymd) {
+    return new Date(`${ymd}T12:00:00`).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
   fmtWhen(iso) {
     const d = new Date(iso);
     return d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
@@ -115,7 +119,13 @@ class TodoPanel {
     const later = todos.filter(t => !t.due && !t.done_at);
     const done = todos.filter(t => t.done_at);
     const btn = 'min-height:0; padding:6px 10px; border-radius:8px; font:inherit; font-weight:700; font-size:0.85rem; cursor:pointer;';
-    const row = (t, note) => `
+    // Given by staff (mig 1903): who, 🔁 every day, by <date> — on every row.
+    const given = (t) => [
+      t.repeat === 'daily' ? cp('todo_every_day', {}, '🔁 every day') : '',
+      t.due_on ? cp('todo_by', { when: this.fmtDay(t.due_on) }, `by ${this.fmtDay(t.due_on)}`) : '',
+      (t.mine === false && t.from) ? cp('todo_given_by', { name: t.from }, `from ${t.from}`) : '',
+    ].filter(Boolean).join(' · ');
+    const row = (t, note0) => { const note = [note0, given(t)].filter(Boolean).join(' · '); return `
       <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; margin-bottom:6px;
                   border:1px solid ${t.due ? '#ef4444' : 'var(--border-color, #374151)'}; background:${t.due ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)'};">
         <div style="flex:1; min-width:0; ${t.done_at ? 'text-decoration:line-through; opacity:0.6;' : ''}">
@@ -125,8 +135,8 @@ class TodoPanel {
         ${t.done_at
           ? `<button type="button" data-td-act="undo" data-td-id="${t.id}" style="${btn} background:transparent; color:inherit; border:1px solid var(--border-color, #374151);">${esc(cp('todo_undo', {}, '↩ Undo'))}</button>`
           : `<button type="button" data-td-act="done" data-td-id="${t.id}" style="${btn} background:#16a34a; color:#fff; border:1px solid #15803d;">${esc(cp('todo_check', {}, '✓ Done'))}</button>
-             <button type="button" data-td-act="remove" data-td-id="${t.id}" aria-label="Remove" style="${btn} background:transparent; color:inherit; border:1px solid var(--border-color, #374151);">✕</button>`}
-      </div>`;
+             ${t.mine === false ? '' : `<button type="button" data-td-act="remove" data-td-id="${t.id}" aria-label="Remove" style="${btn} background:transparent; color:inherit; border:1px solid var(--border-color, #374151);">✕</button>`}`}
+      </div>`; };
     const head = (tier, fb) => `<div style="font-size:0.72rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin:12px 0 6px;">${esc(cp(tier, {}, fb))}</div>`;
     const opt = (v, tier, fb) => `<option value="${v}" ${this.when === v ? 'selected' : ''}>${esc(cp(tier, {}, fb))}</option>`;
     this.el.innerHTML = `

@@ -163,6 +163,7 @@ set(SOURCES
     src/controllers/PracticeCriteriaController.cpp
     src/controllers/JobsController.cpp
     src/controllers/CoachScheduleController.cpp
+    src/controllers/PersonTodoController.cpp
     src/controllers/AwardsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
