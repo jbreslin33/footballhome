@@ -176,7 +176,7 @@ struct Stats {
     long bs_n[2] = {}, bs_end[2][5] = {}; std::vector<double> bs_t[2], bs_d[2];   // [shot, pass]   // §8.270 BLOCKED SHOTS: corner / other out / attackers / defenders / keeper; in-play next touch time, distance
     long bhh_n[2] = {}, bhh_ok[2] = {}, bhh_who[2][3] = {}; std::vector<double> bhh_tl[2];   // §8.266 IN BEHIND BY HEIGHT
     long spd_n[3] = {}, spd_g[3] = {}, spd_k[3][5] = {}; std::vector<double> spd_b2[3], spd_b4[3];   // §8.265 SHOTS PAST THE DEFENCE
-    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0, fc[5] = {},   /* G5.262 (§8.368) FACED: past him / lost clean / knocked loose / kicked it away / other */ toe_n[5][4] = {}, toe_x[5][4] = {}, toe_why[64] = {}, tko_n[5] = {}, tko_ok[5] = {},   // §8.366 TAKE-ON ENDS: failed by cause x next ball; by band
+    long press = 0, cpress = 0, passes = 0, switches = 0, crosses = 0, crosses_ok = 0, crosses_why = 0, cutbacks = 0, takeon = 0, takeon_ok = 0, fc[5] = {}, dm_sp[6] = {}, dm_cnt[6] = {}, dmp_cnt[6][5] = {}, dm_men = 21, stall_n = 0, stall_10 = 0; double stall_s = 0, dm_sum[6] = {}, dm_mov[6] = {}, dmp_sum[6][5] = {}, dmp_mov[6][5] = {}; long stall_pad = 0,   /* G5.262 (§8.368) FACED: past him / lost clean / knocked loose / kicked it away / other */ toe_n[5][4] = {}, toe_x[5][4] = {}, toe_why[64] = {}, tko_n[5] = {}, tko_ok[5] = {},   // §8.366 TAKE-ON ENDS: failed by cause x next ball; by band
          ret = 0, ret_base = 0, carry10 = 0;
     // Phases (G5.21).
     long ph[ai::kPhaseCount] = {}, ph_n = 0;
@@ -682,6 +682,50 @@ int main(int argc, char** argv) {
                 }
             }
             const auto& b = W.ball();
+            {   // STALL (11/25 owner report "one player dwelling on ball and everyone just watching"): one man on it, the ball
+                // within 1 m of where it was, 5 s+ — print the spell (first 40 a run) when it ends
+                static int st_own = -1; static long st_k0 = 0; static double st_x = 0, st_y = 0; static int st_printed = 0;
+                const int ow = b.owner ? static_cast<int>(*b.owner) : -1;
+                const double bx = b.pos.x.toDouble(), by = b.pos.y.toDouble();
+                const bool moved = std::hypot(bx - st_x, by - st_y) > 1.0;
+                if (ow != st_own || moved || ow < 0) {
+                    const double du = (static_cast<long>(k) - st_k0) / static_cast<double>(core::kTickRate);
+                    if (st_own >= 0 && du >= 5) { ++S.stall_n; S.stall_s += du; if (du >= 10) ++S.stall_10;
+                        if (st_printed++ < 40) std::printf("STALL %.1f s: slot %d keeper %d, ended %s, at (%.1f, %.1f), match tick %ld\n", du, st_own, W.isKeeper(static_cast<core::SlotIndex>(st_own)) ? 1 : 0, ow == st_own ? "moved" : ow < 0 ? "released" : "taken", st_x, st_y, k); }
+                    st_own = ow; st_k0 = static_cast<long>(k); st_x = bx; st_y = by;
+                } else if (static_cast<long>(k) - st_k0 == 5 * core::kTickRate && st_printed < 40) {
+                    double nd = 99; for (std::uint8_t j = 0; j < N; ++j) if (W.player(j).team != W.player(static_cast<std::uint8_t>(ow)).team) nd = std::min(nd, std::hypot(W.player(j).pos.x.toDouble() - bx, W.player(j).pos.y.toDouble() - by));
+                    std::printf("STALL at 5 s: slot %d keeper %d order why %d action %d, restart team %d out stage %d, nearest opponent %.1f m, his speed %.2f; hold left %lld ticks, control left %lld, recovery %d, held restart %d, ball off him %.2f m; move order (%.2f, %.2f), free-kick spell %d; the other men mean speed %.2f m/s, %d moving 1 m/s+\n", ow, W.isKeeper(static_cast<core::SlotIndex>(ow)) ? 1 : 0,
+                                static_cast<int>(s.lastOrders()[ow].why), static_cast<int>(s.lastOrders()[ow].action), W.restartTeam(), W.outStage(), nd, std::hypot(W.player(static_cast<std::uint8_t>(ow)).vel.x.toDouble(), W.player(static_cast<std::uint8_t>(ow)).vel.y.toDouble()),
+                                static_cast<long long>(W.holdUntilTick()) - static_cast<long long>(W.tickCount()), static_cast<long long>(W.controlUntilTick()) - static_cast<long long>(W.tickCount()),
+                                static_cast<int>(W.player(static_cast<std::uint8_t>(ow)).recovery_ticks), W.heldRestart() ? 1 : 0,
+                                std::hypot(bx - W.player(static_cast<std::uint8_t>(ow)).pos.x.toDouble(), by - W.player(static_cast<std::uint8_t>(ow)).pos.y.toDouble()), s.lastOrders()[ow].move.move.x.toDouble(), s.lastOrders()[ow].move.move.y.toDouble(), W.freeKickSpell(static_cast<core::SlotIndex>(ow)) ? 1 : 0, [&]{ double t = 0; for (std::uint8_t j = 0; j < N; ++j) if (j != ow) t += std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()); return t / (N - 1); }(),
+                                [&]{ int m = 0; for (std::uint8_t j = 0; j < N; ++j) if (j != ow && std::hypot(W.player(j).vel.x.toDouble(), W.player(j).vel.y.toDouble()) >= 1) ++m; return m; }());
+                }
+            }
+            {   // G5.263 (§8.369) DEAD MOVE (benchmarks_tracking_deadmove.py): the ball dead (a restart held, or a free-kick taker
+                // standing on it), every second, the 21 men off the ball's speed over the second before; the last 5 s before it is
+                // played go in by the restart's kind
+                static bool dm_on = false; static int dm_kind = 0, dm_n = 0; static double dm_v[5], dm_m[5]; static std::vector<double> dm_px, dm_py;
+                const bool dead = W.restartTeam() != 0xFF || (b.owner && W.freeKickSpell(*b.owner));
+                if (dead) {
+                    if (!dm_on) { dm_on = true; dm_n = 0; dm_kind = static_cast<int>(W.restartKind()); dm_px.assign(N, 0); dm_py.assign(N, 0);
+                        for (std::uint8_t j = 0; j < N; ++j) { dm_px[j] = W.player(j).pos.x.toDouble(); dm_py[j] = W.player(j).pos.y.toDouble(); } }
+                    else if (k % core::kTickRate == 0) {
+                        const int ow = b.owner ? static_cast<int>(*b.owner) : -1; double sv = 0; int mv = 0, nn = 0;
+                        for (std::uint8_t j = 0; j < N; ++j) {
+                            const double x = W.player(j).pos.x.toDouble(), y = W.player(j).pos.y.toDouble(), v = std::hypot(x - dm_px[j], y - dm_py[j]);
+                            dm_px[j] = x; dm_py[j] = y; if (j == ow) continue; sv += v; mv += v >= 1.0; ++nn; }
+                        dm_v[dm_n % 5] = sv; dm_m[dm_n % 5] = mv; ++dm_n; S.dm_men = nn;
+                        { const int kz = dm_kind == 2 ? 0 : dm_kind == 3 ? 1 : dm_kind == 4 ? 2 : (dm_kind == 12 || dm_kind == 10) ? 3 : dm_kind == 5 ? 4 : 5;
+                          const int bk = dm_n <= 3 ? 0 : dm_n <= 6 ? 1 : dm_n <= 10 ? 2 : dm_n <= 20 ? 3 : dm_n <= 30 ? 4 : -1;
+                          if (bk >= 0) { S.dmp_sum[kz][bk] += sv; S.dmp_mov[kz][bk] += mv; S.dmp_cnt[kz][bk] += nn; } }
+                    }
+                } else if (dm_on) {
+                    dm_on = false; const int kz = dm_kind == 2 ? 0 : dm_kind == 3 ? 1 : dm_kind == 4 ? 2 : (dm_kind == 12 || dm_kind == 10) ? 3 : dm_kind == 5 ? 4 : 5;
+                    if (dm_n > 0) { ++S.dm_sp[kz]; for (int q = 0; q < std::min(5, dm_n); ++q) { S.dm_sum[kz] += dm_v[q]; S.dm_mov[kz] += dm_m[q]; S.dm_cnt[kz] += S.dm_men; } }
+                }
+            }
             {   // §8.366: what took the ball off its man this tick (a nick also counts as a steal: nick first)
                 if (W.nicks() != tf_pv_nick) tf_k[1] = static_cast<long>(k);
                 else if (W.steals() != tf_pv_steal) tf_k[2] = static_cast<long>(k);
@@ -4187,6 +4231,16 @@ int main(int argc, char** argv) {
                         q ? "toward it" : "away from it", S.tkq_n[q] / tm, 100.0 * S.tkq_out[q] / std::max(1L, S.tkq_n[q]), S.tkq_got[q][1] / tm, S.tkq_got[q][0] / tm, S.tkq_d[q] / std::max(1L, got));
         }
     }
+    {   // G5.263 (§8.369)
+        static const char* kn[6] = {"throw-in", "goal kick", "corner", "free kick", "kick-off", "other"};
+        static const double rv[6] = {1.10, 1.29, 0.50, 0.90, 0.55, 1.03}, rm[6] = {48.1, 58.9, 13.7, 38.5, 18.4, 44.9};
+        std::printf("   DEAD MOVE: the last 5 s before each restart, the men off the ball — mean speed m/s / moving 1 m/s+ %% (real DFL):");
+        for (int z = 0; z < 6; ++z) std::printf(" %s %.2f / %.1f%% (%.2f / %.1f%%)%s", kn[z], S.dm_sum[z] / std::max(1L, S.dm_cnt[z]), 100.0 * S.dm_mov[z] / std::max(1L, S.dm_cnt[z]), rv[z], rm[z], z < 5 ? ";" : "\n");
+        static const double rp[6][5] = {{1.68, 1.36, 1.10, 0.91, 0.72}, {1.60, 1.82, 1.56, 1.20, 1.19}, {1.39, 1.45, 1.31, 0.88, 0.53}, {1.43, 1.38, 1.24, 1.00, 0.79}, {2.02, 2.25, 1.85, 1.14, 0.99}, {1.53, 1.44, 1.23, 0.92, 0.79}};
+        std::printf("      from the ball going dead, s 1-3 / 4-6 / 7-10 / 11-20 / 21-30, mean speed m/s (real DFL):");
+        for (int z = 0; z < 6; ++z) { std::printf(" %s", kn[z]); for (int q = 0; q < 5; ++q) std::printf(" %.2f (%.2f)", S.dmp_sum[z][q] / std::max(1L, S.dmp_cnt[z][q]), rp[z][q]); std::printf(z < 5 ? ";" : "\n"); }
+    }
+    std::printf("   STALLS (one man on it, ball within 1 m, 5 s+): %.2f a team-match, %.2f of 10 s+, %.1f s each\n", S.stall_n / tm, S.stall_10 / tm, S.stall_s / std::max(1L, S.stall_n));
     {   // G5.262 (§8.368) FACED: how it ended (a take-on = past him, lost clean or knocked loose)
         static const char* en[5] = {"past him", "lost clean", "knocked loose", "kicked it away", "other"};
         long n = 0; for (int e = 0; e < 5; ++e) n += S.fc[e];

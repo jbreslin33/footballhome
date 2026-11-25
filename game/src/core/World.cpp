@@ -151,6 +151,14 @@ void World::tickPlayers() {
         if (math::lengthSquared(desire) > Fixed64::one()) {
             desire = desire.normalized();  // hostile overlong vector buys nothing
         }
+        // [behaviour: dead_ball_walk] G5.263 (§8.369): a stoppage is walked, not sprinted — while a restart is held a man
+        // goes to his spot at physics.dead.pace_mps at most. DFL (benchmarks_tracking_deadmove.py): real players are still
+        // moving when the throw is taken (last 5 s mean 1.10 m/s, 48% at 1 m/s+; 11-20 s after the ball went dead 0.9-1.2);
+        // ours ran there at 2-2.7 m/s in the first 6 s and stood (0.1-0.3 by 11-20 s, ~0 by 21-30). No row = 0, off.
+        if (dead_pace_.raw > 0 && restart_team_ != 0xFF && p.max_speed.raw > 0) {
+            const Fixed64 cap = dead_pace_ / p.max_speed, m = math::length(desire);
+            if (m > cap) desire = Vec2{desire.x * cap / m, desire.y * cap / m};
+        }
         cd_after = math::length(desire);
         // G5.78 (§8.179): a carrier whose rolling ball is out of his reach goes to it — the
         // body keeps the ball (the brain still thinks it is at his feet). The ball first (3:1
@@ -1620,6 +1628,7 @@ void World::configureTempo(const ModelParams& p) {
     tackle_poke_ = p.fixed("physics.tackle.poke_mps", 6000);
     tackle_away_ = p.fixed("physics.tackle.poke_away", 0);
     tackle_no_touch_ = p.fixed("physics.tackle.recover_no_touch", 0).raw > 0;
+    dead_pace_ = p.fixed("physics.dead.pace_mps", 0);   // G5.263 (§8.369): 0 = off
     carry_pace_on_ = p.fixed("physics.tempo.carry_pace", 0).raw > 0;   // G5.131 (§8.232) trial, not shipped: 1000 = on
     carry_pace_free_m_ = p.fixed("physics.tempo.carry_pace_free_m", 0);   // §8.239: 0 = the governor holds pressed too
     carry_pace_pooled_ = p.fixed("physics.tempo.carry_pace", 0) >= Fixed64::fromInt(2);   // §8.239: 2 = one draw from the pooled real spread, not by his receipt band

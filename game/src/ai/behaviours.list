@@ -214,6 +214,7 @@ steal_front_ticks
 tackle_squirt_share
 tackle_poke_away
 tackle_recover_no_touch
+dead_ball_walk
 throw_in_to_free_man
 wingback_ball_side_goes_far_tucks
 dt_trap_on_touchline

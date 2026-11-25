@@ -13762,3 +13762,36 @@ its rows stand; but our nicks and touch-tight steals (no tackle) are real dispos
 line counts only tickTackles duels — next: book a nick / steal as the tackle duel StatsBomb records, then read tackles.
 Card 9 / 11 / 13 → **10 ok / 12 off / 11 OFF** (`card_G5.262.txt`): takeons_tm OFF → ok (17.53 v 18.05), take-on success
 OFF → off (55.4 v 58.7). Tests 30/30; lint clean.
+
+### 8.369 G5.263 — DEAD MOVE: a stoppage is walked, not sprinted (mig 1925; shipped)
+
+Owner 11/25: "the game sometimes just stops with one player dwelling on ball and everyone just watching". New STALL line
+(fh-game-match: one man on it, the ball within 1 m, 5 s+): ~2.5 a team-match, 5-9 s, none 10 s+ — throw-ins (31 of 48 in 8
+matches), corners (2), free-kick spells (12: the taker stands over a live ball for the receipt hold he drew, G5.184
+fk_stand), one open-play pass. The dead time itself is real (DFL, §8.126: throw-in median 13.8 s, free kick 32.5; ours 13.4
+/ 35.0). What is not: **the men off the ball**. New ruler `benchmarks_tracking_deadmove.py` (DFL, 7 matches): every second
+of each dead spell, each tracked player's metres in the second before.
+
+| | DFL: last 5 s before it, mean m/s / 1 m/s+ | DFL from the ball going dead, s 1-3 / 4-6 / 7-10 / 11-20 / 21-30 (m/s) | ours G5.262: from dead |
+|---|---|---|---|
+| throw-in | 1.10 / 48.1% | 1.68 / 1.36 / 1.10 / 0.91 / 0.72 | 2.05 / 1.92 / 0.80 / 0.25 / 0.07 |
+| goal kick | 1.29 / 58.9% | 1.60 / 1.82 / 1.56 / 1.20 / 1.19 | 2.10 / 2.60 / 1.12 / 0.18 / 0.02 |
+| corner | 0.50 / 13.7% | 1.39 / 1.45 / 1.31 / 0.88 / 0.53 | 2.18 / 2.07 / 0.77 / 0.12 / 0.01 |
+| free kick | 0.90 / 38.5% | 1.43 / 1.38 / 1.24 / 1.00 / 0.79 | 1.76 / 1.42 / 0.62 / 0.16 / 0.08 |
+
+Real players jog to their places across the whole stoppage; ours ran there and stood. **Built** (`World::tickPlayers`
+[behaviour: dead_ball_walk]): while a restart is held, a man's move is capped at `physics.dead.pace_mps` (no row = 0, off).
+
+| seeds 1000-4000 × 8 (2 × 2 for 2.0) | G5.262 | 2.0 m/s | **1.5 m/s (shipped)** | real |
+|---|---|---|---|---|
+| last 5 s 1 m/s+: throw-in / goal kick / corner / free kick % | 21-24 / 0-2 / 0 / 10-14 | 37-40 / 7-8 / 0 / 11 | **42-47 / 17-19 / 1-8 / 14-17** | 48 / 59 / 14 / 39 |
+| throw-in from dead 11-20 / 21-30 s, m/s | 0.25 / 0.07 | 0.53 / 0.29 | 0.63-0.65 / 0.25-0.48 | 0.91 / 0.72 |
+| dead before throw-in / free kick / goal kick, median s | 13.4 / 35.0 / 22.8 | | 13.8 / 34.3 / 22.8 | 13.8 / 32.5 / 23.2 |
+| ball in play % · passes · goals | 56.8 · 418 · 2.11 | | 56.2 · 413 · 2.23 | 55.2 · 434 · 1.35 |
+
+Card 10 / 12 / 11 → **10 ok / 11 off / 12 OFF** (`card_G5.263.txt`; the moves are the shot-zone conversion cells, which
+swing between 32-match runs). Left: in the long stoppages men still arrive and stop (goal kick 21-30 s 0.25 v 1.19 — the
+real side keeps re-setting; the block's step-up for their goal kick is the candidate), and nobody jostles in the box
+before a corner (0.08 v 0.50 — concept 146's set-piece family, the corner movement). The free-kick taker's receipt hold
+over a live ball (up to 8 s) stands while the free kick's total dead time is real (34 v 32.5 s).
+Tests 31/31; lint clean (206 tagged); engine sync OK.
