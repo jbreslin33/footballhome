@@ -34,6 +34,11 @@
 //                         teams, roster), then every tick's frames from the clip's first tick to its last
 // The new build is written beside the old and swapped in at the end: a viewer never sees a half build.
 //
+// Re-kit a build (mig 1923, owner 11/25 "the colors of the teams in sim always need to be distinct"):
+//   fh-concept-clips --rekit DIR   rewrites ONLY each clip's TEAMS message with the kits the server would
+//                                  choose now (server/Kits) — the same clips, the same frames, new shirts.
+//                                  A build is the examples we focus on; a kit change never swaps them.
+//
 //   POSTGRES_HOST=localhost POSTGRES_PASSWORD=… fh-concept-clips --out DIR [--concept 164] [--matches 8]
 //        [--jobs 4] [--seed 5000] [--good 5] [--bad 3] [--pool 30] [--engine <git sha>]
 
@@ -41,6 +46,7 @@
 #include "net/INetworkTransport.hpp"
 #include "persistence/FormationStore.hpp"
 #include "server/GameServer.hpp"
+#include "server/Kits.hpp"
 #include "server/MatchSetup.hpp"
 
 #include <sys/wait.h>
@@ -181,7 +187,7 @@ void writeClip(const fs::path& path, const Clip& c, const std::string& id) {
 struct Build {
     int concept_id = 164, matches = 8, jobs = 4, good = 5, bad = 3, pool = 30;
     std::uint64_t seed = 5000;
-    std::string out, engine = "unknown";
+    std::string out, engine = "unknown", rekit;
     // Sides left out of the fixtures: the club's own teaching sides, copies of West Ham's roster.
     std::string skip = "Lighthouse,Westtown FC";
 };
@@ -360,6 +366,74 @@ std::vector<std::string> split(const std::string& s, char sep) {
     return o;
 }
 
+// --rekit: each clip's TEAMS message re-encoded with today's kit choice for the same two sides.
+int rekit(const fs::path& dir, const persistence::DbConfig& db) {
+    std::map<std::string, std::vector<persistence::Kit>> kits;   // team name → its kits, loaded once
+    // A side that does not load (no DB, a renamed team) leaves its clip exactly as it was.
+    const auto kitsOf = [&](const std::string& name) -> const std::vector<persistence::Kit>* {
+        auto it = kits.find(name);
+        if (it == kits.end()) {
+            auto t = persistence::loadDemoTeam(db, name);
+            if (!t || t->kits.empty()) return nullptr;
+            it = kits.emplace(name, t->kits).first;
+        }
+        return &it->second;
+    };
+    const auto u32 = [](const std::vector<std::uint8_t>& b, std::size_t at) {
+        return static_cast<std::uint32_t>(b[at]) | (static_cast<std::uint32_t>(b[at + 1]) << 8) |
+               (static_cast<std::uint32_t>(b[at + 2]) << 16) | (static_cast<std::uint32_t>(b[at + 3]) << 24);
+    };
+    int files = 0, changed = 0;
+    for (const auto& e : fs::directory_iterator(dir)) {
+        if (e.path().extension() != ".fhclip") continue;
+        std::ifstream in(e.path(), std::ios::binary);
+        std::vector<std::uint8_t> b((std::istreambuf_iterator<char>(in)), {});
+        if (b.size() < 12 || std::memcmp(b.data(), "FHCLIP1\n", 8) != 0) { std::fprintf(stderr, "%s: not a clip\n", e.path().c_str()); continue; }
+        std::size_t p = 12 + u32(b, 8);
+        std::vector<std::uint8_t> out(b.begin(), b.begin() + static_cast<std::ptrdiff_t>(p));
+        bool did = false;
+        while (p + 4 <= b.size()) {
+            const std::uint32_t len = u32(b, p);
+            if (p + 4 + len > b.size()) break;
+            Msg m(b.begin() + static_cast<std::ptrdiff_t>(p + 4), b.begin() + static_cast<std::ptrdiff_t>(p + 4 + len));
+            p += 4 + len;
+            std::size_t used = 0;
+            if (const auto f = net::decodeFrame(m.data(), m.size(), used); f && f->type == net::FrameType::Teams && used == m.size())
+                if (auto tf = net::decodeTeams(f->payload)) {
+                    const auto* hk = kitsOf(tf->home);
+                    const auto* ak = kitsOf(tf->away);
+                    if (!hk || !ak) {
+                        std::fprintf(stderr, "%s: %s v %s not loaded — left as it was\n", e.path().filename().c_str(),
+                                     tf->home.c_str(), tf->away.c_str());
+                        did = false;
+                        out.clear();
+                        break;
+                    }
+                    const auto worn = server::chooseKits(*hk, *ak);
+                    const persistence::Kit* kk[2] = {&worn.home, &worn.away};
+                    for (int t = 0; t < 2; ++t) {
+                        tf->kit[t][0] = kk[t]->shirt; tf->kit[t][1] = kk[t]->shorts;
+                        tf->kit[t][2] = kk[t]->socks; tf->kit[t][3] = kk[t]->trim;
+                    }
+                    Msg n = net::encodeFrame(net::FrameType::Teams, net::encodeTeams(*tf));
+                    if (n != m) did = true;
+                    m = std::move(n);
+                    std::printf("%s: %s v %s — home kit %d, away kit %d\n", e.path().filename().c_str(),
+                                tf->home.c_str(), tf->away.c_str(), worn.home_index, worn.away_index);
+                }
+            putMsg(out, m);
+        }
+        ++files;
+        if (!did || out.empty()) continue;
+        const fs::path tmp = e.path().string() + ".rekit";
+        { std::ofstream o(tmp, std::ios::binary); o.write(reinterpret_cast<const char*>(out.data()), static_cast<std::streamsize>(out.size())); }
+        fs::rename(tmp, e.path());
+        ++changed;
+    }
+    std::printf("rekit: %d clip(s), %d re-kitted\n", files, changed);
+    return 0;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -376,6 +450,15 @@ int main(int argc, char** argv) {
         else if (k == "--pool") B.pool = std::atoi(v.c_str());
         else if (k == "--engine") B.engine = v;
         else if (k == "--skip") B.skip = v;
+        else if (k == "--rekit") B.rekit = v;
+    }
+    if (!B.rekit.empty()) {
+        persistence::DbConfig db;
+        db.host = envOr("POSTGRES_HOST", "localhost");
+        db.dbname = envOr("POSTGRES_DB", "footballhome");
+        db.user = envOr("POSTGRES_USER", "footballhome_user");
+        db.password = envOr("POSTGRES_PASSWORD", "");
+        return rekit(B.rekit, db);
     }
     if (B.out.empty()) { std::fprintf(stderr, "usage: fh-concept-clips --out DIR [--concept 164] [--matches 8] [--jobs 4] …\n"); return 2; }
     if (B.concept_id != 164) { std::fprintf(stderr, "only stay in pressing distance (164) has a test so far\n"); return 2; }

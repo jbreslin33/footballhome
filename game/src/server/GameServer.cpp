@@ -8,6 +8,7 @@
 // phases of play (RUN_PHASE) and the corner / phase shapes.
 
 #include "server/GameServer.hpp"
+#include "server/Kits.hpp"
 
 #include "net/Wire.hpp"
 
@@ -215,12 +216,14 @@ TeamsFrame teamsFrame(const persistence::DemoTeam& home, const persistence::Demo
     TeamsFrame tf;
     tf.home = home.name;
     tf.away = away.name;
-    const persistence::DemoTeam* tt[2] = {&home, &away};
-    for (int t = 0; t < 2; ++t) {   // mig 639 kits
-        tf.kit[t][0] = tt[t]->kit_shirt;
-        tf.kit[t][1] = tt[t]->kit_shorts;
-        tf.kit[t][2] = tt[t]->kit_socks;
-        tf.kit[t][3] = tt[t]->kit_trim;
+    // Mig 639 kits, chosen so the two sides never look alike (server/Kits, mig 1923).
+    const WornKits worn = chooseKits(home.kits, away.kits);
+    const persistence::Kit* kk[2] = {&worn.home, &worn.away};
+    for (int t = 0; t < 2; ++t) {
+        tf.kit[t][0] = kk[t]->shirt;
+        tf.kit[t][1] = kk[t]->shorts;
+        tf.kit[t][2] = kk[t]->socks;
+        tf.kit[t][3] = kk[t]->trim;
     }
     return tf;
 }

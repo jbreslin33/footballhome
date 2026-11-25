@@ -70,11 +70,18 @@ struct DemoPlayer {
     std::int32_t max_speed_cms = 0;   // his top speed (physics); 0 = the match default
 };
 
+// One kit, colours 0xRRGGBB, -1 = the client's default.
+struct Kit {
+    std::int32_t shirt = -1, shorts = -1, socks = -1, trim = -1;
+};
+
 struct DemoTeam {
     std::string name;            // game_demo_teams.name (the TEAMS frame)
     std::string formation_code;  // mig 636: the club formation this team plays; empty = the env's
-    // Mig 639: kit colours 0xRRGGBB, -1 = the client's default.
-    std::int32_t kit_shirt = -1, kit_shorts = -1, kit_socks = -1, kit_trim = -1;
+    // Every kit he can wear: [0] the home kit (game_demo_teams.kit_*, mig 639), then the change
+    // kits in their order (game_demo_team_change_kits, mig 1923). Which one a side wears in a
+    // match is server/Kits (chooseKits): the two sides are always told apart.
+    std::vector<Kit> kits;
     std::vector<DemoPlayer> players;  // lineup order (1-11 the formation slots), then the bench
 };
 std::optional<DemoTeam> loadDemoTeam(const DbConfig& cfg, const std::string& team_name);

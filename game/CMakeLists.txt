@@ -92,6 +92,7 @@ target_link_libraries(game_persistence PUBLIC game_ai PkgConfig::PQXX)
 # ── game_server + daemon (G0.4) ─────────────────────────────────────────
 add_library(game_server STATIC
   src/server/GameServer.cpp
+  src/server/Kits.cpp
   src/server/Rooms.cpp
 )
 target_link_libraries(game_server PUBLIC game_ai game_core game_net game_ws)
@@ -173,6 +174,7 @@ target_link_libraries(test_teaching_room PRIVATE game_teach)
 game_test(test_marking)
 game_test(test_direct_opponent)
 game_test(test_pressing_distance)
+game_test(test_kits)
 game_test(test_cover_shadow)
 game_test(test_machines)
 game_test(test_double_team)
