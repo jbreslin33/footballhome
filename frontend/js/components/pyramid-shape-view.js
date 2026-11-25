@@ -166,6 +166,7 @@ class PyramidShapeView {
 
   html(model, confs) {
     this.flow._model = model;
+    if (this.screen.league) this._jump(model, this.screen.league);
     this._lv = this._levels(model, confs);
     const esc = (t) => this._esc(t);
     return `
@@ -318,6 +319,7 @@ class PyramidShapeView {
     this._solid.start().then(() => {
       if (was && this._solid) this._openPanel(was.key, was.cell); else this.picked = null;
       if (this._goSide != null && this._solid) { this._go(this._goSide, this._goRow); this._goSide = this._goRow = null; }   // a rail button asked for a side that was not built yet
+      if (this._fitAll && this._solid) { this._fitAll = false; this._wholeView = true; this._solid.fit(); this.screen._leagueChanged(); }
     });
   }
 
@@ -352,14 +354,50 @@ class PyramidShapeView {
       <div class="zm"><button data-sh="out" title="${esc(this._copy('zoom_out'))}">−</button><button data-sh="in" title="${esc(this._copy('zoom_in'))}">+</button></div>
       <div class="hint">${esc(this._copy('shape_hint_solid'))}</div>`;
   }
+  // ── A LEAGUE'S OWN LINK (owner 2026-11-25: "pyramids … choice of all, apsl, usl mls, etc. and each
+  // needs a link to share publicly"): #apsl-pyramid/<league> — 'all' or a rail label in lower case
+  // (shape_side_<n>: apsl, mls, usl, npsl, upsl, lfc).  Switches on what the league needs (its
+  // calendar, its league), as a rail press does, and flies there once built; 'all' switches every
+  // league on and shows the whole pyramid.  Runs once per link (the screen clears it).
+  _sideOf(model, code) {
+    const g = this._railSides(model).find((x) => String(x.label).toLowerCase() === String(code).toLowerCase());
+    return g || null;
+  }
+  _jump(model, code) {
+    this.screen.league = null;
+    const list = this._goList(model);
+    const wake = (gs) => {
+      const on = new Set(this.cals);
+      gs.forEach((g) => {
+        if (g.cal) on.add(g.cal);
+        g.keys.forEach((k) => { try { localStorage.setItem(`apsl-feat-${k}`, '1'); } catch (_) { /* private mode */ } });
+      });
+      this.cals = [...on];
+      try { localStorage.setItem('apsl-shape-cals', JSON.stringify(this.cals)); } catch (_) { /* private mode */ }
+    };
+    this.picked = null; this.row = null;
+    if (code === 'all') { wake(list); this._fitAll = true; return; }
+    const g = this._sideOf(model, code);
+    if (!g) return;
+    wake([list.find((x) => x.side === g.side)].filter(Boolean));
+    this.side = g.side; this._goSide = g.side; this._goRow = null;
+    try { localStorage.setItem('apsl-shape-side', String(g.side)); } catch (_) { /* private mode */ }
+  }
+  // the league picked on the rail, as its link code (null on the whole pyramid)
+  leagueCode() {
+    if (this._wholeView || this.side == null || !this.flow._model) return 'all';
+    const g = this._railSides(this.flow._model).find((x) => x.side === this.side);
+    return g ? String(g.label).toLowerCase() : 'all';
+  }
   _renderRail() { const r = this.root && this.root.querySelector('.sh-rail'); if (r && this.flow._model) r.innerHTML = this._railHtml(this.flow._model); }
   // snap to a side — the whole of its own levels, or one level of it
   _go(side, row) {
-    this.side = side; this.row = row == null ? null : row;
+    this.side = side; this.row = row == null ? null : row; this._wholeView = false;
     try { localStorage.setItem('apsl-shape-side', String(side)); } catch (_) { /* private mode */ }
     this._renderRail();
     if (!this._solid) return;
     if (row == null) this._solid.focus(side); else this._solid.focus(side, [row]);
+    this.screen._leagueChanged();
   }
 
   // THE HEADER over each league's pyramid (owner 2026-11-25: "we need to show at top of pyramind the
@@ -515,7 +553,7 @@ class PyramidShapeView {
       if (k === 'close') this._closePanel();
       else if (!this._solid) return;
       else if (k === 'in' || k === 'out') this._solid.zoomBy(k === 'in' ? 1.25 : 0.8);
-      else if (k === 'fit') { this.row = null; this._renderRail(); this._solid.fit(); }
+      else if (k === 'fit') { this.row = null; this._wholeView = true; this._renderRail(); this._solid.fit(); this.screen._leagueChanged(); }
     });
   }
 }

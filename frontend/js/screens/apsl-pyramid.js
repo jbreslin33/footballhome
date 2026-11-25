@@ -233,7 +233,15 @@ class ApslPyramidScreen extends Screen {
     return div;
   }
 
-  onEnter() {
+  onEnter(params = {}) {
+    // 🗻 A league's own link — #apsl-pyramid/<league> (all, mls, usl, apsl, npsl,
+    // upsl, lfc; the 🗻 Pyramids menu, mig 1913): opens the spinning pyramid
+    // flown to that league (PyramidShapeView._jump).
+    const league = params && params.entity ? String(params.entity).toLowerCase() : null;
+    if (league && /^[a-z0-9-]+$/.test(league)) {
+      this.league = league; this.view = 'shape';
+      if (this.data) { this._viewCall('unmount'); this._renderBody(); }
+    }
     // Public page (mig 870): editing and ⟳ are club admin; a visitor has no
     // screen to go back to.
     const user = this.auth.getUser();
@@ -274,7 +282,23 @@ class ApslPyramidScreen extends Screen {
   // 🔗 Copy link (mig 1815; owner 2026-11-24: "what the link is it should
   // be copy link pill"): the page's public address on the clipboard; the
   // pill says so for two seconds.
-  _link() { return `${location.origin}/#apsl-pyramid`; }
+  // On the spinning pyramid it is the league in view: footballhome.org/#apsl-pyramid/usl.
+  _link() {
+    const impl = this._impl();
+    const code = this.view === 'shape' && impl && impl.leagueCode ? impl.leagueCode() : null;
+    return `${location.origin}/#apsl-pyramid${code ? `/${code}` : ''}`;
+  }
+  // the rail moved to another league (or the whole pyramid): the address bar follows, so a copied or
+  // bookmarked URL opens where you are
+  _leagueChanged() {
+    const impl = this._impl();
+    if (this.view !== 'shape' || !impl || !impl.leagueCode) return;
+    const hash = `#apsl-pyramid/${impl.leagueCode()}`;
+    if (location.hash === hash) return;
+    try { history.replaceState(history.state, '', hash); } catch (_) { /* fine */ }
+    const nav = window.app && window.app.navigation;
+    if (nav && nav.currentState === 'apsl-pyramid') nav.currentParams = { ...(nav.currentParams || {}), entity: impl.leagueCode() };
+  }
   _copyLink() {
     const url = this._link();
     const old = () => {

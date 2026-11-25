@@ -313,8 +313,10 @@ class App {
 
       // The APSL pyramid is public (mig 870).  Signed in, it stays a normal
       // screen with its back stack — start() below opens it.
-      if (hash === '#apsl-pyramid' && !this.auth.isLoggedIn()) {
-        this.screenManager.show('apsl-pyramid', {});
+      // #apsl-pyramid/<league> (mig 1913) opens on that league's pyramid.
+      const pyramidHash = hash.match(/^#apsl-pyramid(?:\/([a-z0-9-]+))?$/);
+      if (pyramidHash && !this.auth.isLoggedIn()) {
+        this.screenManager.show('apsl-pyramid', pyramidHash[1] ? { entity: pyramidHash[1] } : {});
         return true;
       }
 
@@ -408,8 +410,9 @@ class App {
         this.navigation.goTo('proposals', proposalLink[1] ? { entity: proposalLink[1] } : {});
         return;
       }
-      if (window.location.hash === '#apsl-pyramid') {
-        this.navigation.goTo('apsl-pyramid');
+      const pyramidLink = (window.location.hash || '').match(/^#apsl-pyramid(?:\/([a-z0-9-]+))?$/);
+      if (pyramidLink) {
+        this.navigation.goTo('apsl-pyramid', pyramidLink[1] ? { entity: pyramidLink[1] } : {});
         return;
       }
       // 🎟 #tickets (mig 1886): the gate on match day.

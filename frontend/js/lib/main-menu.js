@@ -130,6 +130,10 @@ class MainMenu {
     }
     if (!nav) return;
     if (page) MainMenu._remember(page);
+    // 🗻 Pyramids (mig 1913): a menu_pages row pyramid-<league> opens the spinning
+    // pyramid on that league — the same address as its public link,
+    // #apsl-pyramid/<league>.  A new league = a row, no code.
+    if (/^pyramid-[a-z0-9-]+$/.test(code)) return nav.goTo('apsl-pyramid', { entity: code.slice('pyramid-'.length) });
     const user = MainMenu._user();
     const ctx = nav.context;
     // Same as the old tiles: the code becomes the header's role, except
