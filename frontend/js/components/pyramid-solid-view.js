@@ -43,9 +43,10 @@ class PyramidSolid {
     // table needs at the width the level has there, worked out from the top down.
     const grow = 0.4, cap = n <= 4 ? 1.6 : 1.25, slopeOf = Math.hypot(1, grow);
     const tops = [0], font = getComputedStyle(this.stage).fontFamily || 'sans-serif';
+    const placed = new Map();   // 'd12' / 'c3' → { slot, x } across its wall (0 left … 1 right), filled level by level
     this.rows.forEach((row, i) => {
       const w = 2 * (cap + grow * tops[i]) * Math.tan(half) * 0.92;
-      row.cells.forEach((cell) => { cell.plan = this._planTables(cell, w); });
+      row.cells.forEach((cell) => { cell.plan = this._planTables(cell, w, placed); this._noteAt(cell, placed); });
       tops.push(tops[i] + Math.max(0.7, ...row.cells.map((c) => c.plan.h)) / slopeOf);
     });
     const apo = (i) => cap + grow * tops[i];            // the wall's distance from the axis at the top of level i
@@ -132,23 +133,88 @@ class PyramidSolid {
   // Every count across, from all on one row down to one, is tried; the one with the BIGGEST letters
   // wins, as long as the level stays no taller than about half its width (a level never shrinks below
   // the all-on-one-row height).  Ties go to more across (a shorter level).
-  _planTables(cell, w) {
+  _planTables(cell, w, placed) {
     const tables = cell.tables && cell.tables.length ? cell.tables : [{ name: '', rows: [], teams: [] }];
     const MAX = 12, most = Math.min(tables.length, MAX);
+    const aim = this._aims(cell, tables, placed);
     let best = null;
     for (let across = most; across >= 1; across--) {
-      const plan = this._planAcross(cell, tables, w, across);
+      const plan = this._planAcross(cell, tables, w, across, aim);
       if (!best) { best = plan; best.room = Math.max(plan.h, w * 0.5); continue; }
       if (plan.h > best.room) break;
       if (plan.fs > best.fs * 1.04) { plan.room = best.room; best = plan; }
     }
     return best;
   }
-  _planAcross(cell, tables, w, perRow) {
+  // ── UNDER WHAT THEY FEED (owner 2026-11-25: "try best to avoid arrow going to far side to side. so be
+  // smart about feeder and higher league placement") ──────────────────
+  // A level whose tables carry promotion / relegation arrows keeps them in order ACROSS the wall
+  // (column by column, not row by row), so the run of conferences reads left to right however it
+  // wraps.  A feeder table sits in the column nearest the middle of what it feeds on the levels above
+  // (its majority link; the outlier links of mig 1238 only when it has nothing else), as near straight
+  // under as the columns allow, still in order and every table placed.  Levels without arrows (the
+  // UPSL's conferences) keep their reading order.
+  _parents() {
+    if (this._up) return this._up;
+    const up = new Map(), all = new Map();
+    for (const e of this.edges) {
+      const k = `d${e.from}`, to = e.to;
+      if (!all.has(k)) all.set(k, []);
+      all.get(k).push(to);
+      if (e.majority !== false) { if (!up.has(k)) up.set(k, []); up.get(k).push(to); }
+    }
+    for (const [k, v] of all) if (!up.has(k)) up.set(k, v);
+    const linked = new Set([...all.keys(), ...this.edges.map((e) => e.to)]);
+    return (this._up = { up, linked });
+  }
+  // each table's aim (0 left … 1 right), or null when nothing on this level has an arrow
+  _aims(cell, tables, placed) {
+    if (!this.edges.length) return null;
+    const { up, linked } = this._parents();
+    if (!tables.some((t) => linked.has(t.node) || (t.conf && linked.has(t.conf)))) return null;
+    const n = tables.length;
+    return tables.map((t, k) => {
+      const xs = (up.get(t.node) || []).map((p) => placed.get(p)).filter((p) => p && p.slot === cell.slot).map((p) => p.x);
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : (k + 0.5) / n;   // nothing above: where it already stood
+    });
+  }
+  // the tables into perRow columns: in aim order, each in the column nearest its aim that keeps the
+  // order and leaves room for the rest; a column holds as many as the fewest rows need
+  _slotsUnder(tables, perRow, aim) {
+    const n = tables.length, R = Math.ceil(n / perRow), C = perRow;
+    const order = tables.map((t, k) => k).sort((a, b) => (aim[a] - aim[b]) || a - b);
+    const used = new Array(C).fill(0), out = new Array(n);
+    let c0 = 0;
+    order.forEach((k, j) => {
+      while (c0 < C - 1 && used[c0] >= R) c0++;
+      const left = n - j - 1;   // still to place after this one
+      const room = (c) => (C - c) * R - used[c] - 1;   // seats left from column c on, once this one sits in it
+      let c = Math.max(c0, Math.min(C - 1, Math.floor(aim[k] * C)));
+      while (c > c0 && room(c) < left) c--;
+      const t = tables[k];
+      out[k] = { ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: c, gr: used[c] };
+      used[c]++; c0 = c;
+    });
+    return out;
+  }
+  // where this level's tables ended up, for the level under it to aim at
+  _noteAt(cell, placed) {
+    const plan = cell.plan;
+    if (!plan || !plan.cols || !this.edges.length) return;
+    const confs = new Map();
+    for (const col of plan.cols) {
+      const x = (col.gx + 0.5) / plan.perRow;
+      if (col.node) placed.set(col.node, { slot: cell.slot, x });
+      if (col.conf) { if (!confs.has(col.conf)) confs.set(col.conf, []); confs.get(col.conf).push(x); }
+    }
+    for (const [k, xs] of confs) placed.set(k, { slot: cell.slot, x: xs.reduce((a, b) => a + b, 0) / xs.length });
+  }
+  _planAcross(cell, tables, w, perRow, aim) {
     const HEAD = (cell.title ? 0.44 : 0.26) + (cell.banner ? 0.24 : 0), perLetter = 25;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
     const colW = w / perRow;
     const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
-    const cols = tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
+    const cols = aim ? this._slotsUnder(tables, perRow, aim)
+      : tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
     const linesOf = (c) => c.n + (c.name ? 1.2 : 0) + (c.rows && c.rows.length ? 1 : 0);   // + the GP/GD/Pts head
     let gy = 0;
     for (let r = 0; r <= cols[cols.length - 1].gr; r++) {   // each row of tables as tall as its longest table
