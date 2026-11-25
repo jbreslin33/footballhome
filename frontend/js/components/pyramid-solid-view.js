@@ -20,6 +20,12 @@
 //   opts  = { edges (PyramidModel.layout().edges), colors { promotion, relegation } }
 // three.js 0.160 is the module the game uses, imported from the CDN the first time the view opens.
 class PyramidSolid {
+  // the arrow lanes (units on the wall): lane spacing, the gutter between columns of tables, the
+  // corridor under a row of tables — room for a few arrows side by side in each
+  static LANE = 0.012;
+  static GUTTER = 0.07;
+  static CORRIDOR = 0.1;
+
   static three() {
     if (!PyramidSolid._three) PyramidSolid._three = import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
     return PyramidSolid._three;
@@ -211,8 +217,13 @@ class PyramidSolid {
   }
   _planAcross(cell, tables, w, perRow, aim) {
     const HEAD = (cell.title ? 0.44 : 0.26) + (cell.banner ? 0.24 : 0), perLetter = 25;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
+    // ARROW LANES (owner 2026-11-25: "stacking the conferneces is better but then we need to make sure
+    // there is enough space between to run the pro/rel aarroas … they should not go over or under
+    // anything"): a level whose tables carry arrows leaves a gutter between columns and a corridor
+    // under every row of tables, each wide enough for a few arrows side by side (PyramidSolid.LANE apart)
+    const gut = aim ? PyramidSolid.GUTTER : 0, corridor = aim ? PyramidSolid.CORRIDOR : 0;
     const colW = w / perRow;
-    const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
+    const fs = Math.min(0.085, (colW - gut) / (perLetter - 1.2)), lh = fs * 1.32;
     const cols = aim ? this._slotsUnder(tables, perRow, aim)
       : tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
     const linesOf = (c) => c.n + (c.name ? 1.2 : 0) + (c.rows && c.rows.length ? 1 : 0);   // + the GP/GD/Pts head
@@ -220,9 +231,9 @@ class PyramidSolid {
     for (let r = 0; r <= cols[cols.length - 1].gr; r++) {   // each row of tables as tall as its longest table
       const these = cols.filter((c) => c.gr === r);
       these.forEach((c) => { c.gy = gy; });
-      gy += Math.max(...these.map(linesOf)) * lh + lh * 0.9;
+      gy += Math.max(...these.map(linesOf)) * lh + Math.max(lh * 0.9, corridor + lh * 0.45);   // + the box's own overhang
     }
-    return { h: HEAD + gy + 0.06, fs, cols, head: HEAD, perRow, table: true };
+    return { h: HEAD + gy + 0.06, fs, cols, head: HEAD, perRow, table: true, gut };
   }
 
 
@@ -241,29 +252,37 @@ class PyramidSolid {
     // a league's top level carries its pyramid's header above "Level N" (owner 2026-11-25: "show at
     // top of pyramind the total amount of clubs in the pyrmaid and total levels … right above level 4")
     const B = cell.banner ? 0.24 : 0;
+    // what the arrows must keep off, in the plane's units: x across from the middle, v down from its top
+    const texts = plan.texts = [];
+    const keep = (cx, cy, wpx, hpx) => texts.push({ l: ((cx - wpx / 2) / W - 0.5) * w, r: ((cx + wpx / 2) / W - 0.5) * w, top: (cy - hpx / 2) / u, foot: (cy + hpx / 2) / u });
+    const keepText = (t, cy, size) => { if (t) keep(W / 2, cy, g.measureText(t).width, size * 1.1); };
     if (cell.banner) {
       fit(cell.banner, 0.12 * u, 800, W * 0.9);
       const bw = Math.min(W * 0.94, g.measureText(cell.banner).width + 0.14 * u), bh = 0.18 * u;
       g.shadowBlur = 0; g.fillStyle = 'rgba(251,191,36,0.95)';
       if (g.roundRect) { g.beginPath(); g.roundRect(W / 2 - bw / 2, 0.11 * u - bh / 2, bw, bh, bh / 2); g.fill(); } else g.fillRect(W / 2 - bw / 2, 0.11 * u - bh / 2, bw, bh);
       g.fillStyle = '#0b1220'; g.fillText(cell.banner, W / 2, 0.115 * u);
+      keep(W / 2, 0.11 * u, bw, bh);
       g.fillStyle = '#ffffff'; g.shadowBlur = 0.02 * u;
     }
-    fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, (0.12 + B) * u);
+    fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, (0.12 + B) * u); keepText(lvl, (0.12 + B) * u, 0.16 * u);
     g.shadowBlur = 0;
     g.fillStyle = row.kind === 'empty' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.88)';
-    if (cell.title) { fit(cell.title, 0.1 * u, 700, W * 0.94); g.fillText(cell.title, W / 2, (0.28 + B) * u); }
-    if (cell.title && cell.sub) { g.fillStyle = 'rgba(255,255,255,0.65)'; fit(cell.sub, 0.06 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, (0.38 + B) * u); }
+    if (cell.title) { fit(cell.title, 0.1 * u, 700, W * 0.94); g.fillText(cell.title, W / 2, (0.28 + B) * u); keepText(cell.title, (0.28 + B) * u, 0.1 * u); }
+    if (cell.title && cell.sub) { g.fillStyle = 'rgba(255,255,255,0.65)'; fit(cell.sub, 0.06 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, (0.38 + B) * u); keepText(cell.sub, (0.38 + B) * u, 0.06 * u); }
     const fs = plan.fs * u, lh = fs * 1.32, colW = W / (plan.perRow || plan.cols.length), pad = fs * 0.6;
     plan.cols.forEach((col) => {
       const k = col.gx, top = (plan.head + col.gy) * u;
-      const x0 = k * colW + pad, x1 = (k + 1) * colW - pad, inner = x1 - x0;
+      const gut = (plan.gut || 0) * u / 2;   // half the arrow gutter each side of the column
+      const x0 = k * colW + gut + pad, x1 = (k + 1) * colW - gut - pad, inner = x1 - x0;
       const xPos = x0 + fs * 1.1, xName = x0 + fs * 2.6, xPts = x1, xGd = x1 - fs * 2.6, xGp = x1 - fs * 5.2, nameW = xGp - fs * 2.2 - xName;
       let y = top + lh / 2;
       // the box behind the table, so it reads as one table on the wall (none for a level with no clubs)
       if (!col.n && !col.name) return;
       g.fillStyle = 'rgba(8,13,26,0.42)';
-      g.fillRect(x0 - pad * 0.5, top - lh * 0.15, inner + pad, (col.n + (col.name ? 1.2 : 0) + 1) * lh + lh * 0.3);
+      const boxH = (col.n + (col.name ? 1.2 : 0) + 1) * lh + lh * 0.3;
+      g.fillRect(x0 - pad * 0.5, top - lh * 0.15, inner + pad, boxH);
+      col.box = { l: ((x0 - pad * 0.5) / W - 0.5) * w, r: ((x1 + pad * 0.5) / W - 0.5) * w, top: (top - lh * 0.15) / u, foot: (top - lh * 0.15 + boxH) / u };
       if (col.name) { g.textAlign = 'left'; g.font = `800 ${fs}px ${font}`; g.fillStyle = '#fcd34d'; g.fillText(col.name, x0, y, inner); y += lh * 1.2; }
       const figures = col.rows && col.rows.length;
       if (figures) {   // the head: GP GD Pts
@@ -298,23 +317,40 @@ class PyramidSolid {
   }
 
   // The arrows, drawn ON the walls: from the top of a table up to the foot of the table (or
-  // conference) it goes up to, as in the 2D chart — a green head at the top where it promotes,
-  // a red one at the bottom where it relegates.  All the levels lie on one slope, so a point
-  // on a side is (x across, h down from the cap) and a line runs straight on from level to level.
+  // conference) it goes up to — a green head at the top where it promotes, a red one at the bottom
+  // where it relegates.  All the levels lie on one slope, so a point on a side is (x across, h down
+  // from the cap) and a straight line in (x, h) is a straight line on the wall.
+  //
+  // ROUTED THROUGH THE LANES (owner 2026-11-25: "they should not go over or under anything"): each
+  // side is a grid of lanes PyramidSolid.LANE apart; every table box and every heading ("Level N",
+  // the league, the gold header) is blocked with a margin, and so is everything off the wall.  Each
+  // arrow is the cheapest path through what is left (A*: a step costs 1, a turn more, a lane another
+  // arrow already took a lot more), leaving a table's top edge straight up and arriving at the foot
+  // of what it feeds straight in.  Arrows that share a gutter or corridor take lanes side by side.
+  // Short ones first, so the long ones go round them.  An arrow with no way through keeps the old
+  // curve, so no link ever disappears.
   _arrows(T) {
-    const at = new Map();   // 'd12' / 'c3' → { slot, x, l, r, top, foot } (h, the pyramid's own height)
-    this.rows.forEach((row, i) => row.cells.forEach((cell) => (cell.plan.cols || []).forEach((col) => {
-      if (!col.at) return;
-      const slope = (this._tops[i + 1] - this._tops[i]) * this._slopeOf;
-      const h = (v) => this._tops[i] + (0.01 * slope + v) / this._slopeOf;   // a distance down the plane → height
-      const box = { slot: cell.slot, x: col.at.x, l: col.at.l, r: col.at.r, top: h(col.at.top), foot: h(col.at.foot) };
-      if (col.node) at.set(col.node, box);
-      if (col.conf) {   // a conference is the run of its tables
-        const c = at.get(col.conf);
-        if (!c) at.set(col.conf, { ...box });
-        else { c.l = Math.min(c.l, box.l); c.r = Math.max(c.r, box.r); c.foot = Math.max(c.foot, box.foot); c.x = (c.l + c.r) / 2; }
+    const tanHalf = Math.tan(Math.PI / this.slots), slopeOf = this._slopeOf;
+    const at = new Map();     // 'd12' / 'c3' → { slot, parts: [{ l, r, x, top, foot }] } in (x, h)
+    const keep = new Map();   // slot → every box and heading to keep off, in (x, h)
+    const keepOf = (slot) => { if (!keep.has(slot)) keep.set(slot, []); return keep.get(slot); };
+    this.rows.forEach((row, i) => row.cells.forEach((cell) => {
+      const slope = (this._tops[i + 1] - this._tops[i]) * slopeOf;
+      const h = (v) => this._tops[i] + (0.01 * slope + v) / slopeOf;   // a distance down the plane → height
+      const toH = (b) => ({ l: b.l, r: b.r, x: (b.l + b.r) / 2, top: h(b.top), foot: h(b.foot) });
+      const k = keepOf(cell.slot);
+      for (const t of cell.plan.texts || []) k.push(toH(t));
+      for (const col of cell.plan.cols || []) {
+        if (!col.box) continue;
+        const part = toH(col.box);
+        k.push(part);
+        for (const key of [col.node, col.conf]) {
+          if (!key) continue;
+          if (!at.has(key)) at.set(key, { slot: cell.slot, parts: [] });
+          at.get(key).parts.push(part);   // a conference is the run of its tables
+        }
       }
-    })));
+    }));
     const out = 0.03, step = this.step;
     const onWall = (slot, x, h) => {
       const a = this._cap + this._grow * h + out, th = slot * step;
@@ -327,33 +363,152 @@ class PyramidSolid {
     // thin lines and narrow heads (owner 2026-11-24: "change the pro/rel lines make them thinnger
     // and smaller arross") — they guide the eye between tables without covering the rows
     const R = Math.max(0.002, Math.min(0.0045, this.base * 0.001));
-    const head = new T.ConeGeometry(R * 2.4, R * 11, 10);
+    const HEADLEN = R * 9;
+    const head = new T.ConeGeometry(R * 2.4, HEADLEN, 10);
     this.own.push(head);
+
+    // the lane grid of one side
+    const s = Math.max(PyramidSolid.LANE, R * 2.6), dh = s / slopeOf, m = s * 0.8, mh = m / slopeOf;
+    const stub = Math.ceil((HEADLEN * 1.2) / s);   // rows of straight line at each end, for the head
+    const grids = new Map();
+    const gridOf = (slot) => {
+      if (grids.has(slot)) return grids.get(slot);
+      const X = Math.ceil(((this._cap + this._grow * this.total) * tanHalf) / s), nx = 2 * X + 1, ny = Math.ceil(this.total / dh) + 1;
+      const block = new Uint8Array(nx * ny), used = new Uint8Array(nx * ny);
+      for (let j = 0; j < ny; j++) {   // off the wall
+        const lim = (this._cap + this._grow * j * dh) * tanHalf - s;
+        for (let i = 0; i < nx; i++) if (Math.abs((i - X) * s) > lim) block[j * nx + i] = 1;
+      }
+      for (const b of keepOf(slot)) {
+        const i0 = Math.max(0, Math.ceil((b.l - m) / s) + X), i1 = Math.min(nx - 1, Math.floor((b.r + m) / s) + X);
+        const j0 = Math.max(0, Math.ceil((b.top - mh) / dh)), j1 = Math.min(ny - 1, Math.floor((b.foot + mh) / dh));
+        for (let j = j0; j <= j1; j++) block.fill(1, j * nx + i0, j * nx + i1 + 1);
+      }
+      const g = { X, nx, ny, block, used };
+      grids.set(slot, g);
+      return g;
+    };
+    // the ends an arrow may use on a box: across its middle, straight off the edge (up off a table's
+    // top, down off a foot) until `stub` free rows in a row — those rows are the end of the line
+    const ends = (g, part, dir) => {
+      const list = [], q = (part.r - part.l) * 0.3;
+      const i0 = Math.ceil((part.x - q) / s) + g.X, i1 = Math.floor((part.x + q) / s) + g.X;
+      for (let i = i0; i <= i1; i++) {
+        if (i < 0 || i >= g.nx) continue;
+        let j = Math.round((dir < 0 ? part.top : part.foot) / dh), free = 0, j0 = j;
+        while (j >= 0 && j < g.ny && free < stub) {
+          if (g.block[j * g.nx + i]) { if (free) break; j0 = j + dir; } else free++;
+          j += dir;
+        }
+        if (free < stub) continue;
+        list.push({ i, j: j - dir, j0, x: (i - g.X) * s, h: dir < 0 ? part.top : part.foot, cost: Math.abs(j - dir - j0) });
+      }
+      return list;
+    };
+    const route = (g, starts, goals) => {
+      const jA = Math.min(...goals.map((e) => e.j)), jB = Math.max(...starts.map((e) => e.j));
+      if (jA > jB) return null;
+      const rows = jB - jA + 1, N = rows * g.nx * 4;
+      const cost = new Float32Array(N).fill(Infinity), from = new Int32Array(N).fill(-1);
+      const goalAt = new Map(goals.map((e) => [e.j * g.nx + e.i, e]));
+      const gx0 = Math.min(...goals.map((e) => e.i)), gx1 = Math.max(...goals.map((e) => e.i));
+      const gj = Math.max(...goals.map((e) => e.j));
+      const guess = (i, j) => Math.max(0, j - gj) + Math.max(0, gx0 - i, i - gx1);   // rows still to climb + lanes still to cross
+      const heap = [];   // [f, state]
+      const push = (f, st) => { heap.push([f, st]); let k = heap.length - 1; while (k) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; } };
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let k = 0; for (;;) { const a = 2 * k + 1, b = a + 1; let c = k; if (a < heap.length && heap[a][0] < heap[c][0]) c = a; if (b < heap.length && heap[b][0] < heap[c][0]) c = b; if (c === k) break; [heap[c], heap[k]] = [heap[k], heap[c]]; k = c; } } return top; };
+      const idx = (i, j, d) => (((j - jA) * g.nx + i) << 2) | d;
+      for (const e of starts) { const st = idx(e.i, e.j, 0); cost[st] = e.cost; push(e.cost + guess(e.i, e.j), st); }
+      const DI = [0, 0, -1, 1], DJ = [-1, 1, 0, 0], TURN = 6, BUSY = 40;
+      let goal = -1;
+      while (heap.length) {
+        const [f, st] = pop(), c = cost[st], d = st & 3, cell = st >> 2, i = cell % g.nx, j = jA + Math.floor(cell / g.nx);
+        if (f - guess(i, j) > c + 1e-6) continue;
+        const ge = goalAt.get(j * g.nx + i);
+        if (ge && d === 0) { goal = st; break; }   // arriving moving up, into the stub
+        for (let nd = 0; nd < 4; nd++) {
+          if ((d ^ nd) === 1 && d < 2 === nd < 2) continue;   // no turning straight back
+          const ni = i + DI[nd], nj = j + DJ[nd];
+          if (ni < 0 || ni >= g.nx || nj < jA || nj > jB) continue;
+          const k = nj * g.nx + ni;
+          if (g.block[k]) continue;
+          const nc = c + 1 + (nd !== d ? TURN : 0) + (g.used[k] ? BUSY : 0), ns = idx(ni, nj, nd);
+          if (nc < cost[ns]) { cost[ns] = nc; from[ns] = st; push(nc + guess(ni, nj), ns); }
+        }
+      }
+      if (goal < 0) return null;
+      const cells = [];
+      for (let st = goal; st >= 0; st = from[st]) { const cell = st >> 2; cells.push([cell % g.nx, jA + Math.floor(cell / g.nx)]); }
+      cells.reverse();
+      const [si, sj] = cells[0], [ei, ej] = cells[cells.length - 1];
+      return { cells, start: starts.find((e) => e.i === si && e.j === sj), end: goalAt.get(ej * g.nx + ei) };
+    };
+
     const group = new T.Group();
+    let lost = 0;
+    const jobs = [];
     for (const e of this.edges) {
       const a = at.get(`d${e.from}`), b = at.get(e.to);
-      if (!a || !b || a.slot !== b.slot || b.foot >= a.top) continue;
-      const x1 = a.x, h1 = a.top;
-      const x2 = e.to[0] === 'c' ? Math.min(Math.max(x1, b.l + 0.05), b.r - 0.05) : b.x, h2 = b.foot;
-      const pts = [];
-      for (let k = 0; k <= 24; k++) {   // the 2D chart's curve: straight up, across in the middle, straight in
-        const t = k / 24, mt = 1 - t;
-        const x = mt * mt * mt * x1 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x2;
-        const m = (h1 + h2) / 2, hh = mt * mt * mt * h1 + 3 * mt * mt * t * m + 3 * mt * t * t * m + t * t * t * h2;
-        pts.push(onWall(a.slot, x, hh));
+      if (!a || !b || a.slot !== b.slot) continue;
+      const src = a.parts[0], tops = b.parts.filter((p) => p.foot < src.top);
+      if (!src || !tops.length) continue;
+      const bx = tops.reduce((t, p) => t + p.x, 0) / tops.length;
+      jobs.push({ e, slot: a.slot, src, tops, far: Math.abs(bx - src.x) + (src.top - Math.max(...tops.map((p) => p.foot))) });
+    }
+    jobs.sort((p, q) => p.far - q.far);
+    for (const { e, slot, src, tops } of jobs) {
+      const g = gridOf(slot);
+      const starts = ends(g, src, -1), goals = tops.flatMap((p) => ends(g, p, 1));
+      const path = starts.length && goals.length ? route(g, starts, goals) : null;
+      let pts;
+      if (path) {
+        // the corners of the path in (x, h), from the table's top edge to the foot it goes up to
+        const P = [[path.start.x, path.start.h]];
+        for (const [i, j] of path.cells) { g.used[j * g.nx + i] = 1; P.push([(i - g.X) * s, j * dh]); }
+        for (let j = path.start.j0; j !== path.start.j; j += Math.sign(path.start.j - path.start.j0 || 1)) g.used[j * g.nx + path.start.i] = 1;
+        for (let j = path.end.j0; j !== path.end.j; j += Math.sign(path.end.j - path.end.j0 || 1)) g.used[j * g.nx + path.end.i] = 1;
+        P.push([path.end.x, path.end.h]);
+        const C = [P[0]];
+        for (let k = 1; k < P.length - 1; k++) {
+          const [ax, ah] = C[C.length - 1], [bx, bh] = P[k], [cx, ch] = P[k + 1];
+          if (Math.abs((bx - ax) * (ch - bh) - (bh - ah) * (cx - bx)) > 1e-9) C.push(P[k]);
+        }
+        C.push(P[P.length - 1]);
+        pts = C.map(([x, h]) => onWall(slot, x, h));
+      } else {
+        lost++;
+        const x1 = src.x, h1 = src.top, x2 = tops[0].x, h2 = tops[0].foot;
+        pts = [];
+        for (let k = 0; k <= 24; k++) {   // the old curve: straight up, across in the middle, straight in
+          const t = k / 24, mt = 1 - t, mid = (h1 + h2) / 2;
+          pts.push(onWall(slot, mt * mt * mt * x1 + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x2,
+                          mt * mt * mt * h1 + 3 * mt * mt * t * mid + 3 * mt * t * t * mid + t * t * t * h2));
+        }
       }
-      const curve = new T.CatmullRomCurve3(pts);
-      const tube = new T.TubeGeometry(curve, 48, R, 6, false);
+      // straight runs with small round corners
+      const curve = new T.CurvePath();
+      const rr = s * 0.9;
+      let from = pts[0];
+      for (let k = 1; k < pts.length; k++) {
+        const p = pts[k], next = pts[k + 1];
+        if (!path || !next) { curve.add(new T.LineCurve3(from, p)); from = p; continue; }
+        const inLen = p.distanceTo(from), outLen = p.distanceTo(next), r = Math.min(rr, inLen / 2, outLen / 2);
+        const a = p.clone().sub(from).normalize().multiplyScalar(-r).add(p), b = next.clone().sub(p).normalize().multiplyScalar(r).add(p);
+        curve.add(new T.LineCurve3(from, a)); curve.add(new T.QuadraticBezierCurve3(a, p, b)); from = b;
+      }
+      const tube = new T.TubeGeometry(curve, Math.max(24, curve.curves.length * 6), R, 6, false);
       group.add(new T.Mesh(tube, line)); this.own.push(tube);
-      const tip = (p, toward, mat) => {   // a cone at p pointing away from `toward`
-        const cone = new T.Mesh(head, mat);
-        cone.position.copy(p);
-        cone.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), p.clone().sub(toward).normalize());
+      const tip = (end, toward, mat) => {   // a cone whose point touches `end`, pointing away from `toward`
+        const dir = end.clone().sub(toward).normalize(), cone = new T.Mesh(head, mat);
+        cone.position.copy(end).addScaledVector(dir, -HEADLEN / 2);
+        cone.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), dir);
         group.add(cone);
       };
-      if (e.up) tip(pts[24], pts[21], up);
-      if (e.down) tip(pts[0], pts[3], down);
+      const n = pts.length;
+      if (e.up) tip(pts[n - 1], pts[n - 2], up);
+      if (e.down) tip(pts[0], pts[1], down);
     }
+    if (lost) console.warn(`[pyramid] ${lost} arrow(s) found no clear lane — drawn on the old curve`);
     this.spin.add(group);
   }
 
