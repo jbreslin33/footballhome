@@ -168,7 +168,7 @@
     $('clipkind').textContent = say(c.kind === 'good' ? 'clip_good' : 'clip_bad');
     $('clipkind').className = 'kind ' + c.kind;
     $('cliptxt').textContent = [say('clip_of', { n: clip.i + 1, total: clip.list.length }),
-      say('clip_who', { num: c.defender.number, name: c.defender.name, label: c.defender.label, min: c.minute }),
+      say('clip_who', { num: c.defender.number, name: c.defender.name, label: c.defender.label, min: c.minute, mnum: c.man.number, mname: c.man.name }),
       say('clip_out_' + c.outcome, { m: Math.round(c.forward_m), gap: c.gap_at_arrival_m.toFixed(1) })].join(' · ');
   }
 
@@ -387,6 +387,16 @@
     }
     return f;
   }
+  function drawPair(t, a_, b_) {   // the clip's pair while the concept is off: a white line and the metres
+    const a = posAt(t, a_), b = posAt(t, b_), qa = P(a.x, a.y), qb = P(b.x, b.y);
+    g.beginPath(); g.moveTo(qa[0], qa[1]); g.lineTo(qb[0], qb[1]);
+    g.lineWidth = 2; g.setLineDash([6, 5]); g.strokeStyle = 'rgba(255,255,255,.85)'; g.stroke(); g.setLineDash([]);
+    const mx = (qa[0] + qb[0]) / 2, my = (qa[1] + qb[1]) / 2, txt = Math.hypot(a.x - b.x, a.y - b.y).toFixed(1) + ' m';
+    g.font = '800 13px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const w = g.measureText(txt).width + 10;
+    g.fillStyle = 'rgba(6,10,18,.75)'; g.fillRect(mx - w / 2, my - 9, w, 18);
+    g.fillStyle = '#fff'; g.fillText(txt, mx, my);
+  }
   function drawFocus(t, f) {
     if (!f || !f.on) return;
     const a = posAt(t, follow), b = posAt(t, f.man), qa = P(a.x, a.y), qb = P(b.x, b.y);
@@ -477,10 +487,15 @@
     const ball = { x: lerp(sa.ball.x, sb.ball.x, k), y: lerp(sa.ball.y, sb.ball.y, k) };
 
     const rows = follow >= 0 && follow < sa.players.length ? rowsFor(t, follow) : [];
-    const man = (rows.find((r) => r.c && r.other !== NO && r.other != null) || {}).other;
+    // In a clip the pair is the clip's: the defender and THE man he must stay in pressing distance of, ringed and
+    // joined the whole clip (owner 11/25: "make it clear who they are staying within pressing distance of … both
+    // players connected with a line and distance"). Green/red with his reach while the concept is on; white after.
+    const cm = CLIPS && clip.list[clip.i] ? clip.list[clip.i].man.slot : null;
+    const man = cm != null ? cm : (rows.find((r) => r.c && r.other !== NO && r.other != null) || {}).other;
 
     const focus = paintFocus(t);
     drawFocus(t, focus);
+    if (cm != null && follow >= 0 && !(focus && focus.on && focus.man === cm)) drawPair(t, follow, cm);
     paintStrip();
     // every player, a little smaller than life-size on the old zoom
     const r = Math.max(6, 0.85 * sc);
