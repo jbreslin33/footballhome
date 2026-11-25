@@ -562,6 +562,12 @@
     add('h3', '', say('brain_lanes'));
     const lanes = add('div', 'lanes');
     const phases = terms.filter((x) => x.kind === 'phase');
+    // Owner 11/24: "the state names are cut off. and the names of the state machines are cut
+    // off. is it 5 state machines? because there are 5 rows." — so the rows are grouped under
+    // what they are (2 state machines · what he uses inside his state · reads, which are not
+    // machines), each row's name on its own full-width line, and under each bar the same
+    // states written out in order, in full.
+    const group = (tier) => add('div', 'lane-g', say(tier), lanes);
     const lane = (label, segs, colour) => {
       const row = add('div', 'lane', null, lanes);
       add('div', 'lane-l', label, row);
@@ -572,6 +578,8 @@
         b.style.left = g.a + '%'; b.style.width = Math.max(0.8, g.b - g.a) + '%';
         b.style.background = colour(g); b.title = g.text;
       }
+      const seq = segs.filter((g) => g.text).map((g) => g.text);
+      add('div', 'lane-s', seq.length ? seq.join('  →  ') : say('brain_lane_empty'), row);
       return row;
     };
     const segsOf = (fn) => {   // merge consecutive brain frames with the same text
@@ -585,10 +593,21 @@
       return out;
     };
     const hue = (t) => { let h = 0; for (const ch of t) h = (h * 31 + ch.charCodeAt(0)) % 360; return `hsl(${h} 45% 38%)`; };
-    lane(say('brain_lane_team') + ' · ' + say('brain_count', { n: phases.length }), segsOf((k) => { const ph = logAt(phaseLog, k); const pi = ph ? ph[teamOf(c.slot)] : null; return pi != null && phases[pi] ? phases[pi].title : ''; }), (g) => hue(g.text));
+    group('brain_group_machines');
+    lane(say('brain_machine_team', { n: phases.length }), segsOf((k) => { const ph = logAt(phaseLog, k); const pi = ph ? ph[teamOf(c.slot)] : null; return pi != null && phases[pi] ? phases[pi].title : ''; }), (g) => hue(g.text));
     const states = terms.filter((x) => x.kind === 'state');
-    lane(say('brain_lane_him') + ' · ' + say('brain_count', { n: states.length }), segsOf((k) => { const l = layersAt(k, c.slot); return l.state ? l.state.title : ''; }), (g) => hue(g.text));
-    lane(say('brain_lane_using') + ' · ' + say('brain_count_using'), segsOf((k) => { const l = layersAt(k, c.slot); return l.concept ? l.concept.title : ''; }), (g) => (/pressing distance|shadow/i.test(g.text) && concept && g.text === concept.title ? '#b8860b' : hue(g.text)));
+    lane(say('brain_machine_him', { n: states.length }), segsOf((k) => { const l = layersAt(k, c.slot); return l.state ? l.state.title : ''; }), (g) => hue(g.text));
+    // Owner 11/25: "how are we getting the proper behaviour with 1 player state machine lol. i
+    // would think we need one just for player actions". The engine's third player layer is
+    // his ACTION this instant (ai::Why — pass, shoot, dribble, press, hold …), chosen fresh by
+    // his state every tick: no memory, no commitment, so not a machine (yet). Shown as its
+    // own row so that is plain.
+    group('brain_group_action');
+    const decisions = terms.filter((x) => x.kind === 'decision');
+    lane(say('brain_lane_action', { n: decisions.length }), segsOf((k) => { const en = brainAt(k), e2 = en && en[c.slot]; const d = e2 ? decisions.find((x) => x.wire === e2.why) : null; return d ? d.title : ''; }), (g) => hue(g.text));
+    group('brain_group_using');
+    lane(say('brain_lane_using_full'), segsOf((k) => { const l = layersAt(k, c.slot); return l.concept ? l.concept.title : ''; }), (g) => (/pressing distance|shadow/i.test(g.text) && concept && g.text === concept.title ? '#b8860b' : hue(g.text)));
+    group('brain_group_reads');
     lane(say('brain_lane_man'), segsOf((k) => { const p = pairsAt(k); return p && p[c.slot] !== NO ? '#' + numOf(p[c.slot]) + (p.how && p.how[c.slot] === 'battle' ? ' ⚔' : '') : ''; }), () => 'rgba(255,255,255,.18)');
     if (reachKind) lane(say('brain_lane_reach'), segsOf((k) => { const rr = reachAt(k); const x = rr && rr[c.slot]; return x && x.reach != null ? say(x.in ? 'brain_in' : 'brain_out') : ''; }), (g) => (g.text === say('brain_in') ? '#2e8b45' : '#a83248'));
     if (shadowKind) lane(say('brain_lane_shadow'), segsOf((k) => { const v = shadowAt(k); if (!v) return ''; const m = v.hidden[c.slot] >>> 0; const h = []; for (let i = 0; i < 32; i++) if ((m >>> i) & 1) h.push('#' + numOf(i)); return h.join(' '); }), () => '#444c66');

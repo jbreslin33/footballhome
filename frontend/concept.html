@@ -90,12 +90,15 @@
     #side .nowrow { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: baseline; }
     #side .nowlab { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
     #side .nowval { font-size: 14px; font-weight: 700; }
-    #side .lanes { position: relative; --lw: 104px; margin: 4px 0 6px; }
-    #side .lane { display: grid; grid-template-columns: var(--lw) 1fr; align-items: center; min-height: 26px; border-bottom: 1px solid rgba(255,255,255,.06); }
-    #side .lane-l { font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--dim); padding-right: 6px; line-height: 1.2; }
-    #side .lane-t { position: relative; height: 22px; }
+    #side .lanes { position: relative; margin: 4px 0 6px; }
+    #side .lane-g { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); margin: 10px 0 2px; padding-top: 6px; border-top: 1px solid var(--line); }
+    #side .lane-g:first-child { border-top: 0; margin-top: 0; padding-top: 0; }
+    #side .lane { padding: 4px 0 6px; }
+    #side .lane-l { font-size: 12.5px; font-weight: 800; color: var(--ink); margin-bottom: 3px; }
+    #side .lane-t { position: relative; height: 22px; background: rgba(255,255,255,.04); border-radius: 5px; }
     #side .seg { position: absolute; top: 2px; bottom: 2px; border-radius: 5px; font-size: 10.5px; font-weight: 700; color: #fff; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding: 3px 4px 0; box-sizing: border-box; }
-    #side .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; left: calc(var(--lw) + (100% - var(--lw)) * var(--nowf, 0)); pointer-events: none; }
+    #side .lane-s { font-size: 11.5px; color: var(--dim); margin-top: 3px; line-height: 1.35; }
+    #side .playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; left: calc(100% * var(--nowf, 0)); pointer-events: none; opacity: .8; }
     #side details.all { margin-top: 10px; }
     #side details.all summary { cursor: pointer; font-weight: 800; font-size: 12.5px; color: var(--gold); }
     #side-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
@@ -146,6 +149,6 @@
     <footer id="legend"></footer>
   </div>
   <script src="js/game/wire.js?v=20261124states"></script>
-  <script src="js/teach/concept.js?v=20261124w"></script>
+  <script src="js/teach/concept.js?v=20261124y"></script>
 </body>
 </html>
