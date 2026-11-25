@@ -304,7 +304,12 @@
     const a = posAt(t, slot), b = posAt(t, e.other), gap = Math.hypot(a.x - b.x, a.y - b.y);
     // Done fully = in reach AND goal side (owner 11/25: "being able to press but the player can dribble to our goal
     // lol is bad as we are 'chasing'"): in reach on the wrong side is NOT in it — he would be chasing.
-    return { on: true, in: r.in && r.goalSide, reachOnly: r.in && !r.goalSide, man: e.other, gap, reach: r.reach, stepping: e.state === 2 };
+    // A build from before the engine sent goal side (REACH flag 4, mig 1920) has no flag: the same rule from the
+    // positions (nearer his own goal's centre than his man is; home defends -x) instead of calling him wrong.
+    const oldBuild = CLIPS && clip.list.length && !('goal_side_at_kick' in clip.list[0]);
+    const gx = teamOf(slot) === 0 ? -52.5 : 52.5;
+    const gs = oldBuild ? Math.hypot(a.x - gx, a.y) < Math.hypot(b.x - gx, b.y) : r.goalSide;
+    return { on: true, in: r.in && gs, reachOnly: r.in && !gs, man: e.other, gap, reach: r.reach, stepping: e.state === 2 };
   }
   // The scrub bar's strip (owner 11/25: "like in the youtube like control … highlight with color at what from and
   // till timestamps the 'stay in press..' is ON. dont show others in that yet or allow them to be toggled. to show
