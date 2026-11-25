@@ -99,9 +99,25 @@ class MainMenu {
     try { localStorage.setItem(MainMenu._lastKey(page.group), page.code); } catch (_) { /* fine */ }
   }
 
+  // 🗻 Groups whose pill shows its pages row first (mig 1915, main_menu.pills_first_groups):
+  // the pyramid page hides the bar, so its All · MLS · USL … pills are picked here, on
+  // the page you are on.  _peek = { group, screen } until a page opens or the screen changes.
+  static _peek = null;
+  static _pillsFirst(code) {
+    const list = (window.MessageCopy && MessageCopy.has && MessageCopy.has('main_menu', 'pills_first_groups'))
+      ? String(MessageCopy.block('main_menu', 'pills_first_groups')).split(/\s+/) : [];
+    return list.includes(code);
+  }
+
   static openGroup(code) {
     const g = MainMenu.groups().find(x => x.code === code);
     if (!g) return;
+    if (g.pages.length >= 2 && MainMenu._pillsFirst(code)) {
+      const screen = window.app && window.app.navigation && window.app.navigation.currentState;
+      MainMenu._peek = { group: code, screen };
+      MainMenu.onScreen(screen);
+      return;
+    }
     let page = g.pages[0];
     // Players land on the first page (📅 Calendar group → the Calendar); staff where they were.
     if (MainMenu.isStaff()) {
@@ -129,6 +145,7 @@ class MainMenu {
       return;
     }
     if (!nav) return;
+    MainMenu._peek = null;
     if (page) MainMenu._remember(page);
     // 🗻 Pyramids (mig 1913): a menu_pages row pyramid-<league> opens the spinning
     // pyramid on that league — the same address as its public link,
@@ -221,8 +238,10 @@ class MainMenu {
     if (!groups.length) return hide();
     const page = MainMenu._pageFor(screen);
     if (page) { MainMenu._remember(page); MainMenu._group = page.group; }
-    const account = screen === 'main-menu';
-    const group = account ? null : groups.find(g => g.code === MainMenu._group) || null;
+    if (MainMenu._peek && MainMenu._peek.screen !== screen) MainMenu._peek = null;
+    const peek = MainMenu._peek && groups.find(g => g.code === MainMenu._peek.group);
+    const account = screen === 'main-menu' && !peek;
+    const group = peek || (account ? null : groups.find(g => g.code === MainMenu._group) || null);
     const top = groups.map(g => pill(`data-menu-group="${esc(g.code)}"`, lbl(g.icon, g.label), group && g.code === group.code, true)).join('')
       + pill('data-menu-account', lbl(...split(copy('account_pill', '👤 Account'))), account, true);
     const pages = group && group.pages.length >= 2
