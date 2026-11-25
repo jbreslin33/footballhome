@@ -299,6 +299,7 @@ class PyramidShapeView {
         rows.push(row); level++;
       }
     });
+    this._banners(rows);
     if (!window.PyramidSolid || !rows.length) return;
     this._solid = new PyramidSolid(stage, rows, slots, {
       level: (num) => (num == null ? this._copy('shape_level_cup') : this._copy('shape_level', { n: num })),
@@ -354,6 +355,28 @@ class PyramidShapeView {
     this._renderRail();
     if (!this._solid) return;
     if (row == null) this._solid.focus(side); else this._solid.focus(side, [row]);
+  }
+
+  // THE HEADER over each league's pyramid (owner 2026-11-25: "we need to show at top of pyramind the
+  // total amount of clubs in the pyrmaid and total levels. for apsl e.g. this header would go right
+  // above level 4"): on the top level of every side with a league, "<league> pyramid · N clubs ·
+  // M levels" — clubs counted once each across all that side's tables, levels = its numbered steps.
+  // a club, not a team: a second side ("… II", "… 2", "… B", "… Reserves", "… U23") is the same club
+  _club(name) { return name.trim().toLowerCase().replace(/\s+(ii|iii|2|3|b|c|reserves?|u-?2[0-3]|academy)$/i, '').trim(); }
+  _banners(rows) {
+    const slots = [...new Set(rows.flatMap((r) => r.cells.map((c) => c.slot)))];
+    for (const slot of slots) {
+      // only levels with tables on them: an empty placeholder step above (tier-*) is not this league's
+      const cells = rows.map((r) => r.cells.find((c) => c.slot === slot)).filter((c) => c && c.tables && c.tables.length);
+      if (!cells.length) continue;
+      const clubs = new Set(), nums = new Set();
+      for (const c of cells) {
+        if (c.num != null) nums.add(c.num);
+        for (const t of c.tables || []) for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) clubs.add(this._club(name));
+      }
+      const league = this._copy(`shape_side_${slot}`) || cells[0].title;
+      cells[0].banner = this._copy('shape_side_header', { league, clubs: clubs.size, levels: nums.size });
+    }
   }
 
   _openPanel(key, cell) {

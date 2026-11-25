@@ -145,7 +145,7 @@ class PyramidSolid {
     return best;
   }
   _planAcross(cell, tables, w, perRow) {
-    const HEAD = cell.title ? 0.44 : 0.26, perLetter = 25;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
+    const HEAD = (cell.title ? 0.44 : 0.26) + (cell.banner ? 0.24 : 0), perLetter = 25;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
     const colW = w / perRow;
     const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
     const cols = tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
@@ -172,11 +172,22 @@ class PyramidSolid {
     // txt"); the league's name, where the level has one league, sits under it, smaller
     const lvl = this.hooks.level ? this.hooks.level(cell.num) : '';   // the division number (cups: none)
     g.fillStyle = '#ffffff'; g.shadowColor = 'rgba(0,0,0,0.5)'; g.shadowBlur = 0.02 * u;
-    fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, 0.12 * u);
+    // a league's top level carries its pyramid's header above "Level N" (owner 2026-11-25: "show at
+    // top of pyramind the total amount of clubs in the pyrmaid and total levels … right above level 4")
+    const B = cell.banner ? 0.24 : 0;
+    if (cell.banner) {
+      fit(cell.banner, 0.12 * u, 800, W * 0.9);
+      const bw = Math.min(W * 0.94, g.measureText(cell.banner).width + 0.14 * u), bh = 0.18 * u;
+      g.shadowBlur = 0; g.fillStyle = 'rgba(251,191,36,0.95)';
+      if (g.roundRect) { g.beginPath(); g.roundRect(W / 2 - bw / 2, 0.11 * u - bh / 2, bw, bh, bh / 2); g.fill(); } else g.fillRect(W / 2 - bw / 2, 0.11 * u - bh / 2, bw, bh);
+      g.fillStyle = '#0b1220'; g.fillText(cell.banner, W / 2, 0.115 * u);
+      g.fillStyle = '#ffffff'; g.shadowBlur = 0.02 * u;
+    }
+    fit(lvl, 0.16 * u, 800, W * 0.94); g.fillText(lvl, W / 2, (0.12 + B) * u);
     g.shadowBlur = 0;
     g.fillStyle = row.kind === 'empty' ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.88)';
-    if (cell.title) { fit(cell.title, 0.1 * u, 700, W * 0.94); g.fillText(cell.title, W / 2, 0.28 * u); }
-    if (cell.title && cell.sub) { g.fillStyle = 'rgba(255,255,255,0.65)'; fit(cell.sub, 0.06 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, 0.38 * u); }
+    if (cell.title) { fit(cell.title, 0.1 * u, 700, W * 0.94); g.fillText(cell.title, W / 2, (0.28 + B) * u); }
+    if (cell.title && cell.sub) { g.fillStyle = 'rgba(255,255,255,0.65)'; fit(cell.sub, 0.06 * u, 600, W * 0.94); g.fillText(cell.sub, W / 2, (0.38 + B) * u); }
     const fs = plan.fs * u, lh = fs * 1.32, colW = W / (plan.perRow || plan.cols.length), pad = fs * 0.6;
     plan.cols.forEach((col) => {
       const k = col.gx, top = (plan.head + col.gy) * u;
