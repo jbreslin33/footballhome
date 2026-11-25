@@ -549,10 +549,12 @@ class PyramidSolid {
   // "make the "crown" the shape of a pyramid and viewable from all sides" · "either dup it on all sides
   // or have it wrap"): a small gold pyramid floating over the apex, as many sides as the big one and
   // turned the same way, the same words on every face — readable whichever side is toward you.
-  // a face's foot wide enough to read with the whole pyramid on screen; squat, the words sit low
+  // the CAPSTONE (owner 2026-11-25: "i dn't liket he umbrella lol it needs to be part of pyramid not
+  // exent out"): its foot is the top level's own top edge and its faces carry the walls' slope on up to
+  // the point, so it is the pyramid's tip, not a sign over it
   _crownDims() {
-    const half = Math.PI / this.slots, faceW = 2 * this.base * Math.tan(half) * 0.62;
-    return { faceW, A: faceW / 2 / Math.tan(half), Hc: faceW * 0.75, gap: 0.25 };
+    const half = Math.PI / this.slots, A = this._apo(0);
+    return { faceW: 2 * A * Math.tan(half), A, Hc: A / Math.tan(this.lean), gap: 0 };   // lean is set before the first fit; _grow is not
   }
   _crownSign(T, lines, font) {
     const n = this.slots, half = Math.PI / n, step = (2 * Math.PI) / n;
@@ -613,7 +615,7 @@ class PyramidSolid {
     crown.position.y = this.total / 2 + gap;   // its foot, a little over the apex
     for (let k = 0; k < n; k++) {
       const plane = new T.Mesh(geo, mat);
-      plane.position.set(0, Hc / 2, A / 2);
+      plane.position.set(0, Hc / 2, A / 2 + 0.012);   // a hair off the wall line, like the tables
       plane.rotation.x = -lean;
       const pivot = new T.Group();
       pivot.rotation.y = k * step;
