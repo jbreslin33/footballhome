@@ -169,7 +169,7 @@
     $('clipkind').className = 'kind ' + c.kind;
     $('cliptxt').textContent = [say('clip_of', { n: clip.i + 1, total: clip.list.length }),
       say('clip_who', { num: c.defender.number, name: c.defender.name, label: c.defender.label, min: c.minute, mnum: c.man.number, mname: c.man.name }),
-      say('clip_out_' + c.outcome, { m: Math.round(c.forward_m), gap: c.gap_at_arrival_m.toFixed(1) })].join(' · ');
+      say('clip_out_' + c.outcome + (c.in_reach_at_kick && c.goal_side_at_kick === false ? '_wrongside' : ''), { m: Math.round(c.forward_m), gap: c.gap_at_arrival_m.toFixed(1) })].join(' · ');
   }
 
   // Binary search: the newest entry at or before tick t.
@@ -302,7 +302,9 @@
     const rr = at(logs.reach, t), r = rr && rr[slot];
     if (!r || r.reach == null) return { on: false, why: 'none' };
     const a = posAt(t, slot), b = posAt(t, e.other), gap = Math.hypot(a.x - b.x, a.y - b.y);
-    return { on: true, in: r.in, man: e.other, gap, reach: r.reach, stepping: e.state === 2 };
+    // Done fully = in reach AND goal side (owner 11/25: "being able to press but the player can dribble to our goal
+    // lol is bad as we are 'chasing'"): in reach on the wrong side is NOT in it — he would be chasing.
+    return { on: true, in: r.in && r.goalSide, reachOnly: r.in && !r.goalSide, man: e.other, gap, reach: r.reach, stepping: e.state === 2 };
   }
   // The scrub bar's strip (owner 11/25: "like in the youtube like control … highlight with color at what from and
   // till timestamps the 'stay in press..' is ON. dont show others in that yet or allow them to be toggled. to show
@@ -377,7 +379,7 @@
     const line2 = tot ? say('focus_pd_tally', { num: numOf(follow), pin: Math.round(100 * tally.inT / tot), pout: Math.round(100 * tally.outT / tot) }) : '';
     let line1;
     if (!f.on) line1 = say('focus_pd_off_' + f.why, { num: numOf(follow) });
-    else line1 = say(f.in ? 'focus_pd_in' : 'focus_pd_out', { num: numOf(follow), man: numOf(f.man), gap: f.gap.toFixed(1), reach: f.reach.toFixed(1), short: Math.max(0, f.gap - f.reach).toFixed(1) })
+    else line1 = say(f.in ? 'focus_pd_in' : f.reachOnly ? 'focus_pd_wrongside' : 'focus_pd_out', { num: numOf(follow), man: numOf(f.man), gap: f.gap.toFixed(1), reach: f.reach.toFixed(1), short: Math.max(0, f.gap - f.reach).toFixed(1) })
                + (f.stepping ? ' ' + say('focus_pd_stepping') : '');
     const key = line1 + '§' + line2;
     if (el.dataset.k !== key) {

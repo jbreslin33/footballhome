@@ -45,6 +45,10 @@ void PressingDistance::read(std::uint8_t team, const core::World& w, const std::
         if (r.man < 0 || r.man >= n) { r.man = -1; reach_[u] = r; continue; }
         const Vec2 me = at(u), him = at(r.man);
         r.gap_m = math::length(him - me);
+        {   // [behaviour: pd_goal_side] — home (team 0) defends the goal at -x, away the one at +x
+            const Vec2 goal{team == 0 ? -w.pitchHalfX() : w.pitchHalfX(), Fixed64{}};
+            r.goal_side = math::length(goal - me) < math::length(goal - him);
+        }
         r.man_on_ball = r.man == on_ball;
         if (!r.man_on_ball) {
             // [behaviour: pd_reach_his_man]

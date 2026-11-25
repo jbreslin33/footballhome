@@ -45,7 +45,7 @@ enum class FrameType : std::uint8_t {
     Step           = 0x48, // c→s admin (2.2): play to the next pass (received, dead or won), then pause — trainer step 3
     Mind           = 0x49, // s→c (2.4): one watched player's mind — his states, eyes, memory, the options he weighed; UTF-8 JSON (teaching rooms)
     Pairs          = 0x4B, // s→c (2.5): direct opponents — u8 count, then per slot u8 his man: slot in the low 6 bits, how in the top 2 (1 matchup, 2 battle near the ball, 3 nearest), 255 none; with BRAIN, to its watchers
-    Reach          = 0x4C, // s→c (2.6): pressing distance — u8 count, then per slot u16 LE his reach in dm (0xFFFF none), u8 flags (1 his man is inside it, 2 his man has the ball), u8 others he could help on; with PAIRS
+    Reach          = 0x4C, // s→c (2.6): pressing distance — u8 count, then per slot u16 LE his reach in dm (0xFFFF none), u8 flags (1 his man is inside it, 2 his man has the ball, 4 he is goal side of his man), u8 others he could help on; with PAIRS
     Shadow         = 0x4D, // s→c (2.7): cover shadows — u8 count, u8 the half-width a body blocks in dm, u8 u8 the receiver each side's presser should hide (255 none), then per slot u32 LE a bit per opponent slot he hides from the ball; with PAIRS
     Phase          = 0x4E, // s→c (2.8): each team's phase — u8 home, u8 away (ai::Phase: 0 in possession … 5 their set piece); with PAIRS
     States         = 0x4F, // s→c (2.9): each man's state — u8 count, per slot u8 len + its game_engine_terms code (or the engine's own name when it has none); with PAIRS

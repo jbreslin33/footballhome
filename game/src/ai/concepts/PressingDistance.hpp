@@ -57,6 +57,11 @@ struct PressReach {
     int man = -1;                 // his direct opponent, or -1 (the spare man, a keeper, his side has the ball)
     bool man_on_ball = false;     // his man has it: the presser's business, not pressing distance
     bool in = false;              // his man is inside his reach
+    // Owner 11/25: "being able to press but the player can dribble to our goal lol is bad as we are 'chasing'".
+    // Goal side: he is nearer his own goal (its centre) than his man is — the man cannot run at goal past him.
+    // Pressing distance done fully = in reach AND goal side; the read only (wire, viewer, clip judge), the sim
+    // does not act on it.
+    bool goal_side = false;
     std::uint8_t help = 0;        // other opponents inside his reach for a pass to THEM
     math::Fixed64 gap_m{};        // him to his man
     math::Fixed64 reach_m{};      // how far he can cover while a pass to his man travels

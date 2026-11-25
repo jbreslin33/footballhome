@@ -301,7 +301,7 @@
     const n = view.getUint8(at), out = new Array(n);
     for (let i = 0; i < n; i++) {
       const o = at + 1 + i * 4, v = view.getUint16(o, true), f = view.getUint8(o + 2);
-      out[i] = { reach: v === 0xFFFF ? null : v / 10, in: !!(f & 1), onBall: !!(f & 2), help: view.getUint8(o + 3) };
+      out[i] = { reach: v === 0xFFFF ? null : v / 10, in: !!(f & 1), onBall: !!(f & 2), goalSide: !!(f & 4), help: view.getUint8(o + 3) };
     }
     return out;
   }

@@ -618,7 +618,7 @@ void GameServer::sendBrain() {
             const std::uint16_t v = !has ? 0xFFFF : static_cast<std::uint16_t>(dmv < 0 ? 0 : (dmv > 65000 ? 65000 : dmv));
             reach.push_back(static_cast<std::uint8_t>(v & 0xFF));
             reach.push_back(static_cast<std::uint8_t>(v >> 8));
-            reach.push_back(static_cast<std::uint8_t>((r.in ? 1 : 0) | (r.man_on_ball ? 2 : 0)));
+            reach.push_back(static_cast<std::uint8_t>((r.in ? 1 : 0) | (r.man_on_ball ? 2 : 0) | (r.goal_side ? 4 : 0)));
             reach.push_back(r.help);
         }
         const Bytes rf = encodeFrame(FrameType::Reach, reach);

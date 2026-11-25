@@ -16,9 +16,13 @@
 //   as it arrives     how far is he from his man?
 //   the next 4 s      did his man's side get forward with it (10 m+ toward his goal, or a goal), or did
 //                     it go nowhere / come back, or did his side win it?
-//   GOOD   in reach at the kick, within 3 m as it arrives, and the man got nowhere (or we won it).
-//   BAD    out of reach at the kick, 4-12 m away as it arrives, and the man's side got forward. (Further
-//          than 12 m he was never near his man: no lesson in pressing distance, a different concept.)
+//   GOAL SIDE         was he between his man and his own goal (PressReach::goal_side)? Owner 11/25: "being able to
+//                     press but the player can dribble to our goal lol is bad as we are 'chasing'" · "to be correct
+//                     fully we need to prevent forward progress right?" — yes: the concept is done when the man
+//                     gets no forward progress.
+//   GOOD   in reach AND goal side at the kick, within 3 m as it arrives, and the man got nowhere (or we won it).
+//   BAD    the man's side got forward, and he was either out of reach (4-12 m as it arrives; further than 12 m he
+//          was never near his man — a different lesson) or in reach on the WRONG side (chasing).
 // The thresholds are [FH] coaching values for picking clear examples — they pick clips, they never
 // touch the sim.
 //
@@ -109,6 +113,7 @@ struct SlotRec {
     std::uint8_t pd = 0;      // the pressing-distance machine's state
     std::int16_t man = -1;    // the man it is about
     bool in = false;          // his man inside his reach (PressReach)
+    bool gs = false;          // he is goal side of his man (PressReach::goal_side)
     double gap = 0, reach = 0, x = 0, y = 0;
 };
 struct TickRec {
@@ -128,7 +133,7 @@ struct Clip {
     std::string fixture;
     Who def, man;
     double gap_kick = 0, reach_kick = 0, gap_recv = 0, progress = 0;
-    bool in_kick = false;
+    bool in_kick = false, gs_kick = false;
     std::string outcome;       // won / held / forward / goal
     std::uint64_t t_kick = 0, t_recv = 0, t_end = 0, t_from = 0, t_to = 0;
     std::vector<std::uint8_t> bytes;   // the .fhclip body (head + ticks), json added at write
@@ -153,7 +158,7 @@ std::string clipJson(const Clip& c, const std::string& id) {
     std::ostringstream o;
     o << "{\"id\":" << jstr(id) << ",\"kind\":" << jstr(c.kind) << ",\"score\":" << jnum(c.score, 2) << ",\"match\":" << c.match
       << ",\"fixture\":" << jstr(c.fixture) << ",\"defender\":" << jwho(c.def) << ",\"man\":" << jwho(c.man)
-      << ",\"in_reach_at_kick\":" << (c.in_kick ? "true" : "false") << ",\"gap_at_kick_m\":" << jnum(c.gap_kick)
+      << ",\"in_reach_at_kick\":" << (c.in_kick ? "true" : "false") << ",\"goal_side_at_kick\":" << (c.gs_kick ? "true" : "false") << ",\"gap_at_kick_m\":" << jnum(c.gap_kick)
       << ",\"reach_at_kick_m\":" << jnum(c.reach_kick) << ",\"gap_at_arrival_m\":" << jnum(c.gap_recv)
       << ",\"forward_m\":" << jnum(c.progress) << ",\"outcome\":" << jstr(c.outcome) << ",\"t_from\":" << c.t_from
       << ",\"t_kick\":" << c.t_kick << ",\"t_recv\":" << c.t_recv << ",\"t_end\":" << c.t_end << ",\"t_to\":" << c.t_to
@@ -185,7 +190,7 @@ struct Build {
 struct Test {
     int d = -1, m = -1;
     std::uint64_t k0 = 0, kr = 0, until = 0;
-    bool in_k = false;
+    bool in_k = false, gs_k = false;
     double gap_k = 0, reach_k = 0, gap_r = 0, x_r = 0, best = 0;
     std::string outcome;
     bool done = false;
@@ -234,15 +239,17 @@ std::vector<Clip> playMatch(const server::GameServer::Config& cfg, int match_no,
     };
     auto cut = [&](const Test& T) {
         Clip c;
-        const bool is_good = T.in_k && T.gap_r <= 3.0 && (T.outcome == "won" || T.outcome == "held");
-        const bool is_bad = !T.in_k && T.gap_r >= 4.0 && T.gap_r <= 12.0 && T.gap_k <= 15.0 && (T.outcome == "forward" || T.outcome == "goal");
+        const bool fwd = T.outcome == "forward" || T.outcome == "goal";
+        const bool is_good = T.in_k && T.gs_k && T.gap_r <= 3.0 && (T.outcome == "won" || T.outcome == "held");
+        const bool is_bad = fwd && T.gap_r <= 12.0 && T.gap_k <= 15.0 &&
+                            ((!T.in_k && T.gap_r >= 4.0) || (T.in_k && !T.gs_k));   // too far, or near but chasing
         if (!is_good && !is_bad) return;
         c.kind = is_good ? "good" : "bad";
         c.score = is_good ? (T.outcome == "won" ? 3.0 : 1.0) + (3.0 - T.gap_r)
                           : T.gap_r / 2.0 + T.best / 10.0 + (T.outcome == "goal" ? 3.0 : 0.0);
         c.match = match_no; c.fixture = fixture;
         c.def = who(T.d); c.man = who(T.m);
-        c.in_kick = T.in_k; c.gap_kick = T.gap_k; c.reach_kick = T.reach_k; c.gap_recv = T.gap_r; c.progress = T.best;
+        c.in_kick = T.in_k; c.gs_kick = T.gs_k; c.gap_kick = T.gap_k; c.reach_kick = T.reach_k; c.gap_recv = T.gap_r; c.progress = T.best;
         c.outcome = T.outcome;
         c.t_kick = T.k0; c.t_recv = T.kr; c.t_end = T.t_end;
         c.t_from = std::max<std::uint64_t>(ring.front().tick, T.k0 > 4 * kHz ? T.k0 - 4 * kHz : 0);
@@ -273,6 +280,7 @@ std::vector<Clip> playMatch(const server::GameServer::Config& cfg, int match_no,
             tr.s[i].pd = ms.state;
             tr.s[i].man = ms.other >= 0 ? ms.other : static_cast<std::int16_t>(pr.man);
             tr.s[i].in = pr.in;
+            tr.s[i].gs = pr.goal_side;
             tr.s[i].gap = pr.gap_m.toDouble();
             tr.s[i].reach = pr.reach_m.toDouble();
             tr.s[i].x = W.player(i).pos.x.toDouble();
@@ -309,7 +317,7 @@ std::vector<Clip> playMatch(const server::GameServer::Config& cfg, int match_no,
                     if (d >= 0) {
                         Test T;
                         T.d = d; T.m = m; T.k0 = k0; T.kr = now; T.until = now + 4 * kHz;
-                        T.in_k = K->s[d].in; T.gap_k = K->s[d].gap; T.reach_k = K->s[d].reach;
+                        T.in_k = K->s[d].in; T.gs_k = K->s[d].gs; T.gap_k = K->s[d].gap; T.reach_k = K->s[d].reach;
                         T.gap_r = std::hypot(R.s[d].x - R.s[m].x, R.s[d].y - R.s[m].y);
                         T.x_r = R.bx;
                         open.push_back(T);
