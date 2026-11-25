@@ -306,6 +306,7 @@ class PyramidShapeView {
       onMove: () => this._drawLine(),
       onPick: (cell) => { this._solid.face(cell.slot); this._openPanel(cell.key, cell); },
       head: (this._copy('table_head') || '').split(/\s+/).filter(Boolean).slice(-3),
+      crown: this._crown || null,
     }, { edges: this._edges || [],
          colors: { promotion: this.flow._model.kindColor('promotion'), relegation: this.flow._model.kindColor('relegation') } });
     this._rows = rows; this._renderRail();
@@ -377,6 +378,30 @@ class PyramidShapeView {
       const league = this._copy(`shape_side_${slot}`) || cells[0].title;
       cells[0].banner = this._copy('shape_side_header', { league, clubs: clubs.size, levels: nums.size });
     }
+    this._crown = this._crownOf(rows);
+  }
+  // THE CROWN over the whole pyramid (owner 2026-11-25: "American pyramid at top. number of levels and
+  // number of clubs … we can also say the pyramid goes 9 levels deep with the APSL feeder league CASA
+  // Massachusetts"): levels = the deepest numbered level, clubs once each across every side (the cups'
+  // fields are foreign clubs, left out); the deep line names the deepest table's league and its side
+  _crownOf(rows) {
+    const clubs = new Set();
+    let deep = null;
+    for (const r of rows) {
+      if (r.num == null) continue;
+      for (const c of r.cells) {
+        for (const t of c.tables || []) for (const name of (t.rows && t.rows.length ? t.rows.map((x) => x.name) : t.teams || [])) if (name) clubs.add(this._club(name));
+        if ((c.tables || []).length && (!deep || r.num > deep.num)) deep = { num: r.num, cell: c };
+      }
+    }
+    if (!deep) return null;
+    const M = this.flow && this.flow._model, t = deep.cell.tables.find((x) => x.node) || deep.cell.tables[0];
+    const div = M && t && t.node && t.node[0] === 'd' ? M.division(Number(t.node.slice(1))) : null;
+    const comp = div && M.comp(div.competition_id);
+    const league = (comp && comp.name) || (t && t.name ? t.name.split(' · ')[0] : '');
+    const root = this._copy(`shape_side_${deep.cell.slot}`) || '';
+    return [this._copy('shape_crown', { levels: deep.num, clubs: clubs.size }),
+            league && root ? this._copy('shape_crown_deep', { levels: deep.num, root, league }) : ''].filter(Boolean);
   }
 
   _openPanel(key, cell) {

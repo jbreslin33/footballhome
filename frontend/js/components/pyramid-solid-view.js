@@ -128,6 +128,7 @@ class PyramidSolid {
     this.resize(true);
     this._tops = tops; this._grow = grow; this._cap = cap; this._slopeOf = slopeOf;
     if (this.edges.length) this._arrows(T);
+    if (this.hooks.crown && this.hooks.crown.length) this._crownSign(T, this.hooks.crown, font);
     if (this.picked) this.pick(this.picked);
   }
 
@@ -517,6 +518,41 @@ class PyramidSolid {
     }
     if (lost) console.warn(`[pyramid] ${lost} arrow(s) found no clear lane — drawn on the old curve`);
     this.spin.add(group);
+  }
+
+  // THE CROWN (owner 2026-11-25: "American pyramid at top. number of levels and number of clubs"): a
+  // gold sign floating over the apex, turned to the camera from every side — the first line big, the
+  // "goes N levels deep with …" line under it
+  _crownSign(T, lines, font) {
+    const c = document.createElement('canvas'), W = 2048, g = c.getContext('2d');
+    // the deep line wraps onto as many lines as it needs at a size that still reads from afar
+    const SMALL = 104, wrap = [];
+    if (lines[1]) {
+      g.font = `700 ${SMALL}px ${font}`;
+      let cur = '';
+      for (const word of lines[1].split(' ')) {
+        const next = cur ? `${cur} ${word}` : word;
+        if (cur && g.measureText(next).width > W - 180) { wrap.push(cur); cur = word; } else cur = next;
+      }
+      if (cur) wrap.push(cur);
+    }
+    const H = 250 + wrap.length * SMALL * 1.2;
+    c.width = W; c.height = Math.round(H);
+    const fit = (text, size, weight, max) => { let s = size; do { g.font = `${weight} ${s}px ${font}`; s -= 4; } while (s > 20 && g.measureText(text).width > max); };
+    g.fillStyle = 'rgba(251,191,36,0.96)';
+    if (g.roundRect) { g.beginPath(); g.roundRect(8, 8, W - 16, c.height - 16, 70); g.fill(); } else g.fillRect(8, 8, W - 16, c.height - 16);
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#0b1220';
+    fit(lines[0], 150, 800, W - 140); g.fillText(lines[0], W / 2, 135);
+    g.fillStyle = 'rgba(11,18,32,0.85)'; g.font = `700 ${SMALL}px ${font}`;
+    wrap.forEach((t, k) => g.fillText(t, W / 2, 250 + SMALL * 0.55 + k * SMALL * 1.2));
+    const tex = new T.CanvasTexture(c);
+    tex.colorSpace = T.SRGBColorSpace;
+    const mat = new T.SpriteMaterial({ map: tex, transparent: true, depthWrite: false });
+    const sign = new T.Sprite(mat), w = 2 * this.base * Math.tan(Math.PI / this.slots) * 0.85, h = w * H / W;   // as wide as most of the foot, so it reads with the whole pyramid on screen
+    sign.scale.set(w, h, 1);
+    sign.position.set(0, this.total / 2 + h / 2 + 0.2, 0);
+    this.spin.add(sign);
+    this.own.push(tex, mat);
   }
 
   // ── where it stands ──────────────────────────────────────────────────
