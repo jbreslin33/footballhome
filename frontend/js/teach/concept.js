@@ -33,7 +33,7 @@
 
   // ── the match, recorded ──
   const snaps = [];                                   // {tick, players, ball}
-  const logs = { machines: [], states: [], phase: [], reach: [], shadow: [], brain: [] };   // {tick, v}
+  const logs = { machines: [], states: [], phase: [], reach: [], shadow: [], brain: [], poss: [] };   // {tick, v}
   let hello = null, roster = [], kits = [null, null], teamNames = ['', ''];
   const teamOf = (i) => (hello && i < hello.slotCount / 2 ? 0 : 1);
   const numOf = (i) => (roster[i] && roster[i].number) || '';
@@ -64,6 +64,7 @@
         else if (f.type === T.MACHINES) { push(logs.machines, GameWire.decodeMachines(view, f.payloadAt)); pickFollow(); }
         else if (f.type === T.STATES) push(logs.states, GameWire.decodeStates(view, f.payloadAt));
         else if (f.type === T.PHASE) push(logs.phase, GameWire.decodePhase(view, f.payloadAt));
+        else if (f.type === T.POSS_READ) push(logs.poss, GameWire.decodePossRead(view, f.payloadAt));
         else if (f.type === T.REACH) push(logs.reach, GameWire.decodeReach(view, f.payloadAt));
         else if (f.type === T.SHADOW) push(logs.shadow, GameWire.decodeShadow(view, f.payloadAt));
         else if (f.type === T.BRAIN) push(logs.brain, GameWire.decodeBrain(view, f.payloadAt));
@@ -108,28 +109,46 @@
 
   // ── his states as lines: team phase, his job, every machine that is on ──
   const MACHINE_KEY = { 1: 'scheme', 2: 'shadow', 3: 'pdist', 4: 'recover', 5: 'press', 6: 'chase', 7: 'double', 8: 'cover' };
-  // The boxes down the left (owner 11/25: "formation, stylle, then actions down bottom"): FORMATION = his
-  // team's phase and his place in the shape; STYLE = how we defend (marking scheme, pressing distance,
-  // cover shadow); ACTIONS = what he is doing (press, loose ball, double-team, recover, cover, his action).
-  const BOXES = ['formation', 'style', 'actions'];
-  const MACHINE_BOX = { scheme: 'style', shadow: 'style', pdist: 'style', recover: 'actions', press: 'actions', chase: 'actions', double: 'actions', cover: 'actions' };
-  const JOB_BOX = { hold_block: 'formation', support: 'formation', keeper: 'formation', mark_man: 'style',
-                    press_ball: 'actions', chase_ball: 'actions', double_team: 'actions', on_ball: 'actions', receive: 'actions', attack_box: 'actions', run_line: 'actions' };
-  const CONCEPT_BOX = { 'pressing-distance': 'style', 'cover-shadow': 'style', 'zonal-marking': 'style', 'direct-opponent': 'style', libero: 'style',
-                        recover: 'actions', 'close-down': 'actions', 'nearest-decides': 'actions', 'double-team': 'actions', cover: 'actions' };
+  // The boxes down the left (owner 11/25: "formation is one box … playing style is another box. who has ball
+  // is another box … then … a box for main tactical concepts, last box actions right like kick, dribble"):
+  // FORMATION = his side's shape out of and in possession (the one he is in green, the other red) and his place;
+  // STYLE = how his side plays (the marking scheme); POSSESSION = who has the ball AS HE READS IT (his own read,
+  // not the team's — PlayerAgent::read); CONCEPTS = the tactical concepts he is in (pressing distance, cover
+  // shadow, press, recover, cover …); ACTIONS = what his body does this moment (pass, carry, shoot, close down …).
+  const BOXES = ['formation', 'style', 'possession', 'concepts', 'actions'];
+  const MACHINE_BOX = { scheme: 'style', shadow: 'concepts', pdist: 'concepts', recover: 'concepts', press: 'concepts', chase: 'concepts', double: 'concepts', cover: 'concepts' };
+  const JOB_BOX = { hold_block: 'formation', keeper: 'formation', mark_man: 'style', on_ball: 'possession',
+                    support: 'concepts', press_ball: 'concepts', chase_ball: 'concepts', double_team: 'concepts', receive: 'concepts', attack_box: 'concepts', run_line: 'concepts' };
+  const CONCEPT_BOX = { 'zonal-marking': 'style', 'direct-opponent': 'style', libero: 'style',
+                        'pressing-distance': 'concepts', 'cover-shadow': 'concepts', recover: 'concepts', 'close-down': 'concepts', 'nearest-decides': 'concepts', 'double-team': 'concepts', cover: 'concepts' };
+  const DEFENDING = new Set([2, 3, 5]);   // ai::Phase: defending block, defensive transition, their set piece
   function rowsFor(t, slot) {
     const rows = [];
-    const ph = at(logs.phase, t), phases = terms.filter((x) => x.kind === 'phase');
-    const phase = ph ? phases[ph[teamOf(slot)]] : null;
-    // The formation his side plays and his place in it (ROSTER 2.11 tail).
+    const phases = terms.filter((x) => x.kind === 'phase');
+    // Who has the ball as HE reads it (POSS_READ); before the first frame, his team's read.
+    const pr = at(logs.poss, t), mine = pr && pr[slot];
+    const ph = at(logs.phase, t);
+    const phIdx = mine ? mine.phase : ph ? ph[teamOf(slot)] : null;
+    const phase = phIdx != null ? phases[phIdx] : null, defending = phIdx != null && DEFENDING.has(phIdx);
+    // FORMATION: the shape out of possession and in possession — the one he is in now green, the other red.
     const fm = roster.formation ? roster.formation[teamOf(slot)] : '', me = roster[slot] || {};
-    if (fm) rows.push({ id: 'formation', box: 'formation', k: '', v: say('view_formation', { code: fm }), def: say('view_formation_def', { code: fm, team: teamNames[teamOf(slot)] || '' }) });
+    const fmIn = fm;   // the engine plays ONE shape both ways today (ai::FormationSpec); a second shape would come here
+    const team = teamNames[teamOf(slot)] || '';
+    if (fm) {
+      rows.push({ id: 'shape_out', box: 'formation', k: '', v: say('view_shape_out', { code: fm }), on: phIdx != null ? defending : null,
+                  def: say('view_shape_out_def', { code: fm, team }) + (fmIn === fm ? ' ' + say('view_shape_same', { code: fm }) : '') });
+      rows.push({ id: 'shape_in', box: 'formation', k: '', v: say('view_shape_in', { code: fmIn }), on: phIdx != null ? !defending : null,
+                  def: say('view_shape_in_def', { code: fmIn, team }) + (fmIn === fm ? ' ' + say('view_shape_same', { code: fm }) : '') });
+    }
     if (me.role) {
       const role = say('role_' + me.role) || me.role;
       rows.push({ id: 'position', box: 'formation', k: '', v: me.label ? say('view_position', { role, label: me.label }) : role,
                   def: say('view_position_def', { role: role.toLowerCase(), label: me.label || '', num: numOf(slot) }) });
     }
-    rows.push({ id: 'team', box: 'formation', k: say('tbl_team'), v: phase ? phase.title : '—', def: phase ? phase.definition || phase.note || '' : '' });
+    // POSSESSION: his own read, and when the ball has turned but he has not read it yet.
+    rows.push({ id: 'read', box: 'possession', k: '', v: phase ? phase.title : '—',
+                def: (phase ? (phase.definition || phase.note || '') + ' ' : '') + say('view_read_def') });
+    if (mine && mine.turning) rows.push({ id: 'turning', box: 'possession', k: '', v: say('view_turning'), on: false, def: say('view_turning_def') });
     const sl = at(logs.states, t), code = sl ? sl[slot] : null, st = code ? terms.find((x) => x.kind === 'state' && x.code === code) : null;
     rows.push({ id: 'job', box: JOB_BOX[code] || 'formation', k: say('tbl_job'), v: st ? st.title : (code || '—'), def: st ? st.definition || st.note || '' : '' });
     // What he is DOING this moment (the engine's decision, BRAIN frame) and the concept his act plays.
@@ -138,7 +157,7 @@
     if (dec) rows.push({ id: 'doing', box: 'actions', k: say('tbl_doing'), v: dec.title, def: dec.definition || dec.note || '' });
     if (e && e.concept !== NO && legend[e.concept]) {
       const kc = (tax.concepts || []).find((x) => x.id === e.concept);
-      rows.push({ id: 'using', box: CONCEPT_BOX[legend[e.concept].name] || 'style', k: say('tbl_using'), v: legend[e.concept].title, def: kc ? kc.definition || kc.cue || '' : '' });
+      rows.push({ id: 'using', box: CONCEPT_BOX[legend[e.concept].name] || 'concepts', k: say('tbl_using'), v: legend[e.concept].title, def: kc ? kc.definition || kc.cue || '' : '' });
     }
     const eng = at(logs.machines, t);
     const order = (copy.get('machine_order') || '').split(',').map((x) => x.trim());
@@ -161,7 +180,7 @@
       }
       let def = s ? s.definition || '' : '';
       if (key === 'pdist' && e.state === 2) { const on = m && terms.find((x) => x.kind === 'machine_state' && x.parent === m.code && x.wire === 1); if (on) def = (on.definition || '') + ' ' + def; }
-      mrows.push({ id: 'm' + e.machine, key, box: MACHINE_BOX[key] || 'style', m: true, c: conceptOn(e), k: m ? m.title : key, v: s ? s.title : '', man: key !== 'shadow' && e.other !== NO ? '#' + numOf(e.other) : '', other: e.other, d: detail, def: def || (m ? m.definition || '' : '') });
+      mrows.push({ id: 'm' + e.machine, key, box: MACHINE_BOX[key] || 'concepts', m: true, c: conceptOn(e), k: m ? m.title : key, v: s ? s.title : '', man: key !== 'shadow' && e.other !== NO ? '#' + numOf(e.other) : '', other: e.other, d: detail, def: def || (m ? m.definition || '' : '') });
     }
     mrows.sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99));
     return rows.concat(mrows);
@@ -300,13 +319,13 @@
       }
       for (const x of rows) {
         if (!x.m && seen.has('m:' + x.v)) continue;
-        const tbl = tbls[x.box] || tbls.style;
+        const tbl = tbls[x.box] || tbls.concepts;
         const lines = x.m && x.v && x.v !== 'On' ? [[x.id, x.k, ''], [x.id + ':s', x.v, ' sub']] : [[x.id, x.m ? x.k : x.v, '']];
         for (const [id, name, sub] of lines) {
           if (seen.has(name)) continue;
           seen.add(name);
           const tr = tbl.insertRow();
-          tr.className = 'row' + (x.c ? ' c' : '') + sub;
+          tr.className = 'row' + (x.c ? ' c' : '') + (x.on === true ? ' on' : x.on === false ? ' off' : '') + sub;
           tr.dataset.id = id;
           const td = tr.insertCell(); td.className = 'val'; td.textContent = name || '—';
         }

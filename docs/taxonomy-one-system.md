@@ -411,3 +411,36 @@ double-team, recover, cover). Since mig 1900 the Formation box also leads with t
 side plays (`formations.code`, e.g. 4-2-3-1) and his place in it (`formation_slot_roles.role` +
 the board label, e.g. "Full-back (RB)"), sent on the ROSTER 2.11 tail; the role words are copy
 rows `role_<role>`.
+
+### Five boxes, and each man's own read of who has the ball (mig 1905)
+
+Owner 11/25: "formation is one box — this could change depending on off or def right? 442 def, 433
+off. if that is case show both and one on in green and the other in red. playing style is another
+box. who has ball is another box, tracking possession by our player that is a decision. at what
+point does a player decide we have the ball? that should not be 'team' based. then … a box for main
+tactical concepts, last box actions right like kick, dribble etc?"
+
+The viewer's list down the left is five boxes, top to bottom:
+
+| Box | What is in it |
+|---|---|
+| **Formation** | the shape without the ball and the shape with it — the one he is in now **green**, the other **red** — and his place (role + board label) |
+| **Playing style** | how his side plays: the marking scheme (and "mark the opponent in his area") |
+| **Who has the ball** | HIS read (below), and "the ball has turned — he has not read it yet" (red) while he is behind |
+| **Tactical concepts** | pressing distance, cover shadow, press, loose ball, double-team, recover, cover; support, runs |
+| **Actions** | what his body does this moment: pass, carry, shoot, cross, clear, close down … (the BRAIN decision) |
+
+**Two shapes.** Yes — real sides defend in one shape and attack in another (Arsenal's 4-2-3-1 is a
+4-3-3 or a 2-3-5 with the ball). The engine holds ONE shape per side today (`ai::FormationSpec`), so
+both rows show the same code and the popup says so. A second shape needs: an in-possession
+`FormationSpec` per side, slots paired across the two by position number, and the anchor reading his
+read. Who sets it (the plan in the teaching room) and what PL 15/16 data backs it are open.
+
+**His own read** (`PlayerAgent::read`, `[behaviour: read_possession_own]`). The team's reader
+(TeamPhase: a change of side counts once it has held `min_dwell`, 0.3 s) now runs once per man, with
+his own dwell on top: `physics.phase.player_react_s` + `physics.phase.player_per_10m_s` × his distance
+to the ball in tens of metres. His state (`Pick`) and his concept machines go by his read; the team's
+read stays for the frame `PHASE` and the harness. No rows = 0 = he reads it the tick his team does,
+so the goldens are unchanged. Frame `POSS_READ` (0x51): per slot his phase | 0x80 while the ball has
+turned and he has not read it. **Owed:** the two numbers from tracking data — after a turnover, when
+does each man's run change, by his distance to the ball (DFL `~/football-data/dfl_idsse`).

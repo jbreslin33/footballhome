@@ -64,6 +64,9 @@ public:
     // that goes backwards (a new match) restarts them.
     void think(const core::World& world) const;
     Phase phaseOf(std::uint8_t team) const { return teams_[team & 1].phase(); }
+    // One man's own read of the phase (PlayerAgent::read), and whether the ball has turned and he has not read it yet.
+    Phase phaseOfPlayer(core::SlotIndex slot) const { return players_[slot & 31].read.phase(); }
+    bool readingTurn(core::SlotIndex slot) const { return players_[slot & 31].read.pending != 0xFF; }
     const PlayerState* stateOf(core::SlotIndex slot) const { return players_[slot & 31].machine.current(); }
     // Orders for ONE slot given the current world (deterministic).
     Orders ordersFor(core::SlotIndex slot, const core::World& world) const;
@@ -139,6 +142,7 @@ private:
     std::vector<Role> role_of_slot_;
     std::vector<std::uint8_t> lone_of_slot_;   // G5.120: the only outfielder of his in-possession role in his side
     PhaseParams phase_params_{};
+    std::uint32_t player_react_ticks_ = 0, player_per_10m_ticks_ = 0;   // his own read on top (PlayerAgent::read)
     mutable TeamAgent teams_[2];
     mutable PlayerAgent players_[32];
     mutable std::uint64_t think_tick_ = ~0ull;

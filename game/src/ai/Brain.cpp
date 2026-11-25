@@ -110,6 +110,8 @@ void Brain::setModelParams(const core::ModelParams& p) {
     };
     phase_params_.transition_ticks = static_cast<std::uint32_t>(ticks("physics.phase.transition_s", 6000));
     phase_params_.min_dwell_ticks = static_cast<std::uint32_t>(ticks("physics.phase.min_dwell_s", 300));
+    player_react_ticks_ = static_cast<std::uint32_t>(std::max<std::int32_t>(0, ticks("physics.phase.player_react_s", 0)));
+    player_per_10m_ticks_ = static_cast<std::uint32_t>(std::max<std::int32_t>(0, ticks("physics.phase.player_per_10m_s", 0)));
     restart_play_.throw_look_ticks = ticks("physics.restart.throw_look_s", 1000);
     restart_play_.throw_wait_ticks = ticks("physics.restart.throw_wait_s", 4000);
     restart_play_.corner_look_ticks = ticks("physics.restart.corner_look_s", 1500);
@@ -171,6 +173,8 @@ void Brain::think(const World& world) const {
             players_[s] = PlayerAgent{};
             players_[s].slot = s;
             players_[s].machine.init(playerStartState(), playerGlobalState(), now);
+            players_[s].read.team = s < setup_.team_of_slot.size() ? setup_.team_of_slot[s] : 0;
+            players_[s].read.machine.init(teamStartState(), teamGlobalState(), now);
         }
     }
     think_tick_ = now;
@@ -225,6 +229,19 @@ void Brain::think(const World& world) const {
         poss_.assignRuns(t, world, setup_.team_of_slot, role_of_slot_, match_seed_);
         poss_.assignFront(t, world, setup_.team_of_slot);
     }
+    // [behaviour: read_possession_own]
+    // Each man reads who has the ball himself: the team's reader, his own dwell (PlayerAgent::read).
+    for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
+        PhaseParams pp = phase_params_;
+        if (player_react_ticks_ || player_per_10m_ticks_) {
+            const auto& bp = world.ball().pos;
+            const auto& me = world.player(s).pos;
+            const Fixed64 tens = math::length(Vec2{me.x - bp.x, me.y - bp.y}) * Fixed64::fromFraction(1, 10);
+            pp.min_dwell_ticks += player_react_ticks_ + static_cast<std::uint32_t>(((tens * Fixed64::fromInt(static_cast<std::int32_t>(player_per_10m_ticks_))).raw) >> Fixed64::FRAC_BITS);
+        }
+        const TeamCtx tc{world, setup_.team_of_slot, pp, now};
+        players_[s].read.machine.update(players_[s].read, tc);
+    }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const PlayerCtx c{world, setup_.team_of_slot, block_, poss_, reads_, teams_[setup_.team_of_slot[s] & 1], now};
         players_[s].machine.update(players_[s], c);
@@ -234,7 +251,7 @@ void Brain::think(const World& world) const {
     // [behaviour: machine_tick]
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const std::uint8_t t = setup_.team_of_slot[s];
-        const Phase ph = teams_[t & 1].phase();
+        const Phase ph = players_[s].read.phase();   // his own read
         const PlayerState* st = players_[s].machine.current();
         concepts::MachineSense ms;
         ms.job = world.isKeeper(s) ? concepts::Job::Keeper
@@ -364,7 +381,7 @@ bool Brain::actAs(const ActingState* st, SlotIndex slot, const World& world, Ord
 // G5.32), else his block spot. Label only.
 Act Brain::actOf(SlotIndex slot, const World& world, const Orders& o) const {
     if (slot >= world.playerCount() || world.isKeeper(slot)) return Act::None;
-    const Phase ph = teams_[setup_.team_of_slot[slot] & 1].phase();   // a loose ball in our own phase is not out of possession
+    const Phase ph = players_[slot & 31].read.phase();   // his own read; a loose ball in our own phase is not out of possession
     if (ph != Phase::DefendingBlock && ph != Phase::DefensiveTransition && ph != Phase::TheirSetPiece) return Act::None;
     const PlayerState* st = players_[slot & 31].machine.current();
     if (st == DefendingBlock::pressBall())   // on the lane to the receiver he hides, when his side presses on the cover shadow

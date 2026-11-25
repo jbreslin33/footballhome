@@ -670,6 +670,13 @@ void GameServer::sendBrain() {
         }
         const Bytes mfr = encodeFrame(FrameType::Machines, mf);
         for (const auto& [id, _] : brain_watchers_) transport_.send(id, mfr);
+        // 2.12: who has the ball as each man reads it himself (his own phase; 0x80 = the ball has turned, he has not read it yet)
+        Bytes pr;
+        pr.push_back(static_cast<std::uint8_t>(cfg_.slot_count));
+        for (std::uint8_t s = 0; s < cfg_.slot_count; ++s)
+            pr.push_back(static_cast<std::uint8_t>(static_cast<std::uint8_t>(brain_.phaseOfPlayer(s)) | (brain_.readingTurn(s) ? 0x80 : 0)));
+        const Bytes prf = encodeFrame(FrameType::PossRead, pr);
+        for (const auto& [id, _] : brain_watchers_) transport_.send(id, prf);
     }
 }
 

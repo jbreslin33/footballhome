@@ -37,6 +37,7 @@
     PHASE: 0x4E,          // 2.8 s→c: each team's phase — u8 home, u8 away (0 in possession … 5 their set piece); with PAIRS
     STATES: 0x4F,         // 2.9 s→c: each man's state — u8 count, per slot u8 len + game_engine_terms code (or the engine's name); with PAIRS
     MACHINES: 0x50,       // 2.10 s→c: the concept machines awake — u8 count, per slot u8 n then n × (u8 machine, u8 state, u8 other | 255); with PAIRS
+    POSS_READ: 0x51,      // 2.12 s→c: who has the ball as each man reads it — u8 count, per slot u8 his own phase | 0x80 the ball turned, he has not read it yet; with PAIRS
     MIND_WATCH: 0x4A,     // 2.4 c→s: u8 slot — watch that player's mind (255 = stop)
     // 2.0 (G5.23) retired with the old brain: 0x32 0x33 0x35-0x37 0x3A 0x3E-0x44.
   };
@@ -387,6 +388,11 @@
         out[i] = [];
         for (let j = 0; j < k; j++) { out[i].push({ machine: view.getUint8(o), state: view.getUint8(o + 1), other: view.getUint8(o + 2) }); o += 3; }
       }
+      return out;
+    },
+    decodePossRead: (view, at) => {   // → per slot { phase (ai::Phase index), turning }
+      const n = view.getUint8(at), out = new Array(n);
+      for (let i = 0; i < n; i++) { const b = view.getUint8(at + 1 + i); out[i] = { phase: b & 0x7f, turning: (b & 0x80) !== 0 }; }
       return out;
     },
     decodeStates: (view, at) => {

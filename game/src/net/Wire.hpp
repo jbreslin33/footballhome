@@ -50,6 +50,7 @@ enum class FrameType : std::uint8_t {
     Phase          = 0x4E, // s→c (2.8): each team's phase — u8 home, u8 away (ai::Phase: 0 in possession … 5 their set piece); with PAIRS
     States         = 0x4F, // s→c (2.9): each man's state — u8 count, per slot u8 len + its game_engine_terms code (or the engine's own name when it has none); with PAIRS
     Machines       = 0x50, // s→c (2.10): the concept machines awake — u8 count, per slot u8 n then n × (u8 machine, u8 state, u8 other | 255); with PAIRS (ai/concepts/Machines)
+    PossRead       = 0x51, // s→c (2.12): who has the ball as each man reads it — u8 count, per slot u8 his own phase (ai::Phase) | 0x80 the ball has turned and he has not read it yet; with PAIRS (PlayerAgent::read)
     MindWatch      = 0x4A, // c→s (2.4): u8 slot — watch that player's mind (255 = stop)
     // Retired in 2.0 (G5.23) with the old brain — never reuse: 0x32 MATCH_SETTINGS,
     // 0x33 PLAYER_SETTINGS, 0x35 PRESETS, 0x36 APPLY_PRESET, 0x37 PLAYER_ATTRIBUTES,

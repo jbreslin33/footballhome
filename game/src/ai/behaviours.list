@@ -194,6 +194,7 @@ read_own_touch_pace
 read_pass_safe
 read_phase
 read_possession_side
+read_possession_own
 read_race
 recv_always_meets
 recv_pass_is_his

@@ -86,6 +86,12 @@ public:
 struct PlayerAgent {
     std::uint8_t slot = 0;
     StateMachine<PlayerAgent, PlayerCtx> machine;
+    // Who has the ball AS HE READS IT (owner 11/25: "at what point does a player decide we have the
+    // ball? that should not be team based"): the team's phase reader (TeamPhase) run for him alone,
+    // with his own reaction on top of the team's min_dwell — physics.phase.player_react_s, plus
+    // physics.phase.player_per_10m_s for every 10 m he is from the ball. Both 0 (no rows) = every man
+    // reads it the tick his team does. His state (Pick) and his machines go by this read.
+    TeamAgent read;
 };
 
 // Picks every man's state each tick (the machine's global state).

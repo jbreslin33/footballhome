@@ -67,7 +67,7 @@ public:
                  c.world.outStage() == 0 && c.world.restartTeam() == 0xFF)
             next = Possession::receive();
         else if (c.world.isKeeper(a.slot)) next = Possession::keeper();
-        else if (defendingPhase(c.team.phase()))
+        else if (defendingPhase(a.read.phase()))   // his own read of who has the ball
             next = c.block.presser(team) == a.slot ? DefendingBlock::pressBall()
                  : c.block.doubleTeams(team, a.slot) ? DefendingBlock::doubleTeamBall()   // ai/concepts/DoubleTeam
                  : c.block.markOf(team, a.slot) >= 0 ? DefendingBlock::markMan() : DefendingBlock::holdBlockSpot();   // G5.72
