@@ -127,10 +127,26 @@ class PyramidSolid {
   // as the 2D chart).  A table never folds.  More than a dozen tables (the UPSL's 35 conferences —
   // owner: "put upsl on the blank side") wrap onto further rows of tables, so the letters stay a
   // readable size instead of shrinking to nothing.
+  // HOW MANY TABLES ACROSS (owner 2026-11-25: "it don't zoom in enogh … level 4 is where it becomws an
+  // issue"): ten APSL conferences side by side on one row were ~1/25 of a tenth of the wall a letter.
+  // Every count across, from all on one row down to one, is tried; the one with the BIGGEST letters
+  // wins, as long as the level stays no taller than about half its width (a level never shrinks below
+  // the all-on-one-row height).  Ties go to more across (a shorter level).
   _planTables(cell, w) {
     const tables = cell.tables && cell.tables.length ? cell.tables : [{ name: '', rows: [], teams: [] }];
-    const HEAD = cell.title ? 0.44 : 0.26, perLetter = 25, MAX = 12;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
-    const perRow = Math.min(tables.length, MAX), colW = w / perRow;
+    const MAX = 12, most = Math.min(tables.length, MAX);
+    let best = null;
+    for (let across = most; across >= 1; across--) {
+      const plan = this._planAcross(cell, tables, w, across);
+      if (!best) { best = plan; best.room = Math.max(plan.h, w * 0.5); continue; }
+      if (plan.h > best.room) break;
+      if (plan.fs > best.fs * 1.04) { plan.room = best.room; best = plan; }
+    }
+    return best;
+  }
+  _planAcross(cell, tables, w, perRow) {
+    const HEAD = cell.title ? 0.44 : 0.26, perLetter = 25;   // "Level N", then the league's name when it has one · pos 2 · club 15 · three figures 2.5 each, and gaps
+    const colW = w / perRow;
     const fs = Math.min(0.085, colW / perLetter), lh = fs * 1.32;
     const cols = tables.map((t, k) => ({ ...t, n: (t.rows && t.rows.length) || t.teams.length, gx: k % perRow, gr: Math.floor(k / perRow) }));
     const linesOf = (c) => c.n + (c.name ? 1.2 : 0) + (c.rows && c.rows.length ? 1 : 0);   // + the GP/GD/Pts head
@@ -142,6 +158,7 @@ class PyramidSolid {
     }
     return { h: HEAD + gy + 0.06, fs, cols, head: HEAD, perRow, table: true };
   }
+
 
   // px = pixels to the unit; by default a light picture (≤ 360 px a unit, ≤ 4096 wide), sharper on demand.
   _tables(T, cell, row, w, h, font, px) {
@@ -315,12 +332,31 @@ class PyramidSolid {
   // Zoom, keeping what is under the pointer where it is (nx, ny = the pointer, −1 … 1 across the stage).
   zoomBy(f, nx = 0, ny = 0) {
     const was = this.to.dist, t = Math.tan((this.camera.fov * Math.PI) / 360);
-    this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.02, was / f));
+    this.to.dist = Math.min(this.total * 12, Math.max(this._minDist(this.to.panY), was / f));
     this.to.panX = this._clampX(this.to.panX + nx * t * this.camera.aspect * (was - this.to.dist));
     this.to.panY = this._clampY(this.to.panY + ny * t * (was - this.to.dist));
     this._auto = false;
     this._ease();
   }
+  // HOW CLOSE (owner 2026-11-25: "it don't zoom in enogh … level 4 is where it becomws an issue"): the
+  // camera may come up to the facing wall AT THE HEIGHT IT LOOKS AT, not only to the foot — the old
+  // floor (1.02 × the foot's apothem) kept it a long way off the narrower levels up the slope.
+  // The front wall's centre line, tilted as it rests, is walked level by level to find where it
+  // crosses the camera's height; the camera stops a hair in front of it.
+  _wallZ(y) {
+    if (!this._tops) return this.base;
+    const p = this.to.pitch, n = this.rows.length;
+    const at = (i) => { const yy = this._yTop(i), z = this._apo(i); return [yy * Math.cos(p) - z * Math.sin(p), yy * Math.sin(p) + z * Math.cos(p)]; };
+    let prev = at(0);
+    if (y >= prev[0]) return prev[1];
+    for (let i = 1; i <= n; i++) {
+      const cur = at(i);
+      if (y >= cur[0]) { const f = (prev[0] - y) / ((prev[0] - cur[0]) || 1); return prev[1] + (cur[1] - prev[1]) * f; }
+      prev = cur;
+    }
+    return prev[1];
+  }
+  _minDist(y) { return this._wallZ(y) + Math.max(0.12, this.base * 0.04); }
   _close() { return this.fitDist && this.dist < this.fitDist * 0.8; }   // zoomed well in: a turn is not squared up on a side
   // the next side with a league on it (bare sides are passed over)
   turn(dir) {
@@ -345,7 +381,7 @@ class PyramidSolid {
     const half = Math.PI / this.slots, wide = 2 * this._apo(last + 1) * Math.tan(half);
     const a = this._apo((first + last + 1) / 2) || this._apo(first);
     const p = this.to.pitch;
-    this.to.dist = Math.max(this.base * 1.02, a + Math.max(tall / 2 / (t * keep), wide / 2 / (t * this.camera.aspect * room * keep)));
+    this.to.dist = Math.max(this._minDist(this._clampY(mid * Math.cos(p) - a * Math.sin(p))), a + Math.max(tall / 2 / (t * keep), wide / 2 / (t * this.camera.aspect * room * keep)));
     this.to.panX = 0;
     this.to.panY = this._clampY(mid * Math.cos(p) - a * Math.sin(p));
     this._auto = false;
@@ -493,7 +529,7 @@ class PyramidSolid {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (g.kind === 'pinch' && pts.size >= 2) {
         const m = mid(), f = g.m.d / m.d, wpp = (2 * Math.tan((this.camera.fov * Math.PI) / 360) * g.dist) / this.stage.clientHeight;
-        this.dist = this.to.dist = Math.min(this.total * 12, Math.max(this.base * 1.02, g.dist * f));
+        this.dist = this.to.dist = Math.min(this.total * 12, Math.max(this._minDist(this.panY), g.dist * f));
         // the spot between the fingers stays between the fingers
         const [nx, ny] = ndc(m.x, m.y), t = Math.tan((this.camera.fov * Math.PI) / 360);
         this.panX = this.to.panX = 0;   // up and down only

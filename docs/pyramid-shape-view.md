@@ -103,8 +103,13 @@ are awkward"; hint mig 1867):
   enough"): each side is drawn once as a light picture (≤ 360 px a unit, ≤ 4096 wide), which goes
   soft close in. 280 ms after the pyramid stops, when zoomed in past 0.55 × fit, the sides in view
   (a 4 × 4 grid of rays) are drawn again at up to 8192 px wide (`_sharpen` / `_redraw`), club names
-  ~30 px tall. At most four are sharp at once; the rest, and all of them on zooming out, go back
-  to light. The camera may come to 1.02 × the foot's apothem.
+  ~30 px tall. The camera comes up to the facing wall AT THE HEIGHT IT LOOKS AT (`_wallZ` /
+  `_minDist`, 2026-11-25; owner: "it don't zoom in enogh … level 4 is where it becomws an issue"),
+  not only to the foot's apothem, which held it far off the narrower upper levels. A level's
+  tables wrap into rows when that gives bigger letters (`_planTables` tries every count across,
+  keeps the biggest letters while the level stays ≤ ½ its width tall): APSL level 4 = 5 × 2,
+  letters about twice the old size. At most four are sharp at once; the rest, and all of them on zooming out, go back
+  to light.
 
 ## Cost
 
