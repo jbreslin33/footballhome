@@ -11,8 +11,8 @@ using math::Fixed64;
 using math::Vec2;
 
 namespace {
-// The owner's pairs of 10/24 (mig 694), used when the table sends none.
-constexpr int kPairs[][2] = {{9, 4}, {9, 5}, {4, 9}, {5, 9}, {10, 6}, {6, 10}, {7, 2}, {2, 7}, {3, 11}, {11, 3}, {8, 8}};
+// The owner's pairs of 10/24 (mig 694; full-backs on the opposite-number winger, mig 1927), used when the table sends none.
+constexpr int kPairs[][2] = {{9, 4}, {9, 5}, {4, 9}, {5, 9}, {10, 6}, {6, 10}, {7, 3}, {3, 7}, {2, 11}, {11, 2}, {8, 8}};
 // A wide number's twin on the other touchline: sides come from where the men stand, not
 // from which of the two numbers a formation gave the left.
 int twin(int n) { return n == 2 ? 3 : n == 3 ? 2 : n == 7 ? 11 : n == 11 ? 7 : 0; }
