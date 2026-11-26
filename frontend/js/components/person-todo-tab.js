@@ -28,6 +28,12 @@
       ? MessageCopy.block('player_sheet', tier, tokens || {}) : fb;
   const entry = (pid) => (cache[pid] = cache[pid] || { data: null, error: '', busy: false, draft: { body: '', repeat: '', due: '', to: '' } });
 
+  async function call0(auth, url) {   // a binary GET (the photo) → Blob
+    const res = await auth.fetch(url);
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+    return res.blob();
+  }
+
   async function call(auth, url, init) {
     const res = await auth.fetch(url, init);
     const data = await res.json().catch(() => ({}));
@@ -50,6 +56,14 @@
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
+  // "13:00" → "1 PM" (club time as the player's device shows it).
+  const clock = (hhmm) => {
+    const [h, m] = String(hhmm || '').split(':').map(Number);
+    if (!Number.isFinite(h)) return hhmm || '';
+    const d = new Date(); d.setHours(h, m || 0, 0, 0);
+    return d.toLocaleTimeString([], { hour: 'numeric', minute: m ? '2-digit' : undefined });
+  };
+
   function stateHtml(x) {
     if (x.repeat === 'daily') {
       if (x.done_today) return `<span style="color:#4ade80;">${esc(t('todo_state_today', {}, '✓ Done today'))}</span>`;
@@ -67,11 +81,17 @@
       x.repeat === 'daily' ? '🔁 ' + t('todo_daily', {}, 'Every day') : '',
       x.due_on ? t('todo_by', { when: day(x.due_on) }, `by ${day(x.due_on)}`) : '',
       (!x.mine && x.from) ? t('todo_from', { name: x.from }, `from ${x.from}`) : '',
+      x.photo_proof && x.call_at ? t('todo_call_tag', { time: clock(x.call_at) }, `📞 call ${clock(x.call_at)} if no photo`) : '',
+      x.called_at ? t('todo_called', { time: new Date(x.called_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }, '📞 called') : '',
     ].filter(Boolean).join(' · ');
     const btn = 'min-height:0; padding:4px 8px; border-radius:6px; font:inherit; font-size:0.75rem; font-weight:700; cursor:pointer; background:transparent; color:inherit; border:1px solid #475569;';
-    const takes = x.mine ? '' : `
+    // 📷 mig 1944: today's photo opens in a new tab (fetched with auth).
+    const photo = !x.photo_proof ? ''
+      : x.photo_id ? `<button type="button" data-pt-photo="${x.photo_id}" style="${btn} border-color:#16a34a;">${esc(t('todo_photo_view', {}, "📷 Today's photo"))}</button>`
+      : `<span style="font-size:0.75rem; color:#fca5a5; padding:4px 0;">${esc(t('todo_photo_none', {}, '📷 No photo today'))}</span>`;
+    const takes = photo + (x.mine ? '' : `
       <button type="button" data-pt-take="${x.id}" style="${btn}">${esc(t('todo_remove', {}, '✕ Remove'))}</button>
-      ${x.batch_n > 1 ? `<button type="button" data-pt-take="${x.id}" data-pt-all style="${btn}">${esc(t('todo_remove_all', { n: x.batch_n }, `✕ Remove from all ${x.batch_n}`))}</button>` : ''}`;
+      ${x.batch_n > 1 ? `<button type="button" data-pt-take="${x.id}" data-pt-all style="${btn}">${esc(t('todo_remove_all', { n: x.batch_n }, `✕ Remove from all ${x.batch_n}`))}</button>` : ''}`);
     const finished = x.repeat === 'daily' ? x.done_today : !!x.done_at;
     return `<div style="display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border-radius:8px; margin-bottom:6px;
                         border:1px solid #374151; background:rgba(255,255,255,0.03);">
@@ -162,6 +182,14 @@
           ctx.redraw();
           if (ctx.say) ctx.say(t('todo_saved', { n: d.given }, `Given to ${d.given}.`));
         });
+      return true;
+    }
+    const ph = e.target.closest('[data-pt-photo]');
+    if (ph) {
+      const w = window.open('', '_blank');   // opened now, inside the tap, so no popup block
+      call0(ctx.auth, `/api/my/todo-photo?id=${encodeURIComponent(ph.getAttribute('data-pt-photo'))}`)
+        .then(b => { const u = URL.createObjectURL(b); if (w) w.location = u; else window.open(u, '_blank'); })
+        .catch(err => { if (w) w.close(); if (ctx.say) ctx.say(err.message || 'Could not open the photo'); });
       return true;
     }
     const tk = e.target.closest('[data-pt-take]');

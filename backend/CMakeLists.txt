@@ -118,6 +118,7 @@ set(SOURCES
     src/services/LaSyncScheduler.cpp
     src/services/LockupScheduler.cpp
     src/services/AttendanceCallScheduler.cpp
+    src/services/TodoCallScheduler.cpp
     src/services/TwilioService.cpp
     src/services/SessionService.cpp
     src/services/MagicLinkService.cpp

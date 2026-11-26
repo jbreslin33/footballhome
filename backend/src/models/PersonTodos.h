@@ -24,7 +24,8 @@ class PersonTodos {
 public:
     // The person's own view (the band):
     //   {todos:[{id, body, remind_at, due, done_at, repeat, due_on, from,
-    //            mine}], due: n}
+    //            mine, photo_proof, call_at "HH:MM", guide_id,
+    //            photo_id, photo_at (today's latest photo)}], due: n}
     //   open items first (due, then by remind_at), then done newest-first.
     //   A daily item's done_at is today's tick only (else null and due).
     static nlohmann::json list(long long personId);
@@ -60,4 +61,22 @@ public:
     // Take a given item back from personId — or, all = true, from everyone
     // in its batch.  false = no such given item on this person.
     static bool take(long long personId, long long id, bool all);
+
+    // ── 📷 Photo proof, 📞 the daily call, 📖 the guide (mig 1944) ────────
+    // Owner 2026-11-26 (Luke's daily stretching): "call if he has not
+    // uploaded photo of him starting streting routine uploaded 1pm every
+    // day. on the page give him full complement of stretehcss".
+    // A photo_proof item is ticked by its photo: addPhoto stores today's
+    // (club day) photo from a data URL (JPEG / PNG / WebP / HEIC, ≤ 10 MB)
+    // and sets done_at.  "" = ok, else the error.
+    static std::string addPhoto(long long personId, long long id, const std::string& dataUrl);
+
+    // A photo's bytes for the person it belongs to, or staff who may give
+    // them to-dos (canGive).  false = not found / not theirs to see.
+    struct Photo { std::string mime, bytes; };
+    static bool photo(long long viewerPersonId, long long photoId, Photo& out);
+
+    // The routine on an item: {id, slug, title, intro, sections:[{title,
+    // note, items:[{name, how, dose}]}]}; null when there is no such guide.
+    static nlohmann::json guide(long long guideId);
 };

@@ -422,6 +422,9 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
                 if (!PersonTodos::setDone(personId, id, action == "done")) return jsonError(HttpStatus::NOT_FOUND, "That item is gone");
             } else if (action == "remove") {
                 if (!PersonTodos::remove(personId, id)) return jsonError(HttpStatus::NOT_FOUND, "That item is gone");
+            } else if (action == "photo") {   // 📷 mig 1944: today's photo ticks a photo_proof item {id, file: data URL}
+                const std::string err = PersonTodos::addPhoto(personId, id, str("file"));
+                if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
             } else {
                 return jsonError(HttpStatus::BAD_REQUEST, "Unknown action");
             }
@@ -429,6 +432,42 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
         } catch (const std::exception& e) {
             std::cerr << "[POST /api/my/todos] " << e.what() << std::endl;
             return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not save");
+        }
+    });
+    // 📖 The routine on a to-do (mig 1944): GET /api/my/todo-guide?id=  → {guide}
+    router.get (prefix + "/todo-guide", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long id = 0;
+        try { id = std::stoll(r.getQueryParam("id")); } catch (...) { id = 0; }
+        try {
+            json g = PersonTodos::guide(id);
+            if (g.is_null()) return jsonError(HttpStatus::NOT_FOUND, "No such routine");
+            return jsonOk({{"guide", g}});
+        } catch (const std::exception& e) {
+            std::cerr << "[GET /api/my/todo-guide] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the routine");
+        }
+    });
+    // 📷 A to-do photo (mig 1944): GET /api/my/todo-photo?id= → the image, for
+    // the person it is theirs or staff who give them to-dos (the real caller,
+    // never a view-as).
+    router.get (prefix + "/todo-photo", [](const Request& r) {
+        auto gate = requireSession(r);
+        if (gate.error) return *gate.error;
+        long long id = 0;
+        try { id = std::stoll(r.getQueryParam("id")); } catch (...) { id = 0; }
+        try {
+            PersonTodos::Photo ph;
+            if (!PersonTodos::photo(gate.session->personId, id, ph)) return jsonError(HttpStatus::FORBIDDEN, "Not your photo to see");
+            Response out(HttpStatus::OK, ph.bytes);
+            out.setHeader("Content-Type", ph.mime);
+            out.setHeader("X-Content-Type-Options", "nosniff");
+            out.setHeader("Cache-Control", "private, no-store");
+            return out;
+        } catch (const std::exception& e) {
+            std::cerr << "[GET /api/my/todo-photo] " << e.what() << std::endl;
+            return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Could not load the photo");
         }
     });
     // 📎 The person uploads a document on a step (mig 1538): {code, filename,

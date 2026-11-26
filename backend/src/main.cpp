@@ -120,6 +120,7 @@
 #include "services/LaSyncScheduler.h"
 #include "services/LockupScheduler.h"
 #include "services/AttendanceCallScheduler.h"
+#include "services/TodoCallScheduler.h"
 #include "models/ClubLogo.h"
 #include "models/LeagueLogo.h"
 #include "services/ClubLogoSearchScheduler.h"
@@ -386,6 +387,7 @@ public:
         // 📞 Practice attendance calls (mig 1277): Going coaches get rung from
         // halfway until every Going player is marked.
         AttendanceCallScheduler::getInstance().start();
+        TodoCallScheduler::getInstance().start();   // 📞 mig 1944: the daily to-do call
         // Club crests (mig 428): pull the hand-placed /images files into
         // club_logos once, then rewrite any cached file missing on disk.
         try { ClubLogo logos; logos.importLegacy(); logos.materialize(); }

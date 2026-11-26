@@ -1,5 +1,7 @@
 #include "PersonTodos.h"
 
+#include <cctype>
+
 #include "../database/Database.h"
 
 using json = nlohmann::json;
@@ -37,8 +39,13 @@ json PersonTodos::list(long long personId) {
         "       to_char(t.done_shown AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS done_at, "
         "       (t.done_shown IS NULL AND (t.remind_at IS NULL OR t.remind_at <= now())) AS due, "
         "       (t.assigned_by_person_id IS NULL OR t.assigned_by_person_id = t.person_id) AS mine, "
-        "       NULLIF(TRIM(CONCAT_WS(' ', ap.first_name, ap.last_name)), '') AS from_name "
+        "       NULLIF(TRIM(CONCAT_WS(' ', ap.first_name, ap.last_name)), '') AS from_name, "
+        "       t.photo_proof, to_char(t.call_at, 'HH24:MI') AS call_at, t.guide_id, ph.id AS photo_id, "
+        "       to_char(ph.uploaded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS photo_at "
         "  FROM t LEFT JOIN persons ap ON ap.id = t.assigned_by_person_id AND ap.id <> t.person_id "
+        "  LEFT JOIN LATERAL (SELECT x.id, x.uploaded_at FROM person_todo_photos x WHERE x.person_todo_id = t.id "
+        "                        AND x.club_day = (now() AT TIME ZONE 'America/New_York')::date "
+        "                      ORDER BY x.uploaded_at DESC LIMIT 1) ph ON true "
         " ORDER BY t.done_shown IS NOT NULL, t.done_shown DESC, t.due_on NULLS LAST, t.remind_at NULLS FIRST, t.id",
         {std::to_string(personId)});
     int due = 0;
@@ -55,6 +62,11 @@ json PersonTodos::list(long long personId) {
             {"due_on",    textOrNull(r["due_on"])},
             {"from",      textOrNull(r["from_name"])},
             {"mine",      r["mine"].as<bool>()},
+            {"photo_proof", r["photo_proof"].as<bool>()},
+            {"call_at",   textOrNull(r["call_at"])},
+            {"guide_id",  r["guide_id"].is_null() ? json(nullptr) : json(r["guide_id"].as<long long>())},
+            {"photo_id",  r["photo_id"].is_null() ? json(nullptr) : json(r["photo_id"].as<long long>())},
+            {"photo_at",  textOrNull(r["photo_at"])},
         });
     }
     out["due"] = due;
@@ -146,7 +158,12 @@ json PersonTodos::sheet(long long personId, long long viewerUserId) {
              "       (pt.done_at >= " + today + ") AS done_today, "
              "       (pt.assigned_by_person_id IS NULL OR pt.assigned_by_person_id = pt.person_id) AS mine, "
              "       NULLIF(TRIM(CONCAT_WS(' ', ap.first_name, ap.last_name)), '') AS from_name, "
-             "       (SELECT count(*) FROM person_todos b WHERE b.batch_id = pt.batch_id) AS batch_n "
+             "       (SELECT count(*) FROM person_todos b WHERE b.batch_id = pt.batch_id) AS batch_n, "
+             "       pt.photo_proof, to_char(pt.call_at, 'HH24:MI') AS call_at, "
+             "       (SELECT x.id FROM person_todo_photos x WHERE x.person_todo_id = pt.id "
+             "           AND x.club_day = (now() AT TIME ZONE 'America/New_York')::date ORDER BY x.uploaded_at DESC LIMIT 1) AS photo_id, "
+             "       (SELECT to_char(c.placed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') FROM person_todo_calls c "
+             "         WHERE c.person_todo_id = pt.id AND c.club_day = (now() AT TIME ZONE 'America/New_York')::date AND c.ok) AS called_at "
              "  FROM person_todos pt LEFT JOIN persons ap ON ap.id = pt.assigned_by_person_id "
              " WHERE pt.person_id = $1::int "
              "   AND (pt.repeat = 'daily' OR pt.done_at IS NULL OR pt.done_at > now() - INTERVAL '60 days') "
@@ -165,6 +182,10 @@ json PersonTodos::sheet(long long personId, long long viewerUserId) {
             {"from",       textOrNull(r["from_name"])},
             {"batch_id",   r["batch_id"].is_null() ? json(nullptr) : json(r["batch_id"].as<long long>())},
             {"batch_n",    r["batch_n"].as<long long>()},
+            {"photo_proof", r["photo_proof"].as<bool>()},
+            {"call_at",    textOrNull(r["call_at"])},
+            {"photo_id",   r["photo_id"].is_null() ? json(nullptr) : json(r["photo_id"].as<long long>())},
+            {"called_at",  textOrNull(r["called_at"])},
         });
     }
     return out;
@@ -212,4 +233,98 @@ bool PersonTodos::take(long long personId, long long id, bool all) {
         "RETURNING d.id",
         {std::to_string(id), std::to_string(personId), all ? "true" : "false"});
     return !r.empty();
+}
+
+// ── 📷 Photo proof / 📖 guide (mig 1944) ───────────────────────────────
+
+namespace {
+
+// The first bytes (hex) → mime; "" = not a photo we take.
+std::string sniffPhoto(const std::string& hex) {
+    if (hex.rfind("ffd8ff", 0) == 0) return "image/jpeg";
+    if (hex.rfind("89504e47", 0) == 0) return "image/png";
+    if (hex.size() >= 24 && hex.rfind("52494646", 0) == 0 && hex.substr(16, 8) == "57454250") return "image/webp";
+    if (hex.size() >= 16 && hex.substr(8, 8) == "66747970") return "image/heic";   // ISO-BMFF "ftyp" (HEIC / HEIF)
+    return "";
+}
+
+std::string unhex(const std::string& h) {
+    auto v = [](char c) { return c <= '9' ? c - '0' : (c | 32) - 'a' + 10; };
+    std::string out;
+    out.reserve(h.size() / 2);
+    for (size_t i = 0; i + 1 < h.size(); i += 2) out.push_back(static_cast<char>(v(h[i]) * 16 + v(h[i + 1])));
+    return out;
+}
+
+const char* const CLUB_DAY = "(now() AT TIME ZONE 'America/New_York')::date";
+
+}  // namespace
+
+std::string PersonTodos::addPhoto(long long personId, long long id, const std::string& dataUrl) {
+    if (personId <= 0) return "Sign in first";
+    auto* db = Database::getInstance();
+    const std::string pid = std::to_string(personId), tid = std::to_string(id);
+    auto own = db->query("SELECT photo_proof FROM person_todos WHERE id = $1::bigint AND person_id = $2::int", {tid, pid});
+    if (own.empty()) return "That item is gone";
+    std::string b64;
+    b64.reserve(dataUrl.size());
+    const size_t comma = dataUrl.rfind("base64,");
+    for (size_t i = comma == std::string::npos ? 0 : comma + 7; i < dataUrl.size(); ++i) {
+        const char c = dataUrl[i];
+        if (std::isalnum(static_cast<unsigned char>(c)) || c == '+' || c == '/' || c == '=') b64.push_back(c);
+    }
+    if (b64.empty()) return "No photo came through — try again";
+    auto info = db->query("SELECT octet_length(decode($1, 'base64')) AS n, "
+                          "       encode(substring(decode($1, 'base64') from 1 for 16), 'hex') AS head", {b64});
+    const long long n = info[0]["n"].as<long long>();
+    if (n <= 0) return "No photo came through — try again";
+    if (n > 10LL * 1024 * 1024) return "That photo is over 10 MB";
+    const std::string mime = sniffPhoto(info[0]["head"].c_str());
+    if (mime.empty()) return "Upload a photo (JPG, PNG, HEIC)";
+    db->query(std::string("INSERT INTO person_todo_photos (person_todo_id, club_day, mime, byte_size, bytes) "
+                          "VALUES ($1::bigint, ") + CLUB_DAY + ", $2, $3::int, decode($4, 'base64'))",
+              {tid, mime, std::to_string(n), b64});
+    db->query("UPDATE person_todos SET done_at = now() WHERE id = $1::bigint", {tid});
+    return "";
+}
+
+bool PersonTodos::photo(long long viewerPersonId, long long photoId, Photo& out) {
+    if (viewerPersonId <= 0 || photoId <= 0) return false;
+    auto* db = Database::getInstance();
+    auto r = db->query("SELECT pt.person_id, ph.mime, encode(ph.bytes, 'hex') AS h "
+                       "  FROM person_todo_photos ph JOIN person_todos pt ON pt.id = ph.person_todo_id "
+                       " WHERE ph.id = $1::bigint", {std::to_string(photoId)});
+    if (r.empty()) return false;
+    const long long owner = r[0]["person_id"].as<long long>();
+    if (owner != viewerPersonId) {
+        bool staff = false;
+        for (const auto& u : db->query("SELECT id FROM users WHERE person_id = $1::int", {std::to_string(viewerPersonId)}))
+            if (canGive(u["id"].as<long long>(), owner)) { staff = true; break; }
+        if (!staff) return false;
+    }
+    out.mime = r[0]["mime"].c_str();
+    out.bytes = unhex(r[0]["h"].c_str());
+    return true;
+}
+
+json PersonTodos::guide(long long guideId) {
+    auto* db = Database::getInstance();
+    auto g = db->query("SELECT id, slug, title, intro FROM todo_guides WHERE id = $1::int", {std::to_string(guideId)});
+    if (g.empty()) return nullptr;
+    json out = {{"id", g[0]["id"].as<long long>()}, {"slug", g[0]["slug"].c_str()}, {"title", g[0]["title"].c_str()},
+                {"intro", g[0]["intro"].c_str()}, {"sections", json::array()}};
+    long long cur = -1;
+    for (const auto& r : db->query(
+             "SELECT s.id AS sid, s.title, s.note, i.name, i.how, i.dose "
+             "  FROM todo_guide_sections s LEFT JOIN todo_guide_items i ON i.section_id = s.id "
+             " WHERE s.guide_id = $1::int ORDER BY s.sort, i.sort", {std::to_string(guideId)})) {
+        const long long sid = r["sid"].as<long long>();
+        if (sid != cur) {
+            out["sections"].push_back({{"title", r["title"].c_str()}, {"note", r["note"].c_str()}, {"items", json::array()}});
+            cur = sid;
+        }
+        if (!r["name"].is_null())
+            out["sections"].back()["items"].push_back({{"name", r["name"].c_str()}, {"how", r["how"].c_str()}, {"dose", r["dose"].c_str()}});
+    }
+    return out;
 }
