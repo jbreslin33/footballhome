@@ -45,10 +45,11 @@ void PressingDistance::read(std::uint8_t team, const core::World& w, const std::
         if (r.man < 0 || r.man >= n) { r.man = -1; reach_[u] = r; continue; }
         const Vec2 me = at(u), him = at(r.man);
         r.gap_m = math::length(him - me);
-        {   // [behaviour: pd_goal_side] — home (team 0) defends the goal at -x, away the one at +x
-            const Vec2 goal{team == 0 ? -w.pitchHalfX() : w.pitchHalfX(), Fixed64{}};
-            r.goal_side = math::length(goal - me) < math::length(goal - him);
-        }
+        // home (team 0) defends the goal at -x, away the one at +x
+        const Vec2 goal{team == 0 ? -w.pitchHalfX() : w.pitchHalfX(), Fixed64{}};
+        const Fixed64 man_to_goal = math::length(goal - him);
+        const auto goalSide = [&](Vec2 p) { return math::length(goal - p) < man_to_goal; };
+        r.goal_side = goalSide(me);   // [behaviour: pd_goal_side]
         r.man_on_ball = r.man == on_ball;
         if (!r.man_on_ball) {
             // [behaviour: pd_reach_his_man]
@@ -58,11 +59,25 @@ void PressingDistance::read(std::uint8_t team, const core::World& w, const std::
             // [behaviour: pd_step_into_distance]
             // From his PLACE (not from where he happens to be — the target must not chase his
             // own feet): the step toward his man that leaves the gap equal to his reach.
-            const Vec2 to_man = him - place[u];
+            const Vec2 from = place[u];
+            const Vec2 to_man = him - from;
             const Fixed64 d = math::length(to_man);
-            if (d > r.reach_m && d.raw > 0) {
-                const Fixed64 need = std::min(d - r.reach_m, p_.max_step_m);
-                r.step = Vec2{to_man.x * need / d, to_man.y * need / d};
+            Vec2 end = from;
+            if (d > r.reach_m && d.raw > 0) end = Vec2{from.x + to_man.x * (d - r.reach_m) / d, from.y + to_man.y * (d - r.reach_m) / d};
+            // [behaviour: pd_step_goal_side]
+            // Done fully = in reach AND goal side (owner 11/25: "being able to press but the player can
+            // dribble to our goal lol is bad as we are 'chasing'"). If the spot toward his man would leave
+            // him level or beyond, the spot is on his man's line to our goal instead, a reach off him
+            // (never past half that line: a man near our goal is stood in front of, not behind).
+            if (!goalSide(end) && man_to_goal.raw > 0) {
+                const Fixed64 k = std::min(r.reach_m, man_to_goal * Fixed64::fromFraction(1, 2));
+                end = Vec2{him.x + (goal.x - him.x) * k / man_to_goal, him.y + (goal.y - him.y) * k / man_to_goal};
+            }
+            const Vec2 step = end - from;
+            const Fixed64 s = math::length(step);
+            if (s.raw > 0) {
+                const Fixed64 take = std::min(s, p_.max_step_m);
+                r.step = Vec2{step.x * take / s, step.y * take / s};
             }
         }
         // [behaviour: pd_help_on_others]

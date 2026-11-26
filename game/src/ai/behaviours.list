@@ -99,6 +99,7 @@ pd_bend_his_place
 pd_help_on_others
 pd_goal_side
 pd_reach_his_man
+pd_step_goal_side
 pd_step_into_distance
 penalty_kick
 penalty_stay_out

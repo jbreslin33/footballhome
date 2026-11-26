@@ -23,7 +23,9 @@
 //               back. No row = 0: nobody moves for it and the sim is unchanged. The harness
 //               decides whether a side is nearer real with it on.
 //   execute     from his place in the shape, a step toward his man just long enough to put
-//               him in reach again — never more than max_step_m off his place.
+//               him in reach again; if that spot is not goal side of his man, the spot on
+//               his man's line to our goal, a reach off him, instead — never more than
+//               max_step_m off his place.
 //
 // The man on the ball is not this concept: closing him down is the presser's job
 // (game_concepts close-down, DefendingBlock's PressBall).
@@ -59,14 +61,14 @@ struct PressReach {
     bool in = false;              // his man is inside his reach
     // Owner 11/25: "being able to press but the player can dribble to our goal lol is bad as we are 'chasing'".
     // Goal side: he is nearer his own goal (its centre) than his man is — the man cannot run at goal past him.
-    // Pressing distance done fully = in reach AND goal side; the read only (wire, viewer, clip judge), the sim
-    // does not act on it.
+    // Pressing distance done fully = in reach AND goal side; read on the wire, in the viewer and the clip judge,
+    // and the step aims for it (with the dial on).
     bool goal_side = false;
     std::uint8_t help = 0;        // other opponents inside his reach for a pass to THEM
     math::Fixed64 gap_m{};        // him to his man
     math::Fixed64 reach_m{};      // how far he can cover while a pass to his man travels
     math::Fixed64 ball_s{};       // how long that pass takes
-    math::Vec2 step{};            // execute: from his place, the step that puts his man in reach (zero when he is)
+    math::Vec2 step{};            // execute: from his place, the step that puts his man in reach, goal side (zero when it is)
 };
 
 class PressingDistance {

@@ -126,4 +126,40 @@ FH_TEST(the_spare_man_has_no_man_and_help_is_counted) {
     for (std::uint8_t s = 0; s < 4; ++s) FH_EXPECT_EQ(pd.of(s).man, -1);
 }
 
+// Goal side (owner 11/25: "being able to press but the player can dribble to our goal lol is bad as we are
+// 'chasing'"). His man has got goal side of his place: the step does not go toward the man (it would leave him
+// level or behind) but to the spot on the man's line to our goal, a reach off him.
+FH_TEST(a_man_behind_his_place_gets_a_step_to_the_goal_side_spot) {
+    for (int mx : {-28, -26}) {                          // their 4 is 3 m / 1 m nearer our goal than our 1's place
+        core::World w = shape(at(-20, -15));
+        w.placePlayer(4, at(mx, -15), kEast);
+        co::DirectOpponents d;
+        pair(d, w);
+        co::PressingDistance pd;
+        pd.read(0, w, kTeams, d, places(w));
+        const auto& r = pd.of(1);
+        FH_EXPECT_EQ(r.man, 4);
+        FH_EXPECT(!r.goal_side);
+        FH_EXPECT(r.step.x < Fixed64::zero());          // back toward our goal, not up at his man
+        const Fixed64 len = math::length(r.step);
+        FH_EXPECT(len <= pd.params().max_step_m + Fixed64::fromFraction(1, 100));
+        const Vec2 end{Fixed64::fromInt(-25) + r.step.x, Fixed64::fromInt(-15) + r.step.y};
+        const Vec2 goal{kGoal, Fixed64::zero()};
+        const Vec2 him{Fixed64::fromInt(mx), Fixed64::fromInt(-15)};
+        FH_EXPECT(math::length(goal - end) < math::length(goal - him));      // goal side after the step
+        if (mx == -26) {                                 // not capped: exactly a reach off him
+            FH_EXPECT(len < pd.params().max_step_m - Fixed64::fromFraction(1, 100));
+            FH_EXPECT(math::fx_abs(math::length(end - him) - r.reach_m) < Fixed64::fromFraction(1, 100));
+        }
+    }
+}
+
+// Already in reach and goal side: still nothing to do.
+FH_TEST(in_reach_and_goal_side_no_step) {
+    const Read far = readOf(shape(at(22, -15)));
+    FH_EXPECT(far.pd.of(1).in);
+    FH_EXPECT(far.pd.of(1).goal_side);
+    FH_EXPECT(far.pd.of(1).step.x.raw == 0 && far.pd.of(1).step.y.raw == 0);
+}
+
 FH_TEST_MAIN()
