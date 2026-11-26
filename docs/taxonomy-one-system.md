@@ -7,6 +7,21 @@ instead of picking off the shelf a concept" · "this is what engine would select
 engine doesn't have extra stuff lol we are not aware of?" · "we need both in sync 1 system all
 concepts" · "this is a holistic system that feeds off each other" · "enforce then".
 
+## The purpose (owner 11/26)
+
+"to understand football we need to research it and learn but document in the db and connect ideas and
+organize and find patterns" · "its a taxonomy".
+
+1. **Research** — read every source we can find: federations, clubs, coaches, books, papers.
+2. **Document in the DB** — each source's ideas in its own words, with where it said them.
+3. **Connect** — link the ones that mean the same thing to one common-ground row (same / part of / overlaps).
+4. **Organise** — by level (general → operational → fundamental → sub → concept → action), moment and side.
+5. **Find patterns** — what most sources agree on (popularity), what only one says (one-offs), who learned
+   from whom (lineage), and where schools split.
+
+Categories, all in that one shape: principles of play (migs 1929–1931), then every federation's and club's
+game model and playing style, every formation.
+
 ## The idea
 
 The club's catalogue of football (`game_concepts` and its neighbours) and the game engine
