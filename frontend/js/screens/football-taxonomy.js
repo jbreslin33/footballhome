@@ -606,7 +606,7 @@ class FootballTaxonomyScreen extends Screen {
   _modelsHtml(esc) {
     const d = this.data, sty = new Map((d.styles || []).map(x => [x.id, x])), fam = new Map((d.formation_families || []).map(x => [x.id, x]));
     let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('gm_intro'))}</div>`;
-    for (const k of ['club', 'federation', 'school']) {
+    for (const k of ['club', 'team', 'federation', 'school']) {
       const list = (d.game_models || []).filter(m => m.kind === k);
       if (!list.length) continue;
       html += `<div class="tx-moment">${esc(this._t('gm_kind_' + k))}</div><div class="tx-grid">` + list.map(m => `
