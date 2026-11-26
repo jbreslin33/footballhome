@@ -404,7 +404,7 @@ void World::tickTackles(std::vector<MatchEvent>& events) {
             cp.recovery_ticks = kDispossessedRecovery;
             cp.recovery_kind = 2;
             ball_.contest_ticks = 0;
-            touchedBy(tackler.team, true);
+            touchedBy(tackler.team, true, 1);
             box_clear_team_ = 0xFF;
             losing_team_ = cp.team;
             turnover_tick_ = clock_.tick();
@@ -1231,7 +1231,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
         bad_touch_slot_ = best;
         bad_touch_tick_ = clock_.tick();
         flight_tick_ = clock_.tick();
-        touchedBy(players_[best].team, true);
+        touchedBy(players_[best].team, true, 2);
         return;   // still nobody's ball — out behind for a corner
     }
     // Reaction touch (G4.82): an outfielder stepping across THEIR kick while
@@ -1283,7 +1283,7 @@ void World::tickPossessionAndKicks(std::vector<MatchEvent>& events) {
             bad_touch_slot_ = best;
             bad_touch_tick_ = clock_.tick();
             flight_tick_ = clock_.tick();
-            touchedBy(players_[best].team, true);
+            touchedBy(players_[best].team, true, keeper_[best] ? 3 : 4);
             return;  // still nobody's ball
         }
     }
@@ -1535,7 +1535,7 @@ void World::deflectOffBody(SlotIndex blocker) {
     block_tick_ = clock_.tick();   // G5.164: nobody has read where it went yet
     ball_.kicker_lockout = kBobbleLockoutTicks;
     ball_.kick_alive = kKickAliveTicks;
-    touchedBy(players_[blocker].team, true);
+    touchedBy(players_[blocker].team, true, 5);
     if (offside_team_ != 0xFF &&
         players_[blocker].team != offside_team_) {
         offside_mask_ = 0;
@@ -1875,11 +1875,13 @@ void World::headIt(SlotIndex slot, bool duel) {
     ball_.kicker_lockout = kBobbleLockoutTicks;
     ball_.kick_alive = kKickAliveTicks;
     flight_tick_ = clock_.tick();
-    touchedBy(p.team, duel);
+    touchedBy(p.team, duel, 6);
 }
 
-void World::touchedBy(std::uint8_t team, bool deflection) {
+void World::touchedBy(std::uint8_t team, bool deflection, std::uint8_t kind) {
     if (deflection && team != last_touch_team_) {
+        deflected_kind_ = kind;
+        deflected_team_ = team;
         deflected_from_ = last_touch_team_;
         deflected_at_ = Vec2{ball_.pos.x, ball_.pos.y};
         deflected_tick_ = clock_.tick();

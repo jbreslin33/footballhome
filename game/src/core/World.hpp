@@ -167,6 +167,8 @@ public:
     const CarryDiag& carryDiag() const noexcept { return carry_diag_; }
     std::uint64_t lastTouchTick() const noexcept { return last_touch_tick_; }
     std::uint64_t deflectedTick() const noexcept { return deflected_tick_; }
+    std::uint8_t deflectedKind() const noexcept { return deflected_kind_; }
+    std::uint8_t deflectedTeam() const noexcept { return deflected_team_; }   // G5.264: whose body it came off
     math::Vec2 deflectedAt() const noexcept { return deflected_at_; }   // G5.234: where (harness)   // G5.203: last deflection (harness)
     std::uint32_t dribbleLost() const noexcept { return dribble_lost_; }   // a heavy touch: loose
     std::uint32_t pressTouchErrors() const noexcept { return press_err_n_; }
@@ -327,7 +329,7 @@ private:
     bool crossedLine(std::vector<MatchEvent>& events);
     void ballOut(bool end_line);
     void tickBallOut(std::vector<MatchEvent>& events);
-    void touchedBy(std::uint8_t team, bool deflection);
+    void touchedBy(std::uint8_t team, bool deflection, std::uint8_t kind = 0);
     void tickClock(std::vector<MatchEvent>& events);
     void tickStoppage(std::vector<MatchEvent>& events);   // §8.250 the referee stops play (Law 5/8)
 
@@ -387,6 +389,7 @@ private:
     std::uint8_t  deflected_from_ = 0xFF;
     math::Vec2    deflected_at_{};
     std::uint64_t deflected_tick_ = 0;
+    std::uint8_t  deflected_kind_ = 0, deflected_team_ = 0xFF;   // G5.264: 1 tackle, 2 keeper parry out, 3 keeper spill, 4 outfield loose touch, 5 body block, 6 duel header (harness)
     OutCall       last_out_{};
     std::uint32_t wrong_out_ = 0;
     std::uint8_t  box_clear_team_ = 0xFF; // goal kick: kept out of the box

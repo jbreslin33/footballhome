@@ -13795,3 +13795,48 @@ real side keeps re-setting; the block's step-up for their goal kick is the candi
 before a corner (0.08 v 0.50 — concept 146's set-piece family, the corner movement). The free-kick taker's receipt hold
 over a live ball (up to 8 s) stands while the free kick's total dead time is real (34 v 32.5 s).
 Tests 31/31; lint clean (206 tagged); engine sync OK.
+
+### 8.370 G5.264 — the goals over real are free shots, not keepers; the presser's choice is not the cause (measured; a trial not shipped)
+
+From the G5.263 card: conversion 19.3% (9.97), goals 2.23 (1.35). **The keeper is innocent.** FINISH cell by cell (distance ×
+goal-side, seeds 1000-4000 × 8): <12 m with 0-1 goal-side 30.5% scored (30.5), 12-18 m 0-1 15.9 (19.5), 2-3 14.1 (10.4); by
+goal-side 0 / 1 / 2 / 3 / 4+ scored 26.9 / 15.9 / 10.3 / 8.7 / 6.5 (39.4 / 21.5 / 14.9 / 9.3 / 4.5). **The mix is the fault**:
+shots with 0-1 goal-side 38.6% of ours (13.9), 4+ 34.3 (62.3); with nobody goal-side 20.2% (4.8).
+
+| 0-1 goal-side shots, a team-match, set up by | through ball | cross | cut-back | other pass | no pass |
+|---|---|---|---|---|---|
+| ours | 0.98 | 0.31 | 0.13 | 1.42 | 1.60 |
+| real (StatsBomb PL 15/16) | 0.31 | 0.56 | 0.02 | 0.61 | 0.31 |
+
+Goal-side men 4 s before these shots: median 6; 2 s before: 3 — the defence is beaten in the last two seconds.
+
+**No-pass, which body** (new harness line G5.264 OFF WHAT; `World::deflectedKind / deflectedTeam`, read only: 1 tackle, 2
+keeper parry out, 3 keeper spill, 4 an outfielder's loose touch, 5 body block, 6 duel header; `benchmarks_statsbomb_nopass.py`
+now splits StatsBomb's clearance / block / keeper). 0-1 goal-side, a team-match: their man's loose touch 0.33 [0.03 goals], our
+man's 0.08, body block 0.04 (Block 0.034), tackle 0.03 + 0.04, keeper spill 0.01 (Goal Keeper 0.011), their clearance 0.06
+(0.017). Their outfielder getting a foot to our ball and it bobbling to our man is ~10× real but converts at ~9% — not where
+the goals are.
+
+**At the strike** (new `benchmarks_statsbomb_shotnear.py`, open-play freeze frames, 9,415 shots): the nearest outfield defender
+is p25 / median / p75 1.19 / 1.95 / 3.06 m off the shooter, goal-side (nearer his line) 70.2% — <12 m 57.6, 12-18 68.6, 18-25
+81.0, 25+ 81.3. Ours: 1.28 / 1.96 / 2.97 m, goal-side **49%**. As close; on the wrong side. Traced (seed 1000 × 4,
+`GAME_SHOT_TRACE`): in the zero-goal-side shots the nearest man is pressing from 0.5-2 m behind the shooter (from 16.3 m, CB
+17.7; 10.6 / 11.1; 21.0 / 22.2; 14.2 / 14.8; 24.7 / 26.8). In play (DFL, §8.139) the nearest man to their carrier goal-side
+0-18 / 18-35 m 60.2 / 71.4%; ours 43.3 / 61.1, the rest real (70.7 / 79.0 / 84.7 v 73.1 / 80.0 / 85.4).
+
+**Trial, not shipped** [game_concepts 49 chain-recover, queued]: the presser picked as the nearest with a man behind the carrier
+counting `behind_m` further, ball inside 35 m of our line — §8.139's trial again, now take-ons are real (17.3 tried v 18.05):
+
+| | G5.263 | behind 3 m | behind 6 m | real |
+|---|---|---|---|---|
+| nearest goal-side 0-18 / 18-35 m % | 43.3 / 61.1 | 42.0 / 62.5 | 42.3 / 64.1 | 60.2 / 71.4 |
+| nearest to the shooter goal-side % | 49 | 49 | 50 | 70.2 |
+| 0-1 goal-side share of shots % | 38.6 | 39.5 | 42.5 | 13.9 |
+| goals · conversion % | 2.23 · 19.2 | 2.14 · 18.3 | 2.39 · 21.4 | 1.35 · 10.0 |
+
+Nothing moves: when our nearest man is behind their carrier there is no goal-side mate near enough to take him — the carrier
+is already through. Who presses is not it (twice now); **how their man gets in behind is**: through balls with 0-1 goal-side
+3× real, 'other pass' 2.3×. Code removed. Next: at each reception inside 35 m of our goal, was the receiver already goal-side
+of our nearest man (received in behind — the line, the runner untracked) or did he get there after (a carry past him)?
+DFL v ours. Harness only; World gains two read-only fields; tests 31/31, lint OK (207 tagged), sim unchanged (seed totals
+identical to the baseline).

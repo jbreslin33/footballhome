@@ -36,7 +36,7 @@ for f in glob.glob(os.path.join(sys.argv[1], "*.json")):
             last_opp = next((q for q in reversed(prev) if q["team"]["id"] != team), None)
             pstart = next((q for q in ev if q.get("possession") == e["possession"] and q["period"] == e["period"]), None)
             age = t0 - secs(pstart) if pstart else 99
-            if last_opp and last_opp["type"]["name"] in ("Clearance", "Block", "Goal Keeper") and t0 - secs(last_opp) <= 3: kind = "off their clearance/block/keeper <3 s"
+            if last_opp and last_opp["type"]["name"] in ("Clearance", "Block", "Goal Keeper") and t0 - secs(last_opp) <= 3: kind = "off their clearance/block/keeper <3 s: " + last_opp["type"]["name"]   # G5.264: which
             elif age <= 5: kind = "regain <5 s"
             elif any(q["type"]["name"] == "Dribble" and q["player"]["id"] == e["player"]["id"] for q in prev): kind = "his dribble"
             elif last_opp and t0 - secs(last_opp) <= 3: kind = "other loose (their touch <3 s): " + last_opp["type"]["name"]

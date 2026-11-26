@@ -78,7 +78,7 @@ struct Stats {
     long rw_n[5] = {}, rw_back[5] = {}, rw_dead[5] = {}, rw_kn[3] = {}, rw_kb[3] = {}, rw_n1[5] = {}, rw_b1[5] = {}; std::vector<double> rw_dL, rw_dW, rw_kdL[3], rw_kdW[3], rw_d1[5];
     // Shots (G5.23): by distance band; how each ended (first thing after it).
     long shots[2] = {}, shot_band[4] = {}, shot_out[5] = {}, band_goal[4] = {};
-    long sbk[2][5] = {}; long np_k[2][5] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {}; long lr_cnt = 0, lr_n[6] = {}, lr_g[6] = {}; std::vector<double> lr_m[6], lr_y[6], lr_b[6], lr_bm, lr_by;   // §8.315 LOSS ROLES   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
+    long sbk[2][5] = {}; long np_k[2][5] = {}, np_dk[2][7][2] = {}, np_dg[2][7][2] = {}, np_rz[3][7] = {}; long lgs_n[4] = {}, lgs_k[4][5] = {}, lgs_le1[4][5] = {}; double lgs_g[4][5] = {}; long lr_cnt = 0, lr_n[6] = {}, lr_g[6] = {}; std::vector<double> lr_m[6], lr_y[6], lr_b[6], lr_bm, lr_by;   // §8.315 LOSS ROLES   // §8.314 LOSS THEN GOAL-SIDE   // §8.312 NO-PASS shots by goal-side 0-1 / 2+: rebound / off their clearance / off a deflection-block-keeper / regain <5 s / other   // §8.310 shots by aim (on / off target) ending: a defender's touch at <0.3 / 0.3-1 / 1-2 / 2+ s after the strike, out untouched
     long fr_n[4][4] = {}, fr_c[4][4] = {};   // §8.295 FOOT RELEASES by zone (own box / own third / mid / their third) x nearest opponent (<1.2 / 1.2-3 / 3-6 / 6+), clears
     long pwz_n[3] = {}, pwz_q[3] = {}, pwz_g[3] = {}; long pwz_k[2][6] = {};
     long lb_n[4] = {}, lb_o2[4] = {}, lb_both[4] = {}, lb_none[4] = {}, lb_lost[4] = {}; double lb_c[4][4] = {}; std::vector<double> lb_a[4], lb_d[4], lb_la[4], lb_ld[4], lb_own[4], lb_ay[4], lb_fl[4], lb_od[4], lb_ox[4], lb_oy[4];   // §8.317 LONG BALL FROM THE BACK [30-40 / 40-50 / 50+ / all]
@@ -346,7 +346,7 @@ int main(int argc, char** argv) {
         int ar_own = -1; bool ar_in = false;   // §8.191: the carrier, and whether he was in the crossing zone
         long hs_k[32]; double hs_tx[32] = {}, hs_ty[32] = {}, hs_px[32] = {}, hs_py[32] = {}; for (long& x : hs_k) x = -1;   // §8.187
         // Per-match state.
-        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4, orig = 4, pwq = -1; } shot;
+        struct Shot { bool on = false; int team = 0, band = 0; long tick = 0; int cell = -1; int gap = -1; int lane = 0; int gsk = 0, tb = 0, gg = 0, kp = 4, orig = 4, pwq = -1, dk = -1, dus = 0; } shot;
         // §8.291 SHOT ORIGIN: the side's possession (ends when the other side has a man on the ball, as StatsBomb's) and the
         // restart that began it — 1 corner, 2 free kick (offside's too), 3 throw-in, 4 other, 5 penalty; its taker, and whether
         // anyone else has had the ball since (a direct free kick = the taker's shot, nobody else on it)
@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
         core::MatchEventType so_prk = core::MatchEventType::Kickoff;
         int kp_to = -1, kp_kind = 4; long kp_k = -1;   // §8.265 the last completed pass: its receiver and kind (through ball / cross / cut-back / other)
         long fin_k = 0;   // §8.310: the tick, for fin
-        auto fin = [&](int kd) { if (kd >= 2) { const double ts = (fin_k - shot.tick) / 30.0; ++S.sbk[shot.cell >= 0 ? 0 : 1][kd == 3 ? 4 : ts < 0.3 ? 0 : ts < 1 ? 1 : ts < 2 ? 2 : 3]; } ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; };
+        auto fin = [&](int kd) { if (kd >= 2) { const double ts = (fin_k - shot.tick) / 30.0; ++S.sbk[shot.cell >= 0 ? 0 : 1][kd == 3 ? 4 : ts < 0.3 ? 0 : ts < 1 ? 1 : ts < 2 ? 2 : 3]; } ++S.fn_gs[shot.gsk][kd]; ++S.fn_bg[shot.band][shot.gg][kd]; ++S.spd_n[shot.gg]; S.spd_g[shot.gg] += kd == 0; ++S.spd_k[shot.gg][shot.kp]; if (kd == 0 && shot.dk >= 0) ++S.np_dg[shot.gg == 0 ? 0 : 1][shot.dk][shot.dus]; };
         int last_kick_why = ai::kWhyCount, last_kick_team = -1; long last_kick_k = -1000; double last_kick_own = 0;
         int cl_band = -1, hc_band = -1; int hc_prev = 0;
         bool fk_wait = false, fk_just = false; int fk_slot = -1; long fk_k = 0;   // §8.288 a free kick (or offside FK) pending; its taker, once on the ball
@@ -1352,6 +1352,7 @@ int main(int argc, char** argv) {
                         const int c5 = reb ? 0 : (kk - lr_k[th3] <= 90 && lr_why[th3] == static_cast<int>(ai::Why::Clear)) ? 1
                                      : (W.tickCount() - W.deflectedTick() <= 90) ? 2 : (so_kind == 4 && so_team == static_cast<int>(p.team) && kk - so_k < 150) ? 3 : 4;
                         ++S.np_k[shot.gg == 0 ? 0 : 1][c5];
+                        if (c5 == 2) { const int dk = std::min<int>(W.deflectedKind(), 6), us = W.deflectedTeam() == p.team ? 1 : 0; ++S.np_dk[shot.gg == 0 ? 0 : 1][dk][us]; shot.dk = dk; shot.dus = us; }   // G5.264 OFF WHAT
                         if (c5 == 3 && shot.gg == 0) ++S.np_rz[so_zone][so_c6];   // §8.312 where won, off what
                     }
                     for (std::uint8_t j = 0; j < N; ++j)   // §8.223: his keeper's metres off his line at the strike
@@ -3650,7 +3651,7 @@ int main(int argc, char** argv) {
                 std::printf("\n   nearest outfield opponent to the lane p25 / median / p75 %.2f / %.2f / %.2f m (real 0.23 / 0.56 / 1.12)", v[v.size() / 4], v[v.size() / 2], v[v.size() * 3 / 4]);
                 std::vector<double> w = S.sh_near; std::sort(w.begin(), w.end());
                 std::vector<double> h = S.sh_held; std::sort(h.begin(), h.end());
-                std::printf("\n   nearest outfield opponent to the SHOOTER p25 / median / p75 %.2f / %.2f / %.2f m, goal-side %.0f%%; on the ball before the shot median %.2f s (p75 %.2f)",
+                std::printf("\n   nearest outfield opponent to the SHOOTER p25 / median / p75 %.2f / %.2f / %.2f m (real 1.19 / 1.95 / 3.06), goal-side %.0f%% (70.2; benchmarks_statsbomb_shotnear.py); on the ball before the shot median %.2f s (p75 %.2f)",
                             w[w.size() / 4], w[w.size() / 2], w[w.size() * 3 / 4], 100.0 * S.sh_gs / w.size(), h[h.size() / 2], h[h.size() * 3 / 4]);
                 {   // §8.186 SHOT CONTEXT — benchmarks_statsbomb_shotcontext.py
                     static const double rgs[5] = {4.8, 9.1, 10.6, 13.2, 62.3}, rgg[5] = {39.4, 21.5, 14.9, 9.3, 4.5};
@@ -4140,6 +4141,7 @@ int main(int argc, char** argv) {
             for (int r = 0; r < 6; ++r) if (S.lr_n[r]) std::printf("\n     %-6s %5.1f (%4.1f) | %5.1f (%4.1f) | %5.1f (%4.1f) | %+5.1f (%+5.1f)  n %ld", kRoleName[r], 100.0 * S.lr_g[r] / S.lr_n[r], rg[r], md2(S.lr_m[r]), rm[r], md2(S.lr_y[r]), ry[r], md2(S.lr_b[r]), rb[r], S.lr_n[r]); }
         { static const char* nl[5] = {"rebound (our shot <5 s)", "off their clearance <3 s", "off a deflection / block / keeper <3 s", "regain <5 s", "other"}; const double tmo = std::max(1.0, 2.0 * matches);
           { static const char* zl[3] = {"0-18", "18-35", "35+"}; static const char* kl[7] = {"pass", "clearance", "block", "header pass", "ball forward", "other", "-"}; std::printf("\n   §8.312 regain <5 s, 0-1 goal-side, a team-match, where won (m off the goal attacked) / off their:"); for (int z = 0; z < 3; ++z) { std::printf(" %s:", zl[z]); for (int c = 0; c < 7; ++c) if (S.np_rz[z][c]) std::printf(" %s %.2f", kl[c], S.np_rz[z][c] / tmo); std::printf(";"); } }
+          { static const char* dkl[7] = {"?", "tackle", "keeper parry out", "keeper spill", "loose touch", "body block", "duel header"}; for (int a = 0; a < 2; ++a) { std::printf("\n   G5.264 OFF WHAT (no-pass shots off a deflection <3 s), goal-side %s, a team-match [goals] their body / ours:", a ? "2+" : "0-1"); for (int d = 1; d < 7; ++d) std::printf(" %s %.2f [%.2f] / %.2f [%.2f];", dkl[d], S.np_dk[a][d][0] / tmo, S.np_dg[a][d][0] / tmo, S.np_dk[a][d][1] / tmo, S.np_dg[a][d][1] / tmo); } }
           for (int a = 0; a < 2; ++a) { std::printf("\n   §8.312 NO-PASS shots, goal-side %s, a team-match (StatsBomb 0-1: rebound 0.136, clearance/block/keeper 0.062, regain 0.009, other 0.08; 2+: 0.507 / 0.978 / 0.130 / 1.04):", a ? "2+" : "0-1"); for (int c = 0; c < 5; ++c) std::printf(" %s %.2f;", nl[c], S.np_k[a][c] / tmo); } }
         { static const char* tl[5] = {"defender <0.3 s", "0.3-1 s", "1-2 s", "2+ s", "out untouched"}; for (int a = 0; a < 2; ++a) { std::printf("\n   §8.310 aimed %s target, ended:", a ? "OFF" : "on"); for (int c = 0; c < 5; ++c) std::printf(" %s %ld;", tl[c], S.sbk[a][c]); } }
         std::printf("\n   goals by the last kick before them:");
