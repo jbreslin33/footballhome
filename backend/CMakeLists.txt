@@ -190,6 +190,8 @@ set(SOURCES
     src/controllers/ProposalsController.cpp
     src/controllers/OnboardingController.cpp
     src/controllers/LeagueEntryController.cpp
+    src/controllers/StudyController.cpp
+    src/models/Study.cpp
     src/models/LeagueEntry.cpp
     src/models/VolunteerShifts.cpp
     src/models/Proposals.cpp

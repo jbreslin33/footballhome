@@ -26,6 +26,11 @@ The layers (owner 11/26 "think like a coach"), top down: **principles of play** 
   - [ ] Every club's game model + playing style we can find
   - [ ] Every formation (source names → common shapes)
 
+## Owner (James)
+
+- [ ] 📝 Enter U12 into PPR Indoor (owner 11/26 "we need to todo enter u12 into ppr indoor! … for me") — `#league-registration` PPR Indoor 2027 entry: add the U12 team, then send.
+- [ ] 🎓 Pass Praxis Mathematics 5165 (PA Math 7-12, pass 159) — `#study` (🎓 Learn, mig 1937, docs/study.md): set the test date on the page, work the topics. 66 practice questions now; ask for more on any topic. First example of FH helping players/coaches beyond football (owner 11/26).
+
 ## Bugs / fixes
 
 - [x] 2026-11-02 #coach-schedule (migs 955, 956): admins set each coach's practice days per section; a coach sees and RSVPs only to those practices on #my, and the Coaches section and reminders follow (fh_coach_off_schedule). Games unchanged. Youth: Ali Fri; Luke, Anthony, Sheldon, Victor every practice; Joseph call in by invite; James has no row, so every practice.

@@ -77,6 +77,7 @@
 #include "controllers/ProposalsController.h"
 #include "controllers/OnboardingController.h"
 #include "controllers/LeagueEntryController.h"
+#include "controllers/StudyController.h"
 #include "controllers/ScheduleLinksController.h"
 #include "controllers/DashboardController.h"
 #include "controllers/CupRosterController.h"
@@ -192,6 +193,7 @@ private:
     std::shared_ptr<ProposalsController> proposals_controller_;
     std::shared_ptr<OnboardingController> onboarding_controller_;
     std::shared_ptr<LeagueEntryController> league_entry_controller_;
+    std::shared_ptr<StudyController> study_controller_;   // 🎓 mig 1937
     std::shared_ptr<ScheduleLinksController> schedule_links_controller_;
     std::shared_ptr<DashboardController> dashboard_controller_;
     std::shared_ptr<CupRosterController> cup_roster_controller_;
@@ -315,6 +317,7 @@ public:
         proposals_controller_ = std::make_shared<ProposalsController>();
         onboarding_controller_ = std::make_shared<OnboardingController>();
         league_entry_controller_ = std::make_shared<LeagueEntryController>();
+        study_controller_ = std::make_shared<StudyController>();
         schedule_links_controller_ = std::make_shared<ScheduleLinksController>();
         dashboard_controller_ = std::make_shared<DashboardController>();
         cup_roster_controller_ = std::make_shared<CupRosterController>();
@@ -675,6 +678,7 @@ private:
         router_.useController("/api/proposals", proposals_controller_);   // 📑 #proposals (mig 1572)
         router_.useController("/api/onboarding", onboarding_controller_);
         router_.useController("/api/league-entries", league_entry_controller_);   // 📝 mig 1746
+        router_.useController("/api/study", study_controller_);   // 🎓 own study plans (mig 1937)
         // #film (mig 599): the league's game-film sheet, read-only, fuzzily
         // matched to games.
         router_.useController("/api/film", film_controller_);

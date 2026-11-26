@@ -63,6 +63,7 @@ class App {
       coachSchedule: new CoachScheduleScreen(this.navigation, this.auth),
       onboarding: new OnboardingScreen(this.navigation, this.auth),
       'league-registration': new LeagueRegistrationScreen(this.navigation, this.auth),
+      study: new StudyScreen(this.navigation, this.auth),   // 🎓 mig 1937, people with a study plan
       awards: new AwardsScreen(this.navigation, this.auth),
       footballTaxonomy: new FootballTaxonomyScreen(this.navigation, this.auth),
       attendanceCalls: new AttendanceCallsScreen(this.navigation, this.auth),
@@ -188,6 +189,8 @@ class App {
     this.screenManager.register('onboarding', this.screens.onboarding);
     // 📝 League Registration (#league-registration, mig 1746) — a league entry as a checklist, forms pre-filled.
     this.screenManager.register('league-registration', this.screens['league-registration']);
+    // #study (mig 1937): a person's study plan for a test (owner: Praxis Math 5165).
+    this.screenManager.register('study', this.screens.study);
     // Awards (#awards, mig 800) — All-Stars to the league director + club awards. See screens/awards.js.
     this.screenManager.register('awards', this.screens.awards);
     // 🧬 Taxonomy of Football (#football-taxonomy, mig 1810) — every concept and how far it reaches. See screens/football-taxonomy.js.
