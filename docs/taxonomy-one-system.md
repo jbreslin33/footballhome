@@ -487,4 +487,7 @@ own goal's centre than his man is; REACH flag 4), and its test is the result: **
 for his man. A read only — the sim does not act on it yet (the step into reach goes from his place in
 the shape, which is usually goal side). The viewer calls in-reach-on-the-wrong-side red ("he would be
 chasing"); the clip judge's good needs goal side at the kick, and bad now includes near-but-chasing.
-Open: whether the STEP itself should aim for a goal-side spot (an engine behaviour change — harness).
+**The step aims goal side (mig 1926).** The step from his place goes toward his man and stops a reach off
+him — unless that spot would leave him level with or beyond his man; then the spot is on his man's line to our
+goal, a reach off him (never past half that line), still max 6 m off his place (`pd_step_goal_side`). Only with
+`physics.pressdist.hold` > 0: no row = 0, goldens unchanged; the concept room and the clip build see it.
