@@ -20,6 +20,11 @@ The layers (owner 11/26 "think like a coach"), top down: **principles of play** 
 - [ ] 🧭⚽ Direct opponent finished before stay in pressing distance: matchups per FORMATION PAIR (4-3-3 v 4-2-3-1 = 3v7, 2v11, 6v10, 8v8, 9v4/5; other shapes break them on purpose), the chaos rules, the swaps. Parked until principles are in.
 - [ ] ⚽ Stay in pressing distance: built (goal-side step, mig 1926), switch OFF in matches, ON only in the concept room — switch on for matches once direct opponent is right; redeploy the game server.
 - [ ] 📚 More books for the research session (owner arranging access).
+- [ ] 🧭📚 THE TAXONOMY CATALOGUES EVERYTHING (owner 11/26 "its a taxonomy"): one shape per category — `game_sources` → the source's own entries → common ground → links (same / part of / overlaps) → popularity view. Principles of play built (migs 1930/1931: 136 entries, 19 sources). Next categories:
+  - [ ] Principles of play from all 211 FIFA federations (coverage register: found / not published / not searched)
+  - [ ] Every federation's game model
+  - [ ] Every club's game model + playing style we can find
+  - [ ] Every formation (source names → common shapes)
 
 ## Bugs / fixes
 
