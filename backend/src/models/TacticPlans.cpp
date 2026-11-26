@@ -231,9 +231,41 @@ json TacticPlans::taxonomy() {
                                FROM game_source_principles t LEFT JOIN game_common_principle_links l ON l.term_id = t.id),
           'sources',    (SELECT json_agg(json_build_object('id', s.id, 'code', s.code, 'kind', s.kind, 'title', s.title, 'url', s.url,
                                  'verified', s.verified, 'school', (SELECT string_agg(sc.school, ', ') FROM game_source_schools sc WHERE sc.source_id = s.id)))
-                               FROM game_sources s WHERE EXISTS (SELECT 1 FROM game_source_principles t WHERE t.source_id = s.id)),
+                               FROM game_sources s WHERE EXISTS (SELECT 1 FROM game_source_principles t WHERE t.source_id = s.id)
+                                  OR EXISTS (SELECT 1 FROM game_source_formations t WHERE t.source_id = s.id)
+                                  OR EXISTS (SELECT 1 FROM game_source_styles t WHERE t.source_id = s.id)
+                                  OR EXISTS (SELECT 1 FROM game_models t WHERE t.source_id = s.id)),
           'federations', (SELECT json_agg(json_build_object('name', name, 'confederation', confederation, 'status', principles_status,
                                  'source_id', source_id, 'url', url, 'note', note) ORDER BY confederation, name) FROM game_federations),
+          -- 🧩 Formations (mig 1938): the named systems with popularity, every source's name for them, our board layouts.
+          'formation_families', (SELECT json_agg(json_build_object('id', g.id, 'code', g.code, 'title', g.title, 'aka', g.aka, 'phase', g.phase,
+                                 'back', g.back, 'parent_id', g.parent_id, 'definition', g.definition, 'sources', pop.sources, 'uses', pop.uses,
+                                 'boards', pop.boards, 'sim_teams', pop.sim_teams, 'verdict', g.owner_verdict, 'decided_by', pop.decided_by)
+                                 ORDER BY pop.sources DESC, pop.uses DESC, g.sort_order)
+                               FROM game_formation_families g JOIN game_formation_popularity pop ON pop.id = g.id),
+          'formation_entries', (SELECT json_agg(json_build_object('source_id', e.source_id, 'name', e.name, 'context', e.context, 'uses', e.uses_n,
+                                 'verified', e.verified, 'family_id', l.family_id, 'relation', l.relation) ORDER BY e.uses_n DESC NULLS LAST, e.id)
+                               FROM game_source_formations e JOIN game_formation_family_links l ON l.entry_id = e.id),
+          'boards',     (SELECT json_agg(json_build_object('code', code, 'name', name, 'family_id', family_id) ORDER BY sort_order) FROM formations),
+          -- 🎨 Playing styles (mig 1939): the axes, the named styles and their profiles, every source's words.
+          'style_dimensions', (SELECT json_agg(json_build_object('id', d.id, 'code', d.code, 'moment', d.moment, 'title', d.title, 'low', d.low_label,
+                                 'high', d.high_label, 'definition', d.definition, 'measure', d.measure, 'sources', dp.sources, 'named', dp.in_named_styles)
+                                 ORDER BY d.sort_order) FROM game_style_dimensions d JOIN game_style_dimension_popularity dp ON dp.id = d.id),
+          'styles',     (SELECT json_agg(json_build_object('id', g.id, 'code', g.code, 'title', g.title, 'aka', g.aka, 'era', g.era, 'parent_id', g.parent_id,
+                                 'definition', g.definition, 'sources', pop.sources, 'overlaps', pop.overlap_sources, 'verdict', g.owner_verdict,
+                                 'profile', (SELECT json_agg(json_build_object('dimension_id', pr.dimension_id, 'value', pr.value)) FROM game_style_profiles pr WHERE pr.style_id = g.id))
+                                 ORDER BY pop.sources DESC, g.sort_order) FROM game_styles g JOIN game_style_popularity pop ON pop.id = g.id),
+          'style_entries', (SELECT json_agg(json_build_object('source_id', e.source_id, 'name', e.name, 'context', e.context, 'verified', e.verified,
+                                 'style_id', l.style_id, 'relation', l.relation, 'dimension_id', dl.dimension_id, 'value', dl.value) ORDER BY e.id)
+                               FROM game_source_styles e LEFT JOIN game_style_links l ON l.entry_id = e.id LEFT JOIN game_style_dimension_links dl ON dl.entry_id = e.id),
+          -- 🗺 Game models (mig 1940): whose, style, shape, the plan per moment, the principles it puts first.
+          'game_models', (SELECT json_agg(json_build_object('id', gm.id, 'name', gm.name, 'kind', gm.kind, 'note', gm.note, 'era', gm.era,
+                                 'source_id', gm.source_id, 'style_id', gm.style_id, 'family_id', gm.formation_family_id, 'verified', gm.verified,
+                                 'moments', (SELECT json_agg(json_build_object('moment', mm.moment, 'plan', mm.plan, 'citation', mm.citation)) FROM game_model_moments mm WHERE mm.model_id = gm.id),
+                                 'principles', (SELECT json_agg(json_build_object('principle_id', mp.principle_id, 'moment', mp.moment, 'emphasis', mp.emphasis, 'words', mp.own_words)) FROM game_model_principles mp WHERE mp.model_id = gm.id),
+                                 'settings', (SELECT json_agg(json_build_object('dimension_id', ss.dimension_id, 'value', ss.value)) FROM game_model_style_settings ss WHERE ss.model_id = gm.id),
+                                 'concepts', (SELECT count(*) FROM game_model_concepts gc WHERE gc.model_id = gm.id))
+                                 ORDER BY gm.sort_order) FROM game_models gm),
           'commit',     (SELECT max(commit) FROM game_engine_sources),
           'sync',       (SELECT json_build_object('checked_at', extract(epoch FROM checked_at), 'changed_at', extract(epoch FROM changed_at),
                                                    'in_sync', in_sync, 'tagged', tagged, 'listed', listed, 'db_rows', db_rows, 'diff', diff,

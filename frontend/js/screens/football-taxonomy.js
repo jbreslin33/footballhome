@@ -259,11 +259,17 @@ class FootballTaxonomyScreen extends Screen {
     if (!this.data) { el.innerHTML = head + `<p class="tx-dim">${esc(this._t('loading'))}</p>`; return; }
     const d = this.data;
     const tabs = [['principles', this._t('tab_principles'), (d.play_principles || []).length],
+                  ['formations', this._t('tab_formations'), (d.formation_families || []).length],
+                  ['styles', this._t('tab_styles'), (d.styles || []).length],
+                  ['models', this._t('tab_models'), (d.game_models || []).length],
                   ['concepts', this._t('tab_concepts'), (d.concepts || []).length], ['techniques', this._t('tab_techniques'), (d.techniques || []).length],
                   ['more', this._t('tab_more'), null], ['engine', this._t('tab_engine'), null]]
       .map(([k, label, n]) => `<button type="button" class="tx-pill ${this.tab === k ? 'on' : ''}" data-tx="tab" data-v="${k}">${esc(label)}${n != null ? `<span class="n">${n}</span>` : ''}</button>`).join('');
     let body = '';
     if (this.tab === 'principles') body = this._principlesHtml(esc);
+    else if (this.tab === 'formations') body = this._formationsHtml(esc);
+    else if (this.tab === 'styles') body = this._stylesHtml(esc);
+    else if (this.tab === 'models') body = this._modelsHtml(esc);
     else if (this.tab === 'concepts') body = this._conceptsHtml(esc);
     else if (this.tab === 'techniques') body = this._techniquesHtml(esc);
     else if (this.tab === 'more') body = this._moreHtml(esc);
@@ -500,6 +506,8 @@ class FootballTaxonomyScreen extends Screen {
                   [this._t('pr_parent'), parent ? `<button type="button" class="tx-link" data-tx-open="principle" data-k="${esc(parent.code)}">${esc(parent.title)}</button>` : '', true],
                   [this._t('pr_kids'), kids.map(k => `<button type="button" class="tx-link" data-tx-open="principle" data-k="${esc(k.code)}">${esc(k.title)}</button>`).join(', '), true],
                   [this._t('pr_chain'), this._t('pr_chain_v', { m: p.model_principles, c: p.concepts, e: p.engine, s: p.in_sim })],
+                  [this._t('tab_models'), (d.game_models || []).filter(m => (m.principles || []).some(x => x.principle_id === p.id))
+                     .map(m => `<button type="button" class="tx-link" data-tx-open="model" data-k="${m.id}">${esc(m.name)}</button>`).join(', '), true],
                   [this._t('pr_note'), p.note]], esc);
     if (window.MainMenu && MainMenu._access && MainMenu._access.admin) {   // the server checks too (admins only)
       html += `<div class="tx-pills">${['adopt', 'reject', ''].map(v => `<button type="button" class="tx-pill ${(p.verdict || '') === v ? 'on' : ''}" data-tx="verdict" data-code="${esc(p.code)}" data-v="${v}">${esc(this._t('pr_set_' + (v || 'pop')))}</button>`).join('')}</div>`;
@@ -512,6 +520,120 @@ class FootballTaxonomyScreen extends Screen {
         const t = s.url ? `<a class="tx-link" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.code)}</a>` : esc(s.title || s.code);
         return `<li><strong>${esc(e.term)}</strong> <span class="tx-dim">(${esc(e.lang)})</span> — ${t}${s.school ? ` <span class="tx-dim">· ${esc(this._t('pr_school', { s: s.school }))}</span>` : ''}${e.verified ? '' : ` <span class="tx-dim">· ${esc(this._t('pr_unverified'))}</span>`}</li>`;
       }).join('') + `</ul>`;
+    }
+    return html;
+  }
+
+  // ── shared: a source's name for something, with its link and school ──────────────────────────────────────
+  _srcLine(sourceId, words, extra, esc) {
+    const s = (this.data.sources || []).find(x => x.id === sourceId) || {};
+    const t = s.url ? `<a class="tx-link" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.code)}</a>` : esc(s.title || s.code || '');
+    return `<li><strong>${esc(words)}</strong>${extra ? ` <span class="tx-dim">${esc(extra)}</span>` : ''} — ${t}${s.school ? ` <span class="tx-dim">· ${esc(this._t('pr_school', { s: s.school }))}</span>` : ''}</li>`;
+  }
+  _byRelation(entries, line, esc) {
+    let html = '';
+    for (const r of ['same', 'part_of', 'overlaps']) {
+      const list = entries.filter(e => (e.relation || 'same') === r);
+      if (!list.length) continue;
+      html += `<div class="tx-h">${esc(this._t('pr_rel_' + r))} <span class="tx-dim">${new Set(list.map(e => e.source_id)).size}</span></div><ul class="tx-list">${list.map(line).join('')}</ul>`;
+    }
+    return html;
+  }
+
+  // ── 🧩 Formations (mig 1938): named systems, by sources then real starts ──────────────────────────────────
+  _formationsHtml(esc) {
+    const fams = this.data.formation_families || [];
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('fm_intro'))}</div>`;
+    for (const ph of ['base', 'in_possession', 'historic']) {
+      const list = fams.filter(f => f.phase === ph);
+      if (!list.length) continue;
+      html += `<div class="tx-moment">${esc(this._t('fm_ph_' + ph))}</div><div class="tx-grid">` + list.map(f => {
+        const par = f.parent_id != null ? fams.find(x => x.id === f.parent_id) : null;
+        return `<div class="tx-card" data-reach="${f.boards ? 'played' : f.sources >= 2 ? 'job' : 'named'}" data-tx-open="family" data-k="${f.id}">
+          <div class="tx-title">${esc(f.title)}${f.title !== f.code ? ` <span class="tx-dim">${esc(f.code)}</span>` : ''}</div>
+          <div class="tx-meta">${esc(this._t('fm_meta', { s: f.sources, u: f.uses, b: f.boards, t: f.sim_teams }))}</div>
+          ${par ? `<div class="tx-line tx-dim">${esc(this._t('fm_variant', { p: par.title }))}</div>` : ''}</div>`;
+      }).join('') + `</div>`;
+    }
+    return html;
+  }
+  _familySheet(id, esc) {
+    const d = this.data, f = (d.formation_families || []).find(x => x.id === id);
+    if (!f) return '';
+    const kids = (d.formation_families || []).filter(x => x.parent_id === id), par = (d.formation_families || []).find(x => x.id === f.parent_id);
+    const boards = (d.boards || []).filter(b => b.family_id === id);
+    const models = (d.game_models || []).filter(m => m.family_id === id);
+    const link = (x) => `<button type="button" class="tx-link" data-tx-open="family" data-k="${x.id}">${esc(x.title)}</button>`;
+    let html = `<h3 style="margin:6px 0 2px;">${esc(f.title)}</h3><div class="tx-meta">${esc(this._t('fm_meta', { s: f.sources, u: f.uses, b: f.boards, t: f.sim_teams }))} · ${esc(f.decided_by)}</div>`
+      + this._kv([[this._t('pr_aka'), f.aka], [this._t('pr_def'), f.definition], [this._t('pr_parent'), par ? link(par) : '', true],
+                  [this._t('pr_kids'), kids.map(link).join(', '), true], [this._t('fm_boards'), boards.map(b => esc(b.name)).join(' · '), true],
+                  [this._t('tab_models'), models.map(m => `<button type="button" class="tx-link" data-tx-open="model" data-k="${m.id}">${esc(m.name)}</button>`).join(', '), true]], esc);
+    return html + this._byRelation((d.formation_entries || []).filter(e => e.family_id === id),
+      e => this._srcLine(e.source_id, e.name, [e.context, e.uses != null ? this._t('fm_uses', { n: e.uses }) : ''].filter(Boolean).join(' · '), esc), esc);
+  }
+
+  // ── 🎨 Playing styles (mig 1939): the axes, then the named styles with their profile ──────────────────────
+  _profileHtml(profile, esc) {
+    const dims = new Map((this.data.style_dimensions || []).map(x => [x.id, x]));
+    return (profile || []).filter(p => p.value).map(p => { const x = dims.get(p.dimension_id); return x ? `<span class="tx-chip on" title="${esc(x.title)}">${esc(p.value > 0 ? x.high : x.low)}${Math.abs(p.value) > 1 ? ' ●●' : ' ●'}</span>` : ''; }).join(' ');
+  }
+  _stylesHtml(esc) {
+    const d = this.data, ms = new Map((d.moments || []).map(m => [m.code, m.title]));
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('st_intro'))}</div>`;
+    html += `<div class="tx-moment">${esc(this._t('st_named'))}</div><div class="tx-grid">` + (d.styles || []).map(st => `
+      <div class="tx-card" data-reach="${st.sources >= 2 ? 'played' : 'named'}" data-tx-open="style" data-k="${st.id}">
+        <div class="tx-title">${esc(st.title)} ${st.era ? `<span class="tx-dim">${esc(st.era)}</span>` : ''}</div>
+        <div class="tx-meta">${esc(this._t('st_meta', { s: st.sources }))}${st.aka ? ' · ' + esc(st.aka) : ''}</div>
+        <div class="tx-line">${this._profileHtml(st.profile, esc)}</div></div>`).join('') + `</div>`;
+    html += `<div class="tx-moment">${esc(this._t('st_axes'))}</div><ul class="tx-list">` + (d.style_dimensions || []).map(x =>
+      `<li><strong>${esc(x.title)}</strong> <span class="tx-dim">(${esc(ms.get(x.moment) || x.moment)})</span>: ${esc(x.low)} ↔ ${esc(x.high)} — ${esc(x.definition)} <span class="tx-dim">· ${esc(this._t('st_axis_meta', { s: x.sources, n: x.named, m: x.measure }))}</span></li>`).join('') + `</ul>`;
+    return html;
+  }
+  _styleSheet(id, esc) {
+    const d = this.data, st = (d.styles || []).find(x => x.id === id);
+    if (!st) return '';
+    const par = (d.styles || []).find(x => x.id === st.parent_id), kids = (d.styles || []).filter(x => x.parent_id === id);
+    const link = (x) => `<button type="button" class="tx-link" data-tx-open="style" data-k="${x.id}">${esc(x.title)}</button>`;
+    const models = (d.game_models || []).filter(m => m.style_id === id);
+    let html = `<h3 style="margin:6px 0 2px;">${esc(st.title)}</h3><div class="tx-meta">${esc(this._t('st_meta', { s: st.sources }))}${st.era ? ' · ' + esc(st.era) : ''}</div>`
+      + this._kv([[this._t('pr_aka'), st.aka], [this._t('pr_def'), st.definition], [this._t('st_profile'), this._profileHtml(st.profile, esc), true],
+                  [this._t('pr_parent'), par ? link(par) : '', true], [this._t('pr_kids'), kids.map(link).join(', '), true],
+                  [this._t('tab_models'), models.map(m => `<button type="button" class="tx-link" data-tx-open="model" data-k="${m.id}">${esc(m.name)}</button>`).join(', '), true]], esc);
+    return html + this._byRelation((d.style_entries || []).filter(e => e.style_id === id), e => this._srcLine(e.source_id, e.name, e.context, esc), esc);
+  }
+
+  // ── 🗺 Game models (mig 1940): ours with everyone else's ───────────────────────────────────────────────────
+  _modelsHtml(esc) {
+    const d = this.data, sty = new Map((d.styles || []).map(x => [x.id, x])), fam = new Map((d.formation_families || []).map(x => [x.id, x]));
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('gm_intro'))}</div>`;
+    for (const k of ['club', 'federation', 'school']) {
+      const list = (d.game_models || []).filter(m => m.kind === k);
+      if (!list.length) continue;
+      html += `<div class="tx-moment">${esc(this._t('gm_kind_' + k))}</div><div class="tx-grid">` + list.map(m => `
+        <div class="tx-card" data-reach="${(m.moments || []).length ? 'played' : 'named'}" data-tx-open="model" data-k="${m.id}">
+          <div class="tx-title">${esc(m.name)} ${m.era ? `<span class="tx-dim">${esc(m.era)}</span>` : ''}</div>
+          <div class="tx-meta">${[m.style_id ? sty.get(m.style_id)?.title : '', m.family_id ? fam.get(m.family_id)?.title : ''].filter(Boolean).map(esc).join(' · ') || esc(this._t('gm_no_style'))}</div>
+          <div class="tx-cue tx-dim">${esc(m.note)}</div></div>`).join('') + `</div>`;
+    }
+    return html;
+  }
+  _modelSheet(id, esc) {
+    const d = this.data, m = (d.game_models || []).find(x => x.id === id);
+    if (!m) return '';
+    const sty = (d.styles || []).find(x => x.id === m.style_id), fam = (d.formation_families || []).find(x => x.id === m.family_id);
+    const src = (d.sources || []).find(x => x.id === m.source_id), pp = new Map((d.play_principles || []).map(x => [x.id, x]));
+    let html = `<h3 style="margin:6px 0 2px;">${esc(m.name)}</h3><div class="tx-meta">${esc(this._t('gm_kind_' + m.kind))}${m.era ? ' · ' + esc(m.era) : ''}${m.verified ? '' : ' · ' + esc(this._t('pr_unverified'))}</div>`
+      + this._kv([[this._t('gm_whose'), src ? (src.url ? `<a class="tx-link" href="${esc(src.url)}" target="_blank" rel="noopener">${esc(src.title)}</a>` : esc(src.title)) : '', true],
+                  [this._t('pr_def'), m.note],
+                  [this._t('tab_styles'), sty ? `<button type="button" class="tx-link" data-tx-open="style" data-k="${sty.id}">${esc(sty.title)}</button>` : '', true],
+                  [this._t('tab_formations'), fam ? `<button type="button" class="tx-link" data-tx-open="family" data-k="${fam.id}">${esc(fam.title)}</button>` : '', true],
+                  [this._t('st_profile'), this._profileHtml(m.settings, esc), true],
+                  [this._t('gm_concepts'), m.concepts ? String(m.concepts) : '']], esc);
+    for (const mo of d.moments || []) {
+      const plan = (m.moments || []).find(x => x.moment === mo.code), prs = (m.principles || []).filter(x => x.moment === mo.code);
+      if (!plan && !prs.length) continue;
+      html += `<div class="tx-h">${esc(mo.title)}</div>${plan ? `<div class="tx-cue">${esc(plan.plan)}</div>` : ''}`
+        + (prs.length ? `<ul class="tx-list">${prs.map(x => { const p = pp.get(x.principle_id); return `<li>${p ? `<button type="button" class="tx-link" data-tx-open="principle" data-k="${esc(p.code)}">${esc(p.title)}</button>` : ''}${x.words ? ` <span class="tx-dim">— “${esc(x.words)}”</span>` : ''}</li>`; }).join('')}</ul>` : '');
     }
     return html;
   }
@@ -610,14 +732,15 @@ class FootballTaxonomyScreen extends Screen {
     if (!this.detail || !this.data) { host.innerHTML = ''; return; }
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const { type, key } = this.detail;
-    const inner = type === 'principle' ? this._principleSheet(key, esc) : type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'db' ? this._dbSheet(Number(key), esc)
+    const inner = type === 'principle' ? this._principleSheet(key, esc) : type === 'family' ? this._familySheet(Number(key), esc)
+      : type === 'style' ? this._styleSheet(Number(key), esc) : type === 'model' ? this._modelSheet(Number(key), esc) : type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'db' ? this._dbSheet(Number(key), esc)
       : type === 'game' ? this._gameSheet(Number(key), esc)
       : type === 'behaviour' ? this._behaviourSheet(key, esc) : this._classSheet(key, esc);
     host.innerHTML = `<div class="tx-sheet-back" data-tx="close"></div><div class="tx-sheet" role="dialog">
       <div class="tx-pills" style="margin-top:0;">${this.trail.length ? `<button type="button" class="tx-pill" data-tx="back">${esc(this._t('back'))}</button>` : ''}
         <button type="button" class="tx-pill" data-tx="close">${esc(this._t('close'))}</button></div>${inner}</div>`;
     if (type === 'db') this._loadDb(Number(key));
-    else if (type !== 'concept' && type !== 'game' && type !== 'principle') this._loadSource();
+    else if (!['concept', 'game', 'principle', 'family', 'style', 'model'].includes(type)) this._loadSource();
     const at = this.detail.sec && host.querySelector(`[data-tx-sec="${this.detail.sec}"]`);
     if (at) at.scrollIntoView({ block: 'start' });
   }
