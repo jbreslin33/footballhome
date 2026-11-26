@@ -215,6 +215,25 @@ json TacticPlans::taxonomy() {
                                                            'read', is_read, 'in_sim', in_sim) ORDER BY file, line) FROM game_engine_behaviours),
           'classes',    (SELECT json_agg(json_build_object('name', name, 'file', file, 'from', line_start, 'to', line_end, 'parent', parent,
                                                            'doc', doc, 'kind', kind) ORDER BY name) FROM game_engine_classes),
+          -- 📜 Principles of play (migs 1929–1935): the common ground with its popularity, every source's own
+          -- words linked to it, the sources with their school, and the federation register.
+          'play_principles', (SELECT json_agg(json_build_object('id', p.id, 'code', p.code, 'title', p.title, 'aka', p.aka,
+                                 'definition', p.definition, 'is_not', p.is_not, 'level', p.level, 'side', p.side, 'parent_id', p.parent_id,
+                                 'sources', pop.sources, 'overlaps', pop.overlap_sources, 'schools', pop.schools,
+                                 'verdict', p.owner_verdict, 'note', p.owner_note, 'decided_by', pop.decided_by,
+                                 'model_principles', ch.model_principles, 'concepts', ch.concepts, 'engine', ch.engine_behaviours, 'in_sim', ch.in_sim)
+                                 ORDER BY pop.sources DESC, pop.schools DESC, p.sort_order)
+                               FROM game_play_principles p JOIN game_principle_popularity pop ON pop.id = p.id
+                               JOIN game_taxonomy_chain ch ON ch.id = p.id),
+          'principle_entries', (SELECT json_agg(json_build_object('id', t.id, 'source_id', t.source_id, 'term', t.term, 'lang', t.lang,
+                                 'level', t.level, 'side', t.side, 'verified', t.verified, 'principle_id', l.principle_id, 'relation', l.relation)
+                                 ORDER BY t.source_id, t.id)
+                               FROM game_source_principles t LEFT JOIN game_common_principle_links l ON l.term_id = t.id),
+          'sources',    (SELECT json_agg(json_build_object('id', s.id, 'code', s.code, 'kind', s.kind, 'title', s.title, 'url', s.url,
+                                 'verified', s.verified, 'school', (SELECT string_agg(sc.school, ', ') FROM game_source_schools sc WHERE sc.source_id = s.id)))
+                               FROM game_sources s WHERE EXISTS (SELECT 1 FROM game_source_principles t WHERE t.source_id = s.id)),
+          'federations', (SELECT json_agg(json_build_object('name', name, 'confederation', confederation, 'status', principles_status,
+                                 'source_id', source_id, 'url', url, 'note', note) ORDER BY confederation, name) FROM game_federations),
           'commit',     (SELECT max(commit) FROM game_engine_sources),
           'sync',       (SELECT json_build_object('checked_at', extract(epoch FROM checked_at), 'changed_at', extract(epoch FROM changed_at),
                                                    'in_sync', in_sync, 'tagged', tagged, 'listed', listed, 'db_rows', db_rows, 'diff', diff,
@@ -225,6 +244,15 @@ json TacticPlans::taxonomy() {
         )::text AS doc)SQL");
     if (r.empty() || r[0]["doc"].is_null()) return json::object();
     return json::parse(r[0]["doc"].as<std::string>());
+}
+
+// The owner's verdict on one common-ground principle (mig 1933): adopt | reject | "" (back to popularity).
+bool TacticPlans::setPrincipleVerdict(const std::string& code, const std::string& verdict, const std::string& note) {
+    auto* db = Database::getInstance();
+    const auto r = db->query(
+        "UPDATE game_play_principles SET owner_verdict = NULLIF($2, ''), owner_note = $3 WHERE code = $1 RETURNING id",
+        {code, verdict, note});
+    return !r.empty();
 }
 
 json TacticPlans::source(const std::string& file, int from, int to) {

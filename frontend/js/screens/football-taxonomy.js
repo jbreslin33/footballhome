@@ -50,10 +50,11 @@ class FootballTaxonomyScreen extends Screen {
     super(navigation, auth);
     this.data = null;
     this.error = false;
-    this.tab = 'concepts';
+    this.tab = 'principles';
     this.moment = '';       // '' = every moment
     this.reach = 'all';     // all | played | placed | job | named
     this.search = '';
+    this.plevel = 'all';    // 📜 Principles: all | general | operational | fundamental | sub | federations
     this.engine = 'all';    // ⚙️ Engine list: all | concept | unnamed | fudge | read | classes
     this.detail = null;     // { type: 'concept' | 'behaviour' | 'class', key } — the open sheet
     this.trail = [];        // sheets behind it (‹ Back)
@@ -151,7 +152,9 @@ class FootballTaxonomyScreen extends Screen {
       if (k === 'close') { this.detail = null; this.trail = []; this._renderDetail(); return; }
       if (k === 'watch') { this._watch(Number(v)); return; }
       if (k === 'back') { this.detail = this.trail.pop() || null; this._renderDetail(); return; }
+      if (k === 'verdict') { this._verdict(b.dataset.code, v); return; }
       if (k === 'tab') this.tab = v;
+      else if (k === 'plevel') this.plevel = v;
       else if (k === 'moment') this.moment = v;
       else if (k === 'reach') this.reach = v;
       else if (k === 'engine') this.engine = v;
@@ -255,11 +258,13 @@ class FootballTaxonomyScreen extends Screen {
     if (this.error && !this.data) { el.innerHTML = head + `<p>${esc(this._t('failed'))}</p>`; return; }
     if (!this.data) { el.innerHTML = head + `<p class="tx-dim">${esc(this._t('loading'))}</p>`; return; }
     const d = this.data;
-    const tabs = [['concepts', this._t('tab_concepts'), (d.concepts || []).length], ['techniques', this._t('tab_techniques'), (d.techniques || []).length],
+    const tabs = [['principles', this._t('tab_principles'), (d.play_principles || []).length],
+                  ['concepts', this._t('tab_concepts'), (d.concepts || []).length], ['techniques', this._t('tab_techniques'), (d.techniques || []).length],
                   ['more', this._t('tab_more'), null], ['engine', this._t('tab_engine'), null]]
       .map(([k, label, n]) => `<button type="button" class="tx-pill ${this.tab === k ? 'on' : ''}" data-tx="tab" data-v="${k}">${esc(label)}${n != null ? `<span class="n">${n}</span>` : ''}</button>`).join('');
     let body = '';
-    if (this.tab === 'concepts') body = this._conceptsHtml(esc);
+    if (this.tab === 'principles') body = this._principlesHtml(esc);
+    else if (this.tab === 'concepts') body = this._conceptsHtml(esc);
     else if (this.tab === 'techniques') body = this._techniquesHtml(esc);
     else if (this.tab === 'more') body = this._moreHtml(esc);
     else body = this._engineHtml(esc);
@@ -433,6 +438,95 @@ class FootballTaxonomyScreen extends Screen {
     this._render();
   }
 
+  // ── 📜 Principles of play (migs 1929–1935) ──────────────────────────────
+  // Owner 11/26: "find the ones that are same and put them linked in db … one offs we can have them" ·
+  // "list the most popular principles sorted by pop" · "decide based on popularity or we can over ride".
+  // Every source's principle in its own words → the common ground it is (same / part of / overlaps) →
+  // popularity = sources that name it, schools = lineage roots. Sorted by popularity (the server's order).
+  _principlesHtml(esc) {
+    const d = this.data, all = d.play_principles || [];
+    const levels = ['all', 'general', 'operational', 'fundamental', 'sub'];
+    const n = (l) => l === 'all' ? all.length : all.filter(p => p.level === l).length;
+    const pills = levels.map(l => `<button type="button" class="tx-pill ${this.plevel === l ? 'on' : ''}" data-tx="plevel" data-v="${l}">${esc(this._t('pl_' + l))}<span class="n">${n(l)}</span></button>`).join('')
+      + `<button type="button" class="tx-pill ${this.plevel === 'federations' ? 'on' : ''}" data-tx="plevel" data-v="federations">${esc(this._t('pl_federations'))}<span class="n">${(d.federations || []).length}</span></button>`;
+    const nsrc = (d.sources || []).length, nent = (d.principle_entries || []).length;
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('pr_intro', { s: nsrc, e: nent }))}</div><div class="tx-pills">${pills}</div>`;
+    if (this.plevel === 'federations') return html + this._federationsHtml(esc);
+    const rows = this.plevel === 'all' ? all : all.filter(p => p.level === this.plevel);
+    html += `<div class="tx-grid">` + rows.map((p, i) => {
+      const verdict = p.verdict ? `<span class="tx-chip on">${esc(this._t('pr_v_' + p.verdict))}</span>` : '';
+      const built = p.concepts ? esc(this._t('pr_built', { c: p.concepts, e: p.engine, s: p.in_sim })) : esc(this._t('pr_not_built'));
+      return `<div class="tx-card" data-reach="${p.verdict === 'reject' ? 'named' : p.concepts ? 'played' : p.sources >= 3 ? 'job' : 'named'}" data-tx-open="principle" data-k="${esc(p.code)}">
+        <div class="tx-title">${i + 1}. ${esc(p.title)} ${verdict}</div>
+        <div class="tx-meta">${esc(this._t('pr_meta', { s: p.sources, o: p.overlaps, k: p.schools, l: this._t('pl_' + p.level), side: this._t('side_' + p.side) }))}</div>
+        ${p.aka ? `<div class="tx-cue tx-dim">${esc(p.aka)}</div>` : ''}
+        <div class="tx-line">${built}</div></div>`;
+    }).join('') + `</div>`;
+    return html;
+  }
+
+  _federationsHtml(esc) {
+    const feds = this.data.federations || [], srcs = new Map((this.data.sources || []).map(s => [s.id, s]));
+    const confs = [...new Set(feds.map(f => f.confederation))];
+    const statuses = ['found', 'known', 'not_published', 'not_searched'];
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0; max-width:75ch;">${esc(this._t('fed_intro'))}</div>`;
+    for (const c of confs) {
+      const mine = feds.filter(f => f.confederation === c);
+      html += `<div class="tx-moment">${esc(c)} <span class="tx-dim" style="font-size:0.8rem;">${statuses.map(st => esc(this._t('fed_' + st)) + ' ' + mine.filter(f => f.status === st).length).join(' · ')}</span></div>`;
+      for (const st of statuses) {
+        const list = mine.filter(f => f.status === st);
+        if (!list.length) continue;
+        html += `<div class="tx-principle">${esc(this._t('fed_' + st))}</div><ul class="tx-list">` + list.map(f => {
+          const s = f.source_id != null ? srcs.get(f.source_id) : null;
+          const name = f.url ? `<a class="tx-link" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>` : esc(f.name);
+          return `<li>${name}${s ? ` <span class="tx-dim">— ${esc(s.title)}</span>` : ''}${f.note ? ` <span class="tx-dim">· ${esc(f.note)}</span>` : ''}</li>`;
+        }).join('') + `</ul>`;
+      }
+    }
+    return html;
+  }
+
+  _principleSheet(code, esc) {
+    const d = this.data, p = (d.play_principles || []).find(x => x.code === code);
+    if (!p) return '';
+    const srcs = new Map((d.sources || []).map(s => [s.id, s]));
+    const kids = (d.play_principles || []).filter(x => x.parent_id === p.id);
+    const parent = p.parent_id != null ? (d.play_principles || []).find(x => x.id === p.parent_id) : null;
+    const entries = (d.principle_entries || []).filter(e => e.principle_id === p.id || kids.some(k => k.id === e.principle_id));
+    const rel = ['same', 'part_of', 'overlaps'];
+    let html = `<h3 style="margin:6px 0 2px;">${esc(p.title)}</h3>
+      <div class="tx-meta">${esc(this._t('pr_meta', { s: p.sources, o: p.overlaps, k: p.schools, l: this._t('pl_' + p.level), side: this._t('side_' + p.side) }))} · ${esc(p.decided_by)}</div>`
+      + this._kv([[this._t('pr_aka'), p.aka], [this._t('pr_def'), p.definition], [this._t('pr_not'), p.is_not],
+                  [this._t('pr_parent'), parent ? `<button type="button" class="tx-link" data-tx-open="principle" data-k="${esc(parent.code)}">${esc(parent.title)}</button>` : '', true],
+                  [this._t('pr_kids'), kids.map(k => `<button type="button" class="tx-link" data-tx-open="principle" data-k="${esc(k.code)}">${esc(k.title)}</button>`).join(', '), true],
+                  [this._t('pr_chain'), this._t('pr_chain_v', { m: p.model_principles, c: p.concepts, e: p.engine, s: p.in_sim })],
+                  [this._t('pr_note'), p.note]], esc);
+    if (window.MainMenu && MainMenu._access && MainMenu._access.admin) {   // the server checks too (admins only)
+      html += `<div class="tx-pills">${['adopt', 'reject', ''].map(v => `<button type="button" class="tx-pill ${(p.verdict || '') === v ? 'on' : ''}" data-tx="verdict" data-code="${esc(p.code)}" data-v="${v}">${esc(this._t('pr_set_' + (v || 'pop')))}</button>`).join('')}</div>`;
+    }
+    for (const r of rel) {
+      const list = entries.filter(e => e.relation === r);
+      if (!list.length) continue;
+      html += `<div class="tx-h">${esc(this._t('pr_rel_' + r))} <span class="tx-dim">${new Set(list.map(e => e.source_id)).size}</span></div><ul class="tx-list">` + list.map(e => {
+        const s = srcs.get(e.source_id) || {};
+        const t = s.url ? `<a class="tx-link" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title || s.code)}</a>` : esc(s.title || s.code);
+        return `<li><strong>${esc(e.term)}</strong> <span class="tx-dim">(${esc(e.lang)})</span> — ${t}${s.school ? ` <span class="tx-dim">· ${esc(this._t('pr_school', { s: s.school }))}</span>` : ''}${e.verified ? '' : ` <span class="tx-dim">· ${esc(this._t('pr_unverified'))}</span>`}</li>`;
+      }).join('') + `</ul>`;
+    }
+    return html;
+  }
+
+  async _verdict(code, verdict) {
+    try {
+      const res = await this.auth.fetch(`/api/tactic-plans/taxonomy/principles/${encodeURIComponent(code)}/verdict`,
+        { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ verdict, note: '' }) });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      await this._load();
+      this._render();
+      this._renderDetail();
+    } catch (_) { /* the sheet stays as it was */ }
+  }
+
   // ── 🦶 Techniques: the tree as nested lists ────────────────────────────
   _techniquesHtml(esc) {
     const kids = new Map();
@@ -516,14 +610,14 @@ class FootballTaxonomyScreen extends Screen {
     if (!this.detail || !this.data) { host.innerHTML = ''; return; }
     const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
     const { type, key } = this.detail;
-    const inner = type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'db' ? this._dbSheet(Number(key), esc)
+    const inner = type === 'principle' ? this._principleSheet(key, esc) : type === 'concept' ? this._conceptSheet(Number(key), esc) : type === 'db' ? this._dbSheet(Number(key), esc)
       : type === 'game' ? this._gameSheet(Number(key), esc)
       : type === 'behaviour' ? this._behaviourSheet(key, esc) : this._classSheet(key, esc);
     host.innerHTML = `<div class="tx-sheet-back" data-tx="close"></div><div class="tx-sheet" role="dialog">
       <div class="tx-pills" style="margin-top:0;">${this.trail.length ? `<button type="button" class="tx-pill" data-tx="back">${esc(this._t('back'))}</button>` : ''}
         <button type="button" class="tx-pill" data-tx="close">${esc(this._t('close'))}</button></div>${inner}</div>`;
     if (type === 'db') this._loadDb(Number(key));
-    else if (type !== 'concept' && type !== 'game') this._loadSource();
+    else if (type !== 'concept' && type !== 'game' && type !== 'principle') this._loadSource();
     const at = this.detail.sec && host.querySelector(`[data-tx-sec="${this.detail.sec}"]`);
     if (at) at.scrollIntoView({ block: 'start' });
   }

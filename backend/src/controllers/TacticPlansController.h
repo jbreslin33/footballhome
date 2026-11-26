@@ -23,6 +23,7 @@ private:
     Response handleTaxonomy(const Request& request);     // moments → principles → concepts, and how far each reaches
     Response handleSource(const Request& request);
     Response handleConceptDb(const Request& request);       // lines of an engine source file (game_engine_sources)
+    Response handlePrincipleVerdict(const Request& request);  // PUT /taxonomy/principles/:code/verdict (mig 1933)
     Response handleList(const Request& request);         // every plan (the teaching room picker)
     Response handleCreate(const Request& request);       // POST
     Response handleAddState(const Request& request);     // POST /states

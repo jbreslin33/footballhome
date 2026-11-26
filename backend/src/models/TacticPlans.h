@@ -27,6 +27,8 @@ public:
     // that plays it (game_engine_acts) — plus techniques, roles, measures, the
     // Laws, and the engine's own vocabulary (game_engine_terms).  One query.
     nlohmann::json taxonomy();
+    // 📜 The owner's verdict on a principle of play (mig 1933): adopt | reject | "" = popularity decides.
+    bool setPrincipleVerdict(const std::string& code, const std::string& verdict, const std::string& note);
     // Lines from..to of one engine source file as exported to game_engine_sources
     // (backend TaxonomySync, on every load of the page): { file, from, to, commit, text }.
     nlohmann::json source(const std::string& file, int from, int to);

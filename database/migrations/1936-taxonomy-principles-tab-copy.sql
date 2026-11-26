@@ -1,0 +1,45 @@
+-- 1936 (2026-11-26): 🧬 Taxonomy → 📜 Principles tab — its words (owner 11/26 "i will be able to see principles of play,
+-- game models, etc organized and linked under football menu? … from a normalized db right?" · "your making a taxonomy
+-- in db that is usable by game etc and viewable on fh"). The content is the tables' own (migs 1929–1935).
+INSERT INTO message_templates (category, label, kind, tier, subject, body, sort_order, is_active, client_side)
+SELECT 'Football', 'Taxonomy of Football — ' || v.l, 'taxonomy', v.t, NULL, v.b, v.o, true, true
+  FROM (VALUES
+    ('tab: principles', 'tab_principles', '📜 Principles', 600),
+    ('principles intro ({s}, {e})', 'pr_intro', 'Every source''s principles of play in its own words ({e} entries from {s} sources: federations, coaching books, papers, clubs), each linked to the common ground it means. Sorted by popularity: how many sources name it, and from how many schools. Tap one for every source''s wording, its definition and how far it reaches into the game.', 601),
+    ('level: all', 'pl_all', 'All', 602),
+    ('level: general', 'pl_general', 'General', 603),
+    ('level: operational', 'pl_operational', 'Team aims', 604),
+    ('level: fundamental', 'pl_fundamental', 'Fundamental', 605),
+    ('level: sub', 'pl_sub', 'Narrower / one-offs', 606),
+    ('level: federations', 'pl_federations', '🌍 Federations', 607),
+    ('side: attack', 'side_attack', 'attacking', 608),
+    ('side: defend', 'side_defend', 'defending', 609),
+    ('side: both', 'side_both', 'both', 610),
+    ('card meta ({s}, {o}, {k}, {l}, {side})', 'pr_meta', '{s} sources (+{o} overlap) · {k} schools · {l} · {side}', 611),
+    ('card: built ({c}, {e}, {s})', 'pr_built', 'In the game: {c} concepts · {e} engine behaviours ({s} in the sim)', 612),
+    ('card: not built', 'pr_not_built', 'Not in the game yet', 613),
+    ('verdict: adopt', 'pr_v_adopt', '✓ adopted', 614),
+    ('verdict: reject', 'pr_v_reject', '✗ rejected', 615),
+    ('sheet: aka', 'pr_aka', 'Also called', 616),
+    ('sheet: definition', 'pr_def', 'What it is', 617),
+    ('sheet: is not', 'pr_not', 'What it is not', 618),
+    ('sheet: parent', 'pr_parent', 'Kind of', 619),
+    ('sheet: kids', 'pr_kids', 'Kinds', 620),
+    ('sheet: chain', 'pr_chain', 'In the game', 621),
+    ('sheet: chain value ({m}, {c}, {e}, {s})', 'pr_chain_v', '{m} game-model principles → {c} concepts → {e} engine behaviours ({s} in the sim)', 622),
+    ('sheet: owner note', 'pr_note', 'Owner''s note', 623),
+    ('sheet: set adopt', 'pr_set_adopt', '✓ Adopt', 624),
+    ('sheet: set reject', 'pr_set_reject', '✗ Reject', 625),
+    ('sheet: set popularity', 'pr_set_pop', '⚖️ Popularity decides', 626),
+    ('sheet: relation same', 'pr_rel_same', 'Sources that name it', 627),
+    ('sheet: relation part of', 'pr_rel_part_of', 'Sources where it is part of their principle', 628),
+    ('sheet: relation overlaps', 'pr_rel_overlaps', 'Sources whose principle overlaps it', 629),
+    ('sheet: school ({s})', 'pr_school', 'school: {s}', 630),
+    ('sheet: unverified', 'pr_unverified', 'unverified (found on the web, not yet checked against the text)', 631),
+    ('federations intro', 'fed_intro', 'Every FIFA association searched for its own published principles of play (11/26 sweep). Found = its list is in the taxonomy; known = in from an earlier source; not published = nothing public found; not searched = still to do.', 632),
+    ('federations: found', 'fed_found', 'Found', 633),
+    ('federations: known', 'fed_known', 'Known', 634),
+    ('federations: not published', 'fed_not_published', 'Not published', 635),
+    ('federations: not searched', 'fed_not_searched', 'Not searched', 636)
+  ) AS v(l, t, b, o)
+ WHERE NOT EXISTS (SELECT 1 FROM message_templates m WHERE m.kind = 'taxonomy' AND m.tier = v.t);

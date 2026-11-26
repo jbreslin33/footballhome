@@ -106,6 +106,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.get (prefix + "/taxonomy",         [this](const Request& r) { return handleTaxonomy(r); });
     router.get (prefix + "/taxonomy/source",  [this](const Request& r) { return handleSource(r); });
     router.get (prefix + "/taxonomy/db",      [this](const Request& r) { return handleConceptDb(r); });
+    router.put (prefix + "/taxonomy/principles/:code/verdict", [this](const Request& r) { return handlePrincipleVerdict(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
     router.post(prefix + "/solve",            [this](const Request& r) { return handleSolve(r); });
@@ -149,6 +150,33 @@ Response TacticPlansController::handleTaxonomy(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handleTaxonomy: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
+    }
+}
+
+// PUT /taxonomy/principles/:code/verdict {verdict: "adopt"|"reject"|"", note} — the owner overrides popularity
+// (mig 1933; owner 11/26 "we can decide based on popularity or we can over ride").  Admins only.
+Response TacticPlansController::handlePrincipleVerdict(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Sign in first.");
+    const auto uid = bearerUserId(request);
+    if (Database::getInstance()->query("SELECT 1 FROM admins WHERE user_id = $1::int LIMIT 1", {std::to_string(uid)}).empty())
+        return jsonError(HttpStatus::FORBIDDEN, "Admins only.");
+    try {
+        const json b = json::parse(request.getBody());
+        const std::string verdict = b.value("verdict", std::string());
+        if (!verdict.empty() && verdict != "adopt" && verdict != "reject") return jsonError(HttpStatus::BAD_REQUEST, "verdict: adopt, reject or empty");
+        // /…/taxonomy/principles/<code>/verdict — the code is the segment before /verdict (getPathParam is a stub)
+        std::string path = request.getPath();
+        path = path.substr(0, path.find('?'));
+        const auto end = path.rfind("/verdict");
+        const auto start = end == std::string::npos ? std::string::npos : path.rfind('/', end - 1);
+        if (start == std::string::npos) return jsonError(HttpStatus::BAD_REQUEST, "No principle in the path.");
+        const std::string code = path.substr(start + 1, end - start - 1);
+        if (!model_->setPrincipleVerdict(code, verdict, b.value("note", std::string())))
+            return jsonError(HttpStatus::NOT_FOUND, "No such principle.");
+        return jsonOut(HttpStatus::OK, {{"ok", true}});
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handlePrincipleVerdict: " << e.what() << std::endl;
+        return jsonError(HttpStatus::BAD_REQUEST, e.what());
     }
 }
 
