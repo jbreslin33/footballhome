@@ -2,6 +2,25 @@
 
 Running list of fixes and feature ideas. Add items anywhere; move them to **Done** with the date when shipped.
 
+## Football model — three workstreams (agreed 2026-11-26)
+
+One football model, three sessions. Each owns its part and hands it on as DB rows; nobody edits another's tables.
+
+| Workstream | Owns | Hands on |
+|---|---|---|
+| 📚 **Football research** | `coaching_books`, `coaching_book_pages`, `coaching_book_patterns` (+ roles), mig 1928 | sourced findings: what the books say, page-cited, for the taxonomy to adopt or reject |
+| 🧭 **Taxonomy** | `game_principles`, `game_moments`, `game_models`, `game_concepts` + definitions; `docs/taxonomy-one-system.md` | the dictionary: each principle / concept defined (what, when, what it is NOT), where it sits in the layers |
+| ⚽ **Game** | `game/` engine, harness, clips; `game/DESIGN.md` | the engine doing what the taxonomy defines, measured against real data |
+
+The layers (owner 11/26 "think like a coach"), top down: **principles of play** (universal) → **moments** → **game model** (how we play each moment) → **formation + playing style** → **concepts** (direct opponent, stay in pressing distance, cover shadow …) → **actions**.
+
+- [ ] 🧭 Principles of play as their own layer — universal attacking + defending principles, each defined and sourced; today's 19 `game_principles` rows are game-model principles (layer 3) and hang under them.
+- [ ] 🧭 Every concept placed under the principle it serves (e.g. stay in pressing distance → pressure/delay).
+- [ ] 🧭 One game model defined moment by moment; its marking scheme answers "who is my man".
+- [ ] 🧭⚽ Direct opponent finished before stay in pressing distance: matchups per FORMATION PAIR (4-3-3 v 4-2-3-1 = 3v7, 2v11, 6v10, 8v8, 9v4/5; other shapes break them on purpose), the chaos rules, the swaps. Parked until principles are in.
+- [ ] ⚽ Stay in pressing distance: built (goal-side step, mig 1926), switch OFF in matches, ON only in the concept room — switch on for matches once direct opponent is right; redeploy the game server.
+- [ ] 📚 More books for the research session (owner arranging access).
+
 ## Bugs / fixes
 
 - [x] 2026-11-02 #coach-schedule (migs 955, 956): admins set each coach's practice days per section; a coach sees and RSVPs only to those practices on #my, and the Coaches section and reminders follow (fh_coach_off_schedule). Games unchanged. Youth: Ali Fri; Luke, Anthony, Sheldon, Victor every practice; Joseph call in by invite; James has no row, so every practice.
