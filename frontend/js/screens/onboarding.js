@@ -28,10 +28,14 @@ class OnboardingScreen extends Screen {
     this.pill = 'volunteer';
     this.sel = null;          // { pid, code } — the step whose actions are open
     this.busy = false;
+    this.newRep = null;       // 🆕 /api/new-members/report (mig 1896)
+    this.newShowAll = false;  // 🆕 also list the onboarded ones
   }
 
-  onEnter() {
+  onEnter(params) {
     this.error = '';
+    // The band's 🆕 Onboarding box lands here on 🆕 New members (#onboarding/new).
+    if ((params && params.entity === 'new') || /^#onboarding\/new$/.test(location.hash)) this.pill = 'new';
     this._load();
   }
 
@@ -47,7 +51,12 @@ class OnboardingScreen extends Screen {
   async _load() {
     try {
       if (window.MessageCopy) await MessageCopy.load(this.auth);
-      this.data = await this._json('/api/onboarding');
+      // 🆕 rides along; it syncs LA first, so a failure there never blanks the page.
+      const [data, rep] = await Promise.all([
+        this._json('/api/onboarding'),
+        this._json('/api/new-members/report').catch(() => null)]);
+      this.data = data;
+      this.newRep = rep;
     } catch (err) {
       this.error = err.message;
     }
@@ -114,6 +123,9 @@ class OnboardingScreen extends Screen {
       return;
     }
     if ((el = t('[data-onb-contact]'))) { this._contact(Number(el.dataset.onbContact)); return; }
+    if ((el = t('[data-onb-new-contact]'))) { this._newContact(Number(el.dataset.onbNewContact)); return; }
+    if ((el = t('[data-onb-new-done]'))) { this._newDone(Number(el.dataset.onbNewDone)); return; }
+    if ((el = t('[data-onb-new-all]'))) { this.newShowAll = !this.newShowAll; this._renderBody(); return; }
     if ((el = t('[data-onb-view]'))) { this._view(Number(el.dataset.onbView)); return; }
     if ((el = t('[data-onb-rmfile]'))) {
       if (confirm('Delete this file?')) this._post('/api/onboarding/file-remove', { id: Number(el.dataset.onbRmfile) });
@@ -175,6 +187,76 @@ class OnboardingScreen extends Screen {
     });
   }
 
+  // 🆕 New members (mig 1896) ------------------------------------------------
+  _newMembers() { return (this.newRep && Array.isArray(this.newRep.members)) ? this.newRep.members : []; }
+
+  _newContact(pid) {
+    const m = this._newMembers().find(x => Number(x.person_id) === pid);
+    if (!m || !window.PlayerSheet) return;
+    PlayerSheet.open({
+      host: this.element, auth: this.auth, tab: 'contact',
+      resolve: () => ({ personId: pid, firstName: m.first_name || '', lastName: m.last_name || '', returnTo: 'onboarding' }),
+    });
+  }
+
+  // ✓ Done: off the report (and the band) without onboarding them.
+  async _newDone(pid) {
+    if (this.busy || !pid) return;
+    this.busy = true; this.error = ''; this._renderBody();
+    try {
+      await this._json('/api/new-members/dismiss', { method: 'POST', body: JSON.stringify({ person_ids: [pid] }) });
+      if (this.newRep) this.newRep.members = this._newMembers().filter(m => Number(m.person_id) !== pid);
+      if (window.StatusBanner && StatusBanner.instance) StatusBanner.instance.loadNewMembers();
+    } catch (err) {
+      this.error = err.message;
+    }
+    this.busy = false;
+    this._renderBody();
+  }
+
+  _newHtml(esc) {
+    const all = this._newMembers();
+    const left = all.filter(m => !m.onboarded);
+    const list = this.newShowAll ? all : left;
+    const pol = (this.newRep && this.newRep.policy) || { green_hours: 24, red_hours: 168 };
+    const span = (h) => (h % 24 === 0 ? `${h / 24} day${h === 24 ? '' : 's'}` : `${h}h`);
+    const day = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
+    const TONE = { green: ['🟢', '#22c55e'], yellow: ['🟡', '#facc15'], red: ['🔴', '#ef4444'] };
+    const SECTION = { mens: "Men's", womens: "Women's", boys: 'Boys', girls: 'Girls' };
+    const RANK = { red: 0, yellow: 1, green: 2 };
+    const order = [...list].sort((a, b) => (a.onboarded - b.onboarded) || (RANK[a.tone] - RANK[b.tone])
+      || String(a.registered_at).localeCompare(String(b.registered_at)));
+    const chip = (ok, text) => `<span style="padding:4px 9px; border-radius:8px; font-size:0.78rem; font-weight:700; border:1px solid ${ok ? '#22c55e' : '#9ca3af'};">${esc(text)}</span>`;
+    const card = (m) => {
+      const [dot, colour] = m.onboarded ? ['✅', '#22c55e'] : (TONE[m.tone] || TONE.red);
+      const days = Math.floor((Number(m.age_hours) || 0) / 24);
+      const teams = (m.teams || []).length ? m.teams.join(', ') : this._t('new_no_team', {}, 'no team');
+      const bits = [SECTION[m.section] || '', this._t('new_reg_on', { date: day(m.registered_at), days }, `registered ${day(m.registered_at)} · ${days}d`), teams].filter(Boolean).join(' · ');
+      const money = `$${(Number(m.billed_usd) || 0).toFixed(2).replace(/\.00$/, '')}`;
+      return `<div style="border:1px solid var(--border-color); border-left:4px solid ${colour}; border-radius:10px; background:var(--bg-secondary); padding:10px 12px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span style="flex:1; min-width:140px; font-weight:800; font-size:1rem;">${dot} ${esc(`${m.first_name || ''} ${m.last_name || ''}`.trim())}</span>
+            ${m.onboarded ? `<span style="font-size:0.82rem; font-weight:800; color:#22c55e;">${esc(this._t('new_onboarded', {}, '✅ Onboarded'))}</span>` : ''}
+            ${window.PlayerSheet ? `<button type="button" class="btn btn-secondary" data-onb-new-contact="${m.person_id}" style="min-height:0; padding:5px 10px; font-size:0.8rem;">📇</button>` : ''}
+            ${m.onboarded ? '' : `<button type="button" class="btn btn-secondary" data-onb-new-done="${m.person_id}" ${this.busy ? 'disabled' : ''} style="min-height:0; padding:5px 10px; font-size:0.8rem; color:#22c55e; border-color:#22c55e;">${esc(this._t('new_done', {}, '✓ Done'))}</button>`}
+          </div>
+          <div style="font-size:0.78rem; opacity:0.75; margin-top:2px;">${esc(bits)}</div>
+          <div style="display:flex; gap:5px; flex-wrap:wrap; margin-top:8px;">
+            ${chip(m.rsvp_ok, m.rsvp_ok ? this._t('new_rsvp_yes', { date: day(m.rsvp_at) }, `✅ RSVP ${day(m.rsvp_at)}`) : this._t('new_rsvp_no', {}, '⬜ No RSVP yet'))}
+            ${chip(m.prorate_ok, m.prorate_ok ? this._t('new_prorate_yes', { amount: money }, `✅ Prorate ${money}`) : this._t('new_prorate_no', {}, '⬜ Prorate not charged'))}
+          </div>
+        </div>`;
+    };
+    const done = all.length - left.length;
+    return `<p style="font-size:0.82rem; opacity:0.8; margin:0 0 8px;">${esc(this._t('new_note', { green: span(pol.green_hours), red: span(pol.red_hours) },
+        `Every new LeagueApps member. Onboarded = answered an RSVP AND charged the prorate. 🟢 under ${span(pol.green_hours)}, 🟡 after, 🔴 after ${span(pol.red_hours)}.`))}</p>
+      ${done ? `<button type="button" class="btn btn-secondary" data-onb-new-all style="min-height:0; padding:5px 12px; font-size:0.8rem; margin:0 0 8px;">${esc(this.newShowAll ? this._t('new_hide_all', {}, 'Hide onboarded') : this._t('new_show_all', { n: done }, `Show onboarded (${done})`))}</button>` : ''}
+      ${this.error ? `<p style="color:#ef4444; margin:0 0 8px;">${esc(this.error)}</p>` : ''}
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${order.length ? order.map(card).join('') : `<p style="opacity:0.7;">${esc(this._t('new_empty', {}, 'Every new member is onboarded. ✓'))}</p>`}
+      </div>`;
+  }
+
   _renderBody() {
     const body = this.element && this.element.querySelector('#onb-body');
     if (!body) return;
@@ -197,14 +279,16 @@ class OnboardingScreen extends Screen {
         ${pill('volunteer', 'pill_volunteer', '🙋 Volunteers ({n})', vol.length)}
         ${pill('paid', 'pill_paid', '💵 Paid ({n})', paid.length)}
         ${players.length ? pill('player', 'pill_player', '⚽ Players ({n})', players.length) : ''}
+        ${this.newRep ? pill('new', 'pill_new', '🆕 New members ({n})', this._newMembers().filter(m => !m.onboarded).length) : ''}
       </div>
+      ${this.pill === 'new' ? this._newHtml(esc) : `
       ${this.pill === 'player' ? `<p style="font-size:0.82rem; opacity:0.8; margin:0 0 8px;">${esc(this._t('player_note', {}, "Every men's player 18 or older, automatically. Uploaded = 🟡; tap the chip to see the certificate and mark it ✅ Checked."))}</p>` : ''}
       ${this.error ? `<p style="color:#ef4444; margin:0 0 8px;">${esc(this.error)}</p>` : ''}
       <div style="display:flex; flex-direction:column; gap:8px;">
         ${order.length ? order.map(p => this._card(p, esc)).join('') : `<p style="opacity:0.7;">${esc(this._t('empty', {}, 'Nobody here yet.'))}</p>`}
       </div>
       ${this.pill === 'player' ? '' : this._addHtml(esc)}
-      ${this.data.policy && this.data.policy.purge_days ? `<p style="font-size:0.78rem; opacity:0.65; margin-top:var(--space-3);">${esc(this._t('files_purge', { days: this.data.policy.purge_days }, 'Files are deleted {days} days after they go to compliance — only the ticks stay.'))}</p>` : ''}`;
+      ${this.data.policy && this.data.policy.purge_days ? `<p style="font-size:0.78rem; opacity:0.65; margin-top:var(--space-3);">${esc(this._t('files_purge', { days: this.data.policy.purge_days }, 'Files are deleted {days} days after they go to compliance — only the ticks stay.'))}</p>` : ''}`}`;
   }
 
   _card(p, esc) {

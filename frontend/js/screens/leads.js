@@ -129,6 +129,8 @@ class LeadsScreen extends Screen {
   onEnter(params) {
     this.clubId   = params?.clubId;
     this.clubName = params?.clubName;
+    // 🎯 From the band's "New leads" box: open this lead's Contact once loaded.
+    this._openLeadId = Number(params?.openLeadId) || 0;
 
     // Live ads / Past ads / All pill above the board — filters which Meta
     // lead forms are shown by whether they currently have a live ad
@@ -495,6 +497,7 @@ class LeadsScreen extends Screen {
       const renderStart = Date.now();
       this.renderLeads(leads);
       this._appendLog(`Render complete in ${Date.now() - renderStart}ms. Done.`, 'ok');
+      if (this._openLeadId) { const id = this._openLeadId; this._openLeadId = 0; this.openLead(id); }
     } catch (err) {
       this._appendLog(`Failed to load leads: ${err.message}`, 'error');
       this.find('#leads-loading').style.display = 'none';
@@ -1511,7 +1514,26 @@ class LeadsScreen extends Screen {
   // never touched = touch 1, signed up = welcome, anything else = the
   // close that answers a YES.  Every send and call logs a touch.
   contactButton(lead, label, flagged) {
-    if (!lead.email && !lead.phone) return '';
+    const cfg = this.contactConfig(lead, label, flagged);
+    return cfg ? ContactPopup.button(cfg) : '';
+  }
+
+  // 🎯 Straight to one lead's Contact popup — the 🚦 band's "New leads"
+  // box (mig 1646, owner 11/21 "if a new lead is sitting it should show
+  // there and be actionable").  Works whatever status tab / funnel pills
+  // the board is on; false = that lead isn't in the loaded list.
+  openLead(leadId) {
+    const lead = (this._leads || []).find(l => Number(l.id) === Number(leadId));
+    if (!lead) return false;
+    const cfg = this.contactConfig(lead, this.formLabel(lead.form_id) || 'Other', true);
+    if (!cfg) return false;
+    this.element?.querySelector(`.lead-card[data-lead-id="${lead.id}"]`)?.scrollIntoView({ block: 'center' });
+    ContactPopup.open(cfg);
+    return true;
+  }
+
+  contactConfig(lead, label, flagged) {
+    if (!lead.email && !lead.phone) return null;
     const first = this.messageTemplate(label);
     const contacted = Number(lead.email_count || 0) + Number(lead.text_count || 0) + Number(lead.call_count || 0) > 0;
     const log = (key) => (_resolved, via, words) => {
@@ -1532,10 +1554,10 @@ class LeadsScreen extends Screen {
                       smsBody: this.fillTemplate(snip.smsBody || snip.body, lead),
                       onSent: log(snip.id), beforeEmail: rich });
     }
-    if (!messages.length) return '';
+    if (!messages.length) return null;
     const want = (lead.status === 'signedup') ? 'welcome' : contacted ? 'close' : 'first-touch';
     const youth = this.isParentFunnel(label);
-    return ContactPopup.button({
+    return {
       key: `lead:${lead.id}`,
       screen: this,
       big: true,
@@ -1546,7 +1568,7 @@ class LeadsScreen extends Screen {
       onCall: () => this.logLeadTouch(lead.id, 'call', 'call', ''),
       onSave: () => this.saveLeadContact(lead.id, youth ? 'youth-pair' : 'self')
         .catch((err) => alert(`Failed to save contact: ${err.message}`)),
-    });
+    };
   }
 
   // Gmail's compose window pre-fills the body as plain text and will not
@@ -2670,6 +2692,9 @@ class LeadsScreen extends Screen {
           }
         }
       } catch { /* non-JSON or empty body — fall through */ }
+
+      // The 🚦 band's "New leads" box re-reads: this one is no longer waiting.
+      window.dispatchEvent(new CustomEvent('fh:lead-touched'));
 
       const nowIso = new Date().toISOString();
       for (const aid of affectedIds) {

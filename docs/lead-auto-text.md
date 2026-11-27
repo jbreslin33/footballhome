@@ -26,7 +26,7 @@ A lead from before the feature (`lead_auto_text_policy.started_at`), one already
 no mobile, a STOPped number, a number already on someone in the club, a number texted in the
 last 30 days or shared with a lead already being texted, a form with no funnel
 (`lead_form_funnels`) or no program wording. Nothing is queued between `quiet_from` and
-`quiet_until` (9 PM – 8 AM Eastern): those wait for morning.
+`quiet_until` (9 PM – 9 AM Eastern, mig 1892): those wait for morning.
 
 The ad forms ask no preferred method of contact (name, email, phone, best time), so every
 lead with a mobile gets the text.

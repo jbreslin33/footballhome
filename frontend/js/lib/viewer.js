@@ -89,7 +89,7 @@ class PlayerViewer {
   // codes on a player's bar, shown away from the Calendar only.  The band's
   // small 📅 icon is off — one Calendar button, not two.
   get showsCalendarButton() { return false; }
-  get menuBarPages()      { return ['calendar']; }
+  get menuBarPages()      { return ['calendar', 'weather']; }   // ⛅ Weather: mig 1837
   // …and 👤 Account (sign out) beside it, on every page (owner 11/24 "yes
   // add account to the player bar").
   get menuBarAccount()    { return true; }

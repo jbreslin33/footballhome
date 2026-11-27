@@ -37,7 +37,7 @@
   const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const HIDDEN_ON = new Set(['login', 'oauth-success']);
   // Which panel a box's button opens (dues pay is a link, not a panel).
-  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding', todo: 'todo', welcome_owed: 'welcome', prorate_owed: 'prorate' };
+  const PANEL = { rsvp_soon: 'rsvp', rsvp_open: 'rsvp', chat_unread: 'chat', volunteer: 'volunteer', fines: 'fines', alerts: 'alerts', menu: 'menu', onboarding: 'onboarding', todo: 'todo', welcome_owed: 'welcome', prorate_owed: 'prorate', leads_new: 'leads' };
 
   const CSS = `
     #status-banner #sb-head[hidden], #status-banner #sb-modal[hidden], #status-banner [data-sb-panel][hidden] { display:none !important; }
@@ -162,6 +162,7 @@
               <div data-sb-panel="todo" hidden><div id="sb-todo"></div></div>
               <div data-sb-panel="welcome" hidden><div id="sb-welcome"></div></div>
               <div data-sb-panel="prorate" hidden><div id="sb-prorate"></div></div>
+              <div data-sb-panel="leads" hidden><div id="sb-leads"></div></div>
             </div>
           </div>
         </div>`;
@@ -198,6 +199,12 @@
         if (n) window.open(n.pay_url, '_blank', 'noopener');
         return;
       }
+      if (code === 'new_members') {   // 🆕 → #onboarding on 🆕 New members (mig 1896)
+        this.openPanel(null);
+        const nav = window.app && window.app.navigation;
+        if (nav) nav.goTo('onboarding', { entity: 'new' });
+        return;
+      }
       if (!PANEL[code]) return;
       this.openPanel(this.bar.openCode === code ? null : code);
     }
@@ -213,7 +220,8 @@
                        onboarding: ['sheet_onboarding', '🎓 Your path at Lighthouse'],
                        todo: ['sheet_todo', '✅ To do'],
                        welcome: ['sheet_welcome', '👋 New registrations — send a welcome'],
-                       prorate: ['sheet_prorate', '💵 New members to bill in LeagueApps'] };
+                       prorate: ['sheet_prorate', '💵 New members to bill in LeagueApps'],
+                       leads: ['sheet_leads_new', '🎯 New leads — nobody has contacted them yet'] };
       if (panel) this.$('#sb-sheet-title').textContent = cp(titles[panel][0], {}, titles[panel][1]);
       document.body.style.overflow = panel ? 'hidden' : '';
       if (panel && !this._escWired) {
@@ -225,6 +233,7 @@
       if (panel === 'onboarding' && this.onbList) this.onbList.render();
       if (panel === 'welcome' && this.welcome) this.welcome.render();
       if (panel === 'prorate' && this.prorate) this.prorate.render();
+      if (panel === 'leads' && this.leadsNew) this.leadsNew.render();
       if (panel === 'todo' && this.todo) { this.todo.render(); setTimeout(() => this.$('#sb-todo [data-td-body]')?.focus(), 0); }
       if (panel === 'fines' && !this.finesPanel && window.FinesPanel) {
         this.finesPanel = new FinesPanel(this.$('#sb-fines'), this.ctx());
@@ -310,7 +319,7 @@
       this.bar.set(code, data);
       const open = this.bar.openCode;
       // 🎓 onboarding stays open as its last step is sent — the person sees it go 🟡.
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo', 'welcome_owed', 'prorate_owed'].includes(open)) return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo', 'welcome_owed', 'prorate_owed', 'leads_new'].includes(open)) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -418,6 +427,27 @@
       this.prorate = window.ProrateDuePanel
         ? new ProrateDuePanel(this.$('#sb-prorate'), this.ctx({ onChange: (l) => this.set('prorate_owed', welcomeBox(l)) })) : null;
       if (this.prorate) this.prorate.load();
+
+      // 🆕 Onboarding report (mig 1896), admins on every load: "🆕 Onboarding —
+      // N of M not onboarded: 🔴 name · 🟡 name  Onboard ›", or a 🟢 "all M
+      // onboarded ✓" (owner 11/25 "i should get an onbording status report in
+      // the todo at top on every load").  Onboarded = an RSVP answered AND the
+      // prorate charged; 🟢 < 1 day, 🟡 after, 🔴 after a week (DB policy).
+      // Red/yellow make it an action box; all green stays info.  The button
+      // opens #onboarding on 🆕 New members.
+      this.loadNewMembers();
+
+      // 🎯 New leads (mig 1646): "🎯 New leads — N waiting: names  Contact ›"
+      // while a lead on a live ad is still New (owner 11/21 "if a new lead is
+      // sitting it should show there and be actionable").  A name opens that
+      // lead's 📇 Contact on #leads; a logged touch takes them off.  DB only
+      // (Meta's webhook files leads as they come), so it re-reads with ✅ To do.
+      const leadsBox = (list) => list && list.length
+        ? { n: list.length, list: list.map(l => l.name || '?').join(' · ') } : null;
+      this.leadsNew = window.LeadsNewPanel
+        ? new LeadsNewPanel(this.$('#sb-leads'), this.ctx({ onChange: (l) => this.set('leads_new', leadsBox(l)), onGo: () => this.openPanel(null) })) : null;
+      if (this.leadsNew) this.leadsNew.load();
+      window.addEventListener('fh:lead-touched', () => { if (this.leadsNew) this.leadsNew.load(); });
 
       // 💬 Chat — always a box when the section has one: newest · N new.
       const chatOpen = () => this.bar.openCode === 'chat_unread';
@@ -529,15 +559,36 @@
       this.set('rsvp_open', later ? { n: later, stake: st } : null);
     }
 
+    // 🆕 the onboarding report (mig 1896) — see start().  A 403 = no box.
+    loadNewMembers() {
+      const role = this.auth && this.auth.user && this.auth.user.role;
+      if (!this.auth || this.auth.viewAsPersonId || !['club', 'super'].includes(role)) { this.set('new_members', null); return; }
+      this.newMembersAt = Date.now();
+      const DOT = { red: '🔴', yellow: '🟡', green: '🟢' }, RANK = { red: 0, yellow: 1, green: 2 };
+      this.fetchJson('/api/new-members/report').then((b) => {
+        const all = (b && Array.isArray(b.members)) ? b.members : [];
+        const left = all.filter(m => !m.onboarded)
+          .sort((x, y) => (RANK[x.tone] - RANK[y.tone]) || String(x.registered_at).localeCompare(String(y.registered_at)));
+        const worst = left.length ? left[0].tone : 'green';
+        const name = (m) => `${m.first_name || ''} ${m.last_name || ''}`.trim();
+        this.set('new_members', left.length
+          ? { left: left.length, total: all.length, severity: worst === 'green' ? 'info' : 'action',
+              list: left.map(m => `${DOT[m.tone] || ''} ${name(m)}`).join(' · ') }
+          : { ok: true, total: all.length, severity: 'info' });
+      }).catch(() => {});
+    }
+
     // ✅ the to-do list again, ≥ 20 s apart (not while its popup is open — typing).
     loadTodos() {
       if (!this.todo || this.bar.openCode === 'todo' || Date.now() - (this.todoAt || 0) < 20000) return;
       this.todoAt = Date.now();
       this.todo.load();
+      if (this.leadsNew) this.leadsNew.load();
       // 👋 a new LA registration turns up without a reload — ≥ 5 min apart (each read syncs LA).
       if (this.welcome && Date.now() - (this.welcomeAt || 0) > 300000) {
         this.welcomeAt = Date.now(); this.welcome.load(); if (this.prorate) this.prorate.load();
       }
+      if (Date.now() - (this.newMembersAt || 0) > 300000) this.loadNewMembers();
     }
 
     show(on) { this.host.style.display = on ? '' : 'none'; }

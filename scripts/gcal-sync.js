@@ -51,6 +51,13 @@ const DB = {
   database: process.env.PGDATABASE || 'footballhome',
   user:     process.env.PGUSER     || 'footballhome_user',
   password: process.env.PGPASSWORD || 'footballhome_pass',
+  // Fail fast instead of hanging until systemd's 180 s kill (11/15: ~1 run
+  // in 200 froze while the 3 AM backup or a game build had the disk).
+  // A failed run is harmless — the next one 5 min later catches up — but
+  // it should say where it stuck.
+  connectionTimeoutMillis: 15000,
+  statement_timeout:       60000,
+  query_timeout:           65000,
 };
 
 // ─── Google auth ──────────────────────────────────────────────────────
@@ -63,7 +70,7 @@ const auth  = new google.auth.GoogleAuth({
   credentials: creds,
   scopes: ['https://www.googleapis.com/auth/calendar.readonly'],
 });
-const gcal = google.calendar({ version: 'v3', auth });
+const gcal = google.calendar({ version: 'v3', auth, timeout: 30000 });
 
 // ─── Full-sync window ─────────────────────────────────────────────────
 // 30 days back gives us recent past events (useful for attendance

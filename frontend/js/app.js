@@ -93,6 +93,8 @@ class App {
       apslHub: new ApslHubScreen(this.navigation, this.auth),
       apslMessages: new ApslMessagesScreen(this.navigation, this.auth),
       apslPyramid: new ApslPyramidScreen(this.navigation, this.auth),
+      weather: new WeatherScreen(this.navigation, this.auth),   // ⛅ mig 1837
+      books: new CoachingBooksScreen(this.navigation, this.auth),   // 📚 mig 1928, owner only
       tickets: new TicketsScreen(this.navigation, this.auth),   // 🎟 mig 1886
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
@@ -248,6 +250,10 @@ class App {
     this.screenManager.register('apsl-messages', this.screens.apslMessages);
     // #apsl-pyramid (mig 819): the APSL pyramid — conferences, Tier 2 feeders, live tables, totals.
     this.screenManager.register('apsl-pyramid', this.screens.apslPyramid);
+    // #weather (mig 1837): the forecast per facility, our events in it, U.S. Soccer's alert levels.
+    this.screenManager.register('weather', this.screens.weather);
+    // #books (mig 1928): the owner's coaching books — patterns + page images.
+    this.screenManager.register('books', this.screens.books);
     // #tickets (mig 1886): the gate (scan, sell, count) and the ticket list.
     this.screenManager.register('tickets', this.screens.tickets);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.

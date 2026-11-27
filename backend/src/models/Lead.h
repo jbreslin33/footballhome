@@ -102,6 +102,13 @@ public:
     //   anything else (default "all") — no filter, every lead
     static std::vector<Lead> listAll(const std::string& formStatus = "all");
 
+    // GET /api/leads/new — 🎯 the 🚦 band's "New leads" box (mig 1646): leads
+    // on a live ad's form (lead_forms) whose status is 'new' — the override,
+    // or open and never contacted — newest first.  The same rule as the
+    // New tab on #leads under Live ads, so the box and the board agree.
+    //   [{id, name, form_id, created_at}]
+    static nlohmann::json newWaiting();
+
     // GET /api/leads/:id/vcard — single-row lookup, no aggregate.
     static std::optional<Lead> findById(int leadId);
 

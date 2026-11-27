@@ -26,7 +26,9 @@
 //                  sheet always shows the screen's latest row
 //     tab,         starting tab key
 //     extras,      (person) → { <tab>: html | { html, flag } }
-//     onChange,    (what) after the sheet itself saved something ('health')
+//     onChange,    (what, detail) after the sheet itself saved something
+//                  ('health'; 'attendance' { eventId, personId, status })
+//     eventId,     the event it was opened from — ✅ mini attendance starts on it
 //   })
 //   PlayerSheet.refresh()   the screen re-rendered — redraw from resolve()
 //   PlayerSheet.page({ container, auth, person, tab, sections, onTab })
@@ -44,6 +46,13 @@
 // come from the server, so 🔗 Open in LA, 🙋 Volunteer, 📇 CONTACT and the
 // team pills + status pickers are drawn here on every screen — a screen's
 // row only names the person (resolve) and may add its own context.
+//
+// ✅ Mini attendance (mig 1647, owner 2026-11-21: "it should have a mini
+// attenance also in the popup for that day and all days really but that
+// event should default to"): a strip above the tab body, on every tab —
+// an event picker (the opening event first, else the newest) + Present /
+// Absent / Late / Excused, the lit one tapped again clears.  Only for a
+// viewer who may take the roll (the list comes back empty otherwise).
 //
 // Words: message_templates kind 'player_sheet' (mig 1235); health words
 // kind 'health' (mig 510).  Health saves: PUT /api/person-health, the same
@@ -440,6 +449,89 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // ── ✅ Mini attendance (mig 1647) ───────────────────────────────────
+  // state.att = { list, eventId, busy }: the person's events this viewer
+  // may take the roll on (GET /api/person-sheet/attendance — the opening
+  // event whatever its day, else the last 90 days through today).  Saves
+  // are the event's own POST | DELETE /api/calendar/events/:id/attendance.
+  const attStatuses = () => (typeof EventScreen !== 'undefined' && Array.isArray(EventScreen.ATTENDANCE)) ? EventScreen.ATTENDANCE : [];
+  function attCurrent() {
+    const a = state && state.att;
+    if (!a || !Array.isArray(a.list) || !a.list.length) return null;
+    return a.list.find(e => e.fhEventId === a.eventId) || a.list.find(e => e.open) || a.list[0];
+  }
+  async function loadAtt() {
+    const mine = state, pid = mine.person && mine.person.personId;
+    if (!pid || !mine.opts.auth || !attStatuses().length) return;
+    try {
+      const ev = mine.att.eventId ? `&fh_event_id=${encodeURIComponent(mine.att.eventId)}` : '';
+      const res = await mine.opts.auth.fetch(`/api/person-sheet/attendance?person_id=${encodeURIComponent(pid)}${ev}`);
+      if (!res.ok) return;
+      const body = await res.json();
+      if (state !== mine) return;
+      mine.att.list = (Array.isArray(body && body.events) ? body.events : [])
+        .sort((x, y) => String(y.startsAt || '').localeCompare(String(x.startsAt || '')));
+      drawAtt();
+    } catch (err) { console.warn('PlayerSheet: attendance unavailable', err); }
+  }
+  function attEventLabel(e) {
+    const L = window.EventLabels;
+    const what = L ? L.title({ kind: e.kind, category: e.category, opponent: e.opponent }) : (e.kind || '');
+    const when = L ? [L.dateStr(e.startsAt), L.timeStr(e.startsAt)].filter(Boolean).join(' ') : '';
+    const st = attStatuses().find(x => x.id === e.status);
+    return `${st ? st.letter + ' · ' : ''}${[when, what].filter(Boolean).join(' · ')}`;
+  }
+  function drawAtt() {
+    if (!state) return;
+    const box = state.el.querySelector('.ps-att');
+    const a = state.att, cur = attCurrent();
+    if (!box) return;
+    if (!cur) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    const off = a.busy || !cur.open;
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+        <span style="font-size:0.78rem; font-weight:800; white-space:nowrap;">${esc(t('att_label', {}, '✅ Attendance'))}</span>
+        <select data-ps-att-event title="${esc(t('att_event_tip', {}, 'Which day'))}"
+                style="flex:1; min-width:0; padding:5px 6px; border-radius:6px; border:1px solid #475569; background:#0f172a; color:#fff; font-weight:700; font-size:0.8rem;">
+          ${a.list.map(e => `<option value="${e.fhEventId}" ${e === cur ? 'selected' : ''}>${esc(attEventLabel(e))}</option>`).join('')}
+        </select>
+      </div>
+      <div style="display:flex; gap:6px;">${attStatuses().map(s => {
+        const on = cur.status === s.id;
+        return `<button type="button" data-ps-att="${s.id}" ${off ? 'disabled ' : ''}title="${esc(on ? t('att_clear_tip', { status: s.label }, `${s.label} — tap to clear`) : s.label)}"
+            style="flex:1 1 0; min-width:0; padding:7px 4px; border-radius:8px; border:2px solid ${s.color}; font-weight:800; font-size:0.82rem;
+                   background:${on ? s.color : 'transparent'}; color:${on ? '#fff' : s.color}; opacity:${cur.open ? '1' : '0.4'}; cursor:${off ? 'not-allowed' : 'pointer'};">${esc(s.label)}</button>`;
+      }).join('')}</div>
+      ${cur.open ? '' : `<div style="font-size:0.75rem; opacity:0.7; margin-top:4px;">${esc(t('att_not_open', {}, 'The roll opens on the day.'))}</div>`}`;
+  }
+  async function markAtt(status) {
+    const mine = state, a = mine.att, ev = attCurrent();
+    const pid = mine.person && mine.person.personId;
+    if (!ev || !ev.open || a.busy || !pid) return;
+    const prev = ev.status || null, clear = prev === status;
+    ev.status = clear ? null : status;
+    a.busy = true;
+    drawAtt();
+    try {
+      const res = await mine.opts.auth.fetch(`/api/calendar/events/${ev.fhEventId}/attendance`, {
+        method: clear ? 'DELETE' : 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(clear ? { person_id: pid } : { person_id: pid, status }),
+      });
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}));
+        throw new Error(b.error || `HTTP ${res.status}`);
+      }
+      if (mine.opts.onChange) mine.opts.onChange('attendance', { eventId: ev.fhEventId, personId: pid, status: ev.status });
+    } catch (err) {
+      ev.status = prev;
+      if (state === mine) toast(`${t('att_failed', {}, 'Could not save attendance')}: ${err.message}`, true);
+    } finally {
+      a.busy = false;
+      if (state === mine) drawAtt();
+    }
+  }
+
   // ── Core parts (the same on every screen) ──────────────────────────
   // o: { auth, page (the full page: its header card is the identity),
   //      ownContact (the screen handed over its own 📇 button) }
@@ -639,6 +731,11 @@
         if (state && state.person && state.person.personId === tpid) draw();
       });
     }
+    if (p.personId && !state.att.asked) {
+      state.att.asked = true;
+      loadAtt();
+    }
+    drawAtt();
     if (p.personId && window.PersonStanding && !state.standingAsked) {
       state.standingAsked = true;
       const pid = p.personId;
@@ -664,6 +761,7 @@
           <button type="button" data-ps-close title="${esc(t('close', {}, 'Close (Esc)'))}" style="${hdrBtn}">✕</button>
         </div>
         <div class="ps-tabs" style="display:flex; gap:6px; flex-wrap:wrap; padding:4px 16px 10px; border-bottom:1px solid var(--border-color, #374151);"></div>
+        <div class="ps-att" style="display:none; padding:10px 16px; border-bottom:1px solid var(--border-color, #374151);"></div>
         <div class="ps-body" style="flex:1; overflow-y:auto; padding:14px 16px 60px; font-size:0.9rem;"></div>
       </div>`;
     el.addEventListener('click', (e) => {
@@ -672,6 +770,8 @@
       const tb = e.target.closest('[data-ps-tab]');
       if (tb) { state.tab = tb.getAttribute('data-ps-tab'); draw(); return; }
       if (!state) return;
+      const ab = e.target.closest('[data-ps-att]');
+      if (ab) { e.stopPropagation(); if (!ab.disabled) markAtt(ab.getAttribute('data-ps-att')); return; }
       const ctx = { auth: state.opts.auth, person: state.person, base: state.base, key: cardKey(state.base),
         redraw: draw, say: toast, onChange: state.opts.onChange };
       if ((window.PersonTodoTab && PersonTodoTab.handleClick(e, ctx)) || handleMovesClick(e, ctx) || handleCardClick(e, ctx)) e.stopPropagation();
@@ -679,11 +779,14 @@
     el.addEventListener('change', (e) => {
       const h = e.target.closest('.ps-health');
       if (h) { saveHealth(h); return; }
+      const pick = e.target.closest('[data-ps-att-event]');
+      if (pick) { e.stopPropagation(); if (state) { state.att.eventId = Number(pick.value) || 0; drawAtt(); } return; }
       if (state && handleCardChange(e, { auth: state.opts.auth, person: state.person, base: state.base,
           redraw: draw, say: toast, onChange: state.opts.onChange })) e.stopPropagation();
     });
     host.appendChild(el);
-    state = { opts, tab: TABS.includes(opts.tab) ? opts.tab : 'person', el, person: null };
+    state = { opts, tab: TABS.includes(opts.tab) ? opts.tab : 'person', el, person: null,
+      att: { list: null, eventId: Number(opts.eventId) || 0, busy: false, asked: false } };
     MOVES.ask = null;
     VOL.ask = 0;
     document.addEventListener('keydown', onKey);

@@ -33,7 +33,12 @@ Response MenuController::handleMenu(const Request& request) {
                 "       COALESCE(p.href, '') AS href, p.new_tab, p.download "
                 "  FROM menu_pages p JOIN menu_groups g ON g.code = p.group_code "
                 " WHERE p.is_active "
-                " ORDER BY g.sort_order, p.sort_order, p.code")) {
+                // 'named' pages (mig 1928): only the people menu_page_people lists.
+                "   AND (p.audience <> 'named' OR EXISTS ("
+                "        SELECT 1 FROM menu_page_people mp JOIN users u ON u.person_id = mp.person_id "
+                "         WHERE mp.page_code = p.code AND u.id = $1::bigint)) "
+                " ORDER BY g.sort_order, p.sort_order, p.code",
+                {std::to_string(bearerUserId(request))})) {
             nlohmann::json screens = nlohmann::json::parse(r["screens"].c_str(), nullptr, false);
             pages.push_back({
                 {"code", r["code"].c_str()}, {"group", r["group_code"].c_str()},

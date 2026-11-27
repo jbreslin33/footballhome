@@ -26,6 +26,7 @@ PersonSheetController::~PersonSheetController() = default;
 
 void PersonSheetController::registerRoutes(Router& router, const std::string& prefix) {
     router.get(prefix, [this](const Request& r) { return handleCard(r); });
+    router.get(prefix + "/attendance", [this](const Request& r) { return handleAttendance(r); });
     router.post(prefix + "/volunteer", [this](const Request& r) { return handleVolunteer(r); });
 }
 
@@ -45,6 +46,22 @@ Response PersonSheetController::handleCard(const Request& request) {
         return jsonOut(HttpStatus::OK, card);
     } catch (const std::exception& e) {
         std::cerr << "PersonSheetController::handleCard: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
+    }
+}
+
+Response PersonSheetController::handleAttendance(const Request& request) {
+    if (!requireBearer(request)) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    const long long userId = bearerUserId(request);
+    if (userId <= 0) return jsonError(HttpStatus::UNAUTHORIZED, "Unauthorized");
+    long long personId = 0, fhEventId = 0;
+    try { personId = std::stoll(request.getQueryParam("person_id")); } catch (...) { personId = 0; }
+    try { fhEventId = std::stoll(request.getQueryParam("fh_event_id")); } catch (...) { fhEventId = 0; }
+    if (personId <= 0) return jsonError(HttpStatus::BAD_REQUEST, "person_id required");
+    try {
+        return jsonOut(HttpStatus::OK, model_->attendance(personId, userId, fhEventId));
+    } catch (const std::exception& e) {
+        std::cerr << "PersonSheetController::handleAttendance: " << e.what() << std::endl;
         return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, "Database error");
     }
 }

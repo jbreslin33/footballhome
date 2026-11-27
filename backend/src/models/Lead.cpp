@@ -217,6 +217,31 @@ std::vector<Lead> Lead::listAll(const std::string& formStatus) {
     return out;
 }
 
+nlohmann::json Lead::newWaiting() {
+    auto db = Database::getInstance();
+    auto rs = db->query(
+        "SELECT l.id, COALESCE(l.name, '') AS name, l.form_id, "
+        "       to_char(l.created_at AT TIME ZONE 'UTC', "
+        "               'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') AS created_at "
+        "  FROM leads l "
+        " WHERE l.form_id IN (SELECT form_id FROM lead_forms) "
+        "   AND (l.status_override = 'new' "
+        "        OR (l.status_override IS NULL "
+        "            AND l.dead_at IS NULL AND l.converted_at IS NULL "
+        "            AND NOT EXISTS (SELECT 1 FROM lead_contacts lc WHERE lc.lead_id = l.id))) "
+        " ORDER BY l.created_at DESC, l.id DESC");
+    nlohmann::json out = nlohmann::json::array();
+    for (const auto& row : rs) {
+        out.push_back({
+            {"id",         row["id"].as<int>()},
+            {"name",       row["name"].c_str()},
+            {"form_id",    row["form_id"].c_str()},
+            {"created_at", row["created_at"].is_null() ? "" : row["created_at"].c_str()},
+        });
+    }
+    return out;
+}
+
 std::optional<Lead> Lead::findById(int leadId) {
     auto db = Database::getInstance();
     auto rs = db->query(kSelectById, { std::to_string(leadId) });

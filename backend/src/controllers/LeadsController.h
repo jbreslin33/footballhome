@@ -22,6 +22,9 @@
 //                                          existing callers (e.g. the
 //                                          LeagueApps-sync sidecar) are
 //                                          unaffected.
+//   GET    /api/leads/new                 {leads:[{id,name,form_id,created_at}]}
+//                                          new + never contacted on a live
+//                                          ad's form — the 🚦 band's box
 //   POST   /api/leads/:id/contact         log a text/email/whatsapp/call send
 //   GET    /api/leads/:id/contacts        recent touches for one lead (audit)
 //   DELETE /api/leads/:id/contacts/:cid   remove an accidental touch (+ siblings)
@@ -76,6 +79,9 @@ private:
     // whatever was last cached. The handler reads exclusively from
     // Postgres; the LaSyncMap param is unused, marked (void).
     Response handleList             (const Request& request, const LaSyncMap& sync);
+    // GET /api/leads/new — 🎯 the 🚦 band's "New leads" box (mig 1646).
+    // DB only, no LA sync: it runs on every app open.
+    Response handleNewWaiting       (const Request& request);
     Response handleLogContact       (const Request& request);
     Response handleListContacts     (const Request& request);
     Response handleDeleteContact    (const Request& request);

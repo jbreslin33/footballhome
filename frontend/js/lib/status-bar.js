@@ -66,7 +66,9 @@ class StatusBar {
     const live = [...this.items.entries()]
       .filter(([code]) => this.rules.has(code))   // no rule row = off
       .sort((a, b) => this.rules.get(a[0]).order - this.rules.get(b[0]).order);
-    const sev = (code) => this.rules.get(code).severity;
+    // A box may carry its own severity (🆕 onboarding report: 'info' while all
+    // green / everyone onboarded, so the report never turns the band red).
+    const sev = (code) => (this.items.get(code) || {}).severity || this.rules.get(code).severity;
     // The two RSVP items read as one box: the total, how many are soon.
     const soon = this.items.get('rsvp_soon'), later = this.items.get('rsvp_open');
     const total = (soon ? Number(soon.n) || 0 : 0) + (later ? Number(later.n) || 0 : 0);
@@ -89,6 +91,8 @@ class StatusBar {
       todo:         (d) => [`✅ To do — ${d.list}`, 'Open ›'],
       welcome_owed: (d) => [`👋 Welcome — ${d.n} new: ${d.list}`, 'Welcome ›'],
       prorate_owed: (d) => [`💵 Prorate — ${d.n} new to bill: ${d.list}`, 'Bill ›'],
+      leads_new:    (d) => [`🎯 New leads — ${d.n} waiting: ${d.list}`, 'Contact ›'],
+      new_members:  (d) => [d.ok ? `🆕 Onboarding — all ${d.total} new members onboarded ✓` : `🆕 Onboarding — ${d.left} of ${d.total} not onboarded: ${d.list}`, 'Onboard ›'],
     };
     const caret = (code, text) => (this.openCode === code ? String(text).replace('▾', '▴') : text);
     const pill = (code, text) => `<button type="button" class="sb-box-go" data-sb-chip="${esc(code)}">${esc(caret(code, text))}</button>`;
@@ -96,7 +100,7 @@ class StatusBar {
       const tokens = { ...d, hours: this.windowHours(code), total, stake };
       const [lfb, bfb] = (FB[code] || (() => [code, '›']))(tokens);
       const rsvp = code === 'rsvp_soon' || code === 'rsvp_open';
-      const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}`, tokens, lfb);
+      const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}${code === 'new_members' && d.ok ? '_ok' : ''}`, tokens, lfb);
       const actTier = code === 'chat_unread' && !d.n ? 'act_chat_read' : `act_${code}`;
       const btn = bfb ? StatusBar.copy(actTier, tokens, bfb) : '';
       // A choice reads as one: [Pay now ›] or [🙋 Volunteer ›] (owner 11/18 "Pay now OR Volunteer").

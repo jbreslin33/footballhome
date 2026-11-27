@@ -74,6 +74,7 @@ class MainMenu {
       case 'everyone':  return true;
       case 'coach':     return !!(a.coach || a.admin);
       case 'marketing': return !!a.marketing;
+      case 'named':     return true;   // mig 1928: /api/menu already left it out for anyone not listed
       default:          return !!a.admin;
     }
   }
@@ -221,7 +222,7 @@ class MainMenu {
       // On their Calendar the 📅 pill would go nowhere, so it is left out;
       // 👤 Account (menuBarAccount, owner 11/24) rides every page.
       const home = (acct.homeScreens || []).includes(screen);
-      const codes = home ? [] : (acct.menuBarPages || []);
+      const codes = (acct.menuBarPages || []).filter(c => !(home && c === 'calendar'));
       const mine = ((MainMenu._data && MainMenu._data.pages) || [])
         .filter(p => codes.includes(p.code) && MainMenu._sees(p))
         .sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
@@ -229,7 +230,9 @@ class MainMenu {
       const acctPill = acct.menuBarAccount
         ? pill('data-menu-account', lbl(...split(copy('account_pill', '👤 Account'))), onAccount, true) : '';
       if (!mine.length && !acctPill) return hide();
-      host.innerHTML = row(mine.map(p => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), !onAccount, true)).join('') + acctPill);
+      // Lit: the page you are on; else (inside an event) the first one, the Calendar.
+      const here = mine.find(p => (p.screens || []).includes(screen));
+      host.innerHTML = row(mine.map((p, i) => pill(`data-menu-page="${esc(p.code)}"`, lbl(p.icon, p.label), here ? p === here : (!onAccount && !home && i === 0), true)).join('') + acctPill);
       host.style.display = 'block';
       MainMenu._wire(host);
       return;

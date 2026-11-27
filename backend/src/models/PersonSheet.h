@@ -28,6 +28,18 @@ public:
     //                 status = squad_statuses.code, else inactive / plays }
     nlohmann::json card(long long personId, const std::string& laUserId, long long viewerUserId);
 
+    // ✅ The sheet's mini attendance (owner 2026-11-21: "it should have a
+    // mini attendance also in the popup for that day and all days really
+    // but that event should default to"): the person's events the viewer
+    // may take the roll on (fh_event_viewer_tier coach / admin; the person
+    // on the event's roster, staff or invites — the attendance POST's own
+    // rule), the last 90 days through today, newest first, plus fhEventId
+    // (the event the sheet was opened from) whatever its day.  Marks are
+    // written by POST|DELETE /api/calendar/events/:id/attendance.
+    //   { events: [{ fhEventId, kind, category, opponent, startsAt, status,
+    //                open }] }      open = its day has come (club time)
+    nlohmann::json attendance(long long personId, long long viewerUserId, long long fhEventId);
+
     // 🙋 on = a club_volunteers row ($0 dues, no notices); off removes it.
     void setVolunteer(long long personId, bool on);
 };

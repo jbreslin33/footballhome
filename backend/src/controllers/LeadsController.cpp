@@ -353,6 +353,7 @@ void LeadsController::registerRoutes(Router& router, const std::string& prefix) 
         });
     router.post(prefix + "/sync",             [this](const Request& r){ return handleSync            (r); });
     router.post(prefix + "/refresh-ad-status",[this](const Request& r){ return handleRefreshAdStatus (r); });
+    router.get (prefix + "/new",              [this](const Request& r){ return handleNewWaiting      (r); });
     router.get (prefix + "/contact-stats",    [this](const Request& r){ return handleContactStats    (r); });
     router.get (prefix + "/next-pickup",      [this](const Request& r){ return handleNextPickup      (r); });
     // /unjoined-members renders the "Members" section which is 100% LA
@@ -627,6 +628,22 @@ Response LeadsController::handleLogContact(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "Error logging contact: " << e.what() << std::endl;
         return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to log contact");
+    }
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/leads/new — 🎯 the 🚦 band's "New leads" box (mig 1646).
+// Response: {"leads":[{"id":1,"name":"…","form_id":"…","created_at":"…"}]}
+// ────────────────────────────────────────────────────────────────────────────
+Response LeadsController::handleNewWaiting(const Request& request) {
+    // 403 for anyone else — never 401, that would log a player out.
+    if (!requireAdminLevel(request, {"club", "super", "marketing"})) return errJson(denialStatus(request), "Unauthorized");
+    try {
+        nlohmann::json body = {{"leads", Lead::newWaiting()}};
+        return errOk(HttpStatus::OK, body.dump());
+    } catch (const std::exception& e) {
+        std::cerr << "[GET /api/leads/new] " << e.what() << std::endl;
+        return errJson(HttpStatus::INTERNAL_SERVER_ERROR, "Failed to fetch new leads");
     }
 }
 

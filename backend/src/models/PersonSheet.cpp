@@ -94,6 +94,46 @@ json PersonSheet::card(long long personId, const std::string& laUserId, long lon
     return out;
 }
 
+json PersonSheet::attendance(long long personId, long long viewerUserId, long long fhEventId) {
+    auto* db = Database::getInstance();
+    json events = json::array();
+    // Dates first (the cheap cut), then who is on it, then who may mark.
+    for (const auto& r : db->query(
+             "WITH day AS (SELECT (date_trunc('day', now() AT TIME ZONE 'America/New_York') + interval '1 day') "
+             "                    AT TIME ZONE 'America/New_York' AS ends), "
+             "     ev AS (SELECT fe.id, fe.kind, fe.category, fe.opponent, ge.starts_at, "
+             "                   ge.starts_at < (SELECT ends FROM day) AS open "
+             "              FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
+             "             WHERE ge.deleted_at IS NULL AND COALESCE(ge.status, '') <> 'cancelled' "
+             "               AND ((ge.starts_at >= now() - interval '90 days' AND ge.starts_at < (SELECT ends FROM day)) "
+             "                    OR fe.id = $3::bigint)) "
+             "SELECT ev.id, ev.kind, ev.category, ev.opponent, ev.open, a.status, "
+             "       to_char(ev.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS starts_at "
+             "  FROM ev LEFT JOIN fh_event_attendance a ON a.fh_event_id = ev.id AND a.person_id = $1::int "
+             " WHERE (EXISTS (SELECT 1 FROM fh_event_teams fet "
+             "                  JOIN team_persons tp ON tp.team_id = fet.team_id AND tp.removed_at IS NULL "
+             "                 WHERE fet.fh_event_id = ev.id AND tp.person_id = $1::int) "
+             "        OR EXISTS (SELECT 1 FROM fh_event_teams fet "
+             "                     JOIN team_coaches tc ON tc.team_id = fet.team_id AND tc.ended_at IS NULL "
+             "                     JOIN coaches co ON co.id = tc.coach_id "
+             "                    WHERE fet.fh_event_id = ev.id AND co.person_id = $1::int) "
+             "        OR fh_event_invited(ev.id, $1::int)) "
+             "   AND fh_event_viewer_tier(ev.id, (SELECT u.person_id FROM users u WHERE u.id = $2::int)) <> 'player' "
+             " ORDER BY (ev.id = $3::bigint) DESC, ev.starts_at DESC LIMIT 60",
+             {std::to_string(personId), std::to_string(viewerUserId), std::to_string(fhEventId)})) {
+        events.push_back({
+            {"fhEventId", r["id"].as<long long>()},
+            {"kind", textOrNull(r["kind"])},
+            {"category", textOrNull(r["category"])},
+            {"opponent", textOrNull(r["opponent"])},
+            {"startsAt", textOrNull(r["starts_at"])},
+            {"status", textOrNull(r["status"])},
+            {"open", r["open"].as<bool>()},
+        });
+    }
+    return {{"personId", personId}, {"events", events}};
+}
+
 void PersonSheet::setVolunteer(long long personId, bool on) {
     auto* db = Database::getInstance();
     if (on) {

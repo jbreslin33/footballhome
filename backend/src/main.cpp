@@ -42,12 +42,13 @@
 #include "controllers/PayReminderLogController.h"
 #include "controllers/WelcomeController.h"
 #include "controllers/ProrateController.h"
+#include "controllers/NewMemberController.h"
 #include "controllers/RsvpBoardController.h"
 #include "controllers/PersonHealthController.h"
 #include "controllers/PersonTeamsController.h"
 #include "controllers/PersonSheetController.h"
-#include "controllers/PersonSeesController.h"
 #include "controllers/PersonTodoController.h"
+#include "controllers/PersonSeesController.h"
 #include "controllers/PracticeCriteriaController.h"
 #include "controllers/JobsController.h"
 #include "controllers/CoachScheduleController.h"
@@ -67,6 +68,7 @@
 #include "controllers/FinancesController.h"
 #include "controllers/FilmController.h"
 #include "controllers/PyramidController.h"
+#include "controllers/WeatherController.h"
 #include "controllers/TicketsController.h"
 #include "services/TicketOrderSync.h"
 #include "controllers/CarpoolController.h"
@@ -74,6 +76,7 @@
 #include "controllers/TacticalLiveController.h"
 #include "controllers/FinesController.h"
 #include "controllers/VolunteerController.h"
+#include "controllers/CoachingBooksController.h"
 #include "controllers/ProposalsController.h"
 #include "controllers/OnboardingController.h"
 #include "controllers/LeagueEntryController.h"
@@ -160,14 +163,15 @@ private:
     std::shared_ptr<PayReminderLogController> pay_reminder_log_controller_;
     std::shared_ptr<WelcomeController> welcome_controller_;
     std::shared_ptr<ProrateController> prorate_controller_;
+    std::shared_ptr<NewMemberController> new_member_controller_;
     std::shared_ptr<RsvpBoardController> rsvp_board_controller_;
     std::shared_ptr<PersonHealthController> person_health_controller_;
     std::shared_ptr<PersonTeamsController> person_teams_controller_;
     std::shared_ptr<PersonSheetController> person_sheet_controller_;
+    std::shared_ptr<PersonTodoController> person_todo_controller_;
     std::shared_ptr<PersonSeesController> person_sees_controller_;
     std::shared_ptr<PracticeCriteriaController> practice_criteria_controller_;
     std::shared_ptr<JobsController> jobs_controller_;
-    std::shared_ptr<PersonTodoController> person_todo_controller_;
     std::shared_ptr<CoachScheduleController> coach_schedule_controller_;
     std::shared_ptr<AwardsController> awards_controller_;
     std::shared_ptr<KitBoardController> kit_board_controller_;
@@ -185,12 +189,14 @@ private:
     std::shared_ptr<FinancesController> finances_controller_;
     std::shared_ptr<FilmController> film_controller_;
     std::shared_ptr<PyramidController> pyramid_controller_;
+    std::shared_ptr<WeatherController> weather_controller_;
     std::shared_ptr<TicketsController> tickets_controller_;
     std::shared_ptr<CarpoolController> carpool_controller_;
     std::shared_ptr<MatchPlanController> match_plan_controller_;
     std::shared_ptr<TacticalLiveController> tactical_live_controller_;
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<VolunteerController> volunteer_controller_;
+    std::shared_ptr<CoachingBooksController> coaching_books_controller_;   // 📚 mig 1928
     std::shared_ptr<ProposalsController> proposals_controller_;
     std::shared_ptr<OnboardingController> onboarding_controller_;
     std::shared_ptr<LeagueEntryController> league_entry_controller_;
@@ -284,16 +290,17 @@ public:
         pay_reminder_log_controller_ = std::make_shared<PayReminderLogController>();
         welcome_controller_ = std::make_shared<WelcomeController>();
         prorate_controller_ = std::make_shared<ProrateController>();
+        new_member_controller_ = std::make_shared<NewMemberController>();
         rsvp_board_controller_ = std::make_shared<RsvpBoardController>();
         person_health_controller_ = std::make_shared<PersonHealthController>();
         person_teams_controller_ = std::make_shared<PersonTeamsController>();
         person_sheet_controller_ = std::make_shared<PersonSheetController>();
+        person_todo_controller_ = std::make_shared<PersonTodoController>();
         person_sees_controller_ = std::make_shared<PersonSeesController>();
         practice_criteria_controller_ = std::make_shared<PracticeCriteriaController>();
         jobs_controller_ = std::make_shared<JobsController>();
         coach_schedule_controller_ = std::make_shared<CoachScheduleController>();
         awards_controller_ = std::make_shared<AwardsController>();
-        person_todo_controller_ = std::make_shared<PersonTodoController>();
         kit_board_controller_ = std::make_shared<KitBoardController>();
         field_plan_controller_ = std::make_shared<FieldPlanController>();
         formation_tactics_controller_ = std::make_shared<FormationTacticsController>();
@@ -309,12 +316,14 @@ public:
         finances_controller_ = std::make_shared<FinancesController>();
         film_controller_ = std::make_shared<FilmController>();
         pyramid_controller_ = std::make_shared<PyramidController>();
+        weather_controller_ = std::make_shared<WeatherController>();
         tickets_controller_ = std::make_shared<TicketsController>();
         carpool_controller_ = std::make_shared<CarpoolController>();
         match_plan_controller_ = std::make_shared<MatchPlanController>();
         tactical_live_controller_ = std::make_shared<TacticalLiveController>();
         fines_controller_ = std::make_shared<FinesController>();
         volunteer_controller_ = std::make_shared<VolunteerController>();
+        coaching_books_controller_ = std::make_shared<CoachingBooksController>();
         proposals_controller_ = std::make_shared<ProposalsController>();
         onboarding_controller_ = std::make_shared<OnboardingController>();
         league_entry_controller_ = std::make_shared<LeagueEntryController>();
@@ -639,6 +648,8 @@ private:
         router_.useController("/api/welcomes", welcome_controller_);
         // 💵 band Prorate box (mig 1603): new members billed only the $1 fee.
         router_.useController("/api/prorates", prorate_controller_);
+        // 🆕 band onboarding report + #onboarding 🆕 New members (mig 1896).
+        router_.useController("/api/new-members", new_member_controller_);
         // #rsvps board (owner 2026-09-17): RSVP standing per player + tracked reminders.
         router_.useController("/api/rsvp-board", rsvp_board_controller_);
         // Health dropdown on the #teams cards (owner 2026-10-02, mig 510): injuries excuse RSVPs + fines.
@@ -646,6 +657,7 @@ private:
         router_.useController("/api/person-teams", person_teams_controller_);
         // ⋯ player sheet: the same card from every screen (owner 11/20).
         router_.useController("/api/person-sheet", person_sheet_controller_);
+        router_.useController("/api/person-todos", person_todo_controller_);
         router_.useController("/api/person-sees", person_sees_controller_);  // 👁 SEES + 📋 ROSTERS (mig 1435)
         router_.useController("/api/practice-criteria", practice_criteria_controller_);
         // #jobs (mig 625): auto-assigned event jobs, sticky homes, default-done check-off.
@@ -654,7 +666,6 @@ private:
         router_.useController("/api/coach-schedule", coach_schedule_controller_);
         // #awards (mig 800): All-Stars to the league director + club awards per team, per season.
         router_.useController("/api/awards", awards_controller_);
-        router_.useController("/api/person-todos", person_todo_controller_);
         // #kit board (owner 2026-09-18): uniform numbers + kit handed out (mig 373).
         router_.useController("/api/kit-board", kit_board_controller_);
         router_.useController("/api/field-plan", field_plan_controller_);
@@ -677,6 +688,7 @@ private:
         router_.useController("/api/fines", fines_controller_);
         // 🙋 volunteer shifts (mig 1222): approve / decline a player's pick.
         router_.useController("/api/volunteer", volunteer_controller_);
+        router_.useController("/api/coaching-books", coaching_books_controller_);   // 📚 owner only
         router_.useController("/api/proposals", proposals_controller_);   // 📑 #proposals (mig 1572)
         router_.useController("/api/onboarding", onboarding_controller_);
         router_.useController("/api/league-entries", league_entry_controller_);   // 📝 mig 1746
@@ -686,6 +698,8 @@ private:
         router_.useController("/api/film", film_controller_);
         // #apsl (mig 819): the APSL pyramid — conferences, Tier 2 affiliates, live tables, totals.
         router_.useController("/api/pyramid", pyramid_controller_);
+        // ⛅ Weather (mig 1837): the forecast per facility and per event.
+        router_.useController("/api/weather", weather_controller_);
         // 🎟 Tickets (mig 1886): gate, ticket page, LA ticket orders.
         router_.useController("/api/tickets", tickets_controller_);
         router_.useController("/api/schedule-links", schedule_links_controller_);

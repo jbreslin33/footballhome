@@ -156,10 +156,6 @@ class EventScreen extends Screen {
       const parts = String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim().split(/\s+/);
       return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
     };
-    // Staff: a name is a tap → the person sheet (✅ attendance from the day on,
-    // 📇 contact) — owner 11/18 "if we click a player during start of practice
-    // or game it adds in attendance option".
-    const tap = (r) => this._cardTapAttr(r);
     // The box carries the whole name (owner 11/19 "put their whole name").
     const full = (r) => String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim();
     const blocks = new Map(teams.map(t => [Number(t.id), { team: t, rows: [] }]));
@@ -216,11 +212,14 @@ class EventScreen extends Screen {
                  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
         <div style="font-size:12px; text-transform:uppercase; letter-spacing:5px; font-weight:700; margin-bottom:8px;">${esc(cp('card_title', 'LIGHTHOUSE · {kind}', { kind: this._cardKindWord() }))}</div>
         <div style="font-size:15px; font-weight:600; line-height:1.3; color:rgba(255,255,255,0.95); margin-bottom:6px;">${esc(when)}${ev.location ? ` · ${esc(ev.location)}` : ''}${this._cardSetting() ? ` · ${esc(cp(indoor ? 'card_indoor' : 'card_outdoor', indoor ? 'Indoor' : 'Outdoor'))}` : ''}</div>
+        <div data-wx-event="${ev.fh_event_id}" style="margin-bottom:6px; color:#fff;"></div>
         ${this._availOnGraphic() ? `<div style="margin:4px 0 8px;">${this._myAvailBlockHtml()}</div>` : ''}
         ${this._contactPillHtml()}
         ${pitch}
-        <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(cp('card_total', '{n} going', { n: players.length }))}</div>
-        ${coaches.length ? `<div style="font-size:14px; font-weight:600; color:rgba(255,255,255,0.9); margin-top:2px;">${cp('card_coaches', 'Coaches: {names}', { names: '\u0000' }).split('\u0000').map(esc).join(coaches.map(r => `<span ${tap(r)}>${esc(short(r))}</span>`).join(', '))}</div>` : ''}
+        <div style="margin-top:8px; font-size:13px; letter-spacing:3px; color:#4ade80; font-weight:700; text-transform:uppercase;">${esc(coaches.length
+          ? cp('card_total_both', '{count} going', { count: this._playersAndCoaches(players.length, coaches.length) })
+          : cp('card_total', '{n} going', { n: players.length }))}</div>
+        ${this._cardCoachesLine(coaches, '#4ade80')}
         ${this._cardOutHtml()}
       </div>`;
   }
@@ -275,8 +274,38 @@ class EventScreen extends Screen {
   }
   _boxAttOpen() { return this._eventDayReached(); }
 
+  // "15 players and 3 coaches" — a list's count when it holds coaches too
+  // (owner 11/23 "x players and x coaches going … not going etc"); the
+  // player number never includes a coach.  Plain text, not escaped.
+  _playersAndCoaches(nPlayers, nCoaches) {
+    const cp = (tier, tokens) => (window.MessageCopy && MessageCopy.block('event_center', tier, tokens)) || '';
+    const word = (n, one, many, fbOne, fbMany) => n === 1 ? (cp(one) || fbOne) : (cp(many, { n }) || `${n} ${fbMany}`);
+    const players = word(nPlayers, 'n_player', 'n_players', '1 player', 'players');
+    const coaches = word(nCoaches, 'n_coach', 'n_coaches', '1 coach', 'coaches');
+    return cp('sec_count_both', { players, coaches }) || `${players} and ${coaches}`;
+  }
+  // The card's coaches by answer: { going, noResponse, notGoing }.
+  _cardCoaches() {
+    const coaches = (Array.isArray(this.ev && this.ev.rsvps) ? this.ev.rsvps : []).filter(r => r && r.is_coach);
+    return { going: coaches.filter(r => r.response === 'yes'), notGoing: coaches.filter(r => r.response === 'no'),
+             noResponse: coaches.filter(r => r.response !== 'yes' && r.response !== 'no') };
+  }
+  // "Coaches: Luke B., Victor B." — the last line of a card list (each name
+  // a tap → the person sheet for staff).
+  _cardCoachesLine(list, color = 'rgba(255,255,255,0.9)') {
+    if (!list.length) return '';
+    const esc = (t) => this.escapeHtml(String(t == null ? '' : t));
+    const short = (r) => {
+      const parts = String(r.name || [r.first_name, r.last_name].filter(Boolean).join(' ') || '?').trim().split(/\s+/);
+      return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : parts[0];
+    };
+    const tpl = (window.MessageCopy && MessageCopy.block('event_center', 'card_coaches', { names: '\u0000' })) || 'Coaches: \u0000';
+    return `<div style="font-size:14px; font-weight:600; color:${color}; margin-top:2px;">${tpl.split('\u0000').map(esc).join(list.map(r => `<span ${this._cardTapAttr(r)}>${esc(short(r))}</span>`).join(', '))}</div>`;
+  }
+
   // – No response / ✗ Not going under the card, as the game card has them
-  // under its substitutes (owner 11/18 "similar to game").
+  // under its substitutes (owner 11/18 "similar to game").  Each list ends
+  // with its coaches and counts them beside the players (owner 11/23).
   _cardOutHtml() {
     const out = this._rsvpOutLists();
     // Those who came anyway are on the pitch now (_cardCame), not here.
@@ -289,11 +318,13 @@ class EventScreen extends Screen {
     const last = (r) => String(nameOf(r)).trim().split(/\s+/).slice(-1)[0];
     // Same colours as the game card, names too (owner 11/18): going green
     // (the count line), no response yellow (owner 11/18 "no response should be yellow"), not going red.
-    const row = (list, tier, fb, c) => list.length ? `
+    const row = (list, tier, fb, c, coaches = []) => (list.length || coaches.length) ? `
         <div style="margin-top:8px;">
-          <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${list.length})`)}</div>
-          <div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${[...list].sort((a, b) => last(a).localeCompare(last(b))).map(r => { const t = this._cardTapAttr(r); return t ? `<span ${t}>${this.escapeHtml(nameOf(r))}</span>` : this.escapeHtml(nameOf(r)); }).join(', ')}</div>
+          <div style="font-size:13px; letter-spacing:3px; color:${c}; font-weight:700; text-transform:uppercase;">${this.escapeHtml(`${cp(tier, fb)} (${coaches.length ? this._playersAndCoaches(list.length, coaches.length) : list.length})`)}</div>
+          ${list.length ? `<div style="font-size:14px; font-weight:600; line-height:1.3; color:${c}; margin-top:2px;">${[...list].sort((a, b) => last(a).localeCompare(last(b))).map(r => { const t = this._cardTapAttr(r); return t ? `<span ${t}>${this.escapeHtml(nameOf(r))}</span>` : this.escapeHtml(nameOf(r)); }).join(', ')}</div>` : ''}
+          ${this._cardCoachesLine(coaches, c)}
         </div>` : '';
+    const coaches = this._cardCoaches();
     // 🪑 Reserves on the graphic too (owner 11/19 "dont hide anythng" →
     // "i cant see it on gprhic"): the event's Reserve rows (ev.inactive
     // standby, unanswered) + never-answered Regulars, as the list below has
@@ -307,7 +338,7 @@ class EventScreen extends Screen {
     const reserves = inactive.filter(r => r.standby && r.response !== 'no').concat(out.notChasing);
     const inactiveOnly = inactive.filter(r => !r.standby);
     const staff = this.viewer.eventSection('inactive') || this.viewer.eventSection('not_chasing');
-    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15') + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171')
+    return row(out.noResponse, 'sec_noresp', '– No response', '#facc15', coaches.noResponse) + row(out.notGoing, 'sec_notgoing', '✗ Not going', '#f87171', coaches.notGoing)
       // 🩹 Injured for everyone, on every event's graphic (owner 11/20 "we need
       // to have injured players list on the graphic for all events", mig 1642):
       // no answer of their own → here; Going / Not going → that list for this
@@ -1386,16 +1417,18 @@ class EventScreen extends Screen {
   // from").  Same tabs as every screen; this event adds to two of them:
   //   📇 Contact — the normal Contact popup, this event's RSVP way in first
   //               (_eventContactCfg) and the line saying what they owe;
-  //   📅 Activity — ✅ attendance for this event, from its day on.
-  // It opens on what matters now: Contact when they owe an answer, Activity
-  // while the roll is open, else Person.
+  //   ✅ the sheet's mini attendance starts on this event (eventId) — on
+  //               every tab, so a – No response or ✗ Not going who showed up
+  //               is one tap from his roll (owner 11/21); a mark made there
+  //               comes back through onChange and repaints this page.
+  // It opens on what matters now: Contact when they owe an answer, else Person.
   _openPersonSheet(personId, tab = null) {
     if (!window.PlayerSheet || !personId) return;
     const pid = Number(personId);
-    const start = tab || (this._eventContactNeed(pid) && this.viewer.canContact() ? 'contact'
-      : this._attendanceTop(pid).length ? 'activity' : 'person');
-    PlayerSheet.open({ host: this.element, auth: this.auth, tab: start,
-      resolve: () => this._sheetPerson(pid), extras: () => this._sheetExtras(pid) });
+    const start = tab || (this._eventContactNeed(pid) && this.viewer.canContact() ? 'contact' : 'person');
+    PlayerSheet.open({ host: this.element, auth: this.auth, tab: start, eventId: this.eventId() || 0,
+      resolve: () => this._sheetPerson(pid), extras: () => this._sheetExtras(pid),
+      onChange: (what, d) => { if (what === 'attendance') this._sheetAttendanceSaved(d); } });
     // A Reserve / Inactive's RSVP link is the 🎟 invite: the candidates load
     // once (the 👥 pill does the same), then the sheet redraws.
     if (this.ev && !this.invites && this._canInvite() && (this.ev.inactive || []).some(x => x && Number(x.person_id) === pid)) {
@@ -1420,20 +1453,18 @@ class EventScreen extends Screen {
       out.contact = { flag: !!need, html: `<div style="font-size:0.82rem; margin:0 0 8px; color:${need ? '#f0abfc' : 'var(--text-muted)'};">${esc(note)}</div>
         <div style="display:flex;">${ContactPopup.button({ ...cfg, key: `${cfg.key}:sheet`, big: true })}</div>` };
     }
-    const top = this._attendanceTop(pid);
-    if (top.length) {
-      out.activity = { html: `<div style="font-size:0.78rem; font-weight:800; margin:0 0 6px;">${esc(this._attendanceTopLabel())} · ${esc(what)}</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">${EventScreen.ATTENDANCE.map((s, i) => {
-          const t = top[i];
-          return `<button type="button" data-ec-sheet-att="${s.id}" data-person-id="${pid}" data-active="${t.active ? '1' : '0'}" title="${esc(t.title)}"
-              ${this.saving.has(`att:${pid}`) ? 'disabled ' : ''}style="flex:1 1 0; min-width:64px; padding:8px 6px; border-radius:8px; border:2px solid ${s.color};
-              background:${t.active ? s.color : 'transparent'}; color:${t.active ? '#fff' : s.color}; font-weight:800; cursor:pointer;">${esc(s.label)}</button>`;
-        }).join('')}</div>` };
-    }
     return out;
   }
   // The sheet's 📇 config — Game Center swaps in its own for lineup players.
   _sheetContactCfg(pid) { return this._eventContactCfg(pid); }
+  // The sheet's mini attendance saved a mark: this event's → the roll here
+  // (boxes, tallies, who came without saying Going) follows it.
+  _sheetAttendanceSaved(d) {
+    if (!d || !this.att || Number(d.eventId) !== Number(this.eventId())) return;
+    const pid = Number(d.personId);
+    this.att.roster.set(pid, { ...(this.att.roster.get(pid) || { person_id: pid }), status: d.status || null });
+    this._render();
+  }
   _sheetRefresh() { if (window.PlayerSheet && PlayerSheet.isOpen && PlayerSheet.isOpen()) PlayerSheet.refresh(); }
 
   // ✅ Attendance pills for a player sheet (owner 11/18 "if we click a player
@@ -1989,13 +2020,7 @@ class EventScreen extends Screen {
              : { personId: Number(pid), firstName: '', lastName: '', returnTo: 'event-center' };
   }
   // A ⋯ tap on a card (not one inside the open sheet) → the sheet.
-  // ✅ inside the open sheet (its 📅 Activity part) → the same save as a P tap.
   _sheetClick(e) {
-    const att = e.target.closest && e.target.closest('.player-sheet [data-ec-sheet-att]');
-    if (att) {
-      if (!att.disabled) this._markAttendance(Number(att.dataset.personId), att.dataset.ecSheetAtt, att.dataset.active === '1');
-      return true;
-    }
     const btn = e.target.closest && e.target.closest('[data-player-sheet]');
     if (!btn || btn.closest('.player-sheet') || !window.PlayerSheet) return false;
     const pid = Number(btn.dataset.playerSheet);
@@ -2395,9 +2420,10 @@ class EventScreen extends Screen {
   // everything a coach does to that player here — the RSVP override (club
   // admins, can_set_rsvp), the group swatches (practice groups / pickup
   // teams take the place of a game's starters and bench), attendance
-  // P/A/L/E, and on No response the reminder buttons.  Coaches get their
-  // own section with the same cards and reminders, never in a player count
-  // (owner 2026-10-06, 2026-11-02).
+  // P/A/L/E, and on No response the reminder buttons.  Coaches close the
+  // section of their answer with the same cards and reminders, counted
+  // beside the players, never in the player count (owner 2026-10-06,
+  // 2026-11-02, 2026-11-23).
   // { unplacedOnly }: just the game's ⚠️ Going · Not placed yet block
   // (Game Center draws it atop ⚔️ Starters & Bench too, owner 11/11).
   _comingHtml({ unplacedOnly = false } = {}) {
@@ -2514,15 +2540,29 @@ class EventScreen extends Screen {
     // "N present" only once attendance can be taken (event day on).
     const presentAside = (list) => this.att && this._eventDayReached() ? `<span style="color:#22c55e;">${present(list)} present</span>` : '';
     const gc = (label, list) => this._groupContactHtml(`sec:${String(label).replace(/<[^>]*>/g, '')}`, label, list);
-    const section = (label, list, opts = {}) => list.length
-      ? this.cardSectionHtml(label, list.length, grid(list, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') }) : '';
+    // Coaches sit at the end of the answer section they belong to (owner
+    // 11/23 "we need coaches included in players sections at end section.
+    // Coaches: xx … x players and x coaches going, x players and x coaches
+    // not going etc"): opts.coaches = that section's coaches, drawn under
+    // their own small heading after the players; the section's count names
+    // both, the player number never includes a coach.
+    const countOf = (list, cl) => cl.length ? this.escapeHtml(this._playersAndCoaches(list.length, cl.length)) : list.length;
+    const coachTail = (cl, opts = {}) => cl.length
+      ? `<div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:10px 0 4px;">${L('sec_coaches', '🧑‍🏫 Coaches')} (${cl.length})</div>${opts.coachTop || ''}${grid(cl, opts.coachOpts || {})}` : '';
+    const bodyOf = (list, cl, opts) => (list.length ? grid(list, opts) : '') + coachTail(cl, opts);
+    const section = (label, list, opts = {}) => {
+      const cl = opts.coaches || [];
+      if (!list.length && !cl.length) return '';
+      return this.cardSectionHtml(label, countOf(list, cl), bodyOf(list, cl, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') });
+    };
     // Folds keep their open/closed state across the 15s refresh and a
     // reminder's re-render (as Game Center's do).
     const fold = (key, label, list, opts = {}) => {
-      if (!list.length) return '';
+      const cl = opts.coaches || [];
+      if (!list.length && !cl.length) return '';
       // Open unless you closed it (owner 11/19 "dont hide anythng").
       const isOpen = this.folds.has(key) ? this.folds.get(key) : true;
-      return this.cardFoldHtml('data-ec-fold', key, isOpen, label, list.length, grid(list, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') });
+      return this.cardFoldHtml('data-ec-fold', key, isOpen, label, countOf(list, cl), bodyOf(list, cl, opts), { aside: presentAside(list), top: gc(label, list) + (opts.top || '') });
     };
 
     // A yes from someone over the dues line (dues_eligible=false,
@@ -2584,23 +2624,15 @@ class EventScreen extends Screen {
         </div>`
       : (going.length ? `<div style="font-size:0.8rem; font-weight:700; color:#22c55e; margin:0 0 var(--space-2);">${L('sec_all_placed', '✅ Every Going player is placed')}</div>` : '');
 
-    // Coaches: their own section, unanswered first, each answer under its
-    // own small heading.  Open until the coach folds it.
-    const coachSection = () => {
-      if (!coaches.length) return '';
-      const noAnswer = coaches.filter(r => r.response !== 'yes' && r.response !== 'no');
-      const part = (label, list, opts = {}) => list.length
-        ? `<div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:8px 0 4px;">${label} (${list.length})</div>${grid(list, opts)}` : '';
-      const key = 'coaches';
-      const isOpen = this.folds.has(key) ? this.folds.get(key) : true;   // owner 11/19 "dont hide anythng"
-      const bar = canRemind && noAnswer.length
-        ? remindBarHtml(cp('remind_group_coaches', { n: noAnswer.length }) || `📣 Remind all ${noAnswer.length} coaches who haven't answered`, this.coachGroupNote, 'coach') : '';
-      const body = part(L('sec_noresp', '– No response'), noAnswer, { remind: true })
-                 + part(L('sec_going', '✓ Going'), coaches.filter(r => r.response === 'yes'))
-                 + part(L('sec_notgoing', '✗ Not going'), coaches.filter(r => r.response === 'no'));
-      return this.cardFoldHtml('data-ec-fold', key, isOpen, L('sec_coaches', '🧑‍🏫 Coaches'), coaches.length, body,
-                               { aside: presentAside(coaches), top: gc(L('sec_coaches', '🧑‍🏫 Coaches'), coaches) + bar });
-    };
+    // Coaches by answer, for the tail of each section (viewer.eventSection
+    // 'coaches'); the unanswered ones carry their own Remind all bar.
+    const showCoaches = this.viewer.eventSection('coaches');
+    const coachesBy = (test) => showCoaches ? coaches.filter(test) : [];
+    const coachGoing  = coachesBy(r => r.response === 'yes');
+    const coachNo     = coachesBy(r => r.response === 'no');
+    const coachNoResp = coachesBy(r => r.response !== 'yes' && r.response !== 'no');
+    const coachRemindBar = canRemind && coachNoResp.length
+      ? remindBarHtml(cp('remind_group_coaches', { n: coachNoResp.length }) || `📣 Remind all ${coachNoResp.length} coaches who haven't answered`, this.coachGroupNote, 'coach') : '';
     // ✅ Present tally (owner 11/16: "it should show total present on
     // calendar regardless if they set going … 3 present going, 2 present no
     // response, 5 total"): everyone marked Present / Late, whatever they
@@ -2649,18 +2681,17 @@ class EventScreen extends Screen {
       ${everyone ? `<div style="margin:0 0 var(--space-2);"><div style="font-size:0.74rem; font-weight:800; opacity:0.8; margin:0 0 4px;">${L('group_all', '👥 Everyone')}</div>${everyone}</div>` : ''}
       ${presentTally()}
       ${split ? unplacedHtml() : ''}
-      ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') : `
-      ${V('going') ? (roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop }) : ''}
+      ${split ? markAllBar + split.groups.map(g => fold(g.key, g.label, g.list, { sides: true })).join('') + coachTail(coachGoing) : `
+      ${V('going') ? (roll ? fold.bind(null, 'going') : section)(L('sec_going', '✓ Going'), going.filter(r => !r.is_callup), { sides: true, top: groupsTop, coaches: coachGoing }) : ''}
       ${V('invited') ? (roll ? fold.bind(null, 'invited') : section)(L('sec_invited', '🎟 Invited · Available'), going.filter(r => r.is_callup), { sides: true }) : ''}`}
       ${V('ineligible') ? (roll ? fold.bind(null, 'ineligible') : section)(L('sec_ineligible', '⛔ Said going · Ineligible (dues)'), goingAll.filter(r => r.dues_eligible === false)) : ''}
-      ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, defaultOpen: !roll }) : ''}
-      ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no').concat(this._reservesSaidNo())) : ''}
+      ${V('noresponse') ? fold('noresponse', L('sec_noresp', '– No response'), noResp, { remind: true, top: remindBar, coaches: coachNoResp, coachTop: coachRemindBar, coachOpts: { remind: true } }) : ''}
+      ${V('notgoing') ? fold('notgoing', L('sec_notgoing', '✗ Not going'), players.filter(r => r.response === 'no').concat(this._reservesSaidNo()), { coaches: coachNo }) : ''}
       ${V('injured') ? fold('injured', L('sec_injured', '🩹 Injured'), injured) : ''}
       ${V('inactive') && (reserves.length || reservesExtra.length) ? fold('reserves', L('sec_standby', '🪑 Reserves'), reserves.concat(reservesExtra),
           { top: this._groupContactHtml('reserves', L('ask_standby_label', '📣 Ask Reserves'), reserves.filter(r => !r.response).concat(reservesExtra)) }) : ''}
       ${V('inactive') ? fold('inactive', L('sec_inactive', '💤 Inactive'), inactiveOnly, { callIn: true }) : ''}
-      ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}
-      ${V('coaches') ? coachSection() : ''}`;
+      ${V('suspended') ? fold('suspended', this.escapeHtml((window.MessageCopy && MessageCopy.block('suspended', 'section')) || '⛔ Suspended'), suspended) : ''}`;
   }
 
   // Open invites with their answer and a withdraw, then everyone who COULD

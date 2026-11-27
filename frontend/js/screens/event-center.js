@@ -894,6 +894,7 @@ class EventCenterScreen extends Screen {
         ${EventLabels.carpoolLines(ev).map(l => `<span style="font-size:0.7rem; font-weight:700; color:#fbbf24; white-space:normal; overflow-wrap:anywhere; text-align:left;">${this.escapeHtml(l)}</span>`).join('')}
         ${EventLabels.homeSetup(ev) ? `<span>${EventLabels.homeSetupBadge(ev, (t) => this.escapeHtml(t))}</span>`
           : ev.location ? `<span style="font-size:0.72rem; opacity:0.85;">📍 ${this.escapeHtml(ev.location)}</span>` : ''}
+        <span data-wx-event="${ev.fh_event_id}"></span>
         <span style="display:flex; flex-wrap:wrap; gap:2px 8px; font-size:0.75rem;">
           ${count('tile_going', going, `✓ ${going} going`, '#16a34a')}
           ${count('tile_noresp', noResp, `– ${noResp} no response`, '#eab308')}
@@ -964,7 +965,7 @@ class EventCenterScreen extends Screen {
         const cells = cellsFor(ymd, onDay(ymd));
         return `<div class="ec-day ${ymd === today ? 'today' : ymd < today ? 'past' : ''}">
           <div class="ec-dayh">${this.escapeHtml(dayHead(d))}</div>
-          ${cells.length ? cells.join('') : '<div class="ec-none">—</div>'}
+          ${cells.length ? cells.join('') : `<div class="ec-none" data-wx-day="${ymd}">—</div>`}
         </div>`;
       }).join('')}</div>`;
     }

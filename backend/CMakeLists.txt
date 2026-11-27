@@ -61,6 +61,7 @@ set(SOURCES
     src/models/PersonFines.cpp
     src/models/WelcomeLog.cpp
     src/models/ProrateLog.cpp
+    src/models/NewMemberOnboarding.cpp
     src/models/WelcomeMessage.cpp
     src/models/MessageCopy.cpp
     src/models/RsvpBoard.cpp
@@ -110,6 +111,7 @@ set(SOURCES
     src/services/LeagueFormSync.cpp
     src/services/LeagueTableReaders.cpp
     src/services/PyramidSync.cpp
+    src/services/WeatherSync.cpp
     src/services/TicketOrderSync.cpp
     src/services/LeagueFixtureSync.cpp
     src/services/TeamPassRoster.cpp
@@ -156,15 +158,16 @@ set(SOURCES
     src/controllers/PayReminderLogController.cpp
     src/controllers/WelcomeController.cpp
     src/controllers/ProrateController.cpp
+    src/controllers/NewMemberController.cpp
     src/controllers/RsvpBoardController.cpp
     src/controllers/PersonHealthController.cpp
     src/controllers/PersonSeesController.cpp
     src/controllers/PersonTeamsController.cpp
     src/controllers/PersonSheetController.cpp
+    src/controllers/PersonTodoController.cpp
     src/controllers/PracticeCriteriaController.cpp
     src/controllers/JobsController.cpp
     src/controllers/CoachScheduleController.cpp
-    src/controllers/PersonTodoController.cpp
     src/controllers/AwardsController.cpp
     src/controllers/KitBoardController.cpp
     src/controllers/FieldPlanController.cpp
@@ -181,6 +184,7 @@ set(SOURCES
     src/controllers/FinancesController.cpp
     src/controllers/FilmController.cpp
     src/controllers/PyramidController.cpp
+    src/controllers/WeatherController.cpp
     src/controllers/TicketsController.cpp
     src/controllers/CarpoolController.cpp
     src/controllers/MatchPlanController.cpp
@@ -188,6 +192,7 @@ set(SOURCES
     src/services/CarpoolRouting.cpp
     src/controllers/FinesController.cpp
     src/controllers/VolunteerController.cpp
+    src/controllers/CoachingBooksController.cpp
     src/controllers/ProposalsController.cpp
     src/controllers/OnboardingController.cpp
     src/controllers/LeagueEntryController.cpp
@@ -195,6 +200,7 @@ set(SOURCES
     src/models/Study.cpp
     src/models/LeagueEntry.cpp
     src/models/VolunteerShifts.cpp
+    src/models/CoachingBooks.cpp
     src/models/Proposals.cpp
     src/models/Tickets.cpp
     src/models/Onboarding.cpp
