@@ -26,6 +26,7 @@ void PublicController::registerRoutes(Router& router, const std::string& prefix)
     router.get(prefix + "/teams/:slug/schedule", [this](const Request& r) { return handleGetSchedule(r); });
     router.get(prefix + "/leagueapps-registration-links", [this](const Request& r) { return handleGetRegistrationLinks(r); });
     router.get(prefix + "/program-copy",         [this](const Request& r) { return handleGetProgramCopy(r); });
+    router.get(prefix + "/holiday-theme",        [this](const Request& r) { return handleGetHolidayTheme(r); });   // mig 1951
     router.post(prefix + "/sms-opt-in",          [this](const Request& r) { return handlePostSmsOptIn(r); });
     router.get(prefix + "/sms-opt-in/prefill",   [this](const Request& r) { return handleGetSmsOptInPrefill(r); });
     router.get(prefix + "/roll-call",            [this](const Request& r) { return handleGetRollCall(r); });
@@ -641,6 +642,40 @@ Response PublicController::handleGetProgramCopy(const Request& request) {
         std::cerr << "❌ handleGetProgramCopy: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR,
                         createJSONResponse(false, "Database error"));
+    }
+}
+
+// ─── GET /api/public/holiday-theme ───────────────────────────────────────────
+// 🎉 The holiday the app dresses for today (migration 1951): every theme
+// live on today's date in Philadelphia, shortest window first — the app
+// takes the first one's colours and shows every greeting.  ?code=<code>
+// previews one theme, ?on=YYYY-MM-DD previews a day.  No sign-in: the
+// public pages dress too.  Drawn by frontend/js/lib/holiday-theme.js.
+Response PublicController::handleGetHolidayTheme(const Request& request) {
+    try {
+        static const std::regex codeRe(R"(^[a-z_]{1,40}$)");
+        static const std::regex dayRe(R"(^\d{4}-\d{2}-\d{2}$)");
+        const std::string code = request.getQueryParam("code");
+        const std::string on   = request.getQueryParam("on");
+        pqxx::result result;
+        const char* cols = "json_build_object('code', code, 'name', name, 'emoji', emoji, "
+                           "'greeting', greeting, 'accent', accent, 'accent2', accent2, "
+                           "'decor', to_json(decor))";
+        if (!code.empty() && std::regex_match(code, codeRe)) {
+            result = db_->query(std::string("SELECT COALESCE(json_agg(") + cols + "), '[]'::json)::text AS themes "
+                                "FROM holiday_themes WHERE code = $1", {code});
+        } else {
+            const bool day = !on.empty() && std::regex_match(on, dayRe);
+            result = db_->query(std::string("SELECT COALESCE(json_agg(") + cols + "), '[]'::json)::text AS themes "
+                                "FROM fh_holiday_themes_on(" +
+                                (day ? "$1::date" : "(now() AT TIME ZONE 'America/New_York')::date") + ")",
+                                day ? std::vector<std::string>{on} : std::vector<std::string>{});
+        }
+        const std::string data = std::string("{\"themes\":") + result[0]["themes"].as<std::string>() + "}";
+        return Response(HttpStatus::OK, createJSONResponse(true, "Holiday theme", data));
+    } catch (const std::exception& e) {
+        std::cerr << "❌ handleGetHolidayTheme: " << e.what() << std::endl;
+        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
     }
 }
 

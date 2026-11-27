@@ -38,6 +38,7 @@ private:
     Response handleGetSchedule(const Request& request);
     Response handleGetRegistrationLinks(const Request& request);
     Response handleGetProgramCopy(const Request& request);
+    Response handleGetHolidayTheme(const Request& request);   // mig 1951
     Response handlePostSmsOptIn(const Request& request);
     Response handleGetSmsOptInPrefill(const Request& request);
     Response handleGetRollCall(const Request& request);   // mig 544
