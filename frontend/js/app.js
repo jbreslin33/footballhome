@@ -95,6 +95,7 @@ class App {
       apslPyramid: new ApslPyramidScreen(this.navigation, this.auth),
       weather: new WeatherScreen(this.navigation, this.auth),   // ⛅ mig 1837
       books: new CoachingBooksScreen(this.navigation, this.auth),   // 📚 mig 1928, owner only
+      filmAnalysis: new FilmAnalysisScreen(this.navigation, this.auth),   // 🎥 mig 1993
       tickets: new TicketsScreen(this.navigation, this.auth),   // 🎟 mig 1886
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
@@ -254,6 +255,8 @@ class App {
     this.screenManager.register('weather', this.screens.weather);
     // #books (mig 1928): the owner's coaching books — patterns + page images.
     this.screenManager.register('books', this.screens.books);
+    // #film-analysis[/<clip>] (mig 1993): tracked game film — replay, mini-pitch, numbers.
+    this.screenManager.register('film-analysis', this.screens.filmAnalysis);
     // #tickets (mig 1886): the gate (scan, sell, count) and the ticket list.
     this.screenManager.register('tickets', this.screens.tickets);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
@@ -417,6 +420,12 @@ class App {
       const proposalLink = (window.location.hash || '').match(/^#proposals(?:\/([a-z0-9-]+))?$/);
       if (proposalLink) {
         this.navigation.goTo('proposals', proposalLink[1] ? { entity: proposalLink[1] } : {});
+        return;
+      }
+      // 🎥 #film-analysis or #film-analysis/<clip id> (mig 1993).
+      const filmClipLink = (window.location.hash || '').match(/^#film-analysis(?:\/(\d+))?$/);
+      if (filmClipLink) {
+        this.navigation.goTo('film-analysis', filmClipLink[1] ? { entity: filmClipLink[1] } : {});
         return;
       }
       const pyramidLink = (window.location.hash || '').match(/^#apsl-pyramid(?:\/([a-z0-9-]+))?$/);
