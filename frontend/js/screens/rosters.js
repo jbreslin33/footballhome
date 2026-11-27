@@ -200,7 +200,7 @@ class RostersScreen extends Screen {
     return this.teamsPill === 'mens' && view === 'team';
   }
   _effectiveSort() {
-    if (this._commitOnly()) return this.teamsSort === 'trials' ? 'trials' : 'committed';
+    if (this._commitOnly()) return (this.teamsSort === 'trials' || this.teamsSort === 'age') ? this.teamsSort : 'committed';
     return this.teamsSort === 'committed' ? this._defaultSort() : (this.teamsSort || this._defaultSort());
   }
 
@@ -349,7 +349,9 @@ class RostersScreen extends Screen {
           // 🤝 Committed (migs 1551/1554): RSVP + dues — most committed
           // first: up to date, behind RSVP, behind dues, behind both.
           { id: 'committed',  label: viewCopy('board_sort_committed', '🤝 Committed') },
-        ].filter(c => commitOnly ? (c.id === 'committed' || c.id === 'trials') : c.id !== 'committed')
+          // 🎂 Age group (owner 11/27): youngest first, on every view.
+          { id: 'age',        label: viewCopy('board_sort_age', '🎂 Age group') },
+        ].filter(c => commitOnly ? (c.id === 'committed' || c.id === 'trials' || c.id === 'age') : c.id !== 'committed')
           .sort((a, b) => commitOnly ? (a.id === 'committed' ? -1 : b.id === 'committed' ? 1 : 0) : 0).map(c => c.id === litSort ? { ...c, label: `${c.label} ${RosterScreenBase.sortArrow(c.id, this.teamsSortDesc)}` } : c),
         selected: litSort,
         onSelect: (id) => {

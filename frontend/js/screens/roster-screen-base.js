@@ -2461,7 +2461,15 @@ class RosterScreenBase extends Screen {
     return !terms || terms.includes(t.term);
   }
 
-  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score', 'committed']; }
+  static get SORT_ORDERS() { return ['alpha', 'rank', 'paid', 'official', 'rsvp', 'attendance', 'trials', 'score', 'committed', 'age']; }
+
+  // 🎂 Age group (owner 11/27 "all for sort by age group"): the U-number on
+  // the card's age chip (FH season-chart age) — youngest first; no birth date
+  // on file sorts at the foot either way.
+  static ageNumber(player) {
+    const m = /^U(\d+)$/i.exec(String((player && player.ageGroup) || ''));
+    return m ? Number(m[1]) : null;
+  }
 
   // ── 📊 🧪 ⭐ Squad-picking sorts (mig 1399, owner 11/16) ─────────────
   // data.selection[personId] = { attended, expected, trials, trialsHeld,
@@ -2585,6 +2593,8 @@ class RosterScreenBase extends Screen {
     let missing = () => false;
     if (order === 'committed') {
       missing = (r) => RosterScreenBase.commitRank(r.player.personId) === 4;
+    } else if (order === 'age') {
+      missing = (r) => RosterScreenBase.ageNumber(r.player) == null;
     } else if (['rsvp', 'attendance', 'trials', 'score'].includes(order)) {
       missing = (r) => this.selectionParts(r.player)[order] == null;
     } else if (order === 'official' && this.officialPositions(col)) {
@@ -2645,6 +2655,13 @@ class RosterScreenBase extends Screen {
       return ranked.sort((a, b) => RosterScreenBase.commitRank(a.player.personId) - RosterScreenBase.commitRank(b.player.personId)
         || RosterScreenBase.commitPractices(b.player.personId) - RosterScreenBase.commitPractices(a.player.personId)
         || alpha(a, b));
+    }
+    if (order === 'age') {
+      return ranked.sort((a, b) => {
+        const va = RosterScreenBase.ageNumber(a.player), vb = RosterScreenBase.ageNumber(b.player);
+        if (va == null || vb == null) { if (va != null) return -1; if (vb != null) return 1; return alpha(a, b); }
+        return (va - vb) || alpha(a, b);
+      });
     }
     if (order === 'paid') {
       const w = { owes: 0, none: 1, paid: 2 };
