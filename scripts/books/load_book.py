@@ -17,7 +17,7 @@ import argparse, base64, glob, io, os, subprocess, sys
 from PIL import Image
 
 CROP = (0, 250, 1040, 1612)   # S25 Ultra 1080x2340, page snapped to top by the ⌄ button
-KINDLE_CROP = (0, 48, 1568, 700)  # Kindle Cloud Reader spread, minus title bar and footer
+KINDLE_CROP = (48, 59)  # Kindle Cloud Reader spread: trim title bar (top px) and footer (bottom px)
 
 def q(s):
     return "NULL" if s is None else "'" + s.replace("'", "''") + "'"
@@ -50,7 +50,10 @@ def main():
     for f in files:
         n = int(os.path.basename(f)[1:4])
         buf = io.BytesIO()
-        Image.open(f).convert("RGB").crop(crop).save(buf, "JPEG", quality=80)
+        im = Image.open(f).convert("RGB")
+        if a.kindle: im = im.crop((0, crop[0], im.width, im.height - crop[1]))
+        else: im = im.crop(crop)
+        im.save(buf, "JPEG", quality=80)
         b64 = base64.b64encode(buf.getvalue()).decode()
         out.append(f"INSERT INTO coaching_book_pages (book_id, page_no, bytes) SELECT id, {n}, decode('{b64}', 'base64') "
                    f"FROM coaching_books WHERE slug = {q(a.slug)};")
