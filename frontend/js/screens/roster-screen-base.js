@@ -233,11 +233,11 @@ class RosterScreenBase extends Screen {
   renderRoleSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     return `<select class="mr-role-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
-               title="Roster Role — 1st Team Starter/Bench, or 1st Team Reserve for a call-up"
+               title="Roster Role — 1st Team Starter/Subs, or 1st Team Reserve for a call-up"
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; ${RosterScreenBase.SELECT_WIDTH_STYLE}">
          <option value=""        ${!player.lineupRole ? 'selected' : ''}>Role: —</option>
          <option value="starter" ${player.lineupRole === 'starter' ? 'selected' : ''}>1st Team Starter</option>
-         <option value="bench"   ${player.lineupRole === 'bench'   ? 'selected' : ''}>1st Team Bench</option>
+         <option value="bench"   ${player.lineupRole === 'bench'   ? 'selected' : ''}>1st Team Subs</option>
          <option value="reserve" ${player.lineupRole === 'reserve' ? 'selected' : ''}>1st Team Reserve</option>
        </select>`;
   }
@@ -1325,7 +1325,7 @@ class RosterScreenBase extends Screen {
       if (!players.some(p => p.lineupRole)) return boxes(players, 0);
       const segs = [
         ['starter', copy('tc_seg_starter', {}, '⭐ Starters')],
-        ['bench',   copy('tc_seg_bench', {}, '🪑 Bench')],
+        ['bench',   copy('tc_seg_bench', {}, '🪑 Subs')],
         ['reserve', copy('tc_seg_reserve', {}, '🔄 Reserve')],
         ['',        copy('tc_seg_none', {}, '🧱 Depth')],
       ];
