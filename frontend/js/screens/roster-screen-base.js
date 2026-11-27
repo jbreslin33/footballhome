@@ -233,12 +233,13 @@ class RosterScreenBase extends Screen {
   renderRoleSelect(player, col, canMove) {
     if (!(canMove && col && col.teamId && player.personId)) return '';
     return `<select class="mr-role-select" data-team-id="${col.teamId}" data-person-id="${player.personId}"
-               title="Roster Role — 1st Team Starter/Subs, or 1st Team Reserve for a call-up"
+               title="Lineup tier — T1 Starter, T2 Starter/Sub, T3 Sub (none = T4 Depth), or 🔄 Reserve for a call-up"
                style="font-size:0.6rem; font-weight:800; letter-spacing:0.01em; padding:0 2px; line-height:1.2; border-radius:3px; border:1px solid #475569; background:#0f172a; color:#fff; ${RosterScreenBase.SELECT_WIDTH_STYLE}">
-         <option value=""        ${!player.lineupRole ? 'selected' : ''}>Role: —</option>
-         <option value="starter" ${player.lineupRole === 'starter' ? 'selected' : ''}>1st Team Starter</option>
-         <option value="bench"   ${player.lineupRole === 'bench'   ? 'selected' : ''}>1st Team Subs</option>
-         <option value="reserve" ${player.lineupRole === 'reserve' ? 'selected' : ''}>1st Team Reserve</option>
+         <option value=""        ${!player.lineupRole ? 'selected' : ''}>T4 · Depth</option>
+         <option value="starter"  ${player.lineupRole === 'starter'  ? 'selected' : ''}>T1 · Starter</option>
+         <option value="bench"    ${player.lineupRole === 'bench'    ? 'selected' : ''}>T2 · Starter/Sub</option>
+         <option value="sub_late" ${player.lineupRole === 'sub_late' ? 'selected' : ''}>T3 · Sub</option>
+         <option value="reserve"  ${player.lineupRole === 'reserve'  ? 'selected' : ''}>🔄 Reserve</option>
        </select>`;
   }
 
@@ -1328,10 +1329,13 @@ class RosterScreenBase extends Screen {
         .replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(start + i + 1))).join('');
       if (!players.some(p => p.lineupRole) && !injured.length) return boxes(players, 0);
       const segs = [
-        ['starter', copy('tc_seg_starter', {}, '⭐ Starters')],
-        ['bench',   copy('tc_seg_bench', {}, '🪑 Subs')],
-        ['reserve', copy('tc_seg_reserve', {}, '🔄 Reserve')],
-        ['',        copy('tc_seg_none', {}, '🧱 Depth')],
+        // Tiers (migs 4020/4021): T1 starter · T2 starter/sub · T3 sub · T4 depth;
+        // 🔄 Reserve (Liga 1's APSL call-up pool) sits outside the tiers.
+        ['starter',  copy('tc_seg_starter', {}, '⭐ T1 · Starters')],
+        ['bench',    copy('tc_seg_bench', {}, '🔁 T2 · Starter/Sub')],
+        ['sub_late', copy('tc_seg_sub_late', {}, '🪑 T3 · Subs')],
+        ['reserve',  copy('tc_seg_reserve', {}, '🔄 Reserve')],
+        ['',         copy('tc_seg_none', {}, '🧱 T4 · Depth')],
       ];
       let n = 0, out = '';
       for (const [code, label] of segs) {

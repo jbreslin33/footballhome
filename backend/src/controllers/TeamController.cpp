@@ -370,10 +370,15 @@ Response TeamController::handleSetLineupRole(const Request& request) {
 
         std::string body = request.getBody();
         std::string lineupRole;
-        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench|reserve)")rx");
+        // Any lineup_roles.name (mig 4020 added sub_late — tiers T1–T4);
+        // an unknown name is refused rather than silently clearing the role.
+        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"([a-z_]{1,30})")rx");
         std::smatch m;
         bool hasRole = std::regex_search(body, m, roleRegex);
         if (hasRole) lineupRole = m[1].str();
+        if (hasRole && db_->query("SELECT 1 FROM lineup_roles WHERE name = $1", {lineupRole}).empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown lineup role"));
+        }
         // Absence of a matched value (including explicit null) clears the flag.
 
         pqxx::result result = db_->query(
@@ -428,10 +433,15 @@ Response TeamController::handleSetLineupRoleForPerson(const Request& request) {
 
         std::string body = request.getBody();
         std::string lineupRole;
-        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"(starter|bench|reserve)")rx");
+        // Any lineup_roles.name (mig 4020 added sub_late — tiers T1–T4);
+        // an unknown name is refused rather than silently clearing the role.
+        std::regex roleRegex(R"rx("lineupRole"\s*:\s*"([a-z_]{1,30})")rx");
         std::smatch m;
         bool hasRole = std::regex_search(body, m, roleRegex);
         if (hasRole) lineupRole = m[1].str();
+        if (hasRole && db_->query("SELECT 1 FROM lineup_roles WHERE name = $1", {lineupRole}).empty()) {
+            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown lineup role"));
+        }
         // Absence of a matched value (including explicit null) clears the flag.
 
         pqxx::result result = db_->query(

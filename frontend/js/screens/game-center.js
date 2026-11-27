@@ -2347,7 +2347,7 @@ class GameCenterScreen extends EventScreen {
     // dropdown, PUT /api/teams/:teamId/roster/person/:personId/lineup-role),
     // not from this per-match screen. Still shown here so a coach building
     // a lineup can see it without leaving the page.
-    const ROLE_LABEL = { starter: '1st Team Starter', bench: '1st Team Bench', reserve: '1st Team Reserve' };
+    const ROLE_LABEL = { starter: 'T1 · Starter', bench: 'T2 · Starter/Sub', sub_late: 'T3 · Sub', reserve: '🔄 Reserve' };   // tiers, mig 4020
     const roleButtons = (p) => {
       const label = ROLE_LABEL[p.lineupRole];
       if (!label || everyone) return '';
