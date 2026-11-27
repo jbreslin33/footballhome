@@ -914,7 +914,11 @@ PersonPayments::loadMembersForProgram(long long programId) {
         "       (m.next_due_at IS NOT NULL"
         "        AND date_trunc('month', dc.upcoming_due::timestamptz)"
         "            > date_trunc('month', m.next_due_at)) AS final_notice,"
-        "       fh_dues_free_reason(m.person_id) AS free_reason,"
+        // 🎓 scholarship (mig 1990): a free LA registration (NA_FREE, $0
+        // billed) for someone who isn't a volunteer / injured — plays
+        // free, never counted as a paid member.
+        "       COALESCE(fh_dues_free_reason(m.person_id),"
+        "                CASE WHEN m.la_payment_status = 'NA_FREE' THEN 'scholarship' END) AS free_reason,"
         "       TO_CHAR(dc.upcoming_due, 'YYYY-MM-DD') AS upcoming_due_iso"
         "  FROM person_la_memberships m"
         "  CROSS JOIN due_cycle dc"

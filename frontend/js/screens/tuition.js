@@ -447,7 +447,7 @@ class TuitionScreen extends Screen {
     if (!raw) return;
     if (this._pickupShown() || !Array.isArray(raw.members)) { this.membersByTab[key] = raw; return; }
     const members = raw.members.filter(m => m.variant !== 'pickup');
-    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0 };
+    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, scholarship: 0, injured: 0 };
     for (const m of members) if (m.variant !== 'inactive' && counts[m.status] != null) counts[m.status]++;
     this.membersByTab[key] = { ...raw, members, counts, total: members.length };
   }
@@ -515,13 +515,13 @@ class TuitionScreen extends Screen {
   // Status counts for a set of programmes, from the rows themselves so the
   // 🩹 injured split is the same everywhere (chips, stats).
   _countsFor(keys) {
-    const c = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0, finalNotice: 0, active: 0 };
+    const c = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, scholarship: 0, injured: 0, finalNotice: 0, active: 0 };
     for (const k of keys) {
       const d = this.membersByTab[k];
       for (const m of ((d && d.members) || [])) {
         if (m.variant === 'inactive') continue;
         c.active++;
-        if (m.status !== 'volunteer' && this._injuryOf(m)) { c.injured++; continue; }
+        if (m.status !== 'volunteer' && m.status !== 'scholarship' && this._injuryOf(m)) { c.injured++; continue; }
         if (c[m.status] != null) c[m.status]++;
         if (m.finalNotice) c.finalNotice++;
       }
@@ -544,7 +544,7 @@ class TuitionScreen extends Screen {
       programName: this._shardLabel(keys),
       total:       0,
       inactiveCount: 0,
-      counts:      { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0 },
+      counts:      { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, scholarship: 0, injured: 0 },
       members:     [],
       // Fields needed by _summarize().  Concatenating recentPayments
       // gives a naive "who paid recently across all programs" list;
@@ -557,7 +557,7 @@ class TuitionScreen extends Screen {
     for (const d of shards) {
       out.total += (d.total || 0);
       out.inactiveCount += (d.inactiveCount || 0);
-      for (const k of ['current','behind','overdue','never','volunteer','injured']) {
+      for (const k of ['current','behind','overdue','never','volunteer','scholarship','injured']) {
         out.counts[k] += (d.counts?.[k] || 0);
       }
       if (Array.isArray(d.members)) out.members.push(...d.members);
@@ -794,7 +794,7 @@ class TuitionScreen extends Screen {
     const inactiveMembers = (data.members || [])
       .filter((mm) => mm.variant === 'inactive' && searchMatch(mm));
 
-    const injuredOf = (mm) => (mm.status !== 'volunteer' ? this._injuryOf(mm) : null);
+    const injuredOf = (mm) => (mm.status !== 'volunteer' && mm.status !== 'scholarship' ? this._injuryOf(mm) : null);
     const rows = (data.members || []).filter((mm) => {
       if (mm.variant === 'inactive') return false;
       if (injuredOf(mm)) return searchMatch(mm);
@@ -816,13 +816,14 @@ class TuitionScreen extends Screen {
     //   • fg      — text/icon colour (readable on the tinted bar)
     //   • bg      — subtle tinted background for the bar itself
     //   • border  — accent line on the left edge
-    const statusOrder = ['overdue', 'never', 'behind', 'current', 'volunteer', 'injured'];
+    const statusOrder = ['overdue', 'never', 'behind', 'current', 'volunteer', 'scholarship', 'injured'];
     const statusMeta = {
       overdue: { icon:'🔴', label:'OVERDUE',    fg:'#7f1d1d', bg:'#fee2e2', border:'#dc2626' },
       never:   { icon:'⚫', label:'NEVER PAID', fg:'#1f2937', bg:'#e5e7eb', border:'#4b5563' },
       behind:  { icon:'🟡', label:'BEHIND',     fg:'#78350f', bg:'#fef3c7', border:'#d97706' },
       current: { icon:'🟢', label:'CURRENT',    fg:'#14532d', bg:'#dcfce7', border:'#16a34a' },
       volunteer: { icon:'', label:this._duesFreeCopy('volunteer', 'label').toUpperCase(), fg:'#1e3a8a', bg:'#dbeafe', border:'#2563eb' },
+      scholarship: { icon:'', label:this._duesFreeCopy('scholarship', 'label').toUpperCase(), fg:'#4c1d95', bg:'#ede9fe', border:'#7c3aed' },
       injured:   { icon:'', label:this._duesFreeCopy('injured', 'label').toUpperCase(),   fg:'#78350f', bg:'#fef3c7', border:'#d97706' },
     };
     if (this.month) {
@@ -1016,7 +1017,7 @@ class TuitionScreen extends Screen {
   // full months); the operator never chooses it.
   // → {subject, body, standing, tier} or null.
   _paymentNotice(m, channel) {
-    if (m.status === 'volunteer' || m.status === 'injured') return null;   // no dues (mig 704/715)
+    if (m.status === 'volunteer' || m.status === 'scholarship' || m.status === 'injured') return null;   // no dues (mig 704/715/1990)
     const standing = this._duesStanding(m);
     if (!standing) return null;
     const pauseAt = this._pauseAfterMonths();
@@ -1183,13 +1184,13 @@ class TuitionScreen extends Screen {
   _duesFreeCopy(status, part) {
     const tier = `${status}_${part}`;
     if (window.MessageCopy && MessageCopy.has('payments_overview', tier)) return MessageCopy.block('payments_overview', tier);
-    return part === 'label' ? ({ volunteer: '🙋 Volunteer', injured: '🩹 Injured' }[status] || status) : '';
+    return part === 'label' ? ({ volunteer: '🙋 Volunteer', scholarship: '🎓 Scholarship', injured: '🩹 Injured' }[status] || status) : '';
   }
 
   // Everything a Tuition row shows, in pieces: the card front takes a
   // few, the player sheet's tabs take the rest (owner 2026-11-11).
   _cardParts(m) {
-    const duesFree = m.status === 'volunteer' || m.status === 'injured';
+    const duesFree = m.status === 'volunteer' || m.status === 'scholarship' || m.status === 'injured';
     const badge = this.renderStatusBadge(m.status, m.daysOverdue);
     const name  = `${this.escape(m.firstName || '')} ${this.escape(m.lastName || '')}`.trim() || '—';
     const lastLine = m.lastPaidAt
@@ -1356,7 +1357,7 @@ class TuitionScreen extends Screen {
            ${this.escape(this._sheetCopy('dispute_banner', `⚖️ ${disputes.length} fine dispute(s) waiting — tap to settle`, { count: disputes.length }))} ›
          </button>`
       : '';
-    const injury = m.status !== 'volunteer' ? this._injuryOf(m) : null;
+    const injury = m.status !== 'volunteer' && m.status !== 'scholarship' ? this._injuryOf(m) : null;
     const injuryChip = injury
       ? `<button type="button" data-player-sheet="${this.escape(key)}" data-sheet-tab="health"
                  style="align-self:flex-start; font-size:0.75rem; font-weight:800; cursor:pointer; padding:2px 8px; border-radius:4px;
@@ -1998,6 +1999,7 @@ class TuitionScreen extends Screen {
       case 'current': icon='🟢'; label='Current'; bg='#052e1a'; fg='#86efac'; break;
       case 'behind':  icon='🟡'; label='Behind';  bg='#3a2e05'; fg='#fbbf24'; break;
       case 'volunteer': icon=''; label=this.escape(this._duesFreeCopy('volunteer', 'label')); bg='#172554'; fg='#93c5fd'; break;
+      case 'scholarship': icon=''; label=this.escape(this._duesFreeCopy('scholarship', 'label')); bg='#2e1065'; fg='#c4b5fd'; break;
       case 'injured':   icon=''; label=this.escape(this._duesFreeCopy('injured', 'label'));   bg='#3a2e05'; fg='#fbbf24'; break;
       case 'overdue':
         icon='🔴';
@@ -2778,7 +2780,7 @@ class TuitionScreen extends Screen {
     let outstandingTotal = 0;
     let earliestMonthsElapsed = 0;   // biggest monthsElapsed = earliest start
     let inactiveCount = 0;
-    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, injured: 0 };
+    const counts = { current: 0, behind: 0, overdue: 0, never: 0, volunteer: 0, scholarship: 0, injured: 0 };
     const loaded = [];
     for (const k of tabs) {
       const d = this.membersByTab[k];
@@ -2794,7 +2796,7 @@ class TuitionScreen extends Screen {
       inactiveCount += d.inactiveCount || 0;
       loaded.push(k);
     }
-    Object.assign(counts, (({ current, behind, overdue, never, volunteer, injured }) => ({ current, behind, overdue, never, volunteer, injured }))(this._countsFor(loaded)));
+    Object.assign(counts, (({ current, behind, overdue, never, volunteer, scholarship, injured }) => ({ current, behind, overdue, never, volunteer, scholarship, injured }))(this._countsFor(loaded)));
     const avgPerMonth         = earliestMonthsElapsed > 0 ? netCollected     / earliestMonthsElapsed : 0;
     const outstandingPerMonth = earliestMonthsElapsed > 0 ? outstandingTotal / earliestMonthsElapsed : 0;
     return {
@@ -2864,6 +2866,7 @@ class TuitionScreen extends Screen {
           cell('🔴 Overdue', c.overdue, '#fca5a5'),
           cell('⚫ Never paid', c.never, '#e5e7eb'),
           cell(this.escape(this._duesFreeCopy('volunteer', 'label')), c.volunteer, '#93c5fd'),
+          cell(this.escape(this._duesFreeCopy('scholarship', 'label')), c.scholarship, '#c4b5fd'),
           cell(this.escape(this._duesFreeCopy('injured', 'label')), c.injured, '#fbbf24'),
           cell('🚫 Inactive', s.inactiveCount, '#c4b5fd'),
         ] },
