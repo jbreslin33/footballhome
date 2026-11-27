@@ -1,4 +1,4 @@
--- 1993 📚 Coaching book patterns: "Jose Mourinho Attacking Sessions" (SoccerTutor).  Every page read by
+-- 1994 📚 Coaching book patterns: "Jose Mourinho Attacking Sessions" (SoccerTutor).  Every page read by
 -- paired-page readers; each distinct team behaviour the book teaches is
 -- written up in OUR OWN WORDS with app page numbers as the citation and who
 -- does what.  Drill layouts, warm-ups, theory and front matter are left out.
@@ -943,5 +943,5 @@ SELECT p.id, v.so, v.role, v.job FROM p, (VALUES
     (4, 'Supporting players', 'Leave their zone to create 2v1s; correct angle and distance for one-touch play')
 ) AS v(so, role, job);
 
-INSERT INTO schema_migrations (filename) VALUES ('1993-coaching-book-mourinho-attacking-sessions-patterns.sql') ON CONFLICT DO NOTHING;
+INSERT INTO schema_migrations (filename) VALUES ('1994-coaching-book-mourinho-attacking-sessions-patterns.sql') ON CONFLICT DO NOTHING;
 COMMIT;
