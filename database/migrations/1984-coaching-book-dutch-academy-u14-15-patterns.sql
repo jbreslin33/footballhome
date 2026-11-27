@@ -1,4 +1,4 @@
--- 1983 📚 Coaching book patterns: "Dutch Academy Football Coaching U14-15" (SoccerTutor).  Every page read by
+-- 1984 📚 Coaching book patterns: "Dutch Academy Football Coaching U14-15" (SoccerTutor).  Every page read by
 -- paired-page readers; each distinct team behaviour the book teaches is
 -- written up in OUR OWN WORDS with app page numbers as the citation and who
 -- does what.  Drill layouts, warm-ups, theory and front matter are left out.
@@ -1305,5 +1305,5 @@ SELECT p.id, v.so, v.role, v.job FROM p, (VALUES
     (6, 'Defenders after a regain', 'Counter attack quickly')
 ) AS v(so, role, job);
 
-INSERT INTO schema_migrations (filename) VALUES ('1983-coaching-book-dutch-academy-u14-15-patterns.sql') ON CONFLICT DO NOTHING;
+INSERT INTO schema_migrations (filename) VALUES ('1984-coaching-book-dutch-academy-u14-15-patterns.sql') ON CONFLICT DO NOTHING;
 COMMIT;
