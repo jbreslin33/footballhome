@@ -1327,7 +1327,7 @@ class RosterScreenBase extends Screen {
         ['starter', copy('tc_seg_starter', {}, '⭐ Starters')],
         ['bench',   copy('tc_seg_bench', {}, '🪑 Bench')],
         ['reserve', copy('tc_seg_reserve', {}, '🔄 Reserve')],
-        ['',        copy('tc_seg_none', {}, 'On the team')],
+        ['',        copy('tc_seg_none', {}, '🧱 Depth')],
       ];
       let n = 0, out = '';
       for (const [code, label] of segs) {
