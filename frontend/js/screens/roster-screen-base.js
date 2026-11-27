@@ -1309,6 +1309,8 @@ class RosterScreenBase extends Screen {
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(words[0] || '')}</div>
             <div style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-height:1.15em;">${esc(words.slice(1).join(' '))}</div>
           </div>
+          ${p.ageGroup ? `<span data-tc-age="${pid}" title="${esc(copy('tc_age_tip', {}, 'Age group this season'))}" style="position:absolute; bottom:-8px; right:4px; font-size:10px; line-height:13px; padding:0 5px; border-radius:6px; font-weight:800; letter-spacing:0.02em;
+               background:${p.gender === 'Female' ? '#db2777' : '#1e3a8a'}; color:${p.gender === 'Female' ? '#fce7f3' : '#dbeafe'}; border:1px solid rgba(255,255,255,0.55);">${esc(p.ageGroup)}</span>` : ''}
           <div data-tc-info="${pid}" data-tc-paid="${esc(p.lastPaidAt || '')}" data-tc-paid-amount="${esc(p.lastPaidAmount == null ? '' : p.lastPaidAmount)}" style="font-size:10px; font-weight:700; line-height:1.25;">${window.PersonStanding && PersonStanding.boxLine ? PersonStanding.boxLine(pid, { paidAt: p.lastPaidAt, paidAmount: p.lastPaidAmount }) : ''}</div>
         </div>`;
     };
