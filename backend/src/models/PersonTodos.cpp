@@ -41,8 +41,10 @@ json PersonTodos::list(long long personId) {
         "       (t.assigned_by_person_id IS NULL OR t.assigned_by_person_id = t.person_id) AS mine, "
         "       NULLIF(TRIM(CONCAT_WS(' ', ap.first_name, ap.last_name)), '') AS from_name, "
         "       t.photo_proof, to_char(t.call_at, 'HH24:MI') AS call_at, t.guide_id, ph.id AS photo_id, "
-        "       to_char(ph.uploaded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS photo_at "
+        "       to_char(ph.uploaded_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS photo_at, "
+        "       tc.id AS cat_id, tc.name AS cat_name, tc.icon AS cat_icon, tc.sort_order AS cat_sort "   // mig 2215
         "  FROM t LEFT JOIN persons ap ON ap.id = t.assigned_by_person_id AND ap.id <> t.person_id "
+        "  LEFT JOIN todo_categories tc ON tc.id = t.category_id "
         "  LEFT JOIN LATERAL (SELECT x.id, x.uploaded_at FROM person_todo_photos x WHERE x.person_todo_id = t.id "
         "                        AND x.club_day = (now() AT TIME ZONE 'America/New_York')::date "
         "                      ORDER BY x.uploaded_at DESC LIMIT 1) ph ON true "
@@ -67,13 +69,18 @@ json PersonTodos::list(long long personId) {
             {"guide_id",  r["guide_id"].is_null() ? json(nullptr) : json(r["guide_id"].as<long long>())},
             {"photo_id",  r["photo_id"].is_null() ? json(nullptr) : json(r["photo_id"].as<long long>())},
             {"photo_at",  textOrNull(r["photo_at"])},
+            // one 🚦 band box per category (mig 2215); null = the plain To do box
+            {"category",  r["cat_id"].is_null() ? json(nullptr)
+                          : json{{"id", r["cat_id"].as<long long>()}, {"name", r["cat_name"].c_str()},
+                                 {"icon", textOrNull(r["cat_icon"])}, {"sort", r["cat_sort"].as<long long>()}}},
         });
     }
     out["due"] = due;
     return out;
 }
 
-std::string PersonTodos::add(long long personId, const std::string& body, const std::string& remindAtIso) {
+std::string PersonTodos::add(long long personId, const std::string& body, const std::string& remindAtIso,
+                             long long categoryId) {
     if (personId <= 0) return "Sign in first";
     const auto b = body.find_first_not_of(" \t\r\n");
     if (b == std::string::npos) return "Type what to do";
@@ -81,9 +88,10 @@ std::string PersonTodos::add(long long personId, const std::string& body, const 
     auto* db = Database::getInstance();
     try {
         db->query(
-            "INSERT INTO person_todos (person_id, body, remind_at) "
-            "VALUES ($1::int, btrim($2), NULLIF($3, '')::timestamptz)",
-            {std::to_string(personId), body, remindAtIso});
+            "INSERT INTO person_todos (person_id, body, remind_at, category_id) "
+            "VALUES ($1::int, btrim($2), NULLIF($3, '')::timestamptz, "
+            "        (SELECT id FROM todo_categories WHERE id = NULLIF($4::int, 0)))",
+            {std::to_string(personId), body, remindAtIso, std::to_string(categoryId > 0 ? categoryId : 0)});
     } catch (const std::exception&) {
         return "That time didn't read — pick it again";
     }

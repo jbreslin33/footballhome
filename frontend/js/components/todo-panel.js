@@ -30,6 +30,7 @@ class TodoPanel {
     this.openGuide = null;   // the item id whose routine is showing
     this.thumbs = {};        // photo_id → object URL
     this.uploading = null;   // the item id being uploaded
+    this.category = null;    // mig 2215: a category id ('none' = no category) when opened from its band box
     if (el) {
       el.addEventListener('click', (e) => this.onClick(e));
       el.addEventListener('change', (e) => {
@@ -93,7 +94,9 @@ class TodoPanel {
     }
     input.value = '';
     this.draft = '';
-    this.post({ action: 'add', body, remind_at: this.remindAtIso() }).then(() => {
+    const payload = { action: 'add', body, remind_at: this.remindAtIso() };
+    if (this.category && this.category !== 'none') payload.category_id = Number(this.category);   // joins the box it was added from
+    this.post(payload).then(() => {
       if (this.err) this.draft = body;   // failed — keep what was typed
       else this.when = 'now';
       this.render();
@@ -103,6 +106,7 @@ class TodoPanel {
 
   onClick(e) {
     if (e.target.closest('[data-td-add]')) { this.add(); return; }
+    if (e.target.closest('[data-td-allcats]')) { this.category = null; this.render(); return; }
     const gb = e.target.closest('[data-td-guide]');
     if (gb) { this.toggleGuide(Number(gb.getAttribute('data-td-guide')), Number(gb.getAttribute('data-td-guide-id'))); return; }
     const b = e.target.closest('[data-td-act]');
@@ -209,7 +213,10 @@ class TodoPanel {
     const typed = this.el.querySelector('[data-td-body]');
     if (typed) this.draft = typed.value;
     const at = this.el.querySelector('[data-td-at]')?.value || '';
-    const todos = this.data.todos;
+    // Opened from one category's band box (mig 2215): that category only.
+    const catKey = (t) => (t.category ? String(t.category.id) : 'none');
+    const todos = this.category ? this.data.todos.filter(t => catKey(t) === this.category) : this.data.todos;
+    const catOf = this.category && this.category !== 'none' ? (this.data.todos.find(t => catKey(t) === this.category) || {}).category : null;
     const due = todos.filter(t => t.due);
     const later = todos.filter(t => !t.due && !t.done_at);
     const done = todos.filter(t => t.done_at);
@@ -233,7 +240,7 @@ class TodoPanel {
         ? `<button type="button" data-td-guide="${t.id}" data-td-guide-id="${t.guide_id}" style="${btn} background:transparent; color:inherit; border:1px solid #2563eb;">${esc(cp(this.openGuide === t.id ? 'todo_guide_close' : 'todo_guide_open', {}, this.openGuide === t.id ? '📖 Hide routine' : '📖 Routine'))}</button>` : '';
       return { thumb, guide };
     };
-    const row = (t, note0) => { const note = [note0, t.photo_id && t.photo_at ? cp('todo_photo_in', { time: new Date(t.photo_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }, '📷 Photo in') : '', given(t)].filter(Boolean).join(' · '); const x = extras(t); return `
+    const row = (t, note0) => { const note = [catTag(t), note0, t.photo_id && t.photo_at ? cp('todo_photo_in', { time: new Date(t.photo_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) }, '📷 Photo in') : '', given(t)].filter(Boolean).join(' · '); const x = extras(t); return `
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px; border-radius:10px; margin-bottom:6px;
                   border:1px solid ${t.due ? '#ef4444' : 'var(--border-color, #374151)'}; background:${t.due ? 'rgba(239,68,68,0.12)' : 'rgba(255,255,255,0.03)'};">
         ${x.thumb}
@@ -251,7 +258,14 @@ class TodoPanel {
       </div>${this.openGuide === t.id ? this.guideHtml(this.guides[t.guide_id]) : ''}`; };
     const head = (tier, fb) => `<div style="font-size:0.72rem; font-weight:800; letter-spacing:0.05em; text-transform:uppercase; opacity:0.7; margin:12px 0 6px;">${esc(cp(tier, {}, fb))}</div>`;
     const opt = (v, tier, fb) => `<option value="${v}" ${this.when === v ? 'selected' : ''}>${esc(cp(tier, {}, fb))}</option>`;
-    this.el.innerHTML = `
+    // Every item says what it is about when the whole list shows.
+    const catTag = (t) => (!this.category && t.category ? `${[t.category.icon, t.category.name].filter(Boolean).join(' ')}` : '');
+    const catBar = this.category
+      ? `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+           ${catOf ? `<span style="font-weight:800;">${esc([catOf.icon, catOf.name].filter(Boolean).join(' '))}</span>` : ''}
+           <button type="button" data-td-allcats style="${btn} margin-left:auto; background:transparent; color:inherit; border:1px solid var(--border-color, #374151);">${esc(cp('todo_all_cats', {}, '← All to-dos'))}</button>
+         </div>` : '';
+    this.el.innerHTML = `${catBar}
       <div style="display:flex; gap:6px; flex-wrap:wrap;">
         <input type="text" data-td-body maxlength="500" placeholder="${esc(cp('todo_placeholder', {}, 'Remind me to…'))}" value="${esc(this.draft || '')}"
                style="flex:1 1 220px; min-width:0; padding:8px 10px; border-radius:8px; font:inherit; border:1px solid var(--border-color, #374151); background:var(--bg-primary, #0b1220); color:inherit;">

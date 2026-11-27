@@ -205,12 +205,14 @@
         if (nav) nav.goTo('onboarding', { entity: 'new' });
         return;
       }
-      if (!PANEL[code]) return;
+      if (!PANEL[StatusBar.base(code)]) return;
       this.openPanel(this.bar.openCode === code ? null : code);
     }
 
     openPanel(code) {
-      const panel = code ? PANEL[code] : null;
+      const panel = code ? PANEL[StatusBar.base(code)] : null;
+      // ✅ a category's box opens the list on that category (todo:<id>)
+      if (panel === 'todo' && this.todo) this.todo.category = String(code).includes(':') ? String(code).split(':')[1] : null;
       this.bar.openCode = panel ? code : null;
       this.$('#sb-modal').hidden = !panel;
       this.host.querySelectorAll('[data-sb-panel]').forEach(p => { p.hidden = p.getAttribute('data-sb-panel') !== panel; });
@@ -319,7 +321,7 @@
       this.bar.set(code, data);
       const open = this.bar.openCode;
       // 🎓 onboarding stays open as its last step is sent — the person sees it go 🟡.
-      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo', 'welcome_owed', 'prorate_owed', 'leads_new'].includes(open)) return;   // panels that aren't band items
+      if (!open || ['volunteer', 'chat_unread', 'fines', 'alerts', 'menu', 'onboarding', 'todo', 'welcome_owed', 'prorate_owed', 'leads_new'].includes(StatusBar.base(open))) return;   // panels that aren't band items
       const stillThere = open === 'rsvp_soon' || open === 'rsvp_open'
         ? (this.bar.has('rsvp_soon') || this.bar.has('rsvp_open')) : this.bar.has(open);
       if (!stillThere) this.openPanel(null);
@@ -401,9 +403,21 @@
       // due (owner 11/19 "a todo all my screens … a reminer every time i oepn
       // app"); stays open as items are ticked.  Re-read on focus / screen
       // change so a "Tomorrow 9 AM" item turns up without a reload.
+      // One box per category (mig 2215, owner 11/27 "todo boxes should only
+      // have 1 category"): code todo:<category id>, todo:none = no category.
       const todoBox = (d) => {
         const due = (d && d.todos || []).filter(t => t.due);
-        return due.length ? { n: due.length, list: due.map(t => t.body).join(' · ') } : null;
+        if (!due.length) return null;
+        const groups = new Map();
+        for (const t of due) {
+          const c = t.category;
+          const key = c ? String(c.id) : 'none';
+          if (!groups.has(key)) groups.set(key, { key, sort: c ? Number(c.sort) || 0 : 1e9, cat: c ? [c.icon, c.name].filter(Boolean).join(' ') : '', items: [] });
+          groups.get(key).items.push(t.body);
+        }
+        const boxes = [...groups.values()].sort((a, b) => a.sort - b.sort || String(a.cat).localeCompare(String(b.cat)))
+          .map(g => ({ key: g.key, cat: g.cat, n: g.items.length, list: g.items.join(' · ') }));
+        return { n: due.length, boxes };
       };
       this.todo = window.TodoPanel
         ? new TodoPanel(this.$('#sb-todo'), this.ctx({ onChange: (d) => this.set('todo', todoBox(d)) })) : null;
@@ -580,7 +594,7 @@
 
     // ✅ the to-do list again, ≥ 20 s apart (not while its popup is open — typing).
     loadTodos() {
-      if (!this.todo || this.bar.openCode === 'todo' || Date.now() - (this.todoAt || 0) < 20000) return;
+      if (!this.todo || StatusBar.base(this.bar.openCode || '') === 'todo' || Date.now() - (this.todoAt || 0) < 20000) return;
       this.todoAt = Date.now();
       this.todo.load();
       if (this.leadsNew) this.leadsNew.load();

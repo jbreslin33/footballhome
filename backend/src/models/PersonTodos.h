@@ -25,13 +25,16 @@ public:
     // The person's own view (the band):
     //   {todos:[{id, body, remind_at, due, done_at, repeat, due_on, from,
     //            mine, photo_proof, call_at "HH:MM", guide_id,
-    //            photo_id, photo_at (today's latest photo)}], due: n}
+    //            photo_id, photo_at (today's latest photo),
+    //            category {id, name, icon, sort} | null}], due: n}
     //   open items first (due, then by remind_at), then done newest-first.
     //   A daily item's done_at is today's tick only (else null and due).
     static nlohmann::json list(long long personId);
 
     // remindAtIso "" = now.  "" = ok, else the error.
-    static std::string add(long long personId, const std::string& body, const std::string& remindAtIso);
+    // categoryId > 0 files it under that todo_categories row (mig 2215).
+    static std::string add(long long personId, const std::string& body, const std::string& remindAtIso,
+                           long long categoryId = 0);
 
     // done = true ticks it, false brings it back.  false = not theirs / gone.
     static bool setDone(long long personId, long long id, bool done);

@@ -416,7 +416,9 @@ void MyController::registerRoutes(Router& router, const std::string& prefix) {
         const std::string action = str("action");
         try {
             if (action == "add") {
-                const std::string err = PersonTodos::add(personId, str("body"), str("remind_at"));
+                const long long cat = body.contains("category_id") && body["category_id"].is_number_integer()
+                    ? body["category_id"].get<long long>() : 0;
+                const std::string err = PersonTodos::add(personId, str("body"), str("remind_at"), cat);
                 if (!err.empty()) return jsonError(HttpStatus::BAD_REQUEST, err);
             } else if (action == "done" || action == "undo") {
                 if (!PersonTodos::setDone(personId, id, action == "done")) return jsonError(HttpStatus::NOT_FOUND, "That item is gone");

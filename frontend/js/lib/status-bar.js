@@ -56,19 +56,35 @@ class StatusBar {
     this.render();
   }
 
-  has(code) { return this.items.has(code) && this.rules.has(code); }
+  // A box code may be "<item>:<key>" — one of an item's d.boxes (✅ To do:
+  // one box per category, mig 2215).
+  static base(code) { return String(code).split(':')[0]; }
+
+  has(code) {
+    const b = StatusBar.base(code);
+    if (!this.items.has(b) || !this.rules.has(b)) return false;
+    if (b === code) return true;
+    const boxes = this.items.get(b).boxes;
+    return Array.isArray(boxes) && boxes.some(x => `${b}:${x.key}` === code);
+  }
 
   setTail(html) { if (html !== this.tail) { this.tail = html || ''; this.render(); } }
 
   render() {
     if (!this.head) return;
     const esc = (t) => this.ctx.escapeHtml(t == null ? '' : String(t));
+    const base = StatusBar.base;
+    // An item with d.boxes draws one box each, code "<item>:<key>", in order
+    // (✅ To do: one box per category — owner 11/27 "todo boxes should only
+    // have 1 category").
     const live = [...this.items.entries()]
       .filter(([code]) => this.rules.has(code))   // no rule row = off
-      .sort((a, b) => this.rules.get(a[0]).order - this.rules.get(b[0]).order);
+      .sort((a, b) => this.rules.get(a[0]).order - this.rules.get(b[0]).order)
+      .flatMap(([code, d]) => (Array.isArray(d.boxes) ? d.boxes.map(x => [`${code}:${x.key}`, x]) : [[code, d]]));
+    const data = new Map(live);
     // A box may carry its own severity (🆕 onboarding report: 'info' while all
     // green / everyone onboarded, so the report never turns the band red).
-    const sev = (code) => (this.items.get(code) || {}).severity || this.rules.get(code).severity;
+    const sev = (code) => (data.get(code) || {}).severity || this.rules.get(base(code)).severity;
     // The two RSVP items read as one box: the total, how many are soon.
     const soon = this.items.get('rsvp_soon'), later = this.items.get('rsvp_open');
     const total = (soon ? Number(soon.n) || 0 : 0) + (later ? Number(later.n) || 0 : 0);
@@ -88,7 +104,7 @@ class StatusBar {
       chat_unread:  (d) => [`💬 ${d.text || 'Chat'}`, d.n ? `${d.n} new ›` : 'Open ›'],
       suspended:    () => ['⛔ Suspended', ''],
       onboarding:   (d) => [`⛔ Onboarding — ${d.left} to do: ${d.list}`, 'Finish ›'],
-      todo:         (d) => [`✅ To do — ${d.list}`, 'Open ›'],
+      todo:         (d) => [d.cat ? `✅ ${d.cat} — ${d.list}` : `✅ To do — ${d.list}`, 'Open ›'],
       welcome_owed: (d) => [`👋 Welcome — ${d.n} new: ${d.list}`, 'Welcome ›'],
       prorate_owed: (d) => [`💵 Prorate — ${d.n} new to bill: ${d.list}`, 'Bill ›'],
       leads_new:    (d) => [`🎯 New leads — ${d.n} waiting: ${d.list}`, 'Contact ›'],
@@ -97,11 +113,12 @@ class StatusBar {
     const caret = (code, text) => (this.openCode === code ? String(text).replace('▾', '▴') : text);
     const pill = (code, text) => `<button type="button" class="sb-box-go" data-sb-chip="${esc(code)}">${esc(caret(code, text))}</button>`;
     const box = ([code, d], strong) => {
-      const tokens = { ...d, hours: this.windowHours(code), total, stake };
-      const [lfb, bfb] = (FB[code] || (() => [code, '›']))(tokens);
+      const kind = base(code);
+      const tokens = { ...d, hours: this.windowHours(kind), total, stake };
+      const [lfb, bfb] = (FB[kind] || (() => [kind, '›']))(tokens);
       const rsvp = code === 'rsvp_soon' || code === 'rsvp_open';
-      const label = StatusBar.copy(`seg_${code}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}${code === 'new_members' && d.ok ? '_ok' : ''}`, tokens, lfb);
-      const actTier = code === 'chat_unread' && !d.n ? 'act_chat_read' : `act_${code}`;
+      const label = StatusBar.copy(`seg_${kind}${rsvp && stake ? '_fine' : ''}${code === 'fines_owed' && d.stake ? '_stake' : ''}${code === 'new_members' && d.ok ? '_ok' : ''}${kind === 'todo' && d.cat ? '_cat' : ''}`, tokens, lfb);
+      const actTier = code === 'chat_unread' && !d.n ? 'act_chat_read' : `act_${kind}`;
       const btn = bfb ? StatusBar.copy(actTier, tokens, bfb) : '';
       // A choice reads as one: [Pay now ›] or [🙋 Volunteer ›] (owner 11/18 "Pay now OR Volunteer").
       const orWord = `<span class="sb-box-or">${esc(StatusBar.copy('or_word', {}, 'or'))}</span>`;
