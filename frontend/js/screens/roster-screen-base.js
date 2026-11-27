@@ -1314,9 +1314,34 @@ class RosterScreenBase extends Screen {
           <div data-tc-info="${pid}" data-tc-paid="${esc(p.lastPaidAt || '')}" data-tc-paid-amount="${esc(p.lastPaidAmount == null ? '' : p.lastPaidAmount)}" style="font-size:10px; font-weight:700; line-height:1.25;">${window.PersonStanding && PersonStanding.boxLine ? PersonStanding.boxLine(pid, { paidAt: p.lastPaidAt, paidAmount: p.lastPaidAmount }) : ''}</div>
         </div>`;
     };
+    // ⭐ Starters / 🪑 Bench / 🔄 Reserve (owner 11/27 "for each team lets
+    // list starter, bench, reserve … segment them as the first sort. then
+    // within that sort by age"): the team's lineup roles (team_persons.
+    // lineup_role_id) split the pitch first; the lit sort pill orders each
+    // segment. A team with no roles set reads as one block, as before.
+    const segmented = (players, col, listTeamIds) => {
+      const boxes = (list, start) => ordered(list, col).map((p, i) => box(p, col, listTeamIds)
+        .replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(start + i + 1))).join('');
+      if (!players.some(p => p.lineupRole)) return boxes(players, 0);
+      const segs = [
+        ['starter', copy('tc_seg_starter', {}, '⭐ Starters')],
+        ['bench',   copy('tc_seg_bench', {}, '🪑 Bench')],
+        ['reserve', copy('tc_seg_reserve', {}, '🔄 Reserve')],
+        ['',        copy('tc_seg_none', {}, 'No role yet')],
+      ];
+      let n = 0, out = '';
+      for (const [code, label] of segs) {
+        const list = players.filter(p => (p.lineupRole || '') === code);
+        if (!list.length) continue;
+        out += `<div data-tc-seg style="flex:0 0 100%; font-size:12px; letter-spacing:3px; font-weight:800; text-transform:uppercase; color:#f5d442; margin:${n ? '6px' : '0'} 0 -4px;">${esc(label)} (${list.length})</div>`;
+        out += boxes(list, n);
+        n += list.length;
+      }
+      return out;
+    };
     const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
           border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
-        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${ordered(players, col).map((p, i) => box(p, col, listTeamIds).replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(i + 1))).join('')
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${segmented(players, col, listTeamIds)
           || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
     // Every player is a box (owner 11/19 "on teams i need everything to be
     // a box all players"): the groups under the pitch are box bands too,
@@ -1403,10 +1428,19 @@ class RosterScreenBase extends Screen {
           // Same rule as orderColumnPlayers: flipped = best first, unknown
           // at the foot either way; A–Z (data-tc-alpha) within.
           const flip = this._sortDesc ? -1 : 1;
-          [...el.children].filter(c => c.hasAttribute('data-tc-pid'))
-            .map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), n: RosterScreenBase.commitPractices(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
-            .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || flip * (y.n - x.n) || x.a - y.a)
-            .forEach(x => el.appendChild(x.c));
+          // Re-sort inside each ⭐/🪑/🔄 segment (data-tc-seg headers) — never across.
+          const runs = [[null, []]];
+          [...el.children].forEach(c => {
+            if (c.hasAttribute('data-tc-seg')) runs.push([c, []]);
+            else if (c.hasAttribute('data-tc-pid')) runs[runs.length - 1][1].push(c);
+          });
+          for (const [, boxes] of runs) {
+            if (!boxes.length) continue;
+            const anchor = boxes[boxes.length - 1].nextSibling;
+            boxes.map(c => ({ c, r: rankOf(c.getAttribute('data-tc-pid')), n: RosterScreenBase.commitPractices(c.getAttribute('data-tc-pid')), a: Number(c.getAttribute('data-tc-alpha')) || 0 }))
+              .sort((x, y) => (x.r === 4) - (y.r === 4) || flip * (x.r - y.r) || flip * (y.n - x.n) || x.a - y.a)
+              .forEach(x => el.insertBefore(x.c, anchor));
+          }
         });
         numberBoxes();
         this.element.querySelectorAll('[data-tc-name]').forEach(el => { el.style.color = nameColor(el.getAttribute('data-tc-name')); });
