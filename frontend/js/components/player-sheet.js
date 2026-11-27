@@ -288,8 +288,11 @@
                ${kind === 'go' ? 'background:#1d4ed8; color:#fff; border:1px solid #3b82f6;'
                  : kind === 'warn' ? 'background:#7f1d1d; color:#fff; border:1px solid #b91c1c;'
                  : 'background:transparent; color:#e5e7eb; border:1px solid #475569;'}">${esc(label)}</button>`;
+    // 🎓 scholarship (mig 2196): free LA registration — no dues, not a volunteer
+    const scholar = !on && c.duesFree === 'scholarship';
     const line = on
       ? t('volunteer_on', { since: (c.volunteer && c.volunteer.since) || '' }, `🙋 Volunteer since ${(c.volunteer && c.volunteer.since) || ''} — no dues`)
+      : scholar ? t('scholarship_on', {}, '🎓 Scholarship — free registration, no dues')
       : t('volunteer_off', {}, 'Not a volunteer — pays dues');
     let btns = '';
     if (c.canVolunteer) {
@@ -300,7 +303,7 @@
         : btn('data-ps-vol', on ? t('volunteer_end', {}, '🛑 End volunteer') : t('volunteer_make', {}, '🙋 Make volunteer'), '');
     }
     return `<div data-ps-volunteer style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding-top:8px; border-top:1px dashed var(--border-color, #374151);">
-        <span style="font-weight:700; ${on ? 'color:#93c5fd;' : 'opacity:0.75;'}">${esc(line)}</span>${btns}</div>`;
+        <span style="font-weight:700; ${on ? 'color:#93c5fd;' : scholar ? 'color:#c4b5fd;' : 'opacity:0.75;'}">${esc(line)}</span>${btns}</div>`;
   }
 
   // ⚽ His status on each team — ✅ Regular / 🪑 Reserves for adults, Plays /

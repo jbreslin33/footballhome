@@ -137,6 +137,7 @@
     if (d) {
       const duesAt = bits.length;
       if (d.free_reason === 'volunteer') bits.push(pill(t('dues_volunteer', {}, '🙋 Volunteer'), '', '#1e293b', '#cbd5e1', '#475569'));
+      else if (d.free_reason === 'scholarship') bits.push(pill(t('dues_scholarship', {}, '🎓 Scholarship'), '', '#1e293b', '#c4b5fd', '#7c3aed'));
       else if (d.free_reason === 'injured') bits.push(pill(t('dues_injured', {}, '🩹 No dues'), '', '#1e293b', '#cbd5e1', '#475569'));
       else if (!d.member) bits.push(pill(t('dues_no_membership', {}, '💰 No membership'), t('dues_no_membership_tip', {}, 'No live LeagueApps registration'), '#1f2937', '#9ca3af', '#4b5563'));
       else if (d.balance > 0) {
@@ -314,6 +315,7 @@
     const money = (n) => `$${Math.round(Number(n) || 0)}`;
     if (d) {
       if (d.free_reason === 'volunteer') bottom.push(s(t('box_dues_volunteer', {}, '🙋 vol'), '#cbd5e1'));   // mig 1534
+      else if (d.free_reason === 'scholarship') bottom.push(s(t('box_dues_scholarship', {}, '🎓 schol'), '#c4b5fd'));
       else if (d.free_reason) bottom.push(s(t('box_dues_free', {}, '$0'), '#cbd5e1'));
       else if (!d.member) bottom.push(s(t('box_dues_none', {}, 'no LA'), '#9ca3af'));
       else if (d.balance > 0) {

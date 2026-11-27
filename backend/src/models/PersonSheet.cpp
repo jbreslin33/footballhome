@@ -20,6 +20,7 @@ json PersonSheet::card(long long personId, const std::string& laUserId, long lon
         "                WHERE u.id = $3::int AND tc.ended_at IS NULL) AS coach, "
         "       (SELECT to_char(v.created_at AT TIME ZONE 'America/New_York', 'YYYY-MM-DD') "
         "          FROM club_volunteers v WHERE v.person_id = p.id) AS volunteer_since, "
+        "       fh_dues_free_reason(p.id) AS dues_free, "   // 🙋 / 🩹 / 🎓 scholarship (mig 2196)
         // His section for the 📇 list: an adult team wins (a U16 on the men's
         // side is contacted as a man), else his youth team's.
         "       (SELECT cs.name FROM team_persons tp JOIN teams t ON t.id = tp.team_id AND t.is_active "
@@ -47,6 +48,8 @@ json PersonSheet::card(long long personId, const std::string& laUserId, long lon
         {"canSee", admin || w["coach"].as<bool>()},
         {"canVolunteer", admin},
         {"volunteer", {{"on", !w["volunteer_since"].is_null()}, {"since", textOrNull(w["volunteer_since"])}}},
+        // why he pays no dues — money, so admins only
+        {"duesFree", admin ? textOrNull(w["dues_free"]) : json(nullptr)},
         {"recipients", json::array()},
         {"teams", json::array()},
     };
