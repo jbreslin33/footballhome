@@ -1319,10 +1319,14 @@ class RosterScreenBase extends Screen {
     // within that sort by age"): the team's lineup roles (team_persons.
     // lineup_role_id) split the pitch first; the lit sort pill orders each
     // segment. A team with no roles set reads as one block, as before.
-    const segmented = (players, col, listTeamIds) => {
-      const boxes = (list, start) => ordered(list, col).map((p, i) => box(p, col, listTeamIds)
-        .replace('data-tc-pid=', `data-tc-alpha="${players.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(start + i + 1))).join('');
-      if (!players.some(p => p.lineupRole)) return boxes(players, 0);
+    // injured = 🩹 players WITH a lineup role (owner 11/27 "show him in
+    // starters but in sep box as injured … so he keeps his status" · "add
+    // him to starter total"): each role segment ends with its own 🩹 box and
+    // its count includes them; role-less injured stay in the band below.
+    const segmented = (players, col, listTeamIds, injured = []) => {
+      const boxes = (list, start, color = null) => ordered(list, col).map((p, i) => box(p, col, listTeamIds, color)
+        .replace('data-tc-pid=', `data-tc-alpha="${list.indexOf(p)}" data-tc-pid=`).replace('@@TCNUM@@', String(start + i + 1))).join('');
+      if (!players.some(p => p.lineupRole) && !injured.length) return boxes(players, 0);
       const segs = [
         ['starter', copy('tc_seg_starter', {}, '⭐ Starters')],
         ['bench',   copy('tc_seg_bench', {}, '🪑 Subs')],
@@ -1332,16 +1336,23 @@ class RosterScreenBase extends Screen {
       let n = 0, out = '';
       for (const [code, label] of segs) {
         const list = players.filter(p => (p.lineupRole || '') === code);
-        if (!list.length) continue;
-        out += `<div data-tc-seg style="flex:0 0 100%; font-size:12px; letter-spacing:3px; font-weight:800; text-transform:uppercase; color:#f5d442; margin:${n ? '6px' : '0'} 0 -4px;">${esc(label)} (${list.length})</div>`;
+        const hurt = injured.filter(p => (p.lineupRole || '') === code);
+        if (!list.length && !hurt.length) continue;
+        out += `<div data-tc-seg style="flex:0 0 100%; font-size:12px; letter-spacing:3px; font-weight:800; text-transform:uppercase; color:#f5d442; margin:${n ? '6px' : '0'} 0 -4px;">${esc(label)} (${list.length + hurt.length})</div>`;
         out += boxes(list, n);
         n += list.length;
+        if (hurt.length) {
+          out += `<div data-tc-seg-injured style="flex:0 0 100%; box-sizing:border-box; padding:6px 6px 10px; border-radius:8px; border:1px dashed #fda4af; background:rgba(0,0,0,0.18);">
+              <div style="font-size:11px; letter-spacing:2px; font-weight:800; text-transform:uppercase; color:#fda4af; margin-bottom:10px;">${esc(ec('sec_injured', '🩹 Injured'))} (${hurt.length})</div>
+              <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${boxes(hurt, n, '#fda4af')}</div></div>`;
+          n += hurt.length;
+        }
       }
       return out;
     };
-    const pitch = (players, col, listTeamIds) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
+    const pitch = (players, col, listTeamIds, injured = []) => `<div style="margin:0 -18px; padding:12px 8px; box-sizing:border-box; background:#15803d;
           border-top:2px solid rgba(255,255,255,0.35); border-bottom:2px solid rgba(255,255,255,0.35);">
-        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${segmented(players, col, listTeamIds)
+        <div data-tc-pitch style="display:flex; flex-wrap:wrap; justify-content:center; gap:12px 6px;">${segmented(players, col, listTeamIds, injured)
           || `<div style="opacity:0.7; font-size:13px;">${esc(copy('tc_empty', {}, 'Nobody here'))}</div>`}</div></div>`;
     // Every player is a box (owner 11/19 "on teams i need everything to be
     // a box all players"): the groups under the pitch are box bands too,
@@ -1387,6 +1398,10 @@ class RosterScreenBase extends Screen {
         (groups[g === 'active' ? 'standby' : g] || groups.standby).push(Object.assign(p, { __col: f }));
       }
       Object.values(groups).forEach(l => l.sort(byLast));
+      // 🩹 with a lineup role keep their role on the pitch (own 🩹 box per
+      // segment); only role-less injured stay in the 🩹 band below.
+      const injuredRole = groups.injured.filter(p => p.lineupRole);
+      groups.injured = groups.injured.filter(p => !p.lineupRole);
       const label = RosterScreenBase.dropClubName(String(col.shortLabel || col.label || ''));
       // Full width (owner 11/19 "use full screen for them so widen it out"):
       // two cards share the row on a wide screen, each takes it on a phone.
@@ -1400,7 +1415,7 @@ class RosterScreenBase extends Screen {
           </div>
           ${illegalBanner(listTeamIds)}
           <div data-tc-tally="${esc(groups.active.map(p => p.personId).join(','))}" style="font-size:12px; font-weight:800; margin:-4px 0 8px; opacity:0.95;">${tallyHtml(groups.active.map(p => p.personId))}</div>
-          ${pitch(groups.active, col, listTeamIds)}
+          ${pitch(groups.active, col, listTeamIds, injuredRole)}
           ${band(groups.standby, copy('board_standby_h', {}, '🪑 Reserves'), '#93c5fd', listTeamIds)}
           ${band(groups.practice_squad, copy('board_practice_squad_h', {}, '🏋 Practice squad'), '#93c5fd', listTeamIds)}
           ${band(groups.injured, ec('sec_injured', '🩹 Injured'), '#fda4af', listTeamIds)}
