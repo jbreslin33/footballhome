@@ -12,11 +12,17 @@
 // image (base64 from GET /api/coaching-books/:book/pages/:n). Only people
 // listed in menu_page_people for 'books' (the owner) get the menu pill or data.
 // Wording: message_templates kind 'books'.
+//
+// 📋 Table view (mig 1961, owner 11/27 "can we fix up the books page with a
+// "table" view. title, read, anaylysis etc?"): every book in one sortable
+// table — pages, read (pattern count), patterns per moment, analysis
+// (method write-up) — with All / Read / Not read pills; tap a row → 📖 Book.
 class CoachingBooksScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
     this.data = null; this.err = ''; this.bookId = null; this.moment = 'all';
     this.viewer = null;   // { book, page, count, image, mime, loading }
+    this.view = 'table'; this.filter = 'all'; this.sort = { key: 'title', dir: 1 };
   }
 
   _c(tier, tokens = {}) { return window.MessageCopy ? MessageCopy.block('books', tier, tokens) : ''; }
@@ -46,6 +52,22 @@ class CoachingBooksScreen extends Screen {
         .cbk .pat ul { margin:4px 0 2px 0; padding-left:18px; font-size:0.85rem; line-height:1.4; }
         .cbk .pg { color:#93c5fd; font-weight:700; cursor:pointer; text-decoration:underline; }
         .cbk .none { padding:20px 0; opacity:0.7; }
+        .cbk .tot { font-size:0.82rem; opacity:0.75; margin:4px 0 8px; }
+        .cbk .tw { overflow-x:auto; }
+        .cbk table.bt { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .cbk table.bt th { text-align:left; font-size:0.74rem; text-transform:uppercase; letter-spacing:0.05em; opacity:0.75;
+                           padding:6px 8px; border-bottom:1px solid var(--border-color); cursor:pointer; white-space:nowrap; user-select:none; }
+        .cbk table.bt th.on { opacity:1; color:var(--primary-color); }
+        .cbk table.bt td { padding:7px 8px; border-bottom:1px solid var(--border-color); vertical-align:top; }
+        .cbk table.bt tr[data-cbk-open] { cursor:pointer; }
+        .cbk table.bt tr[data-cbk-open]:hover td { background:var(--bg-secondary); }
+        .cbk table.bt .bk { font-weight:700; }
+        .cbk table.bt .au { font-size:0.75rem; opacity:0.65; }
+        .cbk table.bt .num { text-align:right; white-space:nowrap; }
+        .cbk table.bt .mom { white-space:nowrap; font-size:0.76rem; }
+        .cbk table.bt .mom span { display:inline-block; margin-right:6px; opacity:0.85; }
+        .cbk table.bt .no { opacity:0.55; white-space:nowrap; }
+        .cbk table.bt .rd { white-space:nowrap; }
         .cbk-view { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.88); display:flex; flex-direction:column; }
         .cbk-view .bar { display:flex; gap:8px; align-items:center; justify-content:center; padding:8px; color:#fff; }
         .cbk-view .bar button { padding:6px 14px; border-radius:999px; font-weight:700; min-height:0; min-width:0; }
@@ -55,6 +77,14 @@ class CoachingBooksScreen extends Screen {
       <div class="cbk"><div class="loading" style="padding-top:40px;">Loading…</div></div>`;
     this.element = el;
     el.addEventListener('click', (e) => {
+      const v = e.target.closest('[data-cbk-view]');
+      if (v) { this.view = v.dataset.cbkView; this._draw(); return; }
+      const f = e.target.closest('[data-cbk-filter]');
+      if (f) { this.filter = f.dataset.cbkFilter; this._draw(); return; }
+      const so = e.target.closest('[data-cbk-sort]');
+      if (so) { const k = so.dataset.cbkSort; this.sort = { key: k, dir: this.sort.key === k ? -this.sort.dir : (k === 'title' ? 1 : -1) }; this._draw(); return; }
+      const row = e.target.closest('[data-cbk-open]');
+      if (row) { this.bookId = Number(row.dataset.cbkOpen); this.moment = 'all'; this.view = 'book'; this._draw(); window.scrollTo(0, 0); return; }
       const b = e.target.closest('[data-cbk-book]');
       if (b) { this.bookId = Number(b.dataset.cbkBook); this.moment = 'all'; this._draw(); return; }
       const m = e.target.closest('[data-cbk-moment]');
@@ -95,6 +125,10 @@ class CoachingBooksScreen extends Screen {
     let html = `<h2>${esc(this._c('title'))}</h2><div class="intro">${esc(this._c('intro'))}</div>`;
     if (!books.length) { box.innerHTML = html + `<div class="none">${esc(this._c('none'))}</div>`; return; }
 
+    html += `<div class="pills">${['table', 'book'].map(v =>
+      `<button class="pill ${this.view === v ? 'on' : ''}" data-cbk-view="${v}">${esc(this._c('view_' + v))}</button>`).join('')}</div>`;
+    if (this.view === 'table') { box.innerHTML = html + this._table(books, d.moments || []); return; }
+
     html += `<div class="pills">${books.map(b =>
       `<button class="pill ${b.id === this.bookId ? 'on' : ''}" data-cbk-book="${b.id}">${esc(b.team || b.title)}${b.season ? ' ' + esc(b.season) : ''}</button>`).join('')}</div>`;
     const book = books.find(b => b.id === this.bookId) || books[0];
@@ -129,6 +163,47 @@ class CoachingBooksScreen extends Screen {
       }
     }
     box.innerHTML = html;
+  }
+
+  // 📋 One row per book: pages, read, patterns per moment, analysis.
+  _table(books, moments) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const abbr = String(this._c('moment_abbr') || '').split('|');
+    const rows = books.map(b => {
+      const pats = b.patterns || [];
+      const per = moments.map(m => pats.filter(p => p.moment === m.code).length);
+      return { b, title: b.title || '', pages: b.page_count || 0, read: pats.length, per, analysis: b.method_note ? 1 : 0 };
+    });
+    const nRead = rows.filter(r => r.read).length;
+    const shown = rows.filter(r => this.filter === 'all' || (this.filter === 'read' ? r.read : !r.read));
+    const { key, dir } = this.sort;
+    shown.sort((a, b) => {
+      const x = a[key], y = b[key];
+      const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+      return (c || a.title.localeCompare(b.title)) * (c ? dir : 1);
+    });
+    const counts = { all: rows.length, read: nRead, unread: rows.length - nRead };
+    let html = `<div class="pills">${['all', 'read', 'unread'].map(f =>
+      `<button class="pill ${this.filter === f ? 'on' : ''}" data-cbk-filter="${f}">${esc(this._c('filter_' + f, { n: counts[f] }))}</button>`).join('')}</div>`;
+    html += `<div class="tot">${esc(this._c('totals', {
+      books: rows.length, read: nRead,
+      patterns: rows.reduce((s, r) => s + r.read, 0), pages: rows.reduce((s, r) => s + r.pages, 0) }))}</div>`;
+    const th = (k, label, cls = '') =>
+      `<th class="${cls} ${key === k ? 'on' : ''}" data-cbk-sort="${k}">${esc(label)}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+    html += `<div class="tw"><table class="bt"><thead><tr>
+      ${th('title', this._c('col_book'))}${th('pages', this._c('col_pages'), 'num')}${th('read', this._c('col_read'))}
+      <th>${esc(this._c('col_moments'))}</th>${th('analysis', this._c('col_analysis'))}</tr></thead><tbody>`;
+    for (const r of shown) {
+      const b = r.b;
+      html += `<tr data-cbk-open="${b.id}">
+        <td><div class="bk">${esc(b.title)}${b.subtitle ? ` — ${esc(b.subtitle)}` : ''}</div><div class="au">${esc([b.author, b.team, b.season].filter(Boolean).join(' · '))}</div></td>
+        <td class="num">${r.pages}</td>
+        <td class="${r.read ? 'rd' : 'no'}">${esc(r.read ? this._c('read_yes', { patterns: r.read }) : this._c('read_no'))}</td>
+        <td class="mom">${r.read ? r.per.map((n, i) => n ? `<span>${esc(abbr[i] || moments[i].title)} ${n}</span>` : '').join('') : ''}</td>
+        <td class="${r.analysis ? '' : 'no'}">${esc(this._c(r.analysis ? 'analysis_yes' : 'analysis_no'))}</td>
+      </tr>`;
+    }
+    return html + `</tbody></table></div>`;
   }
 
   _open(book, page) {

@@ -155,6 +155,8 @@ def capture(title, log):
         c2, _, _ = counter()
         if c2 and c2[0] == 2:
             COVER[0] = c2[1]; LAST[0] = c2; c = (1, c2[1]); log(f"page 1 is labelled Cover: {title}")
+        elif c2 and c2[0] == 1:
+            c = c2; log(f"cover is unnumbered (before 1 / {c2[1]}): {title}")
     if c is None: log(f"no counter after opening: {title}"); return None
     if strip_open(img): tap(ALLPAGES); time.sleep(2)
     total = c[1]
