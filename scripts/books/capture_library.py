@@ -146,7 +146,11 @@ def capture(title, log):
         if tries >= 30: return None
         time.sleep(60)
     c, img, _ = counter()
-    if c is None: time.sleep(3); c, img, _ = counter()
+    # A newly bought book downloads on first open: give it up to 90 s
+    # (the counter appears once the first page has rendered).
+    for _ in range(18):
+        if c is not None: break
+        time.sleep(5); c, img, _ = counter()
     COVER[0] = None
     if c is None:
         # Some books open on page 1 labelled "Cover" (no number): step once,
