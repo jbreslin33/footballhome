@@ -1,121 +1,67 @@
-// PlayerTeamRulesScreen — simple static player-facing team rules view.
+// PlayerTeamRulesScreen — #player-team-rules, 📋 Rules (mig 4002).
+//
+// Owner 11/27: "we need a club wide rules, mens wide rule, youth wide rules
+// etc right? then team rules?" · "it just has to make sense adn be
+// navigatable".  Rules live in club_rules, layered 🏠 Club → section
+// (👨 Men / 👩 Women / 👦 Boys / 👧 Girls) → ⚽ team; GET /api/rules hands
+// this person exactly their layers (admins: all).  A sticky pill row jumps
+// to each layer.  ⚖️ Live fines + fine rules (FinesPanel) stay on top —
+// owner 11/18 "even on team rules is where we can show live fines".
+// Wording: message_templates kind 'rules'; rule text: club_rules.body
+// (blank line = paragraph, "- " bullet, "1. " numbered, **bold**,
+// [text](#route) — only in-app #links).
 class PlayerTeamRulesScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
+    this.data = null; this.err = '';
+  }
+
+  _c(tier, fallback) {
+    const v = window.MessageCopy ? MessageCopy.block('rules', tier) : '';
+    return v || fallback;
   }
 
   render() {
     const el = document.createElement('div');
     el.className = 'screen screen-player-team-rules';
     el.innerHTML = `
-      <div style="padding: 10px 10px 14px; line-height: 1.5;">
-        <!-- ⚖️ Their live fines + the fine rules (FinesPanel) — owner 11/18 "even on
-             team rules is where we can show live fines".  Hidden without rates. -->
+      <style>
+        .screen-player-team-rules { overflow:visible; }   /* the window scrolls — let the pill row stick to it */
+        .rules { padding:10px 10px 40px; max-width:820px; margin:0 auto; line-height:1.5; }
+        .rules h1 { font-size:1.15rem; margin:0 0 2px; }
+        .rules .intro { font-size:0.82rem; opacity:0.75; margin-bottom:8px; }
+        .rules .pills { position:sticky; top:0; z-index:5; display:flex; flex-wrap:wrap; gap:6px; padding:8px 0; background:var(--bg-primary, #0f172a); }
+        .rules .pill { padding:6px 14px; border-radius:999px; cursor:pointer; font-weight:700; font-size:0.86rem; min-height:0; min-width:0;
+                       border:1px solid var(--border-color); background:var(--bg-secondary); color:var(--text-primary); }
+        .rules .pill.on { background:var(--primary-color); color:#fff; border-color:transparent; }
+        .rules .layer { margin:14px 0 6px; scroll-margin-top:56px; }
+        .rules .layer > h2 { font-size:1rem; margin:0 0 8px; padding-bottom:4px; border-bottom:2px solid var(--primary-color); }
+        .rules .rule { margin-bottom:10px; padding:10px 12px; border:1px solid rgba(255,255,255,0.12); border-radius:10px; background:rgba(255,255,255,0.03); }
+        .rules .rule h3 { font-size:0.92rem; margin:0 0 6px; }
+        .rules .rule p { margin:0 0 8px; font-size:0.88rem; }
+        .rules .rule ul, .rules .rule ol { margin:0 0 6px 18px; padding:0; font-size:0.88rem; }
+        .rules .rule a { color:#93c5fd; }
+        .rules .none { opacity:0.65; font-size:0.86rem; padding:4px 2px; }
+      </style>
+      <div class="rules">
         <div id="ptr-fines" hidden style="margin-bottom:10px;"></div>
-        <div style="background: linear-gradient(135deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.16);">
-          <div style="display:flex; align-items:flex-start; gap:8px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.12);">
-            <div style="font-size: 1rem; line-height: 1;">⚽</div>
-            <div>
-              <p style="margin: 0 0 4px; font-weight: 700;">Hi Team,</p>
-              <p style="margin: 0; font-size: 0.82rem; opacity: 0.82;">A clear guide for the week ahead — practice, roster decisions, and availability.</p>
-            </div>
-          </div>
-
-          <div style="background: rgba(251, 191, 36, 0.1); border: 1px solid rgba(251, 191, 36, 0.24); border-radius: 10px; padding: 10px; margin-bottom: 10px;">
-            <p style="margin: 0; font-size: 0.82rem;">Please review the rules below for weekly selection, availability, and long-term team expectations.</p>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">1. Dues</h2>
-            <p style="margin: 0 0 8px;"><strong>Dues are $35/month.</strong> Dues are due on the <strong>1st Friday of each month</strong>.</p>
-            <p style="margin: 0 0 8px;">Starting on the <strong>2nd Friday of each month</strong>, a <strong>$5 late charge</strong> will be added to the invoice if the card fails or dues are not paid.</p>
-            <p style="margin: 0 0 8px;">If a player cannot pay dues in full, there are alternatives available, including but not limited to <strong>coaching youth players before men’s practice at Lighthouse</strong>, <strong>coaching youth games</strong>, <strong>team manager duties</strong>, <strong>practice assistant</strong> responsibilities, such as arriving early to practice and helping set up the session, and <strong>social media assistant</strong> responsibilities.</p>
-            <p style="margin: 0;"><strong>Please make sure a valid credit card is on file.</strong></p>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">2. Etiquette</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Only the captain may discuss calls with referees.</strong> Players who speak to the referees without being the captain will be <strong>immediately benched</strong>.</li>
-              <li><strong>Players are not to ask during matches about their own playing time.</strong> When called to the bench, players should not show disrespect to the player coming on by questioning the decision.</li>
-              <li><strong>Respect all levels of play.</strong> Players should be respectful of the different ability levels at the club, and that expectation goes both ways. Players should not complain about another player’s ability level.</li>
-              <li><strong>Training focus will vary.</strong> Players should understand that higher-level players may be the focus of training at times, and that is part of the club’s development approach.</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">3. RSVP &amp; Availability</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Set availability every week:</strong> All players must keep their availability current for games, practices, and pickup sessions.</li>
-              <li><strong>Weekly deadlines matter:</strong> Availability should be updated before the stated weekly cutoff so selection and planning remain accurate.</li>
-              <li><strong>APSL Reserve Team Policy:</strong> <strong>Liga 1 is the official APSL Reserve Team.</strong> ALL Liga 1 players are expected to RSVP for APSL games in case call-ups are needed.</li>
-              <li><strong>Goalkeepers Note:</strong> <strong>All goalkeepers are listed on the Liga 1 roster</strong> (<a href="#player-roster" style="color: #93c5fd;">player roster</a>) so they remain fully eligible for both APSL and Liga 1 fixtures.</li>
-              <li><strong>Mandatory Policy:</strong> Setting accurate availability at <a href="#my" style="color: #93c5fd;">My</a> by the weekly deadline is strictly required. Missing or inaccurate RSVPs for an event will result in a <strong>$1 fine for each event</strong> and may also affect playing time.</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">4. Practice Rules</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Practice Attendance:</strong> A player may arrive late or leave early from practice without penalty. Showing up for practice still counts as a practice.</li>
-              <li><strong>Practice still matters:</strong> Attendance is still part of the evaluation process for selection and roster decisions.</li>
-              <li><strong>Practice cancellations are rare:</strong> We usually move practice due to weather or field availability because we have indoor facilities, rather than canceling it outright.</li>
-              <li><strong>No leaving feet at practice except keepers.</strong> Players will sit out if they leave their feet.</li>
-              <li><strong>Clean play expected:</strong> Players will sit out if they are fouling needlessly.</li>
-              <li><strong>Defensive style at Lighthouse:</strong> We do not hack or push from behind. When defending behind a player with the ball, we are to stop the turn rather than foul the player. This is a skill to promote. We hustle and get in front of the ball to stop progress cleanly, not from behind or the side.</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">5. 20-Man Selection</h2>
-            <p style="margin: 0 0 8px;">To keep squad structure transparent and competitive:</p>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>APSL &amp; Liga 1 Squad Selection:</strong> Players are assigned to either the <strong>APSL Squad</strong> or the <strong>Liga 1 Squad</strong>. You can view current team assignments on the official <a href="#player-roster" style="color: #93c5fd;">Player Roster</a>.</li>
-              <li><strong>Week-to-Week Movement:</strong> Squad assignments are <strong>not permanent</strong>. Selection is evaluated on a <strong>week-to-week basis</strong>, and players can be promoted or moved between squads based strictly on performance, commitment, and merit.</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">6. Initial Starters &amp; Bench Selection</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Lineup &amp; Bench Priority:</strong> Within each squad, starting 11 and bench spots are earned based on <strong>ability + practice attendance</strong> in this order:</li>
-            </ul>
-            <ol style="margin: 6px 0 0 20px; padding: 0;">
-              <li><strong>Best players with 2 practices</strong></li>
-              <li><strong>Best players with 1 practice</strong></li>
-              <li><strong>Players with 0 practices</strong> <em>(only if needed to fill remaining roster spots)</em></li>
-            </ol>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">7. Game-Day Rules</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Selection Process:</strong> Initial starting lineup selection is <strong>Step 1</strong>. Final selection takes place at the <strong>beginning of warmups</strong>, which start <strong>45 minutes before APSL matches</strong> and <strong>30 minutes before Liga 1 matches</strong>.</li>
-              <li><strong>Warmup Replacement Rule:</strong> If a player is <strong>not in warmup when it begins</strong>, they will be replaced in the lineup by <strong>another player in warmup</strong>, regardless of practice attendance, because the coach needs a positional replacement.</li>
-            </ul>
-          </div>
-
-          <div style="margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(255,255,255,0.03);">
-            <h2 style="font-size: 0.9rem; margin: 0 0 6px;">📅 Weekly Selection Timeline</h2>
-            <ul style="margin: 0 0 0 18px; padding: 0;">
-              <li><strong>Thursday @ Midnight:</strong> <strong>HARD DEADLINE</strong> to set availability on <a href="#my" style="color: #93c5fd;">My</a> for Sunday’s match.</li>
-              <li><strong>Friday:</strong> Official <strong>20-man roster</strong> is selected and announced.</li>
-              <li><strong>Saturday:</strong> <strong>Starting 11</strong> is finalized.</li>
-            </ul>
-          </div>
-
-          <p style="margin: 12px 0 0; font-weight: 700;">Consistency, honesty, and commitment are expected every week.</p>
-        </div>
-      </div>
-    `;
+        <div class="rules-body"><div class="loading" style="padding-top:30px;">Loading…</div></div>
+      </div>`;
     this.element = el;
+    el.addEventListener('click', (e) => {
+      const p = e.target.closest('[data-rules-jump]');
+      if (!p) return;
+      const target = el.querySelector(`[data-rules-layer="${p.dataset.rulesJump}"]`);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el.querySelectorAll('[data-rules-jump]').forEach(b => b.classList.toggle('on', b === p));
+    });
     return el;
   }
 
   onEnter() {
     const host = this.element.querySelector('#ptr-fines');
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
     if (host && window.FinesPanel) {
-      const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       const fetchJson = async (url, options = {}) => {
         const res = await this.auth.fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } });
         let body = null; try { body = await res.json(); } catch (_) { body = null; }
@@ -124,5 +70,58 @@ class PlayerTeamRulesScreen extends Screen {
       };
       new FinesPanel(host, { fetchJson, escapeHtml: esc, auth: this.auth }).load();
     }
+    const copy = window.MessageCopy ? Promise.resolve(MessageCopy.load(this.auth)).catch(() => {}) : Promise.resolve();
+    const rules = this.auth.fetch('/api/rules').then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)));
+    Promise.all([rules, copy])
+      .then(([d]) => { this.data = d; this.err = ''; })
+      .catch((e) => { this.err = e.message || 'error'; })
+      .finally(() => { if (this.isMounted !== false) this._draw(); });
+  }
+
+  _layerLabel(l) {
+    if (l.scope === 'club') return this._c('layer_club', '🏠 Club');
+    if (l.scope === 'section') return this._c(`section_${l.sectionCode}`, l.label || 'Section');
+    return l.label || 'Team';   // teams.label carries its own emoji (🏆 U23)
+  }
+
+  // Rule body → safe HTML: escape first, then the tiny format.
+  _body(text) {
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    const inline = (s) => esc(s)
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\((#[\w\-\/]*)\)/g, '<a href="$2">$1</a>');
+    let html = '', list = null;
+    const close = () => { if (list) { html += `</${list}>`; list = null; } };
+    for (const raw of String(text || '').split('\n')) {
+      const line = raw.trim();
+      if (!line) { close(); continue; }
+      const bullet = /^- (.*)$/.exec(line), num = /^\d+\. (.*)$/.exec(line);
+      if (bullet || num) {
+        const kind = bullet ? 'ul' : 'ol';
+        if (list !== kind) { close(); html += `<${kind}>`; list = kind; }
+        html += `<li>${inline((bullet || num)[1])}</li>`;
+      } else { close(); html += `<p>${inline(line)}</p>`; }
+    }
+    close();
+    return html;
+  }
+
+  _draw() {
+    const box = this.element && this.element.querySelector('.rules-body');
+    if (!box) return;
+    const esc = (t) => this.escapeHtml(t == null ? '' : String(t));
+    if (this.err) { box.innerHTML = `<div class="none">${esc(this._c('error', 'Could not load the rules.'))}</div>`; return; }
+    const layers = (this.data && this.data.layers) || [];
+    let html = `<h1>${esc(this._c('title', '📋 Rules'))}</h1><div class="intro">${esc(this._c('intro', ''))}</div>`;
+    html += `<div class="pills">${layers.map((l, i) =>
+      `<button class="pill ${i === 0 ? 'on' : ''}" data-rules-jump="${esc(l.key)}">${esc(this._layerLabel(l))}</button>`).join('')}</div>`;
+    for (const l of layers) {
+      html += `<div class="layer" data-rules-layer="${esc(l.key)}"><h2>${esc(this._layerLabel(l))}</h2>`;
+      html += (l.rules || []).length
+        ? l.rules.map(r => `<div class="rule"><h3>${esc(r.title)}</h3>${this._body(r.body)}</div>`).join('')
+        : `<div class="none">${esc(this._c('empty', 'No rules here yet.'))}</div>`;
+      html += `</div>`;
+    }
+    box.innerHTML = html;
   }
 }

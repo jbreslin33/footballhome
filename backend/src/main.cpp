@@ -77,6 +77,7 @@
 #include "controllers/FinesController.h"
 #include "controllers/VolunteerController.h"
 #include "controllers/CoachingBooksController.h"
+#include "controllers/RulesController.h"
 #include "controllers/FilmAnalysisController.h"
 #include "controllers/ProposalsController.h"
 #include "controllers/OnboardingController.h"
@@ -198,6 +199,7 @@ private:
     std::shared_ptr<FinesController> fines_controller_;
     std::shared_ptr<VolunteerController> volunteer_controller_;
     std::shared_ptr<CoachingBooksController> coaching_books_controller_;   // 📚 mig 1928
+    std::shared_ptr<RulesController> rules_controller_;   // 📋 mig 4002
     std::shared_ptr<FilmAnalysisController> film_analysis_controller_;     // 🎥 mig 1993
     std::shared_ptr<ProposalsController> proposals_controller_;
     std::shared_ptr<OnboardingController> onboarding_controller_;
@@ -326,6 +328,7 @@ public:
         fines_controller_ = std::make_shared<FinesController>();
         volunteer_controller_ = std::make_shared<VolunteerController>();
         coaching_books_controller_ = std::make_shared<CoachingBooksController>();
+        rules_controller_ = std::make_shared<RulesController>();
         film_analysis_controller_ = std::make_shared<FilmAnalysisController>();
         proposals_controller_ = std::make_shared<ProposalsController>();
         onboarding_controller_ = std::make_shared<OnboardingController>();
@@ -692,6 +695,7 @@ private:
         // 🙋 volunteer shifts (mig 1222): approve / decline a player's pick.
         router_.useController("/api/volunteer", volunteer_controller_);
         router_.useController("/api/coaching-books", coaching_books_controller_);   // 📚 owner only
+        router_.useController("/api/rules", rules_controller_);   // 📋 club → section → team rules
         router_.useController("/api/film-analysis", film_analysis_controller_);     // 🎥 film tracking, mig 1993
         router_.useController("/api/proposals", proposals_controller_);   // 📑 #proposals (mig 1572)
         router_.useController("/api/onboarding", onboarding_controller_);

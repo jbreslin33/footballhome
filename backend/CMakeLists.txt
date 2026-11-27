@@ -193,6 +193,7 @@ set(SOURCES
     src/controllers/FinesController.cpp
     src/controllers/VolunteerController.cpp
     src/controllers/CoachingBooksController.cpp
+    src/controllers/RulesController.cpp
     src/controllers/FilmAnalysisController.cpp
     src/controllers/ProposalsController.cpp
     src/controllers/OnboardingController.cpp
@@ -202,6 +203,7 @@ set(SOURCES
     src/models/LeagueEntry.cpp
     src/models/VolunteerShifts.cpp
     src/models/CoachingBooks.cpp
+    src/models/ClubRules.cpp
     src/models/FilmAnalysis.cpp
     src/models/Proposals.cpp
     src/models/Tickets.cpp

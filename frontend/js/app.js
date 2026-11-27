@@ -290,6 +290,7 @@ class App {
     this.screenManager.register('player-calendar', this.screens.playerCalendar);
     this.screenManager.register('player-roster', this.screens.playerRoster);
     this.screenManager.register('player-team-rules', this.screens.playerTeamRules);
+    this.screenManager.register('rules', this.screens.playerTeamRules);   // 📋 menu code (mig 4002)
     
     console.log('App initialized with screens:', Object.keys(this.screens));
   }
