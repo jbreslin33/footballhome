@@ -1409,7 +1409,9 @@ class RosterScreenBase extends Screen {
       const label = RosterScreenBase.dropClubName(String(col.shortLabel || col.label || ''));
       // Full width (owner 11/19 "use full screen for them so widen it out"):
       // two cards share the row on a wide screen, each takes it on a phone.
-      return `<div style="flex:1 1 520px; min-width:0; box-sizing:border-box; border:4px solid #f5d442;
+      // At most two per row (owner 11/27 "apsl left liga 1 right", then U23 / PR
+      // below) — a 3rd card never squeezes up beside them on a wide desktop.
+      return `<div style="flex:1 1 calc(50% - 7px); max-width:100%; min-width:min(520px, 100%); box-sizing:border-box; border:4px solid #f5d442;
                  background:linear-gradient(160deg, #0033a0 0%, #003fbf 30%, #0044cc 55%, #002080 100%);
                  color:#fff; text-align:center; padding:14px 18px 12px; overflow:hidden; box-shadow:0 10px 34px rgba(0,0,0,0.35);">
           <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:8px;">
