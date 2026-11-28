@@ -196,7 +196,10 @@ json TacticPlans::taxonomy() {
                              'rule', (SELECT k.rule FROM tactic_job_kinds k WHERE k.concept_id = c.id ORDER BY (k.rule = 'home'), k.sort_order LIMIT 1),
                              'act',  (SELECT a.code FROM game_engine_acts a WHERE a.concept_id = c.id ORDER BY a.code LIMIT 1),
                              'act_note', (SELECT a.note FROM game_engine_acts a WHERE a.concept_id = c.id ORDER BY a.code LIMIT 1),
-                             'sources', (SELECT count(*) FROM game_concept_sources s WHERE s.concept_id = c.id))
+                             'sources', (SELECT count(*) FROM game_concept_sources s WHERE s.concept_id = c.id),
+                             'kind', c.kind,
+                             'books',     (SELECT count(*) FROM coaching_book_pattern_concepts x WHERE x.concept_id = c.id AND x.is_main),
+                             'books_any', (SELECT count(*) FROM coaching_book_pattern_concepts x WHERE x.concept_id = c.id))
                            ORDER BY c.title) FROM game_concepts c),
           'rules',      (SELECT json_agg(json_build_object('code', code, 'label', label) ORDER BY sort_order) FROM tactic_job_rules),
           'techniques', (SELECT json_agg(json_build_object('id', id, 'parent_id', parent_id, 'node', node, 'title', title, 'how', how)
@@ -324,6 +327,22 @@ json tableInfo(Database* db, const std::string& table) {
     return {{"name", table}, {"columns", cols}};
 }
 }  // namespace
+
+// The book patterns tagged with one concept (mig 5028/5030): main tags first, then the "also" ones.
+json TacticPlans::conceptBooks(long long conceptId) {
+    auto* db = Database::getInstance();
+    const auto r = db->query(R"SQL(
+        SELECT coalesce(json_agg(json_build_object(
+                 'id', p.id, 'book', b.title, 'author', b.author, 'moment', p.moment, 'chapter', p.chapter,
+                 'title', p.title, 'situation', p.situation, 'outcome', p.outcome, 'vs', p.vs_formation,
+                 'from', p.page_from, 'to', p.page_to, 'main', x.is_main, 'fit', x.fit)
+               ORDER BY x.is_main DESC, b.title, p.sort_order, p.id), '[]'::json)::text AS j
+          FROM coaching_book_pattern_concepts x
+          JOIN coaching_book_patterns p ON p.id = x.pattern_id
+          JOIN coaching_books b ON b.id = p.book_id
+         WHERE x.concept_id = $1::int)SQL", {std::to_string(conceptId)});
+    return json::parse(r[0]["j"].c_str());
+}
 
 json TacticPlans::conceptDb(long long conceptId) {
     auto* db = Database::getInstance();

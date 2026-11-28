@@ -53,6 +53,7 @@ class FootballTaxonomyScreen extends Screen {
     this.tab = 'principles';
     this.moment = '';       // '' = every moment
     this.reach = 'all';     // all | played | placed | job | named
+    this.kind = '';         // '' | behaviour | style | call (game_concepts.kind, mig 5026/5029)
     this.search = '';
     this.plevel = 'all';    // 📜 Principles: all | general | operational | fundamental | sub | federations
     this.engine = 'all';    // ⚙️ Engine list: all | concept | unnamed | fudge | read | classes
@@ -157,6 +158,7 @@ class FootballTaxonomyScreen extends Screen {
       else if (k === 'plevel') this.plevel = v;
       else if (k === 'moment') this.moment = v;
       else if (k === 'reach') this.reach = v;
+      else if (k === 'kind') this.kind = v;
       else if (k === 'engine') this.engine = v;
       this._render();
     });
@@ -291,8 +293,10 @@ class FootballTaxonomyScreen extends Screen {
       .map(r => `<button type="button" class="tx-pill ${this.reach === r ? 'on' : ''}" data-tx="reach" data-v="${r}">${r === 'all' ? '' : `<span class="tx-dot" data-reach="${r}"></span>`}${esc(this._t('reach_' + r))}<span class="n">${count(r) + (r === 'all' && !this.moment ? eo.length : 0)}</span></button>`).join('')
       + `<button type="button" class="tx-pill ${this.reach === 'engine' ? 'on' : ''}" data-tx="reach" data-v="engine"><span class="tx-dot" data-reach="engine"></span>${esc(this._t('reach_engine'))}<span class="n">${eo.length}</span></button>`
       + `<button type="button" class="tx-pill ${this.reach === 'dups' ? 'on' : ''}" data-tx="reach" data-v="dups">${esc(this._t('reach_dups'))}<span class="n">${dups.engine.length + dups.pairs.length}</span></button>`;
+    const kinds = ['', 'behaviour', 'style', 'call']
+      .map(k => `<button type="button" class="tx-pill ${this.kind === k ? 'on' : ''}" data-tx="kind" data-v="${k}">${esc(this._t(k ? 'kind_' + k : 'kind_all'))}<span class="n">${inMoment.filter(c => !k || c.kind === k).length}</span></button>`).join('');
     const legend = this._t('legend'), where = this._t('where_legend');
-    return `<div class="tx-pills">${moments}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
+    return `<div class="tx-pills">${moments}</div><div class="tx-pills">${kinds}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
       ${where ? `<div class="tx-legend" style="margin:0 0 8px;">${esc(where)}</div>` : ''}
       <input type="search" class="tx-search" data-tx-search placeholder="${esc(this._t('search'))}" value="${esc(this.search)}">
       <div id="tx-concepts"></div>`;
@@ -307,7 +311,7 @@ class FootballTaxonomyScreen extends Screen {
     const rules = {};
     for (const r of d.rules || []) rules[r.code] = r.label;
     if (this.reach === 'dups') { el.innerHTML = this._dupsHtml(esc); return; }
-    const shown = (d.concepts || []).filter(c => (!this.moment || c.moment === this.moment)
+    const shown = (d.concepts || []).filter(c => (!this.moment || c.moment === this.moment) && (!this.kind || c.kind === this.kind)
       && this.reach !== 'engine' && (this.reach === 'all' || this._reach(c) === this.reach)
       && (!q || (c.title + ' ' + c.name + ' ' + (c.cue || '')).toLowerCase().includes(q)));
     const card = (c) => {
@@ -316,8 +320,9 @@ class FootballTaxonomyScreen extends Screen {
       const nb = (this._index().behOf.get(c.id) || []).length;
       return `<div class="tx-card" data-reach="${reach}" data-tx-open="concept" data-k="${c.id}">
         <div class="tx-title">${esc(c.title)}</div>
-        <div class="tx-meta">${esc(this._t('reach_' + reach))} · ${esc(fam)}${c.sources ? ' · ' + esc(this._t('sources', { n: c.sources })) : ''}</div>
+        <div class="tx-meta">${esc(this._t('reach_' + reach))} · ${esc(fam)}${c.kind && c.kind !== 'behaviour' ? ' · ' + esc(this._t('kind_' + c.kind)) : ''}${c.sources ? ' · ' + esc(this._t('sources', { n: c.sources })) : ''}</div>
         ${c.cue ? `<div class="tx-cue">${esc(c.cue)}</div>` : ''}
+        ${c.books_any ? `<div class="tx-line">${esc(this._t('books_n', { n: c.books, a: c.books_any - c.books }))}</div>` : ''}
         ${reach === 'placed' ? `<div class="tx-line">${esc(this._t('placed_by', { rule: rules[c.rule] || c.rule }))}</div>` : ''}
         ${nb ? `<div class="tx-line">${esc(this._t('n_behaviours', { n: nb }))}</div>` : ''}
         ${this._whereHtml(c, esc)}
@@ -740,6 +745,7 @@ class FootballTaxonomyScreen extends Screen {
       <div class="tx-pills" style="margin-top:0;">${this.trail.length ? `<button type="button" class="tx-pill" data-tx="back">${esc(this._t('back'))}</button>` : ''}
         <button type="button" class="tx-pill" data-tx="close">${esc(this._t('close'))}</button></div>${inner}</div>`;
     if (type === 'db') this._loadDb(Number(key));
+    else if (type === 'concept') this._loadBooks(Number(key));
     else if (!['concept', 'game', 'principle', 'family', 'style', 'model'].includes(type)) this._loadSource();
     const at = this.detail.sec && host.querySelector(`[data-tx-sec="${this.detail.sec}"]`);
     if (at) at.scrollIntoView({ block: 'start' });
@@ -763,7 +769,7 @@ class FootballTaxonomyScreen extends Screen {
       ${this._whereHtml(c, esc)}
       <h4>${esc(this._t('s_row'))}</h4>` + this._kv([
         [this._t('f_reach'), this._t('reach_' + reach)], [this._t('f_moment'), moment], [this._t('f_principle'), principle],
-        [this._t('f_family'), this._t('family_' + c.family) || c.family], [this._t('f_status'), c.status],
+        [this._t('f_family'), this._t('family_' + c.family) || c.family], [this._t('f_kind'), this._t('kind_' + c.kind) || c.kind], [this._t('f_status'), c.status],
         [this._t('f_taught'), c.taught_from], [this._t('f_definition'), c.definition], [this._t('f_cue'), c.cue], [this._t('f_lacking'), c.lacking],
         [this._t('f_sources'), c.sources || null]], esc);
     const out = (d.links || []).filter(l => l.from === id), inn = (d.links || []).filter(l => l.to === id);
@@ -784,6 +790,9 @@ class FootballTaxonomyScreen extends Screen {
     html += `<h4 data-tx-sec="behaviours">${esc(this._t('s_behaviours'))}</h4>` + (behs.length ? behs.map(b => this._behaviourRow(b, esc)).join('') : `<div class="tx-dim">${esc(this._t('none_behaviours'))}</div>`);
     const also = (d.behaviours || []).filter(b => b.concept_id !== id && (b.other || '').split(/,\s*/).includes(c.name));
     if (also.length) html += `<h4>${esc(this._t('s_near'))}</h4>` + also.map(b => this._behaviourRow(b, esc)).join('');
+    // 📚 The coaching-book patterns tagged with it (coaching_book_pattern_concepts) — loaded on open.
+    html += `<h4 data-tx-sec="books">${esc(this._t('s_books', { n: c.books_any || 0 }))}</h4>`
+      + (c.books_any ? `<div data-tx-books="${c.id}"><p class="tx-dim">${esc(this._t('loading'))}</p></div>` : `<div class="tx-dim">${esc(this._t('none_books'))}</div>`);
     return html;
   }
 
@@ -817,6 +826,29 @@ class FootballTaxonomyScreen extends Screen {
     return `<h3>${esc(this._t('db_title', { title: c.title }))}</h3>
       <div class="tx-dim tx-code">game_concepts · id ${c.id} · ${this._conceptLink({ id: c.id, title: this._t('db_to_concept') }, esc)}</div>
       <div data-tx-db="${c.id}"><p class="tx-dim">${esc(this._t('loading'))}</p></div>`;
+  }
+
+  async _loadBooks(id) {
+    const c = this._index().concept.get(id);
+    if (!c || !c.books_any) return;
+    if (!this.booksCache) this.booksCache = new Map();
+    let list = this.booksCache.get(id);
+    if (!list) {
+      try {
+        const res = await this.auth.fetch('/api/tactic-plans/taxonomy/books?concept=' + id);
+        list = res.ok ? await res.json() : null;
+      } catch (_) { list = null; }
+      if (list) this.booksCache.set(id, list);
+    }
+    const host = this.find(`[data-tx-books="${id}"]`);
+    if (!host) return;
+    const esc = (v) => this.escapeHtml(String(v == null ? '' : v));
+    if (!list) { host.innerHTML = `<p>${esc(this._t('failed'))}</p>`; return; }
+    const byBook = new Map();
+    for (const p of list) { if (!byBook.has(p.book)) byBook.set(p.book, []); byBook.get(p.book).push(p); }
+    host.innerHTML = [...byBook].map(([book, ps]) => `<div class="tx-principle">${esc(book)} <span class="tx-dim">${ps.length}</span></div><ul class="tx-list">`
+      + ps.map(p => `<li><strong>${esc(p.title)}</strong>${p.main ? '' : ` <span class="tx-chip off">${esc(this._t('book_also'))}</span>`}${p.fit === 'loose' ? ` <span class="tx-chip off">${esc(this._t('book_loose'))}</span>` : ''}
+          <span class="tx-dim">${esc(this._t('book_pages', { from: p.from, to: p.to }))}${p.vs ? ' · vs ' + esc(p.vs) : ''}</span><br>${esc(p.situation)}${p.outcome ? ` <span class="tx-dim">→ ${esc(p.outcome)}</span>` : ''}</li>`).join('') + `</ul>`).join('');
   }
 
   async _loadDb(id) {

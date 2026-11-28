@@ -106,6 +106,7 @@ void TacticPlansController::registerRoutes(Router& router, const std::string& pr
     router.get (prefix + "/taxonomy",         [this](const Request& r) { return handleTaxonomy(r); });
     router.get (prefix + "/taxonomy/source",  [this](const Request& r) { return handleSource(r); });
     router.get (prefix + "/taxonomy/db",      [this](const Request& r) { return handleConceptDb(r); });
+    router.get (prefix + "/taxonomy/books",   [this](const Request& r) { return handleConceptBooks(r); });
     router.put (prefix + "/taxonomy/principles/:code/verdict", [this](const Request& r) { return handlePrincipleVerdict(r); });
     router.post(prefix + "",                  [this](const Request& r) { return handleCreate(r); });
     router.post(prefix + "/states",           [this](const Request& r) { return handleAddState(r); });
@@ -177,6 +178,19 @@ Response TacticPlansController::handlePrincipleVerdict(const Request& request) {
     } catch (const std::exception& e) {
         std::cerr << "TacticPlansController::handlePrincipleVerdict: " << e.what() << std::endl;
         return jsonError(HttpStatus::BAD_REQUEST, e.what());
+    }
+}
+
+// GET /taxonomy/books?concept=<id> — the coaching-book patterns tagged with this concept (#football-taxonomy sheet).
+Response TacticPlansController::handleConceptBooks(const Request& request) {
+    long long userId = 0;
+    Response error(HttpStatus::OK, "");
+    if (!requireStaff(request, &userId, &error)) return error;
+    try {
+        return jsonOut(HttpStatus::OK, model_->conceptBooks(idOf(request.getQueryParam("concept"))));
+    } catch (const std::exception& e) {
+        std::cerr << "TacticPlansController::handleConceptBooks: " << e.what() << std::endl;
+        return jsonError(HttpStatus::INTERNAL_SERVER_ERROR, e.what());
     }
 }
 

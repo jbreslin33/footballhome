@@ -38,6 +38,7 @@ public:
     // every table that points at it with its rows — read from the catalogue, so a new
     // table or column shows without a code change.  Empty when there is no such concept.
     nlohmann::json conceptDb(long long conceptId);
+    nlohmann::json conceptBooks(long long conceptId);   // book patterns tagged with the concept
 
     // ⭐ Shortcuts (mig 1177): the job kinds on the list atop the dropdown,
     // [code], in the dropdown's order.  lookups() carries it as "shortcuts".

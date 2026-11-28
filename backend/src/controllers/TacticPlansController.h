@@ -22,7 +22,8 @@ private:
     Response handleGet(const Request& request);          // ?formation_id&opponent_formation_id&moment&block
     Response handleTaxonomy(const Request& request);     // moments → principles → concepts, and how far each reaches
     Response handleSource(const Request& request);
-    Response handleConceptDb(const Request& request);       // lines of an engine source file (game_engine_sources)
+    Response handleConceptDb(const Request& request);
+    Response handleConceptBooks(const Request& request);   // book patterns tagged with a concept
     Response handlePrincipleVerdict(const Request& request);  // PUT /taxonomy/principles/:code/verdict (mig 1933)
     Response handleList(const Request& request);         // every plan (the teaching room picker)
     Response handleCreate(const Request& request);       // POST
