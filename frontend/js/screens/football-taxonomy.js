@@ -265,7 +265,7 @@ class FootballTaxonomyScreen extends Screen {
                   ['styles', this._t('tab_styles'), (d.styles || []).length],
                   ['models', this._t('tab_models'), (d.game_models || []).length],
                   ['concepts', this._t('tab_concepts'), (d.concepts || []).length], ['techniques', this._t('tab_techniques'), (d.techniques || []).length],
-                  ['more', this._t('tab_more'), null], ['engine', this._t('tab_engine'), null]]
+                  ['learning', this._t('tab_learning'), null], ['more', this._t('tab_more'), null], ['engine', this._t('tab_engine'), null]]
       .map(([k, label, n]) => `<button type="button" class="tx-pill ${this.tab === k ? 'on' : ''}" data-tx="tab" data-v="${k}">${esc(label)}${n != null ? `<span class="n">${n}</span>` : ''}</button>`).join('');
     let body = '';
     if (this.tab === 'principles') body = this._principlesHtml(esc);
@@ -275,10 +275,23 @@ class FootballTaxonomyScreen extends Screen {
     else if (this.tab === 'concepts') body = this._conceptsHtml(esc);
     else if (this.tab === 'techniques') body = this._techniquesHtml(esc);
     else if (this.tab === 'more') body = this._moreHtml(esc);
+    else if (this.tab === 'learning') body = this._learningHtml(esc);
     else body = this._engineHtml(esc);
     el.innerHTML = head + this._syncHtml(esc) + `<div class="tx-pills">${tabs}</div>` + body;
     if (this.tab === 'concepts') this._renderConceptList();
     this._renderDetail();
+  }
+
+  // ── 🧭 How players learn — the design model (owner 11/27), every word message_templates
+  // kind 'taxonomy' tiers lm_intro, lm_s<n>_h / lm_s<n>_b (sections run until a heading is missing).
+  _learningHtml(esc) {
+    let html = `<div class="tx-dim" style="font-size:0.85rem; margin:8px 0 12px; max-width:80ch; white-space:pre-line;">${esc(this._t('lm_intro'))}</div>`;
+    for (let n = 1; n < 40; n++) {
+      const h = this._t(`lm_s${n}_h`);
+      if (!h) break;
+      html += `<div class="tx-principle">${esc(h)}</div><div style="font-size:0.88rem; max-width:80ch; white-space:pre-line; margin:0 0 14px;">${esc(this._t(`lm_s${n}_b`))}</div>`;
+    }
+    return html;
   }
 
   // ── 🧠 Concepts ────────────────────────────────────────────────────────
