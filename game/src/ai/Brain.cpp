@@ -249,6 +249,25 @@ void Brain::think(const World& world) const {
     // The concept machines (ai/concepts/Machines), after the job states: each player's
     // marking-scheme, cover-shadow and pressing-distance machine reads the tick and moves.
     // [behaviour: machine_tick]
+    // [behaviour: read_loose_ball_lean]
+    // The loose ball (in play, nobody on it): which side looks like getting it — each side's nearest
+    // man, the other's nearest loose_margin_m further = that side's; inside the margin = 50/50.
+    std::int8_t loose[2] = {-2, -2};
+    if (!world.ball().owner && world.restartTeam() == 0xFF && world.outStage() == 0) {
+        Fixed64 near[2] = {Fixed64::fromInt(999), Fixed64::fromInt(999)};
+        const auto& bp = world.ball().pos;
+        for (std::uint8_t q = 0; q < world.playerCount() && q < 32; ++q) {
+            const auto& pq = world.player(q).pos;
+            const Fixed64 d = math::length(Vec2{pq.x - bp.x, pq.y - bp.y});
+            auto& n = near[setup_.team_of_slot[q] & 1];
+            if (d < n) n = d;
+        }
+        const Fixed64 mg = block_.machines().params().loose_margin_m;
+        for (int tm = 0; tm < 2; ++tm) {
+            const Fixed64 mine = near[tm], theirs = near[1 - tm];
+            loose[tm] = mine + mg < theirs ? 1 : theirs + mg < mine ? -1 : 0;
+        }
+    }
     for (std::uint8_t s = 0; s < world.playerCount() && s < 32; ++s) {
         const std::uint8_t t = setup_.team_of_slot[s];
         const Phase ph = players_[s].read.phase();   // his own read
@@ -276,6 +295,18 @@ void Brain::think(const World& world) const {
         }
         ms.cover = block_.deepCb(t) == static_cast<int>(s);
         ms.carrier = world.ball().owner && setup_.team_of_slot[*world.ball().owner] != t ? static_cast<int>(*world.ball().owner) : -1;
+        // 11/27: what the possession read, the press's approach / arrival and the duel read.
+        ms.phase = static_cast<std::uint8_t>(ph);
+        ms.loose = loose[t & 1];
+        ms.me = Vec2{world.player(s).pos.x, world.player(s).pos.y};
+        ms.my_vel = Vec2{world.player(s).vel.x, world.player(s).vel.y};
+        ms.tackled = world.player(s).recovery_ticks > 0 && world.player(s).recovery_kind == 1;
+        if (ms.carrier >= 0) {
+            const auto& cp = world.player(static_cast<SlotIndex>(ms.carrier));
+            ms.carrier_pos = Vec2{cp.pos.x, cp.pos.y};
+            ms.carrier_face = cp.face;
+            ms.carrier_vel = Vec2{cp.vel.x, cp.vel.y};
+        }
         block_.machines().update(s, ms, now);
     }
 }

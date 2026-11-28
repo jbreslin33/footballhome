@@ -73,8 +73,13 @@ line_run_pace
 machine_commit
 machine_cover
 machine_cover_shadow
+machine_duel
 machine_marking_scheme
+machine_possession_read
+machine_press_approach_arrival
+machine_press_arrival
 machine_press_chase_double
+machine_press_way
 machine_pressing_distance
 machine_recover
 machine_tick
@@ -190,6 +195,7 @@ read_get_in_line
 read_header_point
 read_in_danger
 read_loft_lead
+read_loose_ball_lean
 read_offside_leave_it
 read_our_ball_live
 read_own_touch_pace

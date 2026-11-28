@@ -24,6 +24,19 @@ void PlayerMachines::update(core::SlotIndex slot, const MachineSense& s, std::ui
     auto& me = st_[slot & 31];
     const bool keeper = s.job == Job::Keeper;
 
+    {   // POSSESSION READ — whose ball he thinks it is: his own phase read, the loose ball, the dead ball
+        // [behaviour: machine_possession_read]
+        auto& m = me[static_cast<int>(MachineId::PossessionRead) - 1];
+        std::uint8_t st = possread::Asleep;
+        if (s.phase == 4) st = possread::DeadOurs;
+        else if (s.phase == 5) st = possread::DeadTheirs;
+        else if (s.phase != 0xFF && s.loose != -2) st = s.loose > 0 ? possread::LooseOurs : s.loose < 0 ? possread::LooseTheirs : possread::Loose5050;
+        else if (s.phase == 0) st = possread::Ours;
+        else if (s.phase == 1) st = possread::OursWon;
+        else if (s.phase == 2) st = possread::Theirs;
+        else if (s.phase == 3) st = possread::TheirsWon;
+        set(m, st, -1, tick, true);
+    }
     {   // MARKING SCHEME
         // [behaviour: machine_marking_scheme]
         auto& m = me[static_cast<int>(MachineId::Marking) - 1];
@@ -52,8 +65,38 @@ void PlayerMachines::update(core::SlotIndex slot, const MachineSense& s, std::ui
     {   // PRESS, LOOSE BALL, DOUBLE-TEAM — the engine's one presser, first man to the loose ball, second man
         // [behaviour: machine_press_chase_double]
         auto& p = me[static_cast<int>(MachineId::Press) - 1];
-        if (s.job == Job::Press) set(p, press::Closing, static_cast<std::int16_t>(s.carrier), tick, true);
+        // [behaviour: machine_press_approach_arrival]
+        const Fixed64 d_carrier = s.carrier >= 0 ? math::length(Vec2{s.carrier_pos.x - s.me.x, s.carrier_pos.y - s.me.y}) : Fixed64::fromInt(999);
+        const bool arriving = s.job == Job::Press && s.carrier >= 0 && d_carrier <= p_.arrive_m;
+        if (s.job == Job::Press) set(p, arriving ? press::Arriving : press::Closing, static_cast<std::int16_t>(s.carrier), tick, true);
         else set(p, press::Asleep, -1, tick, true);
+        {   // PRESS WAY — while approaching: curved onto the lane he hides, from the carrier's blind side, or straight
+            // [behaviour: machine_press_way]
+            auto& w = me[static_cast<int>(MachineId::PressWay) - 1];
+            if (s.job != Job::Press || arriving || s.carrier < 0) set(w, pressway::Asleep, -1, tick, true);
+            else if (me[static_cast<int>(MachineId::CoverShadow) - 1].state == shadow::OnTheLane)
+                set(w, pressway::Curved, me[static_cast<int>(MachineId::CoverShadow) - 1].other, tick, true);
+            else {
+                // Behind the way the carrier faces: he cannot see him coming.
+                const Fixed64 behind = s.carrier_face.x * (s.me.x - s.carrier_pos.x) + s.carrier_face.y * (s.me.y - s.carrier_pos.y);
+                set(w, behind.raw < 0 ? pressway::BlindSide : pressway::Straight, static_cast<std::int16_t>(s.carrier), tick, true);
+            }
+        }
+        {   // PRESS ARRIVAL — the last metres: slowing into his stand-off (stop short) or going on through
+            // [behaviour: machine_press_arrival]
+            auto& a = me[static_cast<int>(MachineId::PressArrival) - 1];
+            const Fixed64 speed = math::length(s.my_vel);
+            if (!arriving && !(s.tackled && s.carrier >= 0)) set(a, arrival::Asleep, -1, tick, true);
+            else set(a, s.tackled || speed > p_.stop_short_mps ? arrival::FollowThrough : arrival::StopShort, static_cast<std::int16_t>(s.carrier), tick, true);
+        }
+        {   // DUEL — on the man with the ball: contain him, or run with him when he goes
+            // [behaviour: machine_duel]
+            auto& du = me[static_cast<int>(MachineId::Duel) - 1];
+            const bool on_him = s.their_ball && !keeper && s.carrier >= 0 && d_carrier <= p_.duel_m &&
+                                (s.job == Job::Press || s.job == Job::DoubleTeam || s.job == Job::Mark);
+            if (!on_him) set(du, duel::Asleep, -1, tick, true);
+            else set(du, math::length(s.carrier_vel) >= p_.run_with_mps ? duel::RunWithHim : duel::Contain, static_cast<std::int16_t>(s.carrier), tick, false);
+        }
         auto& l = me[static_cast<int>(MachineId::LooseBall) - 1];
         if (s.job == Job::Chase) set(l, looseball::Going, -1, tick, true);
         else set(l, looseball::Asleep, -1, tick, true);

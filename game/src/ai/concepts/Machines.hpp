@@ -53,8 +53,9 @@ namespace fh::game::ai::concepts {
 
 // The machines, by wire number (game_engine_terms kind 'machine', wire_index).
 enum class MachineId : std::uint8_t { Marking = 1, CoverShadow = 2, PressingDistance = 3,
-                                      Recover = 4, Press = 5, LooseBall = 6, DoubleTeam = 7, Cover = 8 };
-inline constexpr int kMachineCount = 8;
+                                      Recover = 4, Press = 5, LooseBall = 6, DoubleTeam = 7, Cover = 8,
+                                      PossessionRead = 9, PressWay = 10, PressArrival = 11, Duel = 12 };
+inline constexpr int kMachineCount = 12;
 inline constexpr std::uint8_t kAsleep = 0;
 
 namespace marking { enum : std::uint8_t { Asleep = 0, Watching = 1, Zonal = 2, Free = 3 }; }
@@ -67,7 +68,20 @@ namespace pdist { enum : std::uint8_t { Asleep = 0, On = 1, Stepping = 2 }; }
 // propose nothing yet — the job states execute). They make the whole brain one set of machines
 // the page reads, instead of the page guessing from the job.
 namespace recover { enum : std::uint8_t { Asleep = 0, GettingBack = 1 }; }
-namespace press { enum : std::uint8_t { Asleep = 0, Closing = 1 }; }
+// 11/27 (owner: "press the ball … has a sub state machine of approach, and another of arrival"):
+// CLOSING is the approach; ARRIVING the last metres (within arrive_m of the carrier).
+namespace press { enum : std::uint8_t { Asleep = 0, Closing = 1, Arriving = 2 }; }
+// 11/27, the design's machines as recognitions first (they propose nothing; the job states execute):
+// POSSESSION READ — whose ball HE thinks it is (owner: "a whole team does not have a brain"): his own
+//   phase read (PlayerAgent::read, with his reaction) plus the loose ball and who looks like getting it.
+namespace possread { enum : std::uint8_t { Asleep = 0, Ours = 1, OursWon = 2, Theirs = 3, TheirsWon = 4,
+                                           LooseOurs = 5, Loose5050 = 6, LooseTheirs = 7, DeadOurs = 8, DeadTheirs = 9 }; }
+// PRESS WAY — how the presser approaches: straight, curved onto a lane (the cover shadow), from his blind side.
+namespace pressway { enum : std::uint8_t { Asleep = 0, Straight = 1, Curved = 2, BlindSide = 3 }; }
+// PRESS ARRIVAL — how he finishes the run: stops short (slows into his stand-off) or follows through.
+namespace arrival { enum : std::uint8_t { Asleep = 0, StopShort = 1, FollowThrough = 2 }; }
+// DUEL — on the man with the ball (within duel_m): contain him, or run with him when he goes.
+namespace duel { enum : std::uint8_t { Asleep = 0, Contain = 1, RunWithHim = 2 }; }
 namespace looseball { enum : std::uint8_t { Asleep = 0, Going = 1 }; }
 namespace doubleteam { enum : std::uint8_t { Asleep = 0, SecondMan = 1 }; }
 namespace cover { enum : std::uint8_t { Asleep = 0, Behind = 1 }; }
@@ -89,6 +103,13 @@ struct MachineSense {
     bool behind = false;             // his place is recover_m+ goal-side of him: the line is broken behind him
     bool cover = false;              // he is the deeper centre-back behind the one who steps
     int carrier = -1;                // their man on the ball, -1 none
+    // 11/27 — what the new machines read.
+    std::uint8_t phase = 0xFF;       // his own phase read (ai::Phase: 0 in possession, 1 attacking transition,
+                                     // 2 defending block, 3 defensive transition, 4 our set piece, 5 theirs), 0xFF none
+    std::int8_t loose = -2;          // ball loose in play: 1 ours looks like getting it, 0 50/50, -1 theirs; -2 not loose
+    math::Vec2 me{}, my_vel{};       // where he is and how he moves
+    math::Vec2 carrier_pos{}, carrier_face{}, carrier_vel{};   // the carrier's spot, facing and velocity (carrier >= 0)
+    bool tackled = false;            // on the ground from a tackle he made
 };
 
 struct MachineState {
@@ -99,6 +120,12 @@ struct MachineState {
 
 struct MachineParams {
     std::uint64_t hold_ticks = 9;    // an awake machine stays awake at least this long (0.3 s): no flicker
+    // 11/27 recognitions (labels only — nothing in the sim reads them):
+    math::Fixed64 arrive_m = math::Fixed64::fromInt(3);               // the presser's last metres: arrival
+    math::Fixed64 stop_short_mps = math::Fixed64::fromInt(3);         // arriving slower than this = stopping short
+    math::Fixed64 duel_m = math::Fixed64::fromFraction(5, 2);         // on the man with the ball: a duel
+    math::Fixed64 run_with_mps = math::Fixed64::fromInt(4);           // the carrier going this fast: run with him
+    math::Fixed64 loose_margin_m = math::Fixed64::fromInt(2);         // nearest man this much closer = his side's loose ball
 };
 
 class PlayerMachines {

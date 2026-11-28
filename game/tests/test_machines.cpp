@@ -113,7 +113,7 @@ FH_TEST(several_awake_at_once) {
 // man whose place is behind him RECOVERS — each asleep otherwise.
 FH_TEST(press_loose_ball_double_team_cover_recover) {
     co::PlayerMachines m;
-    co::MachineSense s = defending(co::Job::Press); s.carrier = 18;
+    co::MachineSense s = defending(co::Job::Press); s.carrier = 18; s.carrier_pos = v(10, 0);   // 10 m off: still approaching (11/27)
     m.update(0, s, 0);
     FH_EXPECT_EQ(m.of(0, co::MachineId::Press).state, co::press::Closing);
     FH_EXPECT_EQ(m.of(0, co::MachineId::Press).other, 18);
@@ -146,3 +146,49 @@ FH_TEST(pressing_distance_follows_the_man_he_marks) {
 }
 
 FH_TEST_MAIN()
+
+// 11/27 — the possession read: his own phase read, the loose ball (who looks like getting it), the dead ball.
+FH_TEST(possession_read_states) {
+    co::PlayerMachines m;
+    co::MachineSense s;
+    s.phase = 0; m.update(0, s, 0);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PossessionRead).state, co::possread::Ours);
+    s.phase = 3; m.update(0, s, 1);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PossessionRead).state, co::possread::TheirsWon);
+    s.phase = 2; s.loose = 0; m.update(0, s, 2);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PossessionRead).state, co::possread::Loose5050);
+    s.loose = 1; m.update(0, s, 3);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PossessionRead).state, co::possread::LooseOurs);
+    s.loose = -2; s.phase = 5; m.update(0, s, 4);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PossessionRead).state, co::possread::DeadTheirs);
+}
+
+// 11/27 — the press: approach (closing) then arrival (within arrive_m); the way he approaches
+// (straight / blind side / curved onto the lane) and how he arrives (stop short / follow through).
+FH_TEST(press_approach_arrival_way_and_duel) {
+    co::PlayerMachines m;
+    co::MachineSense s = defending(co::Job::Press);
+    s.carrier = 20; s.carrier_pos = v(0, 0); s.carrier_face = v(1, 0);
+    s.me = v(10, 0); s.my_vel = v(-6, 0);   // in front of the way he faces, 10 m out
+    m.update(0, s, 0);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Press).state, co::press::Closing);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressWay).state, co::pressway::Straight);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressArrival).state, co::arrival::Asleep);
+    s.me = v(-10, 0); s.my_vel = v(6, 0);   // behind him: his blind side
+    m.update(0, s, 1);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressWay).state, co::pressway::BlindSide);
+    s.me = v(-2, 0); s.my_vel = v(1, 0);    // 2 m off, slowing: arriving, stopping short; a duel, containing
+    m.update(0, s, 2);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Press).state, co::press::Arriving);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressWay).state, co::pressway::Asleep);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressArrival).state, co::arrival::StopShort);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Duel).state, co::duel::Contain);
+    s.my_vel = v(6, 0); s.carrier_vel = v(5, 0);   // still running in, and he goes: follow through, run with him
+    m.update(0, s, 3);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::PressArrival).state, co::arrival::FollowThrough);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Duel).state, co::duel::RunWithHim);
+    s = defending(co::Job::Hold);           // not his job: all asleep
+    m.update(0, s, 30);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Press).state, co::press::Asleep);
+    FH_EXPECT_EQ(m.of(0, co::MachineId::Duel).state, co::duel::Asleep);
+}
