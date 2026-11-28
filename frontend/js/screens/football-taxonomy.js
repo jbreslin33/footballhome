@@ -336,7 +336,9 @@ class FootballTaxonomyScreen extends Screen {
       const mine = shown.filter(c => c.moment === m.code);
       if (!mine.length) continue;
       html += `<div class="tx-moment">${esc(m.title)}</div>`;
-      const groups = (d.principles || []).filter(p => p.moment === m.code).map(p => [p.title, mine.filter(c => c.principle_id === p.id)]);
+      // A sub-principle (game_principles.parent_id) reads as "Parent › Child".
+      const pTitle = (p) => { const par = p.parent_id != null && (d.principles || []).find(x => x.id === p.parent_id); return par ? par.title + ' › ' + p.title : p.title; };
+      const groups = (d.principles || []).filter(p => p.moment === m.code).map(p => [pTitle(p), mine.filter(c => c.principle_id === p.id)]);
       const known = new Set((d.principles || []).filter(p => p.moment === m.code).map(p => p.id));
       groups.push([this._t('no_principle'), mine.filter(c => !known.has(c.principle_id))]);
       for (const [title, list] of groups) {
