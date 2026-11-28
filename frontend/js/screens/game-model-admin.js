@@ -1,4 +1,4 @@
-// GameModelAdminScreen - manage club game-model overview, days, practices, and exercises
+// GameModelAdminScreen - manage the club game-model overview, phases and principles (days / practices / exercises moved to #exercises 🗓 Plans, mig 5020)
 class GameModelAdminScreen extends Screen {
   constructor(navigation, auth) {
     super(navigation, auth);
@@ -34,9 +34,7 @@ class GameModelAdminScreen extends Screen {
     this.clubId = Number.isFinite(Number(requestedClubId)) ? Number(requestedClubId) : 134;
     this.clubName = params?.clubName || (this.clubId === 134 ? 'Lighthouse' : 'Club');
     const validEntities = [
-      'days', 'phases', 'principles', 'sub_principles', 'exercises',
-      'practices', 'session_exercises',
-      'exercise_principles', 'exercise_sub_principles', 'exercise_action_items'
+      'phases', 'principles', 'sub_principles'   // days / practices / exercises retired (mig 5020 → #exercises 🗓 Plans)
     ];
     this.selectedEntity = validEntities.includes(params?.entity) ? params.entity : 'game-model';
     this.currentContext = null;
@@ -49,15 +47,9 @@ class GameModelAdminScreen extends Screen {
           'edit-phases': 'phases',
           'edit-principles': 'principles',
           'edit-sub-principles': 'sub_principles',
-          'edit-days': 'days',
-          'edit-exercises': 'exercises',
-          'edit-practices': 'practices',
-          'edit-session-exercises': 'session_exercises',
-          'edit-exercise-principles': 'exercise_principles',
-          'edit-exercise-sub-principles': 'exercise_sub_principles',
-          'edit-exercise-action-items': 'exercise_action_items',
           'back-to-overview': 'game-model'
         };
+        if (action === 'open-exercise-plans') { this.navigation.goTo('exercises', { view: 'plans' }); return; }
         if (Object.prototype.hasOwnProperty.call(actionEntityMap, action)) {
           this.switchEntity(actionEntityMap[action]);
           return;
@@ -179,17 +171,9 @@ class GameModelAdminScreen extends Screen {
               </div>
             </div>
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-primary);">
-              <h3 style="margin: 0 0 var(--space-2) 0;">Practice plan</h3>
-              <p style="margin:0 0 var(--space-2) 0; opacity:0.8;">Days are reusable weekly buckets. Practices link to real calendar events. Exercises are the drill library. Sessions themselves are built inline on the Practice Plans screen.</p>
-              <div style="display:flex; gap:var(--space-2); flex-wrap:wrap;">
-                <button class="btn btn-secondary" data-inline-action="edit-days">Edit days</button>
-                <button class="btn btn-secondary" data-inline-action="edit-exercises">Edit exercises</button>
-                <button class="btn btn-secondary" data-inline-action="edit-practices">Edit practices</button>
-                <button class="btn btn-secondary" data-inline-action="edit-session-exercises">Edit session exercises</button>
-                <button class="btn btn-secondary" data-inline-action="edit-exercise-principles">Tag exercises: principles</button>
-                <button class="btn btn-secondary" data-inline-action="edit-exercise-sub-principles">Tag exercises: sub-principles</button>
-                <button class="btn btn-secondary" data-inline-action="edit-exercise-action-items">Tag exercises: action items</button>
-              </div>
+              <h3 style="margin: 0 0 var(--space-2) 0;">${this.escapeHtml((window.MessageCopy && MessageCopy.block('exercises', 'gm_plans_title')) || '')}</h3>
+              <p style="margin:0 0 var(--space-2) 0; opacity:0.8;">${this.escapeHtml((window.MessageCopy && MessageCopy.block('exercises', 'gm_plans_moved')) || '')}</p>
+              <button class="btn btn-secondary" data-inline-action="open-exercise-plans">${this.escapeHtml((window.MessageCopy && MessageCopy.block('exercises', 'gm_plans_btn')) || '🗓')}</button>
             </div>
             <div style="padding: var(--space-4); border: 1px solid var(--border-color); border-radius: var(--radius-lg); background: var(--bg-secondary);">
               ${html}

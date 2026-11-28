@@ -57,6 +57,15 @@ class EventScreen extends Screen {
       fold: (key, title, body) => this.panelFoldHtml(key, title, body),
     });
     this.cpError  = null;
+    // 🏋️ Session / 🔥 Warm-up — the exercises from the team's session plan
+    // (mig 5020): practices on their 📝 pill, games under ☰.
+    this.sessionPanel = new SessionPlanPanel(this.auth, {
+      fhEventId: () => (this.ev ? this.ev.fh_event_id : null),
+      rerender: () => this._render(),
+      escapeHtml: (t) => this.escapeHtml(t),
+      fold: (key, title, body) => this.panelFoldHtml(key, title, body),
+      goTo: (screen, params) => this.navigation.goTo(screen, params),
+    });
     this.rsvpNote = {};        // person_id → last override error, on their card
     this.remindNote = {};      // person_id → last reminder error, on their card
     this.remindOk = {};        // person_id → "📱 Sent from …" after an FH Texter send
@@ -88,6 +97,8 @@ class EventScreen extends Screen {
       new Panel({ key: 'invites', minTier: 'coach', applies: (s) => !s._isPast(s.ev),
                   html: (s) => s.panelFoldHtml('invites', '🎟 Invites', s._invitesHtml()) }),
       new Panel({ key: 'carpool', applies: (s) => s.hasCarpool(), html: (s) => s.carpoolPanel.html() }),
+      new Panel({ key: 'session', applies: (s) => !!s.ev && s.ev.kind === 'match', html: (s) => s.sessionPanel.html(),
+                  label: () => (window.MessageCopy && MessageCopy.block('exercises', 'ev_warmup')) || '🔥 Warm-up' }),
     ];
   }
 
@@ -707,6 +718,7 @@ class EventScreen extends Screen {
     this.rsvpNote = {};
     this.remindOk = {};
     this.saving.clear();
+    this.sessionPanel.reset();
     this.resetKind();
     this._render();
     // The DB copy (pill titles, the contact sheet's wording) — cached
@@ -1985,6 +1997,8 @@ class EventScreen extends Screen {
       if ((el = t('[data-gc-avail]')) && !el.disabled) { this._setMyAvailability(el); return; }
       if (this._playersPaneClick(t)) return;
       if ((el = t('[data-gc-cp]'))) { this.carpoolPanel.click(el, this.element); return; }
+      if ((el = t('[data-sp-open],[data-sp-plans],[data-sp-edit],[data-sp-reset],[data-sp-add],[data-sp-pick],[data-sp-del],[data-sp-move],[data-sp-min]'))
+          && this.sessionPanel.click(el, this.element)) { if (e && e.preventDefault) e.preventDefault(); return; }
       this.onClick(t, e);
     });
   }

@@ -1,6 +1,5 @@
 #include "ClubController.h"
 #include "../models/ActiveTeamBadges.h"
-#include "../services/VisionOcrService.h"
 #include <sstream>
 #include <iostream>
 #include <iomanip>
@@ -113,27 +112,7 @@ void ClubController::registerRoutes(Router& router, const std::string& prefix) {
         return this->handleDeleteGameModelAdminEntity(request, entity, id);
     });
 
-    // Exercise photo upload — a dedicated pair of routes (not the generic
-    // :entity CRUD above) because this one decodes base64 image bytes and
-    // writes a file, same shape as SocialController's post-media upload.
-    // Longer path (8 / 7 segments) never collides with the 6-segment
-    // generic :entity routes — Router::matches requires equal segment
-    // counts — so registration order here doesn't matter.
-    router.post(prefix + "/:id/game-model/admin/exercises/:exerciseId/images", [this](const Request& request) {
-        return this->handleUploadExerciseImage(request);
-    });
 
-    router.del(prefix + "/:id/game-model/admin/exercises/:exerciseId/images/:imageId", [this](const Request& request) {
-        return this->handleDeleteExerciseImage(request);
-    });
-
-    // Photo-of-text upload: OCRs the image via VisionOcrService and hands
-    // the transcribed text back to the frontend to drop into a description
-    // field. Doesn't touch the DB itself — same segment-count reasoning as
-    // the images routes above keeps registration order irrelevant.
-    router.post(prefix + "/:id/game-model/admin/exercises/:exerciseId/description-ocr", [this](const Request& request) {
-        return this->handleExerciseDescriptionOcr(request);
-    });
 }
 
 
@@ -202,29 +181,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
         if (club_id_str.empty()) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
         int club_id = std::stoi(club_id_str);
 
-        if (entity == "practice_events") {
-            std::string select =
-                "SELECT fe.id, ge.summary, ge.starts_at, ge.ends_at "
-                "FROM fh_events fe JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
-                "WHERE fe.kind = 'practice' AND ge.deleted_at IS NULL "
-                "ORDER BY ge.starts_at DESC LIMIT 200";
-            pqxx::result result = db_->query(select);
-            std::ostringstream json;
-            json << "[";
-            bool first = true;
-            for (const auto& row : result) {
-                if (!first) json << ",";
-                first = false;
-                json << "{";
-                json << "\"id\":" << row["id"].as<long long>();
-                json << ",\"summary\":" << (row["summary"].is_null() ? "null" : "\"" + escapeJson(row["summary"].c_str()) + "\"");
-                json << ",\"starts_at\":\"" << escapeJson(row["starts_at"].c_str()) << "\"";
-                json << ",\"ends_at\":\"" << escapeJson(row["ends_at"].c_str()) << "\"";
-                json << "}";
-            }
-            json << "]";
-            return Response(HttpStatus::OK, createJSONResponse(true, "OK", json.str()));
-        }
+        
 
         if (entity == "action_items_flat") {
             std::string select =
@@ -255,10 +212,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
 
         std::string table;
         std::string select;
-        if (entity == "days") {
-            table = "club_game_model_days";
-            select = "SELECT id, slug, label, day_of_week, description, sort_order, is_active FROM club_game_model_days WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
-        } else if (entity == "phases") {
+        if (entity == "phases") {
             table = "club_game_model_phases";
             select = "SELECT p.id, p.slug, p.label, p.description, p.sort_order, p.is_active FROM club_game_model_phases p JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = $1::int ORDER BY p.sort_order, p.id";
         } else if (entity == "principles") {
@@ -267,62 +221,6 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
         } else if (entity == "sub_principles") {
             table = "club_game_model_sub_principles";
             select = "SELECT sp.id, sp.principle_id, sp.slug, sp.title, sp.definition, sp.sort_order, sp.is_active FROM club_game_model_sub_principles sp JOIN club_game_model_principles pr ON pr.id = sp.principle_id JOIN club_game_model_phases p ON p.id = pr.phase_id JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = $1::int ORDER BY sp.sort_order, sp.id";
-        } else if (entity == "exercises") {
-            table = "club_game_model_exercises";
-            select = "SELECT id, slug, title, description, diagram_text, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) ORDER BY sort_order, id";
-        } else if (entity == "practices") {
-            table = "club_game_model_practices";
-            select = "SELECT pr.id, pr.fh_event_id, pr.day_id, pr.notes, ge.summary AS event_summary, "
-                     "to_char(ge.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS event_starts_at, "
-                     "to_char(ge.ends_at   AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"') AS event_ends_at "
-                     "FROM club_game_model_practices pr "
-                     "LEFT JOIN fh_events fe ON fe.id = pr.fh_event_id "
-                     "LEFT JOIN gcal_events ge ON ge.id = fe.gcal_event_id "
-                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY ge.starts_at DESC NULLS LAST, pr.id";
-        } else if (entity == "sessions") {
-            table = "club_game_model_sessions";
-            select = "SELECT s.id, s.practice_id, s.title, s.notes, s.start_time, s.end_time, s.sort_order "
-                     "FROM club_game_model_sessions s "
-                     "JOIN club_game_model_practices pr ON pr.id = s.practice_id "
-                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY s.practice_id, s.sort_order, s.id";
-        } else if (entity == "session_exercises") {
-            table = "club_game_model_session_exercises";
-            select = "SELECT se.id, se.session_id, se.exercise_id, se.sequence_order, se.player_count, se.notes "
-                     "FROM club_game_model_session_exercises se "
-                     "JOIN club_game_model_sessions s ON s.id = se.session_id "
-                     "JOIN club_game_model_practices pr ON pr.id = s.practice_id "
-                     "WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY se.session_id, se.sequence_order, se.id";
-        } else if (entity == "exercise_principles") {
-            table = "club_game_model_exercise_principles";
-            select = "SELECT ep.id, ep.exercise_id, ep.principle_id "
-                     "FROM club_game_model_exercise_principles ep "
-                     "JOIN club_game_model_exercises ex ON ex.id = ep.exercise_id "
-                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY ep.exercise_id, ep.id";
-        } else if (entity == "exercise_sub_principles") {
-            table = "club_game_model_exercise_sub_principles";
-            select = "SELECT esp.id, esp.exercise_id, esp.sub_principle_id "
-                     "FROM club_game_model_exercise_sub_principles esp "
-                     "JOIN club_game_model_exercises ex ON ex.id = esp.exercise_id "
-                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY esp.exercise_id, esp.id";
-        } else if (entity == "exercise_action_items") {
-            table = "club_game_model_exercise_action_items";
-            select = "SELECT eai.id, eai.exercise_id, eai.action_item_id "
-                     "FROM club_game_model_exercise_action_items eai "
-                     "JOIN club_game_model_exercises ex ON ex.id = eai.exercise_id "
-                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY eai.exercise_id, eai.id";
-        } else if (entity == "exercise_images") {
-            table = "club_game_model_exercise_images";
-            select = "SELECT ei.id, ei.exercise_id, ei.image_url, ei.sort_order, ei.role "
-                     "FROM club_game_model_exercise_images ei "
-                     "JOIN club_game_model_exercises ex ON ex.id = ei.exercise_id "
-                     "WHERE ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $1::int) "
-                     "ORDER BY ei.exercise_id, ei.sort_order, ei.id";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
@@ -338,14 +236,7 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
             first = false;
             json << "{";
             json << "\"id\":" << row["id"].as<long long>();
-            if (entity == "days") {
-                json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
-                json << ",\"label\":" << "\"" << escapeJson(row["label"].c_str()) << "\"";
-                json << ",\"day_of_week\":" << row["day_of_week"].as<int>();
-                json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"") ;
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "phases") {
+            if (entity == "phases") {
                 json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
                 json << ",\"label\":" << "\"" << escapeJson(row["label"].c_str()) << "\"";
                 json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"");
@@ -365,53 +256,6 @@ Response ClubController::handleListGameModelAdminEntities(const Request& request
                 json << ",\"definition\":" << (row["definition"].is_null() ? "null" : "\"" + escapeJson(row["definition"].c_str()) + "\"");
                 json << ",\"sort_order\":" << row["sort_order"].as<int>();
                 json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "exercises") {
-                json << ",\"slug\":" << "\"" << escapeJson(row["slug"].c_str()) << "\"";
-                json << ",\"title\":" << "\"" << escapeJson(row["title"].c_str()) << "\"";
-                json << ",\"description\":" << (row["description"].is_null() ? "null" : "\"" + escapeJson(row["description"].c_str()) + "\"");
-                json << ",\"diagram_text\":" << (row["diagram_text"].is_null() ? "null" : "\"" + escapeJson(row["diagram_text"].c_str()) + "\"");
-                json << ",\"setup\":" << (row["setup"].is_null() ? "null" : "\"" + escapeJson(row["setup"].c_str()) + "\"");
-                json << ",\"coaching_points\":" << (row["coaching_points"].is_null() ? "null" : "\"" + escapeJson(row["coaching_points"].c_str()) + "\"");
-                json << ",\"min_players\":" << (row["min_players"].is_null() ? "null" : std::to_string(row["min_players"].as<int>()));
-                json << ",\"max_players\":" << (row["max_players"].is_null() ? "null" : std::to_string(row["max_players"].as<int>()));
-                json << ",\"default_duration_minutes\":" << (row["default_duration_minutes"].is_null() ? "null" : std::to_string(row["default_duration_minutes"].as<int>()));
-                json << ",\"simulator_slug\":" << (row["simulator_slug"].is_null() ? "null" : "\"" + escapeJson(row["simulator_slug"].c_str()) + "\"");
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"is_active\":" << (row["is_active"].as<bool>() ? "true" : "false");
-            } else if (entity == "practices") {
-                json << ",\"fh_event_id\":" << (row["fh_event_id"].is_null() ? "null" : std::to_string(row["fh_event_id"].as<long long>()));
-                json << ",\"day_id\":" << (row["day_id"].is_null() ? "null" : std::to_string(row["day_id"].as<long long>()));
-                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
-                json << ",\"event_summary\":" << (row["event_summary"].is_null() ? "null" : "\"" + escapeJson(row["event_summary"].c_str()) + "\"");
-                json << ",\"event_starts_at\":" << (row["event_starts_at"].is_null() ? "null" : "\"" + escapeJson(row["event_starts_at"].c_str()) + "\"");
-                json << ",\"event_ends_at\":" << (row["event_ends_at"].is_null() ? "null" : "\"" + escapeJson(row["event_ends_at"].c_str()) + "\"");
-            } else if (entity == "sessions") {
-                json << ",\"practice_id\":" << row["practice_id"].as<long long>();
-                json << ",\"title\":" << (row["title"].is_null() ? "null" : "\"" + escapeJson(row["title"].c_str()) + "\"");
-                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
-                json << ",\"start_time\":" << (row["start_time"].is_null() ? "null" : "\"" + escapeJson(row["start_time"].c_str()) + "\"");
-                json << ",\"end_time\":" << (row["end_time"].is_null() ? "null" : "\"" + escapeJson(row["end_time"].c_str()) + "\"");
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-            } else if (entity == "session_exercises") {
-                json << ",\"session_id\":" << row["session_id"].as<long long>();
-                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
-                json << ",\"sequence_order\":" << row["sequence_order"].as<int>();
-                json << ",\"player_count\":" << (row["player_count"].is_null() ? "null" : std::to_string(row["player_count"].as<int>()));
-                json << ",\"notes\":" << (row["notes"].is_null() ? "null" : "\"" + escapeJson(row["notes"].c_str()) + "\"");
-            } else if (entity == "exercise_principles") {
-                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
-                json << ",\"principle_id\":" << row["principle_id"].as<long long>();
-            } else if (entity == "exercise_sub_principles") {
-                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
-                json << ",\"sub_principle_id\":" << row["sub_principle_id"].as<long long>();
-            } else if (entity == "exercise_action_items") {
-                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
-                json << ",\"action_item_id\":" << row["action_item_id"].as<long long>();
-            } else if (entity == "exercise_images") {
-                json << ",\"exercise_id\":" << row["exercise_id"].as<long long>();
-                json << ",\"image_url\":\"" << escapeJson(row["image_url"].c_str()) << "\"";
-                json << ",\"sort_order\":" << row["sort_order"].as<int>();
-                json << ",\"role\":" << (row["role"].is_null() ? "null" : "\"" + escapeJson(row["role"].c_str()) + "\"");
             }
             json << "}";
         }
@@ -543,13 +387,7 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
         bool has_player_count = has_key("player_count");
 
         std::ostringstream query;
-        if (entity == "days") {
-            if (id > 0) {
-                query << "UPDATE club_game_model_days SET slug = '" << escapeJson(slug) << "', label = '" << escapeJson(label) << "', day_of_week = " << day_of_week << ", description = '" << escapeJson(description) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
-            } else {
-                query << "INSERT INTO club_game_model_days (club_game_model_id, slug, label, day_of_week, description, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(label) << "', " << day_of_week << ", '" << escapeJson(description) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET label = EXCLUDED.label, day_of_week = EXCLUDED.day_of_week, description = EXCLUDED.description, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
-            }
-        } else if (entity == "phases") {
+        if (entity == "phases") {
             if (id > 0) {
                 query << "UPDATE club_game_model_phases SET slug = '" << escapeJson(slug) << "', label = '" << escapeJson(label) << "', description = '" << escapeJson(description) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
             } else {
@@ -567,60 +405,6 @@ Response ClubController::handleCreateGameModelAdminEntity(const Request& request
             } else {
                 query << "INSERT INTO club_game_model_sub_principles (principle_id, slug, title, definition, sort_order, is_active, created_at, updated_at) VALUES (" << principle_id << ", '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(definition) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (principle_id, slug) DO UPDATE SET title = EXCLUDED.title, definition = EXCLUDED.definition, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
             }
-        } else if (entity == "practices") {
-            std::string day_id_sql = (has_day_id && day_id > 0) ? std::to_string(day_id) : "NULL";
-            std::string fh_event_id_sql = (fh_event_id > 0) ? std::to_string(fh_event_id) : "NULL";
-            if (id > 0) {
-                query << "UPDATE club_game_model_practices SET fh_event_id = " << fh_event_id_sql << ", day_id = " << day_id_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
-            } else if (fh_event_id > 0) {
-                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), " << fh_event_id_sql << ", " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (fh_event_id) DO UPDATE SET day_id = EXCLUDED.day_id, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
-            } else {
-                query << "INSERT INTO club_game_model_practices (club_game_model_id, fh_event_id, day_id, notes, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), NULL, " << day_id_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) RETURNING id";
-            }
-        } else if (entity == "sessions") {
-            if (practice_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "practice_id required"));
-            }
-            std::string title_sql = title.empty() ? "NULL" : "'" + escapeJson(title) + "'";
-            if (id > 0) {
-                query << "UPDATE club_game_model_sessions SET practice_id = " << practice_id << ", title = " << title_sql << ", notes = '" << escapeJson(notes) << "', start_time = '" << escapeJson(start_time) << "', end_time = '" << escapeJson(end_time) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << "))";
-            } else {
-                query << "INSERT INTO club_game_model_sessions (practice_id, title, notes, start_time, end_time, sort_order, created_at, updated_at) VALUES (" << practice_id << ", " << title_sql << ", '" << escapeJson(notes) << "', '" << escapeJson(start_time) << "', '" << escapeJson(end_time) << "', " << sort_order << ", NOW(), NOW()) RETURNING id";
-            }
-        } else if (entity == "exercises") {
-            std::string min_players_sql = has_min_players ? std::to_string(min_players) : "NULL";
-            std::string max_players_sql = has_max_players ? std::to_string(max_players) : "NULL";
-            std::string default_duration_sql = has_default_duration_minutes ? std::to_string(default_duration_minutes) : "NULL";
-            if (id > 0) {
-                query << "UPDATE club_game_model_exercises SET slug = '" << escapeJson(slug) << "', title = '" << escapeJson(title) << "', description = '" << escapeJson(description) << "', diagram_text = '" << escapeJson(diagram_text) << "', setup = '" << escapeJson(setup) << "', coaching_points = '" << escapeJson(coaching_points) << "', min_players = " << min_players_sql << ", max_players = " << max_players_sql << ", default_duration_minutes = " << default_duration_sql << ", simulator_slug = '" << escapeJson(simulator_slug) << "', sort_order = " << sort_order << ", updated_at = NOW() WHERE id = " << id << " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << ")";
-            } else {
-                query << "INSERT INTO club_game_model_exercises (club_game_model_id, slug, title, description, diagram_text, setup, coaching_points, min_players, max_players, default_duration_minutes, simulator_slug, sort_order, is_active, created_at, updated_at) VALUES ((SELECT id FROM club_game_model WHERE club_id = " << club_id << "), '" << escapeJson(slug) << "', '" << escapeJson(title) << "', '" << escapeJson(description) << "', '" << escapeJson(diagram_text) << "', '" << escapeJson(setup) << "', '" << escapeJson(coaching_points) << "', " << min_players_sql << ", " << max_players_sql << ", " << default_duration_sql << ", '" << escapeJson(simulator_slug) << "', " << sort_order << ", true, NOW(), NOW()) ON CONFLICT (club_game_model_id, slug) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description, diagram_text = EXCLUDED.diagram_text, setup = EXCLUDED.setup, coaching_points = EXCLUDED.coaching_points, min_players = EXCLUDED.min_players, max_players = EXCLUDED.max_players, default_duration_minutes = EXCLUDED.default_duration_minutes, simulator_slug = EXCLUDED.simulator_slug, sort_order = EXCLUDED.sort_order, updated_at = NOW() RETURNING id";
-            }
-        } else if (entity == "session_exercises") {
-            if (session_id <= 0 || exercise_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "session_id and exercise_id required"));
-            }
-            std::string player_count_sql = has_player_count ? std::to_string(player_count) : "NULL";
-            if (id > 0) {
-                query << "UPDATE club_game_model_session_exercises SET session_id = " << session_id << ", exercise_id = " << exercise_id << ", sequence_order = " << sequence_order << ", player_count = " << player_count_sql << ", notes = '" << escapeJson(notes) << "', updated_at = NOW() WHERE id = " << id << " AND session_id IN (SELECT s.id FROM club_game_model_sessions s JOIN club_game_model_practices pr ON pr.id = s.practice_id WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " << club_id << "))";
-            } else {
-                query << "INSERT INTO club_game_model_session_exercises (session_id, exercise_id, sequence_order, player_count, notes, created_at, updated_at) VALUES (" << session_id << ", " << exercise_id << ", " << sequence_order << ", " << player_count_sql << ", '" << escapeJson(notes) << "', NOW(), NOW()) ON CONFLICT (session_id, exercise_id) DO UPDATE SET sequence_order = EXCLUDED.sequence_order, player_count = EXCLUDED.player_count, notes = EXCLUDED.notes, updated_at = NOW() RETURNING id";
-            }
-        } else if (entity == "exercise_principles") {
-            if (exercise_id <= 0 || principle_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and principle_id required"));
-            }
-            query << "INSERT INTO club_game_model_exercise_principles (exercise_id, principle_id, created_at) VALUES (" << exercise_id << ", " << principle_id << ", NOW()) ON CONFLICT (exercise_id, principle_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
-        } else if (entity == "exercise_sub_principles") {
-            if (exercise_id <= 0 || sub_principle_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and sub_principle_id required"));
-            }
-            query << "INSERT INTO club_game_model_exercise_sub_principles (exercise_id, sub_principle_id, created_at) VALUES (" << exercise_id << ", " << sub_principle_id << ", NOW()) ON CONFLICT (exercise_id, sub_principle_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
-        } else if (entity == "exercise_action_items") {
-            if (exercise_id <= 0 || action_item_id <= 0) {
-                return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "exercise_id and action_item_id required"));
-            }
-            query << "INSERT INTO club_game_model_exercise_action_items (exercise_id, action_item_id, created_at) VALUES (" << exercise_id << ", " << action_item_id << ", NOW()) ON CONFLICT (exercise_id, action_item_id) DO UPDATE SET exercise_id = EXCLUDED.exercise_id RETURNING id";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
@@ -653,28 +437,12 @@ Response ClubController::handleDeleteGameModelAdminEntity(const Request& request
         int club_id = std::stoi(club_id_str);
 
         std::string query;
-        if (entity == "days") {
-            query = "UPDATE club_game_model_days SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "phases") {
+        if (entity == "phases") {
             query = "UPDATE club_game_model_phases SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
         } else if (entity == "principles") {
             query = "UPDATE club_game_model_principles SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND phase_id IN (SELECT p.id FROM club_game_model_phases p JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = " + std::to_string(club_id) + ")";
         } else if (entity == "sub_principles") {
             query = "UPDATE club_game_model_sub_principles SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND principle_id IN (SELECT pr.id FROM club_game_model_principles pr JOIN club_game_model_phases p ON p.id = pr.phase_id JOIN club_game_model gm ON gm.id = p.club_game_model_id WHERE gm.club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "exercises") {
-            query = "UPDATE club_game_model_exercises SET is_active = false, updated_at = NOW() WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "practices") {
-            query = "DELETE FROM club_game_model_practices WHERE id = " + std::to_string(id) + " AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + ")";
-        } else if (entity == "sessions") {
-            query = "DELETE FROM club_game_model_sessions WHERE id = " + std::to_string(id) + " AND practice_id IN (SELECT id FROM club_game_model_practices WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
-        } else if (entity == "session_exercises") {
-            query = "DELETE FROM club_game_model_session_exercises WHERE id = " + std::to_string(id) + " AND session_id IN (SELECT s.id FROM club_game_model_sessions s JOIN club_game_model_practices pr ON pr.id = s.practice_id WHERE pr.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
-        } else if (entity == "exercise_principles") {
-            query = "DELETE FROM club_game_model_exercise_principles WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
-        } else if (entity == "exercise_sub_principles") {
-            query = "DELETE FROM club_game_model_exercise_sub_principles WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
-        } else if (entity == "exercise_action_items") {
-            query = "DELETE FROM club_game_model_exercise_action_items WHERE id = " + std::to_string(id) + " AND exercise_id IN (SELECT id FROM club_game_model_exercises WHERE club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = " + std::to_string(club_id) + "))";
         } else {
             return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Unknown entity"));
         }
@@ -684,341 +452,6 @@ Response ClubController::handleDeleteGameModelAdminEntity(const Request& request
     } catch (const std::exception& e) {
         std::cerr << "Error deleting game model admin entity: " << e.what() << std::endl;
         return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
-    }
-}
-
-// POST /api/clubs/:id/game-model/admin/exercises/:exerciseId/images
-// Body: { "image": "data:image/<png|jpeg|webp|gif>;base64,<...>" }
-//
-// Decodes the photo, writes it under /app/images/exercises (served by
-// nginx at /images/exercises/<file>, same bind-mount pattern as
-// SocialController's post media), and records a row in
-// club_game_model_exercise_images. Uses parameterized queries (unlike
-// the generic entity CRUD above) since this body can't safely go
-// through that handler's naive string-concatenation SQL building.
-Response ClubController::handleUploadExerciseImage(const Request& request) {
-    if (!requireBearer(request)) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
-    }
-    try {
-        std::string path = request.getPath();
-        std::string prefix = "/api/clubs/";
-        size_t pos = path.find(prefix);
-        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        std::string rest = path.substr(pos + prefix.length());
-        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/images"
-        std::vector<std::string> segs;
-        {
-            std::stringstream ss(rest);
-            std::string seg;
-            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
-        }
-        if (segs.size() < 5) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        int club_id = 0, exercise_id = 0;
-        try {
-            club_id = std::stoi(segs[0]);
-            exercise_id = std::stoi(segs[4]);
-        } catch (...) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        }
-
-        auto owner = db_->query(
-            "SELECT 1 FROM club_game_model_exercises "
-            " WHERE id = $1::int AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $2::int)",
-            { std::to_string(exercise_id), std::to_string(club_id) });
-        if (owner.empty()) {
-            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Exercise not found for this club"));
-        }
-
-        if (!request.isJson() || request.getBody().empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "JSON body required"));
-        }
-        const std::string& body = request.getBody();
-
-        size_t keyPos = body.find("\"image\"");
-        if (keyPos == std::string::npos) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "image field required"));
-        }
-        size_t colonPos = body.find(':', keyPos + 7);
-        size_t quoteStart = (colonPos == std::string::npos) ? std::string::npos : body.find('"', colonPos + 1);
-        size_t quoteEnd = (quoteStart == std::string::npos) ? std::string::npos : body.find('"', quoteStart + 1);
-        if (colonPos == std::string::npos || quoteStart == std::string::npos || quoteEnd == std::string::npos) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid image data"));
-        }
-        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
-
-        // Optional "role": "diagram" | "description" — anything else
-        // (absent, null, unrecognized) falls back to the plain gallery
-        // (NULL role).
-        std::string role;
-        size_t roleKeyPos = body.find("\"role\"");
-        if (roleKeyPos != std::string::npos) {
-            size_t roleColon = body.find(':', roleKeyPos + 6);
-            size_t roleQuoteStart = (roleColon == std::string::npos) ? std::string::npos : body.find('"', roleColon + 1);
-            size_t roleQuoteEnd = (roleQuoteStart == std::string::npos) ? std::string::npos : body.find('"', roleQuoteStart + 1);
-            if (roleColon != std::string::npos && roleQuoteStart != std::string::npos && roleQuoteEnd != std::string::npos) {
-                std::string candidate = body.substr(roleQuoteStart + 1, roleQuoteEnd - roleQuoteStart - 1);
-                if (candidate == "diagram" || candidate == "description") {
-                    role = candidate;
-                }
-            }
-        }
-
-        static const std::regex mimeRe("^data:image/(png|jpe?g|webp|gif);base64,");
-        std::smatch mimeMatch;
-        if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Only PNG/JPEG/WebP/GIF images are supported"));
-        }
-        std::string ext = mimeMatch[1].str();
-        if (ext == "jpeg") ext = "jpg";
-
-        std::string b64Data = dataValue.substr(mimeMatch[0].length());
-        std::string imageBytes = base64Decode(b64Data);
-        if (imageBytes.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Failed to decode image data"));
-        }
-        static constexpr size_t kMaxImageBytes = 8 * 1024 * 1024;
-        if (imageBytes.size() > kMaxImageBytes) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
-        }
-
-        long long imageId = 0;
-        std::string publicUrl;
-        int sortOrder = 0;
-        saveExerciseImage(exercise_id, imageBytes, ext, role, imageId, publicUrl, sortOrder);
-
-        std::ostringstream data;
-        data << "{\"id\":" << imageId
-             << ",\"exercise_id\":" << exercise_id
-             << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
-             << ",\"sort_order\":" << sortOrder
-             << ",\"role\":" << (role.empty() ? "null" : "\"" + role + "\"") << "}";
-
-        return Response(HttpStatus::OK, createJSONResponse(true, "Uploaded", data.str()));
-    } catch (const std::exception& e) {
-        std::cerr << "Error uploading exercise image: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
-    }
-}
-
-// Shared by handleUploadExerciseImage and handleExerciseDescriptionOcr — both
-// persist a photo to the same club_game_model_exercise_images table.
-// role == "diagram" or "description" replaces that exercise's existing photo of
-// the same role (at most one of each, enforced by the partial unique index
-// from migration 260); role == "" lands in the plain gallery alongside any
-// number of other untagged photos.
-void ClubController::saveExerciseImage(int exercise_id, const std::string& imageBytes, const std::string& ext,
-                                        const std::string& role,
-                                        long long& outId, std::string& outImageUrl, int& outSortOrder) {
-    const std::string mediaDir = "/app/images/exercises";
-    mkdir(mediaDir.c_str(), 0755);
-
-    if (!role.empty()) {
-        auto existing = db_->query(
-            "SELECT id, image_path FROM club_game_model_exercise_images WHERE exercise_id = $1::int AND role = $2",
-            { std::to_string(exercise_id), role });
-        if (!existing.empty()) {
-            std::string oldPath = mediaDir + "/" + existing[0]["image_path"].c_str();
-            std::remove(oldPath.c_str());
-            db_->query("DELETE FROM club_game_model_exercise_images WHERE id = $1::int",
-                       { existing[0]["id"].c_str() });
-        }
-    }
-
-    auto nextSort = db_->query(
-        "SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_sort FROM club_game_model_exercise_images WHERE exercise_id = $1::int",
-        { std::to_string(exercise_id) });
-    outSortOrder = nextSort.empty() ? 0 : nextSort[0]["next_sort"].as<int>();
-
-    long long stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
-    std::string filename = "exercise_" + std::to_string(exercise_id) + "_" + std::to_string(stamp) + "." + ext;
-    std::string filepath = mediaDir + "/" + filename;
-
-    std::ofstream outFile(filepath, std::ios::binary);
-    if (!outFile.is_open()) {
-        throw std::runtime_error("Failed to write image file");
-    }
-    outFile.write(imageBytes.data(), static_cast<std::streamsize>(imageBytes.size()));
-    outFile.close();
-
-    outImageUrl = "/images/exercises/" + filename;
-
-    std::vector<std::string> insertParams = { std::to_string(exercise_id), filename, outImageUrl, std::to_string(outSortOrder) };
-    std::string insertSql = "INSERT INTO club_game_model_exercise_images (exercise_id, image_path, image_url, sort_order, role, created_at) "
-                             "VALUES ($1::int, $2, $3, $4::int, ";
-    if (role.empty()) {
-        insertSql += "NULL, NOW()) RETURNING id";
-    } else {
-        insertSql += "$5, NOW()) RETURNING id";
-        insertParams.push_back(role);
-    }
-
-    auto inserted = db_->query(insertSql, insertParams);
-    outId = inserted[0]["id"].as<long long>();
-}
-
-// DELETE /api/clubs/:id/game-model/admin/exercises/:exerciseId/images/:imageId
-Response ClubController::handleDeleteExerciseImage(const Request& request) {
-    if (!requireBearer(request)) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
-    }
-    try {
-        std::string path = request.getPath();
-        std::string prefix = "/api/clubs/";
-        size_t pos = path.find(prefix);
-        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        std::string rest = path.substr(pos + prefix.length());
-        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/images/<image_id>"
-        std::vector<std::string> segs;
-        {
-            std::stringstream ss(rest);
-            std::string seg;
-            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
-        }
-        if (segs.size() < 7) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        int club_id = 0, exercise_id = 0, image_id = 0;
-        try {
-            club_id = std::stoi(segs[0]);
-            exercise_id = std::stoi(segs[4]);
-            image_id = std::stoi(segs[6]);
-        } catch (...) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        }
-
-        auto row = db_->query(
-            "SELECT ei.image_path FROM club_game_model_exercise_images ei "
-            "JOIN club_game_model_exercises ex ON ex.id = ei.exercise_id "
-            " WHERE ei.id = $1::int AND ei.exercise_id = $2::int "
-            "   AND ex.club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $3::int)",
-            { std::to_string(image_id), std::to_string(exercise_id), std::to_string(club_id) });
-        if (row.empty()) {
-            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Image not found"));
-        }
-        std::string filename = row[0]["image_path"].as<std::string>();
-
-        db_->query("DELETE FROM club_game_model_exercise_images WHERE id = $1::int", { std::to_string(image_id) });
-
-        // Best-effort file cleanup — a stray file on disk isn't worth failing the request.
-        std::string filepath = "/app/images/exercises/" + filename;
-        std::remove(filepath.c_str());
-
-        return Response(HttpStatus::OK, createJSONResponse(true, "Deleted"));
-    } catch (const std::exception& e) {
-        std::cerr << "Error deleting exercise image: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Database error"));
-    }
-}
-
-// POST /api/clubs/:id/game-model/admin/exercises/:exerciseId/description-ocr
-// Body: { "image": "data:image/...;base64,..." } — same shape as the photo
-// upload above. The photo is always persisted via saveExerciseImage (same
-// table/disk path as a regular exercise photo) so the coach has something to
-// look at even if OCR fails; it's also forwarded to VisionOcrService and the
-// transcribed text is returned for the frontend to drop into whichever
-// textarea the coach picked.
-Response ClubController::handleExerciseDescriptionOcr(const Request& request) {
-    if (!requireBearer(request)) {
-        return Response(HttpStatus::UNAUTHORIZED, createJSONResponse(false, "Unauthorized"));
-    }
-    try {
-        std::string path = request.getPath();
-        std::string prefix = "/api/clubs/";
-        size_t pos = path.find(prefix);
-        if (pos == std::string::npos) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        std::string rest = path.substr(pos + prefix.length());
-        // rest == "<club_id>/game-model/admin/exercises/<exercise_id>/description-ocr"
-        std::vector<std::string> segs;
-        {
-            std::stringstream ss(rest);
-            std::string seg;
-            while (std::getline(ss, seg, '/')) if (!seg.empty()) segs.push_back(seg);
-        }
-        if (segs.size() < 5) return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        int club_id = 0, exercise_id = 0;
-        try {
-            club_id = std::stoi(segs[0]);
-            exercise_id = std::stoi(segs[4]);
-        } catch (...) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid path"));
-        }
-
-        auto owner = db_->query(
-            "SELECT 1 FROM club_game_model_exercises "
-            " WHERE id = $1::int AND club_game_model_id = (SELECT id FROM club_game_model WHERE club_id = $2::int)",
-            { std::to_string(exercise_id), std::to_string(club_id) });
-        if (owner.empty()) {
-            return Response(HttpStatus::NOT_FOUND, createJSONResponse(false, "Exercise not found for this club"));
-        }
-
-        if (!request.isJson() || request.getBody().empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "JSON body required"));
-        }
-        const std::string& body = request.getBody();
-
-        size_t keyPos = body.find("\"image\"");
-        if (keyPos == std::string::npos) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "image field required"));
-        }
-        size_t colonPos = body.find(':', keyPos + 7);
-        size_t quoteStart = (colonPos == std::string::npos) ? std::string::npos : body.find('"', colonPos + 1);
-        size_t quoteEnd = (quoteStart == std::string::npos) ? std::string::npos : body.find('"', quoteStart + 1);
-        if (colonPos == std::string::npos || quoteStart == std::string::npos || quoteEnd == std::string::npos) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Invalid image data"));
-        }
-        std::string dataValue = body.substr(quoteStart + 1, quoteEnd - quoteStart - 1);
-
-        static const std::regex mimeRe("^data:image/(png|jpe?g|webp|gif);base64,");
-        std::smatch mimeMatch;
-        if (!std::regex_search(dataValue, mimeMatch, mimeRe)) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Only PNG/JPEG/WebP/GIF images are supported"));
-        }
-        std::string ext = mimeMatch[1].str();
-        if (ext == "jpeg") ext = "jpg";
-        std::string subtype = mimeMatch[1].str();
-        if (subtype == "jpg") subtype = "jpeg";
-        std::string mediaType = "image/" + subtype;
-
-        std::string b64Data = dataValue.substr(mimeMatch[0].length());
-        std::string imageBytes = base64Decode(b64Data);
-        if (imageBytes.empty()) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Failed to decode image data"));
-        }
-        static constexpr size_t kMaxImageBytes = 8 * 1024 * 1024;
-        if (imageBytes.size() > kMaxImageBytes) {
-            return Response(HttpStatus::BAD_REQUEST, createJSONResponse(false, "Image too large (max 8MB)"));
-        }
-
-        long long imageId = 0;
-        std::string publicUrl;
-        int sortOrder = 0;
-        try {
-            saveExerciseImage(exercise_id, imageBytes, ext, "", imageId, publicUrl, sortOrder);
-        } catch (const std::exception& e) {
-            std::cerr << "Error saving exercise OCR image: " << e.what() << std::endl;
-            return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Failed to save image"));
-        }
-
-        std::string text;
-        std::string ocrError;
-        try {
-            text = VisionOcrService::getInstance().extractText(b64Data, mediaType);
-        } catch (const VisionOcrError& e) {
-            std::cerr << "Vision OCR error: " << e.what() << std::endl;
-            ocrError = e.what();
-        }
-
-        std::ostringstream data;
-        data << "{\"text\":" << (ocrError.empty() ? ("\"" + escapeJson(text) + "\"") : "null")
-             << ",\"ocr_error\":" << (ocrError.empty() ? "null" : ("\"" + escapeJson(ocrError) + "\""))
-             << ",\"image\":{\"id\":" << imageId
-             << ",\"exercise_id\":" << exercise_id
-             << ",\"image_url\":\"" << escapeJson(publicUrl) << "\""
-             << ",\"sort_order\":" << sortOrder << "}}";
-        return Response(HttpStatus::OK, createJSONResponse(true, "OK", data.str()));
-    } catch (const std::exception& e) {
-        std::cerr << "Error running exercise description OCR: " << e.what() << std::endl;
-        return Response(HttpStatus::INTERNAL_SERVER_ERROR, createJSONResponse(false, "Server error"));
     }
 }
 
@@ -1222,118 +655,7 @@ Response ClubController::handleGetClubGameModel(const Request& request) {
 
         std::ostringstream plan_json;
         plan_json << "{";
-        plan_json << "\"days\":";
-
-        std::string days_query = R"(
-            SELECT id, slug, label, description, sort_order
-            FROM club_game_model_days
-            WHERE club_id = )" + std::to_string(club_id) + R"(
-              AND is_active = true
-            ORDER BY sort_order, id
-        )";
-        pqxx::result days_result = db_->query(days_query);
-
-        bool first_day = true;
-        plan_json << "[";
-        for (const auto& day_row : days_result) {
-            if (!first_day) plan_json << ",";
-            first_day = false;
-
-            long long day_id = day_row["id"].as<long long>();
-            plan_json << "{";
-            plan_json << "\"id\":" << day_id << ",";
-            plan_json << "\"slug\":" << "\"" << escapeJson(day_row["slug"].c_str()) << "\"" << ",";
-            plan_json << "\"label\":" << "\"" << escapeJson(day_row["label"].c_str()) << "\"" << ",";
-            plan_json << "\"description\":" << (day_row["description"].is_null() ? "null" : "\"" + escapeJson(day_row["description"].c_str()) + "\"") << ",";
-            plan_json << "\"practices\":[";
-
-            std::string practices_query = R"(
-                SELECT id, title, summary, start_time, end_time, sort_order
-                FROM club_game_model_practices
-                WHERE day_id = )" + std::to_string(day_id) + R"(
-                  AND is_active = true
-                ORDER BY sort_order, id
-            )";
-            pqxx::result practices_result = db_->query(practices_query);
-
-            bool first_practice = true;
-            for (const auto& practice_row : practices_result) {
-                if (!first_practice) plan_json << ",";
-                first_practice = false;
-
-                long long practice_id = practice_row["id"].as<long long>();
-                plan_json << "{";
-                plan_json << "\"id\":" << practice_id << ",";
-                plan_json << "\"title\":" << "\"" << escapeJson(practice_row["title"].c_str()) << "\"" << ",";
-                plan_json << "\"summary\":" << (practice_row["summary"].is_null() ? "null" : "\"" + escapeJson(practice_row["summary"].c_str()) + "\"") << ",";
-                plan_json << "\"start_time\":" << (practice_row["start_time"].is_null() ? "null" : "\"" + escapeJson(practice_row["start_time"].c_str()) + "\"") << ",";
-                plan_json << "\"end_time\":" << (practice_row["end_time"].is_null() ? "null" : "\"" + escapeJson(practice_row["end_time"].c_str()) + "\"") << ",";
-                plan_json << "\"sessions\":[";
-
-                std::string sessions_query = R"(
-                    SELECT id, title, summary, start_time, end_time, sort_order
-                    FROM club_game_model_sessions
-                    WHERE practice_id = )" + std::to_string(practice_id) + R"(
-                      AND is_active = true
-                    ORDER BY sort_order, id
-                )";
-                pqxx::result sessions_result = db_->query(sessions_query);
-
-                bool first_session = true;
-                for (const auto& session_row : sessions_result) {
-                    if (!first_session) plan_json << ",";
-                    first_session = false;
-
-                    long long session_id = session_row["id"].as<long long>();
-                    plan_json << "{";
-                    plan_json << "\"id\":" << session_id << ",";
-                    plan_json << "\"title\":" << "\"" << escapeJson(session_row["title"].c_str()) << "\"" << ",";
-                    plan_json << "\"summary\":" << (session_row["summary"].is_null() ? "null" : "\"" + escapeJson(session_row["summary"].c_str()) + "\"") << ",";
-                    plan_json << "\"start_time\":" << (session_row["start_time"].is_null() ? "null" : "\"" + escapeJson(session_row["start_time"].c_str()) + "\"") << ",";
-                    plan_json << "\"end_time\":" << (session_row["end_time"].is_null() ? "null" : "\"" + escapeJson(session_row["end_time"].c_str()) + "\"") << ",";
-                    plan_json << "\"exercises\":[";
-
-                    std::string session_exercises_query = R"(
-                        SELECT se.id, se.player_count, se.duration_minutes, se.notes, se.sort_order,
-                               e.id AS exercise_id, e.slug, e.title, e.description AS exercise_description,
-                               e.setup, e.coaching_points, e.simulator_slug
-                        FROM club_game_model_session_exercises se
-                        JOIN club_game_model_exercises e ON e.id = se.exercise_id
-                        WHERE se.session_id = )" + std::to_string(session_id) + R"(
-                          AND e.is_active = true
-                        ORDER BY se.sort_order, se.id
-                    )";
-                    pqxx::result session_exercises_result = db_->query(session_exercises_query);
-
-                    bool first_exercise = true;
-                    for (const auto& exercise_row : session_exercises_result) {
-                        if (!first_exercise) plan_json << ",";
-                        first_exercise = false;
-
-                        long long exercise_id = exercise_row["exercise_id"].as<long long>();
-                        plan_json << "{";
-                        plan_json << "\"id\":" << exercise_id << ",";
-                        plan_json << "\"slug\":" << "\"" << escapeJson(exercise_row["slug"].c_str()) << "\"" << ",";
-                        plan_json << "\"title\":" << "\"" << escapeJson(exercise_row["title"].c_str()) << "\"" << ",";
-                        plan_json << "\"description\":" << (exercise_row["exercise_description"].is_null() ? "null" : "\"" + escapeJson(exercise_row["exercise_description"].c_str()) + "\"") << ",";
-                        plan_json << "\"setup\":" << (exercise_row["setup"].is_null() ? "null" : "\"" + escapeJson(exercise_row["setup"].c_str()) + "\"") << ",";
-                        plan_json << "\"coaching_points\":" << (exercise_row["coaching_points"].is_null() ? "null" : "\"" + escapeJson(exercise_row["coaching_points"].c_str()) + "\"") << ",";
-                        plan_json << "\"simulator_slug\":" << (exercise_row["simulator_slug"].is_null() ? "null" : "\"" + escapeJson(exercise_row["simulator_slug"].c_str()) + "\"") << ",";
-                        plan_json << "\"player_count\":" << (exercise_row["player_count"].is_null() ? "null" : std::to_string(exercise_row["player_count"].as<int>())) << ",";
-                        plan_json << "\"duration_minutes\":" << (exercise_row["duration_minutes"].is_null() ? "null" : std::to_string(exercise_row["duration_minutes"].as<int>())) << ",";
-                        plan_json << "\"notes\":" << (exercise_row["notes"].is_null() ? "null" : "\"" + escapeJson(exercise_row["notes"].c_str()) + "\"");
-                        plan_json << "}";
-                    }
-                    plan_json << "]";
-                    plan_json << "}";
-                }
-                plan_json << "]";
-                plan_json << "}";
-            }
-            plan_json << "]";
-            plan_json << "}";
-        }
-        plan_json << "]";
+        plan_json << "\"days\":[]";   // old day/practice planner retired (mig 2210) — plans live in session_templates
 
         std::string number_patterns_query = R"(
             SELECT id, slug, name, description, min_players, max_players, sort_order

@@ -1,0 +1,50 @@
+You are reading part of a coaching book the owner bought, from their personal Coach Viewer (SoccerTutor) library: "{TITLE}". Personal-use library, read to build the club's catalogue of training exercises. Read your assigned pages and record EVERY EXERCISE / PRACTICE / DRILL / GAME the book sets out, in OUR OWN WORDS (short paraphrase, never copy the book's sentences). Do NOT touch the DB, git or any repo file. The only file you write is your output JSON.
+
+Pages are cropped and paired side by side: {W}/pairs/{KEY}/pNNN-MMM.png (two book pages per image; the FILE NAME gives the app page numbers, left page = first number). Use those app numbers for "p", NOT the numbers printed in the book. The whole book is {N} app pages. YOUR RANGE: app pages {A}-{Z}. First Read the contents pages (usually within p003-004 .. p009-010) for orientation, then Read EVERY pair file in your range, in order. If an exercise starts in your range but continues past your last page, ALSO Read the next pair file(s) after your range until it ends, and record its full page span (the next reader skips it). If one starts before your range (you only see its tail), skip it.
+
+One exercise = one practice the book numbers or titles as its own (e.g. "Practice 12", "Session 3 - Practice 2", a named warm-up). A progression / variation of the same set-up goes in "prog" of that exercise, not a new one — unless the book gives it its own number and a different set-up. Skip pure theory, analysis pages and match diagrams that are not a practice.
+
+Write your result to {W}/out/out-{KEY}-{RNG}.json as:
+{{"notes": "skipped ranges, unreadable pages, continuations",
+ "exercises": [ {{
+   "t": "our short name, 3-8 words",
+   "cat": category code (below),
+   "opp": "unopposed" | "passive" | "opposed" | "overload",
+   "m": moment or null: in_possession | out_of_possession | to_defend (losing the ball) | to_attack (winning it) | set_piece,
+   "ref": "the book's own label, e.g. 'Practice 23' or 'Session 2: Practice 1', or null",
+   "coach": "coach/team it is credited to, e.g. 'Guardiola (Man City)', or null",
+   "obj": "what it trains, 1 sentence",
+   "setup": "area, cones, goals, mannequins, where players start, 1-2 sentences",
+   "proc": "how it runs, the sequence of passes/moves, 1-3 sentences",
+   "rules": "touch limits, scoring, restrictions, or null",
+   "prog": "progressions / variations, or null",
+   "cp": "coaching points, short, or null",
+   "players": "as given, e.g. '6v4+2', '12 players in 3 teams', or null",
+   "min": int or null, "max": int or null,
+   "area": "as given, e.g. '30 x 20 yards', or null",
+   "len_m": number or null, "wid_m": number or null (metres; 1 yard = 0.914 m),
+   "dur": total minutes as a number or null,
+   "goals": true/false, "gk": true/false, "dir": true/false (plays towards targets/end zones/goals),
+   "age": "e.g. 'U9-U12' or null",
+   "p": [page_from, page_to] }} ] }}
+
+Category codes (pick the ONE that fits best):
+warm_up (activation, mobility, FIFA 11+, ball-mastery warm-up)
+passing_unopposed (passing circuit / pattern with no defenders)
+passing_opposed (passing pattern or circuit with passive or live defenders)
+rondo (keep-ball, players round the outside, defenders inside)
+possession (keep-ball with no direction)
+positional_game (directional possession to targets / end zones / gates / lines, no goals)
+small_sided_game (two teams to goals)
+phase_of_play (unit v unit on part of the pitch towards one goal)
+combination (rehearsed attacking pattern ending in a shot, unopposed or few defenders)
+finishing (shooting, crossing and finishing)
+one_v_one (1v1 / 2v1 / 2v2 / 3v2 duels)
+technical (first touch, receiving, dribbling, heading with no team problem)
+transition (built around winning/losing the ball: counter-press, counter-attack)
+defending (defending unit / pressing practice)
+conditioned_game (8v8 to 11v11 with conditions)
+set_piece, goalkeeping, conditioning (speed / fitness)
+A "passing warm-up" that is a passing circuit is passing_unopposed (or passing_opposed), not warm_up.
+
+Use plain ASCII apostrophes. Validate the file parses with python3 -c "import json;json.load(open('...'))". Final report: just the file path, exercise count, and notes.

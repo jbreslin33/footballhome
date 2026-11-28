@@ -50,6 +50,7 @@ class ReleaseStrip {
       if (!res.ok || this.weekStart !== weekStart) { if (!res.ok) this.el.innerHTML = ''; return; }
       this.window = await res.json();
       this.el.innerHTML = this.html(this.window);
+      if (this.onPaint) this.onPaint();
     } catch (err) {
       console.warn('[calendar] release strip failed:', err);
       this.el.innerHTML = '';
@@ -77,6 +78,9 @@ class ReleaseStrip {
     const policyOpens = w.policy_opens_at ? new Date(w.policy_opens_at).getTime() : null;
     const earlyOpen = !!(w.release && !w.release.revoked_at && policyOpens && policyOpens > Date.now());
     const postedNormally = w.open_now && !earlyOpen;
+    // The host shows the strip openly unless the week simply posted on time
+    // (owner 11/27 "i dont see any way to open now" · "dude no menu").
+    this.needsAction = !postedNormally;
 
     const base = 'display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 12px; border-radius:8px; font-size:0.85rem;';
     const btn  = 'padding:5px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.25); background:#2563eb; color:#fff; font-weight:700; font-size:0.8rem; cursor:pointer;';

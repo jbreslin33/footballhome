@@ -117,7 +117,6 @@ private:
     Response handleGetEventSides       (const Request& request);
     Response handleGetEventConeSetup   (const Request& request);   // mig 559
     Response handlePostEventConeSetup  (const Request& request);
-    Response handleGetEventSessionPlan (const Request& request);
     Response handlePostEventSide       (const Request& request);
     Response handlePostEventAttendance (const Request& request);
     Response handleDeleteEventAttendance(const Request& request);

@@ -195,6 +195,8 @@ set(SOURCES
     src/controllers/CoachingBooksController.cpp
     src/controllers/RulesController.cpp
     src/controllers/FilmAnalysisController.cpp
+    src/controllers/ExercisesController.cpp
+    src/controllers/SessionPlansController.cpp
     src/controllers/ProposalsController.cpp
     src/controllers/OnboardingController.cpp
     src/controllers/LeagueEntryController.cpp
@@ -205,6 +207,8 @@ set(SOURCES
     src/models/CoachingBooks.cpp
     src/models/ClubRules.cpp
     src/models/FilmAnalysis.cpp
+    src/models/Exercises.cpp
+    src/models/SessionPlans.cpp
     src/models/Proposals.cpp
     src/models/Tickets.cpp
     src/models/Onboarding.cpp

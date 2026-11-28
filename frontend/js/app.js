@@ -22,7 +22,6 @@ class App {
       mainMenu: new MainMenuScreen(this.navigation, this.auth),
       marketingHome: new MarketingHomeScreen(this.navigation, this.auth),
       clubSelection: new ClubSelectionScreen(this.navigation, this.auth),
-      practicePlan: new PracticePlanScreen(this.navigation, this.auth),
       matchForm: new MatchFormScreen(this.navigation, this.auth),
       matchList: new MatchListScreen(this.navigation, this.auth),
       matchDetail: new MatchDetailScreen(this.navigation, this.auth),
@@ -96,6 +95,7 @@ class App {
       weather: new WeatherScreen(this.navigation, this.auth),   // ⛅ mig 1837
       books: new CoachingBooksScreen(this.navigation, this.auth),   // 📚 mig 1928, owner only
       filmAnalysis: new FilmAnalysisScreen(this.navigation, this.auth),   // 🎥 mig 1993
+      exercises: new ExercisesScreen(this.navigation, this.auth),   // 🏋️ mig 2191/2197
       tickets: new TicketsScreen(this.navigation, this.auth),   // 🎟 mig 1886
       dashboard: new DashboardScreen(this.navigation, this.auth),
       cupRosters: new CupRostersScreen(this.navigation, this.auth),
@@ -128,7 +128,6 @@ class App {
     // (menu_pages, mig 1799); the #tactical tile hub that led to them is gone.
     this.screenManager.register('marketing-home', this.screens.marketingHome);
     this.screenManager.register('club-selection', this.screens.clubSelection);
-    this.screenManager.register('practice-plan', this.screens.practicePlan);
     this.screenManager.register('match-form', this.screens.matchForm);
     this.screenManager.register('match-list', this.screens.matchList);
     this.screenManager.register('match-detail', this.screens.matchDetail);
@@ -257,6 +256,8 @@ class App {
     this.screenManager.register('books', this.screens.books);
     // #film-analysis[/<clip>] (mig 1993): tracked game film — replay, mini-pitch, numbers.
     this.screenManager.register('film-analysis', this.screens.filmAnalysis);
+    // #exercises[/<id>] (mig 2197): the exercise catalog — every exercise from every source.
+    this.screenManager.register('exercises', this.screens.exercises);
     // #tickets (mig 1886): the gate (scan, sell, count) and the ticket list.
     this.screenManager.register('tickets', this.screens.tickets);
     // #dashboard (mig 548): the admin front page — one cell per board, each opens its page.
@@ -421,6 +422,12 @@ class App {
       const proposalLink = (window.location.hash || '').match(/^#proposals(?:\/([a-z0-9-]+))?$/);
       if (proposalLink) {
         this.navigation.goTo('proposals', proposalLink[1] ? { entity: proposalLink[1] } : {});
+        return;
+      }
+      // 🏋️ #exercises or #exercises/<exercise id> (mig 2197).
+      const exerciseLink = (window.location.hash || '').match(/^#exercises(?:\/(\d+))?$/);
+      if (exerciseLink) {
+        this.navigation.goTo('exercises', exerciseLink[1] ? { entity: exerciseLink[1] } : {});
         return;
       }
       // 🎥 #film-analysis or #film-analysis/<clip id> (mig 1993).

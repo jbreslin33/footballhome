@@ -381,6 +381,7 @@ class EventCenterScreen extends Screen {
     if (admin) {
       this.release = new ReleaseStrip(this.find('#ec-release'), ctx);
       this.release.onChange = () => this._loadEvents();
+      this.release.onPaint = () => this._applyCalExtras();
       this._loadOps();   // the week may have loaded before the menu did
     }
     if (clashes) new ClashStrip(this.find('#ec-clash'), ctx).load();
@@ -461,7 +462,10 @@ class EventCenterScreen extends Screen {
   }
   _applyCalExtras() {
     const rel = this.find('#ec-release');
-    if (rel) rel.style.display = this._calOpen === 'release' ? '' : 'none';
+    // A week not yet posted (or posted early) shows its Open now / Close it
+    // again line right above the week; a week that posted on time stays in ☰.
+    const relOpen = this._calOpen === 'release' || !!(this.release && this.release.needsAction && rel && rel.innerHTML);
+    if (rel) rel.style.display = relOpen ? '' : 'none';
     const wk = this.find('#ec-weekend');
     if (wk) wk.style.display = this._calOpen === 'weekend' ? '' : 'none';
   }

@@ -4,8 +4,8 @@
 // instead have pill for all players, and then a pill to make groups for
 // practice, and a pill to plan practice").
 //
-//   GET             /api/calendar/events/:id/session-plan   the practice plan
-//                   attached to the event (edited on #practice-plan)
+//   📝 Practice Plan = the session from the team's plan (SessionPlanPanel,
+//                   mig 5020: weekday or match-day slot) + 🔶 cones
 //   GET|POST        /api/calendar/events/:id/sides     pickup sides / practice
 //                   groups by bib colour (match_lineups.squad_color; the
 //                   colours are squad_colors rows, migration 372)
@@ -31,12 +31,22 @@ class PracticeScreen extends EventScreen {
       return [card, new Panel({ key: 'calls', minTier: 'coach', html: (s) => s._callsHtml() }), ...rest];
     }
     if (key === 'sides') return [new Panel({ key: 'sides', html: (s) => s._sidesHtml() })];
+    // Labelled so the ☰ (clean event page) lists them; the 📝 pill opens the session.
     if (key === 'plan') return [
-      new Panel({ key: 'plan', html: (s) => s._planHtml() }),
+      new Panel({ key: 'plan', html: (s) => s._planHtml(),
+                  label: () => (window.MessageCopy && MessageCopy.block('exercises', 'ev_session')) || '🏋️ Session' }),
       new Panel({ key: 'cones', html: (s) => s.panelFoldHtml('cones',
-        s.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), s._conesHtml()) }),
+        s.escapeHtml((window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones'), s._conesHtml()),
+                  label: () => (window.MessageCopy && MessageCopy.block('cone_setup', 'pill')) || '🔶 Cones' }),
     ];
     return super.panels(key);
+  }
+
+  // 📝 has no graphic, so in ☰ mode open the session unless cones is picked
+  // (a #event/<id>/plan link lands here without onPill).
+  pillHtml(key) {
+    if (key === 'plan' && this._extraOpen !== 'cones') this._extraOpen = 'plan';
+    return super.pillHtml(key);
   }
 
   // The card (EventScreen._teamCardHtml) says PRACTICE / PICKUP and always
@@ -109,7 +119,6 @@ class PracticeScreen extends EventScreen {
   onPill(key) {
     super.onPill(key);
     if (key === 'sides' && !this.sides) this._loadSides();
-    if (key === 'plan' && this.plan === undefined) this._loadPlan();
     if (key === 'plan' && this.cones === undefined) this._loadCones();
   }
 
@@ -120,14 +129,12 @@ class PracticeScreen extends EventScreen {
 
   resetKind() {
     this.sides = null;        // { canEdit, colors, players }
-    this.plan = undefined;
     this.cones = undefined;    // undefined = not loaded; null = no plan
     this.sideColors = null;   // Set of colour codes in play on this event
   }
 
   onClick(t) {
     let el;
-    if ((el = t('[data-ec-practice-plan]'))) { this.navigation.goTo('practice-plan', {}); return true; }
     if ((el = t('[data-ec-side]'))) { this._setSide(Number(el.dataset.personId), el.dataset.ecSide); return true; }
     if ((el = t('[data-ec-side-color]'))) {
       const code = el.dataset.ecSideColor;
@@ -193,19 +200,6 @@ class PracticeScreen extends EventScreen {
       return chooser + summary;
     }
     return '';
-  }
-
-  async _loadPlan() {
-    const id = this.ev.fh_event_id;
-    try {
-      const body = await this._json(`/api/calendar/events/${id}/session-plan`);
-      if (!this.ev || this.ev.fh_event_id !== id) return;
-      this.plan = body.practice || null;
-    } catch (err) {
-      console.error('[practice] session plan load failed:', err);
-      this.plan = null;
-    }
-    this._render();
   }
 
   // Cone setups (mig 559, owner 2026-10-09): the layout this session uses,
@@ -334,32 +328,9 @@ class PracticeScreen extends EventScreen {
     this._render();
   }
 
-  // The practice plan attached to this event, read-only — sessions in order,
-  // each with its exercises.  Editing stays on #practice-plan.
-  _planHtml() {
-    if (this.plan === undefined) return `<div style="text-align:center; opacity:0.7; padding:var(--space-6);">Loading…</div>`;
-    const editBtn = this.viewer.canEdit()
-      ? `<button type="button" class="btn btn-secondary" data-ec-practice-plan style="padding:4px 12px; font-size:0.85rem;">📋 Practice Plans</button>` : '';
-    if (!this.plan) {
-      return `<div class="ec-box" style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <span style="opacity:0.7;">No session plan is attached to this event.</span>${editBtn}</div>`;
-    }
-    const para = (label, text) => text
-      ? `<div style="font-size:0.82rem; margin-top:4px; white-space:pre-wrap;"><b>${label}:</b> ${this.escapeHtml(text)}</div>` : '';
-    const sessions = this.plan.sessions || [];
-    return `
-      ${this.plan.notes ? `<div class="ec-box" style="white-space:pre-wrap;">${this.escapeHtml(this.plan.notes)}</div>` : ''}
-      ${sessions.map((s, si) => this.panelFoldHtml(`plan_${si}`,
-          `${this.escapeHtml(s.title || 'Session')} <span style="font-weight:400; opacity:0.7;">${this.escapeHtml(s.start_time)} – ${this.escapeHtml(s.end_time)}</span>`, `
-        ${s.notes ? `<div style="font-size:0.85rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(s.notes)}</div>` : ''}
-        ${(s.exercises || []).map(x => `<div style="padding:6px 0; border-top:1px solid var(--border-color); margin-top:6px;">
-            <div style="font-weight:700; font-size:0.92rem;">${this.escapeHtml(x.title)}${x.player_count ? ` <span style="font-weight:400; opacity:0.6; font-size:0.78rem;">· ${x.player_count} players</span>` : ''}</div>
-            ${x.description ? `<div style="font-size:0.82rem; opacity:0.85; white-space:pre-wrap;">${this.escapeHtml(x.description)}</div>` : ''}
-            ${para('Setup', x.setup)}${para('Coaching points', x.coaching_points)}${para('Notes', x.notes)}
-          </div>`).join('') || `<div style="font-size:0.82rem; opacity:0.55;">No exercises yet.</div>`}
-      `)).join('')}
-      ${editBtn ? `<div style="text-align:right;">${editBtn}</div>` : ''}`;
-  }
+  // The session from the team's plan (mig 5020) — weekday (youth) or match
+  // day (men / women); a coach can edit this one.  components/session-plan-panel.js
+  _planHtml() { return this.sessionPanel.html(); }
 
   // Pickup sides / practice groups by bib colour.  Top: each colour and who
   // is on it.  Below, for whoever may edit: the roster, people who are
