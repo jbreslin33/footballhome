@@ -336,14 +336,18 @@ class FootballTaxonomyScreen extends Screen {
       const mine = shown.filter(c => c.moment === m.code);
       if (!mine.length) continue;
       html += `<div class="tx-moment">${esc(m.title)}</div>`;
-      // A sub-principle (game_principles.parent_id) reads as "Parent › Child".
-      const pTitle = (p) => { const par = p.parent_id != null && (d.principles || []).find(x => x.id === p.parent_id); return par ? par.title + ' › ' + p.title : p.title; };
-      const groups = (d.principles || []).filter(p => p.moment === m.code).map(p => [pTitle(p), mine.filter(c => c.principle_id === p.id)]);
+      // A principle's own description sits under its heading. A sub-principle (game_principles.parent_id)
+      // prints its parent's heading + description once, then its own heading indented under it.
+      const groups = (d.principles || []).filter(p => p.moment === m.code).map(p => [p, mine.filter(c => c.principle_id === p.id)]);
       const known = new Set((d.principles || []).filter(p => p.moment === m.code).map(p => p.id));
-      groups.push([this._t('no_principle'), mine.filter(c => !known.has(c.principle_id))]);
-      for (const [title, list] of groups) {
+      groups.push([{ title: this._t('no_principle') }, mine.filter(c => !known.has(c.principle_id))]);
+      const shownParents = new Set();
+      const desc = (p) => p.description ? `<div class="tx-dim" style="font-size:0.8rem; margin:-2px 0 6px; max-width:80ch;">${esc(p.description)}</div>` : '';
+      for (const [p, list] of groups) {
         if (!list.length) continue;
-        html += `<div class="tx-principle">${esc(title)}</div><div class="tx-grid">${list.map(card).join('')}</div>`;
+        const par = p.parent_id != null && (d.principles || []).find(x => x.id === p.parent_id);
+        if (par && !shownParents.has(par.id)) { shownParents.add(par.id); html += `<div class="tx-principle">${esc(par.title)}</div>${desc(par)}`; }
+        html += `<div class="tx-principle"${par ? ' style="margin-left:14px; font-size:0.92em;"' : ''}>${esc(p.title)}</div>${desc(p)}<div class="tx-grid">${list.map(card).join('')}</div>`;
       }
     }
     if (eo.length) {
