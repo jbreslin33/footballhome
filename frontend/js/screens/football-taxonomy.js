@@ -54,6 +54,7 @@ class FootballTaxonomyScreen extends Screen {
     this.moment = '';       // '' = every moment
     this.reach = 'all';     // all | played | placed | job | named
     this.kind = '';         // '' | behaviour | style | call (game_concepts.kind, mig 5026/5029)
+    this.view = 'sections'; // sections | machines (game_machines, mig 5038)
     this.search = '';
     this.plevel = 'all';    // 📜 Principles: all | general | operational | fundamental | sub | federations
     this.engine = 'all';    // ⚙️ Engine list: all | concept | unnamed | fudge | read | classes
@@ -159,6 +160,7 @@ class FootballTaxonomyScreen extends Screen {
       else if (k === 'moment') this.moment = v;
       else if (k === 'reach') this.reach = v;
       else if (k === 'kind') this.kind = v;
+      else if (k === 'view') this.view = v;
       else if (k === 'engine') this.engine = v;
       this._render();
     });
@@ -282,6 +284,48 @@ class FootballTaxonomyScreen extends Screen {
     this._renderDetail();
   }
 
+  // ── 🔀 By machine: every state machine the game has and the designed ones (game_machines /
+  // _states / _transitions, mig 5038). A machine's states are exclusive; top-level machines run side by
+  // side; a state can hold sub-machines (parent_state_id); arrows carry the card a player needs to take them.
+  _machinesHtml(esc) {
+    const d = this.data, ix = this._index();
+    const M = d.machines || [], S = d.machine_states || [], T = d.machine_transitions || [];
+    const statesOf = new Map(), subsOf = new Map(), arrowsOf = new Map(), stateById = new Map(S.map(x => [x.id, x]));
+    for (const x of S) { if (!statesOf.has(x.machine_id)) statesOf.set(x.machine_id, []); statesOf.get(x.machine_id).push(x); }
+    for (const m of M) if (m.parent_state_id != null) { if (!subsOf.has(m.parent_state_id)) subsOf.set(m.parent_state_id, []); subsOf.get(m.parent_state_id).push(m); }
+    for (const t of T) { if (!arrowsOf.has(t.machine_id)) arrowsOf.set(t.machine_id, []); arrowsOf.get(t.machine_id).push(t); }
+    const chip = (st) => `<span class="tx-chip ${st === 'engine' ? 'on' : 'off'}" style="font-size:0.72rem;">${esc(this._t(st === 'engine' ? 'm_engine' : 'm_design'))}</span>`;
+    const card = (id) => { const c = id != null && ix.concept.get(id); return c ? ' · ' + this._conceptLink(c, esc) : ''; };
+    const name = (id) => { const x = id != null && stateById.get(id); return x ? esc(x.title) : null; };
+    const machine = (m, depth) => {
+      const states = statesOf.get(m.id) || [], arrows = arrowsOf.get(m.id) || [];
+      let h = `<div style="margin:${depth ? '6px 0 4px' : '0 0 14px'}; padding-left:10px; border-left:3px solid ${m.status === 'engine' ? '#22c55e' : '#94a3b8'};">
+        <div><strong>${esc(m.title)}</strong> ${chip(m.status)}${card(m.concept_id)}${m.engine ? ` <span class="tx-dim tx-code">${esc(m.engine)}</span>` : ''}</div>
+        ${m.note ? `<div class="tx-dim" style="font-size:0.78rem; max-width:80ch;">${esc(m.note)}</div>` : ''}<ul class="tx-list" style="margin:4px 0;">`;
+      for (const x of states) {
+        const xc = x.concept_id != null && ix.concept.get(x.concept_id);
+        h += `<li>${xc && xc.title === x.title ? this._conceptLink(xc, esc) : esc(x.title) + card(x.concept_id)}${x.status !== m.status ? ' ' + chip(x.status) : ''}`;
+        for (const sub of subsOf.get(x.id) || []) h += machine(sub, depth + 1);
+        h += `</li>`;
+      }
+      h += `</ul>`;
+      if (arrows.length) h += `<div class="tx-dim" style="font-size:0.8rem;">${esc(this._t('m_arrows'))}</div><ul class="tx-list" style="margin:2px 0 4px;">` + arrows.map(t =>
+        `<li>${name(t.from) || `<em>${esc(this._t('m_any'))}</em>`} → ${name(t.to) || `<em>${esc(this._t('m_leaves'))}</em>`} <span class="tx-dim">· ${esc(t.label)}</span>${card(t.concept_id)}</li>`).join('') + `</ul>`;
+      return h + `</div>`;
+    };
+    let html = `<div class="tx-dim" style="font-size:0.82rem; margin:8px 0 12px; max-width:80ch;">${esc(this._t('m_intro'))}</div>`;
+    for (const scope of ['team', 'player']) {
+      const top = M.filter(m => m.parent_state_id == null && m.scope === scope);
+      if (!top.length) continue;
+      html += `<div class="tx-moment">${esc(this._t('m_scope_' + scope))}</div>` + top.map(m => machine(m, 0)).join('');
+    }
+    const used = new Set([...M.map(m => m.concept_id), ...S.map(x => x.concept_id), ...T.map(t => t.concept_id)].filter(v => v != null));
+    const loose = (d.concepts || []).filter(c => !used.has(c.id));
+    html += `<details style="margin-top:12px;"><summary class="tx-principle" style="cursor:pointer;">${esc(this._t('m_not_placed', { n: loose.length }))}</summary>
+      <div style="font-size:0.85rem; line-height:1.8;">${loose.map(c => this._conceptLink(c, esc)).join(' · ')}</div></details>`;
+    return html;
+  }
+
   // ── 🧭 How players learn — the design model (owner 11/27), every word message_templates
   // kind 'taxonomy' tiers lm_intro, lm_s<n>_h / lm_s<n>_b (sections run until a heading is missing).
   _learningHtml(esc) {
@@ -309,7 +353,9 @@ class FootballTaxonomyScreen extends Screen {
     const kinds = ['', 'behaviour', 'style', 'call']
       .map(k => `<button type="button" class="tx-pill ${this.kind === k ? 'on' : ''}" data-tx="kind" data-v="${k}">${esc(this._t(k ? 'kind_' + k : 'kind_all'))}<span class="n">${inMoment.filter(c => !k || c.kind === k).length}</span></button>`).join('');
     const legend = this._t('legend'), where = this._t('where_legend');
-    return `<div class="tx-pills">${moments}</div><div class="tx-pills">${kinds}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
+    const views = ['sections', 'machines'].map(v => `<button type="button" class="tx-pill ${this.view === v ? 'on' : ''}" data-tx="view" data-v="${v}">${esc(this._t('view_' + v))}</button>`).join('');
+    if (this.view === 'machines') return `<div class="tx-pills">${views}</div><div id="tx-concepts"></div>`;
+    return `<div class="tx-pills">${views}</div><div class="tx-pills">${moments}</div><div class="tx-pills">${kinds}</div>${legend ? `<div class="tx-legend">${esc(legend)}</div>` : ''}<div class="tx-pills">${reaches}</div>
       ${where ? `<div class="tx-legend" style="margin:0 0 8px;">${esc(where)}</div>` : ''}
       <input type="search" class="tx-search" data-tx-search placeholder="${esc(this._t('search'))}" value="${esc(this.search)}">
       <div id="tx-concepts"></div>`;
@@ -323,6 +369,7 @@ class FootballTaxonomyScreen extends Screen {
     const d = this.data, q = this.search.trim().toLowerCase();
     const rules = {};
     for (const r of d.rules || []) rules[r.code] = r.label;
+    if (this.view === 'machines') { el.innerHTML = this._machinesHtml(esc); return; }
     if (this.reach === 'dups') { el.innerHTML = this._dupsHtml(esc); return; }
     const shown = (d.concepts || []).filter(c => (!this.moment || c.moment === this.moment) && (!this.kind || c.kind === this.kind)
       && this.reach !== 'engine' && (this.reach === 'all' || this._reach(c) === this.reach)

@@ -210,6 +210,15 @@ json TacticPlans::taxonomy() {
           'engine',     (SELECT json_agg(json_build_object('kind', kind, 'code', code, 'title', title, 'note', note, 'definition', definition, 'wire', wire_index, 'parent', parent) ORDER BY kind, sort_order)
                            FROM game_engine_terms),
           'links',      (SELECT json_agg(json_build_object('from', concept_id, 'to', other_id, 'kind', kind)) FROM game_concept_links),
+          'machines',   (SELECT json_agg(json_build_object('id', id, 'code', code, 'title', title, 'scope', scope, 'parent_state_id', parent_state_id,
+                                                           'concept_id', concept_id, 'status', status, 'engine', engine_code, 'note', note)
+                                         ORDER BY sort_order, id) FROM game_machines),
+          'machine_states', (SELECT json_agg(json_build_object('id', id, 'machine_id', machine_id, 'code', code, 'title', title,
+                                                               'concept_id', concept_id, 'status', status, 'engine', engine_code)
+                                             ORDER BY machine_id, sort_order, id) FROM game_machine_states),
+          'machine_transitions', (SELECT json_agg(json_build_object('id', id, 'machine_id', machine_id, 'from', from_state_id, 'to', to_state_id,
+                                                                    'concept_id', concept_id, 'label', label, 'status', status)
+                                                  ORDER BY machine_id, sort_order, id) FROM game_machine_transitions),
           'jobs',       (SELECT json_agg(json_build_object('code', code, 'concept_id', concept_id, 'label', label, 'rule', rule,
                                                            'dist_m', dist_m, 'press_m', press_m, 'lane_t', lane_t) ORDER BY sort_order) FROM tactic_job_kinds),
           'behaviours', (SELECT json_agg(json_build_object('code', code, 'file', file, 'line', line, 'symbol', symbol, 'class', class_name,
